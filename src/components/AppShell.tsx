@@ -6,6 +6,7 @@ const nav = [
   { href: "/dashboard", label: "Today" },
   { href: "/history", label: "History" },
   { href: "/builders", label: "Builders" },
+  { href: "/admin", label: "Admin" },
   { href: "/settings", label: "Agent Login" },
 ];
 
