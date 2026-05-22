@@ -57,7 +57,7 @@ export default async function AdminPage() {
         <section className="grid gap-6 xl:grid-cols-[1fr_26rem]">
           <div>
             <p className="section-label">Admin</p>
-            <h1 className="mt-3 font-serif text-6xl leading-none tracking-[-0.06em]">
+            <h1 className="mt-3 font-serif text-4xl font-semibold leading-tight md:text-6xl">
               Crawl operations
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--muted-strong)]">
@@ -123,7 +123,7 @@ export default async function AdminPage() {
               <p className="section-label">Builder pool</p>
               <h2 className="mt-2 font-serif text-4xl">Canonical sources</h2>
             </div>
-            <span className="rounded-full border border-black/10 bg-white/70 px-4 py-2 text-sm text-[var(--muted-strong)]">
+            <span className="rounded-full border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-2 text-sm text-[var(--muted-strong)]">
               {builders.length} builders · unique by canonicalKey
             </span>
           </div>
@@ -184,7 +184,7 @@ export default async function AdminPage() {
               <p className="section-label">Daily crawl</p>
               <h2 className="mt-2 font-serif text-4xl">Recent imported content</h2>
             </div>
-            <span className="rounded-full border border-black/10 bg-white/70 px-4 py-2 text-sm text-[var(--muted-strong)]">
+            <span className="rounded-full border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-2 text-sm text-[var(--muted-strong)]">
               Last 14 days
             </span>
           </div>
@@ -196,14 +196,14 @@ export default async function AdminPage() {
                   <h3 className="font-serif text-3xl">{dateFormatter.format(day.date)}</h3>
                   <span className="kind-pill">{day.items.length} items</span>
                 </summary>
-                <div className="mt-4 divide-y divide-black/10">
+                <div className="mt-4 divide-y divide-[var(--line)]">
                   {day.items.map((item) => (
                     <a
                       key={item.id}
                       href={item.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="grid gap-3 py-4 transition hover:bg-white/60 md:grid-cols-[8rem_1fr_11rem]"
+                      className="grid gap-3 rounded-lg px-2 py-4 transition hover:bg-[var(--paper-strong)] md:grid-cols-[8rem_1fr_11rem]"
                     >
                       <div>
                         <span className="kind-pill">{feedKindLabel(item.kind)}</span>
@@ -242,8 +242,8 @@ export default async function AdminPage() {
 
 function AdminStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-3xl border border-black/10 bg-white/72 p-5">
-      <div className="font-serif text-5xl tracking-[-0.06em]">{value}</div>
+    <div className="rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] p-5">
+      <div className="font-serif text-4xl font-semibold">{value}</div>
       <div className="mt-2 text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
         {label}
       </div>
@@ -253,9 +253,9 @@ function AdminStat({ label, value }: { label: string; value: number }) {
 
 function MetricRow({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-black/10 bg-white/62 p-4">
+    <div className="rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] p-4">
       <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{label}</div>
-      <div className="mt-2 font-serif text-4xl tracking-[-0.06em]">{value}</div>
+      <div className="mt-2 font-serif text-3xl font-semibold">{value}</div>
     </div>
   );
 }

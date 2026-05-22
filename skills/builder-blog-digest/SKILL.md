@@ -17,7 +17,7 @@ Authenticate this terminal or agent session with the Builder Blog web app:
 
 ```bash
 cd /Users/jie/code/builder_blog
-node scripts/builder-digest.mjs login --app-url "${BUILDER_BLOG_URL:-https://builder-blog-plum.vercel.app}"
+node scripts/builder-digest.mjs login --app-url "${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}"
 ```
 
 The command opens a browser verification URL. The user signs in with Google or GitHub, approves the device code, and the CLI stores an agent token in `~/.builder-blog/config.json`.

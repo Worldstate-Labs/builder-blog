@@ -75,7 +75,7 @@ export default async function BuildersPage() {
         <section className="grid gap-6 xl:grid-cols-[1fr_24rem]">
           <div>
             <p className="section-label">Library</p>
-            <h1 className="mt-3 font-serif text-6xl leading-none tracking-[-0.06em]">
+            <h1 className="mt-3 font-serif text-4xl font-semibold leading-tight md:text-6xl">
               Builder pool
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--muted-strong)]">
@@ -91,7 +91,7 @@ export default async function BuildersPage() {
           </div>
         </section>
 
-        <section className="mt-8 rounded-[2rem] border border-black/10 bg-white/72 p-6">
+        <section className="mt-8 rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] p-5 md:p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h2 className="font-serif text-3xl">Digest subscription</h2>
@@ -261,8 +261,8 @@ function LibrarySection({
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-3xl border border-black/10 bg-white/72 p-5">
-      <div className="font-serif text-5xl tracking-[-0.06em]">{value}</div>
+    <div className="rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] p-5">
+      <div className="font-serif text-4xl font-semibold">{value}</div>
       <div className="mt-2 text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
         {label}
       </div>

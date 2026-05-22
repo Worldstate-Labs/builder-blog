@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const CONFIG_DIR = join(homedir(), ".builder-blog");
 const CONFIG_PATH = join(CONFIG_DIR, "config.json");
-const DEFAULT_APP_URL = "https://builder-blog-plum.vercel.app";
+const DEFAULT_APP_URL = "https://builder-blog.worldstatelabs.com";
 
 function usage() {
   console.log(`builder-digest commands:

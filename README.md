@@ -100,7 +100,7 @@ skills/builder-blog-digest/SKILL.md
 Login from terminal:
 
 ```bash
-npm run skill -- login --app-url https://builder-blog-plum.vercel.app
+npm run skill -- login --app-url https://builder-blog.worldstatelabs.com
 ```
 
 Prepare personalized context:

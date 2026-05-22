@@ -1,49 +1,39 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
+import { AppNav, type AppNavItem } from "@/components/AppNav";
 import { isAdminEmail } from "@/lib/admin";
 import { authOptions } from "@/lib/auth";
 
-const nav = [
-  { href: "/dashboard", label: "Today" },
-  { href: "/history", label: "History" },
-  { href: "/builders", label: "Builders" },
-  { href: "/settings", label: "Agent Login" },
+const nav: AppNavItem[] = [
+  { href: "/dashboard", label: "Today", icon: "home" },
+  { href: "/history", label: "History", icon: "archive" },
+  { href: "/builders", label: "Builders", icon: "builders" },
+  { href: "/settings", label: "Agent Login", icon: "key" },
 ];
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
   const items = isAdminEmail(session?.user?.email)
-    ? [...nav, { href: "/admin", label: "Admin" }]
+    ? [...nav, { href: "/admin", label: "Admin", icon: "admin" as const }]
     : nav;
 
   return (
     <div className="min-h-screen bg-[var(--paper)] text-[var(--ink)]">
       <div className="mx-auto flex min-h-screen w-full max-w-7xl">
-        <aside className="hidden w-64 shrink-0 border-r border-black/10 px-6 py-8 lg:block">
+        <aside className="hidden w-64 shrink-0 border-r border-[var(--line)] bg-[var(--rail)] px-5 py-6 lg:flex lg:flex-col">
           <Link href="/dashboard" className="group block" prefetch={false}>
-            <div className="text-sm uppercase tracking-[0.32em] text-[var(--muted)]">
+            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
               Builder Blog
             </div>
-            <div className="mt-3 font-serif text-3xl leading-none">
+            <div className="mt-2 text-xl font-semibold leading-tight">
               Signal over noise
             </div>
           </Link>
-          <nav className="mt-12 grid gap-2">
-            {items.map((item) => (
-              <Link
-                className="nav-link"
-                href={item.href}
-                key={item.href}
-                prefetch={false}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-          <div className="mt-auto pt-12 text-sm text-[var(--muted)]">
-            <p>{session?.user?.email}</p>
+          <AppNav items={items} mode="desktop" />
+          <div className="mt-auto border-t border-[var(--line)] pt-5 text-sm text-[var(--muted)]">
+            <p className="truncate">{session?.user?.email}</p>
             <Link
-              className="mt-4 inline-block underline"
+              className="mt-3 inline-flex min-h-10 items-center font-medium text-[var(--ink)] underline"
               href="/api/auth/signout"
               prefetch={false}
             >
@@ -52,30 +42,22 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
         <main className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-20 border-b border-black/10 bg-[rgba(247,243,234,0.86)] px-5 py-4 backdrop-blur lg:hidden">
+          <header className="mobile-header lg:hidden">
             <div className="flex items-center justify-between gap-4">
               <Link
-                className="font-serif text-xl"
+                className="text-base font-semibold"
                 href="/dashboard"
                 prefetch={false}
               >
                 Builder Blog
               </Link>
-              <nav className="flex gap-3 overflow-x-auto text-sm">
-                {items.map((item) => (
-                  <Link
-                    className="underline"
-                    href={item.href}
-                    key={item.href}
-                    prefetch={false}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
+              <span className="max-w-[58vw] truncate text-right text-xs text-[var(--muted)]">
+                {session?.user?.email}
+              </span>
             </div>
           </header>
           {children}
+          <AppNav items={items} mode="mobile" />
         </main>
       </div>
     </div>

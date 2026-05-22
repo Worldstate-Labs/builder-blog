@@ -17,11 +17,11 @@ export default async function DevicePage({
   return (
     <main className="min-h-screen bg-[var(--charcoal)] px-6 py-10 text-white">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-3xl items-center">
-        <section className="w-full rounded-[2rem] border border-white/12 bg-white/[0.06] p-8 shadow-2xl shadow-black/30">
-          <p className="text-sm uppercase tracking-[0.32em] text-white/50">
+        <section className="w-full rounded-lg border border-white/12 bg-white/[0.06] p-8 shadow-2xl shadow-black/30">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-white/50">
             Terminal login
           </p>
-          <h1 className="mt-4 font-serif text-5xl tracking-[-0.05em]">
+          <h1 className="mt-4 font-serif text-4xl font-semibold md:text-5xl">
             Authorize device
           </h1>
           <p className="mt-5 text-white/68">
@@ -29,7 +29,7 @@ export default async function DevicePage({
           </p>
 
           {params.approved ? (
-            <p className="mt-8 rounded-3xl bg-emerald-400/15 p-5 text-emerald-100">
+            <p className="mt-8 rounded-lg bg-emerald-400/15 p-5 text-emerald-100">
               Approved. Return to your terminal.
             </p>
           ) : null}
@@ -53,7 +53,7 @@ export default async function DevicePage({
           ) : null}
 
           {session && !device ? (
-            <p className="mt-8 rounded-3xl bg-red-400/15 p-5 text-red-100">
+            <p className="mt-8 rounded-lg bg-red-400/15 p-5 text-red-100">
               Device code not found or expired.
             </p>
           ) : null}

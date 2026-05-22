@@ -23,7 +23,7 @@ export default async function SettingsPage({
     <AppShell>
       <div className="page-pad">
         <p className="section-label">Terminal bridge</p>
-        <h1 className="mt-3 font-serif text-6xl leading-none tracking-[-0.06em]">
+        <h1 className="mt-3 font-serif text-4xl font-semibold leading-tight md:text-6xl">
           Agent login
         </h1>
         <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--muted-strong)]">
@@ -32,11 +32,11 @@ export default async function SettingsPage({
         </p>
 
         {params.token ? (
-          <div className="mt-8 rounded-[2rem] bg-[var(--ink)] p-6 text-white">
+          <div className="mt-8 rounded-lg bg-[var(--ink)] p-5 text-white md:p-6">
             <p className="text-sm uppercase tracking-[0.22em] text-white/50">
               Copy once
             </p>
-            <code className="mt-4 block break-all rounded-2xl bg-black/30 p-4 text-sm">
+            <code className="mt-4 block break-all rounded-lg bg-black/30 p-4 text-sm">
               {params.token}
             </code>
           </div>

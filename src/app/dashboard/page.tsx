@@ -56,7 +56,7 @@ export default async function DashboardPage() {
         <section className="grid gap-6 xl:grid-cols-[1fr_22rem]">
           <div>
             <p className="section-label">Personal digest</p>
-            <h1 className="mt-3 max-w-4xl font-serif text-6xl leading-[0.94] tracking-[-0.06em] md:text-7xl">
+            <h1 className="mt-3 max-w-4xl font-serif text-4xl font-semibold leading-tight md:text-6xl">
               Your builder signal, archived.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[var(--muted-strong)]">
@@ -72,7 +72,7 @@ export default async function DashboardPage() {
         </section>
 
         <section className="mt-10 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <article className="rounded-[2rem] bg-[var(--ink)] p-7 text-white shadow-xl shadow-black/10">
+          <article className="rounded-lg bg-[var(--ink)] p-5 text-white shadow-xl shadow-black/10 md:p-7">
             <div className="flex items-center justify-between gap-4">
               <h2 className="font-serif text-3xl">Today&apos;s digest</h2>
               {todayDigest ? (
@@ -91,23 +91,23 @@ export default async function DashboardPage() {
                 </pre>
               </>
             ) : (
-              <div className="mt-8 rounded-3xl border border-dashed border-white/20 p-6 text-white/68">
+              <div className="mt-8 rounded-lg border border-dashed border-white/20 p-6 text-white/68">
                 No synced digest today. Run the skill from your terminal or agent:
-                <code className="mt-3 block rounded-2xl bg-black/30 p-4 text-sm text-white">
+                <code className="mt-3 block rounded-lg bg-black/30 p-4 text-sm text-white">
                   builder-digest prepare | agent summarizes | builder-digest sync --file digest.md
                 </code>
               </div>
             )}
           </article>
 
-          <aside className="rounded-[2rem] border border-black/10 bg-white/70 p-6">
+          <aside className="rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] p-5 md:p-6">
             <h2 className="font-serif text-3xl">Recent archive</h2>
             <div className="mt-5 space-y-4">
               {recentDigests.map((digest) => (
                 <a
                   key={digest.id}
                   href={`/history#${digest.id}`}
-                  className="block rounded-3xl border border-black/10 p-4 transition hover:bg-white"
+                  className="block rounded-lg border border-[var(--line)] p-4 transition hover:bg-[var(--paper-strong)]"
                 >
                   <div className="font-medium">{digest.title}</div>
                   <div className="mt-1 text-sm text-[var(--muted)]">
@@ -154,8 +154,8 @@ export default async function DashboardPage() {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-3xl border border-black/10 bg-white/72 p-5">
-      <div className="font-serif text-5xl tracking-[-0.06em]">{value}</div>
+    <div className="rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] p-5">
+      <div className="font-serif text-4xl font-semibold">{value}</div>
       <div className="mt-2 text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
         {label}
       </div>
