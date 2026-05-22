@@ -23,7 +23,7 @@ export default async function Home() {
             A web-native digest for people building with AI.
           </h1>
           <p className="mt-8 max-w-2xl text-xl leading-9 text-[var(--muted-strong)]">
-            Centralized builder crawling, personalized subscriptions, agent
+            Centralized public crawling, personal agent-synced builders,
             generated digests, and a permanent searchable archive.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
@@ -44,8 +44,8 @@ export default async function Home() {
               <div key={item} className="rounded-3xl border border-black/10 bg-white/72 p-5">
                 <div className="font-serif text-2xl">{item}</div>
                 <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                  Filtered through your own subscription graph, then synced from
-                  your local agent into the web archive.
+                  Filtered through the shared library and your personal agent
+                  syncs, then archived in one place.
                 </p>
               </div>
             ))}
@@ -55,9 +55,9 @@ export default async function Home() {
       <section id="how-it-works" className="mx-auto max-w-7xl border-t border-black/10 py-12">
         <div className="grid gap-5 md:grid-cols-3">
           {[
-            "Pool crawls public builder sources once for everyone.",
-            "Users subscribe to builders or add new ones with dedupe.",
-            "Agent skill summarizes and syncs each digest to the web app.",
+            "Admins manage the central builder pool.",
+            "User agents sync personal builders with user-owned credentials.",
+            "The skill summarizes both libraries and syncs each digest.",
           ].map((copy, index) => (
             <div key={copy} className="rounded-[2rem] bg-[var(--ink)] p-6 text-white">
               <div className="font-serif text-5xl">0{index + 1}</div>

@@ -1,17 +1,20 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
+import { isAdminEmail } from "@/lib/admin";
 import { authOptions } from "@/lib/auth";
 
 const nav = [
   { href: "/dashboard", label: "Today" },
   { href: "/history", label: "History" },
   { href: "/builders", label: "Builders" },
-  { href: "/admin", label: "Admin" },
   { href: "/settings", label: "Agent Login" },
 ];
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
+  const items = isAdminEmail(session?.user?.email)
+    ? [...nav, { href: "/admin", label: "Admin" }]
+    : nav;
 
   return (
     <div className="min-h-screen bg-[var(--paper)] text-[var(--ink)]">
@@ -26,7 +29,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </Link>
           <nav className="mt-12 grid gap-2">
-            {nav.map((item) => (
+            {items.map((item) => (
               <Link key={item.href} href={item.href} className="nav-link">
                 {item.label}
               </Link>
@@ -46,7 +49,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                 Builder Blog
               </Link>
               <nav className="flex gap-3 overflow-x-auto text-sm">
-                {nav.map((item) => (
+                {items.map((item) => (
                   <Link key={item.href} href={item.href} className="underline">
                     {item.label}
                   </Link>

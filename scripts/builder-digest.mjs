@@ -12,6 +12,7 @@ function usage() {
   console.log(`builder-digest commands:
   login --app-url http://localhost:3000
   prepare [--days 1]
+  sync-builders --file personal-builders.json
   sync --file digest.md [--title "AI Builder Digest"]
   status`);
 }
@@ -130,6 +131,19 @@ async function sync(args) {
   console.log(JSON.stringify(result, null, 2));
 }
 
+async function syncBuilders(args) {
+  const config = await readConfig();
+  if (!config.appUrl || !config.token) {
+    throw new Error("Not logged in. Run: builder-digest login --app-url http://localhost:3000");
+  }
+
+  const file = argValue(args, "--file");
+  if (!file) throw new Error("Missing --file personal-builders.json");
+  const payload = JSON.parse(await readFile(file, "utf8"));
+  const result = await postJson(`${config.appUrl}/api/skill/builders`, payload, config.token);
+  console.log(JSON.stringify(result, null, 2));
+}
+
 async function status() {
   const config = await readConfig();
   console.log(
@@ -150,6 +164,7 @@ const [command, ...args] = process.argv.slice(2);
 try {
   if (command === "login") await login(args);
   else if (command === "prepare") await prepare(args);
+  else if (command === "sync-builders") await syncBuilders(args);
   else if (command === "sync") await sync(args);
   else if (command === "status") await status();
   else usage();

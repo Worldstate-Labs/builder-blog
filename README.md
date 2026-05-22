@@ -5,8 +5,8 @@ Web-native AI builder digest app.
 It keeps the core Follow Builders idea but changes delivery from chat messages to a web archive:
 
 - Google and GitHub OAuth login.
-- Central builder pool with de-duplicated builder IDs.
-- Per-user subscriptions.
+- Admin-managed central builder pool with de-duplicated builder IDs.
+- Per-user personal builder libraries synced by the user's own agent.
 - Central crawl endpoint that reads the database builder pool and fetches X,
   podcast, and blog sources once into one shared pool.
 - Per-user raw feed and historical digest archive.
@@ -31,6 +31,7 @@ CRON_SECRET="..."
 X_BEARER_TOKEN="..."
 POD2TXT_API_KEY="..."
 OPENAI_API_KEY="..."
+ADMIN_EMAILS="..."
 ```
 
 Use a hosted Postgres database for deployed environments. `DATABASE_URL` is used by the app runtime, and `DIRECT_URL` is used by Prisma migrations when your provider exposes a separate direct connection string.
@@ -105,6 +106,12 @@ Prepare personalized context:
 
 ```bash
 npm run skill -- prepare --days 1
+```
+
+Sync user-crawled personal builders and items:
+
+```bash
+npm run skill -- sync-builders --file /tmp/personal-builders.json
 ```
 
 After the AI agent writes the digest, sync it:

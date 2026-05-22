@@ -1,4 +1,4 @@
-import { BuilderKind } from "@prisma/client";
+import { BuilderKind, BuilderScope } from "@prisma/client";
 
 export function normalizeHandle(handle: string) {
   return handle.trim().replace(/^@/, "").toLowerCase();
@@ -6,6 +6,19 @@ export function normalizeHandle(handle: string) {
 
 export function canonicalBuilderKey(kind: BuilderKind, value: string) {
   return `${kind}:${value.trim().toLowerCase()}`;
+}
+
+export function builderLibraryKey(params: {
+  scope: BuilderScope;
+  canonicalKey: string;
+  ownerUserId?: string | null;
+}) {
+  if (params.scope === BuilderScope.PERSONAL && !params.ownerUserId) {
+    throw new Error("Personal builders require ownerUserId");
+  }
+  return params.scope === BuilderScope.CENTRAL
+    ? `central:${params.canonicalKey}`
+    : `user:${params.ownerUserId}:${params.canonicalKey}`;
 }
 
 export function inferBuilderKind(sourceUrl: string | null, handle: string | null) {

@@ -1,3 +1,4 @@
+import { BuilderScope } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserFromBearer } from "@/lib/tokens";
@@ -27,12 +28,16 @@ export async function GET(request: Request) {
   const days = Number(url.searchParams.get("days") ?? "1");
   const since = new Date(Date.now() - Math.max(1, days) * 24 * 60 * 60 * 1000);
 
-  const subscriptions = await prisma.subscription.findMany({
-    where: { userId: user.id },
-    include: { builder: true },
-    orderBy: { createdAt: "asc" },
+  const builders = await prisma.builder.findMany({
+    where: {
+      OR: [
+        { scope: BuilderScope.CENTRAL },
+        { scope: BuilderScope.PERSONAL, ownerUserId: user.id },
+      ],
+    },
+    orderBy: [{ scope: "asc" }, { kind: "asc" }, { name: "asc" }],
   });
-  const builderIds = subscriptions.map((sub) => sub.builderId);
+  const builderIds = builders.map((builder) => builder.id);
 
   const items = await prisma.feedItem.findMany({
     where: {
@@ -48,7 +53,8 @@ export async function GET(request: Request) {
     user: { id: user.id, name: user.name, email: user.email },
     generatedAt: new Date().toISOString(),
     language: "zh",
-    subscriptions: subscriptions.map((sub) => sub.builder),
+    subscriptions: builders,
+    libraryBuilders: builders,
     items,
     prompts: DIGEST_PROMPTS,
   });

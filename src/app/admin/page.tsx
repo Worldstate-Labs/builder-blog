@@ -1,7 +1,9 @@
-import { BuilderKind, FeedItemKind } from "@prisma/client";
+import { BuilderKind, BuilderScope, FeedItemKind } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { addCentralBuilderAction, deleteCentralBuilderAction } from "@/app/actions";
 import { AppShell } from "@/components/AppShell";
+import { isAdminEmail } from "@/lib/admin";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -19,25 +21,30 @@ const timeFormatter = new Intl.DateTimeFormat("en-US", {
 export default async function AdminPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) redirect("/login");
+  if (!isAdminEmail(session.user.email)) redirect("/dashboard?error=admin-required");
 
   const since = new Date(new Date().getTime() - 14 * 24 * 60 * 60 * 1000);
-  const [builders, feedItems, builderKindCounts, feedKindCounts] = await Promise.all([
+  const [builders, personalBuilderCount, feedItems, builderKindCounts, feedKindCounts] = await Promise.all([
     prisma.builder.findMany({
+      where: { scope: BuilderScope.CENTRAL },
       include: { _count: { select: { subscriptions: true, feedItems: true } } },
       orderBy: [{ kind: "asc" }, { updatedAt: "desc" }, { name: "asc" }],
     }),
+    prisma.builder.count({ where: { scope: BuilderScope.PERSONAL } }),
     prisma.feedItem.findMany({
-      where: { createdAt: { gte: since } },
+      where: { createdAt: { gte: since }, builder: { scope: BuilderScope.CENTRAL } },
       include: { builder: true },
       orderBy: [{ createdAt: "desc" }, { publishedAt: "desc" }],
       take: 160,
     }),
     prisma.builder.groupBy({
       by: ["kind"],
+      where: { scope: BuilderScope.CENTRAL },
       _count: { _all: true },
     }),
     prisma.feedItem.groupBy({
       by: ["kind"],
+      where: { builder: { scope: BuilderScope.CENTRAL } },
       _count: { _all: true },
     }),
   ]);
@@ -60,6 +67,7 @@ export default async function AdminPage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
             <AdminStat label="Pool builders" value={builders.length} />
+            <AdminStat label="Personal builders" value={personalBuilderCount} />
             <AdminStat label="Recent crawled items" value={feedItems.length} />
           </div>
         </section>
@@ -92,6 +100,24 @@ export default async function AdminPage() {
         </section>
 
         <section className="mt-10">
+          <div className="admin-panel mb-5">
+            <h2 className="font-serif text-3xl">Add central builder</h2>
+            <form action={addCentralBuilderAction} className="mt-5 grid gap-3 md:grid-cols-[1fr_12rem_1fr_1fr_auto]">
+              <input className="input" name="name" placeholder="Name" required />
+              <select className="input" name="kind" defaultValue={BuilderKind.X}>
+                <option value={BuilderKind.X}>X / Twitter</option>
+                <option value={BuilderKind.BLOG}>Blog index</option>
+                <option value={BuilderKind.PODCAST}>Podcast RSS</option>
+                <option value={BuilderKind.WEBSITE}>Website</option>
+              </select>
+              <input className="input" name="handle" placeholder="X handle" />
+              <input className="input" name="sourceUrl" placeholder="URL or RSS" />
+              <button className="button-dark" type="submit">
+                Add
+              </button>
+            </form>
+          </div>
+
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="section-label">Builder pool</p>
@@ -119,6 +145,12 @@ export default async function AdminPage() {
                     {builder._count.feedItems} items
                     <br />
                     {builder._count.subscriptions} subscribers
+                    <form action={deleteCentralBuilderAction} className="mt-3">
+                      <input type="hidden" name="builderId" value={builder.id} />
+                      <button className="button-light" type="submit">
+                        Remove
+                      </button>
+                    </form>
                   </div>
                 </div>
                 <dl className="mt-4 grid gap-3 text-xs">

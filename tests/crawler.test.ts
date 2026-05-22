@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { BuilderKind, FeedItemKind } from "@prisma/client";
-import { canonicalBuilderKey, normalizeHandle } from "../src/lib/builder-keys";
+import { BuilderKind, BuilderScope, FeedItemKind } from "@prisma/client";
+import { builderLibraryKey, canonicalBuilderKey, normalizeHandle } from "../src/lib/builder-keys";
 import { isCronAuthorized } from "../src/lib/cron-auth";
 import { shouldImportFollowBuildersFallback } from "../src/lib/crawl-fallback";
 import { crawlBlogBuilders } from "../src/lib/crawler/blogs";
@@ -20,6 +20,18 @@ const baseBuilder = {
 test("builder dedupe keys normalize handles before canonicalization", () => {
   assert.equal(normalizeHandle(" @Thesephist "), "thesephist");
   assert.equal(canonicalBuilderKey(BuilderKind.X, normalizeHandle("@Thesephist")), "X:thesephist");
+  assert.equal(
+    builderLibraryKey({ scope: BuilderScope.CENTRAL, canonicalKey: "X:thesephist" }),
+    "central:X:thesephist",
+  );
+  assert.equal(
+    builderLibraryKey({
+      scope: BuilderScope.PERSONAL,
+      ownerUserId: "user_1",
+      canonicalKey: "X:thesephist",
+    }),
+    "user:user_1:X:thesephist",
+  );
 });
 
 test("X crawler maps API tweets into FeedItem records", async () => {

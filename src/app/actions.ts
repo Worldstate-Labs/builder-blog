@@ -1,10 +1,11 @@
 "use server";
 
-import { BuilderKind } from "@prisma/client";
+import { BuilderKind, BuilderScope } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
+import { isAdminEmail } from "@/lib/admin";
 import { inferBuilderKind, normalizeHandle } from "@/lib/builder-keys";
 import { upsertBuilder } from "@/lib/builders";
 import { prisma } from "@/lib/prisma";
@@ -18,15 +19,26 @@ async function requireUser() {
   return session.user;
 }
 
-export async function addBuilderAction(formData: FormData) {
+async function requireAdminUser() {
   const user = await requireUser();
+  if (!isAdminEmail(user.email)) {
+    redirect("/dashboard?error=admin-required");
+  }
+  return user;
+}
+
+export async function addCentralBuilderAction(formData: FormData) {
+  const user = await requireUser();
+  if (!isAdminEmail(user.email)) {
+    redirect("/dashboard?error=admin-required");
+  }
   const name = String(formData.get("name") ?? "").trim();
   const handleInput = String(formData.get("handle") ?? "").trim();
   const sourceUrl = String(formData.get("sourceUrl") ?? "").trim();
   const kindInput = String(formData.get("kind") ?? "").trim();
 
   if (!name || (!handleInput && !sourceUrl)) {
-    redirect("/builders?error=missing-builder");
+    redirect("/admin?error=missing-builder");
   }
 
   const handle = handleInput ? normalizeHandle(handleInput) : null;
@@ -34,6 +46,7 @@ export async function addBuilderAction(formData: FormData) {
     ? kindInput
     : inferBuilderKind(sourceUrl || null, handle);
   const builder = await upsertBuilder({
+    scope: BuilderScope.CENTRAL,
     kind,
     name,
     handle,
@@ -42,22 +55,22 @@ export async function addBuilderAction(formData: FormData) {
     addedByUserId: user.id,
   });
 
-  await prisma.subscription.upsert({
+  revalidatePath("/admin");
+  revalidatePath("/builders");
+  redirect(`/admin?builder=${encodeURIComponent(builder.id)}`);
+}
+
+export async function deleteCentralBuilderAction(formData: FormData) {
+  await requireAdminUser();
+  const builderId = String(formData.get("builderId") ?? "");
+  await prisma.builder.deleteMany({
     where: {
-      userId_builderId: {
-        userId: user.id,
-        builderId: builder.id,
-      },
-    },
-    update: {},
-    create: {
-      userId: user.id,
-      builderId: builder.id,
+      id: builderId,
+      scope: BuilderScope.CENTRAL,
     },
   });
-
+  revalidatePath("/admin");
   revalidatePath("/builders");
-  redirect("/builders?added=1");
 }
 
 function isBuilderKind(value: string): value is BuilderKind {
@@ -142,7 +155,7 @@ export async function revokeTokenAction(formData: FormData) {
 export async function subscribeAllDefaultBuildersAction() {
   const user = await requireUser();
   const builders = await prisma.builder.findMany({
-    where: { kind: BuilderKind.X },
+    where: { kind: BuilderKind.X, scope: BuilderScope.CENTRAL },
     take: 25,
   });
   for (const builder of builders) {

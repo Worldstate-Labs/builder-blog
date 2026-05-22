@@ -1,4 +1,4 @@
-import { BuilderKind } from "@prisma/client";
+import { BuilderKind, BuilderScope } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { crawlBlogBuilders } from "./blogs";
 import { crawlPodcastBuilders } from "./podcasts";
@@ -49,6 +49,7 @@ export async function crawlBuilders(
 export async function crawlBuilderPool(options: CrawlBuilderPoolOptions = {}) {
   const builders = await prisma.builder.findMany({
     where: {
+      scope: BuilderScope.CENTRAL,
       kind: { in: [BuilderKind.X, BuilderKind.PODCAST, BuilderKind.BLOG] },
     },
   });
@@ -70,7 +71,8 @@ export async function crawlBuilderPool(options: CrawlBuilderPoolOptions = {}) {
   for (const item of result.items) {
     await prisma.feedItem.upsert({
       where: {
-        kind_externalId: {
+        builderId_kind_externalId: {
+          builderId: item.builderId,
           kind: item.kind,
           externalId: item.externalId,
         },

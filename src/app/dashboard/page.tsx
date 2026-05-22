@@ -1,3 +1,4 @@
+import { BuilderScope } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
@@ -9,12 +10,19 @@ export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) redirect("/login");
 
-  const subscriptions = await prisma.subscription.findMany({
-    where: { userId: session.user.id },
-    include: { builder: true },
-    orderBy: { createdAt: "desc" },
+  const libraryBuilders = await prisma.builder.findMany({
+    where: {
+      OR: [
+        { scope: BuilderScope.CENTRAL },
+        { scope: BuilderScope.PERSONAL, ownerUserId: session.user.id },
+      ],
+    },
+    select: { id: true, scope: true },
   });
-  const builderIds = subscriptions.map((subscription) => subscription.builderId);
+  const builderIds = libraryBuilders.map((builder) => builder.id);
+  const personalBuilderCount = libraryBuilders.filter(
+    (builder) => builder.scope === BuilderScope.PERSONAL,
+  ).length;
 
   const [todayDigest, recentDigests, feedItems, poolCount] = await Promise.all([
     prisma.digest.findFirst({
@@ -37,7 +45,7 @@ export default async function DashboardPage() {
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
       take: 8,
     }),
-    prisma.builder.count(),
+    prisma.builder.count({ where: { scope: BuilderScope.CENTRAL } }),
   ]);
 
   return (
@@ -50,13 +58,13 @@ export default async function DashboardPage() {
               Your builder signal, archived.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[var(--muted-strong)]">
-              The central pool crawls once. Your local skill turns subscribed
-              builder updates into a digest and syncs it here.
+              The central pool crawls once. Your agent can sync personal
+              builder updates into the same archive.
             </p>
           </div>
           <div className="stats-panel">
-            <Stat label="Subscribed" value={subscriptions.length} />
-            <Stat label="Pool builders" value={poolCount} />
+            <Stat label="Central" value={poolCount} />
+            <Stat label="Personal" value={personalBuilderCount} />
             <Stat label="Recent items" value={feedItems.length} />
           </div>
         </section>
@@ -117,7 +125,7 @@ export default async function DashboardPage() {
         <section className="mt-12">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="section-label">Subscribed feed</p>
+              <p className="section-label">Library feed</p>
               <h2 className="mt-2 font-serif text-4xl">Latest raw items</h2>
             </div>
             <a className="button-light" href="/builders">

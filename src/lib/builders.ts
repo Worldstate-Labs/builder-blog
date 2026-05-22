@@ -1,5 +1,5 @@
-import { BuilderKind, FeedItemKind } from "@prisma/client";
-import { canonicalBuilderKey, inferBuilderKind, normalizeHandle } from "@/lib/builder-keys";
+import { BuilderKind, BuilderScope, FeedItemKind } from "@prisma/client";
+import { builderLibraryKey, canonicalBuilderKey, inferBuilderKind, normalizeHandle } from "@/lib/builder-keys";
 import { prisma } from "@/lib/prisma";
 
 const FOLLOW_BUILDERS_BASE =
@@ -56,9 +56,11 @@ type DefaultSources = {
   podcasts?: Array<{ name: string; rssUrl?: string; url: string }>;
 };
 
-export { canonicalBuilderKey, inferBuilderKind, normalizeHandle };
+export { builderLibraryKey, canonicalBuilderKey, inferBuilderKind, normalizeHandle };
 
 export async function upsertBuilder(params: {
+  scope?: BuilderScope;
+  ownerUserId?: string | null;
   kind: BuilderKind;
   name: string;
   handle?: string | null;
@@ -67,18 +69,28 @@ export async function upsertBuilder(params: {
   bio?: string | null;
   addedByUserId?: string | null;
 }) {
+  const scope = params.scope ?? BuilderScope.CENTRAL;
   const handle = params.handle ? normalizeHandle(params.handle) : null;
   const uniqueValue = handle ?? params.sourceUrl ?? params.name;
+  const canonicalKey = canonicalBuilderKey(params.kind, uniqueValue);
+  const libraryKey = builderLibraryKey({
+    scope,
+    canonicalKey,
+    ownerUserId: params.ownerUserId,
+  });
   return prisma.builder.upsert({
-    where: { canonicalKey: canonicalBuilderKey(params.kind, uniqueValue) },
+    where: { libraryKey },
     update: {
       name: params.name,
       handle,
       sourceUrl: params.sourceUrl ?? undefined,
       crawlUrl: params.crawlUrl ?? undefined,
       bio: params.bio ?? undefined,
+      ownerUserId: scope === BuilderScope.PERSONAL ? params.ownerUserId : undefined,
     },
     create: {
+      scope,
+      ownerUserId: scope === BuilderScope.PERSONAL ? params.ownerUserId : null,
       kind: params.kind,
       name: params.name,
       handle,
@@ -86,7 +98,8 @@ export async function upsertBuilder(params: {
       crawlUrl: params.crawlUrl,
       bio: params.bio,
       addedByUserId: params.addedByUserId,
-      canonicalKey: canonicalBuilderKey(params.kind, uniqueValue),
+      canonicalKey,
+      libraryKey,
     },
   });
 }
@@ -161,7 +174,8 @@ export async function importFollowBuildersFeeds() {
     for (const tweet of account.tweets ?? []) {
       await prisma.feedItem.upsert({
         where: {
-          kind_externalId: {
+          builderId_kind_externalId: {
+            builderId: builder.id,
             kind: FeedItemKind.TWEET,
             externalId: tweet.id,
           },
@@ -196,7 +210,8 @@ export async function importFollowBuildersFeeds() {
     builders += 1;
     await prisma.feedItem.upsert({
       where: {
-        kind_externalId: {
+        builderId_kind_externalId: {
+          builderId: builder.id,
           kind: FeedItemKind.PODCAST_EPISODE,
           externalId: episode.guid ?? episode.url,
         },
@@ -232,7 +247,8 @@ export async function importFollowBuildersFeeds() {
     builders += 1;
     await prisma.feedItem.upsert({
       where: {
-        kind_externalId: {
+        builderId_kind_externalId: {
+          builderId: builder.id,
           kind: FeedItemKind.BLOG_POST,
           externalId: post.url,
         },

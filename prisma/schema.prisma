@@ -25,6 +25,7 @@ model User {
   digests        Digest[]
   agentTokens    AgentToken[]
   deviceLogins   DeviceLogin[]
+  personalBuilders Builder[] @relation("PersonalBuilders")
 }
 
 model Account {
@@ -63,19 +64,25 @@ model VerificationToken {
 
 model Builder {
   id             String         @id @default(cuid())
+  scope          BuilderScope   @default(CENTRAL)
+  ownerUserId    String?
   kind           BuilderKind    @default(X)
   name           String
   handle         String?
-  canonicalKey   String        @unique
+  canonicalKey   String
+  libraryKey     String        @unique
   sourceUrl      String?
   crawlUrl       String?
   bio            String?
   addedByUserId  String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+  owner          User?         @relation("PersonalBuilders", fields: [ownerUserId], references: [id], onDelete: Cascade)
   subscriptions  Subscription[]
   feedItems      FeedItem[]
 
+  @@index([scope, kind])
+  @@index([ownerUserId, kind])
   @@index([kind])
   @@index([handle])
 }
@@ -105,7 +112,7 @@ model FeedItem {
   createdAt      DateTime     @default(now())
   builder        Builder?     @relation(fields: [builderId], references: [id], onDelete: SetNull)
 
-  @@unique([kind, externalId])
+  @@unique([builderId, kind, externalId])
   @@index([builderId, publishedAt])
   @@index([publishedAt])
 }
@@ -160,6 +167,11 @@ enum BuilderKind {
   BLOG
   PODCAST
   WEBSITE
+}
+
+enum BuilderScope {
+  CENTRAL
+  PERSONAL
 }
 
 enum FeedItemKind {

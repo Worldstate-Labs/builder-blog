@@ -27,8 +27,8 @@ export default async function SettingsPage({
           Agent login
         </h1>
         <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--muted-strong)]">
-          The skill uses an agent token to fetch your subscriptions and sync
-          generated digests back to this web archive.
+          The skill uses an agent token to fetch your library, sync personal
+          builder items, and write generated digests back to this archive.
         </p>
 
         {params.token ? (
