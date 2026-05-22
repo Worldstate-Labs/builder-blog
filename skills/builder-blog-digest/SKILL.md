@@ -17,7 +17,7 @@ Authenticate this terminal or agent session with the Builder Blog web app:
 
 ```bash
 cd /Users/jie/code/builder_blog
-node scripts/builder-digest.mjs login --app-url "${BUILDER_BLOG_URL:-http://localhost:3000}"
+node scripts/builder-digest.mjs login --app-url "${BUILDER_BLOG_URL:-https://builder-blog-plum.vercel.app}"
 ```
 
 The command opens a browser verification URL. The user signs in with Google or GitHub, approves the device code, and the CLI stores an agent token in `~/.builder-blog/config.json`.
@@ -26,8 +26,25 @@ Never print the token after login.
 
 ### Sync Personal Builders
 
-Agents may crawl user-owned sources with user-owned API keys or subscriptions,
-then sync the results into the user's personal builder pool. This is an
+Agents are responsible for crawling user-owned personal builders with
+user-owned API keys, subscriptions, cookies, or network access. The Builder Blog
+web app only crawls central builders. For personal BLOG builders already in the
+user's library, run the local crawler and sync the resulting feed items to the
+cloud:
+
+```bash
+cd /Users/jie/code/builder_blog
+node scripts/builder-digest.mjs crawl-personal --days 3 --limit 3
+```
+
+This command:
+
+- fetches `/api/skill/context`;
+- filters to `scope: PERSONAL` and `kind: BLOG`;
+- crawls each personal blog locally from the user's agent environment;
+- posts discovered `BLOG_POST` items back to `/api/skill/builders`.
+
+Agents may also sync already-crawled user-owned sources manually. This is an
 `in library` operation, not a digest subscription unless `subscribe` is true:
 
 ```bash

@@ -100,13 +100,20 @@ skills/builder-blog-digest/SKILL.md
 Login from terminal:
 
 ```bash
-npm run skill -- login --app-url http://localhost:3000
+npm run skill -- login --app-url https://builder-blog-plum.vercel.app
 ```
 
 Prepare personalized context:
 
 ```bash
 npm run skill -- prepare --days 1
+```
+
+Locally crawl personal BLOG builders in the user's own library and sync the
+discovered posts to the cloud:
+
+```bash
+npm run skill -- crawl-personal --days 3 --limit 3
 ```
 
 Sync user-crawled personal builders and items:
