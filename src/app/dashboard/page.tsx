@@ -1,30 +1,33 @@
-import { BuilderScope } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { FeedCard } from "@/components/FeedCard";
 import { authOptions } from "@/lib/auth";
+import { activePoolBuilderIds } from "@/lib/builder-pool";
+import { subscriptionBuilderIdsInPool } from "@/lib/digest-library";
 import { prisma } from "@/lib/prisma";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) redirect("/login");
 
-  const libraryBuilders = await prisma.builder.findMany({
-    where: {
-      OR: [
-        { scope: BuilderScope.CENTRAL },
-        { scope: BuilderScope.PERSONAL, ownerUserId: session.user.id },
-      ],
-    },
-    select: { id: true, scope: true },
-  });
-  const builderIds = libraryBuilders.map((builder) => builder.id);
-  const personalBuilderCount = libraryBuilders.filter(
-    (builder) => builder.scope === BuilderScope.PERSONAL,
-  ).length;
+  const poolBuilderIds = await activePoolBuilderIds(session.user.id);
+  const [poolBuilders, subscriptions] = await Promise.all([
+    prisma.builder.findMany({
+      where: { id: { in: poolBuilderIds } },
+      select: { id: true, scope: true },
+    }),
+    prisma.subscription.findMany({
+      where: { userId: session.user.id, builderId: { in: poolBuilderIds } },
+      select: { builderId: true },
+    }),
+  ]);
+  const subscribedBuilderIds = subscriptionBuilderIdsInPool(
+    poolBuilderIds,
+    subscriptions.map((subscription) => subscription.builderId),
+  );
 
-  const [todayDigest, recentDigests, feedItems, poolCount] = await Promise.all([
+  const [todayDigest, recentDigests, feedItems] = await Promise.all([
     prisma.digest.findFirst({
       where: {
         userId: session.user.id,
@@ -40,12 +43,11 @@ export default async function DashboardPage() {
       take: 5,
     }),
     prisma.feedItem.findMany({
-      where: { builderId: { in: builderIds } },
+      where: { builderId: { in: subscribedBuilderIds } },
       include: { builder: true },
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
       take: 8,
     }),
-    prisma.builder.count({ where: { scope: BuilderScope.CENTRAL } }),
   ]);
 
   return (
@@ -63,8 +65,8 @@ export default async function DashboardPage() {
             </p>
           </div>
           <div className="stats-panel">
-            <Stat label="Central" value={poolCount} />
-            <Stat label="Personal" value={personalBuilderCount} />
+            <Stat label="In library" value={poolBuilders.length} />
+            <Stat label="Subscribed" value={subscriptions.length} />
             <Stat label="Recent items" value={feedItems.length} />
           </div>
         </section>
@@ -125,8 +127,8 @@ export default async function DashboardPage() {
         <section className="mt-12">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="section-label">Library feed</p>
-              <h2 className="mt-2 font-serif text-4xl">Latest raw items</h2>
+              <p className="section-label">Subscribed feed</p>
+              <h2 className="mt-2 font-serif text-4xl">Latest digest inputs</h2>
             </div>
             <a className="button-light" href="/builders">
               Manage builders

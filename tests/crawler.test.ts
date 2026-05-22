@@ -8,6 +8,7 @@ import { crawlBlogBuilders } from "../src/lib/crawler/blogs";
 import { crawlPodcastBuilders } from "../src/lib/crawler/podcasts";
 import { crawlXBuilders } from "../src/lib/crawler/x";
 import type { CrawlerBuilder, Fetcher } from "../src/lib/crawler/types";
+import { subscriptionBuilderIdsInPool } from "../src/lib/digest-library";
 
 const baseBuilder = {
   id: "builder_1",
@@ -31,6 +32,13 @@ test("builder dedupe keys normalize handles before canonicalization", () => {
       canonicalKey: "X:thesephist",
     }),
     "user:user_1:X:thesephist",
+  );
+});
+
+test("digest builder ids are the subscribed subset of the user library", () => {
+  assert.deepEqual(
+    subscriptionBuilderIdsInPool(["central_1", "personal_1"], ["central_1", "outside_1"]),
+    ["central_1"],
   );
 });
 

@@ -6,7 +6,8 @@ It keeps the core Follow Builders idea but changes delivery from chat messages t
 
 - Google and GitHub OAuth login.
 - Admin-managed central builder pool with de-duplicated builder IDs.
-- Per-user personal builder libraries synced by the user's own agent.
+- Per-user builder pools with a separate digest subscription subset.
+- Personal builders synced by the user's own agent.
 - Central crawl endpoint that reads the database builder pool and fetches X,
   podcast, and blog sources once into one shared pool.
 - Per-user raw feed and historical digest archive.
@@ -113,6 +114,10 @@ Sync user-crawled personal builders and items:
 ```bash
 npm run skill -- sync-builders --file /tmp/personal-builders.json
 ```
+
+`sync-builders` adds personal builders to the user's pool. Set
+`"subscribe": true` on a synced builder only when it should also enter the
+periodic digest feed.
 
 After the AI agent writes the digest, sync it:
 

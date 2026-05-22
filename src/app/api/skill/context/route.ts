@@ -1,5 +1,6 @@
-import { BuilderScope } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { activePoolBuilderIds } from "@/lib/builder-pool";
+import { subscriptionBuilderIdsInPool } from "@/lib/digest-library";
 import { prisma } from "@/lib/prisma";
 import { getUserFromBearer } from "@/lib/tokens";
 
@@ -28,20 +29,29 @@ export async function GET(request: Request) {
   const days = Number(url.searchParams.get("days") ?? "1");
   const since = new Date(Date.now() - Math.max(1, days) * 24 * 60 * 60 * 1000);
 
-  const builders = await prisma.builder.findMany({
-    where: {
-      OR: [
-        { scope: BuilderScope.CENTRAL },
-        { scope: BuilderScope.PERSONAL, ownerUserId: user.id },
-      ],
-    },
-    orderBy: [{ scope: "asc" }, { kind: "asc" }, { name: "asc" }],
-  });
-  const builderIds = builders.map((builder) => builder.id);
+  const poolBuilderIds = await activePoolBuilderIds(user.id);
+  const [libraryBuilders, subscriptions] = await Promise.all([
+    prisma.builder.findMany({
+      where: { id: { in: poolBuilderIds } },
+      orderBy: [{ scope: "asc" }, { kind: "asc" }, { name: "asc" }],
+    }),
+    prisma.subscription.findMany({
+      where: {
+        userId: user.id,
+        builderId: { in: poolBuilderIds },
+      },
+      include: { builder: true },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
+  const subscribedBuilderIds = subscriptionBuilderIdsInPool(
+    poolBuilderIds,
+    subscriptions.map((subscription) => subscription.builderId),
+  );
 
   const items = await prisma.feedItem.findMany({
     where: {
-      builderId: { in: builderIds },
+      builderId: { in: subscribedBuilderIds },
       OR: [{ publishedAt: { gte: since } }, { createdAt: { gte: since } }],
     },
     include: { builder: true },
@@ -53,8 +63,9 @@ export async function GET(request: Request) {
     user: { id: user.id, name: user.name, email: user.email },
     generatedAt: new Date().toISOString(),
     language: "zh",
-    subscriptions: builders,
-    libraryBuilders: builders,
+    libraryBuilders,
+    subscriptions: subscriptions.map((subscription) => subscription.builder),
+    subscriptionCount: subscriptions.length,
     items,
     prompts: DIGEST_PROMPTS,
   });

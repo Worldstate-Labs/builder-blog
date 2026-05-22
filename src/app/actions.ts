@@ -1,11 +1,12 @@
 "use server";
 
-import { BuilderKind, BuilderScope } from "@prisma/client";
+import { BuilderKind, BuilderPoolOrigin, BuilderScope } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin";
+import { activePoolBuilderIds, addBuilderToPool } from "@/lib/builder-pool";
 import { inferBuilderKind, normalizeHandle } from "@/lib/builder-keys";
 import { upsertBuilder } from "@/lib/builders";
 import { prisma } from "@/lib/prisma";
@@ -80,6 +81,10 @@ function isBuilderKind(value: string): value is BuilderKind {
 export async function subscribeBuilderAction(formData: FormData) {
   const user = await requireUser();
   const builderId = String(formData.get("builderId") ?? "");
+  const poolBuilderIds = await activePoolBuilderIds(user.id);
+  if (!poolBuilderIds.includes(builderId)) {
+    redirect("/builders?error=not-in-library");
+  }
   await prisma.subscription.upsert({
     where: {
       userId_builderId: {
@@ -106,6 +111,45 @@ export async function unsubscribeBuilderAction(formData: FormData) {
       builderId,
     },
   });
+  revalidatePath("/builders");
+  revalidatePath("/dashboard");
+}
+
+export async function addBuilderToLibraryAction(formData: FormData) {
+  const user = await requireUser();
+  const builderId = String(formData.get("builderId") ?? "");
+  const builder = await prisma.builder.findUnique({
+    where: { id: builderId },
+    select: { scope: true, ownerUserId: true },
+  });
+  if (!builder) redirect("/builders?error=missing-builder");
+  if (builder.scope === BuilderScope.PERSONAL && builder.ownerUserId !== user.id) {
+    redirect("/builders?error=not-your-builder");
+  }
+  await addBuilderToPool({
+    userId: user.id,
+    builderId,
+    origin:
+      builder.scope === BuilderScope.CENTRAL
+        ? BuilderPoolOrigin.CENTRAL_DEFAULT
+        : BuilderPoolOrigin.PERSONAL_SYNC,
+  });
+  revalidatePath("/builders");
+  revalidatePath("/dashboard");
+}
+
+export async function removeBuilderFromLibraryAction(formData: FormData) {
+  const user = await requireUser();
+  const builderId = String(formData.get("builderId") ?? "");
+  await prisma.$transaction([
+    prisma.subscription.deleteMany({
+      where: { userId: user.id, builderId },
+    }),
+    prisma.builderPoolEntry.updateMany({
+      where: { userId: user.id, builderId },
+      data: { removedAt: new Date() },
+    }),
+  ]);
   revalidatePath("/builders");
   revalidatePath("/dashboard");
 }
@@ -154,9 +198,9 @@ export async function revokeTokenAction(formData: FormData) {
 
 export async function subscribeAllDefaultBuildersAction() {
   const user = await requireUser();
+  const poolBuilderIds = await activePoolBuilderIds(user.id);
   const builders = await prisma.builder.findMany({
-    where: { kind: BuilderKind.X, scope: BuilderScope.CENTRAL },
-    take: 25,
+    where: { id: { in: poolBuilderIds }, kind: BuilderKind.X },
   });
   for (const builder of builders) {
     await prisma.subscription.upsert({
@@ -170,6 +214,28 @@ export async function subscribeAllDefaultBuildersAction() {
       create: {
         userId: user.id,
         builderId: builder.id,
+      },
+    });
+  }
+  revalidatePath("/builders");
+  revalidatePath("/dashboard");
+}
+
+export async function subscribeAllLibraryBuildersAction() {
+  const user = await requireUser();
+  const poolBuilderIds = await activePoolBuilderIds(user.id);
+  for (const builderId of poolBuilderIds) {
+    await prisma.subscription.upsert({
+      where: {
+        userId_builderId: {
+          userId: user.id,
+          builderId,
+        },
+      },
+      update: {},
+      create: {
+        userId: user.id,
+        builderId,
       },
     });
   }

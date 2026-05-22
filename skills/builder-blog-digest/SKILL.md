@@ -27,7 +27,8 @@ Never print the token after login.
 ### Sync Personal Builders
 
 Agents may crawl user-owned sources with user-owned API keys or subscriptions,
-then sync the results into the user's personal library:
+then sync the results into the user's personal builder pool. This is an
+`in library` operation, not a digest subscription unless `subscribe` is true:
 
 ```bash
 cd /Users/jie/code/builder_blog
@@ -44,6 +45,7 @@ Payload shape:
       "name": "Example Builder",
       "handle": "example",
       "sourceUrl": "https://x.com/example",
+      "subscribe": false,
       "items": [
         {
           "kind": "TWEET",
@@ -70,8 +72,9 @@ node scripts/builder-digest.mjs prepare --days 1
 2. Read the JSON. It contains:
 
 - `subscriptions`: builders the user follows.
-- `libraryBuilders`: central builders plus the user's personal builders.
-- `items`: central feed items plus personal feed items synced by the user's agent.
+- `libraryBuilders`: builders in the user's pool, including central and personal builders.
+- `subscriptions`: the subset of `libraryBuilders` included in digest generation.
+- `items`: feed items only for subscribed builders.
 - `prompts.digest`: the summarization rules.
 
 3. Produce a concise Chinese digest:

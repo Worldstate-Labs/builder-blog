@@ -1,6 +1,7 @@
-import { BuilderKind, BuilderScope, FeedItemKind } from "@prisma/client";
+import { BuilderKind, BuilderPoolOrigin, BuilderScope, FeedItemKind } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { addBuilderToPool } from "@/lib/builder-pool";
 import { upsertBuilder } from "@/lib/builders";
 import { prisma } from "@/lib/prisma";
 import { getUserFromBearer } from "@/lib/tokens";
@@ -23,6 +24,7 @@ const BuilderSchema = z.object({
   sourceUrl: z.string().url().nullable().optional(),
   crawlUrl: z.string().url().nullable().optional(),
   bio: z.string().nullable().optional(),
+  subscribe: z.boolean().default(false),
   items: z.array(FeedItemSchema).default([]),
 });
 
@@ -43,6 +45,7 @@ export async function POST(request: Request) {
 
   let builders = 0;
   let feedItems = 0;
+  let subscriptions = 0;
   for (const input of parsed.data.builders) {
     const builder = await upsertBuilder({
       scope: BuilderScope.PERSONAL,
@@ -55,6 +58,27 @@ export async function POST(request: Request) {
       crawlUrl: input.crawlUrl,
       bio: input.bio,
     });
+    await addBuilderToPool({
+      userId: user.id,
+      builderId: builder.id,
+      origin: BuilderPoolOrigin.PERSONAL_SYNC,
+    });
+    if (input.subscribe) {
+      await prisma.subscription.upsert({
+        where: {
+          userId_builderId: {
+            userId: user.id,
+            builderId: builder.id,
+          },
+        },
+        update: {},
+        create: {
+          userId: user.id,
+          builderId: builder.id,
+        },
+      });
+      subscriptions += 1;
+    }
     builders += 1;
 
     for (const item of input.items) {
@@ -94,6 +118,7 @@ export async function POST(request: Request) {
     status: "ok",
     builders,
     feedItems,
+    subscriptions,
     generatedAt: new Date().toISOString(),
   });
 }

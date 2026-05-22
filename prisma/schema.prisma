@@ -26,6 +26,7 @@ model User {
   agentTokens    AgentToken[]
   deviceLogins   DeviceLogin[]
   personalBuilders Builder[] @relation("PersonalBuilders")
+  builderPoolEntries BuilderPoolEntry[]
 }
 
 model Account {
@@ -78,6 +79,7 @@ model Builder {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   owner          User?         @relation("PersonalBuilders", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  poolEntries    BuilderPoolEntry[]
   subscriptions  Subscription[]
   feedItems      FeedItem[]
 
@@ -85,6 +87,22 @@ model Builder {
   @@index([ownerUserId, kind])
   @@index([kind])
   @@index([handle])
+}
+
+model BuilderPoolEntry {
+  id         String            @id @default(cuid())
+  userId     String
+  builderId  String
+  origin     BuilderPoolOrigin
+  removedAt  DateTime?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  builder    Builder           @relation(fields: [builderId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, builderId])
+  @@index([userId, removedAt])
+  @@index([builderId])
 }
 
 model Subscription {
@@ -172,6 +190,11 @@ enum BuilderKind {
 enum BuilderScope {
   CENTRAL
   PERSONAL
+}
+
+enum BuilderPoolOrigin {
+  CENTRAL_DEFAULT
+  PERSONAL_SYNC
 }
 
 enum FeedItemKind {
