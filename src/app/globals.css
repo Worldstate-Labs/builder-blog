@@ -61,10 +61,6 @@ body {
   .page-pad {
     padding-bottom: clamp(1rem, 3vw, 2.25rem);
   }
-
-  .mobile-tabbar {
-    display: none;
-  }
 }
 
 .button-dark,
@@ -179,6 +175,12 @@ body {
 .mobile-tab[data-active="true"] {
   background: var(--accent-soft);
   color: var(--accent);
+}
+
+@media (min-width: 1024px) {
+  .mobile-tabbar {
+    display: none;
+  }
 }
 
 .section-label {
