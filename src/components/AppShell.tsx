@@ -30,14 +30,23 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
           <nav className="mt-12 grid gap-2">
             {items.map((item) => (
-              <Link key={item.href} href={item.href} className="nav-link">
+              <Link
+                className="nav-link"
+                href={item.href}
+                key={item.href}
+                prefetch={false}
+              >
                 {item.label}
               </Link>
             ))}
           </nav>
           <div className="mt-auto pt-12 text-sm text-[var(--muted)]">
             <p>{session?.user?.email}</p>
-            <Link className="mt-4 inline-block underline" href="/api/auth/signout">
+            <Link
+              className="mt-4 inline-block underline"
+              href="/api/auth/signout"
+              prefetch={false}
+            >
               Sign out
             </Link>
           </div>
@@ -50,7 +59,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
               <nav className="flex gap-3 overflow-x-auto text-sm">
                 {items.map((item) => (
-                  <Link key={item.href} href={item.href} className="underline">
+                  <Link
+                    className="underline"
+                    href={item.href}
+                    key={item.href}
+                    prefetch={false}
+                  >
                     {item.label}
                   </Link>
                 ))}
