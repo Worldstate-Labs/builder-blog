@@ -20,7 +20,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-[var(--paper)] text-[var(--ink)]">
       <div className="mx-auto flex min-h-screen w-full max-w-7xl">
         <aside className="hidden w-64 shrink-0 border-r border-black/10 px-6 py-8 lg:block">
-          <Link href="/dashboard" className="group block">
+          <Link href="/dashboard" className="group block" prefetch={false}>
             <div className="text-sm uppercase tracking-[0.32em] text-[var(--muted)]">
               Builder Blog
             </div>
@@ -54,7 +54,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         <main className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-20 border-b border-black/10 bg-[rgba(247,243,234,0.86)] px-5 py-4 backdrop-blur lg:hidden">
             <div className="flex items-center justify-between gap-4">
-              <Link href="/dashboard" className="font-serif text-xl">
+              <Link
+                className="font-serif text-xl"
+                href="/dashboard"
+                prefetch={false}
+              >
                 Builder Blog
               </Link>
               <nav className="flex gap-3 overflow-x-auto text-sm">
