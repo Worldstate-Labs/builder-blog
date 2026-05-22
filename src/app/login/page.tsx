@@ -1,9 +1,14 @@
 import { getServerSession } from "next-auth";
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AuthButtons } from "@/components/AuthButtons";
 import { authOptions } from "@/lib/auth";
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ callbackUrl?: string }>;
+}) {
+  const params = await searchParams;
   const session = await getServerSession(authOptions);
   if (session) redirect("/dashboard");
 
@@ -28,13 +33,8 @@ export default async function LoginPage() {
             OAuth credentials are read from env. Configure Google and GitHub in
             `.env`, then use either provider.
           </p>
-          <div className="mt-8 grid gap-3">
-            <Link className="auth-button" href="/api/auth/signin/google">
-              Continue with Google
-            </Link>
-            <Link className="auth-button" href="/api/auth/signin/github">
-              Continue with GitHub
-            </Link>
+          <div className="mt-8">
+            <AuthButtons callbackUrl={params.callbackUrl ?? "/dashboard"} />
           </div>
         </section>
       </div>

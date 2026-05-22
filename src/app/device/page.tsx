@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
-import Link from "next/link";
 import { approveDeviceLoginAction } from "@/app/actions";
+import { AuthButtons } from "@/components/AuthButtons";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -35,13 +35,11 @@ export default async function DevicePage({
           ) : null}
 
           {!session ? (
-            <div className="mt-8 grid gap-3">
-              <Link className="auth-button" href="/api/auth/signin/google">
-                Sign in with Google
-              </Link>
-              <Link className="auth-button" href="/api/auth/signin/github">
-                Sign in with GitHub
-              </Link>
+            <div className="mt-8">
+              <AuthButtons
+                callbackUrl={code ? `/device?code=${code}` : "/device"}
+                labelPrefix="Sign in with"
+              />
             </div>
           ) : null}
 
