@@ -94,6 +94,61 @@ export default async function AdminPage() {
         <section className="mt-10">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
+              <p className="section-label">Builder pool</p>
+              <h2 className="mt-2 font-serif text-4xl">Canonical sources</h2>
+            </div>
+            <span className="rounded-full border border-black/10 bg-white/70 px-4 py-2 text-sm text-[var(--muted-strong)]">
+              {builders.length} builders · unique by canonicalKey
+            </span>
+          </div>
+
+          <div className="mt-5 grid gap-4 xl:grid-cols-2">
+            {builders.map((builder) => (
+              <article key={builder.id} className="admin-panel">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-serif text-2xl">{builder.name}</h3>
+                      <span className="kind-pill">{kindLabel(builder.kind)}</span>
+                    </div>
+                    <p className="mt-2 truncate text-sm text-[var(--muted)]">
+                      {builder.handle ? `@${builder.handle}` : builder.sourceUrl}
+                    </p>
+                  </div>
+                  <div className="text-right text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
+                    {builder._count.feedItems} items
+                    <br />
+                    {builder._count.subscriptions} subscribers
+                  </div>
+                </div>
+                <dl className="mt-4 grid gap-3 text-xs">
+                  <div>
+                    <dt className="uppercase tracking-[0.16em] text-[var(--muted)]">Unique id</dt>
+                    <dd className="mt-1 break-all font-mono text-[var(--muted-strong)]">
+                      {builder.id}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="uppercase tracking-[0.16em] text-[var(--muted)]">Canonical key</dt>
+                    <dd className="mt-1 break-all font-mono text-[var(--muted-strong)]">
+                      {builder.canonicalKey}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="uppercase tracking-[0.16em] text-[var(--muted)]">Crawl source</dt>
+                    <dd className="mt-1 break-all text-[var(--muted-strong)]">
+                      {builder.crawlUrl ?? builder.sourceUrl ?? "No crawl URL"}
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-10">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
               <p className="section-label">Daily crawl</p>
               <h2 className="mt-2 font-serif text-4xl">Recent imported content</h2>
             </div>
@@ -104,11 +159,11 @@ export default async function AdminPage() {
 
           <div className="mt-5 grid gap-5">
             {feedItemsByDay.map((day) => (
-              <article key={day.key} className="admin-panel">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+              <details key={day.key} className="admin-panel" open>
+                <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3">
                   <h3 className="font-serif text-3xl">{dateFormatter.format(day.date)}</h3>
                   <span className="kind-pill">{day.items.length} items</span>
-                </div>
+                </summary>
                 <div className="mt-4 divide-y divide-black/10">
                   {day.items.map((item) => (
                     <a
@@ -139,68 +194,13 @@ export default async function AdminPage() {
                     </a>
                   ))}
                 </div>
-              </article>
+              </details>
             ))}
             {feedItemsByDay.length === 0 ? (
               <div className="admin-panel text-[var(--muted-strong)]">
                 No feed items were created in the last 14 days.
               </div>
             ) : null}
-          </div>
-        </section>
-
-        <section className="mt-10">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="section-label">Builder pool</p>
-              <h2 className="mt-2 font-serif text-4xl">Canonical sources</h2>
-            </div>
-            <span className="rounded-full border border-black/10 bg-white/70 px-4 py-2 text-sm text-[var(--muted-strong)]">
-              Unique by canonicalKey
-            </span>
-          </div>
-
-          <div className="mt-5 overflow-hidden rounded-[2rem] border border-black/10 bg-white/70">
-            <div className="overflow-x-auto">
-              <table className="min-w-[980px] w-full border-collapse text-left text-sm">
-                <thead className="bg-white/70 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                  <tr>
-                    <th className="px-4 py-3">Builder</th>
-                    <th className="px-4 py-3">Unique id</th>
-                    <th className="px-4 py-3">Canonical key</th>
-                    <th className="px-4 py-3">Crawl source</th>
-                    <th className="px-4 py-3">Counts</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-black/10">
-                  {builders.map((builder) => (
-                    <tr key={builder.id} className="align-top">
-                      <td className="px-4 py-4">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium">{builder.name}</span>
-                          <span className="kind-pill">{kindLabel(builder.kind)}</span>
-                        </div>
-                        <p className="mt-1 text-xs text-[var(--muted)]">
-                          {builder.handle ? `@${builder.handle}` : builder.sourceUrl}
-                        </p>
-                      </td>
-                      <td className="px-4 py-4 font-mono text-xs text-[var(--muted-strong)]">
-                        {builder.id}
-                      </td>
-                      <td className="px-4 py-4 font-mono text-xs text-[var(--muted-strong)]">
-                        {builder.canonicalKey}
-                      </td>
-                      <td className="max-w-[22rem] px-4 py-4 text-xs text-[var(--muted)]">
-                        <p className="truncate">{builder.crawlUrl ?? builder.sourceUrl ?? "No crawl URL"}</p>
-                      </td>
-                      <td className="px-4 py-4 text-xs text-[var(--muted-strong)]">
-                        {builder._count.feedItems} items · {builder._count.subscriptions} subscribers
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </div>
         </section>
       </div>
