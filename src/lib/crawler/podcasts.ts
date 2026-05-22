@@ -12,6 +12,7 @@ type Episode = {
   guid: string;
   publishedAt: string | null;
   link: string | null;
+  transcriptUrl: string | null;
 };
 
 export function parseRssFeed(xml: string): Episode[] {
@@ -24,12 +25,14 @@ export function parseRssFeed(xml: string): Episode[] {
     const guid = firstXmlValue(block, "guid");
     const pubDate = firstXmlValue(block, "pubDate");
     const link = firstXmlValue(block, "link");
+    const transcriptUrl = firstTranscriptUrl(block);
     if (guid) {
       episodes.push({
         title,
         guid,
         publishedAt: pubDate ? new Date(pubDate).toISOString() : null,
         link: link ?? null,
+        transcriptUrl,
       });
     }
   }
@@ -39,6 +42,27 @@ export function parseRssFeed(xml: string): Episode[] {
 function firstXmlValue(block: string, tag: string) {
   const match = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
   return match ? decodeXmlText(match[1]) : null;
+}
+
+function firstTranscriptUrl(block: string) {
+  const match = block.match(/<(?:podcast:)?transcript\b[^>]*\burl=(["'])(.*?)\1[^>]*>/i);
+  return match ? decodeXmlText(match[2]) : null;
+}
+
+async function fetchTranscriptUrl(transcriptUrl: string, fetcher: Fetcher) {
+  const response = await fetcher(transcriptUrl, {
+    headers: {
+      "User-Agent": RSS_USER_AGENT,
+      Accept: "text/plain, text/vtt, application/json, */*",
+    },
+  });
+  if (!response.ok) {
+    return { error: `Failed to fetch RSS transcript URL: HTTP ${response.status}` };
+  }
+  const transcript = await response.text();
+  return transcript.trim()
+    ? { transcript, source: "rss-transcript" }
+    : { error: "RSS transcript URL returned an empty transcript" };
 }
 
 async function fetchPod2txtTranscript(
@@ -69,7 +93,7 @@ async function fetchPod2txtTranscript(
       if (!textResponse.ok) {
         return { error: `Failed to fetch transcript text: HTTP ${textResponse.status}` };
       }
-      return { transcript: await textResponse.text() };
+      return { transcript: await textResponse.text(), source: "pod2txt" };
     }
     if (data.status === "processing") {
       if (attempt < maxAttempts) {
@@ -97,14 +121,6 @@ export async function crawlPodcastBuilders(
 
   if (builders.length === 0) {
     return { source: "podcasts", builders: 0, items, errors };
-  }
-  if (!options.pod2txtApiKey) {
-    return {
-      source: "podcasts",
-      builders: builders.length,
-      items,
-      errors: ["Podcast: POD2TXT_API_KEY is not configured"],
-    };
   }
 
   const cutoff = new Date(now.getTime() - PODCAST_LOOKBACK_HOURS * 60 * 60 * 1000);
@@ -140,14 +156,18 @@ export async function crawlPodcastBuilders(
         });
 
       for (const episode of candidates) {
-        const result = await fetchPod2txtTranscript(
-          rssUrl,
-          episode.guid,
-          options.pod2txtApiKey,
-          fetcher,
-          options.maxTranscriptAttempts ?? 5,
-          options.transcriptPollIntervalMs ?? 30000,
-        );
+        const result = episode.transcriptUrl
+          ? await fetchTranscriptUrl(episode.transcriptUrl, fetcher)
+          : options.pod2txtApiKey
+            ? await fetchPod2txtTranscript(
+                rssUrl,
+                episode.guid,
+                options.pod2txtApiKey,
+                fetcher,
+                options.maxTranscriptAttempts ?? 5,
+                options.transcriptPollIntervalMs ?? 30000,
+              )
+            : { error: "POD2TXT_API_KEY is not configured and RSS transcript URL is unavailable" };
         if (result.error || !result.transcript) {
           errors.push(`Podcast: Transcript error for "${episode.title}": ${result.error ?? "empty transcript"}`);
           continue;
@@ -171,6 +191,7 @@ export async function crawlPodcastBuilders(
             guid: episode.guid,
             url: youtubeUrl ?? episode.link ?? builder.sourceUrl ?? rssUrl,
             publishedAt: episode.publishedAt,
+            transcriptSource: result.source ?? null,
             transcript: result.transcript,
           },
         });

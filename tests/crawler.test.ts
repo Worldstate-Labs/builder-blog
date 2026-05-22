@@ -117,6 +117,51 @@ test("podcast crawler maps RSS plus pod2txt transcript into FeedItem records", a
   assert.equal(result.items[0].url, "https://www.youtube.com/watch?v=abc123");
 });
 
+test("podcast crawler uses RSS transcript URLs without pod2txt credentials", async () => {
+  const builder: CrawlerBuilder = {
+    ...baseBuilder,
+    kind: BuilderKind.PODCAST,
+    handle: null,
+    sourceUrl: "https://podcast.example.com",
+    crawlUrl: "https://feeds.example.com/transcript-podcast.xml",
+  };
+  const fetcher: Fetcher = async (input) => {
+    const url = String(input);
+    if (url === "https://feeds.example.com/transcript-podcast.xml") {
+      return new Response(`
+        <rss><channel><item>
+          <title>Transcript Episode</title>
+          <guid>transcript-episode-guid</guid>
+          <pubDate>Fri, 22 May 2026 10:00:00 GMT</pubDate>
+          <link>https://podcast.example.com/transcript-episode</link>
+          <podcast:transcript url="https://transcripts.example.com/rss-transcript.txt" type="text/plain" />
+        </item></channel></rss>
+      `);
+    }
+    if (url === "https://transcripts.example.com/rss-transcript.txt") {
+      return new Response("RSS supplied transcript body");
+    }
+    if (url === "https://pod2txt.vercel.app/api/transcript") {
+      throw new Error("pod2txt should not be called when the RSS item has a transcript URL");
+    }
+    throw new Error(`Unexpected URL ${url}`);
+  };
+
+  const result = await crawlPodcastBuilders([builder], {
+    pod2txtApiKey: null,
+    fetcher,
+    now: new Date("2026-05-22T13:00:00.000Z"),
+  });
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.items.length, 1);
+  assert.equal(result.items[0].kind, FeedItemKind.PODCAST_EPISODE);
+  assert.equal(result.items[0].externalId, "transcript-episode-guid");
+  assert.equal(result.items[0].body, "RSS supplied transcript body");
+  assert.equal(result.items[0].url, "https://podcast.example.com/transcript-episode");
+  assert.equal(result.items[0].rawJson?.transcriptSource, "rss-transcript");
+});
+
 test("podcast crawler resolves YouTube handle pages to episode video URLs", async () => {
   const builder: CrawlerBuilder = {
     ...baseBuilder,
