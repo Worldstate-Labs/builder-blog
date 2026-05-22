@@ -61,6 +61,10 @@ body {
   .page-pad {
     padding-bottom: clamp(1rem, 3vw, 2.25rem);
   }
+
+  .mobile-tabbar {
+    display: none;
+  }
 }
 
 .button-dark,
