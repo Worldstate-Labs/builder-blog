@@ -3,6 +3,7 @@ import test from "node:test";
 import { BuilderKind, FeedItemKind } from "@prisma/client";
 import { canonicalBuilderKey, normalizeHandle } from "../src/lib/builder-keys";
 import { isCronAuthorized } from "../src/lib/cron-auth";
+import { shouldImportFollowBuildersFallback } from "../src/lib/crawl-fallback";
 import { crawlBlogBuilders } from "../src/lib/crawler/blogs";
 import { crawlPodcastBuilders } from "../src/lib/crawler/podcasts";
 import { crawlXBuilders } from "../src/lib/crawler/x";
@@ -220,4 +221,34 @@ test("cron route authorization requires the configured bearer token", () => {
     if (previousSecret === undefined) delete process.env.CRON_SECRET;
     else process.env.CRON_SECRET = previousSecret;
   }
+});
+
+test("cron fallback is enabled only for blocked X or podcast sources with no items", () => {
+  assert.equal(
+    shouldImportFollowBuildersFallback({
+      sources: {
+        x: { builders: 25, feedItems: 0, errors: ["X API: User lookup failed: HTTP 402"] },
+        podcasts: { builders: 6, feedItems: 0, errors: [] },
+      },
+    }),
+    true,
+  );
+  assert.equal(
+    shouldImportFollowBuildersFallback({
+      sources: {
+        x: { builders: 25, feedItems: 1, errors: ["X API: User lookup failed: HTTP 402"] },
+        podcasts: { builders: 6, feedItems: 0, errors: ["Podcast: POD2TXT_API_KEY is not configured"] },
+      },
+    }),
+    true,
+  );
+  assert.equal(
+    shouldImportFollowBuildersFallback({
+      sources: {
+        x: { builders: 25, feedItems: 1, errors: [] },
+        podcasts: { builders: 6, feedItems: 1, errors: [] },
+      },
+    }),
+    false,
+  );
 });

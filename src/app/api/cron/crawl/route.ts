@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { seedDefaultBuilderPool } from "@/lib/builders";
+import { importFollowBuildersFeeds, seedDefaultBuilderPool } from "@/lib/builders";
 import { isCronAuthorized } from "@/lib/cron-auth";
+import { shouldImportFollowBuildersFallback } from "@/lib/crawl-fallback";
 import { crawlBuilderPool } from "@/lib/crawler";
 
 export async function POST(request: Request) {
@@ -10,8 +11,13 @@ export async function POST(request: Request) {
 
   const seeded = await seedDefaultBuilderPool();
   const crawled = await crawlBuilderPool();
+  const fallbackImported = shouldImportFollowBuildersFallback(crawled)
+    ? await importFollowBuildersFeeds().catch((error: unknown) => ({
+        error: error instanceof Error ? error.message : "Unknown fallback import error",
+      }))
+    : null;
 
-  return NextResponse.json({ status: "ok", seeded, crawled });
+  return NextResponse.json({ status: "ok", seeded, crawled, fallbackImported });
 }
 
 export async function GET(request: Request) {
