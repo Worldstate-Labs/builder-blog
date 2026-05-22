@@ -217,7 +217,13 @@ body {
   display: flex;
   gap: 1rem;
   justify-content: space-between;
+  min-width: 0;
   padding: 1rem;
+  width: 100%;
+}
+
+.builder-row > * {
+  min-width: 0;
 }
 
 @media (max-width: 767px) {

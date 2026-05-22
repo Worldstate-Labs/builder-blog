@@ -227,7 +227,7 @@ function BuilderInfo({
       <p className="mt-2 truncate text-sm text-[var(--muted)]">
         {builder.handle ? `@${builder.handle}` : builder.sourceUrl}
       </p>
-      <p className="mt-2 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+      <p className="mt-2 break-words text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
         {crawlLabel} · {builder._count.feedItems} items · {builder.canonicalKey}
       </p>
     </div>
@@ -246,7 +246,7 @@ function LibrarySection({
   children: ReactNode;
 }) {
   return (
-    <section className="grid gap-3">
+    <section className="grid min-w-0 gap-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="font-serif text-4xl">{title}</h2>
