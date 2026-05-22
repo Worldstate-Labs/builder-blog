@@ -68,6 +68,7 @@ model Builder {
   handle         String?
   canonicalKey   String        @unique
   sourceUrl      String?
+  crawlUrl       String?
   bio            String?
   addedByUserId  String?
   createdAt      DateTime      @default(now())

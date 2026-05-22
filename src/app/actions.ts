@@ -5,7 +5,8 @@ import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import { inferBuilderKind, normalizeHandle, upsertBuilder } from "@/lib/builders";
+import { inferBuilderKind, normalizeHandle } from "@/lib/builder-keys";
+import { upsertBuilder } from "@/lib/builders";
 import { prisma } from "@/lib/prisma";
 import { createAgentToken } from "@/lib/tokens";
 
@@ -22,18 +23,22 @@ export async function addBuilderAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const handleInput = String(formData.get("handle") ?? "").trim();
   const sourceUrl = String(formData.get("sourceUrl") ?? "").trim();
+  const kindInput = String(formData.get("kind") ?? "").trim();
 
   if (!name || (!handleInput && !sourceUrl)) {
     redirect("/builders?error=missing-builder");
   }
 
   const handle = handleInput ? normalizeHandle(handleInput) : null;
-  const kind = inferBuilderKind(sourceUrl || null, handle);
+  const kind = isBuilderKind(kindInput)
+    ? kindInput
+    : inferBuilderKind(sourceUrl || null, handle);
   const builder = await upsertBuilder({
     kind,
     name,
     handle,
     sourceUrl: sourceUrl || (handle ? `https://x.com/${handle}` : null),
+    crawlUrl: kind === BuilderKind.BLOG || kind === BuilderKind.PODCAST ? sourceUrl : null,
     addedByUserId: user.id,
   });
 
@@ -53,6 +58,10 @@ export async function addBuilderAction(formData: FormData) {
 
   revalidatePath("/builders");
   redirect("/builders?added=1");
+}
+
+function isBuilderKind(value: string): value is BuilderKind {
+  return Object.values(BuilderKind).includes(value as BuilderKind);
 }
 
 export async function subscribeBuilderAction(formData: FormData) {

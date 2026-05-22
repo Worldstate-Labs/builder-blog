@@ -45,8 +45,14 @@ export default async function BuildersPage() {
             <h2 className="font-serif text-3xl">Add builder</h2>
             <form action={addBuilderAction} className="mt-5 grid gap-3">
               <input className="input" name="name" placeholder="Name, e.g. Linus Lee" required />
+              <select className="input" name="kind" defaultValue={BuilderKind.X}>
+                <option value={BuilderKind.X}>X / Twitter</option>
+                <option value={BuilderKind.BLOG}>Blog index</option>
+                <option value={BuilderKind.PODCAST}>Podcast RSS</option>
+                <option value={BuilderKind.WEBSITE}>Website</option>
+              </select>
               <input className="input" name="handle" placeholder="X handle, e.g. thesephist" />
-              <input className="input" name="sourceUrl" placeholder="Blog / podcast / website URL" />
+              <input className="input" name="sourceUrl" placeholder="Blog index, podcast RSS, or website URL" />
               <button className="button-dark" type="submit">
                 Add and subscribe
               </button>

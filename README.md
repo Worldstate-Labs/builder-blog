@@ -7,7 +7,8 @@ It keeps the core Follow Builders idea but changes delivery from chat messages t
 - Google and GitHub OAuth login.
 - Central builder pool with de-duplicated builder IDs.
 - Per-user subscriptions.
-- Central crawl endpoint that imports public Follow Builders feeds into one shared pool.
+- Central crawl endpoint that reads the database builder pool and fetches X,
+  podcast, and blog sources once into one shared pool.
 - Per-user raw feed and historical digest archive.
 - Agent-compatible skill for `/login`, digest preparation, and syncing generated digests back to the web app.
 
@@ -27,6 +28,8 @@ GITHUB_SECRET="..."
 GOOGLE_CLIENT_ID="..."
 GOOGLE_CLIENT_SECRET="..."
 CRON_SECRET="..."
+X_BEARER_TOKEN="..."
+POD2TXT_API_KEY="..."
 ```
 
 Use a hosted Postgres database for deployed environments. `DATABASE_URL` is used by the app runtime, and `DIRECT_URL` is used by Prisma migrations when your provider exposes a separate direct connection string.
@@ -67,7 +70,9 @@ Open `http://localhost:3000`.
 
 ## Central Crawl
 
-The crawl endpoint imports the upstream Follow Builders public feeds:
+The crawl endpoint seeds the default builder pool, then crawls local database
+builders directly. X sources use X API v2, podcast sources use RSS plus pod2txt
+transcripts, and blog sources scrape the configured index pages:
 
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" \
@@ -75,6 +80,10 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
 ```
 
 Schedule that endpoint from your deployment platform cron.
+
+`npm run db:seed` still imports the upstream Follow Builders public feed as a
+bootstrap fallback, but the scheduled crawl path no longer depends on those
+pre-generated feed JSON files.
 
 ## Agent Skill
 

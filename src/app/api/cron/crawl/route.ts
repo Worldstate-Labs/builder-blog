@@ -1,19 +1,15 @@
 import { NextResponse } from "next/server";
-import { crawlCentralFeeds, seedDefaultBuilderPool } from "@/lib/builders";
-
-function assertCronAuth(request: Request) {
-  const configured = process.env.CRON_SECRET;
-  const auth = request.headers.get("authorization");
-  return configured && auth === `Bearer ${configured}`;
-}
+import { seedDefaultBuilderPool } from "@/lib/builders";
+import { isCronAuthorized } from "@/lib/cron-auth";
+import { crawlBuilderPool } from "@/lib/crawler";
 
 export async function POST(request: Request) {
-  if (!assertCronAuth(request)) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const seeded = await seedDefaultBuilderPool();
-  const crawled = await crawlCentralFeeds();
+  const crawled = await crawlBuilderPool();
 
   return NextResponse.json({ status: "ok", seeded, crawled });
 }

@@ -1,4 +1,5 @@
 import { BuilderKind, FeedItemKind } from "@prisma/client";
+import { canonicalBuilderKey, inferBuilderKind, normalizeHandle } from "@/lib/builder-keys";
 import { prisma } from "@/lib/prisma";
 
 const FOLLOW_BUILDERS_BASE =
@@ -52,34 +53,17 @@ type RemoteBlogFeed = {
 type DefaultSources = {
   x_accounts?: Array<{ name: string; handle: string }>;
   blogs?: Array<{ name: string; indexUrl: string }>;
-  podcasts?: Array<{ name: string; url: string }>;
+  podcasts?: Array<{ name: string; rssUrl?: string; url: string }>;
 };
 
-export function normalizeHandle(handle: string) {
-  return handle.trim().replace(/^@/, "").toLowerCase();
-}
-
-export function canonicalBuilderKey(kind: BuilderKind, value: string) {
-  return `${kind}:${value.trim().toLowerCase()}`;
-}
-
-export function inferBuilderKind(sourceUrl: string | null, handle: string | null) {
-  if (handle) return BuilderKind.X;
-  if (!sourceUrl) return BuilderKind.WEBSITE;
-  if (sourceUrl.includes("youtube.com") || sourceUrl.includes("podcast")) {
-    return BuilderKind.PODCAST;
-  }
-  if (sourceUrl.includes("blog") || sourceUrl.includes("engineering")) {
-    return BuilderKind.BLOG;
-  }
-  return BuilderKind.WEBSITE;
-}
+export { canonicalBuilderKey, inferBuilderKind, normalizeHandle };
 
 export async function upsertBuilder(params: {
   kind: BuilderKind;
   name: string;
   handle?: string | null;
   sourceUrl?: string | null;
+  crawlUrl?: string | null;
   bio?: string | null;
   addedByUserId?: string | null;
 }) {
@@ -91,6 +75,7 @@ export async function upsertBuilder(params: {
       name: params.name,
       handle,
       sourceUrl: params.sourceUrl ?? undefined,
+      crawlUrl: params.crawlUrl ?? undefined,
       bio: params.bio ?? undefined,
     },
     create: {
@@ -98,6 +83,7 @@ export async function upsertBuilder(params: {
       name: params.name,
       handle,
       sourceUrl: params.sourceUrl,
+      crawlUrl: params.crawlUrl,
       bio: params.bio,
       addedByUserId: params.addedByUserId,
       canonicalKey: canonicalBuilderKey(params.kind, uniqueValue),
@@ -134,6 +120,7 @@ export async function seedDefaultBuilderPool() {
       kind: BuilderKind.BLOG,
       name: blog.name,
       sourceUrl: blog.indexUrl,
+      crawlUrl: blog.indexUrl,
     });
     builders += 1;
   }
@@ -143,6 +130,7 @@ export async function seedDefaultBuilderPool() {
       kind: BuilderKind.PODCAST,
       name: podcast.name,
       sourceUrl: podcast.url,
+      crawlUrl: podcast.rssUrl ?? podcast.url,
     });
     builders += 1;
   }
@@ -150,7 +138,7 @@ export async function seedDefaultBuilderPool() {
   return { builders };
 }
 
-export async function crawlCentralFeeds() {
+export async function importFollowBuildersFeeds() {
   const [xFeed, podcastFeed, blogFeed] = await Promise.all([
     fetchJson<RemoteXFeed>(`${FOLLOW_BUILDERS_BASE}/feed-x.json`),
     fetchJson<RemotePodcastFeed>(`${FOLLOW_BUILDERS_BASE}/feed-podcasts.json`),
@@ -277,3 +265,5 @@ export async function crawlCentralFeeds() {
     generatedAt: xFeed.generatedAt ?? new Date().toISOString(),
   };
 }
+
+export const crawlCentralFeeds = importFollowBuildersFeeds;
