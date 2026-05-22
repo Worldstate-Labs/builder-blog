@@ -2,27 +2,39 @@ import { BuilderPoolOrigin, BuilderScope } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export async function ensureDefaultBuilderPool(userId: string) {
-  const centralBuilders = await prisma.builder.findMany({
-    where: { scope: BuilderScope.CENTRAL },
-    select: { id: true },
-  });
-
-  for (const builder of centralBuilders) {
-    await prisma.builderPoolEntry.upsert({
+  const [centralBuilders, existingEntries] = await Promise.all([
+    prisma.builder.findMany({
+      where: { scope: BuilderScope.CENTRAL },
+      select: { id: true },
+    }),
+    prisma.builderPoolEntry.findMany({
       where: {
-        userId_builderId: {
-          userId,
-          builderId: builder.id,
-        },
-      },
-      update: {},
-      create: {
         userId,
-        builderId: builder.id,
-        origin: BuilderPoolOrigin.CENTRAL_DEFAULT,
+        builder: { scope: BuilderScope.CENTRAL },
       },
-    });
+      select: { builderId: true },
+    }),
+  ]);
+
+  const existingBuilderIds = new Set(
+    existingEntries.map((entry) => entry.builderId),
+  );
+  const missingBuilders = centralBuilders.filter(
+    (builder) => !existingBuilderIds.has(builder.id),
+  );
+
+  if (missingBuilders.length === 0) {
+    return;
   }
+
+  await prisma.builderPoolEntry.createMany({
+    data: missingBuilders.map((builder) => ({
+      userId,
+      builderId: builder.id,
+      origin: BuilderPoolOrigin.CENTRAL_DEFAULT,
+    })),
+    skipDuplicates: true,
+  });
 }
 
 export async function addBuilderToPool(params: {

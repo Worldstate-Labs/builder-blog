@@ -93,6 +93,14 @@ body {
   transform: translateY(-1px);
 }
 
+.button-dark:disabled,
+.button-light:disabled,
+.auth-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+  transform: none;
+}
+
 .nav-link {
   border-radius: 999px;
   color: var(--muted-strong);

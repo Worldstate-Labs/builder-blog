@@ -100,6 +100,7 @@ export async function subscribeBuilderAction(formData: FormData) {
   });
   revalidatePath("/builders");
   revalidatePath("/dashboard");
+  redirect("/builders?subscribed=1");
 }
 
 export async function unsubscribeBuilderAction(formData: FormData) {
@@ -113,6 +114,7 @@ export async function unsubscribeBuilderAction(formData: FormData) {
   });
   revalidatePath("/builders");
   revalidatePath("/dashboard");
+  redirect("/builders?unsubscribed=1");
 }
 
 export async function addBuilderToLibraryAction(formData: FormData) {
@@ -136,6 +138,7 @@ export async function addBuilderToLibraryAction(formData: FormData) {
   });
   revalidatePath("/builders");
   revalidatePath("/dashboard");
+  redirect("/builders?added=1");
 }
 
 export async function removeBuilderFromLibraryAction(formData: FormData) {
@@ -152,6 +155,7 @@ export async function removeBuilderFromLibraryAction(formData: FormData) {
   ]);
   revalidatePath("/builders");
   revalidatePath("/dashboard");
+  redirect("/builders?removed=1");
 }
 
 export async function approveDeviceLoginAction(formData: FormData) {
@@ -201,44 +205,35 @@ export async function subscribeAllDefaultBuildersAction() {
   const poolBuilderIds = await activePoolBuilderIds(user.id);
   const builders = await prisma.builder.findMany({
     where: { id: { in: poolBuilderIds }, kind: BuilderKind.X },
+    select: { id: true },
   });
-  for (const builder of builders) {
-    await prisma.subscription.upsert({
-      where: {
-        userId_builderId: {
-          userId: user.id,
-          builderId: builder.id,
-        },
-      },
-      update: {},
-      create: {
+  if (builders.length > 0) {
+    await prisma.subscription.createMany({
+      data: builders.map((builder) => ({
         userId: user.id,
         builderId: builder.id,
-      },
+      })),
+      skipDuplicates: true,
     });
   }
   revalidatePath("/builders");
   revalidatePath("/dashboard");
+  redirect("/builders?subscribed=default");
 }
 
 export async function subscribeAllLibraryBuildersAction() {
   const user = await requireUser();
   const poolBuilderIds = await activePoolBuilderIds(user.id);
-  for (const builderId of poolBuilderIds) {
-    await prisma.subscription.upsert({
-      where: {
-        userId_builderId: {
-          userId: user.id,
-          builderId,
-        },
-      },
-      update: {},
-      create: {
+  if (poolBuilderIds.length > 0) {
+    await prisma.subscription.createMany({
+      data: poolBuilderIds.map((builderId) => ({
         userId: user.id,
         builderId,
-      },
+      })),
+      skipDuplicates: true,
     });
   }
   revalidatePath("/builders");
   revalidatePath("/dashboard");
+  redirect("/builders?subscribed=all");
 }

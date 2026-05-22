@@ -10,6 +10,7 @@ import {
   unsubscribeBuilderAction,
 } from "@/app/actions";
 import { AppShell } from "@/components/AppShell";
+import { FormSubmitButton } from "@/components/FormSubmitButton";
 import { authOptions } from "@/lib/auth";
 import { ensureDefaultBuilderPool } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
@@ -100,9 +101,9 @@ export default async function BuildersPage() {
               </p>
             </div>
             <form action={subscribeAllLibraryBuildersAction}>
-              <button className="button-dark" type="submit">
+              <FormSubmitButton className="button-dark" pendingLabel="Subscribing...">
                 Subscribe all in library
-              </button>
+              </FormSubmitButton>
             </form>
           </div>
         </section>
@@ -156,9 +157,9 @@ export default async function BuildersPage() {
                   <BuilderInfo builder={builder} status="Available" crawlLabel="Webapp crawled" />
                   <form action={addBuilderToLibraryAction}>
                     <input type="hidden" name="builderId" value={builder.id} />
-                    <button className="button-dark" type="submit">
+                    <FormSubmitButton className="button-dark" pendingLabel="Adding...">
                       Add to library
-                    </button>
+                    </FormSubmitButton>
                   </form>
                 </article>
               ))}
@@ -189,15 +190,18 @@ function BuilderCard({
       <div className="flex flex-wrap gap-2">
         <form action={subscribed ? unsubscribeBuilderAction : subscribeBuilderAction}>
           <input type="hidden" name="builderId" value={builder.id} />
-          <button className={subscribed ? "button-light" : "button-dark"} type="submit">
+          <FormSubmitButton
+            className={subscribed ? "button-light" : "button-dark"}
+            pendingLabel={subscribed ? "Updating..." : "Subscribing..."}
+          >
             {subscribed ? "Unsubscribe" : "Subscribe"}
-          </button>
+          </FormSubmitButton>
         </form>
         <form action={removeBuilderFromLibraryAction}>
           <input type="hidden" name="builderId" value={builder.id} />
-          <button className="button-light" type="submit">
+          <FormSubmitButton className="button-light" pendingLabel="Removing...">
             Remove from library
-          </button>
+          </FormSubmitButton>
         </form>
       </div>
     </article>
