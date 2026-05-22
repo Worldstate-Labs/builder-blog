@@ -8,6 +8,8 @@ import { crawlXBuilders } from "./x";
 export type CrawlBuilderPoolOptions = CrawlOptions & {
   xBearerToken?: string | null;
   pod2txtApiKey?: string | null;
+  openAiApiKey?: string | null;
+  maxTranscriptAudioBytes?: number;
   maxTranscriptAttempts?: number;
   transcriptPollIntervalMs?: number;
 };
@@ -30,6 +32,8 @@ export async function crawlBuilders(
       fetcher: options.fetcher,
       now: options.now,
       pod2txtApiKey: options.pod2txtApiKey,
+      openAiApiKey: options.openAiApiKey,
+      maxTranscriptAudioBytes: options.maxTranscriptAudioBytes,
       maxTranscriptAttempts: options.maxTranscriptAttempts,
       transcriptPollIntervalMs: options.transcriptPollIntervalMs,
     }),
@@ -52,6 +56,7 @@ export async function crawlBuilderPool(options: CrawlBuilderPoolOptions = {}) {
     ...options,
     xBearerToken: options.xBearerToken ?? process.env.X_BEARER_TOKEN,
     pod2txtApiKey: options.pod2txtApiKey ?? process.env.POD2TXT_API_KEY,
+    openAiApiKey: options.openAiApiKey ?? process.env.OPENAI_API_KEY,
   });
 
   for (const update of result.builderUpdates) {

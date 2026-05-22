@@ -30,6 +30,7 @@ GOOGLE_CLIENT_SECRET="..."
 CRON_SECRET="..."
 X_BEARER_TOKEN="..."
 POD2TXT_API_KEY="..."
+OPENAI_API_KEY="..."
 ```
 
 Use a hosted Postgres database for deployed environments. `DATABASE_URL` is used by the app runtime, and `DIRECT_URL` is used by Prisma migrations when your provider exposes a separate direct connection string.
@@ -71,8 +72,9 @@ Open `http://localhost:3000`.
 ## Central Crawl
 
 The crawl endpoint seeds the default builder pool, then crawls local database
-builders directly. X sources use X API v2, podcast sources use RSS plus pod2txt
-transcripts, and blog sources scrape the configured index pages:
+builders directly. X sources use X API v2, podcast sources use RSS transcripts,
+YouTube captions, OpenAI audio transcription, and pod2txt as a final podcast
+fallback, while blog sources scrape the configured index pages:
 
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" \

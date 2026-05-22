@@ -162,6 +162,117 @@ test("podcast crawler uses RSS transcript URLs without pod2txt credentials", asy
   assert.equal(result.items[0].rawJson?.transcriptSource, "rss-transcript");
 });
 
+test("podcast crawler uses YouTube captions before private transcript services", async () => {
+  const builder: CrawlerBuilder = {
+    ...baseBuilder,
+    kind: BuilderKind.PODCAST,
+    handle: null,
+    sourceUrl: "https://www.youtube.com/playlist?list=PLCAPTIONS",
+    crawlUrl: "https://feeds.example.com/caption-podcast.xml",
+  };
+  const captionBaseUrl = "https://www.youtube.com/api/timedtext?v=caption123&lang=en";
+  const fetcher: Fetcher = async (input) => {
+    const url = String(input);
+    if (url === "https://feeds.example.com/caption-podcast.xml") {
+      return new Response(`
+        <rss><channel><item>
+          <title>Caption Episode</title>
+          <guid>caption-episode-guid</guid>
+          <pubDate>Fri, 22 May 2026 10:00:00 GMT</pubDate>
+          <link>https://podcast.example.com/caption-episode</link>
+        </item></channel></rss>
+      `);
+    }
+    if (url === "https://www.youtube.com/feeds/videos.xml?playlist_id=PLCAPTIONS") {
+      return new Response(`
+        <feed><entry><title>Caption Episode</title><yt:videoId>caption123</yt:videoId></entry></feed>
+      `);
+    }
+    if (url === "https://www.youtube.com/watch?v=caption123") {
+      return new Response(`
+        <script>
+          var ytInitialPlayerResponse = {"captions":{"playerCaptionsTracklistRenderer":{"captionTracks":[{"baseUrl":"${captionBaseUrl.replace(/&/g, "\\u0026")}","languageCode":"en"}]}}};
+        </script>
+      `);
+    }
+    if (url === `${captionBaseUrl}&fmt=json3`) {
+      return Response.json({
+        events: [
+          { segs: [{ utf8: "YouTube " }, { utf8: "caption transcript" }] },
+        ],
+      });
+    }
+    if (url === "https://pod2txt.vercel.app/api/transcript") {
+      throw new Error("pod2txt should not be called when YouTube captions are available");
+    }
+    throw new Error(`Unexpected URL ${url}`);
+  };
+
+  const result = await crawlPodcastBuilders([builder], {
+    pod2txtApiKey: null,
+    fetcher,
+    now: new Date("2026-05-22T13:00:00.000Z"),
+  });
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.items.length, 1);
+  assert.equal(result.items[0].body, "YouTube caption transcript");
+  assert.equal(result.items[0].rawJson?.transcriptSource, "youtube-captions");
+  assert.equal(result.items[0].url, "https://www.youtube.com/watch?v=caption123");
+});
+
+test("podcast crawler can transcribe RSS audio with OpenAI when no transcript exists", async () => {
+  const builder: CrawlerBuilder = {
+    ...baseBuilder,
+    kind: BuilderKind.PODCAST,
+    handle: null,
+    sourceUrl: "https://podcast.example.com",
+    crawlUrl: "https://feeds.example.com/audio-podcast.xml",
+  };
+  const fetcher: Fetcher = async (input, init) => {
+    const url = String(input);
+    if (url === "https://feeds.example.com/audio-podcast.xml") {
+      return new Response(`
+        <rss><channel><item>
+          <title>Audio Episode</title>
+          <guid>audio-episode-guid</guid>
+          <pubDate>Fri, 22 May 2026 10:00:00 GMT</pubDate>
+          <link>https://podcast.example.com/audio-episode</link>
+          <enclosure url="https://audio.example.com/episode.mp3" type="audio/mpeg" length="1024" />
+        </item></channel></rss>
+      `);
+    }
+    if (url === "https://audio.example.com/episode.mp3" && init?.method === "HEAD") {
+      return new Response(null, { headers: { "content-length": "1024" } });
+    }
+    if (url === "https://audio.example.com/episode.mp3") {
+      return new Response(new Uint8Array([1, 2, 3]), {
+        headers: { "content-type": "audio/mpeg" },
+      });
+    }
+    if (url === "https://api.openai.com/v1/audio/transcriptions") {
+      assert.equal(init?.method, "POST");
+      assert.equal(init?.headers && "Authorization" in init.headers, true);
+      assert.equal(init?.body instanceof FormData, true);
+      return Response.json({ text: "OpenAI transcript body" });
+    }
+    throw new Error(`Unexpected URL ${url}`);
+  };
+
+  const result = await crawlPodcastBuilders([builder], {
+    openAiApiKey: "openai-key",
+    pod2txtApiKey: null,
+    fetcher,
+    now: new Date("2026-05-22T13:00:00.000Z"),
+  });
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.items.length, 1);
+  assert.equal(result.items[0].externalId, "audio-episode-guid");
+  assert.equal(result.items[0].body, "OpenAI transcript body");
+  assert.equal(result.items[0].rawJson?.transcriptSource, "openai-audio-transcription");
+});
+
 test("podcast crawler resolves YouTube handle pages to episode video URLs", async () => {
   const builder: CrawlerBuilder = {
     ...baseBuilder,
@@ -189,7 +300,7 @@ test("podcast crawler resolves YouTube handle pages to episode video URLs", asyn
       return new Response("Handle transcript body");
     }
     if (url === "https://www.youtube.com/@ExamplePod") {
-      return new Response(`{"channelId":"${channelId}"}`);
+      return new Response(`{"externalId":"${channelId}"}`);
     }
     if (url === `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`) {
       return new Response(`
