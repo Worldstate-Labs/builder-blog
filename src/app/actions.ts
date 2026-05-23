@@ -159,6 +159,23 @@ export async function addBuilderToLibraryAction(formData: FormData) {
 export async function removeBuilderFromLibraryAction(formData: FormData) {
   const user = await requireUser();
   const builderId = String(formData.get("builderId") ?? "");
+  const poolEntry = await prisma.builderPoolEntry.findUnique({
+    where: {
+      userId_builderId: {
+        userId: user.id,
+        builderId,
+      },
+    },
+    select: { origin: true, removedAt: true },
+  });
+
+  if (!poolEntry || poolEntry.removedAt) {
+    redirect("/builders?error=not-in-library");
+  }
+  if (poolEntry.origin === BuilderPoolOrigin.HUB_IMPORT) {
+    redirect("/builders?error=imported-builder-remove-denied");
+  }
+
   await prisma.$transaction([
     prisma.subscription.deleteMany({
       where: { userId: user.id, builderId },

@@ -256,6 +256,7 @@ export default async function BuildersPage() {
                 >
                   {library.builders.map((builder) => (
                     <BuilderCard
+                      allowRemove={false}
                       key={builder.id}
                       builder={builder}
                       subscribed={subscribed.has(builder.id)}
@@ -385,12 +386,14 @@ function RecentCrawledContentHeader({
 }
 
 function BuilderCard({
+  allowRemove = true,
   builder,
   subscribed,
   crawlLabel,
   status,
   action,
 }: {
+  allowRemove?: boolean;
   builder: BuilderWithCount;
   subscribed: boolean;
   crawlLabel: string;
@@ -418,13 +421,15 @@ function BuilderCard({
                   {subscribed ? "Unsubscribe" : "Subscribe"}
                 </FormSubmitButton>
               </form>
-              <form action={removeBuilderFromLibraryAction}>
-                <input type="hidden" name="builderId" value={builder.id} />
-                <FormSubmitButton className="button-light button-compact button-danger gap-2" pendingLabel="Removing...">
-                  <Trash2 className="h-4 w-4" />
-                  Remove from library
-                </FormSubmitButton>
-              </form>
+              {allowRemove ? (
+                <form action={removeBuilderFromLibraryAction}>
+                  <input type="hidden" name="builderId" value={builder.id} />
+                  <FormSubmitButton className="button-light button-compact button-danger gap-2" pendingLabel="Removing...">
+                    <Trash2 className="h-4 w-4" />
+                    Remove from library
+                  </FormSubmitButton>
+                </form>
+              ) : null}
             </>
           )}
         </div>

@@ -256,6 +256,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(buildersPage, /togglePersonalLibraryHubAvailabilityAction/);
   assert.match(buildersPage, /library-visibility-toggle/);
   assert.match(buildersPage, /aria-pressed/);
+  assert.match(buildersPage, /allowRemove=\{false\}/);
+  assert.match(actions, /BuilderPoolOrigin\.HUB_IMPORT/);
+  assert.match(actions, /imported-builder-remove-denied/);
   assert.doesNotMatch(hubPage, /sharePersonalLibraryToHubAction/);
   assert.match(hubPage, /importHubLibrariesAction/);
   assert.match(hubPage, /importCount/);
