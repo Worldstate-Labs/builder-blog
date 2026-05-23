@@ -79,3 +79,10 @@ test("search highlighting includes required phrases without the plus syntax", ()
     "agent",
   ]);
 });
+
+test("search highlighting includes quoted OR phrases", () => {
+  assert.deepEqual(searchHighlightTerms('"agent memory" OR "retrieval quality"'), [
+    "retrieval quality",
+    "agent memory",
+  ]);
+});

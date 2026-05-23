@@ -52,6 +52,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /-"memory leak"/);
   assert.match(searchPage, /\+retrieval/);
   assert.match(searchPage, /agent OR embedding/);
+  assert.match(searchPage, /"agent memory" OR "retrieval quality"/);
   assert.match(searchPage, /agent AROUND\(3\) memory/);
   assert.match(searchPage, /site:example\.com/);
   assert.match(searchPage, /site:example\.com\/articles/);

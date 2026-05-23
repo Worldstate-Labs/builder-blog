@@ -34,6 +34,7 @@ export type ParsedSearchQuery = {
   requiredTerms: string[];
   requiredOperatorTerms: string[];
   excludedTerms: string[];
+  orPhrases: string[];
   orTerms: string[];
   proximityPairs: SearchProximityPair[];
   bodyTerms: string[];
@@ -130,6 +131,8 @@ export function normalizeSearchTime(value: string | null | undefined): SearchTim
 
 export function parseSearchQuery(query: string): ParsedSearchQuery {
   const rawQuery = query.trim();
+  const orPhrases = collectOrPhrases(rawQuery);
+  const orPhraseSet = new Set(orPhrases);
   const phrases: string[] = [];
   const requiredPhrases: string[] = [];
   const excludedPhrases: string[] = [];
@@ -151,7 +154,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
   );
   const working = withoutRequiredPhrases.replace(/"([^"]+)"/g, (_, phrase: string) => {
     const normalizedPhrase = normalizeText(phrase);
-    if (normalizedPhrase) phrases.push(normalizedPhrase);
+    if (normalizedPhrase && !orPhraseSet.has(normalizedPhrase)) phrases.push(normalizedPhrase);
     return ` ${normalizedPhrase} `;
   });
   const excludedTerms: string[] = [];
@@ -309,7 +312,8 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     cleanParts.push(token);
   }
 
-  const orTerms = extractOrTerms(cleanParts);
+  const orPhraseTokens = new Set(orPhrases.flatMap(tokenize));
+  const orTerms = extractOrTerms(cleanParts).filter((term) => !orPhraseTokens.has(term));
   const proximityPairs = extractProximityPairs(cleanParts);
   const cleanQuery = normalizeText(
     cleanParts
@@ -325,6 +329,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     requiredTerms: tokenize(cleanQuery),
     requiredOperatorTerms,
     excludedTerms,
+    orPhrases,
     orTerms,
     proximityPairs,
     bodyTerms,
@@ -350,7 +355,10 @@ export function candidateSearchTerms(query: string, mode: SearchMode, limit = 12
   const parsed = parseSearchQuery(query);
   const normalizedQuery = parsed.cleanQuery;
   if (!normalizedQuery) return [];
-  if (mode === "exact" && parsed.orTerms.length > 0) return parsed.orTerms.slice(0, limit);
+  const exactAlternatives = [...parsed.orPhrases, ...parsed.orTerms];
+  if (mode === "exact" && exactAlternatives.length > 0) {
+    return exactAlternatives.slice(0, limit);
+  }
   if (mode === "exact") return [normalizedQuery];
 
   const queryTokens = tokenize(normalizedQuery);
@@ -390,6 +398,7 @@ export function searchHighlightTerms(query: string, limit = 8) {
   const phraseTerms = [
     ...parsed.phrases.filter((phrase) => !phrase.includes("*")),
     ...parsed.requiredPhrases.filter((phrase) => !phrase.includes("*")),
+    ...parsed.orPhrases.filter((phrase) => !phrase.includes("*")),
   ];
 
   for (const term of [
@@ -589,7 +598,10 @@ export function rankSearchDocuments({
     .map((document) => {
       const title = normalizeText(document.title);
       const body = normalizeText(document.body);
-      const exactScore = exactMatchScore(normalizedQuery, title, body, parsedQuery.orTerms);
+      const exactScore = exactMatchScore(normalizedQuery, title, body, [
+        ...parsedQuery.orPhrases,
+        ...parsedQuery.orTerms,
+      ]);
       const phraseScore = phraseMatchScore(parsedQuery.phrases, title, body);
       const proximityScore = proximityMatchScore(parsedQuery.proximityPairs, title, body);
       const semanticScore =
@@ -606,7 +618,11 @@ export function rankSearchDocuments({
       return {
         ...document,
         score,
-        snippet: buildSnippet(document, normalizedQuery, queryTokens),
+        snippet: buildSnippet(document, normalizedQuery, queryTokens, [
+          ...parsedQuery.phrases,
+          ...parsedQuery.requiredPhrases,
+          ...parsedQuery.orPhrases,
+        ]),
       };
     })
     .filter((result): result is SearchResult => result !== null)
@@ -630,6 +646,7 @@ function hasSearchFilters(parsedQuery: ParsedSearchQuery) {
       parsedQuery.excludedPhrases.length ||
       parsedQuery.requiredOperatorTerms.length ||
       parsedQuery.excludedTerms.length ||
+      parsedQuery.orPhrases.length ||
       parsedQuery.orTerms.length ||
       parsedQuery.proximityPairs.length ||
       parsedQuery.bodyTerms.length ||
@@ -681,8 +698,9 @@ function documentMatchesFilters(
     return false;
   }
   if (
-    parsedQuery.orTerms.length > 0 &&
-    parsedQuery.orTerms.every((term) => !haystack.includes(term))
+    (parsedQuery.orTerms.length > 0 || parsedQuery.orPhrases.length > 0) &&
+    parsedQuery.orTerms.every((term) => !haystack.includes(term)) &&
+    parsedQuery.orPhrases.every((phrase) => !phraseMatches(haystack, phrase))
   ) {
     return false;
   }
@@ -819,6 +837,26 @@ function collectScopedOperatorTerms(
   }
 
   return { terms, nextIndex };
+}
+
+function collectOrPhrases(query: string) {
+  const phrases = new Set<string>();
+  const patterns = [
+    /(^|\s)"([^"]+)"\s+OR\s+"([^"]+)"/gi,
+    /(^|\s)"([^"]+)"\s+OR\s+\S+/gi,
+    /(^|\s)\S+\s+OR\s+"([^"]+)"/gi,
+  ];
+
+  for (const pattern of patterns) {
+    for (const match of query.matchAll(pattern)) {
+      for (const candidate of match.slice(2)) {
+        const normalizedPhrase = normalizeText(candidate ?? "");
+        if (normalizedPhrase) phrases.add(normalizedPhrase);
+      }
+    }
+  }
+
+  return [...phrases];
 }
 
 function isOperatorBoundaryToken(token: string) {
@@ -976,12 +1014,20 @@ function buildSnippet(
   document: SearchDocument,
   normalizedQuery: string,
   queryTokens: string[],
+  exactTargets: string[] = [],
 ) {
   const source = document.body || document.title;
   const normalizedBody = normalizeText(document.body);
-  const exactIndex = normalizedBody.indexOf(normalizedQuery);
-  if (exactIndex >= 0) {
-    return trimSnippet(source, exactIndex, normalizedQuery.length);
+  const exactMatches = [...exactTargets, normalizedQuery]
+    .filter((target) => target && !target.includes("*"))
+    .map((target) => ({
+      index: normalizedBody.indexOf(target),
+      length: target.length,
+    }))
+    .filter((match) => match.index >= 0)
+    .sort((a, b) => a.index - b.index);
+  if (exactMatches[0]) {
+    return trimSnippet(source, exactMatches[0].index, exactMatches[0].length);
   }
 
   const tokenIndex = queryTokens

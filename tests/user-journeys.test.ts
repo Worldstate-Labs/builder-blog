@@ -1011,6 +1011,50 @@ test("search user path supports explicit OR alternatives in exact mode", () => {
   assert.deepEqual(results.map((result) => result.id), ["agent", "embedding"]);
 });
 
+test("search user path supports quoted phrase OR alternatives", () => {
+  const parsed = parseSearchQuery('"agent memory" OR "retrieval quality"');
+
+  assert.equal(parsed.cleanQuery, "agent memory retrieval quality");
+  assert.deepEqual(parsed.phrases, []);
+  assert.deepEqual(parsed.orPhrases, ["agent memory", "retrieval quality"]);
+  assert.deepEqual(parsed.orTerms, []);
+  assert.deepEqual(candidateSearchTerms('"agent memory" OR "retrieval quality"', "exact"), [
+    "agent memory",
+    "retrieval quality",
+  ]);
+
+  const results = rankSearchDocuments({
+    query: '"agent memory" OR "retrieval quality"',
+    mode: "exact",
+    documents: [
+      {
+        id: "agent-memory",
+        type: "feed",
+        title: "Launch note",
+        body: "The article explains agent memory for long-running work.",
+      },
+      {
+        id: "retrieval-quality",
+        type: "feed",
+        title: "Evaluation note",
+        body: "The article explains retrieval quality for search systems.",
+      },
+      {
+        id: "split-token",
+        type: "feed",
+        title: "Partial note",
+        body: "The article says memory and retrieval but never either requested phrase.",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), [
+    "retrieval-quality",
+    "agent-memory",
+  ]);
+  assert.match(results[0].snippet, /retrieval quality/i);
+});
+
 test("search user path supports AROUND proximity operator in exact mode", () => {
   const parsed = parseSearchQuery("agent AROUND(2) memory");
 
