@@ -102,7 +102,6 @@ export async function importLibrariesFromHub(params: {
       items: {
         select: {
           builderId: true,
-          builder: { select: { scope: true } },
         },
       },
     },
@@ -117,10 +116,7 @@ export async function importLibrariesFromHub(params: {
       await addBuilderToPool({
         userId: params.userId,
         builderId: item.builderId,
-        origin:
-          item.builder.scope === BuilderScope.CENTRAL
-            ? BuilderPoolOrigin.CENTRAL_DEFAULT
-            : BuilderPoolOrigin.HUB_IMPORT,
+        origin: BuilderPoolOrigin.HUB_IMPORT,
       });
       builders += 1;
     }

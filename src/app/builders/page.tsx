@@ -1,9 +1,8 @@
 import { BuilderKind, BuilderPoolOrigin, BuilderScope, type FeedItemKind } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { Suspense, type ComponentType, type ReactNode } from "react";
-import { Bell, BellOff, ExternalLink, ListPlus, Plus, Trash2, UsersRound } from "lucide-react";
+import { Bell, BellOff, ExternalLink, ListPlus, Trash2, UsersRound } from "lucide-react";
 import {
-  addBuilderToLibraryAction,
   removeBuilderFromLibraryAction,
   subscribeAllLibraryBuildersAction,
   subscribeBuilderAction,
@@ -13,7 +12,6 @@ import { AppShell } from "@/components/AppShell";
 import { FeedCard } from "@/components/FeedCard";
 import { FormSubmitButton } from "@/components/FormSubmitButton";
 import { getCurrentSession } from "@/lib/auth";
-import { ensureDefaultBuilderPool } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
 import { builderSourceLabel, feedItemKindLabel } from "@/lib/source-registry";
 
@@ -51,9 +49,7 @@ export default async function BuildersPage() {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
 
-  await ensureDefaultBuilderPool(session.user.id);
-
-  const [poolEntries, subscriptions, removedCentralBuilders, importedLibraries] = await Promise.all([
+  const [poolEntries, subscriptions, importedLibraries] = await Promise.all([
     prisma.builderPoolEntry.findMany({
       where: { userId: session.user.id, removedAt: null },
       include: {
@@ -73,26 +69,6 @@ export default async function BuildersPage() {
     prisma.subscription.findMany({
       where: { userId: session.user.id },
       select: { builderId: true },
-    }),
-    prisma.builder.findMany({
-      where: {
-        scope: BuilderScope.CENTRAL,
-        poolEntries: {
-          some: {
-            userId: session.user.id,
-            removedAt: { not: null },
-          },
-        },
-      },
-      include: {
-        _count: { select: { feedItems: true } },
-        feedItems: {
-          orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-          select: feedItemSummarySelect,
-          take: perBuilderFeedItemLimit,
-        },
-      },
-      orderBy: [{ kind: "asc" }, { name: "asc" }],
     }),
     prisma.libraryImport.findMany({
       where: { userId: session.user.id },
@@ -126,10 +102,6 @@ export default async function BuildersPage() {
   const activeEntryByBuilderId = new Map(poolEntries.map((entry) => [entry.builderId, entry]));
   const poolBuilders = poolEntries.map((entry) => entry.builder).sort(builderSort);
   const poolBuilderIds = poolBuilders.map((builder) => builder.id);
-  const centralBuilders = poolEntries
-    .filter((entry) => entry.origin === BuilderPoolOrigin.CENTRAL_DEFAULT)
-    .map((entry) => entry.builder)
-    .sort(builderSort);
   const privateBuilders = poolEntries
     .filter(
       (entry) =>
@@ -177,8 +149,8 @@ export default async function BuildersPage() {
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--muted-strong)]">
               In library means available to you. Subscribed means included in
-              your periodic digest. Central builders are crawled by the web app;
-              personal builders are synced by your own agent.
+              your periodic digest. Private builders are synced by your own
+              agent; imported libraries come from the Hub.
             </p>
           </div>
           <div className="stats-panel">
@@ -275,50 +247,6 @@ export default async function BuildersPage() {
               ) : null}
             </div>
           </section>
-
-          <LibrarySection
-            title="Central defaults"
-            detail="Default pool, crawled once by Builder Blog"
-            badge="central"
-            count={centralBuilders.length}
-          >
-            {centralBuilders.map((builder) => (
-              <BuilderCard
-                key={builder.id}
-                builder={builder}
-                subscribed={subscribed.has(builder.id)}
-                crawlLabel="Webapp crawled"
-              />
-            ))}
-          </LibrarySection>
-
-          {removedCentralBuilders.length > 0 ? (
-            <LibrarySection
-              title="Available central builders"
-              detail="Removed from your pool; add back any time"
-              badge="available"
-              count={removedCentralBuilders.length}
-            >
-              {removedCentralBuilders.map((builder) => (
-                <BuilderCard
-                  key={builder.id}
-                  builder={builder}
-                  subscribed={false}
-                  crawlLabel="Webapp crawled"
-                  status="Available"
-                  action={
-                    <form action={addBuilderToLibraryAction}>
-                      <input type="hidden" name="builderId" value={builder.id} />
-                      <FormSubmitButton className="button-dark button-compact gap-2" pendingLabel="Adding...">
-                        <Plus className="h-4 w-4" />
-                        Add to library
-                      </FormSubmitButton>
-                    </form>
-                  }
-                />
-              ))}
-            </LibrarySection>
-          ) : null}
         </section>
 
         <Suspense fallback={<RecentCrawledContentFallback crawledItems={crawledItems} />}>

@@ -142,7 +142,7 @@ export async function addBuilderToLibraryAction(formData: FormData) {
     builderId,
     origin:
       builder.scope === BuilderScope.CENTRAL
-        ? BuilderPoolOrigin.CENTRAL_DEFAULT
+        ? BuilderPoolOrigin.HUB_IMPORT
         : BuilderPoolOrigin.PERSONAL_SYNC,
   });
   revalidatePath("/builders");
