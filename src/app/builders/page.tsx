@@ -200,7 +200,7 @@ export default async function BuildersPage() {
                   action={
                     <form action={addBuilderToLibraryAction}>
                       <input type="hidden" name="builderId" value={builder.id} />
-                      <FormSubmitButton className="button-dark gap-2" pendingLabel="Adding...">
+                      <FormSubmitButton className="button-dark button-compact gap-2" pendingLabel="Adding...">
                         <Plus className="h-4 w-4" />
                         Add to library
                       </FormSubmitButton>
@@ -334,13 +334,13 @@ function BuilderCard({
           status={status ?? (subscribed ? "Subscribed" : "In library")}
           crawlLabel={crawlLabel}
         />
-        <div className="flex flex-wrap gap-2">
+        <div className="row-actions">
           {action ?? (
             <>
               <form action={subscribed ? unsubscribeBuilderAction : subscribeBuilderAction}>
                 <input type="hidden" name="builderId" value={builder.id} />
                 <FormSubmitButton
-                  className={`${subscribed ? "button-light" : "button-dark"} gap-2`}
+                  className={`${subscribed ? "button-light" : "button-dark"} button-compact gap-2`}
                   pendingLabel={subscribed ? "Updating..." : "Subscribing..."}
                 >
                   {subscribed ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
@@ -349,7 +349,7 @@ function BuilderCard({
               </form>
               <form action={removeBuilderFromLibraryAction}>
                 <input type="hidden" name="builderId" value={builder.id} />
-                <FormSubmitButton className="button-light gap-2" pendingLabel="Removing...">
+                <FormSubmitButton className="button-light button-compact gap-2" pendingLabel="Removing...">
                   <Trash2 className="h-4 w-4" />
                   Remove from library
                 </FormSubmitButton>
@@ -435,7 +435,7 @@ function BuilderFeedItems({ builder }: { builder: BuilderWithCount }) {
               </dl>
             </div>
             <a
-              className="button-light min-w-24 gap-2"
+              className="button-light button-compact min-w-24 gap-2"
               href={item.url}
               rel="noreferrer"
               target="_blank"

@@ -70,9 +70,9 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  min-height: 2.75rem;
-  padding: 0.78rem 1.1rem;
-  font-size: 0.9rem;
+  min-height: 2.45rem;
+  padding: 0.62rem 0.9rem;
+  font-size: 0.86rem;
   font-weight: 700;
   letter-spacing: 0;
   transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
@@ -88,6 +88,12 @@ body {
   border: 1px solid var(--line);
   background: color-mix(in oklch, var(--paper-strong) 72%, transparent);
   color: var(--ink);
+}
+
+.button-compact {
+  min-height: 2.2rem;
+  padding: 0.42rem 0.68rem;
+  font-size: 0.8rem;
 }
 
 .auth-button {
@@ -306,7 +312,7 @@ body {
 .feed-card,
 .digest-card,
 .admin-panel {
-  padding: 1.5rem;
+  padding: 1.15rem;
 }
 
 .feed-card-compact,
@@ -340,10 +346,10 @@ body {
 .item-summary-static {
   align-items: center;
   display: grid;
-  gap: 1rem;
+  gap: 0.8rem;
   grid-template-columns: minmax(0, 1fr) auto;
   min-width: 0;
-  padding: 1rem;
+  padding: 0.82rem 0.95rem;
 }
 
 .item-title {
@@ -403,7 +409,7 @@ body {
 }
 
 .item-row-disclosure .item-summary {
-  padding: 0.85rem 1rem;
+  padding: 0.75rem 0.95rem;
 }
 
 .inline-disclosure {
@@ -436,10 +442,10 @@ body {
   border: 0;
   box-shadow: none;
   display: flex;
-  gap: 1rem;
+  gap: 0.8rem;
   justify-content: space-between;
   min-width: 0;
-  padding: 1rem;
+  padding: 0.85rem 0.95rem;
   width: 100%;
 }
 
@@ -465,7 +471,7 @@ body {
   gap: 0.75rem;
   justify-content: space-between;
   list-style: none;
-  padding: 0.85rem 1rem;
+  padding: 0.72rem 0.95rem;
   text-transform: uppercase;
 }
 
@@ -490,9 +496,18 @@ body {
   align-items: start;
   border-bottom: 1px solid var(--line);
   display: grid;
-  gap: 1rem;
+  gap: 0.85rem;
   grid-template-columns: minmax(0, 1fr) auto;
-  padding: 1rem;
+  padding: 0.9rem 0.95rem;
+}
+
+.row-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .builder-post-row:last-child {
@@ -509,9 +524,8 @@ body {
     flex-direction: column;
   }
 
-  .builder-row form,
-  .builder-row button {
-    width: 100%;
+  .row-actions {
+    justify-content: flex-start;
   }
 
   .builder-post-row {
@@ -519,7 +533,7 @@ body {
   }
 
   .builder-post-row .button-light {
-    width: 100%;
+    justify-self: start;
   }
 
   .item-summary,
@@ -541,10 +555,10 @@ body {
 .kind-pill,
 .sub-pill {
   border-radius: 999px;
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
-  padding: 0.35rem 0.55rem;
+  letter-spacing: 0.07em;
+  padding: 0.25rem 0.45rem;
   text-transform: uppercase;
 }
 
@@ -633,9 +647,9 @@ body {
 }
 
 .search-form .button-dark {
-  min-height: 3rem;
-  padding-left: 1.45rem;
-  padding-right: 1.45rem;
+  min-height: 2.75rem;
+  padding-left: 1.1rem;
+  padding-right: 1.1rem;
 }
 
 .search-input-wrap {
@@ -660,9 +674,9 @@ body {
   border-radius: 999px;
   color: var(--ink);
   font-size: 1rem;
-  min-height: 3.15rem;
+  min-height: 2.9rem;
   outline: none;
-  padding: 0.75rem 1rem 0.75rem 2.85rem;
+  padding: 0.65rem 1rem 0.65rem 2.65rem;
   width: 100%;
 }
 
@@ -888,6 +902,34 @@ body {
 }
 
 @media (max-width: 767px) {
+  .page-pad h1 {
+    font-size: 2rem;
+    line-height: 1.15;
+  }
+
+  .page-pad h2 {
+    font-size: 1.45rem;
+    line-height: 1.2;
+  }
+
+  .builder-row h3,
+  .admin-panel h3 {
+    font-size: 1.12rem;
+    line-height: 1.25;
+  }
+
+  .page-pad > p:not(.section-label),
+  .page-pad section p:not(.section-label) {
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+
+  .feed-card,
+  .digest-card,
+  .admin-panel {
+    padding: 1rem;
+  }
+
   .search-hero,
   .search-page-active .search-hero {
     margin-top: 1rem;
@@ -909,11 +951,11 @@ body {
   }
 
   .search-input {
-    min-height: 3rem;
+    min-height: 2.75rem;
   }
 
   .search-form .button-dark {
-    min-height: 2.8rem;
+    min-height: 2.55rem;
     width: 100%;
   }
 

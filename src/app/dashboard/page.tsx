@@ -105,7 +105,7 @@ export default async function DashboardPage() {
                 </p>
               ) : null}
             </div>
-            <Link className="button-light mt-5 gap-2" href="/history">
+            <Link className="button-light button-compact mt-5 gap-2" href="/history">
               <Archive className="h-4 w-4" />
               Open history
             </Link>

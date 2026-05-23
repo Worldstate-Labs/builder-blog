@@ -78,14 +78,16 @@ export default async function HistoryPage({
           <nav className="mt-8 flex flex-wrap gap-3" aria-label="Digest history pagination">
             <Link
               aria-disabled={page === 1}
-              className={`button-light ${page === 1 ? "pointer-events-none opacity-45" : ""}`}
+              className={`button-light button-compact ${
+                page === 1 ? "pointer-events-none opacity-45" : ""
+              }`}
               href={`/history?page=${Math.max(1, page - 1)}`}
             >
               Newer
             </Link>
             <Link
               aria-disabled={skip + digests.length >= digestCount}
-              className={`button-light ${
+              className={`button-light button-compact ${
                 skip + digests.length >= digestCount ? "pointer-events-none opacity-45" : ""
               }`}
               href={`/history?page=${page + 1}`}

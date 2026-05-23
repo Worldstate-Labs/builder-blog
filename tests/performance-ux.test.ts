@@ -74,3 +74,18 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
   assert.match(buildersPage, /Crawled/);
   assert.match(buildersPage, /External id/);
 });
+
+test("list actions use compact controls instead of full-width mobile buttons", () => {
+  const css = source("src/app/globals.css");
+  const buildersPage = source("src/app/builders/page.tsx");
+  const settingsPage = source("src/app/settings/page.tsx");
+  const adminPage = source("src/app/admin/page.tsx");
+
+  assert.match(css, /\.button-compact/);
+  assert.match(css, /\.row-actions/);
+  assert.doesNotMatch(css, /\.builder-row form,\s*\n\s*\.builder-row button\s*{\s*\n\s*width:\s*100%/);
+  assert.match(buildersPage, /row-actions/);
+  assert.match(buildersPage, /button-light button-compact/);
+  assert.match(settingsPage, /button-light button-compact/);
+  assert.match(adminPage, /button-light button-compact/);
+});

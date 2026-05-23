@@ -43,7 +43,7 @@ export default async function SettingsPage({
         ) : null}
 
         <form action={createPersonalTokenAction} className="mt-8">
-          <FormSubmitButton className="button-dark" pendingLabel="Creating...">
+          <FormSubmitButton className="button-dark button-compact" pendingLabel="Creating...">
             Create manual token
           </FormSubmitButton>
         </form>
@@ -62,7 +62,7 @@ export default async function SettingsPage({
               {!token.revokedAt ? (
                 <form action={revokeTokenAction}>
                   <input type="hidden" name="tokenId" value={token.id} />
-                  <FormSubmitButton className="button-light" pendingLabel="Revoking...">
+                  <FormSubmitButton className="button-light button-compact" pendingLabel="Revoking...">
                     Revoke
                   </FormSubmitButton>
                 </form>

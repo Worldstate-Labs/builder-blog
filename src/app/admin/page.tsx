@@ -189,7 +189,7 @@ async function CentralBuilderPool() {
           </select>
           <input className="input" name="handle" placeholder="X handle" />
           <input className="input" name="sourceUrl" placeholder="URL or RSS" />
-          <FormSubmitButton className="button-dark" pendingLabel="Adding...">
+          <FormSubmitButton className="button-dark button-compact justify-self-start" pendingLabel="Adding...">
             Add
           </FormSubmitButton>
         </form>
@@ -218,12 +218,12 @@ async function CentralBuilderPool() {
                   {builder.handle ? `@${builder.handle}` : builder.sourceUrl}
                 </p>
               </div>
-              <div className="flex flex-wrap items-center justify-end gap-3 text-right text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
+              <div className="row-actions text-right text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
                 <span>{builder._count.feedItems} items</span>
                 <span>{builder._count.subscriptions} subscribers</span>
                 <form action={deleteCentralBuilderAction} className="m-0">
                   <input type="hidden" name="builderId" value={builder.id} />
-                  <FormSubmitButton className="button-light" pendingLabel="Removing...">
+                  <FormSubmitButton className="button-light button-compact" pendingLabel="Removing...">
                     Remove
                   </FormSubmitButton>
                 </form>
