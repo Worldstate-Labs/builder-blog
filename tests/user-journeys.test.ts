@@ -465,6 +465,41 @@ test("search user path filters by filetype operator", () => {
   assert.deepEqual(results.map((result) => result.id), ["digest-match"]);
 });
 
+test("search user path excludes filetypes with negative type operators", () => {
+  const parsed = parseSearchQuery("agent memory -filetype:digest -type:builder");
+
+  assert.equal(parsed.cleanQuery, "agent memory");
+  assert.deepEqual(parsed.excludedTypes, ["digest", "builder"]);
+  assert.deepEqual(parsed.excludedTerms, []);
+
+  const results = rankSearchDocuments({
+    query: "agent memory -filetype:digest -type:builder",
+    mode: "hybrid",
+    documents: [
+      {
+        id: "digest-match",
+        type: "digest",
+        title: "Agent memory",
+        body: "Agent memory digest.",
+      },
+      {
+        id: "builder-match",
+        type: "builder",
+        title: "Agent memory",
+        body: "Agent memory builder.",
+      },
+      {
+        id: "feed-match",
+        type: "feed",
+        title: "Agent memory",
+        body: "Agent memory feed item.",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["feed-match"]);
+});
+
 test("search user path filters by title operator", () => {
   const results = rankSearchDocuments({
     query: "agent memory intitle:launch",

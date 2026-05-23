@@ -57,6 +57,7 @@ const advancedSearchExamples = [
   "allinurl:release agent",
   "agent memory type:feed",
   "agent memory filetype:digest",
+  "agent memory -filetype:digest",
   "agent memory after:2026-01-01",
   "agent memory before:2026-12-31",
 ];
@@ -667,6 +668,20 @@ function buildActiveSearchFilters({
       }),
       label: isFiletype ? "File type" : "Query type",
       value: resultTypeLabels[parsed.type],
+    });
+  }
+  if (parsed.excludedTypes.length > 0) {
+    filters.push({
+      clearLabel: "Remove excluded file types",
+      href: searchHref({
+        query: stripNegativeQueryOperators(query, ["type", "filetype"]),
+        type: typeFilter,
+        mode,
+        sort,
+        time,
+      }),
+      label: "Excludes file types",
+      value: parsed.excludedTypes.map((type) => resultTypeLabels[type]).join(", "),
     });
   }
   if (parsed.titleTerms.length > 0) {

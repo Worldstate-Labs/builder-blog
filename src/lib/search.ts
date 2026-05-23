@@ -39,6 +39,7 @@ export type ParsedSearchQuery = {
   urlTerms: string[];
   site: string | null;
   excludedSites: string[];
+  excludedTypes: SearchDocumentType[];
   type: SearchDocumentType | null;
   typeOperator: "filetype" | "type" | null;
   after: Date | null;
@@ -141,6 +142,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
   const titleTerms: string[] = [];
   const urlTerms: string[] = [];
   const excludedSites: string[] = [];
+  const excludedTypes: SearchDocumentType[] = [];
   let site: string | null = null;
   let type: SearchDocumentType | null = null;
   let typeOperator: ParsedSearchQuery["typeOperator"] = null;
@@ -157,6 +159,12 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     if (lower.startsWith("-site:")) {
       const excludedSite = normalizeSiteOperatorValue(lower.slice(6));
       if (excludedSite) excludedSites.push(excludedSite);
+      continue;
+    }
+    if (lower.startsWith("-type:") || lower.startsWith("-filetype:")) {
+      const isFiletype = lower.startsWith("-filetype:");
+      const candidate = normalizeTypeOperatorValue(lower.slice(isFiletype ? 10 : 6));
+      if (candidate) excludedTypes.push(candidate);
       continue;
     }
     if (lower.startsWith("site:")) {
@@ -252,6 +260,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     urlTerms,
     site,
     excludedSites,
+    excludedTypes,
     type,
     typeOperator,
     after,
@@ -442,6 +451,7 @@ function documentMatchesFilters(
   const haystack = `${title} ${body} ${url} ${source}`;
 
   if (parsedQuery.type && document.type !== parsedQuery.type) return false;
+  if (parsedQuery.excludedTypes.includes(document.type)) return false;
   if (parsedQuery.site && !urlHostMatches(document.url, parsedQuery.site)) return false;
   if (parsedQuery.excludedSites.some((site) => urlHostMatches(document.url, site))) return false;
   if (parsedQuery.bodyTerms.some((term) => !body.includes(term))) return false;
