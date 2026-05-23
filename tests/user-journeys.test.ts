@@ -1055,6 +1055,61 @@ test("search user path supports quoted phrase OR alternatives", () => {
   assert.match(results[0].snippet, /retrieval quality/i);
 });
 
+test("search user path supports parenthesized quoted OR groups", () => {
+  const parsed = parseSearchQuery('("agent memory" OR "retrieval quality") launch');
+
+  assert.equal(parsed.cleanQuery, "agent memory retrieval quality launch");
+  assert.deepEqual(parsed.phrases, []);
+  assert.deepEqual(parsed.orPhrases, ["agent memory", "retrieval quality"]);
+  assert.deepEqual(parsed.requiredTerms, [
+    "agent",
+    "memory",
+    "retrieval",
+    "quality",
+    "launch",
+  ]);
+  assert.deepEqual(
+    candidateSearchTerms('("agent memory" OR "retrieval quality") launch', "exact"),
+    ["agent memory", "retrieval quality"],
+  );
+
+  const results = rankSearchDocuments({
+    query: '("agent memory" OR "retrieval quality") launch',
+    mode: "exact",
+    documents: [
+      {
+        id: "agent-launch",
+        type: "feed",
+        title: "Launch note",
+        body: "The launch article explains agent memory for long-running work.",
+      },
+      {
+        id: "retrieval-launch",
+        type: "feed",
+        title: "Launch note",
+        body: "The launch article explains retrieval quality for search systems.",
+      },
+      {
+        id: "no-launch",
+        type: "feed",
+        title: "Old note",
+        body: "The article explains agent memory but does not mention the required topic.",
+      },
+      {
+        id: "split-launch",
+        type: "feed",
+        title: "Launch note",
+        body: "The launch article says memory and retrieval but neither requested phrase.",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), [
+    "agent-launch",
+    "retrieval-launch",
+  ]);
+});
+
 test("search user path supports AROUND proximity operator in exact mode", () => {
   const parsed = parseSearchQuery("agent AROUND(2) memory");
 

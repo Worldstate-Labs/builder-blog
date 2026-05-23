@@ -53,6 +53,7 @@ const advancedSearchExamples = [
   'agent -"memory leak"',
   "agent OR embedding",
   '"agent memory" OR "retrieval quality"',
+  '("agent memory" OR "retrieval quality") launch',
   "agent AROUND(3) memory",
   "agent memory site:example.com",
   "agent memory site:example.com/articles",

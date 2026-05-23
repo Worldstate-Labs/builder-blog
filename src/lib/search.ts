@@ -35,6 +35,7 @@ export type ParsedSearchQuery = {
   requiredOperatorTerms: string[];
   excludedTerms: string[];
   orPhrases: string[];
+  orContextTerms: string[];
   orTerms: string[];
   proximityPairs: SearchProximityPair[];
   bodyTerms: string[];
@@ -132,6 +133,7 @@ export function normalizeSearchTime(value: string | null | undefined): SearchTim
 export function parseSearchQuery(query: string): ParsedSearchQuery {
   const rawQuery = query.trim();
   const orPhrases = collectOrPhrases(rawQuery);
+  const orContextTerms = collectParenthesizedOrContextTerms(rawQuery);
   const orPhraseSet = new Set(orPhrases);
   const phrases: string[] = [];
   const requiredPhrases: string[] = [];
@@ -318,7 +320,8 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
   const cleanQuery = normalizeText(
     cleanParts
       .filter((part) => part.toLowerCase() !== "or" && !parseAroundOperator(part))
-      .join(" "),
+      .join(" ")
+      .replace(/[()]/g, " "),
   );
   return {
     rawQuery,
@@ -330,6 +333,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     requiredOperatorTerms,
     excludedTerms,
     orPhrases,
+    orContextTerms,
     orTerms,
     proximityPairs,
     bodyTerms,
@@ -647,6 +651,7 @@ function hasSearchFilters(parsedQuery: ParsedSearchQuery) {
       parsedQuery.requiredOperatorTerms.length ||
       parsedQuery.excludedTerms.length ||
       parsedQuery.orPhrases.length ||
+      parsedQuery.orContextTerms.length ||
       parsedQuery.orTerms.length ||
       parsedQuery.proximityPairs.length ||
       parsedQuery.bodyTerms.length ||
@@ -704,6 +709,7 @@ function documentMatchesFilters(
   ) {
     return false;
   }
+  if (parsedQuery.orContextTerms.some((term) => !haystack.includes(term))) return false;
   if (parsedQuery.proximityPairs.some((pair) => !proximityMatches(haystack, pair))) {
     return false;
   }
@@ -842,9 +848,9 @@ function collectScopedOperatorTerms(
 function collectOrPhrases(query: string) {
   const phrases = new Set<string>();
   const patterns = [
-    /(^|\s)"([^"]+)"\s+OR\s+"([^"]+)"/gi,
-    /(^|\s)"([^"]+)"\s+OR\s+\S+/gi,
-    /(^|\s)\S+\s+OR\s+"([^"]+)"/gi,
+    /(^|[\s(])"([^"]+)"\s+OR\s+"([^"]+)"/gi,
+    /(^|[\s(])"([^"]+)"\s+OR\s+\S+/gi,
+    /(^|[\s(])\S+\s+OR\s+"([^"]+)"/gi,
   ];
 
   for (const pattern of patterns) {
@@ -857,6 +863,17 @@ function collectOrPhrases(query: string) {
   }
 
   return [...phrases];
+}
+
+function collectParenthesizedOrContextTerms(query: string) {
+  if (!/\([^)]*\bOR\b[^)]*\)/i.test(query)) return [];
+
+  return tokenize(
+    query
+      .replace(/\([^)]*\bOR\b[^)]*\)/gi, " ")
+      .replace(/"[^"]+"/g, " ")
+      .replace(/[()]/g, " "),
+  );
 }
 
 function isOperatorBoundaryToken(token: string) {
