@@ -39,6 +39,15 @@ const defaultSuggestions = [
   "podcast transcript",
 ];
 
+const advancedSearchExamples = [
+  '"agent memory"',
+  "agent memory -pricing",
+  "agent memory site:example.com",
+  "agent memory type:feed",
+  "agent memory after:2026-01-01",
+  "agent memory before:2026-12-31",
+];
+
 const resultTypeLabels: Record<SearchDocumentType, string> = {
   builder: "Builders",
   feed: "Feed",
@@ -237,6 +246,7 @@ export default async function SearchPage({
               {relatedSearches.length > 0 ? (
                 <RelatedSearches query={activeQuery} searches={relatedSearches} mode={mode} sort={sort} time={time} />
               ) : null}
+              <AdvancedSearchTips mode={mode} sort={sort} time={time} />
             </>
           ) : (
             <>
@@ -245,6 +255,7 @@ export default async function SearchPage({
                 inputs, and synced digest archive.
               </EmptyState>
               <RelatedSearches query={query} searches={defaultSuggestions} mode={mode} sort={sort} time={time} />
+              <AdvancedSearchTips mode={mode} sort={sort} time={time} />
             </>
           )}
         </section>
@@ -376,6 +387,33 @@ function RelatedSearches({
             className="search-related-link"
             href={searchHref({ query: search, type: "all", mode, sort, time })}
             key={`${query}:${search}`}
+          >
+            {search}
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AdvancedSearchTips({
+  mode,
+  sort,
+  time,
+}: {
+  mode: SearchMode;
+  sort: SearchSort;
+  time: SearchTimeRange;
+}) {
+  return (
+    <section className="search-related" aria-label="Advanced search">
+      <h2>Advanced search</h2>
+      <div className="search-related-grid">
+        {advancedSearchExamples.map((search) => (
+          <Link
+            className="search-related-link"
+            href={searchHref({ query: search, type: "all", mode, sort, time })}
+            key={search}
           >
             {search}
           </Link>
