@@ -1396,6 +1396,31 @@ a {
   text-decoration: underline;
 }
 
+.search-result-refinements {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+}
+
+.search-result-refinement {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted-strong);
+  display: inline-flex;
+  font-size: 0.76rem;
+  font-weight: 750;
+  min-height: 1.9rem;
+  padding: 0.32rem 0.62rem;
+}
+
+.search-result-refinement:hover {
+  border-color: color-mix(in oklch, var(--accent) 28%, var(--line));
+  color: var(--accent);
+}
+
 .search-empty {
   border: 1px dashed var(--line);
   border-radius: 8px;

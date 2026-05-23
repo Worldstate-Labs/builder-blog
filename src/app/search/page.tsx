@@ -14,12 +14,14 @@ import {
   parseSearchQuery,
   relatedSearchSuggestions,
   searchHighlightTerms,
+  searchSiteFromUrl,
   shouldUseCorrectedSearch,
   type SearchDocumentType,
   type SearchMode,
   type SearchSort,
   type SearchTimeRange,
   type SearchResult,
+  withSiteSearchOperator,
 } from "@/lib/search";
 
 type SearchParams = Promise<{
@@ -257,7 +259,15 @@ export default async function SearchPage({
               </div>
               <div className="search-results-list">
                 {visibleResults.map((result) => (
-                  <ResultCard key={`${result.type}:${result.id}`} result={result} query={activeQuery} />
+                  <ResultCard
+                    key={`${result.type}:${result.id}`}
+                    mode={mode}
+                    query={activeQuery}
+                    result={result}
+                    sort={sort}
+                    time={time}
+                    typeFilter={typeFilter}
+                  />
                 ))}
               </div>
               {pageCount > 1 ? (
@@ -365,9 +375,24 @@ function TypeTab({
   );
 }
 
-function ResultCard({ result, query }: { result: SearchResult; query: string }) {
+function ResultCard({
+  mode,
+  query,
+  result,
+  sort,
+  time,
+  typeFilter,
+}: {
+  mode: SearchMode;
+  query: string;
+  result: SearchResult;
+  sort: SearchSort;
+  time: SearchTimeRange;
+  typeFilter: SearchTypeFilter;
+}) {
   const isExternal = result.url?.startsWith("http");
   const displayUrl = formatDisplayUrl(result.url);
+  const sourceSite = searchSiteFromUrl(result.url);
   const sourceName = result.sourceName ?? resultTypeLabels[result.type];
   const title = result.url ? (
     <a
@@ -410,6 +435,30 @@ function ResultCard({ result, query }: { result: SearchResult; query: string }) 
             Open
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
+        ) : null}
+      </div>
+      <div className="search-result-refinements" aria-label={`Refine search for ${result.title}`}>
+        {sourceSite ? (
+          <Link
+            className="search-result-refinement"
+            href={searchHref({
+              query: withSiteSearchOperator(query, sourceSite),
+              type: "all",
+              mode,
+              sort,
+              time,
+            })}
+          >
+            More from this source
+          </Link>
+        ) : null}
+        {typeFilter !== result.type ? (
+          <Link
+            className="search-result-refinement"
+            href={searchHref({ query, type: result.type, mode, sort, time })}
+          >
+            Only {resultTypeLabels[result.type]}
+          </Link>
         ) : null}
       </div>
     </article>

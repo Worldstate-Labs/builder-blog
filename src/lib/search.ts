@@ -381,6 +381,28 @@ export function searchHighlightTerms(query: string, limit = 8) {
   return [...terms].sort((a, b) => b.length - a.length).slice(0, limit);
 }
 
+export function searchSiteFromUrl(url: string | null | undefined) {
+  if (!url || url.startsWith("/")) return null;
+
+  try {
+    return normalizeSiteOperatorValue(new URL(url).hostname);
+  } catch {
+    return null;
+  }
+}
+
+export function withSiteSearchOperator(query: string, site: string) {
+  const normalizedSite = normalizeSiteOperatorValue(site);
+  if (!normalizedSite) return query.trim();
+
+  const withoutPositiveSite = query
+    .replace(/(^|\s)site:\S+/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return [withoutPositiveSite, `site:${normalizedSite}`].filter(Boolean).join(" ");
+}
+
 export function didYouMeanSearch(query: string) {
   const parsed = parseSearchQuery(query);
   if (!parsed.cleanQuery) return null;
@@ -642,7 +664,12 @@ function normalizeTypeOperatorValue(value: string): SearchDocumentType | null {
 }
 
 function normalizeSiteOperatorValue(value: string) {
-  return value.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0] || "";
+  return value
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/^www\./i, "")
+    .split("/")[0]
+    .toLowerCase() || "";
 }
 
 function collectScopedOperatorTerms(

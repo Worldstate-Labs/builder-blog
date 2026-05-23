@@ -18,8 +18,10 @@ import {
   parseSearchQuery,
   relatedSearchSuggestions,
   rankSearchDocuments,
+  searchSiteFromUrl,
   searchHighlightTerms,
   shouldUseCorrectedSearch,
+  withSiteSearchOperator,
   normalizeSearchSort,
   normalizeSearchTime,
   normalizeSearchMode,
@@ -325,6 +327,18 @@ test("search result highlighting ignores operators and excluded terms", () => {
   );
 
   assert.deepEqual(terms, ["memory", "launch", "agent"]);
+});
+
+test("search result refinement builds source-limited queries", () => {
+  assert.equal(
+    searchSiteFromUrl("https://www.example.com/articles/agent-memory?ref=builder"),
+    "example.com",
+  );
+  assert.equal(searchSiteFromUrl("/history#digest_1"), null);
+  assert.equal(
+    withSiteSearchOperator("agent memory site:old.example.com -site:spam.example.com", "example.com"),
+    "agent memory -site:spam.example.com site:example.com",
+  );
 });
 
 test("search user path parses filetype as a google-style type operator", () => {
