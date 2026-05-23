@@ -26,6 +26,7 @@ export type ParsedSearchQuery = {
   requiredTerms: string[];
   excludedTerms: string[];
   titleTerms: string[];
+  urlTerms: string[];
   site: string | null;
   type: SearchDocumentType | null;
   after: Date | null;
@@ -116,6 +117,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
   });
   const excludedTerms: string[] = [];
   const titleTerms: string[] = [];
+  const urlTerms: string[] = [];
   let site: string | null = null;
   let type: SearchDocumentType | null = null;
   let after: Date | null = null;
@@ -135,6 +137,14 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
       if (titleTerm) {
         titleTerms.push(titleTerm);
         cleanParts.push(titleTerm);
+      }
+      continue;
+    }
+    if (lower.startsWith("url:") || lower.startsWith("inurl:")) {
+      const urlTerm = normalizeText(lower.startsWith("url:") ? token.slice(4) : token.slice(6));
+      if (urlTerm) {
+        urlTerms.push(urlTerm);
+        cleanParts.push(urlTerm);
       }
       continue;
     }
@@ -166,6 +176,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     requiredTerms: tokenize(cleanQuery),
     excludedTerms,
     titleTerms,
+    urlTerms,
     site,
     type,
     after,
@@ -354,6 +365,7 @@ function documentMatchesFilters(
   if (parsedQuery.type && document.type !== parsedQuery.type) return false;
   if (parsedQuery.site && !urlHostMatches(document.url, parsedQuery.site)) return false;
   if (parsedQuery.titleTerms.some((term) => !title.includes(term))) return false;
+  if (parsedQuery.urlTerms.some((term) => !url.includes(term))) return false;
   if (parsedQuery.phrases.some((phrase) => !haystack.includes(phrase))) return false;
   if (parsedQuery.excludedTerms.some((term) => haystack.includes(term))) return false;
 

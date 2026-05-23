@@ -45,6 +45,7 @@ const advancedSearchExamples = [
   "agent memory -pricing",
   "agent memory site:example.com",
   "agent memory intitle:launch",
+  "agent memory inurl:release",
   "agent memory type:feed",
   "agent memory after:2026-01-01",
   "agent memory before:2026-12-31",
@@ -653,6 +654,20 @@ function buildActiveSearchFilters({
       }),
       label: "Title",
       value: parsed.titleTerms.join(", "),
+    });
+  }
+  if (parsed.urlTerms.length > 0) {
+    filters.push({
+      clearLabel: "Remove URL search terms",
+      href: searchHref({
+        query: stripQueryOperators(query, ["url", "inurl"]),
+        type: typeFilter,
+        mode,
+        sort,
+        time,
+      }),
+      label: "URL",
+      value: parsed.urlTerms.join(", "),
     });
   }
   if (parsed.after) {

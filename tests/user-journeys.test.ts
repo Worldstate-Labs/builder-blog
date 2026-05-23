@@ -270,12 +270,13 @@ test("search user path offers related search rewrites from semantic terms", () =
 });
 
 test("search user path parses google-style operators", () => {
-  const parsed = parseSearchQuery('"agent memory" site:example.com intitle:launch type:feed -pricing after:2026-01-01 before:2026-02-01');
+  const parsed = parseSearchQuery('"agent memory" site:example.com intitle:launch inurl:release type:feed -pricing after:2026-01-01 before:2026-02-01');
 
-  assert.equal(parsed.cleanQuery, "agent memory launch");
+  assert.equal(parsed.cleanQuery, "agent memory launch release");
   assert.deepEqual(parsed.phrases, ["agent memory"]);
   assert.deepEqual(parsed.excludedTerms, ["pricing"]);
   assert.deepEqual(parsed.titleTerms, ["launch"]);
+  assert.deepEqual(parsed.urlTerms, ["release"]);
   assert.equal(parsed.site, "example.com");
   assert.equal(parsed.type, "feed");
   assert.equal(parsed.after?.toISOString().slice(0, 10), "2026-01-01");
@@ -349,6 +350,31 @@ test("search user path filters by title operator", () => {
   });
 
   assert.deepEqual(results.map((result) => result.id), ["title-match"]);
+});
+
+test("search user path filters by URL operator", () => {
+  const results = rankSearchDocuments({
+    query: "agent memory inurl:release",
+    mode: "hybrid",
+    documents: [
+      {
+        id: "url-match",
+        type: "feed",
+        title: "Agent memory launch",
+        body: "A short writeup.",
+        url: "https://example.com/releases/agent-memory",
+      },
+      {
+        id: "body-only",
+        type: "feed",
+        title: "Agent memory notes",
+        body: "Release details in the body should not satisfy inurl.",
+        url: "https://example.com/notes/agent-memory",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["url-match"]);
 });
 
 test("search user path suggests simple spelling corrections and normalizes tools", () => {
