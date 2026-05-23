@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ExternalLink, Eye, Loader2, RefreshCcw } from "lucide-react";
+import { BookOpen, ExternalLink, Loader2, RefreshCcw } from "lucide-react";
 import { SourceBadge } from "@/components/SourceBadge";
 
 export type RecommendationFeedEntry = {
@@ -203,15 +204,13 @@ function RecommendationCard({
           <ExternalLink className="h-4 w-4" />
           Open
         </a>
-        <button
+        <Link
           className="button-light button-compact gap-2"
-          disabled={isRead}
-          onClick={() => void markRead(entry.item.id)}
-          type="button"
+          href={`/recommendations/items/${entry.item.id}`}
         >
-          <Eye className="h-4 w-4" />
-          {isRead ? "Read" : "Mark read"}
-        </button>
+          <BookOpen className="h-4 w-4" />
+          {isRead ? "Read again" : "Read"}
+        </Link>
       </div>
     </article>
   );

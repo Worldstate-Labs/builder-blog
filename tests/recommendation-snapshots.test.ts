@@ -10,12 +10,19 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   const schema = source("prisma/schema.prisma");
   const apiRoute = source("src/app/api/recommendations/route.ts");
   const feed = source("src/components/RecommendationFeed.tsx");
+  const detailPage = source("src/app/recommendations/items/[feedItemId]/page.tsx");
 
   assert.match(schema, /model RecommendationSnapshot/);
   assert.match(schema, /model RecommendationSnapshotItem/);
   assert.match(apiRoute, /readAt: read\.readAt\.toISOString\(\)/);
   assert.match(feed, /initialSnapshots/);
   assert.match(feed, /data-read/);
+  assert.match(feed, /recommendations\/items/);
+  assert.match(feed, /"Read"/);
+  assert.doesNotMatch(feed, /Mark read/);
+  assert.match(detailPage, /Back to feed/);
+  assert.match(detailPage, /feedRead\.upsert/);
+  assert.match(detailPage, /item\.body/);
   assert.doesNotMatch(feed, /filter\(\(entry\) => entry\.item\.id !== feedItemId\)/);
 });
 
