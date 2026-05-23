@@ -6,6 +6,12 @@ import { AppShell } from "@/components/AppShell";
 import { isAdminEmail } from "@/lib/admin";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  builderKindLabel,
+  builderSourceLabel,
+  feedItemKindLabel,
+  SOURCE_DEFINITIONS,
+} from "@/lib/source-registry";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -79,7 +85,7 @@ export default async function AdminPage() {
               {Object.values(BuilderKind).map((kind) => (
                 <MetricRow
                   key={kind}
-                  label={kindLabel(kind)}
+                  label={builderKindLabel(kind)}
                   value={builderKindCounts.find((item) => item.kind === kind)?._count._all ?? 0}
                 />
               ))}
@@ -91,7 +97,7 @@ export default async function AdminPage() {
               {Object.values(FeedItemKind).map((kind) => (
                 <MetricRow
                   key={kind}
-                  label={feedKindLabel(kind)}
+                  label={feedItemKindLabel(kind)}
                   value={feedKindCounts.find((item) => item.kind === kind)?._count._all ?? 0}
                 />
               ))}
@@ -102,13 +108,22 @@ export default async function AdminPage() {
         <section className="mt-10">
           <div className="admin-panel mb-5">
             <h2 className="font-serif text-3xl">Add central builder</h2>
-            <form action={addCentralBuilderAction} className="mt-5 grid gap-3 md:grid-cols-[1fr_12rem_1fr_1fr_auto]">
+            <form action={addCentralBuilderAction} className="mt-5 grid gap-3 md:grid-cols-[1fr_12rem_12rem_1fr_1fr_auto]">
               <input className="input" name="name" placeholder="Name" required />
               <select className="input" name="kind" defaultValue={BuilderKind.X}>
-                <option value={BuilderKind.X}>X / Twitter</option>
-                <option value={BuilderKind.BLOG}>Blog index</option>
-                <option value={BuilderKind.PODCAST}>Podcast RSS</option>
-                <option value={BuilderKind.WEBSITE}>Website</option>
+                {Object.values(BuilderKind).map((kind) => (
+                  <option key={kind} value={kind}>
+                    {builderKindLabel(kind)}
+                  </option>
+                ))}
+              </select>
+              <select className="input" name="sourceType" defaultValue="auto">
+                <option value="auto">Auto source</option>
+                {SOURCE_DEFINITIONS.map((source) => (
+                  <option key={source.id} value={source.id}>
+                    {source.label}
+                  </option>
+                ))}
               </select>
               <input className="input" name="handle" placeholder="X handle" />
               <input className="input" name="sourceUrl" placeholder="URL or RSS" />
@@ -135,7 +150,7 @@ export default async function AdminPage() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-serif text-2xl">{builder.name}</h3>
-                      <span className="kind-pill">{kindLabel(builder.kind)}</span>
+                      <span className="kind-pill">{builderSourceLabel(builder)}</span>
                     </div>
                     <p className="mt-2 truncate text-sm text-[var(--muted)]">
                       {builder.handle ? `@${builder.handle}` : builder.sourceUrl}
@@ -204,7 +219,7 @@ export default async function AdminPage() {
                       <summary className="item-summary">
                         <span className="min-w-0">
                           <span className="item-kicker">
-                            <span>{feedKindLabel(item.kind)}</span>
+                            <span>{feedItemKindLabel(item.kind)}</span>
                             <span>{timeFormatter.format(item.createdAt)}</span>
                             <span>{item.builder?.name ?? item.sourceName ?? "Unknown source"}</span>
                           </span>
@@ -287,12 +302,4 @@ function groupItemsByCreatedDay<T extends { createdAt: Date }>(items: T[]) {
 
 function firstLine(body: string) {
   return body.split(/\r?\n/).find(Boolean)?.slice(0, 120) ?? "Untitled item";
-}
-
-function kindLabel(kind: BuilderKind) {
-  return kind.toLowerCase().replace("_", " ");
-}
-
-function feedKindLabel(kind: FeedItemKind) {
-  return kind.toLowerCase().replaceAll("_", " ");
 }

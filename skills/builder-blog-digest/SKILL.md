@@ -69,6 +69,7 @@ Payload shape:
   "builders": [
     {
       "kind": "X",
+      "sourceType": "x",
       "name": "Example Builder",
       "handle": "example",
       "sourceUrl": "https://x.com/example",
@@ -86,6 +87,10 @@ Payload shape:
   ]
 }
 ```
+
+`sourceType` is optional. Use it when the storage kind is generic but the
+actual source is more specific, for example `pdf`, `youtube`, or
+`custom_media`. If omitted, the web app infers the source from `kind` and URL.
 
 ### Generate Digest
 

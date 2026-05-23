@@ -15,6 +15,16 @@ import {
   rankSearchDocuments,
   normalizeSearchMode,
 } from "../src/lib/search";
+import {
+  builderSourceLabel,
+  builderKindForSourceType,
+  centralCrawlerBuilderKinds,
+  feedItemKindLabel,
+  personalCrawlerSourceForBuilder,
+  sourceDefinitionForType,
+  sourceDefinitionForBuilder,
+  sourceTypeIdForBuilder,
+} from "../src/lib/source-registry";
 import { hashToken, newAgentToken, newDeviceCode } from "../src/lib/tokens";
 
 test("terminal login user path uses short device codes and opaque bearer tokens", () => {
@@ -75,6 +85,7 @@ test("skill sync user path accepts personal YouTube builders with synced feed it
     builders: [
       {
         kind: "PODCAST",
+        sourceType: "YOUTUBE",
         name: "OpenAI YouTube",
         sourceUrl: "https://www.youtube.com/@OpenAI",
         crawlUrl: "https://www.youtube.com/@OpenAI",
@@ -98,6 +109,7 @@ test("skill sync user path accepts personal YouTube builders with synced feed it
   if (!parsed.success) return;
   assert.equal(parsed.data.force, true);
   assert.equal(parsed.data.builders[0].kind, BuilderKind.PODCAST);
+  assert.equal(parsed.data.builders[0].sourceType, "YOUTUBE");
   assert.equal(parsed.data.builders[0].subscribe, true);
   assert.equal(parsed.data.builders[0].items[0].kind, FeedItemKind.PODCAST_EPISODE);
 });
@@ -222,4 +234,87 @@ test("web display boundaries keep raw crawled content in the builders tab", () =
   assert.equal(dashboardPage.includes("Latest digest inputs"), false);
   assert.equal(buildersPage.includes("prisma.feedItem.findMany"), true);
   assert.equal(buildersPage.includes("Recent crawled content"), true);
+});
+
+test("source registry centralizes current source categories and crawl eligibility", () => {
+  assert.deepEqual(
+    centralCrawlerBuilderKinds().sort(),
+    [BuilderKind.BLOG, BuilderKind.PODCAST, BuilderKind.X].sort(),
+  );
+  assert.equal(feedItemKindLabel(FeedItemKind.PODCAST_EPISODE), "Podcast episode");
+  assert.equal(
+    sourceDefinitionForBuilder({
+      kind: BuilderKind.PODCAST,
+      sourceType: "youtube",
+      sourceUrl: "https://www.youtube.com/@OpenAI",
+      crawlUrl: null,
+    })?.centralCrawler,
+    false,
+  );
+  assert.equal(
+    sourceDefinitionForBuilder({
+      kind: BuilderKind.PODCAST,
+      sourceUrl: "https://www.youtube.com/@OpenAI",
+      crawlUrl: null,
+    })?.id,
+    "youtube",
+  );
+  assert.equal(
+    personalCrawlerSourceForBuilder({
+      kind: BuilderKind.PODCAST,
+      sourceUrl: "https://www.youtube.com/@OpenAI",
+      crawlUrl: null,
+    })?.id,
+    "youtube",
+  );
+  assert.equal(
+    personalCrawlerSourceForBuilder({
+      kind: BuilderKind.PODCAST,
+      sourceType: "youtube",
+      sourceUrl: "https://video.example.com/openai",
+      crawlUrl: null,
+    })?.id,
+    "youtube",
+  );
+  assert.equal(
+    personalCrawlerSourceForBuilder({
+      kind: BuilderKind.PODCAST,
+      sourceUrl: "https://feeds.example.com/show.xml",
+      crawlUrl: null,
+    }),
+    null,
+  );
+  assert.equal(
+    builderSourceLabel({
+      kind: BuilderKind.BLOG,
+      sourceUrl: "https://example.com/blog",
+      crawlUrl: null,
+    }),
+    "Blog",
+  );
+});
+
+test("source registry supports future source types without new BuilderKind enum values", () => {
+  assert.equal(
+    sourceTypeIdForBuilder({
+      kind: BuilderKind.WEBSITE,
+      sourceType: null,
+      sourceUrl: "https://example.com/research.pdf",
+      crawlUrl: null,
+    }),
+    "pdf",
+  );
+  assert.equal(sourceDefinitionForType("pdf")?.label, "PDF");
+  assert.equal(builderKindForSourceType("pdf"), BuilderKind.WEBSITE);
+  assert.equal(
+    sourceTypeIdForBuilder({
+      kind: BuilderKind.WEBSITE,
+      sourceType: "CUSTOM_MEDIA",
+      sourceUrl: "https://example.com/media",
+      crawlUrl: null,
+    }),
+    "custom_media",
+  );
+  assert.equal(sourceDefinitionForType("CUSTOM_MEDIA")?.label, "Custom media");
+  assert.equal(builderKindForSourceType("CUSTOM_MEDIA"), BuilderKind.WEBSITE);
 });

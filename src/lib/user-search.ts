@@ -54,6 +54,7 @@ export async function searchUserLibrary({
         name: true,
         handle: true,
         kind: true,
+        sourceType: true,
         scope: true,
         sourceUrl: true,
         crawlUrl: true,
@@ -90,6 +91,7 @@ export async function searchUserLibrary({
       title: builder.name,
       body: [
         builder.handle ? `@${builder.handle}` : "",
+        builder.sourceType,
         builder.kind.toLowerCase(),
         builder.scope.toLowerCase(),
         builder.bio ?? "",
@@ -138,6 +140,7 @@ function builderSearchConditions(terms: string[]): Prisma.BuilderWhereInput[] {
   return terms.flatMap((term) => [
     { name: textContains(term) },
     { handle: textContains(term) },
+    { sourceType: textContains(term) },
     { sourceUrl: textContains(term) },
     { crawlUrl: textContains(term) },
     { bio: textContains(term) },

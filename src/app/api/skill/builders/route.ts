@@ -27,6 +27,7 @@ export async function POST(request: Request) {
       ownerUserId: user.id,
       addedByUserId: user.id,
       kind: input.kind,
+      sourceType: input.sourceType,
       name: input.name,
       handle: input.handle,
       sourceUrl: input.sourceUrl,

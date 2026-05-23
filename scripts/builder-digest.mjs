@@ -9,6 +9,23 @@ import { fileURLToPath } from "node:url";
 const CONFIG_DIR = join(homedir(), ".builder-blog");
 const CONFIG_PATH = join(CONFIG_DIR, "config.json");
 const DEFAULT_APP_URL = "https://builder-blog.worldstatelabs.com";
+const PERSONAL_CRAWL_SOURCES = [
+  {
+    id: "blog",
+    label: "BLOG",
+    builderKind: "BLOG",
+    syncKind: "BLOG",
+    crawl: crawlPersonalBlogBuilder,
+  },
+  {
+    id: "youtube",
+    label: "YouTube",
+    builderKind: "PODCAST",
+    syncKind: "PODCAST",
+    matches: isYouTubeSource,
+    crawl: crawlPersonalYouTubeBuilder,
+  },
+];
 
 function usage() {
   console.log(`builder-digest commands:
@@ -130,8 +147,8 @@ async function crawlPersonal(args) {
           skippedAlreadyCrawled: skippedPersonalBuilderCount(context),
           force,
           message: force
-            ? "No personal BLOG or YouTube builders in this user's library."
-            : "No uncrawled personal BLOG or YouTube builders. Use --force to crawl them again.",
+            ? `No personal ${personalCrawlerSourceLabels()} builders in this user's library.`
+            : `No uncrawled personal ${personalCrawlerSourceLabels()} builders. Use --force to crawl them again.`,
         },
         null,
         2,
@@ -146,11 +163,12 @@ async function crawlPersonal(args) {
 
   for (const builder of personalBuilders) {
     try {
-      const items = isYouTubeBuilder(builder)
-        ? await crawlPersonalYouTubeBuilder(builder, { cutoff, limit })
-        : await crawlPersonalBlogBuilder(builder, { cutoff, limit });
+      const source = personalCrawlerSourceForBuilder(builder);
+      if (!source) continue;
+      const items = await source.crawl(builder, { cutoff, limit });
       builders.push({
-        kind: isYouTubeBuilder(builder) ? "PODCAST" : "BLOG",
+        kind: source.syncKind,
+        sourceType: source.id,
         name: builder.name,
         handle: builder.handle,
         sourceUrl: builder.sourceUrl,
@@ -195,9 +213,18 @@ export function personalBuildersForCrawl(context, { force = false } = {}) {
   return (context.libraryBuilders ?? []).filter(
     (builder) =>
       builder.scope === "PERSONAL" &&
-      (builder.kind === "BLOG" || isYouTubeBuilder(builder)) &&
+      personalCrawlerSourceForBuilder(builder) &&
       (force || !crawledBuilderIds.has(builder.id)),
   );
+}
+
+export function personalCrawlerSourceForBuilder(builder) {
+  const explicitSourceType = normalizeSourceType(builder.sourceType);
+  return PERSONAL_CRAWL_SOURCES.find(
+    (source) =>
+      (explicitSourceType ? explicitSourceType === source.id : builder.kind === source.builderKind) &&
+      (source.matches ? source.matches(builder) : true),
+  ) ?? null;
 }
 
 function skippedPersonalBuilderCount(context) {
@@ -206,9 +233,18 @@ function skippedPersonalBuilderCount(context) {
   return forceEligibleBuilders.length - defaultBuilders.length;
 }
 
-function isYouTubeBuilder(builder) {
+function personalCrawlerSourceLabels() {
+  return PERSONAL_CRAWL_SOURCES.map((source) => source.label).join(" or ");
+}
+
+function isYouTubeSource(builder) {
+  if (normalizeSourceType(builder.sourceType) === "youtube") return true;
   const source = `${builder.sourceUrl || ""} ${builder.crawlUrl || ""}`;
   return builder.kind === "PODCAST" && /youtube\.com|youtu\.be/i.test(source);
+}
+
+function normalizeSourceType(sourceType) {
+  return String(sourceType || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
 }
 
 async function crawlPersonalYouTubeBuilder(builder, { cutoff, limit }) {

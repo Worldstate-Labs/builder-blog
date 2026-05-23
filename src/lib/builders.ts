@@ -62,6 +62,7 @@ export async function upsertBuilder(params: {
   scope?: BuilderScope;
   ownerUserId?: string | null;
   kind: BuilderKind;
+  sourceType?: string | null;
   name: string;
   handle?: string | null;
   sourceUrl?: string | null;
@@ -82,6 +83,7 @@ export async function upsertBuilder(params: {
     where: { libraryKey },
     update: {
       name: params.name,
+      sourceType: params.sourceType ?? undefined,
       handle,
       sourceUrl: params.sourceUrl ?? undefined,
       crawlUrl: params.crawlUrl ?? undefined,
@@ -92,6 +94,7 @@ export async function upsertBuilder(params: {
       scope,
       ownerUserId: scope === BuilderScope.PERSONAL ? params.ownerUserId : null,
       kind: params.kind,
+      sourceType: params.sourceType ?? undefined,
       name: params.name,
       handle,
       sourceUrl: params.sourceUrl,

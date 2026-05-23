@@ -16,11 +16,13 @@ import { FormSubmitButton } from "@/components/FormSubmitButton";
 import { authOptions } from "@/lib/auth";
 import { ensureDefaultBuilderPool } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
+import { builderSourceLabel } from "@/lib/source-registry";
 
 type BuilderWithCount = {
   id: string;
   scope: BuilderScope;
   kind: BuilderKind;
+  sourceType: string;
   name: string;
   handle: string | null;
   sourceUrl: string | null;
@@ -272,7 +274,7 @@ function BuilderInfo({
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="font-serif text-2xl">{builder.name}</h3>
-        <span className="kind-pill">{kindLabel(builder.kind)}</span>
+        <span className="kind-pill">{builderSourceLabel(builder)}</span>
         <span className="sub-pill">{status}</span>
       </div>
       <p className="mt-2 truncate text-sm text-[var(--muted)]">
@@ -337,10 +339,6 @@ function Stat({
       </div>
     </div>
   );
-}
-
-function kindLabel(kind: BuilderKind) {
-  return kind.toLowerCase().replace("_", " ");
 }
 
 function builderSort(a: BuilderWithCount, b: BuilderWithCount) {

@@ -10,6 +10,7 @@ import { activePoolBuilderIds, addBuilderToPool } from "@/lib/builder-pool";
 import { inferBuilderKind, normalizeHandle } from "@/lib/builder-keys";
 import { upsertBuilder } from "@/lib/builders";
 import { prisma } from "@/lib/prisma";
+import { builderKindForSourceType } from "@/lib/source-registry";
 import { createAgentToken } from "@/lib/tokens";
 
 async function requireUser() {
@@ -36,19 +37,24 @@ export async function addCentralBuilderAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const handleInput = String(formData.get("handle") ?? "").trim();
   const sourceUrl = String(formData.get("sourceUrl") ?? "").trim();
+  const sourceType = String(formData.get("sourceType") ?? "").trim();
   const kindInput = String(formData.get("kind") ?? "").trim();
+  const explicitSourceType = sourceType.toLowerCase() === "auto" ? "" : sourceType;
 
   if (!name || (!handleInput && !sourceUrl)) {
     redirect("/admin?error=missing-builder");
   }
 
   const handle = handleInput ? normalizeHandle(handleInput) : null;
-  const kind = isBuilderKind(kindInput)
-    ? kindInput
-    : inferBuilderKind(sourceUrl || null, handle);
+  const kind = explicitSourceType
+    ? builderKindForSourceType(explicitSourceType)
+    : isBuilderKind(kindInput)
+      ? kindInput
+      : inferBuilderKind(sourceUrl || null, handle);
   const builder = await upsertBuilder({
     scope: BuilderScope.CENTRAL,
     kind,
+    sourceType: explicitSourceType || null,
     name,
     handle,
     sourceUrl: sourceUrl || (handle ? `https://x.com/${handle}` : null),

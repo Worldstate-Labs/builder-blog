@@ -1,5 +1,6 @@
 import { BuilderKind, BuilderScope } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { centralCrawlerBuilderKinds, sourceDefinitionForBuilder } from "@/lib/source-registry";
 import { crawlBlogBuilders } from "./blogs";
 import { crawlPodcastBuilders } from "./podcasts";
 import type { CrawlerBuilder, CrawlOptions, CrawlSourceResult } from "./types";
@@ -47,12 +48,14 @@ export async function crawlBuilders(
 }
 
 export async function crawlBuilderPool(options: CrawlBuilderPoolOptions = {}) {
-  const builders = await prisma.builder.findMany({
-    where: {
-      scope: BuilderScope.CENTRAL,
-      kind: { in: [BuilderKind.X, BuilderKind.PODCAST, BuilderKind.BLOG] },
-    },
-  });
+  const builders = (
+    await prisma.builder.findMany({
+      where: {
+        scope: BuilderScope.CENTRAL,
+        kind: { in: centralCrawlerBuilderKinds() },
+      },
+    })
+  ).filter((builder) => sourceDefinitionForBuilder(builder)?.centralCrawler);
   const result = await crawlBuilders(builders, {
     ...options,
     xBearerToken: options.xBearerToken ?? process.env.X_BEARER_TOKEN,

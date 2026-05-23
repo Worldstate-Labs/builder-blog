@@ -73,6 +73,7 @@ model Builder {
   handle         String?
   canonicalKey   String
   libraryKey     String        @unique
+  sourceType     String        @default("auto")
   sourceUrl      String?
   crawlUrl       String?
   bio            String?
@@ -89,6 +90,7 @@ model Builder {
   @@index([ownerUserId, kind])
   @@index([kind])
   @@index([handle])
+  @@index([sourceType])
 }
 
 model BuilderPoolEntry {

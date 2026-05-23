@@ -8,6 +8,7 @@ export type Fetcher = (
 export type CrawlerBuilder = {
   id: string;
   kind: BuilderKind;
+  sourceType?: string | null;
   name: string;
   handle: string | null;
   sourceUrl: string | null;
