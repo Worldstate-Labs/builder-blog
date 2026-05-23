@@ -599,6 +599,58 @@ test("search user path supports allintitle operator", () => {
   assert.deepEqual(results.map((result) => result.id), ["title-match"]);
 });
 
+test("search user path excludes all-in scoped title text and URL operators", () => {
+  const parsed = parseSearchQuery(
+    "agent -allintitle:pricing launch -allintext:sponsored transcript -allinurl:archive agent",
+  );
+
+  assert.equal(parsed.cleanQuery, "agent");
+  assert.deepEqual(parsed.excludedTitleTerms, []);
+  assert.deepEqual(parsed.excludedBodyTerms, []);
+  assert.deepEqual(parsed.excludedUrlTerms, []);
+  assert.deepEqual(parsed.excludedAllTitleTermGroups, [["pricing", "launch"]]);
+  assert.deepEqual(parsed.excludedAllBodyTermGroups, [["sponsored", "transcript"]]);
+  assert.deepEqual(parsed.excludedAllUrlTermGroups, [["archive", "agent"]]);
+  assert.deepEqual(parsed.excludedTerms, []);
+
+  const results = rankSearchDocuments({
+    query: "agent -allintitle:pricing launch -allintext:sponsored transcript -allinurl:archive agent",
+    mode: "hybrid",
+    documents: [
+      {
+        id: "title-excluded",
+        type: "feed",
+        title: "Agent launch pricing",
+        body: "A release note.",
+        url: "https://example.com/releases/agent",
+      },
+      {
+        id: "body-excluded",
+        type: "feed",
+        title: "Agent launch",
+        body: "Sponsored transcript from the demo.",
+        url: "https://example.com/releases/agent",
+      },
+      {
+        id: "url-excluded",
+        type: "feed",
+        title: "Agent launch",
+        body: "A release note.",
+        url: "https://example.com/archive/agent",
+      },
+      {
+        id: "kept",
+        type: "feed",
+        title: "Agent launch",
+        body: "A release note.",
+        url: "https://example.com/releases/workflow",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["kept"]);
+});
+
 test("search user path filters by text operator", () => {
   const results = rankSearchDocuments({
     query: "agent memory intext:transcript",

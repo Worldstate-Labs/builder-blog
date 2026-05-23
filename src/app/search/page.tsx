@@ -52,6 +52,7 @@ const advancedSearchExamples = [
   "agent memory intitle:launch",
   "agent memory -intitle:pricing",
   "allintitle:agent memory",
+  "agent memory -allintitle:pricing launch",
   "agent memory intext:transcript",
   "allintext:agent memory",
   "agent memory inurl:release",
@@ -727,46 +728,58 @@ function buildActiveSearchFilters({
       value: parsed.urlTerms.join(", "),
     });
   }
-  if (parsed.excludedTitleTerms.length > 0) {
+  const excludedTitleValues = [
+    ...parsed.excludedTitleTerms,
+    ...parsed.excludedAllTitleTermGroups.map((terms) => terms.join(" + ")),
+  ];
+  if (excludedTitleValues.length > 0) {
     filters.push({
       clearLabel: "Remove excluded title terms",
       href: searchHref({
-        query: stripNegativeQueryOperators(query, ["title", "intitle"]),
+        query: stripNegativeQueryOperators(query, ["title", "intitle", "allintitle"]),
         type: typeFilter,
         mode,
         sort,
         time,
       }),
       label: "Excludes title",
-      value: parsed.excludedTitleTerms.join(", "),
+      value: excludedTitleValues.join(", "),
     });
   }
-  if (parsed.excludedBodyTerms.length > 0) {
+  const excludedBodyValues = [
+    ...parsed.excludedBodyTerms,
+    ...parsed.excludedAllBodyTermGroups.map((terms) => terms.join(" + ")),
+  ];
+  if (excludedBodyValues.length > 0) {
     filters.push({
       clearLabel: "Remove excluded text terms",
       href: searchHref({
-        query: stripNegativeQueryOperators(query, ["text", "intext"]),
+        query: stripNegativeQueryOperators(query, ["text", "intext", "allintext"]),
         type: typeFilter,
         mode,
         sort,
         time,
       }),
       label: "Excludes text",
-      value: parsed.excludedBodyTerms.join(", "),
+      value: excludedBodyValues.join(", "),
     });
   }
-  if (parsed.excludedUrlTerms.length > 0) {
+  const excludedUrlValues = [
+    ...parsed.excludedUrlTerms,
+    ...parsed.excludedAllUrlTermGroups.map((terms) => terms.join(" + ")),
+  ];
+  if (excludedUrlValues.length > 0) {
     filters.push({
       clearLabel: "Remove excluded URL terms",
       href: searchHref({
-        query: stripNegativeQueryOperators(query, ["url", "inurl"]),
+        query: stripNegativeQueryOperators(query, ["url", "inurl", "allinurl"]),
         type: typeFilter,
         mode,
         sort,
         time,
       }),
       label: "Excludes URL",
-      value: parsed.excludedUrlTerms.join(", "),
+      value: excludedUrlValues.join(", "),
     });
   }
   if (parsed.after) {
@@ -852,11 +865,25 @@ function stripQueryOperators(query: string, operators: string[]) {
 
 function stripNegativeQueryOperators(query: string, operators: string[]) {
   const prefixes = new Set(operators.map((operator) => `-${operator.toLowerCase()}:`));
-  return query
-    .split(/\s+/)
-    .filter((token) => !prefixes.has(token.toLowerCase().split(":")[0] + ":"))
-    .join(" ")
-    .trim();
+  const tokens = query.split(/\s+/);
+  const kept: string[] = [];
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    const prefix = token.toLowerCase().split(":")[0] + ":";
+    if (!prefixes.has(prefix)) {
+      kept.push(token);
+      continue;
+    }
+
+    if (prefix.startsWith("-allin")) {
+      while (index + 1 < tokens.length && !isQueryOperatorBoundaryToken(tokens[index + 1])) {
+        index += 1;
+      }
+    }
+  }
+
+  return kept.join(" ").trim();
 }
 
 function stripExcludedTerms(query: string) {
@@ -887,6 +914,28 @@ function stripExcludedPhrases(query: string) {
 
 function formatOperatorDate(date: Date) {
   return date.toISOString().slice(0, 10);
+}
+
+function isQueryOperatorBoundaryToken(token: string) {
+  const lower = token.toLowerCase();
+  return (
+    lower === "or" ||
+    lower.startsWith("-") ||
+    lower.startsWith("site:") ||
+    lower.startsWith("text:") ||
+    lower.startsWith("intext:") ||
+    lower.startsWith("allintext:") ||
+    lower.startsWith("title:") ||
+    lower.startsWith("intitle:") ||
+    lower.startsWith("allintitle:") ||
+    lower.startsWith("url:") ||
+    lower.startsWith("inurl:") ||
+    lower.startsWith("allinurl:") ||
+    lower.startsWith("type:") ||
+    lower.startsWith("filetype:") ||
+    lower.startsWith("after:") ||
+    lower.startsWith("before:")
+  );
 }
 
 function formatDisplayUrl(url: string | null | undefined) {

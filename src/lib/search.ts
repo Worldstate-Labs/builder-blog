@@ -40,6 +40,9 @@ export type ParsedSearchQuery = {
   excludedBodyTerms: string[];
   excludedTitleTerms: string[];
   excludedUrlTerms: string[];
+  excludedAllBodyTermGroups: string[][];
+  excludedAllTitleTermGroups: string[][];
+  excludedAllUrlTermGroups: string[][];
   site: string | null;
   excludedSites: string[];
   excludedTypes: SearchDocumentType[];
@@ -147,6 +150,9 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
   const excludedBodyTerms: string[] = [];
   const excludedTitleTerms: string[] = [];
   const excludedUrlTerms: string[] = [];
+  const excludedAllBodyTermGroups: string[][] = [];
+  const excludedAllTitleTermGroups: string[][] = [];
+  const excludedAllUrlTermGroups: string[][] = [];
   const excludedSites: string[] = [];
   const excludedTypes: SearchDocumentType[] = [];
   let site: string | null = null;
@@ -171,6 +177,27 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
       const isFiletype = lower.startsWith("-filetype:");
       const candidate = normalizeTypeOperatorValue(lower.slice(isFiletype ? 10 : 6));
       if (candidate) excludedTypes.push(candidate);
+      continue;
+    }
+    if (
+      lower.startsWith("-allintext:") ||
+      lower.startsWith("-allintitle:") ||
+      lower.startsWith("-allinurl:")
+    ) {
+      const isTitleScope = lower.startsWith("-allintitle:");
+      const isTextScope = lower.startsWith("-allintext:");
+      const scope = collectScopedOperatorTerms(
+        parts,
+        index,
+        token.slice(isTextScope ? 11 : isTitleScope ? 12 : 10),
+      );
+      const targetGroups = isTextScope
+        ? excludedAllBodyTermGroups
+        : isTitleScope
+          ? excludedAllTitleTermGroups
+          : excludedAllUrlTermGroups;
+      if (scope.terms.length > 0) targetGroups.push(scope.terms);
+      index = scope.nextIndex;
       continue;
     }
     if (lower.startsWith("-text:") || lower.startsWith("-intext:")) {
@@ -284,6 +311,9 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     excludedBodyTerms,
     excludedTitleTerms,
     excludedUrlTerms,
+    excludedAllBodyTermGroups,
+    excludedAllTitleTermGroups,
+    excludedAllUrlTermGroups,
     site,
     excludedSites,
     excludedTypes,
@@ -486,6 +516,15 @@ function documentMatchesFilters(
   if (parsedQuery.excludedBodyTerms.some((term) => body.includes(term))) return false;
   if (parsedQuery.excludedTitleTerms.some((term) => title.includes(term))) return false;
   if (parsedQuery.excludedUrlTerms.some((term) => url.includes(term))) return false;
+  if (parsedQuery.excludedAllBodyTermGroups.some((terms) => terms.every((term) => body.includes(term)))) {
+    return false;
+  }
+  if (parsedQuery.excludedAllTitleTermGroups.some((terms) => terms.every((term) => title.includes(term)))) {
+    return false;
+  }
+  if (parsedQuery.excludedAllUrlTermGroups.some((terms) => terms.every((term) => url.includes(term)))) {
+    return false;
+  }
   if (
     parsedQuery.orTerms.length > 0 &&
     parsedQuery.orTerms.every((term) => !haystack.includes(term))
