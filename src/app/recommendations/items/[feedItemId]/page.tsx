@@ -58,7 +58,7 @@ export default async function RecommendationItemPage({
     <AppShell session={session}>
       <div className="page-pad">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <Link className="button-light button-compact gap-2" href="/recommendations">
+          <Link className="button-light button-compact gap-2" href="/dashboard">
             <ArrowLeft className="h-4 w-4" />
             Back to feed
           </Link>
@@ -94,7 +94,7 @@ export default async function RecommendationItemPage({
               <ExternalLink className="h-4 w-4" />
               Open source
             </a>
-            <Link className="button-light button-compact gap-2" href="/recommendations">
+            <Link className="button-light button-compact gap-2" href="/dashboard">
               <ArrowLeft className="h-4 w-4" />
               Back to feed
             </Link>

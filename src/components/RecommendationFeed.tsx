@@ -116,7 +116,7 @@ export function RecommendationFeed({
   }, [exhausted, requestSnapshot]);
 
   return (
-    <section className="mt-10">
+    <section className="recommendation-feed mt-10">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <button
           className="button-light button-compact gap-2"

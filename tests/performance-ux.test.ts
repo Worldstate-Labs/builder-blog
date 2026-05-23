@@ -40,6 +40,32 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(globals, /\.user-menu-popover/);
 });
 
+test("desktop shell uses home rail, header search, and merged home feeds", () => {
+  const appShell = source("src/components/AppShell.tsx");
+  const appNav = source("src/components/AppNav.tsx");
+  const dashboardPage = source("src/app/dashboard/page.tsx");
+  const recommendationsPage = source("src/app/recommendations/page.tsx");
+  const globals = source("src/app/globals.css");
+
+  assert.match(appShell, /label: "Home"/);
+  assert.doesNotMatch(appShell, /label: "Digest"/);
+  assert.doesNotMatch(appShell, /label: "For You"/);
+  assert.doesNotMatch(appShell, /label: "Search"/);
+  assert.doesNotMatch(appNav, /recommendations/);
+  assert.doesNotMatch(appNav, /"search"/);
+  assert.match(appShell, /className="app-topbar"/);
+  assert.match(appShell, /className="header-search"/);
+  assert.match(appShell, /name="q"/);
+  assert.match(dashboardPage, /HomeTabLink/);
+  assert.match(dashboardPage, /For You/);
+  assert.match(dashboardPage, /Subscription/);
+  assert.match(dashboardPage, /RecommendationFeed/);
+  assert.match(dashboardPage, /getRecommendationTimeline/);
+  assert.match(recommendationsPage, /redirect\("\/dashboard"\)/);
+  assert.match(globals, /\.home-layout/);
+  assert.match(globals, /\.home-rail/);
+});
+
 test("skill context caps personal seen items to keep payloads bounded", () => {
   const contextRoute = source("src/app/api/skill/context/route.ts");
 

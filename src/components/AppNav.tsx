@@ -3,21 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType, CSSProperties } from "react";
-import { Archive, Home, LibraryBig, Search, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
+import { Archive, Home, LibraryBig, ShieldCheck, UsersRound } from "lucide-react";
 
 export type AppNavItem = {
   href: string;
   label: string;
-  icon: "home" | "archive" | "recommendations" | "builders" | "hub" | "search" | "admin";
+  icon: "home" | "archive" | "builders" | "hub" | "admin";
 };
 
 const icons: Record<AppNavItem["icon"], ComponentType<{ className?: string }>> = {
   home: Home,
   archive: Archive,
-  recommendations: Sparkles,
   builders: UsersRound,
   hub: LibraryBig,
-  search: Search,
   admin: ShieldCheck,
 };
 
@@ -33,7 +31,7 @@ export function AppNav({
   return (
     <>
       {mode !== "mobile" ? (
-        <nav className="mt-10 hidden gap-1 lg:grid" aria-label="Primary">
+        <nav className="hidden gap-1 lg:grid" aria-label="Primary">
           {items.map((item) => {
             const Icon = icons[item.icon];
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);

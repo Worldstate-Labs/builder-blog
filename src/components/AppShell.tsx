@@ -1,16 +1,14 @@
 import Link from "next/link";
 import type { Session } from "next-auth";
-import { LogOut, Settings } from "lucide-react";
+import { LogOut, Search, Settings } from "lucide-react";
 import { AppNav, type AppNavItem } from "@/components/AppNav";
 import { isAdminEmail } from "@/lib/admin";
 
 const nav: AppNavItem[] = [
-  { href: "/dashboard", label: "Digest", icon: "home" },
+  { href: "/dashboard", label: "Home", icon: "home" },
   { href: "/history", label: "History", icon: "archive" },
-  { href: "/recommendations", label: "For You", icon: "recommendations" },
   { href: "/builders", label: "Builders", icon: "builders" },
   { href: "/library-hub", label: "Hub", icon: "hub" },
-  { href: "/search", label: "Search", icon: "search" },
 ];
 
 export function AppShell({
@@ -25,20 +23,34 @@ export function AppShell({
     : nav;
 
   return (
-    <div className="min-h-screen bg-[var(--paper)] text-[var(--ink)]">
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl">
-        <aside className="shell-sidebar hidden w-[17rem] shrink-0 border-r border-[var(--line)] px-5 py-6 lg:flex lg:flex-col">
-          <Link href="/dashboard" className="group flex items-center gap-3">
+    <div className="app-frame min-h-screen bg-[var(--paper)] text-[var(--ink)]">
+      <header className="app-topbar">
+        <div className="app-topbar-left">
+          <Link href="/dashboard" className="app-brand group">
             <span className="brand-mark">BB</span>
             <div className="min-w-0">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
                 Builder Blog
               </div>
-              <div className="mt-1 text-xl font-semibold leading-tight">
+              <div className="text-base font-semibold leading-tight">
                 Signal desk
               </div>
             </div>
           </Link>
+          <form action="/search" className="header-search" role="search">
+            <Search className="h-4 w-4" />
+            <input
+              aria-label="Search Builder Blog"
+              name="q"
+              placeholder="Search"
+              type="search"
+            />
+          </form>
+        </div>
+        <UserMenu session={session} compact />
+      </header>
+      <div className="app-body">
+        <aside className="shell-sidebar hidden w-[12rem] shrink-0 border-r border-[var(--line)] px-4 py-6 lg:flex lg:flex-col">
           <AppNav items={items} mode="desktop" />
           <div className="sidebar-note mt-auto">
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--accent)]">
@@ -48,20 +60,8 @@ export function AppShell({
               Keep the pool current, subscribe the useful builders, then sync the digest back here.
             </p>
           </div>
-          <UserMenu session={session} />
         </aside>
         <main className="flex min-w-0 flex-1 flex-col">
-          <header className="mobile-header lg:hidden">
-            <div className="flex items-center justify-between gap-4">
-              <Link
-                className="text-base font-semibold"
-                href="/dashboard"
-              >
-                Builder Blog
-              </Link>
-              <UserMenu session={session} compact />
-            </div>
-          </header>
           {children}
           <AppNav items={items} mode="mobile" />
         </main>
