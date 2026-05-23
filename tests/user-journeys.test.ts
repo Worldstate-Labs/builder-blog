@@ -1,11 +1,22 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { BuilderKind, BuilderScope, FeedItemKind } from "@prisma/client";
+import { BuilderKind, BuilderScope, DigestFrequency, FeedItemKind } from "@prisma/client";
 import { isAdminEmail } from "../src/lib/admin";
 import { builderLibraryKey, canonicalBuilderKey, normalizeHandle } from "../src/lib/builder-keys";
 import { subscriptionBuilderIdsInPool } from "../src/lib/digest-library";
 import { DIGEST_PROMPTS } from "../src/lib/digest-prompts";
+import {
+  digestFallbackSince,
+  digestFrequencyDays,
+  digestMaxAgeCutoff,
+  digestMaxPostAgeDays,
+} from "../src/lib/feed-preferences";
+import {
+  buildRecommendationSignals,
+  scoreRecommendation,
+  type RecommendationCandidate,
+} from "../src/lib/recommendations";
 import {
   parseSkillBuilderSyncPayload,
   parseSkillDigestPayload,
@@ -139,6 +150,72 @@ test("digest sync user path defaults optional fields and rejects empty content",
 
   const empty = parseSkillDigestPayload({ title: "Bad", content: "" });
   assert.equal(empty.success, false);
+});
+
+test("digest feed user path derives context window from user frequency and max post age", () => {
+  const now = new Date("2026-05-23T12:00:00.000Z");
+  const preference = {
+    digestFrequency: DigestFrequency.CUSTOM,
+    digestCustomFrequencyDays: 3,
+    digestMaxPostAgeDays: 45,
+  };
+
+  assert.equal(digestFrequencyDays(preference), 3);
+  assert.equal(digestMaxPostAgeDays(preference), 45);
+  assert.equal(digestFallbackSince(now, preference).toISOString(), "2026-05-20T12:00:00.000Z");
+  assert.equal(digestMaxAgeCutoff(now, preference).toISOString(), "2026-04-08T12:00:00.000Z");
+});
+
+test("recommendation feed user path scores unread crawled posts from profile, subscriptions, and read log", () => {
+  const now = new Date("2026-05-23T12:00:00.000Z");
+  const subscribedBuilder = {
+    id: "builder_memory",
+    name: "Memory Labs",
+    handle: null,
+    kind: BuilderKind.BLOG,
+    sourceType: "blog",
+    sourceUrl: "https://example.com",
+    crawlUrl: "https://example.com/blog",
+    bio: "Agent memory and retrieval systems.",
+  };
+  const signals = buildRecommendationSignals({
+    profileText: "I care about agent memory, retrieval, and product launches.",
+    subscriptions: [subscribedBuilder],
+    reads: [
+      recommendationCandidate({
+        id: "read_1",
+        builder: subscribedBuilder,
+        body: "Vector retrieval for durable agent memory.",
+        publishedAt: "2026-05-21T12:00:00.000Z",
+      }),
+    ],
+  });
+  const relevant = scoreRecommendation({
+    item: recommendationCandidate({
+      id: "candidate_1",
+      builder: subscribedBuilder,
+      title: "Agent memory launch notes",
+      body: "A retrieval architecture for long-running agents.",
+      publishedAt: "2026-05-22T12:00:00.000Z",
+    }),
+    signals,
+    now,
+  });
+  const unrelated = scoreRecommendation({
+    item: recommendationCandidate({
+      id: "candidate_2",
+      builder: null,
+      title: "Pricing update",
+      body: "A billing change for a design tool.",
+      publishedAt: "2026-04-01T12:00:00.000Z",
+    }),
+    signals,
+    now,
+  });
+
+  assert.ok(relevant.score > unrelated.score);
+  assert.ok(relevant.reasons.includes("from a subscribed builder"));
+  assert.ok(relevant.reasons.includes("matches your profile and reading topics"));
 });
 
 test("digest generation user path exposes source-specific prompt instructions", () => {
@@ -1014,3 +1091,30 @@ test("source registry supports future source types without new BuilderKind enum 
   assert.equal(sourceDefinitionForType("CUSTOM_MEDIA")?.label, "Custom media");
   assert.equal(builderKindForSourceType("CUSTOM_MEDIA"), BuilderKind.WEBSITE);
 });
+
+function recommendationCandidate({
+  id,
+  title = "Post",
+  body,
+  builder,
+  publishedAt,
+}: {
+  id: string;
+  title?: string;
+  body: string;
+  builder: RecommendationCandidate["builder"];
+  publishedAt: string;
+}): RecommendationCandidate {
+  return {
+    id,
+    kind: FeedItemKind.BLOG_POST,
+    title,
+    body,
+    url: `https://example.com/${id}`,
+    publishedAt: new Date(publishedAt),
+    createdAt: new Date("2026-05-23T10:00:00.000Z"),
+    sourceName: builder?.name ?? "External",
+    crawlingTool: "test",
+    builder,
+  };
+}

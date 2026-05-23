@@ -12,24 +12,26 @@ datasource db {
 }
 
 model User {
-  id             String          @id @default(cuid())
-  name           String?
-  email          String?         @unique
-  emailVerified  DateTime?
-  image          String?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  accounts       Account[]
-  sessions       Session[]
-  subscriptions  Subscription[]
-  digests        Digest[]
-  agentTokens    AgentToken[]
-  deviceLogins   DeviceLogin[]
-  personalBuilders Builder[] @relation("PersonalBuilders")
+  id                 String              @id @default(cuid())
+  name               String?
+  email              String?             @unique
+  emailVerified      DateTime?
+  image              String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  accounts           Account[]
+  sessions           Session[]
+  subscriptions      Subscription[]
+  digests            Digest[]
+  agentTokens        AgentToken[]
+  deviceLogins       DeviceLogin[]
+  personalBuilders   Builder[]           @relation("PersonalBuilders")
   builderPoolEntries BuilderPoolEntry[]
-  builderCrawls UserBuilderCrawl[]
-  libraryHubEntries LibraryHubEntry[]
-  libraryImports LibraryImport[]
+  builderCrawls      UserBuilderCrawl[]
+  libraryHubEntries  LibraryHubEntry[]
+  libraryImports     LibraryImport[]
+  feedPreference     UserFeedPreference?
+  feedReads          FeedRead[]
 }
 
 model Account {
@@ -67,27 +69,27 @@ model VerificationToken {
 }
 
 model Builder {
-  id             String         @id @default(cuid())
-  scope          BuilderScope   @default(CENTRAL)
-  ownerUserId    String?
-  kind           BuilderKind    @default(X)
-  name           String
-  handle         String?
-  canonicalKey   String
-  libraryKey     String        @unique
-  sourceType     String        @default("auto")
-  sourceUrl      String?
-  crawlUrl       String?
-  bio            String?
-  addedByUserId  String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  owner          User?         @relation("PersonalBuilders", fields: [ownerUserId], references: [id], onDelete: Cascade)
-  poolEntries    BuilderPoolEntry[]
-  subscriptions  Subscription[]
-  feedItems      FeedItem[]
-  userCrawls     UserBuilderCrawl[]
-  hubItems        LibraryHubItem[]
+  id            String             @id @default(cuid())
+  scope         BuilderScope       @default(CENTRAL)
+  ownerUserId   String?
+  kind          BuilderKind        @default(X)
+  name          String
+  handle        String?
+  canonicalKey  String
+  libraryKey    String             @unique
+  sourceType    String             @default("auto")
+  sourceUrl     String?
+  crawlUrl      String?
+  bio           String?
+  addedByUserId String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  owner         User?              @relation("PersonalBuilders", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  poolEntries   BuilderPoolEntry[]
+  subscriptions Subscription[]
+  feedItems     FeedItem[]
+  userCrawls    UserBuilderCrawl[]
+  hubItems      LibraryHubItem[]
 
   @@index([scope, kind])
   @@index([ownerUserId, kind])
@@ -97,15 +99,15 @@ model Builder {
 }
 
 model BuilderPoolEntry {
-  id         String            @id @default(cuid())
-  userId     String
-  builderId  String
-  origin     BuilderPoolOrigin
-  removedAt  DateTime?
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
-  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  builder    Builder           @relation(fields: [builderId], references: [id], onDelete: Cascade)
+  id        String            @id @default(cuid())
+  userId    String
+  builderId String
+  origin    BuilderPoolOrigin
+  removedAt DateTime?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  builder   Builder           @relation(fields: [builderId], references: [id], onDelete: Cascade)
 
   @@unique([userId, builderId])
   @@index([userId, removedAt])
@@ -113,17 +115,17 @@ model BuilderPoolEntry {
 }
 
 model LibraryHubEntry {
-  id          String          @id @default(cuid())
+  id          String           @id @default(cuid())
   kind        LibraryHubKind
-  slug        String          @unique
+  slug        String           @unique
   name        String
   description String?
   ownerUserId String?
-  importCount Int             @default(0)
-  viewCount   Int             @default(0)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  owner       User?           @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  importCount Int              @default(0)
+  viewCount   Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  owner       User?            @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
   items       LibraryHubItem[]
   imports     LibraryImport[]
 
@@ -135,8 +137,8 @@ model LibraryHubItem {
   hubEntryId String
   builderId  String
   createdAt  DateTime        @default(now())
-  hubEntry    LibraryHubEntry @relation(fields: [hubEntryId], references: [id], onDelete: Cascade)
-  builder     Builder         @relation(fields: [builderId], references: [id], onDelete: Cascade)
+  hubEntry   LibraryHubEntry @relation(fields: [hubEntryId], references: [id], onDelete: Cascade)
+  builder    Builder         @relation(fields: [builderId], references: [id], onDelete: Cascade)
 
   @@id([hubEntryId, builderId])
   @@index([builderId])
@@ -146,24 +148,24 @@ model LibraryImport {
   userId     String
   hubEntryId String
   createdAt  DateTime        @default(now())
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  hubEntry    LibraryHubEntry @relation(fields: [hubEntryId], references: [id], onDelete: Cascade)
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hubEntry   LibraryHubEntry @relation(fields: [hubEntryId], references: [id], onDelete: Cascade)
 
   @@id([userId, hubEntryId])
   @@index([hubEntryId])
 }
 
 model UserBuilderCrawl {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   userId        String
   builderId     String
-  lastCrawledAt DateTime @default(now())
+  lastCrawledAt DateTime  @default(now())
   lastForcedAt  DateTime?
-  itemCount     Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  builder       Builder  @relation(fields: [builderId], references: [id], onDelete: Cascade)
+  itemCount     Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  builder       Builder   @relation(fields: [builderId], references: [id], onDelete: Cascade)
 
   @@unique([userId, builderId])
   @@index([userId, lastCrawledAt])
@@ -171,34 +173,60 @@ model UserBuilderCrawl {
 }
 
 model Subscription {
-  id         String   @id @default(cuid())
-  userId     String
-  builderId  String
-  createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  builder    Builder  @relation(fields: [builderId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  userId    String
+  builderId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  builder   Builder  @relation(fields: [builderId], references: [id], onDelete: Cascade)
 
   @@unique([userId, builderId])
 }
 
 model FeedItem {
-  id             String       @id @default(cuid())
-  builderId      String?
-  kind           FeedItemKind
-  externalId     String
-  title          String?
-  body           String
-  url            String
-  publishedAt    DateTime?
-  sourceName     String?
-  crawlingTool   String?
-  rawJson        String?
-  createdAt      DateTime     @default(now())
-  builder        Builder?     @relation(fields: [builderId], references: [id], onDelete: SetNull)
+  id           String       @id @default(cuid())
+  builderId    String?
+  kind         FeedItemKind
+  externalId   String
+  title        String?
+  body         String
+  url          String
+  publishedAt  DateTime?
+  sourceName   String?
+  crawlingTool String?
+  rawJson      String?
+  createdAt    DateTime     @default(now())
+  builder      Builder?     @relation(fields: [builderId], references: [id], onDelete: SetNull)
+  reads        FeedRead[]
 
   @@unique([builderId, kind, externalId])
   @@index([builderId, publishedAt])
   @@index([publishedAt])
+}
+
+model UserFeedPreference {
+  userId                    String          @id
+  digestFrequency           DigestFrequency @default(DAILY)
+  digestCustomFrequencyDays Int?
+  digestMaxPostAgeDays      Int             @default(90)
+  recommendationProfile     String?
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
+  user                      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model FeedRead {
+  id         String   @id @default(cuid())
+  userId     String
+  feedItemId String
+  source     String   @default("recommendation")
+  readAt     DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feedItem   FeedItem @relation(fields: [feedItemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, feedItemId])
+  @@index([userId, readAt])
+  @@index([feedItemId])
 }
 
 model Digest {
@@ -220,14 +248,14 @@ model Digest {
 }
 
 model AgentToken {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String
-  tokenHash   String   @unique
-  lastUsedAt  DateTime?
-  createdAt   DateTime @default(now())
-  revokedAt   DateTime?
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  tokenHash  String    @unique
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -278,4 +306,10 @@ enum FeedItemKind {
 enum DigestStatus {
   SYNCED
   GENERATED
+}
+
+enum DigestFrequency {
+  DAILY
+  WEEKLY
+  CUSTOM
 }

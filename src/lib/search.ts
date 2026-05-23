@@ -403,6 +403,32 @@ export function withSiteSearchOperator(query: string, site: string) {
   return [withoutPositiveSite, `site:${normalizedSite}`].filter(Boolean).join(" ");
 }
 
+export function withDateSearchOperators(
+  query: string,
+  {
+    after,
+    before,
+  }: {
+    after?: string | null | undefined;
+    before?: string | null | undefined;
+  },
+) {
+  const cleanQuery = query
+    .replace(/(^|\s)(after|before):\S+/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const afterDate = normalizeDateOperatorInput(after);
+  const beforeDate = normalizeDateOperatorInput(before);
+
+  return [
+    cleanQuery,
+    afterDate ? `after:${afterDate}` : "",
+    beforeDate ? `before:${beforeDate}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 export function didYouMeanSearch(query: string) {
   const parsed = parseSearchQuery(query);
   if (!parsed.cleanQuery) return null;
@@ -748,6 +774,13 @@ function parseDateOperator(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const date = new Date(`${value}T00:00:00.000Z`);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function normalizeDateOperatorInput(value: string | null | undefined) {
+  const trimmed = value?.trim() ?? "";
+  const date = parseDateOperator(trimmed);
+  if (!date) return "";
+  return date.toISOString().slice(0, 10) === trimmed ? trimmed : "";
 }
 
 function extractOrTerms(parts: string[]) {

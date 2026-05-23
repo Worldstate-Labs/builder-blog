@@ -10,6 +10,7 @@ import {
   type SearchMode,
   type SearchSort,
   type SearchTimeRange,
+  withDateSearchOperators,
 } from "@/lib/search";
 
 export type SearchTypeFilter = "all" | SearchDocumentType;
@@ -20,6 +21,8 @@ export function SearchForm({
   mode = "hybrid",
   sort = "relevance",
   time = "any",
+  afterDate = "",
+  beforeDate = "",
   suggestions = [],
 }: {
   query: string;
@@ -27,6 +30,8 @@ export function SearchForm({
   mode?: SearchMode;
   sort?: SearchSort;
   time?: SearchTimeRange;
+  afterDate?: string;
+  beforeDate?: string;
   suggestions?: string[];
 }) {
   const router = useRouter();
@@ -112,10 +117,17 @@ export function SearchForm({
     const nextMode = String(formData?.get("mode") ?? mode);
     const nextSort = String(formData?.get("sort") ?? sort);
     const nextTime = String(formData?.get("time") ?? time);
+    const nextAfterDate = String(formData?.get("after") ?? "");
+    const nextBeforeDate = String(formData?.get("before") ?? "");
+    const queryWithDateRange = withDateSearchOperators(trimmedQuery, {
+      after: nextAfterDate,
+      before: nextBeforeDate,
+    });
+    const hasCustomDateRange = Boolean(nextAfterDate || nextBeforeDate);
     const params = new URLSearchParams();
 
-    if (trimmedQuery) {
-      params.set("q", trimmedQuery);
+    if (queryWithDateRange) {
+      params.set("q", queryWithDateRange);
     }
     if (typeFilter !== "all") {
       params.set("type", typeFilter);
@@ -126,15 +138,15 @@ export function SearchForm({
     if (nextSort !== "relevance") {
       params.set("sort", nextSort);
     }
-    if (nextTime !== "any") {
+    if (nextTime !== "any" && !hasCustomDateRange) {
       params.set("time", nextTime);
     }
-    if (isLucky && trimmedQuery) {
+    if (isLucky && queryWithDateRange) {
       params.set("lucky", "1");
     }
 
-    if (trimmedQuery) {
-      const nextRecent = normalizeRecentSearches([trimmedQuery, ...recentSearches]);
+    if (queryWithDateRange) {
+      const nextRecent = normalizeRecentSearches([queryWithDateRange, ...recentSearches]);
       setRecentSearches(nextRecent);
       try {
         localStorage.setItem("builder-blog-searches", JSON.stringify(nextRecent));
@@ -279,6 +291,16 @@ export function SearchForm({
             <option value="newest">Newest</option>
           </select>
         </label>
+        <div className="search-date-range" aria-label="Custom date range">
+          <label className="search-date-field">
+            <span>From</span>
+            <input name="after" type="date" defaultValue={afterDate} />
+          </label>
+          <label className="search-date-field">
+            <span>To</span>
+            <input name="before" type="date" defaultValue={beforeDate} />
+          </label>
+        </div>
         <button
           aria-busy={isPending}
           className="button-dark relative justify-center gap-2"

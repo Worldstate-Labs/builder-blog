@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
 import { DIGEST_PROMPTS } from "@/lib/digest-prompts";
 import { subscriptionBuilderIdsInPool } from "@/lib/digest-library";
+import {
+  digestFallbackSince,
+  digestMaxAgeCutoff,
+  digestMaxPostAgeDays,
+  digestFrequencyDays,
+} from "@/lib/feed-preferences";
 import { prisma } from "@/lib/prisma";
 import { getUserFromBearer } from "@/lib/tokens";
 
@@ -13,12 +19,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const url = new URL(request.url);
-  const days = Number(url.searchParams.get("days") ?? "1");
-  const since = new Date(Date.now() - Math.max(1, days) * 24 * 60 * 60 * 1000);
+  const now = new Date();
 
   const poolBuilderIds = await activePoolBuilderIds(user.id);
-  const [libraryBuilders, subscriptions, personalCrawlStates] = await Promise.all([
+  const [libraryBuilders, subscriptions, personalCrawlStates, preference, lastDigest] = await Promise.all([
     prisma.builder.findMany({
       where: { id: { in: poolBuilderIds } },
       orderBy: [{ scope: "asc" }, { kind: "asc" }, { name: "asc" }],
@@ -38,7 +42,17 @@ export async function GET(request: Request) {
       },
       orderBy: { lastCrawledAt: "desc" },
     }),
+    prisma.userFeedPreference.findUnique({
+      where: { userId: user.id },
+    }),
+    prisma.digest.findFirst({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    }),
   ]);
+  const since = lastDigest?.createdAt ?? digestFallbackSince(now, preference);
+  const maxAgeCutoff = digestMaxAgeCutoff(now, preference);
   const subscribedBuilderIds = subscriptionBuilderIdsInPool(
     poolBuilderIds,
     subscriptions.map((subscription) => subscription.builderId),
@@ -51,7 +65,23 @@ export async function GET(request: Request) {
     prisma.feedItem.findMany({
       where: {
         builderId: { in: subscribedBuilderIds },
-        OR: [{ publishedAt: { gte: since } }, { createdAt: { gte: since } }],
+        OR: [
+          {
+            publishedAt: {
+              gt: since,
+              gte: maxAgeCutoff,
+              lte: now,
+            },
+          },
+          {
+            publishedAt: null,
+            createdAt: {
+              gt: since,
+              gte: maxAgeCutoff,
+              lte: now,
+            },
+          },
+        ],
       },
       include: { builder: true },
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
@@ -71,8 +101,16 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     user: { id: user.id, name: user.name, email: user.email },
-    generatedAt: new Date().toISOString(),
+    generatedAt: now.toISOString(),
     language: "zh",
+    digestWindow: {
+      since: since.toISOString(),
+      until: now.toISOString(),
+      fallbackFrequencyDays: digestFrequencyDays(preference),
+      maxPostAgeDays: digestMaxPostAgeDays(preference),
+      lastDigestGeneratedAt: lastDigest?.createdAt.toISOString() ?? null,
+      timestampRule: "publishedAt first, createdAt only when publishedAt is missing",
+    },
     libraryBuilders,
     personalCrawlStates,
     personalSeenItems,

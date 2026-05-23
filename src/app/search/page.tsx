@@ -122,6 +122,7 @@ export default async function SearchPage({
     time,
   });
   const hasQuery = query.trim().length > 0;
+  const formParsedQuery = parseSearchQuery(query);
   const correctedQuery = hasQuery ? didYouMeanSearch(query) : null;
   const originalFilteredResults =
     typeFilter === "all"
@@ -183,6 +184,8 @@ export default async function SearchPage({
             mode={mode}
             sort={sort}
             time={time}
+            afterDate={formatOptionalOperatorDate(formParsedQuery.after)}
+            beforeDate={formatOptionalOperatorDate(formParsedQuery.before)}
             suggestions={formSuggestions}
           />
           {hasQuery ? (
@@ -964,6 +967,10 @@ function stripExcludedPhrases(query: string) {
 
 function formatOperatorDate(date: Date) {
   return date.toISOString().slice(0, 10);
+}
+
+function formatOptionalOperatorDate(date: Date | null) {
+  return date ? formatOperatorDate(date) : "";
 }
 
 function isQueryOperatorBoundaryToken(token: string) {

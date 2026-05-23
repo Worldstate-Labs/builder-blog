@@ -91,6 +91,10 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /Search mode/);
   assert.match(searchForm, /Time range/);
   assert.match(searchForm, /Sort by/);
+  assert.match(searchForm, /Custom date range/);
+  assert.match(searchForm, /withDateSearchOperators/);
+  assert.match(searchForm, /name="after"/);
+  assert.match(searchForm, /name="before"/);
   assert.match(searchForm, /useRef<HTMLInputElement>/);
   assert.match(searchForm, /Clear search query/);
   assert.match(searchForm, /clearQuery/);

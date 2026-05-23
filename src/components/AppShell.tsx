@@ -7,6 +7,7 @@ import { isAdminEmail } from "@/lib/admin";
 const nav: AppNavItem[] = [
   { href: "/dashboard", label: "Today", icon: "home" },
   { href: "/history", label: "History", icon: "archive" },
+  { href: "/recommendations", label: "For You", icon: "recommendations" },
   { href: "/builders", label: "Builders", icon: "builders" },
   { href: "/library-hub", label: "Hub", icon: "hub" },
   { href: "/search", label: "Search", icon: "search" },

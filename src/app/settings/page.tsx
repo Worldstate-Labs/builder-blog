@@ -1,24 +1,42 @@
 import { redirect } from "next/navigation";
 import { KeyRound, ShieldCheck, Terminal, Trash2 } from "lucide-react";
-import { createPersonalTokenAction, revokeTokenAction } from "@/app/actions";
+import {
+  createPersonalTokenAction,
+  revokeTokenAction,
+  updateFeedPreferenceAction,
+} from "@/app/actions";
 import { AppShell } from "@/components/AppShell";
 import { FormSubmitButton } from "@/components/FormSubmitButton";
 import { getCurrentSession } from "@/lib/auth";
+import {
+  defaultDigestMaxPostAgeDays,
+  digestFrequencyDays,
+} from "@/lib/feed-preferences";
 import { prisma } from "@/lib/prisma";
 
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ token?: string; saved?: string }>;
 }) {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
   const params = await searchParams;
 
-  const tokens = await prisma.agentToken.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-  });
+  const [tokens, preference] = await Promise.all([
+    prisma.agentToken.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.userFeedPreference.findUnique({
+      where: { userId: session.user.id },
+    }),
+  ]);
+  const digestFrequency = preference?.digestFrequency ?? "DAILY";
+  const digestCustomFrequencyDays =
+    preference?.digestCustomFrequencyDays ?? digestFrequencyDays(preference);
+  const digestMaxAge =
+    preference?.digestMaxPostAgeDays ?? defaultDigestMaxPostAgeDays;
 
   return (
     <AppShell session={session}>
@@ -51,6 +69,74 @@ export default async function SettingsPage({
             </code>
           </div>
         ) : null}
+
+        <section className="action-panel mt-8 md:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="font-serif text-3xl">Feed preferences</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
+                Digest generation uses these settings when the skill asks for
+                context. Recommendations use the profile text and reading log
+                to rank unread crawled posts.
+              </p>
+            </div>
+          </div>
+          <form action={updateFeedPreferenceAction} className="mt-5 grid gap-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <label className="grid gap-2 text-sm font-semibold">
+                Digest frequency
+                <select
+                  className="input"
+                  defaultValue={digestFrequency}
+                  name="digestFrequency"
+                >
+                  <option value="DAILY">Daily</option>
+                  <option value="WEEKLY">Weekly</option>
+                  <option value="CUSTOM">Custom</option>
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-semibold">
+                Custom days
+                <input
+                  className="input"
+                  defaultValue={digestCustomFrequencyDays}
+                  min="1"
+                  max="365"
+                  name="digestCustomFrequencyDays"
+                  type="number"
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-semibold">
+                Max post age
+                <input
+                  className="input"
+                  defaultValue={digestMaxAge}
+                  min="1"
+                  max="365"
+                  name="digestMaxPostAgeDays"
+                  type="number"
+                />
+              </label>
+            </div>
+            <label className="grid gap-2 text-sm font-semibold">
+              Recommendation profile
+              <textarea
+                className="input min-h-32"
+                defaultValue={preference?.recommendationProfile ?? ""}
+                maxLength={4000}
+                name="recommendationProfile"
+              />
+            </label>
+            <div className="flex flex-wrap items-center gap-3">
+              <FormSubmitButton className="button-dark button-compact" pendingLabel="Saving...">
+                Save feed preferences
+              </FormSubmitButton>
+              {params.saved === "feed" ? (
+                <span className="status-chip status-chip-success">Saved</span>
+              ) : null}
+            </div>
+          </form>
+        </section>
 
         <section className="action-panel mt-8 grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
           <div className="min-w-0">

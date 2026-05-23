@@ -14,6 +14,11 @@ import {
 } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 import { builderKindForSourceType } from "@/lib/source-registry";
+import {
+  defaultDigestMaxPostAgeDays,
+  digestMaxPostAgeDays,
+  normalizeDigestFrequency,
+} from "@/lib/feed-preferences";
 import { createAgentToken } from "@/lib/tokens";
 
 async function requireUser() {
@@ -242,6 +247,52 @@ export async function revokeTokenAction(formData: FormData) {
     data: { revokedAt: new Date() },
   });
   revalidatePath("/settings");
+}
+
+export async function updateFeedPreferenceAction(formData: FormData) {
+  const user = await requireUser();
+  const digestFrequency = normalizeDigestFrequency(
+    String(formData.get("digestFrequency") ?? ""),
+  );
+  const customDaysInput = Number(formData.get("digestCustomFrequencyDays"));
+  const digestCustomFrequencyDays =
+    Number.isFinite(customDaysInput) && customDaysInput > 0
+      ? Math.min(365, Math.floor(customDaysInput))
+      : null;
+  const maxPostAgeInput = Number(formData.get("digestMaxPostAgeDays"));
+  const recommendationProfile = String(formData.get("recommendationProfile") ?? "")
+    .trim()
+    .slice(0, 4000);
+
+  await prisma.userFeedPreference.upsert({
+    where: { userId: user.id },
+    update: {
+      digestFrequency,
+      digestCustomFrequencyDays,
+      digestMaxPostAgeDays: digestMaxPostAgeDays({
+        digestMaxPostAgeDays: Number.isFinite(maxPostAgeInput)
+          ? maxPostAgeInput
+          : defaultDigestMaxPostAgeDays,
+      }),
+      recommendationProfile: recommendationProfile || null,
+    },
+    create: {
+      userId: user.id,
+      digestFrequency,
+      digestCustomFrequencyDays,
+      digestMaxPostAgeDays: digestMaxPostAgeDays({
+        digestMaxPostAgeDays: Number.isFinite(maxPostAgeInput)
+          ? maxPostAgeInput
+          : defaultDigestMaxPostAgeDays,
+      }),
+      recommendationProfile: recommendationProfile || null,
+    },
+  });
+
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
+  revalidatePath("/recommendations");
+  redirect("/settings?saved=feed");
 }
 
 export async function subscribeAllDefaultBuildersAction() {

@@ -33,7 +33,7 @@ function usage() {
   console.log(`builder-digest commands:
   login --app-url ${DEFAULT_APP_URL}
   crawl-personal [--days 3] [--limit 3] [--force] [--agent-model gpt-5.5]
-  prepare [--days 1]
+  prepare
   sync-builders --file personal-builders.json [--agent-model gpt-5.5]
   sync --file digest.md [--title "AI Builder Digest"]
   status`);
@@ -146,11 +146,10 @@ async function login(args) {
   throw new Error("Login timed out");
 }
 
-async function prepare(args) {
+async function prepare() {
   const config = await readConfig();
   requireLoggedIn(config);
-  const days = argValue(args, "--days", "1");
-  const context = await getJson(`${config.appUrl}/api/skill/context?days=${encodeURIComponent(days)}`, config.token);
+  const context = await getJson(`${config.appUrl}/api/skill/context`, config.token);
   console.log(JSON.stringify(context, null, 2));
 }
 
@@ -767,7 +766,7 @@ async function main() {
   const [command, ...args] = process.argv.slice(2);
   if (command === "login") await login(args);
   else if (command === "crawl-personal") await crawlPersonal(args);
-  else if (command === "prepare") await prepare(args);
+  else if (command === "prepare") await prepare();
   else if (command === "sync-builders") await syncBuilders(args);
   else if (command === "sync") await sync(args);
   else if (command === "status") await status();
