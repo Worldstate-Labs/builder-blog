@@ -1,16 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --paper: oklch(0.982 0.006 235);
-  --paper-strong: oklch(0.996 0.004 235);
-  --rail: oklch(0.958 0.008 235);
-  --ink: oklch(0.19 0.025 245);
-  --charcoal: oklch(0.15 0.02 245);
-  --muted: oklch(0.52 0.026 245);
-  --muted-strong: oklch(0.35 0.028 245);
-  --accent: oklch(0.52 0.14 252);
-  --accent-soft: oklch(0.91 0.035 252);
-  --success: oklch(0.56 0.11 165);
+  --paper: oklch(0.982 0.007 238);
+  --paper-strong: oklch(0.997 0.003 238);
+  --rail: oklch(0.955 0.01 238);
+  --ink: oklch(0.18 0.026 248);
+  --charcoal: oklch(0.145 0.024 248);
+  --muted: oklch(0.51 0.029 248);
+  --muted-strong: oklch(0.34 0.031 248);
+  --accent: oklch(0.5 0.15 252);
+  --accent-soft: oklch(0.91 0.04 252);
+  --accent-strong: oklch(0.42 0.17 255);
+  --signal: oklch(0.66 0.15 162);
+  --signal-soft: oklch(0.93 0.044 162);
+  --warm: oklch(0.68 0.12 68);
+  --warm-soft: oklch(0.94 0.045 78);
+  --danger: oklch(0.55 0.16 24);
+  --danger-soft: oklch(0.93 0.045 24);
+  --success: var(--signal);
   --line: color-mix(in oklch, var(--ink) 13%, transparent);
   --shadow: color-mix(in oklch, var(--ink) 9%, transparent);
   --background: var(--paper);
@@ -22,13 +29,14 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-serif: var(--font-geist-sans);
+  --font-serif: var(--font-display);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), sans-serif;
+  text-rendering: optimizeLegibility;
 }
 
 ::selection {
@@ -36,10 +44,24 @@ body {
   color: white;
 }
 
+a {
+  text-underline-offset: 0.18em;
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in oklch, var(--accent) 28%, transparent);
+  outline-offset: 3px;
+}
+
+.font-serif {
+  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
+  font-optical-sizing: auto;
+}
+
 .landing-grid {
   background:
-    linear-gradient(180deg, var(--paper-strong) 0%, var(--paper) 58%, var(--rail) 100%),
-    repeating-linear-gradient(90deg, color-mix(in oklch, var(--ink) 5%, transparent) 0 1px, transparent 1px 28px);
+    linear-gradient(180deg, var(--paper-strong) 0%, var(--paper) 50%, var(--rail) 100%),
+    repeating-linear-gradient(90deg, color-mix(in oklch, var(--ink) 4%, transparent) 0 1px, transparent 1px 32px);
 }
 
 .hero-panel {
@@ -50,6 +72,82 @@ body {
     repeating-linear-gradient(90deg, color-mix(in oklch, var(--ink) 4%, transparent) 0 1px, transparent 1px 22px);
   box-shadow: 0 18px 48px var(--shadow);
   padding: clamp(1.5rem, 4vw, 2.4rem);
+}
+
+.brand-mark {
+  align-items: center;
+  background:
+    linear-gradient(135deg, var(--accent), var(--signal));
+  border-radius: 8px;
+  box-shadow: 0 12px 28px color-mix(in oklch, var(--accent) 18%, transparent);
+  color: white;
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 900;
+  height: 2.35rem;
+  justify-content: center;
+  letter-spacing: 0;
+  width: 2.35rem;
+}
+
+.landing-product {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--paper-strong) 92%, transparent), color-mix(in oklch, var(--rail) 74%, transparent));
+  box-shadow: 0 24px 70px color-mix(in oklch, var(--ink) 13%, transparent);
+  overflow: hidden;
+}
+
+.landing-product-bar {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  min-height: 3.4rem;
+  padding: 0.8rem 1rem;
+}
+
+.landing-product-body {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1rem, 3vw, 1.6rem);
+}
+
+.signal-row {
+  align-items: start;
+  background: color-mix(in oklch, var(--paper-strong) 78%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 0.95rem;
+}
+
+.signal-dot {
+  background: var(--signal);
+  border-radius: 999px;
+  box-shadow: 0 0 0 5px var(--signal-soft);
+  height: 0.58rem;
+  margin-top: 0.42rem;
+  width: 0.58rem;
+}
+
+.workflow-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--paper-strong) 80%, transparent);
+  min-height: 12rem;
+  padding: 1.2rem;
+}
+
+.workflow-card-index {
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .page-pad {
@@ -75,7 +173,8 @@ body {
   font-size: 0.86rem;
   font-weight: 700;
   letter-spacing: 0;
-  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+  white-space: nowrap;
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease, border-color 180ms ease;
 }
 
 .button-dark {
@@ -90,6 +189,11 @@ body {
   color: var(--ink);
 }
 
+.button-danger {
+  border-color: color-mix(in oklch, var(--danger) 28%, var(--line));
+  color: var(--danger);
+}
+
 .button-compact {
   min-height: 2.2rem;
   padding: 0.42rem 0.68rem;
@@ -101,12 +205,22 @@ body {
   border: 1px solid var(--line);
   background: var(--paper-strong);
   color: var(--ink);
+  gap: 0.7rem;
+  justify-content: flex-start;
+  min-height: 3.05rem;
+  padding-inline: 1rem;
 }
 
 .button-dark:hover,
 .button-light:hover,
 .auth-button:hover {
   transform: translateY(-1px);
+}
+
+.button-light:hover,
+.auth-button:hover {
+  border-color: color-mix(in oklch, var(--accent) 32%, var(--line));
+  box-shadow: 0 10px 24px var(--shadow);
 }
 
 .button-dark:disabled,
@@ -132,7 +246,7 @@ body {
 
 .nav-link:hover,
 .nav-link[data-active="true"] {
-  background: var(--paper-strong);
+  background: color-mix(in oklch, var(--paper-strong) 88%, transparent);
   color: var(--ink);
 }
 
@@ -141,7 +255,8 @@ body {
 }
 
 .mobile-header {
-  background: color-mix(in oklch, var(--paper) 96%, transparent);
+  backdrop-filter: blur(18px);
+  background: color-mix(in oklch, var(--paper) 88%, transparent);
   border-bottom: 1px solid var(--line);
   padding: 0.75rem 1rem;
   position: sticky;
@@ -151,7 +266,8 @@ body {
 
 .mobile-tabbar {
   align-items: center;
-  background: color-mix(in oklch, var(--paper-strong) 94%, transparent);
+  backdrop-filter: blur(18px);
+  background: color-mix(in oklch, var(--paper-strong) 88%, transparent);
   border-top: 1px solid var(--line);
   bottom: 0;
   display: grid;
@@ -195,6 +311,79 @@ body {
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+}
+
+.shell-sidebar {
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--rail) 92%, transparent), color-mix(in oklch, var(--paper) 88%, transparent));
+}
+
+.sidebar-note {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--paper-strong) 72%, transparent);
+  padding: 0.9rem;
+}
+
+.page-kicker-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.status-chip {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted-strong);
+  display: inline-flex;
+  font-size: 0.76rem;
+  font-weight: 750;
+  gap: 0.4rem;
+  min-height: 2rem;
+  padding: 0.34rem 0.7rem;
+}
+
+.status-chip-success {
+  background: var(--signal-soft);
+  border-color: color-mix(in oklch, var(--signal) 28%, var(--line));
+  color: color-mix(in oklch, var(--signal) 72%, var(--ink));
+}
+
+.status-chip-warn {
+  background: var(--warm-soft);
+  border-color: color-mix(in oklch, var(--warm) 30%, var(--line));
+  color: color-mix(in oklch, var(--warm) 68%, var(--ink));
+}
+
+.action-panel,
+.empty-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--paper-strong) 80%, transparent);
+  box-shadow: 0 16px 44px var(--shadow);
+}
+
+.action-panel {
+  padding: 1.1rem;
+}
+
+.empty-panel {
+  padding: 1.25rem;
+}
+
+.digest-panel {
+  background:
+    linear-gradient(145deg, color-mix(in oklch, var(--charcoal) 96%, black), color-mix(in oklch, var(--accent-strong) 22%, var(--charcoal)));
+  border-radius: 8px;
+  box-shadow: 0 22px 58px color-mix(in oklch, black 18%, transparent);
+}
+
+.digest-body {
+  max-height: 56rem;
+  overflow: auto;
+  scrollbar-color: color-mix(in oklch, white 26%, transparent) transparent;
 }
 
 .page-pad h1:not(.search-heading) {

@@ -35,7 +35,10 @@ export default async function HistoryPage({
   return (
     <AppShell session={session}>
       <div className="page-pad">
-        <p className="section-label">Archive</p>
+        <div className="page-kicker-row">
+          <p className="section-label">Archive</p>
+          <span className="status-chip">{digestCount} total digests</span>
+        </div>
         <h1 className="mt-3 font-serif text-4xl font-semibold leading-tight md:text-6xl">
           Digest history
         </h1>
@@ -68,7 +71,7 @@ export default async function HistoryPage({
             </article>
           ))}
           {digests.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-[var(--line)] p-6 md:p-10">
+            <div className="empty-panel border-dashed md:p-10">
               No historical digest yet. Connect the terminal skill from Agent
               Login, then run a digest sync.
             </div>

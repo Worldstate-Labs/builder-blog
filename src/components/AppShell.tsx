@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Session } from "next-auth";
+import { LogOut } from "lucide-react";
 import { AppNav, type AppNavItem } from "@/components/AppNav";
 import { isAdminEmail } from "@/lib/admin";
 
@@ -25,23 +26,37 @@ export function AppShell({
   return (
     <div className="min-h-screen bg-[var(--paper)] text-[var(--ink)]">
       <div className="mx-auto flex min-h-screen w-full max-w-7xl">
-        <aside className="hidden w-64 shrink-0 border-r border-[var(--line)] bg-[var(--rail)] px-5 py-6 lg:flex lg:flex-col">
-          <Link href="/dashboard" className="group block">
-            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-              Builder Blog
-            </div>
-            <div className="mt-2 text-xl font-semibold leading-tight">
-              Signal over noise
+        <aside className="shell-sidebar hidden w-[17rem] shrink-0 border-r border-[var(--line)] px-5 py-6 lg:flex lg:flex-col">
+          <Link href="/dashboard" className="group flex items-center gap-3">
+            <span className="brand-mark">BB</span>
+            <div className="min-w-0">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                Builder Blog
+              </div>
+              <div className="mt-1 text-xl font-semibold leading-tight">
+                Signal desk
+              </div>
             </div>
           </Link>
           <AppNav items={items} mode="desktop" />
-          <div className="mt-auto border-t border-[var(--line)] pt-5 text-sm text-[var(--muted)]">
-            <p className="truncate">{session?.user?.email}</p>
+          <div className="sidebar-note mt-auto">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--accent)]">
+              Agent loop
+            </p>
+            <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
+              Keep the pool current, subscribe the useful builders, then sync the digest back here.
+            </p>
+          </div>
+          <div className="mt-4 border-t border-[var(--line)] pt-5 text-sm text-[var(--muted)]">
+            <p className="truncate" title={session?.user?.email ?? undefined}>
+              {session?.user?.email}
+            </p>
             <Link
-              className="mt-3 inline-flex min-h-10 items-center font-medium text-[var(--ink)] underline"
+              className="mt-3 inline-flex min-h-10 items-center gap-2 font-medium text-[var(--ink)] underline"
               href="/api/auth/signout"
               prefetch={false}
             >
+              <LogOut className="h-4 w-4" />
               Sign out
             </Link>
           </div>
@@ -58,6 +73,14 @@ export function AppShell({
               <span className="max-w-[58vw] truncate text-right text-xs text-[var(--muted)]">
                 {session?.user?.email}
               </span>
+              <Link
+                aria-label="Sign out"
+                className="button-light button-compact"
+                href="/api/auth/signout"
+                prefetch={false}
+              >
+                <LogOut className="h-4 w-4" />
+              </Link>
             </div>
           </header>
           {children}

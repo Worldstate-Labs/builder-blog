@@ -111,7 +111,13 @@ export default async function BuildersPage() {
       <div className="page-pad">
         <section className="grid gap-6 xl:grid-cols-[1fr_24rem]">
           <div>
-            <p className="section-label">Library</p>
+            <div className="page-kicker-row">
+              <p className="section-label">Library</p>
+              <span className="status-chip">
+                <Bell className="h-3.5 w-3.5" />
+                {subscribedCount} subscribed
+              </span>
+            </div>
             <h1 className="mt-3 font-serif text-4xl font-semibold leading-tight md:text-6xl">
               Builder pool
             </h1>
@@ -128,7 +134,7 @@ export default async function BuildersPage() {
           </div>
         </section>
 
-        <section className="mt-8 rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] p-5 md:p-6">
+        <section className="action-panel mt-8 md:p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h2 className="font-serif text-3xl">Digest subscription</h2>
@@ -176,10 +182,13 @@ export default async function BuildersPage() {
               />
             ))}
             {personalBuilders.length === 0 ? (
-              <div className="builder-row text-[var(--muted-strong)]">
-                No personal builders yet. Use the skill command
-                <code className="mx-2 rounded-xl bg-black/5 px-2 py-1">sync-builders</code>
-                after your agent crawls private or user-paid sources.
+              <div className="empty-panel text-[var(--muted-strong)]">
+                <h3 className="font-serif text-2xl text-[var(--ink)]">No personal builders yet</h3>
+                <p className="mt-2 text-sm leading-6">
+                  Use the skill command{" "}
+                  <code className="rounded-lg bg-black/5 px-2 py-1">sync-builders</code>{" "}
+                  after your agent crawls private or user-paid sources.
+                </p>
               </div>
             ) : null}
           </LibrarySection>
@@ -264,7 +273,7 @@ async function RecentCrawledContent({
           />
         ))}
         {recentFeedItems.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-[var(--line)] p-6 text-[var(--muted-strong)] md:p-10">
+          <div className="empty-panel border-dashed text-[var(--muted-strong)] md:p-10">
             No crawled content yet. Run the crawler or sync personal builder
             items from the terminal skill.
           </div>
@@ -349,7 +358,7 @@ function BuilderCard({
               </form>
               <form action={removeBuilderFromLibraryAction}>
                 <input type="hidden" name="builderId" value={builder.id} />
-                <FormSubmitButton className="button-light button-compact gap-2" pendingLabel="Removing...">
+                <FormSubmitButton className="button-light button-compact button-danger gap-2" pendingLabel="Removing...">
                   <Trash2 className="h-4 w-4" />
                   Remove from library
                 </FormSubmitButton>

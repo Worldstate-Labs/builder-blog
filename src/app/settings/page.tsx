@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { KeyRound, ShieldCheck, Terminal, Trash2 } from "lucide-react";
 import { createPersonalTokenAction, revokeTokenAction } from "@/app/actions";
 import { AppShell } from "@/components/AppShell";
 import { FormSubmitButton } from "@/components/FormSubmitButton";
@@ -22,7 +23,13 @@ export default async function SettingsPage({
   return (
     <AppShell session={session}>
       <div className="page-pad">
-        <p className="section-label">Terminal bridge</p>
+        <div className="page-kicker-row">
+          <p className="section-label">Terminal bridge</p>
+          <span className="status-chip">
+            <KeyRound className="h-3.5 w-3.5" />
+            {tokens.filter((token) => !token.revokedAt).length} active
+          </span>
+        </div>
         <h1 className="mt-3 font-serif text-4xl font-semibold leading-tight md:text-6xl">
           Agent login
         </h1>
@@ -32,26 +39,40 @@ export default async function SettingsPage({
         </p>
 
         {params.token ? (
-          <div className="mt-8 rounded-lg bg-[var(--ink)] p-5 text-white md:p-6">
-            <p className="text-sm uppercase tracking-[0.22em] text-white/50">
-              Copy once
-            </p>
+          <div className="digest-panel mt-8 p-5 text-white md:p-6">
+            <div className="flex items-center gap-3">
+              <ShieldCheck className="h-5 w-5 text-white/70" />
+              <p className="text-sm font-bold uppercase tracking-[0.18em] text-white/56">
+                Copy once
+              </p>
+            </div>
             <code className="mt-4 block break-all rounded-lg bg-black/30 p-4 text-sm">
               {params.token}
             </code>
           </div>
         ) : null}
 
-        <form action={createPersonalTokenAction} className="mt-8">
-          <FormSubmitButton className="button-dark button-compact" pendingLabel="Creating...">
-            Create manual token
-          </FormSubmitButton>
-        </form>
+        <section className="action-panel mt-8 grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
+          <div className="min-w-0">
+            <div className="flex items-center gap-3">
+              <Terminal className="h-5 w-5 text-[var(--accent)]" />
+              <h2 className="font-serif text-3xl">Terminal access</h2>
+            </div>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
+              Create a token when you need manual CLI access. Revoke old tokens after rotating agents.
+            </p>
+          </div>
+          <form action={createPersonalTokenAction}>
+            <FormSubmitButton className="button-dark button-compact" pendingLabel="Creating...">
+              Create manual token
+            </FormSubmitButton>
+          </form>
+        </section>
 
         <section className="mt-10 grid gap-3">
           {tokens.map((token) => (
             <article key={token.id} className="builder-row">
-              <div>
+              <div className="min-w-0">
                 <div className="font-serif text-2xl">{token.name}</div>
                 <p className="mt-1 text-sm text-[var(--muted)]">
                   Created {token.createdAt.toLocaleString()}
@@ -62,13 +83,19 @@ export default async function SettingsPage({
               {!token.revokedAt ? (
                 <form action={revokeTokenAction}>
                   <input type="hidden" name="tokenId" value={token.id} />
-                  <FormSubmitButton className="button-light button-compact" pendingLabel="Revoking...">
+                  <FormSubmitButton className="button-light button-compact button-danger gap-2" pendingLabel="Revoking...">
+                    <Trash2 className="h-4 w-4" />
                     Revoke
                   </FormSubmitButton>
                 </form>
               ) : null}
             </article>
           ))}
+          {tokens.length === 0 ? (
+            <div className="empty-panel border-dashed text-[var(--muted-strong)]">
+              No tokens yet. Create one only when your local agent or terminal skill needs direct access.
+            </div>
+          ) : null}
         </section>
       </div>
     </AppShell>

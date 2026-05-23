@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Archive, KeyRound, Search, ShieldCheck } from "lucide-react";
 import { AuthButtons } from "@/components/AuthButtons";
 import { getCurrentSession } from "@/lib/auth";
 
@@ -12,22 +13,40 @@ export default async function LoginPage({
   if (session) redirect("/dashboard");
 
   return (
-    <main className="min-h-screen bg-[var(--charcoal)] px-6 py-10 text-white">
-      <div className="mx-auto grid min-h-[calc(100vh-5rem)] max-w-6xl items-center gap-12 lg:grid-cols-[1.15fr_0.85fr]">
+    <main className="min-h-screen bg-[var(--charcoal)] px-6 py-8 text-white">
+      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-10 lg:grid-cols-[1.08fr_0.92fr]">
         <section>
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-white/50">
-            Builder Blog
-          </p>
-          <h1 className="mt-6 max-w-3xl font-serif text-4xl font-semibold leading-tight md:text-6xl">
-            Personal AI builder intelligence.
+          <div className="flex items-center gap-3">
+            <span className="brand-mark">BB</span>
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-white/50">
+              Builder Blog
+            </p>
+          </div>
+          <h1 className="mt-7 max-w-3xl font-serif text-5xl font-semibold leading-[1.02] md:text-7xl">
+            Sign in to your signal desk.
           </h1>
-          <p className="mt-8 max-w-2xl text-xl leading-9 text-white/68">
+          <p className="mt-7 max-w-2xl text-xl leading-9 text-white/68">
             Subscribe to builders, collect the central crawl, and publish your
             agent-generated digests to a searchable web archive.
           </p>
+          <div className="mt-10 grid max-w-2xl gap-3 sm:grid-cols-3">
+            <LoginProof icon={Archive} label="Archive" />
+            <LoginProof icon={Search} label="Search" />
+            <LoginProof icon={KeyRound} label="Agent token" />
+          </div>
         </section>
-        <section className="rounded-lg border border-white/12 bg-white/[0.06] p-6 shadow-2xl shadow-black/30">
-          <h2 className="font-serif text-3xl">Sign in</h2>
+        <section className="rounded-lg border border-white/12 bg-white/[0.07] p-6 shadow-2xl shadow-black/30 backdrop-blur md:p-7">
+          <div className="flex items-start justify-between gap-5">
+            <div>
+              <h2 className="font-serif text-3xl">Continue securely</h2>
+              <p className="mt-3 text-sm leading-6 text-white/62">
+                Use the same identity for your web archive and terminal agent bridge.
+              </p>
+            </div>
+            <span className="rounded-lg bg-white/10 p-2 text-white/70">
+              <ShieldCheck className="h-5 w-5" />
+            </span>
+          </div>
           <p className="mt-3 text-sm leading-6 text-white/62">
             OAuth credentials are read from env. Configure Google and GitHub in
             `.env`, then use either provider.
@@ -35,8 +54,26 @@ export default async function LoginPage({
           <div className="mt-8">
             <AuthButtons callbackUrl={params.callbackUrl ?? "/dashboard"} />
           </div>
+          <p className="mt-6 text-xs leading-5 text-white/42">
+            Tokens for terminal use are created after sign-in from the Agent page.
+          </p>
         </section>
       </div>
     </main>
+  );
+}
+
+function LoginProof({
+  icon: Icon,
+  label,
+}: {
+  icon: typeof Archive;
+  label: string;
+}) {
+  return (
+    <div className="rounded-lg border border-white/12 bg-white/[0.06] p-3">
+      <Icon className="h-4 w-4 text-white/62" />
+      <div className="mt-3 text-sm font-semibold text-white/82">{label}</div>
+    </div>
   );
 }

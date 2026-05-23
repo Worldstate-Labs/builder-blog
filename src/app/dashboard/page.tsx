@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ComponentType } from "react";
-import { Archive, CheckCircle2, Clock3 } from "lucide-react";
+import { Archive, CheckCircle2, Clock3, Search, Terminal, UsersRound } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -35,7 +35,13 @@ export default async function DashboardPage() {
       <div className="page-pad">
         <section className="grid gap-6 xl:grid-cols-[1fr_22rem]">
           <div>
-            <p className="section-label">Personal digest</p>
+            <div className="page-kicker-row">
+              <p className="section-label">Personal digest</p>
+              <span className={`status-chip ${todayDigest ? "status-chip-success" : "status-chip-warn"}`}>
+                {todayDigest ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Clock3 className="h-3.5 w-3.5" />}
+                {todayDigest ? "Synced today" : "Waiting for sync"}
+              </span>
+            </div>
             <h1 className="mt-3 max-w-4xl font-serif text-4xl font-semibold leading-tight md:text-6xl">
               Today&apos;s feed, synced and archived.
             </h1>
@@ -43,6 +49,16 @@ export default async function DashboardPage() {
               This page only shows generated digest feed entries. Library
               controls and crawled source content live outside Today.
             </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link className="button-light button-compact gap-2" href="/builders">
+                <UsersRound className="h-4 w-4" />
+                Manage builders
+              </Link>
+              <Link className="button-light button-compact gap-2" href="/search">
+                <Search className="h-4 w-4" />
+                Search archive
+              </Link>
+            </div>
           </div>
           <div className="stats-panel">
             <Stat
@@ -55,11 +71,11 @@ export default async function DashboardPage() {
         </section>
 
         <section className="mt-10 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <article className="min-w-0 rounded-lg bg-[var(--ink)] p-5 text-white shadow-xl shadow-black/10 md:p-7">
+          <article className="digest-panel min-w-0 p-5 text-white md:p-7">
             <div className="flex items-center justify-between gap-4">
               <h2 className="font-serif text-3xl">Today&apos;s digest</h2>
               {todayDigest ? (
-                <span className="inline-flex items-center gap-2 rounded-full bg-white/12 px-3 py-1 text-xs uppercase tracking-[0.16em]">
+                <span className="inline-flex items-center gap-2 rounded-full bg-white/12 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em]">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   Synced
                 </span>
@@ -70,22 +86,38 @@ export default async function DashboardPage() {
                 <h3 className="mt-6 font-serif text-4xl leading-tight">
                   {todayDigest.title}
                 </h3>
-                <pre className="mt-6 whitespace-pre-wrap break-words font-sans text-sm leading-7 text-white/75">
+                <pre className="digest-body mt-6 whitespace-pre-wrap break-words font-sans text-sm leading-7 text-white/76">
                   {todayDigest.content}
                 </pre>
               </>
             ) : (
-              <div className="mt-8 rounded-lg border border-dashed border-white/20 p-6 text-white/68">
-                No synced digest today. Run the skill from your terminal or agent:
-                <code className="mt-3 block rounded-lg bg-black/30 p-4 text-sm text-white">
+              <div className="mt-8 rounded-lg border border-dashed border-white/22 bg-white/[0.04] p-6 text-white/72">
+                <div className="flex items-start gap-3">
+                  <Terminal className="mt-1 h-5 w-5 text-white/62" />
+                  <div>
+                    <h3 className="font-serif text-2xl text-white">No synced digest today</h3>
+                    <p className="mt-2 text-sm leading-6 text-white/66">
+                      Run the skill from your terminal or agent, then sync the generated digest here.
+                    </p>
+                  </div>
+                </div>
+                <code className="mt-5 block overflow-x-auto rounded-lg bg-black/30 p-4 text-sm text-white">
                   builder-digest prepare | agent summarizes | builder-digest sync --file digest.md
                 </code>
               </div>
             )}
           </article>
 
-          <aside className="min-w-0 rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] p-5 md:p-6">
-            <h2 className="font-serif text-3xl">Recent feed</h2>
+          <aside className="action-panel min-w-0 md:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="font-serif text-3xl">Recent feed</h2>
+                <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
+                  The last five digest entries are one click away for quick recall.
+                </p>
+              </div>
+              <Archive className="mt-1 h-5 w-5 text-[var(--accent)]" />
+            </div>
             <div className="mt-5 space-y-4">
               {recentDigests.map((digest) => (
                 <Link
@@ -100,9 +132,12 @@ export default async function DashboardPage() {
                 </Link>
               ))}
               {recentDigests.length === 0 ? (
-                <p className="text-sm leading-6 text-[var(--muted)]">
-                  Digests synced by the skill will appear here.
-                </p>
+                <div className="empty-panel border-dashed shadow-none">
+                  <p className="text-sm leading-6 text-[var(--muted-strong)]">
+                    Digests synced by the skill will appear here. Start by adding builders,
+                    subscribing to the useful ones, then running the terminal workflow.
+                  </p>
+                </div>
               ) : null}
             </div>
             <Link className="button-light button-compact mt-5 gap-2" href="/history">
