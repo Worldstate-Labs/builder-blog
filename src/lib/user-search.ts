@@ -23,7 +23,7 @@ export async function searchUserLibrary({
 }: {
   userId: string;
   query: string;
-  mode: string | null | undefined;
+  mode?: string | null | undefined;
 }): Promise<{
   mode: SearchMode;
   results: SearchResult[];

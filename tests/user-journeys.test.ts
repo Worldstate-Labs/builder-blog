@@ -200,11 +200,11 @@ test("search user path semantic mode finds related language without a literal ph
 
 test("search user path normalizes modes and ignores empty queries", () => {
   assert.equal(normalizeSearchMode("exact"), "exact");
-  assert.equal(normalizeSearchMode("bad"), "semantic");
+  assert.equal(normalizeSearchMode("bad"), "hybrid");
   assert.deepEqual(
     rankSearchDocuments({
       query: "   ",
-      mode: "semantic",
+      mode: "hybrid",
       documents: [
         { id: "builder_1", type: "builder", title: "OpenAI", body: "AI builder" },
       ],
@@ -213,10 +213,33 @@ test("search user path normalizes modes and ignores empty queries", () => {
   );
 });
 
-test("hybrid search uses expanded database recall terms only in semantic mode", () => {
+test("hybrid search blends literal and semantic matching", () => {
+  const results = rankSearchDocuments({
+    query: "agent memory",
+    mode: "hybrid",
+    documents: [
+      {
+        id: "literal",
+        type: "feed",
+        title: "Agent memory systems",
+        body: "A launch note with the exact phrase.",
+      },
+      {
+        id: "related",
+        type: "digest",
+        title: "Retrieval workflow",
+        body: "Assistant recall patterns for saved library history.",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["literal", "related"]);
+});
+
+test("hybrid search uses expanded database recall terms by default", () => {
   assert.deepEqual(candidateSearchTerms("agent memory", "exact"), ["agent memory"]);
 
-  const semanticTerms = candidateSearchTerms("embedding search", "semantic");
+  const semanticTerms = candidateSearchTerms("embedding search", "hybrid");
 
   assert.ok(semanticTerms.includes("embedding"));
   assert.ok(semanticTerms.includes("search"));

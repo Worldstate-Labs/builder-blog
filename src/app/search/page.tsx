@@ -10,7 +10,6 @@ import type { SearchDocumentType, SearchResult } from "@/lib/search";
 
 type SearchParams = Promise<{
   q?: string | string[];
-  mode?: string | string[];
   type?: string | string[];
 }>;
 
@@ -30,12 +29,10 @@ export default async function SearchPage({
 
   const params = await searchParams;
   const query = firstParam(params.q);
-  const requestedMode = firstParam(params.mode);
   const typeFilter = normalizeTypeFilter(firstParam(params.type));
-  const { mode, results, candidateCount, strategy } = await searchUserLibrary({
+  const { results, candidateCount } = await searchUserLibrary({
     userId: session.user.id,
     query,
-    mode: requestedMode,
   });
   const hasQuery = query.trim().length > 0;
   const typeCounts = countResultTypes(results);
@@ -51,12 +48,14 @@ export default async function SearchPage({
           <p className="search-subtitle">
             Find builders, crawled inputs, and digest history from your active library.
           </p>
-          <SearchForm query={query} mode={mode} typeFilter={typeFilter} />
-          <div className="search-quick-stats" aria-label="Search summary">
-            <Stat label="Mode" value={mode === "exact" ? "Exact" : "Semantic"} />
-            <Stat label="Results" value={String(filteredResults.length)} />
-            <Stat label="Candidates" value={String(candidateCount)} />
-          </div>
+          <SearchForm query={query} typeFilter={typeFilter} />
+          {hasQuery ? (
+            <div className="search-quick-stats" aria-label="Search summary">
+              <Stat label="Results" value={String(filteredResults.length)} />
+              <Stat label="Candidates" value={String(candidateCount)} />
+              <Stat label="Types" value={String(nonzeroTypeCount(typeCounts))} />
+            </div>
+          ) : null}
         </section>
 
         <section className="search-results-shell">
@@ -66,7 +65,7 @@ export default async function SearchPage({
                 <TypeTab
                   count={typeCounts.all}
                   current={typeFilter}
-                  href={searchHref({ query, mode, type: "all" })}
+                  href={searchHref({ query, type: "all" })}
                   label="All"
                   value="all"
                 />
@@ -74,7 +73,7 @@ export default async function SearchPage({
                   <TypeTab
                     count={typeCounts[type]}
                     current={typeFilter}
-                    href={searchHref({ query, mode, type })}
+                    href={searchHref({ query, type })}
                     key={type}
                     label={resultTypeLabels[type]}
                     value={type}
@@ -84,7 +83,7 @@ export default async function SearchPage({
               <div className="search-meta-row">
                 Showing {filteredResults.length} result
                 {filteredResults.length === 1 ? "" : "s"} for{" "}
-                <span>{query}</span> from {candidateCount} searched items via {strategy}.
+                <span>{query}</span> from {candidateCount} searched items.
               </div>
               <div className="search-results-list">
                 {filteredResults.map((result) => (
@@ -93,8 +92,8 @@ export default async function SearchPage({
               </div>
               {filteredResults.length === 0 ? (
                 <EmptyState>
-                  No matches found. Try Semantic mode for related wording, Exact mode
-                  for a literal phrase, or switch back to All results.
+                  No matches found. Try a broader phrase, fewer words, or switch back
+                  to All results.
                 </EmptyState>
               ) : null}
             </>
@@ -202,6 +201,10 @@ function countResultTypes(results: SearchResult[]) {
   );
 }
 
+function nonzeroTypeCount(counts: ReturnType<typeof countResultTypes>) {
+  return (["builder", "feed", "digest"] as const).filter((type) => counts[type] > 0).length;
+}
+
 function normalizeTypeFilter(value: string): SearchTypeFilter {
   if (value === "builder" || value === "feed" || value === "digest") return value;
   return "all";
@@ -209,18 +212,16 @@ function normalizeTypeFilter(value: string): SearchTypeFilter {
 
 function searchHref({
   query,
-  mode,
   type,
 }: {
   query: string;
-  mode: string;
   type: SearchTypeFilter;
 }) {
   const params = new URLSearchParams();
   if (query.trim()) params.set("q", query.trim());
-  params.set("mode", mode);
   if (type !== "all") params.set("type", type);
-  return `/search?${params.toString()}`;
+  const queryString = params.toString();
+  return queryString ? `/search?${queryString}` : "/search";
 }
 
 function formatDisplayUrl(url: string | null | undefined) {

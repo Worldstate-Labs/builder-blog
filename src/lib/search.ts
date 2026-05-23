@@ -1,4 +1,4 @@
-export type SearchMode = "exact" | "semantic";
+export type SearchMode = "exact" | "semantic" | "hybrid";
 
 export type SearchDocumentType = "builder" | "feed" | "digest";
 
@@ -61,7 +61,8 @@ const typePriority: Record<SearchDocumentType, number> = {
 };
 
 export function normalizeSearchMode(value: string | null | undefined): SearchMode {
-  return value === "exact" ? "exact" : "semantic";
+  if (value === "exact" || value === "semantic") return value;
+  return "hybrid";
 }
 
 export function candidateSearchTerms(query: string, mode: SearchMode, limit = 12) {
@@ -90,7 +91,8 @@ export function rankSearchDocuments({
   if (!normalizedQuery) return [];
 
   const queryTokens = tokenize(normalizedQuery);
-  const weightedTerms = mode === "semantic" ? buildWeightedTerms(queryTokens) : new Map<string, number>();
+  const weightedTerms =
+    mode === "exact" ? new Map<string, number>() : buildWeightedTerms(queryTokens);
 
   return documents
     .map((document) => {
@@ -99,8 +101,13 @@ export function rankSearchDocuments({
       const haystack = `${title} ${body}`;
       const exactScore = exactMatchScore(normalizedQuery, title, body);
       const semanticScore =
-        mode === "semantic" ? semanticMatchScore(weightedTerms, title, body) : 0;
-      const score = mode === "exact" ? exactScore : Math.max(exactScore, semanticScore);
+        mode === "exact" ? 0 : semanticMatchScore(weightedTerms, title, body);
+      const score =
+        mode === "exact"
+          ? exactScore
+          : mode === "hybrid"
+            ? exactScore * 1.35 + semanticScore
+            : Math.max(exactScore, semanticScore);
 
       if (score <= 0) return null;
       return {

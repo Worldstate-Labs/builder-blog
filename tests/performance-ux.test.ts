@@ -43,6 +43,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /@\/components\/SearchForm/);
   assert.match(searchForm, /useTransition/);
   assert.match(searchForm, /Searching/);
+  assert.doesNotMatch(searchForm, /Semantic|Exact|type="radio"/);
 });
 
 test("heavy route sections have route-specific loading fallbacks", () => {
