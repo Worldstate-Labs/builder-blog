@@ -178,6 +178,40 @@ test("search user path exact mode matches literal text across builders, feeds, a
   assert.match(results[0].snippet, /AGENT MEMORY/);
 });
 
+test("search user path supports wildcard terms inside quoted phrases", () => {
+  const parsed = parseSearchQuery('"agent * memory"');
+
+  assert.equal(parsed.cleanQuery, "agent * memory");
+  assert.deepEqual(parsed.phrases, ["agent * memory"]);
+
+  const results = rankSearchDocuments({
+    query: '"agent * memory"',
+    mode: "exact",
+    documents: [
+      {
+        id: "one-gap",
+        type: "feed",
+        title: "Launch notes",
+        body: "The team shipped agent workflow memory.",
+      },
+      {
+        id: "no-gap",
+        type: "feed",
+        title: "Agent memory",
+        body: "The exact phrase has no wildcard term.",
+      },
+      {
+        id: "two-gap",
+        type: "feed",
+        title: "Launch notes",
+        body: "The team shipped agent workflow durable memory.",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["one-gap"]);
+});
+
 test("search user path semantic mode finds related language without a literal phrase", () => {
   const results = rankSearchDocuments({
     query: "embedding search",

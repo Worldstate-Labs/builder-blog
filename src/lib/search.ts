@@ -378,15 +378,16 @@ export function rankSearchDocuments({
       const body = normalizeText(document.body);
       const haystack = `${title} ${body}`;
       const exactScore = exactMatchScore(normalizedQuery, title, body, parsedQuery.orTerms);
+      const phraseScore = phraseMatchScore(parsedQuery.phrases, title, body);
       const proximityScore = proximityMatchScore(parsedQuery.proximityPairs, title, body);
       const semanticScore =
         mode === "exact" ? 0 : semanticMatchScore(weightedTerms, title, body);
       const score =
         mode === "exact"
-          ? Math.max(exactScore, proximityScore)
+          ? Math.max(exactScore, phraseScore, proximityScore)
           : mode === "hybrid"
-            ? exactScore * 1.35 + proximityScore * 1.2 + semanticScore
-            : Math.max(exactScore, proximityScore, semanticScore);
+            ? exactScore * 1.35 + phraseScore * 1.35 + proximityScore * 1.2 + semanticScore
+            : Math.max(exactScore, phraseScore, proximityScore, semanticScore);
 
       if (score <= 0) return null;
       return {
@@ -435,7 +436,7 @@ function documentMatchesFilters(
   if (parsedQuery.proximityPairs.some((pair) => !proximityMatches(haystack, pair))) {
     return false;
   }
-  if (parsedQuery.phrases.some((phrase) => !haystack.includes(phrase))) return false;
+  if (parsedQuery.phrases.some((phrase) => !phraseMatches(haystack, phrase))) return false;
   if (parsedQuery.excludedTerms.some((term) => haystack.includes(term))) return false;
 
   const date = document.date ?? null;
@@ -480,6 +481,13 @@ function semanticMatchScore(
   }
 
   return score;
+}
+
+function phraseMatchScore(phrases: string[], title: string, body: string) {
+  if (phrases.length === 0) return 0;
+  const titleScore = phrases.filter((phrase) => phraseMatches(title, phrase)).length * 85;
+  const bodyScore = phrases.filter((phrase) => phraseMatches(body, phrase)).length * 55;
+  return titleScore + bodyScore;
 }
 
 function proximityMatchScore(
@@ -561,6 +569,30 @@ function isOperatorBoundaryToken(token: string) {
 
 function normalizeScopedTerm(value: string) {
   return normalizeText(value);
+}
+
+function phraseMatches(value: string, phrase: string) {
+  if (!phrase.includes("*")) return value.includes(phrase);
+
+  const tokens = phraseTokens(value);
+  const pattern = normalizeText(phrase)
+    .split(/\s+/)
+    .map((part) => (part === "*" ? part : stemToken(part)))
+    .filter(Boolean);
+
+  if (pattern.length === 0 || pattern.length > tokens.length) return false;
+
+  for (let index = 0; index <= tokens.length - pattern.length; index += 1) {
+    if (pattern.every((part, offset) => part === "*" || tokens[index + offset] === part)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function phraseTokens(value: string) {
+  return normalizeText(value).match(/[\p{L}\p{N}]+/gu)?.map(stemToken) ?? [];
 }
 
 function parseDateOperator(value: string) {
