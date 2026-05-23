@@ -22,6 +22,24 @@ test("app shell reuses the page session instead of fetching it again", () => {
   assert.match(appShell, /session\??:/);
 });
 
+test("settings live in the clickable user avatar menu", () => {
+  const appShell = source("src/components/AppShell.tsx");
+  const appNav = source("src/components/AppNav.tsx");
+  const settingsPage = source("src/app/settings/page.tsx");
+  const globals = source("src/app/globals.css");
+
+  assert.doesNotMatch(appShell, /label: "Agent"/);
+  assert.doesNotMatch(appNav, /"key"/);
+  assert.match(appShell, /className="user-menu-trigger"/);
+  assert.match(appShell, /aria-label="Open user menu"/);
+  assert.match(appShell, /href="\/settings"[\s\S]*Settings/);
+  assert.match(appShell, /href="\/api\/auth\/signout"[\s\S]*Sign out/);
+  assert.match(settingsPage, />\s*Settings\s*</);
+  assert.doesNotMatch(settingsPage, /Agent login/);
+  assert.match(globals, /\.user-avatar/);
+  assert.match(globals, /\.user-menu-popover/);
+});
+
 test("skill context caps personal seen items to keep payloads bounded", () => {
   const contextRoute = source("src/app/api/skill/context/route.ts");
 

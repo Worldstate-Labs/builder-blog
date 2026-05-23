@@ -254,6 +254,135 @@ a {
   box-shadow: inset 0 0 0 1px var(--line);
 }
 
+.user-menu {
+  border-top: 1px solid var(--line);
+  margin-top: 1rem;
+  padding-top: 1rem;
+  position: relative;
+}
+
+.user-menu-compact {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.user-menu > summary {
+  list-style: none;
+}
+
+.user-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.user-menu-trigger {
+  align-items: center;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  gap: 0.75rem;
+  min-height: 3.25rem;
+  min-width: 0;
+  padding: 0.35rem;
+  transition: background 160ms ease, box-shadow 160ms ease;
+}
+
+.user-menu-trigger:hover,
+.user-menu[open] .user-menu-trigger {
+  background: color-mix(in oklch, var(--paper-strong) 88%, transparent);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.user-avatar {
+  align-items: center;
+  aspect-ratio: 1;
+  background: var(--ink);
+  border-radius: 999px;
+  color: var(--paper);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 0.95rem;
+  font-weight: 850;
+  height: 2.45rem;
+  justify-content: center;
+  object-fit: cover;
+  width: 2.45rem;
+}
+
+.user-menu-copy {
+  display: grid;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.user-menu-name {
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu-email,
+.user-menu-popover-email {
+  color: var(--muted);
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu-popover {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  bottom: calc(100% + 0.5rem);
+  box-shadow: 0 18px 48px var(--shadow);
+  display: grid;
+  gap: 0.25rem;
+  left: 0;
+  min-width: 14rem;
+  padding: 0.55rem;
+  position: absolute;
+  right: 0;
+  z-index: 60;
+}
+
+.user-menu-compact .user-menu-popover {
+  bottom: auto;
+  left: auto;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  width: min(18rem, calc(100vw - 2rem));
+}
+
+.user-menu-popover-email {
+  padding: 0.45rem 0.55rem 0.3rem;
+}
+
+.user-menu-item {
+  align-items: center;
+  border-radius: 8px;
+  color: var(--ink);
+  display: flex;
+  gap: 0.65rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  min-height: 2.6rem;
+  padding: 0.55rem;
+}
+
+.user-menu-item:hover {
+  background: var(--soft);
+}
+
+.user-menu-separator {
+  background: var(--line);
+  height: 1px;
+  margin: 0.25rem 0.1rem;
+}
+
 .mobile-header {
   backdrop-filter: blur(18px);
   background: color-mix(in oklch, var(--paper) 88%, transparent);

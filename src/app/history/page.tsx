@@ -72,8 +72,8 @@ export default async function HistoryPage({
           ))}
           {digests.length === 0 ? (
             <div className="empty-panel border-dashed md:p-10">
-              No historical digest yet. Connect the terminal skill from Agent
-              Login, then run a digest sync.
+              No historical digest yet. Connect the terminal skill from
+              Settings, then run a digest sync.
             </div>
           ) : null}
         </div>

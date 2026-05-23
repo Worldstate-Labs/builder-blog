@@ -55,7 +55,7 @@ export default async function LoginPage({
             <AuthButtons callbackUrl={params.callbackUrl ?? "/dashboard"} />
           </div>
           <p className="mt-6 text-xs leading-5 text-white/42">
-            Tokens for terminal use are created after sign-in from the Agent page.
+            Tokens for terminal use are created after sign-in from Settings.
           </p>
         </section>
       </div>

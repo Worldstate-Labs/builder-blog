@@ -42,14 +42,14 @@ export default async function SettingsPage({
     <AppShell session={session}>
       <div className="page-pad">
         <div className="page-kicker-row">
-          <p className="section-label">Terminal bridge</p>
+          <p className="section-label">Settings</p>
           <span className="status-chip">
             <KeyRound className="h-3.5 w-3.5" />
             {tokens.filter((token) => !token.revokedAt).length} active
           </span>
         </div>
         <h1 className="mt-3 font-serif text-4xl font-semibold leading-tight md:text-6xl">
-          Agent login
+          Settings
         </h1>
         <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--muted-strong)]">
           The skill uses an agent token to fetch your library, sync personal

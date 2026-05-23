@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Session } from "next-auth";
-import { LogOut } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
 import { AppNav, type AppNavItem } from "@/components/AppNav";
 import { isAdminEmail } from "@/lib/admin";
 
@@ -11,7 +11,6 @@ const nav: AppNavItem[] = [
   { href: "/builders", label: "Builders", icon: "builders" },
   { href: "/library-hub", label: "Hub", icon: "hub" },
   { href: "/search", label: "Search", icon: "search" },
-  { href: "/settings", label: "Agent", icon: "key" },
 ];
 
 export function AppShell({
@@ -49,19 +48,7 @@ export function AppShell({
               Keep the pool current, subscribe the useful builders, then sync the digest back here.
             </p>
           </div>
-          <div className="mt-4 border-t border-[var(--line)] pt-5 text-sm text-[var(--muted)]">
-            <p className="truncate" title={session?.user?.email ?? undefined}>
-              {session?.user?.email}
-            </p>
-            <Link
-              className="mt-3 inline-flex min-h-10 items-center gap-2 font-medium text-[var(--ink)] underline"
-              href="/api/auth/signout"
-              prefetch={false}
-            >
-              <LogOut className="h-4 w-4" />
-              Sign out
-            </Link>
-          </div>
+          <UserMenu session={session} />
         </aside>
         <main className="flex min-w-0 flex-1 flex-col">
           <header className="mobile-header lg:hidden">
@@ -72,17 +59,7 @@ export function AppShell({
               >
                 Builder Blog
               </Link>
-              <span className="max-w-[58vw] truncate text-right text-xs text-[var(--muted)]">
-                {session?.user?.email}
-              </span>
-              <Link
-                aria-label="Sign out"
-                className="button-light button-compact"
-                href="/api/auth/signout"
-                prefetch={false}
-              >
-                <LogOut className="h-4 w-4" />
-              </Link>
+              <UserMenu session={session} compact />
             </div>
           </header>
           {children}
@@ -90,5 +67,61 @@ export function AppShell({
         </main>
       </div>
     </div>
+  );
+}
+
+function UserMenu({
+  compact = false,
+  session,
+}: {
+  compact?: boolean;
+  session?: Session | null;
+}) {
+  const user = session?.user;
+  const name = user?.name || user?.email?.split("@")[0] || "User";
+  const email = user?.email || "";
+  const initial = name.trim().charAt(0).toUpperCase() || "U";
+
+  return (
+    <details className={`user-menu ${compact ? "user-menu-compact" : ""}`}>
+      <summary aria-label="Open user menu" className="user-menu-trigger">
+        {user?.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img alt="" className="user-avatar" src={user.image} />
+        ) : (
+          <span className="user-avatar" aria-hidden="true">
+            {initial}
+          </span>
+        )}
+        {!compact ? (
+          <span className="user-menu-copy">
+            <span className="user-menu-name">{name}</span>
+            <span className="user-menu-email" title={email}>
+              {email}
+            </span>
+          </span>
+        ) : null}
+      </summary>
+      <div className="user-menu-popover">
+        {email ? (
+          <p className="user-menu-popover-email" title={email}>
+            {email}
+          </p>
+        ) : null}
+        <Link className="user-menu-item" href="/settings">
+          <Settings className="h-4 w-4" />
+          Settings
+        </Link>
+        <div className="user-menu-separator" />
+        <Link
+          className="user-menu-item"
+          href="/api/auth/signout"
+          prefetch={false}
+        >
+          <LogOut className="h-4 w-4" />
+          Sign out
+        </Link>
+      </div>
+    </details>
   );
 }
