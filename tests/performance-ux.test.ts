@@ -48,6 +48,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /Search instead for/);
   assert.match(searchPage, /isShowingCorrectedResults/);
   assert.match(searchPage, /Advanced search/);
+  assert.match(searchPage, /agent OR embedding/);
   assert.match(searchPage, /site:example\.com/);
   assert.match(searchPage, /intitle:launch/);
   assert.match(searchPage, /inurl:release/);

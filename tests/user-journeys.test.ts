@@ -270,11 +270,12 @@ test("search user path offers related search rewrites from semantic terms", () =
 });
 
 test("search user path parses google-style operators", () => {
-  const parsed = parseSearchQuery('"agent memory" site:example.com intitle:launch inurl:release type:feed -pricing after:2026-01-01 before:2026-02-01');
+  const parsed = parseSearchQuery('"agent memory" site:example.com intitle:launch inurl:release agent OR embedding type:feed -pricing after:2026-01-01 before:2026-02-01');
 
-  assert.equal(parsed.cleanQuery, "agent memory launch release");
+  assert.equal(parsed.cleanQuery, "agent memory launch release agent embedding");
   assert.deepEqual(parsed.phrases, ["agent memory"]);
   assert.deepEqual(parsed.excludedTerms, ["pricing"]);
+  assert.deepEqual(parsed.orTerms, ["agent", "embedding"]);
   assert.deepEqual(parsed.titleTerms, ["launch"]);
   assert.deepEqual(parsed.urlTerms, ["release"]);
   assert.equal(parsed.site, "example.com");
@@ -375,6 +376,37 @@ test("search user path filters by URL operator", () => {
   });
 
   assert.deepEqual(results.map((result) => result.id), ["url-match"]);
+});
+
+test("search user path supports explicit OR alternatives in exact mode", () => {
+  assert.deepEqual(candidateSearchTerms("agent OR embedding", "exact"), ["agent", "embedding"]);
+
+  const results = rankSearchDocuments({
+    query: "agent OR embedding",
+    mode: "exact",
+    documents: [
+      {
+        id: "agent",
+        type: "feed",
+        title: "Agent launch",
+        body: "A short note.",
+      },
+      {
+        id: "embedding",
+        type: "feed",
+        title: "Vector release",
+        body: "Embedding search details.",
+      },
+      {
+        id: "miss",
+        type: "feed",
+        title: "Digest archive",
+        body: "A short note.",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["agent", "embedding"]);
 });
 
 test("search user path suggests simple spelling corrections and normalizes tools", () => {

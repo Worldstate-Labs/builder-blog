@@ -43,6 +43,7 @@ const defaultSuggestions = [
 const advancedSearchExamples = [
   '"agent memory"',
   "agent memory -pricing",
+  "agent OR embedding",
   "agent memory site:example.com",
   "agent memory intitle:launch",
   "agent memory inurl:release",

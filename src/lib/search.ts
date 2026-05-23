@@ -25,6 +25,7 @@ export type ParsedSearchQuery = {
   phrases: string[];
   requiredTerms: string[];
   excludedTerms: string[];
+  orTerms: string[];
   titleTerms: string[];
   urlTerms: string[];
   site: string | null;
@@ -168,13 +169,17 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     cleanParts.push(token);
   }
 
-  const cleanQuery = normalizeText(cleanParts.join(" "));
+  const orTerms = extractOrTerms(cleanParts);
+  const cleanQuery = normalizeText(
+    cleanParts.filter((part) => part.toLowerCase() !== "or").join(" "),
+  );
   return {
     rawQuery,
     cleanQuery,
     phrases,
     requiredTerms: tokenize(cleanQuery),
     excludedTerms,
+    orTerms,
     titleTerms,
     urlTerms,
     site,
@@ -185,8 +190,10 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
 }
 
 export function candidateSearchTerms(query: string, mode: SearchMode, limit = 12) {
-  const normalizedQuery = parseSearchQuery(query).cleanQuery;
+  const parsed = parseSearchQuery(query);
+  const normalizedQuery = parsed.cleanQuery;
   if (!normalizedQuery) return [];
+  if (mode === "exact" && parsed.orTerms.length > 0) return parsed.orTerms.slice(0, limit);
   if (mode === "exact") return [normalizedQuery];
 
   const queryTokens = tokenize(normalizedQuery);
@@ -319,7 +326,7 @@ export function rankSearchDocuments({
       const title = normalizeText(document.title);
       const body = normalizeText(document.body);
       const haystack = `${title} ${body}`;
-      const exactScore = exactMatchScore(normalizedQuery, title, body);
+      const exactScore = exactMatchScore(normalizedQuery, title, body, parsedQuery.orTerms);
       const semanticScore =
         mode === "exact" ? 0 : semanticMatchScore(weightedTerms, title, body);
       const score =
@@ -366,6 +373,12 @@ function documentMatchesFilters(
   if (parsedQuery.site && !urlHostMatches(document.url, parsedQuery.site)) return false;
   if (parsedQuery.titleTerms.some((term) => !title.includes(term))) return false;
   if (parsedQuery.urlTerms.some((term) => !url.includes(term))) return false;
+  if (
+    parsedQuery.orTerms.length > 0 &&
+    parsedQuery.orTerms.every((term) => !haystack.includes(term))
+  ) {
+    return false;
+  }
   if (parsedQuery.phrases.some((phrase) => !haystack.includes(phrase))) return false;
   if (parsedQuery.excludedTerms.some((term) => haystack.includes(term))) return false;
 
@@ -378,7 +391,17 @@ function documentMatchesFilters(
   return true;
 }
 
-function exactMatchScore(query: string, title: string, body: string) {
+function exactMatchScore(
+  query: string,
+  title: string,
+  body: string,
+  alternatives: string[] = [],
+): number {
+  if (alternatives.length > 0) {
+    return Math.max(
+      ...alternatives.map((alternative) => exactMatchScore(alternative, title, body)),
+    );
+  }
   let score = 0;
   if (title.includes(query)) score += 80;
   if (body.includes(query)) score += 50;
@@ -423,6 +446,21 @@ function parseDateOperator(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const date = new Date(`${value}T00:00:00.000Z`);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function extractOrTerms(parts: string[]) {
+  const terms = new Set<string>();
+
+  for (let index = 1; index < parts.length - 1; index += 1) {
+    if (parts[index].toLowerCase() !== "or") continue;
+
+    for (const candidate of [parts[index - 1], parts[index + 1]]) {
+      const term = normalizeText(candidate);
+      if (term && term !== "or") terms.add(term);
+    }
+  }
+
+  return [...terms];
 }
 
 function searchTimeBounds(time: SearchTimeRange) {
