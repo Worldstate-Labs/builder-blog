@@ -197,6 +197,26 @@ body {
   text-transform: uppercase;
 }
 
+.page-pad h1:not(.search-heading) {
+  font-size: 2.25rem;
+  line-height: 1.12;
+}
+
+.page-pad h2 {
+  font-size: 1.55rem;
+  line-height: 1.2;
+}
+
+.page-pad h3 {
+  font-size: 1.35rem;
+  line-height: 1.25;
+}
+
+.builder-row h3,
+.admin-panel h3 {
+  font-size: 1.12rem;
+}
+
 .stats-panel {
   display: grid;
   gap: 0.6rem;
@@ -902,7 +922,7 @@ body {
 }
 
 @media (max-width: 767px) {
-  .page-pad h1 {
+  .page-pad h1:not(.search-heading) {
     font-size: 2rem;
     line-height: 1.15;
   }
