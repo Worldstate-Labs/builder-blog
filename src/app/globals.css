@@ -1918,6 +1918,14 @@ a {
     width: 100%;
   }
 
+  .search-page-active .search-suggestion-row {
+    display: none;
+  }
+
+  .search-page-active .search-quick-stats {
+    margin-bottom: 1rem;
+  }
+
   .search-mode-select,
   .search-date-range,
   .search-lucky-button {

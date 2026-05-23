@@ -39,6 +39,7 @@ test("history page paginates digests instead of rendering the full archive", () 
 test("search page uses a client form with pending feedback", () => {
   const searchPage = source("src/app/search/page.tsx");
   const searchForm = source("src/components/SearchForm.tsx");
+  const globals = source("src/app/globals.css");
 
   assert.match(searchPage, /@\/components\/SearchForm/);
   assert.match(searchPage, /searchPageSize/);
@@ -131,6 +132,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /role="option"/);
   assert.match(searchForm, /Lucky/);
   assert.doesNotMatch(searchForm, /type="radio"/);
+  assert.match(globals, /\.search-page-active \.search-suggestion-row/);
+  assert.match(globals, /\.search-page-active \.search-suggestion-row\s*\{[\s\S]*display:\s*none/);
 });
 
 test("search suggestions API exists for autocomplete-style queries", () => {
