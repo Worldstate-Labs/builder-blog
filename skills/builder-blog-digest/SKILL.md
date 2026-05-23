@@ -44,6 +44,8 @@ This command:
 - skips already-synced posts by `user + builder + item kind + externalId`;
 - crawls each personal blog or YouTube RSS feed locally from the user's agent environment;
 - for YouTube videos, prefers caption transcripts and falls back to feed descriptions;
+- records the crawling tool as the local agent runtime plus the concrete crawler
+  path, for example `Codex Desktop Builder Blog skill crawler (YouTube RSS + captions)`;
 - posts discovered `BLOG_POST` or `PODCAST_EPISODE` items back to `/api/skill/builders`.
 
 Use `--force` only when the user explicitly wants to re-sync already-synced
@@ -66,6 +68,7 @@ Payload shape:
 
 ```json
 {
+  "crawlingTool": "Codex Desktop Builder Blog skill crawler (manual JSON sync)",
   "builders": [
     {
       "kind": "X",

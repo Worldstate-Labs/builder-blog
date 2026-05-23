@@ -96,6 +96,14 @@ test("personal YouTube crawler maps feed entries into syncable episodes", async 
   assert.equal(videos[0].description, "Practical agent lessons.");
 });
 
+test("personal crawler reports concrete crawling tool identity", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  assert.match(
+    cli.skillCrawlingTool("YouTube RSS + captions"),
+    /Builder Blog skill crawler \(YouTube RSS \+ captions\)/,
+  );
+});
+
 test("personal crawler keeps crawled builders eligible and tracks seen post keys", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const context = {

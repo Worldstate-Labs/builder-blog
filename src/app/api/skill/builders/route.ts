@@ -68,11 +68,25 @@ export async function POST(request: Request) {
     const payloadItemKeys = new Set<string>();
     for (const item of input.items) {
       const key = feedItemKey(builder.id, item.kind, item.externalId);
-      if (payloadItemKeys.has(key) || (!parsed.data.force && existingItemKeys.has(key))) {
+      if (payloadItemKeys.has(key)) {
         skippedFeedItems += 1;
         continue;
       }
       payloadItemKeys.add(key);
+      const crawlingTool = item.crawlingTool ?? parsed.data.crawlingTool;
+      if (!parsed.data.force && existingItemKeys.has(key)) {
+        await prisma.feedItem.updateMany({
+          where: {
+            builderId: builder.id,
+            kind: item.kind,
+            externalId: item.externalId,
+            OR: [{ crawlingTool: null }, { crawlingTool: "Legacy crawl/import" }],
+          },
+          data: { crawlingTool },
+        });
+        skippedFeedItems += 1;
+        continue;
+      }
       await prisma.feedItem.upsert({
         where: {
           builderId_kind_externalId: {
@@ -87,7 +101,7 @@ export async function POST(request: Request) {
           url: item.url,
           publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
           sourceName: item.sourceName ?? input.name,
-          crawlingTool: item.crawlingTool ?? parsed.data.crawlingTool,
+          crawlingTool,
           rawJson: item.rawJson === undefined ? undefined : JSON.stringify(item.rawJson),
         },
         create: {
@@ -99,7 +113,7 @@ export async function POST(request: Request) {
           url: item.url,
           publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
           sourceName: item.sourceName ?? input.name,
-          crawlingTool: item.crawlingTool ?? parsed.data.crawlingTool,
+          crawlingTool,
           rawJson: item.rawJson === undefined ? undefined : JSON.stringify(item.rawJson),
         },
       });

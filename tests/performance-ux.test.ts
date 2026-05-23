@@ -124,6 +124,7 @@ test("library hub exposes share and multi-import flows", () => {
   const appShell = source("src/components/AppShell.tsx");
   const hubPage = source("src/app/library-hub/page.tsx");
   const actions = source("src/app/actions.ts");
+  const skillRoute = source("src/app/api/skill/builders/route.ts");
   const schema = source("prisma/schema.prisma");
 
   assert.match(appShell, /library-hub/);
@@ -135,6 +136,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /libraryId/);
   assert.match(actions, /sharePersonalLibraryToHub/);
   assert.match(actions, /importLibrariesFromHub/);
+  assert.match(skillRoute, /crawlingTool: "Legacy crawl\/import"/);
   assert.match(schema, /model LibraryHubEntry/);
   assert.match(schema, /model LibraryImport/);
 });

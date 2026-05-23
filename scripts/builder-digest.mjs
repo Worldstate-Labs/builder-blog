@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 const CONFIG_DIR = join(homedir(), ".builder-blog");
 const CONFIG_PATH = join(CONFIG_DIR, "config.json");
 const DEFAULT_APP_URL = "https://builder-blog.worldstatelabs.com";
+const DEFAULT_AGENT_RUNTIME = detectedAgentRuntime();
 const PERSONAL_CRAWL_SOURCES = [
   {
     id: "blog",
@@ -35,6 +36,22 @@ function usage() {
   sync-builders --file personal-builders.json
   sync --file digest.md [--title "AI Builder Digest"]
   status`);
+}
+
+export function skillCrawlingTool(detail = "") {
+  const override = process.env.BUILDER_BLOG_CRAWLING_TOOL?.trim();
+  if (override) return override;
+  const suffix = detail ? ` (${detail})` : "";
+  return `${DEFAULT_AGENT_RUNTIME} Builder Blog skill crawler${suffix}`;
+}
+
+function detectedAgentRuntime() {
+  if (process.env.CODEX_INTERNAL_ORIGINATOR_OVERRIDE) {
+    return process.env.CODEX_INTERNAL_ORIGINATOR_OVERRIDE;
+  }
+  if (process.env.CODEX_SHELL || process.env.CODEX_CI) return "Codex";
+  if (process.env.CLAUDECODE || process.env.CLAUDE_CODE) return "Claude Code";
+  return "Local agent";
 }
 
 async function readConfig() {
@@ -189,7 +206,7 @@ async function crawlPersonal(args) {
 
   const result = await postJson(
     `${config.appUrl}/api/skill/builders`,
-    { force, builders },
+    { force, crawlingTool: skillCrawlingTool("local personal crawler"), builders },
     config.token,
   );
   console.log(
@@ -286,6 +303,7 @@ async function crawlPersonalYouTubeBuilder(builder, { cutoff, limit, seenItemKey
       url: video.url,
       publishedAt: video.publishedAt,
       sourceName: builder.name,
+      crawlingTool: skillCrawlingTool(transcript ? "YouTube RSS + captions" : "YouTube RSS + feed description"),
       rawJson: {
         source: "personal-youtube",
         builderId: builder.id,
@@ -338,6 +356,7 @@ async function crawlPersonalBlogBuilder(builder, { cutoff, limit, seenItemKeys =
       url: article.url,
       publishedAt: extracted.publishedAt || article.publishedAt,
       sourceName: builder.name,
+      crawlingTool: skillCrawlingTool("RSS/HTML article extractor"),
       rawJson: {
         source: "personal-blog",
         builderId: builder.id,
