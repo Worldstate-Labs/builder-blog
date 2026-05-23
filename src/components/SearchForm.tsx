@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { Search, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { Search, Sparkles, X } from "lucide-react";
 import {
   mergeSearchSuggestions,
   normalizeRecentSearches,
@@ -32,6 +32,7 @@ export function SearchForm({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [inputValue, setInputValue] = useState(query);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -151,6 +152,14 @@ export function SearchForm({
     submitSearch({ form, nextQuery: suggestion });
   }
 
+  function clearQuery() {
+    setInputValue("");
+    setLiveSuggestions([]);
+    setSuggestionsOpen(false);
+    setActiveSuggestionIndex(-1);
+    inputRef.current?.focus();
+  }
+
   return (
     <form
       action="/search"
@@ -175,10 +184,10 @@ export function SearchForm({
             <Search className="search-input-icon" />
             <input
               className="search-input"
+              ref={inputRef}
               type="search"
               name="q"
               role="combobox"
-              list="search-suggestions"
               value={inputValue}
               aria-activedescendant={activeSuggestionId}
               aria-autocomplete="list"
@@ -214,11 +223,16 @@ export function SearchForm({
               }}
               placeholder="Search builders, feed items, or digests"
             />
-            <datalist id="search-suggestions">
-              {suggestionOptions.map((suggestion) => (
-                <option key={suggestion} value={suggestion} />
-              ))}
-            </datalist>
+            {inputValue ? (
+              <button
+                aria-label="Clear search query"
+                className="search-input-clear"
+                onClick={clearQuery}
+                type="button"
+              >
+                <X aria-hidden="true" className="h-4 w-4" />
+              </button>
+            ) : null}
           </span>
         </label>
         <label className="search-mode-select">

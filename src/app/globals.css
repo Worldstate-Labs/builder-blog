@@ -959,12 +959,40 @@ a {
   font-size: 1rem;
   min-height: 2.9rem;
   outline: none;
-  padding: 0.65rem 1rem 0.65rem 2.65rem;
+  padding: 0.65rem 2.65rem 0.65rem 2.65rem;
   width: 100%;
 }
 
 .search-input::placeholder {
   color: color-mix(in oklch, var(--muted) 82%, transparent);
+}
+
+.search-input::-webkit-calendar-picker-indicator,
+.search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.search-input-clear {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: 2rem;
+  justify-content: center;
+  padding: 0;
+  position: absolute;
+  right: 0.45rem;
+  width: 2rem;
+}
+
+.search-input-clear:hover,
+.search-input-clear:focus-visible {
+  background: color-mix(in oklch, var(--ink) 7%, transparent);
+  color: var(--ink);
+  outline: none;
 }
 
 .search-mode-select {
