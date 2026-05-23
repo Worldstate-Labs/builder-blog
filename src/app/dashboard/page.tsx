@@ -43,11 +43,11 @@ export default async function DashboardPage() {
               </span>
             </div>
             <h1 className="mt-3 max-w-4xl font-serif text-4xl font-semibold leading-tight md:text-6xl">
-              Today&apos;s feed, synced and archived.
+              Digest feed, synced and archived.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[var(--muted-strong)]">
-              This page only shows generated digest feed entries. Library
-              controls and crawled source content live outside Today.
+              This page only shows generated digest feed entries. Recommendation
+              snapshots live in For You; crawled source content lives with builders.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link className="button-light button-compact gap-2" href="/builders">
@@ -63,7 +63,7 @@ export default async function DashboardPage() {
           <div className="stats-panel">
             <Stat
               icon={todayDigest ? CheckCircle2 : Clock3}
-              label="Today"
+              label="Digest"
               value={todayDigest ? "Synced" : "Empty"}
             />
             <Stat icon={Archive} label="Archive entries" value={digestCount} />

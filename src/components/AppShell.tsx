@@ -5,7 +5,7 @@ import { AppNav, type AppNavItem } from "@/components/AppNav";
 import { isAdminEmail } from "@/lib/admin";
 
 const nav: AppNavItem[] = [
-  { href: "/dashboard", label: "Today", icon: "home" },
+  { href: "/dashboard", label: "Digest", icon: "home" },
   { href: "/history", label: "History", icon: "archive" },
   { href: "/recommendations", label: "For You", icon: "recommendations" },
   { href: "/builders", label: "Builders", icon: "builders" },
