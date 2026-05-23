@@ -97,6 +97,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /Search tools/);
   assert.match(searchPage, /Clear all/);
   assert.match(searchPage, /SearchQueryInsights/);
+  assert.match(searchPage, /SearchTypeTabs/);
+  assert.match(searchPage, /counts=\{hasQuery \? typeCounts : null\}/);
   assert.match(searchPage, /buildQueryInsightItems/);
   assert.match(searchPage, /search-insights/);
   assert.match(searchPage, /search-insight-card/);

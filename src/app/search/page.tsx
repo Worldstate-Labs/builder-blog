@@ -231,27 +231,16 @@ export default async function SearchPage({
         </section>
 
         <section className="search-results-shell">
+          <SearchTypeTabs
+            counts={hasQuery ? typeCounts : null}
+            current={typeFilter}
+            mode={mode}
+            query={activeQuery}
+            sort={sort}
+            time={time}
+          />
           {hasQuery ? (
             <>
-              <nav className="search-tabs" aria-label="Result type">
-                <TypeTab
-                  count={typeCounts.all}
-                  current={typeFilter}
-                  href={searchHref({ query: activeQuery, type: "all", mode, sort, time })}
-                  label="All"
-                  value="all"
-                />
-                {(["builder", "feed", "digest"] as const).map((type) => (
-                  <TypeTab
-                    count={typeCounts[type]}
-                    current={typeFilter}
-                    href={searchHref({ query: activeQuery, type, mode, sort, time })}
-                    key={type}
-                    label={resultTypeLabels[type]}
-                    value={type}
-                  />
-                ))}
-              </nav>
               <div className="search-meta-row">
                 About {filteredResults.length} result
                 {filteredResults.length === 1 ? "" : "s"} for{" "}
@@ -455,6 +444,44 @@ function ActiveSearchFilters({
   );
 }
 
+function SearchTypeTabs({
+  counts,
+  current,
+  mode,
+  query,
+  sort,
+  time,
+}: {
+  counts: ReturnType<typeof countResultTypes> | null;
+  current: SearchTypeFilter;
+  mode: SearchMode;
+  query: string;
+  sort: SearchSort;
+  time: SearchTimeRange;
+}) {
+  return (
+    <nav className="search-tabs" aria-label="Result type">
+      <TypeTab
+        count={counts?.all}
+        current={current}
+        href={searchHref({ query, type: "all", mode, sort, time })}
+        label="All"
+        value="all"
+      />
+      {(["builder", "feed", "digest"] as const).map((type) => (
+        <TypeTab
+          count={counts?.[type]}
+          current={current}
+          href={searchHref({ query, type, mode, sort, time })}
+          key={type}
+          label={resultTypeLabels[type]}
+          value={type}
+        />
+      ))}
+    </nav>
+  );
+}
+
 function TypeTab({
   count,
   current,
@@ -462,7 +489,7 @@ function TypeTab({
   label,
   value,
 }: {
-  count: number;
+  count?: number;
   current: SearchTypeFilter;
   href: string;
   label: string;
@@ -471,7 +498,7 @@ function TypeTab({
   return (
     <Link className="search-tab" data-active={current === value ? "true" : undefined} href={href}>
       <span>{label}</span>
-      <span className="search-tab-count">{count}</span>
+      {typeof count === "number" ? <span className="search-tab-count">{count}</span> : null}
     </Link>
   );
 }
