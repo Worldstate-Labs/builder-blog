@@ -31,6 +31,7 @@ export type ParsedSearchQuery = {
   phrases: string[];
   excludedPhrases: string[];
   requiredTerms: string[];
+  requiredOperatorTerms: string[];
   excludedTerms: string[];
   orTerms: string[];
   proximityPairs: SearchProximityPair[];
@@ -144,6 +145,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     return ` ${normalizedPhrase} `;
   });
   const excludedTerms: string[] = [];
+  const requiredOperatorTerms: string[] = [];
   const bodyTerms: string[] = [];
   const titleTerms: string[] = [];
   const urlTerms: string[] = [];
@@ -282,6 +284,14 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
       before = parseDateOperator(lower.slice(7)) ?? before;
       continue;
     }
+    if (lower.startsWith("+") && lower.length > 1) {
+      const requiredTerm = normalizeText(token.slice(1));
+      if (requiredTerm) {
+        requiredOperatorTerms.push(stemToken(requiredTerm));
+        cleanParts.push(requiredTerm);
+      }
+      continue;
+    }
     if (lower.startsWith("-") && lower.length > 1) {
       excludedTerms.push(stemToken(lower.slice(1)));
       continue;
@@ -302,6 +312,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     phrases,
     excludedPhrases,
     requiredTerms: tokenize(cleanQuery),
+    requiredOperatorTerms,
     excludedTerms,
     orTerms,
     proximityPairs,
@@ -372,6 +383,7 @@ export function searchHighlightTerms(query: string, limit = 8) {
     ...parsed.bodyTerms,
     ...parsed.urlTerms,
     ...parsed.orTerms,
+    ...parsed.requiredOperatorTerms,
     ...parsed.requiredTerms,
   ]) {
     const normalizedTerm = term.trim();
@@ -602,6 +614,7 @@ function documentMatchesFilters(
   }
   if (parsedQuery.phrases.some((phrase) => !phraseMatches(haystack, phrase))) return false;
   if (parsedQuery.excludedPhrases.some((phrase) => phraseMatches(haystack, phrase))) return false;
+  if (parsedQuery.requiredOperatorTerms.some((term) => !haystack.includes(term))) return false;
   if (parsedQuery.excludedTerms.some((term) => haystack.includes(term))) return false;
 
   const date = document.date ?? null;

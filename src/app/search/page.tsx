@@ -47,6 +47,7 @@ const advancedSearchExamples = [
   '"agent memory"',
   '"agent * memory"',
   "agent memory -pricing",
+  "agent memory +retrieval",
   'agent -"memory leak"',
   "agent OR embedding",
   "agent AROUND(3) memory",
@@ -781,6 +782,20 @@ function buildActiveSearchFilters({
       value: parsed.urlTerms.join(", "),
     });
   }
+  if (parsed.requiredOperatorTerms.length > 0) {
+    filters.push({
+      clearLabel: "Remove required terms",
+      href: searchHref({
+        query: stripRequiredTerms(query),
+        type: typeFilter,
+        mode,
+        sort,
+        time,
+      }),
+      label: "Must include",
+      value: parsed.requiredOperatorTerms.join(", "),
+    });
+  }
   const excludedTitleValues = [
     ...parsed.excludedTitleTerms,
     ...parsed.excludedAllTitleTermGroups.map((terms) => terms.join(" + ")),
@@ -958,6 +973,14 @@ function stripExcludedTerms(query: string) {
     .trim();
 }
 
+function stripRequiredTerms(query: string) {
+  return query
+    .split(/\s+/)
+    .filter((token) => !(token.startsWith("+") && token.length > 1))
+    .join(" ")
+    .trim();
+}
+
 function stripExcludedPhrases(query: string) {
   return query
     .replace(/(^|\s)-"([^"]+)"/g, "$1")
@@ -978,6 +1001,7 @@ function isQueryOperatorBoundaryToken(token: string) {
   return (
     lower === "or" ||
     lower.startsWith("-") ||
+    lower.startsWith("+") ||
     lower.startsWith("site:") ||
     lower.startsWith("text:") ||
     lower.startsWith("intext:") ||
