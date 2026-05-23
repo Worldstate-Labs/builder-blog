@@ -1,8 +1,8 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { createPersonalTokenAction, revokeTokenAction } from "@/app/actions";
 import { AppShell } from "@/components/AppShell";
-import { authOptions } from "@/lib/auth";
+import { FormSubmitButton } from "@/components/FormSubmitButton";
+import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export default async function SettingsPage({
@@ -10,7 +10,7 @@ export default async function SettingsPage({
 }: {
   searchParams: Promise<{ token?: string }>;
 }) {
-  const session = await getServerSession(authOptions);
+  const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
   const params = await searchParams;
 
@@ -20,7 +20,7 @@ export default async function SettingsPage({
   });
 
   return (
-    <AppShell>
+    <AppShell session={session}>
       <div className="page-pad">
         <p className="section-label">Terminal bridge</p>
         <h1 className="mt-3 font-serif text-4xl font-semibold leading-tight md:text-6xl">
@@ -43,9 +43,9 @@ export default async function SettingsPage({
         ) : null}
 
         <form action={createPersonalTokenAction} className="mt-8">
-          <button className="button-dark" type="submit">
+          <FormSubmitButton className="button-dark" pendingLabel="Creating...">
             Create manual token
-          </button>
+          </FormSubmitButton>
         </form>
 
         <section className="mt-10 grid gap-3">
@@ -62,9 +62,9 @@ export default async function SettingsPage({
               {!token.revokedAt ? (
                 <form action={revokeTokenAction}>
                   <input type="hidden" name="tokenId" value={token.id} />
-                  <button className="button-light" type="submit">
+                  <FormSubmitButton className="button-light" pendingLabel="Revoking...">
                     Revoke
-                  </button>
+                  </FormSubmitButton>
                 </form>
               ) : null}
             </article>

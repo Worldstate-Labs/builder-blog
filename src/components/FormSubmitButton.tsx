@@ -17,11 +17,20 @@ export function FormSubmitButton({
   return (
     <button
       aria-busy={pending}
-      className={className}
+      className={`${className ?? ""} relative justify-center`}
       disabled={pending}
       type="submit"
     >
-      {pending ? pendingLabel : children}
+      <span
+        className={`inline-flex items-center justify-center gap-2 ${pending ? "invisible" : ""}`}
+      >
+        {children}
+      </span>
+      {pending ? (
+        <span className="absolute inset-0 inline-flex items-center justify-center px-3">
+          {pendingLabel}
+        </span>
+      ) : null}
     </button>
   );
 }

@@ -1,7 +1,7 @@
-import { getServerSession } from "next-auth";
 import { approveDeviceLoginAction } from "@/app/actions";
 import { AuthButtons } from "@/components/AuthButtons";
-import { authOptions } from "@/lib/auth";
+import { FormSubmitButton } from "@/components/FormSubmitButton";
+import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export default async function DevicePage({
@@ -11,7 +11,7 @@ export default async function DevicePage({
 }) {
   const params = await searchParams;
   const code = params.code?.toUpperCase() ?? "";
-  const session = await getServerSession(authOptions);
+  const session = await getCurrentSession();
   const device = code ? await prisma.deviceLogin.findUnique({ where: { code } }) : null;
 
   return (
@@ -46,9 +46,9 @@ export default async function DevicePage({
           {session && device && !params.approved ? (
             <form action={approveDeviceLoginAction} className="mt-8">
               <input type="hidden" name="code" value={code} />
-              <button className="auth-button" type="submit">
+              <FormSubmitButton className="auth-button" pendingLabel="Approving...">
                 Approve terminal access
-              </button>
+              </FormSubmitButton>
             </form>
           ) : null}
 

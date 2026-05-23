@@ -1,10 +1,9 @@
 "use server";
 
 import { BuilderKind, BuilderPoolOrigin, BuilderScope } from "@prisma/client";
-import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
+import { getCurrentSession } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin";
 import { activePoolBuilderIds, addBuilderToPool } from "@/lib/builder-pool";
 import { inferBuilderKind, normalizeHandle } from "@/lib/builder-keys";
@@ -14,7 +13,7 @@ import { builderKindForSourceType } from "@/lib/source-registry";
 import { createAgentToken } from "@/lib/tokens";
 
 async function requireUser() {
-  const session = await getServerSession(authOptions);
+  const session = await getCurrentSession();
   if (!session?.user?.id) {
     redirect("/login");
   }

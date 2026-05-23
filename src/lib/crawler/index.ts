@@ -1,10 +1,7 @@
-import { BuilderKind, BuilderScope } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { BuilderScope } from "@prisma/client";
 import { centralCrawlerBuilderKinds, sourceDefinitionForBuilder } from "@/lib/source-registry";
-import { crawlBlogBuilders } from "./blogs";
-import { crawlPodcastBuilders } from "./podcasts";
+import { centralCrawlerSourceAdapters } from "./source-adapters";
 import type { CrawlerBuilder, CrawlOptions, CrawlSourceResult } from "./types";
-import { crawlXBuilders } from "./x";
 
 export type CrawlBuilderPoolOptions = CrawlOptions & {
   xBearerToken?: string | null;
@@ -19,35 +16,17 @@ export async function crawlBuilders(
   builders: CrawlerBuilder[],
   options: CrawlBuilderPoolOptions = {},
 ) {
-  const xBuilders = builders.filter((builder) => builder.kind === BuilderKind.X);
-  const podcastBuilders = builders.filter((builder) => builder.kind === BuilderKind.PODCAST);
-  const blogBuilders = builders.filter((builder) => builder.kind === BuilderKind.BLOG);
-
-  const sources = await Promise.all([
-    crawlXBuilders(xBuilders, {
-      fetcher: options.fetcher,
-      now: options.now,
-      bearerToken: options.xBearerToken,
-    }),
-    crawlPodcastBuilders(podcastBuilders, {
-      fetcher: options.fetcher,
-      now: options.now,
-      pod2txtApiKey: options.pod2txtApiKey,
-      openAiApiKey: options.openAiApiKey,
-      maxTranscriptAudioBytes: options.maxTranscriptAudioBytes,
-      maxTranscriptAttempts: options.maxTranscriptAttempts,
-      transcriptPollIntervalMs: options.transcriptPollIntervalMs,
-    }),
-    crawlBlogBuilders(blogBuilders, {
-      fetcher: options.fetcher,
-      now: options.now,
-    }),
-  ]);
+  const sources = await Promise.all(
+    centralCrawlerSourceAdapters().map((adapter) =>
+      adapter.crawl(builders.filter(adapter.matches), options),
+    ),
+  );
 
   return summarizeSources(sources);
 }
 
 export async function crawlBuilderPool(options: CrawlBuilderPoolOptions = {}) {
+  const { prisma } = await import("@/lib/prisma");
   const builders = (
     await prisma.builder.findMany({
       where: {

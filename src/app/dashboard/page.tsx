@@ -1,14 +1,13 @@
-import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ComponentType } from "react";
 import { Archive, CheckCircle2, Clock3 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { authOptions } from "@/lib/auth";
+import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
+  const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
 
   const [todayDigest, recentDigests, digestCount] = await Promise.all([
@@ -32,7 +31,7 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <AppShell>
+    <AppShell session={session}>
       <div className="page-pad">
         <section className="grid gap-6 xl:grid-cols-[1fr_22rem]">
           <div>
@@ -127,13 +126,11 @@ function Stat({
   value: number | string;
 }) {
   return (
-    <div className="rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] p-5">
-      <div className="flex items-center gap-3">
-        <Icon className="h-5 w-5 text-[var(--accent)]" />
-        <div className="font-serif text-4xl font-semibold">{value}</div>
-      </div>
-      <div className="mt-2 text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
-        {label}
+    <div className="stat-card">
+      <Icon className="stat-card-icon" />
+      <div className="min-w-0">
+        <div className="stat-card-value">{value}</div>
+        <div className="stat-card-label">{label}</div>
       </div>
     </div>
   );

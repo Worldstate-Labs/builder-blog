@@ -1,7 +1,6 @@
 import { BuilderKind, BuilderScope } from "@prisma/client";
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import type { ComponentType, ReactNode } from "react";
+import { Suspense, type ComponentType, type ReactNode } from "react";
 import { Bell, BellOff, ListPlus, Plus, Trash2, UsersRound } from "lucide-react";
 import {
   addBuilderToLibraryAction,
@@ -13,7 +12,7 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { FeedCard } from "@/components/FeedCard";
 import { FormSubmitButton } from "@/components/FormSubmitButton";
-import { authOptions } from "@/lib/auth";
+import { getCurrentSession } from "@/lib/auth";
 import { ensureDefaultBuilderPool } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
 import { builderSourceLabel } from "@/lib/source-registry";
@@ -32,7 +31,7 @@ type BuilderWithCount = {
 };
 
 export default async function BuildersPage() {
-  const session = await getServerSession(authOptions);
+  const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
 
   await ensureDefaultBuilderPool(session.user.id);
@@ -77,15 +76,9 @@ export default async function BuildersPage() {
     (count, builder) => count + builder._count.feedItems,
     0,
   );
-  const recentFeedItems = await prisma.feedItem.findMany({
-    where: { builderId: { in: poolBuilderIds } },
-    include: { builder: true },
-    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-    take: 40,
-  });
 
   return (
-    <AppShell>
+    <AppShell session={session}>
       <div className="page-pad">
         <section className="grid gap-6 xl:grid-cols-[1fr_24rem]">
           <div>
@@ -184,41 +177,92 @@ export default async function BuildersPage() {
           ) : null}
         </section>
 
-        <section className="mt-12">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="section-label">Crawled content</p>
-              <h2 className="mt-2 font-serif text-4xl">Recent crawled content</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
-                Raw source items for builders in your active library. Today and
-                History stay focused on generated digest feed entries.
-              </p>
-            </div>
-            <span className="rounded-full border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-2 text-sm text-[var(--muted-strong)]">
-              Latest {recentFeedItems.length} of {crawledItems}
-            </span>
-          </div>
-          <div className="item-list mt-5">
-            {recentFeedItems.map((item) => (
-              <FeedCard
-                key={item.id}
-                title={item.title}
-                source={item.builder?.name ?? item.sourceName}
-                body={item.body}
-                url={item.url}
-                date={item.publishedAt ?? item.createdAt}
-              />
-            ))}
-            {recentFeedItems.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-[var(--line)] p-6 text-[var(--muted-strong)] md:p-10">
-                No crawled content yet. Run the crawler or sync personal builder
-                items from the terminal skill.
-              </div>
-            ) : null}
-          </div>
-        </section>
+        <Suspense fallback={<RecentCrawledContentFallback crawledItems={crawledItems} />}>
+          <RecentCrawledContent
+            crawledItems={crawledItems}
+            poolBuilderIds={poolBuilderIds}
+          />
+        </Suspense>
       </div>
     </AppShell>
+  );
+}
+
+async function RecentCrawledContent({
+  crawledItems,
+  poolBuilderIds,
+}: {
+  crawledItems: number;
+  poolBuilderIds: string[];
+}) {
+  const recentFeedItems = await prisma.feedItem.findMany({
+    where: { builderId: { in: poolBuilderIds } },
+    include: { builder: true },
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    take: 40,
+  });
+
+  return (
+    <section className="mt-12">
+      <RecentCrawledContentHeader count={recentFeedItems.length} crawledItems={crawledItems} />
+      <div className="item-list mt-5">
+        {recentFeedItems.map((item) => (
+          <FeedCard
+            key={item.id}
+            title={item.title}
+            source={item.builder?.name ?? item.sourceName}
+            body={item.body}
+            url={item.url}
+            date={item.publishedAt ?? item.createdAt}
+          />
+        ))}
+        {recentFeedItems.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-[var(--line)] p-6 text-[var(--muted-strong)] md:p-10">
+            No crawled content yet. Run the crawler or sync personal builder
+            items from the terminal skill.
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function RecentCrawledContentFallback({ crawledItems }: { crawledItems: number }) {
+  return (
+    <section className="mt-12" aria-live="polite" aria-busy="true">
+      <RecentCrawledContentHeader count={0} crawledItems={crawledItems} loading />
+      <div className="item-list mt-5">
+        <div className="h-24 rounded-lg bg-black/10" />
+        <div className="h-24 rounded-lg bg-black/10" />
+        <div className="h-24 rounded-lg bg-black/10" />
+      </div>
+    </section>
+  );
+}
+
+function RecentCrawledContentHeader({
+  count,
+  crawledItems,
+  loading = false,
+}: {
+  count: number;
+  crawledItems: number;
+  loading?: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p className="section-label">Crawled content</p>
+        <h2 className="mt-2 font-serif text-4xl">Recent crawled content</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
+          Raw source items for builders in your active library. Today and
+          History stay focused on generated digest feed entries.
+        </p>
+      </div>
+      <span className="rounded-full border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-2 text-sm text-[var(--muted-strong)]">
+        {loading ? "Loading latest" : `Latest ${count}`} of {crawledItems}
+      </span>
+    </div>
   );
 }
 
@@ -329,13 +373,11 @@ function Stat({
   value: number;
 }) {
   return (
-    <div className="rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] p-5">
-      <div className="flex items-center gap-3">
-        <Icon className="h-5 w-5 text-[var(--accent)]" />
-        <div className="font-serif text-4xl font-semibold">{value}</div>
-      </div>
-      <div className="mt-2 text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
-        {label}
+    <div className="stat-card">
+      <Icon className="stat-card-icon" />
+      <div className="min-w-0">
+        <div className="stat-card-value">{value}</div>
+        <div className="stat-card-label">{label}</div>
       </div>
     </div>
   );

@@ -1,150 +1,176 @@
 import { formatDistanceToNow } from "date-fns";
-import { getServerSession } from "next-auth";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ExternalLink, Search } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { authOptions } from "@/lib/auth";
+import { SearchForm, type SearchTypeFilter } from "@/components/SearchForm";
+import { getCurrentSession } from "@/lib/auth";
 import { searchUserLibrary } from "@/lib/user-search";
-import type { SearchMode, SearchResult } from "@/lib/search";
+import type { SearchDocumentType, SearchResult } from "@/lib/search";
 
 type SearchParams = Promise<{
   q?: string | string[];
   mode?: string | string[];
+  type?: string | string[];
 }>;
+
+const resultTypeLabels: Record<SearchDocumentType, string> = {
+  builder: "Builders",
+  feed: "Feed",
+  digest: "Digests",
+};
 
 export default async function SearchPage({
   searchParams,
 }: {
   searchParams: SearchParams;
 }) {
-  const session = await getServerSession(authOptions);
+  const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
 
   const params = await searchParams;
   const query = firstParam(params.q);
   const requestedMode = firstParam(params.mode);
-  const { mode, results } = await searchUserLibrary({
+  const typeFilter = normalizeTypeFilter(firstParam(params.type));
+  const { mode, results, candidateCount, strategy } = await searchUserLibrary({
     userId: session.user.id,
     query,
     mode: requestedMode,
   });
+  const hasQuery = query.trim().length > 0;
+  const typeCounts = countResultTypes(results);
+  const filteredResults =
+    typeFilter === "all" ? results : results.filter((result) => result.type === typeFilter);
 
   return (
-    <AppShell>
-      <div className="page-pad">
-        <section className="grid gap-6 xl:grid-cols-[1fr_24rem]">
-          <div>
-            <p className="section-label">Search</p>
-            <h1 className="mt-3 max-w-4xl font-serif text-4xl font-semibold leading-tight md:text-6xl">
-              Find builders, crawled inputs, and digest history.
-            </h1>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--muted-strong)]">
-              Search your active library, the web-app crawled feed items in it,
-              and every digest synced to your archive.
-            </p>
-          </div>
-          <div className="stats-panel search-stats-panel">
+    <AppShell session={session}>
+      <div className={hasQuery ? "page-pad search-page search-page-active" : "page-pad search-page"}>
+        <section className="search-hero">
+          <div className="search-brand">Builder Blog</div>
+          <h1 className="search-heading">Search</h1>
+          <p className="search-subtitle">
+            Find builders, crawled inputs, and digest history from your active library.
+          </p>
+          <SearchForm query={query} mode={mode} typeFilter={typeFilter} />
+          <div className="search-quick-stats" aria-label="Search summary">
             <Stat label="Mode" value={mode === "exact" ? "Exact" : "Semantic"} />
-            <Stat label="Results" value={String(results.length)} />
+            <Stat label="Results" value={String(filteredResults.length)} />
+            <Stat label="Candidates" value={String(candidateCount)} />
           </div>
         </section>
 
-        <form action="/search" className="mt-8 rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] p-4 md:p-5">
-          <div className="flex flex-col gap-3 lg:flex-row">
-            <label className="min-w-0 flex-1">
-              <span className="sr-only">Search query</span>
-              <input
-                className="input"
-                type="search"
-                name="q"
-                defaultValue={query}
-                placeholder="Search builders, feed items, or digests"
-              />
-            </label>
-            <fieldset className="search-mode">
-              <legend className="sr-only">Search mode</legend>
-              <ModeOption value="semantic" label="Semantic" current={mode} />
-              <ModeOption value="exact" label="Exact" current={mode} />
-            </fieldset>
-            <button className="button-dark gap-2" type="submit">
-              <Search className="h-4 w-4" />
-              Search
-            </button>
-          </div>
-        </form>
-
-        <section className="mt-8">
-          {query.trim() ? (
-            <div className="mb-4 text-sm text-[var(--muted)]">
-              Showing {results.length} result{results.length === 1 ? "" : "s"} for{" "}
-              <span className="font-semibold text-[var(--ink)]">{query}</span>
-            </div>
-          ) : null}
-          <div className="item-list">
-            {results.map((result) => (
-              <ResultCard key={`${result.type}:${result.id}`} result={result} />
-            ))}
-          </div>
-          {query.trim() && results.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-[var(--line)] p-6 md:p-10">
-              No matches found. Try Semantic mode for related wording, or Exact
-              mode for a literal phrase.
-            </div>
-          ) : null}
-          {!query.trim() ? (
-            <div className="rounded-lg border border-dashed border-[var(--line)] p-6 text-[var(--muted-strong)] md:p-10">
+        <section className="search-results-shell">
+          {hasQuery ? (
+            <>
+              <nav className="search-tabs" aria-label="Result type">
+                <TypeTab
+                  count={typeCounts.all}
+                  current={typeFilter}
+                  href={searchHref({ query, mode, type: "all" })}
+                  label="All"
+                  value="all"
+                />
+                {(["builder", "feed", "digest"] as const).map((type) => (
+                  <TypeTab
+                    count={typeCounts[type]}
+                    current={typeFilter}
+                    href={searchHref({ query, mode, type })}
+                    key={type}
+                    label={resultTypeLabels[type]}
+                    value={type}
+                  />
+                ))}
+              </nav>
+              <div className="search-meta-row">
+                Showing {filteredResults.length} result
+                {filteredResults.length === 1 ? "" : "s"} for{" "}
+                <span>{query}</span> from {candidateCount} searched items via {strategy}.
+              </div>
+              <div className="search-results-list">
+                {filteredResults.map((result) => (
+                  <ResultCard key={`${result.type}:${result.id}`} result={result} />
+                ))}
+              </div>
+              {filteredResults.length === 0 ? (
+                <EmptyState>
+                  No matches found. Try Semantic mode for related wording, Exact mode
+                  for a literal phrase, or switch back to All results.
+                </EmptyState>
+              ) : null}
+            </>
+          ) : (
+            <EmptyState>
               Enter a query to search across your builder library, crawled feed
               inputs, and synced digest archive.
-            </div>
-          ) : null}
+            </EmptyState>
+          )}
         </section>
       </div>
     </AppShell>
   );
 }
 
-function ModeOption({
-  value,
-  label,
+function TypeTab({
+  count,
   current,
+  href,
+  label,
+  value,
 }: {
-  value: SearchMode;
+  count: number;
+  current: SearchTypeFilter;
+  href: string;
   label: string;
-  current: SearchMode;
+  value: SearchTypeFilter;
 }) {
   return (
-    <label className="search-mode-option">
-      <input type="radio" name="mode" value={value} defaultChecked={current === value} />
+    <Link className="search-tab" data-active={current === value ? "true" : undefined} href={href}>
       <span>{label}</span>
-    </label>
+      <span className="search-tab-count">{count}</span>
+    </Link>
   );
 }
 
 function ResultCard({ result }: { result: SearchResult }) {
   const isExternal = result.url?.startsWith("http");
+  const displayUrl = formatDisplayUrl(result.url);
+  const sourceName = result.sourceName ?? resultTypeLabels[result.type];
+  const title = result.url ? (
+    <a
+      className="search-result-title"
+      href={result.url}
+      rel={isExternal ? "noreferrer" : undefined}
+      target={isExternal ? "_blank" : undefined}
+    >
+      {result.title}
+    </a>
+  ) : (
+    <span className="search-result-title">{result.title}</span>
+  );
+
   return (
-    <article className="feed-card feed-card-compact">
-      <div className="item-summary-static">
+    <article className="search-result">
+      <div className="search-result-source">
+        <span className="search-result-icon">{sourceName.slice(0, 1).toUpperCase()}</span>
         <div className="min-w-0">
-          <div className="item-kicker">
-            <span className="kind-pill">{result.type}</span>
-            {result.sourceName ? <span>{result.sourceName}</span> : null}
-            {result.date ? <span>{formatDistanceToNow(result.date, { addSuffix: true })}</span> : null}
-          </div>
-          <h2 className="item-title">{result.title}</h2>
-          <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--muted-strong)]">
-            {result.snippet}
-          </p>
+          <div className="search-result-source-name">{sourceName}</div>
+          {displayUrl ? <div className="search-result-url">{displayUrl}</div> : null}
         </div>
+      </div>
+      <h2>{title}</h2>
+      <p className="search-result-snippet">{result.snippet}</p>
+      <div className="search-result-meta">
+        <span>{resultTypeLabels[result.type]}</span>
+        {result.date ? <span>{formatDistanceToNow(result.date, { addSuffix: true })}</span> : null}
         {result.url ? (
           <a
-            className="button-light min-w-24 gap-2"
+            className="search-result-open"
             href={result.url}
             rel={isExternal ? "noreferrer" : undefined}
             target={isExternal ? "_blank" : undefined}
           >
-            <ExternalLink className="h-4 w-4" />
             Open
+            <ExternalLink className="h-3.5 w-3.5" />
           </a>
         ) : null}
       </div>
@@ -154,13 +180,58 @@ function ResultCard({ result }: { result: SearchResult }) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] p-5">
-      <div className="font-serif text-4xl font-semibold">{value}</div>
-      <div className="mt-2 text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
-        {label}
-      </div>
+    <div className="search-stat">
+      <div className="search-stat-value">{value}</div>
+      <div className="search-stat-label">{label}</div>
     </div>
   );
+}
+
+function EmptyState({ children }: { children: React.ReactNode }) {
+  return <div className="search-empty">{children}</div>;
+}
+
+function countResultTypes(results: SearchResult[]) {
+  return results.reduce(
+    (counts, result) => {
+      counts.all += 1;
+      counts[result.type] += 1;
+      return counts;
+    },
+    { all: 0, builder: 0, feed: 0, digest: 0 },
+  );
+}
+
+function normalizeTypeFilter(value: string): SearchTypeFilter {
+  if (value === "builder" || value === "feed" || value === "digest") return value;
+  return "all";
+}
+
+function searchHref({
+  query,
+  mode,
+  type,
+}: {
+  query: string;
+  mode: string;
+  type: SearchTypeFilter;
+}) {
+  const params = new URLSearchParams();
+  if (query.trim()) params.set("q", query.trim());
+  params.set("mode", mode);
+  if (type !== "all") params.set("type", type);
+  return `/search?${params.toString()}`;
+}
+
+function formatDisplayUrl(url: string | null | undefined) {
+  if (!url) return null;
+  if (url.startsWith("/")) return `Builder Blog ${url.split("#")[0]}`;
+  try {
+    const parsed = new URL(url);
+    return `${parsed.hostname}${parsed.pathname === "/" ? "" : parsed.pathname}`;
+  } catch {
+    return url;
+  }
 }
 
 function firstParam(value: string | string[] | undefined) {

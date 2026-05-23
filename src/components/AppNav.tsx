@@ -42,7 +42,6 @@ export function AppNav({
                 data-active={active ? "true" : undefined}
                 href={item.href}
                 key={item.href}
-                prefetch={false}
               >
                 <Icon className="h-4 w-4" />
                 <span>{item.label}</span>
@@ -66,7 +65,6 @@ export function AppNav({
                 data-active={active ? "true" : undefined}
                 href={item.href}
                 key={item.href}
-                prefetch={false}
               >
                 <Icon className="h-5 w-5" />
                 <span>{item.label}</span>

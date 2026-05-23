@@ -41,7 +41,9 @@ export const SOURCE_DEFINITIONS = [
     feedItemKinds: [FeedItemKind.PODCAST_EPISODE],
     centralCrawler: false,
     personalCrawler: true,
-    matchesBuilder: (builder) => /youtube\.com|youtu\.be/i.test(sourceUrlText(builder)),
+    matchesBuilder: (builder) =>
+      isYouTubeUrl(builder.crawlUrl) ||
+      (!builder.crawlUrl && isYouTubeUrl(builder.sourceUrl)),
   },
   {
     id: "podcast",
@@ -146,6 +148,10 @@ export function feedItemKindLabel(kind: FeedItemKind) {
 
 function sourceUrlText(builder: BuilderSourceInput) {
   return `${builder.sourceUrl ?? ""} ${builder.crawlUrl ?? ""}`;
+}
+
+function isYouTubeUrl(value: string | null | undefined) {
+  return /youtube\.com|youtu\.be/i.test(value ?? "");
 }
 
 function sourceDefinitionByRules(builder: BuilderSourceInput) {

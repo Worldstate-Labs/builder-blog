@@ -4,7 +4,9 @@ import { BuilderKind, BuilderScope, FeedItemKind } from "@prisma/client";
 import { builderLibraryKey, canonicalBuilderKey, normalizeHandle } from "../src/lib/builder-keys";
 import { isCronAuthorized } from "../src/lib/cron-auth";
 import { shouldImportFollowBuildersFallback } from "../src/lib/crawl-fallback";
+import { crawlBuilders } from "../src/lib/crawler";
 import { crawlBlogBuilders } from "../src/lib/crawler/blogs";
+import { centralCrawlerSourceAdapters } from "../src/lib/crawler/source-adapters";
 import { crawlPodcastBuilders } from "../src/lib/crawler/podcasts";
 import { crawlXBuilders } from "../src/lib/crawler/x";
 import type { CrawlerBuilder, Fetcher } from "../src/lib/crawler/types";
@@ -387,6 +389,58 @@ test("blog crawler maps discovered articles into FeedItem records", async () => 
   assert.equal(result.items[0].externalId, "https://claude.com/blog/shipping-agents");
   assert.equal(result.items[0].title, "Shipping Agents");
   assert.match(result.items[0].body, /Article body for builders/);
+});
+
+test("central crawler source adapters dispatch RSS podcasts separately from YouTube", async () => {
+  assert.deepEqual(
+    centralCrawlerSourceAdapters().map((adapter) => adapter.id),
+    ["x", "podcast", "blog"],
+  );
+
+  const builder: CrawlerBuilder = {
+    ...baseBuilder,
+    kind: BuilderKind.PODCAST,
+    handle: null,
+    sourceUrl: "https://www.youtube.com/playlist?list=PL123",
+    crawlUrl: "https://feeds.example.com/podcast.xml",
+  };
+  const fetcher: Fetcher = async (input) => {
+    const url = String(input);
+    if (url === "https://feeds.example.com/podcast.xml") {
+      return new Response(`
+        <rss><channel><item>
+          <title>RSS Episode</title>
+          <guid>rss-episode-guid</guid>
+          <pubDate>Fri, 22 May 2026 10:00:00 GMT</pubDate>
+          <link>https://podcast.example.com/rss-episode</link>
+        </item></channel></rss>
+      `);
+    }
+    if (url === "https://pod2txt.vercel.app/api/transcript") {
+      return Response.json({ status: "ready", url: "https://transcripts.example.com/rss.txt" });
+    }
+    if (url === "https://transcripts.example.com/rss.txt") {
+      return new Response("RSS transcript body");
+    }
+    if (url === "https://www.youtube.com/feeds/videos.xml?playlist_id=PL123") {
+      return new Response(`
+        <feed><entry><title>RSS Episode</title><yt:videoId>rss123</yt:videoId></entry></feed>
+      `);
+    }
+    throw new Error(`Unexpected URL ${url}`);
+  };
+
+  const result = await crawlBuilders([builder], {
+    pod2txtApiKey: "pod-key",
+    fetcher,
+    now: new Date("2026-05-22T13:00:00.000Z"),
+    maxTranscriptAttempts: 1,
+    transcriptPollIntervalMs: 1,
+  });
+
+  assert.equal(result.sources.podcasts.builders, 1);
+  assert.equal(result.sources.podcasts.feedItems, 1);
+  assert.equal(result.items[0].externalId, "rss-episode-guid");
 });
 
 test("cron route authorization requires the configured bearer token", () => {

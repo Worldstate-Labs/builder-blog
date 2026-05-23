@@ -1,4 +1,6 @@
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import { cache } from "react";
+import { getServerSession } from "next-auth";
 import type { NextAuthOptions } from "next-auth";
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
@@ -31,3 +33,5 @@ export const authOptions: NextAuthOptions = {
     signIn: "/login",
   },
 };
+
+export const getCurrentSession = cache(() => getServerSession(authOptions));

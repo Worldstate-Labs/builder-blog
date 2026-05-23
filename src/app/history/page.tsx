@@ -1,26 +1,47 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { authOptions } from "@/lib/auth";
+import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export default async function HistoryPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) redirect("/login");
+const historyPageSize = 20;
 
-  const digests = await prisma.digest.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-  });
+export default async function HistoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const session = await getCurrentSession();
+  if (!session?.user?.id) redirect("/login");
+  const params = await searchParams;
+  const page = Math.max(1, Number(params.page ?? "1") || 1);
+  const skip = (page - 1) * historyPageSize;
+
+  const [digests, digestCount] = await Promise.all([
+    prisma.digest.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: historyPageSize,
+    }),
+    prisma.digest.count({
+      where: { userId: session.user.id },
+    }),
+  ]);
+  const visibleStart = digestCount === 0 ? 0 : skip + 1;
+  const visibleEnd = Math.min(skip + digests.length, digestCount);
 
   return (
-    <AppShell>
+    <AppShell session={session}>
       <div className="page-pad">
         <p className="section-label">Archive</p>
         <h1 className="mt-3 font-serif text-4xl font-semibold leading-tight md:text-6xl">
           Digest history
         </h1>
+        <p className="mt-5 text-sm text-[var(--muted)]">
+          Showing {visibleStart}-{visibleEnd} of {digestCount} digests.
+        </p>
         <div className="item-list mt-10">
           {digests.map((digest, index) => (
             <article id={digest.id} key={digest.id} className="digest-card digest-card-compact">
@@ -53,6 +74,26 @@ export default async function HistoryPage() {
             </div>
           ) : null}
         </div>
+        {digestCount > historyPageSize ? (
+          <nav className="mt-8 flex flex-wrap gap-3" aria-label="Digest history pagination">
+            <Link
+              aria-disabled={page === 1}
+              className={`button-light ${page === 1 ? "pointer-events-none opacity-45" : ""}`}
+              href={`/history?page=${Math.max(1, page - 1)}`}
+            >
+              Newer
+            </Link>
+            <Link
+              aria-disabled={skip + digests.length >= digestCount}
+              className={`button-light ${
+                skip + digests.length >= digestCount ? "pointer-events-none opacity-45" : ""
+              }`}
+              href={`/history?page=${page + 1}`}
+            >
+              Older
+            </Link>
+          </nav>
+        ) : null}
       </div>
     </AppShell>
   );

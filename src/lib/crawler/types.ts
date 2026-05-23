@@ -33,7 +33,7 @@ export type BuilderUpdate = {
   bio?: string | null;
 };
 
-export type SourceName = "x" | "podcasts" | "blogs";
+export type SourceName = string;
 
 export type CrawlSourceResult = {
   source: SourceName;

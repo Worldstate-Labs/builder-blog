@@ -1,7 +1,6 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { AuthButtons } from "@/components/AuthButtons";
-import { authOptions } from "@/lib/auth";
+import { getCurrentSession } from "@/lib/auth";
 
 export default async function LoginPage({
   searchParams,
@@ -9,7 +8,7 @@ export default async function LoginPage({
   searchParams: Promise<{ callbackUrl?: string }>;
 }) {
   const params = await searchParams;
-  const session = await getServerSession(authOptions);
+  const session = await getCurrentSession();
   if (session) redirect("/dashboard");
 
   return (

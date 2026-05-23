@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
+import type { Session } from "next-auth";
 import { AppNav, type AppNavItem } from "@/components/AppNav";
 import { isAdminEmail } from "@/lib/admin";
-import { authOptions } from "@/lib/auth";
 
 const nav: AppNavItem[] = [
   { href: "/dashboard", label: "Today", icon: "home" },
@@ -12,8 +11,13 @@ const nav: AppNavItem[] = [
   { href: "/settings", label: "Agent", icon: "key" },
 ];
 
-export async function AppShell({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession(authOptions);
+export function AppShell({
+  children,
+  session,
+}: {
+  children: React.ReactNode;
+  session?: Session | null;
+}) {
   const items = isAdminEmail(session?.user?.email)
     ? [...nav, { href: "/admin", label: "Admin", icon: "admin" as const }]
     : nav;
@@ -22,7 +26,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-[var(--paper)] text-[var(--ink)]">
       <div className="mx-auto flex min-h-screen w-full max-w-7xl">
         <aside className="hidden w-64 shrink-0 border-r border-[var(--line)] bg-[var(--rail)] px-5 py-6 lg:flex lg:flex-col">
-          <Link href="/dashboard" className="group block" prefetch={false}>
+          <Link href="/dashboard" className="group block">
             <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
               Builder Blog
             </div>
@@ -48,7 +52,6 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 className="text-base font-semibold"
                 href="/dashboard"
-                prefetch={false}
               >
                 Builder Blog
               </Link>

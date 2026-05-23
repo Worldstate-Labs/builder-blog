@@ -5,6 +5,8 @@ import { subscriptionBuilderIdsInPool } from "@/lib/digest-library";
 import { prisma } from "@/lib/prisma";
 import { getUserFromBearer } from "@/lib/tokens";
 
+const personalSeenItemLimit = 5000;
+
 export async function GET(request: Request) {
   const user = await getUserFromBearer(request);
   if (!user) {
@@ -63,6 +65,7 @@ export async function GET(request: Request) {
         externalId: true,
       },
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+      take: personalSeenItemLimit,
     }),
   ]);
 
