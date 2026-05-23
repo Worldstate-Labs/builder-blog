@@ -930,6 +930,12 @@ body {
     padding: 1rem;
   }
 
+  .feed-card-compact,
+  .digest-card-compact,
+  .admin-panel-compact {
+    padding: 0;
+  }
+
   .search-hero,
   .search-page-active .search-hero {
     margin-top: 1rem;
