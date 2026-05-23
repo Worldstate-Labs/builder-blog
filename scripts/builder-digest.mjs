@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
@@ -10,6 +10,7 @@ const CONFIG_DIR = join(homedir(), ".builder-blog");
 const CONFIG_PATH = join(CONFIG_DIR, "config.json");
 const DEFAULT_APP_URL = "https://builder-blog.worldstatelabs.com";
 const DEFAULT_AGENT_RUNTIME = detectedAgentRuntime();
+const DEFAULT_AGENT_MODEL = detectedAgentModel();
 const PERSONAL_CRAWL_SOURCES = [
   {
     id: "blog",
@@ -31,18 +32,19 @@ const PERSONAL_CRAWL_SOURCES = [
 function usage() {
   console.log(`builder-digest commands:
   login --app-url ${DEFAULT_APP_URL}
-  crawl-personal [--days 3] [--limit 3] [--force]
+  crawl-personal [--days 3] [--limit 3] [--force] [--agent-model gpt-5.5]
   prepare [--days 1]
-  sync-builders --file personal-builders.json
+  sync-builders --file personal-builders.json [--agent-model gpt-5.5]
   sync --file digest.md [--title "AI Builder Digest"]
   status`);
 }
 
-export function skillCrawlingTool(detail = "") {
+export function skillCrawlingTool(detail = "", agentModel = DEFAULT_AGENT_MODEL) {
   const override = process.env.BUILDER_BLOG_CRAWLING_TOOL?.trim();
   if (override) return override;
+  const modelLabel = agentModel ? ` (model ${agentModel})` : "";
   const suffix = detail ? ` (${detail})` : "";
-  return `${DEFAULT_AGENT_RUNTIME} Builder Blog skill crawler${suffix}`;
+  return `${DEFAULT_AGENT_RUNTIME}${modelLabel} Builder Blog skill crawler${suffix}`;
 }
 
 function detectedAgentRuntime() {
@@ -52,6 +54,20 @@ function detectedAgentRuntime() {
   if (process.env.CODEX_SHELL || process.env.CODEX_CI) return "Codex";
   if (process.env.CLAUDECODE || process.env.CLAUDE_CODE) return "Claude Code";
   return "Local agent";
+}
+
+function detectedAgentModel() {
+  const envModel =
+    process.env.BUILDER_BLOG_AGENT_MODEL ||
+    process.env.CODEX_MODEL ||
+    process.env.OPENAI_MODEL ||
+    process.env.OMX_DEFAULT_FRONTIER_MODEL;
+  if (envModel?.trim()) return envModel.trim();
+
+  const codexConfigPath = join(homedir(), ".codex", "config.toml");
+  if (!existsSync(codexConfigPath)) return "";
+  const modelMatch = readFileSync(codexConfigPath, "utf8").match(/^\s*model\s*=\s*"([^"]+)"/m);
+  return modelMatch?.[1]?.trim() ?? "";
 }
 
 async function readConfig() {
@@ -145,6 +161,7 @@ async function crawlPersonal(args) {
   const days = Math.max(1, Number(argValue(args, "--days", "3")));
   const limit = Math.max(1, Number(argValue(args, "--limit", "3")));
   const force = args.includes("--force");
+  const agentModel = argValue(args, "--agent-model", DEFAULT_AGENT_MODEL);
   const context = await getJson(
     `${config.appUrl}/api/skill/context?days=${encodeURIComponent(String(days))}`,
     config.token,
@@ -183,6 +200,7 @@ async function crawlPersonal(args) {
       const items = await source.crawl(builder, {
         cutoff,
         limit,
+        agentModel,
         seenItemKeys: force ? new Set() : seenItemKeysForBuilder(context, builder.id),
       });
       builders.push({
@@ -206,7 +224,7 @@ async function crawlPersonal(args) {
 
   const result = await postJson(
     `${config.appUrl}/api/skill/builders`,
-    { force, crawlingTool: skillCrawlingTool("local personal crawler"), builders },
+    { force, crawlingTool: skillCrawlingTool("local personal crawler", agentModel), builders },
     config.token,
   );
   console.log(
@@ -271,7 +289,7 @@ function normalizeSourceType(sourceType) {
   return normalized === "auto" ? "" : normalized;
 }
 
-async function crawlPersonalYouTubeBuilder(builder, { cutoff, limit, seenItemKeys = new Set() }) {
+async function crawlPersonalYouTubeBuilder(builder, { cutoff, limit, agentModel, seenItemKeys = new Set() }) {
   const sourceUrl = builder.crawlUrl || builder.sourceUrl;
   if (!sourceUrl) return [];
   const feedUrl = await youtubeFeedUrl(sourceUrl);
@@ -304,7 +322,10 @@ async function crawlPersonalYouTubeBuilder(builder, { cutoff, limit, seenItemKey
       url: video.url,
       publishedAt: video.publishedAt,
       sourceName: builder.name,
-      crawlingTool: skillCrawlingTool(transcript ? "YouTube RSS + captions" : "YouTube RSS + feed description"),
+      crawlingTool: skillCrawlingTool(
+        transcript ? "YouTube RSS + captions" : "YouTube RSS + feed description",
+        agentModel,
+      ),
       rawJson: {
         source: "personal-youtube",
         builderId: builder.id,
@@ -320,7 +341,7 @@ async function crawlPersonalYouTubeBuilder(builder, { cutoff, limit, seenItemKey
   return items;
 }
 
-async function crawlPersonalBlogBuilder(builder, { cutoff, limit, seenItemKeys = new Set() }) {
+async function crawlPersonalBlogBuilder(builder, { cutoff, limit, agentModel, seenItemKeys = new Set() }) {
   const indexUrl = builder.crawlUrl || builder.sourceUrl;
   if (!indexUrl) return [];
 
@@ -357,7 +378,7 @@ async function crawlPersonalBlogBuilder(builder, { cutoff, limit, seenItemKeys =
       url: article.url,
       publishedAt: extracted.publishedAt || article.publishedAt,
       sourceName: builder.name,
-      crawlingTool: skillCrawlingTool("RSS/HTML article extractor"),
+      crawlingTool: skillCrawlingTool("RSS/HTML article extractor", agentModel),
       rawJson: {
         source: "personal-blog",
         builderId: builder.id,
@@ -719,6 +740,10 @@ async function syncBuilders(args) {
   const file = argValue(args, "--file");
   if (!file) throw new Error("Missing --file personal-builders.json");
   const payload = JSON.parse(await readFile(file, "utf8"));
+  payload.crawlingTool ??= skillCrawlingTool(
+    "manual JSON sync",
+    argValue(args, "--agent-model", DEFAULT_AGENT_MODEL),
+  );
   const result = await postJson(`${config.appUrl}/api/skill/builders`, payload, config.token);
   console.log(JSON.stringify(result, null, 2));
 }

@@ -44,8 +44,8 @@ This command:
 - skips already-synced posts by `user + builder + item kind + externalId`;
 - crawls each personal blog or YouTube RSS feed locally from the user's agent environment;
 - for YouTube videos, prefers caption transcripts and falls back to feed descriptions;
-- records the crawling tool as the local agent runtime plus the concrete crawler
-  path, for example `Codex Desktop Builder Blog skill crawler (YouTube RSS + captions)`;
+- records the crawling tool as the local agent runtime, model, and concrete
+  crawler path, for example `Codex Desktop (model gpt-5.5) Builder Blog skill crawler (YouTube RSS + captions)`;
 - posts discovered `BLOG_POST` or `PODCAST_EPISODE` items back to `/api/skill/builders`.
 
 Use `--force` only when the user explicitly wants to re-sync already-synced
@@ -55,6 +55,9 @@ posts:
 cd /Users/jie/code/builder_blog
 node scripts/builder-digest.mjs crawl-personal --days 3 --limit 3 --force
 ```
+
+Use `--agent-model gpt-5.5` or `BUILDER_BLOG_AGENT_MODEL=gpt-5.5` when the
+runtime does not expose the current model automatically.
 
 Agents may also sync already-crawled user-owned sources manually. This is an
 `in library` operation, not a digest subscription unless `subscribe` is true:
@@ -68,7 +71,7 @@ Payload shape:
 
 ```json
 {
-  "crawlingTool": "Codex Desktop Builder Blog skill crawler (manual JSON sync)",
+  "crawlingTool": "Codex Desktop (model gpt-5.5) Builder Blog skill crawler (manual JSON sync)",
   "builders": [
     {
       "kind": "X",
