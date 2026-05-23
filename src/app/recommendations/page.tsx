@@ -18,7 +18,7 @@ export default async function RecommendationsPage() {
 
   const feed = await getRecommendationTimeline({
     userId: session.user.id,
-    itemLimit: 20,
+    itemLimit: 6,
   });
 
   return (

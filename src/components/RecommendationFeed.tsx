@@ -80,7 +80,7 @@ export function RecommendationFeed({
       if (loadingDirection) return;
       setLoadingDirection(direction);
       try {
-        const response = await fetch(`/api/recommendations?direction=${direction}&limit=20`);
+        const response = await fetch(`/api/recommendations?direction=${direction}&limit=6`);
         if (!response.ok) return;
         const data = await response.json();
         const snapshot = data.snapshot as RecommendationSnapshotEntry | null | undefined;

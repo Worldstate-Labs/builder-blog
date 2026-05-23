@@ -1,7 +1,7 @@
 import type { BuilderKind, FeedItemKind, Prisma } from "@prisma/client";
 
 const candidateWindow = 1000;
-const defaultRecommendationLimit = 20;
+const defaultRecommendationLimit = 6;
 const defaultTimelineSnapshotLimit = 3;
 
 type RecommendationBuilder = {

@@ -26,3 +26,10 @@ test("source logos are shared across recommendation and library surfaces", () =>
   assert.match(source("src/app/library-hub/page.tsx"), /SourceBadge/);
   assert.match(source("src/components/FeedCard.tsx"), /SourceBadge/);
 });
+
+test("recommendation snapshots request six posts at a time", () => {
+  assert.match(source("src/lib/recommendations.ts"), /defaultRecommendationLimit = 6/);
+  assert.match(source("src/app/recommendations/page.tsx"), /itemLimit: 6/);
+  assert.match(source("src/app/api/recommendations/route.ts"), /limit"\) \?\? "6"/);
+  assert.match(source("src/components/RecommendationFeed.tsx"), /limit=6/);
+});
