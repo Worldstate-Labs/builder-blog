@@ -1,7 +1,15 @@
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronLeft, ChevronRight, ExternalLink, Sparkles, X } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  RotateCcw,
+  SlidersHorizontal,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { SearchForm, type SearchTypeFilter } from "@/components/SearchForm";
 import { getCurrentSession } from "@/lib/auth";
@@ -23,6 +31,7 @@ import {
   type SearchSort,
   type SearchTimeRange,
   type SearchResult,
+  withDateSearchOperators,
   withSiteSearchOperator,
 } from "@/lib/search";
 
@@ -105,6 +114,11 @@ type ActiveSearchFilter = {
   value: string;
 };
 
+type SearchRecoveryAction = {
+  href: string;
+  label: string;
+};
+
 export default async function SearchPage({
   searchParams,
 }: {
@@ -168,6 +182,16 @@ export default async function SearchPage({
   ];
   const activeFilters = hasQuery
     ? buildActiveSearchFilters({ mode, query: activeQuery, sort, time, typeFilter })
+    : [];
+  const recoveryActions = hasQuery
+    ? buildSearchRecoveryActions({
+        activeFilterCount: activeFilters.length,
+        mode,
+        query: activeQuery,
+        sort,
+        time,
+        typeFilter,
+      })
     : [];
   const luckyResult = filteredResults[0];
   if (hasQuery && firstParam(params.lucky) === "1" && luckyResult?.url) {
@@ -250,6 +274,16 @@ export default async function SearchPage({
               {activeFilters.length > 0 ? (
                 <ActiveSearchFilters filters={activeFilters} clearAllHref={clearAllSearchHref(activeQuery)} />
               ) : null}
+              <SearchQueryInsights
+                actions={recoveryActions}
+                candidateCount={candidateCount}
+                mode={mode}
+                query={activeQuery}
+                resultCount={filteredResults.length}
+                sort={sort}
+                time={time}
+                typeFilter={typeFilter}
+              />
               <div className="search-tools-row">
                 {luckyResult?.url ? (
                   <a
@@ -306,7 +340,7 @@ export default async function SearchPage({
                 </nav>
               ) : null}
               {filteredResults.length === 0 ? (
-                <EmptyState>
+                <EmptyState actions={recoveryActions}>
                   No matches found. Try a broader phrase, fewer words, or switch back
                   to All results.
                 </EmptyState>
@@ -329,6 +363,62 @@ export default async function SearchPage({
         </section>
       </div>
     </AppShell>
+  );
+}
+
+function SearchQueryInsights({
+  actions,
+  candidateCount,
+  mode,
+  query,
+  resultCount,
+  sort,
+  time,
+  typeFilter,
+}: {
+  actions: SearchRecoveryAction[];
+  candidateCount: number;
+  mode: SearchMode;
+  query: string;
+  resultCount: number;
+  sort: SearchSort;
+  time: SearchTimeRange;
+  typeFilter: SearchTypeFilter;
+}) {
+  const items = buildQueryInsightItems(query, { mode, sort, time, typeFilter });
+
+  return (
+    <section className="search-insights" aria-label="Search interpretation">
+      <div className="search-insight-card">
+        <div className="search-insight-heading">
+          <SlidersHorizontal aria-hidden="true" className="h-4 w-4" />
+          <div>
+            <span>Query understood</span>
+            <strong>
+              {resultCount} result{resultCount === 1 ? "" : "s"} from {candidateCount} candidates
+            </strong>
+          </div>
+        </div>
+        <dl className="search-insight-grid">
+          {items.map((item) => (
+            <div className="search-insight-item" key={`${item.label}:${item.value}`}>
+              <dt>{item.label}</dt>
+              <dd>{item.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+      {actions.length > 0 ? (
+        <div className="search-insight-actions" aria-label="Broaden search">
+          {actions.map((action) => (
+            <Link className="search-recovery-action" href={action.href} key={action.label}>
+              <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+              {action.label}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -588,8 +678,28 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function EmptyState({ children }: { children: React.ReactNode }) {
-  return <div className="search-empty">{children}</div>;
+function EmptyState({
+  actions = [],
+  children,
+}: {
+  actions?: SearchRecoveryAction[];
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="search-empty">
+      <div>{children}</div>
+      {actions.length > 0 ? (
+        <div className="search-empty-actions">
+          {actions.map((action) => (
+            <Link className="search-recovery-action" href={action.href} key={action.label}>
+              <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+              {action.label}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function countResultTypes(results: SearchResult[]) {
@@ -605,6 +715,113 @@ function countResultTypes(results: SearchResult[]) {
 
 function nonzeroTypeCount(counts: ReturnType<typeof countResultTypes>) {
   return (["builder", "feed", "digest"] as const).filter((type) => counts[type] > 0).length;
+}
+
+function buildSearchRecoveryActions({
+  activeFilterCount,
+  mode,
+  query,
+  sort,
+  time,
+  typeFilter,
+}: {
+  activeFilterCount: number;
+  mode: SearchMode;
+  query: string;
+  sort: SearchSort;
+  time: SearchTimeRange;
+  typeFilter: SearchTypeFilter;
+}) {
+  const parsed = parseSearchQuery(query);
+  const actions: SearchRecoveryAction[] = [];
+  const queryWithoutDate = withDateSearchOperators(query, { after: null, before: null });
+
+  if (mode !== "hybrid") {
+    actions.push({
+      href: searchHref({ query, type: typeFilter, mode: "hybrid", sort, time }),
+      label: "Broaden to Hybrid",
+    });
+  }
+  if (typeFilter !== "all") {
+    actions.push({
+      href: searchHref({ query, type: "all", mode, sort, time }),
+      label: "Search all result types",
+    });
+  }
+  if (time !== "any" || parsed.after || parsed.before) {
+    actions.push({
+      href: searchHref({ query: queryWithoutDate, type: typeFilter, mode, sort, time: "any" }),
+      label: "Search all time",
+    });
+  }
+  if (activeFilterCount > 0) {
+    actions.push({
+      href: clearAllSearchHref(query),
+      label: "Clear filters",
+    });
+  }
+
+  return actions;
+}
+
+function buildQueryInsightItems(
+  query: string,
+  {
+    mode,
+    sort,
+    time,
+    typeFilter,
+  }: {
+    mode: SearchMode;
+    sort: SearchSort;
+    time: SearchTimeRange;
+    typeFilter: SearchTypeFilter;
+  },
+) {
+  const parsed = parseSearchQuery(query);
+  const scopedTerms = [
+    ...parsed.titleTerms.map((term) => `title:${term}`),
+    ...parsed.bodyTerms.map((term) => `text:${term}`),
+    ...parsed.urlTerms.map((term) => `url:${term}`),
+  ];
+  const items = [
+    { label: "Mode", value: searchModeLabels[mode] },
+    { label: "Sort", value: searchSortLabels[sort] },
+    { label: "Type", value: typeFilter === "all" ? "All results" : resultTypeLabels[typeFilter] },
+    { label: "Time", value: dateInsightLabel(parsed, time) },
+  ];
+  const phraseValue = [
+    ...parsed.phrases,
+    ...parsed.requiredPhrases,
+    ...parsed.orPhrases.map((phrase) => `OR ${phrase}`),
+  ].join(", ");
+  if (phraseValue) items.push({ label: "Phrases", value: phraseValue });
+  if (parsed.site) items.push({ label: "Site", value: parsed.site });
+  if (scopedTerms.length > 0) items.push({ label: "Fields", value: scopedTerms.join(", ") });
+  if (parsed.requiredOperatorTerms.length > 0) {
+    items.push({ label: "Must include", value: parsed.requiredOperatorTerms.join(", ") });
+  }
+  if (parsed.excludedTerms.length > 0 || parsed.excludedPhrases.length > 0) {
+    items.push({
+      label: "Excluding",
+      value: [...parsed.excludedTerms, ...parsed.excludedPhrases].join(", "),
+    });
+  }
+
+  return items.slice(0, 8);
+}
+
+function dateInsightLabel(parsed: ReturnType<typeof parseSearchQuery>, time: SearchTimeRange) {
+  if (parsed.after || parsed.before) {
+    return [
+      parsed.after ? `after ${formatOptionalOperatorDate(parsed.after)}` : "",
+      parsed.before ? `before ${formatOptionalOperatorDate(parsed.before)}` : "",
+    ]
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  return searchTimeLabels[time];
 }
 
 function normalizeTypeFilter(value: string): SearchTypeFilter {

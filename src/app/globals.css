@@ -1402,6 +1402,101 @@ a {
   font-weight: 800;
 }
 
+.search-insights {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.search-insight-card {
+  background: color-mix(in oklch, var(--paper-strong) 82%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.8rem;
+}
+
+.search-insight-heading {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  gap: 0.55rem;
+}
+
+.search-insight-heading span {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.search-insight-heading strong {
+  color: var(--ink);
+  display: block;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  margin-top: 0.12rem;
+}
+
+.search-insight-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+  margin-top: 0.75rem;
+}
+
+.search-insight-item {
+  background: var(--paper);
+  border: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
+  border-radius: 8px;
+  min-width: 0;
+  padding: 0.55rem 0.65rem;
+}
+
+.search-insight-item dt {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.search-insight-item dd {
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 750;
+  line-height: 1.35;
+  margin-top: 0.18rem;
+  overflow-wrap: anywhere;
+}
+
+.search-insight-actions,
+.search-empty-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.search-recovery-action {
+  align-items: center;
+  background: color-mix(in oklch, var(--accent) 7%, transparent);
+  border: 1px solid color-mix(in oklch, var(--accent) 20%, var(--line));
+  border-radius: 999px;
+  color: var(--accent);
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 800;
+  gap: 0.35rem;
+  min-height: 2.1rem;
+  padding: 0.35rem 0.68rem;
+}
+
+.search-recovery-action:hover {
+  background: color-mix(in oklch, var(--accent) 12%, transparent);
+  border-color: color-mix(in oklch, var(--accent) 34%, var(--line));
+}
+
 .search-active-filters {
   align-items: flex-start;
   display: grid;
@@ -1621,6 +1716,10 @@ a {
   line-height: 1.7;
   margin-top: 1.25rem;
   padding: 1.5rem;
+}
+
+.search-empty-actions {
+  margin-top: 1rem;
 }
 
 .search-pagination {

@@ -77,6 +77,15 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /More from this source/);
   assert.match(searchPage, /Search tools/);
   assert.match(searchPage, /Clear all/);
+  assert.match(searchPage, /SearchQueryInsights/);
+  assert.match(searchPage, /buildQueryInsightItems/);
+  assert.match(searchPage, /search-insights/);
+  assert.match(searchPage, /search-insight-card/);
+  assert.match(searchPage, /Query understood/);
+  assert.match(searchPage, /Broaden to Hybrid/);
+  assert.match(searchPage, /Search all result types/);
+  assert.match(searchPage, /Search all time/);
+  assert.match(searchPage, /search-empty-actions/);
   assert.match(searchPage, /stripSearchQueryOperators/);
   assert.match(searchPage, /clearAllSearchHref/);
   assert.match(searchPage, /Remove title search terms/);
