@@ -12,6 +12,7 @@ import {
   normalizeSearchSort,
   normalizeSearchTime,
   relatedSearchSuggestions,
+  shouldUseCorrectedSearch,
   type SearchDocumentType,
   type SearchMode,
   type SearchSort,
@@ -59,7 +60,7 @@ export default async function SearchPage({
   const sort = normalizeSearchSort(firstParam(params.sort));
   const time = normalizeSearchTime(firstParam(params.time));
   const page = normalizePage(firstParam(params.page));
-  const { results, candidateCount } = await searchUserLibrary({
+  const originalSearch = await searchUserLibrary({
     userId: session.user.id,
     query,
     mode,
@@ -67,6 +68,28 @@ export default async function SearchPage({
     time,
   });
   const hasQuery = query.trim().length > 0;
+  const correctedQuery = hasQuery ? didYouMeanSearch(query) : null;
+  const originalFilteredResults =
+    typeFilter === "all"
+      ? originalSearch.results
+      : originalSearch.results.filter((result) => result.type === typeFilter);
+  const correctionSearch =
+    shouldUseCorrectedSearch({
+      correctedQuery,
+      originalResultCount: originalFilteredResults.length,
+    }) && correctedQuery
+      ? await searchUserLibrary({
+          userId: session.user.id,
+          query: correctedQuery,
+          mode,
+          sort,
+          time,
+        })
+      : null;
+  const isShowingCorrectedResults = Boolean(correctionSearch);
+  const activeQuery = correctionSearch && correctedQuery ? correctedQuery : query;
+  const results = correctionSearch?.results ?? originalSearch.results;
+  const candidateCount = correctionSearch?.candidateCount ?? originalSearch.candidateCount;
   const typeCounts = countResultTypes(results);
   const filteredResults =
     typeFilter === "all" ? results : results.filter((result) => result.type === typeFilter);
@@ -76,8 +99,7 @@ export default async function SearchPage({
     (currentPage - 1) * searchPageSize,
     currentPage * searchPageSize,
   );
-  const relatedSearches = hasQuery ? relatedSearchSuggestions(query) : defaultSuggestions;
-  const correctedQuery = hasQuery ? didYouMeanSearch(query) : null;
+  const relatedSearches = hasQuery ? relatedSearchSuggestions(activeQuery) : defaultSuggestions;
   const formSuggestions = [
     ...(correctedQuery ? [correctedQuery] : []),
     ...relatedSearches,
@@ -122,7 +144,7 @@ export default async function SearchPage({
                 <TypeTab
                   count={typeCounts.all}
                   current={typeFilter}
-                  href={searchHref({ query, type: "all", mode, sort, time })}
+                  href={searchHref({ query: activeQuery, type: "all", mode, sort, time })}
                   label="All"
                   value="all"
                 />
@@ -130,7 +152,7 @@ export default async function SearchPage({
                   <TypeTab
                     count={typeCounts[type]}
                     current={typeFilter}
-                    href={searchHref({ query, type, mode, sort, time })}
+                    href={searchHref({ query: activeQuery, type, mode, sort, time })}
                     key={type}
                     label={resultTypeLabels[type]}
                     value={type}
@@ -140,9 +162,17 @@ export default async function SearchPage({
               <div className="search-meta-row">
                 About {filteredResults.length} result
                 {filteredResults.length === 1 ? "" : "s"} for{" "}
-                <span>{query}</span>. Searched {candidateCount} candidates in {mode} mode.
+                <span>{activeQuery}</span>. Searched {candidateCount} candidates in {mode} mode.
               </div>
-              {correctedQuery ? (
+              {isShowingCorrectedResults && correctedQuery ? (
+                <div className="search-did-you-mean">
+                  Showing results for <span>{correctedQuery}</span>.{" "}
+                  <Link href={searchHref({ query, type: typeFilter, mode, sort, time })}>
+                    Search instead for {query}
+                  </Link>
+                  .
+                </div>
+              ) : correctedQuery ? (
                 <div className="search-did-you-mean">
                   Did you mean{" "}
                   <Link href={searchHref({ query: correctedQuery, type: typeFilter, mode, sort, time })}>
@@ -169,14 +199,14 @@ export default async function SearchPage({
               </div>
               <div className="search-results-list">
                 {visibleResults.map((result) => (
-                  <ResultCard key={`${result.type}:${result.id}`} result={result} query={query} />
+                  <ResultCard key={`${result.type}:${result.id}`} result={result} query={activeQuery} />
                 ))}
               </div>
               {pageCount > 1 ? (
                 <nav className="search-pagination" aria-label="Search result pages">
                   <PageLink
                     disabled={currentPage === 1}
-                    href={searchHref({ query, type: typeFilter, mode, sort, time, page: currentPage - 1 })}
+                    href={searchHref({ query: activeQuery, type: typeFilter, mode, sort, time, page: currentPage - 1 })}
                     label="Previous"
                     icon="previous"
                   />
@@ -184,7 +214,7 @@ export default async function SearchPage({
                     <Link
                       className="search-page-link"
                       data-active={pageNumber === currentPage ? "true" : undefined}
-                      href={searchHref({ query, type: typeFilter, mode, sort, time, page: pageNumber })}
+                      href={searchHref({ query: activeQuery, type: typeFilter, mode, sort, time, page: pageNumber })}
                       key={pageNumber}
                     >
                       {pageNumber}
@@ -192,7 +222,7 @@ export default async function SearchPage({
                   ))}
                   <PageLink
                     disabled={currentPage === pageCount}
-                    href={searchHref({ query, type: typeFilter, mode, sort, time, page: currentPage + 1 })}
+                    href={searchHref({ query: activeQuery, type: typeFilter, mode, sort, time, page: currentPage + 1 })}
                     label="Next"
                     icon="next"
                   />
@@ -205,7 +235,7 @@ export default async function SearchPage({
                 </EmptyState>
               ) : null}
               {relatedSearches.length > 0 ? (
-                <RelatedSearches query={query} searches={relatedSearches} mode={mode} sort={sort} time={time} />
+                <RelatedSearches query={activeQuery} searches={relatedSearches} mode={mode} sort={sort} time={time} />
               ) : null}
             </>
           ) : (

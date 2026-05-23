@@ -44,6 +44,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /searchPageSize/);
   assert.match(searchPage, /relatedSearchSuggestions/);
   assert.match(searchPage, /didYouMeanSearch/);
+  assert.match(searchPage, /shouldUseCorrectedSearch/);
+  assert.match(searchPage, /Search instead for/);
+  assert.match(searchPage, /isShowingCorrectedResults/);
   assert.match(searchPage, /normalizeSearchTime/);
   assert.match(searchForm, /useTransition/);
   assert.match(searchForm, /Searching/);

@@ -17,6 +17,7 @@ import {
   parseSearchQuery,
   relatedSearchSuggestions,
   rankSearchDocuments,
+  shouldUseCorrectedSearch,
   normalizeSearchSort,
   normalizeSearchTime,
   normalizeSearchMode,
@@ -349,6 +350,30 @@ test("search user path merges live autocomplete suggestions by recency and relev
     "builder launch",
     "assistant memory",
   ]);
+});
+
+test("search user path only auto-searches corrected spellings when the original has no results", () => {
+  assert.equal(
+    shouldUseCorrectedSearch({
+      correctedQuery: "agent memory search",
+      originalResultCount: 0,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldUseCorrectedSearch({
+      correctedQuery: "agent memory search",
+      originalResultCount: 1,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldUseCorrectedSearch({
+      correctedQuery: null,
+      originalResultCount: 0,
+    }),
+    false,
+  );
 });
 
 test("web display boundaries keep raw crawled content in the builders tab", () => {

@@ -239,6 +239,16 @@ export function mergeSearchSuggestions({
   return merged.slice(0, limit);
 }
 
+export function shouldUseCorrectedSearch({
+  correctedQuery,
+  originalResultCount,
+}: {
+  correctedQuery: string | null;
+  originalResultCount: number;
+}) {
+  return Boolean(correctedQuery?.trim()) && originalResultCount === 0;
+}
+
 export function rankSearchDocuments({
   query,
   mode,
