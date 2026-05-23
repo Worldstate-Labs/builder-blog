@@ -50,6 +50,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /normalizeSearchTime/);
   assert.match(searchForm, /useTransition/);
   assert.match(searchForm, /Searching/);
+  assert.match(searchForm, /localStorage\.getItem\("builder-blog-searches"\)/);
+  assert.match(searchForm, /normalizeRecentSearches/);
   assert.match(searchForm, /Search mode/);
   assert.match(searchForm, /Time range/);
   assert.match(searchForm, /Sort by/);

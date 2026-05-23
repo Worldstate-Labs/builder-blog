@@ -14,6 +14,7 @@ import {
   candidateSearchTerms,
   didYouMeanSearch,
   mergeSearchSuggestions,
+  normalizeRecentSearches,
   parseSearchQuery,
   relatedSearchSuggestions,
   rankSearchDocuments,
@@ -350,6 +351,31 @@ test("search user path merges live autocomplete suggestions by recency and relev
     "builder launch",
     "assistant memory",
   ]);
+});
+
+test("search user path normalizes persisted recent searches", () => {
+  assert.deepEqual(
+    normalizeRecentSearches([
+      " agent memory ",
+      "",
+      "Agent Memory",
+      "digest archive",
+      "builder launch",
+      "semantic search",
+      "podcast transcript",
+      "extra query",
+      42,
+      null,
+    ]),
+    [
+      "agent memory",
+      "digest archive",
+      "builder launch",
+      "semantic search",
+      "podcast transcript",
+    ],
+  );
+  assert.deepEqual(normalizeRecentSearches("not an array"), []);
 });
 
 test("search user path only auto-searches corrected spellings when the original has no results", () => {

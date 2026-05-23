@@ -239,6 +239,24 @@ export function mergeSearchSuggestions({
   return merged.slice(0, limit);
 }
 
+export function normalizeRecentSearches(value: unknown, limit = 5) {
+  if (!Array.isArray(value)) return [];
+
+  const seen = new Set<string>();
+  const recentSearches: string[] = [];
+  for (const item of value) {
+    if (typeof item !== "string") continue;
+    const trimmed = item.trim();
+    const normalized = normalizeText(trimmed);
+    if (!trimmed || seen.has(normalized)) continue;
+    seen.add(normalized);
+    recentSearches.push(trimmed);
+    if (recentSearches.length >= limit) break;
+  }
+
+  return recentSearches;
+}
+
 export function shouldUseCorrectedSearch({
   correctedQuery,
   originalResultCount,

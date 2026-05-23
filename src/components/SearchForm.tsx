@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { Search, Sparkles } from "lucide-react";
 import {
   mergeSearchSuggestions,
+  normalizeRecentSearches,
   type SearchDocumentType,
   type SearchMode,
   type SearchSort,
@@ -31,7 +32,16 @@ export function SearchForm({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [inputValue, setInputValue] = useState(query);
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return normalizeRecentSearches(
+        JSON.parse(localStorage.getItem("builder-blog-searches") ?? "[]"),
+      );
+    } catch {
+      return [];
+    }
+  });
   const [liveSuggestions, setLiveSuggestions] = useState<string[]>([]);
   const [suggestionsOpen, setSuggestionsOpen] = useState(true);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
@@ -119,12 +129,7 @@ export function SearchForm({
     }
 
     if (trimmedQuery) {
-      const nextRecent = [
-        trimmedQuery,
-        ...recentSearches.filter(
-          (recent) => recent.toLowerCase() !== trimmedQuery.toLowerCase(),
-        ),
-      ].slice(0, 5);
+      const nextRecent = normalizeRecentSearches([trimmedQuery, ...recentSearches]);
       setRecentSearches(nextRecent);
       try {
         localStorage.setItem("builder-blog-searches", JSON.stringify(nextRecent));
