@@ -37,6 +37,7 @@ export type ParsedSearchQuery = {
   urlTerms: string[];
   site: string | null;
   type: SearchDocumentType | null;
+  typeOperator: "filetype" | "type" | null;
   after: Date | null;
   before: Date | null;
 };
@@ -128,6 +129,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
   const urlTerms: string[] = [];
   let site: string | null = null;
   let type: SearchDocumentType | null = null;
+  let typeOperator: ParsedSearchQuery["typeOperator"] = null;
   let after: Date | null = null;
   let before: Date | null = null;
   const cleanParts: string[] = [];
@@ -156,9 +158,13 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
       }
       continue;
     }
-    if (lower.startsWith("type:")) {
-      const candidate = lower.slice(5);
-      if (candidate === "builder" || candidate === "feed" || candidate === "digest") type = candidate;
+    if (lower.startsWith("type:") || lower.startsWith("filetype:")) {
+      const isFiletype = lower.startsWith("filetype:");
+      const candidate = normalizeTypeOperatorValue(lower.slice(isFiletype ? 9 : 5));
+      if (candidate) {
+        type = candidate;
+        typeOperator = isFiletype ? "filetype" : "type";
+      }
       continue;
     }
     if (lower.startsWith("after:")) {
@@ -195,6 +201,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     urlTerms,
     site,
     type,
+    typeOperator,
     after,
     before,
   };
@@ -466,6 +473,12 @@ function buildWeightedTerms(tokens: string[]) {
 function addTerm(terms: Map<string, number>, term: string, weight: number) {
   if (!term || stopWords.has(term)) return;
   terms.set(term, Math.max(terms.get(term) ?? 0, weight));
+}
+
+function normalizeTypeOperatorValue(value: string): SearchDocumentType | null {
+  const singular = value.endsWith("s") ? value.slice(0, -1) : value;
+  if (singular === "builder" || singular === "feed" || singular === "digest") return singular;
+  return null;
 }
 
 function parseDateOperator(value: string) {

@@ -284,6 +284,14 @@ test("search user path parses google-style operators", () => {
   assert.equal(parsed.before?.toISOString().slice(0, 10), "2026-02-01");
 });
 
+test("search user path parses filetype as a google-style type operator", () => {
+  const parsed = parseSearchQuery("agent memory filetype:digests");
+
+  assert.equal(parsed.cleanQuery, "agent memory");
+  assert.equal(parsed.type, "digest");
+  assert.equal(parsed.typeOperator, "filetype");
+});
+
 test("search user path applies operator filters and newest sorting", () => {
   const oldDate = new Date("2026-01-10T00:00:00.000Z");
   const newDate = new Date("2026-01-20T00:00:00.000Z");
@@ -328,6 +336,29 @@ test("search user path applies operator filters and newest sorting", () => {
   });
 
   assert.deepEqual(results.map((result) => result.id), ["kept"]);
+});
+
+test("search user path filters by filetype operator", () => {
+  const results = rankSearchDocuments({
+    query: "agent memory filetype:digest",
+    mode: "hybrid",
+    documents: [
+      {
+        id: "digest-match",
+        type: "digest",
+        title: "Agent memory",
+        body: "Agent memory digest.",
+      },
+      {
+        id: "feed-match",
+        type: "feed",
+        title: "Agent memory",
+        body: "Agent memory feed item.",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["digest-match"]);
 });
 
 test("search user path filters by title operator", () => {

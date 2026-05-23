@@ -49,6 +49,7 @@ const advancedSearchExamples = [
   "agent memory intitle:launch",
   "agent memory inurl:release",
   "agent memory type:feed",
+  "agent memory filetype:digest",
   "agent memory after:2026-01-01",
   "agent memory before:2026-12-31",
 ];
@@ -631,16 +632,19 @@ function buildActiveSearchFilters({
     });
   }
   if (parsed.type) {
+    const isFiletype = parsed.typeOperator === "filetype";
     filters.push({
-      clearLabel: `Remove query type ${resultTypeLabels[parsed.type]}`,
+      clearLabel: isFiletype
+        ? `Remove file type ${resultTypeLabels[parsed.type]}`
+        : `Remove query type ${resultTypeLabels[parsed.type]}`,
       href: searchHref({
-        query: stripQueryOperators(query, ["type"]),
+        query: stripQueryOperators(query, ["type", "filetype"]),
         type: typeFilter,
         mode,
         sort,
         time,
       }),
-      label: "Query type",
+      label: isFiletype ? "File type" : "Query type",
       value: resultTypeLabels[parsed.type],
     });
   }
