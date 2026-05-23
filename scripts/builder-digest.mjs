@@ -117,18 +117,20 @@ async function crawlPersonal(args) {
   const subscribedBuilderIds = new Set(
     (context.subscriptions ?? []).map((builder) => builder.id),
   );
-  const personalBlogBuilders = (context.libraryBuilders ?? []).filter(
-    (builder) => builder.scope === "PERSONAL" && builder.kind === "BLOG",
+  const personalBuilders = (context.libraryBuilders ?? []).filter(
+    (builder) =>
+      builder.scope === "PERSONAL" &&
+      (builder.kind === "BLOG" || isYouTubeBuilder(builder)),
   );
 
-  if (personalBlogBuilders.length === 0) {
+  if (personalBuilders.length === 0) {
     console.log(
       JSON.stringify(
         {
           status: "ok",
           builders: 0,
           feedItems: 0,
-          message: "No personal BLOG builders in this user's library.",
+          message: "No personal BLOG or YouTube builders in this user's library.",
         },
         null,
         2,
@@ -141,11 +143,13 @@ async function crawlPersonal(args) {
   const builders = [];
   const localErrors = [];
 
-  for (const builder of personalBlogBuilders) {
+  for (const builder of personalBuilders) {
     try {
-      const items = await crawlPersonalBlogBuilder(builder, { cutoff, limit });
+      const items = isYouTubeBuilder(builder)
+        ? await crawlPersonalYouTubeBuilder(builder, { cutoff, limit })
+        : await crawlPersonalBlogBuilder(builder, { cutoff, limit });
       builders.push({
-        kind: "BLOG",
+        kind: isYouTubeBuilder(builder) ? "PODCAST" : "BLOG",
         name: builder.name,
         handle: builder.handle,
         sourceUrl: builder.sourceUrl,
@@ -171,13 +175,65 @@ async function crawlPersonal(args) {
     JSON.stringify(
       {
         ...result,
-        crawledPersonalBlogBuilders: personalBlogBuilders.length,
+        crawledPersonalBuilders: personalBuilders.length,
         localErrors,
       },
       null,
       2,
     ),
   );
+}
+
+function isYouTubeBuilder(builder) {
+  const source = `${builder.sourceUrl || ""} ${builder.crawlUrl || ""}`;
+  return builder.kind === "PODCAST" && /youtube\.com|youtu\.be/i.test(source);
+}
+
+async function crawlPersonalYouTubeBuilder(builder, { cutoff, limit }) {
+  const sourceUrl = builder.crawlUrl || builder.sourceUrl;
+  if (!sourceUrl) return [];
+  const feedUrl = await youtubeFeedUrl(sourceUrl);
+  if (!feedUrl) {
+    throw new Error(`Could not resolve a YouTube feed for ${sourceUrl}`);
+  }
+
+  const feedResponse = await fetch(feedUrl, {
+    headers: { "User-Agent": "BuilderBlogSkill/1.0 (personal YouTube crawler)" },
+  });
+  if (!feedResponse.ok) {
+    throw new Error(`Failed to fetch YouTube feed ${feedUrl}: HTTP ${feedResponse.status}`);
+  }
+
+  const videos = parseYouTubeFeed(await feedResponse.text(), feedUrl)
+    .filter((video) => !video.publishedAt || new Date(video.publishedAt) >= cutoff)
+    .slice(0, limit);
+  const items = [];
+
+  for (const video of videos) {
+    const transcript = await fetchYouTubeTranscript(video.url).catch(() => "");
+    const body = transcript || video.description || video.title;
+    if (!body.trim()) continue;
+    items.push({
+      kind: "PODCAST_EPISODE",
+      externalId: video.videoId || video.url,
+      title: video.title || "Untitled YouTube update",
+      body,
+      url: video.url,
+      publishedAt: video.publishedAt,
+      sourceName: builder.name,
+      rawJson: {
+        source: "personal-youtube",
+        builderId: builder.id,
+        builderName: builder.name,
+        title: video.title,
+        url: video.url,
+        publishedAt: video.publishedAt,
+        transcriptSource: transcript ? "youtube-captions" : "youtube-feed-description",
+      },
+    });
+  }
+
+  return items;
 }
 
 async function crawlPersonalBlogBuilder(builder, { cutoff, limit }) {
@@ -379,6 +435,163 @@ function dedupeByUrl(candidates) {
 
 function escapeRegex(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export async function youtubeFeedUrl(sourceUrl, fetcher = fetch) {
+  if (!sourceUrl) return "";
+  const parsed = new URL(sourceUrl);
+  if (parsed.pathname.includes("/feeds/videos.xml")) return parsed.href;
+  const playlistId = parsed.searchParams.get("list");
+  if (playlistId) {
+    return `https://www.youtube.com/feeds/videos.xml?playlist_id=${encodeURIComponent(playlistId)}`;
+  }
+  const channelMatch = parsed.pathname.match(/\/channel\/([^/?]+)/);
+  if (channelMatch) {
+    return `https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(channelMatch[1])}`;
+  }
+
+  const response = await fetcher(parsed.href, {
+    headers: {
+      "User-Agent": "BuilderBlogSkill/1.0 (personal YouTube crawler)",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+  });
+  if (!response.ok) return "";
+  const html = await response.text();
+  const rssHref = html.match(/<link[^>]+type=["']application\/rss\+xml["'][^>]+href=["']([^"']+)["']/i)?.[1];
+  if (rssHref) return decodeHtml(rssHref);
+  const externalId = html.match(/"externalId"\s*:\s*"([^"]+)"/)?.[1];
+  return externalId ? `https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(externalId)}` : "";
+}
+
+export function parseYouTubeFeed(xml, feedUrl) {
+  const entries = [
+    ...xml.matchAll(/<entry\b[\s\S]*?<\/entry>/gi),
+    ...xml.matchAll(/<item\b[\s\S]*?<\/item>/gi),
+  ];
+  return dedupeByUrl(
+    entries.map((match) => {
+      const block = match[0];
+      const videoId = tagText(block, "yt:videoId") || tagText(block, "guid");
+      const linkHref = block.match(/<link[^>]*href=["']([^"']+)["'][^>]*>/i)?.[1] || tagText(block, "link");
+      const url = absoluteUrl(linkHref || (videoId ? `https://www.youtube.com/watch?v=${videoId}` : ""), feedUrl);
+      return {
+        videoId: normalizeYouTubeVideoId(videoId) || youtubeVideoId(url),
+        title: tagText(block, "title") || "Untitled YouTube update",
+        url,
+        publishedAt: normalizedDate(tagText(block, "published") || tagText(block, "updated") || tagText(block, "pubDate")),
+        description: stripHtml(tagText(block, "media:description") || tagText(block, "description") || tagText(block, "summary")),
+      };
+    }),
+  ).filter((candidate) => candidate.url);
+}
+
+async function fetchYouTubeTranscript(videoUrl, fetcher = fetch) {
+  const videoId = youtubeVideoId(videoUrl);
+  if (!videoId) return "";
+  const response = await fetcher(`https://www.youtube.com/watch?v=${videoId}`, {
+    headers: {
+      "User-Agent": "BuilderBlogSkill/1.0 (personal YouTube crawler)",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+  });
+  if (!response.ok) return "";
+  const playerResponse = extractYouTubePlayerResponse(await response.text());
+  const tracks = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+  if (!Array.isArray(tracks) || tracks.length === 0) return "";
+  const track = preferredCaptionTrack(tracks);
+  if (!track?.baseUrl) return "";
+  const captionResponse = await fetcher(withYouTubeCaptionFormat(track.baseUrl, "json3"), {
+    headers: {
+      "User-Agent": "BuilderBlogSkill/1.0 (personal YouTube crawler)",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+  });
+  if (!captionResponse.ok) return "";
+  const body = await captionResponse.text();
+  return body.trim().startsWith("{") ? parseYouTubeJsonTranscript(body) : parseYouTubeXmlTranscript(body);
+}
+
+function youtubeVideoId(videoUrl) {
+  const urlMatch = videoUrl.match(/[?&]v=([A-Za-z0-9_-]{6,})/);
+  if (urlMatch) return urlMatch[1];
+  const shortMatch = videoUrl.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/);
+  return shortMatch ? shortMatch[1] : null;
+}
+
+function normalizeYouTubeVideoId(value) {
+  const match = String(value || "").match(/([A-Za-z0-9_-]{6,})$/);
+  return match ? match[1] : "";
+}
+
+function extractYouTubePlayerResponse(html) {
+  const assignment = html.match(/ytInitialPlayerResponse\s*=\s*/);
+  if (!assignment) return null;
+  const start = html.indexOf("{", assignment.index);
+  if (start === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < html.length; index += 1) {
+    const char = html[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') inString = true;
+    else if (char === "{") depth += 1;
+    else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        try {
+          return JSON.parse(html.slice(start, index + 1));
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function preferredCaptionTrack(tracks) {
+  const typedTracks = tracks.filter((track) => track && typeof track.baseUrl === "string");
+  return (
+    typedTracks.find((track) => track.languageCode?.startsWith("en") && track.kind !== "asr") ||
+    typedTracks.find((track) => track.languageCode?.startsWith("en")) ||
+    typedTracks.find((track) => track.kind !== "asr") ||
+    typedTracks[0]
+  );
+}
+
+function withYouTubeCaptionFormat(baseUrl, format) {
+  const url = new URL(baseUrl);
+  url.searchParams.set("fmt", format);
+  return url.href;
+}
+
+function parseYouTubeJsonTranscript(jsonText) {
+  try {
+    const data = JSON.parse(jsonText);
+    return (data.events || [])
+      .flatMap((event) => event.segs || [])
+      .map((segment) => segment.utf8 || "")
+      .join("")
+      .replace(/\s+/g, " ")
+      .trim();
+  } catch {
+    return "";
+  }
+}
+
+function parseYouTubeXmlTranscript(xml) {
+  return [...xml.matchAll(/<text\b[^>]*>([\s\S]*?)<\/text>/gi)]
+    .map((match) => decodeHtml(stripHtml(match[1])))
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 async function sync(args) {

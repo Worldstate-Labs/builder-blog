@@ -59,3 +59,39 @@ test("personal blog crawler extracts article text", async () => {
   assert.equal(article.publishedAt, "2026-05-22T12:00:00.000Z");
   assert.match(article.body, /long enough/);
 });
+
+test("personal YouTube crawler resolves channel pages to RSS feeds", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const feedUrl = await cli.youtubeFeedUrl("https://www.youtube.com/@ExampleBuilder", async () =>
+    new Response('<html>{"externalId":"UCabcdefghijklmnopqrstuvwx"}</html>'),
+  );
+
+  assert.equal(
+    feedUrl,
+    "https://www.youtube.com/feeds/videos.xml?channel_id=UCabcdefghijklmnopqrstuvwx",
+  );
+});
+
+test("personal YouTube crawler maps feed entries into syncable episodes", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const videos = cli.parseYouTubeFeed(
+    `
+    <feed>
+      <entry>
+        <yt:videoId>video123</yt:videoId>
+        <title>Building Useful Agents</title>
+        <link rel="alternate" href="https://www.youtube.com/watch?v=video123" />
+        <published>2026-05-22T10:00:00+00:00</published>
+        <media:description>Practical agent lessons.</media:description>
+      </entry>
+    </feed>
+    `,
+    "https://www.youtube.com/feeds/videos.xml?channel_id=UC123",
+  );
+
+  assert.equal(videos.length, 1);
+  assert.equal(videos[0].videoId, "video123");
+  assert.equal(videos[0].url, "https://www.youtube.com/watch?v=video123");
+  assert.equal(videos[0].publishedAt, "2026-05-22T10:00:00.000Z");
+  assert.equal(videos[0].description, "Practical agent lessons.");
+});

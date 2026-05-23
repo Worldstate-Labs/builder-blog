@@ -28,9 +28,9 @@ Never print the token after login.
 
 Agents are responsible for crawling user-owned personal builders with
 user-owned API keys, subscriptions, cookies, or network access. The Builder Blog
-web app only crawls central builders. For personal BLOG builders already in the
-user's library, run the local crawler and sync the resulting feed items to the
-cloud:
+web app only crawls central builders. For personal BLOG builders and personal
+YouTube/PODCAST builders already in the user's library, run the local crawler
+and sync the resulting feed items to the cloud:
 
 ```bash
 cd /Users/jie/code/builder_blog
@@ -40,9 +40,10 @@ node scripts/builder-digest.mjs crawl-personal --days 3 --limit 3
 This command:
 
 - fetches `/api/skill/context`;
-- filters to `scope: PERSONAL` and `kind: BLOG`;
-- crawls each personal blog locally from the user's agent environment;
-- posts discovered `BLOG_POST` items back to `/api/skill/builders`.
+- filters to `scope: PERSONAL` and `kind: BLOG`, plus YouTube-backed `PODCAST`;
+- crawls each personal blog or YouTube RSS feed locally from the user's agent environment;
+- for YouTube videos, prefers caption transcripts and falls back to feed descriptions;
+- posts discovered `BLOG_POST` or `PODCAST_EPISODE` items back to `/api/skill/builders`.
 
 Agents may also sync already-crawled user-owned sources manually. This is an
 `in library` operation, not a digest subscription unless `subscribe` is true:
