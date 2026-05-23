@@ -98,6 +98,7 @@ export default async function SearchPage({
             Find builders, crawled inputs, and digest history from your active library.
           </p>
           <SearchForm
+            key={`${query}:${typeFilter}:${mode}:${sort}:${time}`}
             query={query}
             typeFilter={typeFilter}
             mode={mode}

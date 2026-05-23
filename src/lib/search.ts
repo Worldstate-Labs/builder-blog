@@ -208,6 +208,37 @@ export function didYouMeanSearch(query: string) {
   return corrected !== parsed.cleanQuery ? corrected : null;
 }
 
+export function mergeSearchSuggestions({
+  query,
+  recentSearches = [],
+  liveSuggestions = [],
+  serverSuggestions = [],
+  limit = 8,
+}: {
+  query: string;
+  recentSearches?: string[];
+  liveSuggestions?: string[];
+  serverSuggestions?: string[];
+  limit?: number;
+}) {
+  const normalizedQuery = normalizeText(query);
+  const seen = new Set<string>();
+  const merged: string[] = [];
+  const addSuggestion = (suggestion: string) => {
+    const trimmed = suggestion.trim();
+    const normalized = normalizeText(trimmed);
+    if (!trimmed || normalized === normalizedQuery || seen.has(normalized)) return;
+    seen.add(normalized);
+    merged.push(trimmed);
+  };
+
+  for (const suggestion of recentSearches) addSuggestion(suggestion);
+  for (const suggestion of liveSuggestions) addSuggestion(suggestion);
+  for (const suggestion of serverSuggestions) addSuggestion(suggestion);
+
+  return merged.slice(0, limit);
+}
+
 export function rankSearchDocuments({
   query,
   mode,

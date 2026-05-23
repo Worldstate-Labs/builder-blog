@@ -13,6 +13,7 @@ import {
 import {
   candidateSearchTerms,
   didYouMeanSearch,
+  mergeSearchSuggestions,
   parseSearchQuery,
   relatedSearchSuggestions,
   rankSearchDocuments,
@@ -330,6 +331,24 @@ test("search user path suggests simple spelling corrections and normalizes tools
   assert.equal(normalizeSearchSort("bad"), "relevance");
   assert.equal(normalizeSearchTime("week"), "week");
   assert.equal(normalizeSearchTime("bad"), "any");
+});
+
+test("search user path merges live autocomplete suggestions by recency and relevance", () => {
+  const suggestions = mergeSearchSuggestions({
+    query: "agent",
+    recentSearches: ["agent memory", "digest archive"],
+    liveSuggestions: ["Agent Memory", "agent workflows", "builder launch"],
+    serverSuggestions: ["agent memory", "assistant memory", "agent"],
+    limit: 5,
+  });
+
+  assert.deepEqual(suggestions, [
+    "agent memory",
+    "digest archive",
+    "agent workflows",
+    "builder launch",
+    "assistant memory",
+  ]);
 });
 
 test("web display boundaries keep raw crawled content in the builders tab", () => {

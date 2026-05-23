@@ -51,6 +51,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /Time range/);
   assert.match(searchForm, /Sort by/);
   assert.match(searchForm, /datalist/);
+  assert.match(searchForm, /\/api\/search\/suggest/);
+  assert.match(searchForm, /AbortController/);
+  assert.match(searchForm, /aria-live="polite"/);
   assert.match(searchForm, /Lucky/);
   assert.doesNotMatch(searchForm, /type="radio"/);
 });

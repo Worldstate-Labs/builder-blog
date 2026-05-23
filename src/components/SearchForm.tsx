@@ -1,9 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Search, Sparkles } from "lucide-react";
-import type { SearchDocumentType, SearchMode, SearchSort, SearchTimeRange } from "@/lib/search";
+import {
+  mergeSearchSuggestions,
+  type SearchDocumentType,
+  type SearchMode,
+  type SearchSort,
+  type SearchTimeRange,
+} from "@/lib/search";
 
 export type SearchTypeFilter = "all" | SearchDocumentType;
 
@@ -24,15 +30,48 @@ export function SearchForm({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [inputValue, setInputValue] = useState(query);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [liveSuggestions, setLiveSuggestions] = useState<string[]>([]);
   const suggestionOptions = useMemo(
     () =>
-      [...new Set([...recentSearches, ...suggestions])]
-        .map((value) => value.trim())
-        .filter((value) => value && value.toLowerCase() !== query.trim().toLowerCase())
-        .slice(0, 8),
-    [query, recentSearches, suggestions],
+      mergeSearchSuggestions({
+        query: inputValue,
+        recentSearches,
+        liveSuggestions: inputValue.trim().length >= 2 ? liveSuggestions : [],
+        serverSuggestions: suggestions,
+      }),
+    [inputValue, liveSuggestions, recentSearches, suggestions],
   );
+
+  useEffect(() => {
+    const nextQuery = inputValue.trim();
+    if (nextQuery.length < 2) return;
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      fetch(`/api/search/suggest?q=${encodeURIComponent(nextQuery)}`, {
+        signal: controller.signal,
+      })
+        .then((response) => (response.ok ? response.json() : { suggestions: [] }))
+        .then((data: { suggestions?: unknown }) => {
+          if (controller.signal.aborted) return;
+          setLiveSuggestions(
+            Array.isArray(data.suggestions)
+              ? data.suggestions.filter((value): value is string => typeof value === "string")
+              : [],
+          );
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setLiveSuggestions([]);
+        });
+    }, 180);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [inputValue]);
 
   return (
     <form
@@ -102,7 +141,8 @@ export function SearchForm({
               type="search"
               name="q"
               list="search-suggestions"
-              defaultValue={query}
+              value={inputValue}
+              onChange={(event) => setInputValue(event.currentTarget.value)}
               placeholder="Search builders, feed items, or digests"
             />
             <datalist id="search-suggestions">
@@ -169,7 +209,11 @@ export function SearchForm({
         </button>
       </div>
       {suggestionOptions.length > 0 ? (
-        <div className="search-suggestion-row" aria-label="Search suggestions">
+        <div
+          className="search-suggestion-row"
+          aria-label="Search suggestions"
+          aria-live="polite"
+        >
           {suggestionOptions.slice(0, 5).map((suggestion) => (
             <button
               className="search-suggestion-chip"
