@@ -409,6 +409,40 @@ test("search user path supports explicit OR alternatives in exact mode", () => {
   assert.deepEqual(results.map((result) => result.id), ["agent", "embedding"]);
 });
 
+test("search user path supports AROUND proximity operator in exact mode", () => {
+  const parsed = parseSearchQuery("agent AROUND(2) memory");
+
+  assert.equal(parsed.cleanQuery, "agent memory");
+  assert.deepEqual(parsed.proximityPairs, [{ left: "agent", right: "memory", distance: 2 }]);
+
+  const results = rankSearchDocuments({
+    query: "agent AROUND(2) memory",
+    mode: "exact",
+    documents: [
+      {
+        id: "close",
+        type: "feed",
+        title: "Agent workflow memory",
+        body: "A short note.",
+      },
+      {
+        id: "far",
+        type: "feed",
+        title: "Agent teams capture logs traces and memory",
+        body: "A short note.",
+      },
+      {
+        id: "missing",
+        type: "feed",
+        title: "Agent workflow",
+        body: "A short note.",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["close"]);
+});
+
 test("search user path suggests simple spelling corrections and normalizes tools", () => {
   assert.equal(didYouMeanSearch("agnet memroy serach"), "agent memory search");
   assert.equal(normalizeSearchSort("newest"), "newest");

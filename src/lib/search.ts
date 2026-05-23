@@ -19,6 +19,12 @@ export type SearchResult = SearchDocument & {
   snippet: string;
 };
 
+export type SearchProximityPair = {
+  left: string;
+  right: string;
+  distance: number;
+};
+
 export type ParsedSearchQuery = {
   rawQuery: string;
   cleanQuery: string;
@@ -26,6 +32,7 @@ export type ParsedSearchQuery = {
   requiredTerms: string[];
   excludedTerms: string[];
   orTerms: string[];
+  proximityPairs: SearchProximityPair[];
   titleTerms: string[];
   urlTerms: string[];
   site: string | null;
@@ -170,8 +177,11 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
   }
 
   const orTerms = extractOrTerms(cleanParts);
+  const proximityPairs = extractProximityPairs(cleanParts);
   const cleanQuery = normalizeText(
-    cleanParts.filter((part) => part.toLowerCase() !== "or").join(" "),
+    cleanParts
+      .filter((part) => part.toLowerCase() !== "or" && !parseAroundOperator(part))
+      .join(" "),
   );
   return {
     rawQuery,
@@ -180,6 +190,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     requiredTerms: tokenize(cleanQuery),
     excludedTerms,
     orTerms,
+    proximityPairs,
     titleTerms,
     urlTerms,
     site,
@@ -327,14 +338,15 @@ export function rankSearchDocuments({
       const body = normalizeText(document.body);
       const haystack = `${title} ${body}`;
       const exactScore = exactMatchScore(normalizedQuery, title, body, parsedQuery.orTerms);
+      const proximityScore = proximityMatchScore(parsedQuery.proximityPairs, title, body);
       const semanticScore =
         mode === "exact" ? 0 : semanticMatchScore(weightedTerms, title, body);
       const score =
         mode === "exact"
-          ? exactScore
+          ? Math.max(exactScore, proximityScore)
           : mode === "hybrid"
-            ? exactScore * 1.35 + semanticScore
-            : Math.max(exactScore, semanticScore);
+            ? exactScore * 1.35 + proximityScore * 1.2 + semanticScore
+            : Math.max(exactScore, proximityScore, semanticScore);
 
       if (score <= 0) return null;
       return {
@@ -377,6 +389,9 @@ function documentMatchesFilters(
     parsedQuery.orTerms.length > 0 &&
     parsedQuery.orTerms.every((term) => !haystack.includes(term))
   ) {
+    return false;
+  }
+  if (parsedQuery.proximityPairs.some((pair) => !proximityMatches(haystack, pair))) {
     return false;
   }
   if (parsedQuery.phrases.some((phrase) => !haystack.includes(phrase))) return false;
@@ -426,6 +441,17 @@ function semanticMatchScore(
   return score;
 }
 
+function proximityMatchScore(
+  proximityPairs: SearchProximityPair[],
+  title: string,
+  body: string,
+) {
+  if (proximityPairs.length === 0) return 0;
+  const titleScore = proximityPairs.filter((pair) => proximityMatches(title, pair)).length * 90;
+  const bodyScore = proximityPairs.filter((pair) => proximityMatches(body, pair)).length * 60;
+  return titleScore + bodyScore;
+}
+
 function buildWeightedTerms(tokens: string[]) {
   const terms = new Map<string, number>();
   for (const token of tokens) {
@@ -461,6 +487,49 @@ function extractOrTerms(parts: string[]) {
   }
 
   return [...terms];
+}
+
+function extractProximityPairs(parts: string[]) {
+  const pairs: SearchProximityPair[] = [];
+
+  for (let index = 1; index < parts.length - 1; index += 1) {
+    const distance = parseAroundOperator(parts[index]);
+    if (distance === null) continue;
+
+    const left = normalizeProximityTerm(parts[index - 1]);
+    const right = normalizeProximityTerm(parts[index + 1]);
+    if (left && right) pairs.push({ left, right, distance });
+  }
+
+  return pairs;
+}
+
+function parseAroundOperator(value: string) {
+  const match = value.match(/^around\((\d{1,2})\)$/i);
+  if (!match) return null;
+  return Math.max(0, Number(match[1]));
+}
+
+function normalizeProximityTerm(value: string) {
+  return tokenize(value)[0] ?? "";
+}
+
+function proximityMatches(value: string, pair: SearchProximityPair) {
+  const tokens = tokenize(value);
+  const leftIndexes = tokenIndexes(tokens, pair.left);
+  const rightIndexes = tokenIndexes(tokens, pair.right);
+
+  return leftIndexes.some((leftIndex) =>
+    rightIndexes.some((rightIndex) => Math.abs(leftIndex - rightIndex) - 1 <= pair.distance),
+  );
+}
+
+function tokenIndexes(tokens: string[], term: string) {
+  const indexes: number[] = [];
+  tokens.forEach((token, index) => {
+    if (token === term) indexes.push(index);
+  });
+  return indexes;
 }
 
 function searchTimeBounds(time: SearchTimeRange) {
