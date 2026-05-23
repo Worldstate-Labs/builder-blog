@@ -33,6 +33,8 @@ export function SearchForm({
   const [inputValue, setInputValue] = useState(query);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [liveSuggestions, setLiveSuggestions] = useState<string[]>([]);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(true);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const suggestionOptions = useMemo(
     () =>
       mergeSearchSuggestions({
@@ -43,6 +45,14 @@ export function SearchForm({
       }),
     [inputValue, liveSuggestions, recentSearches, suggestions],
   );
+  const visibleSuggestions = suggestionOptions.slice(0, 5);
+  const activeSuggestion =
+    suggestionsOpen && activeSuggestionIndex >= 0
+      ? visibleSuggestions[activeSuggestionIndex]
+      : undefined;
+  const activeSuggestionId = activeSuggestion
+    ? `search-suggestion-${activeSuggestionIndex}`
+    : undefined;
 
   useEffect(() => {
     const nextQuery = inputValue.trim();
@@ -73,6 +83,69 @@ export function SearchForm({
     };
   }, [inputValue]);
 
+  function submitSearch({
+    form,
+    isLucky = false,
+    nextQuery,
+  }: {
+    form: HTMLFormElement | null;
+    isLucky?: boolean;
+    nextQuery: string;
+  }) {
+    const formData = form ? new FormData(form) : null;
+    const trimmedQuery = nextQuery.trim();
+    const nextMode = String(formData?.get("mode") ?? mode);
+    const nextSort = String(formData?.get("sort") ?? sort);
+    const nextTime = String(formData?.get("time") ?? time);
+    const params = new URLSearchParams();
+
+    if (trimmedQuery) {
+      params.set("q", trimmedQuery);
+    }
+    if (typeFilter !== "all") {
+      params.set("type", typeFilter);
+    }
+    if (nextMode !== "hybrid") {
+      params.set("mode", nextMode);
+    }
+    if (nextSort !== "relevance") {
+      params.set("sort", nextSort);
+    }
+    if (nextTime !== "any") {
+      params.set("time", nextTime);
+    }
+    if (isLucky && trimmedQuery) {
+      params.set("lucky", "1");
+    }
+
+    if (trimmedQuery) {
+      const nextRecent = [
+        trimmedQuery,
+        ...recentSearches.filter(
+          (recent) => recent.toLowerCase() !== trimmedQuery.toLowerCase(),
+        ),
+      ].slice(0, 5);
+      setRecentSearches(nextRecent);
+      try {
+        localStorage.setItem("builder-blog-searches", JSON.stringify(nextRecent));
+      } catch {
+        // Recent searches are a progressive enhancement.
+      }
+    }
+
+    setSuggestionsOpen(false);
+    setActiveSuggestionIndex(-1);
+    startTransition(() => {
+      const queryString = params.toString();
+      router.push(queryString ? `/search?${queryString}` : "/search");
+    });
+  }
+
+  function submitSuggestion(suggestion: string, form: HTMLFormElement | null) {
+    setInputValue(suggestion);
+    submitSearch({ form, nextQuery: suggestion });
+  }
+
   return (
     <form
       action="/search"
@@ -85,50 +158,9 @@ export function SearchForm({
           submitter?.name === "suggestion"
             ? submitter.value.trim()
             : String(formData.get("q") ?? "").trim();
-        const nextMode = String(formData.get("mode") ?? "hybrid");
-        const nextSort = String(formData.get("sort") ?? "relevance");
-        const nextTime = String(formData.get("time") ?? "any");
         const isLucky = submitter?.value === "1";
-        const params = new URLSearchParams();
 
-        if (nextQuery) {
-          params.set("q", nextQuery);
-        }
-        if (typeFilter !== "all") {
-          params.set("type", typeFilter);
-        }
-        if (nextMode !== "hybrid") {
-          params.set("mode", nextMode);
-        }
-        if (nextSort !== "relevance") {
-          params.set("sort", nextSort);
-        }
-        if (nextTime !== "any") {
-          params.set("time", nextTime);
-        }
-        if (isLucky && nextQuery) {
-          params.set("lucky", "1");
-        }
-
-        if (nextQuery) {
-          const nextRecent = [
-            nextQuery,
-            ...recentSearches.filter(
-              (recent) => recent.toLowerCase() !== nextQuery.toLowerCase(),
-            ),
-          ].slice(0, 5);
-          setRecentSearches(nextRecent);
-          try {
-            localStorage.setItem("builder-blog-searches", JSON.stringify(nextRecent));
-          } catch {
-            // Recent searches are a progressive enhancement.
-          }
-        }
-
-        startTransition(() => {
-          const queryString = params.toString();
-          router.push(queryString ? `/search?${queryString}` : "/search");
-        });
+        submitSearch({ form: event.currentTarget, isLucky, nextQuery });
       }}
     >
       <div className="search-form-row">
@@ -140,9 +172,41 @@ export function SearchForm({
               className="search-input"
               type="search"
               name="q"
+              role="combobox"
               list="search-suggestions"
               value={inputValue}
-              onChange={(event) => setInputValue(event.currentTarget.value)}
+              aria-activedescendant={activeSuggestionId}
+              aria-autocomplete="list"
+              aria-controls="search-suggestion-list"
+              aria-expanded={suggestionsOpen && visibleSuggestions.length > 0}
+              onChange={(event) => {
+                setInputValue(event.currentTarget.value);
+                setSuggestionsOpen(true);
+                setActiveSuggestionIndex(-1);
+              }}
+              onFocus={() => setSuggestionsOpen(true)}
+              onKeyDown={(event) => {
+                if (visibleSuggestions.length === 0) return;
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  setSuggestionsOpen(true);
+                  setActiveSuggestionIndex((current) =>
+                    current < visibleSuggestions.length - 1 ? current + 1 : 0,
+                  );
+                } else if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  setSuggestionsOpen(true);
+                  setActiveSuggestionIndex((current) =>
+                    current > 0 ? current - 1 : visibleSuggestions.length - 1,
+                  );
+                } else if (event.key === "Escape") {
+                  setSuggestionsOpen(false);
+                  setActiveSuggestionIndex(-1);
+                } else if (event.key === "Enter" && activeSuggestion) {
+                  event.preventDefault();
+                  submitSuggestion(activeSuggestion, event.currentTarget.form);
+                }
+              }}
               placeholder="Search builders, feed items, or digests"
             />
             <datalist id="search-suggestions">
@@ -208,19 +272,25 @@ export function SearchForm({
           Lucky
         </button>
       </div>
-      {suggestionOptions.length > 0 ? (
+      {suggestionsOpen && visibleSuggestions.length > 0 ? (
         <div
           className="search-suggestion-row"
           aria-label="Search suggestions"
           aria-live="polite"
+          id="search-suggestion-list"
+          role="listbox"
         >
-          {suggestionOptions.slice(0, 5).map((suggestion) => (
+          {visibleSuggestions.map((suggestion, index) => (
             <button
               className="search-suggestion-chip"
+              data-active={index === activeSuggestionIndex ? "true" : undefined}
+              id={`search-suggestion-${index}`}
               key={suggestion}
               name="suggestion"
+              role="option"
               type="submit"
               value={suggestion}
+              aria-selected={index === activeSuggestionIndex}
             >
               {suggestion}
             </button>

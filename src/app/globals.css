@@ -958,10 +958,15 @@ a {
 }
 
 .search-suggestion-chip:hover,
+.search-suggestion-chip[data-active="true"],
 .search-related-link:hover,
 .search-page-link:hover {
   border-color: color-mix(in oklch, var(--accent) 32%, var(--line));
   color: var(--accent);
+}
+
+.search-suggestion-chip[data-active="true"] {
+  background: color-mix(in oklch, var(--accent) 10%, transparent);
 }
 
 .search-quick-stats {
