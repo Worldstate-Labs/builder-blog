@@ -116,6 +116,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /importHubLibrariesAction/);
   assert.match(hubPage, /importCount/);
   assert.match(hubPage, /viewCount/);
+  assert.match(hubPage, /orderBy:\s*\[\{ kind: "desc" \}, \{ importCount: "desc" \}, \{ viewCount: "desc" \}/);
   assert.match(hubPage, /libraryId/);
   assert.match(actions, /sharePersonalLibraryToHub/);
   assert.match(actions, /importLibrariesFromHub/);

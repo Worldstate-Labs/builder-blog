@@ -46,7 +46,7 @@ export default async function LibraryHubPage() {
         },
         _count: { select: { items: true } },
       },
-      orderBy: [{ kind: "asc" }, { importCount: "desc" }, { updatedAt: "desc" }],
+      orderBy: [{ kind: "desc" }, { importCount: "desc" }, { viewCount: "desc" }, { updatedAt: "desc" }],
     }),
     prisma.builder.count({
       where: { scope: BuilderScope.PERSONAL, ownerUserId: session.user.id },
