@@ -49,7 +49,7 @@ export function SearchForm({
     }
   });
   const [liveSuggestions, setLiveSuggestions] = useState<string[]>([]);
-  const [suggestionsOpen, setSuggestionsOpen] = useState(true);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const suggestionOptions = useMemo(
     () =>
@@ -73,6 +73,7 @@ export function SearchForm({
   const activeSuggestionId = activeSuggestion
     ? `search-suggestion-${activeSuggestionIndex}`
     : undefined;
+  const shouldShowSuggestions = suggestionsOpen && visibleSuggestions.length > 0;
 
   useEffect(() => {
     const nextQuery = inputValue.trim();
@@ -195,6 +196,12 @@ export function SearchForm({
     <form
       action="/search"
       className="search-form"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setSuggestionsOpen(false);
+          setActiveSuggestionIndex(-1);
+        }
+      }}
       onSubmit={(event) => {
         event.preventDefault();
         const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
@@ -223,7 +230,7 @@ export function SearchForm({
               aria-activedescendant={activeSuggestionId}
               aria-autocomplete="list"
               aria-controls="search-suggestion-list"
-              aria-expanded={suggestionsOpen && visibleSuggestions.length > 0}
+              aria-expanded={shouldShowSuggestions}
               onChange={(event) => {
                 setInputValue(event.currentTarget.value);
                 setSuggestionsOpen(true);
@@ -263,6 +270,53 @@ export function SearchForm({
               >
                 <X aria-hidden="true" className="h-4 w-4" />
               </button>
+            ) : null}
+            {shouldShowSuggestions ? (
+              <div
+                className="search-suggestion-dropdown"
+                aria-label="Search suggestions"
+                aria-live="polite"
+                id="search-suggestion-list"
+                role="listbox"
+              >
+                {visibleSuggestions.map((suggestion, index) => (
+                  <div
+                    aria-selected={index === activeSuggestionIndex}
+                    data-active={index === activeSuggestionIndex ? "true" : undefined}
+                    id={`search-suggestion-${index}`}
+                    key={suggestion}
+                    role="option"
+                    className="search-suggestion-item"
+                  >
+                    <button
+                      className="search-suggestion-chip"
+                      name="suggestion"
+                      type="submit"
+                      value={suggestion}
+                    >
+                      {recentSuggestionKeys.has(normalizeSuggestionKey(suggestion)) ? (
+                        <Clock aria-hidden="true" className="h-4 w-4" />
+                      ) : (
+                        <Search aria-hidden="true" className="h-4 w-4" />
+                      )}
+                      <span>{suggestion}</span>
+                    </button>
+                    {recentSuggestionKeys.has(normalizeSuggestionKey(suggestion)) ? (
+                      <button
+                        aria-label={`Remove recent search ${suggestion}`}
+                        className="search-suggestion-remove"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          removeRecentSearch(suggestion);
+                        }}
+                        type="button"
+                      >
+                        <X aria-hidden="true" className="h-3.5 w-3.5" />
+                      </button>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
             ) : null}
           </span>
         </label>
@@ -332,53 +386,6 @@ export function SearchForm({
           Lucky
         </button>
       </div>
-      {suggestionsOpen && visibleSuggestions.length > 0 ? (
-        <div
-          className="search-suggestion-row"
-          aria-label="Search suggestions"
-          aria-live="polite"
-          id="search-suggestion-list"
-          role="listbox"
-        >
-          {visibleSuggestions.map((suggestion, index) => (
-            <div
-              aria-selected={index === activeSuggestionIndex}
-              data-active={index === activeSuggestionIndex ? "true" : undefined}
-              id={`search-suggestion-${index}`}
-              key={suggestion}
-              role="option"
-              className="search-suggestion-item"
-            >
-              <button
-                className="search-suggestion-chip"
-                name="suggestion"
-                type="submit"
-                value={suggestion}
-              >
-                {recentSuggestionKeys.has(normalizeSuggestionKey(suggestion)) ? (
-                  <Clock aria-hidden="true" className="h-3.5 w-3.5" />
-                ) : (
-                  <Search aria-hidden="true" className="h-3.5 w-3.5" />
-                )}
-                <span>{suggestion}</span>
-              </button>
-              {recentSuggestionKeys.has(normalizeSuggestionKey(suggestion)) ? (
-                <button
-                  aria-label={`Remove recent search ${suggestion}`}
-                  className="search-suggestion-remove"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    removeRecentSearch(suggestion);
-                  }}
-                  type="button"
-                >
-                  <X aria-hidden="true" className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      ) : null}
     </form>
   );
 }

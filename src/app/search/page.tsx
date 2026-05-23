@@ -348,7 +348,6 @@ export default async function SearchPage({
               {relatedSearches.length > 0 ? (
                 <RelatedSearches query={activeQuery} searches={relatedSearches} mode={mode} sort={sort} time={time} />
               ) : null}
-              <AdvancedSearchTips mode={mode} sort={sort} time={time} />
             </>
           ) : (
             <>

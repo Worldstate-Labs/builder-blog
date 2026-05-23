@@ -123,6 +123,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /\/api\/search\/suggest/);
   assert.match(searchForm, /AbortController/);
   assert.match(searchForm, /aria-live="polite"/);
+  assert.match(searchForm, /search-suggestion-dropdown/);
   assert.match(searchForm, /onKeyDown/);
   assert.match(searchForm, /ArrowDown/);
   assert.match(searchForm, /ArrowUp/);
@@ -132,8 +133,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /role="option"/);
   assert.match(searchForm, /Lucky/);
   assert.doesNotMatch(searchForm, /type="radio"/);
-  assert.match(globals, /\.search-page-active \.search-suggestion-row/);
-  assert.match(globals, /\.search-page-active \.search-suggestion-row\s*\{[\s\S]*display:\s*none/);
+  assert.match(globals, /\.search-suggestion-dropdown/);
+  assert.doesNotMatch(globals, /\.search-page-active \.search-suggestion-row\s*\{[\s\S]*display:\s*none/);
+  assert.match(globals, /\.search-page-active \.search-heading\s*\{[\s\S]*position:\s*absolute/);
 });
 
 test("search suggestions API exists for autocomplete-style queries", () => {
