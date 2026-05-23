@@ -71,6 +71,7 @@ test("subscription user path is a digest subset of the active builder pool", () 
 
 test("skill sync user path accepts personal YouTube builders with synced feed items", () => {
   const parsed = parseSkillBuilderSyncPayload({
+    force: true,
     builders: [
       {
         kind: "PODCAST",
@@ -95,6 +96,7 @@ test("skill sync user path accepts personal YouTube builders with synced feed it
 
   assert.equal(parsed.success, true);
   if (!parsed.success) return;
+  assert.equal(parsed.data.force, true);
   assert.equal(parsed.data.builders[0].kind, BuilderKind.PODCAST);
   assert.equal(parsed.data.builders[0].subscribe, true);
   assert.equal(parsed.data.builders[0].items[0].kind, FeedItemKind.PODCAST_EPISODE);

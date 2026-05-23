@@ -95,3 +95,47 @@ test("personal YouTube crawler maps feed entries into syncable episodes", async 
   assert.equal(videos[0].publishedAt, "2026-05-22T10:00:00.000Z");
   assert.equal(videos[0].description, "Practical agent lessons.");
 });
+
+test("personal crawler skips user-builder pairs already crawled unless forced", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const context = {
+    libraryBuilders: [
+      {
+        id: "builder_blog_1",
+        scope: "PERSONAL",
+        kind: "BLOG",
+        name: "Already Crawled Blog",
+        sourceUrl: "https://example.com/blog",
+      },
+      {
+        id: "builder_blog_2",
+        scope: "PERSONAL",
+        kind: "BLOG",
+        name: "Fresh Blog",
+        sourceUrl: "https://example.com/fresh",
+      },
+      {
+        id: "builder_central_1",
+        scope: "CENTRAL",
+        kind: "BLOG",
+        name: "Central Blog",
+        sourceUrl: "https://example.com/central",
+      },
+    ],
+    personalCrawlStates: [
+      {
+        builderId: "builder_blog_1",
+        lastCrawledAt: "2026-05-22T10:00:00.000Z",
+      },
+    ],
+  };
+
+  assert.deepEqual(
+    cli.personalBuildersForCrawl(context, { force: false }).map((builder: { id: string }) => builder.id),
+    ["builder_blog_2"],
+  );
+  assert.deepEqual(
+    cli.personalBuildersForCrawl(context, { force: true }).map((builder: { id: string }) => builder.id),
+    ["builder_blog_1", "builder_blog_2"],
+  );
+});

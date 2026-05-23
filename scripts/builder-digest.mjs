@@ -13,7 +13,7 @@ const DEFAULT_APP_URL = "https://builder-blog.worldstatelabs.com";
 function usage() {
   console.log(`builder-digest commands:
   login --app-url ${DEFAULT_APP_URL}
-  crawl-personal [--days 3] [--limit 3]
+  crawl-personal [--days 3] [--limit 3] [--force]
   prepare [--days 1]
   sync-builders --file personal-builders.json
   sync --file digest.md [--title "AI Builder Digest"]
@@ -110,6 +110,7 @@ async function crawlPersonal(args) {
 
   const days = Math.max(1, Number(argValue(args, "--days", "3")));
   const limit = Math.max(1, Number(argValue(args, "--limit", "3")));
+  const force = args.includes("--force");
   const context = await getJson(
     `${config.appUrl}/api/skill/context?days=${encodeURIComponent(String(days))}`,
     config.token,
@@ -117,11 +118,7 @@ async function crawlPersonal(args) {
   const subscribedBuilderIds = new Set(
     (context.subscriptions ?? []).map((builder) => builder.id),
   );
-  const personalBuilders = (context.libraryBuilders ?? []).filter(
-    (builder) =>
-      builder.scope === "PERSONAL" &&
-      (builder.kind === "BLOG" || isYouTubeBuilder(builder)),
-  );
+  const personalBuilders = personalBuildersForCrawl(context, { force });
 
   if (personalBuilders.length === 0) {
     console.log(
@@ -130,7 +127,11 @@ async function crawlPersonal(args) {
           status: "ok",
           builders: 0,
           feedItems: 0,
-          message: "No personal BLOG or YouTube builders in this user's library.",
+          skippedAlreadyCrawled: skippedPersonalBuilderCount(context),
+          force,
+          message: force
+            ? "No personal BLOG or YouTube builders in this user's library."
+            : "No uncrawled personal BLOG or YouTube builders. Use --force to crawl them again.",
         },
         null,
         2,
@@ -168,7 +169,7 @@ async function crawlPersonal(args) {
 
   const result = await postJson(
     `${config.appUrl}/api/skill/builders`,
-    { builders },
+    { force, builders },
     config.token,
   );
   console.log(
@@ -176,12 +177,33 @@ async function crawlPersonal(args) {
       {
         ...result,
         crawledPersonalBuilders: personalBuilders.length,
+        skippedAlreadyCrawled: force ? 0 : skippedPersonalBuilderCount(context),
         localErrors,
       },
       null,
       2,
     ),
   );
+}
+
+export function personalBuildersForCrawl(context, { force = false } = {}) {
+  const crawledBuilderIds = new Set(
+    (context.personalCrawlStates ?? [])
+      .filter((state) => state?.lastCrawledAt)
+      .map((state) => state.builderId),
+  );
+  return (context.libraryBuilders ?? []).filter(
+    (builder) =>
+      builder.scope === "PERSONAL" &&
+      (builder.kind === "BLOG" || isYouTubeBuilder(builder)) &&
+      (force || !crawledBuilderIds.has(builder.id)),
+  );
+}
+
+function skippedPersonalBuilderCount(context) {
+  const forceEligibleBuilders = personalBuildersForCrawl(context, { force: true });
+  const defaultBuilders = personalBuildersForCrawl(context, { force: false });
+  return forceEligibleBuilders.length - defaultBuilders.length;
 }
 
 function isYouTubeBuilder(builder) {

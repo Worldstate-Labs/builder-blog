@@ -20,6 +20,7 @@ export async function POST(request: Request) {
   let builders = 0;
   let feedItems = 0;
   let subscriptions = 0;
+  const now = new Date();
   for (const input of parsed.data.builders) {
     const builder = await upsertBuilder({
       scope: BuilderScope.PERSONAL,
@@ -86,6 +87,26 @@ export async function POST(request: Request) {
       });
       feedItems += 1;
     }
+    await prisma.userBuilderCrawl.upsert({
+      where: {
+        userId_builderId: {
+          userId: user.id,
+          builderId: builder.id,
+        },
+      },
+      update: {
+        lastCrawledAt: now,
+        lastForcedAt: parsed.data.force ? now : undefined,
+        itemCount: input.items.length,
+      },
+      create: {
+        userId: user.id,
+        builderId: builder.id,
+        lastCrawledAt: now,
+        lastForcedAt: parsed.data.force ? now : null,
+        itemCount: input.items.length,
+      },
+    });
   }
 
   return NextResponse.json({
@@ -93,6 +114,7 @@ export async function POST(request: Request) {
     builders,
     feedItems,
     subscriptions,
+    force: parsed.data.force,
     generatedAt: new Date().toISOString(),
   });
 }

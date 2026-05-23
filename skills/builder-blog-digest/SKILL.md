@@ -41,9 +41,18 @@ This command:
 
 - fetches `/api/skill/context`;
 - filters to `scope: PERSONAL` and `kind: BLOG`, plus YouTube-backed `PODCAST`;
+- skips any `user + builder` pair the web app has already recorded as crawled;
 - crawls each personal blog or YouTube RSS feed locally from the user's agent environment;
 - for YouTube videos, prefers caption transcripts and falls back to feed descriptions;
 - posts discovered `BLOG_POST` or `PODCAST_EPISODE` items back to `/api/skill/builders`.
+
+Use `--force` only when the user explicitly wants to re-crawl already-crawled
+personal builders:
+
+```bash
+cd /Users/jie/code/builder_blog
+node scripts/builder-digest.mjs crawl-personal --days 3 --limit 3 --force
+```
 
 Agents may also sync already-crawled user-owned sources manually. This is an
 `in library` operation, not a digest subscription unless `subscribe` is true:

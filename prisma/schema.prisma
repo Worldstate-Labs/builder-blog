@@ -27,6 +27,7 @@ model User {
   deviceLogins   DeviceLogin[]
   personalBuilders Builder[] @relation("PersonalBuilders")
   builderPoolEntries BuilderPoolEntry[]
+  builderCrawls UserBuilderCrawl[]
 }
 
 model Account {
@@ -82,6 +83,7 @@ model Builder {
   poolEntries    BuilderPoolEntry[]
   subscriptions  Subscription[]
   feedItems      FeedItem[]
+  userCrawls     UserBuilderCrawl[]
 
   @@index([scope, kind])
   @@index([ownerUserId, kind])
@@ -102,6 +104,23 @@ model BuilderPoolEntry {
 
   @@unique([userId, builderId])
   @@index([userId, removedAt])
+  @@index([builderId])
+}
+
+model UserBuilderCrawl {
+  id            String   @id @default(cuid())
+  userId        String
+  builderId     String
+  lastCrawledAt DateTime @default(now())
+  lastForcedAt  DateTime?
+  itemCount     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  builder       Builder  @relation(fields: [builderId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, builderId])
+  @@index([userId, lastCrawledAt])
   @@index([builderId])
 }
 

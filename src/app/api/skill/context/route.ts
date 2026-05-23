@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   const since = new Date(Date.now() - Math.max(1, days) * 24 * 60 * 60 * 1000);
 
   const poolBuilderIds = await activePoolBuilderIds(user.id);
-  const [libraryBuilders, subscriptions] = await Promise.all([
+  const [libraryBuilders, subscriptions, personalCrawlStates] = await Promise.all([
     prisma.builder.findMany({
       where: { id: { in: poolBuilderIds } },
       orderBy: [{ scope: "asc" }, { kind: "asc" }, { name: "asc" }],
@@ -28,6 +28,13 @@ export async function GET(request: Request) {
       },
       include: { builder: true },
       orderBy: { createdAt: "asc" },
+    }),
+    prisma.userBuilderCrawl.findMany({
+      where: {
+        userId: user.id,
+        builderId: { in: poolBuilderIds },
+      },
+      orderBy: { lastCrawledAt: "desc" },
     }),
   ]);
   const subscribedBuilderIds = subscriptionBuilderIdsInPool(
@@ -50,6 +57,7 @@ export async function GET(request: Request) {
     generatedAt: new Date().toISOString(),
     language: "zh",
     libraryBuilders,
+    personalCrawlStates,
     subscriptions: subscriptions.map((subscription) => subscription.builder),
     subscriptionCount: subscriptions.length,
     items,

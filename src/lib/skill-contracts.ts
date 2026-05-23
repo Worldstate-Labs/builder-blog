@@ -24,6 +24,7 @@ export const SkillBuilderSchema = z.object({
 });
 
 export const SkillBuilderSyncSchema = z.object({
+  force: z.boolean().default(false),
   builders: z.array(SkillBuilderSchema).min(1),
 });
 
