@@ -782,7 +782,11 @@ function buildActiveSearchFilters({
       value: parsed.urlTerms.join(", "),
     });
   }
-  if (parsed.requiredOperatorTerms.length > 0) {
+  const requiredValues = [
+    ...parsed.requiredPhrases.map((phrase) => `"${phrase}"`),
+    ...parsed.requiredOperatorTerms,
+  ];
+  if (requiredValues.length > 0) {
     filters.push({
       clearLabel: "Remove required terms",
       href: searchHref({
@@ -793,7 +797,7 @@ function buildActiveSearchFilters({
         time,
       }),
       label: "Must include",
-      value: parsed.requiredOperatorTerms.join(", "),
+      value: requiredValues.join(", "),
     });
   }
   const excludedTitleValues = [
@@ -974,7 +978,8 @@ function stripExcludedTerms(query: string) {
 }
 
 function stripRequiredTerms(query: string) {
-  return query
+  const withoutRequiredPhrases = query.replace(/(^|\s)\+"([^"]+)"/g, "$1");
+  return withoutRequiredPhrases
     .split(/\s+/)
     .filter((token) => !(token.startsWith("+") && token.length > 1))
     .join(" ")

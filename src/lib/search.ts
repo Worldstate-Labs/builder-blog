@@ -29,6 +29,7 @@ export type ParsedSearchQuery = {
   rawQuery: string;
   cleanQuery: string;
   phrases: string[];
+  requiredPhrases: string[];
   excludedPhrases: string[];
   requiredTerms: string[];
   requiredOperatorTerms: string[];
@@ -130,6 +131,7 @@ export function normalizeSearchTime(value: string | null | undefined): SearchTim
 export function parseSearchQuery(query: string): ParsedSearchQuery {
   const rawQuery = query.trim();
   const phrases: string[] = [];
+  const requiredPhrases: string[] = [];
   const excludedPhrases: string[] = [];
   const withoutExcludedPhrases = rawQuery.replace(
     /(^|\s)-"([^"]+)"/g,
@@ -139,7 +141,15 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
       return `${prefix} `;
     },
   );
-  const working = withoutExcludedPhrases.replace(/"([^"]+)"/g, (_, phrase: string) => {
+  const withoutRequiredPhrases = withoutExcludedPhrases.replace(
+    /(^|\s)\+"([^"]+)"/g,
+    (_, prefix: string, phrase: string) => {
+      const normalizedPhrase = normalizeText(phrase);
+      if (normalizedPhrase) requiredPhrases.push(normalizedPhrase);
+      return `${prefix} ${normalizedPhrase} `;
+    },
+  );
+  const working = withoutRequiredPhrases.replace(/"([^"]+)"/g, (_, phrase: string) => {
     const normalizedPhrase = normalizeText(phrase);
     if (normalizedPhrase) phrases.push(normalizedPhrase);
     return ` ${normalizedPhrase} `;
@@ -310,6 +320,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     rawQuery,
     cleanQuery,
     phrases,
+    requiredPhrases,
     excludedPhrases,
     requiredTerms: tokenize(cleanQuery),
     requiredOperatorTerms,
@@ -376,15 +387,21 @@ export function relatedSearchSuggestions(query: string, limit = 6) {
 export function searchHighlightTerms(query: string, limit = 8) {
   const parsed = parseSearchQuery(query);
   const terms = new Set<string>();
+  const phraseTerms = [
+    ...parsed.phrases.filter((phrase) => !phrase.includes("*")),
+    ...parsed.requiredPhrases.filter((phrase) => !phrase.includes("*")),
+  ];
 
   for (const term of [
-    ...parsed.phrases.filter((phrase) => !phrase.includes("*")),
+    ...phraseTerms,
     ...parsed.titleTerms,
     ...parsed.bodyTerms,
     ...parsed.urlTerms,
     ...parsed.orTerms,
     ...parsed.requiredOperatorTerms,
-    ...parsed.requiredTerms,
+    ...parsed.requiredTerms.filter(
+      (term) => !phraseTerms.some((phrase) => phrase.split(" ").includes(term)),
+    ),
   ]) {
     const normalizedTerm = term.trim();
     if (normalizedTerm.length > 1) terms.add(normalizedTerm);
@@ -613,6 +630,7 @@ function documentMatchesFilters(
     return false;
   }
   if (parsedQuery.phrases.some((phrase) => !phraseMatches(haystack, phrase))) return false;
+  if (parsedQuery.requiredPhrases.some((phrase) => !phraseMatches(haystack, phrase))) return false;
   if (parsedQuery.excludedPhrases.some((phrase) => phraseMatches(haystack, phrase))) return false;
   if (parsedQuery.requiredOperatorTerms.some((term) => !haystack.includes(term))) return false;
   if (parsedQuery.excludedTerms.some((term) => haystack.includes(term))) return false;
