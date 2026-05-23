@@ -1,16 +1,7 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { parseSkillDigestPayload } from "@/lib/skill-contracts";
 import { getUserFromBearer } from "@/lib/tokens";
-
-const DigestSchema = z.object({
-  title: z.string().min(1).max(180),
-  content: z.string().min(1),
-  language: z.string().default("zh"),
-  periodStart: z.string().datetime().optional(),
-  periodEnd: z.string().datetime().optional(),
-  itemCount: z.number().int().min(0).default(0),
-});
 
 export async function POST(request: Request) {
   const user = await getUserFromBearer(request);
@@ -18,7 +9,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = DigestSchema.safeParse(await request.json());
+  const parsed = parseSkillDigestPayload(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }

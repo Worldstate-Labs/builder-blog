@@ -1,5 +1,4 @@
 import { createHash, randomBytes } from "crypto";
-import { prisma } from "@/lib/prisma";
 
 export function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
@@ -14,6 +13,7 @@ export function newDeviceCode() {
 }
 
 export async function createAgentToken(userId: string, name: string) {
+  const { prisma } = await import("@/lib/prisma");
   const token = newAgentToken();
   const record = await prisma.agentToken.create({
     data: {
@@ -26,6 +26,7 @@ export async function createAgentToken(userId: string, name: string) {
 }
 
 export async function getUserFromBearer(request: Request) {
+  const { prisma } = await import("@/lib/prisma");
   const auth = request.headers.get("authorization");
   const token = auth?.match(/^Bearer\s+(.+)$/i)?.[1];
   if (!token) return null;

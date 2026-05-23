@@ -1,36 +1,10 @@
-import { BuilderKind, BuilderPoolOrigin, BuilderScope, FeedItemKind } from "@prisma/client";
+import { BuilderPoolOrigin, BuilderScope } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { addBuilderToPool } from "@/lib/builder-pool";
 import { upsertBuilder } from "@/lib/builders";
 import { prisma } from "@/lib/prisma";
+import { parseSkillBuilderSyncPayload } from "@/lib/skill-contracts";
 import { getUserFromBearer } from "@/lib/tokens";
-
-const FeedItemSchema = z.object({
-  kind: z.enum(FeedItemKind),
-  externalId: z.string().min(1),
-  title: z.string().nullable().optional(),
-  body: z.string().min(1),
-  url: z.string().url(),
-  publishedAt: z.string().datetime().nullable().optional(),
-  sourceName: z.string().nullable().optional(),
-  rawJson: z.unknown().optional(),
-});
-
-const BuilderSchema = z.object({
-  kind: z.enum(BuilderKind),
-  name: z.string().min(1),
-  handle: z.string().nullable().optional(),
-  sourceUrl: z.string().url().nullable().optional(),
-  crawlUrl: z.string().url().nullable().optional(),
-  bio: z.string().nullable().optional(),
-  subscribe: z.boolean().default(false),
-  items: z.array(FeedItemSchema).default([]),
-});
-
-const SyncSchema = z.object({
-  builders: z.array(BuilderSchema).min(1),
-});
 
 export async function POST(request: Request) {
   const user = await getUserFromBearer(request);
@@ -38,7 +12,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = SyncSchema.safeParse(await request.json());
+  const parsed = parseSkillBuilderSyncPayload(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
