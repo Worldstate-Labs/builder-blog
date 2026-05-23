@@ -267,7 +267,8 @@ function isYouTubeSource(builder) {
 }
 
 function normalizeSourceType(sourceType) {
-  return String(sourceType || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const normalized = String(sourceType || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return normalized === "auto" ? "" : normalized;
 }
 
 async function crawlPersonalYouTubeBuilder(builder, { cutoff, limit, seenItemKeys = new Set() }) {

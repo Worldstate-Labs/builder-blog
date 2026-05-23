@@ -112,6 +112,7 @@ test("personal crawler keeps crawled builders eligible and tracks seen post keys
         id: "builder_blog_1",
         scope: "PERSONAL",
         kind: "BLOG",
+        sourceType: "auto",
         name: "Already Crawled Blog",
         sourceUrl: "https://example.com/blog",
       },
@@ -119,8 +120,17 @@ test("personal crawler keeps crawled builders eligible and tracks seen post keys
         id: "builder_blog_2",
         scope: "PERSONAL",
         kind: "BLOG",
+        sourceType: "auto",
         name: "Fresh Blog",
         sourceUrl: "https://example.com/fresh",
+      },
+      {
+        id: "builder_youtube_1",
+        scope: "PERSONAL",
+        kind: "PODCAST",
+        sourceType: "auto",
+        name: "Auto YouTube",
+        sourceUrl: "https://www.youtube.com/@example",
       },
       {
         id: "builder_central_1",
@@ -147,7 +157,7 @@ test("personal crawler keeps crawled builders eligible and tracks seen post keys
 
   assert.deepEqual(
     cli.personalBuildersForCrawl(context).map((builder: { id: string }) => builder.id),
-    ["builder_blog_1", "builder_blog_2"],
+    ["builder_blog_1", "builder_blog_2", "builder_youtube_1"],
   );
   assert.equal(
     cli
