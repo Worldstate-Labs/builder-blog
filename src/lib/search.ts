@@ -19,6 +19,11 @@ export type SearchResult = SearchDocument & {
   snippet: string;
 };
 
+type SearchRankCandidate = SearchResult & {
+  exactLaneScore: number;
+  semanticLaneScore: number;
+};
+
 export type SearchProximityPair = {
   left: string;
   right: string;
@@ -597,7 +602,7 @@ export function rankSearchDocuments({
     mode === "exact" ? new Map<string, number>() : buildWeightedTerms(queryTokens);
   const timeBounds = searchTimeBounds(time);
 
-  return documents
+  const candidates = documents
     .filter((document) => documentMatchesFilters(document, parsedQuery, timeBounds))
     .map((document) => {
       const title = normalizeText(document.title);
@@ -610,38 +615,129 @@ export function rankSearchDocuments({
       const proximityScore = proximityMatchScore(parsedQuery.proximityPairs, title, body);
       const semanticScore =
         mode === "exact" ? 0 : semanticMatchScore(weightedTerms, title, body);
+      const exactLaneScore = Math.max(exactScore, phraseScore, proximityScore);
       const score = isFilterOnlyQuery
         ? 1
         : mode === "exact"
-          ? Math.max(exactScore, phraseScore, proximityScore)
+          ? exactLaneScore
           : mode === "hybrid"
-            ? exactScore * 1.35 + phraseScore * 1.35 + proximityScore * 1.2 + semanticScore
-            : Math.max(exactScore, phraseScore, proximityScore, semanticScore);
+            ? 0
+            : Math.max(exactLaneScore, semanticScore);
 
-      if (score <= 0) return null;
       return {
         ...document,
         score,
+        exactLaneScore,
+        semanticLaneScore: semanticScore,
         snippet: buildSnippet(document, normalizedQuery, queryTokens, [
           ...parsedQuery.phrases,
           ...parsedQuery.requiredPhrases,
           ...parsedQuery.orPhrases,
         ]),
       };
-    })
-    .filter((result): result is SearchResult => result !== null)
-    .sort((a, b) => {
-      if (sort === "newest") {
-        const dateDiff = (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0);
-        if (dateDiff !== 0) return dateDiff;
-      }
-      if (b.score !== a.score) return b.score - a.score;
-      if (typePriority[a.type] !== typePriority[b.type]) {
-        return typePriority[a.type] - typePriority[b.type];
-      }
-      return a.title.localeCompare(b.title);
-    })
-    .slice(0, limit);
+    });
+
+  const rankedCandidates =
+    mode === "hybrid" && !isFilterOnlyQuery
+      ? rankHybridCandidates(
+          applyHybridScores(candidates).filter((candidate) => candidate.score > 0),
+          sort,
+        )
+      : candidates
+          .filter((candidate) => candidate.score > 0)
+          .sort((a, b) => compareRankCandidates(a, b, sort));
+
+  return rankedCandidates.slice(0, limit).map(stripRankCandidateScores);
+}
+
+function applyHybridScores(candidates: SearchRankCandidate[]) {
+  const maxExactScore = Math.max(0, ...candidates.map((candidate) => candidate.exactLaneScore));
+  const maxSemanticScore = Math.max(0, ...candidates.map((candidate) => candidate.semanticLaneScore));
+
+  return candidates.map((candidate) => ({
+    ...candidate,
+    score:
+      normalizedLaneScore(candidate.exactLaneScore, maxExactScore) * 50 +
+      normalizedLaneScore(candidate.semanticLaneScore, maxSemanticScore) * 50,
+  }));
+}
+
+function normalizedLaneScore(score: number, maxScore: number) {
+  if (score <= 0 || maxScore <= 0) return 0;
+  return score / maxScore;
+}
+
+function rankHybridCandidates(candidates: SearchRankCandidate[], sort: SearchSort) {
+  if (sort === "newest") return [...candidates].sort((a, b) => compareRankCandidates(a, b, sort));
+
+  const rankedByHybrid = [...candidates].sort((a, b) => compareRankCandidates(a, b, "relevance"));
+  const exactLeaders = [...candidates]
+    .filter((candidate) => candidate.exactLaneScore > 0)
+    .sort((a, b) => compareLaneCandidates(a, b, "exact"))
+    .slice(0, 2);
+  const exactLeaderIds = new Set(exactLeaders.map((candidate) => candidate.id));
+  const semanticLeaders = [...candidates]
+    .filter((candidate) => candidate.semanticLaneScore > 0 && !exactLeaderIds.has(candidate.id))
+    .sort((a, b) => compareLaneCandidates(a, b, "semantic"))
+    .slice(0, 2);
+  const topFour = uniqueCandidates([...exactLeaders, ...semanticLeaders]);
+
+  for (const candidate of rankedByHybrid) {
+    if (topFour.length >= 4) break;
+    if (!topFour.some((leader) => leader.id === candidate.id)) topFour.push(candidate);
+  }
+
+  const topFourIds = new Set(topFour.map((candidate) => candidate.id));
+  const sortedTopFour = [...topFour].sort((a, b) => compareRankCandidates(a, b, "relevance"));
+  const rest = rankedByHybrid.filter((candidate) => !topFourIds.has(candidate.id));
+  return [...sortedTopFour, ...rest];
+}
+
+function uniqueCandidates(candidates: SearchRankCandidate[]) {
+  const seen = new Set<string>();
+  const unique: SearchRankCandidate[] = [];
+  for (const candidate of candidates) {
+    if (seen.has(candidate.id)) continue;
+    seen.add(candidate.id);
+    unique.push(candidate);
+  }
+  return unique;
+}
+
+function compareLaneCandidates(
+  a: SearchRankCandidate,
+  b: SearchRankCandidate,
+  lane: "exact" | "semantic",
+) {
+  const laneKey = lane === "exact" ? "exactLaneScore" : "semanticLaneScore";
+  if (b[laneKey] !== a[laneKey]) return b[laneKey] - a[laneKey];
+  return compareRankCandidates(a, b, "relevance");
+}
+
+function compareRankCandidates(a: SearchRankCandidate, b: SearchRankCandidate, sort: SearchSort) {
+  if (sort === "newest") {
+    const dateDiff = (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0);
+    if (dateDiff !== 0) return dateDiff;
+  }
+  if (b.score !== a.score) return b.score - a.score;
+  if (typePriority[a.type] !== typePriority[b.type]) {
+    return typePriority[a.type] - typePriority[b.type];
+  }
+  return a.title.localeCompare(b.title);
+}
+
+function stripRankCandidateScores(candidate: SearchRankCandidate): SearchResult {
+  return {
+    id: candidate.id,
+    type: candidate.type,
+    title: candidate.title,
+    body: candidate.body,
+    url: candidate.url,
+    sourceName: candidate.sourceName,
+    date: candidate.date,
+    score: candidate.score,
+    snippet: candidate.snippet,
+  };
 }
 
 function hasSearchFilters(parsedQuery: ParsedSearchQuery) {

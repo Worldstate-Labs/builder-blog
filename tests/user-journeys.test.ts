@@ -362,6 +362,66 @@ test("hybrid search blends literal and semantic matching", () => {
   assert.deepEqual(results.map((result) => result.id), ["literal", "related"]);
 });
 
+test("hybrid search reserves top four slots for exact and semantic leaders", () => {
+  const results = rankSearchDocuments({
+    query: "agent memory",
+    mode: "hybrid",
+    documents: [
+      {
+        id: "exact-1",
+        type: "feed",
+        title: "Agent memory",
+        body: "A literal title match.",
+      },
+      {
+        id: "exact-2",
+        type: "feed",
+        title: "Agent memory roadmap",
+        body: "Another literal title match.",
+      },
+      {
+        id: "semantic-1",
+        type: "feed",
+        title: "AI assistant workflow",
+        body: "Recall systems for agents.",
+      },
+      {
+        id: "semantic-2",
+        type: "feed",
+        title: "Assistant workflow",
+        body: "AI agent recall and saved library context.",
+      },
+      {
+        id: "hybrid-strong",
+        type: "feed",
+        title: "Agent workflow",
+        body: "Agent memory assistant recall workflow.",
+      },
+      {
+        id: "body-literal",
+        type: "feed",
+        title: "Launch note",
+        body: "Agent memory appears in the body.",
+      },
+    ],
+  });
+
+  const topFour = results.slice(0, 4).map((result) => result.id);
+
+  assert.equal(topFour.includes("exact-1"), true);
+  assert.equal(topFour.includes("exact-2"), true);
+  assert.equal(topFour.includes("hybrid-strong"), true);
+  assert.equal(topFour.includes("semantic-1"), true);
+  assert.equal(topFour.includes("body-literal"), false);
+  assert.deepEqual(
+    results.slice(0, 4).map((result) => result.score),
+    results
+      .slice(0, 4)
+      .map((result) => result.score)
+      .toSorted((a, b) => b - a),
+  );
+});
+
 test("hybrid search uses expanded database recall terms by default", () => {
   assert.deepEqual(candidateSearchTerms("agent memory", "exact"), ["agent memory"]);
 
