@@ -9,6 +9,7 @@ export const SkillFeedItemSchema = z.object({
   url: z.string().url(),
   publishedAt: z.string().datetime().nullable().optional(),
   sourceName: z.string().nullable().optional(),
+  crawlingTool: z.string().min(1).max(160).nullable().optional(),
   rawJson: z.unknown().optional(),
 });
 
@@ -26,6 +27,7 @@ export const SkillBuilderSchema = z.object({
 
 export const SkillBuilderSyncSchema = z.object({
   force: z.boolean().default(false),
+  crawlingTool: z.string().min(1).max(160).default("Agent skill sync"),
   builders: z.array(SkillBuilderSchema).min(1),
 });
 

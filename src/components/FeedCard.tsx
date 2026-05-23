@@ -7,12 +7,14 @@ export function FeedCard({
   body,
   url,
   date,
+  crawlingTool,
 }: {
   title?: string | null;
   source?: string | null;
   body: string;
   url: string;
   date?: Date | null;
+  crawlingTool?: string | null;
 }) {
   return (
     <article className="feed-card feed-card-compact">
@@ -22,6 +24,7 @@ export function FeedCard({
             <span className="item-kicker">
               <span>{source ?? "Unknown source"}</span>
               {date ? <span>{formatDistanceToNow(date, { addSuffix: true })}</span> : null}
+              <span>{crawlingTool ?? "Legacy crawl/import"}</span>
             </span>
             <span className="item-title">{title || body.slice(0, 96)}</span>
           </span>
@@ -31,7 +34,12 @@ export function FeedCard({
           </span>
         </summary>
         <div className="item-details">
-          <p className="text-sm leading-7 text-[var(--muted-strong)]">{body}</p>
+          <p className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+            Crawling tool · {crawlingTool ?? "Legacy crawl/import"}
+          </p>
+          <div className="whitespace-pre-wrap text-sm leading-7 text-[var(--muted-strong)]">
+            {body}
+          </div>
           <a
             className="mt-4 inline-flex items-center gap-2 text-sm font-semibold underline"
             href={url}

@@ -8,6 +8,7 @@ const nav: AppNavItem[] = [
   { href: "/dashboard", label: "Today", icon: "home" },
   { href: "/history", label: "History", icon: "archive" },
   { href: "/builders", label: "Builders", icon: "builders" },
+  { href: "/library-hub", label: "Hub", icon: "hub" },
   { href: "/search", label: "Search", icon: "search" },
   { href: "/settings", label: "Agent", icon: "key" },
 ];

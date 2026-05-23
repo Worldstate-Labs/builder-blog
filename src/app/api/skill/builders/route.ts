@@ -87,6 +87,7 @@ export async function POST(request: Request) {
           url: item.url,
           publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
           sourceName: item.sourceName ?? input.name,
+          crawlingTool: item.crawlingTool ?? parsed.data.crawlingTool,
           rawJson: item.rawJson === undefined ? undefined : JSON.stringify(item.rawJson),
         },
         create: {
@@ -98,6 +99,7 @@ export async function POST(request: Request) {
           url: item.url,
           publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
           sourceName: item.sourceName ?? input.name,
+          crawlingTool: item.crawlingTool ?? parsed.data.crawlingTool,
           rawJson: item.rawJson === undefined ? undefined : JSON.stringify(item.rawJson),
         },
       });

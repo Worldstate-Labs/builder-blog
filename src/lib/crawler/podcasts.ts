@@ -327,6 +327,7 @@ export async function crawlPodcastBuilders(
           url: youtubeUrl ?? episode.link ?? builder.sourceUrl ?? rssUrl,
           publishedAt: episode.publishedAt ? new Date(episode.publishedAt) : null,
           sourceName: builder.name,
+          crawlingTool: podcastCrawlingTool(result.source),
           rawJson: {
             source: "podcast",
             name: builder.name,
@@ -346,6 +347,14 @@ export async function crawlPodcastBuilders(
   }
 
   return { source: "podcasts", builders: builders.length, items, errors };
+}
+
+function podcastCrawlingTool(source: string | null | undefined) {
+  if (source === "openai-audio-transcription") return "OpenAI audio transcriptions API";
+  if (source === "youtube-captions") return "YouTube captions API";
+  if (source === "pod2txt") return "pod2txt transcript API";
+  if (source === "rss-transcript") return "Podcast RSS transcript";
+  return "Builder Blog podcast transcript crawler";
 }
 
 async function fetchTranscriptForEpisode(

@@ -41,9 +41,26 @@ test("search page uses a client form with pending feedback", () => {
   const searchForm = source("src/components/SearchForm.tsx");
 
   assert.match(searchPage, /@\/components\/SearchForm/);
+  assert.match(searchPage, /searchPageSize/);
+  assert.match(searchPage, /relatedSearchSuggestions/);
+  assert.match(searchPage, /didYouMeanSearch/);
+  assert.match(searchPage, /normalizeSearchTime/);
   assert.match(searchForm, /useTransition/);
   assert.match(searchForm, /Searching/);
-  assert.doesNotMatch(searchForm, /Semantic|Exact|type="radio"/);
+  assert.match(searchForm, /Search mode/);
+  assert.match(searchForm, /Time range/);
+  assert.match(searchForm, /Sort by/);
+  assert.match(searchForm, /datalist/);
+  assert.match(searchForm, /Lucky/);
+  assert.doesNotMatch(searchForm, /type="radio"/);
+});
+
+test("search suggestions API exists for autocomplete-style queries", () => {
+  const suggestRoute = source("src/app/api/search/suggest/route.ts");
+
+  assert.match(suggestRoute, /relatedSearchSuggestions/);
+  assert.match(suggestRoute, /searchUserLibrary/);
+  assert.match(suggestRoute, /NextResponse/);
 });
 
 test("heavy route sections have route-specific loading fallbacks", () => {
@@ -51,6 +68,7 @@ test("heavy route sections have route-specific loading fallbacks", () => {
     "src/app/admin/loading.tsx",
     "src/app/builders/loading.tsx",
     "src/app/history/loading.tsx",
+    "src/app/library-hub/loading.tsx",
     "src/app/search/loading.tsx",
   ]) {
     assert.equal(existsSync(join(root, path)), true, path);
@@ -73,6 +91,26 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
   assert.match(buildersPage, /Crawled posts/);
   assert.match(buildersPage, /Crawled/);
   assert.match(buildersPage, /External id/);
+  assert.match(buildersPage, /Read full crawl/);
+  assert.match(buildersPage, /crawlingTool/);
+});
+
+test("library hub exposes share and multi-import flows", () => {
+  const appShell = source("src/components/AppShell.tsx");
+  const hubPage = source("src/app/library-hub/page.tsx");
+  const actions = source("src/app/actions.ts");
+  const schema = source("prisma/schema.prisma");
+
+  assert.match(appShell, /library-hub/);
+  assert.match(hubPage, /sharePersonalLibraryToHubAction/);
+  assert.match(hubPage, /importHubLibrariesAction/);
+  assert.match(hubPage, /importCount/);
+  assert.match(hubPage, /viewCount/);
+  assert.match(hubPage, /libraryId/);
+  assert.match(actions, /sharePersonalLibraryToHub/);
+  assert.match(actions, /importLibrariesFromHub/);
+  assert.match(schema, /model LibraryHubEntry/);
+  assert.match(schema, /model LibraryImport/);
 });
 
 test("list actions use compact controls instead of full-width mobile buttons", () => {

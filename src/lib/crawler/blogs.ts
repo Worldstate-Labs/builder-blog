@@ -70,6 +70,7 @@ export async function crawlBlogBuilders(
             url: article.url,
             publishedAt: dateOrNull(extracted.publishedAt || article.publishedAt),
             sourceName: builder.name,
+            crawlingTool: "Builder Blog RSS + HTML extractor",
             rawJson: {
               source: "blog",
               name: builder.name,

@@ -28,6 +28,8 @@ model User {
   personalBuilders Builder[] @relation("PersonalBuilders")
   builderPoolEntries BuilderPoolEntry[]
   builderCrawls UserBuilderCrawl[]
+  libraryHubEntries LibraryHubEntry[]
+  libraryImports LibraryImport[]
 }
 
 model Account {
@@ -85,6 +87,7 @@ model Builder {
   subscriptions  Subscription[]
   feedItems      FeedItem[]
   userCrawls     UserBuilderCrawl[]
+  hubItems        LibraryHubItem[]
 
   @@index([scope, kind])
   @@index([ownerUserId, kind])
@@ -107,6 +110,47 @@ model BuilderPoolEntry {
   @@unique([userId, builderId])
   @@index([userId, removedAt])
   @@index([builderId])
+}
+
+model LibraryHubEntry {
+  id          String          @id @default(cuid())
+  kind        LibraryHubKind
+  slug        String          @unique
+  name        String
+  description String?
+  ownerUserId String?
+  importCount Int             @default(0)
+  viewCount   Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  owner       User?           @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  items       LibraryHubItem[]
+  imports     LibraryImport[]
+
+  @@index([kind])
+  @@index([ownerUserId])
+}
+
+model LibraryHubItem {
+  hubEntryId String
+  builderId  String
+  createdAt  DateTime        @default(now())
+  hubEntry    LibraryHubEntry @relation(fields: [hubEntryId], references: [id], onDelete: Cascade)
+  builder     Builder         @relation(fields: [builderId], references: [id], onDelete: Cascade)
+
+  @@id([hubEntryId, builderId])
+  @@index([builderId])
+}
+
+model LibraryImport {
+  userId     String
+  hubEntryId String
+  createdAt  DateTime        @default(now())
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hubEntry    LibraryHubEntry @relation(fields: [hubEntryId], references: [id], onDelete: Cascade)
+
+  @@id([userId, hubEntryId])
+  @@index([hubEntryId])
 }
 
 model UserBuilderCrawl {
@@ -147,6 +191,7 @@ model FeedItem {
   url            String
   publishedAt    DateTime?
   sourceName     String?
+  crawlingTool   String?
   rawJson        String?
   createdAt      DateTime     @default(now())
   builder        Builder?     @relation(fields: [builderId], references: [id], onDelete: SetNull)
@@ -216,6 +261,12 @@ enum BuilderScope {
 enum BuilderPoolOrigin {
   CENTRAL_DEFAULT
   PERSONAL_SYNC
+  HUB_IMPORT
+}
+
+enum LibraryHubKind {
+  CENTRAL
+  PERSONAL
 }
 
 enum FeedItemKind {

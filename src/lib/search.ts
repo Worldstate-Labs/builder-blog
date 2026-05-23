@@ -1,4 +1,6 @@
 export type SearchMode = "exact" | "semantic" | "hybrid";
+export type SearchSort = "relevance" | "newest";
+export type SearchTimeRange = "any" | "day" | "week" | "month" | "year";
 
 export type SearchDocumentType = "builder" | "feed" | "digest";
 
@@ -15,6 +17,18 @@ export type SearchDocument = {
 export type SearchResult = SearchDocument & {
   score: number;
   snippet: string;
+};
+
+export type ParsedSearchQuery = {
+  rawQuery: string;
+  cleanQuery: string;
+  phrases: string[];
+  requiredTerms: string[];
+  excludedTerms: string[];
+  site: string | null;
+  type: SearchDocumentType | null;
+  after: Date | null;
+  before: Date | null;
 };
 
 const semanticSynonyms: Record<string, string[]> = {
@@ -60,13 +74,96 @@ const typePriority: Record<SearchDocumentType, number> = {
   builder: 2,
 };
 
+const typoCorrections: Record<string, string> = {
+  agnet: "agent",
+  archvie: "archive",
+  buidler: "builder",
+  buidlers: "builders",
+  digset: "digest",
+  emebdding: "embedding",
+  memroy: "memory",
+  retrival: "retrieval",
+  seach: "search",
+  serach: "search",
+  semnatic: "semantic",
+  sumarize: "summarize",
+};
+
 export function normalizeSearchMode(value: string | null | undefined): SearchMode {
   if (value === "exact" || value === "semantic") return value;
   return "hybrid";
 }
 
+export function normalizeSearchSort(value: string | null | undefined): SearchSort {
+  return value === "newest" ? "newest" : "relevance";
+}
+
+export function normalizeSearchTime(value: string | null | undefined): SearchTimeRange {
+  if (value === "day" || value === "week" || value === "month" || value === "year") {
+    return value;
+  }
+  return "any";
+}
+
+export function parseSearchQuery(query: string): ParsedSearchQuery {
+  const rawQuery = query.trim();
+  const phrases: string[] = [];
+  const working = rawQuery.replace(/"([^"]+)"/g, (_, phrase: string) => {
+    const normalizedPhrase = normalizeText(phrase);
+    if (normalizedPhrase) phrases.push(normalizedPhrase);
+    return ` ${normalizedPhrase} `;
+  });
+  const excludedTerms: string[] = [];
+  let site: string | null = null;
+  let type: SearchDocumentType | null = null;
+  let after: Date | null = null;
+  let before: Date | null = null;
+  const cleanParts: string[] = [];
+
+  for (const part of working.split(/\s+/)) {
+    const token = part.trim();
+    if (!token) continue;
+    const lower = token.toLowerCase();
+    if (lower.startsWith("site:")) {
+      site = lower.slice(5).replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0] || site;
+      continue;
+    }
+    if (lower.startsWith("type:")) {
+      const candidate = lower.slice(5);
+      if (candidate === "builder" || candidate === "feed" || candidate === "digest") type = candidate;
+      continue;
+    }
+    if (lower.startsWith("after:")) {
+      after = parseDateOperator(lower.slice(6)) ?? after;
+      continue;
+    }
+    if (lower.startsWith("before:")) {
+      before = parseDateOperator(lower.slice(7)) ?? before;
+      continue;
+    }
+    if (lower.startsWith("-") && lower.length > 1) {
+      excludedTerms.push(stemToken(lower.slice(1)));
+      continue;
+    }
+    cleanParts.push(token);
+  }
+
+  const cleanQuery = normalizeText(cleanParts.join(" "));
+  return {
+    rawQuery,
+    cleanQuery,
+    phrases,
+    requiredTerms: tokenize(cleanQuery),
+    excludedTerms,
+    site,
+    type,
+    after,
+    before,
+  };
+}
+
 export function candidateSearchTerms(query: string, mode: SearchMode, limit = 12) {
-  const normalizedQuery = normalizeText(query);
+  const normalizedQuery = parseSearchQuery(query).cleanQuery;
   if (!normalizedQuery) return [];
   if (mode === "exact") return [normalizedQuery];
 
@@ -76,25 +173,67 @@ export function candidateSearchTerms(query: string, mode: SearchMode, limit = 12
   return [...buildWeightedTerms(queryTokens).keys()].slice(0, limit);
 }
 
+export function relatedSearchSuggestions(query: string, limit = 6) {
+  const normalizedQuery = parseSearchQuery(query).cleanQuery;
+  const queryTokens = tokenize(normalizedQuery);
+  if (queryTokens.length === 0) return [];
+
+  const suggestions: string[] = [];
+  const seen = new Set([normalizedQuery]);
+  for (const token of queryTokens) {
+    const synonyms = semanticSynonyms[token] ?? [];
+    for (const synonym of synonyms) {
+      const suggestion = normalizedQuery
+        .split(" ")
+        .map((part) => (stemToken(part) === token ? synonym : part))
+        .join(" ");
+      if (!seen.has(suggestion)) {
+        seen.add(suggestion);
+        suggestions.push(suggestion);
+      }
+      if (suggestions.length >= limit) return suggestions;
+    }
+  }
+
+  return suggestions;
+}
+
+export function didYouMeanSearch(query: string) {
+  const parsed = parseSearchQuery(query);
+  if (!parsed.cleanQuery) return null;
+  const corrected = parsed.cleanQuery
+    .split(" ")
+    .map((token) => typoCorrections[token] ?? token)
+    .join(" ");
+  return corrected !== parsed.cleanQuery ? corrected : null;
+}
+
 export function rankSearchDocuments({
   query,
   mode,
   documents,
   limit = 30,
+  sort = "relevance",
+  time = "any",
 }: {
   query: string;
   mode: SearchMode;
   documents: SearchDocument[];
   limit?: number;
+  sort?: SearchSort;
+  time?: SearchTimeRange;
 }): SearchResult[] {
-  const normalizedQuery = normalizeText(query);
+  const parsedQuery = parseSearchQuery(query);
+  const normalizedQuery = parsedQuery.cleanQuery;
   if (!normalizedQuery) return [];
 
   const queryTokens = tokenize(normalizedQuery);
   const weightedTerms =
     mode === "exact" ? new Map<string, number>() : buildWeightedTerms(queryTokens);
+  const timeBounds = searchTimeBounds(time);
 
   return documents
+    .filter((document) => documentMatchesFilters(document, parsedQuery, timeBounds))
     .map((document) => {
       const title = normalizeText(document.title);
       const body = normalizeText(document.body);
@@ -118,6 +257,10 @@ export function rankSearchDocuments({
     })
     .filter((result): result is SearchResult => result !== null)
     .sort((a, b) => {
+      if (sort === "newest") {
+        const dateDiff = (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0);
+        if (dateDiff !== 0) return dateDiff;
+      }
       if (b.score !== a.score) return b.score - a.score;
       if (typePriority[a.type] !== typePriority[b.type]) {
         return typePriority[a.type] - typePriority[b.type];
@@ -125,6 +268,31 @@ export function rankSearchDocuments({
       return a.title.localeCompare(b.title);
     })
     .slice(0, limit);
+}
+
+function documentMatchesFilters(
+  document: SearchDocument,
+  parsedQuery: ParsedSearchQuery,
+  timeBounds: { after: Date | null; before: Date | null },
+) {
+  const title = normalizeText(document.title);
+  const body = normalizeText(document.body);
+  const url = normalizeText(document.url ?? "");
+  const source = normalizeText(document.sourceName ?? "");
+  const haystack = `${title} ${body} ${url} ${source}`;
+
+  if (parsedQuery.type && document.type !== parsedQuery.type) return false;
+  if (parsedQuery.site && !urlHostMatches(document.url, parsedQuery.site)) return false;
+  if (parsedQuery.phrases.some((phrase) => !haystack.includes(phrase))) return false;
+  if (parsedQuery.excludedTerms.some((term) => haystack.includes(term))) return false;
+
+  const date = document.date ?? null;
+  const after = parsedQuery.after ?? timeBounds.after;
+  const before = parsedQuery.before ?? timeBounds.before;
+  if (after && (!date || date < after)) return false;
+  if (before && (!date || date > before)) return false;
+
+  return true;
 }
 
 function exactMatchScore(query: string, title: string, body: string) {
@@ -166,6 +334,32 @@ function buildWeightedTerms(tokens: string[]) {
 function addTerm(terms: Map<string, number>, term: string, weight: number) {
   if (!term || stopWords.has(term)) return;
   terms.set(term, Math.max(terms.get(term) ?? 0, weight));
+}
+
+function parseDateOperator(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function searchTimeBounds(time: SearchTimeRange) {
+  if (time === "any") return { after: null, before: null };
+  const now = Date.now();
+  const days = time === "day" ? 1 : time === "week" ? 7 : time === "month" ? 31 : 365;
+  return {
+    after: new Date(now - days * 24 * 60 * 60 * 1000),
+    before: null,
+  };
+}
+
+function urlHostMatches(url: string | null | undefined, site: string) {
+  if (!url) return false;
+  try {
+    const host = new URL(url.startsWith("http") ? url : `https://${url}`).hostname.replace(/^www\./, "");
+    return host === site || host.endsWith(`.${site}`);
+  } catch {
+    return normalizeText(url).includes(site);
+  }
 }
 
 function buildSnippet(

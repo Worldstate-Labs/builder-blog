@@ -43,6 +43,7 @@ type BuilderFeedItem = {
   publishedAt: Date | null;
   createdAt: Date;
   sourceName: string | null;
+  crawlingTool: string | null;
 };
 
 export default async function BuildersPage() {
@@ -242,6 +243,7 @@ const feedItemSummarySelect = {
   publishedAt: true,
   createdAt: true,
   sourceName: true,
+  crawlingTool: true,
 } as const;
 
 async function RecentCrawledContent({
@@ -270,6 +272,7 @@ async function RecentCrawledContent({
             body={item.body}
             url={item.url}
             date={item.publishedAt ?? item.createdAt}
+            crawlingTool={item.crawlingTool}
           />
         ))}
         {recentFeedItems.length === 0 ? (
@@ -425,16 +428,34 @@ function BuilderFeedItems({ builder }: { builder: BuilderWithCount }) {
                 ) : null}
                 <span>Crawled {item.createdAt.toLocaleString()}</span>
                 {item.sourceName ? <span>{item.sourceName}</span> : null}
+                <span>{item.crawlingTool ?? "Legacy crawl/import"}</span>
               </div>
               <h4 className="item-title">{item.title || firstLine(item.body)}</h4>
               <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--muted-strong)]">
                 {firstLine(item.body)}
               </p>
+              <details className="inline-disclosure">
+                <summary>Read full crawl</summary>
+                <div className="mt-3 rounded-lg border border-[var(--line)] bg-[var(--paper)] p-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                    Crawling tool · {item.crawlingTool ?? "Legacy crawl/import"}
+                  </p>
+                  <div className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[var(--muted-strong)]">
+                    {item.body}
+                  </div>
+                </div>
+              </details>
               <dl className="mt-3 grid gap-2 text-xs md:grid-cols-2">
                 <div>
                   <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">External id</dt>
                   <dd className="mt-1 break-all font-mono text-[var(--muted-strong)]">
                     {item.externalId}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">Crawling tool</dt>
+                  <dd className="mt-1 break-all text-[var(--muted-strong)]">
+                    {item.crawlingTool ?? "Legacy crawl/import"}
                   </dd>
                 </div>
                 <div>

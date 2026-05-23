@@ -187,6 +187,7 @@ export async function importFollowBuildersFeeds() {
           body: tweet.text,
           url: tweet.url,
           publishedAt: tweet.createdAt ? new Date(tweet.createdAt) : null,
+          crawlingTool: "follow-builders JSON import",
           rawJson: JSON.stringify(tweet),
         },
         create: {
@@ -197,6 +198,7 @@ export async function importFollowBuildersFeeds() {
           url: tweet.url,
           publishedAt: tweet.createdAt ? new Date(tweet.createdAt) : null,
           sourceName: account.name,
+          crawlingTool: "follow-builders JSON import",
           rawJson: JSON.stringify(tweet),
         },
       });
@@ -224,6 +226,7 @@ export async function importFollowBuildersFeeds() {
         body: episode.transcript,
         url: episode.url,
         publishedAt: episode.publishedAt ? new Date(episode.publishedAt) : null,
+        crawlingTool: "follow-builders JSON import",
         rawJson: JSON.stringify(episode),
       },
       create: {
@@ -235,6 +238,7 @@ export async function importFollowBuildersFeeds() {
         url: episode.url,
         publishedAt: episode.publishedAt ? new Date(episode.publishedAt) : null,
         sourceName: episode.name,
+        crawlingTool: "follow-builders JSON import",
         rawJson: JSON.stringify(episode),
       },
     });
@@ -261,6 +265,7 @@ export async function importFollowBuildersFeeds() {
         body: post.content,
         url: post.url,
         publishedAt: post.publishedAt ? new Date(post.publishedAt) : null,
+        crawlingTool: "follow-builders JSON import",
         rawJson: JSON.stringify(post),
       },
       create: {
@@ -272,6 +277,7 @@ export async function importFollowBuildersFeeds() {
         url: post.url,
         publishedAt: post.publishedAt ? new Date(post.publishedAt) : null,
         sourceName: post.name,
+        crawlingTool: "follow-builders JSON import",
         rawJson: JSON.stringify(post),
       },
     });

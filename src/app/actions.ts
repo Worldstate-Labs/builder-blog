@@ -8,6 +8,10 @@ import { isAdminEmail } from "@/lib/admin";
 import { activePoolBuilderIds, addBuilderToPool } from "@/lib/builder-pool";
 import { inferBuilderKind, normalizeHandle } from "@/lib/builder-keys";
 import { upsertBuilder } from "@/lib/builders";
+import {
+  importLibrariesFromHub,
+  sharePersonalLibraryToHub,
+} from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 import { builderKindForSourceType } from "@/lib/source-registry";
 import { createAgentToken } from "@/lib/tokens";
@@ -161,6 +165,39 @@ export async function removeBuilderFromLibraryAction(formData: FormData) {
   revalidatePath("/builders");
   revalidatePath("/dashboard");
   redirect("/builders?removed=1");
+}
+
+export async function sharePersonalLibraryToHubAction(formData: FormData) {
+  const user = await requireUser();
+  const name =
+    String(formData.get("name") ?? "").trim() ||
+    `${user.name || user.email || "Personal"} library`;
+  const description = String(formData.get("description") ?? "").trim();
+
+  const result = await sharePersonalLibraryToHub({
+    userId: user.id,
+    name,
+    description,
+  });
+  revalidatePath("/library-hub");
+  redirect(`/library-hub?shared=${result.builderCount}`);
+}
+
+export async function importHubLibrariesAction(formData: FormData) {
+  const user = await requireUser();
+  const libraryIds = formData
+    .getAll("libraryId")
+    .map((value) => String(value))
+    .filter(Boolean);
+  const result = await importLibrariesFromHub({
+    userId: user.id,
+    libraryIds,
+  });
+
+  revalidatePath("/library-hub");
+  revalidatePath("/builders");
+  revalidatePath("/dashboard");
+  redirect(`/library-hub?imported=${result.builders}`);
 }
 
 export async function approveDeviceLoginAction(formData: FormData) {

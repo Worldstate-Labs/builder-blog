@@ -12,7 +12,12 @@ import {
 } from "../src/lib/skill-contracts";
 import {
   candidateSearchTerms,
+  didYouMeanSearch,
+  parseSearchQuery,
+  relatedSearchSuggestions,
   rankSearchDocuments,
+  normalizeSearchSort,
+  normalizeSearchTime,
   normalizeSearchMode,
 } from "../src/lib/search";
 import {
@@ -112,6 +117,8 @@ test("skill sync user path accepts personal YouTube builders with synced feed it
   assert.equal(parsed.data.builders[0].sourceType, "YOUTUBE");
   assert.equal(parsed.data.builders[0].subscribe, true);
   assert.equal(parsed.data.builders[0].items[0].kind, FeedItemKind.PODCAST_EPISODE);
+  assert.equal(parsed.data.crawlingTool, "Agent skill sync");
+  assert.equal(parsed.data.builders[0].items[0].crawlingTool, undefined);
 });
 
 test("digest sync user path defaults optional fields and rejects empty content", () => {
@@ -247,6 +254,82 @@ test("hybrid search uses expanded database recall terms by default", () => {
   assert.ok(semanticTerms.includes("retrieval"));
   assert.equal(new Set(semanticTerms).size, semanticTerms.length);
   assert.ok(semanticTerms.length <= 12);
+});
+
+test("search user path offers related search rewrites from semantic terms", () => {
+  const suggestions = relatedSearchSuggestions("agent memory");
+
+  assert.ok(suggestions.includes("ai memory"));
+  assert.ok(suggestions.includes("assistant memory"));
+  assert.ok(suggestions.includes("workflow memory"));
+  assert.equal(new Set(suggestions).size, suggestions.length);
+  assert.ok(suggestions.length <= 6);
+});
+
+test("search user path parses google-style operators", () => {
+  const parsed = parseSearchQuery('"agent memory" site:example.com type:feed -pricing after:2026-01-01 before:2026-02-01');
+
+  assert.equal(parsed.cleanQuery, "agent memory");
+  assert.deepEqual(parsed.phrases, ["agent memory"]);
+  assert.deepEqual(parsed.excludedTerms, ["pricing"]);
+  assert.equal(parsed.site, "example.com");
+  assert.equal(parsed.type, "feed");
+  assert.equal(parsed.after?.toISOString().slice(0, 10), "2026-01-01");
+  assert.equal(parsed.before?.toISOString().slice(0, 10), "2026-02-01");
+});
+
+test("search user path applies operator filters and newest sorting", () => {
+  const oldDate = new Date("2026-01-10T00:00:00.000Z");
+  const newDate = new Date("2026-01-20T00:00:00.000Z");
+  const results = rankSearchDocuments({
+    query: 'agent memory site:example.com -pricing after:2026-01-15 type:feed',
+    mode: "hybrid",
+    sort: "newest",
+    documents: [
+      {
+        id: "old",
+        type: "feed",
+        title: "Agent memory",
+        body: "Agent memory without excluded language.",
+        url: "https://example.com/old",
+        date: oldDate,
+      },
+      {
+        id: "excluded",
+        type: "feed",
+        title: "Agent memory pricing",
+        body: "Agent memory pricing details.",
+        url: "https://example.com/pricing",
+        date: newDate,
+      },
+      {
+        id: "wrong-site",
+        type: "feed",
+        title: "Agent memory",
+        body: "Agent memory note.",
+        url: "https://other.example/memory",
+        date: newDate,
+      },
+      {
+        id: "kept",
+        type: "feed",
+        title: "Agent memory release",
+        body: "Agent memory note.",
+        url: "https://example.com/new",
+        date: newDate,
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["kept"]);
+});
+
+test("search user path suggests simple spelling corrections and normalizes tools", () => {
+  assert.equal(didYouMeanSearch("agnet memroy serach"), "agent memory search");
+  assert.equal(normalizeSearchSort("newest"), "newest");
+  assert.equal(normalizeSearchSort("bad"), "relevance");
+  assert.equal(normalizeSearchTime("week"), "week");
+  assert.equal(normalizeSearchTime("bad"), "any");
 });
 
 test("web display boundaries keep raw crawled content in the builders tab", () => {

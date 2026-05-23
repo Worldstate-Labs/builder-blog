@@ -1,12 +1,18 @@
 import type { Prisma } from "@prisma/client";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
+import { builderSourceLabel } from "@/lib/source-registry";
 import {
   candidateSearchTerms,
   normalizeSearchMode,
+  normalizeSearchSort,
+  normalizeSearchTime,
+  parseSearchQuery,
   rankSearchDocuments,
   type SearchDocument,
   type SearchMode,
+  type SearchSort,
+  type SearchTimeRange,
   type SearchResult,
 } from "@/lib/search";
 
@@ -20,31 +26,43 @@ export async function searchUserLibrary({
   userId,
   query,
   mode,
+  sort,
+  time,
 }: {
   userId: string;
   query: string;
   mode?: string | null | undefined;
+  sort?: string | null | undefined;
+  time?: string | null | undefined;
 }): Promise<{
   mode: SearchMode;
+  sort: SearchSort;
+  time: SearchTimeRange;
   results: SearchResult[];
   candidateCount: number;
   strategy: "database-memory";
 }> {
   const normalizedMode = normalizeSearchMode(mode);
+  const normalizedSort = normalizeSearchSort(sort);
+  const normalizedTime = normalizeSearchTime(time);
   const trimmedQuery = query.trim();
   if (!trimmedQuery) {
     return {
       mode: normalizedMode,
+      sort: normalizedSort,
+      time: normalizedTime,
       results: [],
       candidateCount: 0,
       strategy: "database-memory",
     };
   }
 
+  const parsedQuery = parseSearchQuery(trimmedQuery);
   const terms = candidateSearchTerms(trimmedQuery, normalizedMode);
+  const typeFilter = parsedQuery.type;
   const poolBuilderIds = await activePoolBuilderIds(userId);
   const [builders, feedItems, digests] = await Promise.all([
-    prisma.builder.findMany({
+    typeFilter && typeFilter !== "builder" ? Promise.resolve([]) : prisma.builder.findMany({
       where: {
         id: { in: poolBuilderIds },
         OR: builderSearchConditions(terms),
@@ -65,7 +83,7 @@ export async function searchUserLibrary({
       orderBy: { updatedAt: "desc" },
       take: searchLimits.builder,
     }),
-    prisma.feedItem.findMany({
+    typeFilter && typeFilter !== "feed" ? Promise.resolve([]) : prisma.feedItem.findMany({
       where: {
         builderId: { in: poolBuilderIds },
         OR: feedSearchConditions(terms),
@@ -74,7 +92,7 @@ export async function searchUserLibrary({
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
       take: searchLimits.feed,
     }),
-    prisma.digest.findMany({
+    typeFilter && typeFilter !== "digest" ? Promise.resolve([]) : prisma.digest.findMany({
       where: {
         userId,
         OR: digestSearchConditions(terms),
@@ -85,24 +103,25 @@ export async function searchUserLibrary({
   ]);
 
   const documents = [
-    ...builders.map<SearchDocument>((builder) => ({
-      id: builder.id,
-      type: "builder",
-      title: builder.name,
-      body: [
-        builder.handle ? `@${builder.handle}` : "",
-        builder.sourceType,
-        builder.kind.toLowerCase(),
-        builder.scope.toLowerCase(),
-        builder.bio ?? "",
-        builder.sourceUrl ?? "",
-        builder.crawlUrl ?? "",
-        builder.canonicalKey,
-      ].join(" "),
-      url: `/builders#${builder.id}`,
-      sourceName: builder.scope.toLowerCase(),
-      date: builder.updatedAt,
-    })),
+    ...builders.map<SearchDocument>((builder) => {
+      const sourceLabel = builderSourceLabel(builder);
+      return {
+        id: builder.id,
+        type: "builder",
+        title: builder.name,
+        body: [
+          builder.handle ? `@${builder.handle}` : "",
+          sourceLabel,
+          builder.bio ?? "",
+          builder.sourceUrl ?? "",
+          builder.crawlUrl ?? "",
+          builder.canonicalKey,
+        ].join(" "),
+        url: `/builders#${builder.id}`,
+        sourceName: sourceLabel,
+        date: builder.updatedAt,
+      };
+    }),
     ...feedItems.map<SearchDocument>((item) => ({
       id: item.id,
       type: "feed",
@@ -125,11 +144,15 @@ export async function searchUserLibrary({
 
   return {
     mode: normalizedMode,
+    sort: normalizedSort,
+    time: normalizedTime,
     candidateCount: documents.length,
     strategy: "database-memory",
     results: rankSearchDocuments({
       query: trimmedQuery,
       mode: normalizedMode,
+      sort: normalizedSort,
+      time: normalizedTime,
       documents,
       limit: 40,
     }),

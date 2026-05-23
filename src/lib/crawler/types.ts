@@ -25,6 +25,7 @@ export type CrawledFeedItem = {
   url: string;
   publishedAt?: Date | null;
   sourceName?: string | null;
+  crawlingTool?: string | null;
   rawJson?: unknown;
 };
 

@@ -66,6 +66,7 @@ export async function crawlBuilderPool(options: CrawlBuilderPoolOptions = {}) {
         url: item.url,
         publishedAt: item.publishedAt,
         sourceName: item.sourceName,
+        crawlingTool: item.crawlingTool ?? "Builder Blog web crawler",
         rawJson: item.rawJson ? JSON.stringify(item.rawJson) : undefined,
       },
       create: {
@@ -77,6 +78,7 @@ export async function crawlBuilderPool(options: CrawlBuilderPoolOptions = {}) {
         url: item.url,
         publishedAt: item.publishedAt,
         sourceName: item.sourceName,
+        crawlingTool: item.crawlingTool ?? "Builder Blog web crawler",
         rawJson: item.rawJson ? JSON.stringify(item.rawJson) : undefined,
       },
     });

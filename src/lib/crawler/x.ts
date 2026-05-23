@@ -120,6 +120,7 @@ export async function crawlXBuilders(
           url: `https://x.com/${handle}/status/${tweet.id}`,
           publishedAt: tweet.created_at ? new Date(tweet.created_at) : null,
           sourceName: builder.name,
+          crawlingTool: "X API v2 recent tweets",
           rawJson: {
             id: tweet.id,
             text: body,

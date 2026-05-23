@@ -6,10 +6,12 @@ import { useFormStatus } from "react-dom";
 export function FormSubmitButton({
   children,
   className,
+  disabled = false,
   pendingLabel = "Working...",
 }: {
   children: ReactNode;
   className?: string;
+  disabled?: boolean;
   pendingLabel?: string;
 }) {
   const { pending } = useFormStatus();
@@ -18,7 +20,7 @@ export function FormSubmitButton({
     <button
       aria-busy={pending}
       className={`${className ?? ""} relative justify-center`}
-      disabled={pending}
+      disabled={pending || disabled}
       type="submit"
     >
       <span
