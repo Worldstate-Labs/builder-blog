@@ -69,6 +69,10 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /Clear search query/);
   assert.match(searchForm, /clearQuery/);
   assert.match(searchForm, /inputRef\.current\?\.focus/);
+  assert.match(searchForm, /recentSuggestionKeys/);
+  assert.match(searchForm, /Remove recent search/);
+  assert.match(searchForm, /removeRecentSearch/);
+  assert.match(searchForm, /normalizeSuggestionKey/);
   assert.doesNotMatch(searchForm, /datalist/);
   assert.match(searchForm, /\/api\/search\/suggest/);
   assert.match(searchForm, /AbortController/);

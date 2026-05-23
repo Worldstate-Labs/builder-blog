@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Search, Sparkles, X } from "lucide-react";
+import { Clock, Search, Sparkles, X } from "lucide-react";
 import {
   mergeSearchSuggestions,
   normalizeRecentSearches,
@@ -57,6 +57,10 @@ export function SearchForm({
     [inputValue, liveSuggestions, recentSearches, suggestions],
   );
   const visibleSuggestions = suggestionOptions.slice(0, 5);
+  const recentSuggestionKeys = useMemo(
+    () => new Set(recentSearches.map(normalizeSuggestionKey)),
+    [recentSearches],
+  );
   const activeSuggestion =
     suggestionsOpen && activeSuggestionIndex >= 0
       ? visibleSuggestions[activeSuggestionIndex]
@@ -157,6 +161,21 @@ export function SearchForm({
     setLiveSuggestions([]);
     setSuggestionsOpen(false);
     setActiveSuggestionIndex(-1);
+    inputRef.current?.focus();
+  }
+
+  function removeRecentSearch(search: string) {
+    const normalizedSearch = normalizeSuggestionKey(search);
+    const nextRecent = recentSearches.filter(
+      (recentSearch) => normalizeSuggestionKey(recentSearch) !== normalizedSearch,
+    );
+    setRecentSearches(nextRecent);
+    setActiveSuggestionIndex(-1);
+    try {
+      localStorage.setItem("builder-blog-searches", JSON.stringify(nextRecent));
+    } catch {
+      // Recent searches are a progressive enhancement.
+    }
     inputRef.current?.focus();
   }
 
@@ -300,22 +319,48 @@ export function SearchForm({
           role="listbox"
         >
           {visibleSuggestions.map((suggestion, index) => (
-            <button
-              className="search-suggestion-chip"
+            <div
+              aria-selected={index === activeSuggestionIndex}
               data-active={index === activeSuggestionIndex ? "true" : undefined}
               id={`search-suggestion-${index}`}
               key={suggestion}
-              name="suggestion"
               role="option"
-              type="submit"
-              value={suggestion}
-              aria-selected={index === activeSuggestionIndex}
+              className="search-suggestion-item"
             >
-              {suggestion}
-            </button>
+              <button
+                className="search-suggestion-chip"
+                name="suggestion"
+                type="submit"
+                value={suggestion}
+              >
+                {recentSuggestionKeys.has(normalizeSuggestionKey(suggestion)) ? (
+                  <Clock aria-hidden="true" className="h-3.5 w-3.5" />
+                ) : (
+                  <Search aria-hidden="true" className="h-3.5 w-3.5" />
+                )}
+                <span>{suggestion}</span>
+              </button>
+              {recentSuggestionKeys.has(normalizeSuggestionKey(suggestion)) ? (
+                <button
+                  aria-label={`Remove recent search ${suggestion}`}
+                  className="search-suggestion-remove"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    removeRecentSearch(suggestion);
+                  }}
+                  type="button"
+                >
+                  <X aria-hidden="true" className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
+            </div>
           ))}
         </div>
       ) : null}
     </form>
   );
+}
+
+function normalizeSuggestionKey(value: string) {
+  return value.toLowerCase().replace(/\s+/g, " ").trim();
 }
