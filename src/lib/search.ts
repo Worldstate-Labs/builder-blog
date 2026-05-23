@@ -362,6 +362,25 @@ export function relatedSearchSuggestions(query: string, limit = 6) {
   return suggestions;
 }
 
+export function searchHighlightTerms(query: string, limit = 8) {
+  const parsed = parseSearchQuery(query);
+  const terms = new Set<string>();
+
+  for (const term of [
+    ...parsed.phrases.filter((phrase) => !phrase.includes("*")),
+    ...parsed.titleTerms,
+    ...parsed.bodyTerms,
+    ...parsed.urlTerms,
+    ...parsed.orTerms,
+    ...parsed.requiredTerms,
+  ]) {
+    const normalizedTerm = term.trim();
+    if (normalizedTerm.length > 1) terms.add(normalizedTerm);
+  }
+
+  return [...terms].sort((a, b) => b.length - a.length).slice(0, limit);
+}
+
 export function didYouMeanSearch(query: string) {
   const parsed = parseSearchQuery(query);
   if (!parsed.cleanQuery) return null;

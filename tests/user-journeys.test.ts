@@ -18,6 +18,7 @@ import {
   parseSearchQuery,
   relatedSearchSuggestions,
   rankSearchDocuments,
+  searchHighlightTerms,
   shouldUseCorrectedSearch,
   normalizeSearchSort,
   normalizeSearchTime,
@@ -316,6 +317,14 @@ test("search user path parses google-style operators", () => {
   assert.equal(parsed.type, "feed");
   assert.equal(parsed.after?.toISOString().slice(0, 10), "2026-01-01");
   assert.equal(parsed.before?.toISOString().slice(0, 10), "2026-02-01");
+});
+
+test("search result highlighting ignores operators and excluded terms", () => {
+  const terms = searchHighlightTerms(
+    'agent -intitle:pricing site:example.com allintext:memory launch -"sponsored segment"',
+  );
+
+  assert.deepEqual(terms, ["memory", "launch", "agent"]);
 });
 
 test("search user path parses filetype as a google-style type operator", () => {

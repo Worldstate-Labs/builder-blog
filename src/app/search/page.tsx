@@ -13,6 +13,7 @@ import {
   normalizeSearchTime,
   parseSearchQuery,
   relatedSearchSuggestions,
+  searchHighlightTerms,
   shouldUseCorrectedSearch,
   type SearchDocumentType,
   type SearchMode,
@@ -503,7 +504,7 @@ function AdvancedSearchTips({
 }
 
 function HighlightText({ text, query }: { text: string; query: string }) {
-  const terms = highlightTerms(query);
+  const terms = searchHighlightTerms(query);
   if (terms.length === 0) return text;
   const pattern = new RegExp(`(${terms.map(escapeRegExp).join("|")})`, "ig");
   const parts = text.split(pattern);
@@ -956,17 +957,6 @@ function firstParam(value: string | string[] | undefined) {
 
 function normalizePage(value: string) {
   return Math.max(1, Number(value) || 1);
-}
-
-function highlightTerms(query: string) {
-  return [
-    query.trim(),
-    ...(query.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []),
-  ]
-    .map((term) => term.trim())
-    .filter((term) => term.length > 1)
-    .sort((a, b) => b.length - a.length)
-    .slice(0, 8);
 }
 
 function escapeRegExp(value: string) {
