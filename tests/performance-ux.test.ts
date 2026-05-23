@@ -102,6 +102,10 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
 
   assert.match(buildersPage, /feedItems:\s*{/);
   assert.match(buildersPage, /orderBy:\s*\[\{ publishedAt: "desc" \}, \{ createdAt: "desc" \}\]/);
+  assert.match(buildersPage, /title="Private library"[\s\S]*defaultOpen/);
+  assert.match(buildersPage, /Imported libraries/);
+  assert.match(buildersPage, /importedLibrarySections/);
+  assert.match(buildersPage, /library-section-panel-indented/);
   assert.match(buildersPage, /BuilderFeedItems/);
   assert.match(buildersPage, /Crawled posts/);
   assert.match(buildersPage, /Crawled/);

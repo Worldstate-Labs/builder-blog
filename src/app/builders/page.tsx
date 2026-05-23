@@ -1,4 +1,4 @@
-import { BuilderKind, BuilderScope, type FeedItemKind } from "@prisma/client";
+import { BuilderKind, BuilderPoolOrigin, BuilderScope, type FeedItemKind } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { Suspense, type ComponentType, type ReactNode } from "react";
 import { Bell, BellOff, ExternalLink, ListPlus, Plus, Trash2, UsersRound } from "lucide-react";
@@ -22,6 +22,7 @@ const perBuilderFeedItemLimit = 8;
 type BuilderWithCount = {
   id: string;
   scope: BuilderScope;
+  ownerUserId: string | null;
   kind: BuilderKind;
   sourceType: string;
   name: string;
@@ -52,7 +53,7 @@ export default async function BuildersPage() {
 
   await ensureDefaultBuilderPool(session.user.id);
 
-  const [poolEntries, subscriptions, removedCentralBuilders] = await Promise.all([
+  const [poolEntries, subscriptions, removedCentralBuilders, importedLibraries] = await Promise.all([
     prisma.builderPoolEntry.findMany({
       where: { userId: session.user.id, removedAt: null },
       include: {
@@ -67,6 +68,7 @@ export default async function BuildersPage() {
           },
         },
       },
+      orderBy: { createdAt: "asc" },
     }),
     prisma.subscription.findMany({
       where: { userId: session.user.id },
@@ -92,15 +94,66 @@ export default async function BuildersPage() {
       },
       orderBy: [{ kind: "asc" }, { name: "asc" }],
     }),
+    prisma.libraryImport.findMany({
+      where: { userId: session.user.id },
+      include: {
+        hubEntry: {
+          include: {
+            owner: { select: { name: true, email: true } },
+            items: {
+              include: {
+                builder: {
+                  include: {
+                    _count: { select: { feedItems: true } },
+                    feedItems: {
+                      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+                      select: feedItemSummarySelect,
+                      take: perBuilderFeedItemLimit,
+                    },
+                  },
+                },
+              },
+              orderBy: { createdAt: "asc" },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
   const subscribed = new Set(subscriptions.map((subscription) => subscription.builderId));
-  const poolBuilders = poolEntries
+  const activeEntryByBuilderId = new Map(poolEntries.map((entry) => [entry.builderId, entry]));
+  const poolBuilders = poolEntries.map((entry) => entry.builder).sort(builderSort);
+  const poolBuilderIds = poolBuilders.map((builder) => builder.id);
+  const centralBuilders = poolEntries
+    .filter((entry) => entry.origin === BuilderPoolOrigin.CENTRAL_DEFAULT)
     .map((entry) => entry.builder)
     .sort(builderSort);
-  const poolBuilderIds = poolBuilders.map((builder) => builder.id);
-  const centralBuilders = poolBuilders.filter((builder) => builder.scope === BuilderScope.CENTRAL);
-  const personalBuilders = poolBuilders.filter((builder) => builder.scope === BuilderScope.PERSONAL);
+  const privateBuilders = poolEntries
+    .filter(
+      (entry) =>
+        entry.origin === BuilderPoolOrigin.PERSONAL_SYNC &&
+        entry.builder.scope === BuilderScope.PERSONAL &&
+        entry.builder.ownerUserId === session.user.id,
+    )
+    .map((entry) => entry.builder)
+    .sort(builderSort);
+  const importedLibrarySections = importedLibraries.map((libraryImport) => ({
+    id: libraryImport.hubEntryId,
+    name: libraryImport.hubEntry.name,
+    description: libraryImport.hubEntry.description,
+    ownerName:
+      libraryImport.hubEntry.owner?.name ||
+      libraryImport.hubEntry.owner?.email ||
+      "Builder Blog",
+    builders: libraryImport.hubEntry.items
+      .flatMap((item) => {
+        const entry = activeEntryByBuilderId.get(item.builderId);
+        return entry ? [entry.builder] : [];
+      })
+      .sort(builderSort),
+  }));
   const subscribedCount = poolBuilders.filter((builder) => subscribed.has(builder.id)).length;
   const crawledItems = poolBuilders.reduce(
     (count, builder) => count + builder._count.feedItems,
@@ -155,26 +208,13 @@ export default async function BuildersPage() {
 
         <section className="mt-10 grid gap-8">
           <LibrarySection
-            title="Central library"
-            detail="Default pool, crawled once by Builder Blog"
-            scope={BuilderScope.CENTRAL}
-          >
-            {centralBuilders.map((builder) => (
-              <BuilderCard
-                key={builder.id}
-                builder={builder}
-                subscribed={subscribed.has(builder.id)}
-                crawlLabel="Webapp crawled"
-              />
-            ))}
-          </LibrarySection>
-
-          <LibrarySection
-            title="Personal library"
+            title="Private library"
             detail="Synced by your agent with your own API keys or subscriptions"
-            scope={BuilderScope.PERSONAL}
+            badge="private"
+            count={privateBuilders.length}
+            defaultOpen
           >
-            {personalBuilders.map((builder) => (
+            {privateBuilders.map((builder) => (
               <BuilderCard
                 key={builder.id}
                 builder={builder}
@@ -182,7 +222,7 @@ export default async function BuildersPage() {
                 crawlLabel="Agent synced"
               />
             ))}
-            {personalBuilders.length === 0 ? (
+            {privateBuilders.length === 0 ? (
               <div className="empty-panel text-[var(--muted-strong)]">
                 <h3 className="font-serif text-2xl text-[var(--ink)]">No personal builders yet</h3>
                 <p className="mt-2 text-sm leading-6">
@@ -194,11 +234,70 @@ export default async function BuildersPage() {
             ) : null}
           </LibrarySection>
 
+          <section className="grid gap-3">
+            <div>
+              <h2 className="font-serif text-4xl">Imported libraries</h2>
+              <p className="mt-1 text-sm text-[var(--muted-strong)]">
+                Libraries imported from the hub are tucked under their source library.
+              </p>
+            </div>
+            <div className="imported-library-stack">
+              {importedLibrarySections.map((library) => (
+                <LibrarySection
+                  key={library.id}
+                  title={library.name}
+                  detail={library.description || `Imported from ${library.ownerName}`}
+                  badge="imported"
+                  count={library.builders.length}
+                  indented
+                >
+                  {library.builders.map((builder) => (
+                    <BuilderCard
+                      key={builder.id}
+                      builder={builder}
+                      subscribed={subscribed.has(builder.id)}
+                      crawlLabel={
+                        builder.scope === BuilderScope.CENTRAL ? "Webapp crawled" : "Hub imported"
+                      }
+                    />
+                  ))}
+                  {library.builders.length === 0 ? (
+                    <div className="empty-panel text-[var(--muted-strong)]">
+                      No active builders from this imported library.
+                    </div>
+                  ) : null}
+                </LibrarySection>
+              ))}
+              {importedLibrarySections.length === 0 ? (
+                <div className="empty-panel text-[var(--muted-strong)]">
+                  Import shared libraries from the Hub to see them here.
+                </div>
+              ) : null}
+            </div>
+          </section>
+
+          <LibrarySection
+            title="Central defaults"
+            detail="Default pool, crawled once by Builder Blog"
+            badge="central"
+            count={centralBuilders.length}
+          >
+            {centralBuilders.map((builder) => (
+              <BuilderCard
+                key={builder.id}
+                builder={builder}
+                subscribed={subscribed.has(builder.id)}
+                crawlLabel="Webapp crawled"
+              />
+            ))}
+          </LibrarySection>
+
           {removedCentralBuilders.length > 0 ? (
             <LibrarySection
               title="Available central builders"
               detail="Removed from your pool; add back any time"
-              scope={BuilderScope.CENTRAL}
+              badge="available"
+              count={removedCentralBuilders.length}
             >
               {removedCentralBuilders.map((builder) => (
                 <BuilderCard
@@ -488,25 +587,37 @@ function BuilderFeedItems({ builder }: { builder: BuilderWithCount }) {
 function LibrarySection({
   title,
   detail,
-  scope,
+  badge,
+  count,
+  defaultOpen = false,
+  indented = false,
   children,
 }: {
   title: string;
   detail: string;
-  scope: BuilderScope;
+  badge: string;
+  count: number;
+  defaultOpen?: boolean;
+  indented?: boolean;
   children: ReactNode;
 }) {
   return (
-    <section className="grid min-w-0 gap-3">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <details
+      className={`library-section-panel${indented ? " library-section-panel-indented" : ""}`}
+      open={defaultOpen}
+    >
+      <summary className="library-section-summary">
         <div>
-          <h2 className="font-serif text-4xl">{title}</h2>
+          <h2 className="font-serif text-3xl">{title}</h2>
           <p className="mt-1 text-sm text-[var(--muted-strong)]">{detail}</p>
         </div>
-        <span className="kind-pill">{scope.toLowerCase()}</span>
-      </div>
-      {children}
-    </section>
+        <div className="library-section-meta">
+          <span className="kind-pill">{badge}</span>
+          <span className="sub-pill">{count} builders</span>
+        </div>
+      </summary>
+      <div className="library-section-body">{children}</div>
+    </details>
   );
 }
 
