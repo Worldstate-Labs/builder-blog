@@ -527,7 +527,6 @@ export function rankSearchDocuments({
     .map((document) => {
       const title = normalizeText(document.title);
       const body = normalizeText(document.body);
-      const haystack = `${title} ${body}`;
       const exactScore = exactMatchScore(normalizedQuery, title, body, parsedQuery.orTerms);
       const phraseScore = phraseMatchScore(parsedQuery.phrases, title, body);
       const proximityScore = proximityMatchScore(parsedQuery.proximityPairs, title, body);
@@ -544,7 +543,7 @@ export function rankSearchDocuments({
       return {
         ...document,
         score,
-        snippet: buildSnippet(document, normalizedQuery, queryTokens, haystack),
+        snippet: buildSnippet(document, normalizedQuery, queryTokens),
       };
     })
     .filter((result): result is SearchResult => result !== null)
@@ -865,7 +864,6 @@ function buildSnippet(
   document: SearchDocument,
   normalizedQuery: string,
   queryTokens: string[],
-  normalizedHaystack: string,
 ) {
   const source = document.body || document.title;
   const normalizedBody = normalizeText(document.body);
@@ -875,7 +873,7 @@ function buildSnippet(
   }
 
   const tokenIndex = queryTokens
-    .map((token) => normalizedHaystack.indexOf(token))
+    .map((token) => normalizedBody.indexOf(token))
     .filter((index) => index >= 0)
     .sort((a, b) => a - b)[0];
   return trimSnippet(source, tokenIndex ?? 0, 120);
