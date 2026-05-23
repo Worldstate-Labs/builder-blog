@@ -1,6 +1,5 @@
-import { approveDeviceLoginAction } from "@/app/actions";
 import { AuthButtons } from "@/components/AuthButtons";
-import { FormSubmitButton } from "@/components/FormSubmitButton";
+import { DeviceApproveButton } from "@/components/DeviceApproveButton";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -44,12 +43,7 @@ export default async function DevicePage({
           ) : null}
 
           {session && device && !params.approved ? (
-            <form action={approveDeviceLoginAction} className="mt-8">
-              <input type="hidden" name="code" value={code} />
-              <FormSubmitButton className="auth-button" pendingLabel="Approving...">
-                Approve terminal access
-              </FormSubmitButton>
-            </form>
+            <DeviceApproveButton code={code} />
           ) : null}
 
           {session && !device ? (

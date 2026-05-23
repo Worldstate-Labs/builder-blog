@@ -50,6 +50,7 @@ test("desktop shell uses home rail, header search, and merged home feeds", () =>
   assert.match(appShell, /label: "Home"/);
   assert.doesNotMatch(appShell, /label: "Digest"/);
   assert.doesNotMatch(appShell, /label: "For You"/);
+  assert.doesNotMatch(appShell, /label: "History"/);
   assert.doesNotMatch(appShell, /label: "Search"/);
   assert.doesNotMatch(appNav, /recommendations/);
   assert.doesNotMatch(appNav, /"search"/);
@@ -59,11 +60,34 @@ test("desktop shell uses home rail, header search, and merged home feeds", () =>
   assert.match(dashboardPage, /HomeTabLink/);
   assert.match(dashboardPage, /For You/);
   assert.match(dashboardPage, /Subscription/);
-  assert.match(dashboardPage, /RecommendationFeed/);
-  assert.match(dashboardPage, /getRecommendationTimeline/);
+  assert.match(dashboardPage, /Today digest/);
+  assert.match(dashboardPage, /Digest archive/);
+  assert.match(dashboardPage, /ForYouRecommendationSection/);
+  assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
   assert.match(recommendationsPage, /redirect\("\/dashboard"\)/);
   assert.match(globals, /\.home-layout/);
   assert.match(globals, /\.home-rail/);
+});
+
+test("dashboard defers heavy recommendation timeline work to a client island", () => {
+  const dashboardPage = source("src/app/dashboard/page.tsx");
+  const forYouSection = source("src/components/ForYouRecommendationSection.tsx");
+  const timelineRoute = source("src/app/api/recommendations/timeline/route.ts");
+  const serializer = source("src/lib/recommendation-view-model.ts");
+
+  assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
+  assert.doesNotMatch(dashboardPage, /RecommendationFeed/);
+  assert.match(dashboardPage, /ForYouRecommendationSection/);
+  assert.match(forYouSection, /"use client"/);
+  assert.match(forYouSection, /fetch\("\/api\/recommendations\/timeline"/);
+  assert.match(forYouSection, /Loading recommendations/);
+  assert.match(forYouSection, /aria-live="polite"/);
+  assert.match(timelineRoute, /export async function GET/);
+  assert.match(timelineRoute, /getRecommendationTimeline/);
+  assert.match(timelineRoute, /serializeRecommendationTimeline/);
+  assert.match(timelineRoute, /NextResponse\.json/);
+  assert.match(serializer, /serializeRecommendationTimeline/);
+  assert.match(serializer, /serializeRecommendationSnapshot/);
 });
 
 test("skill context caps personal seen items to keep payloads bounded", () => {
@@ -73,11 +97,16 @@ test("skill context caps personal seen items to keep payloads bounded", () => {
   assert.match(contextRoute, /take:\s*personalSeenItemLimit/);
 });
 
-test("history page paginates digests instead of rendering the full archive", () => {
+test("dashboard subscription feed owns the paginated digest archive", () => {
+  const dashboardPage = source("src/app/dashboard/page.tsx");
   const historyPage = source("src/app/history/page.tsx");
 
-  assert.match(historyPage, /historyPageSize/);
-  assert.match(historyPage, /take:\s*historyPageSize/);
+  assert.match(dashboardPage, /archivePageSize/);
+  assert.match(dashboardPage, /take:\s*archivePageSize/);
+  assert.match(dashboardPage, /id="digest-archive"/);
+  assert.match(dashboardPage, /Digest archive/);
+  assert.match(historyPage, /redirect\(`\/dashboard\?tab=subscription&archivePage=\$\{page\}#digest-archive`\)/);
+  assert.doesNotMatch(historyPage, /AppShell/);
 });
 
 test("search page uses a client form with pending feedback", () => {
@@ -228,62 +257,197 @@ test("builders page streams crawled content behind a suspense boundary", () => {
 
 test("builders page exposes per-builder crawled posts ordered by time", () => {
   const buildersPage = source("src/app/builders/page.tsx");
+  const builderFeedItems = source("src/components/BuilderFeedItems.tsx");
+  const feedItemsRoute = source("src/app/api/builders/[builderId]/feed-items/route.ts");
 
-  assert.match(buildersPage, /feedItems:\s*{/);
-  assert.match(buildersPage, /orderBy:\s*\[\{ publishedAt: "desc" \}, \{ createdAt: "desc" \}\]/);
+  assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
   assert.match(buildersPage, /title="Private library"[\s\S]*defaultOpen/);
   assert.match(buildersPage, /Imported libraries/);
   assert.match(buildersPage, /importedLibrarySections/);
   assert.match(buildersPage, /library-section-panel-indented/);
   assert.doesNotMatch(buildersPage, /Central defaults/);
   assert.match(buildersPage, /BuilderFeedItems/);
-  assert.match(buildersPage, /Crawled posts/);
-  assert.match(buildersPage, /Crawled/);
-  assert.match(buildersPage, /External id/);
-  assert.match(buildersPage, /Read full crawl/);
-  assert.match(buildersPage, /crawlingTool/);
+  assert.match(builderFeedItems, /"use client"/);
+  assert.match(builderFeedItems, /fetch\(`\/api\/builders\/\$\{builderId\}\/feed-items`/);
+  assert.match(builderFeedItems, /Crawled posts/);
+  assert.match(builderFeedItems, /Crawled/);
+  assert.match(builderFeedItems, /External id/);
+  assert.match(builderFeedItems, /Read full crawl/);
+  assert.match(builderFeedItems, /crawlingTool/);
+  assert.match(feedItemsRoute, /orderBy:\s*\[\{ publishedAt: "desc" \}, \{ createdAt: "desc" \}\]/);
+  assert.match(feedItemsRoute, /activePoolBuilderIds/);
+  assert.match(feedItemsRoute, /NextResponse\.json/);
 });
 
 test("library hub exposes share and multi-import flows", () => {
   const appShell = source("src/components/AppShell.tsx");
   const buildersPage = source("src/app/builders/page.tsx");
+  const builderActions = source("src/components/BuilderLibraryActions.tsx");
+  const visibilityToggle = source("src/components/LibraryVisibilityToggle.tsx");
+  const visibilityRoute = source("src/app/api/library-hub/personal-availability/route.ts");
+  const builderSubscriptionRoute = source("src/app/api/builders/[builderId]/subscription/route.ts");
+  const builderLibraryRoute = source("src/app/api/builders/[builderId]/library/route.ts");
+  const builderSubscribeAllRoute = source("src/app/api/builders/subscriptions/route.ts");
+  const hubImportForm = source("src/components/LibraryHubImportForm.tsx");
+  const hubImportRoute = source("src/app/api/library-hub/imports/route.ts");
   const hubPage = source("src/app/library-hub/page.tsx");
   const actions = source("src/app/actions.ts");
   const skillRoute = source("src/app/api/skill/builders/route.ts");
   const schema = source("prisma/schema.prisma");
 
   assert.match(appShell, /library-hub/);
-  assert.match(buildersPage, /togglePersonalLibraryHubAvailabilityAction/);
-  assert.match(buildersPage, /library-visibility-toggle/);
-  assert.match(buildersPage, /aria-pressed/);
+  assert.match(buildersPage, /LibraryVisibilityToggle/);
+  assert.match(buildersPage, /BuilderLibraryActions/);
+  assert.doesNotMatch(buildersPage, /togglePersonalLibraryHubAvailabilityAction/);
+  assert.doesNotMatch(buildersPage, /subscribeAllLibraryBuildersAction/);
+  assert.doesNotMatch(buildersPage, /unsubscribeBuilderAction/);
+  assert.doesNotMatch(buildersPage, /removeBuilderFromLibraryAction/);
+  assert.match(visibilityToggle, /"use client"/);
+  assert.match(visibilityToggle, /fetch\("\/api\/library-hub\/personal-availability"/);
+  assert.match(visibilityToggle, /library-visibility-toggle/);
+  assert.match(visibilityToggle, /aria-pressed/);
+  assert.match(visibilityRoute, /export async function PATCH/);
+  assert.doesNotMatch(visibilityRoute, /redirect\(/);
+  assert.match(builderActions, /"use client"/);
+  assert.match(builderActions, /allowRemove = true/);
+  assert.match(builderActions, /allowRemove \? \(/);
+  assert.match(builderActions, /fetch\(`\/api\/builders\/\$\{builderId\}\/subscription`/);
+  assert.match(builderActions, /fetch\(`\/api\/builders\/\$\{builderId\}\/library`/);
+  assert.match(builderActions, /fetch\("\/api\/builders\/subscriptions"/);
   assert.match(buildersPage, /allowRemove=\{false\}/);
-  assert.match(actions, /BuilderPoolOrigin\.HUB_IMPORT/);
-  assert.match(actions, /imported-builder-remove-denied/);
+  assert.match(builderSubscriptionRoute, /export async function PATCH/);
+  assert.match(builderLibraryRoute, /export async function DELETE/);
+  assert.match(builderLibraryRoute, /BuilderPoolOrigin\.HUB_IMPORT/);
+  assert.match(builderLibraryRoute, /cannot be removed individually/);
+  assert.match(builderSubscribeAllRoute, /export async function POST/);
+  assert.doesNotMatch(builderSubscriptionRoute, /redirect\(/);
+  assert.doesNotMatch(builderLibraryRoute, /redirect\(/);
+  assert.doesNotMatch(builderSubscribeAllRoute, /redirect\(/);
   assert.doesNotMatch(hubPage, /sharePersonalLibraryToHubAction/);
-  assert.match(hubPage, /importHubLibrariesAction/);
+  assert.doesNotMatch(hubPage, /importHubLibrariesAction/);
+  assert.match(hubPage, /LibraryHubImportForm/);
+  assert.match(hubImportForm, /"use client"/);
+  assert.match(hubImportForm, /fetch\("\/api\/library-hub\/imports"/);
+  assert.match(hubImportForm, /libraryId/);
+  assert.match(hubImportRoute, /export async function POST/);
+  assert.match(hubImportRoute, /importLibrariesFromHub/);
+  assert.doesNotMatch(hubImportRoute, /redirect\(/);
   assert.match(hubPage, /importCount/);
   assert.match(hubPage, /viewCount/);
   assert.match(hubPage, /orderBy:\s*\[\{ kind: "desc" \}, \{ importCount: "desc" \}, \{ viewCount: "desc" \}/);
-  assert.match(hubPage, /libraryId/);
+  assert.match(hubImportForm, /libraryId/);
   assert.match(actions, /sharePersonalLibraryToHub/);
-  assert.match(actions, /unsharePersonalLibraryFromHub/);
-  assert.match(actions, /importLibrariesFromHub/);
+  assert.match(visibilityRoute, /unsharePersonalLibraryFromHub/);
+  assert.doesNotMatch(actions, /importLibrariesFromHub/);
   assert.match(skillRoute, /crawlingTool: "Legacy crawl\/import"/);
   assert.match(schema, /model LibraryHubEntry/);
   assert.match(schema, /model LibraryImport/);
 });
 
+test("settings mutations stay local instead of refreshing the whole route", () => {
+  const settingsPage = source("src/app/settings/page.tsx");
+  const feedPreferenceForm = source("src/components/FeedPreferenceForm.tsx");
+  const tokenPanel = source("src/components/AgentTokenPanel.tsx");
+  const feedPreferenceRoute = source("src/app/api/settings/feed-preferences/route.ts");
+  const tokensRoute = source("src/app/api/settings/tokens/route.ts");
+  const tokenRoute = source("src/app/api/settings/tokens/[tokenId]/route.ts");
+  const actions = source("src/app/actions.ts");
+
+  assert.match(settingsPage, /FeedPreferenceForm/);
+  assert.match(settingsPage, /AgentTokenPanel/);
+  assert.doesNotMatch(settingsPage, /createPersonalTokenAction/);
+  assert.doesNotMatch(settingsPage, /revokeTokenAction/);
+  assert.doesNotMatch(settingsPage, /updateFeedPreferenceAction/);
+  assert.doesNotMatch(settingsPage, /FormSubmitButton/);
+  assert.match(feedPreferenceForm, /"use client"/);
+  assert.match(feedPreferenceForm, /fetch\("\/api\/settings\/feed-preferences"/);
+  assert.match(feedPreferenceForm, /useTransition/);
+  assert.match(feedPreferenceForm, /aria-live="polite"/);
+  assert.match(tokenPanel, /"use client"/);
+  assert.match(tokenPanel, /fetch\("\/api\/settings\/tokens"/);
+  assert.match(tokenPanel, /fetch\(`\/api\/settings\/tokens\/\$\{tokenId\}`/);
+  assert.match(tokenPanel, /Copy once/);
+  assert.match(feedPreferenceRoute, /export async function PATCH/);
+  assert.match(feedPreferenceRoute, /userFeedPreference\.upsert/);
+  assert.match(feedPreferenceRoute, /NextResponse\.json/);
+  assert.doesNotMatch(feedPreferenceRoute, /redirect\(/);
+  assert.match(tokensRoute, /export async function POST/);
+  assert.match(tokensRoute, /createAgentToken/);
+  assert.doesNotMatch(tokensRoute, /redirect\(/);
+  assert.match(tokenRoute, /export async function DELETE/);
+  assert.match(tokenRoute, /revokedAt/);
+  assert.doesNotMatch(tokenRoute, /redirect\(/);
+  assert.doesNotMatch(actions, /createPersonalTokenAction/);
+  assert.doesNotMatch(actions, /revokeTokenAction/);
+  assert.doesNotMatch(actions, /updateFeedPreferenceAction/);
+});
+
+test("device authorization gives local pending feedback without route redirects", () => {
+  const devicePage = source("src/app/device/page.tsx");
+  const deviceApproveButton = source("src/components/DeviceApproveButton.tsx");
+  const approveRoute = source("src/app/api/device/approve/route.ts");
+  const actions = source("src/app/actions.ts");
+
+  assert.match(devicePage, /DeviceApproveButton/);
+  assert.doesNotMatch(devicePage, /approveDeviceLoginAction/);
+  assert.doesNotMatch(devicePage, /FormSubmitButton/);
+  assert.match(deviceApproveButton, /"use client"/);
+  assert.match(deviceApproveButton, /fetch\("\/api\/device\/approve"/);
+  assert.match(deviceApproveButton, /Approving/);
+  assert.match(deviceApproveButton, /Approved\. Return to your terminal\./);
+  assert.match(approveRoute, /export async function POST/);
+  assert.match(approveRoute, /createAgentToken/);
+  assert.match(approveRoute, /NextResponse\.json/);
+  assert.doesNotMatch(approveRoute, /redirect\(/);
+  assert.doesNotMatch(actions, /approveDeviceLoginAction/);
+});
+
+test("admin builder mutations stay local instead of using server action forms", () => {
+  const adminPage = source("src/app/admin/page.tsx");
+  const adminBuilderManager = source("src/components/AdminBuilderManager.tsx");
+  const adminBuildersRoute = source("src/app/api/admin/builders/route.ts");
+  const adminBuilderRoute = source("src/app/api/admin/builders/[builderId]/route.ts");
+  const actions = source("src/app/actions.ts");
+
+  assert.match(adminPage, /AdminBuilderManager/);
+  assert.doesNotMatch(adminPage, /addCentralBuilderAction/);
+  assert.doesNotMatch(adminPage, /deleteCentralBuilderAction/);
+  assert.doesNotMatch(adminPage, /FormSubmitButton/);
+  assert.match(adminBuilderManager, /"use client"/);
+  assert.match(adminBuilderManager, /fetch\("\/api\/admin\/builders"/);
+  assert.match(adminBuilderManager, /fetch\(`\/api\/admin\/builders\/\$\{builderId\}`/);
+  assert.match(adminBuilderManager, /aria-live="polite"/);
+  assert.match(adminBuilderManager, /Adding/);
+  assert.match(adminBuilderManager, /Removing/);
+  assert.match(adminBuildersRoute, /export async function POST/);
+  assert.match(adminBuildersRoute, /isAdminEmail/);
+  assert.match(adminBuildersRoute, /upsertBuilder/);
+  assert.match(adminBuildersRoute, /NextResponse\.json/);
+  assert.doesNotMatch(adminBuildersRoute, /redirect\(/);
+  assert.match(adminBuilderRoute, /export async function DELETE/);
+  assert.match(adminBuilderRoute, /isAdminEmail/);
+  assert.match(adminBuilderRoute, /deleteMany/);
+  assert.doesNotMatch(adminBuilderRoute, /redirect\(/);
+  assert.doesNotMatch(actions, /addCentralBuilderAction/);
+  assert.doesNotMatch(actions, /deleteCentralBuilderAction/);
+});
+
 test("list actions use compact controls instead of full-width mobile buttons", () => {
   const css = source("src/app/globals.css");
   const buildersPage = source("src/app/builders/page.tsx");
+  const builderActions = source("src/components/BuilderLibraryActions.tsx");
   const settingsPage = source("src/app/settings/page.tsx");
+  const agentTokenPanel = source("src/components/AgentTokenPanel.tsx");
   const adminPage = source("src/app/admin/page.tsx");
+  const adminBuilderManager = source("src/components/AdminBuilderManager.tsx");
 
   assert.match(css, /\.button-compact/);
   assert.match(css, /\.row-actions/);
   assert.doesNotMatch(css, /\.builder-row form,\s*\n\s*\.builder-row button\s*{\s*\n\s*width:\s*100%/);
   assert.match(buildersPage, /row-actions/);
-  assert.match(buildersPage, /button-light button-compact/);
-  assert.match(settingsPage, /button-light button-compact/);
-  assert.match(adminPage, /button-light button-compact/);
+  assert.match(builderActions, /button-light.*button-compact/);
+  assert.match(settingsPage, /AgentTokenPanel/);
+  assert.match(agentTokenPanel, /button-light button-compact/);
+  assert.match(adminPage, /AdminBuilderManager/);
+  assert.match(adminBuilderManager, /button-light button-compact/);
 });

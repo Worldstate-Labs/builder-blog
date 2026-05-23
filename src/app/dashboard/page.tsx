@@ -2,21 +2,18 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Digest } from "@prisma/client";
 import type { ComponentType, ReactNode } from "react";
-import { Archive, CheckCircle2, Clock3, Sparkles, Terminal, UsersRound } from "lucide-react";
+import { Archive, BookOpen, CheckCircle2, Clock3, Sparkles, Terminal, UsersRound } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import {
-  RecommendationFeed,
-  type RecommendationFeedEntry,
-  type RecommendationSnapshotEntry,
-} from "@/components/RecommendationFeed";
+import { ForYouRecommendationSection } from "@/components/ForYouRecommendationSection";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import {
-  getRecommendationTimeline,
-  type RecommendationSnapshotResult,
-} from "@/lib/recommendations";
 
-type DashboardSearchParams = Promise<{ tab?: string | string[] }>;
+const archivePageSize = 20;
+
+type DashboardSearchParams = Promise<{
+  archivePage?: string | string[];
+  tab?: string | string[];
+}>;
 
 export default async function DashboardPage({
   searchParams,
@@ -27,8 +24,10 @@ export default async function DashboardPage({
   if (!session?.user?.id) redirect("/login");
   const params = await searchParams;
   const selectedTab = firstParam(params.tab) === "subscription" ? "subscription" : "for-you";
+  const archivePage = Math.max(1, Number(firstParam(params.archivePage) ?? "1") || 1);
+  const archiveSkip = (archivePage - 1) * archivePageSize;
 
-  const [todayDigest, recentDigests, digestCount, recommendationFeed] = await Promise.all([
+  const [todayDigest, digestCount] = await Promise.all([
     prisma.digest.findFirst({
       where: {
         userId: session.user.id,
@@ -38,20 +37,26 @@ export default async function DashboardPage({
       },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.digest.findMany({
-      where: { userId: session.user.id },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    }),
     prisma.digest.count({
       where: { userId: session.user.id },
     }),
-    selectedTab === "for-you"
-      ? getRecommendationTimeline({
-          userId: session.user.id,
-          itemLimit: 6,
-        }).catch(() => null)
-      : Promise.resolve(null),
+  ]);
+  const archiveWhere = todayDigest
+    ? { userId: session.user.id, NOT: { id: todayDigest.id } }
+    : { userId: session.user.id };
+  const archiveCount = Math.max(0, digestCount - (todayDigest ? 1 : 0));
+  const [archiveDigests, recentArchiveDigests] = await Promise.all([
+    prisma.digest.findMany({
+      where: archiveWhere,
+      orderBy: { createdAt: "desc" },
+      skip: archiveSkip,
+      take: archivePageSize,
+    }),
+    prisma.digest.findMany({
+      where: archiveWhere,
+      orderBy: { createdAt: "desc" },
+      take: 4,
+    }),
   ]);
 
   return (
@@ -69,16 +74,12 @@ export default async function DashboardPage({
               </HomeTabLink>
             </nav>
             {selectedTab === "for-you" ? (
-              recommendationFeed ? (
-                <RecommendationFeed
-                  initialSnapshots={recommendationFeed.snapshots.map(serializeSnapshot)}
-                />
-              ) : (
-                <ForYouUnavailable />
-              )
+              <ForYouRecommendationSection />
             ) : (
               <SubscriptionFeed
-                recentDigests={recentDigests}
+                archiveCount={archiveCount}
+                archiveDigests={archiveDigests}
+                archivePage={archivePage}
                 todayDigest={todayDigest}
               />
             )}
@@ -87,27 +88,31 @@ export default async function DashboardPage({
             <div className="home-rail-section">
               <h2>Home</h2>
               <div className="mt-4 grid gap-3">
-                <Stat icon={Sparkles} label="For You" value={recommendationFeed?.unreadRemaining ?? "Live"} />
+                <Stat icon={Sparkles} label="For You" value="Live" />
                 <Stat
                   icon={todayDigest ? CheckCircle2 : Clock3}
                   label="Subscription"
                   value={todayDigest ? "Synced" : "Waiting"}
                 />
-                <Stat icon={Archive} label="Archive entries" value={digestCount} />
+                <Stat icon={Archive} label="Archive entries" value={archiveCount} />
               </div>
             </div>
             <div className="home-rail-section">
               <h2>Recent subscription</h2>
               <div className="mt-4 grid gap-3">
-                {recentDigests.slice(0, 4).map((digest) => (
-                  <Link className="home-rail-link" href={`/history#${digest.id}`} key={digest.id}>
+                {recentArchiveDigests.map((digest) => (
+                  <Link
+                    className="home-rail-link"
+                    href={`/dashboard?tab=subscription#${digest.id}`}
+                    key={digest.id}
+                  >
                     <strong>{digest.title}</strong>
                     <span>{digest.itemCount} items · {digest.createdAt.toLocaleDateString()}</span>
                   </Link>
                 ))}
-                {recentDigests.length === 0 ? (
+                {recentArchiveDigests.length === 0 ? (
                   <p className="text-sm leading-6 text-[var(--muted-strong)]">
-                    Subscription entries appear after the digest skill syncs.
+                    Older digests appear here after another subscription sync.
                   </p>
                 ) : null}
               </div>
@@ -120,22 +125,6 @@ export default async function DashboardPage({
         </section>
       </div>
     </AppShell>
-  );
-}
-
-function ForYouUnavailable() {
-  return (
-    <div className="empty-panel mt-6 border-dashed md:p-8">
-      <div className="flex items-start gap-3">
-        <Sparkles className="mt-1 h-5 w-5 text-[var(--accent)]" />
-        <div>
-          <h2 className="font-serif text-2xl text-[var(--ink)]">For You is not ready yet</h2>
-          <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
-            Recommendation snapshots will appear here after the recommendation store is available.
-          </p>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -156,18 +145,25 @@ function HomeTabLink({
 }
 
 function SubscriptionFeed({
-  recentDigests,
+  archiveCount,
+  archiveDigests,
+  archivePage,
   todayDigest,
 }: {
-  recentDigests: Digest[];
+  archiveCount: number;
+  archiveDigests: Digest[];
+  archivePage: number;
   todayDigest: Digest | null;
 }) {
+  const visibleStart = archiveCount === 0 ? 0 : (archivePage - 1) * archivePageSize + 1;
+  const visibleEnd = Math.min((archivePage - 1) * archivePageSize + archiveDigests.length, archiveCount);
+
   return (
     <section className="subscription-feed">
       {todayDigest ? (
         <article className="feed-card">
           <div className="item-kicker">
-            <span>Subscription</span>
+            <span>Today digest</span>
             <span>{todayDigest.createdAt.toLocaleDateString()}</span>
             <span>{todayDigest.itemCount} items</span>
           </div>
@@ -189,20 +185,67 @@ function SubscriptionFeed({
           </div>
         </div>
       )}
-      <div className="item-list mt-5">
-        {recentDigests
-          .filter((digest) => digest.id !== todayDigest?.id)
-          .map((digest) => (
-            <Link className="feed-card feed-card-compact" href={`/history#${digest.id}`} key={digest.id}>
-              <div className="item-kicker">
-                <span>Subscription</span>
-                <span>{digest.createdAt.toLocaleDateString()}</span>
-                <span>{digest.itemCount} items</span>
-              </div>
-              <h2 className="mt-2 font-serif text-2xl">{digest.title}</h2>
-            </Link>
+      <section id="digest-archive" className="digest-archive mt-8 scroll-mt-24">
+        <div className="page-kicker-row">
+          <p className="section-label">Digest archive</p>
+          <span className="status-chip">
+            Showing {visibleStart}-{visibleEnd} of {archiveCount}
+          </span>
+        </div>
+        <div className="item-list mt-4">
+          {archiveDigests.map((digest, index) => (
+            <article id={digest.id} key={digest.id} className="digest-card digest-card-compact">
+              <details className="item-disclosure" open={index === 0}>
+                <summary className="item-summary">
+                  <span className="min-w-0">
+                    <span className="item-kicker">
+                      <span>{digest.createdAt.toLocaleString()}</span>
+                      <span>
+                        {digest.itemCount} items · {digest.language}
+                      </span>
+                    </span>
+                    <span className="item-title">{digest.title}</span>
+                  </span>
+                  <span className="item-summary-action">
+                    <BookOpen className="h-3.5 w-3.5" />
+                    Read
+                  </span>
+                </summary>
+                <pre className="item-details whitespace-pre-wrap font-sans text-sm leading-7 text-[var(--muted-strong)]">
+                  {digest.content}
+                </pre>
+              </details>
+            </article>
           ))}
-      </div>
+          {archiveDigests.length === 0 ? (
+            <div className="empty-panel border-dashed md:p-10">
+              Historical digests will appear here after more subscription syncs.
+            </div>
+          ) : null}
+        </div>
+        {archiveCount > archivePageSize ? (
+          <nav className="mt-6 flex flex-wrap gap-3" aria-label="Digest archive pagination">
+            <Link
+              aria-disabled={archivePage === 1}
+              className={`button-light button-compact ${
+                archivePage === 1 ? "pointer-events-none opacity-45" : ""
+              }`}
+              href={`/dashboard?tab=subscription&archivePage=${Math.max(1, archivePage - 1)}#digest-archive`}
+            >
+              Newer
+            </Link>
+            <Link
+              aria-disabled={visibleEnd >= archiveCount}
+              className={`button-light button-compact ${
+                visibleEnd >= archiveCount ? "pointer-events-none opacity-45" : ""
+              }`}
+              href={`/dashboard?tab=subscription&archivePage=${archivePage + 1}#digest-archive`}
+            >
+              Older
+            </Link>
+          </nav>
+        ) : null}
+      </section>
     </section>
   );
 }
@@ -225,45 +268,6 @@ function Stat({
       </div>
     </div>
   );
-}
-
-function serializeSnapshot(snapshot: RecommendationSnapshotResult): RecommendationSnapshotEntry {
-  return {
-    id: snapshot.id,
-    createdAt: snapshot.createdAt.toISOString(),
-    reason: snapshot.reason,
-    items: snapshot.items.map(serializeRecommendation),
-  };
-}
-
-function serializeRecommendation(
-  result: RecommendationSnapshotResult["items"][number],
-): RecommendationFeedEntry {
-  return {
-    score: result.score,
-    reasons: result.reasons,
-    rank: result.rank,
-    readAt: result.readAt?.toISOString() ?? null,
-    item: {
-      id: result.item.id,
-      title: result.item.title,
-      body: result.item.body,
-      url: result.item.url,
-      publishedAt: result.item.publishedAt?.toISOString() ?? null,
-      createdAt: result.item.createdAt.toISOString(),
-      sourceName: result.item.sourceName,
-      crawlingTool: result.item.crawlingTool,
-      builder: result.item.builder
-        ? {
-            name: result.item.builder.name,
-            sourceType: result.item.builder.sourceType,
-            kind: result.item.builder.kind,
-            sourceUrl: result.item.builder.sourceUrl,
-            crawlUrl: result.item.builder.crawlUrl,
-          }
-        : null,
-    },
-  };
 }
 
 function firstParam(value: string | string[] | undefined) {

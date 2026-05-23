@@ -1,11 +1,8 @@
-import { LibraryHubKind } from "@prisma/client";
 import { redirect } from "next/navigation";
 import type { ComponentType } from "react";
-import { Download, Eye, LibraryBig, UsersRound } from "lucide-react";
-import { importHubLibrariesAction } from "@/app/actions";
+import { LibraryBig, UsersRound } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { FormSubmitButton } from "@/components/FormSubmitButton";
-import { SourceBadge } from "@/components/SourceBadge";
+import { LibraryHubImportForm, type HubLibrary } from "@/components/LibraryHubImportForm";
 import { getCurrentSession } from "@/lib/auth";
 import {
   recordLibraryHubViews,
@@ -54,6 +51,20 @@ export default async function LibraryHubPage() {
 
   const importedLibraryIds = new Set(imports.map((item) => item.hubEntryId));
   const importableLibraries = libraries.filter((library) => library.ownerUserId !== session.user.id);
+  const hubLibraries: HubLibrary[] = libraries.map((library) => ({
+    id: library.id,
+    kind: library.kind,
+    name: library.name,
+    description: library.description,
+    ownerUserId: library.ownerUserId,
+    importCount: library.importCount,
+    viewCount: library.viewCount,
+    itemCount: library._count.items,
+    ownerLabel: ownerLabel(library.owner),
+    items: library.items,
+    imported: importedLibraryIds.has(library.id),
+    owned: library.ownerUserId === session.user.id,
+  }));
 
   return (
     <AppShell session={session}>
@@ -76,65 +87,7 @@ export default async function LibraryHubPage() {
           </div>
         </section>
 
-        <form action={importHubLibrariesAction} className="mt-10">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="section-label">Explore</p>
-              <h2 className="mt-2 font-serif text-4xl">Library hub</h2>
-            </div>
-            <FormSubmitButton className="button-dark gap-2" pendingLabel="Importing...">
-              <Download className="h-4 w-4" />
-              Import selected
-            </FormSubmitButton>
-          </div>
-
-          <div className="library-hub-grid mt-5">
-            {libraries.map((library) => (
-              <article className="library-hub-card" key={library.id}>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="item-kicker">
-                      <span>{library.kind === LibraryHubKind.CENTRAL ? "Central" : "Shared"}</span>
-                      <span>{library._count.items} builders</span>
-                    </div>
-                    <h3 className="mt-2 font-serif text-2xl">{library.name}</h3>
-                    <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
-                      {library.description || ownerLabel(library.owner)}
-                    </p>
-                  </div>
-                  {library.ownerUserId === session.user.id ? (
-                    <span className="sub-pill">Yours</span>
-                  ) : (
-                    <label className="hub-checkbox">
-                      <input name="libraryId" type="checkbox" value={library.id} />
-                      <span>Select</span>
-                    </label>
-                  )}
-                </div>
-
-                <div className="library-hub-metrics">
-                  <Metric icon={Download} label="Imports" value={library.importCount} />
-                  <Metric icon={Eye} label="Views" value={library.viewCount + 1} />
-                  <Metric icon={LibraryBig} label="Status" value={importedLibraryIds.has(library.id) ? "Imported" : "Ready"} />
-                </div>
-
-                <div className="mt-4 grid gap-2">
-                  {library.items.map((item) => (
-                    <div className="hub-builder-row" key={item.builderId}>
-                      <span className="min-w-0 truncate">{item.builder.name}</span>
-                      <SourceBadge builder={item.builder} />
-                    </div>
-                  ))}
-                  {library._count.items > library.items.length ? (
-                    <p className="text-xs font-semibold text-[var(--muted)]">
-                      + {library._count.items - library.items.length} more builders
-                    </p>
-                  ) : null}
-                </div>
-              </article>
-            ))}
-          </div>
-        </form>
+        <LibraryHubImportForm libraries={hubLibraries} />
       </div>
     </AppShell>
   );
@@ -156,24 +109,6 @@ function HubStat({
         <div className="stat-card-value">{value}</div>
         <div className="stat-card-label">{label}</div>
       </div>
-    </div>
-  );
-}
-
-function Metric({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: ComponentType<{ className?: string }>;
-  label: string;
-  value: number | string;
-}) {
-  return (
-    <div className="hub-metric">
-      <Icon className="h-3.5 w-3.5" />
-      <span>{label}</span>
-      <strong>{value}</strong>
     </div>
   );
 }

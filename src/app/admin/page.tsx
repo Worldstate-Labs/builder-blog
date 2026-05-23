@@ -1,9 +1,8 @@
 import { BuilderKind, BuilderScope, FeedItemKind } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { addCentralBuilderAction, deleteCentralBuilderAction } from "@/app/actions";
+import { AdminBuilderManager } from "@/components/AdminBuilderManager";
 import { AppShell } from "@/components/AppShell";
-import { FormSubmitButton } from "@/components/FormSubmitButton";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -167,95 +166,27 @@ async function CentralBuilderPool() {
   });
 
   return (
-    <section className="mt-10">
-      <div className="admin-panel mb-5">
-        <h2 className="font-serif text-3xl">Add central builder</h2>
-        <form action={addCentralBuilderAction} className="mt-5 grid gap-3 md:grid-cols-[1fr_12rem_12rem_1fr_1fr_auto]">
-          <input className="input" name="name" placeholder="Name" required />
-          <select className="input" name="kind" defaultValue={BuilderKind.X}>
-            {Object.values(BuilderKind).map((kind) => (
-              <option key={kind} value={kind}>
-                {builderKindLabel(kind)}
-              </option>
-            ))}
-          </select>
-          <select className="input" name="sourceType" defaultValue="auto">
-            <option value="auto">Auto source</option>
-            {SOURCE_DEFINITIONS.map((source) => (
-              <option key={source.id} value={source.id}>
-                {source.label}
-              </option>
-            ))}
-          </select>
-          <input className="input" name="handle" placeholder="X handle" />
-          <input className="input" name="sourceUrl" placeholder="URL or RSS" />
-          <FormSubmitButton className="button-dark button-compact justify-self-start" pendingLabel="Adding...">
-            Add
-          </FormSubmitButton>
-        </form>
-      </div>
-
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="section-label">Builder pool</p>
-          <h2 className="mt-2 font-serif text-4xl">Canonical sources</h2>
-        </div>
-        <span className="rounded-full border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-2 text-sm text-[var(--muted-strong)]">
-          {builders.length} builders · unique by canonicalKey
-        </span>
-      </div>
-
-      <div className="item-list mt-5">
-        {builders.map((builder) => (
-          <article key={builder.id} className="admin-panel admin-panel-compact">
-            <div className="item-summary item-summary-static">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-serif text-2xl">{builder.name}</h3>
-                  <span className="kind-pill">{builderSourceLabel(builder)}</span>
-                </div>
-                <p className="mt-2 truncate text-sm text-[var(--muted)]">
-                  {builder.handle ? `@${builder.handle}` : builder.sourceUrl}
-                </p>
-              </div>
-              <div className="row-actions text-right text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
-                <span>{builder._count.feedItems} items</span>
-                <span>{builder._count.subscriptions} subscribers</span>
-                <form action={deleteCentralBuilderAction} className="m-0">
-                  <input type="hidden" name="builderId" value={builder.id} />
-                  <FormSubmitButton className="button-light button-compact" pendingLabel="Removing...">
-                    Remove
-                  </FormSubmitButton>
-                </form>
-              </div>
-            </div>
-            <details className="inline-disclosure border-t border-[var(--line)] px-4 py-3">
-              <summary>IDs and crawl source</summary>
-              <dl className="mt-3 grid gap-3 text-xs md:grid-cols-3">
-                <div>
-                  <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">Unique id</dt>
-                  <dd className="mt-1 break-all font-mono text-[var(--muted-strong)]">
-                    {builder.id}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">Canonical key</dt>
-                  <dd className="mt-1 break-all font-mono text-[var(--muted-strong)]">
-                    {builder.canonicalKey}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">Crawl source</dt>
-                  <dd className="mt-1 break-all text-[var(--muted-strong)]">
-                    {builder.crawlUrl ?? builder.sourceUrl ?? "No crawl URL"}
-                  </dd>
-                </div>
-              </dl>
-            </details>
-          </article>
-        ))}
-      </div>
-    </section>
+    <AdminBuilderManager
+      builderKindOptions={Object.values(BuilderKind).map((kind) => ({
+        label: builderKindLabel(kind),
+        value: kind,
+      }))}
+      initialBuilders={builders.map((builder) => ({
+        id: builder.id,
+        name: builder.name,
+        handle: builder.handle,
+        sourceUrl: builder.sourceUrl,
+        crawlUrl: builder.crawlUrl,
+        canonicalKey: builder.canonicalKey,
+        sourceLabel: builderSourceLabel(builder),
+        feedItemCount: builder._count.feedItems,
+        subscriptionCount: builder._count.subscriptions,
+      }))}
+      sourceOptions={SOURCE_DEFINITIONS.map((source) => ({
+        label: source.label,
+        value: source.id,
+      }))}
+    />
   );
 }
 

@@ -137,7 +137,7 @@ export async function searchUserLibrary({
       type: "digest",
       title: digest.title,
       body: digest.content,
-      url: `/history#${digest.id}`,
+      url: `/dashboard?tab=subscription#${digest.id}`,
       sourceName: `${digest.itemCount} items · ${digest.language}`,
       date: digest.createdAt,
     })),
