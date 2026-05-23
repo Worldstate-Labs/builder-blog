@@ -292,6 +292,7 @@ body {
 
 .feed-card,
 .digest-card,
+.builder-card,
 .builder-row,
 .admin-panel {
   border: 1px solid var(--line);
@@ -432,6 +433,8 @@ body {
 
 .builder-row {
   align-items: center;
+  border: 0;
+  box-shadow: none;
   display: flex;
   gap: 1rem;
   justify-content: space-between;
@@ -440,8 +443,60 @@ body {
   width: 100%;
 }
 
+.builder-card {
+  overflow: hidden;
+}
+
 .builder-row > * {
   min-width: 0;
+}
+
+.builder-posts {
+  border-top: 1px solid var(--line);
+}
+
+.builder-posts > summary {
+  align-items: center;
+  color: var(--accent);
+  cursor: pointer;
+  display: flex;
+  font-size: 0.78rem;
+  font-weight: 800;
+  gap: 0.75rem;
+  justify-content: space-between;
+  list-style: none;
+  padding: 0.85rem 1rem;
+  text-transform: uppercase;
+}
+
+.builder-posts > summary::-webkit-details-marker {
+  display: none;
+}
+
+.builder-posts > summary::after {
+  content: "+";
+}
+
+.builder-posts[open] > summary::after {
+  content: "-";
+}
+
+.builder-post-list {
+  border-top: 1px solid var(--line);
+  display: grid;
+}
+
+.builder-post-row {
+  align-items: start;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 1rem;
+}
+
+.builder-post-row:last-child {
+  border-bottom: 0;
 }
 
 .admin-panel > * {
@@ -456,6 +511,14 @@ body {
 
   .builder-row form,
   .builder-row button {
+    width: 100%;
+  }
+
+  .builder-post-row {
+    grid-template-columns: 1fr;
+  }
+
+  .builder-post-row .button-light {
     width: 100%;
   }
 

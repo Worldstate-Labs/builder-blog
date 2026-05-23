@@ -55,7 +55,7 @@ export default async function DashboardPage() {
         </section>
 
         <section className="mt-10 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <article className="rounded-lg bg-[var(--ink)] p-5 text-white shadow-xl shadow-black/10 md:p-7">
+          <article className="min-w-0 rounded-lg bg-[var(--ink)] p-5 text-white shadow-xl shadow-black/10 md:p-7">
             <div className="flex items-center justify-between gap-4">
               <h2 className="font-serif text-3xl">Today&apos;s digest</h2>
               {todayDigest ? (
@@ -70,7 +70,7 @@ export default async function DashboardPage() {
                 <h3 className="mt-6 font-serif text-4xl leading-tight">
                   {todayDigest.title}
                 </h3>
-                <pre className="mt-6 whitespace-pre-wrap font-sans text-sm leading-7 text-white/75">
+                <pre className="mt-6 whitespace-pre-wrap break-words font-sans text-sm leading-7 text-white/75">
                   {todayDigest.content}
                 </pre>
               </>
@@ -84,7 +84,7 @@ export default async function DashboardPage() {
             )}
           </article>
 
-          <aside className="rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] p-5 md:p-6">
+          <aside className="min-w-0 rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] p-5 md:p-6">
             <h2 className="font-serif text-3xl">Recent feed</h2>
             <div className="mt-5 space-y-4">
               {recentDigests.map((digest) => (

@@ -1,7 +1,7 @@
-import { BuilderKind, BuilderScope } from "@prisma/client";
+import { BuilderKind, BuilderScope, type FeedItemKind } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { Suspense, type ComponentType, type ReactNode } from "react";
-import { Bell, BellOff, ListPlus, Plus, Trash2, UsersRound } from "lucide-react";
+import { Bell, BellOff, ExternalLink, ListPlus, Plus, Trash2, UsersRound } from "lucide-react";
 import {
   addBuilderToLibraryAction,
   removeBuilderFromLibraryAction,
@@ -15,7 +15,9 @@ import { FormSubmitButton } from "@/components/FormSubmitButton";
 import { getCurrentSession } from "@/lib/auth";
 import { ensureDefaultBuilderPool } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
-import { builderSourceLabel } from "@/lib/source-registry";
+import { builderSourceLabel, feedItemKindLabel } from "@/lib/source-registry";
+
+const perBuilderFeedItemLimit = 8;
 
 type BuilderWithCount = {
   id: string;
@@ -28,6 +30,19 @@ type BuilderWithCount = {
   crawlUrl: string | null;
   canonicalKey: string;
   _count: { feedItems: number };
+  feedItems: BuilderFeedItem[];
+};
+
+type BuilderFeedItem = {
+  id: string;
+  kind: FeedItemKind;
+  externalId: string;
+  title: string | null;
+  body: string;
+  url: string;
+  publishedAt: Date | null;
+  createdAt: Date;
+  sourceName: string | null;
 };
 
 export default async function BuildersPage() {
@@ -41,7 +56,14 @@ export default async function BuildersPage() {
       where: { userId: session.user.id, removedAt: null },
       include: {
         builder: {
-          include: { _count: { select: { feedItems: true } } },
+          include: {
+            _count: { select: { feedItems: true } },
+            feedItems: {
+              orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+              select: feedItemSummarySelect,
+              take: perBuilderFeedItemLimit,
+            },
+          },
         },
       },
     }),
@@ -59,7 +81,14 @@ export default async function BuildersPage() {
           },
         },
       },
-      include: { _count: { select: { feedItems: true } } },
+      include: {
+        _count: { select: { feedItems: true } },
+        feedItems: {
+          orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+          select: feedItemSummarySelect,
+          take: perBuilderFeedItemLimit,
+        },
+      },
       orderBy: [{ kind: "asc" }, { name: "asc" }],
     }),
   ]);
@@ -162,16 +191,22 @@ export default async function BuildersPage() {
               scope={BuilderScope.CENTRAL}
             >
               {removedCentralBuilders.map((builder) => (
-                <article id={builder.id} key={builder.id} className="builder-row">
-                  <BuilderInfo builder={builder} status="Available" crawlLabel="Webapp crawled" />
-                  <form action={addBuilderToLibraryAction}>
-                    <input type="hidden" name="builderId" value={builder.id} />
-                    <FormSubmitButton className="button-dark gap-2" pendingLabel="Adding...">
-                      <Plus className="h-4 w-4" />
-                      Add to library
-                    </FormSubmitButton>
-                  </form>
-                </article>
+                <BuilderCard
+                  key={builder.id}
+                  builder={builder}
+                  subscribed={false}
+                  crawlLabel="Webapp crawled"
+                  status="Available"
+                  action={
+                    <form action={addBuilderToLibraryAction}>
+                      <input type="hidden" name="builderId" value={builder.id} />
+                      <FormSubmitButton className="button-dark gap-2" pendingLabel="Adding...">
+                        <Plus className="h-4 w-4" />
+                        Add to library
+                      </FormSubmitButton>
+                    </form>
+                  }
+                />
               ))}
             </LibrarySection>
           ) : null}
@@ -187,6 +222,18 @@ export default async function BuildersPage() {
     </AppShell>
   );
 }
+
+const feedItemSummarySelect = {
+  id: true,
+  kind: true,
+  externalId: true,
+  title: true,
+  body: true,
+  url: true,
+  publishedAt: true,
+  createdAt: true,
+  sourceName: true,
+} as const;
 
 async function RecentCrawledContent({
   crawledItems,
@@ -270,37 +317,48 @@ function BuilderCard({
   builder,
   subscribed,
   crawlLabel,
+  status,
+  action,
 }: {
   builder: BuilderWithCount;
   subscribed: boolean;
   crawlLabel: string;
+  status?: string;
+  action?: ReactNode;
 }) {
   return (
-    <article id={builder.id} className="builder-row">
-      <BuilderInfo
-        builder={builder}
-        status={subscribed ? "Subscribed" : "In library"}
-        crawlLabel={crawlLabel}
-      />
-      <div className="flex flex-wrap gap-2">
-        <form action={subscribed ? unsubscribeBuilderAction : subscribeBuilderAction}>
-          <input type="hidden" name="builderId" value={builder.id} />
-          <FormSubmitButton
-            className={`${subscribed ? "button-light" : "button-dark"} gap-2`}
-            pendingLabel={subscribed ? "Updating..." : "Subscribing..."}
-          >
-            {subscribed ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
-            {subscribed ? "Unsubscribe" : "Subscribe"}
-          </FormSubmitButton>
-        </form>
-        <form action={removeBuilderFromLibraryAction}>
-          <input type="hidden" name="builderId" value={builder.id} />
-          <FormSubmitButton className="button-light gap-2" pendingLabel="Removing...">
-            <Trash2 className="h-4 w-4" />
-            Remove from library
-          </FormSubmitButton>
-        </form>
+    <article id={builder.id} className="builder-card">
+      <div className="builder-row">
+        <BuilderInfo
+          builder={builder}
+          status={status ?? (subscribed ? "Subscribed" : "In library")}
+          crawlLabel={crawlLabel}
+        />
+        <div className="flex flex-wrap gap-2">
+          {action ?? (
+            <>
+              <form action={subscribed ? unsubscribeBuilderAction : subscribeBuilderAction}>
+                <input type="hidden" name="builderId" value={builder.id} />
+                <FormSubmitButton
+                  className={`${subscribed ? "button-light" : "button-dark"} gap-2`}
+                  pendingLabel={subscribed ? "Updating..." : "Subscribing..."}
+                >
+                  {subscribed ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+                  {subscribed ? "Unsubscribe" : "Subscribe"}
+                </FormSubmitButton>
+              </form>
+              <form action={removeBuilderFromLibraryAction}>
+                <input type="hidden" name="builderId" value={builder.id} />
+                <FormSubmitButton className="button-light gap-2" pendingLabel="Removing...">
+                  <Trash2 className="h-4 w-4" />
+                  Remove from library
+                </FormSubmitButton>
+              </form>
+            </>
+          )}
+        </div>
       </div>
+      <BuilderFeedItems builder={builder} />
     </article>
   );
 }
@@ -335,6 +393,65 @@ function BuilderInfo({
         </div>
       </details>
     </div>
+  );
+}
+
+function BuilderFeedItems({ builder }: { builder: BuilderWithCount }) {
+  return (
+    <details className="builder-posts">
+      <summary>
+        <span>Crawled posts</span>
+        <span className="text-[var(--muted)]">
+          Latest {builder.feedItems.length} of {builder._count.feedItems}
+        </span>
+      </summary>
+      <div className="builder-post-list">
+        {builder.feedItems.map((item) => (
+          <article key={item.id} className="builder-post-row">
+            <div className="min-w-0">
+              <div className="item-kicker">
+                <span>{feedItemKindLabel(item.kind)}</span>
+                {item.publishedAt ? (
+                  <span>Published {item.publishedAt.toLocaleString()}</span>
+                ) : null}
+                <span>Crawled {item.createdAt.toLocaleString()}</span>
+                {item.sourceName ? <span>{item.sourceName}</span> : null}
+              </div>
+              <h4 className="item-title">{item.title || firstLine(item.body)}</h4>
+              <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--muted-strong)]">
+                {firstLine(item.body)}
+              </p>
+              <dl className="mt-3 grid gap-2 text-xs md:grid-cols-2">
+                <div>
+                  <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">External id</dt>
+                  <dd className="mt-1 break-all font-mono text-[var(--muted-strong)]">
+                    {item.externalId}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">Source URL</dt>
+                  <dd className="mt-1 break-all text-[var(--muted-strong)]">{item.url}</dd>
+                </div>
+              </dl>
+            </div>
+            <a
+              className="button-light min-w-24 gap-2"
+              href={item.url}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Open
+            </a>
+          </article>
+        ))}
+        {builder.feedItems.length === 0 ? (
+          <div className="p-4 text-sm text-[var(--muted-strong)]">
+            No crawled posts have been stored for this builder yet.
+          </div>
+        ) : null}
+      </div>
+    </details>
   );
 }
 
@@ -385,4 +502,8 @@ function Stat({
 
 function builderSort(a: BuilderWithCount, b: BuilderWithCount) {
   return a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name);
+}
+
+function firstLine(body: string) {
+  return body.split(/\r?\n/).find(Boolean)?.slice(0, 160) ?? "Untitled item";
 }

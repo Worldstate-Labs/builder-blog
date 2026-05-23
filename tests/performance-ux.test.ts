@@ -63,3 +63,14 @@ test("builders page streams crawled content behind a suspense boundary", () => {
   assert.match(buildersPage, /Suspense/);
   assert.match(buildersPage, /RecentCrawledContent/);
 });
+
+test("builders page exposes per-builder crawled posts ordered by time", () => {
+  const buildersPage = source("src/app/builders/page.tsx");
+
+  assert.match(buildersPage, /feedItems:\s*{/);
+  assert.match(buildersPage, /orderBy:\s*\[\{ publishedAt: "desc" \}, \{ createdAt: "desc" \}\]/);
+  assert.match(buildersPage, /BuilderFeedItems/);
+  assert.match(buildersPage, /Crawled posts/);
+  assert.match(buildersPage, /Crawled/);
+  assert.match(buildersPage, /External id/);
+});
