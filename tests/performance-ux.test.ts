@@ -52,7 +52,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /agent AROUND\(3\) memory/);
   assert.match(searchPage, /site:example\.com/);
   assert.match(searchPage, /intitle:launch/);
+  assert.match(searchPage, /allintitle:agent memory/);
   assert.match(searchPage, /inurl:release/);
+  assert.match(searchPage, /allinurl:release agent/);
   assert.match(searchPage, /type:feed/);
   assert.match(searchPage, /filetype:digest/);
   assert.match(searchPage, /after:2026-01-01/);

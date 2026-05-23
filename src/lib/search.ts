@@ -133,13 +133,30 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
   let after: Date | null = null;
   let before: Date | null = null;
   const cleanParts: string[] = [];
+  const parts = working.split(/\s+/);
 
-  for (const part of working.split(/\s+/)) {
+  for (let index = 0; index < parts.length; index += 1) {
+    const part = parts[index];
     const token = part.trim();
     if (!token) continue;
     const lower = token.toLowerCase();
     if (lower.startsWith("site:")) {
       site = lower.slice(5).replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0] || site;
+      continue;
+    }
+    if (lower.startsWith("allintitle:") || lower.startsWith("allinurl:")) {
+      const isTitleScope = lower.startsWith("allintitle:");
+      const scope = collectScopedOperatorTerms(
+        parts,
+        index,
+        token.slice(isTitleScope ? 11 : 9),
+      );
+      const targetTerms = isTitleScope ? titleTerms : urlTerms;
+      for (const term of scope.terms) {
+        targetTerms.push(term);
+        cleanParts.push(term);
+      }
+      index = scope.nextIndex;
       continue;
     }
     if (lower.startsWith("title:") || lower.startsWith("intitle:")) {
@@ -479,6 +496,51 @@ function normalizeTypeOperatorValue(value: string): SearchDocumentType | null {
   const singular = value.endsWith("s") ? value.slice(0, -1) : value;
   if (singular === "builder" || singular === "feed" || singular === "digest") return singular;
   return null;
+}
+
+function collectScopedOperatorTerms(
+  parts: string[],
+  startIndex: number,
+  firstValue: string,
+) {
+  const terms: string[] = [];
+  const firstTerm = normalizeScopedTerm(firstValue);
+  if (firstTerm) terms.push(firstTerm);
+  let nextIndex = startIndex;
+
+  for (let index = startIndex + 1; index < parts.length; index += 1) {
+    const token = parts[index].trim();
+    if (!token || isOperatorBoundaryToken(token)) break;
+    const term = normalizeScopedTerm(token);
+    if (term) terms.push(term);
+    nextIndex = index;
+  }
+
+  return { terms, nextIndex };
+}
+
+function isOperatorBoundaryToken(token: string) {
+  const lower = token.toLowerCase();
+  return (
+    lower === "or" ||
+    lower.startsWith("-") ||
+    parseAroundOperator(lower) !== null ||
+    lower.startsWith("site:") ||
+    lower.startsWith("title:") ||
+    lower.startsWith("intitle:") ||
+    lower.startsWith("allintitle:") ||
+    lower.startsWith("url:") ||
+    lower.startsWith("inurl:") ||
+    lower.startsWith("allinurl:") ||
+    lower.startsWith("type:") ||
+    lower.startsWith("filetype:") ||
+    lower.startsWith("after:") ||
+    lower.startsWith("before:")
+  );
+}
+
+function normalizeScopedTerm(value: string) {
+  return normalizeText(value);
 }
 
 function parseDateOperator(value: string) {

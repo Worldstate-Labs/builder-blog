@@ -384,6 +384,35 @@ test("search user path filters by title operator", () => {
   assert.deepEqual(results.map((result) => result.id), ["title-match"]);
 });
 
+test("search user path supports allintitle operator", () => {
+  const parsed = parseSearchQuery("allintitle:agent memory site:example.com");
+
+  assert.equal(parsed.cleanQuery, "agent memory");
+  assert.deepEqual(parsed.titleTerms, ["agent", "memory"]);
+  assert.equal(parsed.site, "example.com");
+
+  const results = rankSearchDocuments({
+    query: "allintitle:agent memory",
+    mode: "exact",
+    documents: [
+      {
+        id: "title-match",
+        type: "feed",
+        title: "Agent memory launch",
+        body: "A short note.",
+      },
+      {
+        id: "split-match",
+        type: "feed",
+        title: "Agent launch",
+        body: "Memory appears only in the body.",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["title-match"]);
+});
+
 test("search user path filters by URL operator", () => {
   const results = rankSearchDocuments({
     query: "agent memory inurl:release",
@@ -402,6 +431,37 @@ test("search user path filters by URL operator", () => {
         title: "Agent memory notes",
         body: "Release details in the body should not satisfy inurl.",
         url: "https://example.com/notes/agent-memory",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["url-match"]);
+});
+
+test("search user path supports allinurl operator", () => {
+  const parsed = parseSearchQuery("allinurl:release agent type:feed");
+
+  assert.equal(parsed.cleanQuery, "release agent");
+  assert.deepEqual(parsed.urlTerms, ["release", "agent"]);
+  assert.equal(parsed.type, "feed");
+
+  const results = rankSearchDocuments({
+    query: "allinurl:release agent",
+    mode: "hybrid",
+    documents: [
+      {
+        id: "url-match",
+        type: "feed",
+        title: "Release agent",
+        body: "A short writeup.",
+        url: "https://example.com/releases/agent",
+      },
+      {
+        id: "split-match",
+        type: "feed",
+        title: "Release agent",
+        body: "A short writeup.",
+        url: "https://example.com/releases/workflow",
       },
     ],
   });
