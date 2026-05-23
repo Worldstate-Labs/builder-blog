@@ -663,8 +663,8 @@ function documentMatchesFilters(
 
   if (parsedQuery.type && document.type !== parsedQuery.type) return false;
   if (parsedQuery.excludedTypes.includes(document.type)) return false;
-  if (parsedQuery.site && !urlHostMatches(document.url, parsedQuery.site)) return false;
-  if (parsedQuery.excludedSites.some((site) => urlHostMatches(document.url, site))) return false;
+  if (parsedQuery.site && !urlSiteMatches(document.url, parsedQuery.site)) return false;
+  if (parsedQuery.excludedSites.some((site) => urlSiteMatches(document.url, site))) return false;
   if (parsedQuery.bodyTerms.some((term) => !body.includes(term))) return false;
   if (parsedQuery.titleTerms.some((term) => !title.includes(term))) return false;
   if (parsedQuery.urlTerms.some((term) => !url.includes(term))) return false;
@@ -780,12 +780,24 @@ function normalizeTypeOperatorValue(value: string): SearchDocumentType | null {
 }
 
 function normalizeSiteOperatorValue(value: string) {
-  return value
+  const withoutProtocol = value
     .trim()
     .replace(/^https?:\/\//i, "")
     .replace(/^www\./i, "")
-    .split("/")[0]
-    .toLowerCase() || "";
+    .toLowerCase();
+  if (!withoutProtocol) return "";
+
+  const [host = "", ...pathParts] = withoutProtocol.split("/");
+  const normalizedHost = host.trim();
+  if (!normalizedHost) return "";
+
+  const normalizedPath = pathParts
+    .join("/")
+    .split(/[?#]/)[0]
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/\/+/g, "/");
+
+  return [normalizedHost, normalizedPath].filter(Boolean).join("/");
 }
 
 function collectScopedOperatorTerms(
@@ -942,11 +954,19 @@ function searchTimeBounds(time: SearchTimeRange) {
   };
 }
 
-function urlHostMatches(url: string | null | undefined, site: string) {
+function urlSiteMatches(url: string | null | undefined, site: string) {
   if (!url) return false;
+  const [siteHost, ...sitePathParts] = site.split("/");
+  const sitePath = sitePathParts.join("/").replace(/^\/+|\/+$/g, "");
+
   try {
-    const host = new URL(url.startsWith("http") ? url : `https://${url}`).hostname.replace(/^www\./, "");
-    return host === site || host.endsWith(`.${site}`);
+    const parsed = new URL(url.startsWith("http") ? url : `https://${url}`);
+    const host = parsed.hostname.replace(/^www\./, "");
+    if (host !== siteHost && !host.endsWith(`.${siteHost}`)) return false;
+    if (!sitePath) return true;
+
+    const urlPath = parsed.pathname.replace(/^\/+|\/+$/g, "");
+    return urlPath === sitePath || urlPath.startsWith(`${sitePath}/`);
   } catch {
     return normalizeText(url).includes(site);
   }

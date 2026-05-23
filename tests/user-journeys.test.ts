@@ -539,6 +539,73 @@ test("search user path excludes sites with negative site operator", () => {
   assert.deepEqual(results.map((result) => result.id), ["kept"]);
 });
 
+test("search user path supports site operators with URL paths", () => {
+  const parsed = parseSearchQuery("agent memory site:example.com/articles");
+
+  assert.equal(parsed.cleanQuery, "agent memory");
+  assert.equal(parsed.site, "example.com/articles");
+
+  const results = rankSearchDocuments({
+    query: "agent memory site:example.com/articles",
+    mode: "hybrid",
+    documents: [
+      {
+        id: "article",
+        type: "feed",
+        title: "Agent memory",
+        body: "Agent memory note.",
+        url: "https://example.com/articles/agent-memory",
+      },
+      {
+        id: "root",
+        type: "feed",
+        title: "Agent memory",
+        body: "Agent memory note.",
+        url: "https://example.com/agent-memory",
+      },
+      {
+        id: "other-path",
+        type: "feed",
+        title: "Agent memory",
+        body: "Agent memory note.",
+        url: "https://example.com/posts/agent-memory",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["article"]);
+});
+
+test("search user path excludes site operator paths without excluding the whole host", () => {
+  const parsed = parseSearchQuery("agent memory -site:example.com/articles");
+
+  assert.equal(parsed.cleanQuery, "agent memory");
+  assert.deepEqual(parsed.excludedSites, ["example.com/articles"]);
+
+  const results = rankSearchDocuments({
+    query: "agent memory -site:example.com/articles",
+    mode: "hybrid",
+    documents: [
+      {
+        id: "excluded-path",
+        type: "feed",
+        title: "Agent memory",
+        body: "Agent memory note.",
+        url: "https://example.com/articles/agent-memory",
+      },
+      {
+        id: "kept-host",
+        type: "feed",
+        title: "Agent memory",
+        body: "Agent memory note.",
+        url: "https://example.com/posts/agent-memory",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["kept-host"]);
+});
+
 test("search user path supports operator-only result sets", () => {
   const results = rankSearchDocuments({
     query: "site:example.com",

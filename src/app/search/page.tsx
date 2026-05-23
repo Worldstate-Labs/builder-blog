@@ -54,6 +54,7 @@ const advancedSearchExamples = [
   "agent OR embedding",
   "agent AROUND(3) memory",
   "agent memory site:example.com",
+  "agent memory site:example.com/articles",
   "agent memory -site:example.com",
   "agent memory intitle:launch",
   "agent memory -intitle:pricing",
