@@ -1,4 +1,4 @@
-import { BuilderPoolOrigin, BuilderScope } from "@prisma/client";
+import { BuilderPoolOrigin, BuilderScope, FeedItemKind } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { addBuilderToPool } from "@/lib/builder-pool";
 import { upsertBuilder } from "@/lib/builders";
@@ -19,6 +19,7 @@ export async function POST(request: Request) {
 
   let builders = 0;
   let feedItems = 0;
+  let skippedFeedItems = 0;
   let subscriptions = 0;
   const now = new Date();
   for (const input of parsed.data.builders) {
@@ -57,7 +58,21 @@ export async function POST(request: Request) {
     }
     builders += 1;
 
+    const existingItemKeys = parsed.data.force
+      ? new Set<string>()
+      : await existingFeedItemKeys(
+          builder.id,
+          input.items.map((item) => ({ kind: item.kind, externalId: item.externalId })),
+        );
+    let syncedItemCount = 0;
+    const payloadItemKeys = new Set<string>();
     for (const item of input.items) {
+      const key = feedItemKey(builder.id, item.kind, item.externalId);
+      if (payloadItemKeys.has(key) || (!parsed.data.force && existingItemKeys.has(key))) {
+        skippedFeedItems += 1;
+        continue;
+      }
+      payloadItemKeys.add(key);
       await prisma.feedItem.upsert({
         where: {
           builderId_kind_externalId: {
@@ -87,6 +102,7 @@ export async function POST(request: Request) {
         },
       });
       feedItems += 1;
+      syncedItemCount += 1;
     }
     await prisma.userBuilderCrawl.upsert({
       where: {
@@ -98,14 +114,14 @@ export async function POST(request: Request) {
       update: {
         lastCrawledAt: now,
         lastForcedAt: parsed.data.force ? now : undefined,
-        itemCount: input.items.length,
+        itemCount: syncedItemCount,
       },
       create: {
         userId: user.id,
         builderId: builder.id,
         lastCrawledAt: now,
         lastForcedAt: parsed.data.force ? now : null,
-        itemCount: input.items.length,
+        itemCount: syncedItemCount,
       },
     });
   }
@@ -114,8 +130,34 @@ export async function POST(request: Request) {
     status: "ok",
     builders,
     feedItems,
+    skippedFeedItems,
     subscriptions,
     force: parsed.data.force,
     generatedAt: new Date().toISOString(),
   });
+}
+
+async function existingFeedItemKeys(
+  builderId: string,
+  items: Array<{ kind: FeedItemKind; externalId: string }>,
+) {
+  if (items.length === 0) return new Set<string>();
+  const existing = await prisma.feedItem.findMany({
+    where: {
+      builderId,
+      OR: items.map((item) => ({
+        kind: item.kind,
+        externalId: item.externalId,
+      })),
+    },
+    select: {
+      kind: true,
+      externalId: true,
+    },
+  });
+  return new Set(existing.map((item) => feedItemKey(builderId, item.kind, item.externalId)));
+}
+
+function feedItemKey(builderId: string, kind: FeedItemKind, externalId: string) {
+  return `${builderId}:${kind}:${externalId}`;
 }

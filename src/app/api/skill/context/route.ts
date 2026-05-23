@@ -41,16 +41,30 @@ export async function GET(request: Request) {
     poolBuilderIds,
     subscriptions.map((subscription) => subscription.builderId),
   );
+  const personalBuilderIds = libraryBuilders
+    .filter((builder) => builder.scope === "PERSONAL")
+    .map((builder) => builder.id);
 
-  const items = await prisma.feedItem.findMany({
-    where: {
-      builderId: { in: subscribedBuilderIds },
-      OR: [{ publishedAt: { gte: since } }, { createdAt: { gte: since } }],
-    },
-    include: { builder: true },
-    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-    take: 80,
-  });
+  const [items, personalSeenItems] = await Promise.all([
+    prisma.feedItem.findMany({
+      where: {
+        builderId: { in: subscribedBuilderIds },
+        OR: [{ publishedAt: { gte: since } }, { createdAt: { gte: since } }],
+      },
+      include: { builder: true },
+      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+      take: 80,
+    }),
+    prisma.feedItem.findMany({
+      where: { builderId: { in: personalBuilderIds } },
+      select: {
+        builderId: true,
+        kind: true,
+        externalId: true,
+      },
+      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    }),
+  ]);
 
   return NextResponse.json({
     user: { id: user.id, name: user.name, email: user.email },
@@ -58,6 +72,7 @@ export async function GET(request: Request) {
     language: "zh",
     libraryBuilders,
     personalCrawlStates,
+    personalSeenItems,
     subscriptions: subscriptions.map((subscription) => subscription.builder),
     subscriptionCount: subscriptions.length,
     items,

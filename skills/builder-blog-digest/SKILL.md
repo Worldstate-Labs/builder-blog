@@ -41,13 +41,13 @@ This command:
 
 - fetches `/api/skill/context`;
 - filters to `scope: PERSONAL` and `kind: BLOG`, plus YouTube-backed `PODCAST`;
-- skips any `user + builder` pair the web app has already recorded as crawled;
+- skips already-synced posts by `user + builder + item kind + externalId`;
 - crawls each personal blog or YouTube RSS feed locally from the user's agent environment;
 - for YouTube videos, prefers caption transcripts and falls back to feed descriptions;
 - posts discovered `BLOG_POST` or `PODCAST_EPISODE` items back to `/api/skill/builders`.
 
-Use `--force` only when the user explicitly wants to re-crawl already-crawled
-personal builders:
+Use `--force` only when the user explicitly wants to re-sync already-synced
+posts:
 
 ```bash
 cd /Users/jie/code/builder_blog

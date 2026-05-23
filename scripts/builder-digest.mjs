@@ -135,7 +135,7 @@ async function crawlPersonal(args) {
   const subscribedBuilderIds = new Set(
     (context.subscriptions ?? []).map((builder) => builder.id),
   );
-  const personalBuilders = personalBuildersForCrawl(context, { force });
+  const personalBuilders = personalBuildersForCrawl(context);
 
   if (personalBuilders.length === 0) {
     console.log(
@@ -144,11 +144,9 @@ async function crawlPersonal(args) {
           status: "ok",
           builders: 0,
           feedItems: 0,
-          skippedAlreadyCrawled: skippedPersonalBuilderCount(context),
+          seenPersonalItems: personalSeenItemCount(context),
           force,
-          message: force
-            ? `No personal ${personalCrawlerSourceLabels()} builders in this user's library.`
-            : `No uncrawled personal ${personalCrawlerSourceLabels()} builders. Use --force to crawl them again.`,
+          message: `No personal ${personalCrawlerSourceLabels()} builders in this user's library.`,
         },
         null,
         2,
@@ -165,7 +163,11 @@ async function crawlPersonal(args) {
     try {
       const source = personalCrawlerSourceForBuilder(builder);
       if (!source) continue;
-      const items = await source.crawl(builder, { cutoff, limit });
+      const items = await source.crawl(builder, {
+        cutoff,
+        limit,
+        seenItemKeys: force ? new Set() : seenItemKeysForBuilder(context, builder.id),
+      });
       builders.push({
         kind: source.syncKind,
         sourceType: source.id,
@@ -195,7 +197,7 @@ async function crawlPersonal(args) {
       {
         ...result,
         crawledPersonalBuilders: personalBuilders.length,
-        skippedAlreadyCrawled: force ? 0 : skippedPersonalBuilderCount(context),
+        seenPersonalItems: force ? 0 : personalSeenItemCount(context),
         localErrors,
       },
       null,
@@ -204,17 +206,11 @@ async function crawlPersonal(args) {
   );
 }
 
-export function personalBuildersForCrawl(context, { force = false } = {}) {
-  const crawledBuilderIds = new Set(
-    (context.personalCrawlStates ?? [])
-      .filter((state) => state?.lastCrawledAt)
-      .map((state) => state.builderId),
-  );
+export function personalBuildersForCrawl(context) {
   return (context.libraryBuilders ?? []).filter(
     (builder) =>
       builder.scope === "PERSONAL" &&
-      personalCrawlerSourceForBuilder(builder) &&
-      (force || !crawledBuilderIds.has(builder.id)),
+      personalCrawlerSourceForBuilder(builder),
   );
 }
 
@@ -227,10 +223,20 @@ export function personalCrawlerSourceForBuilder(builder) {
   ) ?? null;
 }
 
-function skippedPersonalBuilderCount(context) {
-  const forceEligibleBuilders = personalBuildersForCrawl(context, { force: true });
-  const defaultBuilders = personalBuildersForCrawl(context, { force: false });
-  return forceEligibleBuilders.length - defaultBuilders.length;
+export function seenItemKeysForBuilder(context, builderId) {
+  return new Set(
+    (context.personalSeenItems ?? [])
+      .filter((item) => item?.builderId === builderId)
+      .map((item) => personalItemKey(item.builderId, item.kind, item.externalId)),
+  );
+}
+
+export function personalItemKey(builderId, kind, externalId) {
+  return `${builderId}:${kind}:${externalId}`;
+}
+
+function personalSeenItemCount(context) {
+  return (context.personalSeenItems ?? []).length;
 }
 
 function personalCrawlerSourceLabels() {
@@ -247,7 +253,7 @@ function normalizeSourceType(sourceType) {
   return String(sourceType || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
 }
 
-async function crawlPersonalYouTubeBuilder(builder, { cutoff, limit }) {
+async function crawlPersonalYouTubeBuilder(builder, { cutoff, limit, seenItemKeys = new Set() }) {
   const sourceUrl = builder.crawlUrl || builder.sourceUrl;
   if (!sourceUrl) return [];
   const feedUrl = await youtubeFeedUrl(sourceUrl);
@@ -264,6 +270,7 @@ async function crawlPersonalYouTubeBuilder(builder, { cutoff, limit }) {
 
   const videos = parseYouTubeFeed(await feedResponse.text(), feedUrl)
     .filter((video) => !video.publishedAt || new Date(video.publishedAt) >= cutoff)
+    .filter((video) => !seenItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", video.videoId || video.url)))
     .slice(0, limit);
   const items = [];
 
@@ -294,7 +301,7 @@ async function crawlPersonalYouTubeBuilder(builder, { cutoff, limit }) {
   return items;
 }
 
-async function crawlPersonalBlogBuilder(builder, { cutoff, limit }) {
+async function crawlPersonalBlogBuilder(builder, { cutoff, limit, seenItemKeys = new Set() }) {
   const indexUrl = builder.crawlUrl || builder.sourceUrl;
   if (!indexUrl) return [];
 
@@ -308,6 +315,7 @@ async function crawlPersonalBlogBuilder(builder, { cutoff, limit }) {
   const indexBody = await indexResponse.text();
   const candidates = parseBlogCandidates(indexBody, indexUrl)
     .filter((article) => !article.publishedAt || new Date(article.publishedAt) >= cutoff)
+    .filter((article) => !seenItemKeys.has(personalItemKey(builder.id, "BLOG_POST", article.url)))
     .slice(0, limit);
   const items = [];
 

@@ -96,7 +96,7 @@ test("personal YouTube crawler maps feed entries into syncable episodes", async 
   assert.equal(videos[0].description, "Practical agent lessons.");
 });
 
-test("personal crawler skips user-builder pairs already crawled unless forced", async () => {
+test("personal crawler keeps crawled builders eligible and tracks seen post keys", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const context = {
     libraryBuilders: [
@@ -128,14 +128,23 @@ test("personal crawler skips user-builder pairs already crawled unless forced", 
         lastCrawledAt: "2026-05-22T10:00:00.000Z",
       },
     ],
+    personalSeenItems: [
+      {
+        builderId: "builder_blog_1",
+        kind: "BLOG_POST",
+        externalId: "https://example.com/blog/launch-notes",
+      },
+    ],
   };
 
   assert.deepEqual(
-    cli.personalBuildersForCrawl(context, { force: false }).map((builder: { id: string }) => builder.id),
-    ["builder_blog_2"],
-  );
-  assert.deepEqual(
-    cli.personalBuildersForCrawl(context, { force: true }).map((builder: { id: string }) => builder.id),
+    cli.personalBuildersForCrawl(context).map((builder: { id: string }) => builder.id),
     ["builder_blog_1", "builder_blog_2"],
+  );
+  assert.equal(
+    cli
+      .seenItemKeysForBuilder(context, "builder_blog_1")
+      .has(cli.personalItemKey("builder_blog_1", "BLOG_POST", "https://example.com/blog/launch-notes")),
+    true,
   );
 });
