@@ -33,6 +33,7 @@ export type ParsedSearchQuery = {
   excludedTerms: string[];
   orTerms: string[];
   proximityPairs: SearchProximityPair[];
+  bodyTerms: string[];
   titleTerms: string[];
   urlTerms: string[];
   site: string | null;
@@ -125,6 +126,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     return ` ${normalizedPhrase} `;
   });
   const excludedTerms: string[] = [];
+  const bodyTerms: string[] = [];
   const titleTerms: string[] = [];
   const urlTerms: string[] = [];
   let site: string | null = null;
@@ -144,19 +146,32 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
       site = lower.slice(5).replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0] || site;
       continue;
     }
-    if (lower.startsWith("allintitle:") || lower.startsWith("allinurl:")) {
+    if (
+      lower.startsWith("allintext:") ||
+      lower.startsWith("allintitle:") ||
+      lower.startsWith("allinurl:")
+    ) {
       const isTitleScope = lower.startsWith("allintitle:");
+      const isTextScope = lower.startsWith("allintext:");
       const scope = collectScopedOperatorTerms(
         parts,
         index,
-        token.slice(isTitleScope ? 11 : 9),
+        token.slice(isTextScope ? 10 : isTitleScope ? 11 : 9),
       );
-      const targetTerms = isTitleScope ? titleTerms : urlTerms;
+      const targetTerms = isTextScope ? bodyTerms : isTitleScope ? titleTerms : urlTerms;
       for (const term of scope.terms) {
         targetTerms.push(term);
         cleanParts.push(term);
       }
       index = scope.nextIndex;
+      continue;
+    }
+    if (lower.startsWith("text:") || lower.startsWith("intext:")) {
+      const bodyTerm = normalizeText(lower.startsWith("text:") ? token.slice(5) : token.slice(7));
+      if (bodyTerm) {
+        bodyTerms.push(bodyTerm);
+        cleanParts.push(bodyTerm);
+      }
       continue;
     }
     if (lower.startsWith("title:") || lower.startsWith("intitle:")) {
@@ -214,6 +229,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     excludedTerms,
     orTerms,
     proximityPairs,
+    bodyTerms,
     titleTerms,
     urlTerms,
     site,
@@ -407,6 +423,7 @@ function documentMatchesFilters(
 
   if (parsedQuery.type && document.type !== parsedQuery.type) return false;
   if (parsedQuery.site && !urlHostMatches(document.url, parsedQuery.site)) return false;
+  if (parsedQuery.bodyTerms.some((term) => !body.includes(term))) return false;
   if (parsedQuery.titleTerms.some((term) => !title.includes(term))) return false;
   if (parsedQuery.urlTerms.some((term) => !url.includes(term))) return false;
   if (
@@ -526,6 +543,9 @@ function isOperatorBoundaryToken(token: string) {
     lower.startsWith("-") ||
     parseAroundOperator(lower) !== null ||
     lower.startsWith("site:") ||
+    lower.startsWith("text:") ||
+    lower.startsWith("intext:") ||
+    lower.startsWith("allintext:") ||
     lower.startsWith("title:") ||
     lower.startsWith("intitle:") ||
     lower.startsWith("allintitle:") ||

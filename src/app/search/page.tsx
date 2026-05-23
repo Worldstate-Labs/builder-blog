@@ -48,6 +48,8 @@ const advancedSearchExamples = [
   "agent memory site:example.com",
   "agent memory intitle:launch",
   "allintitle:agent memory",
+  "agent memory intext:transcript",
+  "allintext:agent memory",
   "agent memory inurl:release",
   "allinurl:release agent",
   "agent memory type:feed",
@@ -654,7 +656,7 @@ function buildActiveSearchFilters({
     filters.push({
       clearLabel: "Remove title search terms",
       href: searchHref({
-        query: stripQueryOperators(query, ["title", "intitle"]),
+        query: stripQueryOperators(query, ["title", "intitle", "allintitle"]),
         type: typeFilter,
         mode,
         sort,
@@ -664,11 +666,25 @@ function buildActiveSearchFilters({
       value: parsed.titleTerms.join(", "),
     });
   }
+  if (parsed.bodyTerms.length > 0) {
+    filters.push({
+      clearLabel: "Remove text search terms",
+      href: searchHref({
+        query: stripQueryOperators(query, ["text", "intext", "allintext"]),
+        type: typeFilter,
+        mode,
+        sort,
+        time,
+      }),
+      label: "Text",
+      value: parsed.bodyTerms.join(", "),
+    });
+  }
   if (parsed.urlTerms.length > 0) {
     filters.push({
       clearLabel: "Remove URL search terms",
       href: searchHref({
-        query: stripQueryOperators(query, ["url", "inurl"]),
+        query: stripQueryOperators(query, ["url", "inurl", "allinurl"]),
         type: typeFilter,
         mode,
         sort,

@@ -413,6 +413,58 @@ test("search user path supports allintitle operator", () => {
   assert.deepEqual(results.map((result) => result.id), ["title-match"]);
 });
 
+test("search user path filters by text operator", () => {
+  const results = rankSearchDocuments({
+    query: "agent memory intext:transcript",
+    mode: "hybrid",
+    documents: [
+      {
+        id: "body-match",
+        type: "feed",
+        title: "Agent memory notes",
+        body: "Transcript details from the builder session.",
+      },
+      {
+        id: "title-only",
+        type: "feed",
+        title: "Agent memory transcript",
+        body: "A short note.",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["body-match"]);
+});
+
+test("search user path supports allintext operator", () => {
+  const parsed = parseSearchQuery("allintext:agent memory site:example.com");
+
+  assert.equal(parsed.cleanQuery, "agent memory");
+  assert.deepEqual(parsed.bodyTerms, ["agent", "memory"]);
+  assert.equal(parsed.site, "example.com");
+
+  const results = rankSearchDocuments({
+    query: "allintext:agent memory",
+    mode: "exact",
+    documents: [
+      {
+        id: "body-match",
+        type: "feed",
+        title: "Session notes",
+        body: "Agent memory launch details.",
+      },
+      {
+        id: "title-match",
+        type: "feed",
+        title: "Agent memory launch",
+        body: "A short note.",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["body-match"]);
+});
+
 test("search user path filters by URL operator", () => {
   const results = rankSearchDocuments({
     query: "agent memory inurl:release",
