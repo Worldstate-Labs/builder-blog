@@ -37,6 +37,9 @@ export type ParsedSearchQuery = {
   bodyTerms: string[];
   titleTerms: string[];
   urlTerms: string[];
+  excludedBodyTerms: string[];
+  excludedTitleTerms: string[];
+  excludedUrlTerms: string[];
   site: string | null;
   excludedSites: string[];
   excludedTypes: SearchDocumentType[];
@@ -141,6 +144,9 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
   const bodyTerms: string[] = [];
   const titleTerms: string[] = [];
   const urlTerms: string[] = [];
+  const excludedBodyTerms: string[] = [];
+  const excludedTitleTerms: string[] = [];
+  const excludedUrlTerms: string[] = [];
   const excludedSites: string[] = [];
   const excludedTypes: SearchDocumentType[] = [];
   let site: string | null = null;
@@ -165,6 +171,23 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
       const isFiletype = lower.startsWith("-filetype:");
       const candidate = normalizeTypeOperatorValue(lower.slice(isFiletype ? 10 : 6));
       if (candidate) excludedTypes.push(candidate);
+      continue;
+    }
+    if (lower.startsWith("-text:") || lower.startsWith("-intext:")) {
+      const bodyTerm = normalizeText(lower.startsWith("-text:") ? token.slice(6) : token.slice(8));
+      if (bodyTerm) excludedBodyTerms.push(bodyTerm);
+      continue;
+    }
+    if (lower.startsWith("-title:") || lower.startsWith("-intitle:")) {
+      const titleTerm = normalizeText(
+        lower.startsWith("-title:") ? token.slice(7) : token.slice(9),
+      );
+      if (titleTerm) excludedTitleTerms.push(titleTerm);
+      continue;
+    }
+    if (lower.startsWith("-url:") || lower.startsWith("-inurl:")) {
+      const urlTerm = normalizeText(lower.startsWith("-url:") ? token.slice(5) : token.slice(7));
+      if (urlTerm) excludedUrlTerms.push(urlTerm);
       continue;
     }
     if (lower.startsWith("site:")) {
@@ -258,6 +281,9 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     bodyTerms,
     titleTerms,
     urlTerms,
+    excludedBodyTerms,
+    excludedTitleTerms,
+    excludedUrlTerms,
     site,
     excludedSites,
     excludedTypes,
@@ -457,6 +483,9 @@ function documentMatchesFilters(
   if (parsedQuery.bodyTerms.some((term) => !body.includes(term))) return false;
   if (parsedQuery.titleTerms.some((term) => !title.includes(term))) return false;
   if (parsedQuery.urlTerms.some((term) => !url.includes(term))) return false;
+  if (parsedQuery.excludedBodyTerms.some((term) => body.includes(term))) return false;
+  if (parsedQuery.excludedTitleTerms.some((term) => title.includes(term))) return false;
+  if (parsedQuery.excludedUrlTerms.some((term) => url.includes(term))) return false;
   if (
     parsedQuery.orTerms.length > 0 &&
     parsedQuery.orTerms.every((term) => !haystack.includes(term))

@@ -50,6 +50,7 @@ const advancedSearchExamples = [
   "agent memory site:example.com",
   "agent memory -site:example.com",
   "agent memory intitle:launch",
+  "agent memory -intitle:pricing",
   "allintitle:agent memory",
   "agent memory intext:transcript",
   "allintext:agent memory",
@@ -724,6 +725,48 @@ function buildActiveSearchFilters({
       }),
       label: "URL",
       value: parsed.urlTerms.join(", "),
+    });
+  }
+  if (parsed.excludedTitleTerms.length > 0) {
+    filters.push({
+      clearLabel: "Remove excluded title terms",
+      href: searchHref({
+        query: stripNegativeQueryOperators(query, ["title", "intitle"]),
+        type: typeFilter,
+        mode,
+        sort,
+        time,
+      }),
+      label: "Excludes title",
+      value: parsed.excludedTitleTerms.join(", "),
+    });
+  }
+  if (parsed.excludedBodyTerms.length > 0) {
+    filters.push({
+      clearLabel: "Remove excluded text terms",
+      href: searchHref({
+        query: stripNegativeQueryOperators(query, ["text", "intext"]),
+        type: typeFilter,
+        mode,
+        sort,
+        time,
+      }),
+      label: "Excludes text",
+      value: parsed.excludedBodyTerms.join(", "),
+    });
+  }
+  if (parsed.excludedUrlTerms.length > 0) {
+    filters.push({
+      clearLabel: "Remove excluded URL terms",
+      href: searchHref({
+        query: stripNegativeQueryOperators(query, ["url", "inurl"]),
+        type: typeFilter,
+        mode,
+        sort,
+        time,
+      }),
+      label: "Excludes URL",
+      value: parsed.excludedUrlTerms.join(", "),
     });
   }
   if (parsed.after) {

@@ -523,6 +523,53 @@ test("search user path filters by title operator", () => {
   assert.deepEqual(results.map((result) => result.id), ["title-match"]);
 });
 
+test("search user path excludes scoped title text and URL operators", () => {
+  const parsed = parseSearchQuery("agent -intitle:pricing -intext:sponsored -inurl:archive");
+
+  assert.equal(parsed.cleanQuery, "agent");
+  assert.deepEqual(parsed.excludedTitleTerms, ["pricing"]);
+  assert.deepEqual(parsed.excludedBodyTerms, ["sponsored"]);
+  assert.deepEqual(parsed.excludedUrlTerms, ["archive"]);
+  assert.deepEqual(parsed.excludedTerms, []);
+
+  const results = rankSearchDocuments({
+    query: "agent -intitle:pricing -intext:sponsored -inurl:archive",
+    mode: "hybrid",
+    documents: [
+      {
+        id: "title-excluded",
+        type: "feed",
+        title: "Agent pricing notes",
+        body: "A launch writeup.",
+        url: "https://example.com/releases/agent",
+      },
+      {
+        id: "body-excluded",
+        type: "feed",
+        title: "Agent launch notes",
+        body: "Sponsored coverage of the agent launch.",
+        url: "https://example.com/releases/agent",
+      },
+      {
+        id: "url-excluded",
+        type: "feed",
+        title: "Agent launch notes",
+        body: "A launch writeup.",
+        url: "https://example.com/archive/agent",
+      },
+      {
+        id: "kept",
+        type: "feed",
+        title: "Agent launch notes",
+        body: "A launch writeup.",
+        url: "https://example.com/releases/agent",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["kept"]);
+});
+
 test("search user path supports allintitle operator", () => {
   const parsed = parseSearchQuery("allintitle:agent memory site:example.com");
 

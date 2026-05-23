@@ -55,6 +55,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /site:example\.com/);
   assert.match(searchPage, /-site:example\.com/);
   assert.match(searchPage, /intitle:launch/);
+  assert.match(searchPage, /-intitle:pricing/);
   assert.match(searchPage, /allintitle:agent memory/);
   assert.match(searchPage, /intext:transcript/);
   assert.match(searchPage, /allintext:agent memory/);
@@ -73,6 +74,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /Remove title search terms/);
   assert.match(searchPage, /Remove text search terms/);
   assert.match(searchPage, /Remove URL search terms/);
+  assert.match(searchPage, /Remove excluded title terms/);
   assert.match(searchPage, /Remove excluded sites/);
   assert.match(searchPage, /Remove excluded phrases/);
   assert.match(searchPage, /Remove excluded file types/);
