@@ -52,6 +52,11 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /type:feed/);
   assert.match(searchPage, /after:2026-01-01/);
   assert.match(searchPage, /-pricing/);
+  assert.match(searchPage, /ActiveSearchFilters/);
+  assert.match(searchPage, /Search tools/);
+  assert.match(searchPage, /Clear all/);
+  assert.match(searchPage, /stripQueryOperators/);
+  assert.match(searchPage, /clearAllSearchHref/);
   assert.match(searchPage, /normalizeSearchTime/);
   assert.match(searchForm, /useTransition/);
   assert.match(searchForm, /Searching/);

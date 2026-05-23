@@ -1,7 +1,7 @@
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronLeft, ChevronRight, ExternalLink, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Sparkles, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { SearchForm, type SearchTypeFilter } from "@/components/SearchForm";
 import { getCurrentSession } from "@/lib/auth";
@@ -11,6 +11,7 @@ import {
   normalizeSearchMode,
   normalizeSearchSort,
   normalizeSearchTime,
+  parseSearchQuery,
   relatedSearchSuggestions,
   shouldUseCorrectedSearch,
   type SearchDocumentType,
@@ -52,6 +53,32 @@ const resultTypeLabels: Record<SearchDocumentType, string> = {
   builder: "Builders",
   feed: "Feed",
   digest: "Digests",
+};
+
+const searchModeLabels: Record<SearchMode, string> = {
+  exact: "Exact",
+  hybrid: "Hybrid",
+  semantic: "Semantic",
+};
+
+const searchSortLabels: Record<SearchSort, string> = {
+  newest: "Newest",
+  relevance: "Relevance",
+};
+
+const searchTimeLabels: Record<SearchTimeRange, string> = {
+  any: "Any time",
+  day: "Past day",
+  week: "Past week",
+  month: "Past month",
+  year: "Past year",
+};
+
+type ActiveSearchFilter = {
+  clearLabel: string;
+  href: string;
+  label: string;
+  value: string;
 };
 
 export default async function SearchPage({
@@ -114,6 +141,9 @@ export default async function SearchPage({
     ...relatedSearches,
     ...results.slice(0, 5).map((result) => result.title),
   ];
+  const activeFilters = hasQuery
+    ? buildActiveSearchFilters({ mode, query: activeQuery, sort, time, typeFilter })
+    : [];
   const luckyResult = filteredResults[0];
   if (hasQuery && firstParam(params.lucky) === "1" && luckyResult?.url) {
     redirect(luckyResult.url);
@@ -190,6 +220,9 @@ export default async function SearchPage({
                   ?
                 </div>
               ) : null}
+              {activeFilters.length > 0 ? (
+                <ActiveSearchFilters filters={activeFilters} clearAllHref={clearAllSearchHref(activeQuery)} />
+              ) : null}
               <div className="search-tools-row">
                 {luckyResult?.url ? (
                   <a
@@ -261,6 +294,37 @@ export default async function SearchPage({
         </section>
       </div>
     </AppShell>
+  );
+}
+
+function ActiveSearchFilters({
+  clearAllHref,
+  filters,
+}: {
+  clearAllHref: string;
+  filters: ActiveSearchFilter[];
+}) {
+  return (
+    <section className="search-active-filters" aria-label="Active search filters">
+      <div className="search-active-filters-heading">Search tools</div>
+      <div className="search-filter-chip-row">
+        {filters.map((filter) => (
+          <Link
+            aria-label={filter.clearLabel}
+            className="search-filter-chip"
+            href={filter.href}
+            key={`${filter.label}:${filter.value}`}
+          >
+            <span className="search-filter-label">{filter.label}</span>
+            <span>{filter.value}</span>
+            <X aria-hidden="true" className="h-3.5 w-3.5" />
+          </Link>
+        ))}
+        <Link className="search-filter-clear" href={clearAllHref}>
+          Clear all
+        </Link>
+      </div>
+    </section>
   );
 }
 
@@ -498,6 +562,161 @@ function searchHref({
   if (page && page > 1) params.set("page", String(page));
   const queryString = params.toString();
   return queryString ? `/search?${queryString}` : "/search";
+}
+
+function buildActiveSearchFilters({
+  mode,
+  query,
+  sort,
+  time,
+  typeFilter,
+}: {
+  mode: SearchMode;
+  query: string;
+  sort: SearchSort;
+  time: SearchTimeRange;
+  typeFilter: SearchTypeFilter;
+}) {
+  const parsed = parseSearchQuery(query);
+  const filters: ActiveSearchFilter[] = [];
+
+  if (typeFilter !== "all") {
+    filters.push({
+      clearLabel: `Remove ${resultTypeLabels[typeFilter]} result filter`,
+      href: searchHref({ query, type: "all", mode, sort, time }),
+      label: "Type",
+      value: resultTypeLabels[typeFilter],
+    });
+  }
+  if (mode !== "hybrid") {
+    filters.push({
+      clearLabel: `Remove ${searchModeLabels[mode]} search mode`,
+      href: searchHref({ query, type: typeFilter, mode: "hybrid", sort, time }),
+      label: "Mode",
+      value: searchModeLabels[mode],
+    });
+  }
+  if (time !== "any") {
+    filters.push({
+      clearLabel: `Remove ${searchTimeLabels[time]} time filter`,
+      href: searchHref({ query, type: typeFilter, mode, sort, time: "any" }),
+      label: "Time",
+      value: searchTimeLabels[time],
+    });
+  }
+  if (sort !== "relevance") {
+    filters.push({
+      clearLabel: `Remove ${searchSortLabels[sort]} sort`,
+      href: searchHref({ query, type: typeFilter, mode, sort: "relevance", time }),
+      label: "Sort",
+      value: searchSortLabels[sort],
+    });
+  }
+  if (parsed.site) {
+    filters.push({
+      clearLabel: `Remove site filter ${parsed.site}`,
+      href: searchHref({
+        query: stripQueryOperators(query, ["site"]),
+        type: typeFilter,
+        mode,
+        sort,
+        time,
+      }),
+      label: "Site",
+      value: parsed.site,
+    });
+  }
+  if (parsed.type) {
+    filters.push({
+      clearLabel: `Remove query type ${resultTypeLabels[parsed.type]}`,
+      href: searchHref({
+        query: stripQueryOperators(query, ["type"]),
+        type: typeFilter,
+        mode,
+        sort,
+        time,
+      }),
+      label: "Query type",
+      value: resultTypeLabels[parsed.type],
+    });
+  }
+  if (parsed.after) {
+    const value = formatOperatorDate(parsed.after);
+    filters.push({
+      clearLabel: `Remove after ${value} date filter`,
+      href: searchHref({
+        query: stripQueryOperators(query, ["after"]),
+        type: typeFilter,
+        mode,
+        sort,
+        time,
+      }),
+      label: "After",
+      value,
+    });
+  }
+  if (parsed.before) {
+    const value = formatOperatorDate(parsed.before);
+    filters.push({
+      clearLabel: `Remove before ${value} date filter`,
+      href: searchHref({
+        query: stripQueryOperators(query, ["before"]),
+        type: typeFilter,
+        mode,
+        sort,
+        time,
+      }),
+      label: "Before",
+      value,
+    });
+  }
+  if (parsed.excludedTerms.length > 0) {
+    filters.push({
+      clearLabel: "Remove excluded terms",
+      href: searchHref({
+        query: stripExcludedTerms(query),
+        type: typeFilter,
+        mode,
+        sort,
+        time,
+      }),
+      label: "Excludes",
+      value: parsed.excludedTerms.join(", "),
+    });
+  }
+
+  return filters;
+}
+
+function clearAllSearchHref(query: string) {
+  return searchHref({
+    query: parseSearchQuery(query).cleanQuery,
+    type: "all",
+    mode: "hybrid",
+    sort: "relevance",
+    time: "any",
+  });
+}
+
+function stripQueryOperators(query: string, operators: string[]) {
+  const prefixes = new Set(operators.map((operator) => `${operator.toLowerCase()}:`));
+  return query
+    .split(/\s+/)
+    .filter((token) => !prefixes.has(token.toLowerCase().split(":")[0] + ":"))
+    .join(" ")
+    .trim();
+}
+
+function stripExcludedTerms(query: string) {
+  return query
+    .split(/\s+/)
+    .filter((token) => !(token.startsWith("-") && token.length > 1))
+    .join(" ")
+    .trim();
+}
+
+function formatOperatorDate(date: Date) {
+  return date.toISOString().slice(0, 10);
 }
 
 function formatDisplayUrl(url: string | null | undefined) {
