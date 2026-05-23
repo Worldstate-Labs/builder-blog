@@ -16,6 +16,8 @@ import {
   searchHighlightTerms,
   searchSiteFromUrl,
   shouldUseCorrectedSearch,
+  stripNegativeSearchQueryOperators,
+  stripSearchQueryOperators,
   type SearchDocumentType,
   type SearchMode,
   type SearchSort,
@@ -685,7 +687,7 @@ function buildActiveSearchFilters({
     filters.push({
       clearLabel: `Remove site filter ${parsed.site}`,
       href: searchHref({
-        query: stripQueryOperators(query, ["site"]),
+        query: stripSearchQueryOperators(query, ["site"]),
         type: typeFilter,
         mode,
         sort,
@@ -699,7 +701,7 @@ function buildActiveSearchFilters({
     filters.push({
       clearLabel: "Remove excluded sites",
       href: searchHref({
-        query: stripNegativeQueryOperators(query, ["site"]),
+        query: stripNegativeSearchQueryOperators(query, ["site"]),
         type: typeFilter,
         mode,
         sort,
@@ -716,7 +718,7 @@ function buildActiveSearchFilters({
         ? `Remove file type ${resultTypeLabels[parsed.type]}`
         : `Remove query type ${resultTypeLabels[parsed.type]}`,
       href: searchHref({
-        query: stripQueryOperators(query, ["type", "filetype"]),
+        query: stripSearchQueryOperators(query, ["type", "filetype"]),
         type: typeFilter,
         mode,
         sort,
@@ -730,7 +732,7 @@ function buildActiveSearchFilters({
     filters.push({
       clearLabel: "Remove excluded file types",
       href: searchHref({
-        query: stripNegativeQueryOperators(query, ["type", "filetype"]),
+        query: stripNegativeSearchQueryOperators(query, ["type", "filetype"]),
         type: typeFilter,
         mode,
         sort,
@@ -744,7 +746,7 @@ function buildActiveSearchFilters({
     filters.push({
       clearLabel: "Remove title search terms",
       href: searchHref({
-        query: stripQueryOperators(query, ["title", "intitle", "allintitle"]),
+        query: stripSearchQueryOperators(query, ["title", "intitle", "allintitle"]),
         type: typeFilter,
         mode,
         sort,
@@ -758,7 +760,7 @@ function buildActiveSearchFilters({
     filters.push({
       clearLabel: "Remove text search terms",
       href: searchHref({
-        query: stripQueryOperators(query, ["text", "intext", "allintext"]),
+        query: stripSearchQueryOperators(query, ["text", "intext", "allintext"]),
         type: typeFilter,
         mode,
         sort,
@@ -772,7 +774,7 @@ function buildActiveSearchFilters({
     filters.push({
       clearLabel: "Remove URL search terms",
       href: searchHref({
-        query: stripQueryOperators(query, ["url", "inurl", "allinurl"]),
+        query: stripSearchQueryOperators(query, ["url", "inurl", "allinurl"]),
         type: typeFilter,
         mode,
         sort,
@@ -808,7 +810,7 @@ function buildActiveSearchFilters({
     filters.push({
       clearLabel: "Remove excluded title terms",
       href: searchHref({
-        query: stripNegativeQueryOperators(query, ["title", "intitle", "allintitle"]),
+        query: stripNegativeSearchQueryOperators(query, ["title", "intitle", "allintitle"]),
         type: typeFilter,
         mode,
         sort,
@@ -826,7 +828,7 @@ function buildActiveSearchFilters({
     filters.push({
       clearLabel: "Remove excluded text terms",
       href: searchHref({
-        query: stripNegativeQueryOperators(query, ["text", "intext", "allintext"]),
+        query: stripNegativeSearchQueryOperators(query, ["text", "intext", "allintext"]),
         type: typeFilter,
         mode,
         sort,
@@ -844,7 +846,7 @@ function buildActiveSearchFilters({
     filters.push({
       clearLabel: "Remove excluded URL terms",
       href: searchHref({
-        query: stripNegativeQueryOperators(query, ["url", "inurl", "allinurl"]),
+        query: stripNegativeSearchQueryOperators(query, ["url", "inurl", "allinurl"]),
         type: typeFilter,
         mode,
         sort,
@@ -859,7 +861,7 @@ function buildActiveSearchFilters({
     filters.push({
       clearLabel: `Remove after ${value} date filter`,
       href: searchHref({
-        query: stripQueryOperators(query, ["after"]),
+        query: stripSearchQueryOperators(query, ["after"]),
         type: typeFilter,
         mode,
         sort,
@@ -874,7 +876,7 @@ function buildActiveSearchFilters({
     filters.push({
       clearLabel: `Remove before ${value} date filter`,
       href: searchHref({
-        query: stripQueryOperators(query, ["before"]),
+        query: stripSearchQueryOperators(query, ["before"]),
         type: typeFilter,
         mode,
         sort,
@@ -926,38 +928,6 @@ function clearAllSearchHref(query: string) {
   });
 }
 
-function stripQueryOperators(query: string, operators: string[]) {
-  const prefixes = new Set(operators.map((operator) => `${operator.toLowerCase()}:`));
-  return query
-    .split(/\s+/)
-    .filter((token) => !prefixes.has(token.toLowerCase().split(":")[0] + ":"))
-    .join(" ")
-    .trim();
-}
-
-function stripNegativeQueryOperators(query: string, operators: string[]) {
-  const prefixes = new Set(operators.map((operator) => `-${operator.toLowerCase()}:`));
-  const tokens = query.split(/\s+/);
-  const kept: string[] = [];
-
-  for (let index = 0; index < tokens.length; index += 1) {
-    const token = tokens[index];
-    const prefix = token.toLowerCase().split(":")[0] + ":";
-    if (!prefixes.has(prefix)) {
-      kept.push(token);
-      continue;
-    }
-
-    if (prefix.startsWith("-allin")) {
-      while (index + 1 < tokens.length && !isQueryOperatorBoundaryToken(tokens[index + 1])) {
-        index += 1;
-      }
-    }
-  }
-
-  return kept.join(" ").trim();
-}
-
 function stripExcludedTerms(query: string) {
   const excludedPhrases: string[] = [];
   const preservedQuery = query.replace(/(^|\s)-"([^"]+)"/g, (match, prefix: string) => {
@@ -999,29 +969,6 @@ function formatOperatorDate(date: Date) {
 
 function formatOptionalOperatorDate(date: Date | null) {
   return date ? formatOperatorDate(date) : "";
-}
-
-function isQueryOperatorBoundaryToken(token: string) {
-  const lower = token.toLowerCase();
-  return (
-    lower === "or" ||
-    lower.startsWith("-") ||
-    lower.startsWith("+") ||
-    lower.startsWith("site:") ||
-    lower.startsWith("text:") ||
-    lower.startsWith("intext:") ||
-    lower.startsWith("allintext:") ||
-    lower.startsWith("title:") ||
-    lower.startsWith("intitle:") ||
-    lower.startsWith("allintitle:") ||
-    lower.startsWith("url:") ||
-    lower.startsWith("inurl:") ||
-    lower.startsWith("allinurl:") ||
-    lower.startsWith("type:") ||
-    lower.startsWith("filetype:") ||
-    lower.startsWith("after:") ||
-    lower.startsWith("before:")
-  );
 }
 
 function formatDisplayUrl(url: string | null | undefined) {

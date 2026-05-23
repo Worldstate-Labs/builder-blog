@@ -74,7 +74,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /More from this source/);
   assert.match(searchPage, /Search tools/);
   assert.match(searchPage, /Clear all/);
-  assert.match(searchPage, /stripQueryOperators/);
+  assert.match(searchPage, /stripSearchQueryOperators/);
   assert.match(searchPage, /clearAllSearchHref/);
   assert.match(searchPage, /Remove title search terms/);
   assert.match(searchPage, /Remove text search terms/);
@@ -127,6 +127,15 @@ test("search suggestions API exists for autocomplete-style queries", () => {
   assert.match(suggestRoute, /relatedSearchSuggestions/);
   assert.match(suggestRoute, /searchUserLibrary/);
   assert.match(suggestRoute, /NextResponse/);
+});
+
+test("user library search can fetch operator-only candidate sets", () => {
+  const userSearch = source("src/lib/user-search.ts");
+
+  assert.match(userSearch, /terms\.length > 0/);
+  assert.match(userSearch, /builderSearchConditions\(terms\)/);
+  assert.match(userSearch, /feedSearchConditions\(terms\)/);
+  assert.match(userSearch, /digestSearchConditions\(terms\)/);
 });
 
 test("heavy route sections have route-specific loading fallbacks", () => {

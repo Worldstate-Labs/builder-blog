@@ -458,6 +458,38 @@ export function withDateSearchOperators(
     .join(" ");
 }
 
+export function stripSearchQueryOperators(query: string, operators: string[]) {
+  const prefixes = new Set(operators.map((operator) => `${operator.toLowerCase()}:`));
+  return stripOperatorTokens(query, prefixes, "allin");
+}
+
+export function stripNegativeSearchQueryOperators(query: string, operators: string[]) {
+  const prefixes = new Set(operators.map((operator) => `-${operator.toLowerCase()}:`));
+  return stripOperatorTokens(query, prefixes, "-allin");
+}
+
+function stripOperatorTokens(query: string, prefixes: Set<string>, allInPrefix: string) {
+  const tokens = query.split(/\s+/);
+  const kept: string[] = [];
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    const prefix = token.toLowerCase().split(":")[0] + ":";
+    if (!prefixes.has(prefix)) {
+      kept.push(token);
+      continue;
+    }
+
+    if (prefix.startsWith(allInPrefix)) {
+      while (index + 1 < tokens.length && !isOperatorBoundaryToken(tokens[index + 1])) {
+        index += 1;
+      }
+    }
+  }
+
+  return kept.join(" ").trim();
+}
+
 export function didYouMeanSearch(query: string) {
   const parsed = parseSearchQuery(query);
   if (!parsed.cleanQuery) return null;
@@ -544,7 +576,8 @@ export function rankSearchDocuments({
 }): SearchResult[] {
   const parsedQuery = parseSearchQuery(query);
   const normalizedQuery = parsedQuery.cleanQuery;
-  if (!normalizedQuery) return [];
+  const isFilterOnlyQuery = !normalizedQuery && hasSearchFilters(parsedQuery);
+  if (!normalizedQuery && !isFilterOnlyQuery) return [];
 
   const queryTokens = tokenize(normalizedQuery);
   const weightedTerms =
@@ -561,8 +594,9 @@ export function rankSearchDocuments({
       const proximityScore = proximityMatchScore(parsedQuery.proximityPairs, title, body);
       const semanticScore =
         mode === "exact" ? 0 : semanticMatchScore(weightedTerms, title, body);
-      const score =
-        mode === "exact"
+      const score = isFilterOnlyQuery
+        ? 1
+        : mode === "exact"
           ? Math.max(exactScore, phraseScore, proximityScore)
           : mode === "hybrid"
             ? exactScore * 1.35 + phraseScore * 1.35 + proximityScore * 1.2 + semanticScore
@@ -588,6 +622,32 @@ export function rankSearchDocuments({
       return a.title.localeCompare(b.title);
     })
     .slice(0, limit);
+}
+
+function hasSearchFilters(parsedQuery: ParsedSearchQuery) {
+  return Boolean(
+    parsedQuery.requiredPhrases.length ||
+      parsedQuery.excludedPhrases.length ||
+      parsedQuery.requiredOperatorTerms.length ||
+      parsedQuery.excludedTerms.length ||
+      parsedQuery.orTerms.length ||
+      parsedQuery.proximityPairs.length ||
+      parsedQuery.bodyTerms.length ||
+      parsedQuery.titleTerms.length ||
+      parsedQuery.urlTerms.length ||
+      parsedQuery.excludedBodyTerms.length ||
+      parsedQuery.excludedTitleTerms.length ||
+      parsedQuery.excludedUrlTerms.length ||
+      parsedQuery.excludedAllBodyTermGroups.length ||
+      parsedQuery.excludedAllTitleTermGroups.length ||
+      parsedQuery.excludedAllUrlTermGroups.length ||
+      parsedQuery.site ||
+      parsedQuery.excludedSites.length ||
+      parsedQuery.excludedTypes.length ||
+      parsedQuery.type ||
+      parsedQuery.after ||
+      parsedQuery.before,
+  );
 }
 
 function documentMatchesFilters(
@@ -754,6 +814,7 @@ function isOperatorBoundaryToken(token: string) {
   return (
     lower === "or" ||
     lower.startsWith("-") ||
+    lower.startsWith("+") ||
     parseAroundOperator(lower) !== null ||
     lower.startsWith("site:") ||
     lower.startsWith("text:") ||

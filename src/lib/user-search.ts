@@ -59,13 +59,14 @@ export async function searchUserLibrary({
 
   const parsedQuery = parseSearchQuery(trimmedQuery);
   const terms = candidateSearchTerms(trimmedQuery, normalizedMode);
+  const hasCandidateTerms = terms.length > 0;
   const typeFilter = parsedQuery.type;
   const poolBuilderIds = await activePoolBuilderIds(userId);
   const [builders, feedItems, digests] = await Promise.all([
     typeFilter && typeFilter !== "builder" ? Promise.resolve([]) : prisma.builder.findMany({
       where: {
         id: { in: poolBuilderIds },
-        OR: builderSearchConditions(terms),
+        ...(hasCandidateTerms ? { OR: builderSearchConditions(terms) } : {}),
       },
       select: {
         id: true,
@@ -86,7 +87,7 @@ export async function searchUserLibrary({
     typeFilter && typeFilter !== "feed" ? Promise.resolve([]) : prisma.feedItem.findMany({
       where: {
         builderId: { in: poolBuilderIds },
-        OR: feedSearchConditions(terms),
+        ...(hasCandidateTerms ? { OR: feedSearchConditions(terms) } : {}),
       },
       include: { builder: { select: { name: true } } },
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
@@ -95,7 +96,7 @@ export async function searchUserLibrary({
     typeFilter && typeFilter !== "digest" ? Promise.resolve([]) : prisma.digest.findMany({
       where: {
         userId,
-        OR: digestSearchConditions(terms),
+        ...(hasCandidateTerms ? { OR: digestSearchConditions(terms) } : {}),
       },
       orderBy: { createdAt: "desc" },
       take: searchLimits.digest,

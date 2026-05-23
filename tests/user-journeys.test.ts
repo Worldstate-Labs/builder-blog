@@ -32,6 +32,8 @@ import {
   searchSiteFromUrl,
   searchHighlightTerms,
   shouldUseCorrectedSearch,
+  stripNegativeSearchQueryOperators,
+  stripSearchQueryOperators,
   withSiteSearchOperator,
   normalizeSearchSort,
   normalizeSearchTime,
@@ -418,6 +420,33 @@ test("search result refinement builds source-limited queries", () => {
   );
 });
 
+test("search tool clearing removes whole all-in operator groups", () => {
+  assert.equal(
+    stripSearchQueryOperators("allintitle:agent memory site:example.com", [
+      "title",
+      "intitle",
+      "allintitle",
+    ]),
+    "site:example.com",
+  );
+  assert.equal(
+    stripSearchQueryOperators("agent allintext:retrieval quality after:2026-01-01", [
+      "text",
+      "intext",
+      "allintext",
+    ]),
+    "agent after:2026-01-01",
+  );
+  assert.equal(
+    stripNegativeSearchQueryOperators("agent -allintitle:pricing launch site:example.com", [
+      "title",
+      "intitle",
+      "allintitle",
+    ]),
+    "agent site:example.com",
+  );
+});
+
 test("search user path parses filetype as a google-style type operator", () => {
   const parsed = parseSearchQuery("agent memory filetype:digests");
 
@@ -508,6 +537,31 @@ test("search user path excludes sites with negative site operator", () => {
   });
 
   assert.deepEqual(results.map((result) => result.id), ["kept"]);
+});
+
+test("search user path supports operator-only result sets", () => {
+  const results = rankSearchDocuments({
+    query: "site:example.com",
+    mode: "hybrid",
+    documents: [
+      {
+        id: "source",
+        type: "feed",
+        title: "Agent memory launch",
+        body: "A launch note from the source site.",
+        url: "https://example.com/agent-memory",
+      },
+      {
+        id: "other",
+        type: "feed",
+        title: "Agent memory launch",
+        body: "A launch note from a different site.",
+        url: "https://other.test/agent-memory",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["source"]);
 });
 
 test("search user path excludes quoted phrases with negative phrase operator", () => {
