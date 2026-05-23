@@ -12,26 +12,27 @@ datasource db {
 }
 
 model User {
-  id                 String              @id @default(cuid())
-  name               String?
-  email              String?             @unique
-  emailVerified      DateTime?
-  image              String?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  accounts           Account[]
-  sessions           Session[]
-  subscriptions      Subscription[]
-  digests            Digest[]
-  agentTokens        AgentToken[]
-  deviceLogins       DeviceLogin[]
-  personalBuilders   Builder[]           @relation("PersonalBuilders")
-  builderPoolEntries BuilderPoolEntry[]
-  builderCrawls      UserBuilderCrawl[]
-  libraryHubEntries  LibraryHubEntry[]
-  libraryImports     LibraryImport[]
-  feedPreference     UserFeedPreference?
-  feedReads          FeedRead[]
+  id                      String                   @id @default(cuid())
+  name                    String?
+  email                   String?                  @unique
+  emailVerified           DateTime?
+  image                   String?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  accounts                Account[]
+  sessions                Session[]
+  subscriptions           Subscription[]
+  digests                 Digest[]
+  agentTokens             AgentToken[]
+  deviceLogins            DeviceLogin[]
+  personalBuilders        Builder[]                @relation("PersonalBuilders")
+  builderPoolEntries      BuilderPoolEntry[]
+  builderCrawls           UserBuilderCrawl[]
+  libraryHubEntries       LibraryHubEntry[]
+  libraryImports          LibraryImport[]
+  feedPreference          UserFeedPreference?
+  feedReads               FeedRead[]
+  recommendationSnapshots RecommendationSnapshot[]
 }
 
 model Account {
@@ -184,20 +185,21 @@ model Subscription {
 }
 
 model FeedItem {
-  id           String       @id @default(cuid())
-  builderId    String?
-  kind         FeedItemKind
-  externalId   String
-  title        String?
-  body         String
-  url          String
-  publishedAt  DateTime?
-  sourceName   String?
-  crawlingTool String?
-  rawJson      String?
-  createdAt    DateTime     @default(now())
-  builder      Builder?     @relation(fields: [builderId], references: [id], onDelete: SetNull)
-  reads        FeedRead[]
+  id                          String                       @id @default(cuid())
+  builderId                   String?
+  kind                        FeedItemKind
+  externalId                  String
+  title                       String?
+  body                        String
+  url                         String
+  publishedAt                 DateTime?
+  sourceName                  String?
+  crawlingTool                String?
+  rawJson                     String?
+  createdAt                   DateTime                     @default(now())
+  builder                     Builder?                     @relation(fields: [builderId], references: [id], onDelete: SetNull)
+  reads                       FeedRead[]
+  recommendationSnapshotItems RecommendationSnapshotItem[]
 
   @@unique([builderId, kind, externalId])
   @@index([builderId, publishedAt])
@@ -227,6 +229,32 @@ model FeedRead {
   @@unique([userId, feedItemId])
   @@index([userId, readAt])
   @@index([feedItemId])
+}
+
+model RecommendationSnapshot {
+  id        String                       @id @default(cuid())
+  userId    String
+  reason    String                       @default("recommendation")
+  createdAt DateTime                     @default(now())
+  user      User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     RecommendationSnapshotItem[]
+
+  @@index([userId, createdAt])
+}
+
+model RecommendationSnapshotItem {
+  snapshotId String
+  feedItemId String
+  rank       Int
+  score      Float
+  reasons    String
+  createdAt  DateTime               @default(now())
+  snapshot   RecommendationSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  feedItem   FeedItem               @relation(fields: [feedItemId], references: [id], onDelete: Cascade)
+
+  @@id([snapshotId, feedItemId])
+  @@index([feedItemId])
+  @@index([snapshotId, rank])
 }
 
 model Digest {

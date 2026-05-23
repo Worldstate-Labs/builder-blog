@@ -1,5 +1,6 @@
 import { formatDistanceToNow } from "date-fns";
 import { ExternalLink, Eye } from "lucide-react";
+import { SourceBadge } from "@/components/SourceBadge";
 
 export function FeedCard({
   title,
@@ -8,9 +9,11 @@ export function FeedCard({
   url,
   date,
   crawlingTool,
+  sourceType,
 }: {
   title?: string | null;
   source?: string | null;
+  sourceType?: string | null;
   body: string;
   url: string;
   date?: Date | null;
@@ -22,6 +25,7 @@ export function FeedCard({
         <summary className="item-summary">
           <span className="min-w-0">
             <span className="item-kicker">
+              <SourceBadge sourceType={sourceType} />
               <span>{source ?? "Unknown source"}</span>
               {date ? <span>{formatDistanceToNow(date, { addSuffix: true })}</span> : null}
               <span>{crawlingTool ?? "Legacy crawl/import"}</span>

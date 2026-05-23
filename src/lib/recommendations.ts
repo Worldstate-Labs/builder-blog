@@ -2,6 +2,7 @@ import type { BuilderKind, FeedItemKind, Prisma } from "@prisma/client";
 
 const candidateWindow = 1000;
 const defaultRecommendationLimit = 20;
+const defaultTimelineSnapshotLimit = 3;
 
 type RecommendationBuilder = {
   id: string;
@@ -50,22 +51,91 @@ export type RecommendationResult = {
   reasons: string[];
 };
 
+export type RecommendationSnapshotResult = {
+  id: string;
+  createdAt: Date;
+  reason: string;
+  items: Array<RecommendationResult & { rank: number; readAt: Date | null }>;
+};
+
+export async function getRecommendationTimeline({
+  userId,
+  snapshotLimit = defaultTimelineSnapshotLimit,
+  itemLimit = defaultRecommendationLimit,
+}: {
+  userId: string;
+  snapshotLimit?: number;
+  itemLimit?: number;
+}) {
+  const { prisma } = await import("@/lib/prisma");
+  const snapshots = await prisma.recommendationSnapshot.findMany({
+    where: { userId },
+    include: snapshotInclude(userId),
+    orderBy: { createdAt: "desc" },
+    take: Math.max(1, Math.floor(snapshotLimit)),
+  });
+
+  if (snapshots.length > 0) {
+    const unreadRemaining = await unreadCandidateCount(userId);
+    return {
+      snapshots: snapshots.map((snapshot) => formatSnapshot(snapshot)),
+      unreadRemaining,
+      strategy: "snapshot-personalized-v1" as const,
+    };
+  }
+
+  const created = await createRecommendationSnapshot({
+    userId,
+    limit: itemLimit,
+    reason: "initial",
+  });
+
+  return {
+    snapshots: created.snapshot ? [created.snapshot] : [],
+    unreadRemaining: created.unreadRemaining,
+    strategy: "snapshot-personalized-v1" as const,
+  };
+}
+
 export async function getRecommendationFeed({
   userId,
   limit = defaultRecommendationLimit,
-  offset = 0,
+  reason = "recommendation",
 }: {
   userId: string;
   limit?: number;
-  offset?: number;
+  reason?: string;
 }) {
+  const created = await createRecommendationSnapshot({ userId, limit, reason });
+  return {
+    items: created.snapshot?.items ?? [],
+    snapshot: created.snapshot,
+    nextOffset: created.snapshot?.items.length ? 1 : null,
+    unreadRemaining: created.unreadRemaining,
+    candidateCount: created.candidateCount,
+    strategy: "snapshot-personalized-v1" as const,
+  };
+}
+
+export async function createRecommendationSnapshot({
+  userId,
+  limit = defaultRecommendationLimit,
+  reason = "recommendation",
+}: {
+  userId: string;
+  limit?: number;
+  reason?: string;
+}): Promise<{
+  snapshot: RecommendationSnapshotResult | null;
+  unreadRemaining: number;
+  candidateCount: number;
+}> {
   const normalizedLimit = Math.min(50, Math.max(1, Math.floor(limit)));
-  const normalizedOffset = Math.max(0, Math.floor(offset));
   const [{ activePoolBuilderIds }, { prisma }] = await Promise.all([
     import("@/lib/builder-pool"),
     import("@/lib/prisma"),
   ]);
-  const [poolBuilderIds, hubRows, preference, user, subscriptions, reads] =
+  const [poolBuilderIds, hubRows, preference, user, subscriptions, reads, snapshotRows] =
     await Promise.all([
       activePoolBuilderIds(userId),
       prisma.libraryHubItem.findMany({ select: { builderId: true } }),
@@ -90,6 +160,11 @@ export async function getRecommendationFeed({
         orderBy: { readAt: "desc" },
         take: 200,
       }),
+      prisma.recommendationSnapshotItem.findMany({
+        where: { snapshot: { userId } },
+        select: { feedItemId: true },
+        take: 5000,
+      }),
     ]);
   const eligibleBuilderIds = uniqueIds([
     ...poolBuilderIds,
@@ -98,19 +173,27 @@ export async function getRecommendationFeed({
 
   if (eligibleBuilderIds.length === 0) {
     return {
-      items: [],
-      nextOffset: null,
+      snapshot: null,
       unreadRemaining: 0,
       candidateCount: 0,
-      strategy: "personalized-v1" as const,
     };
   }
 
-  const where: Prisma.FeedItemWhereInput = {
+  const unreadWhere: Prisma.FeedItemWhereInput = {
     builderId: { in: eligibleBuilderIds },
     reads: { none: { userId } },
   };
-  const [candidateCount, candidates] = await Promise.all([
+  const alreadySnapshottedFeedItemIds = uniqueIds(
+    snapshotRows.map((row) => row.feedItemId),
+  );
+  const where: Prisma.FeedItemWhereInput = {
+    ...unreadWhere,
+    ...(alreadySnapshottedFeedItemIds.length > 0
+      ? { id: { notIn: alreadySnapshottedFeedItemIds } }
+      : {}),
+  };
+  const [unreadRemaining, newCandidateCount, candidates] = await Promise.all([
+    prisma.feedItem.count({ where: unreadWhere }),
     prisma.feedItem.count({ where }),
     prisma.feedItem.findMany({
       where,
@@ -133,7 +216,7 @@ export async function getRecommendationFeed({
         },
       },
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-      take: Math.max(candidateWindow, normalizedOffset + normalizedLimit * 3),
+      take: Math.max(candidateWindow, normalizedLimit * 3),
     }),
   ]);
   const signals = buildRecommendationSignals({
@@ -146,19 +229,131 @@ export async function getRecommendationFeed({
   const ranked = candidates
     .map((item) => scoreRecommendation({ item, signals }))
     .sort((a, b) => b.score - a.score || compareDates(b.item, a.item));
-  const page = ranked.slice(normalizedOffset, normalizedOffset + normalizedLimit);
-  const nextOffset =
-    normalizedOffset + page.length < ranked.length
-      ? normalizedOffset + page.length
-      : null;
+  const page = ranked.slice(0, normalizedLimit);
+
+  if (page.length === 0) {
+    return {
+      snapshot: null,
+      unreadRemaining,
+      candidateCount: newCandidateCount,
+    };
+  }
+
+  const snapshot = await prisma.recommendationSnapshot.create({
+    data: {
+      userId,
+      reason,
+      items: {
+        create: page.map((result, index) => ({
+          feedItemId: result.item.id,
+          rank: index + 1,
+          score: result.score,
+          reasons: JSON.stringify(result.reasons),
+        })),
+      },
+    },
+    include: snapshotInclude(userId),
+  });
 
   return {
-    items: page,
-    nextOffset,
-    unreadRemaining: candidateCount,
-    candidateCount: ranked.length,
-    strategy: "personalized-v1" as const,
+    snapshot: formatSnapshot(snapshot),
+    unreadRemaining,
+    candidateCount: newCandidateCount,
   };
+}
+
+async function unreadCandidateCount(userId: string) {
+  const [{ activePoolBuilderIds }, { prisma }] = await Promise.all([
+    import("@/lib/builder-pool"),
+    import("@/lib/prisma"),
+  ]);
+  const [poolBuilderIds, hubRows] = await Promise.all([
+    activePoolBuilderIds(userId),
+    prisma.libraryHubItem.findMany({ select: { builderId: true } }),
+  ]);
+  const eligibleBuilderIds = uniqueIds([
+    ...poolBuilderIds,
+    ...hubRows.map((row) => row.builderId),
+  ]);
+  if (eligibleBuilderIds.length === 0) return 0;
+
+  return prisma.feedItem.count({
+    where: {
+      builderId: { in: eligibleBuilderIds },
+      reads: { none: { userId } },
+    },
+  });
+}
+
+function snapshotInclude(userId: string) {
+  return {
+    items: {
+      include: {
+        feedItem: {
+          include: {
+            builder: {
+              include: {
+                hubItems: {
+                  include: {
+                    hubEntry: {
+                      select: {
+                        name: true,
+                        description: true,
+                        importCount: true,
+                        viewCount: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            reads: {
+              where: { userId },
+              select: { readAt: true },
+              take: 1,
+            },
+          },
+        },
+      },
+      orderBy: { rank: "asc" as const },
+    },
+  };
+}
+
+function formatSnapshot(snapshot: {
+  id: string;
+  createdAt: Date;
+  reason: string;
+  items: Array<{
+    rank: number;
+    score: number;
+    reasons: string;
+    feedItem: RecommendationCandidate & { reads?: { readAt: Date }[] };
+  }>;
+}): RecommendationSnapshotResult {
+  return {
+    id: snapshot.id,
+    createdAt: snapshot.createdAt,
+    reason: snapshot.reason,
+    items: snapshot.items.map((item) => ({
+      item: item.feedItem,
+      rank: item.rank,
+      score: item.score,
+      reasons: parseReasons(item.reasons),
+      readAt: item.feedItem.reads?.[0]?.readAt ?? null,
+    })),
+  };
+}
+
+function parseReasons(value: string) {
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((reason): reason is string => typeof reason === "string")
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 export function buildRecommendationSignals({

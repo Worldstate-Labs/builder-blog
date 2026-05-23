@@ -11,11 +11,11 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const limit = Number(url.searchParams.get("limit") ?? "20");
-  const offset = Number(url.searchParams.get("offset") ?? "0");
+  const direction = url.searchParams.get("direction") === "prepend" ? "prepend" : "append";
   const feed = await getRecommendationFeed({
     userId: session.user.id,
     limit,
-    offset,
+    reason: direction,
   });
 
   return NextResponse.json(feed);
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing feed item" }, { status: 404 });
   }
 
-  await prisma.feedRead.upsert({
+  const read = await prisma.feedRead.upsert({
     where: {
       userId_feedItemId: {
         userId: session.user.id,
@@ -59,5 +59,5 @@ export async function POST(request: Request) {
     },
   });
 
-  return NextResponse.json({ status: "ok" });
+  return NextResponse.json({ status: "ok", readAt: read.readAt.toISOString() });
 }

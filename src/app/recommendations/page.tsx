@@ -4,18 +4,21 @@ import { AppShell } from "@/components/AppShell";
 import {
   RecommendationFeed,
   type RecommendationFeedEntry,
+  type RecommendationSnapshotEntry,
 } from "@/components/RecommendationFeed";
 import { getCurrentSession } from "@/lib/auth";
-import { getRecommendationFeed, type RecommendationResult } from "@/lib/recommendations";
+import {
+  getRecommendationTimeline,
+  type RecommendationSnapshotResult,
+} from "@/lib/recommendations";
 
 export default async function RecommendationsPage() {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
 
-  const feed = await getRecommendationFeed({
+  const feed = await getRecommendationTimeline({
     userId: session.user.id,
-    limit: 20,
-    offset: 0,
+    itemLimit: 20,
   });
 
   return (
@@ -35,30 +38,43 @@ export default async function RecommendationsPage() {
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[var(--muted-strong)]">
               Recommendations rank crawled posts from every shared Hub library
-              and your own active library, then remove posts after you read
-              them.
+              and your own active library into saved snapshots. Reading a post
+              updates future recommendation requests without changing the
+              snapshot you are looking at.
             </p>
           </div>
           <div className="stats-panel">
             <Stat icon={Sparkles} label="Unread candidates" value={feed.unreadRemaining} />
-            <Stat icon={UsersRound} label="Ranked now" value={feed.candidateCount} />
-            <Stat icon={Unlink} label="Read repeats" value="Hidden" />
+            <Stat icon={UsersRound} label="Snapshots" value={feed.snapshots.length} />
+            <Stat icon={Unlink} label="Read repeats" value="Filtered next" />
           </div>
         </section>
 
         <RecommendationFeed
-          initialItems={feed.items.map(serializeRecommendation)}
-          initialNextOffset={feed.nextOffset}
+          initialSnapshots={feed.snapshots.map(serializeSnapshot)}
         />
       </div>
     </AppShell>
   );
 }
 
-function serializeRecommendation(result: RecommendationResult): RecommendationFeedEntry {
+function serializeSnapshot(snapshot: RecommendationSnapshotResult): RecommendationSnapshotEntry {
+  return {
+    id: snapshot.id,
+    createdAt: snapshot.createdAt.toISOString(),
+    reason: snapshot.reason,
+    items: snapshot.items.map(serializeRecommendation),
+  };
+}
+
+function serializeRecommendation(
+  result: RecommendationSnapshotResult["items"][number],
+): RecommendationFeedEntry {
   return {
     score: result.score,
     reasons: result.reasons,
+    rank: result.rank,
+    readAt: result.readAt?.toISOString() ?? null,
     item: {
       id: result.item.id,
       title: result.item.title,
@@ -72,6 +88,9 @@ function serializeRecommendation(result: RecommendationResult): RecommendationFe
         ? {
             name: result.item.builder.name,
             sourceType: result.item.builder.sourceType,
+            kind: result.item.builder.kind,
+            sourceUrl: result.item.builder.sourceUrl,
+            crawlUrl: result.item.builder.crawlUrl,
           }
         : null,
     },

@@ -5,13 +5,13 @@ import { Download, Eye, LibraryBig, UsersRound } from "lucide-react";
 import { importHubLibrariesAction } from "@/app/actions";
 import { AppShell } from "@/components/AppShell";
 import { FormSubmitButton } from "@/components/FormSubmitButton";
+import { SourceBadge } from "@/components/SourceBadge";
 import { getCurrentSession } from "@/lib/auth";
 import {
   recordLibraryHubViews,
   syncCentralLibraryHub,
 } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
-import { builderSourceLabel } from "@/lib/source-registry";
 
 export default async function LibraryHubPage() {
   const session = await getCurrentSession();
@@ -122,7 +122,7 @@ export default async function LibraryHubPage() {
                   {library.items.map((item) => (
                     <div className="hub-builder-row" key={item.builderId}>
                       <span className="min-w-0 truncate">{item.builder.name}</span>
-                      <span className="kind-pill">{builderSourceLabel(item.builder)}</span>
+                      <SourceBadge builder={item.builder} />
                     </div>
                   ))}
                   {library._count.items > library.items.length ? (

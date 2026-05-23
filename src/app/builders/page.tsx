@@ -12,9 +12,10 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { FeedCard } from "@/components/FeedCard";
 import { FormSubmitButton } from "@/components/FormSubmitButton";
+import { SourceBadge } from "@/components/SourceBadge";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { builderSourceLabel, feedItemKindLabel } from "@/lib/source-registry";
+import { feedItemKindLabel } from "@/lib/source-registry";
 
 const perBuilderFeedItemLimit = 8;
 
@@ -326,6 +327,7 @@ async function RecentCrawledContent({
             key={item.id}
             title={item.title}
             source={item.builder?.name ?? item.sourceName}
+            sourceType={item.builder?.sourceType}
             body={item.body}
             url={item.url}
             date={item.publishedAt ?? item.createdAt}
@@ -445,7 +447,7 @@ function BuilderInfo({
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="font-serif text-2xl">{builder.name}</h3>
-        <span className="kind-pill">{builderSourceLabel(builder)}</span>
+        <SourceBadge builder={builder} />
         <span className="sub-pill">{status}</span>
       </div>
       <p className="mt-2 truncate text-sm text-[var(--muted)]">
@@ -479,6 +481,7 @@ function BuilderFeedItems({ builder }: { builder: BuilderWithCount }) {
           <article key={item.id} className="builder-post-row">
             <div className="min-w-0">
               <div className="item-kicker">
+                <SourceBadge builder={builder} />
                 <span>{feedItemKindLabel(item.kind)}</span>
                 {item.publishedAt ? (
                   <span>Published {item.publishedAt.toLocaleString()}</span>
