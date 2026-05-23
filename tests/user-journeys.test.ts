@@ -410,6 +410,38 @@ test("search user path excludes sites with negative site operator", () => {
   assert.deepEqual(results.map((result) => result.id), ["kept"]);
 });
 
+test("search user path excludes quoted phrases with negative phrase operator", () => {
+  const parsed = parseSearchQuery('agent -"memory leak"');
+
+  assert.equal(parsed.cleanQuery, "agent");
+  assert.deepEqual(parsed.phrases, []);
+  assert.deepEqual(parsed.excludedPhrases, ["memory leak"]);
+  assert.deepEqual(parsed.excludedTerms, []);
+
+  const results = rankSearchDocuments({
+    query: 'agent -"memory leak"',
+    mode: "exact",
+    documents: [
+      {
+        id: "excluded",
+        type: "feed",
+        title: "Agent incident",
+        body: "The memory leak affected the launch agent.",
+        url: "https://example.com/incidents/memory-leak",
+      },
+      {
+        id: "kept",
+        type: "feed",
+        title: "Agent memory guide",
+        body: "Memory tuning avoids leak reports in the release notes.",
+        url: "https://example.com/guides/agent-memory",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["kept"]);
+});
+
 test("search user path filters by filetype operator", () => {
   const results = rankSearchDocuments({
     query: "agent memory filetype:digest",

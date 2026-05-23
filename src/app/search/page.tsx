@@ -44,6 +44,7 @@ const advancedSearchExamples = [
   '"agent memory"',
   '"agent * memory"',
   "agent memory -pricing",
+  'agent -"memory leak"',
   "agent OR embedding",
   "agent AROUND(3) memory",
   "agent memory site:example.com",
@@ -754,6 +755,20 @@ function buildActiveSearchFilters({
       value: parsed.excludedTerms.join(", "),
     });
   }
+  if (parsed.excludedPhrases.length > 0) {
+    filters.push({
+      clearLabel: "Remove excluded phrases",
+      href: searchHref({
+        query: stripExcludedPhrases(query),
+        type: typeFilter,
+        mode,
+        sort,
+        time,
+      }),
+      label: "Excludes phrases",
+      value: parsed.excludedPhrases.map((phrase) => `"${phrase}"`).join(", "),
+    });
+  }
 
   return filters;
 }
@@ -787,10 +802,28 @@ function stripNegativeQueryOperators(query: string, operators: string[]) {
 }
 
 function stripExcludedTerms(query: string) {
-  return query
+  const excludedPhrases: string[] = [];
+  const preservedQuery = query.replace(/(^|\s)-"([^"]+)"/g, (match, prefix: string) => {
+    const placeholder = `__excluded_phrase_${excludedPhrases.length}__`;
+    excludedPhrases.push(match.trim());
+    return `${prefix}${placeholder}`;
+  });
+
+  const stripped = preservedQuery
     .split(/\s+/)
     .filter((token) => !(token.startsWith("-") && token.length > 1))
     .join(" ")
+    .trim();
+
+  return excludedPhrases
+    .reduce((value, phrase, index) => value.replace(`__excluded_phrase_${index}__`, phrase), stripped)
+    .trim();
+}
+
+function stripExcludedPhrases(query: string) {
+  return query
+    .replace(/(^|\s)-"([^"]+)"/g, "$1")
+    .replace(/\s+/g, " ")
     .trim();
 }
 

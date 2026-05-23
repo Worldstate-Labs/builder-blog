@@ -29,6 +29,7 @@ export type ParsedSearchQuery = {
   rawQuery: string;
   cleanQuery: string;
   phrases: string[];
+  excludedPhrases: string[];
   requiredTerms: string[];
   excludedTerms: string[];
   orTerms: string[];
@@ -121,7 +122,16 @@ export function normalizeSearchTime(value: string | null | undefined): SearchTim
 export function parseSearchQuery(query: string): ParsedSearchQuery {
   const rawQuery = query.trim();
   const phrases: string[] = [];
-  const working = rawQuery.replace(/"([^"]+)"/g, (_, phrase: string) => {
+  const excludedPhrases: string[] = [];
+  const withoutExcludedPhrases = rawQuery.replace(
+    /(^|\s)-"([^"]+)"/g,
+    (_, prefix: string, phrase: string) => {
+      const normalizedPhrase = normalizeText(phrase);
+      if (normalizedPhrase) excludedPhrases.push(normalizedPhrase);
+      return `${prefix} `;
+    },
+  );
+  const working = withoutExcludedPhrases.replace(/"([^"]+)"/g, (_, phrase: string) => {
     const normalizedPhrase = normalizeText(phrase);
     if (normalizedPhrase) phrases.push(normalizedPhrase);
     return ` ${normalizedPhrase} `;
@@ -232,6 +242,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     rawQuery,
     cleanQuery,
     phrases,
+    excludedPhrases,
     requiredTerms: tokenize(cleanQuery),
     excludedTerms,
     orTerms,
@@ -446,6 +457,7 @@ function documentMatchesFilters(
     return false;
   }
   if (parsedQuery.phrases.some((phrase) => !phraseMatches(haystack, phrase))) return false;
+  if (parsedQuery.excludedPhrases.some((phrase) => phraseMatches(haystack, phrase))) return false;
   if (parsedQuery.excludedTerms.some((term) => haystack.includes(term))) return false;
 
   const date = document.date ?? null;
