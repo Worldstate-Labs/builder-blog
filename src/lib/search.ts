@@ -37,6 +37,7 @@ export type ParsedSearchQuery = {
   titleTerms: string[];
   urlTerms: string[];
   site: string | null;
+  excludedSites: string[];
   type: SearchDocumentType | null;
   typeOperator: "filetype" | "type" | null;
   after: Date | null;
@@ -129,6 +130,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
   const bodyTerms: string[] = [];
   const titleTerms: string[] = [];
   const urlTerms: string[] = [];
+  const excludedSites: string[] = [];
   let site: string | null = null;
   let type: SearchDocumentType | null = null;
   let typeOperator: ParsedSearchQuery["typeOperator"] = null;
@@ -142,8 +144,13 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     const token = part.trim();
     if (!token) continue;
     const lower = token.toLowerCase();
+    if (lower.startsWith("-site:")) {
+      const excludedSite = normalizeSiteOperatorValue(lower.slice(6));
+      if (excludedSite) excludedSites.push(excludedSite);
+      continue;
+    }
     if (lower.startsWith("site:")) {
-      site = lower.slice(5).replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0] || site;
+      site = normalizeSiteOperatorValue(lower.slice(5)) || site;
       continue;
     }
     if (
@@ -233,6 +240,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     titleTerms,
     urlTerms,
     site,
+    excludedSites,
     type,
     typeOperator,
     after,
@@ -424,6 +432,7 @@ function documentMatchesFilters(
 
   if (parsedQuery.type && document.type !== parsedQuery.type) return false;
   if (parsedQuery.site && !urlHostMatches(document.url, parsedQuery.site)) return false;
+  if (parsedQuery.excludedSites.some((site) => urlHostMatches(document.url, site))) return false;
   if (parsedQuery.bodyTerms.some((term) => !body.includes(term))) return false;
   if (parsedQuery.titleTerms.some((term) => !title.includes(term))) return false;
   if (parsedQuery.urlTerms.some((term) => !url.includes(term))) return false;
@@ -521,6 +530,10 @@ function normalizeTypeOperatorValue(value: string): SearchDocumentType | null {
   const singular = value.endsWith("s") ? value.slice(0, -1) : value;
   if (singular === "builder" || singular === "feed" || singular === "digest") return singular;
   return null;
+}
+
+function normalizeSiteOperatorValue(value: string) {
+  return value.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0] || "";
 }
 
 function collectScopedOperatorTerms(

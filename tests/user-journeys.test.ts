@@ -372,6 +372,44 @@ test("search user path applies operator filters and newest sorting", () => {
   assert.deepEqual(results.map((result) => result.id), ["kept"]);
 });
 
+test("search user path excludes sites with negative site operator", () => {
+  const parsed = parseSearchQuery("agent memory -site:example.com");
+
+  assert.equal(parsed.cleanQuery, "agent memory");
+  assert.deepEqual(parsed.excludedSites, ["example.com"]);
+  assert.deepEqual(parsed.excludedTerms, []);
+
+  const results = rankSearchDocuments({
+    query: "agent memory -site:example.com",
+    mode: "hybrid",
+    documents: [
+      {
+        id: "excluded-root",
+        type: "feed",
+        title: "Agent memory",
+        body: "Agent memory note.",
+        url: "https://example.com/posts/agent-memory",
+      },
+      {
+        id: "excluded-subdomain",
+        type: "feed",
+        title: "Agent memory",
+        body: "Agent memory note.",
+        url: "https://blog.example.com/posts/agent-memory",
+      },
+      {
+        id: "kept",
+        type: "feed",
+        title: "Agent memory",
+        body: "Agent memory note.",
+        url: "https://other.example/posts/agent-memory",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["kept"]);
+});
+
 test("search user path filters by filetype operator", () => {
   const results = rankSearchDocuments({
     query: "agent memory filetype:digest",

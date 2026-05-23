@@ -47,6 +47,7 @@ const advancedSearchExamples = [
   "agent OR embedding",
   "agent AROUND(3) memory",
   "agent memory site:example.com",
+  "agent memory -site:example.com",
   "agent memory intitle:launch",
   "allintitle:agent memory",
   "agent memory intext:transcript",
@@ -636,6 +637,20 @@ function buildActiveSearchFilters({
       value: parsed.site,
     });
   }
+  if (parsed.excludedSites.length > 0) {
+    filters.push({
+      clearLabel: "Remove excluded sites",
+      href: searchHref({
+        query: stripNegativeQueryOperators(query, ["site"]),
+        type: typeFilter,
+        mode,
+        sort,
+        time,
+      }),
+      label: "Excludes sites",
+      value: parsed.excludedSites.join(", "),
+    });
+  }
   if (parsed.type) {
     const isFiletype = parsed.typeOperator === "filetype";
     filters.push({
@@ -755,6 +770,15 @@ function clearAllSearchHref(query: string) {
 
 function stripQueryOperators(query: string, operators: string[]) {
   const prefixes = new Set(operators.map((operator) => `${operator.toLowerCase()}:`));
+  return query
+    .split(/\s+/)
+    .filter((token) => !prefixes.has(token.toLowerCase().split(":")[0] + ":"))
+    .join(" ")
+    .trim();
+}
+
+function stripNegativeQueryOperators(query: string, operators: string[]) {
+  const prefixes = new Set(operators.map((operator) => `-${operator.toLowerCase()}:`));
   return query
     .split(/\s+/)
     .filter((token) => !prefixes.has(token.toLowerCase().split(":")[0] + ":"))
