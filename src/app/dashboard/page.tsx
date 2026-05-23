@@ -1,33 +1,17 @@
 import { getServerSession } from "next-auth";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { ComponentType } from "react";
+import { Archive, CheckCircle2, Clock3 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { FeedCard } from "@/components/FeedCard";
 import { authOptions } from "@/lib/auth";
-import { activePoolBuilderIds } from "@/lib/builder-pool";
-import { subscriptionBuilderIdsInPool } from "@/lib/digest-library";
 import { prisma } from "@/lib/prisma";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) redirect("/login");
 
-  const poolBuilderIds = await activePoolBuilderIds(session.user.id);
-  const [poolBuilders, subscriptions] = await Promise.all([
-    prisma.builder.findMany({
-      where: { id: { in: poolBuilderIds } },
-      select: { id: true, scope: true },
-    }),
-    prisma.subscription.findMany({
-      where: { userId: session.user.id, builderId: { in: poolBuilderIds } },
-      select: { builderId: true },
-    }),
-  ]);
-  const subscribedBuilderIds = subscriptionBuilderIdsInPool(
-    poolBuilderIds,
-    subscriptions.map((subscription) => subscription.builderId),
-  );
-
-  const [todayDigest, recentDigests, feedItems] = await Promise.all([
+  const [todayDigest, recentDigests, digestCount] = await Promise.all([
     prisma.digest.findFirst({
       where: {
         userId: session.user.id,
@@ -42,11 +26,8 @@ export default async function DashboardPage() {
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
-    prisma.feedItem.findMany({
-      where: { builderId: { in: subscribedBuilderIds } },
-      include: { builder: true },
-      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-      take: 8,
+    prisma.digest.count({
+      where: { userId: session.user.id },
     }),
   ]);
 
@@ -57,17 +38,20 @@ export default async function DashboardPage() {
           <div>
             <p className="section-label">Personal digest</p>
             <h1 className="mt-3 max-w-4xl font-serif text-4xl font-semibold leading-tight md:text-6xl">
-              Your builder signal, archived.
+              Today&apos;s feed, synced and archived.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[var(--muted-strong)]">
-              The central pool crawls once. Your agent can sync personal
-              builder updates into the same archive.
+              This page only shows generated digest feed entries. Library
+              controls and crawled source content live outside Today.
             </p>
           </div>
           <div className="stats-panel">
-            <Stat label="In library" value={poolBuilders.length} />
-            <Stat label="Subscribed" value={subscriptions.length} />
-            <Stat label="Recent items" value={feedItems.length} />
+            <Stat
+              icon={todayDigest ? CheckCircle2 : Clock3}
+              label="Today"
+              value={todayDigest ? "Synced" : "Empty"}
+            />
+            <Stat icon={Archive} label="Archive entries" value={digestCount} />
           </div>
         </section>
 
@@ -76,7 +60,8 @@ export default async function DashboardPage() {
             <div className="flex items-center justify-between gap-4">
               <h2 className="font-serif text-3xl">Today&apos;s digest</h2>
               {todayDigest ? (
-                <span className="rounded-full bg-white/12 px-3 py-1 text-xs uppercase tracking-[0.2em]">
+                <span className="inline-flex items-center gap-2 rounded-full bg-white/12 px-3 py-1 text-xs uppercase tracking-[0.16em]">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
                   Synced
                 </span>
               ) : null}
@@ -101,19 +86,19 @@ export default async function DashboardPage() {
           </article>
 
           <aside className="rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] p-5 md:p-6">
-            <h2 className="font-serif text-3xl">Recent archive</h2>
+            <h2 className="font-serif text-3xl">Recent feed</h2>
             <div className="mt-5 space-y-4">
               {recentDigests.map((digest) => (
-                <a
+                <Link
                   key={digest.id}
                   href={`/history#${digest.id}`}
-                  className="block rounded-lg border border-[var(--line)] p-4 transition hover:bg-[var(--paper-strong)]"
+                  className="block rounded-lg border border-[var(--line)] p-4 transition hover:bg-[var(--paper)]"
                 >
                   <div className="font-medium">{digest.title}</div>
                   <div className="mt-1 text-sm text-[var(--muted)]">
                     {digest.itemCount} items · {digest.createdAt.toLocaleDateString()}
                   </div>
-                </a>
+                </Link>
               ))}
               {recentDigests.length === 0 ? (
                 <p className="text-sm leading-6 text-[var(--muted)]">
@@ -121,41 +106,32 @@ export default async function DashboardPage() {
                 </p>
               ) : null}
             </div>
+            <Link className="button-light mt-5 gap-2" href="/history">
+              <Archive className="h-4 w-4" />
+              Open history
+            </Link>
           </aside>
-        </section>
-
-        <section className="mt-12">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="section-label">Subscribed feed</p>
-              <h2 className="mt-2 font-serif text-4xl">Latest digest inputs</h2>
-            </div>
-            <a className="button-light" href="/builders">
-              Manage builders
-            </a>
-          </div>
-          <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            {feedItems.map((item) => (
-              <FeedCard
-                key={item.id}
-                title={item.title}
-                source={item.builder?.name ?? item.sourceName}
-                body={item.body}
-                url={item.url}
-                date={item.publishedAt ?? item.createdAt}
-              />
-            ))}
-          </div>
         </section>
       </div>
     </AppShell>
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  value: number | string;
+}) {
   return (
     <div className="rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] p-5">
-      <div className="font-serif text-4xl font-semibold">{value}</div>
+      <div className="flex items-center gap-3">
+        <Icon className="h-5 w-5 text-[var(--accent)]" />
+        <div className="font-serif text-4xl font-semibold">{value}</div>
+      </div>
       <div className="mt-2 text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
         {label}
       </div>

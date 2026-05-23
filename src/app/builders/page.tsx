@@ -1,7 +1,8 @@
 import { BuilderKind, BuilderScope } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
+import { Bell, BellOff, ListPlus, Plus, Trash2, UsersRound } from "lucide-react";
 import {
   addBuilderToLibraryAction,
   removeBuilderFromLibraryAction,
@@ -10,6 +11,7 @@ import {
   unsubscribeBuilderAction,
 } from "@/app/actions";
 import { AppShell } from "@/components/AppShell";
+import { FeedCard } from "@/components/FeedCard";
 import { FormSubmitButton } from "@/components/FormSubmitButton";
 import { authOptions } from "@/lib/auth";
 import { ensureDefaultBuilderPool } from "@/lib/builder-pool";
@@ -65,9 +67,20 @@ export default async function BuildersPage() {
   const poolBuilders = poolEntries
     .map((entry) => entry.builder)
     .sort(builderSort);
+  const poolBuilderIds = poolBuilders.map((builder) => builder.id);
   const centralBuilders = poolBuilders.filter((builder) => builder.scope === BuilderScope.CENTRAL);
   const personalBuilders = poolBuilders.filter((builder) => builder.scope === BuilderScope.PERSONAL);
   const subscribedCount = poolBuilders.filter((builder) => subscribed.has(builder.id)).length;
+  const crawledItems = poolBuilders.reduce(
+    (count, builder) => count + builder._count.feedItems,
+    0,
+  );
+  const recentFeedItems = await prisma.feedItem.findMany({
+    where: { builderId: { in: poolBuilderIds } },
+    include: { builder: true },
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    take: 40,
+  });
 
   return (
     <AppShell>
@@ -85,9 +98,9 @@ export default async function BuildersPage() {
             </p>
           </div>
           <div className="stats-panel">
-            <Stat label="In library" value={poolBuilders.length} />
-            <Stat label="Subscribed" value={subscribedCount} />
-            <Stat label="Personal" value={personalBuilders.length} />
+            <Stat icon={UsersRound} label="In library" value={poolBuilders.length} />
+            <Stat icon={Bell} label="Subscribed" value={subscribedCount} />
+            <Stat icon={ListPlus} label="Crawled items" value={crawledItems} />
           </div>
         </section>
 
@@ -101,7 +114,8 @@ export default async function BuildersPage() {
               </p>
             </div>
             <form action={subscribeAllLibraryBuildersAction}>
-              <FormSubmitButton className="button-dark" pendingLabel="Subscribing...">
+              <FormSubmitButton className="button-dark gap-2" pendingLabel="Subscribing...">
+                <Bell className="h-4 w-4" />
                 Subscribe all in library
               </FormSubmitButton>
             </form>
@@ -157,7 +171,8 @@ export default async function BuildersPage() {
                   <BuilderInfo builder={builder} status="Available" crawlLabel="Webapp crawled" />
                   <form action={addBuilderToLibraryAction}>
                     <input type="hidden" name="builderId" value={builder.id} />
-                    <FormSubmitButton className="button-dark" pendingLabel="Adding...">
+                    <FormSubmitButton className="button-dark gap-2" pendingLabel="Adding...">
+                      <Plus className="h-4 w-4" />
                       Add to library
                     </FormSubmitButton>
                   </form>
@@ -165,6 +180,40 @@ export default async function BuildersPage() {
               ))}
             </LibrarySection>
           ) : null}
+        </section>
+
+        <section className="mt-12">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="section-label">Crawled content</p>
+              <h2 className="mt-2 font-serif text-4xl">Recent crawled content</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
+                Raw source items for builders in your active library. Today and
+                History stay focused on generated digest feed entries.
+              </p>
+            </div>
+            <span className="rounded-full border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-2 text-sm text-[var(--muted-strong)]">
+              Latest {recentFeedItems.length} of {crawledItems}
+            </span>
+          </div>
+          <div className="item-list mt-5">
+            {recentFeedItems.map((item) => (
+              <FeedCard
+                key={item.id}
+                title={item.title}
+                source={item.builder?.name ?? item.sourceName}
+                body={item.body}
+                url={item.url}
+                date={item.publishedAt ?? item.createdAt}
+              />
+            ))}
+            {recentFeedItems.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-[var(--line)] p-6 text-[var(--muted-strong)] md:p-10">
+                No crawled content yet. Run the crawler or sync personal builder
+                items from the terminal skill.
+              </div>
+            ) : null}
+          </div>
         </section>
       </div>
     </AppShell>
@@ -191,15 +240,17 @@ function BuilderCard({
         <form action={subscribed ? unsubscribeBuilderAction : subscribeBuilderAction}>
           <input type="hidden" name="builderId" value={builder.id} />
           <FormSubmitButton
-            className={subscribed ? "button-light" : "button-dark"}
+            className={`${subscribed ? "button-light" : "button-dark"} gap-2`}
             pendingLabel={subscribed ? "Updating..." : "Subscribing..."}
           >
+            {subscribed ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
             {subscribed ? "Unsubscribe" : "Subscribe"}
           </FormSubmitButton>
         </form>
         <form action={removeBuilderFromLibraryAction}>
           <input type="hidden" name="builderId" value={builder.id} />
-          <FormSubmitButton className="button-light" pendingLabel="Removing...">
+          <FormSubmitButton className="button-light gap-2" pendingLabel="Removing...">
+            <Trash2 className="h-4 w-4" />
             Remove from library
           </FormSubmitButton>
         </form>
@@ -266,10 +317,21 @@ function LibrarySection({
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  value: number;
+}) {
   return (
     <div className="rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] p-5">
-      <div className="font-serif text-4xl font-semibold">{value}</div>
+      <div className="flex items-center gap-3">
+        <Icon className="h-5 w-5 text-[var(--accent)]" />
+        <div className="font-serif text-4xl font-semibold">{value}</div>
+      </div>
       <div className="mt-2 text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
         {label}
       </div>

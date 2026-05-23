@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { BookOpen } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -34,7 +35,10 @@ export default async function HistoryPage() {
                     </span>
                     <span className="item-title">{digest.title}</span>
                   </span>
-                  <span className="item-summary-action">Read</span>
+                  <span className="item-summary-action">
+                    <BookOpen className="h-3.5 w-3.5" />
+                    Read
+                  </span>
                 </summary>
                 <pre className="item-details whitespace-pre-wrap font-sans text-sm leading-7 text-[var(--muted-strong)]">
                   {digest.content}

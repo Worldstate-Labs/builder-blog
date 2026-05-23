@@ -294,19 +294,9 @@ body {
   white-space: nowrap;
 }
 
-.item-summary-action::before {
-  content: "+";
-  font-size: 0.9rem;
-  line-height: 1;
-}
-
 .item-disclosure[open] > .item-summary .item-summary-action {
   background: var(--accent-soft);
   color: var(--accent);
-}
-
-.item-disclosure[open] > .item-summary .item-summary-action::before {
-  content: "-";
 }
 
 .item-details {

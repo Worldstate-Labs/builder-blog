@@ -1,7 +1,7 @@
 import { formatDistanceToNow } from "date-fns";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { Search } from "lucide-react";
+import { ExternalLink, Search } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { authOptions } from "@/lib/auth";
 import { searchUserLibrary } from "@/lib/user-search";
@@ -138,11 +138,12 @@ function ResultCard({ result }: { result: SearchResult }) {
         </div>
         {result.url ? (
           <a
-            className="button-light min-w-24"
+            className="button-light min-w-24 gap-2"
             href={result.url}
             rel={isExternal ? "noreferrer" : undefined}
             target={isExternal ? "_blank" : undefined}
           >
+            <ExternalLink className="h-4 w-4" />
             Open
           </a>
         ) : null}

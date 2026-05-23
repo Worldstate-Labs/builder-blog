@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { BuilderKind, BuilderScope, FeedItemKind } from "@prisma/client";
 import { isAdminEmail } from "../src/lib/admin";
@@ -209,4 +210,14 @@ test("hybrid search uses expanded database recall terms only in semantic mode", 
   assert.ok(semanticTerms.includes("retrieval"));
   assert.equal(new Set(semanticTerms).size, semanticTerms.length);
   assert.ok(semanticTerms.length <= 12);
+});
+
+test("web display boundaries keep raw crawled content in the builders tab", () => {
+  const dashboardPage = readFileSync("src/app/dashboard/page.tsx", "utf8");
+  const buildersPage = readFileSync("src/app/builders/page.tsx", "utf8");
+
+  assert.equal(dashboardPage.includes("prisma.feedItem.findMany"), false);
+  assert.equal(dashboardPage.includes("Latest digest inputs"), false);
+  assert.equal(buildersPage.includes("prisma.feedItem.findMany"), true);
+  assert.equal(buildersPage.includes("Recent crawled content"), true);
 });
