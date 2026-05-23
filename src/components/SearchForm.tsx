@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Clock, Search, Sparkles, X } from "lucide-react";
 import {
-  mergeSearchSuggestions,
   normalizeRecentSearches,
   type SearchDocumentType,
   type SearchMode,
@@ -14,6 +13,13 @@ import {
 } from "@/lib/search";
 
 export type SearchTypeFilter = "all" | SearchDocumentType;
+
+type AutocompleteSuggestion = {
+  query: string;
+  label: string;
+  detail?: string;
+  kind: "recent" | "query" | "entity" | "result";
+};
 
 export function SearchForm({
   query,
@@ -48,12 +54,12 @@ export function SearchForm({
       return [];
     }
   });
-  const [liveSuggestions, setLiveSuggestions] = useState<string[]>([]);
+  const [liveSuggestions, setLiveSuggestions] = useState<AutocompleteSuggestion[]>([]);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const suggestionOptions = useMemo(
     () =>
-      mergeSearchSuggestions({
+      mergeAutocompleteSuggestions({
         query: inputValue,
         recentSearches,
         liveSuggestions: inputValue.trim().length >= 2 ? liveSuggestions : [],
@@ -84,14 +90,10 @@ export function SearchForm({
       fetch(`/api/search/suggest?q=${encodeURIComponent(nextQuery)}`, {
         signal: controller.signal,
       })
-        .then((response) => (response.ok ? response.json() : { suggestions: [] }))
-        .then((data: { suggestions?: unknown }) => {
+        .then((response) => (response.ok ? response.json() : { items: [], suggestions: [] }))
+        .then((data: { items?: unknown; suggestions?: unknown }) => {
           if (controller.signal.aborted) return;
-          setLiveSuggestions(
-            Array.isArray(data.suggestions)
-              ? data.suggestions.filter((value): value is string => typeof value === "string")
-              : [],
-          );
+          setLiveSuggestions(normalizeAutocompleteItems(data));
         })
         .catch(() => {
           if (!controller.signal.aborted) setLiveSuggestions([]);
@@ -164,9 +166,9 @@ export function SearchForm({
     });
   }
 
-  function submitSuggestion(suggestion: string, form: HTMLFormElement | null) {
-    setInputValue(suggestion);
-    submitSearch({ form, nextQuery: suggestion });
+  function submitSuggestion(suggestion: AutocompleteSuggestion, form: HTMLFormElement | null) {
+    setInputValue(suggestion.query);
+    submitSearch({ form, nextQuery: suggestion.query });
   }
 
   function clearQuery() {
@@ -284,7 +286,7 @@ export function SearchForm({
                     aria-selected={index === activeSuggestionIndex}
                     data-active={index === activeSuggestionIndex ? "true" : undefined}
                     id={`search-suggestion-${index}`}
-                    key={suggestion}
+                    key={`${suggestion.kind}:${suggestion.query}`}
                     role="option"
                     className="search-suggestion-item"
                   >
@@ -292,22 +294,31 @@ export function SearchForm({
                       className="search-suggestion-chip"
                       name="suggestion"
                       type="submit"
-                      value={suggestion}
+                      value={suggestion.query}
                     >
-                      {recentSuggestionKeys.has(normalizeSuggestionKey(suggestion)) ? (
+                      {suggestion.kind === "recent" ? (
                         <Clock aria-hidden="true" className="h-4 w-4" />
+                      ) : suggestion.kind === "entity" || suggestion.kind === "result" ? (
+                        <span className="search-suggestion-avatar" aria-hidden="true">
+                          {suggestion.label.slice(0, 1).toUpperCase()}
+                        </span>
                       ) : (
                         <Search aria-hidden="true" className="h-4 w-4" />
                       )}
-                      <span>{suggestion}</span>
+                      <span className="search-suggestion-copy">
+                        <span className="search-suggestion-title">{suggestion.label}</span>
+                        {suggestion.detail ? (
+                          <span className="search-suggestion-detail">{suggestion.detail}</span>
+                        ) : null}
+                      </span>
                     </button>
-                    {recentSuggestionKeys.has(normalizeSuggestionKey(suggestion)) ? (
+                    {recentSuggestionKeys.has(normalizeSuggestionKey(suggestion.query)) ? (
                       <button
-                        aria-label={`Remove recent search ${suggestion}`}
+                        aria-label={`Remove recent search ${suggestion.query}`}
                         className="search-suggestion-remove"
                         onClick={(event) => {
                           event.preventDefault();
-                          removeRecentSearch(suggestion);
+                          removeRecentSearch(suggestion.query);
                         }}
                         type="button"
                       >
@@ -392,4 +403,73 @@ export function SearchForm({
 
 function normalizeSuggestionKey(value: string) {
   return value.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function mergeAutocompleteSuggestions({
+  query,
+  recentSearches,
+  liveSuggestions,
+  serverSuggestions,
+  limit = 8,
+}: {
+  query: string;
+  recentSearches: string[];
+  liveSuggestions: AutocompleteSuggestion[];
+  serverSuggestions: string[];
+  limit?: number;
+}) {
+  const normalizedQuery = normalizeSuggestionKey(query);
+  const seen = new Set<string>();
+  const merged: AutocompleteSuggestion[] = [];
+  const addSuggestion = (suggestion: AutocompleteSuggestion) => {
+    const normalized = normalizeSuggestionKey(suggestion.query);
+    if (!normalized || normalized === normalizedQuery || seen.has(normalized)) return;
+    seen.add(normalized);
+    merged.push(suggestion);
+  };
+
+  for (const recentSearch of recentSearches) {
+    addSuggestion({
+      query: recentSearch,
+      label: recentSearch,
+      kind: "recent",
+    });
+  }
+  for (const suggestion of liveSuggestions) addSuggestion(suggestion);
+  for (const suggestion of serverSuggestions) {
+    if (normalizedQuery && !normalizeSuggestionKey(suggestion).startsWith(normalizedQuery)) continue;
+    addSuggestion({
+      query: suggestion,
+      label: suggestion,
+      kind: "query",
+    });
+  }
+
+  return merged.slice(0, limit);
+}
+
+function normalizeAutocompleteItems(data: { items?: unknown; suggestions?: unknown }) {
+  if (Array.isArray(data.items)) {
+    return data.items.flatMap((item): AutocompleteSuggestion[] => {
+      if (!item || typeof item !== "object") return [];
+      const record = item as Record<string, unknown>;
+      const query = typeof record.query === "string" ? record.query.trim() : "";
+      const label = typeof record.label === "string" ? record.label.trim() : query;
+      const detail = typeof record.detail === "string" ? record.detail.trim() : undefined;
+      const kind =
+        record.kind === "entity" || record.kind === "result" || record.kind === "query"
+          ? record.kind
+          : "query";
+      if (!query || !label) return [];
+      return [{ query, label, detail, kind }];
+    });
+  }
+
+  if (!Array.isArray(data.suggestions)) return [];
+  return data.suggestions.flatMap((suggestion): AutocompleteSuggestion[] => {
+    if (typeof suggestion !== "string") return [];
+    const query = suggestion.trim();
+    if (!query) return [];
+    return [{ query, label: query, kind: "query" }];
+  });
 }

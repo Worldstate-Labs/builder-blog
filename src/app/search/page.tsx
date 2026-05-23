@@ -47,6 +47,9 @@ type SearchParams = Promise<{
 
 const searchPageSize = 10;
 const defaultSuggestions = [
+  "claude",
+  "claude ai",
+  "claude code",
   "agent memory",
   "embedding search",
   "builder launch",

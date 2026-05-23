@@ -142,6 +142,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /AbortController/);
   assert.match(searchForm, /aria-live="polite"/);
   assert.match(searchForm, /search-suggestion-dropdown/);
+  assert.match(searchForm, /search-suggestion-title/);
+  assert.match(searchForm, /search-suggestion-detail/);
+  assert.match(searchForm, /normalizeAutocompleteItems/);
   assert.match(searchForm, /onKeyDown/);
   assert.match(searchForm, /ArrowDown/);
   assert.match(searchForm, /ArrowUp/);
@@ -161,6 +164,9 @@ test("search suggestions API exists for autocomplete-style queries", () => {
 
   assert.match(suggestRoute, /relatedSearchSuggestions/);
   assert.match(suggestRoute, /searchUserLibrary/);
+  assert.match(suggestRoute, /items:/);
+  assert.match(suggestRoute, /titlePrefixCompletions/);
+  assert.match(suggestRoute, /claude code/);
   assert.match(suggestRoute, /NextResponse/);
 });
 
