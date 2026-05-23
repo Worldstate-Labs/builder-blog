@@ -18,6 +18,18 @@ const baseBuilder = {
   crawlUrl: null,
 };
 
+function rawJsonTranscriptSource(rawJson: unknown) {
+  if (
+    rawJson &&
+    typeof rawJson === "object" &&
+    "transcriptSource" in rawJson &&
+    typeof rawJson.transcriptSource === "string"
+  ) {
+    return rawJson.transcriptSource;
+  }
+  return undefined;
+}
+
 test("builder dedupe keys normalize handles before canonicalization", () => {
   assert.equal(normalizeHandle(" @Thesephist "), "thesephist");
   assert.equal(canonicalBuilderKey(BuilderKind.X, normalizeHandle("@Thesephist")), "X:thesephist");
@@ -179,7 +191,7 @@ test("podcast crawler uses RSS transcript URLs without pod2txt credentials", asy
   assert.equal(result.items[0].externalId, "transcript-episode-guid");
   assert.equal(result.items[0].body, "RSS supplied transcript body");
   assert.equal(result.items[0].url, "https://podcast.example.com/transcript-episode");
-  assert.equal(result.items[0].rawJson?.transcriptSource, "rss-transcript");
+  assert.equal(rawJsonTranscriptSource(result.items[0].rawJson), "rss-transcript");
 });
 
 test("podcast crawler uses YouTube captions before private transcript services", async () => {
@@ -237,7 +249,7 @@ test("podcast crawler uses YouTube captions before private transcript services",
   assert.deepEqual(result.errors, []);
   assert.equal(result.items.length, 1);
   assert.equal(result.items[0].body, "YouTube caption transcript");
-  assert.equal(result.items[0].rawJson?.transcriptSource, "youtube-captions");
+  assert.equal(rawJsonTranscriptSource(result.items[0].rawJson), "youtube-captions");
   assert.equal(result.items[0].url, "https://www.youtube.com/watch?v=caption123");
 });
 
@@ -290,7 +302,7 @@ test("podcast crawler can transcribe RSS audio with OpenAI when no transcript ex
   assert.equal(result.items.length, 1);
   assert.equal(result.items[0].externalId, "audio-episode-guid");
   assert.equal(result.items[0].body, "OpenAI transcript body");
-  assert.equal(result.items[0].rawJson?.transcriptSource, "openai-audio-transcription");
+  assert.equal(rawJsonTranscriptSource(result.items[0].rawJson), "openai-audio-transcription");
 });
 
 test("podcast crawler resolves YouTube handle pages to episode video URLs", async () => {

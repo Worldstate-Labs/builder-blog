@@ -128,10 +128,10 @@ export default async function AdminPage() {
             </span>
           </div>
 
-          <div className="mt-5 grid gap-4 xl:grid-cols-2">
+          <div className="item-list mt-5">
             {builders.map((builder) => (
-              <article key={builder.id} className="admin-panel">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+              <article key={builder.id} className="admin-panel admin-panel-compact">
+                <div className="item-summary item-summary-static">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-serif text-2xl">{builder.name}</h3>
@@ -141,11 +141,10 @@ export default async function AdminPage() {
                       {builder.handle ? `@${builder.handle}` : builder.sourceUrl}
                     </p>
                   </div>
-                  <div className="text-right text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
-                    {builder._count.feedItems} items
-                    <br />
-                    {builder._count.subscriptions} subscribers
-                    <form action={deleteCentralBuilderAction} className="mt-3">
+                  <div className="flex flex-wrap items-center justify-end gap-3 text-right text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
+                    <span>{builder._count.feedItems} items</span>
+                    <span>{builder._count.subscriptions} subscribers</span>
+                    <form action={deleteCentralBuilderAction} className="m-0">
                       <input type="hidden" name="builderId" value={builder.id} />
                       <button className="button-light" type="submit">
                         Remove
@@ -153,26 +152,29 @@ export default async function AdminPage() {
                     </form>
                   </div>
                 </div>
-                <dl className="mt-4 grid gap-3 text-xs">
-                  <div>
-                    <dt className="uppercase tracking-[0.16em] text-[var(--muted)]">Unique id</dt>
-                    <dd className="mt-1 break-all font-mono text-[var(--muted-strong)]">
-                      {builder.id}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="uppercase tracking-[0.16em] text-[var(--muted)]">Canonical key</dt>
-                    <dd className="mt-1 break-all font-mono text-[var(--muted-strong)]">
-                      {builder.canonicalKey}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="uppercase tracking-[0.16em] text-[var(--muted)]">Crawl source</dt>
-                    <dd className="mt-1 break-all text-[var(--muted-strong)]">
-                      {builder.crawlUrl ?? builder.sourceUrl ?? "No crawl URL"}
-                    </dd>
-                  </div>
-                </dl>
+                <details className="inline-disclosure border-t border-[var(--line)] px-4 py-3">
+                  <summary>IDs and crawl source</summary>
+                  <dl className="mt-3 grid gap-3 text-xs md:grid-cols-3">
+                    <div>
+                      <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">Unique id</dt>
+                      <dd className="mt-1 break-all font-mono text-[var(--muted-strong)]">
+                        {builder.id}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">Canonical key</dt>
+                      <dd className="mt-1 break-all font-mono text-[var(--muted-strong)]">
+                        {builder.canonicalKey}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">Crawl source</dt>
+                      <dd className="mt-1 break-all text-[var(--muted-strong)]">
+                        {builder.crawlUrl ?? builder.sourceUrl ?? "No crawl URL"}
+                      </dd>
+                    </div>
+                  </dl>
+                </details>
               </article>
             ))}
           </div>
@@ -189,41 +191,53 @@ export default async function AdminPage() {
             </span>
           </div>
 
-          <div className="mt-5 grid gap-5">
-            {feedItemsByDay.map((day) => (
-              <details key={day.key} className="admin-panel" open>
-                <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3">
+          <div className="item-list mt-5">
+            {feedItemsByDay.map((day, dayIndex) => (
+              <details key={day.key} className="admin-panel admin-panel-compact" open={dayIndex === 0}>
+                <summary className="item-summary">
                   <h3 className="font-serif text-3xl">{dateFormatter.format(day.date)}</h3>
                   <span className="kind-pill">{day.items.length} items</span>
                 </summary>
-                <div className="mt-4 divide-y divide-[var(--line)]">
+                <div className="border-t border-[var(--line)]">
                   {day.items.map((item) => (
-                    <a
-                      key={item.id}
-                      href={item.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="grid gap-3 rounded-lg px-2 py-4 transition hover:bg-[var(--paper-strong)] md:grid-cols-[8rem_1fr_11rem]"
-                    >
-                      <div>
-                        <span className="kind-pill">{feedKindLabel(item.kind)}</span>
-                        <p className="mt-2 text-xs text-[var(--muted)]">
-                          {timeFormatter.format(item.createdAt)}
+                    <details key={item.id} className="item-disclosure item-row-disclosure">
+                      <summary className="item-summary">
+                        <span className="min-w-0">
+                          <span className="item-kicker">
+                            <span>{feedKindLabel(item.kind)}</span>
+                            <span>{timeFormatter.format(item.createdAt)}</span>
+                            <span>{item.builder?.name ?? item.sourceName ?? "Unknown source"}</span>
+                          </span>
+                          <span className="item-title">{item.title || firstLine(item.body)}</span>
+                        </span>
+                        <span className="item-summary-action">Details</span>
+                      </summary>
+                      <div className="item-details">
+                        <p className="text-sm leading-6 text-[var(--muted-strong)]">
+                          {firstLine(item.body)}
                         </p>
+                        <dl className="mt-4 grid gap-2 text-xs md:grid-cols-2">
+                          <div>
+                            <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">External id</dt>
+                            <dd className="mt-1 break-all font-mono">{item.externalId}</dd>
+                          </div>
+                          <div>
+                            <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">Canonical key</dt>
+                            <dd className="mt-1 break-all font-mono">
+                              {item.builder?.canonicalKey ?? "No builder"}
+                            </dd>
+                          </div>
+                        </dl>
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-4 inline-block text-sm font-semibold underline"
+                        >
+                          Open source
+                        </a>
                       </div>
-                      <div className="min-w-0">
-                        <h4 className="truncate font-medium">
-                          {item.title || firstLine(item.body)}
-                        </h4>
-                        <p className="mt-1 truncate text-sm text-[var(--muted)]">
-                          {item.builder?.name ?? item.sourceName ?? "Unknown source"}
-                        </p>
-                      </div>
-                      <div className="min-w-0 text-xs text-[var(--muted)]">
-                        <p className="truncate font-mono">{item.externalId}</p>
-                        <p className="mt-1 truncate font-mono">{item.builder?.canonicalKey}</p>
-                      </div>
-                    </a>
+                    </details>
                   ))}
                 </div>
               </details>

@@ -34,7 +34,7 @@ test("personal blog crawler keeps only article-like same-origin HTML links", asy
   );
 
   assert.deepEqual(
-    candidates.map((candidate) => candidate.url),
+    candidates.map((candidate: { url: string }) => candidate.url),
     ["https://example.com/blog/building-agents"],
   );
 });

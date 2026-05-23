@@ -20,17 +20,26 @@ export default async function HistoryPage() {
         <h1 className="mt-3 font-serif text-4xl font-semibold leading-tight md:text-6xl">
           Digest history
         </h1>
-        <div className="mt-10 space-y-6">
-          {digests.map((digest) => (
-            <article id={digest.id} key={digest.id} className="digest-card">
-              <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--muted)]">
-                <span>{digest.createdAt.toLocaleString()}</span>
-                <span>{digest.itemCount} source items · {digest.language}</span>
-              </div>
-              <h2 className="mt-4 font-serif text-4xl">{digest.title}</h2>
-              <pre className="mt-6 whitespace-pre-wrap font-sans text-sm leading-7 text-[var(--muted-strong)]">
-                {digest.content}
-              </pre>
+        <div className="item-list mt-10">
+          {digests.map((digest, index) => (
+            <article id={digest.id} key={digest.id} className="digest-card digest-card-compact">
+              <details className="item-disclosure" open={index === 0}>
+                <summary className="item-summary">
+                  <span className="min-w-0">
+                    <span className="item-kicker">
+                      <span>{digest.createdAt.toLocaleString()}</span>
+                      <span>
+                        {digest.itemCount} items · {digest.language}
+                      </span>
+                    </span>
+                    <span className="item-title">{digest.title}</span>
+                  </span>
+                  <span className="item-summary-action">Read</span>
+                </summary>
+                <pre className="item-details whitespace-pre-wrap font-sans text-sm leading-7 text-[var(--muted-strong)]">
+                  {digest.content}
+                </pre>
+              </details>
             </article>
           ))}
           {digests.length === 0 ? (

@@ -153,7 +153,7 @@ export default async function BuildersPage() {
               scope={BuilderScope.CENTRAL}
             >
               {removedCentralBuilders.map((builder) => (
-                <article key={builder.id} className="builder-row">
+                <article id={builder.id} key={builder.id} className="builder-row">
                   <BuilderInfo builder={builder} status="Available" crawlLabel="Webapp crawled" />
                   <form action={addBuilderToLibraryAction}>
                     <input type="hidden" name="builderId" value={builder.id} />
@@ -181,7 +181,7 @@ function BuilderCard({
   crawlLabel: string;
 }) {
   return (
-    <article className="builder-row">
+    <article id={builder.id} className="builder-row">
       <BuilderInfo
         builder={builder}
         status={subscribed ? "Subscribed" : "In library"}
@@ -227,9 +227,16 @@ function BuilderInfo({
       <p className="mt-2 truncate text-sm text-[var(--muted)]">
         {builder.handle ? `@${builder.handle}` : builder.sourceUrl}
       </p>
-      <p className="mt-2 break-words text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
-        {crawlLabel} · {builder._count.feedItems} items · {builder.canonicalKey}
+      <p className="mt-2 text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
+        {crawlLabel} · {builder._count.feedItems} items
       </p>
+      <details className="inline-disclosure">
+        <summary>Source details</summary>
+        <div className="mt-2 grid gap-1 text-xs text-[var(--muted)]">
+          <p className="break-all font-mono">{builder.canonicalKey}</p>
+          <p className="break-all">{builder.crawlUrl ?? builder.sourceUrl ?? "No crawl URL"}</p>
+        </div>
+      </details>
     </div>
   );
 }

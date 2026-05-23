@@ -9,6 +9,11 @@ import {
   parseSkillBuilderSyncPayload,
   parseSkillDigestPayload,
 } from "../src/lib/skill-contracts";
+import {
+  candidateSearchTerms,
+  rankSearchDocuments,
+  normalizeSearchMode,
+} from "../src/lib/search";
 import { hashToken, newAgentToken, newDeviceCode } from "../src/lib/tokens";
 
 test("terminal login user path uses short device codes and opaque bearer tokens", () => {
@@ -115,4 +120,93 @@ test("digest generation user path exposes source-specific prompt instructions", 
   );
   assert.match(DIGEST_PROMPTS.summarizePodcast, /podcast transcript/i);
   assert.match(DIGEST_PROMPTS.translate, /simplified Chinese/i);
+});
+
+test("search user path exact mode matches literal text across builders, feeds, and digests", () => {
+  const results = rankSearchDocuments({
+    query: "agent memory",
+    mode: "exact",
+    documents: [
+      {
+        id: "builder_1",
+        type: "builder",
+        title: "Memory Labs",
+        body: "Builder working on agent memory systems.",
+      },
+      {
+        id: "feed_1",
+        type: "feed",
+        title: "Launch notes",
+        body: "A retrieval workflow without the literal phrase.",
+      },
+      {
+        id: "digest_1",
+        type: "digest",
+        title: "Daily Digest",
+        body: "Today covered AGENT MEMORY and terminal workflows.",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["digest_1", "builder_1"]);
+  assert.equal(results[0].type, "digest");
+  assert.match(results[0].snippet, /AGENT MEMORY/);
+});
+
+test("search user path semantic mode finds related language without a literal phrase", () => {
+  const results = rankSearchDocuments({
+    query: "embedding search",
+    mode: "semantic",
+    documents: [
+      {
+        id: "feed_1",
+        type: "feed",
+        title: "Archive retrieval",
+        body: "Vector recall over crawled posts and saved digest history.",
+      },
+      {
+        id: "builder_1",
+        type: "builder",
+        title: "Unrelated Builder",
+        body: "A frontend design feed with launch screenshots.",
+      },
+      {
+        id: "digest_1",
+        type: "digest",
+        title: "Semantic lookup",
+        body: "The digest explains vector search for personal knowledge bases.",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["digest_1", "feed_1"]);
+  assert.ok(results[0].score > results[1].score);
+});
+
+test("search user path normalizes modes and ignores empty queries", () => {
+  assert.equal(normalizeSearchMode("exact"), "exact");
+  assert.equal(normalizeSearchMode("bad"), "semantic");
+  assert.deepEqual(
+    rankSearchDocuments({
+      query: "   ",
+      mode: "semantic",
+      documents: [
+        { id: "builder_1", type: "builder", title: "OpenAI", body: "AI builder" },
+      ],
+    }),
+    [],
+  );
+});
+
+test("hybrid search uses expanded database recall terms only in semantic mode", () => {
+  assert.deepEqual(candidateSearchTerms("agent memory", "exact"), ["agent memory"]);
+
+  const semanticTerms = candidateSearchTerms("embedding search", "semantic");
+
+  assert.ok(semanticTerms.includes("embedding"));
+  assert.ok(semanticTerms.includes("search"));
+  assert.ok(semanticTerms.includes("vector"));
+  assert.ok(semanticTerms.includes("retrieval"));
+  assert.equal(new Set(semanticTerms).size, semanticTerms.length);
+  assert.ok(semanticTerms.length <= 12);
 });

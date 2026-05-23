@@ -8,7 +8,8 @@ const nav: AppNavItem[] = [
   { href: "/dashboard", label: "Today", icon: "home" },
   { href: "/history", label: "History", icon: "archive" },
   { href: "/builders", label: "Builders", icon: "builders" },
-  { href: "/settings", label: "Agent Login", icon: "key" },
+  { href: "/search", label: "Search", icon: "search" },
+  { href: "/settings", label: "Agent", icon: "key" },
 ];
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
