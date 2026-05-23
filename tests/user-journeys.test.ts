@@ -270,11 +270,12 @@ test("search user path offers related search rewrites from semantic terms", () =
 });
 
 test("search user path parses google-style operators", () => {
-  const parsed = parseSearchQuery('"agent memory" site:example.com type:feed -pricing after:2026-01-01 before:2026-02-01');
+  const parsed = parseSearchQuery('"agent memory" site:example.com intitle:launch type:feed -pricing after:2026-01-01 before:2026-02-01');
 
-  assert.equal(parsed.cleanQuery, "agent memory");
+  assert.equal(parsed.cleanQuery, "agent memory launch");
   assert.deepEqual(parsed.phrases, ["agent memory"]);
   assert.deepEqual(parsed.excludedTerms, ["pricing"]);
+  assert.deepEqual(parsed.titleTerms, ["launch"]);
   assert.equal(parsed.site, "example.com");
   assert.equal(parsed.type, "feed");
   assert.equal(parsed.after?.toISOString().slice(0, 10), "2026-01-01");
@@ -325,6 +326,29 @@ test("search user path applies operator filters and newest sorting", () => {
   });
 
   assert.deepEqual(results.map((result) => result.id), ["kept"]);
+});
+
+test("search user path filters by title operator", () => {
+  const results = rankSearchDocuments({
+    query: "agent memory intitle:launch",
+    mode: "hybrid",
+    documents: [
+      {
+        id: "title-match",
+        type: "feed",
+        title: "Agent memory launch notes",
+        body: "A short release writeup.",
+      },
+      {
+        id: "body-only",
+        type: "feed",
+        title: "Agent memory notes",
+        body: "Launch details in the body should not satisfy intitle.",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["title-match"]);
 });
 
 test("search user path suggests simple spelling corrections and normalizes tools", () => {
