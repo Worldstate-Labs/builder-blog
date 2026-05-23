@@ -161,13 +161,16 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
 
 test("library hub exposes share and multi-import flows", () => {
   const appShell = source("src/components/AppShell.tsx");
+  const buildersPage = source("src/app/builders/page.tsx");
   const hubPage = source("src/app/library-hub/page.tsx");
   const actions = source("src/app/actions.ts");
   const skillRoute = source("src/app/api/skill/builders/route.ts");
   const schema = source("prisma/schema.prisma");
 
   assert.match(appShell, /library-hub/);
-  assert.match(hubPage, /sharePersonalLibraryToHubAction/);
+  assert.match(buildersPage, /sharePersonalLibraryToHubAction/);
+  assert.match(buildersPage, /library-share-action/);
+  assert.doesNotMatch(hubPage, /sharePersonalLibraryToHubAction/);
   assert.match(hubPage, /importHubLibrariesAction/);
   assert.match(hubPage, /importCount/);
   assert.match(hubPage, /viewCount/);

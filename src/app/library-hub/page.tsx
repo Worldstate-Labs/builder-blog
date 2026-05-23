@@ -1,11 +1,8 @@
-import { BuilderScope, LibraryHubKind } from "@prisma/client";
+import { LibraryHubKind } from "@prisma/client";
 import { redirect } from "next/navigation";
 import type { ComponentType } from "react";
-import { Download, Eye, LibraryBig, Share2, UsersRound } from "lucide-react";
-import {
-  importHubLibrariesAction,
-  sharePersonalLibraryToHubAction,
-} from "@/app/actions";
+import { Download, Eye, LibraryBig, UsersRound } from "lucide-react";
+import { importHubLibrariesAction } from "@/app/actions";
 import { AppShell } from "@/components/AppShell";
 import { FormSubmitButton } from "@/components/FormSubmitButton";
 import { getCurrentSession } from "@/lib/auth";
@@ -22,7 +19,7 @@ export default async function LibraryHubPage() {
 
   await syncCentralLibraryHub();
 
-  const [libraries, personalBuilderCount, ownEntry, imports] = await Promise.all([
+  const [libraries, imports] = await Promise.all([
     prisma.libraryHubEntry.findMany({
       include: {
         owner: { select: { name: true, email: true } },
@@ -47,13 +44,6 @@ export default async function LibraryHubPage() {
         _count: { select: { items: true } },
       },
       orderBy: [{ kind: "desc" }, { importCount: "desc" }, { viewCount: "desc" }, { updatedAt: "desc" }],
-    }),
-    prisma.builder.count({
-      where: { scope: BuilderScope.PERSONAL, ownerUserId: session.user.id },
-    }),
-    prisma.libraryHubEntry.findFirst({
-      where: { ownerUserId: session.user.id, kind: LibraryHubKind.PERSONAL },
-      select: { id: true },
     }),
     prisma.libraryImport.findMany({
       where: { userId: session.user.id },
@@ -83,50 +73,6 @@ export default async function LibraryHubPage() {
           <div className="stats-panel">
             <HubStat icon={LibraryBig} label="Libraries" value={libraries.length} />
             <HubStat icon={UsersRound} label="Importable" value={importableLibraries.length} />
-            <HubStat icon={Share2} label="Your private builders" value={personalBuilderCount} />
-          </div>
-        </section>
-
-        <section className="action-panel mt-8 md:p-6">
-          <div className="grid gap-5 lg:grid-cols-[1fr_28rem]">
-            <div>
-              <h2 className="font-serif text-3xl">Share your private library</h2>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
-                Only builders you own in your personal library are shared.
-                Central builders and libraries imported from the hub are not
-                included.
-              </p>
-              <p className="mt-3 text-sm font-semibold text-[var(--ink)]">
-                {personalBuilderCount} private builder{personalBuilderCount === 1 ? "" : "s"} ready to share.
-              </p>
-            </div>
-            <form action={sharePersonalLibraryToHubAction} className="grid gap-3">
-              <label>
-                <span className="sr-only">Library name</span>
-                <input
-                  className="input"
-                  name="name"
-                  defaultValue={`${session.user.name || session.user.email || "Personal"} library`}
-                  placeholder="Library name"
-                />
-              </label>
-              <label>
-                <span className="sr-only">Description</span>
-                <input
-                  className="input"
-                  name="description"
-                  placeholder="Short description"
-                />
-              </label>
-              <FormSubmitButton
-                className="button-dark gap-2"
-                disabled={personalBuilderCount === 0}
-                pendingLabel="Sharing..."
-              >
-                <Share2 className="h-4 w-4" />
-                {ownEntry ? "Update shared library" : "Share to hub"}
-              </FormSubmitButton>
-            </form>
           </div>
         </section>
 

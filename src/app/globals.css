@@ -717,6 +717,24 @@ a {
   padding: 0.75rem;
 }
 
+.library-share-action {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--accent) 6%, transparent);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 0.85rem;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 0.8rem;
+}
+
+.library-share-action > p {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
 .imported-library-stack {
   display: grid;
   gap: 0.65rem;

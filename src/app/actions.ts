@@ -180,7 +180,9 @@ export async function sharePersonalLibraryToHubAction(formData: FormData) {
     description,
   });
   revalidatePath("/library-hub");
-  redirect(`/library-hub?shared=${result.builderCount}`);
+  revalidatePath("/builders");
+  const redirectTo = String(formData.get("redirectTo") ?? "");
+  redirect(redirectTo === "/builders" ? `/builders?shared=${result.builderCount}` : `/library-hub?shared=${result.builderCount}`);
 }
 
 export async function importHubLibrariesAction(formData: FormData) {

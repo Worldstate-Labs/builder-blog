@@ -1,9 +1,10 @@
-import { BuilderKind, BuilderPoolOrigin, BuilderScope, type FeedItemKind } from "@prisma/client";
+import { BuilderKind, BuilderPoolOrigin, BuilderScope, LibraryHubKind, type FeedItemKind } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { Suspense, type ComponentType, type ReactNode } from "react";
-import { Bell, BellOff, ExternalLink, ListPlus, Trash2, UsersRound } from "lucide-react";
+import { Bell, BellOff, ExternalLink, ListPlus, Share2, Trash2, UsersRound } from "lucide-react";
 import {
   removeBuilderFromLibraryAction,
+  sharePersonalLibraryToHubAction,
   subscribeAllLibraryBuildersAction,
   subscribeBuilderAction,
   unsubscribeBuilderAction,
@@ -49,7 +50,7 @@ export default async function BuildersPage() {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
 
-  const [poolEntries, subscriptions, importedLibraries] = await Promise.all([
+  const [poolEntries, subscriptions, importedLibraries, ownSharedLibrary] = await Promise.all([
     prisma.builderPoolEntry.findMany({
       where: { userId: session.user.id, removedAt: null },
       include: {
@@ -95,6 +96,10 @@ export default async function BuildersPage() {
         },
       },
       orderBy: { createdAt: "desc" },
+    }),
+    prisma.libraryHubEntry.findFirst({
+      where: { ownerUserId: session.user.id, kind: LibraryHubKind.PERSONAL },
+      select: { id: true },
     }),
   ]);
 
@@ -186,6 +191,25 @@ export default async function BuildersPage() {
             count={privateBuilders.length}
             defaultOpen
           >
+            <form action={sharePersonalLibraryToHubAction} className="library-share-action">
+              <input
+                name="name"
+                type="hidden"
+                value={`${session.user.name || session.user.email || "Personal"} library`}
+              />
+              <input name="redirectTo" type="hidden" value="/builders" />
+              <FormSubmitButton
+                className="button-dark button-compact gap-2"
+                disabled={privateBuilders.length === 0}
+                pendingLabel="Sharing..."
+              >
+                <Share2 className="h-4 w-4" />
+                {ownSharedLibrary ? "Update Hub share" : "Share to Hub"}
+              </FormSubmitButton>
+              <p className="text-xs leading-5 text-[var(--muted-strong)]">
+                Shares only builders you own here. Imported libraries stay private to your pool.
+              </p>
+            </form>
             {privateBuilders.map((builder) => (
               <BuilderCard
                 key={builder.id}
