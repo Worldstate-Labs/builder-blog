@@ -204,6 +204,8 @@ body {
   border-radius: 8px;
   background: color-mix(in oklch, var(--paper-strong) 76%, transparent);
   box-shadow: 0 12px 34px var(--shadow);
+  min-width: 0;
+  width: 100%;
 }
 
 .feed-card,
@@ -223,6 +225,10 @@ body {
 }
 
 .builder-row > * {
+  min-width: 0;
+}
+
+.admin-panel > * {
   min-width: 0;
 }
 
