@@ -89,6 +89,17 @@ export async function sharePersonalLibraryToHub(params: {
   return { entry, builderCount: personalBuilders.length };
 }
 
+export async function unsharePersonalLibraryFromHub(userId: string) {
+  const result = await prisma.libraryHubEntry.deleteMany({
+    where: {
+      ownerUserId: userId,
+      kind: LibraryHubKind.PERSONAL,
+    },
+  });
+
+  return { removed: result.count };
+}
+
 export async function importLibrariesFromHub(params: {
   userId: string;
   libraryIds: string[];

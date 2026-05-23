@@ -717,11 +717,11 @@ a {
   padding: 0.75rem;
 }
 
-.library-share-action {
+.library-visibility-control {
   align-items: center;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: color-mix(in oklch, var(--accent) 6%, transparent);
+  background: var(--paper);
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem 0.85rem;
@@ -730,9 +730,78 @@ a {
   padding: 0.8rem;
 }
 
-.library-share-action > p {
-  flex: 1 1 18rem;
+.library-visibility-copy {
+  display: grid;
+  gap: 0.1rem;
   min-width: 0;
+}
+
+.library-visibility-copy > span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.library-visibility-copy > strong {
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.library-visibility-toggle {
+  align-items: center;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted-strong);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 850;
+  gap: 0.55rem;
+  min-height: 2.35rem;
+  min-width: 0;
+  padding: 0.3rem 0.85rem 0.3rem 0.35rem;
+}
+
+.library-visibility-toggle.is-on {
+  background: color-mix(in oklch, var(--accent) 10%, var(--paper));
+  border-color: color-mix(in oklch, var(--accent) 28%, var(--line));
+  color: var(--accent);
+}
+
+.library-visibility-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.library-visibility-track {
+  align-items: center;
+  background: color-mix(in oklch, var(--muted) 20%, transparent);
+  border-radius: 999px;
+  display: inline-flex;
+  height: 1.45rem;
+  padding: 0.15rem;
+  width: 2.5rem;
+}
+
+.library-visibility-thumb {
+  background: var(--paper);
+  border-radius: 999px;
+  box-shadow: 0 1px 4px rgb(15 23 42 / 0.18);
+  display: block;
+  height: 1.15rem;
+  transition: transform 160ms ease;
+  width: 1.15rem;
+}
+
+.library-visibility-toggle.is-on .library-visibility-track {
+  background: var(--accent);
+}
+
+.library-visibility-toggle.is-on .library-visibility-thumb {
+  transform: translateX(1.05rem);
 }
 
 .imported-library-stack {

@@ -1,6 +1,6 @@
 "use server";
 
-import { BuilderKind, BuilderPoolOrigin, BuilderScope } from "@prisma/client";
+import { BuilderKind, BuilderPoolOrigin, BuilderScope, LibraryHubKind } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth";
@@ -11,6 +11,7 @@ import { upsertBuilder } from "@/lib/builders";
 import {
   importLibrariesFromHub,
   sharePersonalLibraryToHub,
+  unsharePersonalLibraryFromHub,
 } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 import { builderKindForSourceType } from "@/lib/source-registry";
@@ -188,6 +189,35 @@ export async function sharePersonalLibraryToHubAction(formData: FormData) {
   revalidatePath("/builders");
   const redirectTo = String(formData.get("redirectTo") ?? "");
   redirect(redirectTo === "/builders" ? `/builders?shared=${result.builderCount}` : `/library-hub?shared=${result.builderCount}`);
+}
+
+export async function togglePersonalLibraryHubAvailabilityAction(formData: FormData) {
+  const user = await requireUser();
+  const existing = await prisma.libraryHubEntry.findFirst({
+    where: {
+      ownerUserId: user.id,
+      kind: LibraryHubKind.PERSONAL,
+    },
+    select: { id: true },
+  });
+
+  if (existing) {
+    await unsharePersonalLibraryFromHub(user.id);
+    revalidatePath("/library-hub");
+    revalidatePath("/builders");
+    redirect("/builders?hub=private");
+  }
+
+  const name =
+    String(formData.get("name") ?? "").trim() ||
+    `${user.name || user.email || "Personal"} library`;
+  const result = await sharePersonalLibraryToHub({
+    userId: user.id,
+    name,
+  });
+  revalidatePath("/library-hub");
+  revalidatePath("/builders");
+  redirect(`/builders?hub=public&shared=${result.builderCount}`);
 }
 
 export async function importHubLibrariesAction(formData: FormData) {

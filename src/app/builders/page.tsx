@@ -1,12 +1,12 @@
 import { BuilderKind, BuilderPoolOrigin, BuilderScope, LibraryHubKind, type FeedItemKind } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { Suspense, type ComponentType, type ReactNode } from "react";
-import { Bell, BellOff, ExternalLink, ListPlus, Share2, Trash2, UsersRound } from "lucide-react";
+import { Bell, BellOff, ExternalLink, ListPlus, Trash2, UsersRound } from "lucide-react";
 import {
   removeBuilderFromLibraryAction,
-  sharePersonalLibraryToHubAction,
   subscribeAllLibraryBuildersAction,
   subscribeBuilderAction,
+  togglePersonalLibraryHubAvailabilityAction,
   unsubscribeBuilderAction,
 } from "@/app/actions";
 import { AppShell } from "@/components/AppShell";
@@ -191,24 +191,30 @@ export default async function BuildersPage() {
             count={privateBuilders.length}
             defaultOpen
           >
-            <form action={sharePersonalLibraryToHubAction} className="library-share-action">
+            <form
+              action={togglePersonalLibraryHubAvailabilityAction}
+              className="library-visibility-control"
+            >
               <input
                 name="name"
                 type="hidden"
                 value={`${session.user.name || session.user.email || "Personal"} library`}
               />
-              <input name="redirectTo" type="hidden" value="/builders" />
-              <FormSubmitButton
-                className="button-dark button-compact gap-2"
+              <div className="library-visibility-copy">
+                <span>Hub availability</span>
+                <strong>{ownSharedLibrary ? "Public on Hub" : "Private"}</strong>
+              </div>
+              <button
+                aria-pressed={Boolean(ownSharedLibrary)}
+                className={`library-visibility-toggle ${ownSharedLibrary ? "is-on" : ""}`}
                 disabled={privateBuilders.length === 0}
-                pendingLabel="Sharing..."
+                type="submit"
               >
-                <Share2 className="h-4 w-4" />
-                {ownSharedLibrary ? "Update Hub share" : "Share to Hub"}
-              </FormSubmitButton>
-              <p className="text-xs leading-5 text-[var(--muted-strong)]">
-                Shares only builders you own here. Imported libraries stay private to your pool.
-              </p>
+                <span className="library-visibility-track" aria-hidden="true">
+                  <span className="library-visibility-thumb" />
+                </span>
+                <span>{ownSharedLibrary ? "Public" : "Private"}</span>
+              </button>
             </form>
             {privateBuilders.map((builder) => (
               <BuilderCard

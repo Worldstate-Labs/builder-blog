@@ -172,8 +172,9 @@ test("library hub exposes share and multi-import flows", () => {
   const schema = source("prisma/schema.prisma");
 
   assert.match(appShell, /library-hub/);
-  assert.match(buildersPage, /sharePersonalLibraryToHubAction/);
-  assert.match(buildersPage, /library-share-action/);
+  assert.match(buildersPage, /togglePersonalLibraryHubAvailabilityAction/);
+  assert.match(buildersPage, /library-visibility-toggle/);
+  assert.match(buildersPage, /aria-pressed/);
   assert.doesNotMatch(hubPage, /sharePersonalLibraryToHubAction/);
   assert.match(hubPage, /importHubLibrariesAction/);
   assert.match(hubPage, /importCount/);
@@ -181,6 +182,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /orderBy:\s*\[\{ kind: "desc" \}, \{ importCount: "desc" \}, \{ viewCount: "desc" \}/);
   assert.match(hubPage, /libraryId/);
   assert.match(actions, /sharePersonalLibraryToHub/);
+  assert.match(actions, /unsharePersonalLibraryFromHub/);
   assert.match(actions, /importLibrariesFromHub/);
   assert.match(skillRoute, /crawlingTool: "Legacy crawl\/import"/);
   assert.match(schema, /model LibraryHubEntry/);
