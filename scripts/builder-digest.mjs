@@ -194,6 +194,7 @@ async function crawlPersonal(args) {
           feedItems: 0,
           seenPersonalItems: personalSeenItemCount(context),
           force,
+          agentTasks: [],
           message: "No personal builders in this user's library.",
         },
         null,
@@ -206,6 +207,7 @@ async function crawlPersonal(args) {
   const fallbackCutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const builders = [];
   const localErrors = [];
+  const agentTasks = [];
 
   for (const builder of personalBuilders) {
     try {
@@ -244,12 +246,14 @@ async function crawlPersonal(args) {
         });
         continue;
       }
-      const items = await source.crawl(builder, {
+      const crawled = await source.crawl(builder, {
         cutoff: force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff),
         limit,
         agentModel,
         seenItemKeys: force ? new Set() : seenItemKeysForBuilder(context, builder.id),
       });
+      const { items, agentTasks: sourceAgentTasks } = normalizePersonalCrawlResult(crawled);
+      agentTasks.push(...sourceAgentTasks);
       builders.push({
         kind: source.syncKind,
         sourceType: source.id,
@@ -281,6 +285,7 @@ async function crawlPersonal(args) {
           seenPersonalItems: force ? 0 : personalSeenItemCount(context),
           force,
           localErrors,
+          agentTasks,
           message: "No personal builders produced syncable items.",
         },
         null,
@@ -302,11 +307,20 @@ async function crawlPersonal(args) {
         crawledPersonalBuilders: personalBuilders.length,
         seenPersonalItems: force ? 0 : personalSeenItemCount(context),
         localErrors,
+        agentTasks,
       },
       null,
       2,
     ),
   );
+}
+
+function normalizePersonalCrawlResult(result) {
+  if (Array.isArray(result)) return { items: result, agentTasks: [] };
+  return {
+    items: Array.isArray(result?.items) ? result.items : [],
+    agentTasks: Array.isArray(result?.agentTasks) ? result.agentTasks : [],
+  };
 }
 
 export function personalBuildersForCrawl(context) {
@@ -399,30 +413,41 @@ function normalizeSourceType(sourceType) {
   return normalized === "auto" ? "" : normalized;
 }
 
-async function crawlPersonalYouTubeBuilder(builder, { cutoff, limit, agentModel, seenItemKeys = new Set() }) {
+async function crawlPersonalYouTubeBuilder(
+  builder,
+  { cutoff, limit, agentModel, seenItemKeys = new Set(), fetcher = fetch },
+) {
   const sourceUrl = builder.crawlUrl || builder.sourceUrl;
-  if (!sourceUrl) return [];
-  const { videos: crawledVideos, sourceDetail } = await fetchYouTubeVideos(sourceUrl);
+  if (!sourceUrl) return { items: [], agentTasks: [] };
+  const { videos: crawledVideos, sourceDetail } = await fetchYouTubeVideos(sourceUrl, fetcher);
   const videos = crawledVideos
     .filter((video) => isAfterCutoff(video.publishedAt, cutoff))
     .filter((video) => !seenItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", video.videoId || video.url)))
     .slice(0, limit);
   const items = [];
+  const agentTasks = [];
 
   for (const video of videos) {
-    const transcript = await fetchYouTubeTranscript(video.url).catch(() => "");
-    const body = transcript || video.description || video.title;
-    if (!body.trim()) continue;
+    const transcript = await fetchYouTubeTranscript(video.url, fetcher).catch(() => "");
+    const quality = youtubeContentQuality(transcript, {
+      source: transcript ? "youtube-captions" : "missing",
+      title: video.title,
+      description: video.description,
+    });
+    if (!quality.ok) {
+      agentTasks.push(youtubeAgentTaskForVideo(builder, video, quality, sourceDetail));
+      continue;
+    }
     items.push({
       kind: "PODCAST_EPISODE",
       externalId: video.videoId || video.url,
       title: video.title || "Untitled YouTube update",
-      body,
+      body: transcript,
       url: video.url,
       publishedAt: video.publishedAt,
       sourceName: builder.name,
       crawlingTool: skillCrawlingTool(
-        transcript ? `${sourceDetail} + captions` : `${sourceDetail} + feed description`,
+        `${sourceDetail} + captions`,
         agentModel,
       ),
       rawJson: {
@@ -432,12 +457,125 @@ async function crawlPersonalYouTubeBuilder(builder, { cutoff, limit, agentModel,
         title: video.title,
         url: video.url,
         publishedAt: video.publishedAt,
-        transcriptSource: transcript ? "youtube-captions" : "youtube-feed-description",
+        transcriptSource: "youtube-captions",
+        contentQuality: quality,
       },
     });
   }
 
-  return items;
+  return { items, agentTasks };
+}
+
+export function crawlPersonalYouTubeBuilderForTest(builder, options) {
+  return crawlPersonalYouTubeBuilder(builder, options);
+}
+
+export function youtubeContentQuality(text, { source, title = "", description = "" } = {}) {
+  const normalized = normalizeContentText(text);
+  const words = normalized.match(/[A-Za-z0-9\u4e00-\u9fff]+/g) ?? [];
+  const uniqueWords = new Set(words.map((word) => word.toLowerCase()));
+  const timestampLike = words.filter((word) => /^\d{1,2}:\d{2}(?::\d{2})?$/.test(word)).length;
+  const metrics = {
+    chars: normalized.length,
+    words: words.length,
+    uniqueWords: uniqueWords.size,
+    uniqueWordRatio: words.length ? uniqueWords.size / words.length : 0,
+    timestampLike,
+  };
+
+  const transcriptSources = new Set([
+    "youtube-captions",
+    "agent-transcript",
+    "openai-audio-transcription",
+    "local-speech-to-text",
+  ]);
+  if (!transcriptSources.has(String(source || ""))) {
+    return {
+      ok: false,
+      reason: "description_or_title_is_not_primary_content",
+      metrics,
+      standards: youtubeMinimumContentQuality(),
+    };
+  }
+  if (metrics.chars < 80 || metrics.words < 12) {
+    return {
+      ok: false,
+      reason: "transcript_too_short",
+      metrics,
+      standards: youtubeMinimumContentQuality(),
+    };
+  }
+  if (metrics.words >= 40 && metrics.uniqueWordRatio < 0.25) {
+    return {
+      ok: false,
+      reason: "transcript_too_repetitive",
+      metrics,
+      standards: youtubeMinimumContentQuality(),
+    };
+  }
+  if (metrics.timestampLike > 0 && metrics.timestampLike / metrics.words > 0.2) {
+    return {
+      ok: false,
+      reason: "transcript_is_timestamp_heavy",
+      metrics,
+      standards: youtubeMinimumContentQuality(),
+    };
+  }
+  if (isNearDuplicate(normalized, title) || isNearDuplicate(normalized, description)) {
+    return {
+      ok: false,
+      reason: "transcript_duplicates_title_or_description",
+      metrics,
+      standards: youtubeMinimumContentQuality(),
+    };
+  }
+  return { ok: true, reason: "ok", metrics, standards: youtubeMinimumContentQuality() };
+}
+
+function youtubeMinimumContentQuality() {
+  return {
+    primaryContentOnly: true,
+    minChars: 80,
+    minWords: 12,
+    minUniqueWordRatio: 0.25,
+    maxTimestampWordRatio: 0.2,
+    disallowedPrimarySources: ["title", "description", "feed description", "page metadata"],
+  };
+}
+
+function youtubeAgentTaskForVideo(builder, video, quality, sourceDetail) {
+  return {
+    type: "youtube_transcription",
+    reason: "missing_or_low_quality_youtube_content",
+    builder: builder.name,
+    builderId: builder.id,
+    sourceType: "youtube",
+    item: {
+      kind: "PODCAST_EPISODE",
+      externalId: video.videoId || video.url,
+      title: video.title || "Untitled YouTube update",
+      url: video.url,
+      publishedAt: video.publishedAt,
+      sourceName: builder.name,
+      description: video.description || "",
+    },
+    quality,
+    minimumContentQuality: youtubeMinimumContentQuality(),
+    suggestedAction:
+      "Use the user's local agent capabilities to obtain or transcribe the video content, then sync it with builder-digest sync-builders. Do not use the title or description as the item body.",
+    sourceDetail,
+  };
+}
+
+function normalizeContentText(text) {
+  return String(text || "").replace(/\s+/g, " ").trim();
+}
+
+function isNearDuplicate(text, reference) {
+  const normalizedReference = normalizeContentText(reference);
+  if (!text || !normalizedReference) return false;
+  if (text === normalizedReference) return true;
+  return text.length <= normalizedReference.length + 20 && normalizedReference.includes(text);
 }
 
 async function crawlPersonalBlogBuilder(builder, { cutoff, limit, agentModel, seenItemKeys = new Set() }) {

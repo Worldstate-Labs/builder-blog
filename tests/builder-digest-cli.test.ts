@@ -270,6 +270,82 @@ test("personal YouTube crawler parses modern channel lockup view models", async 
   });
 });
 
+test("personal YouTube content quality rejects title and description as primary content", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const result = cli.youtubeContentQuality("A product launch description with a link.", {
+    source: "youtube-feed-description",
+    title: "Launch video",
+    description: "A product launch description with a link.",
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "description_or_title_is_not_primary_content");
+});
+
+test("personal YouTube content quality requires useful transcript substance", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  assert.equal(
+    cli.youtubeContentQuality("hello hello hello", {
+      source: "youtube-captions",
+      title: "Short caption",
+      description: "",
+    }).ok,
+    false,
+  );
+  assert.equal(
+    cli.youtubeContentQuality(
+      "We introduce the new agent runtime and show how it plans, executes, checks results, and reports useful evidence to the user.",
+      { source: "youtube-captions", title: "Agent runtime", description: "" },
+    ).ok,
+    true,
+  );
+});
+
+test("personal YouTube crawler returns agent tasks instead of syncing description-only content", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const result = await cli.crawlPersonalYouTubeBuilderForTest(
+    {
+      id: "builder_youtube_needs_agent",
+      name: "Needs Agent YouTube",
+      sourceUrl: "https://www.youtube.com/@NeedsAgent",
+      crawlUrl: "https://www.youtube.com/@NeedsAgent",
+    },
+    {
+      cutoff: null,
+      limit: 1,
+      agentModel: "gpt-test",
+      seenItemKeys: new Set(),
+      fetcher: async (url: string) => {
+        if (url === "https://www.youtube.com/@NeedsAgent") {
+          return new Response('<html>{"externalId":"UCneedsagent00000000000000"}</html>');
+        }
+        if (url.includes("/feeds/videos.xml")) {
+          return new Response(`
+            <feed>
+              <entry>
+                <yt:videoId>needsagent1</yt:videoId>
+                <title>Needs agent transcription</title>
+                <link rel="alternate" href="https://www.youtube.com/watch?v=needsagent1" />
+                <published>2026-05-22T10:00:00Z</published>
+                <media:description>Launch overview and links.</media:description>
+              </entry>
+            </feed>
+          `);
+        }
+        if (url === "https://www.youtube.com/watch?v=needsagent1") {
+          return new Response("<html>var ytInitialPlayerResponse = {};</html>");
+        }
+        return new Response("missing", { status: 404 });
+      },
+    },
+  );
+
+  assert.equal(result.items.length, 0);
+  assert.equal(result.agentTasks.length, 1);
+  assert.equal(result.agentTasks[0].reason, "missing_or_low_quality_youtube_content");
+  assert.equal(result.agentTasks[0].minimumContentQuality.minWords, 12);
+});
+
 test("personal crawler reports concrete crawling tool identity", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   assert.match(

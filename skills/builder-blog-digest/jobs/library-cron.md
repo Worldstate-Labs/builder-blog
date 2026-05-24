@@ -23,8 +23,11 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" crawl-p
 Rules:
 
 - Skip posts that are already synced.
-- Only use agent judgment if a source requires AI work, transcription, cookies,
-  or custom access. In that case, use the local agent environment and sync the
-  resulting items through the Builder Blog CLI.
+- Only use agent judgment if the CLI returns `agentTasks` or a source requires
+  AI work, transcription, cookies, or custom access. In that case, use the local
+  agent environment and sync the resulting items through the Builder Blog CLI.
+- For YouTube, title, description, and page metadata are auxiliary only. Do not
+  sync them as the item body; complete `agentTasks` with real primary content
+  that meets `minimumContentQuality`.
 - If the run cannot complete without a missing credential or unsupported local
   capability, write the concrete reason to the scheduled job log and stop.

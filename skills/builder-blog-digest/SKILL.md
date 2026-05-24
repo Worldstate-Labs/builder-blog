@@ -102,7 +102,9 @@ This command:
 - crawls each supported source locally from the user's agent environment;
 - uses the later of `--days` and the latest stored post creation time for that
   builder as the incremental cutoff unless `--force` is used;
-- for YouTube videos, prefers caption transcripts and falls back to feed descriptions;
+- for YouTube videos, primary content must come from captions, transcripts, or
+  agent-produced transcription; title, description, and page metadata are
+  auxiliary only and must not be synced as the item body;
 - when YouTube captions are missing, low quality, or in the wrong language,
   the agent should use user-owned local capabilities instead of asking the web
   app to process the media: download or access the audio/video with the user's
@@ -120,6 +122,9 @@ This command:
   `{ "items": [...] }`;
 - records the crawling tool as the local agent runtime, model, and concrete
   crawler path, for example `Codex Desktop (model gpt-5.5) Builder Blog skill crawler (YouTube RSS + captions)`;
+- reports `agentTasks` when primary content is missing or low quality. Treat
+  each task as a request for local agent work, then sync completed content with
+  `sync-builders`;
 - posts discovered `TWEET`, `BLOG_POST`, or `PODCAST_EPISODE` items back to `/api/skill/builders`.
 
 Use `--force` only when the user explicitly wants to re-sync already-synced

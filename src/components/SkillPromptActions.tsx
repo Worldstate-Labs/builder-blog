@@ -19,7 +19,8 @@ Execution contract:
 - If any command fails, stop and report the command, exit code, and stderr.
 - Do not use --force.
 - Do not browse for extra context.
-- Only use agent judgment if the CLI reports that a personal source needs local cookies, credentials, transcription, or custom tooling.
+- Only use agent judgment if the CLI reports agentTasks or says a personal source needs local cookies, credentials, transcription, or custom tooling.
+- For YouTube, description or title as content is not acceptable; they are auxiliary metadata only.
 
 1. Install or refresh the skill:
 /bin/sh -c "$(curl -fsSL ${origin}/api/skill/bootstrap)"
@@ -27,7 +28,12 @@ Execution contract:
 2. Crawl and sync my personal builders:
 BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3
 
-3. Report the JSON result. Success means status is ok and localErrors is empty. Already-synced posts should remain skipped.`,
+3. If the JSON result contains a non-empty agentTasks array, use this agent's local capabilities, subscriptions, browser/cookie access, transcription tools, or model access to produce real primary content for each task. The content must meet the task's minimumContentQuality. Do not use title, description, or page metadata as the item body.
+
+4. If you completed agentTasks, write a sync payload to /tmp/builder-blog-agent-sync.json and run:
+BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs sync-builders --file /tmp/builder-blog-agent-sync.json
+
+5. Report the final JSON result. Success means status is ok, localErrors is empty, and agentTasks is empty or all agentTasks were completed and synced. Already-synced posts should remain skipped.`,
     cronPrompt: (origin: string) => `Set up the Builder Blog private library scheduled job.
 
 Execution contract:
@@ -36,7 +42,8 @@ Execution contract:
 - If any command fails, stop and report the command, exit code, and stderr.
 - Do not use --force.
 - Do not browse for extra context.
-- Only use agent judgment if the scheduled runner reports that a personal source needs local cookies, credentials, transcription, or custom tooling.
+- Only use agent judgment if the scheduled runner reports agentTasks or says a personal source needs local cookies, credentials, transcription, or custom tooling.
+- For YouTube, description or title as content is not acceptable; they are auxiliary metadata only.
 
 1. Install or refresh the skill:
 /bin/sh -c "$(curl -fsSL ${origin}/api/skill/bootstrap)"
@@ -52,6 +59,8 @@ crontab -l | grep 'builder-agent-runner.sh library-cron'
 
 5. Run one immediate smoke check:
 BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh library-cron
+
+If the smoke check JSON contains a non-empty agentTasks array, use the available local agent scheduler/runtime to complete and sync those tasks. The item body must be real primary content meeting minimumContentQuality, not a title, description, or page metadata.
 
 Only if crontab is unavailable or blocked, install the same command and cadence through launchd or the local agent scheduler:
 0 */6 * * * BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1

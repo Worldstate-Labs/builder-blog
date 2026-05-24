@@ -170,6 +170,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /Do not substitute another workflow/);
   assert.match(skillPromptActions, /If any command fails, stop/);
   assert.match(skillPromptActions, /Only use agent judgment/);
+  assert.match(skillPromptActions, /agentTasks/);
+  assert.match(skillPromptActions, /description or title as content/);
   assert.match(skillPromptActions, /Do not browse for extra context/);
   assert.match(skillPromptActions, /First attempt the exact crontab install/);
   assert.match(skillPromptActions, /crontab/);
