@@ -91,22 +91,30 @@ pre-generated feed JSON files.
 
 ## Agent Skill
 
-Skill file:
+The deployed web app serves the skill and CLI script. Users should copy the
+setup command from Settings, or run:
+
+```bash
+/bin/sh -c "$(curl -fsSL https://builder-blog.worldstatelabs.com/api/skill/bootstrap)"
+```
+
+Served files:
 
 ```text
-skills/builder-blog-digest/SKILL.md
+/api/skill/files/builder-blog-digest.md
+/api/skill/files/builder-digest.mjs
 ```
 
 Login from terminal:
 
 ```bash
-npm run skill -- login --app-url https://builder-blog.worldstatelabs.com
+node ~/.builder-blog/builder-digest.mjs login --app-url https://builder-blog.worldstatelabs.com
 ```
 
 Prepare personalized context:
 
 ```bash
-npm run skill -- prepare --days 1
+node ~/.builder-blog/builder-digest.mjs prepare --days 1
 ```
 
 Locally crawl personal builders in the user's own library and sync the
@@ -115,13 +123,13 @@ each builder to posts newer than the latest post already stored for that
 builder unless `--force` is used:
 
 ```bash
-npm run skill -- crawl-personal --days 30 --limit 3
+node ~/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3
 ```
 
 Sync user-crawled personal builders and items:
 
 ```bash
-npm run skill -- sync-builders --file /tmp/personal-builders.json
+node ~/.builder-blog/builder-digest.mjs sync-builders --file /tmp/personal-builders.json
 ```
 
 `sync-builders` adds personal builders to the user's pool. Set
@@ -131,7 +139,7 @@ periodic digest feed.
 After the AI agent writes the digest, sync it:
 
 ```bash
-npm run skill -- sync --file /tmp/builder-blog-digest.md --title "AI Builder Digest"
+node ~/.builder-blog/builder-digest.mjs sync --file /tmp/builder-blog-digest.md --title "AI Builder Digest"
 ```
 
 The synced digest appears in `/dashboard` and `/history`.

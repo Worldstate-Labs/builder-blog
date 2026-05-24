@@ -9,6 +9,20 @@ Use this skill when the user asks for an AI builder digest, Builder Blog feed, p
 
 This skill is compatible with Claude Code, OpenClaw, and Codex because it relies only on a local Node CLI and plain JSON.
 
+## Install From Web App
+
+The Builder Blog web app serves this skill and its CLI script. When the user
+copies the setup command from the web app, run it as-is. It downloads the
+current skill to `~/.builder-blog/SKILL.md`, downloads the CLI to
+`~/.builder-blog/builder-digest.mjs`, then starts terminal login:
+
+```bash
+/bin/sh -c "$(curl -fsSL https://builder-blog.worldstatelabs.com/api/skill/bootstrap)"
+```
+
+For non-production deployments, replace the host with the current Builder Blog
+web app URL. Do not assume a local repository checkout exists.
+
 ## Commands
 
 ### `/login`
@@ -16,8 +30,7 @@ This skill is compatible with Claude Code, OpenClaw, and Codex because it relies
 Authenticate this terminal or agent session with the Builder Blog web app:
 
 ```bash
-cd /Users/jie/code/builder_blog
-node scripts/builder-digest.mjs login --app-url "${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}"
+node ~/.builder-blog/builder-digest.mjs login --app-url "${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}"
 ```
 
 The command opens a browser verification URL. The user signs in with Google or GitHub, approves the device code, and the CLI stores an agent token in `~/.builder-blog/config.json`.
@@ -33,8 +46,7 @@ user's library, run the local crawler and sync the resulting feed items to the
 cloud:
 
 ```bash
-cd /Users/jie/code/builder_blog
-node scripts/builder-digest.mjs crawl-personal --days 30 --limit 3
+node ~/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3
 ```
 
 This command:
@@ -69,8 +81,7 @@ Use `--force` only when the user explicitly wants to re-sync already-synced
 posts:
 
 ```bash
-cd /Users/jie/code/builder_blog
-node scripts/builder-digest.mjs crawl-personal --days 30 --limit 3 --force
+node ~/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3 --force
 ```
 
 Use `--agent-model gpt-5.5` or `BUILDER_BLOG_AGENT_MODEL=gpt-5.5` when the
@@ -80,8 +91,7 @@ Agents may also sync already-crawled user-owned sources manually. This is an
 `in library` operation, not a digest subscription unless `subscribe` is true:
 
 ```bash
-cd /Users/jie/code/builder_blog
-node scripts/builder-digest.mjs sync-builders --file /tmp/personal-builders.json
+node ~/.builder-blog/builder-digest.mjs sync-builders --file /tmp/personal-builders.json
 ```
 
 Payload shape:
@@ -120,8 +130,7 @@ actual source is more specific, for example `pdf`, `youtube`, or
 1. Fetch the user's personalized context:
 
 ```bash
-cd /Users/jie/code/builder_blog
-node scripts/builder-digest.mjs prepare --days 1
+node ~/.builder-blog/builder-digest.mjs prepare --days 1
 ```
 
 2. Read the JSON. It contains:
@@ -147,8 +156,7 @@ cat > /tmp/builder-blog-digest.md <<'DIGEST'
 <final digest text>
 DIGEST
 
-cd /Users/jie/code/builder_blog
-node scripts/builder-digest.mjs sync --file /tmp/builder-blog-digest.md --title "AI Builder Digest"
+node ~/.builder-blog/builder-digest.mjs sync --file /tmp/builder-blog-digest.md --title "AI Builder Digest"
 ```
 
 After sync, tell the user it is visible in the Builder Blog web app history.
@@ -158,6 +166,5 @@ After sync, tell the user it is visible in the Builder Blog web app history.
 To check whether the terminal is logged in:
 
 ```bash
-cd /Users/jie/code/builder_blog
-node scripts/builder-digest.mjs status
+node ~/.builder-blog/builder-digest.mjs status
 ```
