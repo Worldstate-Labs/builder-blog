@@ -11,6 +11,9 @@ Agent discretion boundary: this is a command-runner job unless the CLI returns
 `agentTasks` or a source requires local cookies, credentials, transcription, or
 custom tooling. Do not change paths, flags, cadence, titles, output files, JSON
 schema, or success criteria.
+During the `agentTasks` step, failed extraction attempts are not command-contract
+failures. Keep trying available local capabilities until each task is completed
+or no available method can obtain real primary content.
 
 Before doing work, ensure the skill is installed:
 
@@ -34,6 +37,11 @@ Rules:
   AI work, transcription, cookies, or custom access. In that case, use the local
   agent environment and sync the resulting items through the FollowBrief CLI.
 - Complete exactly the task IDs returned by the CLI. Do not add new sources, URLs, or feed items that were not returned by the CLI or task payload.
+- For `agentTasks`, do not stop just because one extraction method fails. Keep
+  working through available local methods until the content is extracted. Stop
+  only if this agent has no remaining available way to obtain real primary
+  content for a task, and write the tried methods and concrete blocker to the
+  scheduled job log.
 - For YouTube, title, description, and page metadata are auxiliary only. Do not
   sync them as the item body; complete `agentTasks` with real primary content
   that meets `minimumContentQuality`.

@@ -607,7 +607,7 @@ function youtubeAgentTaskForVideo(builder, video, quality, sourceDetail) {
     quality,
     minimumContentQuality: youtubeMinimumContentQuality(),
     suggestedAction:
-      "Use the user's local agent capabilities to obtain or transcribe the video content, then sync it with builder-digest sync-builders. Do not use the title or description as the item body.",
+      "Use any available local agent capability to obtain real video primary content, then sync it with builder-digest sync-builders. Do not stop just because one extraction method fails; stop only when no available method can obtain the content. Do not use the title or description as the item body.",
     sourceDetail,
   };
   return { ...task, id: agentTaskId(task) };
@@ -762,9 +762,9 @@ async function crawlPersonalPdfBuilder(builder, { agentModel }) {
           builderId: builder.id,
           sourceType: "pdf",
           item,
-          minimumContentQuality: genericMinimumContentQuality(),
-          suggestedAction:
-            "Use the user's local agent PDF extraction, OCR, or subscription tooling to produce primary document text, then sync it with builder-digest sync-builders.",
+        minimumContentQuality: genericMinimumContentQuality(),
+        suggestedAction:
+          "Use any available local agent capability to produce real primary document text, then sync it with builder-digest sync-builders. Do not stop just because one extraction method fails; stop only when no available method can obtain the content.",
           sourceDetail: skillCrawlingTool("PDF requires agent extraction", agentModel),
         };
         return { ...task, id: agentTaskId(task) };

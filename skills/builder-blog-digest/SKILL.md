@@ -58,6 +58,10 @@ For copied web-app prompts and scheduled job prompts, treat the instructions as
 a runbook: run the named commands in order, keep the paths, flags, cadence,
 titles, output files, JSON schema, and success criteria unchanged, and use agent
 judgment only in the explicitly marked content-generation or `agentTasks` steps.
+Within an `agentTasks` step, failed extraction attempts are not command-contract
+failures. The agent should keep using any available local capability until the
+task is complete, and stop only when no available method can obtain real primary
+content.
 
 ```bash
 BUILDER_BLOG_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}" \
@@ -113,12 +117,10 @@ This command:
 - for YouTube videos, primary content must come from captions, transcripts, or
   agent-produced transcription; title, description, and page metadata are
   auxiliary only and must not be synced as the item body;
-- when YouTube captions are missing, low quality, or in the wrong language,
-  the agent should use user-owned local capabilities instead of asking the web
-  app to process the media: download or access the audio/video with the user's
-  own tools, transcribe with the user's available model subscription or local
-  speech-to-text runtime, translate when needed, and sync the cleaned transcript
-  as the item's `body` through `sync-builders`;
+- when YouTube primary content is missing or low quality, the agent should use
+  any available user-owned local capability instead of asking the web app to
+  process the media. The agent chooses the method; the requirement is to obtain
+  real primary content and sync it as the item's `body` through `sync-builders`;
 - if the transcript exists but is noisy, the agent may use its own model access
   to lightly clean timestamps, repeated fragments, and caption artifacts while
   preserving factual content; record this in `crawlingTool`, for example
@@ -133,7 +135,11 @@ This command:
 - reports `agentTasks` when primary content is missing or low quality. Treat
   each task as a request for local agent work. Complete exactly the task IDs
   returned by the CLI; do not add new sources, URLs, or feed items that were
-  not returned by the CLI or task payload. Completed task items must include
+  not returned by the CLI or task payload. Do not stop just because one
+  extraction method fails; keep trying available local methods until the content
+  is extracted. Stop only if this agent has no remaining available way to obtain
+  real primary content for a task, and report the tried methods and concrete
+  blocker. Completed task items must include
   `rawJson.agentTaskId`, `rawJson.agentRuntime`, `rawJson.agentModel` if known,
   `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`. For YouTube,
   include `rawJson.transcriptSource="agent-transcript"` unless a better primary

@@ -229,6 +229,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /Do not change paths, flags, cadence, titles, output files, JSON schema/);
   assert.match(skillPromptActions, /Complete exactly the task IDs returned by the CLI/);
   assert.match(skillPromptActions, /Do not add new sources, URLs, or feed items/);
+  assert.match(skillPromptActions, /do not stop just because one method fails/);
+  assert.match(skillPromptActions, /no remaining available way/);
   assert.match(skillPromptActions, /The only creative step is writing/);
   assert.match(skillPromptActions, /agentTasks/);
   assert.match(skillPromptActions, /description or title as content/);
@@ -265,6 +267,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skill, /builder-agent-runner\.sh digest-cron/);
   assert.match(skill, /OpenClaw CLI/);
   assert.match(skill, /validate-agent-sync/);
+  assert.match(skill, /failed extraction attempts are not command-contract\s+failures/);
   assert.match(skill, /~\/\.builder-blog\/builder-digest\.mjs/);
   assert.match(libraryCronPrompt, /crawl-personal --days 30 --limit 3/);
   assert.match(libraryCronPrompt, /validate-agent-sync/);
@@ -274,6 +277,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronPrompt, /Agent discretion boundary/);
   assert.match(libraryCronPrompt, /Complete exactly the task IDs returned by the CLI/);
   assert.match(libraryCronPrompt, /Do not add new sources, URLs, or feed items/);
+  assert.match(libraryCronPrompt, /do not stop just because one extraction method fails/);
   assert.match(digestCronPrompt, /prepare --days 1/);
   assert.match(digestCronPrompt, /builder-blog-digest\.md/);
   assert.match(digestCronPrompt, /Only use agent judgment to write the digest body/);

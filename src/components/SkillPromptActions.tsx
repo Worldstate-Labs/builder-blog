@@ -20,6 +20,7 @@ Execution contract:
 - Do not use --force.
 - Do not browse for extra context.
 - Agent discretion boundary: this is a command-runner task until step 4 explicitly requires local agent work.
+- During the agentTasks step, failed extraction attempts are not command-contract failures. Keep trying available local capabilities until each task is completed or no available method can obtain real primary content.
 - Do not change paths, flags, cadence, titles, output files, JSON schema, or success criteria.
 - Only use agent judgment if the CLI reports agentTasks or says a personal source needs local cookies, credentials, transcription, or custom tooling.
 - For YouTube, description or title as content is not acceptable; they are auxiliary metadata only.
@@ -33,7 +34,7 @@ BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs crawl-p
 3. Print the crawl result:
 cat /tmp/builder-blog-crawl-result.json
 
-If it contains a non-empty agentTasks array: Complete exactly the task IDs returned by the CLI using this agent's own local capabilities, subscriptions, browser/cookie access, transcription tools, or model access. Do not add new sources, URLs, or feed items that were not returned by the CLI or task payload. The content must meet each task's minimumContentQuality. Do not use title, description, or page metadata as the item body.
+If it contains a non-empty agentTasks array: Complete exactly the task IDs returned by the CLI using this agent's own local capabilities, subscriptions, browser/cookie access, transcription tools, or model access. Keep working through available methods until the content is extracted; do not stop just because one method fails. Stop only if this agent has no remaining available way to obtain real primary content for a task, and report the tried methods and concrete blocker. Do not add new sources, URLs, or feed items that were not returned by the CLI or task payload. The content must meet each task's minimumContentQuality. Do not use title, description, or page metadata as the item body.
 
 4. If you completed agentTasks, write a sync payload to /tmp/builder-blog-agent-sync.json. Every agent-produced item must include rawJson.agentTaskId, rawJson.agentRuntime, rawJson.agentModel if known, rawJson.agentCompletedAt, rawJson.agentExecutionProof, and for YouTube rawJson.transcriptSource="agent-transcript" unless a better primary transcript source is used. Then run these commands exactly:
 BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs validate-agent-sync --tasks /tmp/builder-blog-crawl-result.json --file /tmp/builder-blog-agent-sync.json
@@ -49,6 +50,7 @@ Execution contract:
 - Do not use --force.
 - Do not browse for extra context.
 - Agent discretion boundary: this is a scheduler setup task until the smoke check reports agentTasks.
+- During the agentTasks step, failed extraction attempts are not command-contract failures. Keep trying available local capabilities until each task is completed or no available method can obtain real primary content.
 - Do not change paths, flags, cadence, titles, output files, JSON schema, or success criteria.
 - Only use agent judgment if the scheduled runner reports agentTasks or says a personal source needs local cookies, credentials, transcription, or custom tooling.
 - For YouTube, description or title as content is not acceptable; they are auxiliary metadata only.
@@ -68,7 +70,7 @@ crontab -l | grep 'builder-agent-runner.sh library-cron'
 5. Run one immediate smoke check:
 BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh library-cron
 
-If the smoke check JSON contains a non-empty agentTasks array: Complete exactly the task IDs returned by the CLI. Do not add new sources, URLs, or feed items that were not returned by the CLI or task payload. The item body must be real primary content meeting minimumContentQuality, not a title, description, or page metadata. The agent-produced sync payload must pass validate-agent-sync before sync-builders is considered successful.
+If the smoke check JSON contains a non-empty agentTasks array: Complete exactly the task IDs returned by the CLI. Keep working through available methods until the content is extracted; do not stop just because one method fails. Stop only if this agent has no remaining available way to obtain real primary content for a task, and report the tried methods and concrete blocker. Do not add new sources, URLs, or feed items that were not returned by the CLI or task payload. The item body must be real primary content meeting minimumContentQuality, not a title, description, or page metadata. The agent-produced sync payload must pass validate-agent-sync before sync-builders is considered successful.
 
 Only if crontab is unavailable or blocked, install the same command and cadence through launchd or the local agent scheduler:
 0 */6 * * * BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1
