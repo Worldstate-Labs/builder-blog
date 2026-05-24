@@ -6,68 +6,89 @@ import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { BuilderLibraryActions } from "@/components/BuilderLibraryActions";
 import { SourceBadge } from "@/components/SourceBadge";
 import {
+  builderLibraryBuilderAdded,
   builderLibraryStatsChanged,
   builderLibrarySubscribeAll,
+  type BuilderLibraryEventItem,
   type BuilderLibraryStatsChange,
 } from "@/lib/builder-library-events";
 
-export type BuilderLibraryListItem = {
-  id: string;
-  kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";
-  sourceType: string;
-  name: string;
-  handle: string | null;
-  sourceUrl: string | null;
-  crawlUrl: string | null;
-  feedItemCount: number;
-  latestPostCreatedAt: string | null;
-  subscribed: boolean;
-  crawlLabel: string;
-  allowRemove: boolean;
-};
+export type BuilderLibraryListItem = BuilderLibraryEventItem;
 
 type BuilderLibraryListProps = {
+  acceptAddedBuilders?: boolean;
   builders: BuilderLibraryListItem[];
   emptyBody: string;
   emptyTitle?: string;
 };
 
 export function BuilderLibraryList({
+  acceptAddedBuilders = false,
   builders,
   emptyBody,
   emptyTitle,
 }: BuilderLibraryListProps) {
+  const [addedBuilders, setAddedBuilders] = useState<BuilderLibraryListItem[]>([]);
   const [removedBuilderIds, setRemovedBuilderIds] = useState<Set<string>>(() => new Set());
   const [removeErrors, setRemoveErrors] = useState<Record<string, string>>({});
   const [subscribedByBuilderId, setSubscribedByBuilderId] = useState<Record<string, boolean>>(
     () => Object.fromEntries(builders.map((builder) => [builder.id, builder.subscribed])),
+  );
+  const allBuilders = useMemo(
+    () => [
+      ...builders,
+      ...addedBuilders.filter(
+        (addedBuilder) => !builders.some((builder) => builder.id === addedBuilder.id),
+      ),
+    ],
+    [addedBuilders, builders],
   );
 
   useEffect(() => {
     function onSubscribeAll() {
       setSubscribedByBuilderId((current) => ({
         ...current,
-        ...Object.fromEntries(builders.map((builder) => [builder.id, true])),
+        ...Object.fromEntries(allBuilders.map((builder) => [builder.id, true])),
       }));
     }
 
     window.addEventListener(builderLibrarySubscribeAll, onSubscribeAll);
     return () => window.removeEventListener(builderLibrarySubscribeAll, onSubscribeAll);
-  }, [builders]);
+  }, [allBuilders]);
+
+  useEffect(() => {
+    if (!acceptAddedBuilders) return;
+
+    function onBuilderAdded(event: Event) {
+      const builder = (event as CustomEvent<BuilderLibraryListItem>).detail;
+      if (!builder?.id) return;
+      if (allBuilders.some((item) => item.id === builder.id)) return;
+      setAddedBuilders((current) => [...current, builder]);
+      setSubscribedByBuilderId((current) => ({ ...current, [builder.id]: builder.subscribed }));
+      dispatchStatsChange({
+        crawledDelta: builder.feedItemCount,
+        inLibraryDelta: 1,
+        subscribedDelta: builder.subscribed ? 1 : 0,
+      });
+    }
+
+    window.addEventListener(builderLibraryBuilderAdded, onBuilderAdded);
+    return () => window.removeEventListener(builderLibraryBuilderAdded, onBuilderAdded);
+  }, [acceptAddedBuilders, allBuilders]);
 
   const visibleBuilders = useMemo(
     () =>
-      builders
+      allBuilders
         .filter((builder) => !removedBuilderIds.has(builder.id))
         .map((builder) => ({
           ...builder,
           subscribed: subscribedByBuilderId[builder.id] ?? builder.subscribed,
         })),
-    [builders, removedBuilderIds, subscribedByBuilderId],
+    [allBuilders, removedBuilderIds, subscribedByBuilderId],
   );
 
   function onRemoveStateChange(builderId: string, removed: boolean) {
-    const builder = builders.find((item) => item.id === builderId);
+    const builder = allBuilders.find((item) => item.id === builderId);
     const subscribed = subscribedByBuilderId[builderId] ?? builder?.subscribed ?? false;
     if (builder) {
       dispatchStatsChange({

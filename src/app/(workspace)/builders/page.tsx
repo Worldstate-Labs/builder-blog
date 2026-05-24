@@ -1,11 +1,9 @@
 import { BuilderKind, BuilderPoolOrigin, BuilderScope, LibraryHubKind } from "@prisma/client";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import { Plus } from "lucide-react";
-import { addPersonalBuilderAction } from "@/app/actions";
+import { AddBuilderForm } from "@/components/AddBuilderForm";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
 import { BuilderLibraryStats } from "@/components/BuilderLibraryStats";
-import { FormSubmitButton } from "@/components/FormSubmitButton";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import { getCurrentSession } from "@/lib/auth";
@@ -140,8 +138,13 @@ export default async function BuildersPage() {
               name={`${session.user.name || session.user.email || "Personal"} library`}
             />
             <SkillPromptActions context="library" />
-            <AddBuilderForm />
+            <AddBuilderForm
+              sourceOptions={SOURCE_DEFINITIONS.filter((source) => source.id !== "pdf").map(
+                (source) => ({ id: source.id, label: source.label }),
+              )}
+            />
             <BuilderLibraryList
+              acceptAddedBuilders
               builders={privateBuilders.map((builder) =>
                 builderListItem({
                   allowRemove: true,
@@ -197,50 +200,6 @@ export default async function BuildersPage() {
           </section>
         </section>
     </div>
-  );
-}
-
-function AddBuilderForm() {
-  return (
-    <form action={addPersonalBuilderAction} className="add-builder-form">
-      <div className="add-builder-form-header">
-        <div>
-          <h3 className="text-base font-semibold text-[var(--ink)]">Add builder</h3>
-          <p className="mt-1 text-sm text-[var(--muted-strong)]">
-            Create a private library entry.
-          </p>
-        </div>
-        <FormSubmitButton className="button-dark button-compact gap-2" pendingLabel="Adding...">
-          <Plus className="h-4 w-4" />
-          Add
-        </FormSubmitButton>
-      </div>
-      <div className="add-builder-grid">
-        <label>
-          <span>Source</span>
-          <select className="input" name="sourceType" defaultValue="x">
-            {SOURCE_DEFINITIONS.filter((source) => source.id !== "pdf").map((source) => (
-              <option key={source.id} value={source.id}>
-                {source.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>Handle or URL</span>
-          <input
-            className="input"
-            name="sourceValue"
-            placeholder="@deepmind or https://example.com/feed"
-            required
-          />
-        </label>
-        <label className="add-builder-grid-wide">
-          <span>Display name</span>
-          <input className="input" name="name" placeholder="Optional; inferred when empty" />
-        </label>
-      </div>
-    </form>
   );
 }
 

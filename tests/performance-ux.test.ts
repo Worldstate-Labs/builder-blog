@@ -300,8 +300,10 @@ test("builders page avoids a global crawled-content query", () => {
 
 test("builders page exposes per-builder crawled posts ordered by time", () => {
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
+  const addBuilderForm = source("src/components/AddBuilderForm.tsx");
   const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
   const builderFeedItems = source("src/components/BuilderFeedItems.tsx");
+  const personalBuilderRoute = source("src/app/api/builders/personal/route.ts");
   const feedItemsRoute = source("src/app/api/builders/[builderId]/feed-items/route.ts");
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
@@ -315,10 +317,17 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
   assert.match(buildersPage, /BuilderLibraryList/);
   assert.match(builderLibraryList, /BuilderFeedItems/);
   assert.match(buildersPage, /AddBuilderForm/);
-  assert.match(buildersPage, /addPersonalBuilderAction/);
-  assert.match(buildersPage, /name="sourceType"/);
-  assert.match(buildersPage, /name="sourceValue"/);
-  assert.match(buildersPage, /Handle or URL/);
+  assert.doesNotMatch(buildersPage, /addPersonalBuilderAction/);
+  assert.match(addBuilderForm, /"use client"/);
+  assert.match(addBuilderForm, /fetch\("\/api\/builders\/personal"/);
+  assert.match(addBuilderForm, /builderLibraryBuilderAdded/);
+  assert.match(addBuilderForm, /name="sourceType"/);
+  assert.match(addBuilderForm, /name="sourceValue"/);
+  assert.match(addBuilderForm, /Handle or URL/);
+  assert.match(personalBuilderRoute, /export async function POST/);
+  assert.match(personalBuilderRoute, /resolvePersonalBuilderInput/);
+  assert.match(personalBuilderRoute, /NextResponse\.json/);
+  assert.doesNotMatch(personalBuilderRoute, /redirect\(/);
   assert.match(builderLibraryList, /Open source/);
   assert.doesNotMatch(buildersPage, /Technical details/);
   assert.doesNotMatch(buildersPage, /name="handle"/);
@@ -384,7 +393,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(builderLibraryList, /subscribedByBuilderId/);
   assert.match(builderLibraryList, /setRemovedBuilderIds/);
   assert.match(builderLibraryList, /dispatchEvent/);
-  assert.match(builderLibraryList, /builders\s*\.\s*filter/);
+  assert.match(builderLibraryList, /builderLibraryBuilderAdded/);
+  assert.match(builderLibraryList, /allBuilders\s*\.\s*filter/);
   assert.match(builderLibraryList, /onRemoveStateChange/);
   assert.match(builderLibraryList, /onSubscriptionStateChange/);
   assert.match(builderLibraryList, /BuilderFeedItems/);
