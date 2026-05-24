@@ -5,6 +5,10 @@ This is an unattended scheduled run. Do not ask the user questions.
 Run these steps exactly. If any command fails, stop and write the command, exit
 code, and stderr to the scheduled job log. Do not browse for extra context. Only use agent judgment to write the digest body from the Builder Blog context items.
 
+Agent discretion boundary: this is a command-runner job except for writing the
+digest body from the fetched Builder Blog context. Do not change paths, flags,
+cadence, titles, output files, JSON schema, or success criteria.
+
 Before doing work, ensure the skill is installed:
 
 ```bash
@@ -38,6 +42,7 @@ Digest rules:
 
 - Use only `items` from `builder-blog-context.json`; do not browse the web and
   do not invent facts.
+- The only creative step is writing the digest body from those items.
 - Include source URLs for claims when item URLs are available.
 - Prioritize launches, technical insights, implementation details, business
   moves, and strong opinions.

@@ -7,6 +7,11 @@ code, and stderr to the scheduled job log. Do not browse for extra context. Do
 not use `--force` unless the user explicitly requested a forced run in the
 scheduled job configuration.
 
+Agent discretion boundary: this is a command-runner job unless the CLI returns
+`agentTasks` or a source requires local cookies, credentials, transcription, or
+custom tooling. Do not change paths, flags, cadence, titles, output files, JSON
+schema, or success criteria.
+
 Before doing work, ensure the skill is installed:
 
 ```bash
@@ -28,6 +33,7 @@ Rules:
 - Only use agent judgment if the CLI returns `agentTasks` or a source requires
   AI work, transcription, cookies, or custom access. In that case, use the local
   agent environment and sync the resulting items through the Builder Blog CLI.
+- Complete exactly the task IDs returned by the CLI. Do not add new builders, URLs, or feed items that were not returned by the CLI or task payload.
 - For YouTube, title, description, and page metadata are auxiliary only. Do not
   sync them as the item body; complete `agentTasks` with real primary content
   that meets `minimumContentQuality`.

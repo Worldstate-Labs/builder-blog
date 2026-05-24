@@ -54,6 +54,11 @@ Use the installed runner instead of scheduling a bare `node` command whenever a
 job may require summarization, transcription, cookies, browser access, or model
 work:
 
+For copied web-app prompts and scheduled job prompts, treat the instructions as
+a runbook: run the named commands in order, keep the paths, flags, cadence,
+titles, output files, JSON schema, and success criteria unchanged, and use agent
+judgment only in the explicitly marked content-generation or `agentTasks` steps.
+
 ```bash
 BUILDER_BLOG_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}" \
 ~/.builder-blog/builder-agent-runner.sh digest-cron
@@ -124,7 +129,9 @@ This command:
 - records the crawling tool as the local agent runtime, model, and concrete
   crawler path, for example `Codex Desktop (model gpt-5.5) Builder Blog skill crawler (YouTube RSS + captions)`;
 - reports `agentTasks` when primary content is missing or low quality. Treat
-  each task as a request for local agent work. Completed task items must include
+  each task as a request for local agent work. Complete exactly the task IDs
+  returned by the CLI; do not add new builders, URLs, or feed items that were
+  not returned by the CLI or task payload. Completed task items must include
   `rawJson.agentTaskId`, `rawJson.agentRuntime`, `rawJson.agentModel` if known,
   `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`. For YouTube,
   include `rawJson.transcriptSource="agent-transcript"` unless a better primary
@@ -207,6 +214,7 @@ node ~/.builder-blog/builder-digest.mjs prepare --days 1
 3. Produce a concise Chinese digest:
 
 - Use only supplied `items`.
+- The only creative step is writing the digest body from those items.
 - Group by builder or theme.
 - Include source URLs for every claim.
 - Prioritize launches, technical insights, business moves, strong opinions, and implementation details.

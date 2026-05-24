@@ -19,6 +19,8 @@ Execution contract:
 - If any command fails, stop and report the command, exit code, and stderr.
 - Do not use --force.
 - Do not browse for extra context.
+- Agent discretion boundary: this is a command-runner task until step 4 explicitly requires local agent work.
+- Do not change paths, flags, cadence, titles, output files, JSON schema, or success criteria.
 - Only use agent judgment if the CLI reports agentTasks or says a personal source needs local cookies, credentials, transcription, or custom tooling.
 - For YouTube, description or title as content is not acceptable; they are auxiliary metadata only.
 
@@ -31,7 +33,7 @@ BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs crawl-p
 3. Print the crawl result:
 cat /tmp/builder-blog-crawl-result.json
 
-If it contains a non-empty agentTasks array, this agent must complete those tasks with its own local capabilities, subscriptions, browser/cookie access, transcription tools, or model access. The content must meet each task's minimumContentQuality. Do not use title, description, or page metadata as the item body.
+If it contains a non-empty agentTasks array: Complete exactly the task IDs returned by the CLI using this agent's own local capabilities, subscriptions, browser/cookie access, transcription tools, or model access. Do not add new builders, URLs, or feed items that were not returned by the CLI or task payload. The content must meet each task's minimumContentQuality. Do not use title, description, or page metadata as the item body.
 
 4. If you completed agentTasks, write a sync payload to /tmp/builder-blog-agent-sync.json. Every agent-produced item must include rawJson.agentTaskId, rawJson.agentRuntime, rawJson.agentModel if known, rawJson.agentCompletedAt, rawJson.agentExecutionProof, and for YouTube rawJson.transcriptSource="agent-transcript" unless a better primary transcript source is used. Then run these commands exactly:
 BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs validate-agent-sync --tasks /tmp/builder-blog-crawl-result.json --file /tmp/builder-blog-agent-sync.json
@@ -46,6 +48,8 @@ Execution contract:
 - If any command fails, stop and report the command, exit code, and stderr.
 - Do not use --force.
 - Do not browse for extra context.
+- Agent discretion boundary: this is a scheduler setup task until the smoke check reports agentTasks.
+- Do not change paths, flags, cadence, titles, output files, JSON schema, or success criteria.
 - Only use agent judgment if the scheduled runner reports agentTasks or says a personal source needs local cookies, credentials, transcription, or custom tooling.
 - For YouTube, description or title as content is not acceptable; they are auxiliary metadata only.
 
@@ -64,7 +68,7 @@ crontab -l | grep 'builder-agent-runner.sh library-cron'
 5. Run one immediate smoke check:
 BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh library-cron
 
-If the smoke check JSON contains a non-empty agentTasks array, the local agent runtime must complete and sync those tasks. The item body must be real primary content meeting minimumContentQuality, not a title, description, or page metadata. The agent-produced sync payload must pass validate-agent-sync before sync-builders is considered successful.
+If the smoke check JSON contains a non-empty agentTasks array: Complete exactly the task IDs returned by the CLI. Do not add new builders, URLs, or feed items that were not returned by the CLI or task payload. The item body must be real primary content meeting minimumContentQuality, not a title, description, or page metadata. The agent-produced sync payload must pass validate-agent-sync before sync-builders is considered successful.
 
 Only if crontab is unavailable or blocked, install the same command and cadence through launchd or the local agent scheduler:
 0 */6 * * * BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1
@@ -90,6 +94,8 @@ Execution contract:
 - Do not substitute another workflow.
 - If any command fails, stop and report the command, exit code, and stderr.
 - Do not browse for extra context.
+- Agent discretion boundary: this is a command-runner task except for the explicit digest-writing step.
+- Do not change paths, flags, cadence, titles, output files, JSON schema, or success criteria.
 - Only use agent judgment to write the digest body from the returned JSON items.
 
 1. Install or refresh the skill:
@@ -98,7 +104,7 @@ Execution contract:
 2. Fetch the digest context and save it:
 BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs prepare --days 1 > /tmp/builder-blog-context.json
 
-3. Read /tmp/builder-blog-context.json. Write a concise Chinese digest using only context.items, include source URLs, and save it to /tmp/builder-blog-digest.md. If there are no items, write a short Chinese digest saying there were no new subscription updates.
+3. Read /tmp/builder-blog-context.json. The only creative step is writing a concise Chinese digest using only context.items. Include source URLs, and save it to /tmp/builder-blog-digest.md. If there are no items, write a short Chinese digest saying there were no new subscription updates.
 
 4. Sync the digest:
 BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs sync --file /tmp/builder-blog-digest.md --title "AI Builder Digest"`,
@@ -109,6 +115,8 @@ Execution contract:
 - Do not substitute another workflow.
 - If any command fails, stop and report the command, exit code, and stderr.
 - Do not browse for extra context.
+- Agent discretion boundary: this is a scheduler setup task; the scheduled runner is the only component that should generate digest text.
+- Do not change paths, flags, cadence, titles, output files, JSON schema, or success criteria.
 - Only use agent judgment to write the digest body from the Builder Blog context items.
 
 1. Install or refresh the skill:
