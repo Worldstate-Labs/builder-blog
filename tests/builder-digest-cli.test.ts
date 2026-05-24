@@ -212,6 +212,64 @@ test("personal YouTube crawler falls back to channel videos page when RSS fails"
   });
 });
 
+test("personal YouTube crawler parses modern channel lockup view models", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const videos = cli.parseYouTubePageData(`
+    <script>
+      var ytInitialData = {
+        "contents": {
+          "richGridRenderer": {
+            "contents": [
+              {
+                "richItemRenderer": {
+                  "content": {
+                    "lockupViewModel": {
+                      "contentImage": {
+                        "thumbnailViewModel": {
+                          "image": {
+                            "sources": [
+                              { "url": "https://i.ytimg.com/vi/HaaKUFAOi84/hqdefault.jpg" }
+                            ]
+                          }
+                        }
+                      },
+                      "metadata": {
+                        "lockupMetadataViewModel": {
+                          "title": { "content": "Workspace agents in ChatGPT: Admin and builder controls" },
+                          "metadata": {
+                            "contentMetadataViewModel": {
+                              "metadataRows": [
+                                {
+                                  "metadataParts": [
+                                    { "text": { "content": "8.3K views" } },
+                                    { "text": { "content": "1 day ago" } }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      };
+    </script>
+  `);
+
+  assert.deepEqual(videos[0], {
+    videoId: "HaaKUFAOi84",
+    title: "Workspace agents in ChatGPT: Admin and builder controls",
+    url: "https://www.youtube.com/watch?v=HaaKUFAOi84",
+    publishedAt: null,
+    description: "8.3K views · 1 day ago",
+  });
+});
+
 test("personal crawler reports concrete crawling tool identity", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   assert.match(

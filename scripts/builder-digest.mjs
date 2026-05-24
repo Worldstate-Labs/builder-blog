@@ -1042,6 +1042,10 @@ export function parseYouTubeFeed(xml, feedUrl) {
 }
 
 export function parseYouTubePageData(html) {
+  const initialData = extractYouTubeInitialData(html);
+  const structuredVideos = initialData ? collectYouTubeVideosFromData(initialData) : [];
+  if (structuredVideos.length > 0) return structuredVideos;
+
   const videos = [];
   const videoRegex =
     /"videoId":"([A-Za-z0-9_-]{6,})"[\s\S]{0,600}?"title":\{"runs":\[\{"text":"([^"]+)"/g;
@@ -1060,6 +1064,91 @@ export function parseYouTubePageData(html) {
     });
   }
   return videos;
+}
+
+function extractYouTubeInitialData(html) {
+  return extractYouTubeJsonAssignment(html, "ytInitialData");
+}
+
+function collectYouTubeVideosFromData(data) {
+  const videos = [];
+  const seen = new Set();
+
+  walkYouTubeData(data, (node) => {
+    const renderer =
+      node.lockupViewModel ||
+      node.videoRenderer ||
+      node.gridVideoRenderer ||
+      node.reelItemRenderer ||
+      node.shortsLockupViewModel;
+    if (!renderer) return;
+
+    const videoId = youtubeRendererVideoId(renderer);
+    if (!videoId || seen.has(videoId)) return;
+
+    const title =
+      formattedYouTubeText(renderer.metadata?.lockupMetadataViewModel?.title) ||
+      formattedYouTubeText(renderer.title) ||
+      formattedYouTubeText(renderer.headline) ||
+      "";
+    if (!title) return;
+
+    seen.add(videoId);
+    videos.push({
+      videoId,
+      title,
+      url: `https://www.youtube.com/watch?v=${videoId}`,
+      publishedAt: null,
+      description: youtubeRendererMetadataText(renderer),
+    });
+  });
+
+  return dedupeByUrl(videos);
+}
+
+function walkYouTubeData(value, visitor) {
+  if (!value || typeof value !== "object") return;
+  visitor(value);
+  if (Array.isArray(value)) {
+    for (const item of value) walkYouTubeData(item, visitor);
+    return;
+  }
+  for (const item of Object.values(value)) walkYouTubeData(item, visitor);
+}
+
+function youtubeRendererVideoId(renderer) {
+  if (typeof renderer.videoId === "string") return normalizeYouTubeVideoId(renderer.videoId);
+  const json = JSON.stringify(renderer);
+  const watchMatch = json.match(/"url":"\/watch\?v=([A-Za-z0-9_-]{6,})/);
+  if (watchMatch) return watchMatch[1];
+  const thumbnailMatch = json.match(/(?:\/vi\/|%2Fvi%2F)([A-Za-z0-9_-]{6,})/i);
+  if (thumbnailMatch) return thumbnailMatch[1];
+  const videoIdMatch = json.match(/"videoId":"([A-Za-z0-9_-]{6,})"/);
+  return videoIdMatch ? videoIdMatch[1] : "";
+}
+
+function formattedYouTubeText(value) {
+  if (!value) return "";
+  if (typeof value === "string") return decodeHtml(value);
+  if (typeof value.content === "string") return decodeHtml(value.content);
+  if (typeof value.simpleText === "string") return decodeHtml(value.simpleText);
+  if (Array.isArray(value.runs)) {
+    return decodeHtml(value.runs.map((run) => run?.text || "").join("").trim());
+  }
+  if (typeof value.accessibility?.accessibilityData?.label === "string") {
+    return decodeHtml(value.accessibility.accessibilityData.label);
+  }
+  return "";
+}
+
+function youtubeRendererMetadataText(renderer) {
+  const rows = renderer.metadata?.lockupMetadataViewModel?.metadata?.contentMetadataViewModel?.metadataRows;
+  if (!Array.isArray(rows)) return "";
+  return rows
+    .flatMap((row) => row?.metadataParts ?? [])
+    .map((part) => formattedYouTubeText(part?.text))
+    .filter(Boolean)
+    .join(" · ");
 }
 
 async function fetchYouTubeTranscript(videoUrl, fetcher = fetch) {
@@ -1100,16 +1189,24 @@ function normalizeYouTubeVideoId(value) {
   return match ? match[1] : "";
 }
 
-function extractYouTubePlayerResponse(html) {
-  const assignment = html.match(/ytInitialPlayerResponse\s*=\s*/);
+function extractYouTubeJsonAssignment(html, assignmentName) {
+  const assignment = html.match(new RegExp(`${escapeRegex(assignmentName)}\\s*=\\s*`));
   if (!assignment) return null;
   const start = html.indexOf("{", assignment.index);
   if (start === -1) return null;
+  return parseJsonObjectAt(html, start);
+}
+
+function extractYouTubePlayerResponse(html) {
+  return extractYouTubeJsonAssignment(html, "ytInitialPlayerResponse");
+}
+
+function parseJsonObjectAt(text, start) {
   let depth = 0;
   let inString = false;
   let escaped = false;
-  for (let index = start; index < html.length; index += 1) {
-    const char = html[index];
+  for (let index = start; index < text.length; index += 1) {
+    const char = text[index];
     if (inString) {
       if (escaped) escaped = false;
       else if (char === "\\") escaped = true;
@@ -1122,7 +1219,7 @@ function extractYouTubePlayerResponse(html) {
       depth -= 1;
       if (depth === 0) {
         try {
-          return JSON.parse(html.slice(start, index + 1));
+          return JSON.parse(text.slice(start, index + 1));
         } catch {
           return null;
         }
