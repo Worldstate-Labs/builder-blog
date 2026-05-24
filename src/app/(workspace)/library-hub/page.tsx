@@ -61,7 +61,7 @@ export default async function LibraryHubPage() {
         <div>
           <h1 className="page-title">Library Hub</h1>
           <p className="page-description">
-            Import shared builder libraries into your pool.
+            Import shared source libraries into your pool.
           </p>
         </div>
         <span className="status-chip">{libraries.length} libraries</span>
@@ -73,6 +73,6 @@ export default async function LibraryHubPage() {
 }
 
 function ownerLabel(owner: { name: string | null; email: string | null } | null) {
-  if (!owner) return "Curated by Builder Blog.";
-  return `Shared by ${owner.name || owner.email || "a Builder Blog user"}.`;
+  if (!owner) return "Curated by FollowBrief.";
+  return `Shared by ${owner.name || owner.email || "a FollowBrief user"}.`;
 }

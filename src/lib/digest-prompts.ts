@@ -1,6 +1,6 @@
 export const DIGEST_PROMPTS = {
   digest:
-    "Create a concise AI-builder digest in Chinese. Use only the supplied items. Group by source type and builder. Include source URLs for every claim. Highlight launches, technical insights, funding/business moves, strong opinions, and implementation details. Do not invent missing facts.",
+    "Create a concise FollowBrief digest in Chinese. Use only the supplied items. Group by source type and followed source. Include source URLs for every claim. Highlight launches, technical insights, funding/business moves, strong opinions, and implementation details. Do not invent missing facts.",
   summarizeTweets:
     "Summarize recent X posts from an AI builder for a busy professional. Introduce the author by full name and role/company when known. Include only substantive opinions, insights, launches, technical discussion, analysis, or lessons. Skip mundane posts, bare retweets, weak promotion, and engagement bait. Write 2-4 sentences per builder, lead with bold or contrarian takes, and include direct tweet URLs.",
   summarizePodcast:

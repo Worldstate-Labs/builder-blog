@@ -228,7 +228,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /Agent discretion boundary/);
   assert.match(skillPromptActions, /Do not change paths, flags, cadence, titles, output files, JSON schema/);
   assert.match(skillPromptActions, /Complete exactly the task IDs returned by the CLI/);
-  assert.match(skillPromptActions, /Do not add new builders, URLs, or feed items/);
+  assert.match(skillPromptActions, /Do not add new sources, URLs, or feed items/);
   assert.match(skillPromptActions, /The only creative step is writing/);
   assert.match(skillPromptActions, /agentTasks/);
   assert.match(skillPromptActions, /description or title as content/);
@@ -273,7 +273,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronPrompt, /Only use agent judgment/);
   assert.match(libraryCronPrompt, /Agent discretion boundary/);
   assert.match(libraryCronPrompt, /Complete exactly the task IDs returned by the CLI/);
-  assert.match(libraryCronPrompt, /Do not add new builders, URLs, or feed items/);
+  assert.match(libraryCronPrompt, /Do not add new sources, URLs, or feed items/);
   assert.match(digestCronPrompt, /prepare --days 1/);
   assert.match(digestCronPrompt, /builder-blog-digest\.md/);
   assert.match(digestCronPrompt, /Only use agent judgment to write the digest body/);

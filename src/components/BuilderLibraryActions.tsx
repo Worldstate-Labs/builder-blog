@@ -31,7 +31,7 @@ export function SubscribeAllLibraryBuildersButton({
         const response = await fetch("/api/builders/subscriptions", {
           method: "POST",
         });
-        if (!response.ok) throw new Error("Unable to subscribe builders");
+        if (!response.ok) throw new Error("Unable to subscribe sources");
         onSubscribedAll?.();
         setPhase("done");
       } catch {
@@ -54,7 +54,7 @@ export function SubscribeAllLibraryBuildersButton({
       </button>
       {phase === "error" ? (
         <span className="text-xs text-[var(--danger)]" role="status">
-          Could not subscribe all builders.
+          Could not subscribe all sources.
         </span>
       ) : null}
     </div>
@@ -116,11 +116,11 @@ export function BuilderLibraryActions({
         const response = await fetch(`/api/builders/${builderId}/library`, {
           method: "DELETE",
         });
-        if (!response.ok) throw new Error("Unable to remove builder");
+        if (!response.ok) throw new Error("Unable to remove source");
       } catch {
         setRemoved(false);
         onRemoveStateChange?.(builderId, false);
-        setError("Could not remove builder.");
+        setError("Could not remove source.");
       }
     });
   }

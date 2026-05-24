@@ -93,7 +93,7 @@ export default async function BuildersPage() {
     ownerName:
       libraryImport.hubEntry.owner?.name ||
       libraryImport.hubEntry.owner?.email ||
-      "Builder Blog",
+      "FollowBrief",
     builders: libraryImport.hubEntry.items
       .flatMap((item) => {
         const entry = activeEntryByBuilderId.get(item.builderId);
@@ -112,9 +112,9 @@ export default async function BuildersPage() {
     <div className="page-pad">
         <section className="page-header">
           <div>
-            <h1 className="page-title">Builders</h1>
+            <h1 className="page-title">Sources</h1>
             <p className="page-description">
-              Manage your library, subscriptions, and per-builder crawl history.
+              Manage your library, subscriptions, and per-source crawl history.
             </p>
           </div>
           <BuilderLibraryStats
@@ -154,8 +154,8 @@ export default async function BuildersPage() {
                   subscribed: subscribed.has(builder.id),
                 }),
               )}
-              emptyBody="Add a builder here, or sync richer crawled data from your agent later."
-              emptyTitle="No personal builders yet"
+              emptyBody="Add a source here, or sync richer crawled data from your agent later."
+              emptyTitle="No personal sources yet"
             />
           </LibrarySection>
 
@@ -163,7 +163,7 @@ export default async function BuildersPage() {
             <div>
               <h2 className="section-heading">Imported libraries</h2>
               <p className="mt-1 text-sm text-[var(--muted-strong)]">
-                Builders grouped by the shared library they came from.
+                Sources grouped by the shared library they came from.
               </p>
             </div>
             <div className="imported-library-stack">
@@ -187,7 +187,7 @@ export default async function BuildersPage() {
                         subscribed: subscribed.has(builder.id),
                       }),
                     )}
-                    emptyBody="No active builders from this imported library."
+                    emptyBody="No active sources from this imported library."
                   />
                 </LibrarySection>
               ))}
@@ -261,7 +261,7 @@ function LibrarySection({
         </div>
         <div className="library-section-meta">
           <span className="kind-pill">{badge}</span>
-          <span className="sub-pill">{count} builders</span>
+          <span className="sub-pill">{count} sources</span>
         </div>
       </summary>
       <div className="library-section-body">{children}</div>

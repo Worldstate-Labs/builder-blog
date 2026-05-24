@@ -91,7 +91,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         <div>
           <h2 className="section-heading">Available libraries</h2>
           <p className="mt-1 text-sm text-[var(--muted-strong)]">
-            Select one or more libraries, then import their builders.
+            Select one or more libraries, then import their sources.
           </p>
         </div>
         <div className="inline-flex flex-col items-end gap-2">
@@ -122,7 +122,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
                 <div className="min-w-0">
                   <div className="item-kicker">
                     <span>{library.kind === "CENTRAL" ? "Central" : "Shared"}</span>
-                    <span>{library.itemCount} builders</span>
+                    <span>{library.itemCount} sources</span>
                   </div>
                   <h3 className="mt-2 text-lg font-semibold leading-snug">{library.name}</h3>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
@@ -165,7 +165,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
                 ))}
                 {library.itemCount > library.items.length ? (
                   <p className="text-xs font-semibold text-[var(--muted)]">
-                    + {library.itemCount - library.items.length} more builders
+                    + {library.itemCount - library.items.length} more sources
                   </p>
                 ) : null}
               </div>

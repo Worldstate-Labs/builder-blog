@@ -1,4 +1,4 @@
-Use the Builder Blog skill to run the scheduled private library job.
+Use the FollowBrief skill to run the scheduled private library job.
 
 This is an unattended scheduled run. Do not ask the user questions.
 
@@ -18,7 +18,7 @@ Before doing work, ensure the skill is installed:
 /bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}/api/skill/bootstrap)"
 ```
 
-Then crawl and sync normal personal builder items and save the full crawl result:
+Then crawl and sync normal personal source items and save the full crawl result:
 
 ```bash
 BUILDER_BLOG_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}" \
@@ -32,8 +32,8 @@ Rules:
 - Skip posts that are already synced.
 - Only use agent judgment if the CLI returns `agentTasks` or a source requires
   AI work, transcription, cookies, or custom access. In that case, use the local
-  agent environment and sync the resulting items through the Builder Blog CLI.
-- Complete exactly the task IDs returned by the CLI. Do not add new builders, URLs, or feed items that were not returned by the CLI or task payload.
+  agent environment and sync the resulting items through the FollowBrief CLI.
+- Complete exactly the task IDs returned by the CLI. Do not add new sources, URLs, or feed items that were not returned by the CLI or task payload.
 - For YouTube, title, description, and page metadata are auxiliary only. Do not
   sync them as the item body; complete `agentTasks` with real primary content
   that meets `minimumContentQuality`.

@@ -354,7 +354,7 @@ function podcastCrawlingTool(source: string | null | undefined) {
   if (source === "youtube-captions") return "YouTube captions API";
   if (source === "pod2txt") return "pod2txt transcript API";
   if (source === "rss-transcript") return "Podcast RSS transcript";
-  return "Builder Blog podcast transcript crawler";
+  return "FollowBrief podcast transcript crawler";
 }
 
 async function fetchTranscriptForEpisode(

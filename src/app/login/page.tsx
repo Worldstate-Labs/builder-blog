@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Archive, KeyRound, Search, ShieldCheck } from "lucide-react";
 import { AuthButtons } from "@/components/AuthButtons";
+import { BrandMark } from "@/components/BrandMark";
 import { getCurrentSession } from "@/lib/auth";
 
 export default async function LoginPage({
@@ -17,17 +18,17 @@ export default async function LoginPage({
       <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-10 lg:grid-cols-[1.08fr_0.92fr]">
         <section>
           <div className="flex items-center gap-3">
-            <span className="brand-mark">BB</span>
+            <BrandMark />
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-white/50">
-              Builder Blog
+              FollowBrief
             </p>
           </div>
           <h1 className="mt-7 max-w-3xl font-serif text-5xl font-semibold leading-[1.02] md:text-7xl">
-            Sign in to your signal desk.
+            Sign in to your briefing desk.
           </h1>
           <p className="mt-7 max-w-2xl text-xl leading-9 text-white/68">
-            Subscribe to builders, collect the central crawl, and publish your
-            agent-generated digests to a searchable web archive.
+            Follow people and sources, collect new updates, and publish your
+            agent-generated digests to a searchable archive.
           </p>
           <div className="mt-10 grid max-w-2xl gap-3 sm:grid-cols-3">
             <LoginProof icon={Archive} label="Archive" />

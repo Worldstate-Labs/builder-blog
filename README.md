@@ -1,14 +1,14 @@
-# Builder Blog
+# FollowBrief
 
-Web-native AI builder digest app.
+Web-native AI briefing app for people and sources a user follows.
 
-It keeps the core Follow Builders idea but changes delivery from chat messages to a web archive:
+It keeps the core source-following idea but changes delivery from chat messages to a web archive:
 
 - Google and GitHub OAuth login.
-- Admin-managed central builder pool with de-duplicated builder IDs.
-- Per-user builder pools with a separate digest subscription subset.
-- Personal builders synced by the user's own agent.
-- Central crawl endpoint that reads the database builder pool and fetches X,
+- Admin-managed central source pool with de-duplicated source IDs.
+- Per-user source pools with a separate digest subscription subset.
+- Personal sources synced by the user's own agent.
+- Central crawl endpoint that reads the database source pool and fetches X,
   podcast, and blog sources once into one shared pool.
 - Per-user raw feed and historical digest archive.
 - Agent-compatible skill for `/login`, digest preparation, and syncing generated digests back to the web app.
@@ -73,8 +73,8 @@ Open `http://localhost:3000`.
 
 ## Central Crawl
 
-The crawl endpoint seeds the default builder pool, then crawls local database
-builders directly. X sources use X API v2, podcast sources use RSS transcripts,
+The crawl endpoint seeds the default source pool, then crawls local database
+sources directly. X sources use X API v2, podcast sources use RSS transcripts,
 YouTube captions, OpenAI audio transcription, and pod2txt as a final podcast
 fallback, while blog sources scrape the configured index pages:
 
@@ -117,23 +117,23 @@ Prepare personalized context:
 node ~/.builder-blog/builder-digest.mjs prepare --days 1
 ```
 
-Locally crawl personal builders in the user's own library and sync the
+Locally crawl personal sources in the user's own library and sync the
 discovered posts to the cloud. By default it looks back 30 days, then narrows
-each builder to posts newer than the latest post already stored for that
-builder unless `--force` is used:
+each source to posts newer than the latest post already stored for that
+source unless `--force` is used:
 
 ```bash
 node ~/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3
 ```
 
-Sync user-crawled personal builders and items:
+Sync user-crawled personal sources and items:
 
 ```bash
 node ~/.builder-blog/builder-digest.mjs sync-builders --file /tmp/personal-builders.json
 ```
 
-`sync-builders` adds personal builders to the user's pool. Set
-`"subscribe": true` on a synced builder only when it should also enter the
+`sync-builders` adds personal sources to the user's pool. Set
+`"subscribe": true` on a synced source only when it should also enter the
 periodic digest feed.
 
 After the AI agent writes the digest, sync it:

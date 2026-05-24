@@ -19,8 +19,8 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "Builder Blog",
-  description: "AI builder digest web archive and subscription manager.",
+  title: "FollowBrief",
+  description: "AI briefings from people and sources you follow.",
 };
 
 export default function RootLayout({

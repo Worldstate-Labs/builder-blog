@@ -82,12 +82,15 @@ a {
   box-shadow: 0 12px 28px color-mix(in oklch, var(--accent) 18%, transparent);
   color: white;
   display: inline-flex;
-  font-size: 0.75rem;
-  font-weight: 900;
   height: 2.35rem;
   justify-content: center;
-  letter-spacing: 0;
   width: 2.35rem;
+}
+
+.brand-mark svg {
+  display: block;
+  height: 1.55rem;
+  width: 1.55rem;
 }
 
 .landing-product {

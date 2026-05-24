@@ -1,11 +1,11 @@
 ---
 name: builder-blog-digest
-description: Generate personalized AI builder digests from the Builder Blog central and personal libraries, then sync the digest to the Builder Blog web app. Supports /login for terminal-to-web authentication.
+description: Generate personalized FollowBrief digests from central and personal source libraries, then sync the digest to the FollowBrief web app. Supports /login for terminal-to-web authentication.
 ---
 
-# Builder Blog Digest
+# FollowBrief Digest
 
-Use this skill when the user asks for an AI builder digest, Builder Blog feed, personal builder sync, builder summary, or invokes `/login`.
+Use this skill when the user asks for an AI reading digest, FollowBrief feed, personal source sync, source summary, or invokes `/login`.
 
 This skill is compatible with Claude Code, OpenClaw, Codex, and other local
 agents because it relies on a local Node CLI, plain JSON, and scheduled job
@@ -13,7 +13,7 @@ prompts that can be run by the user's own agent runtime.
 
 ## Install From Web App
 
-The Builder Blog web app serves this skill and its CLI script. When the user
+The FollowBrief web app serves this skill and its CLI script. When the user
 copies the setup command from the web app, run it as-is. It downloads the
 current skill to `~/.builder-blog/SKILL.md`, downloads the CLI to
 `~/.builder-blog/builder-digest.mjs`, installs scheduled job prompts under
@@ -24,14 +24,14 @@ current skill to `~/.builder-blog/SKILL.md`, downloads the CLI to
 /bin/sh -c "$(curl -fsSL https://builder-blog.worldstatelabs.com/api/skill/bootstrap)"
 ```
 
-For non-production deployments, replace the host with the current Builder Blog
+For non-production deployments, replace the host with the current FollowBrief
 web app URL. Do not assume a local repository checkout exists.
 
 ## Commands
 
 ### `/login`
 
-Authenticate this terminal or agent session with the Builder Blog web app:
+Authenticate this terminal or agent session with the FollowBrief web app:
 
 ```bash
 node ~/.builder-blog/builder-digest.mjs login --app-url "${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}"
@@ -48,7 +48,7 @@ Scheduling has two layers:
 - The scheduler (`crontab`, `launchd`, a local agent scheduler, or another
   platform scheduler) only triggers the job at the right time.
 - The local agent runtime performs the AI work by reading the installed job
-  prompt and using the Builder Blog CLI as a tool.
+  prompt and using the FollowBrief CLI as a tool.
 
 Use the installed runner instead of scheduling a bare `node` command whenever a
 job may require summarization, transcription, cookies, browser access, or model
@@ -88,11 +88,11 @@ Example schedules:
 0 8 * * * BUILDER_BLOG_URL="https://builder-blog.worldstatelabs.com" $HOME/.builder-blog/builder-agent-runner.sh digest-cron >> $HOME/.builder-blog/logs/digest-cron.log 2>&1
 ```
 
-### Sync Personal Builders
+### Sync Personal Sources
 
-Agents are responsible for crawling user-owned personal builders with
-user-owned API keys, subscriptions, cookies, or network access. The Builder Blog
-web app only crawls central builders. For personal builders already in the
+Agents are responsible for crawling user-owned personal sources with
+user-owned API keys, subscriptions, cookies, or network access. The FollowBrief
+web app only crawls central sources. For personal sources already in the
 user's library, run the local crawler and sync the resulting feed items to the
 cloud:
 
@@ -122,17 +122,17 @@ This command:
 - if the transcript exists but is noisy, the agent may use its own model access
   to lightly clean timestamps, repeated fragments, and caption artifacts while
   preserving factual content; record this in `crawlingTool`, for example
-  `Codex Desktop (model gpt-5.5) Builder Blog skill crawler (YouTube captions + agent transcript cleanup)`;
+  `Codex Desktop (model gpt-5.5) FollowBrief skill crawler (YouTube captions + agent transcript cleanup)`;
 - for sources requiring custom subscriptions, scripts, shell access, or model
   work, agents can configure an external crawler command with
   `BUILDER_BLOG_CRAWLER_<SOURCE_TYPE>` or `BUILDER_BLOG_CRAWLER_COMMAND`; the
   command receives JSON on stdin and returns either an item array or
   `{ "items": [...] }`;
 - records the crawling tool as the local agent runtime, model, and concrete
-  crawler path, for example `Codex Desktop (model gpt-5.5) Builder Blog skill crawler (YouTube RSS + captions)`;
+  crawler path, for example `Codex Desktop (model gpt-5.5) FollowBrief skill crawler (YouTube RSS + captions)`;
 - reports `agentTasks` when primary content is missing or low quality. Treat
   each task as a request for local agent work. Complete exactly the task IDs
-  returned by the CLI; do not add new builders, URLs, or feed items that were
+  returned by the CLI; do not add new sources, URLs, or feed items that were
   not returned by the CLI or task payload. Completed task items must include
   `rawJson.agentTaskId`, `rawJson.agentRuntime`, `rawJson.agentModel` if known,
   `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`. For YouTube,
@@ -170,7 +170,7 @@ Payload shape:
 
 ```json
 {
-  "crawlingTool": "Codex Desktop (model gpt-5.5) Builder Blog skill crawler (manual JSON sync)",
+  "crawlingTool": "Codex Desktop (model gpt-5.5) FollowBrief skill crawler (manual JSON sync)",
   "builders": [
     {
       "kind": "X",
@@ -207,10 +207,10 @@ node ~/.builder-blog/builder-digest.mjs prepare --days 1
 
 2. Read the JSON. It contains:
 
-- `subscriptions`: builders the user follows.
-- `libraryBuilders`: builders in the user's pool, including central and personal builders.
+- `subscriptions`: sources the user follows.
+- `libraryBuilders`: sources in the user's pool, including central and personal sources.
 - `subscriptions`: the subset of `libraryBuilders` included in digest generation.
-- `items`: feed items only for subscribed builders.
+- `items`: feed items only for subscribed sources.
 - `prompts.digest`: the summarization rules.
 
 3. Produce a concise Chinese digest:
@@ -232,7 +232,7 @@ DIGEST
 node ~/.builder-blog/builder-digest.mjs sync --file /tmp/builder-blog-digest.md --title "AI Builder Digest"
 ```
 
-After sync, tell the user it is visible in the Builder Blog web app history.
+After sync, tell the user it is visible in the FollowBrief web app history.
 
 ## Status
 

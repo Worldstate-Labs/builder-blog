@@ -18,12 +18,12 @@ curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest-cron.md" -o "$AGENT_DIR
 chmod +x "$AGENT_DIR/builder-digest.mjs"
 chmod +x "$AGENT_DIR/builder-agent-runner.sh"
 
-echo "Builder Blog skill saved to $AGENT_DIR/SKILL.md"
-echo "Builder Blog CLI saved to $AGENT_DIR/builder-digest.mjs"
-echo "Builder Blog agent runner saved to $AGENT_DIR/builder-agent-runner.sh"
-echo "Builder Blog scheduled job prompts saved to $AGENT_DIR/jobs"
+echo "FollowBrief skill saved to $AGENT_DIR/SKILL.md"
+echo "FollowBrief CLI saved to $AGENT_DIR/builder-digest.mjs"
+echo "FollowBrief agent runner saved to $AGENT_DIR/builder-agent-runner.sh"
+echo "FollowBrief scheduled job prompts saved to $AGENT_DIR/jobs"
 if CONFIG_PATH="$AGENT_DIR/config.json" node -e 'const fs = require("fs"); try { const c = JSON.parse(fs.readFileSync(process.env.CONFIG_PATH, "utf8")); process.exit(c.appUrl === process.env.APP_URL && c.token ? 0 : 1); } catch { process.exit(1); }'; then
-  echo "Builder Blog login already configured for $APP_URL"
+  echo "FollowBrief login already configured for $APP_URL"
 else
   node "$AGENT_DIR/builder-digest.mjs" login --app-url "$APP_URL"
 fi

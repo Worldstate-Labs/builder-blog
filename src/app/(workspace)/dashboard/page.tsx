@@ -124,7 +124,7 @@ export default async function DashboardPage({
           </div>
           <Link className="button-light button-compact gap-2" href="/builders">
             <UsersRound className="h-4 w-4" />
-            Manage builders
+            Manage sources
           </Link>
         </aside>
       </section>

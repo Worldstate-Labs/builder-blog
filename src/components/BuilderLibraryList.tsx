@@ -112,7 +112,7 @@ export function BuilderLibraryList({
       if (removed) {
         delete next[builderId];
       } else {
-        next[builderId] = "Could not remove builder.";
+      next[builderId] = "Could not remove source.";
       }
       return next;
     });

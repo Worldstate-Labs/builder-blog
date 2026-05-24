@@ -75,7 +75,7 @@ export function skillCrawlingTool(detail = "", agentModel = DEFAULT_AGENT_MODEL)
   if (override) return override;
   const modelLabel = agentModel ? ` (model ${agentModel})` : "";
   const suffix = detail ? ` (${detail})` : "";
-  return `${DEFAULT_AGENT_RUNTIME}${modelLabel} Builder Blog skill crawler${suffix}`;
+  return `${DEFAULT_AGENT_RUNTIME}${modelLabel} FollowBrief skill crawler${suffix}`;
 }
 
 function detectedAgentRuntime() {
@@ -158,7 +158,7 @@ function requireLoggedIn(config) {
 
 async function login(args) {
   const appUrl = argValue(args, "--app-url", process.env.BUILDER_BLOG_URL || DEFAULT_APP_URL).replace(/\/$/, "");
-  const start = await postJson(`${appUrl}/api/device/start`, { appName: "Builder Blog skill" });
+  const start = await postJson(`${appUrl}/api/device/start`, { appName: "FollowBrief skill" });
   console.log(`Open this URL to approve the terminal:\n${start.verificationUrl}\n`);
   console.log(`Code: ${start.code}`);
   openBrowser(start.verificationUrl);
@@ -211,7 +211,7 @@ async function crawlPersonal(args) {
           crawledPersonalItems: personalCrawledItemCount(context),
           force,
           agentTasks: [],
-          message: "No personal builders in this user's library.",
+          message: "No personal sources in this user's library.",
         },
         null,
         2,
@@ -240,7 +240,7 @@ async function crawlPersonal(args) {
           localErrors.push({
             builder: builder.name,
             sourceType: sourceTypeIdForBuilder(builder),
-            error: "No local crawler configured for this personal builder source.",
+            error: "No local crawler configured for this personal source.",
           });
           continue;
         }
@@ -302,7 +302,7 @@ async function crawlPersonal(args) {
           force,
           localErrors,
           agentTasks,
-          message: "No personal builders produced syncable items.",
+          message: "No personal sources produced syncable items.",
         },
         null,
         2,
@@ -629,7 +629,7 @@ async function crawlPersonalBlogBuilder(builder, { cutoff, limit, agentModel, cr
   if (!indexUrl) return [];
 
   const indexResponse = await fetch(indexUrl, {
-    headers: { "User-Agent": "BuilderBlogSkill/1.0 (personal agent crawler)" },
+    headers: { "User-Agent": "FollowBriefSkill/1.0 (personal agent crawler)" },
   });
   if (!indexResponse.ok) {
     throw new Error(`Failed to fetch ${indexUrl}: HTTP ${indexResponse.status}`);
@@ -644,7 +644,7 @@ async function crawlPersonalBlogBuilder(builder, { cutoff, limit, agentModel, cr
 
   for (const article of candidates) {
     const articleResponse = await fetch(article.url, {
-      headers: { "User-Agent": "BuilderBlogSkill/1.0 (personal agent crawler)" },
+      headers: { "User-Agent": "FollowBriefSkill/1.0 (personal agent crawler)" },
     });
     if (!articleResponse.ok) continue;
 
@@ -681,7 +681,7 @@ async function crawlPersonalPodcastBuilder(builder, { cutoff, limit, agentModel,
   if (!feedUrl) return [];
 
   const response = await fetch(feedUrl, {
-    headers: { "User-Agent": "BuilderBlogSkill/1.0 (personal podcast crawler)" },
+    headers: { "User-Agent": "FollowBriefSkill/1.0 (personal podcast crawler)" },
   });
   if (!response.ok) {
     throw new Error(`Failed to fetch podcast feed ${feedUrl}: HTTP ${response.status}`);
@@ -781,7 +781,7 @@ async function crawlPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel,
   if (!sourceUrl) return [];
 
   const response = await fetch(sourceUrl, {
-    headers: { "User-Agent": "BuilderBlogSkill/1.0 (personal website crawler)" },
+    headers: { "User-Agent": "FollowBriefSkill/1.0 (personal website crawler)" },
   });
   if (!response.ok) {
     throw new Error(`Failed to fetch ${sourceUrl}: HTTP ${response.status}`);
@@ -1218,7 +1218,7 @@ export async function youtubeFeedUrl(sourceUrl, fetcher = fetch) {
 
   const response = await fetcher(parsed.href, {
     headers: {
-      "User-Agent": "BuilderBlogSkill/1.0 (personal YouTube crawler)",
+      "User-Agent": "FollowBriefSkill/1.0 (personal YouTube crawler)",
       "Accept-Language": "en-US,en;q=0.9",
     },
   });
@@ -1259,7 +1259,7 @@ async function fetchYouTubeFeedWithRetry(feedUrl, fetcher, retryDelays = [500, 1
   let response;
   for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
     response = await fetcher(feedUrl, {
-      headers: { "User-Agent": "BuilderBlogSkill/1.0 (personal YouTube crawler)" },
+      headers: { "User-Agent": "FollowBriefSkill/1.0 (personal YouTube crawler)" },
     });
     if (response.ok || !shouldRetryYouTubeFeedStatus(response.status) || attempt === retryDelays.length) {
       return response;
@@ -1278,7 +1278,7 @@ async function fetchYouTubePageVideos(sourceUrl, fetcher) {
   if (!pageUrl) return [];
   const response = await fetcher(pageUrl, {
     headers: {
-      "User-Agent": "BuilderBlogSkill/1.0 (personal YouTube crawler)",
+      "User-Agent": "FollowBriefSkill/1.0 (personal YouTube crawler)",
       "Accept-Language": "en-US,en;q=0.9",
     },
   });
@@ -1438,7 +1438,7 @@ async function fetchYouTubeTranscript(videoUrl, fetcher = fetch) {
   if (!videoId) return "";
   const response = await fetcher(`https://www.youtube.com/watch?v=${videoId}`, {
     headers: {
-      "User-Agent": "BuilderBlogSkill/1.0 (personal YouTube crawler)",
+      "User-Agent": "FollowBriefSkill/1.0 (personal YouTube crawler)",
       "Accept-Language": "en-US,en;q=0.9",
     },
   });
@@ -1450,7 +1450,7 @@ async function fetchYouTubeTranscript(videoUrl, fetcher = fetch) {
   if (!track?.baseUrl) return "";
   const captionResponse = await fetcher(withYouTubeCaptionFormat(track.baseUrl, "json3"), {
     headers: {
-      "User-Agent": "BuilderBlogSkill/1.0 (personal YouTube crawler)",
+      "User-Agent": "FollowBriefSkill/1.0 (personal YouTube crawler)",
       "Accept-Language": "en-US,en;q=0.9",
     },
   });

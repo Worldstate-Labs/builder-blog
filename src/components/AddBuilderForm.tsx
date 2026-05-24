@@ -36,18 +36,18 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
             sourceValue: String(formData.get("sourceValue") ?? ""),
           }),
         });
-        if (!response.ok) throw new Error("Unable to add builder");
+        if (!response.ok) throw new Error("Unable to add source");
         const payload = (await response.json()) as { builder?: BuilderLibraryEventItem };
-        if (!payload.builder) throw new Error("Missing builder");
+        if (!payload.builder) throw new Error("Missing source");
         window.dispatchEvent(
           new CustomEvent<BuilderLibraryEventItem>(builderLibraryBuilderAdded, {
             detail: payload.builder,
           }),
         );
         form.reset();
-        setStatus("Builder added.");
+        setStatus("Source added.");
       } catch {
-        setError("Could not add builder.");
+        setError("Could not add source.");
       }
     });
   }
@@ -56,7 +56,7 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
     <form className="add-builder-form" onSubmit={addBuilder}>
       <div className="add-builder-form-header">
         <div>
-          <h3 className="text-base font-semibold text-[var(--ink)]">Add builder</h3>
+          <h3 className="text-base font-semibold text-[var(--ink)]">Add source</h3>
           <p className="mt-1 text-sm text-[var(--muted-strong)]">
             Create a private library entry.
           </p>

@@ -1,12 +1,12 @@
-Use the Builder Blog skill to run the scheduled subscription digest job.
+Use the FollowBrief skill to run the scheduled subscription digest job.
 
 This is an unattended scheduled run. Do not ask the user questions.
 
 Run these steps exactly. If any command fails, stop and write the command, exit
-code, and stderr to the scheduled job log. Do not browse for extra context. Only use agent judgment to write the digest body from the Builder Blog context items.
+code, and stderr to the scheduled job log. Do not browse for extra context. Only use agent judgment to write the digest body from the FollowBrief context items.
 
 Agent discretion boundary: this is a command-runner job except for writing the
-digest body from the fetched Builder Blog context. Do not change paths, flags,
+digest body from the fetched FollowBrief context. Do not change paths, flags,
 cadence, titles, output files, JSON schema, or success criteria.
 
 Before doing work, ensure the skill is installed:

@@ -478,7 +478,7 @@ test("personal crawler reports concrete crawling tool identity", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   assert.match(
     cli.skillCrawlingTool("YouTube RSS + captions", "gpt-5.5"),
-    /\(model gpt-5\.5\) Builder Blog skill crawler \(YouTube RSS \+ captions\)/,
+    /\(model gpt-5\.5\) FollowBrief skill crawler \(YouTube RSS \+ captions\)/,
   );
 });
 

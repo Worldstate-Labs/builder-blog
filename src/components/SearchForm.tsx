@@ -263,7 +263,7 @@ export function SearchForm({
                   submitSuggestion(activeSuggestion, event.currentTarget.form);
                 }
               }}
-              placeholder={isHeader ? "Search" : "Search builders, feed items, or digests"}
+              placeholder={isHeader ? "Search" : "Search sources, feed items, or digests"}
             />
             {inputValue ? (
               <button

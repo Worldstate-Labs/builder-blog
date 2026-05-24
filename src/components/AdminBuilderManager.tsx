@@ -34,7 +34,7 @@ export function AdminBuilderManager({
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const builderCountLabel = useMemo(
-    () => `${builders.length} builders · unique by canonicalKey`,
+    () => `${builders.length} sources · unique by canonicalKey`,
     [builders.length],
   );
 
@@ -65,10 +65,10 @@ export function AdminBuilderManager({
         setBuilders((current) => [body.builder, ...current.filter((item) => item.id !== body.builder.id)]);
         form.reset();
         setPhase("added");
-        setMessage("Builder added");
+        setMessage("Source added");
       } catch (error) {
         setPhase("error");
-        setMessage(error instanceof Error ? error.message : "Could not add builder");
+        setMessage(error instanceof Error ? error.message : "Could not add source");
       }
     });
   }
@@ -90,11 +90,11 @@ export function AdminBuilderManager({
           throw new Error(body?.error ?? `HTTP ${response.status}`);
         }
         setPhase("removed");
-        setMessage("Builder removed");
+        setMessage("Source removed");
       } catch (error) {
         setBuilders(previousBuilders);
         setPhase("error");
-        setMessage(error instanceof Error ? error.message : "Could not remove builder");
+        setMessage(error instanceof Error ? error.message : "Could not remove source");
       } finally {
         setRemovingId(null);
       }
@@ -104,7 +104,7 @@ export function AdminBuilderManager({
   return (
     <section className="mt-10">
       <div className="admin-panel mb-5">
-        <h2 className="section-heading">Add central builder</h2>
+        <h2 className="section-heading">Add central source</h2>
         <form className="mt-5 grid gap-3 md:grid-cols-[1fr_12rem_12rem_1fr_1fr_auto]" onSubmit={addBuilder}>
           <input className="input" name="name" placeholder="Name" required />
           <select className="input" name="kind" defaultValue={builderKindOptions[0]?.value}>
@@ -145,7 +145,7 @@ export function AdminBuilderManager({
 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="section-label">Builder pool</p>
+          <p className="section-label">Source pool</p>
           <h2 className="section-heading">Canonical sources</h2>
         </div>
         <span className="rounded-full border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-2 text-sm text-[var(--muted-strong)]">

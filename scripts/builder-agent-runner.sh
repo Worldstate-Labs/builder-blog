@@ -30,7 +30,7 @@ if [ ! -f "$PROMPT_FILE" ]; then
 fi
 
 if [ ! -f "$PROMPT_FILE" ]; then
-  echo "Missing Builder Blog job prompt: $PROMPT_FILE" >&2
+  echo "Missing FollowBrief job prompt: $PROMPT_FILE" >&2
   echo "Run: /bin/sh -c \"\$(curl -fsSL $APP_URL/api/skill/bootstrap)\"" >&2
   exit 66
 fi
@@ -75,7 +75,7 @@ elif command -v gemini >/dev/null 2>&1; then
 elif [ "$JOB_NAME" = "library-cron" ]; then
   run_shell_library_fallback
 else
-  echo "No local agent runtime found for Builder Blog digest generation." >&2
+  echo "No local agent runtime found for FollowBrief digest generation." >&2
   echo "Install/configure Codex, Claude Code, OpenClaw, Gemini CLI, or set BUILDER_BLOG_AGENT_COMMAND." >&2
   echo "Digest cron requires an agent because it must summarize returned items with AI before sync." >&2
   exit 78

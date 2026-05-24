@@ -37,7 +37,7 @@ export async function crawlBlogBuilders(
     }
     try {
       const indexResponse = await fetcher(indexUrl, {
-        headers: { "User-Agent": "BuilderBlog/1.0 (feed aggregator)" },
+        headers: { "User-Agent": "FollowBrief/1.0 (feed aggregator)" },
       });
       if (!indexResponse.ok) {
         errors.push(`Blog: Failed to fetch index for ${builder.name}: HTTP ${indexResponse.status}`);
@@ -50,7 +50,7 @@ export async function crawlBlogBuilders(
       for (const article of candidates) {
         try {
           const articleResponse = await fetcher(article.url, {
-            headers: { "User-Agent": "BuilderBlog/1.0 (feed aggregator)" },
+            headers: { "User-Agent": "FollowBrief/1.0 (feed aggregator)" },
           });
           if (!articleResponse.ok) {
             errors.push(`Blog: Failed to fetch article ${article.url}: HTTP ${articleResponse.status}`);
@@ -70,7 +70,7 @@ export async function crawlBlogBuilders(
             url: article.url,
             publishedAt: dateOrNull(extracted.publishedAt || article.publishedAt),
             sourceName: builder.name,
-            crawlingTool: "Builder Blog RSS + HTML extractor",
+            crawlingTool: "FollowBrief RSS + HTML extractor",
             rawJson: {
               source: "blog",
               name: builder.name,

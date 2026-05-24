@@ -14,13 +14,13 @@ export async function syncCentralLibraryHub() {
     where: { slug: centralLibraryHubSlug },
     update: {
       name: "Central library",
-      description: "Default Builder Blog library curated and crawled by the web app.",
+      description: "Default FollowBrief library curated and crawled by the web app.",
     },
     create: {
       kind: LibraryHubKind.CENTRAL,
       slug: centralLibraryHubSlug,
       name: "Central library",
-      description: "Default Builder Blog library curated and crawled by the web app.",
+      description: "Default FollowBrief library curated and crawled by the web app.",
     },
   });
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Archive, Radio, Search, Sparkles, Terminal, UsersRound } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 import { getCurrentSession } from "@/lib/auth";
 
 export default async function Home() {
@@ -11,8 +12,8 @@ export default async function Home() {
     <main className="landing-grid min-h-screen px-6 py-6">
       <nav className="mx-auto flex max-w-7xl items-center justify-between">
         <Link href="/" className="flex items-center gap-3">
-          <span className="brand-mark">BB</span>
-          <span className="font-serif text-2xl font-semibold">Builder Blog</span>
+          <BrandMark />
+          <span className="font-serif text-2xl font-semibold">FollowBrief</span>
         </Link>
         <Link className="button-dark" href="/login">
           Sign in
@@ -21,11 +22,11 @@ export default async function Home() {
       <section className="mx-auto grid max-w-7xl items-center gap-12 py-14 lg:grid-cols-[0.95fr_1.05fr] lg:py-20">
         <div className="max-w-3xl">
           <h1 className="font-serif text-5xl font-semibold leading-[0.98] text-[var(--ink)] md:text-7xl">
-            Your AI builder signal desk.
+            Keep up with people and sources you follow.
           </h1>
           <p className="mt-7 max-w-2xl text-xl leading-9 text-[var(--muted-strong)]">
-            Track public builders, sync private sources from your agent, publish
-            daily digests, and search the archive without losing the thread.
+            Follow creators, newsletters, channels, feeds, and private sources,
+            then turn their updates into cited AI briefs and a searchable archive.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
             <Link className="button-dark" href="/login">
@@ -41,10 +42,10 @@ export default async function Home() {
             <MiniMetric label="Recall" value="Searchable archive" />
           </div>
         </div>
-        <div className="landing-product" aria-label="Builder Blog product preview">
+        <div className="landing-product" aria-label="FollowBrief product preview">
           <div className="landing-product-bar">
             <div className="flex items-center gap-3">
-              <span className="brand-mark">BB</span>
+              <BrandMark />
               <div>
                 <div className="text-sm font-bold">Today&apos;s digest</div>
                 <div className="text-xs text-[var(--muted)]">Synced 12 minutes ago</div>
@@ -59,15 +60,15 @@ export default async function Home() {
             {[
               {
                 title: "Model context windows moved from spec sheet to product primitive.",
-                detail: "Launch notes, architecture posts, and pricing shifts are grouped into one readable brief.",
+                detail: "Launch notes, essays, podcasts, and pricing shifts are grouped into one readable brief.",
               },
               {
                 title: "Agent-native ingestion is now the differentiator.",
-                detail: "Personal feeds can carry paid newsletters, YouTube transcripts, and private builder notes.",
+                detail: "Personal feeds can carry paid newsletters, YouTube transcripts, and private source notes.",
               },
               {
                 title: "Search is the memory layer.",
-                detail: "Digests, crawled items, and builders stay queryable after the daily read is done.",
+                detail: "Digests, crawled items, and followed sources stay queryable after the daily read is done.",
               },
             ].map((item) => (
               <article className="signal-row" key={item.title}>
@@ -87,20 +88,20 @@ export default async function Home() {
         <div className="page-kicker-row">
           <p className="section-label">Workflow</p>
           <p className="text-sm text-[var(--muted-strong)]">
-            Built around the same loop an AI builder already runs every day.
+            Built around the loop of following, briefing, and returning to sources later.
           </p>
         </div>
         <div className="mt-6 grid gap-5 md:grid-cols-3">
           {[
             {
               icon: UsersRound,
-              title: "Curate builders",
-              copy: "Start from the central pool, then add personal sources your own agent can reach.",
+              title: "Choose sources",
+              copy: "Start from shared libraries, then add people, publications, and private sources your own agent can reach.",
             },
             {
               icon: Terminal,
-              title: "Sync signal",
-              copy: "Run the terminal skill to summarize subscribed builders and push the digest into the app.",
+              title: "Generate briefs",
+              copy: "Run the terminal skill to summarize followed sources and push the digest into the app.",
             },
             {
               icon: Archive,
@@ -131,7 +132,7 @@ export default async function Home() {
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <Feature icon={Sparkles} title="Digest-first home" copy="Today stays focused on generated briefings, not raw crawl noise." />
-          <Feature icon={Search} title="Library search" copy="Builders, feed inputs, and digest history share one retrieval surface." />
+          <Feature icon={Search} title="Library search" copy="Sources, feed inputs, and digest history share one retrieval surface." />
         </div>
       </section>
     </main>

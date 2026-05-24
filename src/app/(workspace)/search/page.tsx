@@ -83,7 +83,7 @@ const advancedSearchExamples = [
 ];
 
 const resultTypeLabels: Record<SearchDocumentType, string> = {
-  builder: "Builders",
+  builder: "Sources",
   feed: "Feed",
   digest: "Digests",
 };
@@ -200,7 +200,7 @@ export default async function SearchPage({
         <section className="search-hero">
           <h1 className="search-heading">Search</h1>
           <p className="search-subtitle">
-            Find builders, crawled posts, and digest history.
+            Find sources, crawled posts, and digest history.
           </p>
           <SearchForm
             key={`${query}:${typeFilter}:${mode}:${sort}:${time}`}
@@ -1188,7 +1188,7 @@ function formatOptionalOperatorDate(date: Date | null) {
 
 function formatDisplayUrl(url: string | null | undefined) {
   if (!url) return null;
-  if (url.startsWith("/")) return `Builder Blog ${url.split("#")[0]}`;
+  if (url.startsWith("/")) return `FollowBrief ${url.split("#")[0]}`;
   try {
     const parsed = new URL(url);
     return `${parsed.hostname}${parsed.pathname === "/" ? "" : parsed.pathname}`;

@@ -2,12 +2,13 @@ import Link from "next/link";
 import type { Session } from "next-auth";
 import { LogOut, Settings } from "lucide-react";
 import { AppNav, type AppNavItem } from "@/components/AppNav";
+import { BrandMark } from "@/components/BrandMark";
 import { SearchForm } from "@/components/SearchForm";
 import { isAdminEmail } from "@/lib/admin";
 
 const nav: AppNavItem[] = [
   { href: "/dashboard", label: "Home", icon: "home" },
-  { href: "/builders", label: "Builders", icon: "builders" },
+  { href: "/builders", label: "Sources", icon: "builders" },
   { href: "/library-hub", label: "Hub", icon: "hub" },
 ];
 
@@ -27,13 +28,13 @@ export function AppShell({
       <header className="app-topbar">
         <div className="app-topbar-left">
           <Link href="/dashboard" className="app-brand group">
-            <span className="brand-mark">BB</span>
+            <BrandMark />
             <div className="min-w-0">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-                Builder Blog
+                FollowBrief
               </div>
               <div className="text-base font-semibold leading-tight">
-                Signal desk
+                Source briefings
               </div>
             </div>
           </Link>

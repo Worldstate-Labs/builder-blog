@@ -74,8 +74,8 @@ async function AdminStats() {
 
   return (
     <div className="stats-panel">
-      <AdminStat label="Pool builders" value={centralBuilderCount} />
-      <AdminStat label="Personal builders" value={personalBuilderCount} />
+      <AdminStat label="Pool sources" value={centralBuilderCount} />
+      <AdminStat label="Personal sources" value={personalBuilderCount} />
       <AdminStat label="Recent crawled items" value={recentFeedItemCount} />
     </div>
   );

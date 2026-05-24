@@ -11,7 +11,7 @@ const PROMPT_CONFIG = {
     title: "Build library",
     onceLabel: "Copy once prompt",
     cronLabel: "Copy cron prompt",
-    oncePrompt: (origin: string) => `Build my Builder Blog private library once.
+    oncePrompt: (origin: string) => `Build my FollowBrief private source library once.
 
 Execution contract:
 - Run the commands exactly in order.
@@ -27,20 +27,20 @@ Execution contract:
 1. Install or refresh the skill:
 /bin/sh -c "$(curl -fsSL ${origin}/api/skill/bootstrap)"
 
-2. Crawl and sync normal personal builder items, and save the full result:
+2. Crawl and sync normal personal source items, and save the full result:
 BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3 > /tmp/builder-blog-crawl-result.json
 
 3. Print the crawl result:
 cat /tmp/builder-blog-crawl-result.json
 
-If it contains a non-empty agentTasks array: Complete exactly the task IDs returned by the CLI using this agent's own local capabilities, subscriptions, browser/cookie access, transcription tools, or model access. Do not add new builders, URLs, or feed items that were not returned by the CLI or task payload. The content must meet each task's minimumContentQuality. Do not use title, description, or page metadata as the item body.
+If it contains a non-empty agentTasks array: Complete exactly the task IDs returned by the CLI using this agent's own local capabilities, subscriptions, browser/cookie access, transcription tools, or model access. Do not add new sources, URLs, or feed items that were not returned by the CLI or task payload. The content must meet each task's minimumContentQuality. Do not use title, description, or page metadata as the item body.
 
 4. If you completed agentTasks, write a sync payload to /tmp/builder-blog-agent-sync.json. Every agent-produced item must include rawJson.agentTaskId, rawJson.agentRuntime, rawJson.agentModel if known, rawJson.agentCompletedAt, rawJson.agentExecutionProof, and for YouTube rawJson.transcriptSource="agent-transcript" unless a better primary transcript source is used. Then run these commands exactly:
 BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs validate-agent-sync --tasks /tmp/builder-blog-crawl-result.json --file /tmp/builder-blog-agent-sync.json
 BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs sync-builders --file /tmp/builder-blog-agent-sync.json
 
 5. Report the crawl JSON plus any validate-agent-sync and sync-builders JSON. Success means status is ok, localErrors is empty, and agentTasks is empty or validate-agent-sync reports all tasks validated and sync-builders succeeds. Already-crawled posts should remain skipped regardless of whether the user has read them.`,
-    cronPrompt: (origin: string) => `Set up the Builder Blog private library scheduled job.
+    cronPrompt: (origin: string) => `Set up the FollowBrief private source library scheduled job.
 
 Execution contract:
 - Run the commands exactly in order.
@@ -59,7 +59,7 @@ Execution contract:
 2. Create required directories:
 mkdir -p $HOME/.builder-blog/logs
 
-3. First attempt the exact crontab install below. It removes any previous Builder Blog library job and installs one idempotent job that runs every 6 hours:
+3. First attempt the exact crontab install below. It removes any previous FollowBrief library job and installs one idempotent job that runs every 6 hours:
 ( crontab -l 2>/dev/null | grep -v 'builder-agent-runner.sh library-cron' ; echo '0 */6 * * * BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1' ) | crontab -
 
 4. Verify the installed schedule:
@@ -68,7 +68,7 @@ crontab -l | grep 'builder-agent-runner.sh library-cron'
 5. Run one immediate smoke check:
 BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh library-cron
 
-If the smoke check JSON contains a non-empty agentTasks array: Complete exactly the task IDs returned by the CLI. Do not add new builders, URLs, or feed items that were not returned by the CLI or task payload. The item body must be real primary content meeting minimumContentQuality, not a title, description, or page metadata. The agent-produced sync payload must pass validate-agent-sync before sync-builders is considered successful.
+If the smoke check JSON contains a non-empty agentTasks array: Complete exactly the task IDs returned by the CLI. Do not add new sources, URLs, or feed items that were not returned by the CLI or task payload. The item body must be real primary content meeting minimumContentQuality, not a title, description, or page metadata. The agent-produced sync payload must pass validate-agent-sync before sync-builders is considered successful.
 
 Only if crontab is unavailable or blocked, install the same command and cadence through launchd or the local agent scheduler:
 0 */6 * * * BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1
@@ -81,13 +81,13 @@ The runner selection order is:
 5. Gemini CLI
 6. Non-AI library crawl fallback for simple supported sources only
 
-Do not duplicate an existing Builder Blog private library job.`,
+Do not duplicate an existing FollowBrief private library job.`,
   },
   digest: {
     title: "Build digest feed",
     onceLabel: "Copy once prompt",
     cronLabel: "Copy cron prompt",
-    oncePrompt: (origin: string) => `Build my Builder Blog subscription digest feed once.
+    oncePrompt: (origin: string) => `Build my FollowBrief subscription digest feed once.
 
 Execution contract:
 - Run the commands exactly in order.
@@ -108,7 +108,7 @@ BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs prepare
 
 4. Sync the digest:
 BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs sync --file /tmp/builder-blog-digest.md --title "AI Builder Digest"`,
-    cronPrompt: (origin: string) => `Set up the Builder Blog subscription digest scheduled job.
+    cronPrompt: (origin: string) => `Set up the FollowBrief subscription digest scheduled job.
 
 Execution contract:
 - Run the commands exactly in order.
@@ -117,7 +117,7 @@ Execution contract:
 - Do not browse for extra context.
 - Agent discretion boundary: this is a scheduler setup task; the scheduled runner is the only component that should generate digest text.
 - Do not change paths, flags, cadence, titles, output files, JSON schema, or success criteria.
-- Only use agent judgment to write the digest body from the Builder Blog context items.
+- Only use agent judgment to write the digest body from the FollowBrief context items.
 
 1. Install or refresh the skill:
 /bin/sh -c "$(curl -fsSL ${origin}/api/skill/bootstrap)"
@@ -125,7 +125,7 @@ Execution contract:
 2. Create required directories:
 mkdir -p $HOME/.builder-blog/logs
 
-3. First attempt the exact crontab install below. It removes any previous Builder Blog digest job and installs one idempotent job that runs daily at 8:00 local time:
+3. First attempt the exact crontab install below. It removes any previous FollowBrief digest job and installs one idempotent job that runs daily at 8:00 local time:
 ( crontab -l 2>/dev/null | grep -v 'builder-agent-runner.sh digest-cron' ; echo '0 8 * * * BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh digest-cron >> $HOME/.builder-blog/logs/digest-cron.log 2>&1' ) | crontab -
 
 4. Verify the installed schedule:
@@ -144,7 +144,7 @@ The runner selection order is:
 4. OpenClaw CLI
 5. Gemini CLI
 
-If no local agent runtime is available, do not claim the digest cron is installed successfully. Record that the user must install/configure an agent or set BUILDER_BLOG_AGENT_COMMAND. Do not duplicate an existing Builder Blog digest feed job.`,
+If no local agent runtime is available, do not claim the digest cron is installed successfully. Record that the user must install/configure an agent or set BUILDER_BLOG_AGENT_COMMAND. Do not duplicate an existing FollowBrief digest feed job.`,
   },
 } satisfies Record<
   SkillPromptContext,
