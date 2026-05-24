@@ -308,7 +308,7 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
   const feedItemsRoute = source("src/app/api/builders/[builderId]/feed-items/route.ts");
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
-  assert.match(buildersPage, /title="Private library"[\s\S]*defaultOpen/);
+  assert.match(buildersPage, /title=\{isAdmin \? adminCommunityLibraryName : "Private library"\}[\s\S]*defaultOpen/);
   assert.match(builderLibraryList, /Latest \{formatCompactDate\(latestPostCreatedAt\)\}/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported libraries/);
@@ -365,7 +365,11 @@ test("library hub exposes share and multi-import flows", () => {
   const schema = source("prisma/schema.prisma");
 
   assert.match(appShell, /library-hub/);
+  assert.doesNotMatch(appShell, /\{ href: "\/admin"/);
+  assert.match(appShell, /user-menu-item-static/);
   assert.match(buildersPage, /LibraryVisibilityToggle/);
+  assert.match(buildersPage, /adminCommunityLibraryName/);
+  assert.match(buildersPage, /ensureAdminCommunityLibrary/);
   assert.match(buildersPage, /BuilderLibraryList/);
   assert.match(buildersPage, /BuilderLibraryStats/);
   assert.match(builderLibraryList, /BuilderLibraryActions/);
@@ -378,6 +382,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(visibilityToggle, /library-visibility-toggle/);
   assert.match(visibilityToggle, /aria-pressed/);
   assert.match(visibilityRoute, /export async function PATCH/);
+  assert.match(visibilityRoute, /setAdminCommunityLibraryHidden/);
+  assert.match(visibilityRoute, /adminCommunityLibraryName/);
   assert.doesNotMatch(visibilityRoute, /redirect\(/);
   assert.match(builderActions, /"use client"/);
   assert.match(builderActions, /allowRemove = true/);
@@ -416,6 +422,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(hubPage, /sharePersonalLibraryToHubAction/);
   assert.doesNotMatch(hubPage, /importHubLibrariesAction/);
   assert.match(hubPage, /LibraryHubImportForm/);
+  assert.match(hubPage, /adminCommunityLibraryName/);
+  assert.match(hubPage, /isAdminEmail\(library\.owner\?\.email\)/);
   assert.match(hubImportForm, /"use client"/);
   assert.match(hubImportForm, /fetch\("\/api\/library-hub\/imports"/);
   assert.match(hubImportForm, /libraryId/);
@@ -428,9 +436,11 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /libraryId/);
   assert.match(visibilityRoute, /unsharePersonalLibraryFromHub/);
   assert.equal(existsSync(join(root, "src/app/actions.ts")), false);
+  assert.match(skillRoute, /syncPersonalLibraryHubForUser/);
   assert.match(skillRoute, /crawlingTool: "Legacy crawl\/import"/);
   assert.match(schema, /model LibraryHubEntry/);
   assert.match(schema, /model LibraryImport/);
+  assert.match(schema, /adminCommunityLibraryHidden/);
 });
 
 test("settings mutations stay local instead of refreshing the whole route", () => {

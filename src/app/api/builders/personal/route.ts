@@ -4,6 +4,7 @@ import { getCurrentSession } from "@/lib/auth";
 import { addBuilderToPool } from "@/lib/builder-pool";
 import { upsertBuilder } from "@/lib/builders";
 import type { BuilderLibraryEventItem } from "@/lib/builder-library-events";
+import { syncPersonalLibraryHubForUser } from "@/lib/library-hub";
 import { resolvePersonalBuilderInput } from "@/lib/personal-builder-input";
 
 export async function POST(request: Request) {
@@ -38,6 +39,12 @@ export async function POST(request: Request) {
     userId: session.user.id,
     builderId: builder.id,
     origin: BuilderPoolOrigin.PERSONAL_SYNC,
+  });
+
+  await syncPersonalLibraryHubForUser({
+    userId: session.user.id,
+    email: session.user.email,
+    name: session.user.name,
   });
 
   const item: BuilderLibraryEventItem = {

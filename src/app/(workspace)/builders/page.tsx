@@ -6,7 +6,14 @@ import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/Bu
 import { BuilderLibraryStats } from "@/components/BuilderLibraryStats";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
+import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
+import {
+  adminCommunityLibraryDescription,
+  adminCommunityLibraryName,
+  ensureAdminCommunityLibrary,
+  sharePersonalLibraryToHub,
+} from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 import { SOURCE_DEFINITIONS } from "@/lib/source-registry";
 
@@ -29,8 +36,9 @@ type LatestPostCreatedAtByBuilderId = Map<string, Date | null>;
 export default async function BuildersPage() {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
+  const isAdmin = isAdminEmail(session.user.email);
 
-  const [poolEntries, subscriptions, importedLibraries, ownSharedLibrary] = await Promise.all([
+  const [poolEntries, subscriptions, importedLibraries, ownSharedLibrary, feedPreference] = await Promise.all([
     prisma.builderPoolEntry.findMany({
       where: { userId: session.user.id, removedAt: null },
       include: {
@@ -69,7 +77,16 @@ export default async function BuildersPage() {
     }),
     prisma.libraryHubEntry.findFirst({
       where: { ownerUserId: session.user.id, kind: LibraryHubKind.PERSONAL },
-      select: { id: true },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        _count: { select: { items: true } },
+      },
+    }),
+    prisma.userFeedPreference.findUnique({
+      where: { userId: session.user.id },
+      select: { adminCommunityLibraryHidden: true },
     }),
   ]);
 
@@ -106,6 +123,29 @@ export default async function BuildersPage() {
     (count, builder) => count + builder._count.feedItems,
     0,
   );
+  const isAdminCommunityLibraryHidden = Boolean(feedPreference?.adminCommunityLibraryHidden);
+  let isPublicLibrary = isAdmin ? !isAdminCommunityLibraryHidden : Boolean(ownSharedLibrary);
+  if (
+    isAdmin &&
+    !isAdminCommunityLibraryHidden &&
+    (!ownSharedLibrary ||
+      ownSharedLibrary.name !== adminCommunityLibraryName ||
+      ownSharedLibrary.description !== adminCommunityLibraryDescription ||
+      ownSharedLibrary._count.items !== privateBuilders.length)
+  ) {
+    const result = await ensureAdminCommunityLibrary(session.user.id, { checkHidden: false });
+    isPublicLibrary = result.isPublic;
+  } else if (
+    !isAdmin &&
+    ownSharedLibrary &&
+    ownSharedLibrary._count.items !== privateBuilders.length
+  ) {
+    await sharePersonalLibraryToHub({
+      userId: session.user.id,
+      name: ownSharedLibrary.name,
+      description: ownSharedLibrary.description,
+    });
+  }
   const latestPostCreatedAtByBuilderId = await latestPostCreationTimes(poolBuilderIds);
 
   return (
@@ -126,16 +166,17 @@ export default async function BuildersPage() {
 
         <section className="mt-6 grid gap-5">
           <LibrarySection
-            title="Private library"
-            detail="Synced by your agent"
-            badge="private"
+            title={isAdmin ? adminCommunityLibraryName : "Private library"}
+            detail={isAdmin ? adminCommunityLibraryDescription : "Synced by your agent"}
+            badge={isAdmin ? "admin" : "private"}
             count={privateBuilders.length}
             defaultOpen
           >
             <LibraryVisibilityToggle
-              disabled={privateBuilders.length === 0}
-              initialIsPublic={Boolean(ownSharedLibrary)}
-              name={`${session.user.name || session.user.email || "Personal"} library`}
+              disabled={!isAdmin && privateBuilders.length === 0}
+              initialIsPublic={isPublicLibrary}
+              isAdminLibrary={isAdmin}
+              name={isAdmin ? adminCommunityLibraryName : `${session.user.name || session.user.email || "Personal"} library`}
             />
             <SkillPromptActions context="library" />
             <AddBuilderForm

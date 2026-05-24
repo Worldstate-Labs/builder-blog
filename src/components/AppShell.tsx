@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Session } from "next-auth";
-import { LogOut, Settings } from "lucide-react";
+import { LogOut, Settings, ShieldCheck } from "lucide-react";
 import { AppNav, type AppNavItem } from "@/components/AppNav";
 import { BrandMark } from "@/components/BrandMark";
 import { SearchForm } from "@/components/SearchForm";
@@ -19,9 +19,7 @@ export function AppShell({
   children: React.ReactNode;
   session?: Session | null;
 }) {
-  const items = isAdminEmail(session?.user?.email)
-    ? [...nav, { href: "/admin", label: "Admin", icon: "admin" as const }]
-    : nav;
+  const items = nav;
 
   return (
     <div className="app-frame min-h-screen bg-[var(--paper)] text-[var(--ink)]">
@@ -63,6 +61,7 @@ function UserMenu({
   const name = user?.name || user?.email?.split("@")[0] || "User";
   const email = user?.email || "";
   const initial = name.trim().charAt(0).toUpperCase() || "U";
+  const isAdmin = isAdminEmail(email);
 
   return (
     <details className={`user-menu ${compact ? "user-menu-compact" : ""}`}>
@@ -89,6 +88,12 @@ function UserMenu({
           <p className="user-menu-popover-email" title={email}>
             {email}
           </p>
+        ) : null}
+        {isAdmin ? (
+          <span className="user-menu-item user-menu-item-static">
+            <ShieldCheck className="h-4 w-4" />
+            Admin
+          </span>
         ) : null}
         <Link className="user-menu-item" href="/settings">
           <Settings className="h-4 w-4" />

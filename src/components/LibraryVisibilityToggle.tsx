@@ -5,12 +5,14 @@ import { useState, useTransition } from "react";
 type LibraryVisibilityToggleProps = {
   disabled: boolean;
   initialIsPublic: boolean;
+  isAdminLibrary?: boolean;
   name: string;
 };
 
 export function LibraryVisibilityToggle({
   disabled,
   initialIsPublic,
+  isAdminLibrary = false,
   name,
 }: LibraryVisibilityToggleProps) {
   const [isPublic, setIsPublic] = useState(initialIsPublic);
@@ -49,7 +51,13 @@ export function LibraryVisibilityToggle({
     <div className="library-visibility-control">
       <div className="library-visibility-copy">
         <span>Hub availability</span>
-        <strong>{isPublic ? "Public on Hub" : "Private"}</strong>
+        <strong>
+          {isPublic
+            ? isAdminLibrary
+              ? "Community Library on Hub"
+              : "Public on Hub"
+            : "Private"}
+        </strong>
         {error ? <small role="status">{error}</small> : null}
       </div>
       <button

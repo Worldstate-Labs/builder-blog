@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { LibraryHubImportForm, type HubLibrary } from "@/components/LibraryHubImportForm";
+import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
+import { adminCommunityLibraryName } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 
 export default async function LibraryHubPage() {
@@ -40,20 +42,23 @@ export default async function LibraryHubPage() {
   ]);
 
   const importedLibraryIds = new Set(imports.map((item) => item.hubEntryId));
-  const hubLibraries: HubLibrary[] = libraries.map((library) => ({
-    id: library.id,
-    kind: library.kind,
-    name: library.name,
-    description: library.description,
-    ownerUserId: library.ownerUserId,
-    importCount: library.importCount,
-    viewCount: library.viewCount,
-    itemCount: library._count.items,
-    ownerLabel: ownerLabel(library.owner),
-    items: library.items,
-    imported: importedLibraryIds.has(library.id),
-    owned: library.ownerUserId === session.user.id,
-  }));
+  const hubLibraries: HubLibrary[] = libraries.map((library) => {
+    const isCommunityLibrary = isAdminEmail(library.owner?.email);
+    return {
+      id: library.id,
+      kind: library.kind,
+      name: isCommunityLibrary ? adminCommunityLibraryName : library.name,
+      description: library.description,
+      ownerUserId: library.ownerUserId,
+      importCount: library.importCount,
+      viewCount: library.viewCount,
+      itemCount: library._count.items,
+      ownerLabel: ownerLabel(library.owner),
+      items: library.items,
+      imported: importedLibraryIds.has(library.id),
+      owned: library.ownerUserId === session.user.id,
+    };
+  });
 
   return (
     <div className="page-pad">
@@ -73,6 +78,7 @@ export default async function LibraryHubPage() {
 }
 
 function ownerLabel(owner: { name: string | null; email: string | null } | null) {
+  if (isAdminEmail(owner?.email)) return "Community Library";
   if (!owner) return "Curated by FollowBrief.";
   return `Shared by ${owner.name || owner.email || "a FollowBrief user"}.`;
 }

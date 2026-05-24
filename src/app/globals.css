@@ -545,6 +545,15 @@ a {
   background: var(--soft);
 }
 
+.user-menu-item-static {
+  color: color-mix(in oklch, var(--signal) 72%, var(--ink));
+  cursor: default;
+}
+
+.user-menu-item-static:hover {
+  background: transparent;
+}
+
 .user-menu-separator {
   background: var(--line);
   height: 1px;

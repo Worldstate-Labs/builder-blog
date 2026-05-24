@@ -2,6 +2,7 @@ import { BuilderPoolOrigin, BuilderScope, FeedItemKind } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { addBuilderToPool } from "@/lib/builder-pool";
 import { upsertBuilder } from "@/lib/builders";
+import { syncPersonalLibraryHubForUser } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 import { parseSkillBuilderSyncPayload } from "@/lib/skill-contracts";
 import { getUserFromBearer } from "@/lib/tokens";
@@ -141,6 +142,12 @@ export async function POST(request: Request) {
       },
     });
   }
+
+  await syncPersonalLibraryHubForUser({
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+  });
 
   return NextResponse.json({
     status: "ok",

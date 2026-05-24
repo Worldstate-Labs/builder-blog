@@ -207,14 +207,15 @@ model FeedItem {
 }
 
 model UserFeedPreference {
-  userId                    String          @id
-  digestFrequency           DigestFrequency @default(DAILY)
-  digestCustomFrequencyDays Int?
-  digestMaxPostAgeDays      Int             @default(90)
-  recommendationProfile     String?
-  createdAt                 DateTime        @default(now())
-  updatedAt                 DateTime        @updatedAt
-  user                      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                      String          @id
+  digestFrequency             DigestFrequency @default(DAILY)
+  digestCustomFrequencyDays   Int?
+  digestMaxPostAgeDays        Int             @default(90)
+  recommendationProfile       String?
+  adminCommunityLibraryHidden Boolean         @default(false)
+  createdAt                   DateTime        @default(now())
+  updatedAt                   DateTime        @updatedAt
+  user                        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model FeedRead {

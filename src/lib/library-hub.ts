@@ -1,8 +1,12 @@
 import { BuilderPoolOrigin, BuilderScope, LibraryHubKind } from "@prisma/client";
+import { isAdminEmail } from "@/lib/admin";
 import { addBuilderToPool } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
 
 export const centralLibraryHubSlug = "central-library";
+export const adminCommunityLibraryName = "Community Library";
+export const adminCommunityLibraryDescription =
+  "Community source library curated by FollowBrief.";
 
 export async function syncCentralLibraryHub() {
   const centralBuilders = await prisma.builder.findMany({
@@ -87,6 +91,61 @@ export async function sharePersonalLibraryToHub(params: {
   ]);
 
   return { entry, builderCount: personalBuilders.length };
+}
+
+export async function adminCommunityLibraryHidden(userId: string) {
+  const preference = await prisma.userFeedPreference.findUnique({
+    where: { userId },
+    select: { adminCommunityLibraryHidden: true },
+  });
+  return Boolean(preference?.adminCommunityLibraryHidden);
+}
+
+export async function setAdminCommunityLibraryHidden(userId: string, hidden: boolean) {
+  await prisma.userFeedPreference.upsert({
+    where: { userId },
+    update: { adminCommunityLibraryHidden: hidden },
+    create: { userId, adminCommunityLibraryHidden: hidden },
+  });
+}
+
+export async function ensureAdminCommunityLibrary(
+  userId: string,
+  options: { checkHidden?: boolean } = {},
+) {
+  if (options.checkHidden !== false && (await adminCommunityLibraryHidden(userId))) {
+    return { isPublic: false, builderCount: 0 };
+  }
+
+  const result = await sharePersonalLibraryToHub({
+    userId,
+    name: adminCommunityLibraryName,
+    description: adminCommunityLibraryDescription,
+  });
+  return { isPublic: true, builderCount: result.builderCount };
+}
+
+export async function syncPersonalLibraryHubForUser(params: {
+  userId: string;
+  email?: string | null;
+  name?: string | null;
+}) {
+  if (isAdminEmail(params.email)) {
+    return ensureAdminCommunityLibrary(params.userId);
+  }
+
+  const sharedLibrary = await prisma.libraryHubEntry.findFirst({
+    where: { ownerUserId: params.userId, kind: LibraryHubKind.PERSONAL },
+    select: { name: true, description: true },
+  });
+  if (!sharedLibrary) return { isPublic: false, builderCount: 0 };
+
+  const result = await sharePersonalLibraryToHub({
+    userId: params.userId,
+    name: sharedLibrary.name || `${params.name || params.email || "Personal"} library`,
+    description: sharedLibrary.description,
+  });
+  return { isPublic: true, builderCount: result.builderCount };
 }
 
 export async function unsharePersonalLibraryFromHub(userId: string) {
