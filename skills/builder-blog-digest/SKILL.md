@@ -46,6 +46,16 @@ This command:
 - uses the later of `--days` and the latest stored post creation time for that
   builder as the incremental cutoff unless `--force` is used;
 - for YouTube videos, prefers caption transcripts and falls back to feed descriptions;
+- when YouTube captions are missing, low quality, or in the wrong language,
+  the agent should use user-owned local capabilities instead of asking the web
+  app to process the media: download or access the audio/video with the user's
+  own tools, transcribe with the user's available model subscription or local
+  speech-to-text runtime, translate when needed, and sync the cleaned transcript
+  as the item's `body` through `sync-builders`;
+- if the transcript exists but is noisy, the agent may use its own model access
+  to lightly clean timestamps, repeated fragments, and caption artifacts while
+  preserving factual content; record this in `crawlingTool`, for example
+  `Codex Desktop (model gpt-5.5) Builder Blog skill crawler (YouTube captions + agent transcript cleanup)`;
 - for sources requiring custom subscriptions, scripts, shell access, or model
   work, agents can configure an external crawler command with
   `BUILDER_BLOG_CRAWLER_<SOURCE_TYPE>` or `BUILDER_BLOG_CRAWLER_COMMAND`; the
