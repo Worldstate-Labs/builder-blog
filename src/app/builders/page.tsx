@@ -386,10 +386,7 @@ function BuilderInfo({
         {builder.handle ? `@${builder.handle}` : builder.sourceUrl}
       </p>
       <p className="mt-2 text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
-        {crawlLabel} · {builder._count.feedItems} items
-      </p>
-      <p className="mt-1 text-xs text-[var(--muted-strong)]">
-        Latest post created{" "}
+        {crawlLabel} · {builder._count.feedItems} items · Latest post:{" "}
         {latestPostCreatedAt ? latestPostCreatedAt.toLocaleString() : "not available"}
       </p>
       <details className="inline-disclosure">

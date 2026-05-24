@@ -262,10 +262,12 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
   assert.match(buildersPage, /title="Private library"[\s\S]*defaultOpen/);
+  assert.match(buildersPage, /Latest post:/);
+  assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported libraries/);
   assert.match(buildersPage, /importedLibrarySections/);
   assert.match(buildersPage, /library-section-panel-indented/);
-  assert.doesNotMatch(buildersPage, /Central defaults/);
+  assert.doesNotMatch(buildersPage, /Central defaults|Central library/);
   assert.match(buildersPage, /BuilderFeedItems/);
   assert.match(builderFeedItems, /"use client"/);
   assert.match(builderFeedItems, /fetch\(`\/api\/builders\/\$\{builderId\}\/feed-items`/);
