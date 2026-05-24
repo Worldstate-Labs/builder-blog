@@ -11,7 +11,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { getUserFromBearer } from "@/lib/tokens";
 
-const personalSeenItemLimit = 5000;
+const personalCrawledItemLimit = 5000;
 
 export async function GET(request: Request) {
   const user = await getUserFromBearer(request);
@@ -61,7 +61,8 @@ export async function GET(request: Request) {
     .filter((builder) => builder.scope === "PERSONAL")
     .map((builder) => builder.id);
 
-  const [items, personalSeenItems] = await Promise.all([
+  const [items, personalCrawledItems] = await Promise.all([
+    // Crawl dedupe is based on existing FeedItem rows, not user read/view state.
     prisma.feedItem.findMany({
       where: {
         builderId: { in: subscribedBuilderIds },
@@ -97,19 +98,19 @@ export async function GET(request: Request) {
         createdAt: true,
       },
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-      take: personalSeenItemLimit,
+      take: personalCrawledItemLimit,
     }),
   ]);
-  const latestPersonalFeedItems = new Map<
+  const latestPersonalCrawledItems = new Map<
     string,
     { builderId: string; latestPostAt: string; publishedAt: string | null; createdAt: string }
   >();
-  for (const item of personalSeenItems) {
+  for (const item of personalCrawledItems) {
     if (!item.builderId) continue;
     const latestPostAt = item.publishedAt ?? item.createdAt;
-    const current = latestPersonalFeedItems.get(item.builderId);
+    const current = latestPersonalCrawledItems.get(item.builderId);
     if (!current || new Date(current.latestPostAt) < latestPostAt) {
-      latestPersonalFeedItems.set(item.builderId, {
+      latestPersonalCrawledItems.set(item.builderId, {
         builderId: item.builderId,
         latestPostAt: latestPostAt.toISOString(),
         publishedAt: item.publishedAt?.toISOString() ?? null,
@@ -132,8 +133,10 @@ export async function GET(request: Request) {
     },
     libraryBuilders,
     personalCrawlStates,
-    personalSeenItems,
-    latestPersonalFeedItems: Array.from(latestPersonalFeedItems.values()),
+    personalCrawledItems,
+    latestPersonalCrawledItems: Array.from(latestPersonalCrawledItems.values()),
+    personalSeenItems: personalCrawledItems,
+    latestPersonalFeedItems: Array.from(latestPersonalCrawledItems.values()),
     subscriptions: subscriptions.map((subscription) => subscription.builder),
     subscriptionCount: subscriptions.length,
     items,

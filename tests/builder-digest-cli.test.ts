@@ -482,7 +482,7 @@ test("personal crawler reports concrete crawling tool identity", async () => {
   );
 });
 
-test("personal crawler keeps crawled builders eligible and tracks seen post keys", async () => {
+test("personal crawler keeps crawled builders eligible and tracks crawled post keys", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const context = {
     libraryBuilders: [
@@ -540,7 +540,7 @@ test("personal crawler keeps crawled builders eligible and tracks seen post keys
         lastCrawledAt: "2026-05-22T10:00:00.000Z",
       },
     ],
-    personalSeenItems: [
+    personalCrawledItems: [
       {
         builderId: "builder_blog_1",
         kind: "BLOG_POST",
@@ -549,7 +549,7 @@ test("personal crawler keeps crawled builders eligible and tracks seen post keys
         createdAt: "2026-05-22T10:05:00.000Z",
       },
     ],
-    latestPersonalFeedItems: [
+    latestPersonalCrawledItems: [
       {
         builderId: "builder_blog_1",
         latestPostAt: "2026-05-22T10:00:00.000Z",
@@ -569,7 +569,7 @@ test("personal crawler keeps crawled builders eligible and tracks seen post keys
   );
   assert.equal(
     cli
-      .seenItemKeysForBuilder(context, "builder_blog_1")
+      .crawledItemKeysForBuilder(context, "builder_blog_1")
       .has(cli.personalItemKey("builder_blog_1", "BLOG_POST", "https://example.com/blog/launch-notes")),
     true,
   );

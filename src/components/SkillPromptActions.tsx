@@ -39,7 +39,7 @@ If it contains a non-empty agentTasks array: Complete exactly the task IDs retur
 BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs validate-agent-sync --tasks /tmp/builder-blog-crawl-result.json --file /tmp/builder-blog-agent-sync.json
 BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs sync-builders --file /tmp/builder-blog-agent-sync.json
 
-5. Report the crawl JSON plus any validate-agent-sync and sync-builders JSON. Success means status is ok, localErrors is empty, and agentTasks is empty or validate-agent-sync reports all tasks validated and sync-builders succeeds. Already-synced posts should remain skipped.`,
+5. Report the crawl JSON plus any validate-agent-sync and sync-builders JSON. Success means status is ok, localErrors is empty, and agentTasks is empty or validate-agent-sync reports all tasks validated and sync-builders succeeds. Already-crawled posts should remain skipped regardless of whether the user has read them.`,
     cronPrompt: (origin: string) => `Set up the Builder Blog private library scheduled job.
 
 Execution contract:

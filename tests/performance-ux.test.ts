@@ -109,11 +109,12 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(serializer, /serializeRecommendationSnapshot/);
 });
 
-test("skill context caps personal seen items to keep payloads bounded", () => {
+test("skill context caps personal crawled items to keep payloads bounded", () => {
   const contextRoute = source("src/app/api/skill/context/route.ts");
 
-  assert.match(contextRoute, /personalSeenItemLimit/);
-  assert.match(contextRoute, /take:\s*personalSeenItemLimit/);
+  assert.match(contextRoute, /personalCrawledItemLimit/);
+  assert.match(contextRoute, /take:\s*personalCrawledItemLimit/);
+  assert.match(contextRoute, /personalCrawledItems/);
 });
 
 test("dashboard subscription feed owns the paginated digest archive", () => {

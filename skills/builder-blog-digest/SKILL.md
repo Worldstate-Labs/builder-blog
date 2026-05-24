@@ -104,7 +104,9 @@ This command:
 
 - fetches `/api/skill/context`;
 - filters to every `scope: PERSONAL` builder in the user's library;
-- skips already-synced posts by `user + builder + item kind + externalId`;
+- skips already-crawled posts by `user + builder + item kind + externalId`.
+  This uses existing `FeedItem` rows and is independent of whether the user has
+  read or viewed the post;
 - crawls each supported source locally from the user's agent environment;
 - uses the later of `--days` and the latest stored post creation time for that
   builder as the incremental cutoff unless `--force` is used;
