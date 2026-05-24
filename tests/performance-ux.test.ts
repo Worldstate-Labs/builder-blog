@@ -304,7 +304,7 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
   assert.match(buildersPage, /title="Private library"[\s\S]*defaultOpen/);
-  assert.match(buildersPage, /Latest post:/);
+  assert.match(buildersPage, /Latest \{formatCompactDate\(latestPostCreatedAt\)\}/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported libraries/);
   assert.match(buildersPage, /importedLibrarySections/);

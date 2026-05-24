@@ -273,13 +273,14 @@ function BuilderInfo({
         <SourceBadge builder={builder} />
         <span className="sub-pill">{status}</span>
       </div>
-      <p className="mt-2 truncate text-sm text-[var(--muted)]">
-        {builder.handle ? `@${builder.handle}` : builder.sourceUrl}
-      </p>
-      <p className="mt-2 text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
-        {crawlLabel} · {builder._count.feedItems} items · Latest post:{" "}
-        {latestPostCreatedAt ? latestPostCreatedAt.toLocaleString() : "not available"}
-      </p>
+      <div className="builder-meta">
+        <span>{builder.handle ? `@${builder.handle}` : hostFromUrl(builder.sourceUrl)}</span>
+        <span>{crawlLabel}</span>
+        <span>{builder._count.feedItems} items</span>
+        {latestPostCreatedAt ? (
+          <span>Latest {formatCompactDate(latestPostCreatedAt)}</span>
+        ) : null}
+      </div>
       <details className="inline-disclosure">
         <summary>Technical details</summary>
         <div className="mt-2 grid gap-1 text-xs text-[var(--muted)]">
@@ -330,6 +331,24 @@ function LibrarySection({
 
 function builderSort(a: BuilderWithCount, b: BuilderWithCount) {
   return a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name);
+}
+
+function hostFromUrl(value: string | null) {
+  if (!value) return "No source";
+  try {
+    return new URL(value).hostname.replace(/^www\./, "");
+  } catch {
+    return value;
+  }
+}
+
+function formatCompactDate(value: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(value);
 }
 
 async function latestPostCreationTimes(builderIds: string[]): Promise<LatestPostCreatedAtByBuilderId> {

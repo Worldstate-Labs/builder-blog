@@ -1229,6 +1229,35 @@ a {
   min-width: 0;
 }
 
+.builder-meta {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  font-weight: 650;
+  gap: 0.25rem 0.65rem;
+  line-height: 1.45;
+  margin-top: 0.55rem;
+}
+
+.builder-meta span {
+  min-width: 0;
+}
+
+.builder-meta span:first-child {
+  max-width: min(26rem, 100%);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.builder-meta span:not(:first-child)::before {
+  color: color-mix(in oklch, var(--muted) 60%, transparent);
+  content: "·";
+  margin-right: 0.65rem;
+}
+
 .builder-posts {
   border-top: 1px solid var(--line);
 }
@@ -1314,6 +1343,15 @@ a {
   .builder-row {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .builder-meta {
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  .builder-meta span:not(:first-child)::before {
+    content: none;
   }
 
   .row-actions {
