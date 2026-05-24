@@ -110,6 +110,19 @@ test("manual builder input derives canonical fields from one handle or URL", () 
 
   assert.deepEqual(resolvePersonalBuilderInput({
     displayName: "",
+    sourceType: "youtube",
+    sourceValue: "@googledeepmind",
+  }), {
+    kind: BuilderKind.PODCAST,
+    sourceType: "youtube",
+    name: "googledeepmind",
+    handle: null,
+    sourceUrl: "https://www.youtube.com/@googledeepmind",
+    crawlUrl: null,
+  });
+
+  assert.deepEqual(resolvePersonalBuilderInput({
+    displayName: "",
     sourceType: "podcast",
     sourceValue: "feeds.example.com/show.xml",
   }), {
@@ -118,7 +131,7 @@ test("manual builder input derives canonical fields from one handle or URL", () 
     name: "feeds.example.com",
     handle: null,
     sourceUrl: "https://feeds.example.com/show.xml",
-    crawlUrl: "https://feeds.example.com/show.xml",
+    crawlUrl: null,
   });
 });
 
@@ -1417,13 +1430,17 @@ test("search user path only auto-searches corrected spellings when the original 
 test("web display boundaries keep raw crawled content in the builders tab", () => {
   const dashboardPage = readFileSync("src/app/(workspace)/dashboard/page.tsx", "utf8");
   const buildersPage = readFileSync("src/app/(workspace)/builders/page.tsx", "utf8");
+  const builderLibraryList = readFileSync("src/components/BuilderLibraryList.tsx", "utf8");
   const builderFeedItems = readFileSync("src/components/BuilderFeedItems.tsx", "utf8");
 
   assert.equal(dashboardPage.includes("prisma.feedItem.findMany"), false);
   assert.equal(dashboardPage.includes("Latest digest inputs"), false);
   assert.equal(buildersPage.includes("prisma.feedItem.findMany"), false);
   assert.equal(buildersPage.includes("Recent crawled content"), false);
-  assert.equal(buildersPage.includes("BuilderFeedItems"), true);
+  assert.equal(buildersPage.includes("BuilderLibraryList"), true);
+  assert.equal(builderLibraryList.includes("BuilderFeedItems"), true);
+  assert.equal(buildersPage.includes("Technical details"), false);
+  assert.equal(builderLibraryList.includes("Open source"), true);
   assert.equal(builderFeedItems.includes("Crawled posts"), true);
 });
 

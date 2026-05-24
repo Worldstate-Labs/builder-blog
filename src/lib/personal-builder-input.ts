@@ -37,6 +37,20 @@ export function resolvePersonalBuilderInput({
     };
   }
 
+  if (normalizedSourceType === "youtube") {
+    const sourceUrl = youtubeUrlFromValue(value);
+    if (!sourceUrl) return null;
+
+    return {
+      kind: builderKindForSourceType(normalizedSourceType),
+      sourceType: normalizedSourceType,
+      name: displayName.trim() || nameFromYouTubeUrl(sourceUrl),
+      handle: null,
+      sourceUrl,
+      crawlUrl: null,
+    };
+  }
+
   const sourceUrl = normalizedUrl(value);
   if (!sourceUrl) return null;
 
@@ -46,7 +60,7 @@ export function resolvePersonalBuilderInput({
     name: displayName.trim() || nameFromUrl(sourceUrl),
     handle: null,
     sourceUrl,
-    crawlUrl: sourceUrl,
+    crawlUrl: null,
   };
 }
 
@@ -68,6 +82,32 @@ function normalizedUrl(value: string) {
     return new URL(withProtocol).toString();
   } catch {
     return null;
+  }
+}
+
+function youtubeUrlFromValue(value: string) {
+  if (!/^https?:\/\//i.test(value)) {
+    const handle = value.trim().replace(/^@/, "");
+    return handle ? `https://www.youtube.com/@${handle}` : null;
+  }
+
+  try {
+    const url = new URL(value);
+    if (!/(^|\.)youtube\.com$|(^|\.)youtu\.be$/i.test(url.hostname)) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function nameFromYouTubeUrl(value: string) {
+  try {
+    const url = new URL(value);
+    const [firstPathPart] = url.pathname.split("/").filter(Boolean);
+    if (firstPathPart?.startsWith("@")) return firstPathPart.slice(1);
+    return url.hostname.replace(/^www\./, "");
+  } catch {
+    return value;
   }
 }
 

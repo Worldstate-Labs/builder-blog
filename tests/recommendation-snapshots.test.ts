@@ -29,7 +29,7 @@ test("recommendation feed persists snapshots and marks reads without removing ca
 test("source logos are shared across recommendation and library surfaces", () => {
   assert.match(source("src/components/SourceBadge.tsx"), /data-source/);
   assert.match(source("src/components/RecommendationFeed.tsx"), /SourceBadge/);
-  assert.match(source("src/app/(workspace)/builders/page.tsx"), /SourceBadge/);
+  assert.match(source("src/components/BuilderLibraryList.tsx"), /SourceBadge/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceBadge/);
   assert.match(source("src/components/FeedCard.tsx"), /SourceBadge/);
 });

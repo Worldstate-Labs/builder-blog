@@ -7,6 +7,7 @@ type BuilderLibraryActionsProps = {
   allowRemove?: boolean;
   builderId: string;
   initialSubscribed: boolean;
+  onRemoveStateChange?: (builderId: string, removed: boolean) => void;
 };
 
 export function SubscribeAllLibraryBuildersButton() {
@@ -54,6 +55,7 @@ export function BuilderLibraryActions({
   allowRemove = true,
   builderId,
   initialSubscribed,
+  onRemoveStateChange,
 }: BuilderLibraryActionsProps) {
   const [subscribed, setSubscribed] = useState(initialSubscribed);
   const [removed, setRemoved] = useState(false);
@@ -88,6 +90,7 @@ export function BuilderLibraryActions({
   function removeFromLibrary() {
     if (isPending) return;
     setRemoved(true);
+    onRemoveStateChange?.(builderId, true);
     setError(null);
 
     startTransition(async () => {
@@ -98,6 +101,7 @@ export function BuilderLibraryActions({
         if (!response.ok) throw new Error("Unable to remove builder");
       } catch {
         setRemoved(false);
+        onRemoveStateChange?.(builderId, false);
         setError("Could not remove builder.");
       }
     });

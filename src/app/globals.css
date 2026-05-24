@@ -1293,6 +1293,25 @@ a {
   margin-right: 0.65rem;
 }
 
+.builder-source-link {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--accent);
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 800;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+  padding: 0.34rem 0.6rem;
+  width: fit-content;
+}
+
+.builder-source-link:hover {
+  background: var(--accent-soft);
+  text-decoration: none;
+}
+
 .builder-posts {
   border-top: 1px solid var(--line);
 }

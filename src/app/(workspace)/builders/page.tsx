@@ -3,14 +3,10 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { Bell, Plus } from "lucide-react";
 import { addPersonalBuilderAction } from "@/app/actions";
-import {
-  BuilderLibraryActions,
-  SubscribeAllLibraryBuildersButton,
-} from "@/components/BuilderLibraryActions";
-import { BuilderFeedItems } from "@/components/BuilderFeedItems";
+import { SubscribeAllLibraryBuildersButton } from "@/components/BuilderLibraryActions";
+import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
 import { FormSubmitButton } from "@/components/FormSubmitButton";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
-import { SourceBadge } from "@/components/SourceBadge";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -149,23 +145,19 @@ export default async function BuildersPage() {
             />
             <SkillPromptActions context="library" />
             <AddBuilderForm />
-            {privateBuilders.map((builder) => (
-              <BuilderCard
-                key={builder.id}
-                builder={builder}
-                latestPostCreatedAt={latestPostCreatedAtByBuilderId.get(builder.id) ?? null}
-                subscribed={subscribed.has(builder.id)}
-                crawlLabel="Agent synced"
-              />
-            ))}
-            {privateBuilders.length === 0 ? (
-              <div className="empty-panel text-[var(--muted-strong)]">
-                <h3 className="text-lg font-semibold text-[var(--ink)]">No personal builders yet</h3>
-                <p className="mt-2 text-sm leading-6">
-                  Add a builder here, or sync richer crawled data from your agent later.
-                </p>
-              </div>
-            ) : null}
+            <BuilderLibraryList
+              builders={privateBuilders.map((builder) =>
+                builderListItem({
+                  allowRemove: true,
+                  builder,
+                  crawlLabel: "Agent synced",
+                  latestPostCreatedAt: latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
+                  subscribed: subscribed.has(builder.id),
+                }),
+              )}
+              emptyBody="Add a builder here, or sync richer crawled data from your agent later."
+              emptyTitle="No personal builders yet"
+            />
           </LibrarySection>
 
           <section className="grid gap-3">
@@ -185,23 +177,19 @@ export default async function BuildersPage() {
                   count={library.builders.length}
                   indented
                 >
-                  {library.builders.map((builder) => (
-                    <BuilderCard
-                      allowRemove={false}
-                      key={builder.id}
-                      builder={builder}
-                      latestPostCreatedAt={latestPostCreatedAtByBuilderId.get(builder.id) ?? null}
-                      subscribed={subscribed.has(builder.id)}
-                      crawlLabel={
-                        builder.scope === BuilderScope.CENTRAL ? "Webapp crawled" : "Hub imported"
-                      }
-                    />
-                  ))}
-                  {library.builders.length === 0 ? (
-                    <div className="empty-panel text-[var(--muted-strong)]">
-                      No active builders from this imported library.
-                    </div>
-                  ) : null}
+                  <BuilderLibraryList
+                    builders={library.builders.map((builder) =>
+                      builderListItem({
+                        allowRemove: false,
+                        builder,
+                        crawlLabel:
+                          builder.scope === BuilderScope.CENTRAL ? "Webapp crawled" : "Hub imported",
+                        latestPostCreatedAt: latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
+                        subscribed: subscribed.has(builder.id),
+                      }),
+                    )}
+                    emptyBody="No active builders from this imported library."
+                  />
                 </LibrarySection>
               ))}
               {importedLibrarySections.length === 0 ? (
@@ -260,82 +248,33 @@ function AddBuilderForm() {
   );
 }
 
-function BuilderCard({
-  allowRemove = true,
+function builderListItem({
+  allowRemove,
   builder,
+  crawlLabel,
   latestPostCreatedAt,
   subscribed,
-  crawlLabel,
-  status,
-  action,
 }: {
-  allowRemove?: boolean;
+  allowRemove: boolean;
   builder: BuilderWithCount;
   latestPostCreatedAt: Date | null;
   subscribed: boolean;
   crawlLabel: string;
-  status?: string;
-  action?: ReactNode;
-}) {
-  return (
-    <article id={builder.id} className="builder-card">
-      <div className="builder-row">
-        <BuilderInfo
-          builder={builder}
-          latestPostCreatedAt={latestPostCreatedAt}
-          status={status ?? (subscribed ? "Subscribed" : "In library")}
-          crawlLabel={crawlLabel}
-        />
-        <div className="row-actions">
-          {action ?? (
-            <BuilderLibraryActions
-              allowRemove={allowRemove}
-              builderId={builder.id}
-              initialSubscribed={subscribed}
-            />
-          )}
-        </div>
-      </div>
-      <BuilderFeedItems builder={builder} builderId={builder.id} totalCount={builder._count.feedItems} />
-    </article>
-  );
-}
-
-function BuilderInfo({
-  builder,
-  latestPostCreatedAt,
-  status,
-  crawlLabel,
-}: {
-  builder: BuilderWithCount;
-  latestPostCreatedAt: Date | null;
-  status: string;
-  crawlLabel: string;
-}) {
-  return (
-    <div className="min-w-0">
-      <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-lg font-semibold leading-snug">{builder.name}</h3>
-        <SourceBadge builder={builder} />
-        <span className="sub-pill">{status}</span>
-      </div>
-      <div className="builder-meta">
-        <span>{builder.handle ? `@${builder.handle}` : hostFromUrl(builder.sourceUrl)}</span>
-        <span>{crawlLabel}</span>
-        <span>{builder._count.feedItems} items</span>
-        {latestPostCreatedAt ? (
-          <span>Latest {formatCompactDate(latestPostCreatedAt)}</span>
-        ) : null}
-      </div>
-      <details className="inline-disclosure">
-        <summary>Technical details</summary>
-        <div className="mt-2 grid gap-1 text-xs text-[var(--muted)]">
-          <p className="break-all font-mono">{builder.canonicalKey}</p>
-          <p className="break-all">{builder.crawlUrl ?? builder.sourceUrl ?? "No crawl URL"}</p>
-        </div>
-      </details>
-    </div>
-  );
+}): BuilderLibraryListItem {
+  return {
+    id: builder.id,
+    kind: builder.kind,
+    sourceType: builder.sourceType,
+    name: builder.name,
+    handle: builder.handle,
+    sourceUrl: builder.sourceUrl,
+    crawlUrl: builder.crawlUrl,
+    feedItemCount: builder._count.feedItems,
+    latestPostCreatedAt: latestPostCreatedAt?.toISOString() ?? null,
+    subscribed,
+    crawlLabel,
+    allowRemove,
+  };
 }
 
 function LibrarySection({
@@ -377,24 +316,6 @@ function LibrarySection({
 
 function builderSort(a: BuilderWithCount, b: BuilderWithCount) {
   return a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name);
-}
-
-function hostFromUrl(value: string | null) {
-  if (!value) return "No source";
-  try {
-    return new URL(value).hostname.replace(/^www\./, "");
-  } catch {
-    return value;
-  }
-}
-
-function formatCompactDate(value: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(value);
 }
 
 async function latestPostCreationTimes(builderIds: string[]): Promise<LatestPostCreatedAtByBuilderId> {

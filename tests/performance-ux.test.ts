@@ -291,31 +291,36 @@ test("heavy route sections have route-specific loading fallbacks", () => {
 
 test("builders page avoids a global crawled-content query", () => {
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
+  const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
 
   assert.doesNotMatch(buildersPage, /RecentCrawledContent/);
   assert.doesNotMatch(buildersPage, /prisma\.feedItem\.findMany/);
-  assert.match(buildersPage, /BuilderFeedItems/);
+  assert.match(builderLibraryList, /BuilderFeedItems/);
 });
 
 test("builders page exposes per-builder crawled posts ordered by time", () => {
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
+  const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
   const builderFeedItems = source("src/components/BuilderFeedItems.tsx");
   const feedItemsRoute = source("src/app/api/builders/[builderId]/feed-items/route.ts");
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
   assert.match(buildersPage, /title="Private library"[\s\S]*defaultOpen/);
-  assert.match(buildersPage, /Latest \{formatCompactDate\(latestPostCreatedAt\)\}/);
+  assert.match(builderLibraryList, /Latest \{formatCompactDate\(latestPostCreatedAt\)\}/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported libraries/);
   assert.match(buildersPage, /importedLibrarySections/);
   assert.match(buildersPage, /library-section-panel-indented/);
   assert.doesNotMatch(buildersPage, /Central defaults|Central library/);
-  assert.match(buildersPage, /BuilderFeedItems/);
+  assert.match(buildersPage, /BuilderLibraryList/);
+  assert.match(builderLibraryList, /BuilderFeedItems/);
   assert.match(buildersPage, /AddBuilderForm/);
   assert.match(buildersPage, /addPersonalBuilderAction/);
   assert.match(buildersPage, /name="sourceType"/);
   assert.match(buildersPage, /name="sourceValue"/);
   assert.match(buildersPage, /Handle or URL/);
+  assert.match(builderLibraryList, /Open source/);
+  assert.doesNotMatch(buildersPage, /Technical details/);
   assert.doesNotMatch(buildersPage, /name="handle"/);
   assert.doesNotMatch(buildersPage, /name="sourceUrl"/);
   assert.doesNotMatch(buildersPage, /name="crawlUrl"/);
@@ -349,7 +354,8 @@ test("library hub exposes share and multi-import flows", () => {
 
   assert.match(appShell, /library-hub/);
   assert.match(buildersPage, /LibraryVisibilityToggle/);
-  assert.match(buildersPage, /BuilderLibraryActions/);
+  assert.match(buildersPage, /BuilderLibraryList/);
+  assert.match(source("src/components/BuilderLibraryList.tsx"), /BuilderLibraryActions/);
   assert.doesNotMatch(buildersPage, /togglePersonalLibraryHubAvailabilityAction/);
   assert.doesNotMatch(buildersPage, /subscribeAllLibraryBuildersAction/);
   assert.doesNotMatch(buildersPage, /unsubscribeBuilderAction/);
@@ -365,8 +371,17 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(builderActions, /allowRemove \? \(/);
   assert.match(builderActions, /fetch\(`\/api\/builders\/\$\{builderId\}\/subscription`/);
   assert.match(builderActions, /fetch\(`\/api\/builders\/\$\{builderId\}\/library`/);
+  assert.match(builderActions, /onRemoveStateChange\?\.\(builderId, true\)/);
+  assert.match(builderActions, /onRemoveStateChange\?\.\(builderId, false\)/);
   assert.match(builderActions, /fetch\("\/api\/builders\/subscriptions"/);
-  assert.match(buildersPage, /allowRemove=\{false\}/);
+  const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
+  assert.match(builderLibraryList, /"use client"/);
+  assert.match(builderLibraryList, /removedBuilderIds/);
+  assert.match(builderLibraryList, /setRemovedBuilderIds/);
+  assert.match(builderLibraryList, /builders\.filter/);
+  assert.match(builderLibraryList, /onRemoveStateChange/);
+  assert.match(builderLibraryList, /BuilderFeedItems/);
+  assert.match(buildersPage, /allowRemove:\s*false/);
   assert.match(builderSubscriptionRoute, /export async function PATCH/);
   assert.match(builderLibraryRoute, /export async function DELETE/);
   assert.match(builderLibraryRoute, /BuilderPoolOrigin\.HUB_IMPORT/);
@@ -490,7 +505,6 @@ test("admin builder mutations stay local instead of using server action forms", 
 
 test("list actions use compact controls instead of full-width mobile buttons", () => {
   const css = source("src/app/globals.css");
-  const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const builderActions = source("src/components/BuilderLibraryActions.tsx");
   const settingsPage = source("src/app/(workspace)/settings/page.tsx");
   const agentTokenPanel = source("src/components/AgentTokenPanel.tsx");
@@ -500,7 +514,7 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.button-compact/);
   assert.match(css, /\.row-actions/);
   assert.doesNotMatch(css, /\.builder-row form,\s*\n\s*\.builder-row button\s*{\s*\n\s*width:\s*100%/);
-  assert.match(buildersPage, /row-actions/);
+  assert.match(source("src/components/BuilderLibraryList.tsx"), /row-actions/);
   assert.match(builderActions, /button-light.*button-compact/);
   assert.match(settingsPage, /AgentTokenPanel/);
   assert.match(agentTokenPanel, /button-light button-compact/);
