@@ -10,7 +10,7 @@ PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 export PATH BUILDER_BLOG_URL="$APP_URL" BUILDER_BLOG_AGENT_DIR="$AGENT_DIR"
 
 if [ -z "$JOB_NAME" ]; then
-  echo "Usage: builder-agent-runner.sh <library-cron|digest-cron>" >&2
+  echo "Usage: builder-agent-runner.sh <library-once|digest-once|library-cron-setup|digest-cron-setup|library-cron|digest-cron>" >&2
   exit 64
 fi
 
@@ -20,10 +20,19 @@ refresh_skill_files() {
   mkdir -p "$AGENT_DIR" "$AGENT_DIR/jobs" "$AGENT_DIR/logs" "$AGENT_DIR/tmp"
   curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest.md" -o "$AGENT_DIR/SKILL.md"
   curl -fsSL "$APP_URL/api/skill/files/builder-digest.mjs" -o "$AGENT_DIR/builder-digest.mjs"
+  curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-once.md" -o "$AGENT_DIR/jobs/library-once.md"
+  curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest-once.md" -o "$AGENT_DIR/jobs/digest-once.md"
+  curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-cron-setup.md" -o "$AGENT_DIR/jobs/library-cron-setup.md"
+  curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest-cron-setup.md" -o "$AGENT_DIR/jobs/digest-cron-setup.md"
   curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-cron.md" -o "$AGENT_DIR/jobs/library-cron.md"
   curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest-cron.md" -o "$AGENT_DIR/jobs/digest-cron.md"
   chmod +x "$AGENT_DIR/builder-digest.mjs"
 }
+
+if [ -n "${BUILDER_BLOG_PROMPT_URL:-}" ]; then
+  mkdir -p "$AGENT_DIR/jobs"
+  curl -fsSL "$BUILDER_BLOG_PROMPT_URL" -o "$PROMPT_FILE"
+fi
 
 if [ ! -f "$PROMPT_FILE" ]; then
   refresh_skill_files
@@ -72,7 +81,7 @@ elif command -v openclaw >/dev/null 2>&1; then
   run_with_openclaw
 elif command -v gemini >/dev/null 2>&1; then
   run_with_gemini
-elif [ "$JOB_NAME" = "library-cron" ]; then
+elif [ "$JOB_NAME" = "library-cron" ] || [ "$JOB_NAME" = "library-once" ]; then
   run_shell_library_fallback
 else
   echo "No local agent runtime found for FollowBrief digest generation." >&2
