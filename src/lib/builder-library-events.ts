@@ -18,7 +18,9 @@ export type BuilderLibraryEventItem = {
 };
 
 export type BuilderLibraryStatsChange = {
+  crawledCount?: number;
   crawledDelta?: number;
+  inLibraryCount?: number;
   inLibraryDelta?: number;
   subscribedDelta?: number;
   subscribedCount?: number;

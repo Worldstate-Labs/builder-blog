@@ -353,7 +353,10 @@ test("library hub exposes share and multi-import flows", () => {
   const visibilityToggle = source("src/components/LibraryVisibilityToggle.tsx");
   const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
   const builderLibraryStats = source("src/components/BuilderLibraryStats.tsx");
+  const builderLibraryAutoRefresh = source("src/components/BuilderLibraryAutoRefresh.tsx");
   const builderLibraryEvents = source("src/lib/builder-library-events.ts");
+  const builderLibraryState = source("src/lib/builder-library-state.ts");
+  const builderLibraryStreamRoute = source("src/app/api/builders/library-stream/route.ts");
   const visibilityRoute = source("src/app/api/library-hub/personal-availability/route.ts");
   const builderSubscriptionRoute = source("src/app/api/builders/[builderId]/subscription/route.ts");
   const builderLibraryRoute = source("src/app/api/builders/[builderId]/library/route.ts");
@@ -372,6 +375,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(buildersPage, /ensureAdminCommunityLibrary/);
   assert.match(buildersPage, /BuilderLibraryList/);
   assert.match(buildersPage, /BuilderLibraryStats/);
+  assert.match(buildersPage, /BuilderLibraryAutoRefresh/);
+  assert.match(buildersPage, /builderLibraryState/);
   assert.match(builderLibraryList, /BuilderLibraryActions/);
   assert.doesNotMatch(buildersPage, /togglePersonalLibraryHubAvailabilityAction/);
   assert.doesNotMatch(buildersPage, /subscribeAllLibraryBuildersAction/);
@@ -408,6 +413,16 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(builderLibraryStats, /builderLibraryStatsChanged/);
   assert.match(builderLibraryStats, /addEventListener/);
   assert.match(builderLibraryStats, /SubscribeAllLibraryBuildersButton/);
+  assert.match(builderLibraryAutoRefresh, /new EventSource/);
+  assert.match(builderLibraryAutoRefresh, /\/api\/builders\/library-stream/);
+  assert.match(builderLibraryAutoRefresh, /router\.refresh\(\)/);
+  assert.match(builderLibraryAutoRefresh, /builderLibraryStatsChanged/);
+  assert.match(builderLibraryState, /userBuilderCrawl\.aggregate/);
+  assert.match(builderLibraryState, /feedItem\.aggregate/);
+  assert.match(builderLibraryStreamRoute, /text\/event-stream/);
+  assert.match(builderLibraryStreamRoute, /event: \$\{event\}/);
+  assert.match(builderLibraryStreamRoute, /library-state/);
+  assert.match(builderLibraryStreamRoute, /activePoolBuilderIds/);
   assert.match(builderLibraryEvents, /builderLibraryStatsChanged/);
   assert.match(builderLibraryEvents, /builderLibrarySubscribeAll/);
   assert.match(buildersPage, /allowRemove:\s*false/);

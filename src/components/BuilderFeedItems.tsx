@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { SourceBadge } from "@/components/SourceBadge";
 
@@ -35,12 +35,28 @@ export function BuilderFeedItems({
   builderId,
   totalCount,
 }: BuilderFeedItemsProps) {
-  const [items, setItems] = useState<BuilderFeedItem[] | null>(null);
+  const detailsRef = useRef<HTMLDetailsElement | null>(null);
+  const [itemState, setItemState] = useState<{
+    builderId: string;
+    totalCount: number;
+    items: BuilderFeedItem[] | null;
+  }>({ builderId, totalCount, items: null });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const items =
+    itemState.builderId === builderId && itemState.totalCount === totalCount
+      ? itemState.items
+      : null;
 
-  async function loadItems(open: boolean) {
-    if (!open || items || isLoading) return;
+  useEffect(() => {
+    if (!detailsRef.current?.open) return;
+    void loadItems(true, { force: true });
+    // loadItems intentionally stays local; this effect only reacts to server props changing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [builderId, totalCount]);
+
+  async function loadItems(open: boolean, options: { force?: boolean } = {}) {
+    if (!open || (items && !options.force) || isLoading) return;
     setIsLoading(true);
     setError(null);
     try {
@@ -49,7 +65,7 @@ export function BuilderFeedItems({
       });
       if (!response.ok) throw new Error("Unable to load crawled posts");
       const payload = (await response.json()) as { items?: BuilderFeedItem[] };
-      setItems(payload.items ?? []);
+      setItemState({ builderId, totalCount, items: payload.items ?? [] });
     } catch {
       setError("Could not load crawled posts.");
     } finally {
@@ -58,7 +74,11 @@ export function BuilderFeedItems({
   }
 
   return (
-    <details className="builder-posts" onToggle={(event) => loadItems(event.currentTarget.open)}>
+    <details
+      className="builder-posts"
+      onToggle={(event) => loadItems(event.currentTarget.open)}
+      ref={detailsRef}
+    >
       <summary>
         <span>Crawled posts</span>
         <span className="text-[var(--muted)]">

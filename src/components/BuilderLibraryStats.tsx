@@ -15,31 +15,63 @@ type BuilderLibraryStatsProps = {
   initialSubscribed: number;
 };
 
+type BuilderLibraryStatsValue = {
+  crawledItems: number;
+  inLibrary: number;
+  subscribed: number;
+};
+
 export function BuilderLibraryStats({
   initialCrawledItems,
   initialInLibrary,
   initialSubscribed,
 }: BuilderLibraryStatsProps) {
-  const [stats, setStats] = useState({
+  const propKey = `${initialCrawledItems}:${initialInLibrary}:${initialSubscribed}`;
+  const propStats: BuilderLibraryStatsValue = {
     crawledItems: initialCrawledItems,
     inLibrary: initialInLibrary,
     subscribed: initialSubscribed,
+  };
+  const [statsState, setStatsState] = useState<{
+    key: string;
+    stats: BuilderLibraryStatsValue;
+  }>({
+    key: propKey,
+    stats: propStats,
   });
+  const stats = statsState.key === propKey ? statsState.stats : propStats;
 
   useEffect(() => {
+    const currentPropStats = {
+      crawledItems: initialCrawledItems,
+      inLibrary: initialInLibrary,
+      subscribed: initialSubscribed,
+    };
+
     function onStatsChanged(event: Event) {
       const detail = (event as CustomEvent<BuilderLibraryStatsChange>).detail ?? {};
-      setStats((current) => ({
-        crawledItems: Math.max(0, current.crawledItems + (detail.crawledDelta ?? 0)),
-        inLibrary: Math.max(0, current.inLibrary + (detail.inLibraryDelta ?? 0)),
-        subscribed:
-          detail.subscribedCount ?? Math.max(0, current.subscribed + (detail.subscribedDelta ?? 0)),
-      }));
+      setStatsState((current) => {
+        const currentStats = current.key === propKey ? current.stats : currentPropStats;
+        return {
+          key: propKey,
+          stats: {
+            crawledItems:
+              detail.crawledCount ??
+              Math.max(0, currentStats.crawledItems + (detail.crawledDelta ?? 0)),
+            inLibrary:
+              detail.inLibraryCount ??
+              Math.max(0, currentStats.inLibrary + (detail.inLibraryDelta ?? 0)),
+            subscribed:
+              detail.subscribedCount ??
+              Math.max(0, currentStats.subscribed + (detail.subscribedDelta ?? 0)),
+          },
+        };
+      });
     }
 
     window.addEventListener(builderLibraryStatsChanged, onStatsChanged);
     return () => window.removeEventListener(builderLibraryStatsChanged, onStatsChanged);
-  }, []);
+  }, [initialCrawledItems, initialInLibrary, initialSubscribed, propKey]);
 
   function onSubscribedAll() {
     window.dispatchEvent(new CustomEvent(builderLibrarySubscribeAll));
