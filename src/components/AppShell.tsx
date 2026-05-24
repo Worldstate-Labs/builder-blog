@@ -30,11 +30,8 @@ export function AppShell({
           <Link href="/dashboard" className="app-brand group">
             <BrandMark />
             <div className="min-w-0">
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+              <div className="text-base font-semibold leading-tight text-[var(--ink)]">
                 FollowBrief
-              </div>
-              <div className="text-base font-semibold leading-tight">
-                Source briefings
               </div>
             </div>
           </Link>
