@@ -233,10 +233,6 @@ function AddBuilderForm() {
       </div>
       <div className="add-builder-grid">
         <label>
-          <span>Name</span>
-          <input className="input" name="name" placeholder="Andrej Karpathy" />
-        </label>
-        <label>
           <span>Source</span>
           <select className="input" name="sourceType" defaultValue="x">
             {SOURCE_DEFINITIONS.filter((source) => source.id !== "pdf").map((source) => (
@@ -247,16 +243,17 @@ function AddBuilderForm() {
           </select>
         </label>
         <label>
-          <span>X handle</span>
-          <input className="input" name="handle" placeholder="@karpathy" />
-        </label>
-        <label>
-          <span>Source URL</span>
-          <input className="input" name="sourceUrl" placeholder="https://example.com" type="url" />
+          <span>Handle or URL</span>
+          <input
+            className="input"
+            name="sourceValue"
+            placeholder="@deepmind or https://example.com/feed"
+            required
+          />
         </label>
         <label className="add-builder-grid-wide">
-          <span>Crawl URL</span>
-          <input className="input" name="crawlUrl" placeholder="RSS feed or index URL" type="url" />
+          <span>Display name</span>
+          <input className="input" name="name" placeholder="Optional; inferred when empty" />
         </label>
       </div>
     </form>

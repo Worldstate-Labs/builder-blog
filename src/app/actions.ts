@@ -5,9 +5,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth";
 import { activePoolBuilderIds, addBuilderToPool } from "@/lib/builder-pool";
-import { builderKindForSourceType } from "@/lib/source-registry";
-import { normalizeHandle, upsertBuilder } from "@/lib/builders";
+import { upsertBuilder } from "@/lib/builders";
 import { sharePersonalLibraryToHub } from "@/lib/library-hub";
+import { resolvePersonalBuilderInput } from "@/lib/personal-builder-input";
 import { prisma } from "@/lib/prisma";
 
 async function requireUser() {
@@ -44,18 +44,13 @@ export async function addBuilderToLibraryAction(formData: FormData) {
 
 export async function addPersonalBuilderAction(formData: FormData) {
   const user = await requireUser();
-  const sourceType = String(formData.get("sourceType") ?? "x").trim() || "x";
-  const handleInput = String(formData.get("handle") ?? "").trim();
-  const sourceUrlInput = String(formData.get("sourceUrl") ?? "").trim();
-  const crawlUrlInput = String(formData.get("crawlUrl") ?? "").trim();
-  const handle = handleInput ? normalizeHandle(handleInput) : handleFromUrl(sourceUrlInput);
-  const sourceUrl = sourceUrlInput || (handle ? `https://x.com/${handle}` : crawlUrlInput);
-  const crawlUrl = crawlUrlInput || (sourceType === "blog" || sourceType === "podcast" ? sourceUrl : "");
-  const name =
-    String(formData.get("name") ?? "").trim() ||
-    (handle ? `@${handle}` : hostFromUrl(sourceUrl));
+  const input = resolvePersonalBuilderInput({
+    displayName: String(formData.get("name") ?? ""),
+    sourceType: String(formData.get("sourceType") ?? "x"),
+    sourceValue: String(formData.get("sourceValue") ?? ""),
+  });
 
-  if (!name || (!handle && !sourceUrl && !crawlUrl)) {
+  if (!input) {
     redirect("/builders?error=missing-builder");
   }
 
@@ -63,12 +58,7 @@ export async function addPersonalBuilderAction(formData: FormData) {
     scope: BuilderScope.PERSONAL,
     ownerUserId: user.id,
     addedByUserId: user.id,
-    kind: builderKindForSourceType(sourceType),
-    sourceType,
-    name,
-    handle: sourceType === "x" ? handle : null,
-    sourceUrl: sourceUrl || null,
-    crawlUrl: crawlUrl || null,
+    ...input,
   });
 
   await addBuilderToPool({
@@ -97,27 +87,6 @@ export async function sharePersonalLibraryToHubAction(formData: FormData) {
   revalidatePath("/builders");
   const redirectTo = String(formData.get("redirectTo") ?? "");
   redirect(redirectTo === "/builders" ? `/builders?shared=${result.builderCount}` : `/library-hub?shared=${result.builderCount}`);
-}
-
-function handleFromUrl(value: string) {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    if (!/(^|\.)x\.com$|(^|\.)twitter\.com$/i.test(url.hostname)) return null;
-    const [handle] = url.pathname.split("/").filter(Boolean);
-    return handle ? normalizeHandle(handle) : null;
-  } catch {
-    return null;
-  }
-}
-
-function hostFromUrl(value: string) {
-  if (!value) return "";
-  try {
-    return new URL(value).hostname.replace(/^www\./, "");
-  } catch {
-    return value;
-  }
 }
 
 export async function subscribeAllDefaultBuildersAction() {

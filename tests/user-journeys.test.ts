@@ -21,6 +21,7 @@ import {
   parseSkillBuilderSyncPayload,
   parseSkillDigestPayload,
 } from "../src/lib/skill-contracts";
+import { resolvePersonalBuilderInput } from "../src/lib/personal-builder-input";
 import {
   candidateSearchTerms,
   didYouMeanSearch,
@@ -91,6 +92,34 @@ test("builder library user path keeps central and per-user builders distinct whi
     builderLibraryKey({ scope: BuilderScope.PERSONAL, ownerUserId: "user_b", canonicalKey }),
     "user:user_b:X:openai",
   );
+});
+
+test("manual builder input derives canonical fields from one handle or URL", () => {
+  assert.deepEqual(resolvePersonalBuilderInput({
+    displayName: "DeepMind",
+    sourceType: "x",
+    sourceValue: "https://x.com/GoogleDeepMind",
+  }), {
+    kind: BuilderKind.X,
+    sourceType: "x",
+    name: "DeepMind",
+    handle: "googledeepmind",
+    sourceUrl: "https://x.com/googledeepmind",
+    crawlUrl: null,
+  });
+
+  assert.deepEqual(resolvePersonalBuilderInput({
+    displayName: "",
+    sourceType: "podcast",
+    sourceValue: "feeds.example.com/show.xml",
+  }), {
+    kind: BuilderKind.PODCAST,
+    sourceType: "podcast",
+    name: "feeds.example.com",
+    handle: null,
+    sourceUrl: "https://feeds.example.com/show.xml",
+    crawlUrl: "https://feeds.example.com/show.xml",
+  });
 });
 
 test("subscription user path is a digest subset of the active builder pool", () => {

@@ -314,9 +314,11 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
   assert.match(buildersPage, /AddBuilderForm/);
   assert.match(buildersPage, /addPersonalBuilderAction/);
   assert.match(buildersPage, /name="sourceType"/);
-  assert.match(buildersPage, /name="handle"/);
-  assert.match(buildersPage, /name="sourceUrl"/);
-  assert.match(buildersPage, /name="crawlUrl"/);
+  assert.match(buildersPage, /name="sourceValue"/);
+  assert.match(buildersPage, /Handle or URL/);
+  assert.doesNotMatch(buildersPage, /name="handle"/);
+  assert.doesNotMatch(buildersPage, /name="sourceUrl"/);
+  assert.doesNotMatch(buildersPage, /name="crawlUrl"/);
   assert.match(builderFeedItems, /"use client"/);
   assert.match(builderFeedItems, /fetch\(`\/api\/builders\/\$\{builderId\}\/feed-items`/);
   assert.match(builderFeedItems, /Crawled posts/);
@@ -390,7 +392,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(actions, /addPersonalBuilderAction/);
   assert.match(actions, /BuilderScope\.PERSONAL/);
   assert.match(actions, /BuilderPoolOrigin\.PERSONAL_SYNC/);
-  assert.match(actions, /builderKindForSourceType/);
+  assert.match(actions, /resolvePersonalBuilderInput/);
   assert.match(visibilityRoute, /unsharePersonalLibraryFromHub/);
   assert.doesNotMatch(actions, /importLibrariesFromHub/);
   assert.match(skillRoute, /crawlingTool: "Legacy crawl\/import"/);
