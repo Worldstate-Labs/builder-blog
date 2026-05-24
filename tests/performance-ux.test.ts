@@ -360,7 +360,6 @@ test("library hub exposes share and multi-import flows", () => {
   const hubImportForm = source("src/components/LibraryHubImportForm.tsx");
   const hubImportRoute = source("src/app/api/library-hub/imports/route.ts");
   const hubPage = source("src/app/(workspace)/library-hub/page.tsx");
-  const actions = source("src/app/actions.ts");
   const skillRoute = source("src/app/api/skill/builders/route.ts");
   const schema = source("prisma/schema.prisma");
 
@@ -426,13 +425,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /viewCount/);
   assert.match(hubPage, /orderBy:\s*\[\{ kind: "desc" \}, \{ importCount: "desc" \}, \{ viewCount: "desc" \}/);
   assert.match(hubImportForm, /libraryId/);
-  assert.match(actions, /sharePersonalLibraryToHub/);
-  assert.match(actions, /addPersonalBuilderAction/);
-  assert.match(actions, /BuilderScope\.PERSONAL/);
-  assert.match(actions, /BuilderPoolOrigin\.PERSONAL_SYNC/);
-  assert.match(actions, /resolvePersonalBuilderInput/);
   assert.match(visibilityRoute, /unsharePersonalLibraryFromHub/);
-  assert.doesNotMatch(actions, /importLibrariesFromHub/);
+  assert.equal(existsSync(join(root, "src/app/actions.ts")), false);
   assert.match(skillRoute, /crawlingTool: "Legacy crawl\/import"/);
   assert.match(schema, /model LibraryHubEntry/);
   assert.match(schema, /model LibraryImport/);
@@ -445,7 +439,6 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   const feedPreferenceRoute = source("src/app/api/settings/feed-preferences/route.ts");
   const tokensRoute = source("src/app/api/settings/tokens/route.ts");
   const tokenRoute = source("src/app/api/settings/tokens/[tokenId]/route.ts");
-  const actions = source("src/app/actions.ts");
 
   assert.match(settingsPage, /FeedPreferenceForm/);
   assert.match(settingsPage, /AgentTokenPanel/);
@@ -471,16 +464,12 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenRoute, /export async function DELETE/);
   assert.match(tokenRoute, /revokedAt/);
   assert.doesNotMatch(tokenRoute, /redirect\(/);
-  assert.doesNotMatch(actions, /createPersonalTokenAction/);
-  assert.doesNotMatch(actions, /revokeTokenAction/);
-  assert.doesNotMatch(actions, /updateFeedPreferenceAction/);
 });
 
 test("device authorization gives local pending feedback without route redirects", () => {
   const devicePage = source("src/app/device/page.tsx");
   const deviceApproveButton = source("src/components/DeviceApproveButton.tsx");
   const approveRoute = source("src/app/api/device/approve/route.ts");
-  const actions = source("src/app/actions.ts");
 
   assert.match(devicePage, /DeviceApproveButton/);
   assert.doesNotMatch(devicePage, /approveDeviceLoginAction/);
@@ -493,7 +482,6 @@ test("device authorization gives local pending feedback without route redirects"
   assert.match(approveRoute, /createAgentToken/);
   assert.match(approveRoute, /NextResponse\.json/);
   assert.doesNotMatch(approveRoute, /redirect\(/);
-  assert.doesNotMatch(actions, /approveDeviceLoginAction/);
 });
 
 test("admin builder mutations stay local instead of using server action forms", () => {
@@ -501,7 +489,6 @@ test("admin builder mutations stay local instead of using server action forms", 
   const adminBuilderManager = source("src/components/AdminBuilderManager.tsx");
   const adminBuildersRoute = source("src/app/api/admin/builders/route.ts");
   const adminBuilderRoute = source("src/app/api/admin/builders/[builderId]/route.ts");
-  const actions = source("src/app/actions.ts");
 
   assert.match(adminPage, /AdminBuilderManager/);
   assert.doesNotMatch(adminPage, /addCentralBuilderAction/);
@@ -522,8 +509,6 @@ test("admin builder mutations stay local instead of using server action forms", 
   assert.match(adminBuilderRoute, /isAdminEmail/);
   assert.match(adminBuilderRoute, /deleteMany/);
   assert.doesNotMatch(adminBuilderRoute, /redirect\(/);
-  assert.doesNotMatch(actions, /addCentralBuilderAction/);
-  assert.doesNotMatch(actions, /deleteCentralBuilderAction/);
 });
 
 test("list actions use compact controls instead of full-width mobile buttons", () => {
