@@ -534,6 +534,11 @@ export function mergeSearchSuggestions({
   const normalizedQuery = normalizeText(query);
   const seen = new Set<string>();
   const merged: string[] = [];
+  const hasQuery = normalizedQuery.length > 0;
+  const matchingRecentSearches = recentSearches.filter((suggestion) => {
+    if (!hasQuery) return true;
+    return normalizeText(suggestion).includes(normalizedQuery);
+  });
   const addSuggestion = (suggestion: string) => {
     const trimmed = suggestion.trim();
     const normalized = normalizeText(trimmed);
@@ -542,9 +547,14 @@ export function mergeSearchSuggestions({
     merged.push(trimmed);
   };
 
-  for (const suggestion of recentSearches) addSuggestion(suggestion);
+  if (!hasQuery) {
+    for (const suggestion of matchingRecentSearches) addSuggestion(suggestion);
+  }
   for (const suggestion of liveSuggestions) addSuggestion(suggestion);
   for (const suggestion of serverSuggestions) addSuggestion(suggestion);
+  if (hasQuery) {
+    for (const suggestion of matchingRecentSearches) addSuggestion(suggestion);
+  }
 
   return merged.slice(0, limit);
 }

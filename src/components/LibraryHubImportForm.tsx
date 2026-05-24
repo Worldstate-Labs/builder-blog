@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Download, Eye, LibraryBig } from "lucide-react";
+import { CheckCircle2, Download } from "lucide-react";
 import { SourceBadge } from "@/components/SourceBadge";
 
 type HubLibraryBuilder = {
@@ -86,16 +86,18 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
   }
 
   return (
-    <section className="mt-10">
+    <section className="mt-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="section-label">Explore</p>
-          <h2 className="mt-2 font-serif text-4xl">Library hub</h2>
+          <h2 className="section-heading">Available libraries</h2>
+          <p className="mt-1 text-sm text-[var(--muted-strong)]">
+            Select one or more libraries, then import their builders.
+          </p>
         </div>
         <div className="inline-flex flex-col items-end gap-2">
           <button
             aria-busy={isPending}
-            className="button-dark gap-2"
+            className="button-dark button-compact gap-2"
             disabled={selectedIds.length === 0 || isPending}
             onClick={importSelected}
             type="button"
@@ -115,20 +117,25 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         {libraries.map((library) => {
           const imported = importedIds.has(library.id);
           return (
-            <article className="library-hub-card" key={library.id}>
+            <article className="library-hub-card" data-selected={selected.has(library.id) ? "true" : undefined} key={library.id}>
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="item-kicker">
                     <span>{library.kind === "CENTRAL" ? "Central" : "Shared"}</span>
                     <span>{library.itemCount} builders</span>
                   </div>
-                  <h3 className="mt-2 font-serif text-2xl">{library.name}</h3>
-                  <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
+                  <h3 className="mt-2 text-lg font-semibold leading-snug">{library.name}</h3>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
                     {library.description || library.ownerLabel}
                   </p>
                 </div>
                 {library.owned ? (
                   <span className="sub-pill">Yours</span>
+                ) : imported ? (
+                  <span className="status-chip status-chip-success">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Imported
+                  </span>
                 ) : (
                   <label className="hub-checkbox">
                     <input
@@ -144,10 +151,9 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
                 )}
               </div>
 
-              <div className="library-hub-metrics">
-                <Metric icon={Download} label="Imports" value={library.importCount} />
-                <Metric icon={Eye} label="Views" value={library.viewCount + 1} />
-                <Metric icon={LibraryBig} label="Status" value={imported ? "Imported" : "Ready"} />
+              <div className="library-hub-summary">
+                <span>{library.importCount} imports</span>
+                <span>{library.ownerLabel}</span>
               </div>
 
               <div className="mt-4 grid gap-2">
@@ -168,23 +174,5 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         })}
       </div>
     </section>
-  );
-}
-
-function Metric({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Download;
-  label: string;
-  value: number | string;
-}) {
-  return (
-    <div className="hub-metric">
-      <Icon className="h-3.5 w-3.5" />
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
   );
 }

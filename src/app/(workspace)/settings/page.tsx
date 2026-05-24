@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { KeyRound } from "lucide-react";
 import { AgentTokenPanel } from "@/components/AgentTokenPanel";
-import { AppShell } from "@/components/AppShell";
 import { FeedPreferenceForm } from "@/components/FeedPreferenceForm";
 import { getCurrentSession } from "@/lib/auth";
 import {
@@ -37,27 +36,24 @@ export default async function SettingsPage() {
   }));
 
   return (
-    <AppShell session={session}>
-      <div className="page-pad">
-        <div className="page-kicker-row">
-          <p className="section-label">Settings</p>
+    <div className="page-pad">
+        <section className="page-header">
+          <div>
+            <h1 className="page-title">Settings</h1>
+            <p className="page-description">
+              Configure feed preferences and agent access.
+            </p>
+          </div>
           <span className="status-chip">
             <KeyRound className="h-3.5 w-3.5" />
             {tokens.filter((token) => !token.revokedAt).length} active
           </span>
-        </div>
-        <h1 className="mt-3 font-serif text-4xl font-semibold leading-tight md:text-6xl">
-          Settings
-        </h1>
-        <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--muted-strong)]">
-          The skill uses an agent token to fetch your library, sync personal
-          builder items, and write generated digests back to this archive.
-        </p>
+        </section>
 
-        <section className="action-panel mt-8 md:p-6">
+        <section className="action-panel mt-6 md:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h2 className="font-serif text-3xl">Feed preferences</h2>
+              <h2 className="section-heading">Feed preferences</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
                 Digest generation uses these settings when the skill asks for
                 context. Recommendations use the profile text and reading log
@@ -75,8 +71,7 @@ export default async function SettingsPage() {
           />
         </section>
 
-        <AgentTokenPanel initialTokens={serializedTokens} />
-      </div>
-    </AppShell>
+      <AgentTokenPanel initialTokens={serializedTokens} />
+    </div>
   );
 }

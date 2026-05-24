@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Clock, Search, Sparkles, X } from "lucide-react";
+import { Clock, Search, X } from "lucide-react";
 import {
   normalizeRecentSearches,
   type SearchDocumentType,
@@ -22,6 +22,7 @@ type AutocompleteSuggestion = {
 };
 
 export function SearchForm({
+  variant = "page",
   query,
   typeFilter = "all",
   mode = "hybrid",
@@ -31,6 +32,7 @@ export function SearchForm({
   beforeDate = "",
   suggestions = [],
 }: {
+  variant?: "page" | "header";
   query: string;
   typeFilter?: SearchTypeFilter;
   mode?: SearchMode;
@@ -41,6 +43,7 @@ export function SearchForm({
   suggestions?: string[];
 }) {
   const router = useRouter();
+  const isHeader = variant === "header";
   const [isPending, startTransition] = useTransition();
   const [inputValue, setInputValue] = useState(query);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -76,8 +79,10 @@ export function SearchForm({
     suggestionsOpen && activeSuggestionIndex >= 0
       ? visibleSuggestions[activeSuggestionIndex]
       : undefined;
+  const suggestionIdPrefix = isHeader ? "header-search-suggestion" : "search-suggestion";
+  const suggestionListId = `${suggestionIdPrefix}-list`;
   const activeSuggestionId = activeSuggestion
-    ? `search-suggestion-${activeSuggestionIndex}`
+    ? `${suggestionIdPrefix}-${activeSuggestionIndex}`
     : undefined;
   const shouldShowSuggestions = suggestionsOpen && visibleSuggestions.length > 0;
 
@@ -108,11 +113,9 @@ export function SearchForm({
 
   function submitSearch({
     form,
-    isLucky = false,
     nextQuery,
   }: {
     form: HTMLFormElement | null;
-    isLucky?: boolean;
     nextQuery: string;
   }) {
     const formData = form ? new FormData(form) : null;
@@ -144,10 +147,6 @@ export function SearchForm({
     if (nextTime !== "any" && !hasCustomDateRange) {
       params.set("time", nextTime);
     }
-    if (isLucky && queryWithDateRange) {
-      params.set("lucky", "1");
-    }
-
     if (queryWithDateRange) {
       const nextRecent = normalizeRecentSearches([queryWithDateRange, ...recentSearches]);
       setRecentSearches(nextRecent);
@@ -197,7 +196,8 @@ export function SearchForm({
   return (
     <form
       action="/search"
-      className="search-form"
+      autoComplete="off"
+      className={isHeader ? "header-search header-search-form" : "search-form"}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) {
           setSuggestionsOpen(false);
@@ -212,26 +212,28 @@ export function SearchForm({
           submitter?.name === "suggestion"
             ? submitter.value.trim()
             : String(formData.get("q") ?? "").trim();
-        const isLucky = submitter?.value === "1";
-
-        submitSearch({ form: event.currentTarget, isLucky, nextQuery });
+        submitSearch({ form: event.currentTarget, nextQuery });
       }}
     >
-      <div className="search-form-row">
-        <label className="search-query-label min-w-0">
+      <div className={isHeader ? "header-search-row" : "search-form-row"}>
+        <label className={isHeader ? "header-search-label" : "search-query-label min-w-0"}>
           <span className="sr-only">Search query</span>
-          <span className="search-input-wrap">
-            <Search className="search-input-icon" />
+          <span className={isHeader ? "header-search-input-wrap search-input-wrap" : "search-input-wrap"}>
+            <Search className={isHeader ? "h-4 w-4 text-[var(--muted)]" : "search-input-icon"} />
             <input
-              className="search-input"
+              autoCapitalize="off"
+              autoComplete="off"
+              autoCorrect="off"
+              className={isHeader ? "header-search-input search-input" : "search-input"}
               ref={inputRef}
+              spellCheck={false}
               type="search"
               name="q"
               role="combobox"
               value={inputValue}
               aria-activedescendant={activeSuggestionId}
               aria-autocomplete="list"
-              aria-controls="search-suggestion-list"
+              aria-controls={suggestionListId}
               aria-expanded={shouldShowSuggestions}
               onChange={(event) => {
                 setInputValue(event.currentTarget.value);
@@ -261,7 +263,7 @@ export function SearchForm({
                   submitSuggestion(activeSuggestion, event.currentTarget.form);
                 }
               }}
-              placeholder="Search builders, feed items, or digests"
+              placeholder={isHeader ? "Search" : "Search builders, feed items, or digests"}
             />
             {inputValue ? (
               <button
@@ -278,14 +280,14 @@ export function SearchForm({
                 className="search-suggestion-dropdown"
                 aria-label="Search suggestions"
                 aria-live="polite"
-                id="search-suggestion-list"
+                id={suggestionListId}
                 role="listbox"
               >
                 {visibleSuggestions.map((suggestion, index) => (
                   <div
                     aria-selected={index === activeSuggestionIndex}
                     data-active={index === activeSuggestionIndex ? "true" : undefined}
-                    id={`search-suggestion-${index}`}
+                    id={`${suggestionIdPrefix}-${index}`}
                     key={`${suggestion.kind}:${suggestion.query}`}
                     role="option"
                     className="search-suggestion-item"
@@ -331,71 +333,65 @@ export function SearchForm({
             ) : null}
           </span>
         </label>
-        <label className="search-mode-select">
-          <span>Search mode</span>
-          <select name="mode" defaultValue={mode}>
-            <option value="hybrid">Hybrid</option>
-            <option value="exact">Exact</option>
-            <option value="semantic">Semantic</option>
-          </select>
-        </label>
-        <label className="search-mode-select">
-          <span>Time range</span>
-          <select name="time" defaultValue={time}>
-            <option value="any">Any time</option>
-            <option value="day">Past day</option>
-            <option value="week">Past week</option>
-            <option value="month">Past month</option>
-            <option value="year">Past year</option>
-          </select>
-        </label>
-        <label className="search-mode-select">
-          <span>Sort by</span>
-          <select name="sort" defaultValue={sort}>
-            <option value="relevance">Relevance</option>
-            <option value="newest">Newest</option>
-          </select>
-        </label>
-        <div className="search-date-range" aria-label="Custom date range">
-          <label className="search-date-field">
-            <span>From</span>
-            <input name="after" type="date" defaultValue={afterDate} />
-          </label>
-          <label className="search-date-field">
-            <span>To</span>
-            <input name="before" type="date" defaultValue={beforeDate} />
-          </label>
-        </div>
-        <button
-          aria-busy={isPending}
-          className="button-dark relative justify-center gap-2"
-          disabled={isPending}
-          name="search"
-          type="submit"
-        >
-          <span
-            className={`inline-flex items-center justify-center gap-2 ${
-              isPending ? "invisible" : ""
-            }`}
-          >
-            Search
-          </span>
-          {isPending ? (
-            <span className="absolute inset-0 inline-flex items-center justify-center px-3">
-              Searching...
-            </span>
-          ) : null}
-        </button>
-        <button
-          className="button-light search-lucky-button gap-2"
-          disabled={isPending}
-          name="lucky"
-          type="submit"
-          value="1"
-        >
-          <Sparkles className="h-4 w-4" />
-          Lucky
-        </button>
+        {isHeader ? null : (
+          <>
+            <label className="search-mode-select">
+              <span>Search mode</span>
+              <select name="mode" defaultValue={mode}>
+                <option value="hybrid">Hybrid</option>
+                <option value="exact">Exact</option>
+                <option value="semantic">Semantic</option>
+              </select>
+            </label>
+            <label className="search-mode-select">
+              <span>Time range</span>
+              <select name="time" defaultValue={time}>
+                <option value="any">Any time</option>
+                <option value="day">Past day</option>
+                <option value="week">Past week</option>
+                <option value="month">Past month</option>
+                <option value="year">Past year</option>
+              </select>
+            </label>
+            <label className="search-mode-select">
+              <span>Sort by</span>
+              <select name="sort" defaultValue={sort}>
+                <option value="relevance">Relevance</option>
+                <option value="newest">Newest</option>
+              </select>
+            </label>
+            <div className="search-date-range" aria-label="Custom date range">
+              <label className="search-date-field">
+                <span>From</span>
+                <input name="after" type="date" defaultValue={afterDate} />
+              </label>
+              <label className="search-date-field">
+                <span>To</span>
+                <input name="before" type="date" defaultValue={beforeDate} />
+              </label>
+            </div>
+            <button
+              aria-busy={isPending}
+              className="button-dark relative justify-center gap-2"
+              disabled={isPending}
+              name="search"
+              type="submit"
+            >
+              <span
+                className={`inline-flex items-center justify-center gap-2 ${
+                  isPending ? "invisible" : ""
+                }`}
+              >
+                Search
+              </span>
+              {isPending ? (
+                <span className="absolute inset-0 inline-flex items-center justify-center px-3">
+                  Searching...
+                </span>
+              ) : null}
+            </button>
+          </>
+        )}
       </div>
     </form>
   );
@@ -421,6 +417,17 @@ function mergeAutocompleteSuggestions({
   const normalizedQuery = normalizeSuggestionKey(query);
   const seen = new Set<string>();
   const merged: AutocompleteSuggestion[] = [];
+  const hasQuery = normalizedQuery.length > 0;
+  const recentSuggestions = recentSearches.flatMap((recentSearch): AutocompleteSuggestion[] => {
+    if (hasQuery && !normalizeSuggestionKey(recentSearch).includes(normalizedQuery)) {
+      return [];
+    }
+    return [{
+      query: recentSearch,
+      label: recentSearch,
+      kind: "recent",
+    }];
+  });
   const addSuggestion = (suggestion: AutocompleteSuggestion) => {
     const normalized = normalizeSuggestionKey(suggestion.query);
     if (!normalized || normalized === normalizedQuery || seen.has(normalized)) return;
@@ -428,21 +435,19 @@ function mergeAutocompleteSuggestions({
     merged.push(suggestion);
   };
 
-  for (const recentSearch of recentSearches) {
-    addSuggestion({
-      query: recentSearch,
-      label: recentSearch,
-      kind: "recent",
-    });
+  if (!hasQuery) {
+    for (const suggestion of recentSuggestions) addSuggestion(suggestion);
   }
   for (const suggestion of liveSuggestions) addSuggestion(suggestion);
   for (const suggestion of serverSuggestions) {
-    if (normalizedQuery && !normalizeSuggestionKey(suggestion).startsWith(normalizedQuery)) continue;
     addSuggestion({
       query: suggestion,
       label: suggestion,
       kind: "query",
     });
+  }
+  if (hasQuery) {
+    for (const suggestion of recentSuggestions) addSuggestion(suggestion);
   }
 
   return merged.slice(0, limit);

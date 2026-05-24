@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Clock3, ExternalLink } from "lucide-react";
-import { AppShell } from "@/components/AppShell";
 import { SourceBadge } from "@/components/SourceBadge";
 import { getCurrentSession } from "@/lib/auth";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
@@ -55,8 +54,7 @@ export default async function RecommendationItemPage({
   const displayDate = item.publishedAt ?? item.createdAt;
 
   return (
-    <AppShell session={session}>
-      <div className="page-pad">
+    <div className="page-pad">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <Link className="button-light button-compact gap-2" href="/dashboard">
             <ArrowLeft className="h-4 w-4" />
@@ -78,7 +76,7 @@ export default async function RecommendationItemPage({
             <span>{displayDate.toLocaleString()}</span>
             <span>{item.crawlingTool ?? "Legacy crawl/import"}</span>
           </div>
-          <h1 className="mt-4 max-w-4xl font-serif text-3xl font-semibold leading-tight md:text-5xl">
+          <h1 className="mt-4 max-w-4xl text-2xl font-semibold leading-tight md:text-3xl">
             {item.title || firstLine(item.body)}
           </h1>
           <div className="mt-8 whitespace-pre-wrap text-base leading-8 text-[var(--muted-strong)]">
@@ -100,8 +98,7 @@ export default async function RecommendationItemPage({
             </Link>
           </div>
         </article>
-      </div>
-    </AppShell>
+    </div>
   );
 }
 

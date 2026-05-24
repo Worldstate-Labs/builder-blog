@@ -2,7 +2,6 @@ import { BuilderKind, BuilderScope, FeedItemKind } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AdminBuilderManager } from "@/components/AdminBuilderManager";
-import { AppShell } from "@/components/AppShell";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -30,17 +29,12 @@ export default async function AdminPage() {
   if (!isAdminEmail(session.user.email)) redirect("/dashboard?error=admin-required");
 
   return (
-    <AppShell session={session}>
-      <div className="page-pad">
-        <section className="grid gap-6 xl:grid-cols-[1fr_26rem]">
+    <div className="page-pad">
+        <section className="page-header">
           <div>
-            <p className="section-label">Admin</p>
-            <h1 className="mt-3 font-serif text-4xl font-semibold leading-tight md:text-6xl">
-              Crawl operations
-            </h1>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--muted-strong)]">
-              Review the central builder pool, canonical de-dupe keys, and the
-              feed items imported by day.
+            <h1 className="page-title">Crawl operations</h1>
+            <p className="page-description">
+              Review the central builder pool, de-dupe keys, and recent imports.
             </p>
           </div>
           <Suspense fallback={<AdminStatsFallback />}>
@@ -64,8 +58,7 @@ export default async function AdminPage() {
         <Suspense fallback={<AdminPanelFallback title="Recent imported content" />}>
           <RecentImportedContent />
         </Suspense>
-      </div>
-    </AppShell>
+    </div>
   );
 }
 
@@ -107,7 +100,7 @@ async function BuilderKindMetrics() {
 
   return (
     <div className="admin-panel">
-      <h2 className="font-serif text-3xl">Builder pool by kind</h2>
+      <h2 className="section-heading">Builder pool by kind</h2>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {Object.values(BuilderKind).map((kind) => (
           <MetricRow
@@ -130,7 +123,7 @@ async function FeedKindMetrics() {
 
   return (
     <div className="admin-panel">
-      <h2 className="font-serif text-3xl">Feed items by kind</h2>
+      <h2 className="section-heading">Feed items by kind</h2>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {Object.values(FeedItemKind).map((kind) => (
           <MetricRow
@@ -147,7 +140,7 @@ async function FeedKindMetrics() {
 function MetricPanelFallback({ title }: { title: string }) {
   return (
     <div className="admin-panel" aria-live="polite" aria-busy="true">
-      <h2 className="font-serif text-3xl">{title}</h2>
+      <h2 className="section-heading">{title}</h2>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         <div className="h-14 rounded-lg bg-black/10" />
         <div className="h-14 rounded-lg bg-black/10" />
@@ -205,7 +198,7 @@ async function RecentImportedContent() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="section-label">Daily crawl</p>
-          <h2 className="mt-2 font-serif text-4xl">Recent imported content</h2>
+          <h2 className="section-heading">Recent imported content</h2>
         </div>
         <span className="rounded-full border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-2 text-sm text-[var(--muted-strong)]">
           Last 14 days
@@ -216,7 +209,7 @@ async function RecentImportedContent() {
         {feedItemsByDay.map((day, dayIndex) => (
           <details key={day.key} className="admin-panel admin-panel-compact" open={dayIndex === 0}>
             <summary className="item-summary">
-              <h3 className="font-serif text-3xl">{dateFormatter.format(day.date)}</h3>
+              <h3 className="text-lg font-semibold">{dateFormatter.format(day.date)}</h3>
               <span className="kind-pill">{day.items.length} items</span>
             </summary>
             <div className="border-t border-[var(--line)]">
@@ -279,7 +272,7 @@ function AdminPanelFallback({ title }: { title: string }) {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="section-label">Loading</p>
-          <h2 className="mt-2 font-serif text-4xl">{title}</h2>
+          <h2 className="section-heading">{title}</h2>
         </div>
       </div>
       <div className="item-list mt-5">

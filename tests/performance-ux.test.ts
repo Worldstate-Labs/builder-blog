@@ -17,15 +17,27 @@ test("primary app navigation keeps route prefetching enabled", () => {
 
 test("app shell reuses the page session instead of fetching it again", () => {
   const appShell = source("src/components/AppShell.tsx");
+  const workspaceLayout = source("src/app/(workspace)/layout.tsx");
 
   assert.equal(appShell.includes("getServerSession"), false);
   assert.match(appShell, /session\??:/);
+  assert.match(workspaceLayout, /<AppShell session=\{session\}>/);
+  for (const pagePath of [
+    "src/app/(workspace)/dashboard/page.tsx",
+    "src/app/(workspace)/builders/page.tsx",
+    "src/app/(workspace)/library-hub/page.tsx",
+    "src/app/(workspace)/search/page.tsx",
+    "src/app/(workspace)/settings/page.tsx",
+    "src/app/(workspace)/admin/page.tsx",
+  ]) {
+    assert.doesNotMatch(source(pagePath), /AppShell/);
+  }
 });
 
 test("settings live in the clickable user avatar menu", () => {
   const appShell = source("src/components/AppShell.tsx");
   const appNav = source("src/components/AppNav.tsx");
-  const settingsPage = source("src/app/settings/page.tsx");
+  const settingsPage = source("src/app/(workspace)/settings/page.tsx");
   const globals = source("src/app/globals.css");
 
   assert.doesNotMatch(appShell, /label: "Agent"/);
@@ -43,8 +55,11 @@ test("settings live in the clickable user avatar menu", () => {
 test("desktop shell uses home rail, header search, and merged home feeds", () => {
   const appShell = source("src/components/AppShell.tsx");
   const appNav = source("src/components/AppNav.tsx");
-  const dashboardPage = source("src/app/dashboard/page.tsx");
-  const recommendationsPage = source("src/app/recommendations/page.tsx");
+  const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
+  const dashboardTabs = source("src/components/DashboardHomeTabs.tsx");
+  const searchForm = source("src/components/SearchForm.tsx");
+  const digestDetails = source("src/components/DigestDetails.tsx");
+  const recommendationsPage = source("src/app/(workspace)/recommendations/page.tsx");
   const globals = source("src/app/globals.css");
 
   assert.match(appShell, /label: "Home"/);
@@ -55,22 +70,26 @@ test("desktop shell uses home rail, header search, and merged home feeds", () =>
   assert.doesNotMatch(appNav, /recommendations/);
   assert.doesNotMatch(appNav, /"search"/);
   assert.match(appShell, /className="app-topbar"/);
-  assert.match(appShell, /className="header-search"/);
-  assert.match(appShell, /name="q"/);
-  assert.match(dashboardPage, /HomeTabLink/);
-  assert.match(dashboardPage, /For You/);
-  assert.match(dashboardPage, /Subscription/);
-  assert.match(dashboardPage, /Today digest/);
+  assert.match(appShell, /<SearchForm query="" variant="header" \/>/);
+  assert.match(searchForm, /name="q"/);
+  assert.match(dashboardPage, /DashboardHomeTabs/);
+  assert.match(dashboardTabs, /role="tablist"/);
+  assert.match(dashboardTabs, /window\.history\.pushState/);
+  assert.doesNotMatch(dashboardTabs, /router\.push/);
+  assert.doesNotMatch(dashboardTabs, /<Link/);
+  assert.match(dashboardTabs, /For You/);
+  assert.match(dashboardTabs, /Subscription/);
   assert.match(dashboardPage, /Digest archive/);
   assert.match(dashboardPage, /ForYouRecommendationSection/);
   assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
+  assert.match(digestDetails, /Today digest/);
   assert.match(recommendationsPage, /redirect\("\/dashboard"\)/);
   assert.match(globals, /\.home-layout/);
   assert.match(globals, /\.home-rail/);
 });
 
 test("dashboard defers heavy recommendation timeline work to a client island", () => {
-  const dashboardPage = source("src/app/dashboard/page.tsx");
+  const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const forYouSection = source("src/components/ForYouRecommendationSection.tsx");
   const timelineRoute = source("src/app/api/recommendations/timeline/route.ts");
   const serializer = source("src/lib/recommendation-view-model.ts");
@@ -98,19 +117,34 @@ test("skill context caps personal seen items to keep payloads bounded", () => {
 });
 
 test("dashboard subscription feed owns the paginated digest archive", () => {
-  const dashboardPage = source("src/app/dashboard/page.tsx");
+  const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const historyPage = source("src/app/history/page.tsx");
+  const digestDetails = source("src/components/DigestDetails.tsx");
+  const digestRoute = source("src/app/api/digests/[digestId]/route.ts");
 
   assert.match(dashboardPage, /archivePageSize/);
   assert.match(dashboardPage, /take:\s*archivePageSize/);
+  assert.match(dashboardPage, /digestSummarySelect/);
+  assert.match(dashboardPage, /id:\s*true/);
+  assert.match(dashboardPage, /select:\s*digestSummarySelect/);
+  assert.doesNotMatch(dashboardPage, /digest\.content/);
+  assert.match(dashboardPage, /DigestDetails/);
   assert.match(dashboardPage, /id="digest-archive"/);
   assert.match(dashboardPage, /Digest archive/);
   assert.match(historyPage, /redirect\(`\/dashboard\?tab=subscription&archivePage=\$\{page\}#digest-archive`\)/);
   assert.doesNotMatch(historyPage, /AppShell/);
+  assert.match(digestDetails, /"use client"/);
+  assert.match(digestDetails, /fetch\(`\/api\/digests\/\$\{digestId\}`/);
+  assert.match(digestDetails, /Loading digest/);
+  assert.match(digestDetails, /aria-live="polite"/);
+  assert.match(digestRoute, /export async function GET/);
+  assert.match(digestRoute, /content: true/);
+  assert.match(digestRoute, /userId: session\.user\.id/);
+  assert.match(digestRoute, /NextResponse\.json/);
 });
 
 test("search page uses a client form with pending feedback", () => {
-  const searchPage = source("src/app/search/page.tsx");
+  const searchPage = source("src/app/(workspace)/search/page.tsx");
   const searchForm = source("src/components/SearchForm.tsx");
   const globals = source("src/app/globals.css");
 
@@ -180,6 +214,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /localStorage\.getItem\("builder-blog-searches"\)/);
   assert.match(searchForm, /normalizeRecentSearches/);
   assert.match(searchForm, /Search mode/);
+  assert.match(searchForm, /variant\?: "page" \| "header"/);
+  assert.match(searchForm, /header-search-suggestion/);
+  assert.match(searchForm, /\/api\/search\/suggest/);
   assert.match(searchForm, /Time range/);
   assert.match(searchForm, /Sort by/);
   assert.match(searchForm, /Custom date range/);
@@ -207,9 +244,13 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /ArrowUp/);
   assert.match(searchForm, /Escape/);
   assert.match(searchForm, /aria-activedescendant/);
+  assert.match(searchForm, /autoComplete="off"/);
+  assert.match(searchForm, /autoCorrect="off"/);
+  assert.match(searchForm, /spellCheck=\{false\}/);
   assert.match(searchForm, /role="listbox"/);
   assert.match(searchForm, /role="option"/);
-  assert.match(searchForm, /Lucky/);
+  assert.doesNotMatch(searchForm, /Lucky/);
+  assert.doesNotMatch(searchForm, /lucky/);
   assert.doesNotMatch(searchForm, /type="radio"/);
   assert.match(globals, /\.search-suggestion-dropdown/);
   assert.doesNotMatch(globals, /\.search-page-active \.search-suggestion-row\s*\{[\s\S]*display:\s*none/);
@@ -238,25 +279,26 @@ test("user library search can fetch operator-only candidate sets", () => {
 
 test("heavy route sections have route-specific loading fallbacks", () => {
   for (const path of [
-    "src/app/admin/loading.tsx",
-    "src/app/builders/loading.tsx",
+    "src/app/(workspace)/admin/loading.tsx",
+    "src/app/(workspace)/builders/loading.tsx",
     "src/app/history/loading.tsx",
-    "src/app/library-hub/loading.tsx",
-    "src/app/search/loading.tsx",
+    "src/app/(workspace)/library-hub/loading.tsx",
+    "src/app/(workspace)/search/loading.tsx",
   ]) {
     assert.equal(existsSync(join(root, path)), true, path);
   }
 });
 
-test("builders page streams crawled content behind a suspense boundary", () => {
-  const buildersPage = source("src/app/builders/page.tsx");
+test("builders page avoids a global crawled-content query", () => {
+  const buildersPage = source("src/app/(workspace)/builders/page.tsx");
 
-  assert.match(buildersPage, /Suspense/);
-  assert.match(buildersPage, /RecentCrawledContent/);
+  assert.doesNotMatch(buildersPage, /RecentCrawledContent/);
+  assert.doesNotMatch(buildersPage, /prisma\.feedItem\.findMany/);
+  assert.match(buildersPage, /BuilderFeedItems/);
 });
 
 test("builders page exposes per-builder crawled posts ordered by time", () => {
-  const buildersPage = source("src/app/builders/page.tsx");
+  const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const builderFeedItems = source("src/components/BuilderFeedItems.tsx");
   const feedItemsRoute = source("src/app/api/builders/[builderId]/feed-items/route.ts");
 
@@ -274,7 +316,7 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
   assert.match(builderFeedItems, /Crawled posts/);
   assert.match(builderFeedItems, /Crawled/);
   assert.match(builderFeedItems, /External id/);
-  assert.match(builderFeedItems, /Read full crawl/);
+  assert.match(builderFeedItems, /Details/);
   assert.match(builderFeedItems, /crawlingTool/);
   assert.match(feedItemsRoute, /orderBy:\s*\[\{ publishedAt: "desc" \}, \{ createdAt: "desc" \}\]/);
   assert.match(feedItemsRoute, /activePoolBuilderIds/);
@@ -283,7 +325,7 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
 
 test("library hub exposes share and multi-import flows", () => {
   const appShell = source("src/components/AppShell.tsx");
-  const buildersPage = source("src/app/builders/page.tsx");
+  const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const builderActions = source("src/components/BuilderLibraryActions.tsx");
   const visibilityToggle = source("src/components/LibraryVisibilityToggle.tsx");
   const visibilityRoute = source("src/app/api/library-hub/personal-availability/route.ts");
@@ -292,7 +334,7 @@ test("library hub exposes share and multi-import flows", () => {
   const builderSubscribeAllRoute = source("src/app/api/builders/subscriptions/route.ts");
   const hubImportForm = source("src/components/LibraryHubImportForm.tsx");
   const hubImportRoute = source("src/app/api/library-hub/imports/route.ts");
-  const hubPage = source("src/app/library-hub/page.tsx");
+  const hubPage = source("src/app/(workspace)/library-hub/page.tsx");
   const actions = source("src/app/actions.ts");
   const skillRoute = source("src/app/api/skill/builders/route.ts");
   const schema = source("prisma/schema.prisma");
@@ -347,7 +389,7 @@ test("library hub exposes share and multi-import flows", () => {
 });
 
 test("settings mutations stay local instead of refreshing the whole route", () => {
-  const settingsPage = source("src/app/settings/page.tsx");
+  const settingsPage = source("src/app/(workspace)/settings/page.tsx");
   const feedPreferenceForm = source("src/components/FeedPreferenceForm.tsx");
   const tokenPanel = source("src/components/AgentTokenPanel.tsx");
   const feedPreferenceRoute = source("src/app/api/settings/feed-preferences/route.ts");
@@ -405,7 +447,7 @@ test("device authorization gives local pending feedback without route redirects"
 });
 
 test("admin builder mutations stay local instead of using server action forms", () => {
-  const adminPage = source("src/app/admin/page.tsx");
+  const adminPage = source("src/app/(workspace)/admin/page.tsx");
   const adminBuilderManager = source("src/components/AdminBuilderManager.tsx");
   const adminBuildersRoute = source("src/app/api/admin/builders/route.ts");
   const adminBuilderRoute = source("src/app/api/admin/builders/[builderId]/route.ts");
@@ -436,11 +478,11 @@ test("admin builder mutations stay local instead of using server action forms", 
 
 test("list actions use compact controls instead of full-width mobile buttons", () => {
   const css = source("src/app/globals.css");
-  const buildersPage = source("src/app/builders/page.tsx");
+  const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const builderActions = source("src/components/BuilderLibraryActions.tsx");
-  const settingsPage = source("src/app/settings/page.tsx");
+  const settingsPage = source("src/app/(workspace)/settings/page.tsx");
   const agentTokenPanel = source("src/components/AgentTokenPanel.tsx");
-  const adminPage = source("src/app/admin/page.tsx");
+  const adminPage = source("src/app/(workspace)/admin/page.tsx");
   const adminBuilderManager = source("src/components/AdminBuilderManager.tsx");
 
   assert.match(css, /\.button-compact/);

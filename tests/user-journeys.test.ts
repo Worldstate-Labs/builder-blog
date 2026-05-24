@@ -1230,7 +1230,7 @@ test("search user path suggests simple spelling corrections and normalizes tools
   assert.equal(normalizeSearchTime("bad"), "any");
 });
 
-test("search user path merges live autocomplete suggestions by recency and relevance", () => {
+test("search user path merges autocomplete predictions before matching history", () => {
   const suggestions = mergeSearchSuggestions({
     query: "agent",
     recentSearches: ["agent memory", "digest archive"],
@@ -1240,11 +1240,27 @@ test("search user path merges live autocomplete suggestions by recency and relev
   });
 
   assert.deepEqual(suggestions, [
-    "agent memory",
-    "digest archive",
+    "Agent Memory",
     "agent workflows",
     "builder launch",
     "assistant memory",
+  ]);
+});
+
+test("search suggestions prioritize current query predictions over unrelated history", () => {
+  const suggestions = mergeSearchSuggestions({
+    query: "claude",
+    recentSearches: ["Transformer", "Ter", "Sam", "Andrew", '"agent memory"'],
+    liveSuggestions: ["claude code", "claude ai", "anthropic releases"],
+    serverSuggestions: ["claude docs"],
+    limit: 5,
+  });
+
+  assert.deepEqual(suggestions, [
+    "claude code",
+    "claude ai",
+    "anthropic releases",
+    "claude docs",
   ]);
 });
 
@@ -1298,13 +1314,16 @@ test("search user path only auto-searches corrected spellings when the original 
 });
 
 test("web display boundaries keep raw crawled content in the builders tab", () => {
-  const dashboardPage = readFileSync("src/app/dashboard/page.tsx", "utf8");
-  const buildersPage = readFileSync("src/app/builders/page.tsx", "utf8");
+  const dashboardPage = readFileSync("src/app/(workspace)/dashboard/page.tsx", "utf8");
+  const buildersPage = readFileSync("src/app/(workspace)/builders/page.tsx", "utf8");
+  const builderFeedItems = readFileSync("src/components/BuilderFeedItems.tsx", "utf8");
 
   assert.equal(dashboardPage.includes("prisma.feedItem.findMany"), false);
   assert.equal(dashboardPage.includes("Latest digest inputs"), false);
-  assert.equal(buildersPage.includes("prisma.feedItem.findMany"), true);
-  assert.equal(buildersPage.includes("Recent crawled content"), true);
+  assert.equal(buildersPage.includes("prisma.feedItem.findMany"), false);
+  assert.equal(buildersPage.includes("Recent crawled content"), false);
+  assert.equal(buildersPage.includes("BuilderFeedItems"), true);
+  assert.equal(builderFeedItems.includes("Crawled posts"), true);
 });
 
 test("source registry centralizes current source categories and crawl eligibility", () => {

@@ -1,20 +1,11 @@
 import { redirect } from "next/navigation";
-import type { ComponentType } from "react";
-import { LibraryBig, UsersRound } from "lucide-react";
-import { AppShell } from "@/components/AppShell";
 import { LibraryHubImportForm, type HubLibrary } from "@/components/LibraryHubImportForm";
 import { getCurrentSession } from "@/lib/auth";
-import {
-  recordLibraryHubViews,
-  syncCentralLibraryHub,
-} from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 
 export default async function LibraryHubPage() {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
-
-  await syncCentralLibraryHub();
 
   const [libraries, imports] = await Promise.all([
     prisma.libraryHubEntry.findMany({
@@ -47,10 +38,8 @@ export default async function LibraryHubPage() {
       select: { hubEntryId: true },
     }),
   ]);
-  await recordLibraryHubViews(libraries.map((library) => library.id));
 
   const importedLibraryIds = new Set(imports.map((item) => item.hubEntryId));
-  const importableLibraries = libraries.filter((library) => library.ownerUserId !== session.user.id);
   const hubLibraries: HubLibrary[] = libraries.map((library) => ({
     id: library.id,
     kind: library.kind,
@@ -67,48 +56,18 @@ export default async function LibraryHubPage() {
   }));
 
   return (
-    <AppShell session={session}>
-      <div className="page-pad">
-        <section className="grid gap-6 xl:grid-cols-[1fr_24rem]">
-          <div>
-            <p className="section-label">Library Hub</p>
-            <h1 className="mt-3 font-serif text-4xl font-semibold leading-tight md:text-6xl">
-              Shared builder libraries
-            </h1>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--muted-strong)]">
-              Browse the central library and shared personal libraries. Import
-              multiple libraries into your builder pool without resharing the
-              libraries you imported from others.
-            </p>
-          </div>
-          <div className="stats-panel">
-            <HubStat icon={LibraryBig} label="Libraries" value={libraries.length} />
-            <HubStat icon={UsersRound} label="Importable" value={importableLibraries.length} />
-          </div>
-        </section>
+    <div className="page-pad">
+      <section className="page-header">
+        <div>
+          <h1 className="page-title">Library Hub</h1>
+          <p className="page-description">
+            Import shared builder libraries into your pool.
+          </p>
+        </div>
+        <span className="status-chip">{libraries.length} libraries</span>
+      </section>
 
-        <LibraryHubImportForm libraries={hubLibraries} />
-      </div>
-    </AppShell>
-  );
-}
-
-function HubStat({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: ComponentType<{ className?: string }>;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="stat-card">
-      <Icon className="stat-card-icon" />
-      <div>
-        <div className="stat-card-value">{value}</div>
-        <div className="stat-card-label">{label}</div>
-      </div>
+      <LibraryHubImportForm libraries={hubLibraries} />
     </div>
   );
 }

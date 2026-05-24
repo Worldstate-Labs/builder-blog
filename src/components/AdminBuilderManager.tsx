@@ -104,7 +104,7 @@ export function AdminBuilderManager({
   return (
     <section className="mt-10">
       <div className="admin-panel mb-5">
-        <h2 className="font-serif text-3xl">Add central builder</h2>
+        <h2 className="section-heading">Add central builder</h2>
         <form className="mt-5 grid gap-3 md:grid-cols-[1fr_12rem_12rem_1fr_1fr_auto]" onSubmit={addBuilder}>
           <input className="input" name="name" placeholder="Name" required />
           <select className="input" name="kind" defaultValue={builderKindOptions[0]?.value}>
@@ -146,7 +146,7 @@ export function AdminBuilderManager({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="section-label">Builder pool</p>
-          <h2 className="mt-2 font-serif text-4xl">Canonical sources</h2>
+          <h2 className="section-heading">Canonical sources</h2>
         </div>
         <span className="rounded-full border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-2 text-sm text-[var(--muted-strong)]">
           {builderCountLabel}
@@ -159,7 +159,7 @@ export function AdminBuilderManager({
             <div className="item-summary item-summary-static">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-serif text-2xl">{builder.name}</h3>
+                  <h3 className="text-lg font-semibold leading-snug">{builder.name}</h3>
                   <span className="kind-pill">{builder.sourceLabel}</span>
                 </div>
                 <p className="mt-2 truncate text-sm text-[var(--muted)]">

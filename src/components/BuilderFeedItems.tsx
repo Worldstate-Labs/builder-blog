@@ -62,13 +62,14 @@ export function BuilderFeedItems({
       <summary>
         <span>Crawled posts</span>
         <span className="text-[var(--muted)]">
-          {items ? `Latest ${items.length} of ${totalCount}` : `Latest posts of ${totalCount}`}
+          {items ? `Latest ${items.length} of ${totalCount}` : `${totalCount} posts`}
         </span>
       </summary>
       <div className="builder-post-list">
         {isLoading ? (
-          <div className="p-4 text-sm text-[var(--muted-strong)]" role="status">
-            Loading crawled posts...
+          <div className="builder-post-loading" role="status">
+            <div className="h-4 w-40 rounded bg-black/10" />
+            <div className="mt-3 h-16 rounded bg-black/10" />
           </div>
         ) : null}
         {error ? (
@@ -85,41 +86,34 @@ export function BuilderFeedItems({
                 {item.publishedAt ? <span>Published {formatDate(item.publishedAt)}</span> : null}
                 <span>Crawled {formatDate(item.createdAt)}</span>
                 {item.sourceName ? <span>{item.sourceName}</span> : null}
-                <span>{item.crawlingTool ?? "Legacy crawl/import"}</span>
               </div>
               <h4 className="item-title">{item.title || firstLine(item.body)}</h4>
               <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--muted-strong)]">
                 {firstLine(item.body)}
               </p>
               <details className="inline-disclosure">
-                <summary>Read full crawl</summary>
+                <summary>Details</summary>
                 <div className="mt-3 rounded-lg border border-[var(--line)] bg-[var(--paper)] p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
-                    Crawling tool · {item.crawlingTool ?? "Legacy crawl/import"}
-                  </p>
+                  <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                    {item.crawlingTool ?? "Legacy crawl/import"}
+                  </div>
                   <div className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[var(--muted-strong)]">
                     {item.body}
                   </div>
+                  <dl className="mt-4 grid gap-2 text-xs md:grid-cols-2">
+                    <div>
+                      <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">External id</dt>
+                      <dd className="mt-1 break-all font-mono text-[var(--muted-strong)]">
+                        {item.externalId}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">Source URL</dt>
+                      <dd className="mt-1 break-all text-[var(--muted-strong)]">{item.url}</dd>
+                    </div>
+                  </dl>
                 </div>
               </details>
-              <dl className="mt-3 grid gap-2 text-xs md:grid-cols-2">
-                <div>
-                  <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">External id</dt>
-                  <dd className="mt-1 break-all font-mono text-[var(--muted-strong)]">
-                    {item.externalId}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">Crawling tool</dt>
-                  <dd className="mt-1 break-all text-[var(--muted-strong)]">
-                    {item.crawlingTool ?? "Legacy crawl/import"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">Source URL</dt>
-                  <dd className="mt-1 break-all text-[var(--muted-strong)]">{item.url}</dd>
-                </div>
-              </dl>
             </div>
             <a
               className="button-light button-compact min-w-24 gap-2"

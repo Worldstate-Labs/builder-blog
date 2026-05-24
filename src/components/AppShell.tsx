@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Session } from "next-auth";
-import { LogOut, Search, Settings } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
 import { AppNav, type AppNavItem } from "@/components/AppNav";
+import { SearchForm } from "@/components/SearchForm";
 import { isAdminEmail } from "@/lib/admin";
 
 const nav: AppNavItem[] = [
@@ -36,29 +37,13 @@ export function AppShell({
               </div>
             </div>
           </Link>
-          <form action="/search" className="header-search" role="search">
-            <Search className="h-4 w-4" />
-            <input
-              aria-label="Search Builder Blog"
-              name="q"
-              placeholder="Search"
-              type="search"
-            />
-          </form>
+          <SearchForm query="" variant="header" />
         </div>
         <UserMenu session={session} compact />
       </header>
       <div className="app-body">
         <aside className="shell-sidebar hidden w-[12rem] shrink-0 border-r border-[var(--line)] px-4 py-6 lg:flex lg:flex-col">
           <AppNav items={items} mode="desktop" />
-          <div className="sidebar-note mt-auto">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--accent)]">
-              Agent loop
-            </p>
-            <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
-              Keep the pool current, subscribe the useful builders, then sync the digest back here.
-            </p>
-          </div>
         </aside>
         <main className="flex min-w-0 flex-1 flex-col">
           {children}

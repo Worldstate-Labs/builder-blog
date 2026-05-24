@@ -116,7 +116,7 @@ export function RecommendationFeed({
   }, [exhausted, requestSnapshot]);
 
   return (
-    <section className="recommendation-feed mt-10">
+    <section className="recommendation-feed mt-6">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <button
           className="button-light button-compact gap-2"
@@ -127,9 +127,6 @@ export function RecommendationFeed({
           <RefreshCcw className="h-4 w-4" />
           Refresh snapshot
         </button>
-        <span className="text-sm text-[var(--muted)]">
-          Read posts stay in their snapshot and are filtered from future requests.
-        </span>
       </div>
       <div className="item-list">
         {snapshots.map((snapshot) => (
@@ -180,7 +177,7 @@ function RecommendationCard({
         <span>{Math.round(entry.score)} match</span>
         {isRead ? <span>Read {formatDate(entry.readAt ?? "")}</span> : null}
       </div>
-      <h2 className="mt-3 font-serif text-2xl">{entry.item.title || firstLine(entry.item.body)}</h2>
+      <h2 className="mt-3 text-lg font-semibold leading-snug">{entry.item.title || firstLine(entry.item.body)}</h2>
       <p className="mt-3 line-clamp-4 text-sm leading-7 text-[var(--muted-strong)]">
         {firstLine(entry.item.body, 420)}
       </p>

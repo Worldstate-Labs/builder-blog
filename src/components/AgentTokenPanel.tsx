@@ -101,7 +101,7 @@ export function AgentTokenPanel({
         <div className="min-w-0">
           <div className="flex items-center gap-3">
             <Terminal className="h-5 w-5 text-[var(--accent)]" />
-            <h2 className="font-serif text-3xl">Terminal access</h2>
+            <h2 className="section-heading">Terminal access</h2>
           </div>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
             Copy the setup command into your local agent. It downloads the
@@ -140,7 +140,7 @@ export function AgentTokenPanel({
         {tokens.map((token) => (
           <article key={token.id} className="builder-row">
             <div className="min-w-0">
-              <div className="font-serif text-2xl">{token.name}</div>
+              <div className="text-base font-semibold">{token.name}</div>
               <p className="mt-1 text-sm text-[var(--muted)]">
                 Created {formatDate(token.createdAt)}
                 {token.lastUsedAt ? ` · Last used ${formatDate(token.lastUsedAt)}` : ""}

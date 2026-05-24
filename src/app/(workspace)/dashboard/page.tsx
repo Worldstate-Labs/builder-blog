@@ -1,14 +1,22 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import type { Digest } from "@prisma/client";
-import type { ComponentType, ReactNode } from "react";
-import { Archive, BookOpen, CheckCircle2, Clock3, Sparkles, Terminal, UsersRound } from "lucide-react";
-import { AppShell } from "@/components/AppShell";
+import type { ComponentType } from "react";
+import { Archive, CheckCircle2, Clock3, Sparkles, Terminal, UsersRound } from "lucide-react";
+import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
 import { ForYouRecommendationSection } from "@/components/ForYouRecommendationSection";
+import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const archivePageSize = 20;
+const digestSummarySelect = {
+  id: true,
+  title: true,
+  itemCount: true,
+  language: true,
+  createdAt: true,
+};
+type DigestSummaryRow = Omit<DigestSummary, "createdAt"> & { createdAt: Date };
 
 type DashboardSearchParams = Promise<{
   archivePage?: string | string[];
@@ -36,6 +44,7 @@ export default async function DashboardPage({
         },
       },
       orderBy: { createdAt: "desc" },
+      select: digestSummarySelect,
     }),
     prisma.digest.count({
       where: { userId: session.user.id },
@@ -51,96 +60,74 @@ export default async function DashboardPage({
       orderBy: { createdAt: "desc" },
       skip: archiveSkip,
       take: archivePageSize,
+      select: digestSummarySelect,
     }),
     prisma.digest.findMany({
       where: archiveWhere,
       orderBy: { createdAt: "desc" },
       take: 4,
+      select: digestSummarySelect,
     }),
   ]);
 
   return (
-    <AppShell session={session}>
-      <div className="page-pad">
-        <h1 className="sr-only">Home</h1>
-        <section className="home-layout">
-          <div className="home-main">
-            <nav className="home-tabs" aria-label="Home feed">
-              <HomeTabLink active={selectedTab === "for-you"} href="/dashboard">
-                For You
-              </HomeTabLink>
-              <HomeTabLink active={selectedTab === "subscription"} href="/dashboard?tab=subscription">
-                Subscription
-              </HomeTabLink>
-            </nav>
-            {selectedTab === "for-you" ? (
-              <ForYouRecommendationSection />
-            ) : (
+    <div className="page-pad">
+      <h1 className="sr-only">Home</h1>
+      <section className="home-layout">
+        <div className="home-main">
+          <DashboardHomeTabs
+            initialTab={selectedTab}
+            forYou={<ForYouRecommendationSection />}
+            subscription={
               <SubscriptionFeed
                 archiveCount={archiveCount}
                 archiveDigests={archiveDigests}
                 archivePage={archivePage}
                 todayDigest={todayDigest}
               />
-            )}
+            }
+          />
+        </div>
+        <aside className="home-rail">
+          <div className="home-rail-section">
+            <h2>Home</h2>
+            <div className="mt-4 grid gap-3">
+              <Stat icon={Sparkles} label="For You" value="Live" />
+              <Stat
+                icon={todayDigest ? CheckCircle2 : Clock3}
+                label="Subscription"
+                value={todayDigest ? "Synced" : "Waiting"}
+              />
+              <Stat icon={Archive} label="Archive entries" value={archiveCount} />
+            </div>
           </div>
-          <aside className="home-rail">
-            <div className="home-rail-section">
-              <h2>Home</h2>
-              <div className="mt-4 grid gap-3">
-                <Stat icon={Sparkles} label="For You" value="Live" />
-                <Stat
-                  icon={todayDigest ? CheckCircle2 : Clock3}
-                  label="Subscription"
-                  value={todayDigest ? "Synced" : "Waiting"}
-                />
-                <Stat icon={Archive} label="Archive entries" value={archiveCount} />
-              </div>
+          <div className="home-rail-section">
+            <h2>Recent subscription</h2>
+            <div className="mt-4 grid gap-3">
+              {recentArchiveDigests.map((digest) => (
+                <Link
+                  className="home-rail-link"
+                  href={`/dashboard?tab=subscription#${digest.id}`}
+                  key={digest.id}
+                >
+                  <strong>{digest.title}</strong>
+                  <span>{digest.itemCount} items · {digest.createdAt.toLocaleDateString()}</span>
+                </Link>
+              ))}
+              {recentArchiveDigests.length === 0 ? (
+                <p className="text-sm leading-6 text-[var(--muted-strong)]">
+                  Older digests appear here after another subscription sync.
+                </p>
+              ) : null}
             </div>
-            <div className="home-rail-section">
-              <h2>Recent subscription</h2>
-              <div className="mt-4 grid gap-3">
-                {recentArchiveDigests.map((digest) => (
-                  <Link
-                    className="home-rail-link"
-                    href={`/dashboard?tab=subscription#${digest.id}`}
-                    key={digest.id}
-                  >
-                    <strong>{digest.title}</strong>
-                    <span>{digest.itemCount} items · {digest.createdAt.toLocaleDateString()}</span>
-                  </Link>
-                ))}
-                {recentArchiveDigests.length === 0 ? (
-                  <p className="text-sm leading-6 text-[var(--muted-strong)]">
-                    Older digests appear here after another subscription sync.
-                  </p>
-                ) : null}
-              </div>
-            </div>
-            <Link className="button-light button-compact gap-2" href="/builders">
-              <UsersRound className="h-4 w-4" />
-              Manage builders
-            </Link>
-          </aside>
-        </section>
-      </div>
-    </AppShell>
-  );
-}
-
-function HomeTabLink({
-  active,
-  children,
-  href,
-}: {
-  active: boolean;
-  children: ReactNode;
-  href: string;
-}) {
-  return (
-    <Link aria-current={active ? "page" : undefined} data-active={active ? "true" : undefined} href={href}>
-      {children}
-    </Link>
+          </div>
+          <Link className="button-light button-compact gap-2" href="/builders">
+            <UsersRound className="h-4 w-4" />
+            Manage builders
+          </Link>
+        </aside>
+      </section>
+    </div>
   );
 }
 
@@ -151,9 +138,9 @@ function SubscriptionFeed({
   todayDigest,
 }: {
   archiveCount: number;
-  archiveDigests: Digest[];
+  archiveDigests: DigestSummaryRow[];
   archivePage: number;
-  todayDigest: Digest | null;
+  todayDigest: DigestSummaryRow | null;
 }) {
   const visibleStart = archiveCount === 0 ? 0 : (archivePage - 1) * archivePageSize + 1;
   const visibleEnd = Math.min((archivePage - 1) * archivePageSize + archiveDigests.length, archiveCount);
@@ -161,23 +148,13 @@ function SubscriptionFeed({
   return (
     <section className="subscription-feed">
       {todayDigest ? (
-        <article className="feed-card">
-          <div className="item-kicker">
-            <span>Today digest</span>
-            <span>{todayDigest.createdAt.toLocaleDateString()}</span>
-            <span>{todayDigest.itemCount} items</span>
-          </div>
-          <h2 className="mt-3 font-serif text-3xl">{todayDigest.title}</h2>
-          <pre className="digest-body mt-4 whitespace-pre-wrap break-words font-sans text-sm leading-7 text-[var(--muted-strong)]">
-            {todayDigest.content}
-          </pre>
-        </article>
+        <DigestDetails digest={serializeDigestSummary(todayDigest)} mode="today" />
       ) : (
         <div className="empty-panel border-dashed md:p-8">
           <div className="flex items-start gap-3">
             <Terminal className="mt-1 h-5 w-5 text-[var(--accent)]" />
             <div>
-              <h2 className="font-serif text-2xl text-[var(--ink)]">No subscription sync today</h2>
+              <h2 className="text-lg font-semibold text-[var(--ink)]">No subscription sync today</h2>
               <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
                 Run the skill from your terminal or agent, then sync the generated subscription here.
               </p>
@@ -194,28 +171,11 @@ function SubscriptionFeed({
         </div>
         <div className="item-list mt-4">
           {archiveDigests.map((digest, index) => (
-            <article id={digest.id} key={digest.id} className="digest-card digest-card-compact">
-              <details className="item-disclosure" open={index === 0}>
-                <summary className="item-summary">
-                  <span className="min-w-0">
-                    <span className="item-kicker">
-                      <span>{digest.createdAt.toLocaleString()}</span>
-                      <span>
-                        {digest.itemCount} items · {digest.language}
-                      </span>
-                    </span>
-                    <span className="item-title">{digest.title}</span>
-                  </span>
-                  <span className="item-summary-action">
-                    <BookOpen className="h-3.5 w-3.5" />
-                    Read
-                  </span>
-                </summary>
-                <pre className="item-details whitespace-pre-wrap font-sans text-sm leading-7 text-[var(--muted-strong)]">
-                  {digest.content}
-                </pre>
-              </details>
-            </article>
+            <DigestDetails
+              defaultOpen={index === 0}
+              digest={serializeDigestSummary(digest)}
+              key={digest.id}
+            />
           ))}
           {archiveDigests.length === 0 ? (
             <div className="empty-panel border-dashed md:p-10">
@@ -272,4 +232,11 @@ function Stat({
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function serializeDigestSummary(digest: DigestSummaryRow) {
+  return {
+    ...digest,
+    createdAt: digest.createdAt.toISOString(),
+  };
 }

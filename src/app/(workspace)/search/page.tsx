@@ -7,10 +7,8 @@ import {
   ExternalLink,
   RotateCcw,
   SlidersHorizontal,
-  Sparkles,
   X,
 } from "lucide-react";
-import { AppShell } from "@/components/AppShell";
 import { SearchForm, type SearchTypeFilter } from "@/components/SearchForm";
 import { getCurrentSession } from "@/lib/auth";
 import { searchUserLibrary } from "@/lib/user-search";
@@ -40,7 +38,6 @@ type SearchParams = Promise<{
   type?: string | string[];
   mode?: string | string[];
   page?: string | string[];
-  lucky?: string | string[];
   sort?: string | string[];
   time?: string | string[];
 }>;
@@ -137,14 +134,16 @@ export default async function SearchPage({
   const sort = normalizeSearchSort(firstParam(params.sort));
   const time = normalizeSearchTime(firstParam(params.time));
   const page = normalizePage(firstParam(params.page));
-  const originalSearch = await searchUserLibrary({
-    userId: session.user.id,
-    query,
-    mode,
-    sort,
-    time,
-  });
   const hasQuery = query.trim().length > 0;
+  const originalSearch = hasQuery
+    ? await searchUserLibrary({
+        userId: session.user.id,
+        query,
+        mode,
+        sort,
+        time,
+      })
+    : { candidateCount: 0, results: [] as SearchResult[] };
   const formParsedQuery = parseSearchQuery(query);
   const correctedQuery = hasQuery ? didYouMeanSearch(query) : null;
   const originalFilteredResults =
@@ -196,19 +195,12 @@ export default async function SearchPage({
         typeFilter,
       })
     : [];
-  const luckyResult = filteredResults[0];
-  if (hasQuery && firstParam(params.lucky) === "1" && luckyResult?.url) {
-    redirect(luckyResult.url);
-  }
-
   return (
-    <AppShell session={session}>
-      <div className={hasQuery ? "page-pad search-page search-page-active" : "page-pad search-page"}>
+    <div className={hasQuery ? "page-pad search-page search-page-active" : "page-pad search-page"}>
         <section className="search-hero">
-          <div className="search-brand">Builder Blog</div>
           <h1 className="search-heading">Search</h1>
           <p className="search-subtitle">
-            Find builders, crawled inputs, and digest history from your active library.
+            Find builders, crawled posts, and digest history.
           </p>
           <SearchForm
             key={`${query}:${typeFilter}:${mode}:${sort}:${time}`}
@@ -221,13 +213,6 @@ export default async function SearchPage({
             beforeDate={formatOptionalOperatorDate(formParsedQuery.before)}
             suggestions={formSuggestions}
           />
-          {hasQuery ? (
-            <div className="search-quick-stats" aria-label="Search summary">
-              <Stat label="Results" value={String(filteredResults.length)} />
-              <Stat label="Candidates" value={String(candidateCount)} />
-              <Stat label="Types" value={String(nonzeroTypeCount(typeCounts))} />
-            </div>
-          ) : null}
         </section>
 
         <section className="search-results-shell">
@@ -266,28 +251,20 @@ export default async function SearchPage({
               {activeFilters.length > 0 ? (
                 <ActiveSearchFilters filters={activeFilters} clearAllHref={clearAllSearchHref(activeQuery)} />
               ) : null}
-              <SearchQueryInsights
-                actions={recoveryActions}
-                candidateCount={candidateCount}
-                mode={mode}
-                query={activeQuery}
-                resultCount={filteredResults.length}
-                sort={sort}
-                time={time}
-                typeFilter={typeFilter}
-              />
+              <details className="search-advanced-tools">
+                <summary>Search tools</summary>
+                <SearchQueryInsights
+                  actions={recoveryActions}
+                  candidateCount={candidateCount}
+                  mode={mode}
+                  query={activeQuery}
+                  resultCount={filteredResults.length}
+                  sort={sort}
+                  time={time}
+                  typeFilter={typeFilter}
+                />
+              </details>
               <div className="search-tools-row">
-                {luckyResult?.url ? (
-                  <a
-                    className="button-light button-compact gap-2"
-                    href={luckyResult.url}
-                    rel={luckyResult.url.startsWith("http") ? "noreferrer" : undefined}
-                    target={luckyResult.url.startsWith("http") ? "_blank" : undefined}
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    I&apos;m Feeling Lucky
-                  </a>
-                ) : null}
                 <span>
                   Page {currentPage} of {pageCount}
                 </span>
@@ -348,12 +325,14 @@ export default async function SearchPage({
                 inputs, and synced digest archive.
               </EmptyState>
               <RelatedSearches query={query} searches={defaultSuggestions} mode={mode} sort={sort} time={time} />
-              <AdvancedSearchTips mode={mode} sort={sort} time={time} />
+              <details className="search-advanced-tools">
+                <summary>Advanced syntax</summary>
+                <AdvancedSearchTips mode={mode} sort={sort} time={time} />
+              </details>
             </>
           )}
         </section>
-      </div>
-    </AppShell>
+    </div>
   );
 }
 
@@ -698,15 +677,6 @@ function HighlightText({ text, query }: { text: string; query: string }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="search-stat">
-      <div className="search-stat-value">{value}</div>
-      <div className="search-stat-label">{label}</div>
-    </div>
-  );
-}
-
 function EmptyState({
   actions = [],
   children,
@@ -740,10 +710,6 @@ function countResultTypes(results: SearchResult[]) {
     },
     { all: 0, builder: 0, feed: 0, digest: 0 },
   );
-}
-
-function nonzeroTypeCount(counts: ReturnType<typeof countResultTypes>) {
-  return (["builder", "feed", "digest"] as const).filter((type) => counts[type] > 0).length;
 }
 
 function buildSearchRecoveryActions({

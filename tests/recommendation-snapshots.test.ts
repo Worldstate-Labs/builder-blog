@@ -10,7 +10,7 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   const schema = source("prisma/schema.prisma");
   const apiRoute = source("src/app/api/recommendations/route.ts");
   const feed = source("src/components/RecommendationFeed.tsx");
-  const detailPage = source("src/app/recommendations/items/[feedItemId]/page.tsx");
+  const detailPage = source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx");
 
   assert.match(schema, /model RecommendationSnapshot/);
   assert.match(schema, /model RecommendationSnapshotItem/);
@@ -29,7 +29,7 @@ test("recommendation feed persists snapshots and marks reads without removing ca
 test("source logos are shared across recommendation and library surfaces", () => {
   assert.match(source("src/components/SourceBadge.tsx"), /data-source/);
   assert.match(source("src/components/RecommendationFeed.tsx"), /SourceBadge/);
-  assert.match(source("src/app/builders/page.tsx"), /SourceBadge/);
+  assert.match(source("src/app/(workspace)/builders/page.tsx"), /SourceBadge/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceBadge/);
   assert.match(source("src/components/FeedCard.tsx"), /SourceBadge/);
 });
@@ -37,7 +37,7 @@ test("source logos are shared across recommendation and library surfaces", () =>
 test("recommendation snapshots request six posts at a time", () => {
   assert.match(source("src/lib/recommendations.ts"), /defaultRecommendationLimit = 6/);
   assert.match(source("src/app/api/recommendations/timeline/route.ts"), /itemLimit: 6/);
-  assert.match(source("src/app/recommendations/page.tsx"), /redirect\("\/dashboard"\)/);
+  assert.match(source("src/app/(workspace)/recommendations/page.tsx"), /redirect\("\/dashboard"\)/);
   assert.match(source("src/app/api/recommendations/route.ts"), /limit"\) \?\? "6"/);
   assert.match(source("src/components/RecommendationFeed.tsx"), /limit=6/);
 });
