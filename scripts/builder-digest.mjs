@@ -209,7 +209,6 @@ async function crawlPersonal(args) {
           builders: 0,
           feedItems: 0,
           crawledPersonalItems: personalCrawledItemCount(context),
-          seenPersonalItems: personalCrawledItemCount(context),
           force,
           agentTasks: [],
           message: "No personal builders in this user's library.",
@@ -300,7 +299,6 @@ async function crawlPersonal(args) {
           skippedFeedItems: 0,
           crawledPersonalBuilders: personalBuilders.length,
           crawledPersonalItems: force ? 0 : personalCrawledItemCount(context),
-          seenPersonalItems: force ? 0 : personalCrawledItemCount(context),
           force,
           localErrors,
           agentTasks,
@@ -324,7 +322,6 @@ async function crawlPersonal(args) {
         ...result,
         crawledPersonalBuilders: personalBuilders.length,
         crawledPersonalItems: force ? 0 : personalCrawledItemCount(context),
-        seenPersonalItems: force ? 0 : personalCrawledItemCount(context),
         localErrors,
         agentTasks,
       },
@@ -365,20 +362,16 @@ export function crawledItemKeysForBuilder(context, builderId) {
   );
 }
 
-export function seenItemKeysForBuilder(context, builderId) {
-  return crawledItemKeysForBuilder(context, builderId);
-}
-
 export function personalItemKey(builderId, kind, externalId) {
   return `${builderId}:${kind}:${externalId}`;
 }
 
 function personalCrawledItemsForContext(context) {
-  return context.personalCrawledItems ?? context.personalSeenItems ?? [];
+  return context.personalCrawledItems ?? [];
 }
 
 function latestPersonalCrawledItemsForContext(context) {
-  return context.latestPersonalCrawledItems ?? context.latestPersonalFeedItems ?? [];
+  return context.latestPersonalCrawledItems ?? [];
 }
 
 function personalCrawledItemCount(context) {
@@ -446,15 +439,14 @@ function normalizeSourceType(sourceType) {
 
 async function crawlPersonalYouTubeBuilder(
   builder,
-  { cutoff, limit, agentModel, crawledItemKeys, seenItemKeys, fetcher = fetch },
+  { cutoff, limit, agentModel, crawledItemKeys = new Set(), fetcher = fetch },
 ) {
   const sourceUrl = builder.crawlUrl || builder.sourceUrl;
   if (!sourceUrl) return { items: [], agentTasks: [] };
-  const processedItemKeys = crawledItemKeys ?? seenItemKeys ?? new Set();
   const { videos: crawledVideos, sourceDetail } = await fetchYouTubeVideos(sourceUrl, fetcher);
   const videos = crawledVideos
     .filter((video) => isAfterCutoff(video.publishedAt, cutoff))
-    .filter((video) => !processedItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", video.videoId || video.url)))
+    .filter((video) => !crawledItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", video.videoId || video.url)))
     .slice(0, limit);
   const items = [];
   const agentTasks = [];
@@ -632,10 +624,9 @@ function isNearDuplicate(text, reference) {
   return text.length <= normalizedReference.length + 20 && normalizedReference.includes(text);
 }
 
-async function crawlPersonalBlogBuilder(builder, { cutoff, limit, agentModel, crawledItemKeys, seenItemKeys }) {
+async function crawlPersonalBlogBuilder(builder, { cutoff, limit, agentModel, crawledItemKeys = new Set() }) {
   const indexUrl = builder.crawlUrl || builder.sourceUrl;
   if (!indexUrl) return [];
-  const processedItemKeys = crawledItemKeys ?? seenItemKeys ?? new Set();
 
   const indexResponse = await fetch(indexUrl, {
     headers: { "User-Agent": "BuilderBlogSkill/1.0 (personal agent crawler)" },
@@ -647,7 +638,7 @@ async function crawlPersonalBlogBuilder(builder, { cutoff, limit, agentModel, cr
   const indexBody = await indexResponse.text();
   const candidates = parseBlogCandidates(indexBody, indexUrl)
     .filter((article) => isAfterCutoff(article.publishedAt, cutoff))
-    .filter((article) => !processedItemKeys.has(personalItemKey(builder.id, "BLOG_POST", article.url)))
+    .filter((article) => !crawledItemKeys.has(personalItemKey(builder.id, "BLOG_POST", article.url)))
     .slice(0, limit);
   const items = [];
 
@@ -685,10 +676,9 @@ async function crawlPersonalBlogBuilder(builder, { cutoff, limit, agentModel, cr
   return items;
 }
 
-async function crawlPersonalPodcastBuilder(builder, { cutoff, limit, agentModel, crawledItemKeys, seenItemKeys }) {
+async function crawlPersonalPodcastBuilder(builder, { cutoff, limit, agentModel, crawledItemKeys = new Set() }) {
   const feedUrl = builder.crawlUrl || builder.sourceUrl;
   if (!feedUrl) return [];
-  const processedItemKeys = crawledItemKeys ?? seenItemKeys ?? new Set();
 
   const response = await fetch(feedUrl, {
     headers: { "User-Agent": "BuilderBlogSkill/1.0 (personal podcast crawler)" },
@@ -700,7 +690,7 @@ async function crawlPersonalPodcastBuilder(builder, { cutoff, limit, agentModel,
   const xml = await response.text();
   return parsePodcastFeedItems(xml, feedUrl)
     .filter((item) => isAfterCutoff(item.publishedAt, cutoff))
-    .filter((item) => !processedItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", item.externalId)))
+    .filter((item) => !crawledItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", item.externalId)))
     .map((item) => ({
       ...item,
       sourceName: builder.name,
@@ -783,13 +773,12 @@ async function crawlPersonalPdfBuilder(builder, { agentModel }) {
   };
 }
 
-async function crawlPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel, crawledItemKeys, seenItemKeys }) {
+async function crawlPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel, crawledItemKeys = new Set() }) {
   if (isPdfSource(builder)) {
     return crawlPersonalPdfBuilder(builder, { agentModel });
   }
   const sourceUrl = builder.crawlUrl || builder.sourceUrl;
   if (!sourceUrl) return [];
-  const processedItemKeys = crawledItemKeys ?? seenItemKeys ?? new Set();
 
   const response = await fetch(sourceUrl, {
     headers: { "User-Agent": "BuilderBlogSkill/1.0 (personal website crawler)" },
@@ -802,7 +791,7 @@ async function crawlPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel,
   const extracted = extractBlogArticle(html, sourceUrl);
   const publishedAt = extracted.publishedAt || null;
   if (!isAfterCutoff(publishedAt, cutoff)) return [];
-  if (processedItemKeys.has(personalItemKey(builder.id, "BLOG_POST", sourceUrl))) return [];
+  if (crawledItemKeys.has(personalItemKey(builder.id, "BLOG_POST", sourceUrl))) return [];
   const body = extracted.body || stripHtml(html).slice(0, 6000);
   if (!body.trim()) return [];
 
@@ -827,8 +816,7 @@ async function crawlPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel,
   ].slice(0, limit);
 }
 
-async function crawlPersonalXBuilder(builder, { cutoff, limit, agentModel, crawledItemKeys, seenItemKeys }) {
-  const processedItemKeys = crawledItemKeys ?? seenItemKeys ?? new Set();
+async function crawlPersonalXBuilder(builder, { cutoff, limit, agentModel, crawledItemKeys = new Set() }) {
   const bearerToken = process.env.X_BEARER_TOKEN?.trim();
   if (!bearerToken) {
     throw new Error("X_BEARER_TOKEN is required for personal X crawling, or configure an external crawler command.");
@@ -877,7 +865,7 @@ async function crawlPersonalXBuilder(builder, { cutoff, limit, agentModel, crawl
     })
     .filter((item) => item.body.trim())
     .filter((item) => isAfterCutoff(item.publishedAt, cutoff))
-    .filter((item) => !processedItemKeys.has(personalItemKey(builder.id, "TWEET", item.externalId)))
+    .filter((item) => !crawledItemKeys.has(personalItemKey(builder.id, "TWEET", item.externalId)))
     .slice(0, limit);
 }
 
@@ -932,12 +920,11 @@ function runExternalCrawler(command, payload) {
   });
 }
 
-function filterCrawledItems(items, { builderId, cutoff, limit = Number.POSITIVE_INFINITY, crawledItemKeys, seenItemKeys }) {
-  const processedItemKeys = crawledItemKeys ?? seenItemKeys ?? new Set();
+function filterCrawledItems(items, { builderId, cutoff, limit = Number.POSITIVE_INFINITY, crawledItemKeys = new Set() }) {
   return items
     .filter((item) => item?.kind && item?.externalId && item?.body && item?.url)
     .filter((item) => isAfterCutoff(item.publishedAt, cutoff))
-    .filter((item) => !processedItemKeys.has(personalItemKey(builderId, item.kind, item.externalId)))
+    .filter((item) => !crawledItemKeys.has(personalItemKey(builderId, item.kind, item.externalId)))
     .slice(0, limit);
 }
 

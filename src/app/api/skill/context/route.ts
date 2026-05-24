@@ -135,8 +135,6 @@ export async function GET(request: Request) {
     personalCrawlStates,
     personalCrawledItems,
     latestPersonalCrawledItems: Array.from(latestPersonalCrawledItems.values()),
-    personalSeenItems: personalCrawledItems,
-    latestPersonalFeedItems: Array.from(latestPersonalCrawledItems.values()),
     subscriptions: subscriptions.map((subscription) => subscription.builder),
     subscriptionCount: subscriptions.length,
     items,

@@ -314,7 +314,7 @@ test("personal YouTube crawler returns agent tasks instead of syncing descriptio
       cutoff: null,
       limit: 1,
       agentModel: "gpt-test",
-      seenItemKeys: new Set(),
+      crawledItemKeys: new Set(),
       fetcher: async (url: string) => {
         if (url === "https://www.youtube.com/@NeedsAgent") {
           return new Response('<html>{"externalId":"UCneedsagent00000000000000"}</html>');
