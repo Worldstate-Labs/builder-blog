@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Check, Copy, Terminal, Trash2 } from "lucide-react";
+import { Terminal, Trash2 } from "lucide-react";
 
 export type AgentTokenListItem = {
   id: string;
@@ -18,7 +18,6 @@ export function AgentTokenPanel({
 }) {
   const [tokens, setTokens] = useState(initialTokens);
   const [newToken, setNewToken] = useState<string | null>(null);
-  const [copiedSetup, setCopiedSetup] = useState(false);
   const [status, setStatus] = useState("");
   const [isPending, startTransition] = useTransition();
   const activeCount = useMemo(
@@ -72,18 +71,6 @@ export function AgentTokenPanel({
     });
   }
 
-  async function copySetupCommand() {
-    setStatus("");
-    try {
-      const origin = window.location.origin;
-      await navigator.clipboard.writeText(`/bin/sh -c "$(curl -fsSL ${origin}/api/skill/bootstrap)"`);
-      setCopiedSetup(true);
-      window.setTimeout(() => setCopiedSetup(false), 1800);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not copy setup command");
-    }
-  }
-
   return (
     <>
       {newToken ? (
@@ -103,24 +90,6 @@ export function AgentTokenPanel({
             <Terminal className="h-5 w-5 text-[var(--accent)]" />
             <h2 className="section-heading">Terminal access</h2>
           </div>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
-            Copy the setup command into your local agent. It downloads the
-            latest skill and CLI from this web app, then starts terminal login.
-          </p>
-        </div>
-        <button
-          className="button-light button-compact gap-2"
-          onClick={copySetupCommand}
-          type="button"
-        >
-          {copiedSetup ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-          {copiedSetup ? "Copied" : "Copy setup command"}
-        </button>
-      </section>
-
-      <section className="action-panel mt-4 grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
-        <div className="min-w-0">
-          <h2 className="font-serif text-3xl">Manual token</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
             Create a token only when you need direct CLI access without device login.
             Revoke old tokens after rotating agents.

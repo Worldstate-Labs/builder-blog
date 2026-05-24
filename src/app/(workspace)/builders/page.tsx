@@ -9,6 +9,7 @@ import {
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
 import { SourceBadge } from "@/components/SourceBadge";
+import { SkillPromptActions } from "@/components/SkillPromptActions";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -143,6 +144,7 @@ export default async function BuildersPage() {
               initialIsPublic={Boolean(ownSharedLibrary)}
               name={`${session.user.name || session.user.email || "Personal"} library`}
             />
+            <SkillPromptActions context="library" />
             {privateBuilders.map((builder) => (
               <BuilderCard
                 key={builder.id}

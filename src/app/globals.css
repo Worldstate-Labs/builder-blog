@@ -757,6 +757,23 @@ a {
   padding: 1.25rem;
 }
 
+.skill-prompt-actions {
+  align-items: center;
+  border-block: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 0.85rem 0;
+}
+
+.skill-prompt-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
 .digest-panel {
   background:
     linear-gradient(145deg, color-mix(in oklch, var(--charcoal) 96%, black), color-mix(in oklch, var(--accent-strong) 22%, var(--charcoal)));

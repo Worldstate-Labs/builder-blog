@@ -142,12 +142,27 @@ test("skill sync user path accepts personal YouTube builders with synced feed it
 
 test("web app serves the agent skill and setup command", () => {
   const settingsPanel = readFileSync("src/components/AgentTokenPanel.tsx", "utf8");
+  const skillPromptActions = readFileSync("src/components/SkillPromptActions.tsx", "utf8");
+  const buildersPage = readFileSync("src/app/(workspace)/builders/page.tsx", "utf8");
+  const dashboardPage = readFileSync("src/app/(workspace)/dashboard/page.tsx", "utf8");
   const skillFileRoute = readFileSync("src/app/api/skill/files/[file]/route.ts", "utf8");
   const bootstrapRoute = readFileSync("src/app/api/skill/bootstrap/route.ts", "utf8");
   const skill = readFileSync("skills/builder-blog-digest/SKILL.md", "utf8");
 
-  assert.match(settingsPanel, /Copy setup command/);
-  assert.match(settingsPanel, /\/api\/skill\/bootstrap/);
+  assert.doesNotMatch(settingsPanel, /Copy setup command/);
+  assert.doesNotMatch(settingsPanel, /\/api\/skill\/bootstrap/);
+  assert.match(buildersPage, /<SkillPromptActions context="library"/);
+  assert.match(dashboardPage, /<SkillPromptActions context="digest"/);
+  assert.match(skillPromptActions, /Build library/);
+  assert.match(skillPromptActions, /Build digest feed/);
+  assert.match(skillPromptActions, /Copy once prompt/);
+  assert.match(skillPromptActions, /Copy cron prompt/);
+  assert.match(skillPromptActions, /\/api\/skill\/bootstrap/);
+  assert.match(skillPromptActions, /crawl-personal --days 30 --limit 3/);
+  assert.match(skillPromptActions, /prepare --days 1/);
+  assert.match(skillPromptActions, /sync --file \/tmp\/builder-blog-digest\.md/);
+  assert.match(skillPromptActions, /crontab/);
+  assert.doesNotMatch(skillPromptActions, /--force/);
   assert.match(skillFileRoute, /builder-blog-digest\.md/);
   assert.match(skillFileRoute, /builder-digest\.mjs/);
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-blog-digest\.md/);

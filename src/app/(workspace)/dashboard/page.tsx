@@ -5,6 +5,7 @@ import { Archive, CheckCircle2, Clock3, Sparkles, Terminal, UsersRound } from "l
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
 import { ForYouRecommendationSection } from "@/components/ForYouRecommendationSection";
 import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
+import { SkillPromptActions } from "@/components/SkillPromptActions";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -147,6 +148,7 @@ function SubscriptionFeed({
 
   return (
     <section className="subscription-feed">
+      <SkillPromptActions context="digest" />
       {todayDigest ? (
         <DigestDetails digest={serializeDigestSummary(todayDigest)} mode="today" />
       ) : (
