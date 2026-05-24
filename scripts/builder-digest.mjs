@@ -476,7 +476,7 @@ async function crawlPersonalBlogBuilder(builder, { cutoff, limit, agentModel, se
     if (!articleResponse.ok) continue;
 
     const html = await articleResponse.text();
-    const extracted = extractBlogArticle(html);
+    const extracted = extractBlogArticle(html, article.url);
     const body = extracted.body || article.description;
     if (!body.trim()) continue;
 
@@ -518,7 +518,7 @@ async function crawlPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel,
   }
 
   const html = await response.text();
-  const extracted = extractBlogArticle(html);
+  const extracted = extractBlogArticle(html, sourceUrl);
   const publishedAt = extracted.publishedAt || null;
   if (!isAfterCutoff(publishedAt, cutoff)) return [];
   if (seenItemKeys.has(personalItemKey(builder.id, "BLOG_POST", sourceUrl))) return [];
@@ -668,6 +668,8 @@ export function parseBlogCandidates(body, indexUrl) {
   if (/<rss[\s>]|<feed[\s>]/i.test(body)) {
     return parseFeedCandidates(body, indexUrl);
   }
+  if (indexUrl.includes("anthropic.com")) return parseAnthropicEngineeringIndex(body);
+  if (indexUrl.includes("claude.com")) return parseClaudeBlogIndex(body);
   return parseHtmlCandidates(body, indexUrl);
 }
 
@@ -720,7 +722,64 @@ function parseHtmlCandidates(html, indexUrl) {
   return dedupeByUrl(candidates);
 }
 
-export function extractBlogArticle(html) {
+function parseAnthropicEngineeringIndex(html) {
+  const nextDataMatch = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i);
+  if (nextDataMatch) {
+    try {
+      const data = JSON.parse(nextDataMatch[1]);
+      const posts =
+        data?.props?.pageProps?.posts ||
+        data?.props?.pageProps?.articles ||
+        data?.props?.pageProps?.entries ||
+        [];
+      const articles = posts
+        .map((post) => {
+          const slug = post?.slug?.current || post?.slug || "";
+          return {
+            title: post?.title || "Untitled",
+            url: slug ? `https://www.anthropic.com/engineering/${slug}` : "",
+            publishedAt: normalizedDate(post?.publishedOn || post?.publishedAt || post?.date),
+            description: post?.summary || post?.description || "",
+          };
+        })
+        .filter((article) => article.url);
+      if (articles.length > 0) return dedupeByUrl(articles);
+    } catch {
+      // Fall through to rendered links.
+    }
+  }
+  return linksByPattern(html, /href=["']\/engineering\/([a-z0-9-]+)["']/gi, "https://www.anthropic.com/engineering/");
+}
+
+function parseClaudeBlogIndex(html) {
+  return linksByPattern(html, /href=["']\/blog\/([a-z0-9-]+)["']/gi, "https://claude.com/blog/");
+}
+
+function linksByPattern(html, pattern, prefix) {
+  const articles = [];
+  let match;
+  while ((match = pattern.exec(html)) !== null) {
+    articles.push({
+      title: "",
+      url: `${prefix}${match[1]}`,
+      publishedAt: null,
+      description: "",
+    });
+  }
+  return dedupeByUrl(articles);
+}
+
+export function extractBlogArticle(html, articleUrl = "") {
+  if (articleUrl.includes("anthropic.com/engineering")) {
+    return extractAnthropicArticle(html);
+  }
+  if (articleUrl.includes("claude.com/blog")) {
+    return extractClaudeBlogArticle(html);
+  }
+  return extractGenericBlogArticle(html);
+}
+
+function extractGenericBlogArticle(html) {
   const title =
     metaContent(html, "property", "og:title") ||
     metaContent(html, "name", "twitter:title") ||
@@ -743,6 +802,64 @@ export function extractBlogArticle(html) {
     title: stripHtml(title),
     publishedAt,
     body: paragraphs.slice(0, 30).join("\n\n"),
+  };
+}
+
+function extractAnthropicArticle(html) {
+  const nextDataMatch = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i);
+  if (nextDataMatch) {
+    try {
+      const data = JSON.parse(nextDataMatch[1]);
+      const pageProps = data?.props?.pageProps;
+      const post = pageProps?.post || pageProps?.article || pageProps?.entry || pageProps;
+      const blocks = post?.body || post?.content || [];
+      const body = Array.isArray(blocks)
+        ? blocks
+            .filter((block) => block?._type === "block" && Array.isArray(block.children))
+            .map((block) => block.children.map((child) => child?.text || "").join("").trim())
+            .filter(Boolean)
+            .join("\n\n")
+        : "";
+      if (body) {
+        return {
+          title: stripHtml(post?.title || ""),
+          publishedAt: normalizedDate(post?.publishedOn || post?.publishedAt || post?.date),
+          body,
+        };
+      }
+    } catch {
+      // Fall through to generic extraction.
+    }
+  }
+  return extractGenericBlogArticle(html);
+}
+
+function extractClaudeBlogArticle(html) {
+  let title = "";
+  let publishedAt = null;
+  const jsonLdRegex = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+  while ((match = jsonLdRegex.exec(html)) !== null) {
+    try {
+      const json = JSON.parse(match[1]);
+      if (json["@type"] === "BlogPosting" || json["@type"] === "Article") {
+        title = json.headline || json.name || "";
+        publishedAt = normalizedDate(json.datePublished);
+        break;
+      }
+    } catch {
+      // Skip invalid JSON-LD.
+    }
+  }
+
+  const richTextMatch =
+    html.match(/<div[^>]*class=["'][^"']*u-rich-text-blog[^"']*["'][^>]*>([\s\S]*?)<\/div>\s*<\/div>/i) ||
+    html.match(/<div[^>]*class=["'][^"']*w-richtext[^"']*["'][^>]*>([\s\S]*?)<\/div>/i);
+  const generic = extractGenericBlogArticle(html);
+  return {
+    title: stripHtml(title) || generic.title,
+    publishedAt: publishedAt || generic.publishedAt,
+    body: richTextMatch ? stripHtml(richTextMatch[1]) : generic.body,
   };
 }
 
