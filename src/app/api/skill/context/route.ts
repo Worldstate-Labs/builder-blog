@@ -93,11 +93,30 @@ export async function GET(request: Request) {
         builderId: true,
         kind: true,
         externalId: true,
+        publishedAt: true,
+        createdAt: true,
       },
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
       take: personalSeenItemLimit,
     }),
   ]);
+  const latestPersonalFeedItems = new Map<
+    string,
+    { builderId: string; latestPostAt: string; publishedAt: string | null; createdAt: string }
+  >();
+  for (const item of personalSeenItems) {
+    if (!item.builderId) continue;
+    const latestPostAt = item.publishedAt ?? item.createdAt;
+    const current = latestPersonalFeedItems.get(item.builderId);
+    if (!current || new Date(current.latestPostAt) < latestPostAt) {
+      latestPersonalFeedItems.set(item.builderId, {
+        builderId: item.builderId,
+        latestPostAt: latestPostAt.toISOString(),
+        publishedAt: item.publishedAt?.toISOString() ?? null,
+        createdAt: item.createdAt.toISOString(),
+      });
+    }
+  }
 
   return NextResponse.json({
     user: { id: user.id, name: user.name, email: user.email },
@@ -114,6 +133,7 @@ export async function GET(request: Request) {
     libraryBuilders,
     personalCrawlStates,
     personalSeenItems,
+    latestPersonalFeedItems: Array.from(latestPersonalFeedItems.values()),
     subscriptions: subscriptions.map((subscription) => subscription.builder),
     subscriptionCount: subscriptions.length,
     items,

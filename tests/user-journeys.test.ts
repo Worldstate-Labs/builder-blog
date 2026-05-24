@@ -140,6 +140,24 @@ test("skill sync user path accepts personal YouTube builders with synced feed it
   assert.equal(parsed.data.builders[0].items[0].crawlingTool, undefined);
 });
 
+test("web app serves the agent skill and setup command", () => {
+  const settingsPanel = readFileSync("src/components/AgentTokenPanel.tsx", "utf8");
+  const skillFileRoute = readFileSync("src/app/api/skill/files/[file]/route.ts", "utf8");
+  const bootstrapRoute = readFileSync("src/app/api/skill/bootstrap/route.ts", "utf8");
+  const skill = readFileSync("skills/builder-blog-digest/SKILL.md", "utf8");
+
+  assert.match(settingsPanel, /Copy setup command/);
+  assert.match(settingsPanel, /\/api\/skill\/bootstrap/);
+  assert.match(skillFileRoute, /builder-blog-digest\.md/);
+  assert.match(skillFileRoute, /builder-digest\.mjs/);
+  assert.match(bootstrapRoute, /api\/skill\/files\/builder-blog-digest\.md/);
+  assert.match(bootstrapRoute, /api\/skill\/files\/builder-digest\.mjs/);
+  assert.match(skill, /Install From Web App/);
+  assert.match(skill, /~\/\.builder-blog\/builder-digest\.mjs/);
+  assert.equal(skill.includes("/Users/jie/code/builder_blog"), false);
+  assert.equal(skill.includes("node scripts/builder-digest.mjs"), false);
+});
+
 test("digest sync user path defaults optional fields and rejects empty content", () => {
   const parsed = parseSkillDigestPayload({
     title: "Personal YouTube Builder Digest",
@@ -1334,8 +1352,25 @@ test("source registry centralizes current source categories and crawl eligibilit
       kind: BuilderKind.PODCAST,
       sourceUrl: "https://feeds.example.com/show.xml",
       crawlUrl: null,
-    }),
-    null,
+    })?.id,
+    "podcast",
+  );
+  assert.equal(
+    personalCrawlerSourceForBuilder({
+      kind: BuilderKind.X,
+      sourceUrl: "https://x.com/example",
+      crawlUrl: null,
+    })?.id,
+    "x",
+  );
+  assert.equal(
+    personalCrawlerSourceForBuilder({
+      kind: BuilderKind.WEBSITE,
+      sourceType: "website",
+      sourceUrl: "https://example.com",
+      crawlUrl: null,
+    })?.id,
+    "website",
   );
   assert.equal(
     builderSourceLabel({
