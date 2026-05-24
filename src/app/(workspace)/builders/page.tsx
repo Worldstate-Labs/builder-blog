@@ -1,17 +1,20 @@
 import { BuilderKind, BuilderPoolOrigin, BuilderScope, LibraryHubKind } from "@prisma/client";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import { Bell } from "lucide-react";
+import { Bell, Plus } from "lucide-react";
+import { addPersonalBuilderAction } from "@/app/actions";
 import {
   BuilderLibraryActions,
   SubscribeAllLibraryBuildersButton,
 } from "@/components/BuilderLibraryActions";
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
+import { FormSubmitButton } from "@/components/FormSubmitButton";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
 import { SourceBadge } from "@/components/SourceBadge";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { SOURCE_DEFINITIONS } from "@/lib/source-registry";
 
 type BuilderWithCount = {
   id: string;
@@ -145,6 +148,7 @@ export default async function BuildersPage() {
               name={`${session.user.name || session.user.email || "Personal"} library`}
             />
             <SkillPromptActions context="library" />
+            <AddBuilderForm />
             {privateBuilders.map((builder) => (
               <BuilderCard
                 key={builder.id}
@@ -158,9 +162,7 @@ export default async function BuildersPage() {
               <div className="empty-panel text-[var(--muted-strong)]">
                 <h3 className="text-lg font-semibold text-[var(--ink)]">No personal builders yet</h3>
                 <p className="mt-2 text-sm leading-6">
-                  Use the skill command{" "}
-                  <code className="rounded-lg bg-black/5 px-2 py-1">sync-builders</code>{" "}
-                  after your agent crawls private or user-paid sources.
+                  Add a builder here, or sync richer crawled data from your agent later.
                 </p>
               </div>
             ) : null}
@@ -211,6 +213,53 @@ export default async function BuildersPage() {
           </section>
         </section>
     </div>
+  );
+}
+
+function AddBuilderForm() {
+  return (
+    <form action={addPersonalBuilderAction} className="add-builder-form">
+      <div className="add-builder-form-header">
+        <div>
+          <h3 className="text-base font-semibold text-[var(--ink)]">Add builder</h3>
+          <p className="mt-1 text-sm text-[var(--muted-strong)]">
+            Create a private library entry.
+          </p>
+        </div>
+        <FormSubmitButton className="button-dark button-compact gap-2" pendingLabel="Adding...">
+          <Plus className="h-4 w-4" />
+          Add
+        </FormSubmitButton>
+      </div>
+      <div className="add-builder-grid">
+        <label>
+          <span>Name</span>
+          <input className="input" name="name" placeholder="Andrej Karpathy" />
+        </label>
+        <label>
+          <span>Source</span>
+          <select className="input" name="sourceType" defaultValue="x">
+            {SOURCE_DEFINITIONS.filter((source) => source.id !== "pdf").map((source) => (
+              <option key={source.id} value={source.id}>
+                {source.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>X handle</span>
+          <input className="input" name="handle" placeholder="@karpathy" />
+        </label>
+        <label>
+          <span>Source URL</span>
+          <input className="input" name="sourceUrl" placeholder="https://example.com" type="url" />
+        </label>
+        <label className="add-builder-grid-wide">
+          <span>Crawl URL</span>
+          <input className="input" name="crawlUrl" placeholder="RSS feed or index URL" type="url" />
+        </label>
+      </div>
+    </form>
   );
 }
 
