@@ -9,6 +9,18 @@ const skillFiles = {
     path: "skills/builder-blog-digest/SKILL.md",
     contentType: "text/markdown; charset=utf-8",
   },
+  "builder-blog-digest-cron.md": {
+    path: "skills/builder-blog-digest/jobs/digest-cron.md",
+    contentType: "text/markdown; charset=utf-8",
+  },
+  "builder-blog-library-cron.md": {
+    path: "skills/builder-blog-digest/jobs/library-cron.md",
+    contentType: "text/markdown; charset=utf-8",
+  },
+  "builder-agent-runner.sh": {
+    path: "scripts/builder-agent-runner.sh",
+    contentType: "text/x-shellscript; charset=utf-8",
+  },
   "builder-digest.mjs": {
     path: "scripts/builder-digest.mjs",
     contentType: "text/javascript; charset=utf-8",

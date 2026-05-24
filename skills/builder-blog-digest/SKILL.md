@@ -7,14 +7,18 @@ description: Generate personalized AI builder digests from the Builder Blog cent
 
 Use this skill when the user asks for an AI builder digest, Builder Blog feed, personal builder sync, builder summary, or invokes `/login`.
 
-This skill is compatible with Claude Code, OpenClaw, and Codex because it relies only on a local Node CLI and plain JSON.
+This skill is compatible with Claude Code, OpenClaw, Codex, and other local
+agents because it relies on a local Node CLI, plain JSON, and scheduled job
+prompts that can be run by the user's own agent runtime.
 
 ## Install From Web App
 
 The Builder Blog web app serves this skill and its CLI script. When the user
 copies the setup command from the web app, run it as-is. It downloads the
 current skill to `~/.builder-blog/SKILL.md`, downloads the CLI to
-`~/.builder-blog/builder-digest.mjs`, then starts terminal login:
+`~/.builder-blog/builder-digest.mjs`, installs scheduled job prompts under
+`~/.builder-blog/jobs`, installs the agent runner at
+`~/.builder-blog/builder-agent-runner.sh`, then starts terminal login:
 
 ```bash
 /bin/sh -c "$(curl -fsSL https://builder-blog.worldstatelabs.com/api/skill/bootstrap)"
@@ -36,6 +40,47 @@ node ~/.builder-blog/builder-digest.mjs login --app-url "${BUILDER_BLOG_URL:-htt
 The command opens a browser verification URL. The user signs in with Google or GitHub, approves the device code, and the CLI stores an agent token in `~/.builder-blog/config.json`.
 
 Never print the token after login.
+
+## Scheduled Jobs
+
+Scheduling has two layers:
+
+- The scheduler (`crontab`, `launchd`, a local agent scheduler, or another
+  platform scheduler) only triggers the job at the right time.
+- The local agent runtime performs the AI work by reading the installed job
+  prompt and using the Builder Blog CLI as a tool.
+
+Use the installed runner instead of scheduling a bare `node` command whenever a
+job may require summarization, transcription, cookies, browser access, or model
+work:
+
+```bash
+BUILDER_BLOG_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}" \
+~/.builder-blog/builder-agent-runner.sh digest-cron
+```
+
+The runner chooses the first available execution path:
+
+1. `BUILDER_BLOG_AGENT_COMMAND`, if the user configured one. The command
+   receives `BUILDER_BLOG_PROMPT_FILE` and `BUILDER_BLOG_JOB` in the
+   environment.
+2. Codex CLI.
+3. Claude Code CLI.
+4. Gemini CLI.
+5. For `library-cron` only, a non-AI crawl fallback for simple supported
+   sources. Sources requiring AI, cookies, transcription, or custom tooling
+   still require an agent.
+
+Digest cron has no non-AI fallback. If no local agent runtime is available, the
+runner exits with a clear log message instead of pretending the digest job is
+installed correctly.
+
+Example schedules:
+
+```cron
+0 */6 * * * BUILDER_BLOG_URL="https://builder-blog.worldstatelabs.com" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1
+0 8 * * * BUILDER_BLOG_URL="https://builder-blog.worldstatelabs.com" $HOME/.builder-blog/builder-agent-runner.sh digest-cron >> $HOME/.builder-blog/logs/digest-cron.log 2>&1
+```
 
 ### Sync Personal Builders
 

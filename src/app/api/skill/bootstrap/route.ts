@@ -7,12 +7,19 @@ APP_URL="\${BUILDER_BLOG_URL:-${baseUrl}}"
 AGENT_DIR="\${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 
 mkdir -p "$AGENT_DIR"
+mkdir -p "$AGENT_DIR/jobs" "$AGENT_DIR/logs" "$AGENT_DIR/tmp"
 curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest.md" -o "$AGENT_DIR/SKILL.md"
 curl -fsSL "$APP_URL/api/skill/files/builder-digest.mjs" -o "$AGENT_DIR/builder-digest.mjs"
+curl -fsSL "$APP_URL/api/skill/files/builder-agent-runner.sh" -o "$AGENT_DIR/builder-agent-runner.sh"
+curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-cron.md" -o "$AGENT_DIR/jobs/library-cron.md"
+curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest-cron.md" -o "$AGENT_DIR/jobs/digest-cron.md"
 chmod +x "$AGENT_DIR/builder-digest.mjs"
+chmod +x "$AGENT_DIR/builder-agent-runner.sh"
 
 echo "Builder Blog skill saved to $AGENT_DIR/SKILL.md"
 echo "Builder Blog CLI saved to $AGENT_DIR/builder-digest.mjs"
+echo "Builder Blog agent runner saved to $AGENT_DIR/builder-agent-runner.sh"
+echo "Builder Blog scheduled job prompts saved to $AGENT_DIR/jobs"
 node "$AGENT_DIR/builder-digest.mjs" login --app-url "$APP_URL"
 `;
 

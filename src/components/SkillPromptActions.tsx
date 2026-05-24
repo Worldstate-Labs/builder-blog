@@ -20,18 +20,24 @@ Then crawl and sync my personal builders:
 BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3
 
 Use the user's local API keys, cookies, subscriptions, and model/audio tools when a source needs them. Skip posts that are already synced.`,
-    cronPrompt: (origin: string) => `Set up a cron job for my Builder Blog private library.
+    cronPrompt: (origin: string) => `Set up a scheduled agent job for my Builder Blog private library.
 
 If the skill is not installed or is out of date, run:
 /bin/sh -c "$(curl -fsSL ${origin}/api/skill/bootstrap)"
 
-Resolve Node first so the scheduled job does not depend on an interactive shell PATH:
-NODE_BIN="$(command -v node)"
+This job may need AI, cookies, transcription, subscriptions, or custom local tools. Do not schedule a bare node command as the complete job. Schedule the Builder Blog agent runner, which detects the user's available local agent runtime.
 
-Add a cron entry that runs every 6 hours, using the absolute Node path:
-0 */6 * * * BUILDER_BLOG_URL="${origin}" \${NODE_BIN} $HOME/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3 >> $HOME/.builder-blog/crawl-personal.log 2>&1
+Install one idempotent schedule that runs every 6 hours:
+0 */6 * * * BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1
 
-Use crontab when available; if the local system blocks crontab, use launchd or the local agent scheduler. Keep the job idempotent, verify the installed schedule, and do not duplicate an existing Builder Blog private library cron entry.`,
+The runner selection order is:
+1. BUILDER_BLOG_AGENT_COMMAND, if the user configured one
+2. Codex CLI
+3. Claude Code CLI
+4. Gemini CLI
+5. Non-AI library crawl fallback for simple supported sources only
+
+Use crontab when available; if the local system blocks crontab, use launchd or the local agent scheduler. Keep the job idempotent, verify the installed schedule, and do not duplicate an existing Builder Blog private library job.`,
   },
   digest: {
     title: "Build digest feed",
@@ -47,18 +53,23 @@ BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs prepare
 
 Write a concise Chinese digest using only the returned items, include source URLs, save it to /tmp/builder-blog-digest.md, then sync it:
 BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs sync --file /tmp/builder-blog-digest.md --title "AI Builder Digest"`,
-    cronPrompt: (origin: string) => `Set up an agent cron job for my Builder Blog subscription digest feed.
+    cronPrompt: (origin: string) => `Set up a scheduled agent job for my Builder Blog subscription digest feed.
 
 If the skill is not installed or is out of date, run:
 /bin/sh -c "$(curl -fsSL ${origin}/api/skill/bootstrap)"
 
-Schedule it daily at 8:00 local time. Each run should:
-1. Resolve Node with: NODE_BIN="$(command -v node)"
-2. Run: BUILDER_BLOG_URL="${origin}" \${NODE_BIN} $HOME/.builder-blog/builder-digest.mjs prepare --days 1
-3. Write a concise Chinese digest using only the returned items and source URLs to /tmp/builder-blog-digest.md
-4. Run: BUILDER_BLOG_URL="${origin}" \${NODE_BIN} $HOME/.builder-blog/builder-digest.mjs sync --file /tmp/builder-blog-digest.md --title "AI Builder Digest"
+Digest generation requires an agent because the scheduled job must read returned items, summarize them in Chinese, include source URLs, and sync the final digest. Do not schedule a bare node command as the complete job.
 
-Use crontab, launchd, or the local agent's scheduler, keep the job idempotent, verify the installed schedule, and do not duplicate an existing Builder Blog digest feed cron job.`,
+Install one idempotent schedule that runs daily at 8:00 local time:
+0 8 * * * BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh digest-cron >> $HOME/.builder-blog/logs/digest-cron.log 2>&1
+
+The runner selection order is:
+1. BUILDER_BLOG_AGENT_COMMAND, if the user configured one
+2. Codex CLI
+3. Claude Code CLI
+4. Gemini CLI
+
+If no local agent runtime is available, do not claim the digest cron is installed successfully. Record that the user must install/configure an agent or set BUILDER_BLOG_AGENT_COMMAND. Use crontab, launchd, or the local agent's scheduler, keep the job idempotent, verify the installed schedule, and do not duplicate an existing Builder Blog digest feed job.`,
   },
 } satisfies Record<
   SkillPromptContext,
