@@ -145,6 +145,7 @@ test("web app serves the agent skill and setup command", () => {
   const skillPromptActions = readFileSync("src/components/SkillPromptActions.tsx", "utf8");
   const buildersPage = readFileSync("src/app/(workspace)/builders/page.tsx", "utf8");
   const dashboardPage = readFileSync("src/app/(workspace)/dashboard/page.tsx", "utf8");
+  const cli = readFileSync("scripts/builder-digest.mjs", "utf8");
   const skillFileRoute = readFileSync("src/app/api/skill/files/[file]/route.ts", "utf8");
   const bootstrapRoute = readFileSync("src/app/api/skill/bootstrap/route.ts", "utf8");
   const skill = readFileSync("skills/builder-blog-digest/SKILL.md", "utf8");
@@ -163,6 +164,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /sync --file \/tmp\/builder-blog-digest\.md/);
   assert.match(skillPromptActions, /crontab/);
   assert.doesNotMatch(skillPromptActions, /--force/);
+  assert.match(cli, /realpathSync\(fileURLToPath\(import\.meta\.url\)\)/);
+  assert.match(cli, /realpathSync\(process\.argv\[1\]\)/);
   assert.match(skillFileRoute, /builder-blog-digest\.md/);
   assert.match(skillFileRoute, /builder-digest\.mjs/);
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-blog-digest\.md/);
