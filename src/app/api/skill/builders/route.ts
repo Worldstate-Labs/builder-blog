@@ -24,18 +24,24 @@ export async function POST(request: Request) {
   let subscriptions = 0;
   const now = new Date();
   for (const input of parsed.data.builders) {
-    const builder = await upsertBuilder({
-      scope: BuilderScope.PERSONAL,
-      ownerUserId: user.id,
-      addedByUserId: user.id,
-      kind: input.kind,
-      sourceType: input.sourceType,
-      name: input.name,
-      handle: input.handle,
-      sourceUrl: input.sourceUrl,
-      crawlUrl: input.crawlUrl,
-      bio: input.bio,
-    });
+    const referencedBuilder = await findExistingPersonalBuilderForSync(user.id, input);
+    if (referencedBuilder.status === "invalid") {
+      return NextResponse.json({ error: referencedBuilder.error }, { status: 400 });
+    }
+    const builder =
+      referencedBuilder.builder ??
+      (await upsertBuilder({
+        scope: BuilderScope.PERSONAL,
+        ownerUserId: user.id,
+        addedByUserId: user.id,
+        kind: input.kind,
+        sourceType: input.sourceType,
+        name: input.name,
+        handle: input.handle,
+        sourceUrl: input.sourceUrl,
+        crawlUrl: input.crawlUrl,
+        bio: input.bio,
+      }));
     await addBuilderToPool({
       userId: user.id,
       builderId: builder.id,
@@ -183,4 +189,41 @@ async function existingFeedItemKeys(
 
 function feedItemKey(builderId: string, kind: FeedItemKind, externalId: string) {
   return `${builderId}:${kind}:${externalId}`;
+}
+
+async function findExistingPersonalBuilderForSync(
+  userId: string,
+  input: {
+    builderId?: string | null;
+    items: Array<{ rawJson?: unknown }>;
+  },
+) {
+  const builderId = input.builderId ?? builderIdFromItems(input.items);
+  if (!builderId) return { status: "none" as const, builder: null };
+
+  const builder = await prisma.builder.findFirst({
+    where: {
+      id: builderId,
+      ownerUserId: userId,
+      scope: BuilderScope.PERSONAL,
+    },
+  });
+  if (!builder) {
+    return {
+      status: "invalid" as const,
+      error: "Referenced personal builder was not found for this user.",
+    };
+  }
+  return { status: "ok" as const, builder };
+}
+
+function builderIdFromItems(items: Array<{ rawJson?: unknown }>) {
+  const ids = new Set<string>();
+  for (const item of items) {
+    const rawJson = item.rawJson;
+    if (!rawJson || typeof rawJson !== "object" || Array.isArray(rawJson)) continue;
+    const builderId = "builderId" in rawJson ? rawJson.builderId : null;
+    if (typeof builderId === "string" && builderId.trim()) ids.add(builderId.trim());
+  }
+  return ids.size === 1 ? [...ids][0] : null;
 }

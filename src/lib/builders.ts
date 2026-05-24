@@ -1,5 +1,12 @@
 import { BuilderKind, BuilderScope, FeedItemKind } from "@prisma/client";
-import { builderLibraryKey, canonicalBuilderKey, inferBuilderKind, normalizeHandle } from "@/lib/builder-keys";
+import {
+  builderLibraryKey,
+  canonicalBuilderKey,
+  canonicalBuilderValueForInput,
+  inferBuilderKind,
+  normalizedBuilderHandle,
+  normalizeHandle,
+} from "@/lib/builder-keys";
 import { prisma } from "@/lib/prisma";
 
 const FOLLOW_BUILDERS_BASE =
@@ -56,7 +63,13 @@ type DefaultSources = {
   podcasts?: Array<{ name: string; rssUrl?: string; url: string }>;
 };
 
-export { builderLibraryKey, canonicalBuilderKey, inferBuilderKind, normalizeHandle };
+export {
+  builderLibraryKey,
+  canonicalBuilderKey,
+  canonicalBuilderValueForInput,
+  inferBuilderKind,
+  normalizeHandle,
+};
 
 export async function upsertBuilder(params: {
   scope?: BuilderScope;
@@ -71,8 +84,8 @@ export async function upsertBuilder(params: {
   addedByUserId?: string | null;
 }) {
   const scope = params.scope ?? BuilderScope.CENTRAL;
-  const handle = params.handle ? normalizeHandle(params.handle) : null;
-  const uniqueValue = handle ?? params.sourceUrl ?? params.name;
+  const handle = normalizedBuilderHandle(params.kind, params.handle);
+  const uniqueValue = canonicalBuilderValueForInput(params);
   const canonicalKey = canonicalBuilderKey(params.kind, uniqueValue);
   const libraryKey = builderLibraryKey({
     scope,

@@ -14,6 +14,7 @@ export const SkillFeedItemSchema = z.object({
 });
 
 export const SkillBuilderSchema = z.object({
+  builderId: z.string().min(1).nullable().optional(),
   kind: z.enum(BuilderKind),
   sourceType: z.string().min(1).max(80).nullable().optional(),
   name: z.string().min(1),

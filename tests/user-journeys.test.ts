@@ -3,7 +3,12 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { BuilderKind, BuilderScope, DigestFrequency, FeedItemKind } from "@prisma/client";
 import { isAdminEmail } from "../src/lib/admin";
-import { builderLibraryKey, canonicalBuilderKey, normalizeHandle } from "../src/lib/builder-keys";
+import {
+  builderLibraryKey,
+  canonicalBuilderKey,
+  canonicalBuilderValueForInput,
+  normalizeHandle,
+} from "../src/lib/builder-keys";
 import { subscriptionBuilderIdsInPool } from "../src/lib/digest-library";
 import { DIGEST_PROMPTS } from "../src/lib/digest-prompts";
 import {
@@ -135,6 +140,44 @@ test("manual builder input derives canonical fields from one handle or URL", () 
   });
 });
 
+test("personal YouTube sync cannot create a duplicate builder through handle metadata", () => {
+  const sourceUrl = "https://www.youtube.com/@googledeepmind";
+
+  assert.equal(
+    canonicalBuilderKey(
+      BuilderKind.PODCAST,
+      canonicalBuilderValueForInput({
+        kind: BuilderKind.PODCAST,
+        name: "googledeepmind",
+        handle: "googledeepmind",
+        sourceUrl,
+      }),
+    ),
+    `PODCAST:${sourceUrl}`,
+  );
+  assert.equal(
+    canonicalBuilderKey(
+      BuilderKind.PODCAST,
+      canonicalBuilderValueForInput({
+        kind: BuilderKind.PODCAST,
+        name: "googledeepmind",
+        handle: null,
+        sourceUrl,
+      }),
+    ),
+    `PODCAST:${sourceUrl}`,
+  );
+  assert.equal(
+    canonicalBuilderValueForInput({
+      kind: BuilderKind.X,
+      name: "Google DeepMind",
+      handle: "@GoogleDeepMind",
+      sourceUrl: "https://x.com/googledeepmind",
+    }),
+    "googledeepmind",
+  );
+});
+
 test("subscription user path is a digest subset of the active builder pool", () => {
   assert.deepEqual(
     subscriptionBuilderIdsInPool(
@@ -161,6 +204,7 @@ test("skill sync user path accepts personal YouTube builders with synced feed it
     force: true,
     builders: [
       {
+        builderId: "builder_youtube_1",
         kind: "PODCAST",
         sourceType: "YOUTUBE",
         name: "OpenAI YouTube",
@@ -186,11 +230,22 @@ test("skill sync user path accepts personal YouTube builders with synced feed it
   if (!parsed.success) return;
   assert.equal(parsed.data.force, true);
   assert.equal(parsed.data.builders[0].kind, BuilderKind.PODCAST);
+  assert.equal(parsed.data.builders[0].builderId, "builder_youtube_1");
   assert.equal(parsed.data.builders[0].sourceType, "YOUTUBE");
   assert.equal(parsed.data.builders[0].subscribe, true);
   assert.equal(parsed.data.builders[0].items[0].kind, FeedItemKind.PODCAST_EPISODE);
   assert.equal(parsed.data.crawlingTool, "Agent skill sync");
   assert.equal(parsed.data.builders[0].items[0].crawlingTool, undefined);
+});
+
+test("skill sync route binds agent task items to referenced personal builders", () => {
+  const route = readFileSync("src/app/api/skill/builders/route.ts", "utf8");
+
+  assert.match(route, /findExistingPersonalBuilderForSync/);
+  assert.match(route, /builderIdFromItems/);
+  assert.match(route, /ownerUserId: userId/);
+  assert.match(route, /scope: BuilderScope\.PERSONAL/);
+  assert.match(route, /Referenced personal builder was not found/);
 });
 
 test("web app serves the agent skill and setup command", () => {

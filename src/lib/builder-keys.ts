@@ -8,6 +8,21 @@ export function canonicalBuilderKey(kind: BuilderKind, value: string) {
   return `${kind}:${value.trim().toLowerCase()}`;
 }
 
+export function normalizedBuilderHandle(kind: BuilderKind, handle?: string | null) {
+  if (kind !== BuilderKind.X || !handle) return null;
+  return normalizeHandle(handle);
+}
+
+export function canonicalBuilderValueForInput(params: {
+  kind: BuilderKind;
+  handle?: string | null;
+  sourceUrl?: string | null;
+  name: string;
+}) {
+  const handle = normalizedBuilderHandle(params.kind, params.handle);
+  return handle ?? params.sourceUrl ?? params.name;
+}
+
 export function builderLibraryKey(params: {
   scope: BuilderScope;
   canonicalKey: string;
