@@ -1334,8 +1334,25 @@ test("source registry centralizes current source categories and crawl eligibilit
       kind: BuilderKind.PODCAST,
       sourceUrl: "https://feeds.example.com/show.xml",
       crawlUrl: null,
-    }),
-    null,
+    })?.id,
+    "podcast",
+  );
+  assert.equal(
+    personalCrawlerSourceForBuilder({
+      kind: BuilderKind.X,
+      sourceUrl: "https://x.com/example",
+      crawlUrl: null,
+    })?.id,
+    "x",
+  );
+  assert.equal(
+    personalCrawlerSourceForBuilder({
+      kind: BuilderKind.WEBSITE,
+      sourceType: "website",
+      sourceUrl: "https://example.com",
+      crawlUrl: null,
+    })?.id,
+    "website",
   );
   assert.equal(
     builderSourceLabel({

@@ -28,32 +28,39 @@ Never print the token after login.
 
 Agents are responsible for crawling user-owned personal builders with
 user-owned API keys, subscriptions, cookies, or network access. The Builder Blog
-web app only crawls central builders. For personal BLOG builders and personal
-YouTube/PODCAST builders already in the user's library, run the local crawler
-and sync the resulting feed items to the cloud:
+web app only crawls central builders. For personal builders already in the
+user's library, run the local crawler and sync the resulting feed items to the
+cloud:
 
 ```bash
 cd /Users/jie/code/builder_blog
-node scripts/builder-digest.mjs crawl-personal --days 3 --limit 3
+node scripts/builder-digest.mjs crawl-personal --days 30 --limit 3
 ```
 
 This command:
 
 - fetches `/api/skill/context`;
-- filters to `scope: PERSONAL` and `kind: BLOG`, plus YouTube-backed `PODCAST`;
+- filters to every `scope: PERSONAL` builder in the user's library;
 - skips already-synced posts by `user + builder + item kind + externalId`;
-- crawls each personal blog or YouTube RSS feed locally from the user's agent environment;
+- crawls each supported source locally from the user's agent environment;
+- uses the later of `--days` and the latest stored post creation time for that
+  builder as the incremental cutoff unless `--force` is used;
 - for YouTube videos, prefers caption transcripts and falls back to feed descriptions;
+- for sources requiring custom subscriptions, scripts, shell access, or model
+  work, agents can configure an external crawler command with
+  `BUILDER_BLOG_CRAWLER_<SOURCE_TYPE>` or `BUILDER_BLOG_CRAWLER_COMMAND`; the
+  command receives JSON on stdin and returns either an item array or
+  `{ "items": [...] }`;
 - records the crawling tool as the local agent runtime, model, and concrete
   crawler path, for example `Codex Desktop (model gpt-5.5) Builder Blog skill crawler (YouTube RSS + captions)`;
-- posts discovered `BLOG_POST` or `PODCAST_EPISODE` items back to `/api/skill/builders`.
+- posts discovered `TWEET`, `BLOG_POST`, or `PODCAST_EPISODE` items back to `/api/skill/builders`.
 
 Use `--force` only when the user explicitly wants to re-sync already-synced
 posts:
 
 ```bash
 cd /Users/jie/code/builder_blog
-node scripts/builder-digest.mjs crawl-personal --days 3 --limit 3 --force
+node scripts/builder-digest.mjs crawl-personal --days 30 --limit 3 --force
 ```
 
 Use `--agent-model gpt-5.5` or `BUILDER_BLOG_AGENT_MODEL=gpt-5.5` when the

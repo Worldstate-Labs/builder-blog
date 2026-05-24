@@ -11,10 +11,18 @@ const CONFIG_PATH = join(CONFIG_DIR, "config.json");
 const DEFAULT_APP_URL = "https://builder-blog.worldstatelabs.com";
 const DEFAULT_AGENT_RUNTIME = detectedAgentRuntime();
 const DEFAULT_AGENT_MODEL = detectedAgentModel();
-const PERSONAL_CRAWL_SOURCES = [
+const DEFAULT_PERSONAL_CRAWL_DAYS = 30;
+const PERSONAL_SOURCE_CRAWLERS = [
+  {
+    id: "x",
+    label: "X / Twitter",
+    builderKind: "X",
+    syncKind: "X",
+    crawl: crawlPersonalXBuilder,
+  },
   {
     id: "blog",
-    label: "BLOG",
+    label: "Blog",
     builderKind: "BLOG",
     syncKind: "BLOG",
     crawl: crawlPersonalBlogBuilder,
@@ -27,12 +35,19 @@ const PERSONAL_CRAWL_SOURCES = [
     matches: isYouTubeSource,
     crawl: crawlPersonalYouTubeBuilder,
   },
+  {
+    id: "website",
+    label: "Website",
+    builderKind: "WEBSITE",
+    syncKind: "WEBSITE",
+    crawl: crawlPersonalWebsiteBuilder,
+  },
 ];
 
 function usage() {
   console.log(`builder-digest commands:
   login --app-url ${DEFAULT_APP_URL}
-  crawl-personal [--days 3] [--limit 3] [--force] [--agent-model gpt-5.5]
+  crawl-personal [--days ${DEFAULT_PERSONAL_CRAWL_DAYS}] [--limit 3] [--force] [--agent-model gpt-5.5]
   prepare
   sync-builders --file personal-builders.json [--agent-model gpt-5.5]
   sync --file digest.md [--title "AI Builder Digest"]
@@ -157,7 +172,7 @@ async function crawlPersonal(args) {
   const config = await readConfig();
   requireLoggedIn(config);
 
-  const days = Math.max(1, Number(argValue(args, "--days", "3")));
+  const days = Math.max(1, Number(argValue(args, "--days", String(DEFAULT_PERSONAL_CRAWL_DAYS))));
   const limit = Math.max(1, Number(argValue(args, "--limit", "3")));
   const force = args.includes("--force");
   const agentModel = argValue(args, "--agent-model", DEFAULT_AGENT_MODEL);
@@ -179,7 +194,7 @@ async function crawlPersonal(args) {
           feedItems: 0,
           seenPersonalItems: personalSeenItemCount(context),
           force,
-          message: `No personal ${personalCrawlerSourceLabels()} builders in this user's library.`,
+          message: "No personal builders in this user's library.",
         },
         null,
         2,
@@ -188,16 +203,49 @@ async function crawlPersonal(args) {
     return;
   }
 
-  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const fallbackCutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const builders = [];
   const localErrors = [];
 
   for (const builder of personalBuilders) {
     try {
       const source = personalCrawlerSourceForBuilder(builder);
-      if (!source) continue;
+      if (!source) {
+        const externalItems = await crawlPersonalWithExternalCommand(builder, {
+          fallbackCutoff,
+          force,
+          limit,
+          context,
+          agentModel,
+        });
+        if (!externalItems) {
+          localErrors.push({
+            builder: builder.name,
+            sourceType: sourceTypeIdForBuilder(builder),
+            error: "No local crawler configured for this personal builder source.",
+          });
+          continue;
+        }
+        builders.push({
+          kind: builder.kind,
+          sourceType: sourceTypeIdForBuilder(builder),
+          name: builder.name,
+          handle: builder.handle,
+          sourceUrl: builder.sourceUrl,
+          crawlUrl: builder.crawlUrl,
+          bio: builder.bio,
+          subscribe: subscribedBuilderIds.has(builder.id),
+          items: filterCrawledItems(externalItems, {
+            builderId: builder.id,
+            cutoff: force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff),
+            limit,
+            seenItemKeys: force ? new Set() : seenItemKeysForBuilder(context, builder.id),
+          }),
+        });
+        continue;
+      }
       const items = await source.crawl(builder, {
-        cutoff,
+        cutoff: force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff),
         limit,
         agentModel,
         seenItemKeys: force ? new Set() : seenItemKeysForBuilder(context, builder.id),
@@ -221,6 +269,27 @@ async function crawlPersonal(args) {
     }
   }
 
+  if (builders.length === 0) {
+    console.log(
+      JSON.stringify(
+        {
+          status: "ok",
+          builders: 0,
+          feedItems: 0,
+          skippedFeedItems: 0,
+          crawledPersonalBuilders: personalBuilders.length,
+          seenPersonalItems: force ? 0 : personalSeenItemCount(context),
+          force,
+          localErrors,
+          message: "No personal builders produced syncable items.",
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+
   const result = await postJson(
     `${config.appUrl}/api/skill/builders`,
     { force, crawlingTool: skillCrawlingTool("local personal crawler", agentModel), builders },
@@ -242,15 +311,13 @@ async function crawlPersonal(args) {
 
 export function personalBuildersForCrawl(context) {
   return (context.libraryBuilders ?? []).filter(
-    (builder) =>
-      builder.scope === "PERSONAL" &&
-      personalCrawlerSourceForBuilder(builder),
+    (builder) => builder.scope === "PERSONAL",
   );
 }
 
 export function personalCrawlerSourceForBuilder(builder) {
   const explicitSourceType = normalizeSourceType(builder.sourceType);
-  return PERSONAL_CRAWL_SOURCES.find(
+  return PERSONAL_SOURCE_CRAWLERS.find(
     (source) =>
       (explicitSourceType ? explicitSourceType === source.id : builder.kind === source.builderKind) &&
       (source.matches ? source.matches(builder) : true),
@@ -273,14 +340,58 @@ function personalSeenItemCount(context) {
   return (context.personalSeenItems ?? []).length;
 }
 
-function personalCrawlerSourceLabels() {
-  return PERSONAL_CRAWL_SOURCES.map((source) => source.label).join(" or ");
+export function latestPostTimeForBuilder(context, builderId) {
+  const latest = (context.latestPersonalFeedItems ?? []).find(
+    (item) => item?.builderId === builderId,
+  )?.latestPostAt;
+  if (latest) return normalizedDate(latest);
+
+  const matchingItems = (context.personalSeenItems ?? []).filter(
+    (item) => item?.builderId === builderId,
+  );
+  return matchingItems.reduce((latestDate, item) => {
+    const candidate = normalizedDate(item.publishedAt || item.createdAt);
+    if (!candidate) return latestDate;
+    if (!latestDate || new Date(candidate) > new Date(latestDate)) return candidate;
+    return latestDate;
+  }, null);
+}
+
+export function cutoffForBuilder(context, builderId, fallbackCutoff) {
+  const latestPostAt = latestPostTimeForBuilder(context, builderId);
+  if (!latestPostAt) return fallbackCutoff;
+  const latestDate = new Date(latestPostAt);
+  return latestDate > fallbackCutoff ? latestDate : fallbackCutoff;
+}
+
+function sourceTypeIdForBuilder(builder) {
+  const explicit = normalizeSourceType(builder.sourceType);
+  if (explicit) return explicit;
+  if (isYouTubeSource(builder)) return "youtube";
+  if (builder.kind === "BLOG") return "blog";
+  if (builder.kind === "X") return "x";
+  if (builder.kind === "PODCAST") return "podcast";
+  if (isPdfSource(builder)) return "pdf";
+  return "website";
 }
 
 function isYouTubeSource(builder) {
   if (normalizeSourceType(builder.sourceType) === "youtube") return true;
   const source = `${builder.sourceUrl || ""} ${builder.crawlUrl || ""}`;
   return builder.kind === "PODCAST" && /youtube\.com|youtu\.be/i.test(source);
+}
+
+function isPdfSource(builder) {
+  const source = `${builder.sourceUrl || ""} ${builder.crawlUrl || ""}`;
+  return /\.pdf(?:\s|$|[?#])/i.test(source);
+}
+
+function normalizeXHandle(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const urlMatch = text.match(/(?:x\.com|twitter\.com)\/@?([A-Za-z0-9_]+)/i);
+  const handle = urlMatch?.[1] || text.replace(/^@/, "");
+  return handle.match(/^[A-Za-z0-9_]{1,15}$/) ? handle : "";
 }
 
 function normalizeSourceType(sourceType) {
@@ -304,7 +415,7 @@ async function crawlPersonalYouTubeBuilder(builder, { cutoff, limit, agentModel,
   }
 
   const videos = parseYouTubeFeed(await feedResponse.text(), feedUrl)
-    .filter((video) => !video.publishedAt || new Date(video.publishedAt) >= cutoff)
+    .filter((video) => isAfterCutoff(video.publishedAt, cutoff))
     .filter((video) => !seenItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", video.videoId || video.url)))
     .slice(0, limit);
   const items = [];
@@ -353,7 +464,7 @@ async function crawlPersonalBlogBuilder(builder, { cutoff, limit, agentModel, se
 
   const indexBody = await indexResponse.text();
   const candidates = parseBlogCandidates(indexBody, indexUrl)
-    .filter((article) => !article.publishedAt || new Date(article.publishedAt) >= cutoff)
+    .filter((article) => isAfterCutoff(article.publishedAt, cutoff))
     .filter((article) => !seenItemKeys.has(personalItemKey(builder.id, "BLOG_POST", article.url)))
     .slice(0, limit);
   const items = [];
@@ -390,6 +501,167 @@ async function crawlPersonalBlogBuilder(builder, { cutoff, limit, agentModel, se
   }
 
   return items;
+}
+
+async function crawlPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel, seenItemKeys = new Set() }) {
+  if (isPdfSource(builder)) {
+    throw new Error("PDF personal crawling requires an external crawler command.");
+  }
+  const sourceUrl = builder.crawlUrl || builder.sourceUrl;
+  if (!sourceUrl) return [];
+
+  const response = await fetch(sourceUrl, {
+    headers: { "User-Agent": "BuilderBlogSkill/1.0 (personal website crawler)" },
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${sourceUrl}: HTTP ${response.status}`);
+  }
+
+  const html = await response.text();
+  const extracted = extractBlogArticle(html);
+  const publishedAt = extracted.publishedAt || null;
+  if (!isAfterCutoff(publishedAt, cutoff)) return [];
+  if (seenItemKeys.has(personalItemKey(builder.id, "BLOG_POST", sourceUrl))) return [];
+  const body = extracted.body || stripHtml(html).slice(0, 6000);
+  if (!body.trim()) return [];
+
+  return [
+    {
+      kind: "BLOG_POST",
+      externalId: sourceUrl,
+      title: extracted.title || builder.name,
+      body,
+      url: sourceUrl,
+      publishedAt,
+      sourceName: builder.name,
+      crawlingTool: skillCrawlingTool("website HTML extractor", agentModel),
+      rawJson: {
+        source: "personal-website",
+        builderId: builder.id,
+        builderName: builder.name,
+        url: sourceUrl,
+        publishedAt,
+      },
+    },
+  ].slice(0, limit);
+}
+
+async function crawlPersonalXBuilder(builder, { cutoff, limit, agentModel, seenItemKeys = new Set() }) {
+  const bearerToken = process.env.X_BEARER_TOKEN?.trim();
+  if (!bearerToken) {
+    throw new Error("X_BEARER_TOKEN is required for personal X crawling, or configure an external crawler command.");
+  }
+  const handle = normalizeXHandle(builder.handle || builder.sourceUrl);
+  if (!handle) return [];
+
+  const userResponse = await fetch(
+    `https://api.x.com/2/users/by/username/${encodeURIComponent(handle)}?user.fields=description`,
+    { headers: { authorization: `Bearer ${bearerToken}` } },
+  );
+  if (!userResponse.ok) {
+    throw new Error(`Failed to resolve X user ${handle}: HTTP ${userResponse.status}`);
+  }
+  const user = (await userResponse.json())?.data;
+  if (!user?.id) return [];
+
+  const tweetResponse = await fetch(
+    `https://api.x.com/2/users/${encodeURIComponent(user.id)}/tweets?max_results=${Math.min(100, Math.max(5, limit * 3))}&tweet.fields=created_at,note_tweet&exclude=retweets,replies`,
+    { headers: { authorization: `Bearer ${bearerToken}` } },
+  );
+  if (!tweetResponse.ok) {
+    throw new Error(`Failed to fetch X tweets for ${handle}: HTTP ${tweetResponse.status}`);
+  }
+
+  const tweets = (await tweetResponse.json())?.data ?? [];
+  return tweets
+    .map((tweet) => {
+      const url = `https://x.com/${handle}/status/${tweet.id}`;
+      return {
+        kind: "TWEET",
+        externalId: tweet.id,
+        title: null,
+        body: tweet.note_tweet?.text || tweet.text || "",
+        url,
+        publishedAt: normalizedDate(tweet.created_at),
+        sourceName: builder.name,
+        crawlingTool: skillCrawlingTool("X API v2", agentModel),
+        rawJson: {
+          source: "personal-x",
+          builderId: builder.id,
+          builderName: builder.name,
+          tweet,
+        },
+      };
+    })
+    .filter((item) => item.body.trim())
+    .filter((item) => isAfterCutoff(item.publishedAt, cutoff))
+    .filter((item) => !seenItemKeys.has(personalItemKey(builder.id, "TWEET", item.externalId)))
+    .slice(0, limit);
+}
+
+async function crawlPersonalWithExternalCommand(builder, { fallbackCutoff, force, limit, context, agentModel }) {
+  const sourceType = sourceTypeIdForBuilder(builder);
+  const command =
+    process.env[`BUILDER_BLOG_CRAWLER_${sourceType.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`] ||
+    process.env.BUILDER_BLOG_CRAWLER_COMMAND;
+  if (!command?.trim()) return null;
+
+  const cutoff = force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff);
+  const payload = {
+    builder,
+    sourceType,
+    limit,
+    force,
+    cutoff: cutoff?.toISOString() ?? null,
+    agentModel,
+  };
+  const output = await runExternalCrawler(command, payload);
+  const parsed = JSON.parse(output || "{}");
+  if (Array.isArray(parsed)) return parsed;
+  if (Array.isArray(parsed.items)) return parsed.items;
+  throw new Error("External crawler must return a JSON array or an object with an items array.");
+}
+
+function runExternalCrawler(command, payload) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, {
+      shell: true,
+      stdio: ["pipe", "pipe", "pipe"],
+      env: process.env,
+    });
+    const stdout = [];
+    const stderr = [];
+    child.stdout.on("data", (chunk) => stdout.push(chunk));
+    child.stderr.on("data", (chunk) => stderr.push(chunk));
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve(Buffer.concat(stdout).toString("utf8"));
+        return;
+      }
+      reject(
+        new Error(
+          Buffer.concat(stderr).toString("utf8").trim() ||
+            `External crawler exited with code ${code}`,
+        ),
+      );
+    });
+    child.stdin.end(JSON.stringify(payload));
+  });
+}
+
+function filterCrawledItems(items, { builderId, cutoff, limit = Number.POSITIVE_INFINITY, seenItemKeys }) {
+  return items
+    .filter((item) => item?.kind && item?.externalId && item?.body && item?.url)
+    .filter((item) => isAfterCutoff(item.publishedAt, cutoff))
+    .filter((item) => !seenItemKeys.has(personalItemKey(builderId, item.kind, item.externalId)))
+    .slice(0, limit);
+}
+
+function isAfterCutoff(value, cutoff) {
+  if (!cutoff || !value) return true;
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime()) && date > cutoff;
 }
 
 export function parseBlogCandidates(body, indexUrl) {

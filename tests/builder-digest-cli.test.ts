@@ -133,6 +133,22 @@ test("personal crawler keeps crawled builders eligible and tracks seen post keys
         sourceUrl: "https://www.youtube.com/@example",
       },
       {
+        id: "builder_website_1",
+        scope: "PERSONAL",
+        kind: "WEBSITE",
+        sourceType: "website",
+        name: "Personal Website",
+        sourceUrl: "https://example.com",
+      },
+      {
+        id: "builder_podcast_1",
+        scope: "PERSONAL",
+        kind: "PODCAST",
+        sourceType: "podcast",
+        name: "Private Podcast",
+        sourceUrl: "https://feeds.example.com/show.xml",
+      },
+      {
         id: "builder_central_1",
         scope: "CENTRAL",
         kind: "BLOG",
@@ -151,18 +167,40 @@ test("personal crawler keeps crawled builders eligible and tracks seen post keys
         builderId: "builder_blog_1",
         kind: "BLOG_POST",
         externalId: "https://example.com/blog/launch-notes",
+        publishedAt: "2026-05-22T10:00:00.000Z",
+        createdAt: "2026-05-22T10:05:00.000Z",
+      },
+    ],
+    latestPersonalFeedItems: [
+      {
+        builderId: "builder_blog_1",
+        latestPostAt: "2026-05-22T10:00:00.000Z",
       },
     ],
   };
 
   assert.deepEqual(
     cli.personalBuildersForCrawl(context).map((builder: { id: string }) => builder.id),
-    ["builder_blog_1", "builder_blog_2", "builder_youtube_1"],
+    [
+      "builder_blog_1",
+      "builder_blog_2",
+      "builder_youtube_1",
+      "builder_website_1",
+      "builder_podcast_1",
+    ],
   );
   assert.equal(
     cli
       .seenItemKeysForBuilder(context, "builder_blog_1")
       .has(cli.personalItemKey("builder_blog_1", "BLOG_POST", "https://example.com/blog/launch-notes")),
     true,
+  );
+  assert.equal(
+    cli.cutoffForBuilder(
+      context,
+      "builder_blog_1",
+      new Date("2026-04-22T00:00:00.000Z"),
+    ).toISOString(),
+    "2026-05-22T10:00:00.000Z",
   );
 });

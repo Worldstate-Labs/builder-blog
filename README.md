@@ -109,11 +109,13 @@ Prepare personalized context:
 npm run skill -- prepare --days 1
 ```
 
-Locally crawl personal BLOG builders in the user's own library and sync the
-discovered posts to the cloud:
+Locally crawl personal builders in the user's own library and sync the
+discovered posts to the cloud. By default it looks back 30 days, then narrows
+each builder to posts newer than the latest post already stored for that
+builder unless `--force` is used:
 
 ```bash
-npm run skill -- crawl-personal --days 3 --limit 3
+npm run skill -- crawl-personal --days 30 --limit 3
 ```
 
 Sync user-crawled personal builders and items:

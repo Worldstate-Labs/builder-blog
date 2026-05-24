@@ -24,7 +24,7 @@ export const SOURCE_DEFINITIONS = [
     builderKind: BuilderKind.X,
     feedItemKinds: [FeedItemKind.TWEET],
     centralCrawler: true,
-    personalCrawler: false,
+    personalCrawler: true,
   },
   {
     id: "blog",
@@ -51,7 +51,7 @@ export const SOURCE_DEFINITIONS = [
     builderKind: BuilderKind.PODCAST,
     feedItemKinds: [FeedItemKind.PODCAST_EPISODE],
     centralCrawler: true,
-    personalCrawler: false,
+    personalCrawler: true,
   },
   {
     id: "pdf",
@@ -59,7 +59,7 @@ export const SOURCE_DEFINITIONS = [
     builderKind: BuilderKind.WEBSITE,
     feedItemKinds: [],
     centralCrawler: false,
-    personalCrawler: false,
+    personalCrawler: true,
     matchesBuilder: (builder) => /\.pdf(?:\s|$|[?#])/i.test(sourceUrlText(builder)),
   },
   {
@@ -68,7 +68,7 @@ export const SOURCE_DEFINITIONS = [
     builderKind: BuilderKind.WEBSITE,
     feedItemKinds: [],
     centralCrawler: false,
-    personalCrawler: false,
+    personalCrawler: true,
   },
 ] satisfies SourceDefinition[];
 

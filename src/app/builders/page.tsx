@@ -28,6 +28,8 @@ type BuilderWithCount = {
   _count: { feedItems: number };
 };
 
+type LatestPostCreatedAtByBuilderId = Map<string, Date | null>;
+
 export default async function BuildersPage() {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
@@ -108,6 +110,7 @@ export default async function BuildersPage() {
     (count, builder) => count + builder._count.feedItems,
     0,
   );
+  const latestPostCreatedAtByBuilderId = await latestPostCreationTimes(poolBuilderIds);
 
   return (
     <AppShell session={session}>
@@ -167,6 +170,7 @@ export default async function BuildersPage() {
               <BuilderCard
                 key={builder.id}
                 builder={builder}
+                latestPostCreatedAt={latestPostCreatedAtByBuilderId.get(builder.id) ?? null}
                 subscribed={subscribed.has(builder.id)}
                 crawlLabel="Agent synced"
               />
@@ -205,6 +209,7 @@ export default async function BuildersPage() {
                       allowRemove={false}
                       key={builder.id}
                       builder={builder}
+                      latestPostCreatedAt={latestPostCreatedAtByBuilderId.get(builder.id) ?? null}
                       subscribed={subscribed.has(builder.id)}
                       crawlLabel={
                         builder.scope === BuilderScope.CENTRAL ? "Webapp crawled" : "Hub imported"
@@ -321,6 +326,7 @@ function RecentCrawledContentHeader({
 function BuilderCard({
   allowRemove = true,
   builder,
+  latestPostCreatedAt,
   subscribed,
   crawlLabel,
   status,
@@ -328,6 +334,7 @@ function BuilderCard({
 }: {
   allowRemove?: boolean;
   builder: BuilderWithCount;
+  latestPostCreatedAt: Date | null;
   subscribed: boolean;
   crawlLabel: string;
   status?: string;
@@ -338,6 +345,7 @@ function BuilderCard({
       <div className="builder-row">
         <BuilderInfo
           builder={builder}
+          latestPostCreatedAt={latestPostCreatedAt}
           status={status ?? (subscribed ? "Subscribed" : "In library")}
           crawlLabel={crawlLabel}
         />
@@ -358,10 +366,12 @@ function BuilderCard({
 
 function BuilderInfo({
   builder,
+  latestPostCreatedAt,
   status,
   crawlLabel,
 }: {
   builder: BuilderWithCount;
+  latestPostCreatedAt: Date | null;
   status: string;
   crawlLabel: string;
 }) {
@@ -377,6 +387,10 @@ function BuilderInfo({
       </p>
       <p className="mt-2 text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
         {crawlLabel} · {builder._count.feedItems} items
+      </p>
+      <p className="mt-1 text-xs text-[var(--muted-strong)]">
+        Latest post created{" "}
+        {latestPostCreatedAt ? latestPostCreatedAt.toLocaleString() : "not available"}
       </p>
       <details className="inline-disclosure">
         <summary>Source details</summary>
@@ -448,4 +462,18 @@ function Stat({
 
 function builderSort(a: BuilderWithCount, b: BuilderWithCount) {
   return a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name);
+}
+
+async function latestPostCreationTimes(builderIds: string[]): Promise<LatestPostCreatedAtByBuilderId> {
+  if (builderIds.length === 0) return new Map();
+  const rows = await prisma.feedItem.groupBy({
+    by: ["builderId"],
+    where: {
+      builderId: { in: builderIds },
+      publishedAt: { not: null },
+    },
+    _max: { publishedAt: true },
+  });
+
+  return new Map(rows.flatMap((row) => (row.builderId ? [[row.builderId, row._max.publishedAt]] : [])));
 }
