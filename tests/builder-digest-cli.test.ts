@@ -342,8 +342,136 @@ test("personal YouTube crawler returns agent tasks instead of syncing descriptio
 
   assert.equal(result.items.length, 0);
   assert.equal(result.agentTasks.length, 1);
+  assert.match(result.agentTasks[0].id, /^youtube_transcription:/);
   assert.equal(result.agentTasks[0].reason, "missing_or_low_quality_youtube_content");
   assert.equal(result.agentTasks[0].minimumContentQuality.minWords, 12);
+});
+
+test("agent sync validation accepts agent-produced YouTube transcript with execution proof", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = {
+    type: "youtube_transcription",
+    builder: "Anthropic YouTube",
+    builderId: "builder_anthropic_youtube",
+    sourceType: "youtube",
+    item: {
+      kind: "PODCAST_EPISODE",
+      externalId: "dPn3GBI8lII",
+      title: "Introducing Claude Opus 4.6",
+      url: "https://www.youtube.com/watch?v=dPn3GBI8lII",
+      description: "A short launch description.",
+    },
+  };
+  const taskId = cli.agentTaskId(task);
+  const result = cli.validateAgentSyncPayload(
+    { agentTasks: [{ ...task, id: taskId }] },
+    {
+      builders: [
+        {
+          kind: "PODCAST",
+          sourceType: "youtube",
+          name: "Anthropic YouTube",
+          sourceUrl: "https://www.youtube.com/@anthropic-ai",
+          items: [
+            {
+              kind: "PODCAST_EPISODE",
+              externalId: "dPn3GBI8lII",
+              title: "Introducing Claude Opus 4.6",
+              body:
+                "In this video the speaker introduces Claude Opus 4.6, explains the model improvements, describes practical coding workflows, and compares how the system behaves on realistic agent tasks.",
+              url: "https://www.youtube.com/watch?v=dPn3GBI8lII",
+              rawJson: {
+                builderId: "builder_anthropic_youtube",
+                agentTaskId: taskId,
+                agentRuntime: "Codex",
+                agentModel: "gpt-test",
+                agentCompletedAt: "2026-05-24T10:00:00.000Z",
+                agentExecutionProof: "Codex watched/transcribed the video through local tooling.",
+                transcriptSource: "agent-transcript",
+              },
+            },
+          ],
+        },
+      ],
+    },
+  );
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.validatedAgentTasks, 1);
+});
+
+test("agent sync validation rejects YouTube metadata masquerading as content", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = {
+    type: "youtube_transcription",
+    builder: "Anthropic YouTube",
+    builderId: "builder_anthropic_youtube",
+    sourceType: "youtube",
+    item: {
+      kind: "PODCAST_EPISODE",
+      externalId: "dPn3GBI8lII",
+      title: "Introducing Claude Opus 4.6",
+      url: "https://www.youtube.com/watch?v=dPn3GBI8lII",
+      description: "A short launch description.",
+    },
+  };
+  const taskId = cli.agentTaskId(task);
+
+  assert.throws(
+    () =>
+      cli.validateAgentSyncPayload(
+        { agentTasks: [{ ...task, id: taskId }] },
+        {
+          builders: [
+            {
+              kind: "PODCAST",
+              sourceType: "youtube",
+              name: "Anthropic YouTube",
+              items: [
+                {
+                  kind: "PODCAST_EPISODE",
+                  externalId: "dPn3GBI8lII",
+                  title: "Introducing Claude Opus 4.6",
+                  body: "A short launch description.",
+                  url: "https://www.youtube.com/watch?v=dPn3GBI8lII",
+                  rawJson: {
+                    builderId: "builder_anthropic_youtube",
+                    agentTaskId: taskId,
+                    agentRuntime: "Codex",
+                    agentCompletedAt: "2026-05-24T10:00:00.000Z",
+                    agentExecutionProof: "metadata only",
+                    transcriptSource: "youtube-feed-description",
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ),
+    /Agent sync validation failed/,
+  );
+});
+
+test("personal podcast crawler parses RSS episodes as podcast items", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const items = cli.parsePodcastFeedItems(
+    `
+    <rss><channel>
+      <item>
+        <title>Agent Systems Weekly</title>
+        <guid>episode-42</guid>
+        <link>https://pod.example.com/42</link>
+        <pubDate>Fri, 22 May 2026 10:00:00 GMT</pubDate>
+        <description><![CDATA[The hosts discuss durable agents, evaluation loops, and deployment lessons.]]></description>
+      </item>
+    </channel></rss>
+    `,
+    "https://pod.example.com/feed.xml",
+  );
+
+  assert.equal(items[0].kind, "PODCAST_EPISODE");
+  assert.equal(items[0].externalId, "episode-42");
+  assert.equal(items[0].url, "https://pod.example.com/42");
 });
 
 test("personal crawler reports concrete crawling tool identity", async () => {

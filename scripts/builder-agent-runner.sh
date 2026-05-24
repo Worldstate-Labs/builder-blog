@@ -47,13 +47,17 @@ run_with_claude() {
   claude -p "$(cat "$PROMPT_FILE")" --add-dir "$AGENT_DIR"
 }
 
+run_with_openclaw() {
+  openclaw agent --local --message "$(cat "$PROMPT_FILE")"
+}
+
 run_with_gemini() {
   gemini -p "$(cat "$PROMPT_FILE")"
 }
 
 run_shell_library_fallback() {
   echo "No local agent runtime found; running non-AI library crawl fallback." >&2
-  echo "Sources requiring AI, cookies, transcription, or custom tools will need BUILDER_BLOG_AGENT_COMMAND, codex, claude, or gemini." >&2
+  echo "Sources requiring AI, cookies, transcription, or custom tools will need BUILDER_BLOG_AGENT_COMMAND, codex, claude, openclaw, or gemini." >&2
   refresh_skill_files
   node "$AGENT_DIR/builder-digest.mjs" crawl-personal --days 30 --limit 3
 }
@@ -64,13 +68,15 @@ elif command -v codex >/dev/null 2>&1; then
   run_with_codex
 elif command -v claude >/dev/null 2>&1; then
   run_with_claude
+elif command -v openclaw >/dev/null 2>&1; then
+  run_with_openclaw
 elif command -v gemini >/dev/null 2>&1; then
   run_with_gemini
 elif [ "$JOB_NAME" = "library-cron" ]; then
   run_shell_library_fallback
 else
   echo "No local agent runtime found for Builder Blog digest generation." >&2
-  echo "Install/configure Codex, Claude Code, Gemini CLI, or set BUILDER_BLOG_AGENT_COMMAND." >&2
+  echo "Install/configure Codex, Claude Code, OpenClaw, Gemini CLI, or set BUILDER_BLOG_AGENT_COMMAND." >&2
   echo "Digest cron requires an agent because it must summarize returned items with AI before sync." >&2
   exit 78
 fi

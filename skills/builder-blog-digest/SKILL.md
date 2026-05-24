@@ -66,8 +66,9 @@ The runner chooses the first available execution path:
    environment.
 2. Codex CLI.
 3. Claude Code CLI.
-4. Gemini CLI.
-5. For `library-cron` only, a non-AI crawl fallback for simple supported
+4. OpenClaw CLI.
+5. Gemini CLI.
+6. For `library-cron` only, a non-AI crawl fallback for simple supported
    sources. Sources requiring AI, cookies, transcription, or custom tooling
    still require an agent.
 
@@ -123,9 +124,21 @@ This command:
 - records the crawling tool as the local agent runtime, model, and concrete
   crawler path, for example `Codex Desktop (model gpt-5.5) Builder Blog skill crawler (YouTube RSS + captions)`;
 - reports `agentTasks` when primary content is missing or low quality. Treat
-  each task as a request for local agent work, then sync completed content with
-  `sync-builders`;
+  each task as a request for local agent work. Completed task items must include
+  `rawJson.agentTaskId`, `rawJson.agentRuntime`, `rawJson.agentModel` if known,
+  `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`. For YouTube,
+  include `rawJson.transcriptSource="agent-transcript"` unless a better primary
+  transcript source is used. Validate the payload with `validate-agent-sync`,
+  then sync completed content with `sync-builders`;
 - posts discovered `TWEET`, `BLOG_POST`, or `PODCAST_EPISODE` items back to `/api/skill/builders`.
+
+Validate agent-produced items before syncing them:
+
+```bash
+node ~/.builder-blog/builder-digest.mjs validate-agent-sync \
+  --tasks /tmp/builder-blog-crawl-result.json \
+  --file /tmp/builder-blog-agent-sync.json
+```
 
 Use `--force` only when the user explicitly wants to re-sync already-synced
 posts:

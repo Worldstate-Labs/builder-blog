@@ -36,6 +36,21 @@ const PERSONAL_SOURCE_CRAWLERS = [
     crawl: crawlPersonalYouTubeBuilder,
   },
   {
+    id: "podcast",
+    label: "Podcast RSS",
+    builderKind: "PODCAST",
+    syncKind: "PODCAST",
+    crawl: crawlPersonalPodcastBuilder,
+  },
+  {
+    id: "pdf",
+    label: "PDF",
+    builderKind: "WEBSITE",
+    syncKind: "WEBSITE",
+    matches: isPdfSource,
+    crawl: crawlPersonalPdfBuilder,
+  },
+  {
     id: "website",
     label: "Website",
     builderKind: "WEBSITE",
@@ -49,6 +64,7 @@ function usage() {
   login --app-url ${DEFAULT_APP_URL}
   crawl-personal [--days ${DEFAULT_PERSONAL_CRAWL_DAYS}] [--limit 3] [--force] [--agent-model gpt-5.5]
   prepare
+  validate-agent-sync --tasks crawl-result.json --file personal-builders.json
   sync-builders --file personal-builders.json [--agent-model gpt-5.5]
   sync --file digest.md [--title "AI Builder Digest"]
   status`);
@@ -543,28 +559,50 @@ function youtubeMinimumContentQuality() {
   };
 }
 
-function youtubeAgentTaskForVideo(builder, video, quality, sourceDetail) {
+function genericMinimumContentQuality() {
   return {
+    primaryContentOnly: true,
+    minChars: 200,
+    minWords: 35,
+    disallowedPrimarySources: ["title", "description", "page metadata", "file name"],
+  };
+}
+
+export function agentTaskId(task) {
+  return [
+    task?.type || "agent_task",
+    task?.builderId || task?.builder || "builder",
+    task?.item?.kind || "item",
+    task?.item?.externalId || task?.item?.url || task?.item?.title || "unknown",
+  ]
+    .map((part) => encodeURIComponent(String(part)))
+    .join(":");
+}
+
+function youtubeAgentTaskForVideo(builder, video, quality, sourceDetail) {
+  const item = {
+    kind: "PODCAST_EPISODE",
+    externalId: video.videoId || video.url,
+    title: video.title || "Untitled YouTube update",
+    url: video.url,
+    publishedAt: video.publishedAt,
+    sourceName: builder.name,
+    description: video.description || "",
+  };
+  const task = {
     type: "youtube_transcription",
     reason: "missing_or_low_quality_youtube_content",
     builder: builder.name,
     builderId: builder.id,
     sourceType: "youtube",
-    item: {
-      kind: "PODCAST_EPISODE",
-      externalId: video.videoId || video.url,
-      title: video.title || "Untitled YouTube update",
-      url: video.url,
-      publishedAt: video.publishedAt,
-      sourceName: builder.name,
-      description: video.description || "",
-    },
+    item,
     quality,
     minimumContentQuality: youtubeMinimumContentQuality(),
     suggestedAction:
       "Use the user's local agent capabilities to obtain or transcribe the video content, then sync it with builder-digest sync-builders. Do not use the title or description as the item body.",
     sourceDetail,
   };
+  return { ...task, id: agentTaskId(task) };
 }
 
 function normalizeContentText(text) {
@@ -630,9 +668,106 @@ async function crawlPersonalBlogBuilder(builder, { cutoff, limit, agentModel, se
   return items;
 }
 
+async function crawlPersonalPodcastBuilder(builder, { cutoff, limit, agentModel, seenItemKeys = new Set() }) {
+  const feedUrl = builder.crawlUrl || builder.sourceUrl;
+  if (!feedUrl) return [];
+
+  const response = await fetch(feedUrl, {
+    headers: { "User-Agent": "BuilderBlogSkill/1.0 (personal podcast crawler)" },
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch podcast feed ${feedUrl}: HTTP ${response.status}`);
+  }
+
+  const xml = await response.text();
+  return parsePodcastFeedItems(xml, feedUrl)
+    .filter((item) => isAfterCutoff(item.publishedAt, cutoff))
+    .filter((item) => !seenItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", item.externalId)))
+    .map((item) => ({
+      ...item,
+      sourceName: builder.name,
+      crawlingTool: skillCrawlingTool("podcast RSS feed", agentModel),
+      rawJson: {
+        source: "personal-podcast",
+        builderId: builder.id,
+        builderName: builder.name,
+        feedUrl,
+      },
+    }))
+    .slice(0, limit);
+}
+
+export function parsePodcastFeedItems(xml, feedUrl) {
+  const entries = [
+    ...xml.matchAll(/<item\b[\s\S]*?<\/item>/gi),
+    ...xml.matchAll(/<entry\b[\s\S]*?<\/entry>/gi),
+  ];
+  return entries
+    .map((match) => {
+      const block = match[0];
+      const hrefMatch = block.match(/<link[^>]*href=["']([^"']+)["'][^>]*>/i);
+      const enclosureMatch = block.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]*>/i);
+      const guid = tagText(block, "guid") || tagText(block, "id");
+      const url = absoluteUrl(hrefMatch?.[1] || tagText(block, "link") || enclosureMatch?.[1], feedUrl);
+      const externalId = guid || url || tagText(block, "title");
+      const body = stripHtml(
+        tagText(block, "content:encoded") ||
+          tagText(block, "description") ||
+          tagText(block, "summary") ||
+          tagText(block, "itunes:summary"),
+      );
+      return {
+        kind: "PODCAST_EPISODE",
+        externalId,
+        title: stripHtml(tagText(block, "title")) || "Untitled podcast episode",
+        body,
+        url,
+        publishedAt: normalizedDate(
+          tagText(block, "pubDate") ||
+            tagText(block, "published") ||
+            tagText(block, "updated"),
+        ),
+      };
+    })
+    .filter((item) => item.externalId && item.url && item.body.trim());
+}
+
+async function crawlPersonalPdfBuilder(builder, { agentModel }) {
+  const sourceUrl = builder.crawlUrl || builder.sourceUrl;
+  if (!sourceUrl) return { items: [], agentTasks: [] };
+  return {
+    items: [],
+    agentTasks: [
+      (() => {
+        const item = {
+          kind: "BLOG_POST",
+          externalId: sourceUrl,
+          title: builder.name,
+          url: sourceUrl,
+          publishedAt: null,
+          sourceName: builder.name,
+        };
+        const task = {
+          type: "pdf_extraction",
+          reason: "pdf_text_requires_local_agent_tooling",
+          builder: builder.name,
+          builderId: builder.id,
+          sourceType: "pdf",
+          item,
+          minimumContentQuality: genericMinimumContentQuality(),
+          suggestedAction:
+            "Use the user's local agent PDF extraction, OCR, or subscription tooling to produce primary document text, then sync it with builder-digest sync-builders.",
+          sourceDetail: skillCrawlingTool("PDF requires agent extraction", agentModel),
+        };
+        return { ...task, id: agentTaskId(task) };
+      })(),
+    ],
+  };
+}
+
 async function crawlPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel, seenItemKeys = new Set() }) {
   if (isPdfSource(builder)) {
-    throw new Error("PDF personal crawling requires an external crawler command.");
+    return crawlPersonalPdfBuilder(builder, { agentModel });
   }
   const sourceUrl = builder.crawlUrl || builder.sourceUrl;
   if (!sourceUrl) return [];
@@ -1014,6 +1149,7 @@ function metaContent(html, attribute, value) {
 function stripHtml(html) {
   return decodeHtml(
     String(html)
+      .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, "$1")
       .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
       .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
       .replace(/<[^>]+>/g, " ")
@@ -1405,6 +1541,162 @@ function parseYouTubeXmlTranscript(xml) {
     .trim();
 }
 
+async function validateAgentSync(args) {
+  const tasksFile = argValue(args, "--tasks");
+  const payloadFile = argValue(args, "--file");
+  if (!tasksFile) throw new Error("Missing --tasks crawl-result.json");
+  if (!payloadFile) throw new Error("Missing --file personal-builders.json");
+
+  const crawlResult = JSON.parse(await readFile(tasksFile, "utf8"));
+  const payload = JSON.parse(await readFile(payloadFile, "utf8"));
+  const result = validateAgentSyncPayload(crawlResult, payload);
+  console.log(JSON.stringify(result, null, 2));
+}
+
+export function validateAgentSyncPayload(crawlResult, payload) {
+  const agentTasks = extractAgentTasks(crawlResult);
+  const syncItems = extractSyncItems(payload);
+  const validated = [];
+  const errors = [];
+
+  for (const task of agentTasks) {
+    const id = task.id || agentTaskId(task);
+    const match = syncItems.find((candidate) => itemMatchesAgentTask(candidate, task));
+    if (!match) {
+      errors.push({
+        agentTaskId: id,
+        builder: task.builder,
+        item: task.item?.externalId || task.item?.url || task.item?.title,
+        error: "missing_synced_item_for_agent_task",
+      });
+      continue;
+    }
+
+    const itemErrors = validateAgentTaskItem(task, match);
+    if (itemErrors.length > 0) {
+      errors.push({
+        agentTaskId: id,
+        builder: task.builder,
+        item: task.item?.externalId || task.item?.url || task.item?.title,
+        errors: itemErrors,
+      });
+      continue;
+    }
+
+    validated.push({
+      agentTaskId: id,
+      builder: task.builder,
+      externalId: match.item.externalId,
+      agentRuntime: match.item.rawJson.agentRuntime,
+      agentModel: match.item.rawJson.agentModel || null,
+    });
+  }
+
+  if (errors.length > 0) {
+    const error = new Error(`Agent sync validation failed for ${errors.length} task(s).`);
+    error.details = errors;
+    throw error;
+  }
+
+  return {
+    status: "ok",
+    agentTasks: agentTasks.length,
+    validatedAgentTasks: validated.length,
+    validated,
+  };
+}
+
+function extractAgentTasks(crawlResult) {
+  if (Array.isArray(crawlResult)) return crawlResult;
+  if (Array.isArray(crawlResult?.agentTasks)) return crawlResult.agentTasks;
+  return [];
+}
+
+function extractSyncItems(payload) {
+  return (payload?.builders ?? []).flatMap((builder) =>
+    (builder?.items ?? []).map((item) => ({
+      builder,
+      item,
+    })),
+  );
+}
+
+function itemMatchesAgentTask(candidate, task) {
+  const item = candidate.item;
+  const builder = candidate.builder;
+  const taskItem = task.item ?? {};
+  const externalMatches =
+    item.externalId === taskItem.externalId ||
+    item.url === taskItem.url ||
+    (taskItem.url && item.externalId === taskItem.url);
+  if (!externalMatches) return false;
+
+  const builderMatches =
+    builder.name === task.builder ||
+    builder.handle === task.builder ||
+    builder.sourceUrl === taskItem.sourceUrl ||
+    builder.crawlUrl === taskItem.sourceUrl ||
+    builder.sourceUrl === taskItem.url ||
+    builder.crawlUrl === taskItem.url ||
+    item.rawJson?.builderId === task.builderId ||
+    item.rawJson?.builderName === task.builder;
+  return builderMatches || !task.builder;
+}
+
+function validateAgentTaskItem(task, candidate) {
+  const errors = [];
+  const rawJson = candidate.item.rawJson;
+  const taskId = task.id || agentTaskId(task);
+  if (!rawJson || typeof rawJson !== "object" || Array.isArray(rawJson)) {
+    errors.push("rawJson_agent_execution_proof_required");
+    return errors;
+  }
+  if (rawJson.agentTaskId !== taskId) errors.push("rawJson.agentTaskId_must_match_task_id");
+  if (!String(rawJson.agentRuntime || "").trim()) errors.push("rawJson.agentRuntime_required");
+  if (!String(rawJson.agentExecutionProof || "").trim()) {
+    errors.push("rawJson.agentExecutionProof_required");
+  }
+  if (!normalizedDate(rawJson.agentCompletedAt)) {
+    errors.push("rawJson.agentCompletedAt_required_iso_datetime");
+  }
+  if (!String(candidate.item.body || "").trim()) errors.push("item.body_required");
+
+  if (task.type === "youtube_transcription") {
+    const source = rawJson.transcriptSource || rawJson.contentSource || rawJson.source;
+    const quality = youtubeContentQuality(candidate.item.body, {
+      source,
+      title: task.item?.title || "",
+      description: task.item?.description || "",
+    });
+    if (!quality.ok) errors.push(`youtube_content_quality:${quality.reason}`);
+    return errors;
+  }
+
+  const quality = genericContentQuality(candidate.item.body, {
+    title: task.item?.title || "",
+    description: task.item?.description || "",
+  });
+  if (!quality.ok) errors.push(`content_quality:${quality.reason}`);
+  return errors;
+}
+
+function genericContentQuality(text, { title = "", description = "" } = {}) {
+  const normalized = normalizeContentText(text);
+  const words = normalized.match(/[A-Za-z0-9\u4e00-\u9fff]+/g) ?? [];
+  const standards = genericMinimumContentQuality();
+  const metrics = {
+    chars: normalized.length,
+    words: words.length,
+  };
+  if (metrics.chars < standards.minChars || metrics.words < standards.minWords) {
+    return { ok: false, reason: "content_too_short", metrics, standards };
+  }
+  if (isNearDuplicate(normalized, title) || isNearDuplicate(normalized, description)) {
+    return { ok: false, reason: "content_duplicates_metadata", metrics, standards };
+  }
+  return { ok: true, reason: "ok", metrics, standards };
+}
+
 async function sync(args) {
   const config = await readConfig();
   requireLoggedIn(config);
@@ -1472,6 +1764,7 @@ async function main() {
   if (command === "login") await login(args);
   else if (command === "crawl-personal") await crawlPersonal(args);
   else if (command === "prepare") await prepare();
+  else if (command === "validate-agent-sync") await validateAgentSync(args);
   else if (command === "sync-builders") await syncBuilders(args);
   else if (command === "sync") await sync(args);
   else if (command === "status") await status();
@@ -1480,10 +1773,12 @@ async function main() {
 
 if (
   process.argv[1] &&
+  existsSync(process.argv[1]) &&
   realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
 ) {
   main().catch((error) => {
     console.error(error instanceof Error ? error.message : String(error));
+    if (error?.details) console.error(JSON.stringify(error.details, null, 2));
     process.exit(1);
   });
 }

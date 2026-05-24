@@ -25,15 +25,19 @@ Execution contract:
 1. Install or refresh the skill:
 /bin/sh -c "$(curl -fsSL ${origin}/api/skill/bootstrap)"
 
-2. Crawl and sync my personal builders:
-BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3
+2. Crawl and sync normal personal builder items, and save the full result:
+BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3 > /tmp/builder-blog-crawl-result.json
 
-3. If the JSON result contains a non-empty agentTasks array, use this agent's local capabilities, subscriptions, browser/cookie access, transcription tools, or model access to produce real primary content for each task. The content must meet the task's minimumContentQuality. Do not use title, description, or page metadata as the item body.
+3. Print the crawl result:
+cat /tmp/builder-blog-crawl-result.json
 
-4. If you completed agentTasks, write a sync payload to /tmp/builder-blog-agent-sync.json and run:
+If it contains a non-empty agentTasks array, this agent must complete those tasks with its own local capabilities, subscriptions, browser/cookie access, transcription tools, or model access. The content must meet each task's minimumContentQuality. Do not use title, description, or page metadata as the item body.
+
+4. If you completed agentTasks, write a sync payload to /tmp/builder-blog-agent-sync.json. Every agent-produced item must include rawJson.agentTaskId, rawJson.agentRuntime, rawJson.agentModel if known, rawJson.agentCompletedAt, rawJson.agentExecutionProof, and for YouTube rawJson.transcriptSource="agent-transcript" unless a better primary transcript source is used. Then run these commands exactly:
+BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs validate-agent-sync --tasks /tmp/builder-blog-crawl-result.json --file /tmp/builder-blog-agent-sync.json
 BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs sync-builders --file /tmp/builder-blog-agent-sync.json
 
-5. Report the final JSON result. Success means status is ok, localErrors is empty, and agentTasks is empty or all agentTasks were completed and synced. Already-synced posts should remain skipped.`,
+5. Report the crawl JSON plus any validate-agent-sync and sync-builders JSON. Success means status is ok, localErrors is empty, and agentTasks is empty or validate-agent-sync reports all tasks validated and sync-builders succeeds. Already-synced posts should remain skipped.`,
     cronPrompt: (origin: string) => `Set up the Builder Blog private library scheduled job.
 
 Execution contract:
@@ -60,7 +64,7 @@ crontab -l | grep 'builder-agent-runner.sh library-cron'
 5. Run one immediate smoke check:
 BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh library-cron
 
-If the smoke check JSON contains a non-empty agentTasks array, use the available local agent scheduler/runtime to complete and sync those tasks. The item body must be real primary content meeting minimumContentQuality, not a title, description, or page metadata.
+If the smoke check JSON contains a non-empty agentTasks array, the local agent runtime must complete and sync those tasks. The item body must be real primary content meeting minimumContentQuality, not a title, description, or page metadata. The agent-produced sync payload must pass validate-agent-sync before sync-builders is considered successful.
 
 Only if crontab is unavailable or blocked, install the same command and cadence through launchd or the local agent scheduler:
 0 */6 * * * BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1
@@ -69,8 +73,9 @@ The runner selection order is:
 1. BUILDER_BLOG_AGENT_COMMAND, if the user configured one
 2. Codex CLI
 3. Claude Code CLI
-4. Gemini CLI
-5. Non-AI library crawl fallback for simple supported sources only
+4. OpenClaw CLI
+5. Gemini CLI
+6. Non-AI library crawl fallback for simple supported sources only
 
 Do not duplicate an existing Builder Blog private library job.`,
   },
@@ -128,7 +133,8 @@ The runner selection order is:
 1. BUILDER_BLOG_AGENT_COMMAND, if the user configured one
 2. Codex CLI
 3. Claude Code CLI
-4. Gemini CLI
+4. OpenClaw CLI
+5. Gemini CLI
 
 If no local agent runtime is available, do not claim the digest cron is installed successfully. Record that the user must install/configure an agent or set BUILDER_BLOG_AGENT_COMMAND. Do not duplicate an existing Builder Blog digest feed job.`,
   },

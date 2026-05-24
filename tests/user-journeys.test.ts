@@ -163,6 +163,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /Copy cron prompt/);
   assert.match(skillPromptActions, /\/api\/skill\/bootstrap/);
   assert.match(skillPromptActions, /crawl-personal --days 30 --limit 3/);
+  assert.match(skillPromptActions, /validate-agent-sync/);
+  assert.match(skillPromptActions, /rawJson\.agentExecutionProof/);
   assert.match(skillPromptActions, /builder-agent-runner\.sh library-cron/);
   assert.match(skillPromptActions, /builder-agent-runner\.sh digest-cron/);
   assert.match(skillPromptActions, /BUILDER_BLOG_AGENT_COMMAND/);
@@ -178,10 +180,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /Do not use --force/);
   assert.doesNotMatch(skillPromptActions, /crawl-personal[^\n`]*--force/);
   assert.match(cli, /realpathSync\(fileURLToPath\(import\.meta\.url\)\)/);
-  assert.match(cli, /realpathSync\(process\.argv\[1\]\)/);
+  assert.match(cli, /existsSync\(process\.argv\[1\]\)/);
+  assert.match(cli, /validate-agent-sync/);
   assert.match(runner, /BUILDER_BLOG_AGENT_COMMAND/);
   assert.match(runner, /codex exec --skip-git-repo-check/);
   assert.match(runner, /claude -p/);
+  assert.match(runner, /openclaw agent --local --message/);
   assert.match(runner, /gemini -p/);
   assert.match(runner, /No local agent runtime found/);
   assert.match(runner, /refresh_skill_files/);
@@ -201,8 +205,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skill, /Install From Web App/);
   assert.match(skill, /Scheduled Jobs/);
   assert.match(skill, /builder-agent-runner\.sh digest-cron/);
+  assert.match(skill, /OpenClaw CLI/);
+  assert.match(skill, /validate-agent-sync/);
   assert.match(skill, /~\/\.builder-blog\/builder-digest\.mjs/);
   assert.match(libraryCronPrompt, /crawl-personal --days 30 --limit 3/);
+  assert.match(libraryCronPrompt, /validate-agent-sync/);
+  assert.match(libraryCronPrompt, /rawJson\.agentTaskId/);
   assert.match(libraryCronPrompt, /Run these steps exactly/);
   assert.match(libraryCronPrompt, /Only use agent judgment/);
   assert.match(digestCronPrompt, /prepare --days 1/);
