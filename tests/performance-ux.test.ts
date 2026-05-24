@@ -311,6 +311,12 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
   assert.match(buildersPage, /library-section-panel-indented/);
   assert.doesNotMatch(buildersPage, /Central defaults|Central library/);
   assert.match(buildersPage, /BuilderFeedItems/);
+  assert.match(buildersPage, /AddBuilderForm/);
+  assert.match(buildersPage, /addPersonalBuilderAction/);
+  assert.match(buildersPage, /name="sourceType"/);
+  assert.match(buildersPage, /name="handle"/);
+  assert.match(buildersPage, /name="sourceUrl"/);
+  assert.match(buildersPage, /name="crawlUrl"/);
   assert.match(builderFeedItems, /"use client"/);
   assert.match(builderFeedItems, /fetch\(`\/api\/builders\/\$\{builderId\}\/feed-items`/);
   assert.match(builderFeedItems, /Crawled posts/);
@@ -381,6 +387,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /orderBy:\s*\[\{ kind: "desc" \}, \{ importCount: "desc" \}, \{ viewCount: "desc" \}/);
   assert.match(hubImportForm, /libraryId/);
   assert.match(actions, /sharePersonalLibraryToHub/);
+  assert.match(actions, /addPersonalBuilderAction/);
+  assert.match(actions, /BuilderScope\.PERSONAL/);
+  assert.match(actions, /BuilderPoolOrigin\.PERSONAL_SYNC/);
+  assert.match(actions, /builderKindForSourceType/);
   assert.match(visibilityRoute, /unsharePersonalLibraryFromHub/);
   assert.doesNotMatch(actions, /importLibrariesFromHub/);
   assert.match(skillRoute, /crawlingTool: "Legacy crawl\/import"/);
