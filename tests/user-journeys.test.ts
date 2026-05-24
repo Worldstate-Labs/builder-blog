@@ -182,6 +182,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /claude -p/);
   assert.match(runner, /gemini -p/);
   assert.match(runner, /No local agent runtime found/);
+  assert.match(runner, /refresh_skill_files/);
+  assert.match(runner, /api\/skill\/files\/builder-digest\.mjs/);
   assert.match(skillFileRoute, /builder-blog-digest\.md/);
   assert.match(skillFileRoute, /builder-blog-library-cron\.md/);
   assert.match(skillFileRoute, /builder-blog-digest-cron\.md/);
@@ -192,6 +194,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-agent-runner\.sh/);
   assert.match(bootstrapRoute, /jobs\/library-cron\.md/);
   assert.match(bootstrapRoute, /jobs\/digest-cron\.md/);
+  assert.match(bootstrapRoute, /login already configured/);
+  assert.match(bootstrapRoute, /config\.json/);
   assert.match(skill, /Install From Web App/);
   assert.match(skill, /Scheduled Jobs/);
   assert.match(skill, /builder-agent-runner\.sh digest-cron/);

@@ -14,13 +14,26 @@ if [ -z "$JOB_NAME" ]; then
   exit 64
 fi
 
+mkdir -p "$AGENT_DIR/logs" "$AGENT_DIR/tmp"
+
+refresh_skill_files() {
+  mkdir -p "$AGENT_DIR" "$AGENT_DIR/jobs" "$AGENT_DIR/logs" "$AGENT_DIR/tmp"
+  curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest.md" -o "$AGENT_DIR/SKILL.md"
+  curl -fsSL "$APP_URL/api/skill/files/builder-digest.mjs" -o "$AGENT_DIR/builder-digest.mjs"
+  curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-cron.md" -o "$AGENT_DIR/jobs/library-cron.md"
+  curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest-cron.md" -o "$AGENT_DIR/jobs/digest-cron.md"
+  chmod +x "$AGENT_DIR/builder-digest.mjs"
+}
+
+if [ ! -f "$PROMPT_FILE" ]; then
+  refresh_skill_files
+fi
+
 if [ ! -f "$PROMPT_FILE" ]; then
   echo "Missing Builder Blog job prompt: $PROMPT_FILE" >&2
   echo "Run: /bin/sh -c \"\$(curl -fsSL $APP_URL/api/skill/bootstrap)\"" >&2
   exit 66
 fi
-
-mkdir -p "$AGENT_DIR/logs" "$AGENT_DIR/tmp"
 
 run_with_override() {
   BUILDER_BLOG_JOB="$JOB_NAME" BUILDER_BLOG_PROMPT_FILE="$PROMPT_FILE" sh -c "$BUILDER_BLOG_AGENT_COMMAND"
@@ -41,6 +54,7 @@ run_with_gemini() {
 run_shell_library_fallback() {
   echo "No local agent runtime found; running non-AI library crawl fallback." >&2
   echo "Sources requiring AI, cookies, transcription, or custom tools will need BUILDER_BLOG_AGENT_COMMAND, codex, claude, or gemini." >&2
+  refresh_skill_files
   node "$AGENT_DIR/builder-digest.mjs" crawl-personal --days 30 --limit 3
 }
 

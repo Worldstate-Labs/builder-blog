@@ -148,6 +148,70 @@ test("personal YouTube crawler maps feed entries into syncable episodes", async 
   assert.equal(videos[0].description, "Practical agent lessons.");
 });
 
+test("personal YouTube crawler retries transient feed failures", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const calls: string[] = [];
+  const result = await cli.fetchYouTubeVideos(
+    "https://www.youtube.com/@ExampleBuilder",
+    async (url: string) => {
+      calls.push(url);
+      if (url === "https://www.youtube.com/@ExampleBuilder") {
+        return new Response('<html>{"externalId":"UCabcdefghijklmnopqrstuvwx"}</html>');
+      }
+      if (calls.filter((call) => call.includes("/feeds/videos.xml")).length === 1) {
+        return new Response("not ready", { status: 404 });
+      }
+      return new Response(`
+        <feed>
+          <entry>
+            <yt:videoId>video456</yt:videoId>
+            <title>Retryable YouTube Feed</title>
+            <link rel="alternate" href="https://www.youtube.com/watch?v=video456" />
+          </entry>
+        </feed>
+      `);
+    },
+    { retryDelays: [0] },
+  );
+
+  assert.equal(result.sourceDetail, "YouTube RSS");
+  assert.equal(result.videos[0].videoId, "video456");
+  assert.equal(calls.filter((call) => call.includes("/feeds/videos.xml")).length, 2);
+});
+
+test("personal YouTube crawler falls back to channel videos page when RSS fails", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const result = await cli.fetchYouTubeVideos(
+    "https://www.youtube.com/@ExampleBuilder",
+    async (url: string) => {
+      if (url === "https://www.youtube.com/@ExampleBuilder") {
+        return new Response('<html>{"externalId":"UCabcdefghijklmnopqrstuvwx"}</html>');
+      }
+      if (url.includes("/feeds/videos.xml")) {
+        return new Response("unavailable", { status: 500 });
+      }
+      if (url === "https://www.youtube.com/@ExampleBuilder/videos") {
+        return new Response(`
+          <html>
+            "videoId":"pageVideo123","title":{"runs":[{"text":"Fallback video title"}]}
+          </html>
+        `);
+      }
+      return new Response("missing", { status: 404 });
+    },
+    { retryDelays: [0] },
+  );
+
+  assert.equal(result.sourceDetail, "YouTube channel page");
+  assert.deepEqual(result.videos[0], {
+    videoId: "pageVideo123",
+    title: "Fallback video title",
+    url: "https://www.youtube.com/watch?v=pageVideo123",
+    publishedAt: null,
+    description: "",
+  });
+});
+
 test("personal crawler reports concrete crawling tool identity", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   assert.match(

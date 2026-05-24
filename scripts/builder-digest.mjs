@@ -402,19 +402,8 @@ function normalizeSourceType(sourceType) {
 async function crawlPersonalYouTubeBuilder(builder, { cutoff, limit, agentModel, seenItemKeys = new Set() }) {
   const sourceUrl = builder.crawlUrl || builder.sourceUrl;
   if (!sourceUrl) return [];
-  const feedUrl = await youtubeFeedUrl(sourceUrl);
-  if (!feedUrl) {
-    throw new Error(`Could not resolve a YouTube feed for ${sourceUrl}`);
-  }
-
-  const feedResponse = await fetch(feedUrl, {
-    headers: { "User-Agent": "BuilderBlogSkill/1.0 (personal YouTube crawler)" },
-  });
-  if (!feedResponse.ok) {
-    throw new Error(`Failed to fetch YouTube feed ${feedUrl}: HTTP ${feedResponse.status}`);
-  }
-
-  const videos = parseYouTubeFeed(await feedResponse.text(), feedUrl)
+  const { videos: crawledVideos, sourceDetail } = await fetchYouTubeVideos(sourceUrl);
+  const videos = crawledVideos
     .filter((video) => isAfterCutoff(video.publishedAt, cutoff))
     .filter((video) => !seenItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", video.videoId || video.url)))
     .slice(0, limit);
@@ -433,7 +422,7 @@ async function crawlPersonalYouTubeBuilder(builder, { cutoff, limit, agentModel,
       publishedAt: video.publishedAt,
       sourceName: builder.name,
       crawlingTool: skillCrawlingTool(
-        transcript ? "YouTube RSS + captions" : "YouTube RSS + feed description",
+        transcript ? `${sourceDetail} + captions` : `${sourceDetail} + feed description`,
         agentModel,
       ),
       rawJson: {
@@ -959,6 +948,77 @@ export async function youtubeFeedUrl(sourceUrl, fetcher = fetch) {
   return externalId ? `https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(externalId)}` : "";
 }
 
+export async function fetchYouTubeVideos(sourceUrl, fetcher = fetch, options = {}) {
+  const feedUrl = await youtubeFeedUrl(sourceUrl, fetcher);
+  if (!feedUrl) {
+    throw new Error(`Could not resolve a YouTube feed for ${sourceUrl}`);
+  }
+
+  const feedResponse = await fetchYouTubeFeedWithRetry(feedUrl, fetcher, options.retryDelays);
+  if (feedResponse.ok) {
+    return {
+      videos: parseYouTubeFeed(await feedResponse.text(), feedUrl),
+      sourceDetail: "YouTube RSS",
+    };
+  }
+
+  const pageVideos = await fetchYouTubePageVideos(sourceUrl, fetcher);
+  if (pageVideos.length > 0) {
+    return {
+      videos: pageVideos,
+      sourceDetail: "YouTube channel page",
+    };
+  }
+
+  throw new Error(`Failed to fetch YouTube feed ${feedUrl}: HTTP ${feedResponse.status}`);
+}
+
+async function fetchYouTubeFeedWithRetry(feedUrl, fetcher, retryDelays = [500, 1500]) {
+  let response;
+  for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
+    response = await fetcher(feedUrl, {
+      headers: { "User-Agent": "BuilderBlogSkill/1.0 (personal YouTube crawler)" },
+    });
+    if (response.ok || !shouldRetryYouTubeFeedStatus(response.status) || attempt === retryDelays.length) {
+      return response;
+    }
+    await new Promise((resolve) => setTimeout(resolve, retryDelays[attempt]));
+  }
+  return response;
+}
+
+function shouldRetryYouTubeFeedStatus(status) {
+  return status === 404 || status === 408 || status === 429 || status >= 500;
+}
+
+async function fetchYouTubePageVideos(sourceUrl, fetcher) {
+  const pageUrl = youtubeVideosPageUrl(sourceUrl);
+  if (!pageUrl) return [];
+  const response = await fetcher(pageUrl, {
+    headers: {
+      "User-Agent": "BuilderBlogSkill/1.0 (personal YouTube crawler)",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+  });
+  if (!response.ok) return [];
+  return parseYouTubePageData(await response.text());
+}
+
+function youtubeVideosPageUrl(sourceUrl) {
+  try {
+    const parsed = new URL(sourceUrl);
+    if (!/youtube\.com$/i.test(parsed.hostname.replace(/^www\./i, ""))) return "";
+    if (parsed.pathname.includes("/feeds/videos.xml")) return "";
+    if (parsed.pathname === "/playlist" || parsed.searchParams.get("list")) return parsed.href;
+    parsed.search = "";
+    parsed.hash = "";
+    parsed.pathname = `${parsed.pathname.replace(/\/$/, "")}/videos`;
+    return parsed.href;
+  } catch {
+    return "";
+  }
+}
+
 export function parseYouTubeFeed(xml, feedUrl) {
   const entries = [
     ...xml.matchAll(/<entry\b[\s\S]*?<\/entry>/gi),
@@ -979,6 +1039,27 @@ export function parseYouTubeFeed(xml, feedUrl) {
       };
     }),
   ).filter((candidate) => candidate.url);
+}
+
+export function parseYouTubePageData(html) {
+  const videos = [];
+  const videoRegex =
+    /"videoId":"([A-Za-z0-9_-]{6,})"[\s\S]{0,600}?"title":\{"runs":\[\{"text":"([^"]+)"/g;
+  const seen = new Set();
+  let match;
+  while ((match = videoRegex.exec(html)) !== null) {
+    const [, videoId, rawTitle] = match;
+    if (seen.has(videoId)) continue;
+    seen.add(videoId);
+    videos.push({
+      videoId,
+      title: decodeHtml(rawTitle.replace(/\\"/g, '"')),
+      url: `https://www.youtube.com/watch?v=${videoId}`,
+      publishedAt: null,
+      description: "",
+    });
+  }
+  return videos;
 }
 
 async function fetchYouTubeTranscript(videoUrl, fetcher = fetch) {
