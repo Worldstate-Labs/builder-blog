@@ -1,9 +1,11 @@
 Use the Builder Blog skill to run the scheduled private library job.
 
-This is an unattended scheduled run. Do not ask the user questions. Use the
-local Builder Blog CLI and the user's local credentials, API keys, cookies,
-subscriptions, browser access, media tools, and model tools when a source needs
-them.
+This is an unattended scheduled run. Do not ask the user questions.
+
+Run these steps exactly. If any command fails, stop and write the command, exit
+code, and stderr to the scheduled job log. Do not browse for extra context. Do
+not use `--force` unless the user explicitly requested a forced run in the
+scheduled job configuration.
 
 Before doing work, ensure the skill is installed:
 
@@ -21,10 +23,8 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" crawl-p
 Rules:
 
 - Skip posts that are already synced.
-- Do not use `--force` unless the user explicitly requested a forced run in the
-  scheduled job configuration.
-- If a source requires AI work, transcription, cookies, or custom access, use
-  the local agent environment and sync the resulting items through the Builder
-  Blog CLI.
+- Only use agent judgment if a source requires AI work, transcription, cookies,
+  or custom access. In that case, use the local agent environment and sync the
+  resulting items through the Builder Blog CLI.
 - If the run cannot complete without a missing credential or unsupported local
   capability, write the concrete reason to the scheduled job log and stop.

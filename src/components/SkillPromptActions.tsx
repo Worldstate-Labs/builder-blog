@@ -11,23 +11,49 @@ const PROMPT_CONFIG = {
     title: "Build library",
     onceLabel: "Copy once prompt",
     cronLabel: "Copy cron prompt",
-    oncePrompt: (origin: string) => `Use the Builder Blog skill to build my private library once.
+    oncePrompt: (origin: string) => `Build my Builder Blog private library once.
 
-If the skill is not installed or is out of date, run:
+Execution contract:
+- Run the commands exactly in order.
+- Do not substitute another workflow.
+- If any command fails, stop and report the command, exit code, and stderr.
+- Do not use --force.
+- Do not browse for extra context.
+- Only use agent judgment if the CLI reports that a personal source needs local cookies, credentials, transcription, or custom tooling.
+
+1. Install or refresh the skill:
 /bin/sh -c "$(curl -fsSL ${origin}/api/skill/bootstrap)"
 
-Then crawl and sync my personal builders:
+2. Crawl and sync my personal builders:
 BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3
 
-Use the user's local API keys, cookies, subscriptions, and model/audio tools when a source needs them. Skip posts that are already synced.`,
-    cronPrompt: (origin: string) => `Set up a scheduled agent job for my Builder Blog private library.
+3. Report the JSON result. Success means status is ok and localErrors is empty. Already-synced posts should remain skipped.`,
+    cronPrompt: (origin: string) => `Set up the Builder Blog private library scheduled job.
 
-If the skill is not installed or is out of date, run:
+Execution contract:
+- Run the commands exactly in order.
+- Do not substitute another workflow.
+- If any command fails, stop and report the command, exit code, and stderr.
+- Do not use --force.
+- Do not browse for extra context.
+- Only use agent judgment if the scheduled runner reports that a personal source needs local cookies, credentials, transcription, or custom tooling.
+
+1. Install or refresh the skill:
 /bin/sh -c "$(curl -fsSL ${origin}/api/skill/bootstrap)"
 
-This job may need AI, cookies, transcription, subscriptions, or custom local tools. Do not schedule a bare node command as the complete job. Schedule the Builder Blog agent runner, which detects the user's available local agent runtime.
+2. Create required directories:
+mkdir -p $HOME/.builder-blog/logs
 
-Install one idempotent schedule that runs every 6 hours:
+3. First attempt the exact crontab install below. It removes any previous Builder Blog library job and installs one idempotent job that runs every 6 hours:
+( crontab -l 2>/dev/null | grep -v 'builder-agent-runner.sh library-cron' ; echo '0 */6 * * * BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1' ) | crontab -
+
+4. Verify the installed schedule:
+crontab -l | grep 'builder-agent-runner.sh library-cron'
+
+5. Run one immediate smoke check:
+BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh library-cron
+
+Only if crontab is unavailable or blocked, install the same command and cadence through launchd or the local agent scheduler:
 0 */6 * * * BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1
 
 The runner selection order is:
@@ -37,30 +63,56 @@ The runner selection order is:
 4. Gemini CLI
 5. Non-AI library crawl fallback for simple supported sources only
 
-Use crontab when available; if the local system blocks crontab, use launchd or the local agent scheduler. Keep the job idempotent, verify the installed schedule, and do not duplicate an existing Builder Blog private library job.`,
+Do not duplicate an existing Builder Blog private library job.`,
   },
   digest: {
     title: "Build digest feed",
     onceLabel: "Copy once prompt",
     cronLabel: "Copy cron prompt",
-    oncePrompt: (origin: string) => `Use the Builder Blog skill to build my subscription digest feed once.
+    oncePrompt: (origin: string) => `Build my Builder Blog subscription digest feed once.
 
-If the skill is not installed or is out of date, run:
+Execution contract:
+- Run the commands exactly in order.
+- Do not substitute another workflow.
+- If any command fails, stop and report the command, exit code, and stderr.
+- Do not browse for extra context.
+- Only use agent judgment to write the digest body from the returned JSON items.
+
+1. Install or refresh the skill:
 /bin/sh -c "$(curl -fsSL ${origin}/api/skill/bootstrap)"
 
-Then fetch the digest context:
-BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs prepare --days 1
+2. Fetch the digest context and save it:
+BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs prepare --days 1 > /tmp/builder-blog-context.json
 
-Write a concise Chinese digest using only the returned items, include source URLs, save it to /tmp/builder-blog-digest.md, then sync it:
+3. Read /tmp/builder-blog-context.json. Write a concise Chinese digest using only context.items, include source URLs, and save it to /tmp/builder-blog-digest.md. If there are no items, write a short Chinese digest saying there were no new subscription updates.
+
+4. Sync the digest:
 BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs sync --file /tmp/builder-blog-digest.md --title "AI Builder Digest"`,
-    cronPrompt: (origin: string) => `Set up a scheduled agent job for my Builder Blog subscription digest feed.
+    cronPrompt: (origin: string) => `Set up the Builder Blog subscription digest scheduled job.
 
-If the skill is not installed or is out of date, run:
+Execution contract:
+- Run the commands exactly in order.
+- Do not substitute another workflow.
+- If any command fails, stop and report the command, exit code, and stderr.
+- Do not browse for extra context.
+- Only use agent judgment to write the digest body from the Builder Blog context items.
+
+1. Install or refresh the skill:
 /bin/sh -c "$(curl -fsSL ${origin}/api/skill/bootstrap)"
 
-Digest generation requires an agent because the scheduled job must read returned items, summarize them in Chinese, include source URLs, and sync the final digest. Do not schedule a bare node command as the complete job.
+2. Create required directories:
+mkdir -p $HOME/.builder-blog/logs
 
-Install one idempotent schedule that runs daily at 8:00 local time:
+3. First attempt the exact crontab install below. It removes any previous Builder Blog digest job and installs one idempotent job that runs daily at 8:00 local time:
+( crontab -l 2>/dev/null | grep -v 'builder-agent-runner.sh digest-cron' ; echo '0 8 * * * BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh digest-cron >> $HOME/.builder-blog/logs/digest-cron.log 2>&1' ) | crontab -
+
+4. Verify the installed schedule:
+crontab -l | grep 'builder-agent-runner.sh digest-cron'
+
+5. Run one immediate smoke check:
+BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh digest-cron
+
+Only if crontab is unavailable or blocked, install the same command and cadence through launchd or the local agent scheduler:
 0 8 * * * BUILDER_BLOG_URL="${origin}" $HOME/.builder-blog/builder-agent-runner.sh digest-cron >> $HOME/.builder-blog/logs/digest-cron.log 2>&1
 
 The runner selection order is:
@@ -69,7 +121,7 @@ The runner selection order is:
 3. Claude Code CLI
 4. Gemini CLI
 
-If no local agent runtime is available, do not claim the digest cron is installed successfully. Record that the user must install/configure an agent or set BUILDER_BLOG_AGENT_COMMAND. Use crontab, launchd, or the local agent's scheduler, keep the job idempotent, verify the installed schedule, and do not duplicate an existing Builder Blog digest feed job.`,
+If no local agent runtime is available, do not claim the digest cron is installed successfully. Record that the user must install/configure an agent or set BUILDER_BLOG_AGENT_COMMAND. Do not duplicate an existing Builder Blog digest feed job.`,
   },
 } satisfies Record<
   SkillPromptContext,

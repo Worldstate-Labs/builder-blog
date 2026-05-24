@@ -1,8 +1,9 @@
 Use the Builder Blog skill to run the scheduled subscription digest job.
 
-This is an unattended scheduled run. Do not ask the user questions. Generate a
-concise Chinese digest using only the context returned by Builder Blog, then
-sync it back to the web app.
+This is an unattended scheduled run. Do not ask the user questions.
+
+Run these steps exactly. If any command fails, stop and write the command, exit
+code, and stderr to the scheduled job log. Do not browse for extra context. Only use agent judgment to write the digest body from the Builder Blog context items.
 
 Before doing work, ensure the skill is installed:
 
@@ -10,11 +11,12 @@ Before doing work, ensure the skill is installed:
 /bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}/api/skill/bootstrap)"
 ```
 
-Fetch the digest context:
+Fetch the digest context and save it:
 
 ```bash
 BUILDER_BLOG_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}" \
-node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" prepare --days 1
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" prepare --days 1 \
+  > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/builder-blog-context.json"
 ```
 
 Write the final digest to:
@@ -34,7 +36,8 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" sync \
 
 Digest rules:
 
-- Use only returned `items`; do not browse the web and do not invent facts.
+- Use only `items` from `builder-blog-context.json`; do not browse the web and
+  do not invent facts.
 - Include source URLs for claims when item URLs are available.
 - Prioritize launches, technical insights, implementation details, business
   moves, and strong opinions.

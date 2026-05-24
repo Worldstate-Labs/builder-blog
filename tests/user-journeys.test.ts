@@ -166,8 +166,15 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /builder-agent-runner\.sh library-cron/);
   assert.match(skillPromptActions, /builder-agent-runner\.sh digest-cron/);
   assert.match(skillPromptActions, /BUILDER_BLOG_AGENT_COMMAND/);
+  assert.match(skillPromptActions, /Run the commands exactly in order/);
+  assert.match(skillPromptActions, /Do not substitute another workflow/);
+  assert.match(skillPromptActions, /If any command fails, stop/);
+  assert.match(skillPromptActions, /Only use agent judgment/);
+  assert.match(skillPromptActions, /Do not browse for extra context/);
+  assert.match(skillPromptActions, /First attempt the exact crontab install/);
   assert.match(skillPromptActions, /crontab/);
-  assert.doesNotMatch(skillPromptActions, /--force/);
+  assert.match(skillPromptActions, /Do not use --force/);
+  assert.doesNotMatch(skillPromptActions, /crawl-personal[^\n`]*--force/);
   assert.match(cli, /realpathSync\(fileURLToPath\(import\.meta\.url\)\)/);
   assert.match(cli, /realpathSync\(process\.argv\[1\]\)/);
   assert.match(runner, /BUILDER_BLOG_AGENT_COMMAND/);
@@ -190,8 +197,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skill, /builder-agent-runner\.sh digest-cron/);
   assert.match(skill, /~\/\.builder-blog\/builder-digest\.mjs/);
   assert.match(libraryCronPrompt, /crawl-personal --days 30 --limit 3/);
+  assert.match(libraryCronPrompt, /Run these steps exactly/);
+  assert.match(libraryCronPrompt, /Only use agent judgment/);
   assert.match(digestCronPrompt, /prepare --days 1/);
   assert.match(digestCronPrompt, /builder-blog-digest\.md/);
+  assert.match(digestCronPrompt, /Only use agent judgment to write the digest body/);
   assert.equal(skill.includes("/Users/jie/code/builder_blog"), false);
   assert.equal(skill.includes("node scripts/builder-digest.mjs"), false);
 });
