@@ -17,7 +17,7 @@ If the skill is not installed or is out of date, run:
 /bin/sh -c "$(curl -fsSL ${origin}/api/skill/bootstrap)"
 
 Then crawl and sync my personal builders:
-BUILDER_BLOG_URL="${origin}" node ~/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3
+BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3
 
 Use the user's local API keys, cookies, subscriptions, and model/audio tools when a source needs them. Skip posts that are already synced.`,
     cronPrompt: (origin: string) => `Set up a cron job for my Builder Blog private library.
@@ -25,10 +25,13 @@ Use the user's local API keys, cookies, subscriptions, and model/audio tools whe
 If the skill is not installed or is out of date, run:
 /bin/sh -c "$(curl -fsSL ${origin}/api/skill/bootstrap)"
 
-Add a cron entry that runs every 6 hours:
-0 */6 * * * BUILDER_BLOG_URL="${origin}" node ~/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3 >> ~/.builder-blog/crawl-personal.log 2>&1
+Resolve Node first so the scheduled job does not depend on an interactive shell PATH:
+NODE_BIN="$(command -v node)"
 
-Use crontab to install it, keep the job idempotent, and do not duplicate an existing Builder Blog private library cron entry.`,
+Add a cron entry that runs every 6 hours, using the absolute Node path:
+0 */6 * * * BUILDER_BLOG_URL="${origin}" \${NODE_BIN} $HOME/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3 >> $HOME/.builder-blog/crawl-personal.log 2>&1
+
+Use crontab when available; if the local system blocks crontab, use launchd or the local agent scheduler. Keep the job idempotent, verify the installed schedule, and do not duplicate an existing Builder Blog private library cron entry.`,
   },
   digest: {
     title: "Build digest feed",
@@ -40,21 +43,22 @@ If the skill is not installed or is out of date, run:
 /bin/sh -c "$(curl -fsSL ${origin}/api/skill/bootstrap)"
 
 Then fetch the digest context:
-BUILDER_BLOG_URL="${origin}" node ~/.builder-blog/builder-digest.mjs prepare --days 1
+BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs prepare --days 1
 
 Write a concise Chinese digest using only the returned items, include source URLs, save it to /tmp/builder-blog-digest.md, then sync it:
-BUILDER_BLOG_URL="${origin}" node ~/.builder-blog/builder-digest.mjs sync --file /tmp/builder-blog-digest.md --title "AI Builder Digest"`,
+BUILDER_BLOG_URL="${origin}" node $HOME/.builder-blog/builder-digest.mjs sync --file /tmp/builder-blog-digest.md --title "AI Builder Digest"`,
     cronPrompt: (origin: string) => `Set up an agent cron job for my Builder Blog subscription digest feed.
 
 If the skill is not installed or is out of date, run:
 /bin/sh -c "$(curl -fsSL ${origin}/api/skill/bootstrap)"
 
 Schedule it daily at 8:00 local time. Each run should:
-1. Run: BUILDER_BLOG_URL="${origin}" node ~/.builder-blog/builder-digest.mjs prepare --days 1
-2. Write a concise Chinese digest using only the returned items and source URLs to /tmp/builder-blog-digest.md
-3. Run: BUILDER_BLOG_URL="${origin}" node ~/.builder-blog/builder-digest.mjs sync --file /tmp/builder-blog-digest.md --title "AI Builder Digest"
+1. Resolve Node with: NODE_BIN="$(command -v node)"
+2. Run: BUILDER_BLOG_URL="${origin}" \${NODE_BIN} $HOME/.builder-blog/builder-digest.mjs prepare --days 1
+3. Write a concise Chinese digest using only the returned items and source URLs to /tmp/builder-blog-digest.md
+4. Run: BUILDER_BLOG_URL="${origin}" \${NODE_BIN} $HOME/.builder-blog/builder-digest.mjs sync --file /tmp/builder-blog-digest.md --title "AI Builder Digest"
 
-Use crontab or the local agent's scheduler, keep the job idempotent, and do not duplicate an existing Builder Blog digest feed cron job.`,
+Use crontab, launchd, or the local agent's scheduler, keep the job idempotent, verify the installed schedule, and do not duplicate an existing Builder Blog digest feed cron job.`,
   },
 } satisfies Record<
   SkillPromptContext,
