@@ -145,6 +145,17 @@ test("subscription user path is a digest subset of the active builder pool", () 
   );
 });
 
+test("personal builder removal deletes its crawled feed items instead of preserving crawl state", () => {
+  const libraryRoute = readFileSync("src/app/api/builders/[builderId]/library/route.ts", "utf8");
+
+  assert.match(libraryRoute, /BuilderScope\.PERSONAL/);
+  assert.match(libraryRoute, /ownerUserId === session\.user\.id/);
+  assert.match(libraryRoute, /prisma\.feedItem\.deleteMany/);
+  assert.match(libraryRoute, /prisma\.builder\.delete/);
+  assert.match(libraryRoute, /deletedFeedItems/);
+  assert.match(libraryRoute, /BuilderPoolOrigin\.HUB_IMPORT/);
+});
+
 test("skill sync user path accepts personal YouTube builders with synced feed items", () => {
   const parsed = parseSkillBuilderSyncPayload({
     force: true,

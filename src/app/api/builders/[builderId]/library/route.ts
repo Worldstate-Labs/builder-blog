@@ -1,4 +1,4 @@
-import { BuilderPoolOrigin } from "@prisma/client";
+import { BuilderPoolOrigin, BuilderScope } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -30,6 +30,33 @@ export async function DELETE(_request: Request, { params }: Params) {
       { error: "Imported library builders cannot be removed individually" },
       { status: 403 },
     );
+  }
+
+  const builder = await prisma.builder.findUnique({
+    where: { id: builderId },
+    select: { id: true, ownerUserId: true, scope: true },
+  });
+  if (builder?.scope === BuilderScope.PERSONAL && builder.ownerUserId === session.user.id) {
+    const feedItems = await prisma.feedItem.findMany({
+      where: { builderId },
+      select: { id: true },
+    });
+    const feedItemIds = feedItems.map((item) => item.id);
+    await prisma.$transaction([
+      prisma.feedItem.deleteMany({
+        where: { id: { in: feedItemIds } },
+      }),
+      prisma.builder.delete({
+        where: { id: builderId },
+      }),
+    ]);
+
+    return NextResponse.json({
+      builderId,
+      removed: true,
+      deletedBuilder: true,
+      deletedFeedItems: feedItemIds.length,
+    });
   }
 
   await prisma.$transaction([
