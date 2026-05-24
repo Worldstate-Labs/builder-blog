@@ -1,10 +1,10 @@
 import { BuilderKind, BuilderPoolOrigin, BuilderScope, LibraryHubKind } from "@prisma/client";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import { Bell, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { addPersonalBuilderAction } from "@/app/actions";
-import { SubscribeAllLibraryBuildersButton } from "@/components/BuilderLibraryActions";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
+import { BuilderLibraryStats } from "@/components/BuilderLibraryStats";
 import { FormSubmitButton } from "@/components/FormSubmitButton";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
@@ -119,15 +119,11 @@ export default async function BuildersPage() {
               Manage your library, subscriptions, and per-builder crawl history.
             </p>
           </div>
-          <div className="page-toolbar">
-            <span className="status-chip">{poolBuilders.length} in library</span>
-            <span className="status-chip">
-              <Bell className="h-3.5 w-3.5" />
-              {subscribedCount} subscribed
-            </span>
-            <span className="status-chip">{crawledItems} crawled</span>
-            <SubscribeAllLibraryBuildersButton />
-          </div>
+          <BuilderLibraryStats
+            initialCrawledItems={crawledItems}
+            initialInLibrary={poolBuilders.length}
+            initialSubscribed={subscribedCount}
+          />
         </section>
 
         <section className="mt-6 grid gap-5">

@@ -1,10 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { BuilderLibraryActions } from "@/components/BuilderLibraryActions";
 import { SourceBadge } from "@/components/SourceBadge";
+import {
+  builderLibraryStatsChanged,
+  builderLibrarySubscribeAll,
+  type BuilderLibraryStatsChange,
+} from "@/lib/builder-library-events";
 
 export type BuilderLibraryListItem = {
   id: string;
@@ -34,13 +39,44 @@ export function BuilderLibraryList({
 }: BuilderLibraryListProps) {
   const [removedBuilderIds, setRemovedBuilderIds] = useState<Set<string>>(() => new Set());
   const [removeErrors, setRemoveErrors] = useState<Record<string, string>>({});
+  const [subscribedByBuilderId, setSubscribedByBuilderId] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(builders.map((builder) => [builder.id, builder.subscribed])),
+  );
+
+  useEffect(() => {
+    function onSubscribeAll() {
+      setSubscribedByBuilderId((current) => ({
+        ...current,
+        ...Object.fromEntries(builders.map((builder) => [builder.id, true])),
+      }));
+    }
+
+    window.addEventListener(builderLibrarySubscribeAll, onSubscribeAll);
+    return () => window.removeEventListener(builderLibrarySubscribeAll, onSubscribeAll);
+  }, [builders]);
 
   const visibleBuilders = useMemo(
-    () => builders.filter((builder) => !removedBuilderIds.has(builder.id)),
-    [builders, removedBuilderIds],
+    () =>
+      builders
+        .filter((builder) => !removedBuilderIds.has(builder.id))
+        .map((builder) => ({
+          ...builder,
+          subscribed: subscribedByBuilderId[builder.id] ?? builder.subscribed,
+        })),
+    [builders, removedBuilderIds, subscribedByBuilderId],
   );
 
   function onRemoveStateChange(builderId: string, removed: boolean) {
+    const builder = builders.find((item) => item.id === builderId);
+    const subscribed = subscribedByBuilderId[builderId] ?? builder?.subscribed ?? false;
+    if (builder) {
+      dispatchStatsChange({
+        crawledDelta: removed ? -builder.feedItemCount : builder.feedItemCount,
+        inLibraryDelta: removed ? -1 : 1,
+        subscribedDelta: subscribed ? (removed ? -1 : 1) : 0,
+      });
+    }
+
     setRemovedBuilderIds((current) => {
       const next = new Set(current);
       if (removed) {
@@ -59,6 +95,17 @@ export function BuilderLibraryList({
       }
       return next;
     });
+  }
+
+  function onSubscriptionStateChange(
+    builderId: string,
+    subscribed: boolean,
+    previousSubscribed: boolean,
+  ) {
+    setSubscribedByBuilderId((current) => ({ ...current, [builderId]: subscribed }));
+    if (subscribed !== previousSubscribed) {
+      dispatchStatsChange({ subscribedDelta: subscribed ? 1 : -1 });
+    }
   }
 
   if (visibleBuilders.length === 0) {
@@ -80,6 +127,7 @@ export function BuilderLibraryList({
           key={builder.id}
           removeError={removeErrors[builder.id]}
           onRemoveStateChange={onRemoveStateChange}
+          onSubscriptionStateChange={onSubscriptionStateChange}
         />
       ))}
     </>
@@ -89,10 +137,16 @@ export function BuilderLibraryList({
 function BuilderCard({
   builder,
   onRemoveStateChange,
+  onSubscriptionStateChange,
   removeError,
 }: {
   builder: BuilderLibraryListItem;
   onRemoveStateChange: (builderId: string, removed: boolean) => void;
+  onSubscriptionStateChange: (
+    builderId: string,
+    subscribed: boolean,
+    previousSubscribed: boolean,
+  ) => void;
   removeError?: string;
 }) {
   return (
@@ -104,7 +158,9 @@ function BuilderCard({
             allowRemove={builder.allowRemove}
             builderId={builder.id}
             initialSubscribed={builder.subscribed}
+            key={`${builder.id}:${builder.subscribed}`}
             onRemoveStateChange={onRemoveStateChange}
+            onSubscriptionStateChange={onSubscriptionStateChange}
           />
         </div>
       </div>
@@ -120,6 +176,10 @@ function BuilderCard({
       />
     </article>
   );
+}
+
+function dispatchStatsChange(detail: BuilderLibraryStatsChange) {
+  window.dispatchEvent(new CustomEvent(builderLibraryStatsChanged, { detail }));
 }
 
 function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {

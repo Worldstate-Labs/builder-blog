@@ -8,9 +8,18 @@ type BuilderLibraryActionsProps = {
   builderId: string;
   initialSubscribed: boolean;
   onRemoveStateChange?: (builderId: string, removed: boolean) => void;
+  onSubscriptionStateChange?: (
+    builderId: string,
+    subscribed: boolean,
+    previousSubscribed: boolean,
+  ) => void;
 };
 
-export function SubscribeAllLibraryBuildersButton() {
+export function SubscribeAllLibraryBuildersButton({
+  onSubscribedAll,
+}: {
+  onSubscribedAll?: () => void;
+}) {
   const [phase, setPhase] = useState<"idle" | "done" | "error">("idle");
   const [isPending, startTransition] = useTransition();
 
@@ -23,6 +32,7 @@ export function SubscribeAllLibraryBuildersButton() {
           method: "POST",
         });
         if (!response.ok) throw new Error("Unable to subscribe builders");
+        onSubscribedAll?.();
         setPhase("done");
       } catch {
         setPhase("error");
@@ -56,6 +66,7 @@ export function BuilderLibraryActions({
   builderId,
   initialSubscribed,
   onRemoveStateChange,
+  onSubscriptionStateChange,
 }: BuilderLibraryActionsProps) {
   const [subscribed, setSubscribed] = useState(initialSubscribed);
   const [removed, setRemoved] = useState(false);
@@ -66,8 +77,10 @@ export function BuilderLibraryActions({
 
   function updateSubscription() {
     if (isPending) return;
+    const previousSubscribed = subscribed;
     const nextSubscribed = !subscribed;
     setSubscribed(nextSubscribed);
+    onSubscriptionStateChange?.(builderId, nextSubscribed, previousSubscribed);
     setError(null);
 
     startTransition(async () => {
@@ -79,9 +92,14 @@ export function BuilderLibraryActions({
         });
         if (!response.ok) throw new Error("Unable to update subscription");
         const payload = (await response.json()) as { subscribed?: boolean };
-        setSubscribed(Boolean(payload.subscribed));
+        const confirmedSubscribed = Boolean(payload.subscribed);
+        setSubscribed(confirmedSubscribed);
+        if (confirmedSubscribed !== nextSubscribed) {
+          onSubscriptionStateChange?.(builderId, confirmedSubscribed, nextSubscribed);
+        }
       } catch {
-        setSubscribed(!nextSubscribed);
+        setSubscribed(previousSubscribed);
+        onSubscriptionStateChange?.(builderId, previousSubscribed, nextSubscribed);
         setError("Could not update subscription.");
       }
     });
