@@ -292,11 +292,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryOncePrompt, /summaryTasks/);
   assert.match(libraryOncePrompt, /single-post summary/);
   assert.match(libraryOncePrompt, /summaryInstructions\.prompt/);
-  assert.match(libraryOncePrompt, /summarize-tweets\.md/);
-  assert.match(libraryOncePrompt, /summarize-podcast\.md/);
-  assert.match(libraryOncePrompt, /summarize-blogs\.md/);
   assert.match(libraryOncePrompt, /do not read prompt files/);
   assert.match(libraryOncePrompt, /do not fetch `context\.prompts`/);
+  assert.match(libraryOncePrompt, /Summary task boundary/);
+  assert.doesNotMatch(libraryOncePrompt, /summarize-tweets\.md/);
+  assert.doesNotMatch(libraryOncePrompt, /summarize-podcast\.md/);
+  assert.doesNotMatch(libraryOncePrompt, /summarize-blogs\.md/);
   assert.match(libraryOncePrompt, /Do not add new sources, URLs, or feed items/);
   assert.match(libraryOncePrompt, /Do not use `--force`/);
   assert.match(libraryOncePrompt, /execution\s+contract, not as user-facing documentation/);
@@ -389,6 +390,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronPrompt, /summaryTasks/);
   assert.match(libraryCronPrompt, /single-post summary/);
   assert.match(libraryCronPrompt, /summaryInstructions\.prompt/);
+  assert.match(libraryCronPrompt, /Summary task boundary/);
+  assert.doesNotMatch(libraryCronPrompt, /summarize-tweets\.md/);
+  assert.doesNotMatch(libraryCronPrompt, /summarize-podcast\.md/);
+  assert.doesNotMatch(libraryCronPrompt, /summarize-blogs\.md/);
   assert.match(libraryCronPrompt, /Run these steps exactly/);
   assert.match(libraryCronPrompt, /Only use agent judgment/);
   assert.match(libraryCronPrompt, /Agent discretion boundary/);

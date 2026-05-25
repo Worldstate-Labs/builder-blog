@@ -44,13 +44,18 @@ Environment contract:
   for this job is `/api/skill/bootstrap`.
 
 For every newly crawled or agent-produced post, also generate a concise Chinese
-single-post summary using `summaryInstructions.prompt` from the task. The CLI
-builds that prompt by adapting the source-specific reference prompt for the item
-kind: `summarize-tweets.md` for `TWEET`, `summarize-podcast.md` for
-`PODCAST_EPISODE`, and `summarize-blogs.md` for `BLOG_POST`. These filenames are
-only provenance labels; do not read prompt files, do not fetch `context.prompts`,
-and do not use the digest-feed prompt directly at runtime. Follow the task's
-embedded single-post prompt.
+single-post summary. The CLI embeds the correct source-specific prompt in
+`summaryInstructions.prompt`; follow that embedded prompt directly. Do not read
+prompt files, do not fetch `context.prompts`, and do not use any separate digest
+prompt at runtime.
+
+Summary task boundary:
+- `agentTasks` are for items the normal crawler could not produce. Complete the
+  extraction first, then write `summary` for that same agent-produced item using
+  `task.summaryInstructions.prompt` before syncing it.
+- `summaryTasks` are for items the normal crawler already produced and synced,
+  but that still need an agent-written `summary`. They do not require extracting
+  the item body again.
 
 1. Install or refresh the skill:
 

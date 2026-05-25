@@ -384,11 +384,7 @@ export function singlePostSummaryInstructions(kind, prompts = {}) {
     sourceUrlRequired: true,
     useOnlySuppliedItem: true,
     prompt: singlePostSummaryPrompt(source),
-    sourcePrompt: {
-      key: source.key,
-      file: source.file,
-      role: "reference_material_used_to_build_this_single_post_prompt",
-    },
+    summaryStyle: source.style,
   };
 }
 
@@ -396,7 +392,7 @@ function singlePostSummaryPrompt(source) {
   return [
     "Write one concise Chinese FollowBrief single-post summary.",
     "",
-    `This prompt is adapted from the source-specific reference prompt ${source.file}. The reference rules are embedded below for calibration; do not read external prompt files, do not fetch context.prompts, and do not write a multi-post digest.`,
+    `Use the ${source.label} summary rules below. This task is self-contained: do not read external prompt files, do not fetch context.prompts, and do not write a multi-post digest.`,
     "",
     "Reference rules:",
     source.body || source.fallback,
@@ -416,8 +412,8 @@ function singlePostSummaryPrompt(source) {
 function summaryPromptReferenceForKind(kind, prompts = {}) {
   if (kind === "TWEET") {
     return {
-      key: "summarizeTweets",
-      file: "summarize-tweets.md",
+      style: "x_twitter",
+      label: "X/Twitter",
       body: prompts.summarizeTweets ?? null,
       fallback:
         "Summarize substantive original X/Twitter content from an AI builder. Skip weak promotional content, mundane posts, retweets without commentary, and engagement bait. For threads, summarize the full thread cohesively. Mention tools, demos, launches, resources, bold predictions, or contrarian takes when present.",
@@ -427,8 +423,8 @@ function summaryPromptReferenceForKind(kind, prompts = {}) {
   }
   if (kind === "PODCAST_EPISODE") {
     return {
-      key: "summarizePodcast",
-      file: "summarize-podcast.md",
+      style: "podcast_or_video",
+      label: "podcast/video",
       body: prompts.summarizePodcast ?? null,
       fallback:
         "Summarize a podcast or video transcript for a busy professional. Lead with the most important takeaway, prioritize counterintuitive or specific insights, include direct quotes only when present in the transcript, and include the specific episode or video URL.",
@@ -437,8 +433,8 @@ function summaryPromptReferenceForKind(kind, prompts = {}) {
     };
   }
   return {
-    key: "summarizeBlogs",
-    file: "summarize-blogs.md",
+    style: "blog_or_document",
+    label: "blog/document",
     body: prompts.summarizeBlogs ?? null,
     fallback:
       "Summarize a blog post from an AI company or builder. Lead with the core announcement, finding, or insight; include named products, features, research results, numbers, benchmarks, practical implications, and direct quotes only when present in the article body.",

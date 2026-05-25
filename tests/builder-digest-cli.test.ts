@@ -496,8 +496,8 @@ test("summary tasks carry embedded source-specific single-post prompts", async (
   );
 
   assert.deepEqual(
-    tasks.map((task: { summaryInstructions: { sourcePrompt: { key: string } } }) => task.summaryInstructions.sourcePrompt.key),
-    ["summarizeTweets", "summarizePodcast", "summarizeBlogs"],
+    tasks.map((task: { summaryInstructions: { summaryStyle: string } }) => task.summaryInstructions.summaryStyle),
+    ["x_twitter", "podcast_or_video", "blog_or_document"],
   );
   for (const task of tasks) {
     assert.match(task.summaryInstructions.prompt, /Write one concise Chinese FollowBrief single-post summary/);
@@ -508,6 +508,7 @@ test("summary tasks carry embedded source-specific single-post prompts", async (
   assert.match(tasks[0].summaryInstructions.prompt, /tweet prompt body/);
   assert.match(tasks[1].summaryInstructions.prompt, /podcast prompt body/);
   assert.match(tasks[2].summaryInstructions.prompt, /blog prompt body/);
+  assert.equal(tasks[0].summaryInstructions.sourcePrompt, undefined);
 });
 
 test("agent sync validation rejects YouTube metadata masquerading as content", async () => {
