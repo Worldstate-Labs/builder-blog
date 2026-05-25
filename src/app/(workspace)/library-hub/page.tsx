@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { LibraryHubImportForm, type HubLibrary } from "@/components/LibraryHubImportForm";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
@@ -6,7 +7,33 @@ import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
 import { adminCommunityLibraryName, recordLibraryHubViews } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 
-export default async function LibraryHubPage() {
+type LibraryHubPageData = Awaited<ReturnType<typeof loadLibraryHubPageData>>;
+
+export default function LibraryHubPage() {
+  const dataPromise = loadLibraryHubPageData();
+
+  return (
+    <div className="page-pad">
+      <section className="page-header">
+        <div>
+          <h1 className="page-title">Library Hub</h1>
+          <p className="page-description">
+            Import shared source libraries into your pool.
+          </p>
+        </div>
+        <Suspense fallback={<span className="status-chip" aria-busy="true">Loading</span>}>
+          <LibraryHubCount dataPromise={dataPromise} />
+        </Suspense>
+      </section>
+
+      <Suspense fallback={<LibraryHubImportFallback />}>
+        <LibraryHubImportSection dataPromise={dataPromise} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function loadLibraryHubPageData() {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
   await ensureDefaultCommunityLibraryImport(session.user.id);
@@ -63,20 +90,61 @@ export default async function LibraryHubPage() {
     };
   });
 
-  return (
-    <div className="page-pad">
-      <section className="page-header">
-        <div>
-          <h1 className="page-title">Library Hub</h1>
-          <p className="page-description">
-            Import shared source libraries into your pool.
-          </p>
-        </div>
-        <span className="status-chip">{libraries.length} libraries</span>
-      </section>
+  return { hubLibraries, libraryCount: libraries.length };
+}
 
-      <LibraryHubImportForm libraries={hubLibraries} />
-    </div>
+async function LibraryHubCount({
+  dataPromise,
+}: {
+  dataPromise: Promise<LibraryHubPageData>;
+}) {
+  const data = await dataPromise;
+
+  return <span className="status-chip">{data.libraryCount} libraries</span>;
+}
+
+async function LibraryHubImportSection({
+  dataPromise,
+}: {
+  dataPromise: Promise<LibraryHubPageData>;
+}) {
+  const data = await dataPromise;
+
+  return <LibraryHubImportForm libraries={data.hubLibraries} />;
+}
+
+function LibraryHubImportFallback() {
+  return (
+    <section className="mt-6" aria-live="polite" aria-busy="true">
+      <div className="library-hub-toolbar">
+        <div>
+          <h2 className="section-heading">Available libraries</h2>
+          <div className="mt-2 h-4 max-w-lg rounded bg-black/10" />
+        </div>
+        <div className="library-hub-counts">
+          <span>Loading</span>
+        </div>
+        <div className="h-11 w-36 rounded-full bg-black/10" />
+      </div>
+      <div className="library-hub-grid mt-5">
+        {Array.from({ length: 4 }, (_, index) => (
+          <div className="library-hub-card" key={index}>
+            <div className="library-hub-card-header">
+              <div className="min-w-0 flex-1">
+                <div className="h-4 w-28 rounded bg-black/10" />
+                <div className="mt-3 h-6 w-44 rounded bg-black/10" />
+                <div className="mt-3 h-4 max-w-sm rounded bg-black/10" />
+              </div>
+              <div className="h-7 w-20 rounded-full bg-black/10" />
+            </div>
+            <div className="library-hub-sources">
+              <div className="h-10 rounded-lg bg-black/10" />
+              <div className="h-10 rounded-lg bg-black/10" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

@@ -5,6 +5,7 @@ import { AddBuilderForm } from "@/components/AddBuilderForm";
 import { BuilderLibraryAutoRefresh } from "@/components/BuilderLibraryAutoRefresh";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
 import { BuilderLibraryStats } from "@/components/BuilderLibraryStats";
+import { LibraryImportRemoveButton } from "@/components/LibraryImportRemoveButton";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import { isAdminEmail } from "@/lib/admin";
@@ -278,6 +279,13 @@ async function BuilderSections({
               badge="imported"
               count={library.builders.length}
               indented
+              action={
+                <LibraryImportRemoveButton
+                  builderCount={library.builders.length}
+                  libraryId={library.id}
+                  libraryName={library.name}
+                />
+              }
             >
               <BuilderLibraryList
                 builders={library.builders.map((builder) =>
@@ -374,6 +382,7 @@ function LibrarySection({
   count,
   defaultOpen = false,
   indented = false,
+  action,
   children,
 }: {
   title: string;
@@ -382,6 +391,7 @@ function LibrarySection({
   count: number;
   defaultOpen?: boolean;
   indented?: boolean;
+  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -397,6 +407,7 @@ function LibrarySection({
         <div className="library-section-meta">
           <span className="kind-pill">{badge}</span>
           <span className="sub-pill">{count} sources</span>
+          {action}
         </div>
       </summary>
       <div className="library-section-body">{children}</div>

@@ -284,20 +284,27 @@ test("user library search can fetch operator-only candidate sets", () => {
   assert.match(userSearch, /digestSearchConditions\(terms\)/);
 });
 
-test("heavy route sections use route or local loading fallbacks", () => {
+test("primary tabs use local loading fallbacks instead of full-route loaders", () => {
+  assert.equal(existsSync(join(root, "src/app/history/loading.tsx")), true);
   for (const path of [
     "src/app/(workspace)/admin/loading.tsx",
-    "src/app/history/loading.tsx",
+    "src/app/(workspace)/builders/loading.tsx",
     "src/app/(workspace)/library-hub/loading.tsx",
     "src/app/(workspace)/search/loading.tsx",
   ]) {
-    assert.equal(existsSync(join(root, path)), true, path);
+    assert.equal(existsSync(join(root, path)), false, path);
   }
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
-  assert.equal(existsSync(join(root, "src/app/(workspace)/builders/loading.tsx")), false);
+  const libraryHubPage = source("src/app/(workspace)/library-hub/page.tsx");
+  const searchPage = source("src/app/(workspace)/search/page.tsx");
+  const adminPage = source("src/app/(workspace)/admin/page.tsx");
   assert.match(buildersPage, /<Suspense fallback=\{<BuilderStatsFallback \/>/);
   assert.match(buildersPage, /<Suspense fallback=\{<BuilderSectionsFallback \/>/);
   assert.match(buildersPage, /function BuilderSectionsFallback/);
+  assert.match(libraryHubPage, /<Suspense fallback=\{<LibraryHubImportFallback \/>/);
+  assert.match(libraryHubPage, /function LibraryHubImportFallback/);
+  assert.match(searchPage, /<Suspense[\s\S]*fallback=\{[\s\S]*<SearchResultsFallback/);
+  assert.match(adminPage, /<Suspense fallback=\{<AdminStatsFallback \/>/);
 });
 
 test("builders page avoids a global crawled-content query", () => {
@@ -371,6 +378,7 @@ test("library hub exposes share and multi-import flows", () => {
   const builderLibraryEvents = source("src/lib/builder-library-events.ts");
   const builderLibraryState = source("src/lib/builder-library-state.ts");
   const builderLibraryStateRoute = source("src/app/api/builders/library-state/route.ts");
+  const libraryImportRemoveButton = source("src/components/LibraryImportRemoveButton.tsx");
   const builderPool = source("src/lib/builder-pool.ts");
   const visibilityRoute = source("src/app/api/library-hub/personal-availability/route.ts");
   const builderSubscriptionRoute = source("src/app/api/builders/[builderId]/subscription/route.ts");
@@ -472,11 +480,18 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /Community Library is added to new accounts automatically/);
   assert.match(hubImportForm, /selectableCount/);
   assert.match(hubImportForm, /In library/);
+  assert.match(hubImportForm, /method: "DELETE"/);
+  assert.match(hubImportForm, /Remove/);
   assert.doesNotMatch(hubImportForm, /library\.kind === "CENTRAL"/);
   assert.match(hubImportForm, /libraryId/);
   assert.match(hubImportRoute, /export async function POST/);
+  assert.match(hubImportRoute, /export async function DELETE/);
   assert.match(hubImportRoute, /importLibrariesFromHub/);
+  assert.match(hubImportRoute, /removeLibraryImportFromHub/);
   assert.doesNotMatch(hubImportRoute, /redirect\(/);
+  assert.match(libraryImportRemoveButton, /router\.refresh/);
+  assert.match(libraryImportRemoveButton, /event\.stopPropagation/);
+  assert.match(buildersPage, /LibraryImportRemoveButton/);
   assert.match(hubPage, /importCount/);
   assert.match(hubPage, /viewCount/);
   assert.match(hubPage, /orderBy:\s*\[\{ kind: "desc" \}, \{ importCount: "desc" \}, \{ viewCount: "desc" \}/);
@@ -490,6 +505,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(schema, /adminCommunityLibraryHidden/);
   assert.match(builderPool, /ensureDefaultCommunityLibraryImport/);
   assert.match(builderPool, /isAdminEmail\(user\.email\)/);
+  assert.match(builderPool, /adminCommunityLibraryHidden/);
   assert.match(builderPool, /BuilderPoolOrigin\.HUB_IMPORT/);
   assert.match(builderPool, /prisma\.libraryImport/);
 });

@@ -38,9 +38,15 @@ export async function activePoolBuilderIds(userId: string) {
 export async function ensureDefaultCommunityLibraryImport(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { email: true },
+    select: {
+      email: true,
+      feedPreference: { select: { adminCommunityLibraryHidden: true } },
+    },
   });
   if (!user || isAdminEmail(user.email)) return { imported: false, builderCount: 0 };
+  if (user.feedPreference?.adminCommunityLibraryHidden) {
+    return { imported: false, builderCount: 0 };
+  }
 
   const adminUsers = await prisma.user.findMany({
     where: { email: { in: adminEmails() } },

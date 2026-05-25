@@ -202,14 +202,23 @@ test("non-admin users default-import the admin community library", () => {
   const builderPool = readFileSync("src/lib/builder-pool.ts", "utf8");
   const buildersPage = readFileSync("src/app/(workspace)/builders/page.tsx", "utf8");
   const hubPage = readFileSync("src/app/(workspace)/library-hub/page.tsx", "utf8");
+  const hubImportRoute = readFileSync("src/app/api/library-hub/imports/route.ts", "utf8");
+  const libraryHub = readFileSync("src/lib/library-hub.ts", "utf8");
 
   assert.match(builderPool, /activePoolBuilderIds/);
   assert.match(builderPool, /ensureDefaultCommunityLibraryImport\(userId\)/);
   assert.match(builderPool, /if \(!user \|\| isAdminEmail\(user\.email\)\)/);
+  assert.match(builderPool, /adminCommunityLibraryHidden/);
   assert.match(builderPool, /kind: "PERSONAL"/);
   assert.match(builderPool, /ownerUserId:\s*\{ in: adminUsers\.map/);
   assert.match(builderPool, /BuilderPoolOrigin\.HUB_IMPORT/);
   assert.match(builderPool, /libraryImport\.create/);
+  assert.match(libraryHub, /removeLibraryImportFromHub/);
+  assert.match(libraryHub, /stillImportedBuilderIds/);
+  assert.match(libraryHub, /removableBuilderIds/);
+  assert.match(libraryHub, /adminCommunityLibraryHidden: true/);
+  assert.match(libraryHub, /setAdminCommunityLibraryHidden\(params\.userId, false\)/);
+  assert.match(hubImportRoute, /export async function DELETE/);
   assert.match(buildersPage, /ensureDefaultCommunityLibraryImport\(session\.user\.id\)/);
   assert.match(hubPage, /ensureDefaultCommunityLibraryImport\(session\.user\.id\)/);
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { CheckCircle2, Download } from "lucide-react";
+import { CheckCircle2, Download, Trash2 } from "lucide-react";
 import { SourceBadge } from "@/components/SourceBadge";
 
 type HubLibraryBuilder = {
@@ -91,6 +91,32 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
     });
   }
 
+  function removeImported(libraryId: string) {
+    if (isPending) return;
+    const library = libraries.find((item) => item.id === libraryId);
+    if (!library || library.owned || !importedIds.has(libraryId)) return;
+    setError(null);
+    setImportedIds((current) => {
+      const next = new Set(current);
+      next.delete(libraryId);
+      return next;
+    });
+
+    startTransition(async () => {
+      try {
+        const response = await fetch("/api/library-hub/imports", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ libraryId }),
+        });
+        if (!response.ok) throw new Error("Unable to remove library import");
+      } catch {
+        setImportedIds((current) => new Set([...current, libraryId]));
+        setError("Could not remove imported library.");
+      }
+    });
+  }
+
   return (
     <section className="mt-6">
       <div className="library-hub-toolbar">
@@ -148,10 +174,22 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
                 {library.owned ? (
                   <span className="sub-pill">Your library</span>
                 ) : imported ? (
-                  <span className="status-chip status-chip-success">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    In library
-                  </span>
+                  <div className="library-hub-card-actions">
+                    <span className="status-chip status-chip-success">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      In library
+                    </span>
+                    <button
+                      aria-label={`Remove ${library.name} from library`}
+                      className="button-light button-compact button-danger gap-2"
+                      disabled={isPending}
+                      onClick={() => removeImported(library.id)}
+                      type="button"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Remove
+                    </button>
+                  </div>
                 ) : (
                   <label className="hub-checkbox">
                     <input

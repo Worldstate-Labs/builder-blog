@@ -120,6 +120,7 @@ export async function importLibrariesFromHub(params: {
   const libraries = await prisma.libraryHubEntry.findMany({
     where: { id: { in: libraryIds } },
     include: {
+      owner: { select: { email: true } },
       items: {
         select: {
           builderId: true,
@@ -132,6 +133,7 @@ export async function importLibrariesFromHub(params: {
   let newImports = 0;
   for (const library of libraries) {
     if (library.ownerUserId === params.userId) continue;
+    const isAdminCommunityLibrary = isAdminEmail(library.owner?.email);
 
     for (const item of library.items) {
       await addBuilderToPool({
@@ -157,9 +159,81 @@ export async function importLibrariesFromHub(params: {
     } catch {
       // Import count tracks first-time imports; re-importing still refreshes pool membership.
     }
+
+    if (isAdminCommunityLibrary) {
+      await setAdminCommunityLibraryHidden(params.userId, false);
+    }
   }
 
   return { libraries: newImports, builders };
+}
+
+export async function removeLibraryImportFromHub(params: {
+  userId: string;
+  libraryId: string;
+}) {
+  const library = await prisma.libraryHubEntry.findUnique({
+    where: { id: params.libraryId },
+    include: {
+      owner: { select: { email: true } },
+      items: { select: { builderId: true } },
+    },
+  });
+  if (!library || library.ownerUserId === params.userId) {
+    return { removed: false, builders: 0 };
+  }
+
+  const builderIds = library.items.map((item) => item.builderId);
+  const otherImports = await prisma.libraryImport.findMany({
+    where: {
+      userId: params.userId,
+      hubEntryId: { not: params.libraryId },
+    },
+    include: {
+      hubEntry: {
+        include: {
+          items: { select: { builderId: true } },
+        },
+      },
+    },
+  });
+  const stillImportedBuilderIds = new Set(
+    otherImports.flatMap((item) => item.hubEntry.items.map((hubItem) => hubItem.builderId)),
+  );
+  const removableBuilderIds = builderIds.filter(
+    (builderId) => !stillImportedBuilderIds.has(builderId),
+  );
+
+  await prisma.$transaction([
+    prisma.subscription.deleteMany({
+      where: { userId: params.userId, builderId: { in: removableBuilderIds } },
+    }),
+    prisma.builderPoolEntry.updateMany({
+      where: {
+        userId: params.userId,
+        builderId: { in: removableBuilderIds },
+        origin: BuilderPoolOrigin.HUB_IMPORT,
+      },
+      data: { removedAt: new Date() },
+    }),
+    prisma.libraryImport.deleteMany({
+      where: {
+        userId: params.userId,
+        hubEntryId: params.libraryId,
+      },
+    }),
+    ...(isAdminEmail(library.owner?.email)
+      ? [
+          prisma.userFeedPreference.upsert({
+            where: { userId: params.userId },
+            update: { adminCommunityLibraryHidden: true },
+            create: { userId: params.userId, adminCommunityLibraryHidden: true },
+          }),
+        ]
+      : []),
+  ]);
+
+  return { removed: true, builders: removableBuilderIds.length };
 }
 
 export async function recordLibraryHubViews(libraryIds: string[]) {
