@@ -2355,6 +2355,26 @@ a {
   min-width: 0;
 }
 
+.search-result-skeleton {
+  border-bottom: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
+  min-height: 7rem;
+  overflow: hidden;
+  padding-bottom: 1.35rem;
+  position: relative;
+}
+
+.search-result-skeleton::before {
+  background:
+    linear-gradient(color-mix(in oklch, var(--ink) 9%, transparent), color-mix(in oklch, var(--ink) 9%, transparent)) 0 0 / 12rem 1rem no-repeat,
+    linear-gradient(color-mix(in oklch, var(--ink) 13%, transparent), color-mix(in oklch, var(--ink) 13%, transparent)) 0 2.1rem / min(100%, 34rem) 1.45rem no-repeat,
+    linear-gradient(color-mix(in oklch, var(--ink) 8%, transparent), color-mix(in oklch, var(--ink) 8%, transparent)) 0 4.2rem / min(100%, 46rem) 1rem no-repeat,
+    linear-gradient(color-mix(in oklch, var(--ink) 8%, transparent), color-mix(in oklch, var(--ink) 8%, transparent)) 0 5.75rem / min(76%, 34rem) 1rem no-repeat;
+  border-radius: 8px;
+  content: "";
+  display: block;
+  height: 6.8rem;
+}
+
 .search-result {
   border-bottom: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
   max-width: 100%;

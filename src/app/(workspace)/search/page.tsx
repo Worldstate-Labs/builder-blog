@@ -1,6 +1,7 @@
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -135,66 +136,14 @@ export default async function SearchPage({
   const time = normalizeSearchTime(firstParam(params.time));
   const page = normalizePage(firstParam(params.page));
   const hasQuery = query.trim().length > 0;
-  const originalSearch = hasQuery
-    ? await searchUserLibrary({
-        userId: session.user.id,
-        query,
-        mode,
-        sort,
-        time,
-      })
-    : { candidateCount: 0, results: [] as SearchResult[] };
   const formParsedQuery = parseSearchQuery(query);
   const correctedQuery = hasQuery ? didYouMeanSearch(query) : null;
-  const originalFilteredResults =
-    typeFilter === "all"
-      ? originalSearch.results
-      : originalSearch.results.filter((result) => result.type === typeFilter);
-  const correctionSearch =
-    shouldUseCorrectedSearch({
-      correctedQuery,
-      originalResultCount: originalFilteredResults.length,
-    }) && correctedQuery
-      ? await searchUserLibrary({
-          userId: session.user.id,
-          query: correctedQuery,
-          mode,
-          sort,
-          time,
-        })
-      : null;
-  const isShowingCorrectedResults = Boolean(correctionSearch);
-  const activeQuery = correctionSearch && correctedQuery ? correctedQuery : query;
-  const results = correctionSearch?.results ?? originalSearch.results;
-  const candidateCount = correctionSearch?.candidateCount ?? originalSearch.candidateCount;
-  const typeCounts = countResultTypes(results);
-  const filteredResults =
-    typeFilter === "all" ? results : results.filter((result) => result.type === typeFilter);
-  const pageCount = Math.max(1, Math.ceil(filteredResults.length / searchPageSize));
-  const currentPage = Math.min(page, pageCount);
-  const visibleResults = filteredResults.slice(
-    (currentPage - 1) * searchPageSize,
-    currentPage * searchPageSize,
-  );
-  const relatedSearches = hasQuery ? relatedSearchSuggestions(activeQuery) : defaultSuggestions;
+  const relatedSearches = hasQuery ? relatedSearchSuggestions(query) : defaultSuggestions;
   const formSuggestions = [
     ...(correctedQuery ? [correctedQuery] : []),
     ...relatedSearches,
-    ...results.slice(0, 5).map((result) => result.title),
   ];
-  const activeFilters = hasQuery
-    ? buildActiveSearchFilters({ mode, query: activeQuery, sort, time, typeFilter })
-    : [];
-  const recoveryActions = hasQuery
-    ? buildSearchRecoveryActions({
-        activeFilterCount: activeFilters.length,
-        mode,
-        query: activeQuery,
-        sort,
-        time,
-        typeFilter,
-      })
-    : [];
+
   return (
     <div className={hasQuery ? "page-pad search-page search-page-active" : "page-pad search-page"}>
         <section className="search-hero">
@@ -215,7 +164,114 @@ export default async function SearchPage({
           />
         </section>
 
-        <section className="search-results-shell">
+        <Suspense
+          fallback={
+            <SearchResultsFallback
+              current={typeFilter}
+              hasQuery={hasQuery}
+              mode={mode}
+              query={query}
+              sort={sort}
+              time={time}
+            />
+          }
+          key={`${query}:${typeFilter}:${mode}:${sort}:${time}:${page}`}
+        >
+          <SearchResultsSection
+            correctedQuery={correctedQuery}
+            hasQuery={hasQuery}
+            mode={mode}
+            page={page}
+            query={query}
+            relatedSearches={relatedSearches}
+            sort={sort}
+            time={time}
+            typeFilter={typeFilter}
+            userId={session.user.id}
+          />
+        </Suspense>
+    </div>
+  );
+}
+
+async function SearchResultsSection({
+  correctedQuery,
+  hasQuery,
+  mode,
+  page,
+  query,
+  relatedSearches,
+  sort,
+  time,
+  typeFilter,
+  userId,
+}: {
+  correctedQuery: string | null;
+  hasQuery: boolean;
+  mode: SearchMode;
+  page: number;
+  query: string;
+  relatedSearches: string[];
+  sort: SearchSort;
+  time: SearchTimeRange;
+  typeFilter: SearchTypeFilter;
+  userId: string;
+}) {
+  const originalSearch = hasQuery
+    ? await searchUserLibrary({
+        userId,
+        query,
+        mode,
+        sort,
+        time,
+      })
+    : { candidateCount: 0, results: [] as SearchResult[] };
+  const originalFilteredResults =
+    typeFilter === "all"
+      ? originalSearch.results
+      : originalSearch.results.filter((result) => result.type === typeFilter);
+  const correctionSearch =
+    shouldUseCorrectedSearch({
+      correctedQuery,
+      originalResultCount: originalFilteredResults.length,
+    }) && correctedQuery
+      ? await searchUserLibrary({
+          userId,
+          query: correctedQuery,
+          mode,
+          sort,
+          time,
+        })
+      : null;
+  const isShowingCorrectedResults = Boolean(correctionSearch);
+  const activeQuery = correctionSearch && correctedQuery ? correctedQuery : query;
+  const results = correctionSearch?.results ?? originalSearch.results;
+  const candidateCount = correctionSearch?.candidateCount ?? originalSearch.candidateCount;
+  const typeCounts = countResultTypes(results);
+  const filteredResults =
+    typeFilter === "all" ? results : results.filter((result) => result.type === typeFilter);
+  const pageCount = Math.max(1, Math.ceil(filteredResults.length / searchPageSize));
+  const currentPage = Math.min(page, pageCount);
+  const visibleResults = filteredResults.slice(
+    (currentPage - 1) * searchPageSize,
+    currentPage * searchPageSize,
+  );
+  const activeFilters = hasQuery
+    ? buildActiveSearchFilters({ mode, query: activeQuery, sort, time, typeFilter })
+    : [];
+  const recoveryActions = hasQuery
+    ? buildSearchRecoveryActions({
+        activeFilterCount: activeFilters.length,
+        mode,
+        query: activeQuery,
+        sort,
+        time,
+        typeFilter,
+      })
+    : [];
+
+  return (
+    <section className="search-results-shell">
           <SearchTypeTabs
             counts={hasQuery ? typeCounts : null}
             current={typeFilter}
@@ -331,8 +387,51 @@ export default async function SearchPage({
               </details>
             </>
           )}
-        </section>
-    </div>
+    </section>
+  );
+}
+
+function SearchResultsFallback({
+  current,
+  hasQuery,
+  mode,
+  query,
+  sort,
+  time,
+}: {
+  current: SearchTypeFilter;
+  hasQuery: boolean;
+  mode: SearchMode;
+  query: string;
+  sort: SearchSort;
+  time: SearchTimeRange;
+}) {
+  return (
+    <section className="search-results-shell" aria-busy="true" aria-live="polite">
+      <SearchTypeTabs
+        counts={null}
+        current={current}
+        mode={mode}
+        query={query}
+        sort={sort}
+        time={time}
+      />
+      {hasQuery ? (
+        <>
+          <div className="search-meta-row">Updating results...</div>
+          <div className="search-results-list">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div className="search-result-skeleton" key={index} />
+            ))}
+          </div>
+        </>
+      ) : (
+        <EmptyState>
+          Enter a query to search across your builder library, crawled feed
+          inputs, and synced digest archive.
+        </EmptyState>
+      )}
+    </section>
   );
 }
 
