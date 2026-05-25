@@ -7,6 +7,7 @@ import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/Bu
 import { BuilderLibraryStats } from "@/components/BuilderLibraryStats";
 import { LibraryImportRemoveButton } from "@/components/LibraryImportRemoveButton";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
+import { MobileSourcesSwitcher } from "@/components/MobileSourcesSwitcher";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
@@ -225,93 +226,104 @@ async function BuilderSections({
       ? adminCommunityLibraryName
       : `${data.sessionUserName || data.sessionUserEmail || "Personal"} library`;
 
+  const privateSection = (
+    <LibrarySection
+      title={data.isAdmin ? adminCommunityLibraryName : "Private library"}
+      detail={data.isAdmin ? adminCommunityLibraryDescription : "Synced by your agent"}
+      badge={data.isAdmin ? "admin" : "private"}
+      count={data.privateBuilders.length}
+      defaultOpen
+      action={
+        <LibraryVisibilityToggle
+          compact
+          disabled={!data.isAdmin && data.privateBuilders.length === 0}
+          initialIsPublic={data.isPublicLibrary}
+          isAdminLibrary={data.isAdmin}
+          name={userLibraryName}
+        />
+      }
+    >
+      <SkillPromptActions context="library" />
+      <AddBuilderForm
+        sourceOptions={SOURCE_DEFINITIONS.filter((source) => source.id !== "pdf").map(
+          (source) => ({ id: source.id, label: source.label }),
+        )}
+      />
+      <BuilderLibraryList
+        acceptAddedBuilders
+        builders={data.privateBuilders.map((builder) =>
+          builderListItem({
+            allowRemove: true,
+            builder,
+            crawlLabel: "Agent synced",
+            latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
+            subscribed: data.subscribed.has(builder.id),
+          }),
+        )}
+        emptyBody="Add a source here, or sync richer crawled data from your agent later."
+        emptyTitle="No personal sources yet"
+      />
+    </LibrarySection>
+  );
+
+  const importedSection = (
+    <section className="grid gap-3">
+      <div className="at-desktop">
+        <h2 className="fb-section-heading">Imported libraries</h2>
+        <p className="mt-1 text-sm text-[var(--muted-strong)]">
+          Sources grouped by the shared library they came from.
+        </p>
+      </div>
+      <div className="imported-library-stack">
+        {data.importedLibrarySections.map((library) => (
+          <LibrarySection
+            key={library.id}
+            title={library.name}
+            detail={library.description || `Imported from ${library.ownerName}`}
+            badge="imported"
+            count={library.builders.length}
+            indented
+            action={
+              <LibraryImportRemoveButton
+                builderCount={library.builders.length}
+                libraryId={library.id}
+                libraryName={library.name}
+              />
+            }
+          >
+            <BuilderLibraryList
+              builders={library.builders.map((builder) =>
+                builderListItem({
+                  allowRemove: false,
+                  builder,
+                  crawlLabel:
+                    builder.scope === BuilderScope.CENTRAL ? "Webapp crawled" : "Hub imported",
+                  latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
+                  subscribed: data.subscribed.has(builder.id),
+                }),
+              )}
+              emptyBody="No active sources from this imported library."
+            />
+          </LibrarySection>
+        ))}
+        {data.importedLibrarySections.length === 0 ? (
+          <div className="fb-panel dashed text-[var(--muted-strong)]">
+            Import shared libraries from the Hub to see them here.
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+
   return (
     <section className="mt-6 grid gap-5">
       <BuilderLibraryAutoRefresh initialVersion={data.libraryState.version} />
-      <LibrarySection
-        title={data.isAdmin ? adminCommunityLibraryName : "Private library"}
-        detail={data.isAdmin ? adminCommunityLibraryDescription : "Synced by your agent"}
-        badge={data.isAdmin ? "admin" : "private"}
-        count={data.privateBuilders.length}
-        defaultOpen
-        action={
-          <LibraryVisibilityToggle
-            compact
-            disabled={!data.isAdmin && data.privateBuilders.length === 0}
-            initialIsPublic={data.isPublicLibrary}
-            isAdminLibrary={data.isAdmin}
-            name={userLibraryName}
-          />
-        }
-      >
-        <SkillPromptActions context="library" />
-        <AddBuilderForm
-          sourceOptions={SOURCE_DEFINITIONS.filter((source) => source.id !== "pdf").map(
-            (source) => ({ id: source.id, label: source.label }),
-          )}
-        />
-        <BuilderLibraryList
-          acceptAddedBuilders
-          builders={data.privateBuilders.map((builder) =>
-            builderListItem({
-              allowRemove: true,
-              builder,
-              crawlLabel: "Agent synced",
-              latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
-              subscribed: data.subscribed.has(builder.id),
-            }),
-          )}
-          emptyBody="Add a source here, or sync richer crawled data from your agent later."
-          emptyTitle="No personal sources yet"
-        />
-      </LibrarySection>
-
-      <section className="grid gap-3">
-        <div>
-          <h2 className="fb-section-heading">Imported libraries</h2>
-          <p className="mt-1 text-sm text-[var(--muted-strong)]">
-            Sources grouped by the shared library they came from.
-          </p>
-        </div>
-        <div className="imported-library-stack">
-          {data.importedLibrarySections.map((library) => (
-            <LibrarySection
-              key={library.id}
-              title={library.name}
-              detail={library.description || `Imported from ${library.ownerName}`}
-              badge="imported"
-              count={library.builders.length}
-              indented
-              action={
-                <LibraryImportRemoveButton
-                  builderCount={library.builders.length}
-                  libraryId={library.id}
-                  libraryName={library.name}
-                />
-              }
-            >
-              <BuilderLibraryList
-                builders={library.builders.map((builder) =>
-                  builderListItem({
-                    allowRemove: false,
-                    builder,
-                    crawlLabel:
-                      builder.scope === BuilderScope.CENTRAL ? "Webapp crawled" : "Hub imported",
-                    latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
-                    subscribed: data.subscribed.has(builder.id),
-                  }),
-                )}
-                emptyBody="No active sources from this imported library."
-              />
-            </LibrarySection>
-          ))}
-          {data.importedLibrarySections.length === 0 ? (
-            <div className="empty-panel text-[var(--muted-strong)]">
-              Import shared libraries from the Hub to see them here.
-            </div>
-          ) : null}
-        </div>
-      </section>
+      <MobileSourcesSwitcher
+        privateLabel="Private"
+        importedLabel="Imported"
+        privateSection={privateSection}
+        importedSection={importedSection}
+      />
     </section>
   );
 }
