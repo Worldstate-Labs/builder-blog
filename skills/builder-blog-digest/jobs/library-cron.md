@@ -16,7 +16,6 @@ failures. Keep trying available local capabilities until each task is completed
 or no available method can obtain real primary content.
 For every newly crawled or agent-produced post, also generate a concise Chinese
 single-post summary using only that post's supplied body and metadata. Use the
-same discipline as the digest feed prompt: include source URLs when available,
 same discipline as the digest feed prompt: include source URLs for every claim,
 prioritize launches, technical insights, funding/business moves, strong
 opinions, and implementation details, and never invent missing facts.
