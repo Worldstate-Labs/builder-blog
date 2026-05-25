@@ -43,7 +43,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(appShell, /label: "Agent"/);
   assert.doesNotMatch(appNav, /"key"/);
   assert.match(appShell, /className="user-menu-trigger"/);
-  assert.match(appShell, /aria-label="Open user menu"/);
+  assert.match(appShell, /aria-label=\{email \? `Account menu for \$\{email\}` : `Account menu for \$\{name\}`\}/);
   assert.match(appShell, /href="\/settings"[\s\S]*Settings/);
   assert.match(appShell, /href="\/api\/auth\/signout"[\s\S]*Sign out/);
   assert.match(settingsPage, />\s*Settings\s*</);
@@ -261,6 +261,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /spellCheck=\{false\}/);
   assert.match(searchForm, /role="listbox"/);
   assert.match(searchForm, /role="option"/);
+  assert.match(searchForm, /submitSuggestion\(activeSuggestion, event\.currentTarget\.form\)/);
+  assert.match(searchForm, /className="search-suggestion-chip"[\s\S]*submitSuggestion\(suggestion, inputRef\.current\?\.form \?\? null\)[\s\S]*type="button"/);
+  assert.doesNotMatch(searchForm, /name="suggestion"/);
   assert.doesNotMatch(searchForm, /Lucky/);
   assert.doesNotMatch(searchForm, /lucky/);
   assert.doesNotMatch(searchForm, /type="radio"/);

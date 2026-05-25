@@ -206,12 +206,8 @@ export function SearchForm({
       }}
       onSubmit={(event) => {
         event.preventDefault();
-        const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
         const formData = new FormData(event.currentTarget);
-        const nextQuery =
-          submitter?.name === "suggestion"
-            ? submitter.value.trim()
-            : String(formData.get("q") ?? "").trim();
+        const nextQuery = String(formData.get("q") ?? "").trim();
         submitSearch({ form: event.currentTarget, nextQuery });
       }}
     >
@@ -294,9 +290,10 @@ export function SearchForm({
                   >
                     <button
                       className="search-suggestion-chip"
-                      name="suggestion"
-                      type="submit"
-                      value={suggestion.query}
+                      onClick={() => {
+                        submitSuggestion(suggestion, inputRef.current?.form ?? null);
+                      }}
+                      type="button"
                     >
                       {suggestion.kind === "recent" ? (
                         <Clock aria-hidden="true" className="h-4 w-4" />
