@@ -15,10 +15,12 @@ During the `agentTasks` step, failed extraction attempts are not command-contrac
 failures. Keep trying available local capabilities until each task is completed
 or no available method can obtain real primary content.
 For every newly crawled or agent-produced post, also generate a concise Chinese
-single-post summary using only that post's supplied body and metadata. Use the
-same discipline as the digest feed prompt: include source URLs for every claim,
-prioritize launches, technical insights, funding/business moves, strong
-opinions, and implementation details, and never invent missing facts.
+single-post summary using the post's `summaryInstructions`. The selected
+`summaryInstructions.promptSource.body` is copied from `context.prompts`:
+`summarizeTweets` for `TWEET`, `summarizePodcast` for `PODCAST_EPISODE`, and
+`summarizeBlogs` for `BLOG_POST`. Adapt the selected digest-feed prompt to
+exactly one supplied post; do not group posts and do not use `digestIntro` or
+`translate`.
 
 Before doing work, ensure the skill is installed:
 
@@ -51,10 +53,10 @@ Rules:
   sync them as the item body; complete `agentTasks` with real primary content
   that meets `minimumContentQuality`.
 - If the crawl result contains a non-empty `summaryTasks` array, complete
-  exactly those task IDs by writing one concise Chinese summary per task. Use
-  only `task.item.body`, `task.item.title`, source metadata, and `task.item.url`.
-  This is a single-post summary, not a multi-post digest. Include source URLs
-  for every claim. Do not browse, do not add items, and do not summarize from
+  exactly those task IDs by writing one concise Chinese summary per task. Follow
+  each task's `summaryInstructions.promptSource` and
+  `summaryInstructions.adaptation`. This is a single-post summary, not a
+  multi-post digest. Do not browse, do not add items, and do not summarize from
   title or description alone.
 - Every agent-produced item must include `rawJson.agentTaskId`,
   `rawJson.agentRuntime`, `rawJson.agentModel` if known,

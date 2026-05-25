@@ -271,7 +271,7 @@ async function crawlPersonal(args) {
         crawledItemKeys: force ? new Set() : crawledItemKeysForBuilder(context, builder.id),
       });
       const { items, agentTasks: sourceAgentTasks } = normalizePersonalCrawlResult(crawled);
-      agentTasks.push(...sourceAgentTasks);
+      agentTasks.push(...sourceAgentTasks.map((task) => withSummaryInstructions(task, context.prompts)));
       builders.push({
         builderId: builder.id,
         kind: source.syncKind,
@@ -320,7 +320,7 @@ async function crawlPersonal(args) {
     { force, crawlingTool: skillCrawlingTool("local personal crawler", agentModel), builders },
     config.token,
   );
-  const summaryTasks = postSummaryTasksForBuilders(builders);
+  const summaryTasks = postSummaryTasksForBuilders(builders, context.prompts);
   console.log(
     JSON.stringify(
       {
@@ -345,7 +345,7 @@ function normalizePersonalCrawlResult(result) {
   };
 }
 
-function postSummaryTasksForBuilders(builders) {
+export function postSummaryTasksForBuilders(builders, prompts = {}) {
   return builders.flatMap((builder) =>
     (builder.items ?? []).map((item) => ({
       type: "post_summary",
@@ -362,17 +362,59 @@ function postSummaryTasksForBuilders(builders) {
         sourceName: item.sourceName ?? builder.name,
         body: String(item.body ?? "").slice(0, 12000),
       },
-      summaryInstructions: {
-        language: "zh",
-        scope: "single_post",
-        sourceUrlRequired: true,
-        useOnlySuppliedItem: true,
-        style:
-          "Create a concise FollowBrief single-post summary in Chinese. Use only the supplied item body and metadata. Include source URLs for every claim. Highlight launches, technical insights, funding/business moves, strong opinions, and implementation details. Do not invent missing facts.",
-      },
+      summaryInstructions: singlePostSummaryInstructions(item.kind, prompts),
       id: postSummaryTaskId(builder, item),
     })),
   );
+}
+
+function withSummaryInstructions(task, prompts = {}) {
+  if (!task?.item?.kind || task.summaryInstructions) return task;
+  return {
+    ...task,
+    summaryInstructions: singlePostSummaryInstructions(task.item.kind, prompts),
+  };
+}
+
+export function singlePostSummaryInstructions(kind, prompts = {}) {
+  const promptSource = summaryPromptSourceForKind(kind, prompts);
+  return {
+    language: "zh",
+    scope: "single_post",
+    sourceUrlRequired: true,
+    useOnlySuppliedItem: true,
+    promptSource,
+    adaptation:
+      "Use the selected digest-feed prompt as the writing method, but adapt it to exactly one supplied post. Do not group multiple posts, do not assemble a digest section, and do not use digestIntro or translate. Use task.item.body as the primary content, task.item.title/source metadata only as context, and task.item.url as the source link. Preserve the source prompt's quality bar, no-fabrication rule, quote rule, and source-link rule.",
+  };
+}
+
+function summaryPromptSourceForKind(kind, prompts = {}) {
+  if (kind === "TWEET") {
+    return {
+      key: "summarizeTweets",
+      file: "summarize-tweets.md",
+      body: prompts.summarizeTweets ?? null,
+      singlePostAdaptation:
+        "Apply the X/Twitter prompt to this one tweet or thread from this builder/source. Do not group by builder because the task contains only one post.",
+    };
+  }
+  if (kind === "PODCAST_EPISODE") {
+    return {
+      key: "summarizePodcast",
+      file: "summarize-podcast.md",
+      body: prompts.summarizePodcast ?? null,
+      singlePostAdaptation:
+        "Apply the podcast/video prompt to this one episode or video transcript. The summary is for one post, not a multi-episode digest.",
+    };
+  }
+  return {
+    key: "summarizeBlogs",
+    file: "summarize-blogs.md",
+    body: prompts.summarizeBlogs ?? null,
+    singlePostAdaptation:
+      "Apply the blog prompt to this one article or document. The summary is for one post, not a blog digest.",
+  };
 }
 
 function postSummaryTaskId(builder, item) {

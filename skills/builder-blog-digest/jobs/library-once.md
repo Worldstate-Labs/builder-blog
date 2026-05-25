@@ -44,10 +44,22 @@ Environment contract:
   for this job is `/api/skill/bootstrap`.
 
 For every newly crawled or agent-produced post, also generate a concise Chinese
-single-post summary using only that post's supplied body and metadata. Use the
-same discipline as the digest feed prompt: include source URLs for every claim,
-prioritize launches, technical insights, funding/business moves, strong
-opinions, and implementation details, and never invent missing facts.
+single-post summary using the post's `summaryInstructions`.
+`summaryInstructions.promptSource.body` is copied from `context.prompts` and
+selects the digest-feed summary method by item kind:
+
+- `TWEET`: follow `context.prompts.summarizeTweets`
+  (`summarize-tweets.md`), adapted to exactly one tweet or thread from this
+  builder/source. Do not group multiple builders or posts.
+- `PODCAST_EPISODE`: follow `context.prompts.summarizePodcast`
+  (`summarize-podcast.md`), adapted to exactly one episode or video transcript.
+- `BLOG_POST`: follow `context.prompts.summarizeBlogs`
+  (`summarize-blogs.md`), adapted to exactly one article or document.
+
+Do not use `digestIntro` or `translate` for single-post summaries. Use
+`task.item.body` as the primary content; use `task.item.title`, source metadata,
+and `task.item.url` only as context and source attribution. Preserve the selected
+prompt's quality bar, no-fabrication rule, quote rule, and source-link rule.
 
 1. Install or refresh the skill:
 
@@ -78,14 +90,15 @@ to obtain real primary content for a task, and report the tried methods and
 concrete blocker. Do not add new sources, URLs, or feed items that were not
 returned by the CLI or task payload. The content must meet each task's
 `minimumContentQuality`. Do not use title, description, or page metadata as the
-item body. Every agent-produced item must also include `summary`.
+item body. Every agent-produced item must also include `summary` written from
+that task's `summaryInstructions`.
 
 5. If the crawl result contains a non-empty `summaryTasks` array: Complete
-exactly those task IDs by writing one concise Chinese summary per task. Use only
-`task.item.body`, `task.item.title`, source metadata, and `task.item.url`.
-This is a single-post summary, not a multi-post digest. Include source URLs for
-every claim. Do not browse, do not add items, and do not summarize from title or
-description alone.
+exactly those task IDs by writing one concise Chinese summary per task. Follow
+each task's `summaryInstructions.promptSource` and
+`summaryInstructions.adaptation`. This is a single-post summary, not a
+multi-post digest. Do not browse, do not add items, and do not summarize from
+title or description alone.
 
 6. If you completed `agentTasks` or `summaryTasks`, write a sync payload to:
 

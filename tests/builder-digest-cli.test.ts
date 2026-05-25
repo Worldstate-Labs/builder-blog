@@ -455,6 +455,63 @@ test("agent sync validation accepts single-post summaries for summary tasks", as
   assert.equal(result.validatedSummaryTasks, 1);
 });
 
+test("summary tasks carry source-specific digest prompts adapted for one post", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const tasks = cli.postSummaryTasksForBuilders(
+    [
+      {
+        builderId: "builder_x",
+        name: "Example Builder",
+        sourceType: "x",
+        items: [
+          {
+            kind: "TWEET",
+            externalId: "tweet_1",
+            title: null,
+            body: "A substantive product launch tweet.",
+            url: "https://x.com/example/status/1",
+          },
+          {
+            kind: "PODCAST_EPISODE",
+            externalId: "video_1",
+            title: "Launch video",
+            body: "Transcript text with real primary content.",
+            url: "https://www.youtube.com/watch?v=video_1",
+          },
+          {
+            kind: "BLOG_POST",
+            externalId: "https://example.com/blog/post",
+            title: "Launch notes",
+            body: "Article text with implementation details.",
+            url: "https://example.com/blog/post",
+          },
+        ],
+      },
+    ],
+    {
+      summarizeTweets: "tweet prompt body",
+      summarizePodcast: "podcast prompt body",
+      summarizeBlogs: "blog prompt body",
+    },
+  );
+
+  assert.deepEqual(
+    tasks.map((task: { summaryInstructions: { promptSource: { key: string; body: string } } }) => [
+      task.summaryInstructions.promptSource.key,
+      task.summaryInstructions.promptSource.body,
+    ]),
+    [
+      ["summarizeTweets", "tweet prompt body"],
+      ["summarizePodcast", "podcast prompt body"],
+      ["summarizeBlogs", "blog prompt body"],
+    ],
+  );
+  for (const task of tasks) {
+    assert.match(task.summaryInstructions.adaptation, /exactly one supplied post/);
+    assert.match(task.summaryInstructions.adaptation, /do not use digestIntro or translate/i);
+  }
+});
+
 test("agent sync validation rejects YouTube metadata masquerading as content", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const task = {
