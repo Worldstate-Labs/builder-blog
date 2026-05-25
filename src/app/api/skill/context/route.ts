@@ -75,12 +75,19 @@ export async function GET(request: Request) {
             },
           },
           {
-            publishedAt: null,
             createdAt: {
               gt: since,
-              gte: maxAgeCutoff,
               lte: now,
             },
+            OR: [
+              { publishedAt: null },
+              {
+                publishedAt: {
+                  gte: maxAgeCutoff,
+                  lte: now,
+                },
+              },
+            ],
           },
         ],
       },
@@ -129,7 +136,8 @@ export async function GET(request: Request) {
       fallbackFrequencyDays: digestFrequencyDays(preference),
       maxPostAgeDays: digestMaxPostAgeDays(preference),
       lastDigestGeneratedAt: lastDigest?.createdAt.toISOString() ?? null,
-      timestampRule: "publishedAt first, createdAt only when publishedAt is missing",
+      timestampRule:
+        "include items published after the last digest, plus newly crawled items created after the last digest when their publishedAt is still within max post age",
     },
     libraryBuilders,
     personalCrawlStates,

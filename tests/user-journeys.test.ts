@@ -405,6 +405,11 @@ test("digest feed user path derives context window from user frequency and max p
   assert.equal(digestMaxPostAgeDays(preference), 45);
   assert.equal(digestFallbackSince(now, preference).toISOString(), "2026-05-20T12:00:00.000Z");
   assert.equal(digestMaxAgeCutoff(now, preference).toISOString(), "2026-04-08T12:00:00.000Z");
+
+  const contextRoute = readFileSync("src/app/api/skill/context/route.ts", "utf8");
+  assert.match(contextRoute, /createdAt:\s*\{\s*gt: since/);
+  assert.match(contextRoute, /publishedAt:\s*\{\s*gte: maxAgeCutoff/);
+  assert.match(contextRoute, /newly crawled items created after the last digest/);
 });
 
 test("recommendation feed user path scores unread crawled posts from profile, subscriptions, and read log", () => {
