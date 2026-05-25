@@ -9,21 +9,17 @@ type CopyTarget = "once" | "cron";
 const PROMPT_CONFIG = {
   library: {
     title: "Build library",
-    onceLabel: "Copy once command",
-    cronLabel: "Copy cron command",
+    onceLabel: "Copy once prompt",
+    cronLabel: "Copy cron prompt",
     onceJob: "library-once",
-    onceFile: "builder-blog-library-once.md",
     cronJob: "library-cron-setup",
-    cronFile: "builder-blog-library-cron-setup.md",
   },
   digest: {
     title: "Build digest feed",
-    onceLabel: "Copy once command",
-    cronLabel: "Copy cron command",
+    onceLabel: "Copy once prompt",
+    cronLabel: "Copy cron prompt",
     onceJob: "digest-once",
-    onceFile: "builder-blog-digest-once.md",
     cronJob: "digest-cron-setup",
-    cronFile: "builder-blog-digest-cron-setup.md",
   },
 } satisfies Record<
   SkillPromptContext,
@@ -32,9 +28,7 @@ const PROMPT_CONFIG = {
     onceLabel: string;
     cronLabel: string;
     onceJob: string;
-    onceFile: string;
     cronJob: string;
-    cronFile: string;
   }
 >;
 
@@ -47,9 +41,8 @@ export function SkillPromptActions({ context }: { context: SkillPromptContext })
     setStatus("");
     const origin = window.location.origin;
     const job = target === "once" ? config.onceJob : config.cronJob;
-    const file = target === "once" ? config.onceFile : config.cronFile;
-    const promptUrl = `${origin}/api/skill/files/${file}`;
-    const command = `/bin/sh -c "$(curl -fsSL ${origin}/api/skill/bootstrap)" && BUILDER_BLOG_URL="${origin}" BUILDER_BLOG_PROMPT_URL="${promptUrl}" $HOME/.builder-blog/builder-agent-runner.sh ${job}`;
+    const promptUrl = `${origin}/api/skill/jobs/${job}/skill.md`;
+    const command = `Read ${promptUrl} and follow the instructions.`;
 
     try {
       await navigator.clipboard.writeText(command);
