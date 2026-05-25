@@ -13,25 +13,6 @@ Execution contract:
 - Use agent judgment only for the digest-writing step, and only from the
   returned FollowBrief context.
 
-Environment contract:
-- Do not assume a local repo checkout, local database, or source API key.
-- Required local tools are a POSIX shell, `curl`, Node.js 20 or newer, outbound
-  HTTPS access to `https://builder-blog.worldstatelabs.com`, and a writable
-  directory at `${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}`.
-- If a required local tool is missing, first try to make it available using this
-  agent's normal local capabilities, such as an existing package manager,
-  runtime manager, or shell-compatible fallback. Stop only if no available
-  method can provide the prerequisite, or if the local runtime requires user
-  approval for the repair. Report the tried repair methods and the concrete
-  blocker.
-- If no FollowBrief login token exists, the bootstrap command will open a
-  browser device login. Ask the user to sign in only at that point, then
-  continue.
-- If the local agent runtime blocks the bootstrap command under its safety
-  policy, stop and report that the bootstrap needs explicit user approval. Do
-  not invent alternate install URLs such as `/install.sh`; the only install URL
-  for this job is `/api/skill/bootstrap`.
-
 1. Install or refresh the skill:
 
 ```bash

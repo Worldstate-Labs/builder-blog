@@ -320,12 +320,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryOncePrompt, /Do not add new sources, URLs, or feed items/);
   assert.match(libraryOncePrompt, /Do not use `--force`/);
   assert.match(libraryOncePrompt, /execution\s+contract, not as user-facing documentation/);
-  assert.match(libraryOncePrompt, /Environment contract/);
-  assert.match(libraryOncePrompt, /Node\.js 20 or newer/);
-  assert.match(libraryOncePrompt, /first try to make it available/);
-  assert.match(libraryOncePrompt, /Report the tried repair methods and the concrete\s+blocker/);
-  assert.match(libraryOncePrompt, /bootstrap needs explicit user approval/);
-  assert.match(libraryOncePrompt, /Do\s+not invent alternate install URLs such as `\/install\.sh`/);
+  assert.doesNotMatch(libraryOncePrompt, /Environment contract/);
   assertOrderedText(libraryOncePrompt, [
     "4. If it contains a non-empty `crawlTasks` array",
     "How to execute each `crawlTask`",
@@ -334,12 +329,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestOncePrompt, /prepare --days 1/);
   assert.match(digestOncePrompt, /Use agent judgment only for the digest-writing step/);
   assert.match(digestOncePrompt, /execution\s+contract, not as user-facing documentation/);
-  assert.match(digestOncePrompt, /Environment contract/);
-  assert.match(digestOncePrompt, /Do not assume a local repo checkout, local database, or source API key/);
-  assert.match(digestOncePrompt, /first try to make it available/);
-  assert.match(digestOncePrompt, /Report the tried repair methods and the concrete\s+blocker/);
-  assert.match(digestOncePrompt, /bootstrap needs explicit user approval/);
-  assert.match(digestOncePrompt, /Do\s+not invent alternate install URLs such as `\/install\.sh`/);
+  assert.doesNotMatch(digestOncePrompt, /Environment contract/);
   assert.match(digestOncePrompt, /summarize-tweets\.md/);
   assert.match(digestOncePrompt, /summarize-podcast\.md/);
   assert.match(digestOncePrompt, /summarize-blogs\.md/);
