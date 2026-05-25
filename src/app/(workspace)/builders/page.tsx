@@ -2,6 +2,7 @@ import { BuilderKind, BuilderPoolOrigin, BuilderScope, LibraryHubKind } from "@p
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AddBuilderForm } from "@/components/AddBuilderForm";
+import { BuilderLibraryAutoRefresh } from "@/components/BuilderLibraryAutoRefresh";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
 import { BuilderLibraryStats } from "@/components/BuilderLibraryStats";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
@@ -14,6 +15,7 @@ import {
   ensureAdminCommunityLibrary,
   sharePersonalLibraryToHub,
 } from "@/lib/library-hub";
+import { builderLibraryState } from "@/lib/builder-library-state";
 import { prisma } from "@/lib/prisma";
 import { SOURCE_DEFINITIONS } from "@/lib/source-registry";
 
@@ -146,10 +148,14 @@ export default async function BuildersPage() {
       description: ownSharedLibrary.description,
     });
   }
-  const latestPostCreatedAtByBuilderId = await latestPostCreationTimes(poolBuilderIds);
+  const [latestPostCreatedAtByBuilderId, libraryState] = await Promise.all([
+    latestPostCreationTimes(poolBuilderIds),
+    builderLibraryState(session.user.id, poolBuilderIds),
+  ]);
 
   return (
     <div className="page-pad">
+        <BuilderLibraryAutoRefresh initialVersion={libraryState.version} />
         <section className="page-header">
           <div>
             <h1 className="page-title">Sources</h1>
