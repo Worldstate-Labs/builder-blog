@@ -461,6 +461,7 @@ test("summary tasks carry embedded source-specific single-post prompts", async (
     [
       {
         builderId: "builder_x",
+        kind: "X",
         name: "Example Builder",
         sourceType: "x",
         items: [
@@ -498,6 +499,20 @@ test("summary tasks carry embedded source-specific single-post prompts", async (
   assert.deepEqual(
     tasks.map((task: { summaryInstructions: { summaryStyle: string } }) => task.summaryInstructions.summaryStyle),
     ["x_twitter", "podcast_or_video", "blog_or_document"],
+  );
+  assert.deepEqual(
+    tasks.map((task: { builderSync: { builderId: string; kind: string; sourceType: string; name: string; subscribe: boolean } }) => ({
+      builderId: task.builderSync.builderId,
+      kind: task.builderSync.kind,
+      sourceType: task.builderSync.sourceType,
+      name: task.builderSync.name,
+      subscribe: task.builderSync.subscribe,
+    })),
+    [
+      { builderId: "builder_x", kind: "X", sourceType: "x", name: "Example Builder", subscribe: false },
+      { builderId: "builder_x", kind: "X", sourceType: "x", name: "Example Builder", subscribe: false },
+      { builderId: "builder_x", kind: "X", sourceType: "x", name: "Example Builder", subscribe: false },
+    ],
   );
   for (const task of tasks) {
     assert.match(task.summaryInstructions.prompt, /Write one concise Chinese FollowBrief single-post summary/);

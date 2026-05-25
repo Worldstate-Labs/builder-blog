@@ -315,12 +315,39 @@ async function crawlPersonal(args) {
     return;
   }
 
+  const summaryTasks = postSummaryTasksForBuilders(builders, context.prompts);
+  if (summaryTasks.length > 0) {
+    const pendingBuilders = builders.filter((builder) => (builder.items ?? []).length > 0).length;
+    console.log(
+      JSON.stringify(
+        {
+          status: "ok",
+          builders: 0,
+          feedItems: 0,
+          skippedFeedItems: 0,
+          pendingSummaryBuilders: pendingBuilders,
+          pendingSummaryItems: summaryTasks.length,
+          crawledPersonalBuilders: personalBuilders.length,
+          crawledPersonalItems: force ? 0 : personalCrawledItemCount(context),
+          force,
+          localErrors,
+          agentTasks,
+          summaryTasks,
+          message:
+            "Crawled personal items require agent-written summaries before cloud sync. No normal crawled items were synced yet.",
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+
   const result = await postJson(
     `${config.appUrl}/api/skill/builders`,
     { force, crawlingTool: skillCrawlingTool("local personal crawler", agentModel), builders },
     config.token,
   );
-  const summaryTasks = postSummaryTasksForBuilders(builders, context.prompts);
   console.log(
     JSON.stringify(
       {
@@ -353,6 +380,17 @@ export function postSummaryTasksForBuilders(builders, prompts = {}) {
       builder: builder.name,
       builderId: builder.builderId,
       sourceType: builder.sourceType,
+      builderSync: {
+        builderId: builder.builderId,
+        kind: builder.kind,
+        sourceType: builder.sourceType,
+        name: builder.name,
+        handle: builder.handle ?? null,
+        sourceUrl: builder.sourceUrl ?? null,
+        crawlUrl: builder.crawlUrl ?? null,
+        bio: builder.bio ?? null,
+        subscribe: Boolean(builder.subscribe),
+      },
       item: {
         kind: item.kind,
         externalId: item.externalId,

@@ -62,8 +62,10 @@ pass `validate-agent-sync` before `sync-builders` is considered successful.
 If the smoke check JSON contains a non-empty `summaryTasks` array: complete
 exactly those task IDs by writing one concise Chinese single-post summary per
 task. Follow `task.summaryInstructions.prompt`; do not read prompt files and do
-not summarize from title or description alone. Validate with
-`validate-agent-sync` before `sync-builders` is considered successful.
+not summarize from title or description alone. Use `task.item` and
+`task.builderSync` to build the sync payload so the item is uploaded only after
+the summary is present. Validate with `validate-agent-sync` before
+`sync-builders` is considered successful.
 
 Only if crontab is unavailable or blocked, install the same command and cadence
 through launchd or the local agent scheduler:

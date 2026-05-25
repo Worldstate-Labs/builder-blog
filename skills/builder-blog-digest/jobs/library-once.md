@@ -53,9 +53,9 @@ Summary task boundary:
 - `agentTasks` are for items the normal crawler could not produce. Complete the
   extraction first, then write `summary` for that same agent-produced item using
   `task.summaryInstructions.prompt` before syncing it.
-- `summaryTasks` are for items the normal crawler already produced and synced,
-  but that still need an agent-written `summary`. They do not require extracting
-  the item body again.
+- `summaryTasks` are for items the normal crawler produced locally but did not
+  sync yet, because cloud sync waits for both `body` and `summary`. They do not
+  require extracting the item body again.
 
 1. Install or refresh the skill:
 
@@ -91,9 +91,11 @@ that task's `summaryInstructions.prompt`.
 
 5. If the crawl result contains a non-empty `summaryTasks` array: Complete
 exactly those task IDs by writing one concise Chinese summary per task. Follow
-each task's `summaryInstructions.prompt`. This is a single-post summary, not a
-multi-post digest. Do not browse, do not read prompt files, do not add items,
-and do not summarize from title or description alone.
+each task's `summaryInstructions.prompt`. Use `task.item.body` as the already
+crawled primary content and `task.builderSync` as the builder payload for the
+sync file. This is a single-post summary, not a multi-post digest. Do not
+browse, do not read prompt files, do not add items, and do not summarize from
+title or description alone.
 
 6. If you completed `agentTasks` or `summaryTasks`, write a sync payload to:
 
@@ -105,9 +107,11 @@ Every agent-produced item must include `rawJson.agentTaskId`,
 `rawJson.agentRuntime`, `rawJson.agentModel` if known,
 `rawJson.agentCompletedAt`, `rawJson.agentExecutionProof`, and for YouTube
 `rawJson.transcriptSource="agent-transcript"` unless a better primary transcript
-source is used. Every item synced for a `summaryTasks` task must include
-`summary`; also include `rawJson.summaryTaskId`, `rawJson.summaryRuntime`,
-`rawJson.summaryModel` if known, and `rawJson.summaryCompletedAt` when possible.
+source is used. Every item synced for a `summaryTasks` task must copy the
+original item fields from `task.item`, include `summary`, and use
+`task.builderSync` for the enclosing builder fields; also include
+`rawJson.summaryTaskId`, `rawJson.summaryRuntime`, `rawJson.summaryModel` if
+known, and `rawJson.summaryCompletedAt` when possible.
 Then run these commands exactly:
 
 ```bash

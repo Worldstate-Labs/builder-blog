@@ -295,6 +295,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryOncePrompt, /do not read prompt files/);
   assert.match(libraryOncePrompt, /do not fetch `context\.prompts`/);
   assert.match(libraryOncePrompt, /Summary task boundary/);
+  assert.match(libraryOncePrompt, /cloud sync waits for both `body` and `summary`/);
+  assert.match(libraryOncePrompt, /task\.builderSync/);
   assert.doesNotMatch(libraryOncePrompt, /summarize-tweets\.md/);
   assert.doesNotMatch(libraryOncePrompt, /summarize-podcast\.md/);
   assert.doesNotMatch(libraryOncePrompt, /summarize-blogs\.md/);
@@ -336,6 +338,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(cli, /realpathSync\(fileURLToPath\(import\.meta\.url\)\)/);
   assert.match(cli, /existsSync\(process\.argv\[1\]\)/);
   assert.match(cli, /validate-agent-sync/);
+  assert.match(cli, /No normal crawled items were synced yet/);
+  assert.match(cli, /pendingSummaryItems/);
   assert.match(runner, /BUILDER_BLOG_AGENT_COMMAND/);
   assert.match(runner, /BUILDER_BLOG_PROMPT_URL/);
   assert.match(runner, /library-once\|digest-once\|library-cron-setup\|digest-cron-setup\|library-cron\|digest-cron/);
@@ -391,6 +395,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronPrompt, /single-post summary/);
   assert.match(libraryCronPrompt, /summaryInstructions\.prompt/);
   assert.match(libraryCronPrompt, /Summary task boundary/);
+  assert.match(libraryCronPrompt, /cloud sync waits for both `body` and `summary`/);
+  assert.match(libraryCronPrompt, /task\.builderSync/);
   assert.doesNotMatch(libraryCronPrompt, /summarize-tweets\.md/);
   assert.doesNotMatch(libraryCronPrompt, /summarize-podcast\.md/);
   assert.doesNotMatch(libraryCronPrompt, /summarize-blogs\.md/);
