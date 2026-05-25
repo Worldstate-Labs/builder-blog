@@ -12,7 +12,19 @@ export async function builderLibraryState(
   builderIds: string[],
 ): Promise<BuilderLibraryState> {
   const sortedBuilderIds = [...new Set(builderIds)].sort();
-  const [poolState, subscriptionState, builderState, crawlState, feedState] = await Promise.all([
+  const [
+    poolState,
+    subscriptionState,
+    builderState,
+    crawlState,
+    feedState,
+    digestState,
+    recommendationState,
+    readState,
+    feedPreference,
+    personalHubState,
+    libraryImportState,
+  ] = await Promise.all([
     prisma.builderPoolEntry.aggregate({
       where: { userId },
       _count: true,
@@ -45,6 +57,35 @@ export async function builderLibraryState(
           _max: { createdAt: true, publishedAt: true },
         })
       : Promise.resolve({ _count: 0, _max: { createdAt: null, publishedAt: null } }),
+    prisma.digest.aggregate({
+      where: { userId },
+      _count: true,
+      _max: { createdAt: true, updatedAt: true },
+    }),
+    prisma.recommendationSnapshot.aggregate({
+      where: { userId },
+      _count: true,
+      _max: { createdAt: true },
+    }),
+    prisma.feedRead.aggregate({
+      where: { userId },
+      _count: true,
+      _max: { readAt: true },
+    }),
+    prisma.userFeedPreference.findUnique({
+      where: { userId },
+      select: { updatedAt: true },
+    }),
+    prisma.libraryHubEntry.aggregate({
+      where: { ownerUserId: userId },
+      _count: true,
+      _max: { updatedAt: true },
+    }),
+    prisma.libraryImport.aggregate({
+      where: { userId },
+      _count: true,
+      _max: { createdAt: true },
+    }),
   ]);
 
   const version = [
@@ -60,6 +101,18 @@ export async function builderLibraryState(
     feedState._count,
     feedState._max.createdAt?.toISOString() ?? "",
     feedState._max.publishedAt?.toISOString() ?? "",
+    digestState._count,
+    digestState._max.createdAt?.toISOString() ?? "",
+    digestState._max.updatedAt?.toISOString() ?? "",
+    recommendationState._count,
+    recommendationState._max.createdAt?.toISOString() ?? "",
+    readState._count,
+    readState._max.readAt?.toISOString() ?? "",
+    feedPreference?.updatedAt.toISOString() ?? "",
+    personalHubState._count,
+    personalHubState._max.updatedAt?.toISOString() ?? "",
+    libraryImportState._count,
+    libraryImportState._max.createdAt?.toISOString() ?? "",
   ].join("|");
 
   return {

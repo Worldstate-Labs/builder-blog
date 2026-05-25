@@ -1,6 +1,7 @@
 export const builderLibraryStatsChanged = "builder-blog:library-stats-changed";
 export const builderLibrarySubscribeAll = "builder-blog:library-subscribe-all";
 export const builderLibraryBuilderAdded = "builder-blog:library-builder-added";
+export const followBriefDataChanged = "followbrief:data-changed";
 
 export type BuilderLibraryEventItem = {
   allowRemove: boolean;
@@ -24,4 +25,8 @@ export type BuilderLibraryStatsChange = {
   inLibraryDelta?: number;
   subscribedDelta?: number;
   subscribedCount?: number;
+};
+
+export type FollowBriefDataChange = BuilderLibraryStatsChange & {
+  version: string;
 };

@@ -21,7 +21,7 @@ test("app shell reuses the page session instead of fetching it again", () => {
 
   assert.equal(appShell.includes("getServerSession"), false);
   assert.match(appShell, /session\??:/);
-  assert.match(workspaceLayout, /<AppShell session=\{session\}>/);
+  assert.match(workspaceLayout, /<AppShell dataVersion=\{dataState\.version\} session=\{session\}>/);
   for (const pagePath of [
     "src/app/(workspace)/dashboard/page.tsx",
     "src/app/(workspace)/builders/page.tsx",
@@ -356,15 +356,18 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
 
 test("library hub exposes share and multi-import flows", () => {
   const appShell = source("src/components/AppShell.tsx");
+  const workspaceLayout = source("src/app/(workspace)/layout.tsx");
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const builderActions = source("src/components/BuilderLibraryActions.tsx");
   const visibilityToggle = source("src/components/LibraryVisibilityToggle.tsx");
   const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
   const builderLibraryStats = source("src/components/BuilderLibraryStats.tsx");
   const builderLibraryAutoRefresh = source("src/components/BuilderLibraryAutoRefresh.tsx");
+  const userDataAutoRefresh = source("src/components/UserDataAutoRefresh.tsx");
   const builderLibraryEvents = source("src/lib/builder-library-events.ts");
   const builderLibraryState = source("src/lib/builder-library-state.ts");
   const builderLibraryStreamRoute = source("src/app/api/builders/library-stream/route.ts");
+  const forYouRecommendationSection = source("src/components/ForYouRecommendationSection.tsx");
   const visibilityRoute = source("src/app/api/library-hub/personal-availability/route.ts");
   const builderSubscriptionRoute = source("src/app/api/builders/[builderId]/subscription/route.ts");
   const builderLibraryRoute = source("src/app/api/builders/[builderId]/library/route.ts");
@@ -376,6 +379,10 @@ test("library hub exposes share and multi-import flows", () => {
   const schema = source("prisma/schema.prisma");
 
   assert.match(appShell, /library-hub/);
+  assert.match(appShell, /UserDataAutoRefresh/);
+  assert.match(appShell, /initialVersion=\{dataVersion\}/);
+  assert.match(workspaceLayout, /builderLibraryState/);
+  assert.match(workspaceLayout, /dataVersion=\{dataState\.version\}/);
   assert.doesNotMatch(appShell, /\{ href: "\/admin"/);
   assert.match(appShell, /user-menu-item-static/);
   assert.match(buildersPage, /LibraryVisibilityToggle/);
@@ -383,8 +390,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(buildersPage, /ensureAdminCommunityLibrary/);
   assert.match(buildersPage, /BuilderLibraryList/);
   assert.match(buildersPage, /BuilderLibraryStats/);
-  assert.match(buildersPage, /BuilderLibraryAutoRefresh/);
-  assert.match(buildersPage, /builderLibraryState/);
+  assert.doesNotMatch(buildersPage, /BuilderLibraryAutoRefresh/);
+  assert.doesNotMatch(buildersPage, /builderLibraryState/);
   assert.match(builderLibraryList, /BuilderLibraryActions/);
   assert.doesNotMatch(buildersPage, /togglePersonalLibraryHubAvailabilityAction/);
   assert.doesNotMatch(buildersPage, /subscribeAllLibraryBuildersAction/);
@@ -421,17 +428,27 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(builderLibraryStats, /builderLibraryStatsChanged/);
   assert.match(builderLibraryStats, /addEventListener/);
   assert.match(builderLibraryStats, /SubscribeAllLibraryBuildersButton/);
-  assert.match(builderLibraryAutoRefresh, /new EventSource/);
-  assert.match(builderLibraryAutoRefresh, /\/api\/builders\/library-stream/);
-  assert.match(builderLibraryAutoRefresh, /router\.refresh\(\)/);
-  assert.match(builderLibraryAutoRefresh, /builderLibraryStatsChanged/);
+  assert.match(builderLibraryAutoRefresh, /UserDataAutoRefresh/);
+  assert.match(userDataAutoRefresh, /new EventSource/);
+  assert.match(userDataAutoRefresh, /\/api\/builders\/library-stream/);
+  assert.match(userDataAutoRefresh, /router\.refresh\(\)/);
+  assert.match(userDataAutoRefresh, /builderLibraryStatsChanged/);
+  assert.match(userDataAutoRefresh, /followBriefDataChanged/);
   assert.match(builderLibraryState, /userBuilderCrawl\.aggregate/);
   assert.match(builderLibraryState, /feedItem\.aggregate/);
+  assert.match(builderLibraryState, /digest\.aggregate/);
+  assert.match(builderLibraryState, /recommendationSnapshot\.aggregate/);
+  assert.match(builderLibraryState, /feedRead\.aggregate/);
+  assert.match(forYouRecommendationSection, /followBriefDataChanged/);
+  assert.match(forYouRecommendationSection, /addEventListener/);
+  assert.match(forYouRecommendationSection, /\/api\/recommendations\/timeline/);
+  assert.match(forYouRecommendationSection, /key=\{timeline\.snapshots\.map/);
   assert.match(builderLibraryStreamRoute, /text\/event-stream/);
   assert.match(builderLibraryStreamRoute, /event: \$\{event\}/);
   assert.match(builderLibraryStreamRoute, /library-state/);
   assert.match(builderLibraryStreamRoute, /activePoolBuilderIds/);
   assert.match(builderLibraryEvents, /builderLibraryStatsChanged/);
+  assert.match(builderLibraryEvents, /followBriefDataChanged/);
   assert.match(builderLibraryEvents, /builderLibrarySubscribeAll/);
   assert.match(buildersPage, /allowRemove:\s*false/);
   assert.match(builderSubscriptionRoute, /export async function PATCH/);

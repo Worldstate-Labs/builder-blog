@@ -4,6 +4,7 @@ import { LogOut, Settings, ShieldCheck } from "lucide-react";
 import { AppNav, type AppNavItem } from "@/components/AppNav";
 import { BrandMark } from "@/components/BrandMark";
 import { SearchForm } from "@/components/SearchForm";
+import { UserDataAutoRefresh } from "@/components/UserDataAutoRefresh";
 import { isAdminEmail } from "@/lib/admin";
 
 const nav: AppNavItem[] = [
@@ -14,15 +15,18 @@ const nav: AppNavItem[] = [
 
 export function AppShell({
   children,
+  dataVersion = "",
   session,
 }: {
   children: React.ReactNode;
+  dataVersion?: string;
   session?: Session | null;
 }) {
   const items = nav;
 
   return (
     <div className="app-frame min-h-screen bg-[var(--paper)] text-[var(--ink)]">
+      <UserDataAutoRefresh initialVersion={dataVersion} />
       <header className="app-topbar">
         <div className="app-topbar-left">
           <Link href="/dashboard" className="app-brand group">
