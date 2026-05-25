@@ -1,34 +1,43 @@
-Build my FollowBrief private source library once.
+Objective: crawl this user's FollowBrief private source library once, sync any
+newly crawled items, and complete any agent-required extraction or summary tasks
+returned by the CLI.
 
-This is an interactive local agent run. Do not ask the user questions unless
-authentication or a missing local credential blocks the run.
+You are the local agent executing this job. Treat this file as the execution
+contract, not as user-facing documentation.
 
-Run these steps exactly. If any command fails, stop and report the command, exit
-code, and stderr. Do not use `--force`. Do not browse for extra context.
+Execution contract:
+- Run the numbered command steps exactly.
+- If a command outside the explicit `agentTasks` work fails, stop and report the
+  command, exit code, and stderr.
+- Do not use `--force`.
+- Do not browse for extra context unless an `agentTasks` payload requires local
+  extraction from a returned source URL.
+- Do not change paths, flags, cadence, titles, output files, JSON schema, or
+  success criteria.
+- Stay in command-runner mode until the CLI returns `agentTasks`, `summaryTasks`,
+  or says a personal source needs local cookies, credentials, transcription, or
+  custom tooling.
+- During `agentTasks`, failed extraction attempts are not command-contract
+  failures. Keep trying available local capabilities until each task is
+  completed or no available method can obtain real primary content.
 
-Fresh computer/session compatibility:
-- This skill is intended to work from a new Claude Code, Codex, OpenClaw,
-  Gemini, or similar local agent session with no local repo checkout.
-- The computer must have a POSIX shell, `curl`, Node.js 20 or newer, outbound
+Environment contract:
+- Do not assume a local repo checkout or local database.
+- Required local tools are a POSIX shell, `curl`, Node.js 20 or newer, outbound
   HTTPS access to `https://builder-blog.worldstatelabs.com`, and a writable
-  home directory for `${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}`.
-- If no FollowBrief login token exists yet, the bootstrap step opens a browser
-  device login. Ask the user to sign in only at that point, then continue.
-- Extra local capabilities such as browser cookies, paid subscriptions,
-  transcription tools, or custom crawler commands are only needed when the CLI
-  returns `agentTasks` or says a source needs them.
+  directory at `${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}`.
+- If a required local tool is missing, stop and report the missing prerequisite.
+- If no FollowBrief login token exists, the bootstrap command will open a
+  browser device login. Ask the user to sign in only at that point, then
+  continue.
+- Use extra local capabilities such as browser cookies, paid subscriptions,
+  transcription tools, or custom crawler commands only when the CLI returns
+  `agentTasks` or says a source needs them.
 - If the local agent runtime blocks the bootstrap command under its safety
   policy, stop and report that the bootstrap needs explicit user approval. Do
   not invent alternate install URLs such as `/install.sh`; the only install URL
   for this job is `/api/skill/bootstrap`.
 
-Agent discretion boundary: this is a command-runner task until the CLI returns
-`agentTasks` or says a personal source needs local cookies, credentials,
-transcription, or custom tooling. Do not change paths, flags, cadence, titles,
-output files, JSON schema, or success criteria.
-During the `agentTasks` step, failed extraction attempts are not command-contract
-failures. Keep trying available local capabilities until each task is completed
-or no available method can obtain real primary content.
 For every newly crawled or agent-produced post, also generate a concise Chinese
 single-post summary using only that post's supplied body and metadata. Use the
 same discipline as the digest feed prompt: include source URLs for every claim,
