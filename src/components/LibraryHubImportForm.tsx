@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { CheckCircle2, Download, Trash2 } from "lucide-react";
 import { SourceBadge } from "@/components/SourceBadge";
 
@@ -38,64 +38,55 @@ type LibraryHubImportFormProps = {
 };
 
 export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
-  const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [importedIds, setImportedIds] = useState<Set<string>>(
     () => new Set(libraries.filter((library) => library.imported).map((library) => library.id)),
   );
   const [error, setError] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<{
+    libraryId: string;
+    type: "import" | "remove";
+  } | null>(null);
   const [isPending, startTransition] = useTransition();
-  const selectedIds = useMemo(() => [...selected], [selected]);
   const importedCount = libraries.filter((library) => importedIds.has(library.id)).length;
   const selectableCount = libraries.filter(
     (library) => !library.owned && !importedIds.has(library.id),
   ).length;
 
-  function toggleLibrary(libraryId: string) {
+  function importLibrary(libraryId: string) {
+    if (pendingAction) return;
     const library = libraries.find((item) => item.id === libraryId);
     if (!library || library.owned || importedIds.has(libraryId)) return;
-    setSelected((current) => {
-      const next = new Set(current);
-      if (next.has(libraryId)) {
-        next.delete(libraryId);
-      } else {
-        next.add(libraryId);
-      }
-      return next;
-    });
-  }
-
-  function importSelected() {
-    if (selectedIds.length === 0 || isPending) return;
-    const importingIds = selectedIds;
     setError(null);
-    setImportedIds((current) => new Set([...current, ...importingIds]));
-    setSelected(new Set());
+    setPendingAction({ libraryId, type: "import" });
+    setImportedIds((current) => new Set([...current, libraryId]));
 
     startTransition(async () => {
       try {
         const response = await fetch("/api/library-hub/imports", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ libraryIds: importingIds }),
+          body: JSON.stringify({ libraryIds: [libraryId] }),
         });
-        if (!response.ok) throw new Error("Unable to import libraries");
+        if (!response.ok) throw new Error("Unable to import library");
       } catch {
         setImportedIds((current) => {
           const next = new Set(current);
-          for (const id of importingIds) next.delete(id);
+          next.delete(libraryId);
           return next;
         });
-        setSelected(new Set(importingIds));
-        setError("Could not import selected libraries.");
+        setError("Could not import library.");
+      } finally {
+        setPendingAction(null);
       }
     });
   }
 
   function removeImported(libraryId: string) {
-    if (isPending) return;
+    if (pendingAction) return;
     const library = libraries.find((item) => item.id === libraryId);
     if (!library || library.owned || !importedIds.has(libraryId)) return;
     setError(null);
+    setPendingAction({ libraryId, type: "remove" });
     setImportedIds((current) => {
       const next = new Set(current);
       next.delete(libraryId);
@@ -113,6 +104,8 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
       } catch {
         setImportedIds((current) => new Set([...current, libraryId]));
         setError("Could not remove imported library.");
+      } finally {
+        setPendingAction(null);
       }
     });
   }
@@ -131,17 +124,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
           <span>{importedCount} in library</span>
           <span>{selectableCount} available</span>
         </div>
-        <div className="inline-flex flex-col items-end gap-2">
-          <button
-            aria-busy={isPending}
-            className="button-dark button-compact gap-2"
-            disabled={selectedIds.length === 0 || isPending}
-            onClick={importSelected}
-            type="button"
-          >
-            <Download className="h-4 w-4" />
-            {isPending ? "Importing..." : `Import selected${selectedIds.length ? ` (${selectedIds.length})` : ""}`}
-          </button>
+        <div className="library-hub-toolbar-status">
           {error ? (
             <span className="text-xs text-[var(--danger)]" role="status">
               {error}
@@ -153,11 +136,12 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
       <div className="library-hub-grid mt-5">
         {libraries.map((library) => {
           const imported = importedIds.has(library.id);
+          const libraryPendingAction =
+            pendingAction?.libraryId === library.id ? pendingAction.type : null;
           const ownerText = library.ownerLabel === library.name ? null : library.ownerLabel;
           return (
             <article
               className="library-hub-card"
-              data-selected={selected.has(library.id) ? "true" : undefined}
               key={library.id}
             >
               <div className="library-hub-card-header">
@@ -177,32 +161,33 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
                   <div className="library-hub-card-actions">
                     <span className="status-chip status-chip-success">
                       <CheckCircle2 className="h-3.5 w-3.5" />
-                      In library
+                      {libraryPendingAction === "import" ? "Importing" : "In library"}
                     </span>
-                    <button
-                      aria-label={`Remove ${library.name} from library`}
-                      className="button-light button-compact button-danger gap-2"
-                      disabled={isPending}
-                      onClick={() => removeImported(library.id)}
-                      type="button"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Remove
-                    </button>
+                    {libraryPendingAction === "import" ? null : (
+                      <button
+                        aria-busy={libraryPendingAction === "remove" && isPending}
+                        aria-label={`Remove ${library.name} from library`}
+                        className="button-light button-compact button-danger gap-2"
+                        disabled={pendingAction !== null}
+                        onClick={() => removeImported(library.id)}
+                        type="button"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        {libraryPendingAction === "remove" ? "Removing" : "Remove"}
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <button
-                    aria-label={`${selected.has(library.id) ? "Deselect" : "Add"} ${library.name}`}
-                    aria-pressed={selected.has(library.id)}
-                    className={`hub-select-button button-compact gap-2 ${
-                      selected.has(library.id) ? "button-dark" : "button-light"
-                    }`}
-                    disabled={isPending}
-                    onClick={() => toggleLibrary(library.id)}
+                    aria-busy={libraryPendingAction === "import" && isPending}
+                    aria-label={`Import ${library.name}`}
+                    className="button-dark button-compact gap-2"
+                    disabled={pendingAction !== null}
+                    onClick={() => importLibrary(library.id)}
                     type="button"
                   >
-                    {selected.has(library.id) ? <CheckCircle2 className="h-4 w-4" /> : null}
-                    {selected.has(library.id) ? "Added" : "Add"}
+                    <Download className="h-4 w-4" />
+                    {libraryPendingAction === "import" ? "Importing" : "Import"}
                   </button>
                 )}
               </div>
