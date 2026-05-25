@@ -83,6 +83,16 @@ export default async function BuildersPage() {
         id: true,
         name: true,
         description: true,
+        items: {
+          include: {
+            builder: {
+              include: {
+                _count: { select: { feedItems: true } },
+              },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
         _count: { select: { items: true } },
       },
     }),
@@ -105,6 +115,17 @@ export default async function BuildersPage() {
     )
     .map((entry) => entry.builder)
     .sort(builderSort);
+  const adminCommunityBuilders = isAdmin
+    ? (ownSharedLibrary?.items.map((item) => item.builder).sort(builderSort) ?? privateBuilders)
+    : privateBuilders;
+  const adminCommunityPersonalItemCount = isAdmin
+    ? (ownSharedLibrary?.items.filter(
+        (item) =>
+          item.builder.scope === BuilderScope.PERSONAL &&
+          item.builder.ownerUserId === session.user.id,
+      ).length ?? 0)
+    : privateBuilders.length;
+  const primaryLibraryBuilders = isAdmin ? adminCommunityBuilders : privateBuilders;
   const importedLibrarySections = importedLibraries.map((libraryImport) => ({
     id: libraryImport.hubEntryId,
     name: libraryImport.hubEntry.name,
@@ -133,7 +154,7 @@ export default async function BuildersPage() {
     (!ownSharedLibrary ||
       ownSharedLibrary.name !== adminCommunityLibraryName ||
       ownSharedLibrary.description !== adminCommunityLibraryDescription ||
-      ownSharedLibrary._count.items !== privateBuilders.length)
+      adminCommunityPersonalItemCount !== privateBuilders.length)
   ) {
     const result = await ensureAdminCommunityLibrary(session.user.id, { checkHidden: false });
     isPublicLibrary = result.isPublic;
@@ -175,7 +196,7 @@ export default async function BuildersPage() {
             title={isAdmin ? adminCommunityLibraryName : "Private library"}
             detail={isAdmin ? adminCommunityLibraryDescription : "Synced by your agent"}
             badge={isAdmin ? "admin" : "private"}
-            count={privateBuilders.length}
+            count={primaryLibraryBuilders.length}
             defaultOpen
           >
             <LibraryVisibilityToggle
@@ -192,11 +213,14 @@ export default async function BuildersPage() {
             />
             <BuilderLibraryList
               acceptAddedBuilders
-              builders={privateBuilders.map((builder) =>
+              builders={primaryLibraryBuilders.map((builder) =>
                 builderListItem({
-                  allowRemove: true,
+                  allowRemove:
+                    builder.scope === BuilderScope.PERSONAL &&
+                    builder.ownerUserId === session.user.id,
                   builder,
-                  crawlLabel: "Agent synced",
+                  crawlLabel:
+                    builder.scope === BuilderScope.CENTRAL ? "Webapp crawled" : "Agent synced",
                   latestPostCreatedAt: latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
                   subscribed: subscribed.has(builder.id),
                 }),

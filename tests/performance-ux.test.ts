@@ -385,6 +385,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(buildersPage, /LibraryVisibilityToggle/);
   assert.match(buildersPage, /adminCommunityLibraryName/);
   assert.match(buildersPage, /ensureAdminCommunityLibrary/);
+  assert.match(buildersPage, /adminCommunityBuilders/);
+  assert.match(buildersPage, /ownSharedLibrary\?\.items\.map/);
+  assert.match(buildersPage, /adminCommunityPersonalItemCount !== privateBuilders\.length/);
+  assert.match(buildersPage, /builder\.scope === BuilderScope\.CENTRAL \? "Webapp crawled" : "Agent synced"/);
   assert.match(buildersPage, /BuilderLibraryList/);
   assert.match(buildersPage, /BuilderLibraryStats/);
   assert.match(buildersPage, /BuilderLibraryAutoRefresh/);
