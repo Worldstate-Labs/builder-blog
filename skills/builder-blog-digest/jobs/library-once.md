@@ -26,7 +26,12 @@ Environment contract:
 - Required local tools are a POSIX shell, `curl`, Node.js 20 or newer, outbound
   HTTPS access to `https://builder-blog.worldstatelabs.com`, and a writable
   directory at `${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}`.
-- If a required local tool is missing, stop and report the missing prerequisite.
+- If a required local tool is missing, first try to make it available using this
+  agent's normal local capabilities, such as an existing package manager,
+  runtime manager, or shell-compatible fallback. Stop only if no available
+  method can provide the prerequisite, or if the local runtime requires user
+  approval for the repair. Report the tried repair methods and the concrete
+  blocker.
 - If no FollowBrief login token exists, the bootstrap command will open a
   browser device login. Ask the user to sign in only at that point, then
   continue.
