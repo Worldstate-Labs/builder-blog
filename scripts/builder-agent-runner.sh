@@ -74,11 +74,10 @@ run_shell_library_fallback() {
   node - "$RESULT_FILE" <<'NODE'
 const fs = require("fs");
 const result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-const agentTasks = Array.isArray(result.agentTasks) ? result.agentTasks.length : 0;
-const summaryTasks = Array.isArray(result.summaryTasks) ? result.summaryTasks.length : 0;
-if (agentTasks > 0 || summaryTasks > 0) {
+const crawlTasks = Array.isArray(result.crawlTasks) ? result.crawlTasks.length : 0;
+if (crawlTasks > 0) {
   console.error(
-    "Library crawl produced agentTasks or summaryTasks, but no local agent runtime is available to complete them.",
+    "Library crawl produced crawlTasks, but no local agent runtime is available to complete them.",
   );
   console.error("Install/configure Codex, Claude Code, OpenClaw, Gemini CLI, or set BUILDER_BLOG_AGENT_COMMAND.");
   process.exit(78);

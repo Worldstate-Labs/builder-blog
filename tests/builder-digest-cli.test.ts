@@ -347,10 +347,12 @@ test("personal YouTube crawler returns agent tasks instead of syncing descriptio
   assert.equal(result.agentTasks[0].minimumContentQuality.minWords, 12);
 });
 
-test("agent sync validation accepts agent-produced YouTube transcript with execution proof", async () => {
+test("agent sync validation accepts crawl task YouTube transcript with execution proof", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const task = {
-    type: "youtube_transcription",
+    type: "crawl_post",
+    agentWorkType: "youtube_transcription",
+    contentStatus: "requires_agent",
     builder: "Anthropic YouTube",
     builderId: "builder_anthropic_youtube",
     sourceType: "youtube",
@@ -362,9 +364,9 @@ test("agent sync validation accepts agent-produced YouTube transcript with execu
       description: "A short launch description.",
     },
   };
-  const taskId = cli.agentTaskId(task);
+  const taskId = cli.crawlTaskId(task);
   const result = cli.validateAgentSyncPayload(
-    { agentTasks: [{ ...task, id: taskId }] },
+    { crawlTasks: [{ ...task, id: taskId }] },
     {
       builders: [
         {
@@ -384,7 +386,7 @@ test("agent sync validation accepts agent-produced YouTube transcript with execu
               url: "https://www.youtube.com/watch?v=dPn3GBI8lII",
               rawJson: {
                 builderId: "builder_anthropic_youtube",
-                agentTaskId: taskId,
+                crawlTaskId: taskId,
                 agentRuntime: "Codex",
                 agentModel: "gpt-test",
                 agentCompletedAt: "2026-05-24T10:00:00.000Z",
@@ -399,29 +401,29 @@ test("agent sync validation accepts agent-produced YouTube transcript with execu
   );
 
   assert.equal(result.status, "ok");
-  assert.equal(result.validatedAgentTasks, 1);
+  assert.equal(result.validatedCrawlTasks, 1);
 });
 
-test("agent sync validation accepts single-post summaries for summary tasks", async () => {
+test("agent sync validation accepts ready crawl task summaries", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
+  const task = {
+    type: "crawl_post",
+    contentStatus: "ready",
+    builder: "Example Blog",
+    builderId: "builder_blog",
+    sourceType: "blog",
+    item: {
+      kind: "BLOG_POST",
+      externalId: "https://example.com/post",
+      title: "Shipping durable agents",
+      url: "https://example.com/post",
+      body: "The post explains how the team shipped durable agents with explicit state, replayable event logs, and source-linked summaries for every crawled item.",
+    },
+  };
+  const taskId = cli.crawlTaskId(task);
   const result = cli.validateAgentSyncPayload(
     {
-      summaryTasks: [
-        {
-          type: "post_summary",
-          id: "post_summary:builder_blog:BLOG_POST:https://example.com/post",
-          builder: "Example Blog",
-          builderId: "builder_blog",
-          sourceType: "blog",
-          item: {
-            kind: "BLOG_POST",
-            externalId: "https://example.com/post",
-            title: "Shipping durable agents",
-            url: "https://example.com/post",
-            body: "The post explains how the team shipped durable agents with explicit state, replayable event logs, and source-linked summaries for every crawled item.",
-          },
-        },
-      ],
+      crawlTasks: [{ ...task, id: taskId }],
     },
     {
       builders: [
@@ -442,7 +444,7 @@ test("agent sync validation accepts single-post summaries for summary tasks", as
               url: "https://example.com/post",
               rawJson: {
                 builderId: "builder_blog",
-                summaryTaskId: "post_summary:builder_blog:BLOG_POST:https://example.com/post",
+                crawlTaskId: taskId,
               },
             },
           ],
@@ -452,12 +454,12 @@ test("agent sync validation accepts single-post summaries for summary tasks", as
   );
 
   assert.equal(result.status, "ok");
-  assert.equal(result.validatedSummaryTasks, 1);
+  assert.equal(result.validatedCrawlTasks, 1);
 });
 
-test("summary tasks carry embedded source-specific single-post prompts", async () => {
+test("ready crawl tasks carry embedded source-specific single-post prompts", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
-  const tasks = cli.postSummaryTasksForBuilders(
+  const tasks = cli.crawlTasksForReadyBuilders(
     [
       {
         builderId: "builder_x",
@@ -497,6 +499,17 @@ test("summary tasks carry embedded source-specific single-post prompts", async (
   );
 
   assert.deepEqual(
+    tasks.map((task: { type: string; contentStatus: string }) => ({
+      type: task.type,
+      contentStatus: task.contentStatus,
+    })),
+    [
+      { type: "crawl_post", contentStatus: "ready" },
+      { type: "crawl_post", contentStatus: "ready" },
+      { type: "crawl_post", contentStatus: "ready" },
+    ],
+  );
+  assert.deepEqual(
     tasks.map((task: { summaryInstructions: { summaryStyle: string } }) => task.summaryInstructions.summaryStyle),
     ["x_twitter", "podcast_or_video", "blog_or_document"],
   );
@@ -526,10 +539,12 @@ test("summary tasks carry embedded source-specific single-post prompts", async (
   assert.equal(tasks[0].summaryInstructions.sourcePrompt, undefined);
 });
 
-test("agent sync validation rejects YouTube metadata masquerading as content", async () => {
+test("crawl task validation rejects YouTube metadata masquerading as content", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const task = {
-    type: "youtube_transcription",
+    type: "crawl_post",
+    agentWorkType: "youtube_transcription",
+    contentStatus: "requires_agent",
     builder: "Anthropic YouTube",
     builderId: "builder_anthropic_youtube",
     sourceType: "youtube",
@@ -541,12 +556,12 @@ test("agent sync validation rejects YouTube metadata masquerading as content", a
       description: "A short launch description.",
     },
   };
-  const taskId = cli.agentTaskId(task);
+  const taskId = cli.crawlTaskId(task);
 
   assert.throws(
     () =>
       cli.validateAgentSyncPayload(
-        { agentTasks: [{ ...task, id: taskId }] },
+        { crawlTasks: [{ ...task, id: taskId }] },
         {
           builders: [
             {
@@ -562,7 +577,7 @@ test("agent sync validation rejects YouTube metadata masquerading as content", a
                   url: "https://www.youtube.com/watch?v=dPn3GBI8lII",
                   rawJson: {
                     builderId: "builder_anthropic_youtube",
-                    agentTaskId: taskId,
+                    crawlTaskId: taskId,
                     agentRuntime: "Codex",
                     agentCompletedAt: "2026-05-24T10:00:00.000Z",
                     agentExecutionProof: "metadata only",

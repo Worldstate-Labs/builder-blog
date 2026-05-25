@@ -8,25 +8,24 @@ not use `--force` unless the user explicitly requested a forced run in the
 scheduled job configuration.
 
 Agent discretion boundary: this is a command-runner job unless the CLI returns
-`agentTasks` or a source requires local cookies, credentials, transcription, or
+`crawlTasks` or a source requires local cookies, credentials, transcription, or
 custom tooling. Do not change paths, flags, cadence, titles, output files, JSON
 schema, or success criteria.
-During the `agentTasks` step, failed extraction attempts are not command-contract
+During the `crawlTasks` step, failed extraction attempts are not command-contract
 failures. Keep trying available local capabilities until each task is completed
 or no available method can obtain real primary content.
-For every newly crawled or agent-produced post, also generate a concise Chinese
-single-post summary. The CLI embeds the correct source-specific prompt in
-`summaryInstructions.prompt`; follow that embedded prompt directly. Do not read
-prompt files, do not fetch `context.prompts`, and do not use any separate digest
-prompt at runtime.
 
-Summary task boundary:
-- `agentTasks` are for items the normal crawler could not produce. Complete the
-  extraction first, then write `summary` for that same agent-produced item using
-  `task.summaryInstructions.prompt` before syncing it.
-- `summaryTasks` are for items the normal crawler produced locally but did not
-  sync yet, because cloud sync waits for both `body` and `summary`. They do not
-  require extracting the item body again.
+Crawl task boundary:
+- `crawlTasks` are the only work items. Each task represents one post that must
+  end as one synced item with both `body` and `summary`.
+- If `task.contentStatus="ready"`, copy `task.item.body` and generate only
+  one concise Chinese single-post summary in `summary` from
+  `task.summaryInstructions.prompt`.
+- If `task.contentStatus="requires_agent"`, first obtain real primary content,
+  then generate one concise Chinese single-post summary in `summary` from
+  `task.summaryInstructions.prompt`.
+- do not read prompt files, do not fetch `context.prompts`, and do not use any
+  separate digest prompt at runtime.
 
 Before doing work, ensure the skill is installed:
 
@@ -34,7 +33,7 @@ Before doing work, ensure the skill is installed:
 /bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}/api/skill/bootstrap)"
 ```
 
-Then crawl and sync normal personal source items and save the full crawl result:
+Then crawl normal personal source items and save the full crawl result:
 
 ```bash
 BUILDER_BLOG_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}" \
@@ -46,35 +45,24 @@ cat "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-crawl-result.jso
 Rules:
 
 - Skip posts that are already synced.
-- Only use agent judgment if the CLI returns `agentTasks` or a source requires
+- Only use agent judgment if the CLI returns `crawlTasks` or a source requires
   AI work, transcription, cookies, or custom access. In that case, use the local
   agent environment and sync the resulting items through the FollowBrief CLI.
 - Complete exactly the task IDs returned by the CLI. Do not add new sources, URLs, or feed items that were not returned by the CLI or task payload.
-- For `agentTasks`, do not stop just because one extraction method fails. Keep
-  working through available local methods until the content is extracted. Stop
-  only if this agent has no remaining available way to obtain real primary
-  content for a task, and write the tried methods and concrete blocker to the
-  scheduled job log.
+- For `crawlTasks` with `contentStatus="requires_agent"`, do not stop just
+  because one extraction method fails. Keep working through available local
+  methods until the content is extracted. Stop only if this agent has no
+  remaining available way to obtain real primary content for a task, and write
+  the tried methods and concrete blocker to the scheduled job log.
 - For YouTube, title, description, and page metadata are auxiliary only. Do not
-  sync them as the item body; complete `agentTasks` with real primary content
-  that meets `minimumContentQuality`.
-- If the crawl result contains a non-empty `summaryTasks` array, complete
-  exactly those task IDs by writing one concise Chinese summary per task. Follow
-  each task's `summaryInstructions.prompt`. Use `task.item.body` as the already
-  crawled primary content and `task.builderSync` as the builder payload for the
-  sync file. This is a single-post summary, not a multi-post digest. Do not
-  browse, do not read prompt files, do not add items, and do not summarize from
-  title or description alone.
-- Every agent-produced item must include `rawJson.agentTaskId`,
-  `rawJson.agentRuntime`, `rawJson.agentModel` if known,
+  sync them as the item body; complete `requires_agent` tasks with real primary
+  content that meets `minimumContentQuality`.
+- Every synced item must include `summary`, `rawJson.crawlTaskId`, and use
+  `task.builderSync` for the enclosing builder fields. For `requires_agent`
+  tasks, also include `rawJson.agentRuntime`, `rawJson.agentModel` if known,
   `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`. For YouTube,
   include `rawJson.transcriptSource="agent-transcript"` unless a better primary
   transcript source is used.
-- Every item synced for a `summaryTasks` task must include `summary`; also
-  copy the original item fields from `task.item`, use `task.builderSync` for the
-  enclosing builder fields, and include `rawJson.summaryTaskId`,
-  `rawJson.summaryRuntime`, `rawJson.summaryModel` if known, and
-  `rawJson.summaryCompletedAt` when possible.
 - Before syncing agent-produced items or summaries, validate them:
 
 ```bash

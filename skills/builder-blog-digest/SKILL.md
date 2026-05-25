@@ -57,8 +57,8 @@ work:
 For copied web-app prompts and scheduled job prompts, treat the instructions as
 a runbook: run the named commands in order, keep the paths, flags, cadence,
 titles, output files, JSON schema, and success criteria unchanged, and use agent
-judgment only in the explicitly marked content-generation or `agentTasks` steps.
-Within an `agentTasks` step, failed extraction attempts are not command-contract
+judgment only in the explicitly marked content-generation or `crawlTasks` steps.
+Within a `crawlTasks` step, failed extraction attempts are not command-contract
 failures. The agent should keep using any available local capability until the
 task is complete, and stop only when no available method can obtain real primary
 content.
@@ -142,24 +142,23 @@ This command:
   `{ "items": [...] }`;
 - records the crawling tool as the local agent runtime, model, and concrete
   crawler path, for example `Codex Desktop (model gpt-5.5) FollowBrief skill crawler (YouTube RSS + captions)`;
-- reports `agentTasks` when primary content is missing or low quality. Treat
-  each task as a request for local agent work. Complete exactly the task IDs
-  returned by the CLI; do not add new sources, URLs, or feed items that were
-  not returned by the CLI or task payload. Do not stop just because one
-  extraction method fails; keep trying available local methods until the content
-  is extracted. Stop only if this agent has no remaining available way to obtain
-  real primary content for a task, and report the tried methods and concrete
-  blocker. Completed task items must include
-  `rawJson.agentTaskId`, `rawJson.agentRuntime`, `rawJson.agentModel` if known,
+- reports `crawlTasks` for every newly discovered post. Treat each task as one
+  post that must be synced only after it has both `body` and `summary`. For
+  `contentStatus="ready"`, the normal crawler already produced
+  `task.item.body`; copy it and generate only the summary. For
+  `contentStatus="requires_agent"`, first obtain real primary content with the
+  local agent, then generate the summary. Complete exactly the task IDs returned
+  by the CLI; do not add new sources, URLs, or feed items that were not returned
+  by the CLI or task payload. Do not stop just because one extraction method
+  fails; keep trying available local methods until the content is extracted.
+  Stop only if this agent has no remaining available way to obtain real primary
+  content for a task, and report the tried methods and concrete blocker.
+  Completed items must include `rawJson.crawlTaskId`. `requires_agent` items
+  must also include `rawJson.agentRuntime`, `rawJson.agentModel` if known,
   `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`. For YouTube,
   include `rawJson.transcriptSource="agent-transcript"` unless a better primary
   transcript source is used. Validate the payload with `validate-agent-sync`,
-  then sync completed content with `sync-builders`;
-- reports `summaryTasks` for newly crawled posts that need agent-written
-  summaries. Complete exactly those task IDs, write each single-post Chinese
-  summary to the item's `summary` field, validate with `validate-agent-sync`,
-  then sync with `sync-builders`;
-- posts discovered `TWEET`, `BLOG_POST`, or `PODCAST_EPISODE` items back to `/api/skill/builders`.
+  then sync completed posts with `sync-builders`;
 
 Validate agent-produced items before syncing them:
 
