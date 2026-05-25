@@ -74,8 +74,8 @@ export default async function DashboardPage({
   return (
     <div className="page-pad">
       <h1 className="sr-only">Home</h1>
-      <section className="home-layout">
-        <div className="home-main">
+      <section className="grid gap-9 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="min-w-0">
           <DashboardHomeTabs
             initialTab={selectedTab}
             aiDijest={
@@ -92,31 +92,33 @@ export default async function DashboardPage({
             }
           />
         </div>
-        <aside className="home-rail">
-          <div className="home-rail-section">
-            <h2>Home</h2>
-            <div className="mt-4 grid gap-3">
+        <aside className="fb-rail hidden lg:flex">
+          <div>
+            <h3>Home</h3>
+            <div className="grid gap-2">
               <Stat
                 icon={todayDigest ? CheckCircle2 : Clock3}
                 label="AI dijest"
                 value={todayDigest ? "Synced" : "Waiting"}
               />
-              <Stat icon={Sparkles} label="Subscription" value="Live" />
               <Stat icon={Sparkles} label="For You" value="Live" />
+              <Stat icon={Sparkles} label="Subscription" value="Live" />
               <Stat icon={Archive} label="Archive entries" value={archiveCount} />
             </div>
           </div>
-          <div className="home-rail-section">
-            <h2>Recent dijest</h2>
-            <div className="mt-4 grid gap-3">
+          <div>
+            <h3>Recent dijest</h3>
+            <div className="grid gap-1">
               {recentArchiveDigests.map((digest) => (
                 <Link
-                  className="home-rail-link"
+                  className="fb-rail-link"
                   href={`/dashboard?tab=ai-dijest#${digest.id}`}
                   key={digest.id}
                 >
                   <strong>{digest.title}</strong>
-                  <span>{digest.itemCount} items · {digest.createdAt.toLocaleDateString()}</span>
+                  <span>
+                    {digest.itemCount} items · {digest.createdAt.toLocaleDateString()}
+                  </span>
                 </Link>
               ))}
               {recentArchiveDigests.length === 0 ? (
@@ -126,8 +128,8 @@ export default async function DashboardPage({
               ) : null}
             </div>
           </div>
-          <Link className="button-light button-compact gap-2" href="/builders">
-            <UsersRound className="h-4 w-4" />
+          <Link className="fb-btn light compact" href="/builders">
+            <UsersRound aria-hidden="true" />
             Manage sources
           </Link>
         </aside>
@@ -151,16 +153,20 @@ function AiDijestFeed({
   const visibleEnd = Math.min((archivePage - 1) * archivePageSize + archiveDigests.length, archiveCount);
 
   return (
-    <section className="subscription-feed">
-      <SkillPromptActions context="digest" />
+    <section className="grid gap-5">
+      <div className="mt-4">
+        <SkillPromptActions context="digest" />
+      </div>
       {todayDigest ? (
         <DigestDetails digest={serializeDigestSummary(todayDigest)} mode="today" />
       ) : (
-        <div className="empty-panel border-dashed md:p-8">
+        <div className="fb-panel dashed">
           <div className="flex items-start gap-3">
-            <Terminal className="mt-1 h-5 w-5 text-[var(--accent)]" />
+            <Terminal className="mt-1 h-5 w-5 text-[var(--accent)]" aria-hidden="true" />
             <div>
-              <h2 className="text-lg font-semibold text-[var(--ink)]">No subscription sync today</h2>
+              <h2 className="serif text-lg font-semibold text-[var(--ink)]">
+                No subscription sync today
+              </h2>
               <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
                 Run the skill from your terminal or agent, then sync the generated subscription here.
               </p>
@@ -168,14 +174,14 @@ function AiDijestFeed({
           </div>
         </div>
       )}
-      <section id="digest-archive" className="digest-archive mt-8 scroll-mt-24">
-        <div className="page-kicker-row">
-          <p className="section-label">Digest archive</p>
-          <span className="status-chip">
+      <section id="digest-archive" className="mt-8 scroll-mt-24">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="fb-section-label">Digest archive</span>
+          <span className="fb-chip">
             Showing {visibleStart}-{visibleEnd} of {archiveCount}
           </span>
         </div>
-        <div className="item-list mt-4">
+        <div className="mt-4 grid gap-3">
           {archiveDigests.map((digest, index) => (
             <DigestDetails
               defaultOpen={index === 0}
@@ -184,7 +190,7 @@ function AiDijestFeed({
             />
           ))}
           {archiveDigests.length === 0 ? (
-            <div className="empty-panel border-dashed md:p-10">
+            <div className="fb-panel dashed text-sm text-[var(--muted-strong)]">
               Historical digests will appear here after more subscription syncs.
             </div>
           ) : null}
@@ -193,7 +199,7 @@ function AiDijestFeed({
           <nav className="mt-6 flex flex-wrap gap-3" aria-label="Digest archive pagination">
             <Link
               aria-disabled={archivePage === 1}
-              className={`button-light button-compact ${
+              className={`fb-btn light compact ${
                 archivePage === 1 ? "pointer-events-none opacity-45" : ""
               }`}
               href={`/dashboard?tab=ai-dijest&archivePage=${Math.max(1, archivePage - 1)}#digest-archive`}
@@ -202,7 +208,7 @@ function AiDijestFeed({
             </Link>
             <Link
               aria-disabled={visibleEnd >= archiveCount}
-              className={`button-light button-compact ${
+              className={`fb-btn light compact ${
                 visibleEnd >= archiveCount ? "pointer-events-none opacity-45" : ""
               }`}
               href={`/dashboard?tab=ai-dijest&archivePage=${archivePage + 1}#digest-archive`}
@@ -226,11 +232,11 @@ function Stat({
   value: number | string;
 }) {
   return (
-    <div className="stat-card">
-      <Icon className="stat-card-icon" />
+    <div className="fb-stat">
+      <Icon className="fb-stat-icon" aria-hidden="true" />
       <div className="min-w-0">
-        <div className="stat-card-value">{value}</div>
-        <div className="stat-card-label">{label}</div>
+        <div className="fb-stat-value">{value}</div>
+        <div className="fb-stat-label">{label}</div>
       </div>
     </div>
   );

@@ -44,10 +44,10 @@ export default function BuildersPage() {
 
   return (
     <div className="page-pad">
-      <section className="page-header">
+      <section className="fb-page-head">
         <div>
-          <h1 className="page-title">Sources</h1>
-          <p className="page-description">
+          <h1 className="fb-title">Sources</h1>
+          <p className="fb-desc">
             Manage your library, subscriptions, and per-source crawl history.
           </p>
         </div>
@@ -265,7 +265,7 @@ async function BuilderSections({
 
       <section className="grid gap-3">
         <div>
-          <h2 className="section-heading">Imported libraries</h2>
+          <h2 className="fb-section-heading">Imported libraries</h2>
           <p className="mt-1 text-sm text-[var(--muted-strong)]">
             Sources grouped by the shared library they came from.
           </p>
@@ -401,12 +401,12 @@ function LibrarySection({
     >
       <summary className="library-section-summary">
         <div>
-          <h2 className="text-lg font-semibold leading-snug">{title}</h2>
+          <h2 className="fb-section-heading">{title}</h2>
           <p className="mt-1 text-sm text-[var(--muted-strong)]">{detail}</p>
         </div>
         <div className="library-section-meta">
-          <span className="kind-pill">{badge}</span>
-          <span className="sub-pill">{count} sources</span>
+          <span className="fb-kind-pill">{badge}</span>
+          <span className="fb-kind-pill">{count} sources</span>
           {action}
         </div>
       </summary>

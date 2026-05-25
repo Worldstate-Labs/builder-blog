@@ -30,17 +30,17 @@ export default async function AdminPage() {
 
   return (
     <div className="page-pad">
-        <section className="page-header">
-          <div>
-            <h1 className="page-title">Crawl operations</h1>
-            <p className="page-description">
-              Review the central builder pool, de-dupe keys, and recent imports.
-            </p>
-          </div>
-          <Suspense fallback={<AdminStatsFallback />}>
-            <AdminStats />
-          </Suspense>
-        </section>
+      <section className="fb-page-head">
+        <div>
+          <h1 className="fb-title">Crawl operations</h1>
+          <p className="fb-desc">
+            Review the central builder pool, de-dupe keys, and recent imports.
+          </p>
+        </div>
+        <Suspense fallback={<AdminStatsFallback />}>
+          <AdminStats />
+        </Suspense>
+      </section>
 
         <section className="mt-8 grid gap-4 lg:grid-cols-2">
           <Suspense fallback={<MetricPanelFallback title="Builder pool by kind" />}>
@@ -290,9 +290,11 @@ function recentImportSince() {
 
 function AdminStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="stat-card stat-card-plain">
-      <div className="stat-card-value">{value}</div>
-      <div className="stat-card-label">{label}</div>
+    <div className="fb-stat">
+      <div className="min-w-0">
+        <div className="fb-stat-value">{value}</div>
+        <div className="fb-stat-label">{label}</div>
+      </div>
     </div>
   );
 }

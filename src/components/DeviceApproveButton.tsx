@@ -31,17 +31,22 @@ export function DeviceApproveButton({ code }: { code: string }) {
   }
 
   return (
-    <div className="mt-8">
-      <button className="auth-button" disabled={isPending} onClick={approve} type="button">
-        {isPending ? "Approving..." : "Approve terminal access"}
+    <div className="mt-6 flex flex-col gap-3">
+      <button
+        className="fb-auth-btn justify-center disabled:cursor-wait disabled:opacity-65"
+        disabled={isPending}
+        onClick={approve}
+        type="button"
+      >
+        {isPending ? "Approving..." : "Approve device"}
       </button>
       <span aria-live="polite">
         {message ? (
           <p
             className={
               status === "approved"
-                ? "mt-8 rounded-lg bg-emerald-400/15 p-5 text-emerald-100"
-                : "mt-8 rounded-lg bg-red-400/15 p-5 text-red-100"
+                ? "rounded-lg border border-emerald-300/30 bg-emerald-400/15 p-4 text-sm text-emerald-100"
+                : "rounded-lg border border-red-300/30 bg-red-400/15 p-4 text-sm text-red-100"
             }
           >
             {message}

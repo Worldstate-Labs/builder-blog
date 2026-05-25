@@ -14,51 +14,52 @@ export default async function LoginPage({
   if (session) redirect("/dashboard");
 
   return (
-    <main className="min-h-screen bg-[var(--charcoal)] px-6 py-8 text-white">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-10 lg:grid-cols-[1.08fr_0.92fr]">
-        <section>
-          <div className="flex items-center gap-3">
-            <BrandMark />
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-white/50">
-              FollowBrief
-            </p>
-          </div>
-          <h1 className="mt-7 max-w-3xl font-serif text-5xl font-semibold leading-[1.02] md:text-7xl">
-            Sign in to your briefing desk.
-          </h1>
-          <p className="mt-7 max-w-2xl text-xl leading-9 text-white/68">
-            Follow people and sources, collect new updates, and publish your
-            agent-generated digests to a searchable archive.
-          </p>
-          <div className="mt-10 grid max-w-2xl gap-3 sm:grid-cols-3">
-            <LoginProof icon={Archive} label="Archive" />
-            <LoginProof icon={Search} label="Search" />
-            <LoginProof icon={KeyRound} label="Agent token" />
-          </div>
-        </section>
-        <section className="rounded-lg border border-white/12 bg-white/[0.07] p-6 shadow-2xl shadow-black/30 backdrop-blur md:p-7">
-          <div className="flex items-start justify-between gap-5">
-            <div>
-              <h2 className="font-serif text-3xl">Continue securely</h2>
-              <p className="mt-3 text-sm leading-6 text-white/62">
-                Use the same identity for your web archive and terminal agent bridge.
+    <main className="fb-dark-frame">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 items-center">
+        <div className="grid w-full gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:gap-12">
+          <section>
+            <div className="flex items-center gap-3">
+              <BrandMark size="dark" />
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/50">
+                FollowBrief
               </p>
             </div>
-            <span className="rounded-lg bg-white/10 p-2 text-white/70">
-              <ShieldCheck className="h-5 w-5" />
-            </span>
-          </div>
-          <p className="mt-3 text-sm leading-6 text-white/62">
-            OAuth credentials are read from env. Configure Google and GitHub in
-            `.env`, then use either provider.
-          </p>
-          <div className="mt-8">
-            <AuthButtons callbackUrl={params.callbackUrl ?? "/dashboard"} />
-          </div>
-          <p className="mt-6 text-xs leading-5 text-white/42">
-            Tokens for terminal use are created after sign-in from Settings.
-          </p>
-        </section>
+            <h1 className="serif mt-7 text-5xl font-semibold leading-[1.02] tracking-tight text-white md:text-6xl">
+              Sign in to your<br />briefing desk.
+            </h1>
+            <p className="mt-6 max-w-lg text-lg leading-relaxed text-white/68">
+              Follow people and sources, collect new updates, and publish your
+              agent-generated digests to a searchable archive.
+            </p>
+            <div className="mt-8 grid max-w-lg gap-2.5 sm:grid-cols-3">
+              <LoginProof icon={Archive} label="Archive" />
+              <LoginProof icon={Search} label="Search" />
+              <LoginProof icon={KeyRound} label="Agent token" />
+            </div>
+          </section>
+
+          <section className="fb-dark-panel">
+            <div className="flex items-start justify-between gap-5">
+              <div>
+                <h2 className="serif text-[1.65rem] font-semibold leading-tight tracking-tight">
+                  Continue securely
+                </h2>
+                <p className="mt-2.5 text-[13px] leading-relaxed text-white/62">
+                  Use the same identity for your web archive and terminal agent bridge.
+                </p>
+              </div>
+              <span className="rounded-lg bg-white/10 p-2 text-white/70">
+                <ShieldCheck className="h-[18px] w-[18px]" aria-hidden="true" />
+              </span>
+            </div>
+            <div className="mt-6">
+              <AuthButtons callbackUrl={params.callbackUrl ?? "/dashboard"} />
+            </div>
+            <p className="mt-5 text-[11.5px] leading-relaxed text-white/42">
+              Tokens for terminal use are created after sign-in from Settings.
+            </p>
+          </section>
+        </div>
       </div>
     </main>
   );
@@ -72,9 +73,9 @@ function LoginProof({
   label: string;
 }) {
   return (
-    <div className="rounded-lg border border-white/12 bg-white/[0.06] p-3">
-      <Icon className="h-4 w-4 text-white/62" />
-      <div className="mt-3 text-sm font-semibold text-white/82">{label}</div>
+    <div className="fb-dark-proof">
+      <Icon className="h-4 w-4 text-white/62" aria-hidden="true" />
+      <div className="mt-2.5 text-[13px] font-bold text-white/82">{label}</div>
     </div>
   );
 }

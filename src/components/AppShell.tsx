@@ -21,34 +21,34 @@ export function AppShell({
   children: React.ReactNode;
   session?: Session | null;
 }) {
-  const items = nav;
-
   return (
     <div className="app-frame min-h-screen bg-[var(--paper)] text-[var(--ink)]">
-      <header className="app-topbar">
-        <div className="app-topbar-left">
-          <Link href="/dashboard" className="app-brand group">
-            <BrandMark />
-            <div className="min-w-0">
-              <div className="text-base font-semibold leading-tight text-[var(--ink)]">
-                FollowBrief
-              </div>
-            </div>
-          </Link>
+      <header className="fb-top">
+        <Link href="/dashboard" className="fb-brand">
+          <BrandMark />
+          <span className="fb-brand-name">FollowBrief</span>
+        </Link>
+        <div className="hidden flex-1 min-w-0 md:block">
           <SearchForm query="" variant="header" />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           <ThemeToggle />
           <UserMenu session={session} compact />
         </div>
       </header>
       <div className="app-body">
-        <aside className="shell-sidebar hidden w-[12rem] shrink-0 border-r border-[var(--line)] px-4 py-6 lg:flex lg:flex-col">
-          <AppNav items={items} mode="desktop" />
+        <aside className="fb-side hidden lg:flex">
+          <AppNav items={nav} mode="desktop" />
+          <div className="mt-auto pt-3.5 border-t border-[var(--line)]">
+            <Link href="/settings" className="fb-nav">
+              <Settings aria-hidden="true" />
+              <span>Settings</span>
+            </Link>
+          </div>
         </aside>
         <main className="flex min-w-0 flex-1 flex-col">
           {children}
-          <AppNav items={items} mode="mobile" />
+          <AppNav items={nav} mode="mobile" />
         </main>
       </div>
     </div>
@@ -78,14 +78,14 @@ function UserMenu({
           <Image
             alt=""
             aria-hidden="true"
-            className="user-avatar"
+            className="user-avatar fb-avatar"
             src={user.image}
             width={32}
             height={32}
             unoptimized
           />
         ) : (
-          <span className="user-avatar" aria-hidden="true">
+          <span className="fb-avatar" aria-hidden="true">
             {initial}
           </span>
         )}

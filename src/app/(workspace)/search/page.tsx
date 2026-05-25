@@ -147,8 +147,10 @@ export default async function SearchPage({
   return (
     <div className={hasQuery ? "page-pad search-page search-page-active" : "page-pad search-page"}>
         <section className="search-hero">
-          <h1 className="search-heading">Search</h1>
-          <p className="search-subtitle">
+          <h1 className="serif text-[1.875rem] font-semibold leading-tight tracking-tight">
+            Search
+          </h1>
+          <p className="fb-desc">
             Find sources, crawled posts, and digest history.
           </p>
           <SearchForm
@@ -501,20 +503,23 @@ function ActiveSearchFilters({
   return (
     <section className="search-active-filters" aria-label="Active search filters">
       <div className="search-active-filters-heading">Search tools</div>
-      <div className="search-filter-chip-row">
+      <div className="flex flex-wrap items-center gap-2">
         {filters.map((filter) => (
           <Link
             aria-label={filter.clearLabel}
-            className="search-filter-chip"
+            className="fb-filter-chip"
             href={filter.href}
             key={`${filter.label}:${filter.value}`}
           >
-            <span className="search-filter-label">{filter.label}</span>
+            <span className="label">{filter.label}</span>
             <span>{filter.value}</span>
-            <X aria-hidden="true" className="h-3.5 w-3.5" />
+            <X aria-hidden="true" />
           </Link>
         ))}
-        <Link className="search-filter-clear" href={clearAllHref}>
+        <Link
+          className="ml-1 text-xs font-bold text-[var(--accent)]"
+          href={clearAllHref}
+        >
           Clear all
         </Link>
       </div>
@@ -538,7 +543,7 @@ function SearchTypeTabs({
   time: SearchTimeRange;
 }) {
   return (
-    <nav className="search-tabs" aria-label="Result type">
+    <nav className="fb-stabs" aria-label="Result type">
       <TypeTab
         count={counts?.all}
         current={current}
@@ -573,10 +578,15 @@ function TypeTab({
   label: string;
   value: SearchTypeFilter;
 }) {
+  const isActive = current === value;
   return (
-    <Link className="search-tab" data-active={current === value ? "true" : undefined} href={href}>
+    <Link
+      className={`fb-stab${isActive ? " active" : ""}`}
+      data-active={isActive ? "true" : undefined}
+      href={href}
+    >
       <span>{label}</span>
-      {typeof count === "number" ? <span className="search-tab-count">{count}</span> : null}
+      {typeof count === "number" ? <span className="fb-stab-count">{count}</span> : null}
     </Link>
   );
 }

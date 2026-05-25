@@ -35,10 +35,11 @@ export function DashboardHomeTabs({
 
   return (
     <>
-      <div className="home-tabs" role="tablist" aria-label="Home feed">
+      <div className="fb-tabs" role="tablist" aria-label="Home feed">
         <button
           aria-controls="home-panel-ai-dijest"
           aria-selected={selectedTab === "ai-dijest"}
+          className={`fb-tab${selectedTab === "ai-dijest" ? " active" : ""}`}
           data-active={selectedTab === "ai-dijest" ? "true" : undefined}
           id="home-tab-ai-dijest"
           onClick={() => selectTab("ai-dijest")}
@@ -48,19 +49,9 @@ export function DashboardHomeTabs({
           AI dijest
         </button>
         <button
-          aria-controls="home-panel-subscription"
-          aria-selected={selectedTab === "subscription"}
-          data-active={selectedTab === "subscription" ? "true" : undefined}
-          id="home-tab-subscription"
-          onClick={() => selectTab("subscription")}
-          role="tab"
-          type="button"
-        >
-          Subscription
-        </button>
-        <button
           aria-controls="home-panel-for-you"
           aria-selected={selectedTab === "for-you"}
+          className={`fb-tab${selectedTab === "for-you" ? " active" : ""}`}
           data-active={selectedTab === "for-you" ? "true" : undefined}
           id="home-tab-for-you"
           onClick={() => selectTab("for-you")}
@@ -68,6 +59,18 @@ export function DashboardHomeTabs({
           type="button"
         >
           For You
+        </button>
+        <button
+          aria-controls="home-panel-subscription"
+          aria-selected={selectedTab === "subscription"}
+          className={`fb-tab${selectedTab === "subscription" ? " active" : ""}`}
+          data-active={selectedTab === "subscription" ? "true" : undefined}
+          id="home-tab-subscription"
+          onClick={() => selectTab("subscription")}
+          role="tab"
+          type="button"
+        >
+          Subscription
         </button>
       </div>
       <section

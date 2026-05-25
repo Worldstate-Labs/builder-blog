@@ -56,14 +56,27 @@ export function DigestDetails({
 
   if (mode === "today") {
     return (
-      <article className="feed-card">
-        <div className="item-kicker">
-          <span>Today digest</span>
-          <span>{formatDate(digest.createdAt)}</span>
-          <span>{digest.itemCount} items</span>
+      <article className="fb-digest">
+        <div className="fb-digest-head">
+          <div className="min-w-0">
+            <div className="fb-digest-title">{digest.title}</div>
+            <div className="fb-digest-sub">
+              <span>{digest.itemCount} items</span>
+              <span className="opacity-40">·</span>
+              <span>{formatDate(digest.createdAt)}</span>
+            </div>
+          </div>
+          <span className="fb-digest-chip">
+            <span
+              aria-hidden="true"
+              className="block h-2 w-2 rounded-full bg-emerald-300"
+            />
+            Today
+          </span>
         </div>
-        <h2 className="mt-3 text-xl font-semibold leading-snug">{digest.title}</h2>
-        <DigestBody content={content} status={status} />
+        <div className="fb-digest-body">
+          <DigestBody content={content} status={status} variant="today" />
+        </div>
       </article>
     );
   }
@@ -103,14 +116,24 @@ export function DigestDetails({
 function DigestBody({
   content,
   status,
+  variant = "archive",
 }: {
   content: string | null;
   status: "idle" | "loading" | "loaded" | "error";
+  variant?: "today" | "archive";
 }) {
+  const isToday = variant === "today";
+
   if (status === "loading") {
     return (
       <div className="item-details" aria-live="polite" aria-busy="true">
-        <span className="status-chip">
+        <span
+          className={
+            isToday
+              ? "fb-digest-chip inline-flex items-center gap-1.5"
+              : "status-chip"
+          }
+        >
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           Loading digest
         </span>
@@ -120,14 +143,27 @@ function DigestBody({
 
   if (status === "error") {
     return (
-      <div className="item-details text-sm text-[var(--danger)]" aria-live="polite">
+      <div
+        className={
+          isToday
+            ? "text-sm text-red-200"
+            : "item-details text-sm text-[var(--danger)]"
+        }
+        aria-live="polite"
+      >
         Could not load digest.
       </div>
     );
   }
 
   return (
-    <pre className="item-details whitespace-pre-wrap font-sans text-sm leading-7 text-[var(--muted-strong)]">
+    <pre
+      className={
+        isToday
+          ? "whitespace-pre-wrap font-sans text-[13.5px] leading-7 text-white/74 m-0"
+          : "item-details whitespace-pre-wrap font-sans text-sm leading-7 text-[var(--muted-strong)]"
+      }
+    >
       {content ?? ""}
     </pre>
   );

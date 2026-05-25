@@ -30,18 +30,18 @@ export function AppNav({
   return (
     <>
       {mode !== "mobile" ? (
-        <nav className="hidden gap-1 lg:grid" aria-label="Primary">
+        <nav className="hidden flex-col gap-1 lg:flex" aria-label="Primary">
           {items.map((item) => {
             const Icon = icons[item.icon];
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
-                className="nav-link"
+                className={`fb-nav${active ? " active" : ""}`}
                 data-active={active ? "true" : undefined}
                 href={item.href}
                 key={item.href}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4 w-4" aria-hidden="true" />
                 <span>{item.label}</span>
               </Link>
             );

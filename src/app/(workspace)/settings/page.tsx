@@ -37,30 +37,27 @@ export default async function SettingsPage() {
 
   return (
     <div className="page-pad">
-        <section className="page-header">
-          <div>
-            <h1 className="page-title">Settings</h1>
-            <p className="page-description">
-              Configure feed preferences and agent access.
-            </p>
-          </div>
-          <span className="status-chip">
-            <KeyRound className="h-3.5 w-3.5" />
-            {tokens.filter((token) => !token.revokedAt).length} active
-          </span>
-        </section>
+      <section className="fb-page-head">
+        <div>
+          <h1 className="fb-title">Settings</h1>
+          <p className="fb-desc">
+            Configure feed preferences and agent access.
+          </p>
+        </div>
+        <span className="fb-chip">
+          <KeyRound aria-hidden="true" />
+          {tokens.filter((token) => !token.revokedAt).length} active tokens
+        </span>
+      </section>
 
-        <section className="action-panel mt-6 md:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h2 className="section-heading">Feed preferences</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
-                Digest generation uses these settings when the skill asks for
-                context. Recommendations use the profile text and reading log
-                to rank unread crawled posts.
-              </p>
-            </div>
-          </div>
+      <div className="mt-6 grid gap-5 lg:grid-cols-2">
+        <section className="fb-panel">
+          <h2 className="fb-section-heading">Feed preferences</h2>
+          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
+            Digest generation uses these settings when the skill asks for
+            context. Recommendations use the profile text and reading log to
+            rank unread crawled posts.
+          </p>
           <FeedPreferenceForm
             initialValue={{
               digestFrequency,
@@ -71,7 +68,8 @@ export default async function SettingsPage() {
           />
         </section>
 
-      <AgentTokenPanel initialTokens={serializedTokens} />
+        <AgentTokenPanel initialTokens={serializedTokens} />
+      </div>
     </div>
   );
 }

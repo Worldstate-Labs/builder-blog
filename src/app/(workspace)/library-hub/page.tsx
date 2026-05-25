@@ -14,14 +14,14 @@ export default function LibraryHubPage() {
 
   return (
     <div className="page-pad">
-      <section className="page-header">
+      <section className="fb-page-head">
         <div>
-          <h1 className="page-title">Library Hub</h1>
-          <p className="page-description">
-            Import shared source libraries into your pool.
+          <h1 className="fb-title">Library Hub</h1>
+          <p className="fb-desc">
+            Import shared source libraries, or publish your own so others can follow what you read.
           </p>
         </div>
-        <Suspense fallback={<span className="status-chip" aria-busy="true">Loading</span>}>
+        <Suspense fallback={<span className="fb-chip" aria-busy="true">Loading</span>}>
           <LibraryHubCount dataPromise={dataPromise} />
         </Suspense>
       </section>
@@ -100,7 +100,7 @@ async function LibraryHubCount({
 }) {
   const data = await dataPromise;
 
-  return <span className="status-chip">{data.libraryCount} libraries</span>;
+  return <span className="fb-chip">{data.libraryCount} libraries</span>;
 }
 
 async function LibraryHubImportSection({
