@@ -15,12 +15,12 @@ During the `agentTasks` step, failed extraction attempts are not command-contrac
 failures. Keep trying available local capabilities until each task is completed
 or no available method can obtain real primary content.
 For every newly crawled or agent-produced post, also generate a concise Chinese
-single-post summary using the post's `summaryInstructions`. The selected
-`summaryInstructions.promptSource.body` is copied from `context.prompts`:
-`summarizeTweets` for `TWEET`, `summarizePodcast` for `PODCAST_EPISODE`, and
-`summarizeBlogs` for `BLOG_POST`. Adapt the selected digest-feed prompt to
-exactly one supplied post; do not group posts and do not use `digestIntro` or
-`translate`.
+single-post summary using `summaryInstructions.prompt` from the task. The CLI
+builds that prompt by adapting the source-specific reference prompt for the item
+kind: `summarize-tweets.md` for `TWEET`, `summarize-podcast.md` for
+`PODCAST_EPISODE`, and `summarize-blogs.md` for `BLOG_POST`. These filenames are
+only provenance labels; do not read prompt files, do not fetch `context.prompts`,
+and do not use the digest-feed prompt directly at runtime.
 
 Before doing work, ensure the skill is installed:
 
@@ -54,10 +54,9 @@ Rules:
   that meets `minimumContentQuality`.
 - If the crawl result contains a non-empty `summaryTasks` array, complete
   exactly those task IDs by writing one concise Chinese summary per task. Follow
-  each task's `summaryInstructions.promptSource` and
-  `summaryInstructions.adaptation`. This is a single-post summary, not a
-  multi-post digest. Do not browse, do not add items, and do not summarize from
-  title or description alone.
+  each task's `summaryInstructions.prompt`. This is a single-post summary, not a
+  multi-post digest. Do not browse, do not read prompt files, do not add items,
+  and do not summarize from title or description alone.
 - Every agent-produced item must include `rawJson.agentTaskId`,
   `rawJson.agentRuntime`, `rawJson.agentModel` if known,
   `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`. For YouTube,

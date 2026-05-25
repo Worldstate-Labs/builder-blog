@@ -14,11 +14,11 @@ During the `agentTasks` step, failed extraction attempts are not command-contrac
 failures. Keep trying available local capabilities until each task is completed
 or no available method can obtain real primary content.
 During the `summaryTasks` step, generate one concise Chinese single-post summary
-per task by following `task.summaryInstructions.promptSource` and
-`task.summaryInstructions.adaptation`. The selected prompt body is copied from
-`context.prompts`: `summarizeTweets` for `TWEET`, `summarizePodcast` for
-`PODCAST_EPISODE`, and `summarizeBlogs` for `BLOG_POST`, adapted to exactly one
-supplied post.
+per task by following `task.summaryInstructions.prompt`. The CLI builds that
+prompt by adapting the source-specific reference prompt for the item kind:
+`summarize-tweets.md` for `TWEET`, `summarize-podcast.md` for
+`PODCAST_EPISODE`, and `summarize-blogs.md` for `BLOG_POST`. These filenames are
+only provenance labels; do not read prompt files or fetch `context.prompts`.
 
 1. Install or refresh the skill:
 
@@ -63,10 +63,9 @@ pass `validate-agent-sync` before `sync-builders` is considered successful.
 
 If the smoke check JSON contains a non-empty `summaryTasks` array: complete
 exactly those task IDs by writing one concise Chinese single-post summary per
-task. Follow `task.summaryInstructions.promptSource` and
-`task.summaryInstructions.adaptation`; do not summarize from title or
-description alone. Validate with `validate-agent-sync` before `sync-builders` is
-considered successful.
+task. Follow `task.summaryInstructions.prompt`; do not read prompt files and do
+not summarize from title or description alone. Validate with
+`validate-agent-sync` before `sync-builders` is considered successful.
 
 Only if crontab is unavailable or blocked, install the same command and cadence
 through launchd or the local agent scheduler:

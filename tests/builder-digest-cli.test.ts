@@ -455,7 +455,7 @@ test("agent sync validation accepts single-post summaries for summary tasks", as
   assert.equal(result.validatedSummaryTasks, 1);
 });
 
-test("summary tasks carry source-specific digest prompts adapted for one post", async () => {
+test("summary tasks carry embedded source-specific single-post prompts", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const tasks = cli.postSummaryTasksForBuilders(
     [
@@ -496,20 +496,18 @@ test("summary tasks carry source-specific digest prompts adapted for one post", 
   );
 
   assert.deepEqual(
-    tasks.map((task: { summaryInstructions: { promptSource: { key: string; body: string } } }) => [
-      task.summaryInstructions.promptSource.key,
-      task.summaryInstructions.promptSource.body,
-    ]),
-    [
-      ["summarizeTweets", "tweet prompt body"],
-      ["summarizePodcast", "podcast prompt body"],
-      ["summarizeBlogs", "blog prompt body"],
-    ],
+    tasks.map((task: { summaryInstructions: { sourcePrompt: { key: string } } }) => task.summaryInstructions.sourcePrompt.key),
+    ["summarizeTweets", "summarizePodcast", "summarizeBlogs"],
   );
   for (const task of tasks) {
-    assert.match(task.summaryInstructions.adaptation, /exactly one supplied post/);
-    assert.match(task.summaryInstructions.adaptation, /do not use digestIntro or translate/i);
+    assert.match(task.summaryInstructions.prompt, /Write one concise Chinese FollowBrief single-post summary/);
+    assert.match(task.summaryInstructions.prompt, /do not read external prompt files/i);
+    assert.match(task.summaryInstructions.prompt, /do not fetch context\.prompts/i);
+    assert.match(task.summaryInstructions.prompt, /do not use digestIntro or translate/i);
   }
+  assert.match(tasks[0].summaryInstructions.prompt, /tweet prompt body/);
+  assert.match(tasks[1].summaryInstructions.prompt, /podcast prompt body/);
+  assert.match(tasks[2].summaryInstructions.prompt, /blog prompt body/);
 });
 
 test("agent sync validation rejects YouTube metadata masquerading as content", async () => {

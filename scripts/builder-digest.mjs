@@ -377,26 +377,52 @@ function withSummaryInstructions(task, prompts = {}) {
 }
 
 export function singlePostSummaryInstructions(kind, prompts = {}) {
-  const promptSource = summaryPromptSourceForKind(kind, prompts);
+  const source = summaryPromptReferenceForKind(kind, prompts);
   return {
     language: "zh",
     scope: "single_post",
     sourceUrlRequired: true,
     useOnlySuppliedItem: true,
-    promptSource,
-    adaptation:
-      "Use the selected digest-feed prompt as the writing method, but adapt it to exactly one supplied post. Do not group multiple posts, do not assemble a digest section, and do not use digestIntro or translate. Use task.item.body as the primary content, task.item.title/source metadata only as context, and task.item.url as the source link. Preserve the source prompt's quality bar, no-fabrication rule, quote rule, and source-link rule.",
+    prompt: singlePostSummaryPrompt(source),
+    sourcePrompt: {
+      key: source.key,
+      file: source.file,
+      role: "reference_material_used_to_build_this_single_post_prompt",
+    },
   };
 }
 
-function summaryPromptSourceForKind(kind, prompts = {}) {
+function singlePostSummaryPrompt(source) {
+  return [
+    "Write one concise Chinese FollowBrief single-post summary.",
+    "",
+    `This prompt is adapted from the source-specific reference prompt ${source.file}. The reference rules are embedded below for calibration; do not read external prompt files, do not fetch context.prompts, and do not write a multi-post digest.`,
+    "",
+    "Reference rules:",
+    source.body || source.fallback,
+    "",
+    "Single-post adaptation:",
+    source.singlePostAdaptation,
+    "- Summarize exactly one supplied task item.",
+    "- Use task.item.body as the primary content.",
+    "- Use task.item.title, source metadata, and task.item.url only as context and source attribution.",
+    "- Include the direct source URL for every claim.",
+    "- Do not group multiple posts, do not assemble a digest section, and do not use digestIntro or translate.",
+    "- Do not summarize from title, description, or page metadata alone.",
+    "- Preserve the reference prompt's quality bar, no-fabrication rule, quote rule, and source-link rule.",
+  ].join("\n");
+}
+
+function summaryPromptReferenceForKind(kind, prompts = {}) {
   if (kind === "TWEET") {
     return {
       key: "summarizeTweets",
       file: "summarize-tweets.md",
       body: prompts.summarizeTweets ?? null,
+      fallback:
+        "Summarize substantive original X/Twitter content from an AI builder. Skip weak promotional content, mundane posts, retweets without commentary, and engagement bait. For threads, summarize the full thread cohesively. Mention tools, demos, launches, resources, bold predictions, or contrarian takes when present.",
       singlePostAdaptation:
-        "Apply the X/Twitter prompt to this one tweet or thread from this builder/source. Do not group by builder because the task contains only one post.",
+        "- Apply the X/Twitter rules to this one tweet or one thread from this builder/source.",
     };
   }
   if (kind === "PODCAST_EPISODE") {
@@ -404,16 +430,20 @@ function summaryPromptSourceForKind(kind, prompts = {}) {
       key: "summarizePodcast",
       file: "summarize-podcast.md",
       body: prompts.summarizePodcast ?? null,
+      fallback:
+        "Summarize a podcast or video transcript for a busy professional. Lead with the most important takeaway, prioritize counterintuitive or specific insights, include direct quotes only when present in the transcript, and include the specific episode or video URL.",
       singlePostAdaptation:
-        "Apply the podcast/video prompt to this one episode or video transcript. The summary is for one post, not a multi-episode digest.",
+        "- Apply the podcast/video rules to this one episode or one video transcript.",
     };
   }
   return {
     key: "summarizeBlogs",
     file: "summarize-blogs.md",
     body: prompts.summarizeBlogs ?? null,
+    fallback:
+      "Summarize a blog post from an AI company or builder. Lead with the core announcement, finding, or insight; include named products, features, research results, numbers, benchmarks, practical implications, and direct quotes only when present in the article body.",
     singlePostAdaptation:
-      "Apply the blog prompt to this one article or document. The summary is for one post, not a blog digest.",
+      "- Apply the blog/article rules to this one article or document.",
   };
 }
 

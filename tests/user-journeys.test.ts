@@ -291,11 +291,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryOncePrompt, /Complete exactly the task IDs\s+returned by the CLI/);
   assert.match(libraryOncePrompt, /summaryTasks/);
   assert.match(libraryOncePrompt, /single-post summary/);
-  assert.match(libraryOncePrompt, /summaryInstructions\.promptSource\.body/);
-  assert.match(libraryOncePrompt, /context\.prompts\.summarizeTweets/);
-  assert.match(libraryOncePrompt, /context\.prompts\.summarizePodcast/);
-  assert.match(libraryOncePrompt, /context\.prompts\.summarizeBlogs/);
-  assert.match(libraryOncePrompt, /Do not use `digestIntro` or `translate`/);
+  assert.match(libraryOncePrompt, /summaryInstructions\.prompt/);
+  assert.match(libraryOncePrompt, /summarize-tweets\.md/);
+  assert.match(libraryOncePrompt, /summarize-podcast\.md/);
+  assert.match(libraryOncePrompt, /summarize-blogs\.md/);
+  assert.match(libraryOncePrompt, /do not read prompt files/);
+  assert.match(libraryOncePrompt, /do not fetch `context\.prompts`/);
   assert.match(libraryOncePrompt, /Do not add new sources, URLs, or feed items/);
   assert.match(libraryOncePrompt, /Do not use `--force`/);
   assert.match(libraryOncePrompt, /execution\s+contract, not as user-facing documentation/);
@@ -326,7 +327,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /Do not use `--force`/);
   assert.match(libraryCronSetupPrompt, /summaryTasks/);
   assert.match(libraryCronSetupPrompt, /single-post summary/);
-  assert.match(libraryCronSetupPrompt, /task\.summaryInstructions\.promptSource/);
+  assert.match(libraryCronSetupPrompt, /task\.summaryInstructions\.prompt/);
   assert.match(digestCronSetupPrompt, /builder-agent-runner\.sh digest-cron/);
   assert.match(digestCronSetupPrompt, /First attempt the exact crontab install/);
   assert.match(digestCronSetupPrompt, /crontab/);
@@ -387,7 +388,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronPrompt, /rawJson\.agentTaskId/);
   assert.match(libraryCronPrompt, /summaryTasks/);
   assert.match(libraryCronPrompt, /single-post summary/);
-  assert.match(libraryCronPrompt, /summaryInstructions\.promptSource\.body/);
+  assert.match(libraryCronPrompt, /summaryInstructions\.prompt/);
   assert.match(libraryCronPrompt, /Run these steps exactly/);
   assert.match(libraryCronPrompt, /Only use agent judgment/);
   assert.match(libraryCronPrompt, /Agent discretion boundary/);
