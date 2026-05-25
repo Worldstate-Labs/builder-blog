@@ -1,6 +1,7 @@
 import { BuilderPoolOrigin, BuilderScope, LibraryHubKind } from "@prisma/client";
 import { isAdminEmail } from "@/lib/admin";
 import { addBuilderToPool } from "@/lib/builder-pool";
+import { mergeAdminCommunityBuilderIds } from "@/lib/library-hub-ids";
 import { prisma } from "@/lib/prisma";
 
 export const centralLibraryHubSlug = "central-library";
@@ -75,20 +76,10 @@ export async function sharePersonalLibraryToHub(params: {
     },
   });
 
-  await prisma.$transaction([
-    prisma.libraryHubItem.deleteMany({ where: { hubEntryId: entry.id } }),
-    ...(personalBuilders.length > 0
-      ? [
-          prisma.libraryHubItem.createMany({
-            data: personalBuilders.map((builder) => ({
-              hubEntryId: entry.id,
-              builderId: builder.id,
-            })),
-            skipDuplicates: true,
-          }),
-        ]
-      : []),
-  ]);
+  await replaceLibraryHubItems(
+    entry.id,
+    personalBuilders.map((builder) => builder.id),
+  );
 
   return { entry, builderCount: personalBuilders.length };
 }
@@ -117,12 +108,42 @@ export async function ensureAdminCommunityLibrary(
     return { isPublic: false, builderCount: 0 };
   }
 
-  const result = await sharePersonalLibraryToHub({
-    userId,
-    name: adminCommunityLibraryName,
-    description: adminCommunityLibraryDescription,
+  const personalBuilders = await prisma.builder.findMany({
+    where: {
+      scope: BuilderScope.PERSONAL,
+      ownerUserId: userId,
+    },
+    select: { id: true },
+    orderBy: { name: "asc" },
   });
-  return { isPublic: true, builderCount: result.builderCount };
+  const entry = await prisma.libraryHubEntry.upsert({
+    where: { slug: personalLibrarySlug(userId) },
+    update: {
+      name: adminCommunityLibraryName,
+      description: adminCommunityLibraryDescription,
+    },
+    create: {
+      kind: LibraryHubKind.PERSONAL,
+      slug: personalLibrarySlug(userId),
+      name: adminCommunityLibraryName,
+      description: adminCommunityLibraryDescription,
+      ownerUserId: userId,
+    },
+  });
+  const preservedCentralItems = await prisma.libraryHubItem.findMany({
+    where: {
+      hubEntryId: entry.id,
+      builder: { scope: BuilderScope.CENTRAL },
+    },
+    select: { builderId: true },
+  });
+  const builderIds = mergeAdminCommunityBuilderIds(
+    personalBuilders.map((builder) => builder.id),
+    preservedCentralItems.map((item) => item.builderId),
+  );
+
+  await replaceLibraryHubItems(entry.id, builderIds);
+  return { isPublic: true, builderCount: builderIds.length };
 }
 
 export async function syncPersonalLibraryHubForUser(params: {
@@ -222,4 +243,21 @@ export async function recordLibraryHubViews(libraryIds: string[]) {
 
 export function personalLibrarySlug(userId: string) {
   return `personal-${userId}`;
+}
+
+async function replaceLibraryHubItems(hubEntryId: string, builderIds: string[]) {
+  await prisma.$transaction([
+    prisma.libraryHubItem.deleteMany({ where: { hubEntryId } }),
+    ...(builderIds.length > 0
+      ? [
+          prisma.libraryHubItem.createMany({
+            data: builderIds.map((builderId) => ({
+              hubEntryId,
+              builderId,
+            })),
+            skipDuplicates: true,
+          }),
+        ]
+      : []),
+  ]);
 }

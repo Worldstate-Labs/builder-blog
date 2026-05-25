@@ -17,6 +17,7 @@ import {
   digestMaxAgeCutoff,
   digestMaxPostAgeDays,
 } from "../src/lib/feed-preferences";
+import { mergeAdminCommunityBuilderIds } from "../src/lib/library-hub-ids";
 import {
   buildRecommendationSignals,
   scoreRecommendation,
@@ -106,6 +107,16 @@ test("builder library user path keeps central and per-user builders distinct whi
   assert.equal(
     builderLibraryKey({ scope: BuilderScope.PERSONAL, ownerUserId: "user_b", canonicalKey }),
     "user:user_b:X:openai",
+  );
+});
+
+test("admin community library preserves manually selected central builders", () => {
+  assert.deepEqual(
+    mergeAdminCommunityBuilderIds(
+      ["personal_youtube", "personal_blog"],
+      ["central_no_priors", "central_anthropic", "central_no_priors"],
+    ),
+    ["personal_youtube", "personal_blog", "central_no_priors", "central_anthropic"],
   );
 });
 
