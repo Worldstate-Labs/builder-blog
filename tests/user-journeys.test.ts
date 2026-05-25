@@ -198,6 +198,22 @@ test("subscription user path is a digest subset of the active builder pool", () 
   );
 });
 
+test("non-admin users default-import the admin community library", () => {
+  const builderPool = readFileSync("src/lib/builder-pool.ts", "utf8");
+  const buildersPage = readFileSync("src/app/(workspace)/builders/page.tsx", "utf8");
+  const hubPage = readFileSync("src/app/(workspace)/library-hub/page.tsx", "utf8");
+
+  assert.match(builderPool, /activePoolBuilderIds/);
+  assert.match(builderPool, /ensureDefaultCommunityLibraryImport\(userId\)/);
+  assert.match(builderPool, /if \(!user \|\| isAdminEmail\(user\.email\)\)/);
+  assert.match(builderPool, /kind: "PERSONAL"/);
+  assert.match(builderPool, /ownerUserId:\s*\{ in: adminUsers\.map/);
+  assert.match(builderPool, /BuilderPoolOrigin\.HUB_IMPORT/);
+  assert.match(builderPool, /libraryImport\.create/);
+  assert.match(buildersPage, /ensureDefaultCommunityLibraryImport\(session\.user\.id\)/);
+  assert.match(hubPage, /ensureDefaultCommunityLibraryImport\(session\.user\.id\)/);
+});
+
 test("personal builder removal deletes its crawled feed items instead of preserving crawl state", () => {
   const libraryRoute = readFileSync("src/app/api/builders/[builderId]/library/route.ts", "utf8");
 

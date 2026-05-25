@@ -284,16 +284,20 @@ test("user library search can fetch operator-only candidate sets", () => {
   assert.match(userSearch, /digestSearchConditions\(terms\)/);
 });
 
-test("heavy route sections have route-specific loading fallbacks", () => {
+test("heavy route sections use route or local loading fallbacks", () => {
   for (const path of [
     "src/app/(workspace)/admin/loading.tsx",
-    "src/app/(workspace)/builders/loading.tsx",
     "src/app/history/loading.tsx",
     "src/app/(workspace)/library-hub/loading.tsx",
     "src/app/(workspace)/search/loading.tsx",
   ]) {
     assert.equal(existsSync(join(root, path)), true, path);
   }
+  const buildersPage = source("src/app/(workspace)/builders/page.tsx");
+  assert.equal(existsSync(join(root, "src/app/(workspace)/builders/loading.tsx")), false);
+  assert.match(buildersPage, /<Suspense fallback=\{<BuilderStatsFallback \/>/);
+  assert.match(buildersPage, /<Suspense fallback=\{<BuilderSectionsFallback \/>/);
+  assert.match(buildersPage, /function BuilderSectionsFallback/);
 });
 
 test("builders page avoids a global crawled-content query", () => {
@@ -314,7 +318,7 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
   const feedItemsRoute = source("src/app/api/builders/[builderId]/feed-items/route.ts");
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
-  assert.match(buildersPage, /title=\{isAdmin \? adminCommunityLibraryName : "Private library"\}[\s\S]*defaultOpen/);
+  assert.match(buildersPage, /title=\{data\.isAdmin \? adminCommunityLibraryName : "Private library"\}[\s\S]*defaultOpen/);
   assert.match(builderLibraryList, /Latest \{formatCompactDate\(latestPostCreatedAt\)\}/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported libraries/);
@@ -367,6 +371,7 @@ test("library hub exposes share and multi-import flows", () => {
   const builderLibraryEvents = source("src/lib/builder-library-events.ts");
   const builderLibraryState = source("src/lib/builder-library-state.ts");
   const builderLibraryStateRoute = source("src/app/api/builders/library-state/route.ts");
+  const builderPool = source("src/lib/builder-pool.ts");
   const visibilityRoute = source("src/app/api/library-hub/personal-availability/route.ts");
   const builderSubscriptionRoute = source("src/app/api/builders/[builderId]/subscription/route.ts");
   const builderLibraryRoute = source("src/app/api/builders/[builderId]/library/route.ts");
@@ -457,11 +462,17 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(builderSubscribeAllRoute, /redirect\(/);
   assert.doesNotMatch(hubPage, /sharePersonalLibraryToHubAction/);
   assert.doesNotMatch(hubPage, /importHubLibrariesAction/);
+  assert.match(hubPage, /ensureDefaultCommunityLibraryImport\(session\.user\.id\)/);
   assert.match(hubPage, /LibraryHubImportForm/);
   assert.match(hubPage, /adminCommunityLibraryName/);
   assert.match(hubPage, /isAdminEmail\(library\.owner\?\.email\)/);
+  assert.match(hubPage, /recordLibraryHubViews\(libraries\.map/);
   assert.match(hubImportForm, /"use client"/);
   assert.match(hubImportForm, /fetch\("\/api\/library-hub\/imports"/);
+  assert.match(hubImportForm, /Community Library is added to new accounts automatically/);
+  assert.match(hubImportForm, /selectableCount/);
+  assert.match(hubImportForm, /In library/);
+  assert.doesNotMatch(hubImportForm, /library\.kind === "CENTRAL"/);
   assert.match(hubImportForm, /libraryId/);
   assert.match(hubImportRoute, /export async function POST/);
   assert.match(hubImportRoute, /importLibrariesFromHub/);
@@ -477,6 +488,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(schema, /model LibraryHubEntry/);
   assert.match(schema, /model LibraryImport/);
   assert.match(schema, /adminCommunityLibraryHidden/);
+  assert.match(builderPool, /ensureDefaultCommunityLibraryImport/);
+  assert.match(builderPool, /isAdminEmail\(user\.email\)/);
+  assert.match(builderPool, /BuilderPoolOrigin\.HUB_IMPORT/);
+  assert.match(builderPool, /prisma\.libraryImport/);
 });
 
 test("settings mutations stay local instead of refreshing the whole route", () => {

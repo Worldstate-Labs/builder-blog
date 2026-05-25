@@ -45,8 +45,14 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const selectedIds = useMemo(() => [...selected], [selected]);
+  const importedCount = libraries.filter((library) => importedIds.has(library.id)).length;
+  const selectableCount = libraries.filter(
+    (library) => !library.owned && !importedIds.has(library.id),
+  ).length;
 
   function toggleLibrary(libraryId: string) {
+    const library = libraries.find((item) => item.id === libraryId);
+    if (!library || library.owned || importedIds.has(libraryId)) return;
     setSelected((current) => {
       const next = new Set(current);
       if (next.has(libraryId)) {
@@ -87,12 +93,17 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
 
   return (
     <section className="mt-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="library-hub-toolbar">
         <div>
           <h2 className="section-heading">Available libraries</h2>
           <p className="mt-1 text-sm text-[var(--muted-strong)]">
-            Select one or more libraries, then import their sources.
+            Community Library is added to new accounts automatically. Import other shared libraries when useful.
           </p>
+        </div>
+        <div className="library-hub-counts" aria-label="Library hub summary">
+          <span>{libraries.length} shared</span>
+          <span>{importedCount} in library</span>
+          <span>{selectableCount} available</span>
         </div>
         <div className="inline-flex flex-col items-end gap-2">
           <button
@@ -103,7 +114,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
             type="button"
           >
             <Download className="h-4 w-4" />
-            {isPending ? "Importing..." : "Import selected"}
+            {isPending ? "Importing..." : `Import selected${selectedIds.length ? ` (${selectedIds.length})` : ""}`}
           </button>
           {error ? (
             <span className="text-xs text-[var(--danger)]" role="status">
@@ -116,12 +127,17 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
       <div className="library-hub-grid mt-5">
         {libraries.map((library) => {
           const imported = importedIds.has(library.id);
+          const ownerText = library.ownerLabel === library.name ? null : library.ownerLabel;
           return (
-            <article className="library-hub-card" data-selected={selected.has(library.id) ? "true" : undefined} key={library.id}>
-              <div className="flex items-start justify-between gap-4">
+            <article
+              className="library-hub-card"
+              data-selected={selected.has(library.id) ? "true" : undefined}
+              key={library.id}
+            >
+              <div className="library-hub-card-header">
                 <div className="min-w-0">
                   <div className="item-kicker">
-                    <span>{library.kind === "CENTRAL" ? "Central" : "Shared"}</span>
+                    <span>Shared</span>
                     <span>{library.itemCount} sources</span>
                   </div>
                   <h3 className="mt-2 text-lg font-semibold leading-snug">{library.name}</h3>
@@ -130,11 +146,11 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
                   </p>
                 </div>
                 {library.owned ? (
-                  <span className="sub-pill">Yours</span>
+                  <span className="sub-pill">Your library</span>
                 ) : imported ? (
                   <span className="status-chip status-chip-success">
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    Imported
+                    In library
                   </span>
                 ) : (
                   <label className="hub-checkbox">
@@ -153,16 +169,19 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
 
               <div className="library-hub-summary">
                 <span>{library.importCount} imports</span>
-                <span>{library.ownerLabel}</span>
+                {ownerText ? <span>{ownerText}</span> : null}
               </div>
 
-              <div className="mt-4 grid gap-2">
+              <div className="library-hub-sources">
                 {library.items.map((item) => (
                   <div className="hub-builder-row" key={item.builderId}>
                     <span className="min-w-0 truncate">{item.builder.name}</span>
                     <SourceBadge builder={item.builder} />
                   </div>
                 ))}
+                {library.items.length === 0 ? (
+                  <p className="text-sm text-[var(--muted-strong)]">No sources shared yet.</p>
+                ) : null}
                 {library.itemCount > library.items.length ? (
                   <p className="text-xs font-semibold text-[var(--muted)]">
                     + {library.itemCount - library.items.length} more sources
@@ -172,6 +191,11 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
             </article>
           );
         })}
+        {libraries.length === 0 ? (
+          <div className="empty-panel text-[var(--muted-strong)]">
+            No shared libraries are available yet.
+          </div>
+        ) : null}
       </div>
     </section>
   );

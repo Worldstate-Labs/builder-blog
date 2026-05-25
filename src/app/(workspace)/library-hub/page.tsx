@@ -2,12 +2,14 @@ import { redirect } from "next/navigation";
 import { LibraryHubImportForm, type HubLibrary } from "@/components/LibraryHubImportForm";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
-import { adminCommunityLibraryName } from "@/lib/library-hub";
+import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
+import { adminCommunityLibraryName, recordLibraryHubViews } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 
 export default async function LibraryHubPage() {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
+  await ensureDefaultCommunityLibraryImport(session.user.id);
 
   const [libraries, imports] = await Promise.all([
     prisma.libraryHubEntry.findMany({
@@ -40,6 +42,7 @@ export default async function LibraryHubPage() {
       select: { hubEntryId: true },
     }),
   ]);
+  await recordLibraryHubViews(libraries.map((library) => library.id));
 
   const importedLibraryIds = new Set(imports.map((item) => item.hubEntryId));
   const hubLibraries: HubLibrary[] = libraries.map((library) => {

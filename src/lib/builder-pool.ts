@@ -1,4 +1,5 @@
 import { BuilderPoolOrigin } from "@prisma/client";
+import { adminEmails, isAdminEmail } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 
 export async function addBuilderToPool(params: {
@@ -26,9 +27,83 @@ export async function addBuilderToPool(params: {
 }
 
 export async function activePoolBuilderIds(userId: string) {
+  await ensureDefaultCommunityLibraryImport(userId);
   const entries = await prisma.builderPoolEntry.findMany({
     where: { userId, removedAt: null },
     select: { builderId: true },
   });
   return entries.map((entry) => entry.builderId);
+}
+
+export async function ensureDefaultCommunityLibraryImport(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  if (!user || isAdminEmail(user.email)) return { imported: false, builderCount: 0 };
+
+  const adminUsers = await prisma.user.findMany({
+    where: { email: { in: adminEmails() } },
+    select: { id: true },
+  });
+  if (adminUsers.length === 0) return { imported: false, builderCount: 0 };
+
+  const library = await prisma.libraryHubEntry.findFirst({
+    where: {
+      kind: "PERSONAL",
+      ownerUserId: { in: adminUsers.map((admin) => admin.id) },
+    },
+    include: {
+      items: {
+        select: { builderId: true },
+      },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+  if (!library || library.items.length === 0) return { imported: false, builderCount: 0 };
+
+  const builderIds = [...new Set(library.items.map((item) => item.builderId))];
+  const existingImport = await prisma.libraryImport.findUnique({
+    where: {
+      userId_hubEntryId: {
+        userId,
+        hubEntryId: library.id,
+      },
+    },
+    select: { userId: true },
+  });
+
+  await prisma.$transaction([
+    prisma.builderPoolEntry.updateMany({
+      where: { userId, builderId: { in: builderIds } },
+      data: {
+        origin: BuilderPoolOrigin.HUB_IMPORT,
+        removedAt: null,
+      },
+    }),
+    prisma.builderPoolEntry.createMany({
+      data: builderIds.map((builderId) => ({
+        userId,
+        builderId,
+        origin: BuilderPoolOrigin.HUB_IMPORT,
+      })),
+      skipDuplicates: true,
+    }),
+    ...(existingImport
+      ? []
+      : [
+          prisma.libraryImport.create({
+            data: {
+              userId,
+              hubEntryId: library.id,
+            },
+          }),
+          prisma.libraryHubEntry.update({
+            where: { id: library.id },
+            data: { importCount: { increment: 1 } },
+          }),
+        ]),
+  ]);
+
+  return { imported: true, builderCount: builderIds.length };
 }

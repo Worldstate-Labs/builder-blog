@@ -1,6 +1,6 @@
 import { BuilderKind, BuilderPoolOrigin, BuilderScope, LibraryHubKind } from "@prisma/client";
 import { redirect } from "next/navigation";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { AddBuilderForm } from "@/components/AddBuilderForm";
 import { BuilderLibraryAutoRefresh } from "@/components/BuilderLibraryAutoRefresh";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
@@ -16,6 +16,7 @@ import {
   sharePersonalLibraryToHub,
 } from "@/lib/library-hub";
 import { builderLibraryState } from "@/lib/builder-library-state";
+import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
 import { SOURCE_DEFINITIONS } from "@/lib/source-registry";
 
@@ -35,10 +36,37 @@ type BuilderWithCount = {
 
 type LatestPostCreatedAtByBuilderId = Map<string, Date | null>;
 
-export default async function BuildersPage() {
+type BuildersPageData = Awaited<ReturnType<typeof loadBuildersPageData>>;
+
+export default function BuildersPage() {
+  const dataPromise = loadBuildersPageData();
+
+  return (
+    <div className="page-pad">
+      <section className="page-header">
+        <div>
+          <h1 className="page-title">Sources</h1>
+          <p className="page-description">
+            Manage your library, subscriptions, and per-source crawl history.
+          </p>
+        </div>
+        <Suspense fallback={<BuilderStatsFallback />}>
+          <BuilderStatsSlot dataPromise={dataPromise} />
+        </Suspense>
+      </section>
+
+      <Suspense fallback={<BuilderSectionsFallback />}>
+        <BuilderSections dataPromise={dataPromise} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function loadBuildersPageData() {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
   const isAdmin = isAdminEmail(session.user.email);
+  await ensureDefaultCommunityLibraryImport(session.user.id);
 
   const [poolEntries, subscriptions, importedLibraries, ownSharedLibrary, feedPreference] = await Promise.all([
     prisma.builderPoolEntry.findMany({
@@ -153,100 +181,160 @@ export default async function BuildersPage() {
     builderLibraryState(session.user.id, poolBuilderIds),
   ]);
 
+  return {
+    crawledItems,
+    importedLibrarySections,
+    isAdmin,
+    isPublicLibrary,
+    latestPostCreatedAtByBuilderId,
+    libraryState,
+    poolBuilders,
+    privateBuilders,
+    sessionUserEmail: session.user.email,
+    sessionUserName: session.user.name,
+    subscribed,
+    subscribedCount,
+  };
+}
+
+async function BuilderStatsSlot({
+  dataPromise,
+}: {
+  dataPromise: Promise<BuildersPageData>;
+}) {
+  const data = await dataPromise;
+
   return (
-    <div className="page-pad">
-        <BuilderLibraryAutoRefresh initialVersion={libraryState.version} />
-        <section className="page-header">
-          <div>
-            <h1 className="page-title">Sources</h1>
-            <p className="page-description">
-              Manage your library, subscriptions, and per-source crawl history.
-            </p>
-          </div>
-          <BuilderLibraryStats
-            initialCrawledItems={crawledItems}
-            initialInLibrary={poolBuilders.length}
-            initialSubscribed={subscribedCount}
-          />
-        </section>
+    <BuilderLibraryStats
+      initialCrawledItems={data.crawledItems}
+      initialInLibrary={data.poolBuilders.length}
+      initialSubscribed={data.subscribedCount}
+    />
+  );
+}
 
-        <section className="mt-6 grid gap-5">
-          <LibrarySection
-            title={isAdmin ? adminCommunityLibraryName : "Private library"}
-            detail={isAdmin ? adminCommunityLibraryDescription : "Synced by your agent"}
-            badge={isAdmin ? "admin" : "private"}
-            count={privateBuilders.length}
-            defaultOpen
-          >
-            <LibraryVisibilityToggle
-              disabled={!isAdmin && privateBuilders.length === 0}
-              initialIsPublic={isPublicLibrary}
-              isAdminLibrary={isAdmin}
-              name={isAdmin ? adminCommunityLibraryName : `${session.user.name || session.user.email || "Personal"} library`}
-            />
-            <SkillPromptActions context="library" />
-            <AddBuilderForm
-              sourceOptions={SOURCE_DEFINITIONS.filter((source) => source.id !== "pdf").map(
-                (source) => ({ id: source.id, label: source.label }),
-              )}
-            />
-            <BuilderLibraryList
-              acceptAddedBuilders
-              builders={privateBuilders.map((builder) =>
-                builderListItem({
-                  allowRemove: true,
-                  builder,
-                  crawlLabel: "Agent synced",
-                  latestPostCreatedAt: latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
-                  subscribed: subscribed.has(builder.id),
-                }),
-              )}
-              emptyBody="Add a source here, or sync richer crawled data from your agent later."
-              emptyTitle="No personal sources yet"
-            />
-          </LibrarySection>
+async function BuilderSections({
+  dataPromise,
+}: {
+  dataPromise: Promise<BuildersPageData>;
+}) {
+  const data = await dataPromise;
+  const userLibraryName =
+    data.isAdmin
+      ? adminCommunityLibraryName
+      : `${data.sessionUserName || data.sessionUserEmail || "Personal"} library`;
 
-          <section className="grid gap-3">
-            <div>
-              <h2 className="section-heading">Imported libraries</h2>
-              <p className="mt-1 text-sm text-[var(--muted-strong)]">
-                Sources grouped by the shared library they came from.
-              </p>
+  return (
+    <section className="mt-6 grid gap-5">
+      <BuilderLibraryAutoRefresh initialVersion={data.libraryState.version} />
+      <LibrarySection
+        title={data.isAdmin ? adminCommunityLibraryName : "Private library"}
+        detail={data.isAdmin ? adminCommunityLibraryDescription : "Synced by your agent"}
+        badge={data.isAdmin ? "admin" : "private"}
+        count={data.privateBuilders.length}
+        defaultOpen
+      >
+        <LibraryVisibilityToggle
+          disabled={!data.isAdmin && data.privateBuilders.length === 0}
+          initialIsPublic={data.isPublicLibrary}
+          isAdminLibrary={data.isAdmin}
+          name={userLibraryName}
+        />
+        <SkillPromptActions context="library" />
+        <AddBuilderForm
+          sourceOptions={SOURCE_DEFINITIONS.filter((source) => source.id !== "pdf").map(
+            (source) => ({ id: source.id, label: source.label }),
+          )}
+        />
+        <BuilderLibraryList
+          acceptAddedBuilders
+          builders={data.privateBuilders.map((builder) =>
+            builderListItem({
+              allowRemove: true,
+              builder,
+              crawlLabel: "Agent synced",
+              latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
+              subscribed: data.subscribed.has(builder.id),
+            }),
+          )}
+          emptyBody="Add a source here, or sync richer crawled data from your agent later."
+          emptyTitle="No personal sources yet"
+        />
+      </LibrarySection>
+
+      <section className="grid gap-3">
+        <div>
+          <h2 className="section-heading">Imported libraries</h2>
+          <p className="mt-1 text-sm text-[var(--muted-strong)]">
+            Sources grouped by the shared library they came from.
+          </p>
+        </div>
+        <div className="imported-library-stack">
+          {data.importedLibrarySections.map((library) => (
+            <LibrarySection
+              key={library.id}
+              title={library.name}
+              detail={library.description || `Imported from ${library.ownerName}`}
+              badge="imported"
+              count={library.builders.length}
+              indented
+            >
+              <BuilderLibraryList
+                builders={library.builders.map((builder) =>
+                  builderListItem({
+                    allowRemove: false,
+                    builder,
+                    crawlLabel:
+                      builder.scope === BuilderScope.CENTRAL ? "Webapp crawled" : "Hub imported",
+                    latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
+                    subscribed: data.subscribed.has(builder.id),
+                  }),
+                )}
+                emptyBody="No active sources from this imported library."
+              />
+            </LibrarySection>
+          ))}
+          {data.importedLibrarySections.length === 0 ? (
+            <div className="empty-panel text-[var(--muted-strong)]">
+              Import shared libraries from the Hub to see them here.
             </div>
-            <div className="imported-library-stack">
-              {importedLibrarySections.map((library) => (
-                <LibrarySection
-                  key={library.id}
-                  title={library.name}
-                  detail={library.description || `Imported from ${library.ownerName}`}
-                  badge="imported"
-                  count={library.builders.length}
-                  indented
-                >
-                  <BuilderLibraryList
-                    builders={library.builders.map((builder) =>
-                      builderListItem({
-                        allowRemove: false,
-                        builder,
-                        crawlLabel:
-                          builder.scope === BuilderScope.CENTRAL ? "Webapp crawled" : "Hub imported",
-                        latestPostCreatedAt: latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
-                        subscribed: subscribed.has(builder.id),
-                      }),
-                    )}
-                    emptyBody="No active sources from this imported library."
-                  />
-                </LibrarySection>
-              ))}
-              {importedLibrarySections.length === 0 ? (
-                <div className="empty-panel text-[var(--muted-strong)]">
-                  Import shared libraries from the Hub to see them here.
-                </div>
-              ) : null}
-            </div>
-          </section>
-        </section>
+          ) : null}
+        </div>
+      </section>
+    </section>
+  );
+}
+
+function BuilderStatsFallback() {
+  return (
+    <div className="page-toolbar" aria-live="polite" aria-busy="true">
+      {Array.from({ length: 3 }, (_, index) => (
+        <div key={index} className="h-8 w-24 rounded-full bg-black/10" />
+      ))}
     </div>
+  );
+}
+
+function BuilderSectionsFallback() {
+  return (
+    <section className="mt-6 grid gap-5" aria-live="polite" aria-busy="true">
+      <div className="library-section-panel">
+        <div className="library-section-summary">
+          <div className="min-w-0 flex-1">
+            <div className="h-6 w-40 rounded bg-black/10" />
+            <div className="mt-3 h-4 max-w-sm rounded bg-black/10" />
+          </div>
+          <div className="library-section-meta">
+            <div className="h-7 w-16 rounded-full bg-black/10" />
+            <div className="h-7 w-24 rounded-full bg-black/10" />
+          </div>
+        </div>
+        <div className="library-section-body">
+          <div className="h-12 rounded-lg bg-black/10" />
+          <div className="mt-3 h-28 rounded-lg bg-black/10" />
+        </div>
+      </div>
+    </section>
   );
 }
 
