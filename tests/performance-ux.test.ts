@@ -115,6 +115,7 @@ test("skill context caps personal crawled items to keep payloads bounded", () =>
   assert.match(contextRoute, /personalCrawledItemLimit/);
   assert.match(contextRoute, /take:\s*personalCrawledItemLimit/);
   assert.match(contextRoute, /personalCrawledItems/);
+  assert.match(contextRoute, /includePrompts/);
 });
 
 test("dashboard subscription feed owns the paginated digest archive", () => {

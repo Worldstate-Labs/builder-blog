@@ -180,7 +180,7 @@ async function login(args) {
 async function prepare() {
   const config = await readConfig();
   requireLoggedIn(config);
-  const context = await getJson(`${config.appUrl}/api/skill/context`, config.token);
+  const context = await getJson(`${config.appUrl}/api/skill/context?includePrompts=1`, config.token);
   console.log(JSON.stringify(context, null, 2));
 }
 
@@ -271,7 +271,7 @@ async function crawlPersonal(args) {
         crawledItemKeys: force ? new Set() : crawledItemKeysForBuilder(context, builder.id),
       });
       const { items, agentTasks: sourceAgentTasks } = normalizePersonalCrawlResult(crawled);
-      agentTasks.push(...sourceAgentTasks.map((task) => withSummaryInstructions(task, context.prompts)));
+      agentTasks.push(...sourceAgentTasks.map((task) => withSummaryInstructions(task)));
       builders.push({
         builderId: builder.id,
         kind: source.syncKind,
@@ -315,7 +315,7 @@ async function crawlPersonal(args) {
     return;
   }
 
-  const summaryTasks = postSummaryTasksForBuilders(builders, context.prompts);
+  const summaryTasks = postSummaryTasksForBuilders(builders);
   if (summaryTasks.length > 0) {
     const pendingBuilders = builders.filter((builder) => (builder.items ?? []).length > 0).length;
     console.log(

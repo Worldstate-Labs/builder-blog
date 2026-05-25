@@ -19,6 +19,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const url = new URL(request.url);
+  const includePrompts = url.searchParams.get("includePrompts") === "1";
   const now = new Date();
 
   const poolBuilderIds = await activePoolBuilderIds(user.id);
@@ -146,6 +148,6 @@ export async function GET(request: Request) {
     subscriptions: subscriptions.map((subscription) => subscription.builder),
     subscriptionCount: subscriptions.length,
     items,
-    prompts: DIGEST_PROMPTS,
+    ...(includePrompts ? { prompts: DIGEST_PROMPTS } : {}),
   });
 }

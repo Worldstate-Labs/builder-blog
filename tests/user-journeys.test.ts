@@ -451,6 +451,13 @@ test("digest feed user path derives context window from user frequency and max p
   assert.match(contextRoute, /createdAt:\s*\{\s*gt: since/);
   assert.match(contextRoute, /publishedAt:\s*\{\s*gte: maxAgeCutoff/);
   assert.match(contextRoute, /newly crawled items created after the last digest/);
+  assert.match(contextRoute, /includePrompts/);
+  assert.match(contextRoute, /\.\.\.\(includePrompts \? \{ prompts: DIGEST_PROMPTS \} : \{\}\)/);
+  const cli = readFileSync("scripts/builder-digest.mjs", "utf8");
+  assert.match(cli, /api\/skill\/context\?includePrompts=1/);
+  assert.match(cli, /api\/skill\/context\?days=/);
+  assert.doesNotMatch(cli, /postSummaryTasksForBuilders\(builders,\s*context\.prompts\)/);
+  assert.doesNotMatch(cli, /withSummaryInstructions\(task,\s*context\.prompts\)/);
 });
 
 test("recommendation feed user path scores unread crawled posts from profile, subscriptions, and read log", () => {
