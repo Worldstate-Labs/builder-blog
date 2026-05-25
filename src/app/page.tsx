@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Archive, Radio, Search, Sparkles, Terminal, UsersRound } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { getCurrentSession } from "@/lib/auth";
 
 export default async function Home() {
@@ -15,9 +16,12 @@ export default async function Home() {
           <BrandMark />
           <span className="font-serif text-2xl font-semibold">FollowBrief</span>
         </Link>
-        <Link className="button-dark" href="/login">
-          Sign in
-        </Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Link className="button-dark" href="/login">
+            Sign in
+          </Link>
+        </div>
       </nav>
       <section className="mx-auto grid max-w-7xl items-center gap-12 py-14 lg:grid-cols-[0.95fr_1.05fr] lg:py-20">
         <div className="max-w-3xl">

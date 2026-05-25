@@ -5,6 +5,7 @@ import { LogOut, Settings, ShieldCheck } from "lucide-react";
 import { AppNav, type AppNavItem } from "@/components/AppNav";
 import { BrandMark } from "@/components/BrandMark";
 import { SearchForm } from "@/components/SearchForm";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { isAdminEmail } from "@/lib/admin";
 
 const nav: AppNavItem[] = [
@@ -36,7 +37,10 @@ export function AppShell({
           </Link>
           <SearchForm query="" variant="header" />
         </div>
-        <UserMenu session={session} compact />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <UserMenu session={session} compact />
+        </div>
       </header>
       <div className="app-body">
         <aside className="shell-sidebar hidden w-[12rem] shrink-0 border-r border-[var(--line)] px-4 py-6 lg:flex lg:flex-col">
