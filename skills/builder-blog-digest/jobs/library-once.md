@@ -13,6 +13,12 @@ output files, JSON schema, or success criteria.
 During the `agentTasks` step, failed extraction attempts are not command-contract
 failures. Keep trying available local capabilities until each task is completed
 or no available method can obtain real primary content.
+For every newly crawled or agent-produced post, also generate a concise Chinese
+single-post summary using only that post's supplied body and metadata. Use the
+same discipline as the digest feed prompt: include source URLs when available,
+same discipline as the digest feed prompt: include source URLs for every claim,
+prioritize launches, technical insights, funding/business moves, strong
+opinions, and implementation details, and never invent missing facts.
 
 1. Install or refresh the skill:
 
@@ -43,9 +49,16 @@ to obtain real primary content for a task, and report the tried methods and
 concrete blocker. Do not add new sources, URLs, or feed items that were not
 returned by the CLI or task payload. The content must meet each task's
 `minimumContentQuality`. Do not use title, description, or page metadata as the
-item body.
+item body. Every agent-produced item must also include `summary`.
 
-5. If you completed `agentTasks`, write a sync payload to:
+5. If the crawl result contains a non-empty `summaryTasks` array: Complete
+exactly those task IDs by writing one concise Chinese summary per task. Use only
+`task.item.body`, `task.item.title`, source metadata, and `task.item.url`.
+This is a single-post summary, not a multi-post digest. Include source URLs for
+every claim. Do not browse, do not add items, and do not summarize from title or
+description alone.
+
+6. If you completed `agentTasks` or `summaryTasks`, write a sync payload to:
 
 ```text
 ${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-agent-sync.json
@@ -55,7 +68,10 @@ Every agent-produced item must include `rawJson.agentTaskId`,
 `rawJson.agentRuntime`, `rawJson.agentModel` if known,
 `rawJson.agentCompletedAt`, `rawJson.agentExecutionProof`, and for YouTube
 `rawJson.transcriptSource="agent-transcript"` unless a better primary transcript
-source is used. Then run these commands exactly:
+source is used. Every item synced for a `summaryTasks` task must include
+`summary`; also include `rawJson.summaryTaskId`, `rawJson.summaryRuntime`,
+`rawJson.summaryModel` if known, and `rawJson.summaryCompletedAt` when possible.
+Then run these commands exactly:
 
 ```bash
 BUILDER_BLOG_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}" \
@@ -67,8 +83,9 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" sync-bu
   --file "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-agent-sync.json"
 ```
 
-6. Report the crawl JSON plus any `validate-agent-sync` and `sync-builders`
+7. Report the crawl JSON plus any `validate-agent-sync` and `sync-builders`
 JSON. Success means status is ok, localErrors is empty, and agentTasks is empty
 or `validate-agent-sync` reports all tasks validated and `sync-builders`
-succeeds. Already-crawled posts should remain skipped regardless of whether the
-user has read them.
+succeeds. If `summaryTasks` is non-empty, success also requires
+`validate-agent-sync` to report all summary tasks validated. Already-crawled
+posts should remain skipped regardless of whether the user has read them.

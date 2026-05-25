@@ -337,6 +337,8 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
   assert.match(builderFeedItems, /"use client"/);
   assert.match(builderFeedItems, /fetch\(`\/api\/builders\/\$\{builderId\}\/feed-items`/);
   assert.match(builderFeedItems, /Crawled posts/);
+  assert.match(builderFeedItems, /item\.summary/);
+  assert.match(builderFeedItems, /Summary/);
   assert.match(builderFeedItems, /Crawled/);
   assert.match(builderFeedItems, /External id/);
   assert.match(builderFeedItems, /Details/);

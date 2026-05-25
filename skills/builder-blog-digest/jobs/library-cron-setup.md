@@ -8,11 +8,16 @@ Run these steps exactly. If any command fails, stop and report the command, exit
 code, and stderr. Do not use `--force`. Do not browse for extra context.
 
 Agent discretion boundary: this is a scheduler setup task until the smoke check
-reports `agentTasks`. Do not change paths, flags, cadence, titles, output files,
-JSON schema, or success criteria.
+reports `agentTasks` or `summaryTasks`. Do not change paths, flags, cadence,
+titles, output files, JSON schema, or success criteria.
 During the `agentTasks` step, failed extraction attempts are not command-contract
 failures. Keep trying available local capabilities until each task is completed
 or no available method can obtain real primary content.
+During the `summaryTasks` step, generate one concise Chinese single-post summary
+per task from that task's supplied post body and metadata, following the same
+discipline as the digest feed prompt: include source URLs for every claim,
+prioritize launches, technical insights, funding/business moves, strong
+opinions, and implementation details, and never invent missing facts.
 
 1. Install or refresh the skill:
 
@@ -55,6 +60,12 @@ The item body must be real primary content meeting `minimumContentQuality`, not
 a title, description, or page metadata. The agent-produced sync payload must
 pass `validate-agent-sync` before `sync-builders` is considered successful.
 
+If the smoke check JSON contains a non-empty `summaryTasks` array: complete
+exactly those task IDs by writing one concise Chinese single-post summary per
+task. Use only `task.item.body`, `task.item.title`, source metadata, and
+`task.item.url`. Include source URLs for every claim. Validate with
+`validate-agent-sync` before `sync-builders` is considered successful.
+
 Only if crontab is unavailable or blocked, install the same command and cadence
 through launchd or the local agent scheduler:
 
@@ -69,6 +80,8 @@ The runner selection order is:
 3. Claude Code CLI
 4. OpenClaw CLI
 5. Gemini CLI
-6. Non-AI library crawl fallback for simple supported sources only
+6. Non-AI library crawl fallback for simple supported sources only; if it
+   returns `agentTasks` or `summaryTasks`, it exits and requires a local agent
+   runtime instead of silently leaving work incomplete
 
 Do not duplicate an existing FollowBrief private library job.

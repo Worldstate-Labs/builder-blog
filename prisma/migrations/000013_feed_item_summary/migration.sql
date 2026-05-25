@@ -1,0 +1,1 @@
+ALTER TABLE "FeedItem" ADD COLUMN IF NOT EXISTS "summary" TEXT;

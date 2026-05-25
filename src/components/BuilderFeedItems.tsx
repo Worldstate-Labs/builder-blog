@@ -17,6 +17,7 @@ type BuilderFeedItem = {
   externalId: string;
   title: string | null;
   body: string;
+  summary: string | null;
   url: string;
   publishedAt: string | null;
   createdAt: string;
@@ -109,11 +110,21 @@ export function BuilderFeedItems({
               </div>
               <h4 className="item-title">{item.title || firstLine(item.body)}</h4>
               <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--muted-strong)]">
-                {firstLine(item.body)}
+                {item.summary || firstLine(item.body)}
               </p>
               <details className="inline-disclosure">
                 <summary>Details</summary>
                 <div className="mt-3 rounded-lg border border-[var(--line)] bg-[var(--paper)] p-4">
+                  {item.summary ? (
+                    <div className="mb-4 rounded-md border border-[var(--line)] bg-white p-3">
+                      <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                        Summary
+                      </div>
+                      <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--ink)]">
+                        {item.summary}
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
                     {item.crawlingTool ?? "Legacy crawl/import"}
                   </div>

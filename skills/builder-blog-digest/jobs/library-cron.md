@@ -14,6 +14,12 @@ schema, or success criteria.
 During the `agentTasks` step, failed extraction attempts are not command-contract
 failures. Keep trying available local capabilities until each task is completed
 or no available method can obtain real primary content.
+For every newly crawled or agent-produced post, also generate a concise Chinese
+single-post summary using only that post's supplied body and metadata. Use the
+same discipline as the digest feed prompt: include source URLs when available,
+same discipline as the digest feed prompt: include source URLs for every claim,
+prioritize launches, technical insights, funding/business moves, strong
+opinions, and implementation details, and never invent missing facts.
 
 Before doing work, ensure the skill is installed:
 
@@ -45,12 +51,22 @@ Rules:
 - For YouTube, title, description, and page metadata are auxiliary only. Do not
   sync them as the item body; complete `agentTasks` with real primary content
   that meets `minimumContentQuality`.
+- If the crawl result contains a non-empty `summaryTasks` array, complete
+  exactly those task IDs by writing one concise Chinese summary per task. Use
+  only `task.item.body`, `task.item.title`, source metadata, and `task.item.url`.
+  This is a single-post summary, not a multi-post digest. Include source URLs
+  for every claim. Do not browse, do not add items, and do not summarize from
+  title or description alone.
 - Every agent-produced item must include `rawJson.agentTaskId`,
   `rawJson.agentRuntime`, `rawJson.agentModel` if known,
   `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`. For YouTube,
   include `rawJson.transcriptSource="agent-transcript"` unless a better primary
   transcript source is used.
-- Before syncing agent-produced items, validate them:
+- Every item synced for a `summaryTasks` task must include `summary`; also
+  include `rawJson.summaryTaskId`, `rawJson.summaryRuntime`,
+  `rawJson.summaryModel` if known, and `rawJson.summaryCompletedAt` when
+  possible.
+- Before syncing agent-produced items or summaries, validate them:
 
 ```bash
 BUILDER_BLOG_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}" \

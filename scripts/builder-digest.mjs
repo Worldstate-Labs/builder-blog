@@ -211,6 +211,7 @@ async function crawlPersonal(args) {
           crawledPersonalItems: personalCrawledItemCount(context),
           force,
           agentTasks: [],
+          summaryTasks: [],
           message: "No personal sources in this user's library.",
         },
         null,
@@ -245,6 +246,7 @@ async function crawlPersonal(args) {
           continue;
         }
         builders.push({
+          builderId: builder.id,
           kind: builder.kind,
           sourceType: sourceTypeIdForBuilder(builder),
           name: builder.name,
@@ -271,6 +273,7 @@ async function crawlPersonal(args) {
       const { items, agentTasks: sourceAgentTasks } = normalizePersonalCrawlResult(crawled);
       agentTasks.push(...sourceAgentTasks);
       builders.push({
+        builderId: builder.id,
         kind: source.syncKind,
         sourceType: source.id,
         name: builder.name,
@@ -302,6 +305,7 @@ async function crawlPersonal(args) {
           force,
           localErrors,
           agentTasks,
+          summaryTasks: [],
           message: "No personal sources produced syncable items.",
         },
         null,
@@ -316,6 +320,7 @@ async function crawlPersonal(args) {
     { force, crawlingTool: skillCrawlingTool("local personal crawler", agentModel), builders },
     config.token,
   );
+  const summaryTasks = postSummaryTasksForBuilders(builders);
   console.log(
     JSON.stringify(
       {
@@ -324,6 +329,7 @@ async function crawlPersonal(args) {
         crawledPersonalItems: force ? 0 : personalCrawledItemCount(context),
         localErrors,
         agentTasks,
+        summaryTasks,
       },
       null,
       2,
@@ -337,6 +343,45 @@ function normalizePersonalCrawlResult(result) {
     items: Array.isArray(result?.items) ? result.items : [],
     agentTasks: Array.isArray(result?.agentTasks) ? result.agentTasks : [],
   };
+}
+
+function postSummaryTasksForBuilders(builders) {
+  return builders.flatMap((builder) =>
+    (builder.items ?? []).map((item) => ({
+      type: "post_summary",
+      reason: "missing_single_post_summary",
+      builder: builder.name,
+      builderId: builder.builderId,
+      sourceType: builder.sourceType,
+      item: {
+        kind: item.kind,
+        externalId: item.externalId,
+        title: item.title ?? null,
+        url: item.url,
+        publishedAt: item.publishedAt ?? null,
+        sourceName: item.sourceName ?? builder.name,
+        body: String(item.body ?? "").slice(0, 12000),
+      },
+      summaryInstructions: {
+        language: "zh",
+        scope: "single_post",
+        sourceUrlRequired: true,
+        useOnlySuppliedItem: true,
+        style:
+          "Create a concise FollowBrief single-post summary in Chinese. Use only the supplied item body and metadata. Include source URLs for every claim. Highlight launches, technical insights, funding/business moves, strong opinions, and implementation details. Do not invent missing facts.",
+      },
+      id: postSummaryTaskId(builder, item),
+    })),
+  );
+}
+
+function postSummaryTaskId(builder, item) {
+  return [
+    "post_summary",
+    builder.builderId || builder.name || "builder",
+    item.kind,
+    item.externalId || item.url,
+  ].join(":");
 }
 
 export function personalBuildersForCrawl(context) {
@@ -1563,8 +1608,10 @@ async function validateAgentSync(args) {
 
 export function validateAgentSyncPayload(crawlResult, payload) {
   const agentTasks = extractAgentTasks(crawlResult);
+  const summaryTasks = extractSummaryTasks(crawlResult);
   const syncItems = extractSyncItems(payload);
   const validated = [];
+  const validatedSummaries = [];
   const errors = [];
 
   for (const task of agentTasks) {
@@ -1600,6 +1647,35 @@ export function validateAgentSyncPayload(crawlResult, payload) {
     });
   }
 
+  for (const task of summaryTasks) {
+    const id = task.id || postSummaryTaskId({ builderId: task.builderId, name: task.builder }, task.item ?? {});
+    const match = syncItems.find((candidate) => itemMatchesAgentTask(candidate, task));
+    if (!match) {
+      errors.push({
+        summaryTaskId: id,
+        builder: task.builder,
+        item: task.item?.externalId || task.item?.url || task.item?.title,
+        error: "missing_synced_item_for_summary_task",
+      });
+      continue;
+    }
+    const summaryErrors = validateSummaryTaskItem(task, match);
+    if (summaryErrors.length > 0) {
+      errors.push({
+        summaryTaskId: id,
+        builder: task.builder,
+        item: task.item?.externalId || task.item?.url || task.item?.title,
+        errors: summaryErrors,
+      });
+      continue;
+    }
+    validatedSummaries.push({
+      summaryTaskId: id,
+      builder: task.builder,
+      externalId: match.item.externalId,
+    });
+  }
+
   if (errors.length > 0) {
     const error = new Error(`Agent sync validation failed for ${errors.length} task(s).`);
     error.details = errors;
@@ -1610,13 +1686,21 @@ export function validateAgentSyncPayload(crawlResult, payload) {
     status: "ok",
     agentTasks: agentTasks.length,
     validatedAgentTasks: validated.length,
+    summaryTasks: summaryTasks.length,
+    validatedSummaryTasks: validatedSummaries.length,
     validated,
+    validatedSummaries,
   };
 }
 
 function extractAgentTasks(crawlResult) {
   if (Array.isArray(crawlResult)) return crawlResult;
   if (Array.isArray(crawlResult?.agentTasks)) return crawlResult.agentTasks;
+  return [];
+}
+
+function extractSummaryTasks(crawlResult) {
+  if (Array.isArray(crawlResult?.summaryTasks)) return crawlResult.summaryTasks;
   return [];
 }
 
@@ -1668,6 +1752,11 @@ function validateAgentTaskItem(task, candidate) {
     errors.push("rawJson.agentCompletedAt_required_iso_datetime");
   }
   if (!String(candidate.item.body || "").trim()) errors.push("item.body_required");
+  const summaryErrors = validateItemSummary(candidate.item.summary, {
+    title: task.item?.title || "",
+    body: candidate.item.body || task.item?.body || "",
+  });
+  errors.push(...summaryErrors.map((error) => `summary:${error}`));
 
   if (task.type === "youtube_transcription") {
     const source = rawJson.transcriptSource || rawJson.contentSource || rawJson.source;
@@ -1685,6 +1774,30 @@ function validateAgentTaskItem(task, candidate) {
     description: task.item?.description || "",
   });
   if (!quality.ok) errors.push(`content_quality:${quality.reason}`);
+  return errors;
+}
+
+function validateSummaryTaskItem(task, candidate) {
+  const errors = [];
+  if (!String(candidate.item.body || "").trim()) errors.push("item.body_required");
+  errors.push(
+    ...validateItemSummary(candidate.item.summary, {
+      title: task.item?.title || "",
+      body: task.item?.body || candidate.item.body || "",
+    }),
+  );
+  return errors;
+}
+
+function validateItemSummary(summary, { title = "", body = "" } = {}) {
+  const errors = [];
+  const normalized = normalizeContentText(summary || "");
+  if (normalized.length < 40) errors.push("summary_too_short");
+  if (normalized.length > 1200) errors.push("summary_too_long");
+  if (isNearDuplicate(normalized, title)) errors.push("summary_duplicates_title");
+  if (body && normalized === normalizeContentText(body).slice(0, normalized.length)) {
+    errors.push("summary_copies_body_prefix");
+  }
   return errors;
 }
 

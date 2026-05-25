@@ -126,6 +126,11 @@ This command:
   any available user-owned local capability instead of asking the web app to
   process the media. The agent chooses the method; the requirement is to obtain
   real primary content and sync it as the item's `body` through `sync-builders`;
+- for every newly crawled or agent-produced post, generate a concise Chinese
+  single-post `summary` using only that post's supplied body and metadata. Use
+  the same discipline as the digest prompt: include source URLs for every
+  claim, prioritize launches, technical insights, funding/business moves,
+  strong opinions, and implementation details, and never invent missing facts;
 - if the transcript exists but is noisy, the agent may use its own model access
   to lightly clean timestamps, repeated fragments, and caption artifacts while
   preserving factual content; record this in `crawlingTool`, for example
@@ -150,6 +155,10 @@ This command:
   include `rawJson.transcriptSource="agent-transcript"` unless a better primary
   transcript source is used. Validate the payload with `validate-agent-sync`,
   then sync completed content with `sync-builders`;
+- reports `summaryTasks` for newly crawled posts that need agent-written
+  summaries. Complete exactly those task IDs, write each single-post Chinese
+  summary to the item's `summary` field, validate with `validate-agent-sync`,
+  then sync with `sync-builders`;
 - posts discovered `TWEET`, `BLOG_POST`, or `PODCAST_EPISODE` items back to `/api/skill/builders`.
 
 Validate agent-produced items before syncing them:
@@ -195,6 +204,7 @@ Payload shape:
           "kind": "TWEET",
           "externalId": "tweet-id",
           "body": "Tweet text",
+          "summary": "中文单篇摘要，基于该 post 正文，不添加外部事实。",
           "url": "https://x.com/example/status/tweet-id",
           "publishedAt": "2026-05-22T10:00:00.000Z"
         }

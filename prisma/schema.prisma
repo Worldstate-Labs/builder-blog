@@ -191,6 +191,7 @@ model FeedItem {
   externalId                  String
   title                       String?
   body                        String
+  summary                     String?
   url                         String
   publishedAt                 DateTime?
   sourceName                  String?

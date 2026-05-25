@@ -6,6 +6,7 @@ export const SkillFeedItemSchema = z.object({
   externalId: z.string().min(1),
   title: z.string().nullable().optional(),
   body: z.string().min(1),
+  summary: z.string().min(1).nullable().optional(),
   url: z.string().url(),
   publishedAt: z.string().datetime().nullable().optional(),
   sourceName: z.string().nullable().optional(),

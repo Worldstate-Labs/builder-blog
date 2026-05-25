@@ -217,6 +217,8 @@ test("skill sync user path accepts personal YouTube builders with synced feed it
             externalId: "video123",
             title: "Workspace agents in ChatGPT",
             body: "Transcript or feed description",
+            summary:
+              "这条 YouTube 更新概述 Workspace agents 的能力和用途。来源：https://www.youtube.com/watch?v=video123",
             url: "https://www.youtube.com/watch?v=video123",
             publishedAt: "2026-05-22T10:00:00.000Z",
             rawJson: { source: "personal-youtube" },
@@ -234,6 +236,7 @@ test("skill sync user path accepts personal YouTube builders with synced feed it
   assert.equal(parsed.data.builders[0].sourceType, "YOUTUBE");
   assert.equal(parsed.data.builders[0].subscribe, true);
   assert.equal(parsed.data.builders[0].items[0].kind, FeedItemKind.PODCAST_EPISODE);
+  assert.match(parsed.data.builders[0].items[0].summary ?? "", /Workspace agents/);
   assert.equal(parsed.data.crawlingTool, "Agent skill sync");
   assert.equal(parsed.data.builders[0].items[0].crawlingTool, undefined);
 });
@@ -285,6 +288,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryOncePrompt, /validate-agent-sync/);
   assert.match(libraryOncePrompt, /rawJson\.agentExecutionProof/);
   assert.match(libraryOncePrompt, /Complete exactly the task IDs\s+returned by the CLI/);
+  assert.match(libraryOncePrompt, /summaryTasks/);
+  assert.match(libraryOncePrompt, /single-post summary/);
   assert.match(libraryOncePrompt, /Do not add new sources, URLs, or feed items/);
   assert.match(libraryOncePrompt, /Do not use `--force`/);
   assert.match(digestOncePrompt, /prepare --days 1/);
@@ -294,6 +299,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /First attempt the exact crontab install/);
   assert.match(libraryCronSetupPrompt, /crontab/);
   assert.match(libraryCronSetupPrompt, /Do not use `--force`/);
+  assert.match(libraryCronSetupPrompt, /summaryTasks/);
+  assert.match(libraryCronSetupPrompt, /single-post summary/);
   assert.match(digestCronSetupPrompt, /builder-agent-runner\.sh digest-cron/);
   assert.match(digestCronSetupPrompt, /First attempt the exact crontab install/);
   assert.match(digestCronSetupPrompt, /crontab/);
@@ -309,6 +316,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /openclaw agent --local --message/);
   assert.match(runner, /gemini -p/);
   assert.match(runner, /No local agent runtime found/);
+  assert.match(runner, /summaryTasks/);
+  assert.match(runner, /process\.exit\(78\)/);
   assert.match(runner, /refresh_skill_files/);
   assert.match(runner, /api\/skill\/files\/builder-digest\.mjs/);
   assert.match(skillFileRoute, /builder-blog-digest\.md/);
@@ -341,6 +350,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronPrompt, /crawl-personal --days 30 --limit 3/);
   assert.match(libraryCronPrompt, /validate-agent-sync/);
   assert.match(libraryCronPrompt, /rawJson\.agentTaskId/);
+  assert.match(libraryCronPrompt, /summaryTasks/);
+  assert.match(libraryCronPrompt, /single-post summary/);
   assert.match(libraryCronPrompt, /Run these steps exactly/);
   assert.match(libraryCronPrompt, /Only use agent judgment/);
   assert.match(libraryCronPrompt, /Agent discretion boundary/);
@@ -1526,6 +1537,7 @@ test("web display boundaries keep raw crawled content in the builders tab", () =
   assert.equal(buildersPage.includes("Technical details"), false);
   assert.equal(builderLibraryList.includes("Open source"), true);
   assert.equal(builderFeedItems.includes("Crawled posts"), true);
+  assert.equal(builderFeedItems.includes("item.summary"), true);
 });
 
 test("source registry centralizes current source categories and crawl eligibility", () => {

@@ -379,6 +379,8 @@ test("agent sync validation accepts agent-produced YouTube transcript with execu
               title: "Introducing Claude Opus 4.6",
               body:
                 "In this video the speaker introduces Claude Opus 4.6, explains the model improvements, describes practical coding workflows, and compares how the system behaves on realistic agent tasks.",
+              summary:
+                "这条视频介绍 Claude Opus 4.6 的模型改进和实际 coding agent 工作流，重点是更贴近真实任务的表现。来源：https://www.youtube.com/watch?v=dPn3GBI8lII",
               url: "https://www.youtube.com/watch?v=dPn3GBI8lII",
               rawJson: {
                 builderId: "builder_anthropic_youtube",
@@ -398,6 +400,59 @@ test("agent sync validation accepts agent-produced YouTube transcript with execu
 
   assert.equal(result.status, "ok");
   assert.equal(result.validatedAgentTasks, 1);
+});
+
+test("agent sync validation accepts single-post summaries for summary tasks", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const result = cli.validateAgentSyncPayload(
+    {
+      summaryTasks: [
+        {
+          type: "post_summary",
+          id: "post_summary:builder_blog:BLOG_POST:https://example.com/post",
+          builder: "Example Blog",
+          builderId: "builder_blog",
+          sourceType: "blog",
+          item: {
+            kind: "BLOG_POST",
+            externalId: "https://example.com/post",
+            title: "Shipping durable agents",
+            url: "https://example.com/post",
+            body: "The post explains how the team shipped durable agents with explicit state, replayable event logs, and source-linked summaries for every crawled item.",
+          },
+        },
+      ],
+    },
+    {
+      builders: [
+        {
+          builderId: "builder_blog",
+          kind: "BLOG",
+          sourceType: "blog",
+          name: "Example Blog",
+          sourceUrl: "https://example.com",
+          items: [
+            {
+              kind: "BLOG_POST",
+              externalId: "https://example.com/post",
+              title: "Shipping durable agents",
+              body: "The post explains how the team shipped durable agents with explicit state, replayable event logs, and source-linked summaries for every crawled item.",
+              summary:
+                "这篇文章讲 durable agents 的实现：显式 state、可重放事件日志，以及为每个 crawled item 生成带来源的 summary。来源：https://example.com/post",
+              url: "https://example.com/post",
+              rawJson: {
+                builderId: "builder_blog",
+                summaryTaskId: "post_summary:builder_blog:BLOG_POST:https://example.com/post",
+              },
+            },
+          ],
+        },
+      ],
+    },
+  );
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.validatedSummaryTasks, 1);
 });
 
 test("agent sync validation rejects YouTube metadata masquerading as content", async () => {

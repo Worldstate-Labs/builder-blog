@@ -28,6 +28,7 @@ export async function GET(_request: Request, { params }: Params) {
       externalId: true,
       title: true,
       body: true,
+      summary: true,
       url: true,
       publishedAt: true,
       createdAt: true,

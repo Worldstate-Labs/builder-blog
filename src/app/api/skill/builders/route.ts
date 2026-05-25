@@ -82,6 +82,20 @@ export async function POST(request: Request) {
       payloadItemKeys.add(key);
       const crawlingTool = item.crawlingTool ?? parsed.data.crawlingTool;
       if (!parsed.data.force && existingItemKeys.has(key)) {
+        const updateData = {
+          ...(item.summary === undefined ? {} : { summary: item.summary }),
+          ...(item.rawJson === undefined ? {} : { rawJson: JSON.stringify(item.rawJson) }),
+        };
+        if (Object.keys(updateData).length > 0) {
+          await prisma.feedItem.updateMany({
+            where: {
+              builderId: builder.id,
+              kind: item.kind,
+              externalId: item.externalId,
+            },
+            data: updateData,
+          });
+        }
         await prisma.feedItem.updateMany({
           where: {
             builderId: builder.id,
@@ -105,6 +119,7 @@ export async function POST(request: Request) {
         update: {
           title: item.title,
           body: item.body,
+          summary: item.summary,
           url: item.url,
           publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
           sourceName: item.sourceName ?? input.name,
@@ -117,6 +132,7 @@ export async function POST(request: Request) {
           externalId: item.externalId,
           title: item.title,
           body: item.body,
+          summary: item.summary,
           url: item.url,
           publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
           sourceName: item.sourceName ?? input.name,
