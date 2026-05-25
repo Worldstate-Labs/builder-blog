@@ -343,8 +343,10 @@ test("personal YouTube crawler returns agent tasks instead of syncing descriptio
   assert.equal(result.items.length, 0);
   assert.equal(result.agentTasks.length, 1);
   assert.match(result.agentTasks[0].id, /^youtube_transcription:/);
-  assert.equal(result.agentTasks[0].reason, "missing_or_low_quality_youtube_content");
   assert.equal(result.agentTasks[0].minimumContentQuality.minWords, 12);
+  assert.equal("reason" in result.agentTasks[0], false);
+  assert.equal("quality" in result.agentTasks[0], false);
+  assert.equal("sourceDetail" in result.agentTasks[0], false);
 });
 
 test("agent sync validation accepts crawl task YouTube transcript with execution proof", async () => {
@@ -402,6 +404,7 @@ test("agent sync validation accepts crawl task YouTube transcript with execution
 
   assert.equal(result.status, "ok");
   assert.equal(result.validatedCrawlTasks, 1);
+  assert.equal("validatedCrawlTaskItems" in result, false);
 });
 
 test("agent sync validation accepts ready crawl task summaries", async () => {
@@ -455,6 +458,7 @@ test("agent sync validation accepts ready crawl task summaries", async () => {
 
   assert.equal(result.status, "ok");
   assert.equal(result.validatedCrawlTasks, 1);
+  assert.equal("validatedCrawlTaskItems" in result, false);
 });
 
 test("ready crawl tasks carry embedded source-specific single-post prompts", async () => {
@@ -509,6 +513,11 @@ test("ready crawl tasks carry embedded source-specific single-post prompts", asy
       { type: "crawl_post", contentStatus: "ready" },
     ],
   );
+  for (const task of tasks) {
+    assert.equal("reason" in task, false);
+    assert.equal("normalCrawler" in task, false);
+    assert.equal("suggestedAction" in task, false);
+  }
   assert.deepEqual(
     tasks.map((task: { summaryInstructions: { summaryStyle: string } }) => task.summaryInstructions.summaryStyle),
     ["x_twitter", "podcast_or_video", "blog_or_document"],
@@ -537,6 +546,31 @@ test("ready crawl tasks carry embedded source-specific single-post prompts", asy
   assert.match(tasks[1].summaryInstructions.prompt, /podcast prompt body/);
   assert.match(tasks[2].summaryInstructions.prompt, /blog prompt body/);
   assert.equal(tasks[0].summaryInstructions.sourcePrompt, undefined);
+});
+
+test("agent sync validation rejects legacy task result shapes", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+
+  assert.throws(
+    () =>
+      cli.validateAgentSyncPayload(
+        {
+          agentTasks: [
+            {
+              type: "youtube_transcription",
+              builder: "Legacy YouTube",
+              item: {
+                kind: "PODCAST_EPISODE",
+                externalId: "legacy",
+                url: "https://www.youtube.com/watch?v=legacy",
+              },
+            },
+          ],
+        },
+        { builders: [] },
+      ),
+    /legacy agentTasks\/summaryTasks are unsupported/,
+  );
 });
 
 test("crawl task validation rejects YouTube metadata masquerading as content", async () => {

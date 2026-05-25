@@ -57,10 +57,10 @@ Rules:
   - Read `task.contentStatus`.
     - For `ready`, use `task.item.body` as the final item body exactly; do not
       crawl or rewrite the source content.
-    - For `requires_agent`, use `task.item.url`, `task.sourceType`,
-      `task.agentWorkType`, `task.normalCrawler`, and `task.suggestedAction` to
-      choose local extraction methods. Keep trying available methods until real
-      primary content is obtained or no method remains.
+    - For `requires_agent`, use `task.item.url`, `task.sourceType`, and
+      `task.agentWorkType` to choose local extraction methods. Keep trying
+      available methods until real primary content is obtained or no method
+      remains.
   - Use `task.minimumContentQuality` for `requires_agent` tasks as the minimum
     acceptance bar for the extracted body. For YouTube, title, description, feed
     description, and page metadata are not acceptable body content.

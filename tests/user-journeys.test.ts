@@ -358,8 +358,16 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(cli, /realpathSync\(fileURLToPath\(import\.meta\.url\)\)/);
   assert.match(cli, /existsSync\(process\.argv\[1\]\)/);
   assert.match(cli, /validate-agent-sync/);
-  assert.match(cli, /No normal crawled items were synced yet/);
-  assert.match(cli, /pendingReadyCrawlTasks/);
+  assert.match(cli, /localErrors/);
+  assert.doesNotMatch(cli, /pendingReadyCrawlTasks/);
+  assert.doesNotMatch(cli, /pendingAgentCrawlTasks/);
+  assert.doesNotMatch(cli, /pendingCrawlBuilders/);
+  assert.doesNotMatch(cli, /validatedCrawlTaskItems/);
+  assert.doesNotMatch(cli, /legacyAgentTasks/);
+  assert.doesNotMatch(cli, /legacySummaryTasks/);
+  assert.doesNotMatch(cli, /postSummaryTasksForBuilders/);
+  assert.doesNotMatch(cli, /normalCrawler/);
+  assert.doesNotMatch(cli, /suggestedAction/);
   assert.match(runner, /BUILDER_BLOG_AGENT_COMMAND/);
   assert.match(runner, /BUILDER_BLOG_PROMPT_URL/);
   assert.match(runner, /library-once\|digest-once\|library-cron-setup\|digest-cron-setup\|library-cron\|digest-cron/);

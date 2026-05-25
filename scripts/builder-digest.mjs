@@ -206,12 +206,8 @@ async function crawlPersonal(args) {
       JSON.stringify(
         {
           status: "ok",
-          builders: 0,
-          feedItems: 0,
-          crawledPersonalItems: personalCrawledItemCount(context),
-          force,
+          localErrors: [],
           crawlTasks: [],
-          message: "No personal sources in this user's library.",
         },
         null,
         2,
@@ -299,15 +295,8 @@ async function crawlPersonal(args) {
       JSON.stringify(
         {
           status: "ok",
-          builders: 0,
-          feedItems: 0,
-          skippedFeedItems: 0,
-          crawledPersonalBuilders: personalBuilders.length,
-          crawledPersonalItems: force ? 0 : personalCrawledItemCount(context),
-          force,
           localErrors,
           crawlTasks,
-          message: "No personal sources produced syncable items.",
         },
         null,
         2,
@@ -318,27 +307,12 @@ async function crawlPersonal(args) {
 
   crawlTasks.push(...crawlTasksForReadyBuilders(builders));
   if (crawlTasks.length > 0) {
-    const pendingBuilders = builders.filter((builder) => (builder.items ?? []).length > 0).length;
-    const pendingAgentCrawlTasks = crawlTasks.filter((task) => task.contentStatus === "requires_agent").length;
-    const pendingReadyCrawlTasks = crawlTasks.filter((task) => task.contentStatus === "ready").length;
     console.log(
       JSON.stringify(
         {
           status: "ok",
-          builders: 0,
-          feedItems: 0,
-          skippedFeedItems: 0,
-          pendingCrawlBuilders: pendingBuilders,
-          pendingCrawlTasks: crawlTasks.length,
-          pendingReadyCrawlTasks,
-          pendingAgentCrawlTasks,
-          crawledPersonalBuilders: personalBuilders.length,
-          crawledPersonalItems: force ? 0 : personalCrawledItemCount(context),
-          force,
           localErrors,
           crawlTasks,
-          message:
-            "Crawled personal items require agent completion before cloud sync. No normal crawled items were synced yet.",
         },
         null,
         2,
@@ -351,14 +325,8 @@ async function crawlPersonal(args) {
     JSON.stringify(
       {
         status: "ok",
-        builders: 0,
-        feedItems: 0,
-        skippedFeedItems: 0,
-        crawledPersonalBuilders: personalBuilders.length,
-        crawledPersonalItems: force ? 0 : personalCrawledItemCount(context),
         localErrors,
         crawlTasks,
-        message: "No personal sources produced crawl tasks.",
       },
       null,
       2,
@@ -379,7 +347,6 @@ export function crawlTasksForReadyBuilders(builders, prompts = {}) {
     (builder.items ?? []).map((item) => ({
       type: "crawl_post",
       contentStatus: "ready",
-      reason: "normal_crawler_content_ready_needs_summary",
       builder: builder.name,
       builderId: builder.builderId,
       sourceType: builder.sourceType,
@@ -403,39 +370,24 @@ export function crawlTasksForReadyBuilders(builders, prompts = {}) {
         sourceName: item.sourceName ?? builder.name,
         body: String(item.body ?? "").slice(0, 12000),
       },
-      normalCrawler: {
-        status: "content_ready",
-        crawlingTool: item.crawlingTool ?? null,
-        rawJson: item.rawJson ?? null,
-      },
       summaryInstructions: singlePostSummaryInstructions(item.kind, prompts),
       id: crawlTaskId({ builderId: builder.builderId, builder: builder.name, item }),
     })),
   );
 }
 
-export const postSummaryTasksForBuilders = crawlTasksForReadyBuilders;
-
 function crawlTaskFromAgentTask(task, builderSync, prompts = {}) {
   const item = task.item ?? {};
   return {
-    ...task,
     type: "crawl_post",
     agentWorkType: task.type,
     contentStatus: "requires_agent",
-    reason: task.reason || "normal_crawler_content_missing_or_low_quality",
     builder: task.builder ?? builderSync.name,
     builderId: task.builderId ?? builderSync.builderId,
     sourceType: task.sourceType ?? builderSync.sourceType,
     builderSync,
     item,
-    normalCrawler: {
-      status: "content_missing_or_low_quality",
-      quality: task.quality ?? null,
-      sourceDetail: task.sourceDetail ?? null,
-    },
     minimumContentQuality: task.minimumContentQuality ?? genericMinimumContentQuality(),
-    suggestedAction: task.suggestedAction ?? null,
     summaryInstructions: task.summaryInstructions ?? singlePostSummaryInstructions(item.kind, prompts),
     id: crawlTaskId({ builderId: task.builderId ?? builderSync.builderId, builder: task.builder ?? builderSync.name, item }),
   };
@@ -519,15 +471,6 @@ function summaryPromptReferenceForKind(kind, prompts = {}) {
   };
 }
 
-function postSummaryTaskId(builder, item) {
-  return [
-    "post_summary",
-    builder.builderId || builder.name || "builder",
-    item.kind,
-    item.externalId || item.url,
-  ].join(":");
-}
-
 export function personalBuildersForCrawl(context) {
   return (context.libraryBuilders ?? []).filter(
     (builder) => builder.scope === "PERSONAL",
@@ -561,10 +504,6 @@ function personalCrawledItemsForContext(context) {
 
 function latestPersonalCrawledItemsForContext(context) {
   return context.latestPersonalCrawledItems ?? [];
-}
-
-function personalCrawledItemCount(context) {
-  return personalCrawledItemsForContext(context).length;
 }
 
 export function latestPostTimeForBuilder(context, builderId) {
@@ -648,7 +587,7 @@ async function crawlPersonalYouTubeBuilder(
       description: video.description,
     });
     if (!quality.ok) {
-      agentTasks.push(youtubeAgentTaskForVideo(builder, video, quality, sourceDetail));
+      agentTasks.push(youtubeAgentTaskForVideo(builder, video));
       continue;
     }
     items.push({
@@ -776,7 +715,7 @@ export function agentTaskId(task) {
     .join(":");
 }
 
-function youtubeAgentTaskForVideo(builder, video, quality, sourceDetail) {
+function youtubeAgentTaskForVideo(builder, video) {
   const item = {
     kind: "PODCAST_EPISODE",
     externalId: video.videoId || video.url,
@@ -788,16 +727,11 @@ function youtubeAgentTaskForVideo(builder, video, quality, sourceDetail) {
   };
   const task = {
     type: "youtube_transcription",
-    reason: "missing_or_low_quality_youtube_content",
     builder: builder.name,
     builderId: builder.id,
     sourceType: "youtube",
     item,
-    quality,
     minimumContentQuality: youtubeMinimumContentQuality(),
-    suggestedAction:
-      "Use any available local agent capability to obtain real video primary content, then sync it with builder-digest sync-builders. Do not stop just because one extraction method fails; stop only when no available method can obtain the content. Do not use the title or description as the item body.",
-    sourceDetail,
   };
   return { ...task, id: agentTaskId(task) };
 }
@@ -929,7 +863,7 @@ export function parsePodcastFeedItems(xml, feedUrl) {
     .filter((item) => item.externalId && item.url && item.body.trim());
 }
 
-async function crawlPersonalPdfBuilder(builder, { agentModel }) {
+async function crawlPersonalPdfBuilder(builder) {
   const sourceUrl = builder.crawlUrl || builder.sourceUrl;
   if (!sourceUrl) return { items: [], agentTasks: [] };
   return {
@@ -946,15 +880,11 @@ async function crawlPersonalPdfBuilder(builder, { agentModel }) {
         };
         const task = {
           type: "pdf_extraction",
-          reason: "pdf_text_requires_local_agent_tooling",
           builder: builder.name,
           builderId: builder.id,
           sourceType: "pdf",
           item,
-        minimumContentQuality: genericMinimumContentQuality(),
-        suggestedAction:
-          "Use any available local agent capability to produce real primary document text, then sync it with builder-digest sync-builders. Do not stop just because one extraction method fails; stop only when no available method can obtain the content.",
-          sourceDetail: skillCrawlingTool("PDF requires agent extraction", agentModel),
+          minimumContentQuality: genericMinimumContentQuality(),
         };
         return { ...task, id: agentTaskId(task) };
       })(),
@@ -964,7 +894,7 @@ async function crawlPersonalPdfBuilder(builder, { agentModel }) {
 
 async function crawlPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel, crawledItemKeys = new Set() }) {
   if (isPdfSource(builder)) {
-    return crawlPersonalPdfBuilder(builder, { agentModel });
+    return crawlPersonalPdfBuilder(builder);
   }
   const sourceUrl = builder.crawlUrl || builder.sourceUrl;
   if (!sourceUrl) return [];
@@ -1752,12 +1682,8 @@ async function validateAgentSync(args) {
 
 export function validateAgentSyncPayload(crawlResult, payload) {
   const crawlTasks = extractCrawlTasks(crawlResult);
-  const agentTasks = extractAgentTasks(crawlResult);
-  const summaryTasks = extractSummaryTasks(crawlResult);
   const syncItems = extractSyncItems(payload);
   const validatedCrawlTasks = [];
-  const validated = [];
-  const validatedSummaries = [];
   const errors = [];
 
   for (const task of crawlTasks) {
@@ -1792,106 +1718,28 @@ export function validateAgentSyncPayload(crawlResult, payload) {
     });
   }
 
-  for (const task of agentTasks) {
-    const id = task.id || agentTaskId(task);
-    const match = syncItems.find((candidate) => itemMatchesAgentTask(candidate, task));
-    if (!match) {
-      errors.push({
-        agentTaskId: id,
-        builder: task.builder,
-        item: task.item?.externalId || task.item?.url || task.item?.title,
-        error: "missing_synced_item_for_agent_task",
-      });
-      continue;
-    }
-
-    const itemErrors = validateAgentTaskItem(task, match);
-    if (itemErrors.length > 0) {
-      errors.push({
-        agentTaskId: id,
-        builder: task.builder,
-        item: task.item?.externalId || task.item?.url || task.item?.title,
-        errors: itemErrors,
-      });
-      continue;
-    }
-
-    validated.push({
-      agentTaskId: id,
-      builder: task.builder,
-      externalId: match.item.externalId,
-      agentRuntime: match.item.rawJson.agentRuntime,
-      agentModel: match.item.rawJson.agentModel || null,
-    });
-  }
-
-  for (const task of summaryTasks) {
-    const id = task.id || postSummaryTaskId({ builderId: task.builderId, name: task.builder }, task.item ?? {});
-    const match = syncItems.find((candidate) => itemMatchesAgentTask(candidate, task));
-    if (!match) {
-      errors.push({
-        summaryTaskId: id,
-        builder: task.builder,
-        item: task.item?.externalId || task.item?.url || task.item?.title,
-        error: "missing_synced_item_for_summary_task",
-      });
-      continue;
-    }
-    const summaryErrors = validateSummaryTaskItem(task, match);
-    if (summaryErrors.length > 0) {
-      errors.push({
-        summaryTaskId: id,
-        builder: task.builder,
-        item: task.item?.externalId || task.item?.url || task.item?.title,
-        errors: summaryErrors,
-      });
-      continue;
-    }
-    validatedSummaries.push({
-      summaryTaskId: id,
-      builder: task.builder,
-      externalId: match.item.externalId,
-    });
-  }
-
   if (errors.length > 0) {
     const error = new Error(`Agent sync validation failed for ${errors.length} task(s).`);
     error.details = errors;
     throw error;
   }
 
-  const response = {
+  return {
     status: "ok",
     crawlTasks: crawlTasks.length,
     validatedCrawlTasks: validatedCrawlTasks.length,
-    validatedCrawlTaskItems: validatedCrawlTasks,
   };
-  if (agentTasks.length > 0) {
-    response.legacyAgentTasks = agentTasks.length;
-    response.validatedLegacyAgentTasks = validated.length;
-    response.validatedLegacyAgentTaskItems = validated;
-  }
-  if (summaryTasks.length > 0) {
-    response.legacySummaryTasks = summaryTasks.length;
-    response.validatedLegacySummaryTasks = validatedSummaries.length;
-    response.validatedLegacySummaryTaskItems = validatedSummaries;
-  }
-  return response;
 }
 
 function extractCrawlTasks(crawlResult) {
+  if (
+    Array.isArray(crawlResult) ||
+    Array.isArray(crawlResult?.agentTasks) ||
+    Array.isArray(crawlResult?.summaryTasks)
+  ) {
+    throw new Error("crawlTasks are required; legacy agentTasks/summaryTasks are unsupported.");
+  }
   if (Array.isArray(crawlResult?.crawlTasks)) return crawlResult.crawlTasks;
-  return [];
-}
-
-function extractAgentTasks(crawlResult) {
-  if (Array.isArray(crawlResult)) return crawlResult;
-  if (Array.isArray(crawlResult?.agentTasks)) return crawlResult.agentTasks;
-  return [];
-}
-
-function extractSummaryTasks(crawlResult) {
-  if (Array.isArray(crawlResult?.summaryTasks)) return crawlResult.summaryTasks;
   return [];
 }
 
@@ -1924,48 +1772,6 @@ function itemMatchesAgentTask(candidate, task) {
     item.rawJson?.builderId === task.builderId ||
     item.rawJson?.builderName === task.builder;
   return builderMatches || !task.builder;
-}
-
-function validateAgentTaskItem(task, candidate) {
-  const errors = [];
-  const rawJson = candidate.item.rawJson;
-  const taskId = task.id || agentTaskId(task);
-  if (!rawJson || typeof rawJson !== "object" || Array.isArray(rawJson)) {
-    errors.push("rawJson_agent_execution_proof_required");
-    return errors;
-  }
-  if (rawJson.agentTaskId !== taskId) errors.push("rawJson.agentTaskId_must_match_task_id");
-  if (!String(rawJson.agentRuntime || "").trim()) errors.push("rawJson.agentRuntime_required");
-  if (!String(rawJson.agentExecutionProof || "").trim()) {
-    errors.push("rawJson.agentExecutionProof_required");
-  }
-  if (!normalizedDate(rawJson.agentCompletedAt)) {
-    errors.push("rawJson.agentCompletedAt_required_iso_datetime");
-  }
-  if (!String(candidate.item.body || "").trim()) errors.push("item.body_required");
-  const summaryErrors = validateItemSummary(candidate.item.summary, {
-    title: task.item?.title || "",
-    body: candidate.item.body || task.item?.body || "",
-  });
-  errors.push(...summaryErrors.map((error) => `summary:${error}`));
-
-  if (task.type === "youtube_transcription") {
-    const source = rawJson.transcriptSource || rawJson.contentSource || rawJson.source;
-    const quality = youtubeContentQuality(candidate.item.body, {
-      source,
-      title: task.item?.title || "",
-      description: task.item?.description || "",
-    });
-    if (!quality.ok) errors.push(`youtube_content_quality:${quality.reason}`);
-    return errors;
-  }
-
-  const quality = genericContentQuality(candidate.item.body, {
-    title: task.item?.title || "",
-    description: task.item?.description || "",
-  });
-  if (!quality.ok) errors.push(`content_quality:${quality.reason}`);
-  return errors;
 }
 
 function validateCrawlTaskItem(task, candidate) {
@@ -2020,18 +1826,6 @@ function validateCrawlTaskItem(task, candidate) {
     description: task.item?.description || "",
   });
   if (!quality.ok) errors.push(`content_quality:${quality.reason}`);
-  return errors;
-}
-
-function validateSummaryTaskItem(task, candidate) {
-  const errors = [];
-  if (!String(candidate.item.body || "").trim()) errors.push("item.body_required");
-  errors.push(
-    ...validateItemSummary(candidate.item.summary, {
-      title: task.item?.title || "",
-      body: task.item?.body || candidate.item.body || "",
-    }),
-  );
   return errors;
 }
 
