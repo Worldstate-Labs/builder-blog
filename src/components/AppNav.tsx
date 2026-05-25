@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType, CSSProperties } from "react";
-import { Archive, Home, LibraryBig, UsersRound } from "lucide-react";
+import { Archive, Home, LibraryBig, Search, Settings, UsersRound } from "lucide-react";
 
 export type AppNavItem = {
   href: string;
   label: string;
-  icon: "home" | "archive" | "builders" | "hub";
+  icon: "home" | "archive" | "builders" | "hub" | "search" | "settings";
 };
 
 const icons: Record<AppNavItem["icon"], ComponentType<{ className?: string }>> = {
@@ -16,16 +16,21 @@ const icons: Record<AppNavItem["icon"], ComponentType<{ className?: string }>> =
   archive: Archive,
   builders: UsersRound,
   hub: LibraryBig,
+  search: Search,
+  settings: Settings,
 };
 
 export function AppNav({
   items,
+  mobileItems,
   mode = "both",
 }: {
   items: AppNavItem[];
+  mobileItems?: AppNavItem[];
   mode?: "desktop" | "mobile" | "both";
 }) {
   const pathname = usePathname();
+  const mobileNavItems = mobileItems ?? items;
 
   return (
     <>
@@ -50,21 +55,21 @@ export function AppNav({
       ) : null}
       {mode !== "desktop" ? (
         <nav
-          className="mobile-tabbar lg:hidden"
-          style={{ "--tab-count": items.length } as CSSProperties}
+          className="fb-m-tabbar lg:hidden"
+          style={{ "--tab-count": mobileNavItems.length } as CSSProperties}
           aria-label="Primary"
         >
-          {items.map((item) => {
+          {mobileNavItems.map((item) => {
             const Icon = icons[item.icon];
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
-                className="mobile-tab"
+                className={`fb-m-tab${active ? " active" : ""}`}
                 data-active={active ? "true" : undefined}
                 href={item.href}
                 key={item.href}
               >
-                <Icon className="h-5 w-5" />
+                <Icon aria-hidden="true" />
                 <span>{item.label}</span>
               </Link>
             );

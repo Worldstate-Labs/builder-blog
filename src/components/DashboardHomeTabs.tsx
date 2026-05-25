@@ -35,43 +35,66 @@ export function DashboardHomeTabs({
 
   return (
     <>
-      <div className="fb-tabs" role="tablist" aria-label="Home feed">
-        <button
-          aria-controls="home-panel-ai-dijest"
-          aria-selected={selectedTab === "ai-dijest"}
-          className={`fb-tab${selectedTab === "ai-dijest" ? " active" : ""}`}
-          data-active={selectedTab === "ai-dijest" ? "true" : undefined}
-          id="home-tab-ai-dijest"
-          onClick={() => selectTab("ai-dijest")}
-          role="tab"
-          type="button"
-        >
-          AI dijest
-        </button>
-        <button
-          aria-controls="home-panel-for-you"
-          aria-selected={selectedTab === "for-you"}
-          className={`fb-tab${selectedTab === "for-you" ? " active" : ""}`}
-          data-active={selectedTab === "for-you" ? "true" : undefined}
-          id="home-tab-for-you"
-          onClick={() => selectTab("for-you")}
-          role="tab"
-          type="button"
-        >
-          For You
-        </button>
-        <button
-          aria-controls="home-panel-subscription"
-          aria-selected={selectedTab === "subscription"}
-          className={`fb-tab${selectedTab === "subscription" ? " active" : ""}`}
-          data-active={selectedTab === "subscription" ? "true" : undefined}
-          id="home-tab-subscription"
-          onClick={() => selectTab("subscription")}
-          role="tab"
-          type="button"
-        >
-          Subscription
-        </button>
+      <div className="hidden lg:block">
+        <div className="fb-tabs" role="tablist" aria-label="Home feed">
+          <button
+            aria-controls="home-panel-ai-dijest"
+            aria-selected={selectedTab === "ai-dijest"}
+            className={`fb-tab${selectedTab === "ai-dijest" ? " active" : ""}`}
+            data-active={selectedTab === "ai-dijest" ? "true" : undefined}
+            id="home-tab-ai-dijest"
+            onClick={() => selectTab("ai-dijest")}
+            role="tab"
+            type="button"
+          >
+            AI dijest
+          </button>
+          <button
+            aria-controls="home-panel-for-you"
+            aria-selected={selectedTab === "for-you"}
+            className={`fb-tab${selectedTab === "for-you" ? " active" : ""}`}
+            data-active={selectedTab === "for-you" ? "true" : undefined}
+            id="home-tab-for-you"
+            onClick={() => selectTab("for-you")}
+            role="tab"
+            type="button"
+          >
+            For You
+          </button>
+          <button
+            aria-controls="home-panel-subscription"
+            aria-selected={selectedTab === "subscription"}
+            className={`fb-tab${selectedTab === "subscription" ? " active" : ""}`}
+            data-active={selectedTab === "subscription" ? "true" : undefined}
+            id="home-tab-subscription"
+            onClick={() => selectTab("subscription")}
+            role="tab"
+            type="button"
+          >
+            Subscription
+          </button>
+        </div>
+      </div>
+      <div className="fb-m-segctl lg:hidden" role="tablist" aria-label="Home feed">
+        {(
+          [
+            { id: "ai-dijest", label: "AI dijest" },
+            { id: "for-you", label: "For You" },
+            { id: "subscription", label: "Subscription" },
+          ] as const
+        ).map((tab) => (
+          <button
+            aria-selected={selectedTab === tab.id}
+            className={`fb-m-seg${selectedTab === tab.id ? " active" : ""}`}
+            data-active={selectedTab === tab.id ? "true" : undefined}
+            key={tab.id}
+            onClick={() => selectTab(tab.id)}
+            role="tab"
+            type="button"
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
       <section
         aria-labelledby="home-tab-ai-dijest"
