@@ -17,6 +17,10 @@ Fresh computer/session compatibility:
 - Extra local capabilities such as browser cookies, paid subscriptions,
   transcription tools, or custom crawler commands are only needed when the CLI
   returns `agentTasks` or says a source needs them.
+- If the local agent runtime blocks the bootstrap command under its safety
+  policy, stop and report that the bootstrap needs explicit user approval. Do
+  not invent alternate install URLs such as `/install.sh`; the only install URL
+  for this job is `/api/skill/bootstrap`.
 
 Agent discretion boundary: this is a command-runner task until the CLI returns
 `agentTasks` or says a personal source needs local cookies, credentials,

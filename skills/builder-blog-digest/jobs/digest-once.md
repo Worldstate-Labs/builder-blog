@@ -16,6 +16,10 @@ Fresh computer/session compatibility:
   device login. Ask the user to sign in only at that point, then continue.
 - No local repo, local database, or source API key is required for digest
   generation; the context is fetched from the FollowBrief web app after login.
+- If the local agent runtime blocks the bootstrap command under its safety
+  policy, stop and report that the bootstrap needs explicit user approval. Do
+  not invent alternate install URLs such as `/install.sh`; the only install URL
+  for this job is `/api/skill/bootstrap`.
 
 Agent discretion boundary: this is a command-runner task except for the explicit
 digest-writing step. Do not change paths, flags, cadence, titles, output files,

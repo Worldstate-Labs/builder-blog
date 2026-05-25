@@ -260,6 +260,8 @@ test("web app serves the agent skill and setup command", () => {
   const runner = readFileSync("scripts/builder-agent-runner.sh", "utf8");
   const skillFileRoute = readFileSync("src/app/api/skill/files/[file]/route.ts", "utf8");
   const skillJobRoute = readFileSync("src/app/api/skill/jobs/[job]/skill.md/route.ts", "utf8");
+  const skillJobAliasRoute = readFileSync("src/app/api/skill/jobs/[job]/route.ts", "utf8");
+  const skillJobFiles = readFileSync("src/lib/skill-job-files.ts", "utf8");
   const bootstrapRoute = readFileSync("src/app/api/skill/bootstrap/route.ts", "utf8");
   const skill = readFileSync("skills/builder-blog-digest/SKILL.md", "utf8");
   const libraryOncePrompt = readFileSync("skills/builder-blog-digest/jobs/library-once.md", "utf8");
@@ -293,10 +295,14 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryOncePrompt, /Do not use `--force`/);
   assert.match(libraryOncePrompt, /Fresh computer\/session compatibility/);
   assert.match(libraryOncePrompt, /Node\.js 20 or newer/);
+  assert.match(libraryOncePrompt, /bootstrap needs explicit user approval/);
+  assert.match(libraryOncePrompt, /Do\s+not invent alternate install URLs such as `\/install\.sh`/);
   assert.match(digestOncePrompt, /prepare --days 1/);
   assert.match(digestOncePrompt, /The only creative step is writing/);
   assert.match(digestOncePrompt, /Fresh computer\/session compatibility/);
   assert.match(digestOncePrompt, /No local repo, local database, or source API key is required/);
+  assert.match(digestOncePrompt, /bootstrap needs explicit user approval/);
+  assert.match(digestOncePrompt, /Do\s+not invent alternate install URLs such as `\/install\.sh`/);
   assert.match(digestOncePrompt, /summarize-tweets\.md/);
   assert.match(digestOncePrompt, /summarize-podcast\.md/);
   assert.match(digestOncePrompt, /summarize-blogs\.md/);
@@ -337,9 +343,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillFileRoute, /builder-blog-digest-cron\.md/);
   assert.match(skillFileRoute, /builder-agent-runner\.sh/);
   assert.match(skillFileRoute, /builder-digest\.mjs/);
-  assert.match(skillJobRoute, /library-once/);
-  assert.match(skillJobRoute, /digest-once/);
+  assert.match(skillJobFiles, /library-once/);
+  assert.match(skillJobFiles, /digest-once/);
+  assert.match(skillJobRoute, /jobSkillFiles/);
   assert.match(skillJobRoute, /text\/markdown/);
+  assert.match(skillJobAliasRoute, /jobSkillFiles/);
+  assert.match(skillJobAliasRoute, /rel="canonical"/);
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-blog-digest\.md/);
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-digest\.mjs/);
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-agent-runner\.sh/);

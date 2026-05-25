@@ -17,6 +17,7 @@ export async function GET(_request: Request, { params }: Params) {
     headers: {
       "content-type": "text/markdown; charset=utf-8",
       "cache-control": "public, max-age=60",
+      link: `</api/skill/jobs/${job}/skill.md>; rel="canonical"`,
     },
   });
 }
