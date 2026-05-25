@@ -48,7 +48,7 @@ export default async function Home() {
               <BrandMark />
               <div>
                 <div className="text-sm font-bold">Today&apos;s digest</div>
-                <div className="text-xs text-[var(--muted)]">Synced 12 minutes ago</div>
+                <div className="text-xs text-[var(--muted-strong)]">Synced 12 minutes ago</div>
               </div>
             </div>
             <span className="status-chip status-chip-success">
@@ -142,7 +142,7 @@ export default async function Home() {
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] p-3">
-      <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">{label}</div>
+      <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted-strong)]">{label}</div>
       <div className="mt-2 text-sm font-semibold text-[var(--ink)]">{value}</div>
     </div>
   );

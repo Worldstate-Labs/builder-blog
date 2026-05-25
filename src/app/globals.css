@@ -24,6 +24,40 @@
   --foreground: var(--ink);
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: oklch(0.18 0.022 248);
+    --paper-strong: oklch(0.22 0.024 248);
+    --rail: oklch(0.245 0.025 248);
+    --ink: oklch(0.965 0.005 238);
+    --charcoal: oklch(0.99 0.003 238);
+    --muted: oklch(0.7 0.022 248);
+    --muted-strong: oklch(0.82 0.018 248);
+    --accent: oklch(0.74 0.13 252);
+    --accent-soft: oklch(0.32 0.07 252);
+    --accent-strong: oklch(0.82 0.14 255);
+    --signal: oklch(0.78 0.13 162);
+    --signal-soft: oklch(0.32 0.06 162);
+    --warm: oklch(0.78 0.1 68);
+    --warm-soft: oklch(0.32 0.05 78);
+    --danger: oklch(0.72 0.14 24);
+    --danger-soft: oklch(0.32 0.07 24);
+    --line: color-mix(in oklch, var(--ink) 18%, transparent);
+    --shadow: color-mix(in oklch, black 55%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -49,8 +83,9 @@ a {
 }
 
 :focus-visible {
-  outline: 3px solid color-mix(in oklch, var(--accent) 28%, transparent);
-  outline-offset: 3px;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px color-mix(in oklch, var(--accent) 22%, transparent);
 }
 
 .font-serif {
@@ -70,17 +105,15 @@ a {
   background:
     linear-gradient(145deg, color-mix(in oklch, var(--paper-strong) 86%, transparent), color-mix(in oklch, var(--rail) 55%, transparent)),
     repeating-linear-gradient(90deg, color-mix(in oklch, var(--ink) 4%, transparent) 0 1px, transparent 1px 22px);
-  box-shadow: 0 18px 48px var(--shadow);
+  box-shadow: 0 1px 0 var(--line);
   padding: clamp(1.5rem, 4vw, 2.4rem);
 }
 
 .brand-mark {
   align-items: center;
-  background:
-    linear-gradient(135deg, var(--accent), var(--signal));
+  background: var(--ink);
   border-radius: 8px;
-  box-shadow: 0 12px 28px color-mix(in oklch, var(--accent) 18%, transparent);
-  color: white;
+  color: var(--paper);
   display: inline-flex;
   height: 2.35rem;
   justify-content: center;
@@ -98,7 +131,7 @@ a {
   border-radius: 8px;
   background:
     linear-gradient(180deg, color-mix(in oklch, var(--paper-strong) 92%, transparent), color-mix(in oklch, var(--rail) 74%, transparent));
-  box-shadow: 0 24px 70px color-mix(in oklch, var(--ink) 13%, transparent);
+  box-shadow: 0 1px 0 var(--line);
   overflow: hidden;
 }
 
@@ -561,8 +594,7 @@ a {
 }
 
 .mobile-header {
-  backdrop-filter: blur(18px);
-  background: color-mix(in oklch, var(--paper) 88%, transparent);
+  background: var(--paper);
   border-bottom: 1px solid var(--line);
   padding: 0.75rem 1rem;
   position: sticky;
@@ -572,8 +604,7 @@ a {
 
 .mobile-tabbar {
   align-items: center;
-  backdrop-filter: blur(18px);
-  background: color-mix(in oklch, var(--paper-strong) 88%, transparent);
+  background: var(--paper-strong);
   border-top: 1px solid var(--line);
   bottom: 0;
   display: grid;
@@ -1323,7 +1354,7 @@ a {
 .library-visibility-thumb {
   background: var(--paper);
   border-radius: 999px;
-  box-shadow: 0 1px 4px rgb(15 23 42 / 0.18);
+  box-shadow: 0 1px 4px color-mix(in oklch, var(--ink) 18%, transparent);
   display: block;
   height: 1.15rem;
   transition: transform 160ms ease;
@@ -1587,11 +1618,11 @@ a {
 }
 
 .source-badge[data-source="x"] .source-badge-mark {
-  background: #111111;
+  background: var(--charcoal);
 }
 
 .source-badge[data-source="youtube"] .source-badge-mark {
-  background: #dc2626;
+  background: var(--danger);
 }
 
 .source-badge[data-source="blog"] .source-badge-mark,

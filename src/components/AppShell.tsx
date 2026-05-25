@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { Session } from "next-auth";
 import { LogOut, Settings, ShieldCheck } from "lucide-react";
@@ -65,10 +66,20 @@ function UserMenu({
 
   return (
     <details className={`user-menu ${compact ? "user-menu-compact" : ""}`}>
-      <summary aria-label="Open user menu" className="user-menu-trigger">
+      <summary
+        aria-label={email ? `Account menu for ${email}` : `Account menu for ${name}`}
+        className="user-menu-trigger"
+      >
         {user?.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img alt="" className="user-avatar" src={user.image} />
+          <Image
+            alt=""
+            aria-hidden="true"
+            className="user-avatar"
+            src={user.image}
+            width={32}
+            height={32}
+            unoptimized
+          />
         ) : (
           <span className="user-avatar" aria-hidden="true">
             {initial}
