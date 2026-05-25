@@ -99,6 +99,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(dashboardPage, /ForYouRecommendationSection/);
   assert.match(forYouSection, /"use client"/);
   assert.match(forYouSection, /fetch\("\/api\/recommendations\/timeline"/);
+  assert.doesNotMatch(forYouSection, /followBriefDataChanged/);
   assert.match(forYouSection, /Loading recommendations/);
   assert.match(forYouSection, /aria-live="polite"/);
   assert.match(timelineRoute, /export async function GET/);
@@ -367,7 +368,6 @@ test("library hub exposes share and multi-import flows", () => {
   const builderLibraryEvents = source("src/lib/builder-library-events.ts");
   const builderLibraryState = source("src/lib/builder-library-state.ts");
   const builderLibraryStreamRoute = source("src/app/api/builders/library-stream/route.ts");
-  const forYouRecommendationSection = source("src/components/ForYouRecommendationSection.tsx");
   const visibilityRoute = source("src/app/api/library-hub/personal-availability/route.ts");
   const builderSubscriptionRoute = source("src/app/api/builders/[builderId]/subscription/route.ts");
   const builderLibraryRoute = source("src/app/api/builders/[builderId]/library/route.ts");
@@ -439,10 +439,6 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(builderLibraryState, /digest\.aggregate/);
   assert.match(builderLibraryState, /recommendationSnapshot\.aggregate/);
   assert.match(builderLibraryState, /feedRead\.aggregate/);
-  assert.match(forYouRecommendationSection, /followBriefDataChanged/);
-  assert.match(forYouRecommendationSection, /addEventListener/);
-  assert.match(forYouRecommendationSection, /\/api\/recommendations\/timeline/);
-  assert.match(forYouRecommendationSection, /key=\{timeline\.snapshots\.map/);
   assert.match(builderLibraryStreamRoute, /text\/event-stream/);
   assert.match(builderLibraryStreamRoute, /event: \$\{event\}/);
   assert.match(builderLibraryStreamRoute, /library-state/);

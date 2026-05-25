@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import {
   RecommendationFeed,
   type RecommendationSnapshotEntry,
 } from "@/components/RecommendationFeed";
-import { followBriefDataChanged } from "@/lib/builder-library-events";
 
 type TimelineResponse = {
   snapshots: RecommendationSnapshotEntry[];
@@ -19,28 +18,6 @@ export function ForYouRecommendationSection() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const mountedRef = useRef(true);
   const requestIdRef = useRef(0);
-
-  const loadTimeline = useCallback(async ({ keepCurrent = false } = {}) => {
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
-    if (!keepCurrent) setStatus("loading");
-
-    try {
-      const response = await fetch("/api/recommendations/timeline", {
-        cache: "no-store",
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = (await response.json()) as TimelineResponse;
-      if (mountedRef.current && requestIdRef.current === requestId) {
-        setTimeline(data);
-        setStatus("ready");
-      }
-    } catch {
-      if (mountedRef.current && requestIdRef.current === requestId && !keepCurrent) {
-        setStatus("error");
-      }
-    }
-  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -77,17 +54,6 @@ export function ForYouRecommendationSection() {
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    function onDataChanged() {
-      void loadTimeline({ keepCurrent: true });
-    }
-
-    window.addEventListener(followBriefDataChanged, onDataChanged);
-    return () => {
-      window.removeEventListener(followBriefDataChanged, onDataChanged);
-    };
-  }, [loadTimeline]);
 
   if (status === "loading") {
     return (
