@@ -37,10 +37,14 @@ export type RecommendationSnapshotEntry = {
   items: RecommendationFeedEntry[];
 };
 
+type RecommendationScope = "for-you" | "subscription";
+
 export function RecommendationFeed({
   initialSnapshots,
+  scope = "for-you",
 }: {
   initialSnapshots: RecommendationSnapshotEntry[];
+  scope?: RecommendationScope;
 }) {
   const [snapshots, setSnapshots] = useState(initialSnapshots);
   const [loadingDirection, setLoadingDirection] = useState<"append" | "prepend" | null>(null);
@@ -82,7 +86,9 @@ export function RecommendationFeed({
       if (loadingDirection) return;
       setLoadingDirection(direction);
       try {
-        const response = await fetch(`/api/recommendations?direction=${direction}&limit=6`);
+        const response = await fetch(
+          `/api/recommendations?direction=${direction}&limit=6&scope=${scope}`,
+        );
         if (!response.ok) return;
         const data = await response.json();
         const snapshot = data.snapshot as RecommendationSnapshotEntry | null | undefined;
@@ -100,7 +106,7 @@ export function RecommendationFeed({
         setLoadingDirection(null);
       }
     },
-    [loadingDirection],
+    [loadingDirection, scope],
   );
 
   useEffect(() => {

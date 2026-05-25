@@ -3,6 +3,7 @@ import type { BuilderKind, FeedItemKind, Prisma } from "@prisma/client";
 const candidateWindow = 1000;
 const defaultRecommendationLimit = 6;
 const defaultTimelineSnapshotLimit = 3;
+type RecommendationScope = "for-you" | "subscription";
 
 type RecommendationBuilder = {
   id: string;
@@ -63,25 +64,27 @@ export async function getRecommendationTimeline({
   userId,
   snapshotLimit = defaultTimelineSnapshotLimit,
   itemLimit = defaultRecommendationLimit,
+  scope = "for-you",
 }: {
   userId: string;
   snapshotLimit?: number;
   itemLimit?: number;
+  scope?: RecommendationScope;
 }) {
   const { prisma } = await import("@/lib/prisma");
   const snapshots = await prisma.recommendationSnapshot.findMany({
-    where: { userId },
+    where: snapshotWhere(userId, scope),
     include: snapshotInclude(userId),
     orderBy: { createdAt: "desc" },
     take: Math.max(1, Math.floor(snapshotLimit)),
   });
 
   if (snapshots.length > 0) {
-    const unreadRemaining = await unreadCandidateCount(userId);
+    const unreadRemaining = await unreadCandidateCount(userId, scope);
     return {
       snapshots: snapshots.map((snapshot) => formatSnapshot(snapshot)),
       unreadRemaining,
-      strategy: "snapshot-personalized-v1" as const,
+      strategy: recommendationStrategy(scope),
     };
   }
 
@@ -89,12 +92,13 @@ export async function getRecommendationTimeline({
     userId,
     limit: itemLimit,
     reason: "initial",
+    scope,
   });
 
   return {
     snapshots: created.snapshot ? [created.snapshot] : [],
     unreadRemaining: created.unreadRemaining,
-    strategy: "snapshot-personalized-v1" as const,
+    strategy: recommendationStrategy(scope),
   };
 }
 
@@ -102,19 +106,21 @@ export async function getRecommendationFeed({
   userId,
   limit = defaultRecommendationLimit,
   reason = "recommendation",
+  scope = "for-you",
 }: {
   userId: string;
   limit?: number;
   reason?: string;
+  scope?: RecommendationScope;
 }) {
-  const created = await createRecommendationSnapshot({ userId, limit, reason });
+  const created = await createRecommendationSnapshot({ userId, limit, reason, scope });
   return {
     items: created.snapshot?.items ?? [],
     snapshot: created.snapshot,
     nextOffset: created.snapshot?.items.length ? 1 : null,
     unreadRemaining: created.unreadRemaining,
     candidateCount: created.candidateCount,
-    strategy: "snapshot-personalized-v1" as const,
+    strategy: recommendationStrategy(scope),
   };
 }
 
@@ -122,10 +128,12 @@ export async function createRecommendationSnapshot({
   userId,
   limit = defaultRecommendationLimit,
   reason = "recommendation",
+  scope = "for-you",
 }: {
   userId: string;
   limit?: number;
   reason?: string;
+  scope?: RecommendationScope;
 }): Promise<{
   snapshot: RecommendationSnapshotResult | null;
   unreadRemaining: number;
@@ -162,15 +170,19 @@ export async function createRecommendationSnapshot({
         take: 200,
       }),
       prisma.recommendationSnapshotItem.findMany({
-        where: { snapshot: { userId } },
+        where: { snapshot: snapshotWhere(userId, scope) },
         select: { feedItemId: true },
         take: 5000,
       }),
     ]);
-  const eligibleBuilderIds = uniqueIds([
-    ...poolBuilderIds,
-    ...hubRows.map((row) => row.builderId),
-  ]);
+  const subscriptionBuilderIds = subscriptions.map((subscription) => subscription.builderId);
+  const eligibleBuilderIds =
+    scope === "subscription"
+      ? uniqueIds(subscriptionBuilderIds)
+      : uniqueIds([
+          ...poolBuilderIds,
+          ...hubRows.map((row) => row.builderId),
+        ]);
 
   if (eligibleBuilderIds.length === 0) {
     return {
@@ -243,7 +255,7 @@ export async function createRecommendationSnapshot({
   const snapshot = await prisma.recommendationSnapshot.create({
     data: {
       userId,
-      reason,
+      reason: snapshotReason(scope, reason),
       items: {
         create: page.map((result, index) => ({
           feedItemId: result.item.id,
@@ -263,19 +275,23 @@ export async function createRecommendationSnapshot({
   };
 }
 
-async function unreadCandidateCount(userId: string) {
+async function unreadCandidateCount(userId: string, scope: RecommendationScope) {
   const [{ activePoolBuilderIds }, { prisma }] = await Promise.all([
     import("@/lib/builder-pool"),
     import("@/lib/prisma"),
   ]);
-  const [poolBuilderIds, hubRows] = await Promise.all([
+  const [poolBuilderIds, hubRows, subscriptions] = await Promise.all([
     activePoolBuilderIds(userId),
     prisma.libraryHubItem.findMany({ select: { builderId: true } }),
+    prisma.subscription.findMany({ where: { userId }, select: { builderId: true } }),
   ]);
-  const eligibleBuilderIds = uniqueIds([
-    ...poolBuilderIds,
-    ...hubRows.map((row) => row.builderId),
-  ]);
+  const eligibleBuilderIds =
+    scope === "subscription"
+      ? uniqueIds(subscriptions.map((subscription) => subscription.builderId))
+      : uniqueIds([
+          ...poolBuilderIds,
+          ...hubRows.map((row) => row.builderId),
+        ]);
   if (eligibleBuilderIds.length === 0) return 0;
 
   return prisma.feedItem.count({
@@ -284,6 +300,25 @@ async function unreadCandidateCount(userId: string) {
       reads: { none: { userId } },
     },
   });
+}
+
+function snapshotWhere(userId: string, scope: RecommendationScope): Prisma.RecommendationSnapshotWhereInput {
+  return {
+    userId,
+    ...(scope === "subscription"
+      ? { reason: { startsWith: "subscription:" } }
+      : { NOT: { reason: { startsWith: "subscription:" } } }),
+  };
+}
+
+function snapshotReason(scope: RecommendationScope, reason: string) {
+  return scope === "subscription" ? `subscription:${reason}` : reason;
+}
+
+function recommendationStrategy(scope: RecommendationScope) {
+  return scope === "subscription"
+    ? ("snapshot-subscription-v1" as const)
+    : ("snapshot-personalized-v1" as const);
 }
 
 function snapshotInclude(userId: string) {

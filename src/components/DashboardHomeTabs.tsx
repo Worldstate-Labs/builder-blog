@@ -2,13 +2,15 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 
-type DashboardTab = "for-you" | "subscription";
+type DashboardTab = "ai-dijest" | "subscription" | "for-you";
 
 export function DashboardHomeTabs({
+  aiDijest,
   forYou,
   initialTab,
   subscription,
 }: {
+  aiDijest: ReactNode;
   forYou: ReactNode;
   initialTab: DashboardTab;
   subscription: ReactNode;
@@ -18,7 +20,7 @@ export function DashboardHomeTabs({
   useEffect(() => {
     function syncFromUrl() {
       const params = new URLSearchParams(window.location.search);
-      setSelectedTab(params.get("tab") === "subscription" ? "subscription" : "for-you");
+      setSelectedTab(parseTab(params.get("tab")));
     }
 
     window.addEventListener("popstate", syncFromUrl);
@@ -27,7 +29,7 @@ export function DashboardHomeTabs({
 
   function selectTab(tab: DashboardTab) {
     setSelectedTab(tab);
-    const url = tab === "subscription" ? "/dashboard?tab=subscription" : "/dashboard";
+    const url = tab === "ai-dijest" ? "/dashboard" : `/dashboard?tab=${tab}`;
     window.history.pushState(null, "", url);
   }
 
@@ -35,15 +37,15 @@ export function DashboardHomeTabs({
     <>
       <div className="home-tabs" role="tablist" aria-label="Home feed">
         <button
-          aria-controls="home-panel-for-you"
-          aria-selected={selectedTab === "for-you"}
-          data-active={selectedTab === "for-you" ? "true" : undefined}
-          id="home-tab-for-you"
-          onClick={() => selectTab("for-you")}
+          aria-controls="home-panel-ai-dijest"
+          aria-selected={selectedTab === "ai-dijest"}
+          data-active={selectedTab === "ai-dijest" ? "true" : undefined}
+          id="home-tab-ai-dijest"
+          onClick={() => selectTab("ai-dijest")}
           role="tab"
           type="button"
         >
-          For You
+          AI dijest
         </button>
         <button
           aria-controls="home-panel-subscription"
@@ -56,14 +58,25 @@ export function DashboardHomeTabs({
         >
           Subscription
         </button>
+        <button
+          aria-controls="home-panel-for-you"
+          aria-selected={selectedTab === "for-you"}
+          data-active={selectedTab === "for-you" ? "true" : undefined}
+          id="home-tab-for-you"
+          onClick={() => selectTab("for-you")}
+          role="tab"
+          type="button"
+        >
+          For You
+        </button>
       </div>
       <section
-        aria-labelledby="home-tab-for-you"
-        hidden={selectedTab !== "for-you"}
-        id="home-panel-for-you"
+        aria-labelledby="home-tab-ai-dijest"
+        hidden={selectedTab !== "ai-dijest"}
+        id="home-panel-ai-dijest"
         role="tabpanel"
       >
-        {selectedTab === "for-you" ? forYou : null}
+        {selectedTab === "ai-dijest" ? aiDijest : null}
       </section>
       <section
         aria-labelledby="home-tab-subscription"
@@ -73,6 +86,19 @@ export function DashboardHomeTabs({
       >
         {selectedTab === "subscription" ? subscription : null}
       </section>
+      <section
+        aria-labelledby="home-tab-for-you"
+        hidden={selectedTab !== "for-you"}
+        id="home-panel-for-you"
+        role="tabpanel"
+      >
+        {selectedTab === "for-you" ? forYou : null}
+      </section>
     </>
   );
+}
+
+function parseTab(value: string | null): DashboardTab {
+  if (value === "subscription" || value === "for-you") return value;
+  return "ai-dijest";
 }

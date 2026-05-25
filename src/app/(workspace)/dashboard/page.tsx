@@ -32,7 +32,7 @@ export default async function DashboardPage({
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
   const params = await searchParams;
-  const selectedTab = firstParam(params.tab) === "subscription" ? "subscription" : "for-you";
+  const selectedTab = parseTab(firstParam(params.tab));
   const archivePage = Math.max(1, Number(firstParam(params.archivePage) ?? "1") || 1);
   const archiveSkip = (archivePage - 1) * archivePageSize;
 
@@ -78,14 +78,17 @@ export default async function DashboardPage({
         <div className="home-main">
           <DashboardHomeTabs
             initialTab={selectedTab}
-            forYou={<ForYouRecommendationSection />}
-            subscription={
-              <SubscriptionFeed
+            aiDijest={
+              <AiDijestFeed
                 archiveCount={archiveCount}
                 archiveDigests={archiveDigests}
                 archivePage={archivePage}
                 todayDigest={todayDigest}
               />
+            }
+            forYou={<ForYouRecommendationSection scope="for-you" />}
+            subscription={
+              <ForYouRecommendationSection scope="subscription" />
             }
           />
         </div>
@@ -93,22 +96,23 @@ export default async function DashboardPage({
           <div className="home-rail-section">
             <h2>Home</h2>
             <div className="mt-4 grid gap-3">
-              <Stat icon={Sparkles} label="For You" value="Live" />
               <Stat
                 icon={todayDigest ? CheckCircle2 : Clock3}
-                label="Subscription"
+                label="AI dijest"
                 value={todayDigest ? "Synced" : "Waiting"}
               />
+              <Stat icon={Sparkles} label="Subscription" value="Live" />
+              <Stat icon={Sparkles} label="For You" value="Live" />
               <Stat icon={Archive} label="Archive entries" value={archiveCount} />
             </div>
           </div>
           <div className="home-rail-section">
-            <h2>Recent subscription</h2>
+            <h2>Recent dijest</h2>
             <div className="mt-4 grid gap-3">
               {recentArchiveDigests.map((digest) => (
                 <Link
                   className="home-rail-link"
-                  href={`/dashboard?tab=subscription#${digest.id}`}
+                  href={`/dashboard?tab=ai-dijest#${digest.id}`}
                   key={digest.id}
                 >
                   <strong>{digest.title}</strong>
@@ -132,7 +136,7 @@ export default async function DashboardPage({
   );
 }
 
-function SubscriptionFeed({
+function AiDijestFeed({
   archiveCount,
   archiveDigests,
   archivePage,
@@ -192,7 +196,7 @@ function SubscriptionFeed({
               className={`button-light button-compact ${
                 archivePage === 1 ? "pointer-events-none opacity-45" : ""
               }`}
-              href={`/dashboard?tab=subscription&archivePage=${Math.max(1, archivePage - 1)}#digest-archive`}
+              href={`/dashboard?tab=ai-dijest&archivePage=${Math.max(1, archivePage - 1)}#digest-archive`}
             >
               Newer
             </Link>
@@ -201,7 +205,7 @@ function SubscriptionFeed({
               className={`button-light button-compact ${
                 visibleEnd >= archiveCount ? "pointer-events-none opacity-45" : ""
               }`}
-              href={`/dashboard?tab=subscription&archivePage=${archivePage + 1}#digest-archive`}
+              href={`/dashboard?tab=ai-dijest&archivePage=${archivePage + 1}#digest-archive`}
             >
               Older
             </Link>
@@ -234,6 +238,11 @@ function Stat({
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function parseTab(value: string | undefined) {
+  if (value === "subscription" || value === "for-you") return value;
+  return "ai-dijest";
 }
 
 function serializeDigestSummary(digest: DigestSummaryRow) {

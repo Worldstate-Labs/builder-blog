@@ -16,6 +16,7 @@ export async function GET(request: Request) {
     userId: session.user.id,
     limit,
     reason: direction,
+    scope: recommendationScope(url.searchParams.get("scope")),
   });
 
   return NextResponse.json(feed);
@@ -60,4 +61,8 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json({ status: "ok", readAt: read.readAt.toISOString() });
+}
+
+function recommendationScope(value: string | null) {
+  return value === "subscription" ? "subscription" : "for-you";
 }
