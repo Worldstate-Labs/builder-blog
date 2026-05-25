@@ -191,17 +191,18 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
                     </button>
                   </div>
                 ) : (
-                  <label className="hub-checkbox">
-                    <input
-                      checked={selected.has(library.id)}
-                      disabled={isPending}
-                      name="libraryId"
-                      onChange={() => toggleLibrary(library.id)}
-                      type="checkbox"
-                      value={library.id}
-                    />
-                    <span>Select</span>
-                  </label>
+                  <button
+                    aria-pressed={selected.has(library.id)}
+                    className={`button-compact gap-2 ${
+                      selected.has(library.id) ? "button-dark" : "button-light"
+                    }`}
+                    disabled={isPending}
+                    onClick={() => toggleLibrary(library.id)}
+                    type="button"
+                  >
+                    {selected.has(library.id) ? <CheckCircle2 className="h-4 w-4" /> : null}
+                    {selected.has(library.id) ? "Selected" : "Select"}
+                  </button>
                 )}
               </div>
 

@@ -2650,24 +2650,6 @@ a {
   white-space: nowrap;
 }
 
-.hub-checkbox {
-  align-items: center;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  cursor: pointer;
-  display: inline-flex;
-  flex: 0 0 auto;
-  font-size: 0.78rem;
-  font-weight: 800;
-  gap: 0.4rem;
-  min-height: 2.35rem;
-  padding: 0.45rem 0.75rem;
-}
-
-.hub-checkbox input {
-  accent-color: var(--accent);
-}
-
 .hub-builder-row {
   align-items: center;
   border-top: 1px solid color-mix(in oklch, var(--line) 72%, transparent);

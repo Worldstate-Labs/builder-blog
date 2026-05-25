@@ -482,8 +482,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /In library/);
   assert.match(hubImportForm, /method: "DELETE"/);
   assert.match(hubImportForm, /Remove/);
+  assert.match(hubImportForm, /aria-pressed=\{selected\.has\(library\.id\)\}/);
+  assert.match(hubImportForm, /Selected/);
+  assert.doesNotMatch(hubImportForm, /hub-checkbox/);
   assert.doesNotMatch(hubImportForm, /library\.kind === "CENTRAL"/);
-  assert.match(hubImportForm, /libraryId/);
   assert.match(hubImportRoute, /export async function POST/);
   assert.match(hubImportRoute, /export async function DELETE/);
   assert.match(hubImportRoute, /importLibrariesFromHub/);
