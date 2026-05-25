@@ -232,13 +232,21 @@ node ~/.builder-blog/builder-digest.mjs prepare --days 1
 - `libraryBuilders`: sources in the user's pool, including central and personal sources.
 - `subscriptions`: the subset of `libraryBuilders` included in digest generation.
 - `items`: feed items only for subscribed sources.
-- `prompts.digest`: the summarization rules.
+- `prompts.summarizeTweets`: the `summarize-tweets.md` method for X/Twitter items.
+- `prompts.summarizePodcast`: the `summarize-podcast.md` method for podcast/video items.
+- `prompts.summarizeBlogs`: the `summarize-blogs.md` method for blog items.
+- `prompts.digestIntro`: the `digest-intro.md` assembly rules.
+- `prompts.translate`: the `translate.md` Chinese translation rules.
 
 3. Produce a concise Chinese digest:
 
 - Use only supplied `items`.
 - The only creative step is writing the digest body from those items.
-- Group by builder or theme.
+- Group items by source type and builder/source.
+- First summarize X/Twitter, podcast/video, and blog items with their matching
+  source-specific prompt.
+- Then assemble those summaries with `prompts.digestIntro`.
+- Then apply `prompts.translate` for the final natural simplified Chinese digest.
 - Include source URLs for every claim.
 - Prioritize launches, technical insights, business moves, strong opinions, and implementation details.
 - Do not browse the web or invent missing facts.

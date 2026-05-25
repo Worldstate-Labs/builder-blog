@@ -293,6 +293,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryOncePrompt, /Do not use `--force`/);
   assert.match(digestOncePrompt, /prepare --days 1/);
   assert.match(digestOncePrompt, /The only creative step is writing/);
+  assert.match(digestOncePrompt, /summarize-tweets\.md/);
+  assert.match(digestOncePrompt, /summarize-podcast\.md/);
+  assert.match(digestOncePrompt, /summarize-blogs\.md/);
+  assert.match(digestOncePrompt, /digest-intro\.md/);
+  assert.match(digestOncePrompt, /translate\.md/);
   assert.match(libraryCronSetupPrompt, /builder-agent-runner\.sh library-cron/);
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_AGENT_COMMAND/);
   assert.match(libraryCronSetupPrompt, /First attempt the exact crontab install/);
@@ -365,6 +370,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronPrompt, /Only use agent judgment to write the digest body/);
   assert.match(digestCronPrompt, /Agent discretion boundary/);
   assert.match(digestCronPrompt, /The only creative step is writing/);
+  assert.match(digestCronPrompt, /summarize-tweets\.md/);
+  assert.match(digestCronPrompt, /summarize-podcast\.md/);
+  assert.match(digestCronPrompt, /summarize-blogs\.md/);
+  assert.match(digestCronPrompt, /digest-intro\.md/);
+  assert.match(digestCronPrompt, /translate\.md/);
   assert.equal(skill.includes("/Users/jie/code/builder_blog"), false);
   assert.equal(skill.includes("node scripts/builder-digest.mjs"), false);
 });
@@ -455,6 +465,9 @@ test("digest generation user path exposes source-specific prompt instructions", 
     ["digest", "digestIntro", "summarizeBlogs", "summarizePodcast", "summarizeTweets", "translate"].sort(),
   );
   assert.match(DIGEST_PROMPTS.summarizePodcast, /podcast transcript/i);
+  assert.match(DIGEST_PROMPTS.summarizeTweets, /X\/Twitter Summary Prompt/);
+  assert.match(DIGEST_PROMPTS.summarizeBlogs, /Blog Post Summary Prompt/);
+  assert.match(DIGEST_PROMPTS.digestIntro, /Digest Intro Prompt/);
   assert.match(DIGEST_PROMPTS.translate, /simplified Chinese/i);
 });
 

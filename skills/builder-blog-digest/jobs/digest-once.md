@@ -32,9 +32,24 @@ ${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/builder-blog-context.json
 ```
 
 The only creative step is writing a concise Chinese digest using only
-`context.items`. Include source URLs when item URLs are available. If there are
-no items, write a short Chinese digest saying there were no new subscription
-updates.
+`context.items`. Before writing, read `context.prompts` from the JSON and use
+these five prompt bodies as the required digest-writing method:
+
+- `context.prompts.summarizeTweets` (`summarize-tweets.md`) for `TWEET` items,
+  grouped by builder/source.
+- `context.prompts.summarizePodcast` (`summarize-podcast.md`) for
+  `PODCAST_EPISODE` items.
+- `context.prompts.summarizeBlogs` (`summarize-blogs.md`) for `BLOG_POST`
+  items.
+- `context.prompts.digestIntro` (`digest-intro.md`) to assemble the final
+  digest order, source-link rules, and no-fabrication rules.
+- `context.prompts.translate` (`translate.md`) to produce the final natural
+  simplified Chinese output.
+
+Do not collapse these into one generic summary. First create source-specific
+summaries with the matching prompt, then assemble them with `digestIntro`, then
+apply `translate`. Include source URLs for every claim. If there are no items,
+write a short Chinese digest saying there were no new subscription updates.
 
 Save the final digest to:
 
