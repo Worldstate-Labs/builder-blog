@@ -147,17 +147,17 @@ export default async function SearchPage({
   return (
     <div className={hasQuery ? "page-pad search-page search-page-active" : "page-pad search-page"}>
         <section className="search-hero">
-          <h1 className="fb-m-title lg:hidden">Search</h1>
-          <h1 className="hidden lg:block serif text-[1.875rem] font-semibold leading-tight tracking-tight">
+          <h1 className="fb-m-title at-mobile">Search</h1>
+          <h1 className="at-desktop serif text-[1.875rem] font-semibold leading-tight tracking-tight">
             Search
           </h1>
-          <p className="fb-m-sub lg:hidden">Sources, posts, and digest history.</p>
-          <p className="hidden lg:block fb-desc">
+          <p className="fb-m-sub at-mobile">Sources, posts, and digest history.</p>
+          <p className="at-desktop fb-desc">
             Find sources, crawled posts, and digest history.
           </p>
           <form
             action="/search"
-            className="fb-m-search mt-3 lg:hidden"
+            className="fb-m-search at-mobile mt-3"
             autoComplete="off"
             role="search"
           >
@@ -183,7 +183,7 @@ export default async function SearchPage({
               type="search"
             />
           </form>
-          <div className="hidden lg:block">
+          <div className="at-desktop">
             <SearchForm
               key={`${query}:${typeFilter}:${mode}:${sort}:${time}`}
               query={query}

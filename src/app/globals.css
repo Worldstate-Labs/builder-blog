@@ -4300,3 +4300,18 @@ mark.fb-mark-highlight {
   }
 }
 
+/* Responsive show/hide helpers that beat Tailwind/source-order ties.
+   Use `at-desktop` for blocks that should ONLY render on lg+, and
+   `at-mobile` for blocks that should ONLY render below lg. */
+@media (max-width: 1023.99px) {
+  .at-desktop {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .at-mobile {
+    display: none !important;
+  }
+}
+

@@ -35,7 +35,7 @@ export function DashboardHomeTabs({
 
   return (
     <>
-      <div className="hidden lg:block">
+      <div className="at-desktop">
         <div className="fb-tabs" role="tablist" aria-label="Home feed">
           <button
             aria-controls="home-panel-ai-dijest"
@@ -75,7 +75,7 @@ export function DashboardHomeTabs({
           </button>
         </div>
       </div>
-      <div className="fb-m-segctl lg:hidden" role="tablist" aria-label="Home feed">
+      <div className="fb-m-segctl at-mobile" role="tablist" aria-label="Home feed">
         {(
           [
             { id: "ai-dijest", label: "AI dijest" },

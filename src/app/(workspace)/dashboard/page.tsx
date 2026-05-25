@@ -92,7 +92,7 @@ export default async function DashboardPage({
             }
           />
         </div>
-        <aside className="fb-rail hidden lg:flex">
+        <aside className="fb-rail at-desktop">
           <div>
             <h3>Home</h3>
             <div className="grid gap-2">
@@ -181,7 +181,7 @@ function AiDijestFeed({
             Showing {visibleStart}-{visibleEnd} of {archiveCount}
           </span>
         </div>
-        <div className="mt-4 hidden gap-3 lg:grid">
+        <div className="mt-4 at-desktop gap-3 lg:grid">
           {archiveDigests.map((digest, index) => (
             <DigestDetails
               defaultOpen={index === 0}
@@ -195,7 +195,7 @@ function AiDijestFeed({
             </div>
           ) : null}
         </div>
-        <div className="mt-4 overflow-hidden rounded-[12px] border border-[var(--line)] bg-[var(--paper-strong)] lg:hidden">
+        <div className="at-mobile mt-4 overflow-hidden rounded-[12px] border border-[var(--line)] bg-[var(--paper-strong)]">
           {archiveDigests.map((digest, index) => (
             <Link
               className="flex items-center justify-between px-3.5 py-3"

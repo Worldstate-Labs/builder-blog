@@ -147,7 +147,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
 
   return (
     <section className="mt-5">
-      <nav className="fb-stabs hidden lg:flex" aria-label="Library filter">
+      <nav className="fb-stabs at-desktop" aria-label="Library filter">
         {FILTERS.map((filter) => (
           <button
             className={`fb-stab${activeFilter === filter.key ? " active" : ""}`}
@@ -164,7 +164,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
           <span className="fb-kind-pill">Most imported</span>
         </div>
       </nav>
-      <div className="fb-m-segctl lg:hidden" aria-label="Library filter">
+      <div className="fb-m-segctl at-mobile" aria-label="Library filter">
         {(
           [
             { key: "all", label: "All" },
@@ -190,7 +190,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
       ) : null}
 
       {showFeatured && featuredLibrary ? (
-        <div className="hidden lg:block">
+        <div className="at-desktop">
           <FeaturedLibraryCard
             imported={importedIds.has(featuredLibrary.id) || featuredLibrary.imported}
             library={featuredLibrary}
@@ -199,16 +199,18 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
       ) : null}
 
       <section className="mt-7">
-        <div className="mb-3.5 hidden items-center justify-between lg:flex">
-          <h2 className="fb-section-heading">More libraries</h2>
-          <span className="text-xs text-[var(--muted)]">
-            {filteredOther.length} {filteredOther.length === 1 ? "library" : "libraries"}
-            {activeFilter === "all" ? " · Curated by people you might follow" : ""}
-          </span>
+        <div className="mb-3.5 at-desktop">
+          <div className="flex items-center justify-between">
+            <h2 className="fb-section-heading">More libraries</h2>
+            <span className="text-xs text-[var(--muted)]">
+              {filteredOther.length} {filteredOther.length === 1 ? "library" : "libraries"}
+              {activeFilter === "all" ? " · Curated by people you might follow" : ""}
+            </span>
+          </div>
         </div>
         <div className="grid gap-3.5 lg:grid-cols-2">
           {showFeatured && featuredLibrary ? (
-            <div className="lg:hidden">
+            <div className="at-mobile">
               <HubCard
                 isPending={isPending}
                 library={featuredLibrary}
