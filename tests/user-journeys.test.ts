@@ -45,6 +45,16 @@ import {
   normalizeSearchTime,
   normalizeSearchMode,
 } from "../src/lib/search";
+
+function assertOrderedText(text: string, markers: string[]) {
+  let lastIndex = -1;
+  for (const marker of markers) {
+    const index = text.indexOf(marker);
+    assert.notEqual(index, -1, `missing marker: ${marker}`);
+    assert.ok(index > lastIndex, `marker out of order: ${marker}`);
+    lastIndex = index;
+  }
+}
 import {
   builderSourceLabel,
   builderKindForSourceType,
@@ -316,6 +326,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryOncePrompt, /Report the tried repair methods and the concrete\s+blocker/);
   assert.match(libraryOncePrompt, /bootstrap needs explicit user approval/);
   assert.match(libraryOncePrompt, /Do\s+not invent alternate install URLs such as `\/install\.sh`/);
+  assertOrderedText(libraryOncePrompt, [
+    "4. If it contains a non-empty `crawlTasks` array",
+    "How to execute each `crawlTask`",
+    "5. If you completed `crawlTasks`",
+  ]);
   assert.match(digestOncePrompt, /prepare --days 1/);
   assert.match(digestOncePrompt, /Use agent judgment only for the digest-writing step/);
   assert.match(digestOncePrompt, /execution\s+contract, not as user-facing documentation/);
@@ -338,6 +353,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /crawlTasks/);
   assert.match(libraryCronSetupPrompt, /How to execute each `crawlTask`/);
   assert.match(libraryCronSetupPrompt, /Read `task\.contentStatus`/);
+  assertOrderedText(libraryCronSetupPrompt, [
+    "5. Run one immediate smoke check",
+    "If the smoke check JSON contains a non-empty `crawlTasks` array",
+    "How to execute each `crawlTask`",
+    "Only if crontab is unavailable or blocked",
+  ]);
   assert.match(libraryCronSetupPrompt, /single-post summary/);
   assert.match(libraryCronSetupPrompt, /task\.summaryInstructions\.prompt/);
   assert.match(digestCronSetupPrompt, /builder-agent-runner\.sh digest-cron/);
@@ -422,6 +443,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronPrompt, /Complete exactly the task IDs returned by the CLI/);
   assert.match(libraryCronPrompt, /Do not add new sources, URLs, or feed items/);
   assert.match(libraryCronPrompt, /do not stop just\s+because one extraction method fails/);
+  assertOrderedText(libraryCronPrompt, [
+    "Rules:",
+    "- Complete exactly the task IDs returned by the CLI",
+    "How to execute each `crawlTask`",
+    "- Before syncing agent-produced items or summaries, validate them",
+  ]);
   assert.match(digestCronPrompt, /prepare --days 1/);
   assert.match(digestCronPrompt, /builder-blog-digest\.md/);
   assert.match(digestCronPrompt, /Only use agent judgment to write the digest body/);

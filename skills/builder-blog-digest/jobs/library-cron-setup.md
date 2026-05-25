@@ -26,32 +26,6 @@ Crawl task boundary:
 - do not read prompt files, do not fetch `context.prompts`, and do not use any
   separate digest prompt at runtime.
 
-How to execute each `crawlTask`:
-1. Read `task.id`; the finished item must set `rawJson.crawlTaskId` to exactly
-   this value so validation can bind the output item to this task.
-2. Copy `task.builderSync` exactly as the enclosing builder object in the sync
-   payload. Do not infer builder fields from names, handles, or URLs.
-3. Read `task.contentStatus`.
-   - For `ready`, use `task.item.body` as the final item body exactly; do not
-     crawl or rewrite the source content.
-   - For `requires_agent`, use `task.item.url`, `task.sourceType`,
-     `task.agentWorkType`, `task.normalCrawler`, and `task.suggestedAction` to
-     choose local extraction methods. Keep trying available methods until real
-     primary content is obtained or no method remains.
-4. Use `task.minimumContentQuality` for `requires_agent` tasks as the minimum
-   acceptance bar for the extracted body. For YouTube, title, description, feed
-   description, and page metadata are not acceptable body content.
-5. Generate `summary` only after the body is final. Follow
-   `task.summaryInstructions.prompt` and summarize this one task item only.
-6. Build one output item under the copied builder. Copy stable item fields from
-   `task.item` (`kind`, `externalId`, `title`, `url`, `publishedAt`,
-   `sourceName`), set `body`, set `summary`, and set `rawJson`.
-7. For every output item, include `rawJson.crawlTaskId`. For
-   `requires_agent`, also include `rawJson.agentRuntime`,
-   `rawJson.agentModel` if known, `rawJson.agentCompletedAt`, and
-   `rawJson.agentExecutionProof`; for YouTube include
-   `rawJson.transcriptSource`.
-
 1. Install or refresh the skill:
 
 ```bash
@@ -85,16 +59,35 @@ BUILDER_BLOG_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}" 
 
 If the smoke check JSON contains a non-empty `crawlTasks` array: complete
 exactly the task IDs returned by the CLI. Do not add new sources, URLs, or feed
-items that were not returned by the CLI or task payload. For
-`contentStatus="ready"` tasks, copy `task.item.body` and write the summary. For
-`contentStatus="requires_agent"` tasks, keep working through available methods
-until real primary content is extracted; do not stop just because one method
-fails. Stop only if this agent has no remaining available way to obtain real
-primary content for a task, and report the tried methods and concrete blocker.
-Do not use title, description, or page metadata as the item body. Use
-`task.item` and `task.builderSync` to build the sync payload so the item is
-uploaded only after both `body` and `summary` are present. Validate with
-`validate-agent-sync` before `sync-builders` is considered successful.
+items that were not returned by the CLI or task payload.
+
+How to execute each `crawlTask` in this smoke-check step:
+- Read `task.id`; the finished item must set `rawJson.crawlTaskId` to exactly
+  this value so validation can bind the output item to this task.
+- Copy `task.builderSync` exactly as the enclosing builder object in the sync
+  payload. Do not infer builder fields from names, handles, or URLs.
+- Read `task.contentStatus`.
+  - For `ready`, use `task.item.body` as the final item body exactly; do not
+    crawl or rewrite the source content.
+  - For `requires_agent`, use `task.item.url`, `task.sourceType`,
+    `task.agentWorkType`, `task.normalCrawler`, and `task.suggestedAction` to
+    choose local extraction methods. Keep trying available methods until real
+    primary content is obtained or no method remains.
+- Use `task.minimumContentQuality` for `requires_agent` tasks as the minimum
+  acceptance bar for the extracted body. For YouTube, title, description, feed
+  description, and page metadata are not acceptable body content.
+- Generate `summary` only after the body is final. Follow
+  `task.summaryInstructions.prompt` and summarize this one task item only.
+- Build one output item under the copied builder. Copy stable item fields from
+  `task.item` (`kind`, `externalId`, `title`, `url`, `publishedAt`,
+  `sourceName`), set `body`, set `summary`, and set `rawJson`.
+- For every output item, include `rawJson.crawlTaskId`. For `requires_agent`,
+  also include `rawJson.agentRuntime`, `rawJson.agentModel` if known,
+  `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`; for YouTube
+  include `rawJson.transcriptSource`.
+
+Validate with `validate-agent-sync` before `sync-builders` is considered
+successful.
 
 Only if crontab is unavailable or blocked, install the same command and cadence
 through launchd or the local agent scheduler:
