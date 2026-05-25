@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Terminal, Trash2 } from "lucide-react";
+import { KeyRound, Plus } from "lucide-react";
 
 export type AgentTokenListItem = {
   id: string;
@@ -19,6 +19,7 @@ export function AgentTokenPanel({
   const [tokens, setTokens] = useState(initialTokens);
   const [newToken, setNewToken] = useState<string | null>(null);
   const [status, setStatus] = useState("");
+  const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
   const activeCount = useMemo(
     () => tokens.filter((token) => !token.revokedAt).length,
@@ -71,77 +72,117 @@ export function AgentTokenPanel({
     });
   }
 
+  const bootstrapCommand =
+    '/bin/sh -c "$(curl -fsSL https://followbrief.app/api/skill/bootstrap)"';
+
+  async function copyBootstrap() {
+    try {
+      await navigator.clipboard.writeText(bootstrapCommand);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setStatus("Could not copy bootstrap command");
+    }
+  }
+
   return (
-    <>
-      {newToken ? (
-        <div className="digest-panel mt-8 p-5 text-white md:p-6">
-          <p className="text-sm font-bold uppercase tracking-[0.18em] text-white/56">
-            Copy once
+    <section className="fb-panel">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="fb-section-heading">Agent tokens</h2>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+            Long-lived tokens for the terminal skill. Treat them like passwords.
           </p>
-          <code className="mt-4 block break-all rounded-lg bg-black/30 p-4 text-sm">
+        </div>
+        <button
+          className="fb-btn dark compact"
+          disabled={isPending}
+          onClick={createToken}
+          type="button"
+        >
+          <Plus aria-hidden="true" />
+          {isPending ? "Creating..." : "New token"}
+        </button>
+      </div>
+
+      <div className="fb-code-block mt-4">
+        <code>{bootstrapCommand}</code>
+        <button
+          className="fb-code-block-copy"
+          onClick={copyBootstrap}
+          type="button"
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+
+      {newToken ? (
+        <div className="mt-4 rounded-[10px] border border-[var(--accent)] bg-[var(--accent-soft)] p-4">
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--accent-strong)]">
+            Copy once · This token will not be shown again
+          </p>
+          <code className="mono mt-2 block break-all text-[12px] text-[var(--ink)]">
             {newToken}
           </code>
         </div>
       ) : null}
 
-      <section className="action-panel mt-8 grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
-        <div className="min-w-0">
-          <div className="flex items-center gap-3">
-            <Terminal className="h-5 w-5 text-[var(--accent)]" />
-            <h2 className="section-heading">Terminal access</h2>
-          </div>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
-            Create a token only when you need direct CLI access without device login.
-            Revoke old tokens after rotating agents.
-          </p>
-        </div>
-        <button
-          className="button-dark button-compact"
-          disabled={isPending}
-          onClick={createToken}
-          type="button"
-        >
-          {isPending ? "Creating..." : "Create manual token"}
-        </button>
-      </section>
-
-      <section className="mt-10 grid gap-3">
+      <div className="mt-4 overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)]">
         {tokens.map((token) => (
-          <article key={token.id} className="builder-row">
+          <div
+            key={token.id}
+            className="fb-token-row"
+            style={{ opacity: token.revokedAt ? 0.55 : 1 }}
+          >
+            <span className="fb-src-icon" style={{ width: "2rem", height: "2rem" }}>
+              <KeyRound aria-hidden="true" className="h-3.5 w-3.5" />
+            </span>
             <div className="min-w-0">
-              <div className="text-base font-semibold">{token.name}</div>
-              <p className="mt-1 text-sm text-[var(--muted)]">
-                Created {formatDate(token.createdAt)}
-                {token.lastUsedAt ? ` · Last used ${formatDate(token.lastUsedAt)}` : ""}
-                {token.revokedAt ? " · Revoked" : ""}
-              </p>
+              <div className="text-[13.5px] font-bold">{token.name}</div>
+              <div className="fb-src-meta">
+                <span>Created {formatDate(token.createdAt)}</span>
+                {token.lastUsedAt ? (
+                  <>
+                    <span>·</span>
+                    <span>Last used {formatDate(token.lastUsedAt)}</span>
+                  </>
+                ) : null}
+                {token.revokedAt ? (
+                  <>
+                    <span>·</span>
+                    <span>Revoked</span>
+                  </>
+                ) : null}
+              </div>
             </div>
-            {!token.revokedAt ? (
+            {token.revokedAt ? (
+              <span className="fb-kind-pill">revoked</span>
+            ) : (
               <button
-                className="button-light button-compact button-danger gap-2"
+                className="fb-btn ghost compact"
                 disabled={isPending}
                 onClick={() => revokeToken(token.id)}
                 type="button"
               >
-                <Trash2 className="h-4 w-4" />
                 Revoke
               </button>
-            ) : null}
-          </article>
+            )}
+          </div>
         ))}
         {tokens.length === 0 ? (
-          <div className="empty-panel border-dashed text-[var(--muted-strong)]">
-            No tokens yet. Create one only when your local agent or terminal skill needs direct access.
+          <div className="px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
+            No tokens yet. Create one when your local agent or terminal skill needs direct access.
           </div>
         ) : null}
-        <span aria-live="polite">
-          {status ? <span className="status-chip status-chip-danger">{status}</span> : null}
-        </span>
-        <span className="sr-only" aria-live="polite">
-          {activeCount} active tokens
-        </span>
-      </section>
-    </>
+      </div>
+
+      <span aria-live="polite" className="mt-2 block">
+        {status ? <span className="text-[12px] text-[var(--danger)]">{status}</span> : null}
+      </span>
+      <span className="sr-only" aria-live="polite">
+        {activeCount} active tokens
+      </span>
+    </section>
   );
 }
 

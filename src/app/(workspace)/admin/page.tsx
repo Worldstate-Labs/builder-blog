@@ -99,8 +99,8 @@ async function BuilderKindMetrics() {
   });
 
   return (
-    <div className="admin-panel">
-      <h2 className="section-heading">Builder pool by kind</h2>
+    <div className="fb-panel">
+      <h2 className="fb-section-heading">Builder pool by kind</h2>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {Object.values(BuilderKind).map((kind) => (
           <MetricRow
@@ -122,8 +122,8 @@ async function FeedKindMetrics() {
   });
 
   return (
-    <div className="admin-panel">
-      <h2 className="section-heading">Feed items by kind</h2>
+    <div className="fb-panel">
+      <h2 className="fb-section-heading">Feed items by kind</h2>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {Object.values(FeedItemKind).map((kind) => (
           <MetricRow
@@ -139,8 +139,8 @@ async function FeedKindMetrics() {
 
 function MetricPanelFallback({ title }: { title: string }) {
   return (
-    <div className="admin-panel" aria-live="polite" aria-busy="true">
-      <h2 className="section-heading">{title}</h2>
+    <div className="fb-panel" aria-live="polite" aria-busy="true">
+      <h2 className="fb-section-heading">{title}</h2>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         <div className="h-14 rounded-lg bg-black/10" />
         <div className="h-14 rounded-lg bg-black/10" />
@@ -197,20 +197,23 @@ async function RecentImportedContent() {
     <section className="mt-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="section-label">Daily crawl</p>
-          <h2 className="section-heading">Recent imported content</h2>
+          <p className="fb-section-label">Daily crawl</p>
+          <h2 className="fb-section-heading mt-1">Recent imported content</h2>
         </div>
-        <span className="rounded-full border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-2 text-sm text-[var(--muted-strong)]">
-          Last 14 days
-        </span>
+        <span className="fb-chip">Last 14 days</span>
       </div>
 
-      <div className="item-list mt-5">
+      <div className="mt-5 grid gap-3">
         {feedItemsByDay.map((day, dayIndex) => (
-          <details key={day.key} className="admin-panel admin-panel-compact" open={dayIndex === 0}>
+          <details
+            key={day.key}
+            className="fb-panel"
+            style={{ padding: 0 }}
+            open={dayIndex === 0}
+          >
             <summary className="item-summary">
               <h3 className="text-lg font-semibold">{dateFormatter.format(day.date)}</h3>
-              <span className="kind-pill">{day.items.length} items</span>
+              <span className="fb-kind-pill">{day.items.length} items</span>
             </summary>
             <div className="border-t border-[var(--line)]">
               {day.items.map((item) => (
@@ -271,8 +274,8 @@ function AdminPanelFallback({ title }: { title: string }) {
     <section className="mt-10" aria-live="polite" aria-busy="true">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="section-label">Loading</p>
-          <h2 className="section-heading">{title}</h2>
+          <p className="fb-section-label">Loading</p>
+          <h2 className="fb-section-heading">{title}</h2>
         </div>
       </div>
       <div className="item-list mt-5">
@@ -301,9 +304,11 @@ function AdminStat({ label, value }: { label: string; value: number }) {
 
 function MetricRow({ label, value }: { label: string; value: number }) {
   return (
-    <div className="metric-card">
-      <div className="metric-card-label">{label}</div>
-      <div className="metric-card-value">{value}</div>
+    <div className="fb-stat">
+      <div className="min-w-0">
+        <div className="fb-stat-value">{value}</div>
+        <div className="fb-stat-label">{label}</div>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Bell, BellOff, Trash2 } from "lucide-react";
+import { Bell, X } from "lucide-react";
 
 type BuilderLibraryActionsProps = {
   allowRemove?: boolean;
@@ -44,12 +44,12 @@ export function SubscribeAllLibraryBuildersButton({
     <div className="inline-flex flex-col items-start gap-2">
       <button
         aria-busy={isPending}
-        className="button-dark gap-2"
+        className="fb-btn dark"
         disabled={isPending}
         onClick={subscribeAll}
         type="button"
       >
-        <Bell className="h-4 w-4" />
+        <Bell aria-hidden="true" />
         {isPending ? "Subscribing..." : phase === "done" ? "Subscribed" : "Subscribe all in library"}
       </button>
       {phase === "error" ? (
@@ -126,33 +126,38 @@ export function BuilderLibraryActions({
   }
 
   return (
-    <div className="grid gap-2">
-      <div className="row-actions">
+    <div className="grid gap-1.5">
+      <div className="flex items-center gap-2.5">
         <button
           aria-busy={isPending}
-          className={`${subscribed ? "button-light" : "button-dark"} button-compact gap-2`}
+          aria-pressed={subscribed}
+          aria-label={subscribed ? "Unsubscribe" : "Subscribe"}
+          className="inline-flex items-center gap-1.5"
           disabled={isPending}
           onClick={updateSubscription}
           type="button"
         >
-          {subscribed ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
-          {isPending ? "Updating..." : subscribed ? "Unsubscribe" : "Subscribe"}
+          <span className="text-[12px] font-semibold text-[var(--muted-strong)]">
+            Subscribe
+          </span>
+          <span className={`fb-toggle${subscribed ? " on" : ""}`} aria-hidden="true" />
         </button>
         {allowRemove ? (
           <button
             aria-busy={isPending}
-            className="button-light button-compact button-danger gap-2"
+            aria-label="Remove from library"
+            className="fb-icon-btn"
             disabled={isPending}
             onClick={removeFromLibrary}
             type="button"
+            style={{ width: "1.75rem", height: "1.75rem" }}
           >
-            <Trash2 className="h-4 w-4" />
-            {isPending ? "Removing..." : "Remove from library"}
+            <X aria-hidden="true" className="h-3 w-3" />
           </button>
         ) : null}
       </div>
       {error ? (
-        <span className="text-xs text-[var(--danger)]" role="status">
+        <span className="text-[11px] text-[var(--danger)]" role="status">
           {error}
         </span>
       ) : null}

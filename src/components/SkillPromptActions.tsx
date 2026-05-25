@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarClock, Check, Copy } from "lucide-react";
+import { CalendarClock, Check, Copy, Terminal } from "lucide-react";
 
 type SkillPromptContext = "library" | "digest";
 type CopyTarget = "once" | "cron";
@@ -54,34 +54,40 @@ export function SkillPromptActions({ context }: { context: SkillPromptContext })
   }
 
   return (
-    <div className="skill-prompt-actions">
-      <div className="min-w-0">
-        <p className="section-label">{config.title}</p>
+    <div className="fb-skill">
+      <Terminal aria-hidden="true" className="h-4 w-4 text-[var(--accent)]" />
+      <div className="fb-skill-text">
+        <span className="fb-section-label mr-2">{config.title}</span>
+        Run the terminal skill to sync new {context === "digest" ? "digests" : "sources"}.
       </div>
-      <div className="skill-prompt-buttons">
-        <button
-          className="button-light button-compact gap-2"
-          onClick={() => copyCommand("once")}
-          type="button"
-        >
-          {copiedTarget === "once" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-          {copiedTarget === "once" ? "Copied" : config.onceLabel}
-        </button>
-        <button
-          className="button-light button-compact gap-2"
-          onClick={() => copyCommand("cron")}
-          type="button"
-        >
-          {copiedTarget === "cron" ? (
-            <Check className="h-4 w-4" />
-          ) : (
-            <CalendarClock className="h-4 w-4" />
-          )}
-          {copiedTarget === "cron" ? "Copied" : config.cronLabel}
-        </button>
-      </div>
-      <span aria-live="polite">
-        {status ? <span className="status-chip status-chip-danger">{status}</span> : null}
+      <button
+        className="fb-btn light compact"
+        onClick={() => copyCommand("once")}
+        type="button"
+      >
+        {copiedTarget === "once" ? (
+          <Check aria-hidden="true" />
+        ) : (
+          <Copy aria-hidden="true" />
+        )}
+        {copiedTarget === "once" ? "Copied" : config.onceLabel}
+      </button>
+      <button
+        className="fb-btn dark compact"
+        onClick={() => copyCommand("cron")}
+        type="button"
+      >
+        {copiedTarget === "cron" ? (
+          <Check aria-hidden="true" />
+        ) : (
+          <CalendarClock aria-hidden="true" />
+        )}
+        {copiedTarget === "cron" ? "Copied" : config.cronLabel}
+      </button>
+      <span aria-live="polite" className="ml-2">
+        {status ? (
+          <span className="text-[11px] text-[var(--danger)]">{status}</span>
+        ) : null}
       </span>
     </div>
   );

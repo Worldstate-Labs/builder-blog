@@ -53,48 +53,47 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
   }
 
   return (
-    <form className="add-builder-form" onSubmit={addBuilder}>
-      <div className="add-builder-form-header">
-        <div>
-          <h3 className="text-base font-semibold text-[var(--ink)]">Add source</h3>
-          <p className="mt-1 text-sm text-[var(--muted-strong)]">
-            Create a private library entry.
-          </p>
-        </div>
-        <button className="button-dark button-compact gap-2" disabled={isPending} type="submit">
-          <Plus className="h-4 w-4" />
-          {isPending ? "Adding..." : "Add"}
+    <form className="grid gap-2" onSubmit={addBuilder}>
+      <div className="grid items-center gap-2 sm:grid-cols-[11rem_1fr_auto]">
+        <select
+          aria-label="Source type"
+          className="fb-input"
+          name="sourceType"
+          defaultValue="x"
+        >
+          {sourceOptions.map((source) => (
+            <option key={source.id} value={source.id}>
+              {source.label}
+            </option>
+          ))}
+        </select>
+        <input
+          aria-label="Handle or URL"
+          className="fb-input"
+          name="sourceValue"
+          placeholder="@deepmind or https://example.com/feed"
+          required
+        />
+        <button className="fb-btn dark" disabled={isPending} type="submit">
+          <Plus aria-hidden="true" />
+          {isPending ? "Adding..." : "Add source"}
         </button>
       </div>
-      <div className="add-builder-grid">
-        <label>
-          <span>Source</span>
-          <select className="input" name="sourceType" defaultValue="x">
-            {sourceOptions.map((source) => (
-              <option key={source.id} value={source.id}>
-                {source.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>Handle or URL</span>
-          <input
-            className="input"
-            name="sourceValue"
-            placeholder="@deepmind or https://example.com/feed"
-            required
-          />
-        </label>
-        <label className="add-builder-grid-wide">
-          <span>Display name</span>
-          <input className="input" name="name" placeholder="Optional; inferred when empty" />
-        </label>
+      <div className="flex items-center gap-2">
+        <input
+          aria-label="Display name"
+          className="fb-input flex-1"
+          name="name"
+          placeholder="Display name (optional)"
+        />
+        <span aria-live="polite" className="text-[11.5px]">
+          {error ? (
+            <span className="text-[var(--danger)]">{error}</span>
+          ) : status ? (
+            <span className="text-[var(--success)]">{status}</span>
+          ) : null}
+        </span>
       </div>
-      <span aria-live="polite">
-        {error ? <span className="text-sm text-[var(--danger)]">{error}</span> : null}
-        {status ? <span className="text-sm text-[var(--success)]">{status}</span> : null}
-      </span>
     </form>
   );
 }

@@ -59,64 +59,102 @@ export function FeedPreferenceForm({
     });
   }
 
+  const frequencyOptions: Array<{ value: DigestFrequency; label: string }> = [
+    { value: "DAILY", label: "Daily" },
+    { value: "WEEKLY", label: "Weekly" },
+    { value: "CUSTOM", label: "Custom" },
+  ];
+
   return (
-    <form className="mt-5 grid gap-4" onSubmit={handleSubmit}>
-      <div className="grid gap-4 md:grid-cols-3">
-        <label className="grid gap-2 text-sm font-semibold">
-          Digest frequency
-          <select
-            className="input"
-            value={digestFrequency}
-            onChange={(event) => setDigestFrequency(event.target.value as DigestFrequency)}
-          >
-            <option value="DAILY">Daily</option>
-            <option value="WEEKLY">Weekly</option>
-            <option value="CUSTOM">Custom</option>
-          </select>
-        </label>
-        <label className="grid gap-2 text-sm font-semibold">
-          Custom days
+    <form className="mt-4 grid gap-2" onSubmit={handleSubmit}>
+      <div className="fb-field">
+        <label>Digest frequency</label>
+        <div className="fb-pill-group">
+          {frequencyOptions.map((option) => (
+            <button
+              className={`fb-pill${digestFrequency === option.value ? " active" : ""}`}
+              key={option.value}
+              onClick={() => setDigestFrequency(option.value)}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {digestFrequency === "CUSTOM" ? (
+        <div className="fb-field">
+          <label>Custom interval</label>
+          <div className="flex items-center gap-3">
+            <input
+              aria-label="Custom interval in days"
+              className="fb-input w-20"
+              min="1"
+              max="365"
+              type="number"
+              value={digestCustomFrequencyDays}
+              onChange={(event) => setDigestCustomFrequencyDays(event.target.value)}
+            />
+            <span className="text-[13px] text-[var(--muted-strong)]">
+              days between digests.
+            </span>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="fb-field">
+        <label>Max post age</label>
+        <div className="flex items-center gap-3">
           <input
-            className="input"
-            min="1"
-            max="365"
-            type="number"
-            value={digestCustomFrequencyDays}
-            onChange={(event) => setDigestCustomFrequencyDays(event.target.value)}
-          />
-        </label>
-        <label className="grid gap-2 text-sm font-semibold">
-          Max post age
-          <input
-            className="input"
+            aria-label="Max post age in days"
+            className="fb-input w-20"
             min="1"
             max="365"
             type="number"
             value={digestMaxPostAgeDays}
             onChange={(event) => setDigestMaxPostAgeDays(event.target.value)}
           />
-        </label>
+          <span className="text-[13px] text-[var(--muted-strong)]">
+            days. Items older than this are excluded from the next digest.
+          </span>
+        </div>
       </div>
-      <label className="grid gap-2 text-sm font-semibold">
-        Recommendation profile
+
+      <div className="fb-field">
+        <label>Recommendation profile</label>
         <textarea
-          className="input min-h-32"
+          className="fb-textarea"
           maxLength={4000}
           value={recommendationProfile}
           onChange={(event) => setRecommendationProfile(event.target.value)}
         />
-      </label>
-      <div className="flex flex-wrap items-center gap-3">
-        <button className="button-dark button-compact" disabled={isPending} type="submit">
-          {isPending ? "Saving..." : "Save feed preferences"}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button className="fb-btn dark" disabled={isPending} type="submit">
+          {isPending ? "Saving..." : "Save preferences"}
         </button>
-        <span aria-live="polite">
+        <button
+          className="fb-btn ghost"
+          disabled={isPending}
+          onClick={() => {
+            setDigestFrequency(initialValue.digestFrequency);
+            setDigestCustomFrequencyDays(String(initialValue.digestCustomFrequencyDays));
+            setDigestMaxPostAgeDays(String(initialValue.digestMaxPostAgeDays));
+            setRecommendationProfile(initialValue.recommendationProfile);
+            setStatus("idle");
+            setMessage("");
+          }}
+          type="button"
+        >
+          Reset
+        </button>
+        <span aria-live="polite" className="ml-1 text-[11.5px]">
           {message ? (
             <span
               className={
-                status === "saved"
-                  ? "status-chip status-chip-success"
-                  : "status-chip status-chip-danger"
+                status === "saved" ? "text-[var(--signal)]" : "text-[var(--danger)]"
               }
             >
               {message}

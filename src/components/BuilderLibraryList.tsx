@@ -131,37 +131,40 @@ export function BuilderLibraryList({
 
   if (visibleBuilders.length === 0) {
     return (
-      <div className="empty-panel text-[var(--muted-strong)]">
+      <div className="fb-panel dashed text-[var(--muted-strong)]">
         {emptyTitle ? (
-          <h3 className="text-lg font-semibold text-[var(--ink)]">{emptyTitle}</h3>
+          <h3 className="serif text-lg font-semibold text-[var(--ink)]">{emptyTitle}</h3>
         ) : null}
-        <p className={emptyTitle ? "mt-2 text-sm leading-6" : ""}>{emptyBody}</p>
+        <p className={emptyTitle ? "mt-2 text-sm leading-6" : "text-sm"}>{emptyBody}</p>
       </div>
     );
   }
 
   return (
-    <>
-      {visibleBuilders.map((builder) => (
+    <div className="overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)]">
+      {visibleBuilders.map((builder, index) => (
         <BuilderCard
           builder={builder}
+          first={index === 0}
           key={builder.id}
           removeError={removeErrors[builder.id]}
           onRemoveStateChange={onRemoveStateChange}
           onSubscriptionStateChange={onSubscriptionStateChange}
         />
       ))}
-    </>
+    </div>
   );
 }
 
 function BuilderCard({
   builder,
+  first,
   onRemoveStateChange,
   onSubscriptionStateChange,
   removeError,
 }: {
   builder: BuilderLibraryListItem;
+  first: boolean;
   onRemoveStateChange: (builderId: string, removed: boolean) => void;
   onSubscriptionStateChange: (
     builderId: string,
@@ -171,10 +174,17 @@ function BuilderCard({
   removeError?: string;
 }) {
   return (
-    <article id={builder.id} className="builder-card">
-      <div className="builder-row">
+    <article
+      id={builder.id}
+      className={first ? "px-4 py-3.5" : "border-t border-[var(--line)] px-4 py-3.5"}
+    >
+      <div
+        className="grid items-center gap-3.5"
+        style={{ gridTemplateColumns: "auto 1fr auto" }}
+      >
+        <span className="fb-src-icon">{builder.name.charAt(0).toUpperCase()}</span>
         <BuilderInfo builder={builder} />
-        <div className="row-actions">
+        <div className="row-actions flex flex-shrink-0 items-center gap-3">
           <BuilderLibraryActions
             allowRemove={builder.allowRemove}
             builderId={builder.id}
@@ -186,7 +196,7 @@ function BuilderCard({
         </div>
       </div>
       {removeError ? (
-        <div className="mt-3 text-sm text-[var(--danger)]" role="status">
+        <div className="mt-2 text-sm text-[var(--danger)]" role="status">
           {removeError}
         </div>
       ) : null}
@@ -208,28 +218,39 @@ function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
   const latestPostCreatedAt = builder.latestPostCreatedAt
     ? new Date(builder.latestPostCreatedAt)
     : null;
+  const hostLabel = builder.handle ? `@${builder.handle}` : sourceSummary(sourceUrl);
 
   return (
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-lg font-semibold leading-snug">{builder.name}</h3>
+        <div className="fb-src-name truncate">{builder.name}</div>
         <SourceBadge builder={builder} />
-        <span className="sub-pill">{builder.subscribed ? "Subscribed" : "In library"}</span>
       </div>
-      <div className="builder-meta">
-        <span>{builder.handle ? `@${builder.handle}` : sourceSummary(sourceUrl)}</span>
-        <span>{builder.crawlLabel}</span>
+      <div className="fb-src-meta">
+        <span className="fb-kind-pill">{builder.kind.toLowerCase()}</span>
+        {hostLabel ? <span className="mono truncate max-w-[18rem]">{hostLabel}</span> : null}
+        <span>·</span>
         <span>{builder.feedItemCount} items</span>
         {latestPostCreatedAt ? (
-          <span>Latest {formatCompactDate(latestPostCreatedAt)}</span>
+          <>
+            <span>·</span>
+            <span>Latest {formatCompactDate(latestPostCreatedAt)}</span>
+          </>
+        ) : null}
+        <span>·</span>
+        <span>{builder.crawlLabel}</span>
+        {sourceUrl ? (
+          <a
+            className="inline-flex items-center gap-1 text-[var(--accent)] hover:underline"
+            href={sourceUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            <ExternalLink className="h-3 w-3" aria-hidden="true" />
+            Open
+          </a>
         ) : null}
       </div>
-      {sourceUrl ? (
-        <a className="builder-source-link" href={sourceUrl} rel="noreferrer" target="_blank">
-          <ExternalLink className="h-3.5 w-3.5" />
-          Open source
-        </a>
-      ) : null}
     </div>
   );
 }
