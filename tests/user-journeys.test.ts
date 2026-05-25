@@ -295,6 +295,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryOncePrompt, /do not read prompt files/);
   assert.match(libraryOncePrompt, /do not fetch `context\.prompts`/);
   assert.match(libraryOncePrompt, /Crawl task boundary/);
+  assert.match(libraryOncePrompt, /How to execute each `crawlTask`/);
+  assert.match(libraryOncePrompt, /Read `task\.contentStatus`/);
+  assert.match(libraryOncePrompt, /Copy `task\.builderSync` exactly/);
+  assert.match(libraryOncePrompt, /Use `task\.minimumContentQuality`/);
+  assert.match(libraryOncePrompt, /Build one output item/);
   assert.match(libraryOncePrompt, /both `body` and `summary`/);
   assert.match(libraryOncePrompt, /task\.builderSync/);
   assert.doesNotMatch(libraryOncePrompt, /agentTasks/);
@@ -331,6 +336,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /crontab/);
   assert.match(libraryCronSetupPrompt, /Do not use `--force`/);
   assert.match(libraryCronSetupPrompt, /crawlTasks/);
+  assert.match(libraryCronSetupPrompt, /How to execute each `crawlTask`/);
+  assert.match(libraryCronSetupPrompt, /Read `task\.contentStatus`/);
   assert.match(libraryCronSetupPrompt, /single-post summary/);
   assert.match(libraryCronSetupPrompt, /task\.summaryInstructions\.prompt/);
   assert.match(digestCronSetupPrompt, /builder-agent-runner\.sh digest-cron/);
@@ -397,6 +404,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronPrompt, /single-post summary/);
   assert.match(libraryCronPrompt, /summaryInstructions\.prompt/);
   assert.match(libraryCronPrompt, /Crawl task boundary/);
+  assert.match(libraryCronPrompt, /How to execute each `crawlTask`/);
+  assert.match(libraryCronPrompt, /Read `task\.contentStatus`/);
+  assert.match(libraryCronPrompt, /Copy `task\.builderSync` exactly/);
+  assert.match(libraryCronPrompt, /Use `task\.minimumContentQuality`/);
+  assert.match(libraryCronPrompt, /Build one output item/);
   assert.match(libraryCronPrompt, /both `body` and `summary`/);
   assert.match(libraryCronPrompt, /task\.builderSync/);
   assert.doesNotMatch(libraryCronPrompt, /agentTasks/);
