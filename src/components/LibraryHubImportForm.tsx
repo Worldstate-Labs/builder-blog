@@ -192,8 +192,9 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
                   </div>
                 ) : (
                   <button
+                    aria-label={`${selected.has(library.id) ? "Deselect" : "Add"} ${library.name}`}
                     aria-pressed={selected.has(library.id)}
-                    className={`button-compact gap-2 ${
+                    className={`hub-select-button button-compact gap-2 ${
                       selected.has(library.id) ? "button-dark" : "button-light"
                     }`}
                     disabled={isPending}
@@ -201,7 +202,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
                     type="button"
                   >
                     {selected.has(library.id) ? <CheckCircle2 className="h-4 w-4" /> : null}
-                    {selected.has(library.id) ? "Selected" : "Select"}
+                    {selected.has(library.id) ? "Added" : "Add"}
                   </button>
                 )}
               </div>

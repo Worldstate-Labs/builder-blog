@@ -2609,6 +2609,10 @@ a {
   justify-content: flex-end;
 }
 
+.hub-select-button {
+  min-width: 5.8rem;
+}
+
 .library-hub-summary {
   align-items: center;
   color: var(--muted);
