@@ -4260,3 +4260,31 @@ mark.fb-mark-highlight {
   outline: 0;
 }
 
+/* Responsive visibility (overrides Tailwind hidden/lg:flex because
+   custom CSS load order otherwise wins specificity ties). */
+.fb-top {
+  display: none;
+}
+
+.fb-side {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .fb-top {
+    display: flex;
+  }
+
+  .fb-side {
+    display: flex;
+  }
+
+  .fb-m-top {
+    display: none;
+  }
+
+  .fb-m-tabbar {
+    display: none;
+  }
+}
+
