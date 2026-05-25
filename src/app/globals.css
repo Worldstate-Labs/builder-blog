@@ -4315,6 +4315,53 @@ mark.fb-mark-highlight {
   }
 }
 
+/* Global horizontal overflow guard. Long mono URLs and code blocks
+   are the usual culprits — keep them wrappable on mobile. */
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+@media (max-width: 1023.99px) {
+  .mono,
+  .fb-src-meta .mono,
+  .fb-src-meta {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .fb-page-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fb-page-head > * {
+    min-width: 0;
+  }
+
+  /* Compress fb-skill on mobile: hide secondary buttons, keep icon + text. */
+  .fb-skill .fb-btn {
+    display: none;
+  }
+
+  /* Simplified source row meta — hide hostname, crawl label, Open link */
+  .fb-src-row .fb-src-meta .mono,
+  .fb-src-row .fb-src-meta a {
+    display: none;
+  }
+
+  /* Library section summary should stack action below title on mobile */
+  .library-section-summary {
+    flex-wrap: wrap;
+  }
+
+  /* Imported library headers small on mobile */
+  .imported-library-stack .library-section-summary h2 {
+    font-size: 0.9375rem;
+  }
+}
+
 /* Mobile Sources Private/Imported switcher: only one section visible
    below lg; both visible at lg+ (desktop behavior unchanged). */
 .mobile-sources-stack {
