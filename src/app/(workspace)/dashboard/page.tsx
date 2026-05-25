@@ -78,8 +78,8 @@ export default async function DashboardPage({
         <div className="min-w-0">
           <DashboardHomeTabs
             initialTab={selectedTab}
-            aiDijest={
-              <AiDijestFeed
+            aiDigest={
+              <AiDigestFeed
                 archiveCount={archiveCount}
                 archiveDigests={archiveDigests}
                 archivePage={archivePage}
@@ -98,7 +98,7 @@ export default async function DashboardPage({
             <div className="grid gap-2">
               <Stat
                 icon={todayDigest ? CheckCircle2 : Clock3}
-                label="AI dijest"
+                label="AI digest"
                 value={todayDigest ? "Synced" : "Waiting"}
               />
               <Stat icon={Sparkles} label="For You" value="Live" />
@@ -107,12 +107,12 @@ export default async function DashboardPage({
             </div>
           </div>
           <div>
-            <h3>Recent dijest</h3>
+            <h3>Recent digest</h3>
             <div className="grid gap-1">
               {recentArchiveDigests.map((digest) => (
                 <Link
                   className="fb-rail-link"
-                  href={`/dashboard?tab=ai-dijest#${digest.id}`}
+                  href={`/dashboard?tab=ai-digest#${digest.id}`}
                   key={digest.id}
                 >
                   <strong>{digest.title}</strong>
@@ -138,7 +138,7 @@ export default async function DashboardPage({
   );
 }
 
-function AiDijestFeed({
+function AiDigestFeed({
   archiveCount,
   archiveDigests,
   archivePage,
@@ -199,7 +199,7 @@ function AiDijestFeed({
           {archiveDigests.map((digest, index) => (
             <Link
               className="flex items-center justify-between px-3.5 py-3"
-              href={`/dashboard?tab=ai-dijest#${digest.id}`}
+              href={`/dashboard?tab=ai-digest#${digest.id}`}
               key={digest.id}
               style={{ borderTop: index === 0 ? 0 : "1px solid var(--line)" }}
             >
@@ -230,7 +230,7 @@ function AiDijestFeed({
               className={`fb-btn light compact ${
                 archivePage === 1 ? "pointer-events-none opacity-45" : ""
               }`}
-              href={`/dashboard?tab=ai-dijest&archivePage=${Math.max(1, archivePage - 1)}#digest-archive`}
+              href={`/dashboard?tab=ai-digest&archivePage=${Math.max(1, archivePage - 1)}#digest-archive`}
             >
               Newer
             </Link>
@@ -239,7 +239,7 @@ function AiDijestFeed({
               className={`fb-btn light compact ${
                 visibleEnd >= archiveCount ? "pointer-events-none opacity-45" : ""
               }`}
-              href={`/dashboard?tab=ai-dijest&archivePage=${archivePage + 1}#digest-archive`}
+              href={`/dashboard?tab=ai-digest&archivePage=${archivePage + 1}#digest-archive`}
             >
               Older
             </Link>
@@ -276,7 +276,7 @@ function firstParam(value: string | string[] | undefined) {
 
 function parseTab(value: string | undefined) {
   if (value === "subscription" || value === "for-you") return value;
-  return "ai-dijest";
+  return "ai-digest";
 }
 
 function serializeDigestSummary(digest: DigestSummaryRow) {

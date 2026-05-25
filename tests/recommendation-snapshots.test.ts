@@ -54,10 +54,10 @@ test("subscription recommendation feed uses subscribed builders only", () => {
   const forYouSection = source("src/components/ForYouRecommendationSection.tsx");
   const recommendations = source("src/lib/recommendations.ts");
 
-  assert.match(tabs, /AI dijest/);
+  assert.match(tabs, /AI digest/);
   assert.match(tabs, /Subscription/);
   assert.match(tabs, /For You/);
-  assert.match(dashboardPage, /aiDijest=/);
+  assert.match(dashboardPage, /aiDigest=/);
   assert.match(dashboardPage, /scope="subscription"/);
   assert.match(dashboardPage, /scope="for-you"/);
   assert.match(forYouSection, /scope=\$\{scope\}/);

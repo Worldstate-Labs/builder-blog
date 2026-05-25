@@ -2,15 +2,15 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 
-type DashboardTab = "ai-dijest" | "subscription" | "for-you";
+type DashboardTab = "ai-digest" | "subscription" | "for-you";
 
 export function DashboardHomeTabs({
-  aiDijest,
+  aiDigest,
   forYou,
   initialTab,
   subscription,
 }: {
-  aiDijest: ReactNode;
+  aiDigest: ReactNode;
   forYou: ReactNode;
   initialTab: DashboardTab;
   subscription: ReactNode;
@@ -29,7 +29,7 @@ export function DashboardHomeTabs({
 
   function selectTab(tab: DashboardTab) {
     setSelectedTab(tab);
-    const url = tab === "ai-dijest" ? "/dashboard" : `/dashboard?tab=${tab}`;
+    const url = tab === "ai-digest" ? "/dashboard" : `/dashboard?tab=${tab}`;
     window.history.pushState(null, "", url);
   }
 
@@ -38,16 +38,16 @@ export function DashboardHomeTabs({
       <div className="at-desktop">
         <div className="fb-tabs" role="tablist" aria-label="Home feed">
           <button
-            aria-controls="home-panel-ai-dijest"
-            aria-selected={selectedTab === "ai-dijest"}
-            className={`fb-tab${selectedTab === "ai-dijest" ? " active" : ""}`}
-            data-active={selectedTab === "ai-dijest" ? "true" : undefined}
-            id="home-tab-ai-dijest"
-            onClick={() => selectTab("ai-dijest")}
+            aria-controls="home-panel-ai-digest"
+            aria-selected={selectedTab === "ai-digest"}
+            className={`fb-tab${selectedTab === "ai-digest" ? " active" : ""}`}
+            data-active={selectedTab === "ai-digest" ? "true" : undefined}
+            id="home-tab-ai-digest"
+            onClick={() => selectTab("ai-digest")}
             role="tab"
             type="button"
           >
-            AI dijest
+            AI digest
           </button>
           <button
             aria-controls="home-panel-for-you"
@@ -78,7 +78,7 @@ export function DashboardHomeTabs({
       <div className="fb-m-segctl at-mobile" role="tablist" aria-label="Home feed">
         {(
           [
-            { id: "ai-dijest", label: "AI dijest" },
+            { id: "ai-digest", label: "AI digest" },
             { id: "for-you", label: "For You" },
             { id: "subscription", label: "Subscription" },
           ] as const
@@ -97,12 +97,12 @@ export function DashboardHomeTabs({
         ))}
       </div>
       <section
-        aria-labelledby="home-tab-ai-dijest"
-        hidden={selectedTab !== "ai-dijest"}
-        id="home-panel-ai-dijest"
+        aria-labelledby="home-tab-ai-digest"
+        hidden={selectedTab !== "ai-digest"}
+        id="home-panel-ai-digest"
         role="tabpanel"
       >
-        {selectedTab === "ai-dijest" ? aiDijest : null}
+        {selectedTab === "ai-digest" ? aiDigest : null}
       </section>
       <section
         aria-labelledby="home-tab-subscription"
@@ -126,5 +126,5 @@ export function DashboardHomeTabs({
 
 function parseTab(value: string | null): DashboardTab {
   if (value === "subscription" || value === "for-you") return value;
-  return "ai-dijest";
+  return "ai-digest";
 }
