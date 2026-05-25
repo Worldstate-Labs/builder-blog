@@ -1839,11 +1839,16 @@ a {
   border: 0;
   border-radius: 999px;
   color: var(--ink);
-  font-size: 1rem;
-  min-height: 2.9rem;
+  font-size: 0.9375rem;
+  min-height: 3rem;
   outline: none;
-  padding: 0.65rem 2.65rem 0.65rem 2.65rem;
+  padding: 0.75rem 2.65rem 0.75rem 2.65rem;
   width: 100%;
+}
+
+.search-page-active .search-input {
+  font-size: 1rem;
+  min-height: 3.125rem;
 }
 
 .search-input::placeholder {
@@ -1992,15 +1997,22 @@ a {
 .search-related-link,
 .search-page-link {
   align-items: center;
+  background: var(--paper-strong);
   border: 1px solid var(--line);
   border-radius: 999px;
-  color: var(--muted-strong);
+  color: var(--ink);
   display: inline-flex;
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: 0.8125rem;
+  font-weight: 600;
   gap: 0.35rem;
   min-height: 2.2rem;
-  padding: 0.42rem 0.78rem;
+  padding: 0.5rem 0.875rem;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.search-related-link:hover {
+  background: color-mix(in oklch, var(--paper-strong) 70%, var(--rail));
+  border-color: color-mix(in oklch, var(--ink) 22%, transparent);
 }
 
 .search-suggestion-item {

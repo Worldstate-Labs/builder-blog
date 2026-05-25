@@ -83,14 +83,48 @@ export function BuilderLibraryStats({
   }
 
   return (
-    <div className="page-toolbar">
-      <span className="status-chip">{stats.inLibrary} in library</span>
-      <span className="status-chip">
-        <Bell className="h-3.5 w-3.5" />
-        {stats.subscribed} subscribed
-      </span>
-      <span className="status-chip">{stats.crawledItems} crawled</span>
-      <SubscribeAllLibraryBuildersButton onSubscribedAll={onSubscribedAll} />
-    </div>
+    <>
+      <div className="hidden lg:flex page-toolbar">
+        <span className="status-chip">{stats.inLibrary} in library</span>
+        <span className="status-chip">
+          <Bell className="h-3.5 w-3.5" />
+          {stats.subscribed} subscribed
+        </span>
+        <span className="status-chip">{stats.crawledItems} crawled</span>
+        <SubscribeAllLibraryBuildersButton onSubscribedAll={onSubscribedAll} />
+      </div>
+      <div className="grid w-full grid-cols-3 gap-2 lg:hidden">
+        <div className="fb-stat" style={{ padding: "0.625rem 0.75rem" }}>
+          <div className="min-w-0">
+            <div className="fb-stat-value" style={{ fontSize: "1.0625rem" }}>
+              {stats.inLibrary}
+            </div>
+            <div className="fb-stat-label" style={{ fontSize: "0.625rem" }}>
+              In library
+            </div>
+          </div>
+        </div>
+        <div className="fb-stat" style={{ padding: "0.625rem 0.75rem" }}>
+          <div className="min-w-0">
+            <div className="fb-stat-value" style={{ fontSize: "1.0625rem" }}>
+              {stats.subscribed}
+            </div>
+            <div className="fb-stat-label" style={{ fontSize: "0.625rem" }}>
+              Subscribed
+            </div>
+          </div>
+        </div>
+        <div className="fb-stat" style={{ padding: "0.625rem 0.75rem" }}>
+          <div className="min-w-0">
+            <div className="fb-stat-value" style={{ fontSize: "1.0625rem" }}>
+              {stats.crawledItems.toLocaleString()}
+            </div>
+            <div className="fb-stat-label" style={{ fontSize: "0.625rem" }}>
+              Crawled
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ComponentType } from "react";
-import { Archive, CheckCircle2, Clock3, Sparkles, Terminal, UsersRound } from "lucide-react";
+import { Archive, CheckCircle2, ChevronRight, Clock3, Sparkles, Terminal, UsersRound } from "lucide-react";
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
 import { ForYouRecommendationSection } from "@/components/ForYouRecommendationSection";
 import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
@@ -181,7 +181,7 @@ function AiDijestFeed({
             Showing {visibleStart}-{visibleEnd} of {archiveCount}
           </span>
         </div>
-        <div className="mt-4 grid gap-3">
+        <div className="mt-4 hidden gap-3 lg:grid">
           {archiveDigests.map((digest, index) => (
             <DigestDetails
               defaultOpen={index === 0}
@@ -191,6 +191,34 @@ function AiDijestFeed({
           ))}
           {archiveDigests.length === 0 ? (
             <div className="fb-panel dashed text-sm text-[var(--muted-strong)]">
+              Historical digests will appear here after more subscription syncs.
+            </div>
+          ) : null}
+        </div>
+        <div className="mt-4 overflow-hidden rounded-[12px] border border-[var(--line)] bg-[var(--paper-strong)] lg:hidden">
+          {archiveDigests.map((digest, index) => (
+            <Link
+              className="flex items-center justify-between px-3.5 py-3"
+              href={`/dashboard?tab=ai-dijest#${digest.id}`}
+              key={digest.id}
+              style={{ borderTop: index === 0 ? 0 : "1px solid var(--line)" }}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="serif text-[15px] font-semibold leading-tight tracking-tight">
+                  {digest.title}
+                </div>
+                <div className="mt-1 text-[11px] text-[var(--muted)]">
+                  {digest.itemCount} items
+                </div>
+              </div>
+              <ChevronRight
+                aria-hidden="true"
+                className="h-3.5 w-3.5 flex-shrink-0 text-[var(--muted)]"
+              />
+            </Link>
+          ))}
+          {archiveDigests.length === 0 ? (
+            <div className="px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
               Historical digests will appear here after more subscription syncs.
             </div>
           ) : null}

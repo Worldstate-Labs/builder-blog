@@ -132,11 +132,15 @@ export function FeedPreferenceForm({
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <button className="fb-btn dark" disabled={isPending} type="submit">
+        <button
+          className="fb-btn dark w-full justify-center sm:w-auto"
+          disabled={isPending}
+          type="submit"
+        >
           {isPending ? "Saving..." : "Save preferences"}
         </button>
         <button
-          className="fb-btn ghost"
+          className="fb-btn ghost w-full justify-center sm:w-auto"
           disabled={isPending}
           onClick={() => {
             setDigestFrequency(initialValue.digestFrequency);

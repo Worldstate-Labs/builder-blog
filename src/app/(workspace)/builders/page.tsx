@@ -234,13 +234,16 @@ async function BuilderSections({
         badge={data.isAdmin ? "admin" : "private"}
         count={data.privateBuilders.length}
         defaultOpen
+        action={
+          <LibraryVisibilityToggle
+            compact
+            disabled={!data.isAdmin && data.privateBuilders.length === 0}
+            initialIsPublic={data.isPublicLibrary}
+            isAdminLibrary={data.isAdmin}
+            name={userLibraryName}
+          />
+        }
       >
-        <LibraryVisibilityToggle
-          disabled={!data.isAdmin && data.privateBuilders.length === 0}
-          initialIsPublic={data.isPublicLibrary}
-          isAdminLibrary={data.isAdmin}
-          name={userLibraryName}
-        />
         <SkillPromptActions context="library" />
         <AddBuilderForm
           sourceOptions={SOURCE_DEFINITIONS.filter((source) => source.id !== "pdf").map(

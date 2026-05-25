@@ -147,7 +147,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
 
   return (
     <section className="mt-5">
-      <nav className="fb-stabs" aria-label="Library filter">
+      <nav className="fb-stabs hidden lg:flex" aria-label="Library filter">
         {FILTERS.map((filter) => (
           <button
             className={`fb-stab${activeFilter === filter.key ? " active" : ""}`}
@@ -164,6 +164,24 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
           <span className="fb-kind-pill">Most imported</span>
         </div>
       </nav>
+      <div className="fb-m-segctl lg:hidden" aria-label="Library filter">
+        {(
+          [
+            { key: "all", label: "All" },
+            { key: "community", label: "Community" },
+            { key: "shared", label: "Shared" },
+          ] as const
+        ).map((filter) => (
+          <button
+            className={`fb-m-seg${activeFilter === filter.key ? " active" : ""}`}
+            key={filter.key}
+            onClick={() => setActiveFilter(filter.key)}
+            type="button"
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
 
       {error ? (
         <p className="mt-3 text-xs text-[var(--danger)]" role="status">
@@ -172,21 +190,41 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
       ) : null}
 
       {showFeatured && featuredLibrary ? (
-        <FeaturedLibraryCard
-          imported={importedIds.has(featuredLibrary.id) || featuredLibrary.imported}
-          library={featuredLibrary}
-        />
+        <div className="hidden lg:block">
+          <FeaturedLibraryCard
+            imported={importedIds.has(featuredLibrary.id) || featuredLibrary.imported}
+            library={featuredLibrary}
+          />
+        </div>
       ) : null}
 
       <section className="mt-7">
-        <div className="mb-3.5 flex items-center justify-between">
+        <div className="mb-3.5 hidden items-center justify-between lg:flex">
           <h2 className="fb-section-heading">More libraries</h2>
           <span className="text-xs text-[var(--muted)]">
             {filteredOther.length} {filteredOther.length === 1 ? "library" : "libraries"}
             {activeFilter === "all" ? " · Curated by people you might follow" : ""}
           </span>
         </div>
-        <div className="grid gap-3.5 md:grid-cols-2">
+        <div className="grid gap-3.5 lg:grid-cols-2">
+          {showFeatured && featuredLibrary ? (
+            <div className="lg:hidden">
+              <HubCard
+                isPending={isPending}
+                library={featuredLibrary}
+                imported={
+                  importedIds.has(featuredLibrary.id) || featuredLibrary.imported
+                }
+                pending={
+                  pendingAction?.libraryId === featuredLibrary.id
+                    ? pendingAction.type
+                    : null
+                }
+                onImport={importLibrary}
+                onRemove={removeImported}
+              />
+            </div>
+          ) : null}
           {filteredOther.map((library) => (
             <HubCard
               key={library.id}

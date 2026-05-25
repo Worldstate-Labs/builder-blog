@@ -32,14 +32,23 @@ export function DeviceApproveButton({ code }: { code: string }) {
 
   return (
     <div className="mt-6 flex flex-col gap-3">
-      <button
-        className="fb-auth-btn justify-center disabled:cursor-wait disabled:opacity-65"
-        disabled={isPending}
-        onClick={approve}
-        type="button"
-      >
-        {isPending ? "Approving..." : "Approve device"}
-      </button>
+      <div className="flex gap-2.5">
+        <button
+          className="fb-auth-btn flex-1 justify-center disabled:cursor-wait disabled:opacity-65"
+          disabled={isPending}
+          onClick={approve}
+          type="button"
+        >
+          {isPending ? "Approving..." : "Approve device"}
+        </button>
+        <a
+          className="fb-auth-btn outline flex-none justify-center"
+          href="/dashboard"
+          aria-label="Cancel device authorization"
+        >
+          Cancel
+        </a>
+      </div>
       <span aria-live="polite">
         {message ? (
           <p

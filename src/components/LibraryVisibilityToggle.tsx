@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 type LibraryVisibilityToggleProps = {
+  compact?: boolean;
   disabled: boolean;
   initialIsPublic: boolean;
   isAdminLibrary?: boolean;
@@ -10,6 +11,7 @@ type LibraryVisibilityToggleProps = {
 };
 
 export function LibraryVisibilityToggle({
+  compact = false,
   disabled,
   initialIsPublic,
   isAdminLibrary = false,
@@ -45,6 +47,31 @@ export function LibraryVisibilityToggle({
         setError("Could not update hub availability.");
       }
     });
+  }
+
+  if (compact) {
+    return (
+      <div className="inline-flex flex-col items-end gap-1">
+        <button
+          aria-busy={isPending}
+          aria-pressed={isPublic}
+          className="inline-flex items-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={disabled || isPending}
+          onClick={updateVisibility}
+          type="button"
+        >
+          <span className="text-[12px] font-semibold text-[var(--muted-strong)]">
+            Share to Hub
+          </span>
+          <span className={`fb-toggle${isPublic ? " on" : ""}`} aria-hidden="true" />
+        </button>
+        {error ? (
+          <span className="text-[10.5px] text-[var(--danger)]" role="status">
+            {error}
+          </span>
+        ) : null}
+      </div>
+    );
   }
 
   return (

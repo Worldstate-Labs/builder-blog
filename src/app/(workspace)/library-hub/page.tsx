@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { Plus } from "lucide-react";
 import { LibraryHubImportForm, type HubLibrary } from "@/components/LibraryHubImportForm";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
@@ -21,9 +23,15 @@ export default function LibraryHubPage() {
             Import shared source libraries, or publish your own so others can follow what you read.
           </p>
         </div>
-        <Suspense fallback={<span className="fb-chip" aria-busy="true">Loading</span>}>
-          <LibraryHubCount dataPromise={dataPromise} />
-        </Suspense>
+        <div className="flex items-center gap-2">
+          <Suspense fallback={<span className="fb-chip" aria-busy="true">Loading</span>}>
+            <LibraryHubCount dataPromise={dataPromise} />
+          </Suspense>
+          <Link className="fb-btn light" href="/builders">
+            <Plus aria-hidden="true" />
+            Share my library
+          </Link>
+        </div>
       </section>
 
       <Suspense fallback={<LibraryHubImportFallback />}>

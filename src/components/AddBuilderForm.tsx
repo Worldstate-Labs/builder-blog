@@ -74,7 +74,11 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
           placeholder="@deepmind or https://example.com/feed"
           required
         />
-        <button className="fb-btn dark" disabled={isPending} type="submit">
+        <button
+          className="fb-btn dark w-full justify-center sm:w-auto"
+          disabled={isPending}
+          type="submit"
+        >
           <Plus aria-hidden="true" />
           {isPending ? "Adding..." : "Add source"}
         </button>

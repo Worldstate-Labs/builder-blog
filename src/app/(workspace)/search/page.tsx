@@ -147,23 +147,55 @@ export default async function SearchPage({
   return (
     <div className={hasQuery ? "page-pad search-page search-page-active" : "page-pad search-page"}>
         <section className="search-hero">
-          <h1 className="serif text-[1.875rem] font-semibold leading-tight tracking-tight">
+          <h1 className="fb-m-title lg:hidden">Search</h1>
+          <h1 className="hidden lg:block serif text-[1.875rem] font-semibold leading-tight tracking-tight">
             Search
           </h1>
-          <p className="fb-desc">
+          <p className="fb-m-sub lg:hidden">Sources, posts, and digest history.</p>
+          <p className="hidden lg:block fb-desc">
             Find sources, crawled posts, and digest history.
           </p>
-          <SearchForm
-            key={`${query}:${typeFilter}:${mode}:${sort}:${time}`}
-            query={query}
-            typeFilter={typeFilter}
-            mode={mode}
-            sort={sort}
-            time={time}
-            afterDate={formatOptionalOperatorDate(formParsedQuery.after)}
-            beforeDate={formatOptionalOperatorDate(formParsedQuery.before)}
-            suggestions={formSuggestions}
-          />
+          <form
+            action="/search"
+            className="fb-m-search mt-3 lg:hidden"
+            autoComplete="off"
+            role="search"
+          >
+            <label className="sr-only" htmlFor="m-search-input">
+              Search query
+            </label>
+            <svg
+              aria-hidden="true"
+              className="h-4 w-4 text-[var(--muted)]"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            <input
+              defaultValue={query}
+              id="m-search-input"
+              name="q"
+              placeholder="Sources, posts, digests"
+              type="search"
+            />
+          </form>
+          <div className="hidden lg:block">
+            <SearchForm
+              key={`${query}:${typeFilter}:${mode}:${sort}:${time}`}
+              query={query}
+              typeFilter={typeFilter}
+              mode={mode}
+              sort={sort}
+              time={time}
+              afterDate={formatOptionalOperatorDate(formParsedQuery.after)}
+              beforeDate={formatOptionalOperatorDate(formParsedQuery.before)}
+              suggestions={formSuggestions}
+            />
+          </div>
         </section>
 
         <Suspense
