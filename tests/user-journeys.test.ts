@@ -291,8 +291,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryOncePrompt, /single-post summary/);
   assert.match(libraryOncePrompt, /Do not add new sources, URLs, or feed items/);
   assert.match(libraryOncePrompt, /Do not use `--force`/);
+  assert.match(libraryOncePrompt, /Fresh computer\/session compatibility/);
+  assert.match(libraryOncePrompt, /Node\.js 20 or newer/);
   assert.match(digestOncePrompt, /prepare --days 1/);
   assert.match(digestOncePrompt, /The only creative step is writing/);
+  assert.match(digestOncePrompt, /Fresh computer\/session compatibility/);
+  assert.match(digestOncePrompt, /No local repo, local database, or source API key is required/);
   assert.match(digestOncePrompt, /summarize-tweets\.md/);
   assert.match(digestOncePrompt, /summarize-podcast\.md/);
   assert.match(digestOncePrompt, /summarize-blogs\.md/);
@@ -339,6 +343,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-blog-digest\.md/);
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-digest\.mjs/);
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-agent-runner\.sh/);
+  assert.match(bootstrapRoute, /command -v node/);
+  assert.match(bootstrapRoute, /FollowBrief requires Node\.js 20 or newer/);
+  assert.match(bootstrapRoute, /command -v curl/);
   assert.match(bootstrapRoute, /jobs\/library-once\.md/);
   assert.match(bootstrapRoute, /jobs\/digest-once\.md/);
   assert.match(bootstrapRoute, /jobs\/library-cron-setup\.md/);

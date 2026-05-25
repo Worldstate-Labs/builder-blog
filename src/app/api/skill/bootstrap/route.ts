@@ -8,6 +8,18 @@ AGENT_DIR="\${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 
 export APP_URL AGENT_DIR
 
+if ! command -v node >/dev/null 2>&1; then
+  echo "FollowBrief requires Node.js 20 or newer on this computer." >&2
+  echo "Install Node.js, then rerun this skill prompt." >&2
+  exit 69
+fi
+
+if ! command -v curl >/dev/null 2>&1; then
+  echo "FollowBrief requires curl to download the skill files." >&2
+  echo "Install curl, then rerun this skill prompt." >&2
+  exit 69
+fi
+
 mkdir -p "$AGENT_DIR"
 mkdir -p "$AGENT_DIR/jobs" "$AGENT_DIR/logs" "$AGENT_DIR/tmp"
 curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest.md" -o "$AGENT_DIR/SKILL.md"

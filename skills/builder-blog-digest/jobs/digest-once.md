@@ -6,6 +6,17 @@ authentication or a missing local credential blocks the run.
 Run these steps exactly. If any command fails, stop and report the command, exit
 code, and stderr. Do not browse for extra context.
 
+Fresh computer/session compatibility:
+- This skill is intended to work from a new Claude Code, Codex, OpenClaw,
+  Gemini, or similar local agent session with no local repo checkout.
+- The computer must have a POSIX shell, `curl`, Node.js 20 or newer, outbound
+  HTTPS access to `https://builder-blog.worldstatelabs.com`, and a writable
+  home directory for `${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}`.
+- If no FollowBrief login token exists yet, the bootstrap step opens a browser
+  device login. Ask the user to sign in only at that point, then continue.
+- No local repo, local database, or source API key is required for digest
+  generation; the context is fetched from the FollowBrief web app after login.
+
 Agent discretion boundary: this is a command-runner task except for the explicit
 digest-writing step. Do not change paths, flags, cadence, titles, output files,
 JSON schema, or success criteria. Only use agent judgment to write the digest
