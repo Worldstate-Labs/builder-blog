@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ExternalLink } from "lucide-react";
-import { SourceBadge } from "@/components/SourceBadge";
+import { CrawledPostCard } from "@/components/CrawledPostCard";
 
 type BuilderSummary = {
+  id: string;
+  name: string;
   kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";
   sourceType: string;
   sourceUrl: string | null;
@@ -99,63 +100,21 @@ export function BuilderFeedItems({
           </div>
         ) : null}
         {items?.map((item) => (
-          <article key={item.id} className="builder-post-row">
-            <div className="min-w-0">
-              <div className="item-kicker">
-                <SourceBadge builder={builder} />
+          <CrawledPostCard
+            extraMeta={
+              <>
                 <span>{feedItemKindLabel(item.kind)}</span>
-                {item.publishedAt ? <span>Published {formatDate(item.publishedAt)}</span> : null}
                 <span>Crawled {formatDate(item.createdAt)}</span>
-                {item.sourceName ? <span>{item.sourceName}</span> : null}
-              </div>
-              <h4 className="item-title">{item.title || firstLine(item.body)}</h4>
-              <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--muted-strong)]">
-                {item.summary || firstLine(item.body)}
-              </p>
-              <details className="inline-disclosure">
-                <summary>Details</summary>
-                <div className="mt-3 rounded-lg border border-[var(--line)] bg-[var(--paper)] p-4">
-                  {item.summary ? (
-                    <div className="mb-4 rounded-md border border-[var(--line)] bg-white p-3">
-                      <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
-                        Summary
-                      </div>
-                      <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--ink)]">
-                        {item.summary}
-                      </div>
-                    </div>
-                  ) : null}
-                  <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
-                    {item.crawlingTool ?? "Legacy crawl/import"}
-                  </div>
-                  <div className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[var(--muted-strong)]">
-                    {item.body}
-                  </div>
-                  <dl className="mt-4 grid gap-2 text-xs md:grid-cols-2">
-                    <div>
-                      <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">External id</dt>
-                      <dd className="mt-1 break-all font-mono text-[var(--muted-strong)]">
-                        {item.externalId}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">Source URL</dt>
-                      <dd className="mt-1 break-all text-[var(--muted-strong)]">{item.url}</dd>
-                    </div>
-                  </dl>
-                </div>
-              </details>
-            </div>
-            <a
-              className="button-light button-compact min-w-24 gap-2"
-              href={item.url}
-              rel="noreferrer"
-              target="_blank"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Open
-            </a>
-          </article>
+              </>
+            }
+            fallbackBuilder={builder}
+            key={item.id}
+            post={{
+              ...item,
+              builder,
+            }}
+            variant="row"
+          />
         ))}
         {items?.length === 0 ? (
           <div className="p-4 text-sm text-[var(--muted-strong)]">
@@ -180,8 +139,4 @@ function feedItemKindLabel(kind: string) {
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString();
-}
-
-function firstLine(body: string) {
-  return body.split(/\r?\n/).find(Boolean)?.slice(0, 160) ?? "Untitled item";
 }

@@ -1537,7 +1537,8 @@ test("web display boundaries keep raw crawled content in the builders tab", () =
   assert.equal(buildersPage.includes("Technical details"), false);
   assert.equal(builderLibraryList.includes("Open source"), true);
   assert.equal(builderFeedItems.includes("Crawled posts"), true);
-  assert.equal(builderFeedItems.includes("item.summary"), true);
+  assert.equal(builderFeedItems.includes("CrawledPostCard"), true);
+  assert.equal(readFileSync("src/components/CrawledPostCard.tsx", "utf8").includes("Raw crawled content"), true);
 });
 
 test("source registry centralizes current source categories and crawl eligibility", () => {

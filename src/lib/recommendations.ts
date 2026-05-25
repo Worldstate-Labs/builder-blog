@@ -28,6 +28,7 @@ export type RecommendationCandidate = {
   kind: FeedItemKind;
   title: string | null;
   body: string;
+  summary: string | null;
   url: string;
   publishedAt: Date | null;
   createdAt: Date;

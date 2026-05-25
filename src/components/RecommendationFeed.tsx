@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BookOpen, ExternalLink, Loader2, RefreshCcw } from "lucide-react";
-import { SourceBadge } from "@/components/SourceBadge";
+import { Loader2, RefreshCcw } from "lucide-react";
+import { CrawledPostCard } from "@/components/CrawledPostCard";
 
 export type RecommendationFeedEntry = {
   score: number;
@@ -14,12 +13,14 @@ export type RecommendationFeedEntry = {
     id: string;
     title: string | null;
     body: string;
+    summary: string | null;
     url: string;
     publishedAt: string | null;
     createdAt: string;
     sourceName: string | null;
     crawlingTool: string | null;
     builder: {
+      id: string;
       name: string;
       sourceType: string;
       kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";
@@ -166,50 +167,28 @@ function RecommendationCard({
   const isRead = Boolean(entry.readAt);
 
   return (
-    <article className="feed-card" data-read={isRead ? "true" : undefined}>
-      <div className="item-kicker">
-        <SourceBadge
-          builder={entry.item.builder}
-          sourceType={entry.item.builder?.sourceType ?? null}
-        />
-        <span>{entry.item.builder?.name ?? entry.item.sourceName ?? "Unknown source"}</span>
-        <span>{formatDate(entry.item.publishedAt ?? entry.item.createdAt)}</span>
-        <span>{Math.round(entry.score)} match</span>
-        {isRead ? <span>Read {formatDate(entry.readAt ?? "")}</span> : null}
-      </div>
-      <h2 className="mt-3 text-lg font-semibold leading-snug">{entry.item.title || firstLine(entry.item.body)}</h2>
-      <p className="mt-3 line-clamp-4 text-sm leading-7 text-[var(--muted-strong)]">
-        {firstLine(entry.item.body, 420)}
-      </p>
-      {entry.reasons.length > 0 ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {entry.reasons.map((reason) => (
-            <span className="sub-pill" key={reason}>
-              {reason}
-            </span>
-          ))}
-        </div>
-      ) : null}
-      <div className="mt-5 flex flex-wrap gap-3">
-        <a
-          className="button-dark button-compact gap-2"
-          href={entry.item.url}
-          onClick={() => void markRead(entry.item.id)}
-          rel="noreferrer"
-          target="_blank"
-        >
-          <ExternalLink className="h-4 w-4" />
-          Open
-        </a>
-        <Link
-          className="button-light button-compact gap-2"
-          href={`/recommendations/items/${entry.item.id}`}
-        >
-          <BookOpen className="h-4 w-4" />
-          {isRead ? "Read again" : "Read"}
-        </Link>
-      </div>
-    </article>
+    <CrawledPostCard
+      context={
+        entry.reasons.length > 0 ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {entry.reasons.map((reason) => (
+              <span className="sub-pill" key={reason}>
+                {reason}
+              </span>
+            ))}
+          </div>
+        ) : null
+      }
+      dataRead={isRead}
+      extraMeta={
+        <>
+          <span>{Math.round(entry.score)} match</span>
+          {isRead ? <span>Read {formatDate(entry.readAt ?? "")}</span> : null}
+        </>
+      }
+      onInteract={() => markRead(entry.item.id)}
+      post={entry.item}
+    />
   );
 }
 
@@ -220,10 +199,6 @@ function mergeSnapshots(snapshots: RecommendationSnapshotEntry[]) {
     seen.add(snapshot.id);
     return true;
   });
-}
-
-function firstLine(body: string, maxLength = 180) {
-  return body.split(/\r?\n/).find(Boolean)?.slice(0, maxLength) ?? "Untitled post";
 }
 
 function formatDate(value: string) {

@@ -42,6 +42,7 @@ function serializeRecommendation(
       id: result.item.id,
       title: result.item.title,
       body: result.item.body,
+      summary: result.item.summary,
       url: result.item.url,
       publishedAt: result.item.publishedAt?.toISOString() ?? null,
       createdAt: result.item.createdAt.toISOString(),
@@ -49,6 +50,7 @@ function serializeRecommendation(
       crawlingTool: result.item.crawlingTool,
       builder: result.item.builder
         ? {
+            id: result.item.builder.id,
             name: result.item.builder.name,
             sourceType: result.item.builder.sourceType,
             kind: result.item.builder.kind,

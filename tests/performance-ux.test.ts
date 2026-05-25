@@ -337,12 +337,13 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
   assert.match(builderFeedItems, /"use client"/);
   assert.match(builderFeedItems, /fetch\(`\/api\/builders\/\$\{builderId\}\/feed-items`/);
   assert.match(builderFeedItems, /Crawled posts/);
-  assert.match(builderFeedItems, /item\.summary/);
-  assert.match(builderFeedItems, /Summary/);
+  assert.match(builderFeedItems, /CrawledPostCard/);
   assert.match(builderFeedItems, /Crawled/);
-  assert.match(builderFeedItems, /External id/);
-  assert.match(builderFeedItems, /Details/);
-  assert.match(builderFeedItems, /crawlingTool/);
+  assert.match(source("src/components/CrawledPostCard.tsx"), /Summary/);
+  assert.match(source("src/components/CrawledPostCard.tsx"), /See more/);
+  assert.match(source("src/components/CrawledPostCard.tsx"), /Raw crawled content/);
+  assert.match(source("src/components/CrawledPostCard.tsx"), /Open source/);
+  assert.match(source("src/components/CrawledPostCard.tsx"), /\/builders#\$\{builder\.id\}/);
   assert.match(feedItemsRoute, /orderBy:\s*\[\{ publishedAt: "desc" \}, \{ createdAt: "desc" \}\]/);
   assert.match(feedItemsRoute, /activePoolBuilderIds/);
   assert.match(feedItemsRoute, /NextResponse\.json/);
