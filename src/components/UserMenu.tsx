@@ -4,7 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRef } from "react";
 import type { Session } from "next-auth";
-import { LogOut, Settings, ShieldCheck } from "lucide-react";
+import { LogOut, Moon, Settings, ShieldCheck, Sun } from "lucide-react";
+import { setTheme, useTheme } from "@/components/ThemeToggle";
 
 export function UserMenu({
   compact = false,
@@ -16,6 +17,7 @@ export function UserMenu({
   session?: Session | null;
 }) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
+  const theme = useTheme();
   const user = session?.user;
   const name = user?.name || user?.email?.split("@")[0] || "User";
   const email = user?.email || "";
@@ -25,6 +27,10 @@ export function UserMenu({
     if (detailsRef.current) {
       detailsRef.current.open = false;
     }
+  }
+
+  function toggleTheme() {
+    setTheme(theme === "dark" ? "light" : "dark");
   }
 
   return (
@@ -73,6 +79,19 @@ export function UserMenu({
           <Settings className="h-4 w-4" />
           Settings
         </Link>
+        <button
+          className="user-menu-item w-full text-left"
+          onClick={toggleTheme}
+          type="button"
+          suppressHydrationWarning
+        >
+          {theme === "dark" ? (
+            <Sun className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            <Moon className="h-4 w-4" aria-hidden="true" />
+          )}
+          {theme === "dark" ? "Light mode" : "Dark mode"}
+        </button>
         <div className="user-menu-separator" />
         <Link
           className="user-menu-item"

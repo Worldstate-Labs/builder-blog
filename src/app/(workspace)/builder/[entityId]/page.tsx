@@ -5,6 +5,7 @@ import { getCurrentSession } from "@/lib/auth";
 import { fetchDedupedFeedForEntities } from "@/lib/builder-channel-resolver";
 import { getEntityWithChannels } from "@/lib/builder-entities";
 import { BuilderDetailActions } from "@/components/BuilderDetailActions";
+import { ChannelPreferenceToggle } from "@/components/ChannelPreferenceToggle";
 import { prisma } from "@/lib/prisma";
 
 type Params = { params: Promise<{ entityId: string }> };
@@ -15,6 +16,18 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 });
 
+type ChannelInfo = {
+  builderId: string;
+  libraryName: string;
+  isAdminCommunity: boolean;
+  isOwnChannel: boolean;
+  sourceUrl: string | null;
+  crawlUrl: string | null;
+  lastCrawledAt: Date | null;
+  itemCount: number;
+  status: string;
+};
+
 export default async function BuilderDetailPage({ params }: Params) {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
@@ -24,7 +37,7 @@ export default async function BuilderDetailPage({ params }: Params) {
   const entity = await getEntityWithChannels(entityId);
   if (!entity) notFound();
 
-  const channels = entity.builders.map((channel) => {
+  const channels: ChannelInfo[] = entity.builders.map((channel) => {
     const ownerEmail = channel.owner?.email;
     const isAdmin = isAdminEmail(ownerEmail);
     const libraryName =
@@ -53,7 +66,12 @@ export default async function BuilderDetailPage({ params }: Params) {
   }, null);
 
   const handleDisplay = entity.handle ? `@${entity.handle}` : null;
-  const channelBuilderIds = entity.builders.map((b) => b.id);
+
+  // Resolve target builderId server-side: own channel first, else first channel.
+  const targetBuilderId =
+    channels.find((c) => c.isOwnChannel)?.builderId ??
+    channels[0]?.builderId ??
+    null;
 
   return (
     <div className="page-pad">
@@ -72,13 +90,7 @@ export default async function BuilderDetailPage({ params }: Params) {
               <BuilderDetailActionsSlot
                 entityId={entityId}
                 userId={userId}
-                channelBuilderIds={channelBuilderIds}
-                channels={channels.map((channel) => ({
-                  builderId: channel.builderId,
-                  libraryName: channel.libraryName,
-                  isOwnChannel: channel.isOwnChannel,
-                  isAdminCommunity: channel.isAdminCommunity,
-                }))}
+                targetBuilderId={targetBuilderId}
               />
             </Suspense>
             {lastCrawledMax ? (
@@ -93,39 +105,19 @@ export default async function BuilderDetailPage({ params }: Params) {
       <section className="mt-8 grid gap-6">
         <h2 className="fb-section-title">Recent posts</h2>
         <Suspense fallback={<RecentPostsSkeleton />}>
-          <RecentPostsSlot userId={userId} entityId={entityId} />
+          <RecentPostsSlot userId={userId} entityId={entityId} channels={channels} />
         </Suspense>
       </section>
 
       <section className="mt-10 grid gap-3">
         <h2 className="fb-section-title">Channels providing this source</h2>
-        <ul className="grid gap-2">
-          {channels.map((channel) => (
-            <li
-              key={channel.builderId}
-              className="grid grid-cols-[1fr_auto_auto] items-baseline gap-3 border-b border-[var(--line)] py-2 text-sm"
-            >
-              <div>
-                <div className="font-medium">
-                  {channel.libraryName}
-                  {channel.isAdminCommunity ? " · community" : ""}
-                  {channel.isOwnChannel ? " · own" : ""}
-                </div>
-                {channel.sourceUrl ? (
-                  <div className="font-mono text-xs text-[var(--muted-strong)]">
-                    {channel.sourceUrl}
-                  </div>
-                ) : null}
-              </div>
-              <div className="font-mono text-xs text-[var(--muted-strong)]">
-                {channel.lastCrawledAt ? dateFormatter.format(channel.lastCrawledAt) : "—"}
-              </div>
-              <div className="font-mono text-xs text-[var(--muted-strong)]">
-                {channel.status}
-              </div>
-            </li>
-          ))}
-        </ul>
+        <Suspense fallback={null}>
+          <ChannelsListSlot
+            entityId={entityId}
+            userId={userId}
+            channels={channels}
+          />
+        </Suspense>
       </section>
     </div>
   );
@@ -134,40 +126,24 @@ export default async function BuilderDetailPage({ params }: Params) {
 async function BuilderDetailActionsSlot({
   entityId,
   userId,
-  channelBuilderIds,
-  channels,
+  targetBuilderId,
 }: {
   entityId: string;
   userId: string;
-  channelBuilderIds: string[];
-  channels: Array<{
-    builderId: string;
-    libraryName: string;
-    isOwnChannel: boolean;
-    isAdminCommunity: boolean;
-  }>;
+  targetBuilderId: string | null;
 }) {
-  const [subscription, channelPref] = await Promise.all([
-    prisma.subscription.findFirst({
-      where: {
-        userId,
-        builderId: { in: channelBuilderIds },
-      },
-      select: { builderId: true },
-    }),
-    prisma.userChannelPreference.findUnique({
-      where: { userId_entityId: { userId, entityId } },
-      select: { primaryBuilderId: true, pinnedByUser: true },
-    }),
-  ]);
-  const primaryBuilderId =
-    channelPref?.primaryBuilderId ?? channels[0]?.builderId ?? null;
+  const subscription = await prisma.subscription.findFirst({
+    where: {
+      userId,
+      builderId: targetBuilderId ?? undefined,
+    },
+    select: { builderId: true },
+  });
   return (
     <BuilderDetailActions
       entityId={entityId}
       initialSubscribed={Boolean(subscription)}
-      initialPrimaryBuilderId={primaryBuilderId}
-      channels={channels}
+      targetBuilderId={targetBuilderId}
     />
   );
 }
@@ -176,23 +152,80 @@ function BuilderActionsSkeleton() {
   return (
     <div className="flex gap-2" aria-busy="true" aria-live="polite">
       <div className="h-9 w-28 animate-pulse rounded-full bg-black/10" />
-      <div className="h-9 w-32 animate-pulse rounded-full bg-black/10" />
     </div>
+  );
+}
+
+async function ChannelsListSlot({
+  entityId,
+  userId,
+  channels,
+}: {
+  entityId: string;
+  userId: string;
+  channels: ChannelInfo[];
+}) {
+  const channelPref = await prisma.userChannelPreference.findUnique({
+    where: { userId_entityId: { userId, entityId } },
+    select: { primaryBuilderId: true, pinnedByUser: true },
+  });
+  const pinnedBuilderId = channelPref?.pinnedByUser
+    ? channelPref.primaryBuilderId
+    : null;
+
+  return (
+    <ul className="grid gap-2">
+      {channels.map((channel) => (
+        <li
+          key={channel.builderId}
+          className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 border-b border-[var(--line)] py-2 text-sm"
+        >
+          <div>
+            <div className="font-medium">
+              {channel.libraryName}
+              {channel.isAdminCommunity ? " · community" : ""}
+              {channel.isOwnChannel ? " · own" : ""}
+            </div>
+            {channel.sourceUrl ? (
+              <div className="font-mono text-xs text-[var(--muted-strong)]">
+                {channel.sourceUrl}
+              </div>
+            ) : null}
+          </div>
+          <div className="font-mono text-xs text-[var(--muted-strong)]">
+            {channel.lastCrawledAt ? dateFormatter.format(channel.lastCrawledAt) : "—"}
+          </div>
+          <div className="font-mono text-xs text-[var(--muted-strong)]">
+            {channel.status}
+          </div>
+          <ChannelPreferenceToggle
+            entityId={entityId}
+            builderId={channel.builderId}
+            initialIsPreferred={pinnedBuilderId === channel.builderId}
+          />
+        </li>
+      ))}
+    </ul>
   );
 }
 
 async function RecentPostsSlot({
   userId,
   entityId,
+  channels,
 }: {
   userId: string;
   entityId: string;
+  channels: ChannelInfo[];
 }) {
   const items = await fetchDedupedFeedForEntities({
     userId,
     entityIds: [entityId],
     limit: 25,
   });
+
+  const channelMap = new Map(channels.map((c) => [c.builderId, c]));
+
   if (items.length === 0) {
     return (
       <div className="fb-panel dashed text-[var(--muted-strong)]">
@@ -202,32 +235,40 @@ async function RecentPostsSlot({
   }
   return (
     <ul className="grid gap-4">
-      {items.map((item) => (
-        <li key={item.id} className="fb-panel grid gap-2">
-          <div className="text-xs text-[var(--muted-strong)] font-mono">
-            {item.publishedAt
-              ? dateFormatter.format(new Date(item.publishedAt))
-              : "unknown date"}
-            {item.alternateChannelCount > 0
-              ? ` · +${item.alternateChannelCount} other channel${
-                  item.alternateChannelCount === 1 ? "" : "s"
-                }`
-              : ""}
-          </div>
-          {item.title ? (
-            <h3 className="font-display text-lg">{item.title}</h3>
-          ) : null}
-          <p className="text-sm leading-relaxed line-clamp-6">{item.body}</p>
-          <a
-            className="text-xs underline self-start"
-            href={item.url}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Read original
-          </a>
-        </li>
-      ))}
+      {items.map((item) => {
+        const viaChannel = item.builderId ? channelMap.get(item.builderId) : null;
+        const viaLabel = viaChannel
+          ? `via ${viaChannel.libraryName}${viaChannel.isOwnChannel ? " · own" : viaChannel.isAdminCommunity ? " · community" : ""}`
+          : null;
+
+        return (
+          <li key={item.id} className="fb-panel grid gap-2">
+            <div className="text-xs text-[var(--muted-strong)] font-mono">
+              {item.publishedAt
+                ? dateFormatter.format(new Date(item.publishedAt))
+                : "unknown date"}
+              {viaLabel ? ` · ${viaLabel}` : ""}
+              {item.alternateChannelCount > 0
+                ? ` · +${item.alternateChannelCount} other channel${
+                    item.alternateChannelCount === 1 ? "" : "s"
+                  }`
+                : ""}
+            </div>
+            {item.title ? (
+              <h3 className="font-display text-lg">{item.title}</h3>
+            ) : null}
+            <p className="text-sm leading-relaxed line-clamp-6">{item.body}</p>
+            <a
+              className="text-xs underline self-start"
+              href={item.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Read original
+            </a>
+          </li>
+        );
+      })}
     </ul>
   );
 }

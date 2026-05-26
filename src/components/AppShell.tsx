@@ -4,7 +4,6 @@ import { Search, Settings } from "lucide-react";
 import { AppNav, type AppNavItem } from "@/components/AppNav";
 import { BrandMark } from "@/components/BrandMark";
 import { SearchForm } from "@/components/SearchForm";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserMenu } from "@/components/UserMenu";
 import { isAdminEmail } from "@/lib/admin";
 
@@ -34,7 +33,6 @@ export function AppShell({
           <SearchForm query="" variant="header" />
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <ThemeToggle />
           <UserMenu compact isAdmin={isAdmin} session={session} />
         </div>
       </header>
@@ -45,7 +43,6 @@ export function AppShell({
           <span className="fb-brand-name">FollowBrief</span>
         </Link>
         <span className="grow" />
-        <ThemeToggle />
         <Link
           href="/search"
           className="fb-m-icon"

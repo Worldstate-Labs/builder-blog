@@ -3,7 +3,7 @@
 import { Moon, Sun } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
-type Theme = "light" | "dark";
+export type Theme = "light" | "dark";
 
 const STORAGE_KEY = "fb-theme";
 
@@ -29,18 +29,25 @@ function getServerSnapshot(): Theme {
   return "light";
 }
 
+export function useTheme(): Theme {
+  return useSyncExternalStore(subscribe, getClientSnapshot, getServerSnapshot);
+}
+
+export function setTheme(next: Theme) {
+  document.documentElement.dataset.theme = next;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, next);
+  } catch {
+    // Storage may be unavailable (Safari private mode etc.); fall through.
+  }
+  window.dispatchEvent(new Event("fb-theme-change"));
+}
+
 export function ThemeToggle() {
-  const theme = useSyncExternalStore(subscribe, getClientSnapshot, getServerSnapshot);
+  const theme = useTheme();
 
   function toggle() {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    document.documentElement.dataset.theme = next;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      // Storage may be unavailable (Safari private mode etc.); fall through.
-    }
-    window.dispatchEvent(new Event("fb-theme-change"));
+    setTheme(theme === "dark" ? "light" : "dark");
   }
 
   const label = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
