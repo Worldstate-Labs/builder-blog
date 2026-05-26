@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, RefreshCcw } from "lucide-react";
 import { CrawledPostCard } from "@/components/CrawledPostCard";
+import { markPostRead } from "@/lib/mark-read";
 
 export type RecommendationFeedEntry = {
   score: number;
@@ -64,22 +65,7 @@ export function RecommendationFeed({
         ),
       })),
     );
-    const response = await fetch("/api/recommendations", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ feedItemId }),
-    }).catch(() => null);
-    const data = await response?.json().catch(() => null);
-    if (data?.readAt) {
-      setSnapshots((current) =>
-        current.map((snapshot) => ({
-          ...snapshot,
-          items: snapshot.items.map((entry) =>
-            entry.item.id === feedItemId ? { ...entry, readAt: data.readAt } : entry,
-          ),
-        })),
-      );
-    }
+    await markPostRead(feedItemId);
   }, []);
 
   const requestSnapshot = useCallback(
@@ -187,12 +173,7 @@ function RecommendationCard({
         ) : null
       }
       dataRead={isRead}
-      extraMeta={
-        <>
-          <span>{Math.round(entry.score)} match</span>
-          {isRead ? <span>Read {formatDate(entry.readAt ?? "")}</span> : null}
-        </>
-      }
+      extraMeta={<span>{Math.round(entry.score)} match</span>}
       onInteract={() => markRead(entry.item.id)}
       post={entry.item}
     />

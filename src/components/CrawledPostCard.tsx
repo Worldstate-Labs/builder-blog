@@ -97,6 +97,11 @@ export function CrawledPostCard({
             </span>
           ) : null}
           {extraMeta}
+          {dataRead ? (
+            <span className="read-indicator" aria-label="Read">
+              ✓ Read
+            </span>
+          ) : null}
         </div>
         {isDetail ? (
           <h1 className="mt-4 max-w-4xl text-2xl font-semibold leading-tight md:text-3xl">

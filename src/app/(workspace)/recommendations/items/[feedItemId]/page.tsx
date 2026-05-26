@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, Clock3 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { CrawledPostCard } from "@/components/CrawledPostCard";
 import { getCurrentSession } from "@/lib/auth";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
@@ -53,24 +53,21 @@ export default async function RecommendationItemPage({
     source: "recommendation-detail",
     readAt: new Date(),
   };
-  const read = existing
-    ? await prisma.feedRead.update({ where: { id: existing.id }, data: readData })
-    : await prisma.feedRead.create({ data: readData });
+  await (existing
+    ? prisma.feedRead.update({ where: { id: existing.id }, data: readData })
+    : prisma.feedRead.create({ data: readData }));
 
   return (
     <div className="page-pad">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-6">
         <Link className="button-light button-compact gap-2" href="/dashboard">
           <ArrowLeft className="h-4 w-4" />
           Back to feed
         </Link>
-        <span className="status-chip">
-          <Clock3 className="h-3.5 w-3.5" />
-          Read {read.readAt.toLocaleString()}
-        </span>
       </div>
 
       <CrawledPostCard
+        dataRead={true}
         extraActions={
           <Link className="button-light button-compact gap-2" href="/dashboard">
             <ArrowLeft className="h-4 w-4" />

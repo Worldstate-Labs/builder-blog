@@ -1704,13 +1704,20 @@ a {
   text-transform: uppercase;
 }
 
-.feed-card[data-read="true"] {
-  opacity: 0.72;
+.crawled-post-card[data-read="true"] {
+  opacity: 0.82;
 }
 
-.feed-card[data-read="true"] .item-title,
-.feed-card[data-read="true"] h2 {
+.crawled-post-card[data-read="true"] .item-title,
+.crawled-post-card[data-read="true"] h2 {
   color: var(--muted-strong);
+}
+
+.read-indicator {
+  color: var(--signal, oklch(52% 0.18 150));
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .search-page {

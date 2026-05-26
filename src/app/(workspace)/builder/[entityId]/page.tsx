@@ -2,11 +2,11 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
-import { fetchDedupedFeedForEntities } from "@/lib/builder-channel-resolver";
+import { fetchDedupedFeedForEntities, getReadEntityKeys } from "@/lib/builder-channel-resolver";
 import { getEntityWithChannels } from "@/lib/builder-entities";
 import { BuilderDetailActions } from "@/components/BuilderDetailActions";
 import { ChannelPreferenceToggle } from "@/components/ChannelPreferenceToggle";
-import { CrawledPostCard } from "@/components/CrawledPostCard";
+import { RecentPostsList } from "@/components/RecentPostsList";
 import { prisma } from "@/lib/prisma";
 
 type Params = { params: Promise<{ entityId: string }> };
@@ -219,11 +219,10 @@ async function RecentPostsSlot({
   entityId: string;
   channels: ChannelInfo[];
 }) {
-  const items = await fetchDedupedFeedForEntities({
-    userId,
-    entityIds: [entityId],
-    limit: 25,
-  });
+  const [items, readKeySet] = await Promise.all([
+    fetchDedupedFeedForEntities({ userId, entityIds: [entityId], limit: 25 }),
+    getReadEntityKeys(userId, [entityId]),
+  ]);
 
   const channelMap = new Map(channels.map((c) => [c.builderId, c]));
 
@@ -234,48 +233,44 @@ async function RecentPostsSlot({
       </div>
     );
   }
-  return (
-    <ul className="grid gap-4">
-      {items.map((item) => {
-        const viaChannel = item.builderId ? channelMap.get(item.builderId) : null;
-        const viaLabel = viaChannel
-          ? `via ${viaChannel.libraryName}${viaChannel.isOwnChannel ? " · own" : viaChannel.isAdminCommunity ? " · community" : ""}`
-          : null;
 
-        return (
-          <li key={item.id}>
-            <CrawledPostCard
-              extraMeta={viaLabel ? <span>{viaLabel}</span> : null}
-              post={{
-                id: item.id,
-                title: item.title,
-                body: item.body,
-                summary: item.summary,
-                url: item.url,
-                publishedAt: item.publishedAt?.toISOString() ?? null,
-                createdAt: item.createdAt.toISOString(),
-                sourceName: item.sourceName,
-                crawlingTool: item.crawlingTool,
-                builder: item.builder
-                  ? {
-                      id: item.builder.id,
-                      entityId: item.builder.entityId,
-                      name: item.builder.name,
-                      kind: item.builder.sourceType as "X" | "BLOG" | "PODCAST" | "WEBSITE",
-                      sourceType: item.builder.sourceType,
-                      sourceUrl: item.builder.sourceUrl,
-                      crawlUrl: item.builder.crawlUrl,
-                    }
-                  : null,
-                alternateChannelCount: item.alternateChannelCount,
-              }}
-              showBuilderRow={false}
-              variant="row"
-            />
-          </li>
-        );
-      })}
-    </ul>
+  const listItems = items.map((item) => {
+    const viaChannel = item.builderId ? channelMap.get(item.builderId) : null;
+    const viaLabel = viaChannel
+      ? `via ${viaChannel.libraryName}${viaChannel.isOwnChannel ? " · own" : viaChannel.isAdminCommunity ? " · community" : ""}`
+      : null;
+    return {
+      id: item.id,
+      readKey: `${item.entityId}:${item.kind}:${item.externalId}`,
+      viaLabel,
+      post: {
+        id: item.id,
+        title: item.title,
+        body: item.body,
+        summary: item.summary,
+        url: item.url,
+        publishedAt: item.publishedAt?.toISOString() ?? null,
+        createdAt: item.createdAt.toISOString(),
+        sourceName: item.sourceName,
+        crawlingTool: item.crawlingTool,
+        builder: item.builder
+          ? {
+              id: item.builder.id,
+              entityId: item.builder.entityId,
+              name: item.builder.name,
+              kind: item.builder.sourceType as "X" | "BLOG" | "PODCAST" | "WEBSITE",
+              sourceType: item.builder.sourceType,
+              sourceUrl: item.builder.sourceUrl,
+              crawlUrl: item.builder.crawlUrl,
+            }
+          : null,
+        alternateChannelCount: item.alternateChannelCount,
+      },
+    };
+  });
+
+  return (
+    <RecentPostsList items={listItems} readKeys={[...readKeySet]} />
   );
 }
 
