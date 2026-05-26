@@ -40,6 +40,7 @@ export function CrawledPostCard({
   fallbackBuilder,
   onInteract,
   post,
+  showBuilderRow = true,
   variant = "card",
 }: {
   context?: ReactNode;
@@ -49,11 +50,19 @@ export function CrawledPostCard({
   fallbackBuilder?: CrawledPostBuilder | null;
   onInteract?: () => void | Promise<void>;
   post: CrawledPostCardPost;
-  variant?: "card" | "row";
+  /**
+   * Whether to render the "Builder" attribution row.
+   * Pass `false` when the surrounding page already makes the builder clear
+   * (e.g. the builder detail page or the post detail page).
+   * @default true
+   */
+  showBuilderRow?: boolean;
+  variant?: "card" | "row" | "detail";
 }) {
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const interactionSentRef = useRef(false);
   const builder = post.builder ?? fallbackBuilder ?? null;
+  const isDetail = variant === "detail";
   const summary = normalizedText(post.summary) || normalizedText(post.body);
   const summaryPreview = previewWords(summary, 200);
   const hasMoreSummary = summaryPreview !== summary;
@@ -89,59 +98,75 @@ export function CrawledPostCard({
           ) : null}
           {extraMeta}
         </div>
-        <h3 className="crawled-post-title">{title}</h3>
-        <div className="crawled-post-builder">
-          <span>Builder</span>
-          {builder ? (
-            <Link
-              href={
-                builder.entityId
-                  ? `/builder/${builder.entityId}`
-                  : `/builders#${builder.id}`
-              }
-            >
-              {builder.name}
-            </Link>
-          ) : (
-            <span>{post.sourceName ?? "Unknown builder"}</span>
-          )}
-        </div>
-        <div className="crawled-post-summary">
-          <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
-            Summary
+        {isDetail ? (
+          <h1 className="mt-4 max-w-4xl text-2xl font-semibold leading-tight md:text-3xl">
+            {title}
+          </h1>
+        ) : (
+          <h3 className="crawled-post-title">{title}</h3>
+        )}
+        {showBuilderRow ? (
+          <div className="crawled-post-builder">
+            <span>Builder</span>
+            {builder ? (
+              <Link
+                href={
+                  builder.entityId
+                    ? `/builder/${builder.entityId}`
+                    : `/builders#${builder.id}`
+                }
+              >
+                {builder.name}
+              </Link>
+            ) : (
+              <span>{post.sourceName ?? "Unknown builder"}</span>
+            )}
           </div>
-          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--muted-strong)]">
-            {summaryExpanded ? summary : summaryPreview}
-          </p>
-          {hasMoreSummary ? (
-            <button
-              className="text-link mt-2"
-              onClick={() => {
-                setSummaryExpanded((expanded) => !expanded);
-                noteInteraction();
-              }}
-              type="button"
-            >
-              {summaryExpanded ? "See less" : "See more"}
-            </button>
-          ) : null}
-        </div>
-        {context}
-        <details
-          className="inline-disclosure crawled-post-raw"
-          onToggle={(event) => {
-            if (event.currentTarget.open) noteInteraction();
-          }}
-        >
-          <summary>Raw crawled content</summary>
-          <div className="mt-3 whitespace-pre-wrap rounded-lg border border-[var(--line)] bg-[var(--paper)] p-4 text-sm leading-7 text-[var(--muted-strong)]">
+        ) : null}
+        {isDetail ? (
+          <div className="mt-8 whitespace-pre-wrap text-base leading-8 text-[var(--muted-strong)]">
             {post.body}
           </div>
-        </details>
+        ) : (
+          <div className="crawled-post-summary">
+            <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+              Summary
+            </div>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--muted-strong)]">
+              {summaryExpanded ? summary : summaryPreview}
+            </p>
+            {hasMoreSummary ? (
+              <button
+                className="text-link mt-2"
+                onClick={() => {
+                  setSummaryExpanded((expanded) => !expanded);
+                  noteInteraction();
+                }}
+                type="button"
+              >
+                {summaryExpanded ? "See less" : "See more"}
+              </button>
+            ) : null}
+          </div>
+        )}
+        {context}
+        {!isDetail ? (
+          <details
+            className="inline-disclosure crawled-post-raw"
+            onToggle={(event) => {
+              if (event.currentTarget.open) noteInteraction();
+            }}
+          >
+            <summary>Raw crawled content</summary>
+            <div className="mt-3 whitespace-pre-wrap rounded-lg border border-[var(--line)] bg-[var(--paper)] p-4 text-sm leading-7 text-[var(--muted-strong)]">
+              {post.body}
+            </div>
+          </details>
+        ) : null}
       </div>
       <div className="crawled-post-actions">
         <a
-          className="button-light button-compact gap-2"
+          className={`${isDetail ? "button-dark" : "button-light"} button-compact gap-2`}
           href={post.url}
           onClick={noteInteraction}
           rel="noreferrer"

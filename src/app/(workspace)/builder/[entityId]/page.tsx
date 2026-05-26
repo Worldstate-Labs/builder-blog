@@ -6,6 +6,7 @@ import { fetchDedupedFeedForEntities } from "@/lib/builder-channel-resolver";
 import { getEntityWithChannels } from "@/lib/builder-entities";
 import { BuilderDetailActions } from "@/components/BuilderDetailActions";
 import { ChannelPreferenceToggle } from "@/components/ChannelPreferenceToggle";
+import { CrawledPostCard } from "@/components/CrawledPostCard";
 import { prisma } from "@/lib/prisma";
 
 type Params = { params: Promise<{ entityId: string }> };
@@ -242,30 +243,35 @@ async function RecentPostsSlot({
           : null;
 
         return (
-          <li key={item.id} className="fb-panel grid gap-2">
-            <div className="text-xs text-[var(--muted-strong)] font-mono">
-              {item.publishedAt
-                ? dateFormatter.format(new Date(item.publishedAt))
-                : "unknown date"}
-              {viaLabel ? ` · ${viaLabel}` : ""}
-              {item.alternateChannelCount > 0
-                ? ` · +${item.alternateChannelCount} other channel${
-                    item.alternateChannelCount === 1 ? "" : "s"
-                  }`
-                : ""}
-            </div>
-            {item.title ? (
-              <h3 className="font-display text-lg">{item.title}</h3>
-            ) : null}
-            <p className="text-sm leading-relaxed line-clamp-6">{item.body}</p>
-            <a
-              className="text-xs underline self-start"
-              href={item.url}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Read original
-            </a>
+          <li key={item.id}>
+            <CrawledPostCard
+              extraMeta={viaLabel ? <span>{viaLabel}</span> : null}
+              post={{
+                id: item.id,
+                title: item.title,
+                body: item.body,
+                summary: item.summary,
+                url: item.url,
+                publishedAt: item.publishedAt?.toISOString() ?? null,
+                createdAt: item.createdAt.toISOString(),
+                sourceName: item.sourceName,
+                crawlingTool: item.crawlingTool,
+                builder: item.builder
+                  ? {
+                      id: item.builder.id,
+                      entityId: item.builder.entityId,
+                      name: item.builder.name,
+                      kind: item.builder.sourceType as "X" | "BLOG" | "PODCAST" | "WEBSITE",
+                      sourceType: item.builder.sourceType,
+                      sourceUrl: item.builder.sourceUrl,
+                      crawlUrl: item.builder.crawlUrl,
+                    }
+                  : null,
+                alternateChannelCount: item.alternateChannelCount,
+              }}
+              showBuilderRow={false}
+              variant="row"
+            />
           </li>
         );
       })}
