@@ -90,7 +90,7 @@ export function BuilderLibraryStats({
           <Bell className="h-3.5 w-3.5" />
           {stats.subscribed} subscribed
         </span>
-        <span className="status-chip">{stats.crawledItems} crawled</span>
+        <span className="status-chip">{stats.crawledItems} summarized</span>
         <SubscribeAllLibraryBuildersButton onSubscribedAll={onSubscribedAll} />
       </div>
       <div className="at-mobile grid w-full grid-cols-3 gap-2">
@@ -109,7 +109,7 @@ export function BuilderLibraryStats({
         <div className="fb-stat fb-stat--compact">
           <div className="min-w-0">
             <div className="fb-stat-value">{stats.crawledItems.toLocaleString()}</div>
-            <div className="fb-stat-label">Crawled</div>
+            <div className="fb-stat-label">Summarized</div>
           </div>
         </div>
       </div>

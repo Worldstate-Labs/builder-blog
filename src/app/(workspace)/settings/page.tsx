@@ -35,7 +35,7 @@ export default async function SettingsPage() {
           <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
             Digest generation uses these settings when the skill asks for
             context. Recommendations use the profile text and reading log to
-            rank unread crawled posts.
+            rank unread summarized posts.
           </p>
           <Suspense fallback={<FeedPreferenceSkeleton />}>
             <FeedPreferenceSlot userId={userId} />

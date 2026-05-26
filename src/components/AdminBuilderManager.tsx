@@ -180,7 +180,7 @@ export function AdminBuilderManager({
               </div>
             </div>
             <details className="inline-disclosure border-t border-[var(--line)] px-4 py-3">
-              <summary>IDs and crawl source</summary>
+              <summary>IDs and source</summary>
               <dl className="mt-3 grid gap-3 text-xs md:grid-cols-3">
                 <div>
                   <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">Unique id</dt>
@@ -195,7 +195,7 @@ export function AdminBuilderManager({
                   </dd>
                 </div>
                 <div>
-                  <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">Crawl source</dt>
+                  <dt className="uppercase tracking-[0.12em] text-[var(--muted)]">Source</dt>
                   <dd className="mt-1 break-all text-[var(--muted-strong)]">
                     {builder.crawlUrl ?? builder.sourceUrl ?? "No crawl URL"}
                   </dd>

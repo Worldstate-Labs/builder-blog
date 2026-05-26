@@ -32,7 +32,7 @@ export default async function AdminPage() {
     <div className="page-pad">
       <section className="fb-page-head">
         <div>
-          <h1 className="fb-title">Crawl operations</h1>
+          <h1 className="fb-title">Summary operations</h1>
           <p className="fb-desc">
             Review the central builder pool, de-dupe keys, and recent imports.
           </p>
@@ -76,7 +76,7 @@ async function AdminStats() {
     <div className="stats-panel">
       <AdminStat label="Pool sources" value={centralBuilderCount} />
       <AdminStat label="Personal sources" value={personalBuilderCount} />
-      <AdminStat label="Recent crawled items" value={recentFeedItemCount} />
+      <AdminStat label="Recent summarized items" value={recentFeedItemCount} />
     </div>
   );
 }
@@ -197,7 +197,7 @@ async function RecentImportedContent() {
     <section className="mt-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="fb-section-label">Daily crawl</p>
+          <p className="fb-section-label">Daily summary</p>
           <h2 className="fb-section-heading mt-1">Recent imported content</h2>
         </div>
         <span className="fb-chip">Last 14 days</span>

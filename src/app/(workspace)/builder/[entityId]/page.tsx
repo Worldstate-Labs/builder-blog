@@ -96,7 +96,7 @@ export default async function BuilderDetailPage({ params }: Params) {
             </Suspense>
             {lastCrawledMax ? (
               <div className="text-xs text-[var(--muted-strong)]">
-                Last crawled {dateFormatter.format(lastCrawledMax)}
+                Last summarized {dateFormatter.format(lastCrawledMax)}
               </div>
             ) : null}
           </div>
@@ -229,7 +229,7 @@ async function RecentPostsSlot({
   if (items.length === 0) {
     return (
       <div className="fb-panel dashed text-[var(--muted-strong)]">
-        No posts crawled yet.
+        No posts summarized yet.
       </div>
     );
   }

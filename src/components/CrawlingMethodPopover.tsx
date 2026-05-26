@@ -60,10 +60,10 @@ export function CrawlingMethodPopover({
   return (
     <div className="fb-popover-anchor" ref={containerRef}>
       <button
-        aria-label="Crawling method"
+        aria-label="Summary method"
         className="post-action-btn"
         onClick={() => setOpen((v) => !v)}
-        title="Crawling method"
+        title="Summary method"
         type="button"
       >
         <Info className="h-4 w-4" />

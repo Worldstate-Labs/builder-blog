@@ -79,7 +79,7 @@ export default async function Home() {
               {
                 title: "Search is the memory layer.",
                 detail:
-                  "Digests, crawled items, and followed sources stay queryable after the daily read is done.",
+                  "Digests, summarized items, and followed sources stay queryable after the daily read is done.",
               },
             ].map((item) => (
               <article className="fb-signal" key={item.title}>
@@ -124,7 +124,7 @@ export default async function Home() {
               i: "03",
               icon: Archive,
               title: "Keep memory",
-              copy: "Browse today, inspect crawled inputs, and search the full archive when a detail matters later.",
+              copy: "Browse today, inspect summarized inputs, and search the full archive when a detail matters later.",
             },
           ].map(({ i, icon: Icon, title, copy }) => (
             <div key={title} className="fb-panel">
@@ -154,7 +154,7 @@ export default async function Home() {
           <Feature
             icon={Sparkles}
             title="Digest-first home"
-            copy="Today stays focused on generated briefings, not raw crawl noise."
+            copy="Today stays focused on generated briefings, not raw feed noise."
           />
           <Feature
             icon={Search}

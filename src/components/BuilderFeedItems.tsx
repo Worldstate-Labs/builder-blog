@@ -65,11 +65,11 @@ export function BuilderFeedItems({
       const response = await fetch(`/api/builders/${builderId}/feed-items`, {
         cache: "no-store",
       });
-      if (!response.ok) throw new Error("Unable to load crawled posts");
+      if (!response.ok) throw new Error("Unable to load summarized posts");
       const payload = (await response.json()) as { items?: BuilderFeedItem[] };
       setItemState({ builderId, totalCount, items: payload.items ?? [] });
     } catch {
-      setError("Could not load crawled posts.");
+      setError("Could not load summarized posts.");
     } finally {
       setIsLoading(false);
     }
@@ -82,7 +82,7 @@ export function BuilderFeedItems({
       ref={detailsRef}
     >
       <summary>
-        <span>Crawled posts</span>
+        <span>Summarized posts</span>
         <span className="text-[var(--muted)]">
           {items ? `Latest ${items.length} of ${totalCount}` : `${totalCount} posts`}
         </span>
@@ -112,7 +112,7 @@ export function BuilderFeedItems({
         ))}
         {items?.length === 0 ? (
           <div className="p-4 text-sm text-[var(--muted-strong)]">
-            No crawled posts have been stored for this builder yet.
+            No summarized posts have been stored for this builder yet.
           </div>
         ) : null}
       </div>

@@ -195,16 +195,16 @@ export function CrawledPostCard({
               <ExternalLink className="h-4 w-4" />
             </a>
 
-            {/* 2. Raw crawled content toggle */}
+            {/* 2. Raw content toggle */}
             <button
-              aria-label="Raw crawled content"
+              aria-label="Raw content"
               aria-expanded={rawExpanded}
               className={`post-action-btn${rawExpanded ? " post-action-btn--active" : ""}`}
               onClick={() => {
                 setRawExpanded((v) => !v);
                 if (!rawExpanded) noteInteraction();
               }}
-              title="Raw crawled content"
+              title="Raw content"
               type="button"
             >
               <FileText className="h-4 w-4" />

@@ -153,7 +153,7 @@ export default async function SearchPage({
           </h1>
           <p className="fb-m-sub at-mobile">Sources, posts, and digest history.</p>
           <p className="at-desktop fb-desc">
-            Find sources, crawled posts, and digest history.
+            Find sources, summarized posts, and digest history.
           </p>
           <form
             action="/search"
@@ -411,7 +411,7 @@ async function SearchResultsSection({
           ) : (
             <>
               <EmptyState>
-                Enter a query to search across your builder library, crawled feed
+                Enter a query to search across your builder library, summarized feed
                 inputs, and synced digest archive.
               </EmptyState>
               <RelatedSearches query={query} searches={defaultSuggestions} mode={mode} sort={sort} time={time} />
@@ -461,7 +461,7 @@ function SearchResultsFallback({
         </>
       ) : (
         <EmptyState>
-          Enter a query to search across your builder library, crawled feed
+          Enter a query to search across your builder library, summarized feed
           inputs, and synced digest archive.
         </EmptyState>
       )}

@@ -8,6 +8,7 @@ import { BuilderLibraryStats } from "@/components/BuilderLibraryStats";
 import { LibraryImportRemoveButton } from "@/components/LibraryImportRemoveButton";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
 import { MobileSourcesSwitcher } from "@/components/MobileSourcesSwitcher";
+import { PrivateLibraryPanel } from "@/components/PrivateLibraryPanel";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
 import { isAdminEmail } from "@/lib/admin";
@@ -50,7 +51,7 @@ export default function BuildersPage() {
         <div>
           <h1 className="fb-title">Sources</h1>
           <p className="fb-desc">
-            Manage your library, subscriptions, and per-source crawl history.
+            Manage your library, subscriptions, and per-source summary history.
           </p>
         </div>
         <Suspense fallback={<BuilderStatsFallback />}>
@@ -268,13 +269,13 @@ async function BuilderSections({
       : `${data.sessionUserName || data.sessionUserEmail || "Personal"} library`;
 
   const privateSection = (
-    <LibrarySection
+    <PrivateLibraryPanel
       title={data.isAdmin ? adminCommunityLibraryName : "Private library"}
-      detail={data.isAdmin ? adminCommunityLibraryDescription : "Synced by your agent"}
-      badge={data.isAdmin ? "admin" : "private"}
       count={data.privateBuilders.length}
-      defaultOpen
-      action={
+      sourceOptions={SOURCE_DEFINITIONS.filter((source) => source.id !== "pdf").map(
+        (source) => ({ id: source.id, label: source.label }),
+      )}
+      visibilityToggle={
         <LibraryVisibilityToggle
           compact
           disabled={!data.isAdmin && data.privateBuilders.length === 0}
@@ -285,11 +286,6 @@ async function BuilderSections({
       }
     >
       <SkillPromptActions context="library" tokens={data.activeTokens} />
-      <AddBuilderForm
-        sourceOptions={SOURCE_DEFINITIONS.filter((source) => source.id !== "pdf").map(
-          (source) => ({ id: source.id, label: source.label }),
-        )}
-      />
       <BuilderLibraryList
         acceptAddedBuilders
         builders={data.privateBuilders.map((builder) =>
@@ -301,10 +297,10 @@ async function BuilderSections({
             subscribed: data.subscribed.has(builder.id),
           }),
         )}
-        emptyBody="Add a source here, or sync richer crawled data from your agent later."
+        emptyBody="Add a source here, or sync richer summarized data from your agent later."
         emptyTitle="No personal sources yet"
       />
-    </LibrarySection>
+    </PrivateLibraryPanel>
   );
 
   const importedSection = (
