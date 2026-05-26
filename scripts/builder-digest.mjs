@@ -7,7 +7,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const CONFIG_DIR = join(homedir(), ".builder-blog");
-const CONFIG_PATH = join(CONFIG_DIR, "config.json");
+const ACCOUNTS_DIR = join(CONFIG_DIR, "accounts");
 const DEFAULT_APP_URL = "https://builder-blog.worldstatelabs.com";
 const DEFAULT_AGENT_RUNTIME = detectedAgentRuntime();
 const DEFAULT_AGENT_MODEL = detectedAgentModel();
@@ -61,13 +61,17 @@ const PERSONAL_SOURCE_CRAWLERS = [
 
 function usage() {
   console.log(`builder-digest commands:
-  login --app-url ${DEFAULT_APP_URL}
+  exchange --ec <code> [--app-url ${DEFAULT_APP_URL}]
   crawl-personal [--days ${DEFAULT_PERSONAL_CRAWL_DAYS}] [--limit 3] [--force] [--agent-model gpt-5.5]
   prepare
   validate-agent-sync --tasks crawl-result.json --file personal-builders.json
   sync-builders --file personal-builders.json [--agent-model gpt-5.5]
   sync --file digest.md [--title "AI Builder Digest"]
-  status`);
+  status
+
+To set up an account, use the Copy-prompt button in the FollowBrief web app.
+The first command in the prompt exchanges a one-time code for an agent token
+saved to ~/.builder-blog/accounts/<email>.json`);
 }
 
 export function skillCrawlingTool(detail = "", agentModel = DEFAULT_AGENT_MODEL) {
@@ -101,23 +105,58 @@ function detectedAgentModel() {
   return modelMatch?.[1]?.trim() ?? "";
 }
 
-async function readConfig() {
-  const fileConfig = existsSync(CONFIG_PATH)
-    ? JSON.parse(await readFile(CONFIG_PATH, "utf8"))
-    : {};
-  // BUILDER_BLOG_TOKEN env takes precedence over config.json token.
-  const envToken = process.env.BUILDER_BLOG_TOKEN?.trim();
-  const envUrl = process.env.BUILDER_BLOG_URL?.trim().replace(/\/$/, "");
+/**
+ * Load an account file from ~/.builder-blog/accounts/<email>.json.
+ * Returns { email, token, appUrl } or throws with a clear error.
+ */
+async function loadAccountFile(email) {
+  const safeName = email.replace(/[^a-zA-Z0-9._@+-]/g, "_");
+  const accountPath = join(ACCOUNTS_DIR, `${safeName}.json`);
+  if (!existsSync(accountPath)) {
+    throw new Error(
+      `Account file not found for ${email} (expected ${accountPath}). ` +
+      `Use the Copy-prompt button in the FollowBrief web app to set up this account.`,
+    );
+  }
+  const data = JSON.parse(await readFile(accountPath, "utf8"));
+  if (!data.token) {
+    throw new Error(`Account file ${accountPath} is missing the token field.`);
+  }
   return {
-    ...fileConfig,
-    ...(envUrl ? { appUrl: envUrl } : {}),
-    ...(envToken ? { token: envToken } : {}),
+    email: data.email ?? email,
+    token: data.token,
+    appUrl: (data.appUrl ?? DEFAULT_APP_URL).replace(/\/$/, ""),
   };
 }
 
-async function saveConfig(config) {
-  await mkdir(CONFIG_DIR, { recursive: true });
-  await writeFile(CONFIG_PATH, JSON.stringify(config, null, 2));
+/**
+ * Resolve token and appUrl.
+ * Priority:
+ *   1. BUILDER_BLOG_TOKEN env — direct token override
+ *   2. BUILDER_BLOG_ACCOUNT env — read accounts/<email>.json
+ *   3. Error
+ */
+async function readConfig() {
+  const envToken = process.env.BUILDER_BLOG_TOKEN?.trim();
+  const envUrl = process.env.BUILDER_BLOG_URL?.trim().replace(/\/$/, "");
+  const envAccount = process.env.BUILDER_BLOG_ACCOUNT?.trim();
+
+  if (envToken) {
+    return {
+      token: envToken,
+      appUrl: envUrl ?? DEFAULT_APP_URL,
+    };
+  }
+
+  if (envAccount) {
+    const account = await loadAccountFile(envAccount);
+    return {
+      token: account.token,
+      appUrl: envUrl ?? account.appUrl,
+    };
+  }
+
+  return { token: null, appUrl: envUrl ?? DEFAULT_APP_URL };
 }
 
 function argValue(args, name, fallback = undefined) {
@@ -153,52 +192,32 @@ async function getJson(url, token) {
   return data;
 }
 
-function openBrowser(url) {
-  const command = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
-  const child = spawn(command, [url], { detached: true, stdio: "ignore" });
-  child.unref();
-}
 
 function requireLoggedIn(config) {
   if (!config.token) {
     throw new Error(
-      `No agent token found. Set BUILDER_BLOG_TOKEN in your environment, ` +
-      `or use the Copy prompt button in the FollowBrief web app to get a self-contained command. ` +
-      `Legacy: builder-digest login --app-url ${DEFAULT_APP_URL}`,
-    );
-  }
-  if (!config.appUrl) {
-    throw new Error(
-      `No app URL configured. Set BUILDER_BLOG_URL in your environment or run: ` +
-      `builder-digest login --app-url ${DEFAULT_APP_URL}`,
+      `No agent token. Set BUILDER_BLOG_TOKEN in your environment, ` +
+      `or set BUILDER_BLOG_ACCOUNT to an email that has a ~/.builder-blog/accounts/<email>.json file. ` +
+      `Use the Copy-prompt button in the FollowBrief web app to set up this account.`,
     );
   }
 }
 
-async function login(args) {
-  console.warn(
-    "[DEPRECATED] The `login` device-code flow is deprecated. " +
-    "Use the Copy prompt button in the FollowBrief web app to get a token-embedded command, " +
-    "or set BUILDER_BLOG_TOKEN in your environment.",
-  );
-  const appUrl = argValue(args, "--app-url", process.env.BUILDER_BLOG_URL || DEFAULT_APP_URL).replace(/\/$/, "");
-  const start = await postJson(`${appUrl}/api/device/start`, { appName: "FollowBrief skill" });
-  console.log(`Open this URL to approve the terminal:\n${start.verificationUrl}\n`);
-  console.log(`Code: ${start.code}`);
-  openBrowser(start.verificationUrl);
-
-  const deadline = Date.now() + (start.expiresInSeconds ?? 600) * 1000;
-  while (Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, 2500));
-    const poll = await getJson(`${appUrl}/api/device/poll?code=${encodeURIComponent(start.code)}`);
-    if (poll.status === "approved" && poll.token) {
-      await saveConfig({ appUrl, token: poll.token });
-      console.log(`Logged in. Config saved to ${CONFIG_PATH}`);
-      return;
-    }
-    process.stdout.write(".");
+async function exchange(args) {
+  const ec = argValue(args, "--ec");
+  if (!ec) {
+    throw new Error("Missing --ec <code>. Run the Copy-prompt from the FollowBrief web app.");
   }
-  throw new Error("Login timed out");
+  const appUrl = argValue(args, "--app-url", process.env.BUILDER_BLOG_URL || DEFAULT_APP_URL).replace(/\/$/, "");
+  const data = await postJson(`${appUrl}/api/skill/exchange`, { code: ec });
+  if (!data.token || !data.email) {
+    throw new Error("Exchange response missing token or email.");
+  }
+  const safeName = data.email.replace(/[^a-zA-Z0-9._@+-]/g, "_");
+  const accountPath = join(ACCOUNTS_DIR, `${safeName}.json`);
+  await mkdir(ACCOUNTS_DIR, { recursive: true });
+  await writeFile(accountPath, JSON.stringify({ email: data.email, token: data.token, userId: data.userId, appUrl: data.appUrl ?? appUrl }, null, 2), { mode: 0o600 });
+  console.log(`Exchanged for account ${data.email}; saved to accounts/${safeName}.json`);
 }
 
 async function prepare() {
@@ -1931,12 +1950,14 @@ async function syncBuilders(args) {
 
 async function status() {
   const config = await readConfig();
+  const account = process.env.BUILDER_BLOG_ACCOUNT?.trim() ?? null;
   console.log(
     JSON.stringify(
       {
-        loggedIn: Boolean(config.appUrl && config.token),
+        loggedIn: Boolean(config.token),
         appUrl: config.appUrl ?? null,
-        configPath: CONFIG_PATH,
+        account,
+        accountsDir: ACCOUNTS_DIR,
       },
       null,
       2,
@@ -1946,7 +1967,15 @@ async function status() {
 
 async function main() {
   const [command, ...args] = process.argv.slice(2);
-  if (command === "login") await login(args);
+  if (command === "exchange") await exchange(args);
+  else if (command === "login") {
+    console.warn(
+      "The `login` command has been removed. Use the Copy-prompt button in the FollowBrief web app. " +
+      "The first command in the prompt exchanges a one-time code for an agent token " +
+      "saved to ~/.builder-blog/accounts/<email>.json",
+    );
+    process.exit(1);
+  }
   else if (command === "crawl-personal") await crawlPersonal(args);
   else if (command === "prepare") await prepare();
   else if (command === "validate-agent-sync") await validateAgentSync(args);

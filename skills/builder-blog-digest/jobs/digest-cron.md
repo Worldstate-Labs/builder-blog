@@ -18,8 +18,7 @@ Before doing work, ensure the skill is installed:
 Fetch the digest context and save it:
 
 ```bash
-BUILDER_BLOG_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}" \
-BUILDER_BLOG_TOKEN="${BUILDER_BLOG_TOKEN}" \
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" prepare --days 1 \
   > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/builder-blog-context.json"
 ```
@@ -33,8 +32,7 @@ ${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/builder-blog-digest.md
 Then sync it:
 
 ```bash
-BUILDER_BLOG_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}" \
-BUILDER_BLOG_TOKEN="${BUILDER_BLOG_TOKEN}" \
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" sync \
   --file "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/builder-blog-digest.md" \
   --title "AI Builder Digest"

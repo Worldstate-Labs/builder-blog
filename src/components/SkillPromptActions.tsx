@@ -48,21 +48,23 @@ export function SkillPromptActions({
   const [pickerTarget, setPickerTarget] = useState<CopyTarget | null>(null);
   const [selectedTokenId, setSelectedTokenId] = useState<string>("");
 
-  async function fetchTokenValue(tokenId: string): Promise<string | null> {
+  async function fetchExchangeCode(tokenId: string): Promise<string | null> {
     try {
-      const response = await fetch(`/api/settings/tokens/${tokenId}/value`);
+      const response = await fetch(`/api/settings/tokens/${tokenId}/exchange-code`, {
+        method: "POST",
+      });
       if (!response.ok) return null;
       const body = await response.json().catch(() => null);
-      return body?.token ?? null;
+      return body?.code ?? null;
     } catch {
       return null;
     }
   }
 
-  async function buildCommand(target: CopyTarget, tokenValue: string): Promise<string> {
+  async function buildCommand(target: CopyTarget, exchangeCode: string): Promise<string> {
     const origin = window.location.origin;
     const job = target === "once" ? config.onceJob : config.cronJob;
-    const promptUrl = `${origin}/api/skill/jobs/${job}/skill.md?token=${encodeURIComponent(tokenValue)}`;
+    const promptUrl = `${origin}/api/skill/jobs/${job}/skill.md?ec=${encodeURIComponent(exchangeCode)}`;
     return `Read ${promptUrl} and follow the instructions.`;
   }
 
@@ -78,16 +80,18 @@ export function SkillPromptActions({
     }
 
     if (activeTokens.length === 1) {
-      const tokenValue = await fetchTokenValue(activeTokens[0].id);
-      if (!tokenValue) {
-        setStatus({ kind: "error", text: "Could not fetch token value" });
+      const code = await fetchExchangeCode(activeTokens[0].id);
+      if (!code) {
+        setStatus({ kind: "error", text: "Could not generate exchange code" });
         return;
       }
-      const command = await buildCommand(target, tokenValue);
+      const command = await buildCommand(target, code);
       try {
         await navigator.clipboard.writeText(command);
         setCopiedTarget(target);
         window.setTimeout(() => setCopiedTarget(null), 1800);
+        setStatus({ kind: "info", text: "Copied · expires in 10 min" });
+        window.setTimeout(() => setStatus(null), 8000);
       } catch (error) {
         setStatus({
           kind: "error",
@@ -107,17 +111,19 @@ export function SkillPromptActions({
   async function copyWithPicked() {
     if (!pickerTarget || !selectedTokenId) return;
     setStatus(null);
-    const tokenValue = await fetchTokenValue(selectedTokenId);
-    if (!tokenValue) {
-      setStatus({ kind: "error", text: "Could not fetch token value" });
+    const code = await fetchExchangeCode(selectedTokenId);
+    if (!code) {
+      setStatus({ kind: "error", text: "Could not generate exchange code" });
       return;
     }
-    const command = await buildCommand(pickerTarget, tokenValue);
+    const command = await buildCommand(pickerTarget, code);
     try {
       await navigator.clipboard.writeText(command);
       setPickerTarget(null);
       setCopiedTarget(pickerTarget);
       window.setTimeout(() => setCopiedTarget(null), 1800);
+      setStatus({ kind: "info", text: "Copied · expires in 10 min" });
+      window.setTimeout(() => setStatus(null), 8000);
     } catch (error) {
       setStatus({
         kind: "error",
@@ -162,10 +168,15 @@ export function SkillPromptActions({
         {status ? (
           status.kind === "info" ? (
             <span className="text-[11px] text-[var(--muted-strong)]">
-              {status.text}{" "}
-              <a className="underline" href="/settings">
-                Go to Settings
-              </a>
+              {status.text}
+              {status.text.includes("Create a token") ? (
+                <>
+                  {" "}
+                  <a className="underline" href="/settings">
+                    Go to Settings
+                  </a>
+                </>
+              ) : null}
             </span>
           ) : (
             <span className="text-[11px] text-[var(--danger)]">{status.text}</span>

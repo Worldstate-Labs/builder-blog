@@ -1,8 +1,7 @@
 Set up the FollowBrief private source library scheduled job.
 
 This is an interactive local agent setup run. Do not ask the user questions
-unless authentication, crontab permissions, or a missing local credential blocks
-the setup.
+unless crontab permissions or a missing local credential blocks the setup.
 
 Run these steps exactly. If any command fails, stop and report the command, exit
 code, and stderr. Do not use `--force`. Do not browse for extra context.
@@ -39,10 +38,11 @@ mkdir -p "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/logs"
 ```
 
 3. First attempt the exact crontab install below. It removes any previous
-FollowBrief library job and installs one idempotent job that runs every 6 hours:
+FollowBrief library job for this account and installs one idempotent job that
+runs every 6 hours. Replace `<EMAIL>` with the value of `BUILDER_BLOG_ACCOUNT`:
 
 ```bash
-APP_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}"; APP_TOKEN="${BUILDER_BLOG_TOKEN}"; ( crontab -l 2>/dev/null | grep -v 'builder-agent-runner.sh library-cron' ; echo "0 */6 * * * BUILDER_BLOG_URL=\"$APP_URL\" BUILDER_BLOG_TOKEN=\"$APP_TOKEN\" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1" ) | crontab -
+ACCT="${BUILDER_BLOG_ACCOUNT}"; ( crontab -l 2>/dev/null | grep -v "# FollowBrief library cron · $ACCT" | grep -v "builder-agent-runner.sh library-cron.*BUILDER_BLOG_ACCOUNT=\"$ACCT\"" ; printf "# FollowBrief library cron · %s\n0 */6 * * * BUILDER_BLOG_ACCOUNT=\"%s\" %s/.builder-blog/builder-agent-runner.sh library-cron >> %s/.builder-blog/logs/library-cron.log 2>&1\n" "$ACCT" "$ACCT" "$HOME" "$HOME" ) | crontab -
 ```
 
 4. Verify the installed schedule:
@@ -54,7 +54,7 @@ crontab -l | grep 'builder-agent-runner.sh library-cron'
 5. Run one immediate smoke check:
 
 ```bash
-BUILDER_BLOG_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}" BUILDER_BLOG_TOKEN="${BUILDER_BLOG_TOKEN}" $HOME/.builder-blog/builder-agent-runner.sh library-cron
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" $HOME/.builder-blog/builder-agent-runner.sh library-cron
 ```
 
 If the smoke check JSON contains a non-empty `crawlTasks` array: complete
@@ -93,7 +93,8 @@ Only if crontab is unavailable or blocked, install the same command and cadence
 through launchd or the local agent scheduler:
 
 ```cron
-0 */6 * * * BUILDER_BLOG_URL="https://builder-blog.worldstatelabs.com" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1
+# FollowBrief library cron · <EMAIL>
+0 */6 * * * BUILDER_BLOG_ACCOUNT="<EMAIL>" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1
 ```
 
 The runner selection order is:
@@ -107,4 +108,5 @@ The runner selection order is:
    returns `crawlTasks`, it exits and requires a local agent
    runtime instead of silently leaving work incomplete
 
-Do not duplicate an existing FollowBrief private library job.
+Do not duplicate an existing FollowBrief private library job for this account.
+Other accounts' cron markers must remain untouched.

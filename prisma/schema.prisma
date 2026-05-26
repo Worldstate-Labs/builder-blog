@@ -315,19 +315,32 @@ model Digest {
 }
 
 model AgentToken {
-  id            String    @id @default(cuid())
+  id            String         @id @default(cuid())
   userId        String
   name          String
-  tokenHash     String    @unique
+  tokenHash     String         @unique
   tokenValue    String?
   lastUsedAt    DateTime?
   lastIp        String?
   lastUserAgent String?
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime       @default(now())
   revokedAt     DateTime?
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exchangeCodes ExchangeCode[]
 
   @@index([userId])
+}
+
+model ExchangeCode {
+  id           String     @id @default(cuid())
+  code         String     @unique
+  agentTokenId String
+  expiresAt    DateTime
+  usedAt       DateTime?
+  createdAt    DateTime   @default(now())
+  agentToken   AgentToken @relation(fields: [agentTokenId], references: [id], onDelete: Cascade)
+
+  @@index([agentTokenId])
 }
 
 model DeviceLogin {

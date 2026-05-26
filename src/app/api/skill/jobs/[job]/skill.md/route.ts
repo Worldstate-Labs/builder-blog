@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { NextResponse } from "next/server";
 import { jobSkillFiles } from "@/lib/skill-job-files";
-import { hashToken } from "@/lib/tokens";
+import { prisma } from "@/lib/prisma";
 
 type Params = { params: Promise<{ job: string }> };
 
@@ -14,27 +14,50 @@ export async function GET(request: Request, { params }: Params) {
   }
 
   const url = new URL(request.url);
-  const tokenParam = url.searchParams.get("token");
+  const ecParam = url.searchParams.get("ec");
 
   let content = await readFile(join(process.cwd(), path), "utf8");
 
-  if (tokenParam) {
-    // Validate the token — only embed if it resolves to an active AgentToken
-    const { prisma } = await import("@/lib/prisma");
-    const record = await prisma.agentToken.findUnique({
-      where: { tokenHash: hashToken(tokenParam) },
-      select: { revokedAt: true },
+  if (ecParam) {
+    // Validate the exchange code: must exist, not expired, not yet used.
+    // Do NOT mark usedAt here — only the CLI exchange endpoint marks it.
+    const record = await prisma.exchangeCode.findUnique({
+      where: { code: ecParam },
+      include: {
+        agentToken: {
+          include: { user: { select: { email: true } } },
+        },
+      },
     });
 
-    if (!record || record.revokedAt) {
-      return NextResponse.json({ error: "Invalid or revoked token" }, { status: 403 });
+    if (!record || record.expiresAt < new Date()) {
+      return NextResponse.json({ error: "Exchange code invalid or expired" }, { status: 403 });
     }
 
-    // Inject BUILDER_BLOG_TOKEN into every fenced bash block so the CLI has
-    // the token available without requiring config.json or a login flow.
-    // Strategy: prepend an export line as the first statement of each ```bash block.
-    const exportLine = `BUILDER_BLOG_TOKEN="${tokenParam}"`;
-    content = content.replace(/^```bash\n/gm, `\`\`\`bash\n${exportLine}\n`);
+    const email = record.agentToken.user.email ?? "";
+
+    // 1. Prepend the exchange step as the very first bash block
+    const exchangeBlock = [
+      "Exchange the one-time setup code for an agent token (writes to",
+      `\`~/.builder-blog/accounts/${email}.json\`). The code is used once and expires.\n`,
+      "```bash",
+      `mkdir -p "\${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/accounts"`,
+      `node "\${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" exchange --ec "${ecParam}"`,
+      "```\n",
+    ].join("\n");
+
+    // Insert before the first heading or content
+    content = exchangeBlock + "\n" + content;
+
+    // 2. Rewrite every bash block: prepend BUILDER_BLOG_ACCOUNT env to node ... builder-digest.mjs ... lines
+    const accountEnv = `BUILDER_BLOG_ACCOUNT="${email}"`;
+    content = content.replace(/^```bash\n([\s\S]*?)^```/gm, (_match, blockBody) => {
+      const rewritten = blockBody.replace(
+        /(^|\\\n\s*)(node\s+[^\n]*builder-digest\.mjs[^\n]*)/gm,
+        (_m: string, prefix: string, nodeCmd: string) => `${prefix}${accountEnv} \\\n${nodeCmd}`,
+      );
+      return "```bash\n" + rewritten + "```";
+    });
   }
 
   return new Response(content, {

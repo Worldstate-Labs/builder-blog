@@ -1,11 +1,11 @@
 ---
 name: builder-blog-digest
-description: Generate personalized FollowBrief digests from central and personal source libraries, then sync the digest to the FollowBrief web app. Supports /login for terminal-to-web authentication.
+description: Generate personalized FollowBrief digests from central and personal source libraries, then sync the digest to the FollowBrief web app.
 ---
 
 # FollowBrief Digest
 
-Use this skill when the user asks for an AI reading digest, FollowBrief feed, personal source sync, source summary, or invokes `/login`.
+Use this skill when the user asks for an AI reading digest, FollowBrief feed, personal source sync, or source summary.
 
 This skill is compatible with Claude Code, OpenClaw, Codex, and other local
 agents because it relies on a local Node CLI, plain JSON, and job prompts that
@@ -18,7 +18,8 @@ copies the setup command from the web app, run it as-is. It downloads the
 current skill to `~/.builder-blog/SKILL.md`, downloads the CLI to
 `~/.builder-blog/builder-digest.mjs`, installs once and scheduled job prompts under
 `~/.builder-blog/jobs`, installs the agent runner at
-`~/.builder-blog/builder-agent-runner.sh`, then starts terminal login:
+`~/.builder-blog/builder-agent-runner.sh`, then exchanges a one-time code for
+an agent token saved to `~/.builder-blog/accounts/<email>.json`:
 
 ```bash
 /bin/sh -c "$(curl -fsSL https://builder-blog.worldstatelabs.com/api/skill/bootstrap)"
@@ -27,23 +28,35 @@ current skill to `~/.builder-blog/SKILL.md`, downloads the CLI to
 For non-production deployments, replace the host with the current FollowBrief
 web app URL. Do not assume a local repository checkout exists.
 
-## Commands
+## Account Setup
 
-### Set token
+Use the **Copy-prompt** button in the FollowBrief web app (Sources or Home page).
+The first command in the prompt exchanges a one-time code for an agent token
+saved to `~/.builder-blog/accounts/<email>.json`. This is the only setup step
+required — no manual token copying, no `/login` command.
 
-Authenticate the CLI by setting `BUILDER_BLOG_TOKEN` to the token value from the FollowBrief web app:
-
-1. In the FollowBrief web app, go to **Settings → Agent tokens** and create a token.
-2. The **Copy prompt** button on the Sources or Home page builds a self-contained command with the token already embedded — paste and run it directly.
-3. To set the token manually for all commands in the current shell:
-
-```bash
-export BUILDER_BLOG_TOKEN="<paste token here>"
-```
-
-The CLI prefers `BUILDER_BLOG_TOKEN` in the environment over any stored `~/.builder-blog/config.json` value.
+The CLI resolves the token for each run:
+1. `BUILDER_BLOG_TOKEN` environment variable — direct token override (for adhoc/debug)
+2. `BUILDER_BLOG_ACCOUNT` environment variable — reads `~/.builder-blog/accounts/<email>.json`
+3. Error: "No agent token. Use the Copy-prompt button in the FollowBrief web app."
 
 Never print the token to shared logs.
+
+## Commands
+
+### Exchange a one-time code
+
+This is run automatically by the Copy-prompt setup command:
+
+```bash
+node ~/.builder-blog/builder-digest.mjs exchange --ec "<one-time-code>"
+```
+
+### Sanity check
+
+```bash
+node ~/.builder-blog/builder-digest.mjs status
+```
 
 ## Scheduled Jobs
 
@@ -68,12 +81,12 @@ task is complete, and stop only when no available method can obtain real primary
 content.
 
 ```bash
-BUILDER_BLOG_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}" \
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 ~/.builder-blog/builder-agent-runner.sh library-once
 ```
 
 ```bash
-BUILDER_BLOG_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}" \
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 ~/.builder-blog/builder-agent-runner.sh digest-cron
 ```
 
@@ -97,8 +110,8 @@ installed correctly.
 Example schedules:
 
 ```cron
-0 */6 * * * BUILDER_BLOG_URL="https://builder-blog.worldstatelabs.com" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1
-0 8 * * * BUILDER_BLOG_URL="https://builder-blog.worldstatelabs.com" $HOME/.builder-blog/builder-agent-runner.sh digest-cron >> $HOME/.builder-blog/logs/digest-cron.log 2>&1
+0 */6 * * * BUILDER_BLOG_ACCOUNT="jie@worldstatelabs.com" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1
+0 8 * * * BUILDER_BLOG_ACCOUNT="jie@worldstatelabs.com" $HOME/.builder-blog/builder-agent-runner.sh digest-cron >> $HOME/.builder-blog/logs/digest-cron.log 2>&1
 ```
 
 ### Sync Personal Sources
@@ -110,6 +123,7 @@ user's library, run the local crawler and sync the resulting feed items to the
 cloud:
 
 ```bash
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node ~/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3
 ```
 
@@ -167,6 +181,7 @@ This command:
 Validate agent-produced items before syncing them:
 
 ```bash
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node ~/.builder-blog/builder-digest.mjs validate-agent-sync \
   --tasks /tmp/builder-blog-crawl-result.json \
   --file /tmp/builder-blog-agent-sync.json
@@ -176,6 +191,7 @@ Use `--force` only when the user explicitly wants to re-sync already-synced
 posts:
 
 ```bash
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node ~/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3 --force
 ```
 
@@ -186,6 +202,7 @@ Agents may also sync already-crawled user-owned sources manually. This is an
 `in library` operation, not a digest subscription unless `subscribe` is true:
 
 ```bash
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node ~/.builder-blog/builder-digest.mjs sync-builders --file /tmp/personal-builders.json
 ```
 
@@ -226,6 +243,7 @@ actual source is more specific, for example `pdf`, `youtube`, or
 1. Fetch the user's personalized context:
 
 ```bash
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node ~/.builder-blog/builder-digest.mjs prepare --days 1
 ```
 
@@ -261,6 +279,7 @@ cat > /tmp/builder-blog-digest.md <<'DIGEST'
 <final digest text>
 DIGEST
 
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node ~/.builder-blog/builder-digest.mjs sync --file /tmp/builder-blog-digest.md --title "AI Builder Digest"
 ```
 
@@ -268,7 +287,7 @@ After sync, tell the user it is visible in the FollowBrief web app history.
 
 ## Status
 
-To check whether the terminal is logged in:
+To check whether the terminal has a configured account:
 
 ```bash
 node ~/.builder-blog/builder-digest.mjs status
