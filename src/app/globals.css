@@ -4329,6 +4329,44 @@ mark.fb-mark-highlight {
   }
 }
 
+/* Polish utility classes — extracted from repeated inline styles so
+   sizing/spacing for derived variants lives in one place. */
+.fb-stat--compact {
+  padding: 0.625rem 0.75rem;
+}
+
+.fb-stat--compact .fb-stat-value {
+  font-size: 1.0625rem;
+}
+
+.fb-stat--compact .fb-stat-label {
+  font-size: 0.625rem;
+}
+
+.fb-src-icon--sm {
+  font-size: 0.6875rem;
+  height: 1.375rem;
+  width: 1.375rem;
+}
+
+.fb-src-icon--md {
+  height: 2rem;
+  width: 2rem;
+}
+
+.fb-icon-btn--xs {
+  height: 1.75rem;
+  width: 1.75rem;
+}
+
+.fb-list-divider > * + * {
+  border-top: 1px solid var(--line);
+}
+
+.fb-row--revoked {
+  opacity: 0.55;
+}
+
 /* Responsive show/hide helpers that beat Tailwind/source-order ties.
    Use `at-desktop` for blocks that should ONLY render on lg+, and
    `at-mobile` for blocks that should ONLY render below lg. */

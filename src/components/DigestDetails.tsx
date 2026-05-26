@@ -69,7 +69,7 @@ export function DigestDetails({
           <span className="fb-digest-chip">
             <span
               aria-hidden="true"
-              className="block h-2 w-2 rounded-full bg-emerald-300"
+              className="block h-2 w-2 rounded-full bg-[color:var(--signal)]"
             />
             Today
           </span>
@@ -146,7 +146,7 @@ function DigestBody({
       <div
         className={
           isToday
-            ? "text-sm text-red-200"
+            ? "text-sm text-[color:color-mix(in_oklch,var(--danger)_72%,white)]"
             : "item-details text-sm text-[var(--danger)]"
         }
         aria-live="polite"

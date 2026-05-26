@@ -94,34 +94,22 @@ export function BuilderLibraryStats({
         <SubscribeAllLibraryBuildersButton onSubscribedAll={onSubscribedAll} />
       </div>
       <div className="at-mobile grid w-full grid-cols-3 gap-2">
-        <div className="fb-stat" style={{ padding: "0.625rem 0.75rem" }}>
+        <div className="fb-stat fb-stat--compact">
           <div className="min-w-0">
-            <div className="fb-stat-value" style={{ fontSize: "1.0625rem" }}>
-              {stats.inLibrary}
-            </div>
-            <div className="fb-stat-label" style={{ fontSize: "0.625rem" }}>
-              In library
-            </div>
+            <div className="fb-stat-value">{stats.inLibrary}</div>
+            <div className="fb-stat-label">In library</div>
           </div>
         </div>
-        <div className="fb-stat" style={{ padding: "0.625rem 0.75rem" }}>
+        <div className="fb-stat fb-stat--compact">
           <div className="min-w-0">
-            <div className="fb-stat-value" style={{ fontSize: "1.0625rem" }}>
-              {stats.subscribed}
-            </div>
-            <div className="fb-stat-label" style={{ fontSize: "0.625rem" }}>
-              Subscribed
-            </div>
+            <div className="fb-stat-value">{stats.subscribed}</div>
+            <div className="fb-stat-label">Subscribed</div>
           </div>
         </div>
-        <div className="fb-stat" style={{ padding: "0.625rem 0.75rem" }}>
+        <div className="fb-stat fb-stat--compact">
           <div className="min-w-0">
-            <div className="fb-stat-value" style={{ fontSize: "1.0625rem" }}>
-              {stats.crawledItems.toLocaleString()}
-            </div>
-            <div className="fb-stat-label" style={{ fontSize: "0.625rem" }}>
-              Crawled
-            </div>
+            <div className="fb-stat-value">{stats.crawledItems.toLocaleString()}</div>
+            <div className="fb-stat-label">Crawled</div>
           </div>
         </div>
       </div>

@@ -322,8 +322,8 @@ function TokenRow({
   onRevoke: () => void;
 }) {
   return (
-    <div className="fb-token-row" style={{ opacity: token.revokedAt ? 0.55 : 1 }}>
-      <span className="fb-src-icon" style={{ width: "2rem", height: "2rem" }}>
+    <div className={`fb-token-row${token.revokedAt ? " fb-row--revoked" : ""}`}>
+      <span className="fb-src-icon fb-src-icon--md">
         <KeyRound aria-hidden="true" className="h-3.5 w-3.5" />
       </span>
       <div className="min-w-0 flex-1">

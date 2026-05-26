@@ -146,11 +146,10 @@ export function BuilderLibraryActions({
           <button
             aria-busy={isPending}
             aria-label="Remove from library"
-            className="fb-icon-btn"
+            className="fb-icon-btn fb-icon-btn--xs"
             disabled={isPending}
             onClick={removeFromLibrary}
             type="button"
-            style={{ width: "1.75rem", height: "1.75rem" }}
           >
             <X aria-hidden="true" className="h-3 w-3" />
           </button>

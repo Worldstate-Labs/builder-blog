@@ -436,7 +436,7 @@ function HubCard({
               {library.name}
             </h3>
             <div className="mt-1.5 flex items-center gap-2 text-[12px] text-[var(--muted-strong)]">
-              <span className="fb-src-icon" style={{ width: 22, height: 22, fontSize: 11 }}>
+              <span className="fb-src-icon fb-src-icon--sm">
                 {ownerInitial(library.ownerLabel)}
               </span>
               <span className="font-semibold text-[var(--ink)]">
