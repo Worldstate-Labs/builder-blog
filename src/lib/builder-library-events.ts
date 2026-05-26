@@ -6,7 +6,7 @@ export type BuilderLibraryEventItem = {
   allowRemove: boolean;
   crawlLabel: string;
   crawlUrl: string | null;
-  /** Canonical creator id — drives builder-detail navigation and per-entity Follow state. */
+  /** Canonical creator id — used for grouping channels and navigation to /builder/[entityId]. Subscription itself stays per-channel. */
   entityId: string | null;
   feedItemCount: number;
   handle: string | null;

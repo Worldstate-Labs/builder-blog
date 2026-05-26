@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import type { ComponentType } from "react";
+import { Suspense, type ComponentType } from "react";
 import { Archive, CheckCircle2, ChevronRight, Clock3, Sparkles, Terminal, UsersRound } from "lucide-react";
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
 import { ForYouRecommendationSection } from "@/components/ForYouRecommendationSection";
@@ -32,27 +32,73 @@ export default async function DashboardPage({
 }) {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
+  const userId = session.user.id;
   const params = await searchParams;
   const selectedTab = parseTab(firstParam(params.tab));
   const archivePage = Math.max(1, Number(firstParam(params.archivePage) ?? "1") || 1);
+
+  return (
+    <div className="page-pad">
+      <h1 className="sr-only">Home</h1>
+      <section className="grid gap-9 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="min-w-0">
+          <DashboardHomeTabs
+            initialTab={selectedTab}
+            aiDigest={
+              <Suspense fallback={<AiDigestFeedSkeleton />}>
+                <AiDigestFeedSlot userId={userId} archivePage={archivePage} />
+              </Suspense>
+            }
+            forYou={<ForYouRecommendationSection scope="for-you" />}
+            subscription={
+              <ForYouRecommendationSection scope="subscription" />
+            }
+          />
+        </div>
+        <aside className="fb-rail at-desktop">
+          <div>
+            <h3>Home</h3>
+            <Suspense fallback={<HomeStatsSkeleton />}>
+              <HomeStatsSlot userId={userId} />
+            </Suspense>
+          </div>
+          <div>
+            <h3>Recent digest</h3>
+            <Suspense fallback={<RecentDigestSkeleton />}>
+              <RecentDigestSlot userId={userId} />
+            </Suspense>
+          </div>
+          <Link className="fb-btn light compact" href="/builders">
+            <UsersRound aria-hidden="true" />
+            Manage sources
+          </Link>
+        </aside>
+      </section>
+    </div>
+  );
+}
+
+async function AiDigestFeedSlot({
+  userId,
+  archivePage,
+}: {
+  userId: string;
+  archivePage: number;
+}) {
   const archiveSkip = (archivePage - 1) * archivePageSize;
 
   const [todayDigest, digestCount, rawTokens] = await Promise.all([
     prisma.digest.findFirst({
       where: {
-        userId: session.user.id,
-        createdAt: {
-          gte: new Date(new Date().setHours(0, 0, 0, 0)),
-        },
+        userId,
+        createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
       },
       orderBy: { createdAt: "desc" },
       select: digestSummarySelect,
     }),
-    prisma.digest.count({
-      where: { userId: session.user.id },
-    }),
+    prisma.digest.count({ where: { userId } }),
     prisma.agentToken.findMany({
-      where: { userId: session.user.id, revokedAt: null },
+      where: { userId, revokedAt: null },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -75,90 +121,25 @@ export default async function DashboardPage({
     revokedAt: null,
   }));
   const archiveWhere = todayDigest
-    ? { userId: session.user.id, NOT: { id: todayDigest.id } }
-    : { userId: session.user.id };
+    ? { userId, NOT: { id: todayDigest.id } }
+    : { userId };
   const archiveCount = Math.max(0, digestCount - (todayDigest ? 1 : 0));
-  const [archiveDigests, recentArchiveDigests] = await Promise.all([
-    prisma.digest.findMany({
-      where: archiveWhere,
-      orderBy: { createdAt: "desc" },
-      skip: archiveSkip,
-      take: archivePageSize,
-      select: digestSummarySelect,
-    }),
-    prisma.digest.findMany({
-      where: archiveWhere,
-      orderBy: { createdAt: "desc" },
-      take: 4,
-      select: digestSummarySelect,
-    }),
-  ]);
+  const archiveDigests = await prisma.digest.findMany({
+    where: archiveWhere,
+    orderBy: { createdAt: "desc" },
+    skip: archiveSkip,
+    take: archivePageSize,
+    select: digestSummarySelect,
+  });
 
   return (
-    <div className="page-pad">
-      <h1 className="sr-only">Home</h1>
-      <section className="grid gap-9 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="min-w-0">
-          <DashboardHomeTabs
-            initialTab={selectedTab}
-            aiDigest={
-              <AiDigestFeed
-                activeTokens={activeTokens}
-                archiveCount={archiveCount}
-                archiveDigests={archiveDigests}
-                archivePage={archivePage}
-                todayDigest={todayDigest}
-              />
-            }
-            forYou={<ForYouRecommendationSection scope="for-you" />}
-            subscription={
-              <ForYouRecommendationSection scope="subscription" />
-            }
-          />
-        </div>
-        <aside className="fb-rail at-desktop">
-          <div>
-            <h3>Home</h3>
-            <div className="grid gap-2">
-              <Stat
-                icon={todayDigest ? CheckCircle2 : Clock3}
-                label="AI digest"
-                value={todayDigest ? "Synced" : "Waiting"}
-              />
-              <Stat icon={Sparkles} label="Subscription" value="Live" />
-              <Stat icon={Sparkles} label="For You" value="Live" />
-              <Stat icon={Archive} label="Archive entries" value={archiveCount} />
-            </div>
-          </div>
-          <div>
-            <h3>Recent digest</h3>
-            <div className="grid gap-1">
-              {recentArchiveDigests.map((digest) => (
-                <Link
-                  className="fb-rail-link"
-                  href={`/dashboard?tab=ai-digest#${digest.id}`}
-                  key={digest.id}
-                >
-                  <strong>{digest.title}</strong>
-                  <span>
-                    {digest.itemCount} items · {digest.createdAt.toLocaleDateString()}
-                  </span>
-                </Link>
-              ))}
-              {recentArchiveDigests.length === 0 ? (
-                <p className="text-sm leading-6 text-[var(--muted-strong)]">
-                  Older digests appear here after another subscription sync.
-                </p>
-              ) : null}
-            </div>
-          </div>
-          <Link className="fb-btn light compact" href="/builders">
-            <UsersRound aria-hidden="true" />
-            Manage sources
-          </Link>
-        </aside>
-      </section>
-    </div>
+    <AiDigestFeed
+      activeTokens={activeTokens}
+      archiveCount={archiveCount}
+      archiveDigests={archiveDigests}
+      archivePage={archivePage}
+      todayDigest={todayDigest}
+    />
   );
 }
 
@@ -271,6 +252,110 @@ function AiDigestFeed({
             </Link>
           </nav>
         ) : null}
+      </section>
+    </section>
+  );
+}
+
+async function HomeStatsSlot({ userId }: { userId: string }) {
+  const [todayDigestExists, totalDigests] = await Promise.all([
+    prisma.digest.findFirst({
+      where: { userId, createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) } },
+      select: { id: true },
+    }),
+    prisma.digest.count({ where: { userId } }),
+  ]);
+  const archiveCount = Math.max(0, totalDigests - (todayDigestExists ? 1 : 0));
+  return (
+    <div className="grid gap-2">
+      <Stat
+        icon={todayDigestExists ? CheckCircle2 : Clock3}
+        label="AI digest"
+        value={todayDigestExists ? "Synced" : "Waiting"}
+      />
+      <Stat icon={Sparkles} label="Subscription" value="Live" />
+      <Stat icon={Sparkles} label="For You" value="Live" />
+      <Stat icon={Archive} label="Archive entries" value={archiveCount} />
+    </div>
+  );
+}
+
+function HomeStatsSkeleton() {
+  return (
+    <div className="grid gap-2" aria-busy="true" aria-live="polite">
+      {[0, 1, 2, 3].map((index) => (
+        <div key={index} className="h-14 animate-pulse rounded-[10px] bg-black/10" />
+      ))}
+    </div>
+  );
+}
+
+async function RecentDigestSlot({ userId }: { userId: string }) {
+  const recent = await prisma.digest.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+    select: digestSummarySelect,
+  });
+  // Drop today's digest from the rail recent list.
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const archiveOnly = recent
+    .filter((digest) => digest.createdAt < today)
+    .slice(0, 4);
+  if (archiveOnly.length === 0) {
+    return (
+      <p className="text-sm leading-6 text-[var(--muted-strong)]">
+        Older digests appear here after another subscription sync.
+      </p>
+    );
+  }
+  return (
+    <div className="grid gap-1">
+      {archiveOnly.map((digest) => (
+        <Link
+          className="fb-rail-link"
+          href={`/dashboard?tab=ai-digest#${digest.id}`}
+          key={digest.id}
+        >
+          <strong>{digest.title}</strong>
+          <span>
+            {digest.itemCount} items · {digest.createdAt.toLocaleDateString()}
+          </span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function RecentDigestSkeleton() {
+  return (
+    <div className="grid gap-3" aria-busy="true" aria-live="polite">
+      {[0, 1, 2].map((index) => (
+        <div key={index} className="grid gap-1.5 border-t border-[var(--line)] pt-2 first:border-t-0 first:pt-0">
+          <div className="h-3 w-32 animate-pulse rounded bg-black/10" />
+          <div className="h-2.5 w-20 animate-pulse rounded bg-black/10" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AiDigestFeedSkeleton() {
+  return (
+    <section className="grid gap-5" aria-busy="true" aria-live="polite">
+      <div className="mt-4 h-12 animate-pulse rounded-[10px] bg-black/10" />
+      <div className="h-72 animate-pulse rounded-[12px] bg-black/10" />
+      <section className="mt-8">
+        <div className="flex items-center gap-3">
+          <span className="fb-section-label">Digest archive</span>
+          <span className="inline-block h-5 w-32 animate-pulse rounded-full bg-black/10" />
+        </div>
+        <div className="mt-4 grid gap-3">
+          <div className="h-20 animate-pulse rounded-[10px] bg-black/10" />
+          <div className="h-20 animate-pulse rounded-[10px] bg-black/10" />
+          <div className="h-20 animate-pulse rounded-[10px] bg-black/10" />
+        </div>
       </section>
     </section>
   );

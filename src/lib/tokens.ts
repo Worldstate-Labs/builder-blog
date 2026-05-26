@@ -8,10 +8,6 @@ export function newAgentToken() {
   return `bb_${randomBytes(32).toString("base64url")}`;
 }
 
-export function newDeviceCode() {
-  return randomBytes(5).toString("base64url").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
-}
-
 export async function createAgentToken(userId: string, name: string) {
   const { prisma } = await import("@/lib/prisma");
   const token = newAgentToken();

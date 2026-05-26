@@ -339,8 +339,8 @@ async function BuilderSections({
                   allowRemove: false,
                   builder,
                   // Distinguish admin-curated channels (the community library) from other
-                  // imported personal libraries. Owner-based check replaces the legacy
-                  // BuilderScope.CENTRAL flag.
+                  // imported personal libraries. Detection is owner-based: admin-owned
+                  // library entries are treated as community content.
                   crawlLabel: "Hub imported",
                   latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
                   subscribed: data.subscribed.has(builder.id),

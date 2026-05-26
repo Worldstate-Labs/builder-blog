@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Copy, Eye, EyeOff, KeyRound, Plus } from "lucide-react";
+import { KeyRound, Plus } from "lucide-react";
 
 export type AgentTokenListItem = {
   id: string;
@@ -38,9 +38,6 @@ export function AgentTokenPanel({
   initialTokens: AgentTokenListItem[];
 }) {
   const [tokens, setTokens] = useState(initialTokens);
-  const [newToken, setNewToken] = useState<string | null>(null);
-  const [showNewToken, setShowNewToken] = useState(false);
-  const [tokenCopied, setTokenCopied] = useState(false);
   const [tokenName, setTokenName] = useState("");
   const [status, setStatus] = useState("");
   const [copied, setCopied] = useState(false);
@@ -62,8 +59,6 @@ export function AgentTokenPanel({
 
   function openCreateDialog() {
     setStatus("");
-    setNewToken(null);
-    setShowNewToken(false);
     setCreateOpen(true);
     createDialogRef.current?.showModal();
     // Focus the input after the dialog has rendered.
@@ -94,25 +89,12 @@ export function AgentTokenPanel({
         if (!response.ok) {
           throw new Error(body?.error ?? `HTTP ${response.status}`);
         }
-        setNewToken(body.token);
-        setTokenName("");
         setTokens((current) => [body.record, ...current]);
         closeCreateDialog();
       } catch (error) {
         setStatus(error instanceof Error ? error.message : "Token creation failed");
       }
     });
-  }
-
-  async function copyNewToken() {
-    if (!newToken) return;
-    try {
-      await navigator.clipboard.writeText(newToken);
-      setTokenCopied(true);
-      window.setTimeout(() => setTokenCopied(false), 1800);
-    } catch {
-      setStatus("Could not copy token");
-    }
   }
 
   function openRevokeDialog(token: AgentTokenListItem) {
@@ -193,45 +175,6 @@ export function AgentTokenPanel({
         </button>
       </div>
 
-      {newToken ? (
-        <div className="mt-4 rounded-[10px] border border-[var(--accent)] bg-[var(--accent-soft)] p-4">
-          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--accent-strong)]">
-            New token created
-          </p>
-          <div className="mt-2 flex items-center gap-2">
-            <code className="mono flex-1 break-all text-[12px] text-[var(--ink)]">
-              {showNewToken ? newToken : "•".repeat(Math.min(newToken.length, 40))}
-            </code>
-            <button
-              aria-label={showNewToken ? "Hide token" : "Show token"}
-              className="fb-btn ghost compact"
-              onClick={() => setShowNewToken((current) => !current)}
-              title={showNewToken ? "Hide" : "Show"}
-              type="button"
-            >
-              {showNewToken ? (
-                <EyeOff aria-hidden="true" />
-              ) : (
-                <Eye aria-hidden="true" />
-              )}
-            </button>
-            <button
-              aria-label="Copy token"
-              className="fb-btn light compact"
-              onClick={copyNewToken}
-              title="Copy"
-              type="button"
-            >
-              <Copy aria-hidden="true" />
-              {tokenCopied ? "Copied" : "Copy"}
-            </button>
-          </div>
-          <p className="mt-2 text-[11px] text-[var(--muted-strong)]">
-            Save it somewhere safe — you can always come back here to see it.
-          </p>
-        </div>
-      ) : null}
-
       <div className="mt-4 overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)]">
         {tokens.map((token) => (
           <TokenRow
@@ -239,7 +182,6 @@ export function AgentTokenPanel({
             token={token}
             isPending={isPending}
             onRevoke={() => openRevokeDialog(token)}
-            onError={(message) => setStatus(message)}
           />
         ))}
         {tokens.length === 0 ? (
@@ -259,6 +201,7 @@ export function AgentTokenPanel({
       {/* Create token dialog */}
       <dialog
         ref={createDialogRef}
+        aria-label="New agent token"
         className="fb-dialog"
         onClose={() => {
           setCreateOpen(false);
@@ -369,60 +312,11 @@ function TokenRow({
   token,
   isPending,
   onRevoke,
-  onError,
 }: {
   token: AgentTokenListItem;
   isPending: boolean;
   onRevoke: () => void;
-  onError: (message: string) => void;
 }) {
-  const [value, setValue] = useState<string | null>(null);
-  const [revealed, setRevealed] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [fetching, setFetching] = useState(false);
-
-  async function ensureValue(): Promise<string | null> {
-    if (value) return value;
-    setFetching(true);
-    try {
-      const response = await fetch(`/api/settings/tokens/${token.id}/value`);
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.error ?? `HTTP ${response.status}`);
-      }
-      const body = (await response.json()) as { token?: string };
-      if (!body.token) throw new Error("Token value unavailable");
-      setValue(body.token);
-      return body.token;
-    } catch (err) {
-      onError(err instanceof Error ? err.message : "Could not load token");
-      return null;
-    } finally {
-      setFetching(false);
-    }
-  }
-
-  async function toggleReveal() {
-    if (revealed) {
-      setRevealed(false);
-      return;
-    }
-    const v = await ensureValue();
-    if (v) setRevealed(true);
-  }
-
-  async function copyValue() {
-    const v = await ensureValue();
-    if (!v) return;
-    try {
-      await navigator.clipboard.writeText(v);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch {
-      onError("Could not copy token");
-    }
-  }
-
   return (
     <div className="fb-token-row" style={{ opacity: token.revokedAt ? 0.55 : 1 }}>
       <span className="fb-src-icon" style={{ width: "2rem", height: "2rem" }}>
@@ -430,38 +324,6 @@ function TokenRow({
       </span>
       <div className="min-w-0 flex-1">
         <div className="text-[13.5px] font-bold">{token.name}</div>
-        {!token.revokedAt ? (
-          <div className="mt-1 flex items-center gap-2">
-            <code className="mono truncate text-[12px] text-[var(--muted-strong)]">
-              {revealed && value ? value : "•".repeat(28)}
-            </code>
-            <button
-              aria-label={revealed ? "Hide token" : "Show token"}
-              className="fb-btn ghost compact"
-              disabled={fetching}
-              onClick={toggleReveal}
-              title={revealed ? "Hide" : "Show"}
-              type="button"
-            >
-              {revealed ? (
-                <EyeOff aria-hidden="true" className="h-3.5 w-3.5" />
-              ) : (
-                <Eye aria-hidden="true" className="h-3.5 w-3.5" />
-              )}
-            </button>
-            <button
-              aria-label="Copy token"
-              className="fb-btn ghost compact"
-              disabled={fetching}
-              onClick={copyValue}
-              title="Copy"
-              type="button"
-            >
-              <Copy aria-hidden="true" className="h-3.5 w-3.5" />
-              {copied ? "Copied" : null}
-            </button>
-          </div>
-        ) : null}
         <div className="fb-src-meta">
           <span>Created {formatDate(token.createdAt)}</span>
           {token.lastUsedAt ? (
