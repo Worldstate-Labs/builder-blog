@@ -703,7 +703,6 @@ test("personal crawler keeps crawled builders eligible and tracks crawled post k
       },
       {
         id: "builder_central_1",
-        scope: "CENTRAL",
         kind: "BLOG",
         name: "Central Blog",
         sourceUrl: "https://example.com/central",

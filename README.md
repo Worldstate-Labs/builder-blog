@@ -8,10 +8,8 @@ It keeps the core source-following idea but changes delivery from chat messages 
 - Admin-managed central source pool with de-duplicated source IDs.
 - Per-user source pools with a separate digest subscription subset.
 - Personal sources synced by the user's own agent.
-- Central crawl endpoint that reads the database source pool and fetches X,
-  podcast, and blog sources once into one shared pool.
 - Per-user raw feed and historical digest archive.
-- Agent-compatible skill for `/login`, digest preparation, and syncing generated digests back to the web app.
+- Agent-compatible skill for digest preparation and syncing generated digests back to the web app.
 
 ## Setup
 
@@ -28,7 +26,6 @@ GITHUB_ID="..."
 GITHUB_SECRET="..."
 GOOGLE_CLIENT_ID="..."
 GOOGLE_CLIENT_SECRET="..."
-CRON_SECRET="..."
 X_BEARER_TOKEN="..."
 POD2TXT_API_KEY="..."
 OPENAI_API_KEY="..."
@@ -71,24 +68,6 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-## Central Crawl
-
-The crawl endpoint seeds the default source pool, then crawls local database
-sources directly. X sources use X API v2, podcast sources use RSS transcripts,
-YouTube captions, OpenAI audio transcription, and pod2txt as a final podcast
-fallback, while blog sources scrape the configured index pages:
-
-```bash
-curl -H "Authorization: Bearer $CRON_SECRET" \
-  http://localhost:3000/api/cron/crawl
-```
-
-Schedule that endpoint from your deployment platform cron.
-
-`npm run db:seed` still imports the upstream Follow Builders public feed as a
-bootstrap fallback, but the scheduled crawl path no longer depends on those
-pre-generated feed JSON files.
-
 ## Agent Skill
 
 The deployed web app serves the skill and CLI script. Users should copy the
@@ -105,11 +84,11 @@ Served files:
 /api/skill/files/builder-digest.mjs
 ```
 
-Login from terminal:
+## Local agent setup
 
-```bash
-node ~/.builder-blog/builder-digest.mjs login --app-url https://builder-blog.worldstatelabs.com
-```
+1. Sign in to the web app and create an agent token in Settings.
+2. Click "Copy once prompt" on the Sources page (or "Copy cron prompt" for scheduled syncs).
+3. Paste the resulting `Read URL?ec=... and follow.` line into your local AI agent (Claude Code, Codex, etc.). The first step the agent runs exchanges the one-time code for an agent token stored locally at `~/.builder-blog/accounts/<your-email>.json`. Subsequent commands authenticate using that file.
 
 Prepare personalized context:
 

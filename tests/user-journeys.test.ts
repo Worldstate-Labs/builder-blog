@@ -63,13 +63,11 @@ import {
   sourceDefinitionForBuilder,
   sourceTypeIdForBuilder,
 } from "../src/lib/source-registry";
-import { hashToken, newAgentToken, newDeviceCode } from "../src/lib/tokens";
+import { hashToken, newAgentToken } from "../src/lib/tokens";
 
-test("terminal login user path uses short device codes and opaque bearer tokens", () => {
-  const code = newDeviceCode();
+test("agent token format is opaque bearer token with stable hash", () => {
   const token = newAgentToken();
 
-  assert.match(code, /^[A-Z0-9]{1,8}$/);
   assert.match(token, /^bb_[A-Za-z0-9_-]{40,}$/);
   assert.equal(hashToken(token), hashToken(token));
   assert.notEqual(hashToken(token), token);
@@ -428,8 +426,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(bootstrapRoute, /jobs\/digest-cron-setup\.md/);
   assert.match(bootstrapRoute, /jobs\/library-cron\.md/);
   assert.match(bootstrapRoute, /jobs\/digest-cron\.md/);
-  assert.match(bootstrapRoute, /login already configured/);
-  assert.match(bootstrapRoute, /config\.json/);
+  assert.match(bootstrapRoute, /Copy prompt button in the web app/);
   assert.match(skill, /Install From Web App/);
   assert.match(skill, /Scheduled Jobs/);
   assert.match(skill, /builder-agent-runner\.sh digest-cron/);

@@ -530,7 +530,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(schema, /UserLibraryVisibility/);
   assert.match(builderPool, /ensureDefaultCommunityLibraryImport/);
   assert.match(builderPool, /isAdminEmail\(user\.email\)/);
-  assert.match(builderPool, /adminCommunityLibraryHidden/);
+  assert.match(builderPool, /userLibraryVisibility/);
   assert.match(builderPool, /BuilderPoolOrigin\.HUB_IMPORT/);
   assert.match(builderPool, /prisma\.libraryImport/);
 });
@@ -556,8 +556,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /"use client"/);
   assert.match(tokenPanel, /fetch\("\/api\/settings\/tokens"/);
   assert.match(tokenPanel, /fetch\(`\/api\/settings\/tokens\/\$\{tokenId\}`/);
-  assert.match(tokenPanel, /New token created/);
-  assert.match(tokenPanel, /aria-label=\{[^}]*"Show token"/);
+  assert.match(tokenPanel, /"New agent token"/);
+  assert.match(tokenPanel, /fb-dialog/);
   assert.match(feedPreferenceRoute, /export async function PATCH/);
   assert.match(feedPreferenceRoute, /userFeedPreference\.upsert/);
   assert.match(feedPreferenceRoute, /NextResponse\.json/);
@@ -568,24 +568,6 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenRoute, /export async function DELETE/);
   assert.match(tokenRoute, /agentToken\.deleteMany/);
   assert.doesNotMatch(tokenRoute, /redirect\(/);
-});
-
-test("device authorization gives local pending feedback without route redirects", () => {
-  const devicePage = source("src/app/device/page.tsx");
-  const deviceApproveButton = source("src/components/DeviceApproveButton.tsx");
-  const approveRoute = source("src/app/api/device/approve/route.ts");
-
-  assert.match(devicePage, /DeviceApproveButton/);
-  assert.doesNotMatch(devicePage, /approveDeviceLoginAction/);
-  assert.doesNotMatch(devicePage, /FormSubmitButton/);
-  assert.match(deviceApproveButton, /"use client"/);
-  assert.match(deviceApproveButton, /fetch\("\/api\/device\/approve"/);
-  assert.match(deviceApproveButton, /Approving/);
-  assert.match(deviceApproveButton, /Approved\. Return to your terminal\./);
-  assert.match(approveRoute, /export async function POST/);
-  assert.match(approveRoute, /createAgentToken/);
-  assert.match(approveRoute, /NextResponse\.json/);
-  assert.doesNotMatch(approveRoute, /redirect\(/);
 });
 
 test("admin builder mutations stay local instead of using server action forms", () => {

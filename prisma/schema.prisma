@@ -24,7 +24,6 @@ model User {
   subscriptions           Subscription[]
   digests                 Digest[]
   agentTokens             AgentToken[]
-  deviceLogins            DeviceLogin[]
   personalBuilders        Builder[]                @relation("PersonalBuilders")
   builderPoolEntries      BuilderPoolEntry[]
   libraryHubEntries       LibraryHubEntry[]
@@ -341,20 +340,6 @@ model ExchangeCode {
   agentToken   AgentToken @relation(fields: [agentTokenId], references: [id], onDelete: Cascade)
 
   @@index([agentTokenId])
-}
-
-model DeviceLogin {
-  id           String    @id @default(cuid())
-  code         String    @unique
-  userId       String?
-  agentTokenId String?
-  issuedToken  String?
-  expiresAt    DateTime
-  approvedAt   DateTime?
-  createdAt    DateTime  @default(now())
-  user         User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([code])
 }
 
 enum BuilderKind {
