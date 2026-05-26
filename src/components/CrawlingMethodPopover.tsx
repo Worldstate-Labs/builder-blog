@@ -61,7 +61,7 @@ export function CrawlingMethodPopover({ crawlingTool }: { crawlingTool: string |
       </button>
       {open && (
         <div className="fb-popover" role="tooltip">
-          {parsed.runtime || parsed.model || parsed.skill ? (
+          {parsed.runtime || parsed.model || parsed.detail ? (
             <>
               {parsed.runtime ? (
                 <div className="fb-popover-row">
@@ -75,22 +75,18 @@ export function CrawlingMethodPopover({ crawlingTool }: { crawlingTool: string |
                   <span>{parsed.model}</span>
                 </div>
               ) : null}
-              {parsed.skill ? (
-                <div className="fb-popover-row">
-                  <span className="fb-popover-label">Skill</span>
-                  <span>{parsed.skill}</span>
-                </div>
-              ) : null}
               {parsed.detail ? (
                 <div className="fb-popover-row">
                   <span className="fb-popover-label">Source detail</span>
                   <span>{parsed.detail}</span>
                 </div>
               ) : null}
-              <div className="fb-popover-raw">Raw: {parsed.raw}</div>
             </>
           ) : (
-            <div className="fb-popover-raw">Raw: {parsed.raw}</div>
+            <div className="fb-popover-row">
+              <span className="fb-popover-label">Method</span>
+              <span>{parsed.raw}</span>
+            </div>
           )}
         </div>
       )}
