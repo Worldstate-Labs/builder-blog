@@ -3,6 +3,7 @@ import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { fetchDedupedFeedForEntities } from "@/lib/builder-channel-resolver";
 import { getEntityWithChannels } from "@/lib/builder-entities";
+import { BuilderDetailActions } from "@/components/BuilderDetailActions";
 import { prisma } from "@/lib/prisma";
 
 type Params = { params: Promise<{ entityId: string }> };
@@ -79,19 +80,22 @@ export default async function BuilderDetailPage({ params }: Params) {
             <div className="font-mono text-sm text-[var(--muted-strong)]">{handleDisplay}</div>
           ) : null}
           {entity.bio ? <p className="fb-desc max-w-prose">{entity.bio}</p> : null}
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
-            <span className={subscription ? "text-[var(--signal)]" : "text-[var(--muted-strong)]"}>
-              {subscription ? "✓ Following" : "Not following"}
-            </span>
-            {primaryChannel ? (
-              <span className="text-[var(--muted-strong)]">
-                · Source: <span className="font-mono">{primaryChannel.libraryName}</span>
-              </span>
-            ) : null}
+          <div className="mt-3 grid gap-2">
+            <BuilderDetailActions
+              entityId={entity.id}
+              initialSubscribed={Boolean(subscription)}
+              initialPrimaryBuilderId={primaryBuilderId}
+              channels={channels.map((channel) => ({
+                builderId: channel.builderId,
+                libraryName: channel.libraryName,
+                isOwnChannel: channel.isOwnChannel,
+                isAdminCommunity: channel.isAdminCommunity,
+              }))}
+            />
             {lastCrawledMax ? (
-              <span className="text-[var(--muted-strong)]">
-                · Last crawled {dateFormatter.format(lastCrawledMax)}
-              </span>
+              <div className="text-xs text-[var(--muted-strong)]">
+                Last crawled {dateFormatter.format(lastCrawledMax)}
+              </div>
             ) : null}
           </div>
         </div>

@@ -28,6 +28,8 @@ export type CrawledPostCardPost = {
   sourceType?: string | null;
   crawlingTool: string | null;
   builder?: CrawledPostBuilder | null;
+  /** Number of additional channel variants of this canonical post — shown as "+N channels". */
+  alternateChannelCount?: number;
 };
 
 export function CrawledPostCard({
@@ -80,6 +82,11 @@ export function CrawledPostCard({
             <span>Published date unknown</span>
           )}
           {post.crawlingTool ? <span>{post.crawlingTool}</span> : null}
+          {post.alternateChannelCount && post.alternateChannelCount > 0 ? (
+            <span title="Same post available via other libraries / channels">
+              +{post.alternateChannelCount} channel{post.alternateChannelCount === 1 ? "" : "s"}
+            </span>
+          ) : null}
           {extraMeta}
         </div>
         <h3 className="crawled-post-title">{title}</h3>
