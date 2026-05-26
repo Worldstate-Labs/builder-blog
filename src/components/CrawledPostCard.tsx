@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 import { ExternalLink, FileText } from "lucide-react";
 import { SourceBadge } from "@/components/SourceBadge";
 import { CrawlingMethodPopover } from "@/components/CrawlingMethodPopover";
+import { RecommendationReasonsPopover } from "@/components/RecommendationReasonsPopover";
 
 type CrawledPostBuilder = {
   id: string;
@@ -41,6 +42,7 @@ export function CrawledPostCard({
   fallbackBuilder,
   onInteract,
   post,
+  reasons,
   showBuilderRow = true,
   variant = "card",
 }: {
@@ -51,6 +53,8 @@ export function CrawledPostCard({
   fallbackBuilder?: CrawledPostBuilder | null;
   onInteract?: () => void | Promise<void>;
   post: CrawledPostCardPost;
+  /** Recommendation reasons surfaced via a popover icon in the footer. */
+  reasons?: string[];
   /**
    * Whether to render the "Author: X" segment in the meta line.
    * Pass `false` when the surrounding page already makes the builder clear
@@ -212,6 +216,11 @@ export function CrawledPostCard({
                 crawlingTool={post.crawlingTool}
                 summarizedAt={post.createdAt}
               />
+            ) : null}
+
+            {/* 4. Recommendation reasons (only when present) */}
+            {reasons && reasons.length > 0 ? (
+              <RecommendationReasonsPopover reasons={reasons} />
             ) : null}
 
             {extraActions}

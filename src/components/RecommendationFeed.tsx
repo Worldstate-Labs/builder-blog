@@ -161,21 +161,11 @@ function RecommendationCard({
 
   return (
     <CrawledPostCard
-      context={
-        entry.reasons.length > 0 ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {entry.reasons.map((reason) => (
-              <span className="sub-pill" key={reason}>
-                {reason}
-              </span>
-            ))}
-          </div>
-        ) : null
-      }
       dataRead={isRead}
       extraMeta={<span>{Math.round(entry.score)} match</span>}
       onInteract={() => markRead(entry.item.id)}
       post={entry.item}
+      reasons={entry.reasons}
     />
   );
 }
