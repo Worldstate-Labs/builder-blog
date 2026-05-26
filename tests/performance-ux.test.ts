@@ -556,7 +556,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /"use client"/);
   assert.match(tokenPanel, /fetch\("\/api\/settings\/tokens"/);
   assert.match(tokenPanel, /fetch\(`\/api\/settings\/tokens\/\$\{tokenId\}`/);
-  assert.match(tokenPanel, /Copy once/);
+  assert.match(tokenPanel, /New token created/);
+  assert.match(tokenPanel, /aria-label=\{[^}]*"Show token"/);
   assert.match(feedPreferenceRoute, /export async function PATCH/);
   assert.match(feedPreferenceRoute, /userFeedPreference\.upsert/);
   assert.match(feedPreferenceRoute, /NextResponse\.json/);

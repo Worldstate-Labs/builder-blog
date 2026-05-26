@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { KeyRound, Plus } from "lucide-react";
+import { Copy, Eye, EyeOff, KeyRound, Plus } from "lucide-react";
 
 export type AgentTokenListItem = {
   id: string;
@@ -39,23 +39,50 @@ export function AgentTokenPanel({
 }) {
   const [tokens, setTokens] = useState(initialTokens);
   const [newToken, setNewToken] = useState<string | null>(null);
+  const [showNewToken, setShowNewToken] = useState(false);
+  const [tokenCopied, setTokenCopied] = useState(false);
   const [tokenName, setTokenName] = useState("");
   const [status, setStatus] = useState("");
   const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  // Create dialog state
+  const [createOpen, setCreateOpen] = useState(false);
+  const createDialogRef = useRef<HTMLDialogElement>(null);
+  const createInputRef = useRef<HTMLInputElement>(null);
+
   // Revoke confirm dialog state
   const [revokeTarget, setRevokeTarget] = useState<AgentTokenListItem | null>(null);
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const revokeDialogRef = useRef<HTMLDialogElement>(null);
 
   const activeCount = useMemo(
     () => tokens.filter((token) => !token.revokedAt).length,
     [tokens],
   );
 
-  function createToken() {
+  function openCreateDialog() {
     setStatus("");
-    const name = tokenName.trim() || "Untitled token";
+    setNewToken(null);
+    setShowNewToken(false);
+    setCreateOpen(true);
+    createDialogRef.current?.showModal();
+    // Focus the input after the dialog has rendered.
+    window.setTimeout(() => createInputRef.current?.focus(), 0);
+  }
+
+  function closeCreateDialog() {
+    createDialogRef.current?.close();
+    setCreateOpen(false);
+    setTokenName("");
+  }
+
+  function submitCreate() {
+    const name = tokenName.trim();
+    if (!name) {
+      setStatus("Give the token a name first.");
+      return;
+    }
+    setStatus("");
     startTransition(async () => {
       try {
         const response = await fetch("/api/settings/tokens", {
@@ -70,19 +97,31 @@ export function AgentTokenPanel({
         setNewToken(body.token);
         setTokenName("");
         setTokens((current) => [body.record, ...current]);
+        closeCreateDialog();
       } catch (error) {
         setStatus(error instanceof Error ? error.message : "Token creation failed");
       }
     });
   }
 
+  async function copyNewToken() {
+    if (!newToken) return;
+    try {
+      await navigator.clipboard.writeText(newToken);
+      setTokenCopied(true);
+      window.setTimeout(() => setTokenCopied(false), 1800);
+    } catch {
+      setStatus("Could not copy token");
+    }
+  }
+
   function openRevokeDialog(token: AgentTokenListItem) {
     setRevokeTarget(token);
-    dialogRef.current?.showModal();
+    revokeDialogRef.current?.showModal();
   }
 
   function closeRevokeDialog() {
-    dialogRef.current?.close();
+    revokeDialogRef.current?.close();
     setRevokeTarget(null);
   }
 
@@ -137,29 +176,14 @@ export function AgentTokenPanel({
             Long-lived tokens for the terminal skill. Treat them like passwords.
           </p>
         </div>
-      </div>
-
-      <div className="mt-4 flex gap-2">
-        <input
-          className="fb-input flex-1"
-          disabled={isPending}
-          maxLength={80}
-          onChange={(e) => setTokenName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") createToken();
-          }}
-          placeholder="Token name (e.g. My Mac · Claude Code)"
-          type="text"
-          value={tokenName}
-        />
         <button
           className="fb-btn dark compact"
           disabled={isPending}
-          onClick={createToken}
+          onClick={openCreateDialog}
           type="button"
         >
           <Plus aria-hidden="true" />
-          {isPending ? "Creating..." : "New token"}
+          New token
         </button>
       </div>
 
@@ -177,67 +201,51 @@ export function AgentTokenPanel({
       {newToken ? (
         <div className="mt-4 rounded-[10px] border border-[var(--accent)] bg-[var(--accent-soft)] p-4">
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--accent-strong)]">
-            Copy once · This token will not be shown again
+            New token created
           </p>
-          <code className="mono mt-2 block break-all text-[12px] text-[var(--ink)]">
-            {newToken}
-          </code>
+          <div className="mt-2 flex items-center gap-2">
+            <code className="mono flex-1 break-all text-[12px] text-[var(--ink)]">
+              {showNewToken ? newToken : "•".repeat(Math.min(newToken.length, 40))}
+            </code>
+            <button
+              aria-label={showNewToken ? "Hide token" : "Show token"}
+              className="fb-btn ghost compact"
+              onClick={() => setShowNewToken((current) => !current)}
+              title={showNewToken ? "Hide" : "Show"}
+              type="button"
+            >
+              {showNewToken ? (
+                <EyeOff aria-hidden="true" />
+              ) : (
+                <Eye aria-hidden="true" />
+              )}
+            </button>
+            <button
+              aria-label="Copy token"
+              className="fb-btn light compact"
+              onClick={copyNewToken}
+              title="Copy"
+              type="button"
+            >
+              <Copy aria-hidden="true" />
+              {tokenCopied ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <p className="mt-2 text-[11px] text-[var(--muted-strong)]">
+            Save it somewhere safe — you can always come back here to see it.
+          </p>
         </div>
       ) : null}
 
       <div className="mt-4 overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)]">
         {tokens.map((token) => (
-          <div
+          <TokenRow
             key={token.id}
-            className="fb-token-row"
-            style={{ opacity: token.revokedAt ? 0.55 : 1 }}
-          >
-            <span className="fb-src-icon" style={{ width: "2rem", height: "2rem" }}>
-              <KeyRound aria-hidden="true" className="h-3.5 w-3.5" />
-            </span>
-            <div className="min-w-0">
-              <div className="text-[13.5px] font-bold">{token.name}</div>
-              <div className="fb-src-meta">
-                <span>Created {formatDate(token.createdAt)}</span>
-                {token.lastUsedAt ? (
-                  <>
-                    <span>·</span>
-                    <span>Last used {formatDate(token.lastUsedAt)}</span>
-                  </>
-                ) : null}
-                {token.lastIp ? (
-                  <>
-                    <span>·</span>
-                    <span>{token.lastIp}</span>
-                  </>
-                ) : null}
-                {token.lastUserAgent ? (
-                  <>
-                    <span>·</span>
-                    <span>{summarizeUserAgent(token.lastUserAgent)}</span>
-                  </>
-                ) : null}
-                {token.revokedAt ? (
-                  <>
-                    <span>·</span>
-                    <span>Revoked</span>
-                  </>
-                ) : null}
-              </div>
-            </div>
-            {token.revokedAt ? (
-              <span className="fb-kind-pill">revoked</span>
-            ) : (
-              <button
-                className="fb-btn ghost compact"
-                disabled={isPending}
-                onClick={() => openRevokeDialog(token)}
-                type="button"
-              >
-                Revoke
-              </button>
-            )}
-          </div>
+            token={token}
+            isPending={isPending}
+            onRevoke={() => openRevokeDialog(token)}
+            onError={(message) => setStatus(message)}
+          />
         ))}
         {tokens.length === 0 ? (
           <div className="px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
@@ -253,9 +261,63 @@ export function AgentTokenPanel({
         {activeCount} active tokens
       </span>
 
+      {/* Create token dialog */}
+      <dialog
+        ref={createDialogRef}
+        className="fb-dialog"
+        onClose={() => {
+          setCreateOpen(false);
+          setTokenName("");
+        }}
+      >
+        {createOpen ? (
+          <div className="fb-dialog-inner">
+            <h3 className="fb-section-heading">New agent token</h3>
+            <p className="mt-2 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+              Give this token a name so you can recognize it later
+              (e.g. <em>My Mac · Claude Code</em>).
+            </p>
+            <input
+              autoComplete="off"
+              className="fb-input mt-3 w-full"
+              disabled={isPending}
+              maxLength={80}
+              onChange={(e) => setTokenName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  submitCreate();
+                }
+              }}
+              placeholder="Token name"
+              ref={createInputRef}
+              type="text"
+              value={tokenName}
+            />
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                className="fb-btn light compact"
+                onClick={closeCreateDialog}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="fb-btn dark compact"
+                disabled={isPending || !tokenName.trim()}
+                onClick={submitCreate}
+                type="button"
+              >
+                {isPending ? "Creating..." : "Create token"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </dialog>
+
       {/* Revoke confirm dialog */}
       <dialog
-        ref={dialogRef}
+        ref={revokeDialogRef}
         className="fb-dialog"
         onClose={closeRevokeDialog}
       >
@@ -306,4 +368,145 @@ export function AgentTokenPanel({
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString();
+}
+
+function TokenRow({
+  token,
+  isPending,
+  onRevoke,
+  onError,
+}: {
+  token: AgentTokenListItem;
+  isPending: boolean;
+  onRevoke: () => void;
+  onError: (message: string) => void;
+}) {
+  const [value, setValue] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [fetching, setFetching] = useState(false);
+
+  async function ensureValue(): Promise<string | null> {
+    if (value) return value;
+    setFetching(true);
+    try {
+      const response = await fetch(`/api/settings/tokens/${token.id}/value`);
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error ?? `HTTP ${response.status}`);
+      }
+      const body = (await response.json()) as { token?: string };
+      if (!body.token) throw new Error("Token value unavailable");
+      setValue(body.token);
+      return body.token;
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Could not load token");
+      return null;
+    } finally {
+      setFetching(false);
+    }
+  }
+
+  async function toggleReveal() {
+    if (revealed) {
+      setRevealed(false);
+      return;
+    }
+    const v = await ensureValue();
+    if (v) setRevealed(true);
+  }
+
+  async function copyValue() {
+    const v = await ensureValue();
+    if (!v) return;
+    try {
+      await navigator.clipboard.writeText(v);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      onError("Could not copy token");
+    }
+  }
+
+  return (
+    <div className="fb-token-row" style={{ opacity: token.revokedAt ? 0.55 : 1 }}>
+      <span className="fb-src-icon" style={{ width: "2rem", height: "2rem" }}>
+        <KeyRound aria-hidden="true" className="h-3.5 w-3.5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-[13.5px] font-bold">{token.name}</div>
+        {!token.revokedAt ? (
+          <div className="mt-1 flex items-center gap-2">
+            <code className="mono truncate text-[12px] text-[var(--muted-strong)]">
+              {revealed && value ? value : "•".repeat(28)}
+            </code>
+            <button
+              aria-label={revealed ? "Hide token" : "Show token"}
+              className="fb-btn ghost compact"
+              disabled={fetching}
+              onClick={toggleReveal}
+              title={revealed ? "Hide" : "Show"}
+              type="button"
+            >
+              {revealed ? (
+                <EyeOff aria-hidden="true" className="h-3.5 w-3.5" />
+              ) : (
+                <Eye aria-hidden="true" className="h-3.5 w-3.5" />
+              )}
+            </button>
+            <button
+              aria-label="Copy token"
+              className="fb-btn ghost compact"
+              disabled={fetching}
+              onClick={copyValue}
+              title="Copy"
+              type="button"
+            >
+              <Copy aria-hidden="true" className="h-3.5 w-3.5" />
+              {copied ? "Copied" : null}
+            </button>
+          </div>
+        ) : null}
+        <div className="fb-src-meta">
+          <span>Created {formatDate(token.createdAt)}</span>
+          {token.lastUsedAt ? (
+            <>
+              <span>·</span>
+              <span>Last used {formatDate(token.lastUsedAt)}</span>
+            </>
+          ) : null}
+          {token.lastIp ? (
+            <>
+              <span>·</span>
+              <span>{token.lastIp}</span>
+            </>
+          ) : null}
+          {token.lastUserAgent ? (
+            <>
+              <span>·</span>
+              <span>{summarizeUserAgent(token.lastUserAgent)}</span>
+            </>
+          ) : null}
+          {token.revokedAt ? (
+            <>
+              <span>·</span>
+              <span>Revoked</span>
+            </>
+          ) : null}
+        </div>
+      </div>
+      {token.revokedAt ? (
+        <span className="fb-kind-pill">revoked</span>
+      ) : (
+        <button
+          className="fb-btn ghost compact"
+          disabled={isPending}
+          onClick={onRevoke}
+          type="button"
+        >
+          Revoke
+        </button>
+      )}
+    </div>
+  );
 }
