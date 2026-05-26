@@ -51,8 +51,15 @@ BEGIN
   LIMIT 1;
 
   IF admin_user_id IS NULL THEN
-    RAISE NOTICE 'No admin user found; skipping CENTRAL→admin reassignment.';
-    RETURN;
+    -- If any builder has NULL ownerUserId (typical for legacy CENTRAL rows), the
+    -- later NOT NULL constraint would fail. Surface a clear error instead.
+    IF EXISTS (SELECT 1 FROM "Builder" WHERE "ownerUserId" IS NULL) THEN
+      RAISE EXCEPTION 'Migration 000015 requires an admin user (email %) before legacy CENTRAL builders can be reassigned. Create the admin user first, then re-run the migration.',
+        coalesce(current_setting('app.admin_emails', true), 'jie@worldstatelabs.com');
+    ELSE
+      RAISE NOTICE 'No admin user found, but no orphan builders either — skipping reassignment.';
+      RETURN;
+    END IF;
   END IF;
 
   -- Reassign owner.
