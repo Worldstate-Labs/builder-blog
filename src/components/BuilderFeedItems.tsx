@@ -101,9 +101,6 @@ export function BuilderFeedItems({
         ) : null}
         {items?.map((item) => (
           <CrawledPostCard
-            extraMeta={
-              <span>Summarized {formatDate(item.createdAt)}</span>
-            }
             fallbackBuilder={builder}
             key={item.id}
             post={{
@@ -123,6 +120,3 @@ export function BuilderFeedItems({
   );
 }
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString();
-}

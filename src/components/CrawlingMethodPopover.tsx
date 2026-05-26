@@ -32,10 +32,19 @@ export function parseCrawlingTool(value: string | null): ParsedCrawlingTool {
   };
 }
 
-export function CrawlingMethodPopover({ crawlingTool }: { crawlingTool: string | null }) {
+export function CrawlingMethodPopover({
+  crawlingTool,
+  summarizedAt,
+}: {
+  crawlingTool: string | null;
+  summarizedAt?: string | null;
+}) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const parsed = parseCrawlingTool(crawlingTool);
+  const summarizedDate = summarizedAt
+    ? new Date(summarizedAt).toLocaleDateString()
+    : null;
 
   useEffect(() => {
     if (!open) return;
@@ -82,12 +91,18 @@ export function CrawlingMethodPopover({ crawlingTool }: { crawlingTool: string |
                 </div>
               ) : null}
             </>
-          ) : (
+          ) : crawlingTool ? (
             <div className="fb-popover-row">
               <span className="fb-popover-label">Method</span>
               <span>{parsed.raw}</span>
             </div>
-          )}
+          ) : null}
+          {summarizedDate ? (
+            <div className="fb-popover-row">
+              <span className="fb-popover-label">Summarized</span>
+              <span>{summarizedDate}</span>
+            </div>
+          ) : null}
         </div>
       )}
     </div>

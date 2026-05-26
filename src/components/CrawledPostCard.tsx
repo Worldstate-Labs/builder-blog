@@ -121,14 +121,6 @@ export function CrawledPostCard({
             sourceType={builder?.sourceType ?? post.sourceType ?? null}
           />
 
-          <span className="post-meta-dot" aria-hidden="true">·</span>
-
-          {post.publishedAt ? (
-            <span>Published {formatDate(post.publishedAt)}</span>
-          ) : (
-            <span>Published date unknown</span>
-          )}
-
           {post.alternateChannelCount && post.alternateChannelCount > 0 ? (
             <>
               <span className="post-meta-dot" aria-hidden="true">·</span>
@@ -177,42 +169,53 @@ export function CrawledPostCard({
 
         {context}
 
-        {/* Icon-only action row */}
-        <div className="post-actions">
-          {/* 1. Open source */}
-          <a
-            aria-label="Open source"
-            className="post-action-btn"
-            href={post.url}
-            onClick={noteInteraction}
-            rel="noreferrer"
-            target="_blank"
-            title="Open source"
-          >
-            <ExternalLink className="h-4 w-4" />
-          </a>
+        {/* Footer row: Published date (left) · Action icons (right) */}
+        <div className="post-footer">
+          <span className="post-footer-published">
+            {post.publishedAt
+              ? `Published ${formatDate(post.publishedAt)}`
+              : "Published date unknown"}
+          </span>
 
-          {/* 2. Raw crawled content toggle */}
-          <button
-            aria-label="Raw crawled content"
-            aria-expanded={rawExpanded}
-            className={`post-action-btn${rawExpanded ? " post-action-btn--active" : ""}`}
-            onClick={() => {
-              setRawExpanded((v) => !v);
-              if (!rawExpanded) noteInteraction();
-            }}
-            title="Raw crawled content"
-            type="button"
-          >
-            <FileText className="h-4 w-4" />
-          </button>
+          <div className="post-actions">
+            {/* 1. Open source */}
+            <a
+              aria-label="Open source"
+              className="post-action-btn"
+              href={post.url}
+              onClick={noteInteraction}
+              rel="noreferrer"
+              target="_blank"
+              title="Open source"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </a>
 
-          {/* 3. Crawling method popover */}
-          {post.crawlingTool ? (
-            <CrawlingMethodPopover crawlingTool={post.crawlingTool} />
-          ) : null}
+            {/* 2. Raw crawled content toggle */}
+            <button
+              aria-label="Raw crawled content"
+              aria-expanded={rawExpanded}
+              className={`post-action-btn${rawExpanded ? " post-action-btn--active" : ""}`}
+              onClick={() => {
+                setRawExpanded((v) => !v);
+                if (!rawExpanded) noteInteraction();
+              }}
+              title="Raw crawled content"
+              type="button"
+            >
+              <FileText className="h-4 w-4" />
+            </button>
 
-          {extraActions}
+            {/* 3. Crawling method popover (also surfaces summarized-at) */}
+            {post.crawlingTool || post.createdAt ? (
+              <CrawlingMethodPopover
+                crawlingTool={post.crawlingTool}
+                summarizedAt={post.createdAt}
+              />
+            ) : null}
+
+            {extraActions}
+          </div>
         </div>
 
         {/* Raw content collapsible region */}
