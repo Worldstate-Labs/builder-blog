@@ -162,7 +162,6 @@ function RecommendationCard({
   return (
     <CrawledPostCard
       dataRead={isRead}
-      extraMeta={<span>{Math.round(entry.score)} match</span>}
       onInteract={() => markRead(entry.item.id)}
       post={entry.item}
       reasons={entry.reasons}
