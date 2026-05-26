@@ -566,7 +566,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokensRoute, /createAgentToken/);
   assert.doesNotMatch(tokensRoute, /redirect\(/);
   assert.match(tokenRoute, /export async function DELETE/);
-  assert.match(tokenRoute, /revokedAt/);
+  assert.match(tokenRoute, /agentToken\.deleteMany/);
   assert.doesNotMatch(tokenRoute, /redirect\(/);
 });
 

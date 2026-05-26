@@ -131,13 +131,8 @@ export function AgentTokenPanel({
     closeRevokeDialog();
     setStatus("");
     const previousTokens = tokens;
-    setTokens((current) =>
-      current.map((token) =>
-        token.id === tokenId
-          ? { ...token, revokedAt: new Date().toISOString() }
-          : token,
-      ),
-    );
+    // Optimistically remove the row.
+    setTokens((current) => current.filter((token) => token.id !== tokenId));
     startTransition(async () => {
       try {
         const response = await fetch(`/api/settings/tokens/${tokenId}`, {

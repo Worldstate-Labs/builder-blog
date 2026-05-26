@@ -11,13 +11,15 @@ export async function DELETE(_request: Request, { params }: Params) {
   }
 
   const { tokenId } = await params;
-  await prisma.agentToken.updateMany({
+  // Hard-delete the token row. Any in-flight requests using this token
+  // will get 401 because the bearer lookup will miss. Pending exchange
+  // codes for this token cascade away via the FK.
+  await prisma.agentToken.deleteMany({
     where: {
       id: tokenId,
       userId: session.user.id,
     },
-    data: { revokedAt: new Date() },
   });
 
-  return NextResponse.json({ tokenId, revoked: true });
+  return NextResponse.json({ tokenId, removed: true });
 }
