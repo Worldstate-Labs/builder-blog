@@ -73,7 +73,7 @@ test("desktop shell uses home rail, header search, and merged home feeds", () =>
   assert.doesNotMatch(appShell, /label: "Digest"/);
   assert.doesNotMatch(appShell, /label: "For You"/);
   assert.doesNotMatch(appShell, /label: "History"/);
-  assert.match(appShell, /label: "Search"/);
+  assert.match(appShell, /aria-label="Search"/);
   assert.doesNotMatch(appNav, /recommendations/);
   assert.match(appNav, /"search"/);
   assert.match(appShell, /className="fb-top /);
