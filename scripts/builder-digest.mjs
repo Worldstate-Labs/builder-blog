@@ -73,52 +73,17 @@ const DEFAULT_APP_URL = "https://builder-blog.worldstatelabs.com";
 const DEFAULT_AGENT_RUNTIME = detectedAgentRuntime();
 const DEFAULT_AGENT_MODEL = detectedAgentModel();
 const DEFAULT_PERSONAL_CRAWL_DAYS = 30;
-const PERSONAL_SOURCE_CRAWLERS = [
-  {
-    id: "x",
-    label: "X / Twitter",
-    builderKind: "X",
-    syncKind: "X",
-    crawl: crawlPersonalXBuilder,
-  },
-  {
-    id: "blog",
-    label: "Blog",
-    builderKind: "BLOG",
-    syncKind: "BLOG",
-    crawl: crawlPersonalBlogBuilder,
-  },
-  {
-    id: "youtube",
-    label: "YouTube",
-    builderKind: "PODCAST",
-    syncKind: "PODCAST",
-    matches: isYouTubeSource,
-    crawl: crawlPersonalYouTubeBuilder,
-  },
-  {
-    id: "podcast",
-    label: "Podcast RSS",
-    builderKind: "PODCAST",
-    syncKind: "PODCAST",
-    crawl: crawlPersonalPodcastBuilder,
-  },
-  {
-    id: "pdf",
-    label: "PDF",
-    builderKind: "WEBSITE",
-    syncKind: "WEBSITE",
-    matches: isPdfSource,
-    crawl: crawlPersonalPdfBuilder,
-  },
-  {
-    id: "website",
-    label: "Website",
-    builderKind: "WEBSITE",
-    syncKind: "WEBSITE",
-    crawl: crawlPersonalWebsiteBuilder,
-  },
-];
+// Single source of truth for source metadata lives in config/sources.json.
+// This map only carries the per-source crawler function — the part that can't be
+// expressed as JSON. Source id is the join key with sources.json.
+const CRAWL_FN_BY_SOURCE_ID = {
+  x: crawlPersonalXBuilder,
+  blog: crawlPersonalBlogBuilder,
+  youtube: crawlPersonalYouTubeBuilder,
+  podcast: crawlPersonalPodcastBuilder,
+  pdf: crawlPersonalPdfBuilder,
+  website: crawlPersonalWebsiteBuilder,
+};
 
 function usage() {
   console.log(`builder-digest commands:
@@ -621,12 +586,19 @@ export function personalBuildersForCrawl(context) {
 }
 
 export function personalCrawlerSourceForBuilder(builder) {
-  const explicitSourceType = normalizeSourceType(builder.sourceType);
-  return PERSONAL_SOURCE_CRAWLERS.find(
-    (source) =>
-      (explicitSourceType ? explicitSourceType === source.id : builder.kind === source.builderKind) &&
-      (source.matches ? source.matches(builder) : true),
-  ) ?? null;
+  const sourceId = sourceTypeIdForBuilder(builder);
+  const crawl = CRAWL_FN_BY_SOURCE_ID[sourceId];
+  if (!crawl) return null;
+  const config = sourceConfigFor(sourceId);
+  // Returned shape kept compatible with existing callers that do
+  // `source.crawl(builder, opts)` and read `source.id`.
+  return {
+    id: sourceId,
+    label: config?.label ?? sourceId,
+    builderKind: config?.builderKind ?? builder.kind,
+    syncKind: config?.builderKind ?? builder.kind,
+    crawl,
+  };
 }
 
 export function crawledItemKeysForBuilder(context, builderId) {
@@ -676,23 +648,32 @@ export function cutoffForBuilder(context, builderId, fallbackCutoff) {
 function sourceTypeIdForBuilder(builder) {
   const explicit = normalizeSourceType(builder.sourceType);
   if (explicit) return explicit;
-  if (isYouTubeSource(builder)) return "youtube";
-  if (builder.kind === "BLOG") return "blog";
-  if (builder.kind === "X") return "x";
-  if (builder.kind === "PODCAST") return "podcast";
-  if (isPdfSource(builder)) return "pdf";
-  return "website";
+
+  const sources = loadSourcesConfig().sources;
+  const urlText = `${builder.sourceUrl || ""} ${builder.crawlUrl || ""}`;
+
+  // First: URL-pattern matches scoped to the builder kind (catches youtube/pdf).
+  for (const source of sources) {
+    if (source.builderKind !== builder.kind) continue;
+    if (!Array.isArray(source.urlPatterns) || source.urlPatterns.length === 0) continue;
+    for (const pattern of source.urlPatterns) {
+      if (new RegExp(pattern, "i").test(urlText)) return source.id;
+    }
+  }
+
+  // Second: first source matching the kind without URL patterns (blog/x/podcast/website).
+  const kindDefault = sources.find(
+    (s) => s.builderKind === builder.kind && (!s.urlPatterns || s.urlPatterns.length === 0),
+  );
+  return kindDefault?.id ?? "website";
 }
 
 function isYouTubeSource(builder) {
-  if (normalizeSourceType(builder.sourceType) === "youtube") return true;
-  const source = `${builder.sourceUrl || ""} ${builder.crawlUrl || ""}`;
-  return builder.kind === "PODCAST" && /youtube\.com|youtu\.be/i.test(source);
+  return sourceTypeIdForBuilder(builder) === "youtube";
 }
 
 function isPdfSource(builder) {
-  const source = `${builder.sourceUrl || ""} ${builder.crawlUrl || ""}`;
-  return /\.pdf(?:\s|$|[?#])/i.test(source);
+  return sourceTypeIdForBuilder(builder) === "pdf";
 }
 
 function normalizeXHandle(value) {
