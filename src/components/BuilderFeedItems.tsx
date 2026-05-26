@@ -102,10 +102,7 @@ export function BuilderFeedItems({
         {items?.map((item) => (
           <CrawledPostCard
             extraMeta={
-              <>
-                <span>{feedItemKindLabel(item.kind)}</span>
-                <span>Summarized {formatDate(item.createdAt)}</span>
-              </>
+              <span>Summarized {formatDate(item.createdAt)}</span>
             }
             fallbackBuilder={builder}
             key={item.id}
@@ -124,17 +121,6 @@ export function BuilderFeedItems({
       </div>
     </details>
   );
-}
-
-function feedItemKindLabel(kind: string) {
-  const labels: Record<string, string> = {
-    ARTICLE: "Article",
-    POST: "Post",
-    TWEET: "X post",
-    PODCAST_EPISODE: "Podcast",
-    VIDEO: "Video",
-  };
-  return labels[kind] ?? kind.toLowerCase().replaceAll("_", " ");
 }
 
 function formatDate(value: string) {
