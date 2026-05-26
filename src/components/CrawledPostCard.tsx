@@ -227,7 +227,7 @@ export function CrawledPostCard({
 }
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleString();
+  return new Date(value).toLocaleDateString();
 }
 
 function firstLine(body: string) {

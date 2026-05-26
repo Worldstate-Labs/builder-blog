@@ -104,7 +104,7 @@ export function BuilderFeedItems({
             extraMeta={
               <>
                 <span>{feedItemKindLabel(item.kind)}</span>
-                <span>Crawled {formatDate(item.createdAt)}</span>
+                <span>Summarized {formatDate(item.createdAt)}</span>
               </>
             }
             fallbackBuilder={builder}
@@ -138,5 +138,5 @@ function feedItemKindLabel(kind: string) {
 }
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleString();
+  return new Date(value).toLocaleDateString();
 }
