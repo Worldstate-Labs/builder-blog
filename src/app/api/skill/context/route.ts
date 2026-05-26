@@ -55,16 +55,17 @@ export async function GET(request: Request) {
     .filter((builder) => builder.ownerUserId === user.id)
     .map((builder) => builder.id);
 
-  // Annotate each library builder with a derived `scope` so the local agent
-  // CLI can tell personal sources (user-owned, requires local crawl) apart
-  // from imported central/community-library sources (already crawled server-
-  // side). The Builder model in Prisma has no scope column — we derive it
-  // here from ownership.
+  // Annotate the requesting user's own builders with scope="PERSONAL" so
+  // the local agent CLI's personalBuildersForCrawl filter can pick them up.
+  // Imported builders (from other users' hub libraries) are left without
+  // a scope — the codebase intentionally has no "CENTRAL" concept; the
+  // owner-based check is the source of truth.
   const personalBuilderIdSet = new Set(personalBuilderIds);
-  const annotatedLibraryBuilders = libraryBuilders.map((builder) => ({
-    ...builder,
-    scope: personalBuilderIdSet.has(builder.id) ? "PERSONAL" : "CENTRAL",
-  }));
+  const annotatedLibraryBuilders = libraryBuilders.map((builder) =>
+    personalBuilderIdSet.has(builder.id)
+      ? { ...builder, scope: "PERSONAL" as const }
+      : builder,
+  );
 
   // Subscriptions are per-channel; derive the entity set from the builder's entityId.
   const subscribedEntityIds = [
