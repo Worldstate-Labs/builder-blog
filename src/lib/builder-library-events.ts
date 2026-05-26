@@ -6,6 +6,8 @@ export type BuilderLibraryEventItem = {
   allowRemove: boolean;
   crawlLabel: string;
   crawlUrl: string | null;
+  /** Canonical creator id — drives builder-detail navigation and per-entity Follow state. */
+  entityId: string | null;
   feedItemCount: number;
   handle: string | null;
   id: string;

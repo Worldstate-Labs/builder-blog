@@ -8,6 +8,7 @@ import { SourceBadge } from "@/components/SourceBadge";
 
 type CrawledPostBuilder = {
   id: string;
+  entityId?: string | null;
   name: string;
   kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";
   sourceType: string;
@@ -85,7 +86,15 @@ export function CrawledPostCard({
         <div className="crawled-post-builder">
           <span>Builder</span>
           {builder ? (
-            <Link href={`/builders#${builder.id}`}>{builder.name}</Link>
+            <Link
+              href={
+                builder.entityId
+                  ? `/builder/${builder.entityId}`
+                  : `/builders#${builder.id}`
+              }
+            >
+              {builder.name}
+            </Link>
           ) : (
             <span>{post.sourceName ?? "Unknown builder"}</span>
           )}

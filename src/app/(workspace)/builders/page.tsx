@@ -307,6 +307,7 @@ async function BuilderSections({
             detail={library.description || `Imported from ${library.ownerName}`}
             badge="imported"
             count={library.builders.length}
+            defaultOpen
             indented
             action={
               <LibraryImportRemoveButton
@@ -403,6 +404,7 @@ function builderListItem({
 }): BuilderLibraryListItem {
   return {
     id: builder.id,
+    entityId: builder.entityId,
     kind: builder.kind,
     sourceType: builder.sourceType,
     name: builder.name,

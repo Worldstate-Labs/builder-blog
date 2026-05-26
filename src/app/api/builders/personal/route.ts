@@ -50,6 +50,7 @@ export async function POST(request: Request) {
     allowRemove: true,
     crawlLabel: "Agent synced",
     crawlUrl: builder.crawlUrl,
+    entityId: builder.entityId,
     feedItemCount: 0,
     handle: builder.handle,
     id: builder.id,

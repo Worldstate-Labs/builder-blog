@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { BuilderLibraryActions } from "@/components/BuilderLibraryActions";
@@ -223,7 +224,16 @@ function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
   return (
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="fb-src-name truncate">{builder.name}</div>
+        {builder.entityId ? (
+          <Link
+            href={`/builder/${builder.entityId}`}
+            className="fb-src-name truncate hover:underline"
+          >
+            {builder.name}
+          </Link>
+        ) : (
+          <div className="fb-src-name truncate">{builder.name}</div>
+        )}
         <SourceBadge builder={builder} />
       </div>
       <div className="fb-src-meta">
