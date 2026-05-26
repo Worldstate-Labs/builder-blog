@@ -50,18 +50,6 @@ export function DashboardHomeTabs({
             AI digest
           </button>
           <button
-            aria-controls="home-panel-for-you"
-            aria-selected={selectedTab === "for-you"}
-            className={`fb-tab${selectedTab === "for-you" ? " active" : ""}`}
-            data-active={selectedTab === "for-you" ? "true" : undefined}
-            id="home-tab-for-you"
-            onClick={() => selectTab("for-you")}
-            role="tab"
-            type="button"
-          >
-            For You
-          </button>
-          <button
             aria-controls="home-panel-subscription"
             aria-selected={selectedTab === "subscription"}
             className={`fb-tab${selectedTab === "subscription" ? " active" : ""}`}
@@ -73,14 +61,26 @@ export function DashboardHomeTabs({
           >
             Subscription
           </button>
+          <button
+            aria-controls="home-panel-for-you"
+            aria-selected={selectedTab === "for-you"}
+            className={`fb-tab${selectedTab === "for-you" ? " active" : ""}`}
+            data-active={selectedTab === "for-you" ? "true" : undefined}
+            id="home-tab-for-you"
+            onClick={() => selectTab("for-you")}
+            role="tab"
+            type="button"
+          >
+            For You
+          </button>
         </div>
       </div>
       <div className="fb-m-segctl at-mobile" role="tablist" aria-label="Home feed">
         {(
           [
             { id: "ai-digest", label: "AI digest" },
-            { id: "for-you", label: "For You" },
             { id: "subscription", label: "Subscription" },
+            { id: "for-you", label: "For You" },
           ] as const
         ).map((tab) => (
           <button

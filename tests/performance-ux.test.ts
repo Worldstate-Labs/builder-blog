@@ -86,8 +86,8 @@ test("desktop shell uses home rail, header search, and merged home feeds", () =>
   assert.doesNotMatch(dashboardTabs, /<Link/);
   assert.match(dashboardTabs, /AI digest/);
   assert.match(dashboardTabs, /ai-digest/);
-  assert.match(dashboardTabs, /For You/);
-  assert.match(dashboardTabs, /Subscription/);
+  assert.match(dashboardTabs, /AI digest[\s\S]*Subscription[\s\S]*For You/);
+  assert.match(dashboardTabs, /\{ id: "ai-digest", label: "AI digest" \}[\s\S]*\{ id: "subscription", label: "Subscription" \}[\s\S]*\{ id: "for-you", label: "For You" \}/);
   assert.match(dashboardPage, /scope="subscription"/);
   assert.match(dashboardPage, /scope="for-you"/);
   assert.match(dashboardPage, /Recent digest/);

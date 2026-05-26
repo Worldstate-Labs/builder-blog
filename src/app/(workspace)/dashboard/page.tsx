@@ -125,8 +125,8 @@ export default async function DashboardPage({
                 label="AI digest"
                 value={todayDigest ? "Synced" : "Waiting"}
               />
-              <Stat icon={Sparkles} label="For You" value="Live" />
               <Stat icon={Sparkles} label="Subscription" value="Live" />
+              <Stat icon={Sparkles} label="For You" value="Live" />
               <Stat icon={Archive} label="Archive entries" value={archiveCount} />
             </div>
           </div>
