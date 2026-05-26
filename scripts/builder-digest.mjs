@@ -265,6 +265,17 @@ async function crawlPersonal(args) {
   const crawlTasks = [];
 
   for (const builder of personalBuilders) {
+    const fallbackBuilderSync = {
+      builderId: builder.id,
+      kind: builder.kind,
+      sourceType: sourceTypeIdForBuilder(builder),
+      name: builder.name,
+      handle: builder.handle,
+      sourceUrl: builder.sourceUrl,
+      crawlUrl: builder.crawlUrl,
+      bio: builder.bio,
+      subscribe: subscribedBuilderIds.has(builder.id),
+    };
     try {
       const source = personalCrawlerSourceForBuilder(builder);
       if (!source) {
@@ -276,23 +287,17 @@ async function crawlPersonal(args) {
           agentModel,
         });
         if (!externalItems) {
-          localErrors.push({
-            builder: builder.name,
-            sourceType: sourceTypeIdForBuilder(builder),
-            error: "No local crawler configured for this personal source.",
-          });
+          crawlTasks.push(
+            buildBuilderFallbackTask(builder, fallbackBuilderSync, {
+              error: new Error(
+                "No local crawler configured for this personal source.",
+              ),
+            }),
+          );
           continue;
         }
         builders.push({
-          builderId: builder.id,
-          kind: builder.kind,
-          sourceType: sourceTypeIdForBuilder(builder),
-          name: builder.name,
-          handle: builder.handle,
-          sourceUrl: builder.sourceUrl,
-          crawlUrl: builder.crawlUrl,
-          bio: builder.bio,
-          subscribe: subscribedBuilderIds.has(builder.id),
+          ...fallbackBuilderSync,
           items: filterCrawledItems(externalItems, {
             builderId: builder.id,
             cutoff: force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff),
@@ -310,15 +315,9 @@ async function crawlPersonal(args) {
       });
       const { items, agentTasks: sourceAgentTasks } = normalizePersonalCrawlResult(crawled);
       const builderSync = {
-        builderId: builder.id,
+        ...fallbackBuilderSync,
         kind: source.syncKind,
         sourceType: source.id,
-        name: builder.name,
-        handle: builder.handle,
-        sourceUrl: builder.sourceUrl,
-        crawlUrl: builder.crawlUrl,
-        bio: builder.bio,
-        subscribe: subscribedBuilderIds.has(builder.id),
       };
       crawlTasks.push(...sourceAgentTasks.map((task) => crawlTaskFromAgentTask(task, builderSync)));
       builders.push({
@@ -326,10 +325,9 @@ async function crawlPersonal(args) {
         items,
       });
     } catch (error) {
-      localErrors.push({
-        builder: builder.name,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      crawlTasks.push(
+        buildBuilderFallbackTask(builder, fallbackBuilderSync, { error }),
+      );
     }
   }
 
@@ -417,6 +415,47 @@ export function crawlTasksForReadyBuilders(builders, prompts = {}) {
       id: crawlTaskId({ builderId: builder.builderId, builder: builder.name, item }),
     })),
   );
+}
+
+const FALLBACK_FEED_ITEM_KIND_BY_BUILDER_KIND = {
+  X: "TWEET",
+  BLOG: "BLOG_POST",
+  PODCAST: "PODCAST_EPISODE",
+  WEBSITE: "OTHER",
+};
+
+function buildBuilderFallbackTask(builder, builderSync, { error, prompts = {} } = {}) {
+  const kind = FALLBACK_FEED_ITEM_KIND_BY_BUILDER_KIND[builder.kind] || "OTHER";
+  const handle = builder.handle ? String(builder.handle).replace(/^@/, "") : null;
+  const url =
+    builder.sourceUrl ||
+    builder.crawlUrl ||
+    (handle && builder.kind === "X" ? `https://x.com/${handle}` : null) ||
+    "";
+  const item = {
+    kind,
+    externalId: `agent-fallback:${builder.id}`,
+    title: null,
+    url,
+    publishedAt: null,
+    sourceName: builder.name,
+    body: "",
+  };
+  const task = {
+    type: "crawl_post",
+    agentWorkType: "crawl_builder_fallback",
+    contentStatus: "requires_agent",
+    builder: builder.name,
+    builderId: builder.id,
+    sourceType: builderSync.sourceType ?? sourceTypeIdForBuilder(builder),
+    builderSync,
+    item,
+    minimumContentQuality: genericMinimumContentQuality(),
+    summaryInstructions: singlePostSummaryInstructions(kind, prompts),
+    fallbackReason: error?.message || String(error || "Personal crawler failed"),
+  };
+  task.id = crawlTaskId({ builderId: builder.id, builder: builder.name, item });
+  return task;
 }
 
 function crawlTaskFromAgentTask(task, builderSync, prompts = {}) {
@@ -1731,8 +1770,14 @@ export function validateAgentSyncPayload(crawlResult, payload) {
 
   for (const task of crawlTasks) {
     const id = task.id || crawlTaskId(task);
-    const match = syncItems.find((candidate) => itemMatchesAgentTask(candidate, task));
-    if (!match) {
+    const matches =
+      task.agentWorkType === "crawl_builder_fallback"
+        ? syncItems.filter((candidate) => itemMatchesBuilderFallback(candidate, task, id))
+        : (() => {
+            const found = syncItems.find((candidate) => itemMatchesAgentTask(candidate, task));
+            return found ? [found] : [];
+          })();
+    if (matches.length === 0) {
       errors.push({
         crawlTaskId: id,
         builder: task.builder,
@@ -1742,23 +1787,30 @@ export function validateAgentSyncPayload(crawlResult, payload) {
       continue;
     }
 
-    const taskErrors = validateCrawlTaskItem(task, match);
-    if (taskErrors.length > 0) {
-      errors.push({
+    let anyValid = false;
+    for (const match of matches) {
+      const taskErrors = validateCrawlTaskItem(task, match);
+      if (taskErrors.length > 0) {
+        errors.push({
+          crawlTaskId: id,
+          builder: task.builder,
+          item: match.item.externalId || match.item.url || match.item.title,
+          errors: taskErrors,
+        });
+        continue;
+      }
+      anyValid = true;
+      validatedCrawlTasks.push({
         crawlTaskId: id,
         builder: task.builder,
-        item: task.item?.externalId || task.item?.url || task.item?.title,
-        errors: taskErrors,
+        externalId: match.item.externalId,
+        contentStatus: task.contentStatus,
       });
-      continue;
     }
-
-    validatedCrawlTasks.push({
-      crawlTaskId: id,
-      builder: task.builder,
-      externalId: match.item.externalId,
-      contentStatus: task.contentStatus,
-    });
+    if (!anyValid && matches.length > 0) {
+      // Errors already recorded per item; do not add a separate
+      // "missing_synced_item" since at least one candidate was attempted.
+    }
   }
 
   if (errors.length > 0) {
@@ -1793,6 +1845,19 @@ function extractSyncItems(payload) {
       item,
     })),
   );
+}
+
+function itemMatchesBuilderFallback(candidate, task, taskId) {
+  const rawJson = candidate.item.rawJson;
+  if (!rawJson || typeof rawJson !== "object" || Array.isArray(rawJson)) return false;
+  if (rawJson.crawlTaskId !== taskId) return false;
+  const builder = candidate.builder;
+  const sync = task.builderSync || {};
+  if (builder.builderId && task.builderId && builder.builderId === task.builderId) return true;
+  if (sync.handle && builder.handle && builder.handle === sync.handle) return true;
+  if (sync.sourceUrl && builder.sourceUrl && builder.sourceUrl === sync.sourceUrl) return true;
+  if (task.builder && builder.name === task.builder) return true;
+  return false;
 }
 
 function itemMatchesAgentTask(candidate, task) {
