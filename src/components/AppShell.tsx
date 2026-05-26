@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Session } from "next-auth";
-import { Bell, Settings } from "lucide-react";
+import { Search, Settings } from "lucide-react";
 import { AppNav, type AppNavItem } from "@/components/AppNav";
 import { BrandMark } from "@/components/BrandMark";
 import { SearchForm } from "@/components/SearchForm";
@@ -8,18 +8,10 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserMenu } from "@/components/UserMenu";
 import { isAdminEmail } from "@/lib/admin";
 
-const desktopNav: AppNavItem[] = [
+const nav: AppNavItem[] = [
   { href: "/dashboard", label: "Home", icon: "home" },
   { href: "/builders", label: "Sources", icon: "builders" },
   { href: "/library-hub", label: "Hub", icon: "hub" },
-];
-
-const mobileNav: AppNavItem[] = [
-  { href: "/dashboard", label: "Home", icon: "home" },
-  { href: "/builders", label: "Sources", icon: "builders" },
-  { href: "/library-hub", label: "Hub", icon: "hub" },
-  { href: "/search", label: "Search", icon: "search" },
-  { href: "/settings", label: "Settings", icon: "settings" },
 ];
 
 export function AppShell({
@@ -55,18 +47,18 @@ export function AppShell({
         <span className="grow" />
         <ThemeToggle />
         <Link
-          href="/dashboard"
+          href="/search"
           className="fb-m-icon"
-          aria-label="Notifications"
+          aria-label="Search"
         >
-          <Bell aria-hidden="true" />
+          <Search aria-hidden="true" />
         </Link>
         <UserMenu compact isAdmin={isAdmin} session={session} />
       </header>
 
       <div className="app-body">
         <aside className="fb-side hidden lg:flex">
-          <AppNav items={desktopNav} mode="desktop" />
+          <AppNav items={nav} mode="desktop" />
           <div className="mt-auto pt-3.5 border-t border-[var(--line)]">
             <Link href="/settings" className="fb-nav">
               <Settings aria-hidden="true" />
@@ -76,7 +68,7 @@ export function AppShell({
         </aside>
         <main className="flex min-w-0 flex-1 flex-col">
           {children}
-          <AppNav items={desktopNav} mobileItems={mobileNav} mode="mobile" />
+          <AppNav items={nav} mode="mobile" />
         </main>
       </div>
     </div>
