@@ -1144,6 +1144,122 @@ a {
   justify-content: flex-end;
 }
 
+/* New layout classes */
+.post-meta {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.72rem;
+  font-weight: 800;
+  gap: 0.3rem 0.5rem;
+  letter-spacing: 0.06em;
+  margin-top: 0.45rem;
+  text-transform: uppercase;
+}
+
+.post-meta-dot {
+  color: var(--muted);
+  opacity: 0.5;
+}
+
+.post-meta-author-label {
+  color: var(--muted);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.post-meta-author-link {
+  color: var(--accent);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.post-meta-author-link:hover {
+  text-decoration: underline;
+}
+
+.post-summary {
+  margin-top: 0.9rem;
+}
+
+.post-actions {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-start;
+  margin-top: 0.9rem;
+}
+
+.post-action-btn {
+  align-items: center;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  padding: 0.18rem;
+  transition: color 120ms ease;
+}
+
+.post-action-btn:hover {
+  color: var(--ink);
+}
+
+.post-action-btn--active {
+  color: var(--accent);
+}
+
+.post-action-btn--active:hover {
+  color: var(--accent);
+}
+
+/* Crawling method popover */
+.fb-popover-anchor {
+  position: relative;
+}
+
+.fb-popover {
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  bottom: calc(100% + 0.5rem);
+  box-shadow: 0 4px 16px color-mix(in oklch, var(--ink) 10%, transparent);
+  font-size: 0.72rem;
+  left: 0;
+  min-width: 18rem;
+  padding: 0.65rem 0.8rem;
+  position: absolute;
+  z-index: 50;
+}
+
+.fb-popover-row {
+  align-items: baseline;
+  display: flex;
+  gap: 0.5rem;
+  line-height: 1.6;
+}
+
+.fb-popover-label {
+  color: var(--muted);
+  flex-shrink: 0;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  min-width: 7rem;
+  text-transform: uppercase;
+}
+
+.fb-popover-raw {
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 0.68rem;
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+  word-break: break-all;
+}
+
 .text-link {
   color: var(--accent);
   font-size: 0.78rem;
