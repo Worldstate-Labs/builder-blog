@@ -8,6 +8,67 @@ import { fileURLToPath } from "node:url";
 
 const CONFIG_DIR = join(homedir(), ".builder-blog");
 const ACCOUNTS_DIR = join(CONFIG_DIR, "accounts");
+const SOURCES_CONFIG_PATH = join(CONFIG_DIR, "sources.json");
+
+let _sourcesConfig = null;
+
+function loadSourcesConfig() {
+  if (_sourcesConfig) return _sourcesConfig;
+  try {
+    _sourcesConfig = JSON.parse(readFileSync(SOURCES_CONFIG_PATH, "utf8"));
+  } catch {
+    // Fall back to embedded defaults when the file hasn't been downloaded yet.
+    _sourcesConfig = {
+      sources: [
+        {
+          id: "x",
+          builderKind: "X",
+          urlPatterns: ["(^|//)((www\\.)?(x|twitter)\\.com)/"],
+          contentQuality: { primaryContentOnly: true, minChars: 1, minWords: 1, disallowedPrimarySources: ["title", "description", "page metadata"] },
+        },
+        {
+          id: "blog",
+          builderKind: "BLOG",
+          urlPatterns: [],
+          contentQuality: { primaryContentOnly: true, minChars: 200, minWords: 35, disallowedPrimarySources: ["title", "description", "page metadata", "file name"] },
+        },
+        {
+          id: "youtube",
+          builderKind: "PODCAST",
+          urlPatterns: ["youtube\\.com", "youtu\\.be"],
+          contentQuality: { primaryContentOnly: true, minChars: 80, minWords: 12, minUniqueWordRatio: 0.25, maxTimestampWordRatio: 0.2, disallowedPrimarySources: ["title", "description", "feed description", "page metadata"] },
+        },
+        {
+          id: "podcast",
+          builderKind: "PODCAST",
+          urlPatterns: [],
+          contentQuality: { primaryContentOnly: true, minChars: 200, minWords: 35, disallowedPrimarySources: ["title", "description", "page metadata"] },
+        },
+        {
+          id: "pdf",
+          builderKind: "WEBSITE",
+          urlPatterns: ["\\.pdf(?:\\s|$|[?#])"],
+          contentQuality: { primaryContentOnly: true, minChars: 200, minWords: 35, disallowedPrimarySources: ["title", "description", "page metadata", "file name"] },
+        },
+        {
+          id: "website",
+          builderKind: "WEBSITE",
+          urlPatterns: [],
+          contentQuality: { primaryContentOnly: true, minChars: 200, minWords: 35, disallowedPrimarySources: ["title", "description", "page metadata"] },
+        },
+      ],
+    };
+  }
+  return _sourcesConfig;
+}
+
+export function sourceConfigFor(builderOrSourceTypeId) {
+  const config = loadSourcesConfig();
+  const id = typeof builderOrSourceTypeId === "string"
+    ? builderOrSourceTypeId
+    : normalizeSourceType(builderOrSourceTypeId?.sourceType) || sourceTypeIdForBuilder(builderOrSourceTypeId);
+  return config.sources.find((s) => s.id === id) ?? config.sources.find((s) => s.id === "website");
+}
 const DEFAULT_APP_URL = "https://builder-blog.worldstatelabs.com";
 const DEFAULT_AGENT_RUNTIME = detectedAgentRuntime();
 const DEFAULT_AGENT_MODEL = detectedAgentModel();
@@ -767,23 +828,11 @@ export function youtubeContentQuality(text, { source, title = "", description = 
 }
 
 function youtubeMinimumContentQuality() {
-  return {
-    primaryContentOnly: true,
-    minChars: 80,
-    minWords: 12,
-    minUniqueWordRatio: 0.25,
-    maxTimestampWordRatio: 0.2,
-    disallowedPrimarySources: ["title", "description", "feed description", "page metadata"],
-  };
+  return sourceConfigFor("youtube").contentQuality;
 }
 
 function genericMinimumContentQuality() {
-  return {
-    primaryContentOnly: true,
-    minChars: 200,
-    minWords: 35,
-    disallowedPrimarySources: ["title", "description", "page metadata", "file name"],
-  };
+  return sourceConfigFor("website").contentQuality;
 }
 
 export function agentTaskId(task) {

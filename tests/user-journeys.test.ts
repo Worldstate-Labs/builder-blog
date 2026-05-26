@@ -58,9 +58,7 @@ function assertOrderedText(text: string, markers: string[]) {
 import {
   builderSourceLabel,
   builderKindForSourceType,
-  centralCrawlerBuilderKinds,
   feedItemKindLabel,
-  personalCrawlerSourceForBuilder,
   sourceDefinitionForType,
   sourceDefinitionForBuilder,
   sourceTypeIdForBuilder,
@@ -1676,11 +1674,7 @@ test("web display boundaries keep raw crawled content in the builders tab", () =
   assert.equal(readFileSync("src/components/CrawledPostCard.tsx", "utf8").includes("Raw crawled content"), true);
 });
 
-test("source registry centralizes current source categories and crawl eligibility", () => {
-  assert.deepEqual(
-    centralCrawlerBuilderKinds().sort(),
-    [BuilderKind.BLOG, BuilderKind.PODCAST, BuilderKind.X].sort(),
-  );
+test("source registry centralizes current source categories", () => {
   assert.equal(feedItemKindLabel(FeedItemKind.PODCAST_EPISODE), "Podcast episode");
   assert.equal(
     sourceDefinitionForBuilder({
@@ -1688,8 +1682,8 @@ test("source registry centralizes current source categories and crawl eligibilit
       sourceType: "youtube",
       sourceUrl: "https://www.youtube.com/@OpenAI",
       crawlUrl: null,
-    })?.centralCrawler,
-    false,
+    })?.id,
+    "youtube",
   );
   assert.equal(
     sourceDefinitionForBuilder({
@@ -1700,15 +1694,7 @@ test("source registry centralizes current source categories and crawl eligibilit
     "youtube",
   );
   assert.equal(
-    personalCrawlerSourceForBuilder({
-      kind: BuilderKind.PODCAST,
-      sourceUrl: "https://www.youtube.com/@OpenAI",
-      crawlUrl: null,
-    })?.id,
-    "youtube",
-  );
-  assert.equal(
-    personalCrawlerSourceForBuilder({
+    sourceDefinitionForBuilder({
       kind: BuilderKind.PODCAST,
       sourceType: "youtube",
       sourceUrl: "https://video.example.com/openai",
@@ -1717,7 +1703,7 @@ test("source registry centralizes current source categories and crawl eligibilit
     "youtube",
   );
   assert.equal(
-    personalCrawlerSourceForBuilder({
+    sourceDefinitionForBuilder({
       kind: BuilderKind.PODCAST,
       sourceUrl: "https://feeds.example.com/show.xml",
       crawlUrl: null,
@@ -1725,7 +1711,7 @@ test("source registry centralizes current source categories and crawl eligibilit
     "podcast",
   );
   assert.equal(
-    personalCrawlerSourceForBuilder({
+    sourceDefinitionForBuilder({
       kind: BuilderKind.X,
       sourceUrl: "https://x.com/example",
       crawlUrl: null,
@@ -1733,7 +1719,7 @@ test("source registry centralizes current source categories and crawl eligibilit
     "x",
   );
   assert.equal(
-    personalCrawlerSourceForBuilder({
+    sourceDefinitionForBuilder({
       kind: BuilderKind.WEBSITE,
       sourceType: "website",
       sourceUrl: "https://example.com",

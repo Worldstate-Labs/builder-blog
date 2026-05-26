@@ -41,6 +41,10 @@ const skillFiles = {
     path: "scripts/builder-digest.mjs",
     contentType: "text/javascript; charset=utf-8",
   },
+  "sources.json": {
+    path: "config/sources.json",
+    contentType: "application/json; charset=utf-8",
+  },
 } as const;
 
 export async function GET(_request: Request, { params }: Params) {

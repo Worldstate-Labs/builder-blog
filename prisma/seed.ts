@@ -1,9 +1,7 @@
-import { importFollowBuildersFeeds, seedDefaultBuilderPool } from "../src/lib/builders";
-
+// The server-side crawler and seed functions have been removed.
+// Admin uses the local CLI (builder-digest.mjs) like every other user.
 async function main() {
-  const seeded = await seedDefaultBuilderPool();
-  const imported = await importFollowBuildersFeeds();
-  console.log({ seeded, imported });
+  console.log("No seed actions configured. Use the CLI to import builders.");
 }
 
 main().catch((error) => {

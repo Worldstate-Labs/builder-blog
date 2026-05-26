@@ -1,4 +1,5 @@
 import { BuilderKind, FeedItemKind } from "@prisma/client";
+import sourcesConfig from "../../config/sources.json";
 
 type BuilderSourceInput = {
   kind: BuilderKind;
@@ -7,88 +8,42 @@ type BuilderSourceInput = {
   crawlUrl?: string | null;
 };
 
+type SourceConfigEntry = (typeof sourcesConfig.sources)[number];
+
 export type SourceDefinition = {
   id: string;
   label: string;
   builderKind: BuilderKind;
   feedItemKinds: FeedItemKind[];
-  centralCrawler: boolean;
-  personalCrawler: boolean;
   matchesBuilder?: (builder: BuilderSourceInput) => boolean;
 };
 
-export const SOURCE_DEFINITIONS = [
-  {
-    id: "x",
-    label: "X / Twitter",
-    builderKind: BuilderKind.X,
-    feedItemKinds: [FeedItemKind.TWEET],
-    centralCrawler: true,
-    personalCrawler: true,
-  },
-  {
-    id: "blog",
-    label: "Blog",
-    builderKind: BuilderKind.BLOG,
-    feedItemKinds: [FeedItemKind.BLOG_POST],
-    centralCrawler: true,
-    personalCrawler: true,
-  },
-  {
-    id: "youtube",
-    label: "YouTube",
-    builderKind: BuilderKind.PODCAST,
-    feedItemKinds: [FeedItemKind.PODCAST_EPISODE],
-    centralCrawler: false,
-    personalCrawler: true,
-    matchesBuilder: (builder) =>
-      isYouTubeUrl(builder.crawlUrl) ||
-      (!builder.crawlUrl && isYouTubeUrl(builder.sourceUrl)),
-  },
-  {
-    id: "podcast",
-    label: "Podcast RSS",
-    builderKind: BuilderKind.PODCAST,
-    feedItemKinds: [FeedItemKind.PODCAST_EPISODE],
-    centralCrawler: true,
-    personalCrawler: true,
-  },
-  {
-    id: "pdf",
-    label: "PDF",
-    builderKind: BuilderKind.WEBSITE,
-    feedItemKinds: [],
-    centralCrawler: false,
-    personalCrawler: true,
-    matchesBuilder: (builder) => /\.pdf(?:\s|$|[?#])/i.test(sourceUrlText(builder)),
-  },
-  {
-    id: "website",
-    label: "Website",
-    builderKind: BuilderKind.WEBSITE,
-    feedItemKinds: [],
-    centralCrawler: false,
-    personalCrawler: true,
-  },
-] satisfies SourceDefinition[];
+function buildSourceDefinitions(): SourceDefinition[] {
+  return sourcesConfig.sources.map((entry) => {
+    const compiledPatterns = entry.urlPatterns.map((p) => new RegExp(p, "i"));
+    const def: SourceDefinition = {
+      id: entry.id,
+      label: entry.label,
+      builderKind: entry.builderKind as BuilderKind,
+      feedItemKinds: entry.feedItemKinds as FeedItemKind[],
+    };
+    if (compiledPatterns.length > 0) {
+      def.matchesBuilder = (builder: BuilderSourceInput) => {
+        const text = sourceUrlText(builder);
+        return compiledPatterns.some((re) => re.test(text));
+      };
+    }
+    return def;
+  });
+}
+
+export const SOURCE_DEFINITIONS: SourceDefinition[] = buildSourceDefinitions();
 
 export function sourceDefinitionForBuilder(builder: BuilderSourceInput) {
   const explicit = sourceDefinitionForType(builder.sourceType);
   if (explicit) return explicit;
 
   return sourceDefinitionByRules(builder);
-}
-
-export function personalCrawlerSourceForBuilder(builder: BuilderSourceInput) {
-  const explicit = sourceDefinitionForType(builder.sourceType);
-  if (explicit?.personalCrawler && explicit.builderKind === builder.kind) return explicit;
-
-  return SOURCE_DEFINITIONS.find(
-    (source) =>
-      source.personalCrawler &&
-      source.builderKind === builder.kind &&
-      (source.matchesBuilder ? source.matchesBuilder(builder) : true),
-  ) ?? null;
 }
 
 export function sourceDefinitionForType(sourceType: string | null | undefined) {
@@ -99,9 +54,7 @@ export function sourceDefinitionForType(sourceType: string | null | undefined) {
       id,
       label: titleCase(id),
       builderKind: BuilderKind.WEBSITE,
-      feedItemKinds: [],
-      centralCrawler: false,
-      personalCrawler: false,
+      feedItemKinds: [] as FeedItemKind[],
     }
   );
 }
@@ -113,16 +66,6 @@ export function sourceTypeIdForBuilder(builder: BuilderSourceInput) {
 
 export function builderKindForSourceType(sourceType: string | null | undefined) {
   return sourceDefinitionForType(sourceType)?.builderKind ?? BuilderKind.WEBSITE;
-}
-
-export function centralCrawlerBuilderKinds() {
-  return Array.from(
-    new Set(
-      SOURCE_DEFINITIONS.filter((source) => source.centralCrawler).map(
-        (source) => source.builderKind,
-      ),
-    ),
-  );
 }
 
 export function builderSourceLabel(builder: BuilderSourceInput) {
@@ -146,12 +89,12 @@ export function feedItemKindLabel(kind: FeedItemKind) {
   return labels[kind] ?? titleCase(kind);
 }
 
-function sourceUrlText(builder: BuilderSourceInput) {
-  return `${builder.sourceUrl ?? ""} ${builder.crawlUrl ?? ""}`;
+export function sourceConfigFor(entry: SourceConfigEntry) {
+  return entry;
 }
 
-function isYouTubeUrl(value: string | null | undefined) {
-  return /youtube\.com|youtu\.be/i.test(value ?? "");
+function sourceUrlText(builder: BuilderSourceInput) {
+  return `${builder.sourceUrl ?? ""} ${builder.crawlUrl ?? ""}`;
 }
 
 function sourceDefinitionByRules(builder: BuilderSourceInput) {

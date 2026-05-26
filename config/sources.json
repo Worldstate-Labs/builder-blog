@@ -1,0 +1,90 @@
+{
+  "sources": [
+    {
+      "id": "x",
+      "label": "X / Twitter",
+      "builderKind": "X",
+      "feedItemKinds": ["TWEET"],
+      "urlPatterns": ["(^|//)((www\\.)?(x|twitter)\\.com)/"],
+      "agentDefaultStatus": "ready",
+      "contentQuality": {
+        "primaryContentOnly": true,
+        "minChars": 1,
+        "minWords": 1,
+        "disallowedPrimarySources": ["title", "description", "page metadata"]
+      }
+    },
+    {
+      "id": "blog",
+      "label": "Blog",
+      "builderKind": "BLOG",
+      "feedItemKinds": ["BLOG_POST"],
+      "urlPatterns": [],
+      "agentDefaultStatus": "ready",
+      "contentQuality": {
+        "primaryContentOnly": true,
+        "minChars": 200,
+        "minWords": 35,
+        "disallowedPrimarySources": ["title", "description", "page metadata", "file name"]
+      }
+    },
+    {
+      "id": "youtube",
+      "label": "YouTube",
+      "builderKind": "PODCAST",
+      "feedItemKinds": ["PODCAST_EPISODE"],
+      "urlPatterns": ["youtube\\.com", "youtu\\.be"],
+      "agentDefaultStatus": "requires_agent",
+      "contentQuality": {
+        "primaryContentOnly": true,
+        "minChars": 80,
+        "minWords": 12,
+        "minUniqueWordRatio": 0.25,
+        "maxTimestampWordRatio": 0.2,
+        "disallowedPrimarySources": ["title", "description", "feed description", "page metadata"]
+      }
+    },
+    {
+      "id": "podcast",
+      "label": "Podcast RSS",
+      "builderKind": "PODCAST",
+      "feedItemKinds": ["PODCAST_EPISODE"],
+      "urlPatterns": [],
+      "agentDefaultStatus": "ready",
+      "contentQuality": {
+        "primaryContentOnly": true,
+        "minChars": 200,
+        "minWords": 35,
+        "disallowedPrimarySources": ["title", "description", "page metadata"]
+      }
+    },
+    {
+      "id": "pdf",
+      "label": "PDF",
+      "builderKind": "WEBSITE",
+      "feedItemKinds": [],
+      "urlPatterns": ["\\.pdf(?:\\s|$|[?#])"],
+      "agentDefaultStatus": "requires_agent",
+      "contentQuality": {
+        "primaryContentOnly": true,
+        "minChars": 200,
+        "minWords": 35,
+        "disallowedPrimarySources": ["title", "description", "page metadata", "file name"]
+      }
+    },
+    {
+      "id": "website",
+      "label": "Website",
+      "builderKind": "WEBSITE",
+      "feedItemKinds": [],
+      "urlPatterns": [],
+      "agentDefaultStatus": "requires_agent",
+      "contentQuality": {
+        "primaryContentOnly": true,
+        "minChars": 200,
+        "minWords": 35,
+        "disallowedPrimarySources": ["title", "description", "page metadata"]
+      }
+    }
+  ]
+}
