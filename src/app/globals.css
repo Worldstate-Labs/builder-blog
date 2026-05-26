@@ -269,7 +269,6 @@ a {
 .app-body {
   display: flex;
   flex: 1 1 auto;
-  min-height: calc(100vh - 3.8rem);
   min-width: 0;
   width: 100%;
 }
@@ -4219,6 +4218,7 @@ mark.fb-mark-highlight {
   font-weight: 700;
   gap: 0.25rem;
   justify-content: center;
+  min-height: 2.75rem;
   padding: 0.375rem 0.25rem;
   text-decoration: none;
   transition: background 140ms ease, color 140ms ease;
@@ -4240,7 +4240,7 @@ mark.fb-mark-highlight {
   font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.015em;
-  line-height: 1.1;
+  line-height: 1.15;
   margin: 0;
 }
 
@@ -4284,12 +4284,20 @@ mark.fb-mark-highlight {
 .fb-m-search {
   align-items: center;
   background: color-mix(in oklch, var(--ink) 5%, transparent);
+  border: 1px solid transparent;
   border-radius: 12px;
   color: var(--muted);
   display: flex;
   gap: 0.5rem;
   height: 2.5rem;
   padding: 0 0.875rem;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.fb-m-search:focus-within {
+  background: var(--paper-strong);
+  border-color: color-mix(in oklch, var(--accent) 28%, var(--line));
+  color: var(--ink);
 }
 
 .fb-m-search input {
@@ -4299,6 +4307,10 @@ mark.fb-mark-highlight {
   flex: 1;
   font: inherit;
   outline: 0;
+}
+
+.fb-m-search input::placeholder {
+  color: var(--muted);
 }
 
 /* Responsive visibility (overrides Tailwind hidden/lg:flex because
