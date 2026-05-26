@@ -21,6 +21,12 @@ ALTER TABLE "Subscription" DROP COLUMN IF EXISTS "entityId";
 
 ALTER TABLE "Subscription" ALTER COLUMN "builderId" SET NOT NULL;
 
+-- M3 issued DROP CONSTRAINT IF EXISTS against this name, but in 000001_init the unique
+-- was created as `CREATE UNIQUE INDEX`, not as a CONSTRAINT. DROP CONSTRAINT silently
+-- no-op'd, so the original index can still be present here. Drop it as an index before
+-- re-creating, otherwise we hit relation-already-exists.
+DROP INDEX IF EXISTS "Subscription_userId_builderId_key";
+
 CREATE UNIQUE INDEX "Subscription_userId_builderId_key"
   ON "Subscription"("userId", "builderId");
 
