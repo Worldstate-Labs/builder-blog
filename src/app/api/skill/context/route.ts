@@ -55,6 +55,17 @@ export async function GET(request: Request) {
     .filter((builder) => builder.ownerUserId === user.id)
     .map((builder) => builder.id);
 
+  // Annotate each library builder with a derived `scope` so the local agent
+  // CLI can tell personal sources (user-owned, requires local crawl) apart
+  // from imported central/community-library sources (already crawled server-
+  // side). The Builder model in Prisma has no scope column — we derive it
+  // here from ownership.
+  const personalBuilderIdSet = new Set(personalBuilderIds);
+  const annotatedLibraryBuilders = libraryBuilders.map((builder) => ({
+    ...builder,
+    scope: personalBuilderIdSet.has(builder.id) ? "PERSONAL" : "CENTRAL",
+  }));
+
   // Subscriptions are per-channel; derive the entity set from the builder's entityId.
   const subscribedEntityIds = [
     ...new Set(
@@ -145,7 +156,7 @@ export async function GET(request: Request) {
       timestampRule:
         "include items published after the last digest, plus newly crawled items created after the last digest when their publishedAt is still within max post age",
     },
-    libraryBuilders,
+    libraryBuilders: annotatedLibraryBuilders,
     personalCrawlStates,
     personalCrawledItems,
     personalEntityIds,
