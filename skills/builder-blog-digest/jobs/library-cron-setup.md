@@ -42,7 +42,7 @@ mkdir -p "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/logs"
 FollowBrief library job and installs one idempotent job that runs every 6 hours:
 
 ```bash
-APP_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}"; ( crontab -l 2>/dev/null | grep -v 'builder-agent-runner.sh library-cron' ; echo "0 */6 * * * BUILDER_BLOG_URL=\"$APP_URL\" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1" ) | crontab -
+APP_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}"; APP_TOKEN="${BUILDER_BLOG_TOKEN}"; ( crontab -l 2>/dev/null | grep -v 'builder-agent-runner.sh library-cron' ; echo "0 */6 * * * BUILDER_BLOG_URL=\"$APP_URL\" BUILDER_BLOG_TOKEN=\"$APP_TOKEN\" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1" ) | crontab -
 ```
 
 4. Verify the installed schedule:
@@ -54,7 +54,7 @@ crontab -l | grep 'builder-agent-runner.sh library-cron'
 5. Run one immediate smoke check:
 
 ```bash
-BUILDER_BLOG_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}" $HOME/.builder-blog/builder-agent-runner.sh library-cron
+BUILDER_BLOG_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}" BUILDER_BLOG_TOKEN="${BUILDER_BLOG_TOKEN}" $HOME/.builder-blog/builder-agent-runner.sh library-cron
 ```
 
 If the smoke check JSON contains a non-empty `crawlTasks` array: complete

@@ -20,6 +20,7 @@ export async function createAgentToken(userId: string, name: string) {
       userId,
       name,
       tokenHash: hashToken(token),
+      tokenValue: token,
     },
   });
   return { token, record };
@@ -38,9 +39,18 @@ export async function getUserFromBearer(request: Request) {
 
   if (!record || record.revokedAt) return null;
 
+  const lastIp =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    (request.url ? new URL(request.url).hostname : null);
+  const lastUserAgent = request.headers.get("user-agent");
+
   await prisma.agentToken.update({
     where: { id: record.id },
-    data: { lastUsedAt: new Date() },
+    data: {
+      lastUsedAt: new Date(),
+      ...(lastIp ? { lastIp } : {}),
+      ...(lastUserAgent ? { lastUserAgent } : {}),
+    },
   });
 
   return record.user;

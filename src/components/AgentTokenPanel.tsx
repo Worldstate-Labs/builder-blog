@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { KeyRound, Plus } from "lucide-react";
 
 export type AgentTokenListItem = {
@@ -8,8 +8,29 @@ export type AgentTokenListItem = {
   name: string;
   createdAt: string;
   lastUsedAt: string | null;
+  lastIp: string | null;
+  lastUserAgent: string | null;
   revokedAt: string | null;
 };
+
+function summarizeUserAgent(ua: string | null): string {
+  if (!ua) return "unknown machine";
+  const lower = ua.toLowerCase();
+  let os = "";
+  if (lower.includes("mac")) os = "Mac";
+  else if (lower.includes("windows")) os = "Windows";
+  else if (lower.includes("linux")) os = "Linux";
+
+  let client = "";
+  if (lower.includes("claude") || lower.includes("claudecode")) client = "Claude Code";
+  else if (lower.includes("codex")) client = "Codex";
+  else if (lower.includes("curl")) client = "curl";
+  else if (lower.includes("node")) client = "Node";
+
+  const parts = [os, client].filter(Boolean);
+  if (parts.length > 0) return parts.join(" · ");
+  return ua.slice(0, 60);
+}
 
 export function AgentTokenPanel({
   initialTokens,
@@ -18,9 +39,15 @@ export function AgentTokenPanel({
 }) {
   const [tokens, setTokens] = useState(initialTokens);
   const [newToken, setNewToken] = useState<string | null>(null);
+  const [tokenName, setTokenName] = useState("");
   const [status, setStatus] = useState("");
   const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  // Revoke confirm dialog state
+  const [revokeTarget, setRevokeTarget] = useState<AgentTokenListItem | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
   const activeCount = useMemo(
     () => tokens.filter((token) => !token.revokedAt).length,
     [tokens],
@@ -28,17 +55,20 @@ export function AgentTokenPanel({
 
   function createToken() {
     setStatus("");
+    const name = tokenName.trim() || "Untitled token";
     startTransition(async () => {
       try {
         const response = await fetch("/api/settings/tokens", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) {
           throw new Error(body?.error ?? `HTTP ${response.status}`);
         }
         setNewToken(body.token);
+        setTokenName("");
         setTokens((current) => [body.record, ...current]);
       } catch (error) {
         setStatus(error instanceof Error ? error.message : "Token creation failed");
@@ -46,7 +76,20 @@ export function AgentTokenPanel({
     });
   }
 
-  function revokeToken(tokenId: string) {
+  function openRevokeDialog(token: AgentTokenListItem) {
+    setRevokeTarget(token);
+    dialogRef.current?.showModal();
+  }
+
+  function closeRevokeDialog() {
+    dialogRef.current?.close();
+    setRevokeTarget(null);
+  }
+
+  function confirmRevoke() {
+    if (!revokeTarget) return;
+    const tokenId = revokeTarget.id;
+    closeRevokeDialog();
     setStatus("");
     const previousTokens = tokens;
     setTokens((current) =>
@@ -94,6 +137,21 @@ export function AgentTokenPanel({
             Long-lived tokens for the terminal skill. Treat them like passwords.
           </p>
         </div>
+      </div>
+
+      <div className="mt-4 flex gap-2">
+        <input
+          className="fb-input flex-1"
+          disabled={isPending}
+          maxLength={80}
+          onChange={(e) => setTokenName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") createToken();
+          }}
+          placeholder="Token name (e.g. My Mac · Claude Code)"
+          type="text"
+          value={tokenName}
+        />
         <button
           className="fb-btn dark compact"
           disabled={isPending}
@@ -147,6 +205,18 @@ export function AgentTokenPanel({
                     <span>Last used {formatDate(token.lastUsedAt)}</span>
                   </>
                 ) : null}
+                {token.lastIp ? (
+                  <>
+                    <span>·</span>
+                    <span>{token.lastIp}</span>
+                  </>
+                ) : null}
+                {token.lastUserAgent ? (
+                  <>
+                    <span>·</span>
+                    <span>{summarizeUserAgent(token.lastUserAgent)}</span>
+                  </>
+                ) : null}
                 {token.revokedAt ? (
                   <>
                     <span>·</span>
@@ -161,7 +231,7 @@ export function AgentTokenPanel({
               <button
                 className="fb-btn ghost compact"
                 disabled={isPending}
-                onClick={() => revokeToken(token.id)}
+                onClick={() => openRevokeDialog(token)}
                 type="button"
               >
                 Revoke
@@ -182,6 +252,54 @@ export function AgentTokenPanel({
       <span className="sr-only" aria-live="polite">
         {activeCount} active tokens
       </span>
+
+      {/* Revoke confirm dialog */}
+      <dialog
+        ref={dialogRef}
+        className="fb-dialog"
+        onClose={closeRevokeDialog}
+      >
+        {revokeTarget ? (
+          <div className="fb-dialog-inner">
+            <h3 className="fb-section-heading">Revoke token &ldquo;{revokeTarget.name}&rdquo;?</h3>
+            <div className="mt-3 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+              {revokeTarget.lastIp || revokeTarget.lastUserAgent ? (
+                <p>
+                  Last used from{" "}
+                  {revokeTarget.lastIp ? <strong>{revokeTarget.lastIp}</strong> : null}
+                  {revokeTarget.lastIp && revokeTarget.lastUserAgent ? " · " : null}
+                  {revokeTarget.lastUserAgent ? (
+                    <strong>{summarizeUserAgent(revokeTarget.lastUserAgent)}</strong>
+                  ) : null}
+                  {revokeTarget.lastUsedAt ? (
+                    <> · {formatDate(revokeTarget.lastUsedAt)}</>
+                  ) : null}
+                  .
+                </p>
+              ) : null}
+              <p className="mt-2">
+                Any agent job running on this machine will stop being able to reach FollowBrief.
+              </p>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                className="fb-btn light compact"
+                onClick={closeRevokeDialog}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="fb-btn danger compact"
+                onClick={confirmRevoke}
+                type="button"
+              >
+                Revoke
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </dialog>
     </section>
   );
 }

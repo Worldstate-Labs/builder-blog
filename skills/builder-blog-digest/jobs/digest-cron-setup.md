@@ -29,7 +29,7 @@ FollowBrief digest job and installs one idempotent job that runs daily at 8:00
 local time:
 
 ```bash
-APP_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}"; ( crontab -l 2>/dev/null | grep -v 'builder-agent-runner.sh digest-cron' ; echo "0 8 * * * BUILDER_BLOG_URL=\"$APP_URL\" $HOME/.builder-blog/builder-agent-runner.sh digest-cron >> $HOME/.builder-blog/logs/digest-cron.log 2>&1" ) | crontab -
+APP_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}"; APP_TOKEN="${BUILDER_BLOG_TOKEN}"; ( crontab -l 2>/dev/null | grep -v 'builder-agent-runner.sh digest-cron' ; echo "0 8 * * * BUILDER_BLOG_URL=\"$APP_URL\" BUILDER_BLOG_TOKEN=\"$APP_TOKEN\" $HOME/.builder-blog/builder-agent-runner.sh digest-cron >> $HOME/.builder-blog/logs/digest-cron.log 2>&1" ) | crontab -
 ```
 
 4. Verify the installed schedule:
@@ -41,7 +41,7 @@ crontab -l | grep 'builder-agent-runner.sh digest-cron'
 5. Run one immediate smoke check:
 
 ```bash
-BUILDER_BLOG_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}" $HOME/.builder-blog/builder-agent-runner.sh digest-cron
+BUILDER_BLOG_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}" BUILDER_BLOG_TOKEN="${BUILDER_BLOG_TOKEN}" $HOME/.builder-blog/builder-agent-runner.sh digest-cron
 ```
 
 Only if crontab is unavailable or blocked, install the same command and cadence

@@ -32,6 +32,8 @@ export default async function SettingsPage() {
     name: token.name,
     createdAt: token.createdAt.toISOString(),
     lastUsedAt: token.lastUsedAt?.toISOString() ?? null,
+    lastIp: token.lastIp ?? null,
+    lastUserAgent: token.lastUserAgent ?? null,
     revokedAt: token.revokedAt?.toISOString() ?? null,
   }));
 

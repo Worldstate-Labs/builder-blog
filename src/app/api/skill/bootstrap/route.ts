@@ -38,10 +38,12 @@ echo "FollowBrief skill saved to $AGENT_DIR/SKILL.md"
 echo "FollowBrief CLI saved to $AGENT_DIR/builder-digest.mjs"
 echo "FollowBrief agent runner saved to $AGENT_DIR/builder-agent-runner.sh"
 echo "FollowBrief scheduled job prompts saved to $AGENT_DIR/jobs"
-if CONFIG_PATH="$AGENT_DIR/config.json" node -e 'const fs = require("fs"); try { const c = JSON.parse(fs.readFileSync(process.env.CONFIG_PATH, "utf8")); process.exit(c.appUrl === process.env.APP_URL && c.token ? 0 : 1); } catch { process.exit(1); }'; then
-  echo "FollowBrief login already configured for $APP_URL"
+if [ -n "\${BUILDER_BLOG_TOKEN:-}" ]; then
+  echo "FollowBrief login already configured via BUILDER_BLOG_TOKEN."
+elif CONFIG_PATH="$AGENT_DIR/config.json" node -e 'const fs = require("fs"); try { const c = JSON.parse(fs.readFileSync(process.env.CONFIG_PATH, "utf8")); process.exit(c.appUrl === process.env.APP_URL && c.token ? 0 : 1); } catch { process.exit(1); }' 2>/dev/null; then
+  echo "FollowBrief login already configured for $APP_URL (legacy config.json)"
 else
-  node "$AGENT_DIR/builder-digest.mjs" login --app-url "$APP_URL"
+  echo "FollowBrief skill installed. Set BUILDER_BLOG_TOKEN in your environment (or use the Copy prompt button in the web app)."
 fi
 `;
 

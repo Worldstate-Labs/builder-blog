@@ -6,6 +6,7 @@ import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
 import { ForYouRecommendationSection } from "@/components/ForYouRecommendationSection";
 import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
+import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -36,7 +37,7 @@ export default async function DashboardPage({
   const archivePage = Math.max(1, Number(firstParam(params.archivePage) ?? "1") || 1);
   const archiveSkip = (archivePage - 1) * archivePageSize;
 
-  const [todayDigest, digestCount] = await Promise.all([
+  const [todayDigest, digestCount, rawTokens] = await Promise.all([
     prisma.digest.findFirst({
       where: {
         userId: session.user.id,
@@ -50,7 +51,29 @@ export default async function DashboardPage({
     prisma.digest.count({
       where: { userId: session.user.id },
     }),
+    prisma.agentToken.findMany({
+      where: { userId: session.user.id, revokedAt: null },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        lastUsedAt: true,
+        lastIp: true,
+        lastUserAgent: true,
+      },
+    }),
   ]);
+
+  const activeTokens: AgentTokenListItem[] = rawTokens.map((token) => ({
+    id: token.id,
+    name: token.name,
+    createdAt: token.createdAt.toISOString(),
+    lastUsedAt: token.lastUsedAt?.toISOString() ?? null,
+    lastIp: token.lastIp ?? null,
+    lastUserAgent: token.lastUserAgent ?? null,
+    revokedAt: null,
+  }));
   const archiveWhere = todayDigest
     ? { userId: session.user.id, NOT: { id: todayDigest.id } }
     : { userId: session.user.id };
@@ -80,6 +103,7 @@ export default async function DashboardPage({
             initialTab={selectedTab}
             aiDigest={
               <AiDigestFeed
+                activeTokens={activeTokens}
                 archiveCount={archiveCount}
                 archiveDigests={archiveDigests}
                 archivePage={archivePage}
@@ -139,11 +163,13 @@ export default async function DashboardPage({
 }
 
 function AiDigestFeed({
+  activeTokens,
   archiveCount,
   archiveDigests,
   archivePage,
   todayDigest,
 }: {
+  activeTokens: AgentTokenListItem[];
   archiveCount: number;
   archiveDigests: DigestSummaryRow[];
   archivePage: number;
@@ -155,7 +181,7 @@ function AiDigestFeed({
   return (
     <section className="grid gap-5">
       <div className="mt-4">
-        <SkillPromptActions context="digest" />
+        <SkillPromptActions context="digest" tokens={activeTokens} />
       </div>
       {todayDigest ? (
         <DigestDetails digest={serializeDigestSummary(todayDigest)} mode="today" />

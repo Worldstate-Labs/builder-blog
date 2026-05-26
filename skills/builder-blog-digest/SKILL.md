@@ -29,17 +29,21 @@ web app URL. Do not assume a local repository checkout exists.
 
 ## Commands
 
-### `/login`
+### Set token
 
-Authenticate this terminal or agent session with the FollowBrief web app:
+Authenticate the CLI by setting `BUILDER_BLOG_TOKEN` to the token value from the FollowBrief web app:
+
+1. In the FollowBrief web app, go to **Settings → Agent tokens** and create a token.
+2. The **Copy prompt** button on the Sources or Home page builds a self-contained command with the token already embedded — paste and run it directly.
+3. To set the token manually for all commands in the current shell:
 
 ```bash
-node ~/.builder-blog/builder-digest.mjs login --app-url "${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}"
+export BUILDER_BLOG_TOKEN="<paste token here>"
 ```
 
-The command opens a browser verification URL. The user signs in with Google or GitHub, approves the device code, and the CLI stores an agent token in `~/.builder-blog/config.json`.
+The CLI prefers `BUILDER_BLOG_TOKEN` in the environment over any stored `~/.builder-blog/config.json` value.
 
-Never print the token after login.
+Never print the token to shared logs.
 
 ## Scheduled Jobs
 

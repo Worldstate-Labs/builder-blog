@@ -107,14 +107,14 @@ model Builder {
 }
 
 model BuilderEntity {
-  id            String                  @id @default(cuid())
-  canonicalKey  String                  @unique
-  kind          BuilderKind
-  name          String
-  handle        String?
-  bio           String?
-  createdAt     DateTime                @default(now())
-  updatedAt     DateTime                @updatedAt
+  id           String                  @id @default(cuid())
+  canonicalKey String                  @unique
+  kind         BuilderKind
+  name         String
+  handle       String?
+  bio          String?
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
   builders     Builder[]
   feedReads    FeedRead[]
   channelPrefs UserChannelPreference[]
@@ -315,14 +315,17 @@ model Digest {
 }
 
 model AgentToken {
-  id         String    @id @default(cuid())
-  userId     String
-  name       String
-  tokenHash  String    @unique
-  lastUsedAt DateTime?
-  createdAt  DateTime  @default(now())
-  revokedAt  DateTime?
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String    @id @default(cuid())
+  userId        String
+  name          String
+  tokenHash     String    @unique
+  tokenValue    String?
+  lastUsedAt    DateTime?
+  lastIp        String?
+  lastUserAgent String?
+  createdAt     DateTime  @default(now())
+  revokedAt     DateTime?
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }

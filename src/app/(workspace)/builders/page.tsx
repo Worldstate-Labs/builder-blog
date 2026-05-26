@@ -9,6 +9,7 @@ import { LibraryImportRemoveButton } from "@/components/LibraryImportRemoveButto
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
 import { MobileSourcesSwitcher } from "@/components/MobileSourcesSwitcher";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
+import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import {
@@ -70,7 +71,7 @@ async function loadBuildersPageData() {
   const isAdmin = isAdminEmail(session.user.email);
   await ensureDefaultCommunityLibraryImport(session.user.id);
 
-  const [poolEntries, subscriptions, importedLibraries, ownSharedLibrary, adminLibVisibility] = await Promise.all([
+  const [poolEntries, subscriptions, importedLibraries, ownSharedLibrary, adminLibVisibility, rawTokens] = await Promise.all([
     prisma.builderPoolEntry.findMany({
       where: { userId: session.user.id, removedAt: null },
       include: {
@@ -133,6 +134,18 @@ async function loadBuildersPageData() {
       });
       return { hidden: Boolean(vis?.hidden) };
     })(),
+    prisma.agentToken.findMany({
+      where: { userId: session.user.id, revokedAt: null },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        lastUsedAt: true,
+        lastIp: true,
+        lastUserAgent: true,
+      },
+    }),
   ]);
 
   const subscribedBuilderIds = new Set(subscriptions.map((s) => s.builderId));
@@ -200,7 +213,18 @@ async function loadBuildersPageData() {
     builderLibraryState(session.user.id, poolBuilderIds),
   ]);
 
+  const activeTokens: AgentTokenListItem[] = rawTokens.map((token) => ({
+    id: token.id,
+    name: token.name,
+    createdAt: token.createdAt.toISOString(),
+    lastUsedAt: token.lastUsedAt?.toISOString() ?? null,
+    lastIp: token.lastIp ?? null,
+    lastUserAgent: token.lastUserAgent ?? null,
+    revokedAt: null,
+  }));
+
   return {
+    activeTokens,
     crawledItems,
     importedLibrarySections,
     isAdmin,
@@ -260,7 +284,7 @@ async function BuilderSections({
         />
       }
     >
-      <SkillPromptActions context="library" />
+      <SkillPromptActions context="library" tokens={data.activeTokens} />
       <AddBuilderForm
         sourceOptions={SOURCE_DEFINITIONS.filter((source) => source.id !== "pdf").map(
           (source) => ({ id: source.id, label: source.label }),

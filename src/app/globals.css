@@ -3199,6 +3199,35 @@ a {
   width: 0.875rem;
 }
 
+.fb-btn.danger {
+  background: var(--danger);
+  border-color: transparent;
+  color: #fff;
+}
+
+.fb-btn.danger:hover {
+  background: color-mix(in oklch, var(--danger) 88%, black);
+}
+
+/* Dialogs */
+.fb-dialog {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px color-mix(in oklch, var(--ink) 12%, transparent);
+  max-width: 28rem;
+  padding: 0;
+  width: calc(100vw - 2rem);
+}
+
+.fb-dialog::backdrop {
+  background: color-mix(in oklch, var(--ink) 24%, transparent);
+}
+
+.fb-dialog-inner {
+  padding: 1.5rem;
+}
+
 /* Chips */
 .fb-chip {
   align-items: center;

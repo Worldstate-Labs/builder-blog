@@ -102,8 +102,17 @@ function detectedAgentModel() {
 }
 
 async function readConfig() {
-  if (!existsSync(CONFIG_PATH)) return {};
-  return JSON.parse(await readFile(CONFIG_PATH, "utf8"));
+  const fileConfig = existsSync(CONFIG_PATH)
+    ? JSON.parse(await readFile(CONFIG_PATH, "utf8"))
+    : {};
+  // BUILDER_BLOG_TOKEN env takes precedence over config.json token.
+  const envToken = process.env.BUILDER_BLOG_TOKEN?.trim();
+  const envUrl = process.env.BUILDER_BLOG_URL?.trim().replace(/\/$/, "");
+  return {
+    ...fileConfig,
+    ...(envUrl ? { appUrl: envUrl } : {}),
+    ...(envToken ? { token: envToken } : {}),
+  };
 }
 
 async function saveConfig(config) {
@@ -151,12 +160,27 @@ function openBrowser(url) {
 }
 
 function requireLoggedIn(config) {
-  if (!config.appUrl || !config.token) {
-    throw new Error(`Not logged in. Run: builder-digest login --app-url ${DEFAULT_APP_URL}`);
+  if (!config.token) {
+    throw new Error(
+      `No agent token found. Set BUILDER_BLOG_TOKEN in your environment, ` +
+      `or use the Copy prompt button in the FollowBrief web app to get a self-contained command. ` +
+      `Legacy: builder-digest login --app-url ${DEFAULT_APP_URL}`,
+    );
+  }
+  if (!config.appUrl) {
+    throw new Error(
+      `No app URL configured. Set BUILDER_BLOG_URL in your environment or run: ` +
+      `builder-digest login --app-url ${DEFAULT_APP_URL}`,
+    );
   }
 }
 
 async function login(args) {
+  console.warn(
+    "[DEPRECATED] The `login` device-code flow is deprecated. " +
+    "Use the Copy prompt button in the FollowBrief web app to get a token-embedded command, " +
+    "or set BUILDER_BLOG_TOKEN in your environment.",
+  );
   const appUrl = argValue(args, "--app-url", process.env.BUILDER_BLOG_URL || DEFAULT_APP_URL).replace(/\/$/, "");
   const start = await postJson(`${appUrl}/api/device/start`, { appName: "FollowBrief skill" });
   console.log(`Open this URL to approve the terminal:\n${start.verificationUrl}\n`);
