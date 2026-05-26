@@ -131,8 +131,12 @@ export function AgentTokenPanel({
     });
   }
 
+  // Build the bootstrap command from the live origin so the copied snippet always
+  // points at the deployment the user is signed into.
   const bootstrapCommand =
-    '/bin/sh -c "$(curl -fsSL https://followbrief.app/api/skill/bootstrap)"';
+    typeof window !== "undefined"
+      ? `/bin/sh -c "$(curl -fsSL ${window.location.origin}/api/skill/bootstrap)"`
+      : '/bin/sh -c "$(curl -fsSL /api/skill/bootstrap)"';
 
   async function copyBootstrap() {
     try {
