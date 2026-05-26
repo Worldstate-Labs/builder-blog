@@ -115,10 +115,9 @@ model BuilderEntity {
   bio           String?
   createdAt     DateTime                @default(now())
   updatedAt     DateTime                @updatedAt
-  builders      Builder[]
-  subscriptions Subscription[]
-  feedReads     FeedRead[]
-  channelPrefs  UserChannelPreference[]
+  builders     Builder[]
+  feedReads    FeedRead[]
+  channelPrefs UserChannelPreference[]
 
   @@index([kind])
   @@index([handle])
@@ -206,18 +205,14 @@ model LibraryImport {
 }
 
 model Subscription {
-  id        String        @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
-  // Channel that the user followed from (provenance). Nullable: survives Builder deletion.
-  builderId String?
-  entityId  String
-  createdAt DateTime      @default(now())
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  builder   Builder?      @relation(fields: [builderId], references: [id], onDelete: SetNull)
-  entity    BuilderEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  builderId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  builder   Builder  @relation(fields: [builderId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, entityId])
-  @@index([userId, builderId])
+  @@unique([userId, builderId])
 }
 
 model FeedItem {

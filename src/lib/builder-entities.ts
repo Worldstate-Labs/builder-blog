@@ -285,6 +285,6 @@ export async function getEntityWithChannels(entityId: string) {
   });
 }
 
-export type SubscriptionWithEntity = Prisma.SubscriptionGetPayload<{
-  include: { entity: true };
+export type SubscriptionWithBuilder = Prisma.SubscriptionGetPayload<{
+  include: { builder: true };
 }>;

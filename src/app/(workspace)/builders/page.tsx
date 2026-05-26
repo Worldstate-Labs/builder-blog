@@ -84,7 +84,7 @@ async function loadBuildersPageData() {
     }),
     prisma.subscription.findMany({
       where: { userId: session.user.id },
-      select: { entityId: true },
+      select: { builderId: true },
     }),
     prisma.libraryImport.findMany({
       where: { userId: session.user.id },
@@ -135,18 +135,10 @@ async function loadBuildersPageData() {
     })(),
   ]);
 
-  const subscribedEntityIds = new Set(
-    subscriptions
-      .map((subscription) => subscription.entityId)
-      .filter((id): id is string => Boolean(id)),
-  );
-  // Helper: tells whether a builder's entity is in the user's followed set.
-  const isBuilderSubscribed = (builder: { entityId?: string | null }) =>
-    Boolean(builder.entityId && subscribedEntityIds.has(builder.entityId));
+  const subscribedBuilderIds = new Set(subscriptions.map((s) => s.builderId));
   const subscribed = {
     has(builderId: string) {
-      const found = poolEntries.find((entry) => entry.builderId === builderId);
-      return Boolean(found && isBuilderSubscribed(found.builder));
+      return subscribedBuilderIds.has(builderId);
     },
   };
   const activeEntryByBuilderId = new Map(poolEntries.map((entry) => [entry.builderId, entry]));

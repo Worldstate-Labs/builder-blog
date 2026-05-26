@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     }),
     prisma.subscription.findMany({
       where: { userId: user.id },
-      include: { entity: true },
+      include: { builder: { include: { entity: true } } },
       orderBy: { createdAt: "asc" },
     }),
     prisma.userFeedPreference.findUnique({
@@ -55,11 +55,11 @@ export async function GET(request: Request) {
     .filter((builder) => builder.ownerUserId === user.id)
     .map((builder) => builder.id);
 
-  // Subscriptions are entity-scoped; project to the candidate entity set for digest.
+  // Subscriptions are per-channel; derive the entity set from the builder's entityId.
   const subscribedEntityIds = [
     ...new Set(
       subscriptions
-        .map((sub) => sub.entityId)
+        .map((sub) => sub.builder?.entityId ?? null)
         .filter((id): id is string => Boolean(id)),
     ),
   ];
@@ -151,10 +151,10 @@ export async function GET(request: Request) {
     personalEntityIds,
     latestPersonalCrawledItems: Array.from(latestByEntity.values()),
     subscriptions: subscriptions
-      .map((s) => s.entity)
-      .filter((e): e is NonNullable<typeof e> => Boolean(e)),
+      .map((s) => s.builder)
+      .filter((b): b is NonNullable<typeof b> => Boolean(b)),
     subscriptionEntities: subscriptions
-      .map((s) => s.entity)
+      .map((s) => s.builder?.entity ?? null)
       .filter((e): e is NonNullable<typeof e> => Boolean(e)),
     subscribedBuilderIds,
     subscribedEntityIds,

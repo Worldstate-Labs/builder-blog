@@ -158,7 +158,7 @@ export async function createRecommendationSnapshot({
       }),
       prisma.subscription.findMany({
         where: { userId },
-        include: { entity: true },
+        include: { builder: true },
         orderBy: { createdAt: "desc" },
         take: 200,
       }),
@@ -180,30 +180,14 @@ export async function createRecommendationSnapshot({
     ]);
   const subscribedEntityIds = uniqueIds(
     subscriptions
-      .map((subscription) => subscription.entityId)
+      .map((subscription) => subscription.builder?.entityId ?? null)
       .filter((id): id is string => Boolean(id)),
   );
 
-  // For subscription scope, find every reachable channel (Builder facet) for the subscribed
-  // entities — across the user's own library + any imported library that contains the entity.
+  // For subscription scope, use the builder ids the user directly subscribed to.
   const subscriptionBuilderIds =
-    scope === "subscription" && subscribedEntityIds.length > 0
-      ? (
-          await prisma.builder.findMany({
-            where: {
-              entityId: { in: subscribedEntityIds },
-              OR: [
-                { ownerUserId: userId },
-                {
-                  hubItems: {
-                    some: { hubEntry: { imports: { some: { userId } } } },
-                  },
-                },
-              ],
-            },
-            select: { id: true },
-          })
-        ).map((b) => b.id)
+    scope === "subscription"
+      ? subscriptions.map((s) => s.builderId)
       : [];
 
   const eligibleBuilderIds =
@@ -327,25 +311,9 @@ export async function createRecommendationSnapshot({
     profileText: [preference?.recommendationProfile, user?.name, user?.email]
       .filter(Boolean)
       .join(" "),
-    // After the entity migration, subscriptions are keyed by entity, not builder facet.
-    // The signal builder only needs identity + descriptive text; we synthesize a
-    // RecommendationBuilder-shaped object from the entity.
     subscriptions: subscriptions
-      .map((subscription) => subscription.entity)
-      .filter((entity): entity is NonNullable<typeof entity> => Boolean(entity))
-      .map((entity) => ({
-        id: entity.id,
-        entityId: entity.id,
-        kind: entity.kind,
-        name: entity.name,
-        handle: entity.handle,
-        sourceType: "",
-        sourceUrl: null,
-        crawlUrl: null,
-        bio: entity.bio,
-        ownerUserId: null,
-        lastCrawledAt: null,
-      })),
+      .map((subscription) => subscription.builder)
+      .filter((builder): builder is NonNullable<typeof builder> => Boolean(builder)),
     reads: reads
       .map((read) => read.feedItem)
       .filter((item): item is NonNullable<typeof item> => Boolean(item)),
@@ -396,29 +364,14 @@ async function unreadCandidateCount(userId: string, scope: RecommendationScope) 
     prisma.libraryHubItem.findMany({ select: { builderId: true } }),
     prisma.subscription.findMany({
       where: { userId },
-      select: { entityId: true },
+      select: { builderId: true },
     }),
   ]);
 
   let eligibleBuilderIds: string[];
   if (scope === "subscription") {
-    const entityIds = uniqueIds(
-      subscriptions
-        .map((s) => s.entityId)
-        .filter((id): id is string => Boolean(id)),
-    );
-    if (entityIds.length === 0) return 0;
-    const builders = await prisma.builder.findMany({
-      where: {
-        entityId: { in: entityIds },
-        OR: [
-          { ownerUserId: userId },
-          { hubItems: { some: { hubEntry: { imports: { some: { userId } } } } } },
-        ],
-      },
-      select: { id: true },
-    });
-    eligibleBuilderIds = builders.map((b) => b.id);
+    eligibleBuilderIds = subscriptions.map((s) => s.builderId);
+    if (eligibleBuilderIds.length === 0) return 0;
   } else {
     eligibleBuilderIds = uniqueIds([
       ...poolBuilderIds,

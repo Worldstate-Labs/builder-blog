@@ -47,19 +47,15 @@ export async function POST(request: Request) {
       origin: BuilderPoolOrigin.PERSONAL_SYNC,
     });
     if (input.subscribe) {
+      await prisma.subscription.upsert({
+        where: { userId_builderId: { userId: user.id, builderId: builder.id } },
+        update: {},
+        create: { userId: user.id, builderId: builder.id },
+      });
+      // Establish primary channel preference if none exists yet (entity follows the channel
+      // the user just synced from).
       const entityId = builder.entityId;
       if (entityId) {
-        const existing = await prisma.subscription.findFirst({
-          where: { userId: user.id, entityId },
-          select: { id: true },
-        });
-        if (!existing) {
-          await prisma.subscription.create({
-            data: { userId: user.id, builderId: builder.id, entityId },
-          });
-        }
-        // Establish primary channel preference if none exists yet (entity follows the channel
-        // the user just synced from).
         await prisma.userChannelPreference.upsert({
           where: { userId_entityId: { userId: user.id, entityId } },
           update: {},
@@ -70,8 +66,8 @@ export async function POST(request: Request) {
             pinnedByUser: false,
           },
         });
-        subscriptions += 1;
       }
+      subscriptions += 1;
     }
     builders += 1;
 

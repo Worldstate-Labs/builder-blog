@@ -35,9 +35,17 @@ export async function DELETE(_request: Request, { params }: Params) {
     select: { id: true, ownerUserId: true, entityId: true },
   });
 
+  // Look up as own builder (owned by this user) — used to determine deletion path.
+  const ownedBuilder = builder?.ownerUserId === session.user.id
+    ? await prisma.builder.findFirst({
+        where: { id: builderId, ownerUserId: session.user.id },
+        select: { entityId: true },
+      })
+    : null;
+
   // If this is the user's own builder (channel), drop it completely.
-  if (builder?.ownerUserId === session.user.id) {
-    const entityId = builder.entityId;
+  if (ownedBuilder) {
+    const entityId = ownedBuilder.entityId;
     const feedItems = await prisma.feedItem.findMany({
       where: { builderId },
       select: { id: true },
@@ -48,36 +56,13 @@ export async function DELETE(_request: Request, { params }: Params) {
       prisma.builder.delete({ where: { id: builderId } }),
     ]);
 
-    // The Builder row is gone — clean up subscription / channel preference if the entity is
-    // no longer reachable from any of this user's libraries.
+    // Subscription for this builder is cascade-deleted by the Builder FK.
+    // Rebind UserChannelPreference if the entity still has other reachable channels.
     if (entityId) {
-      const stillReachable = await prisma.builder.findFirst({
-        where: {
-          entityId,
-          OR: [
-            { ownerUserId: session.user.id },
-            {
-              hubItems: {
-                some: { hubEntry: { imports: { some: { userId: session.user.id } } } },
-              },
-            },
-          ],
-        },
-        select: { id: true },
+      await rebindPrimaryChannels({
+        userId: session.user.id,
+        entityIds: [entityId],
       });
-      if (!stillReachable) {
-        await prisma.subscription.deleteMany({
-          where: { userId: session.user.id, entityId },
-        });
-        await prisma.userChannelPreference.deleteMany({
-          where: { userId: session.user.id, entityId },
-        });
-      } else {
-        await rebindPrimaryChannels({
-          userId: session.user.id,
-          entityIds: [entityId],
-        });
-      }
     }
 
     return NextResponse.json({

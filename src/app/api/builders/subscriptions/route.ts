@@ -4,9 +4,10 @@ import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 /**
- * Bulk subscribe to every reachable creator in the user's pool.
- * Subscription is per-entity; if the pool contains multiple channels for the same creator,
- * we collapse to one subscription per entity.
+ * Bulk subscribe to every channel in the user's pool.
+ * Subscription is now per-channel (userId, builderId) — one row per builder in pool.
+ * UserChannelPreference (entity → primary channel) is still created, picking the first
+ * builder per entity as the canonical display channel.
  */
 export async function POST() {
   const session = await getCurrentSession();
@@ -19,44 +20,27 @@ export async function POST() {
     return NextResponse.json({ subscribed: 0, builderIds: [] });
   }
 
+  // Create one Subscription row per pool channel.
+  await prisma.subscription.createMany({
+    data: poolBuilderIds.map((builderId) => ({
+      userId: session.user.id,
+      builderId,
+    })),
+    skipDuplicates: true,
+  });
+
+  // Also ensure UserChannelPreference exists per entity (pick first builder per entity).
   const builders = await prisma.builder.findMany({
     where: { id: { in: poolBuilderIds } },
     select: { id: true, entityId: true },
   });
-
-  // Pick one canonical channel per entity (first occurrence in pool order is fine).
   const entityToBuilder = new Map<string, string>();
   for (const b of builders) {
     if (b.entityId && !entityToBuilder.has(b.entityId)) {
       entityToBuilder.set(b.entityId, b.id);
     }
   }
-
   if (entityToBuilder.size > 0) {
-    // Bulk: find which entities the user already follows, then create the rest.
-    const existing = await prisma.subscription.findMany({
-      where: {
-        userId: session.user.id,
-        entityId: { in: [...entityToBuilder.keys()] },
-      },
-      select: { entityId: true },
-    });
-    const existingEntitySet = new Set(
-      existing.map((s) => s.entityId).filter((id): id is string => Boolean(id)),
-    );
-    const newSubs = [...entityToBuilder.entries()].filter(
-      ([entityId]) => !existingEntitySet.has(entityId),
-    );
-    if (newSubs.length > 0) {
-      await prisma.subscription.createMany({
-        data: newSubs.map(([entityId, builderId]) => ({
-          userId: session.user.id,
-          builderId,
-          entityId,
-        })),
-        skipDuplicates: true,
-      });
-    }
     await prisma.userChannelPreference.createMany({
       data: [...entityToBuilder.entries()].map(([entityId, builderId]) => ({
         userId: session.user.id,
@@ -69,8 +53,8 @@ export async function POST() {
   }
 
   return NextResponse.json({
-    subscribed: entityToBuilder.size,
-    builderIds: [...entityToBuilder.values()],
+    subscribed: poolBuilderIds.length,
+    builderIds: poolBuilderIds,
     entityIds: [...entityToBuilder.keys()],
   });
 }

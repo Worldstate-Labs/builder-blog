@@ -224,10 +224,11 @@ export async function removeLibraryImportFromHub(params: {
     prisma.libraryImport.deleteMany({
       where: { userId: params.userId, hubEntryId: params.libraryId },
     }),
-    // 3. Cascade-unfollow entities that became orphaned (no remaining reachable channel).
+    // 3. Drop subscriptions for channels that are no longer reachable.
     prisma.subscription.deleteMany({
-      where: { userId: params.userId, entityId: { in: reachability.orphanEntityIds } },
+      where: { userId: params.userId, builderId: { in: removableBuilderIds } },
     }),
+    // Drop channel preferences for orphaned entities (no remaining reachable channel).
     prisma.userChannelPreference.deleteMany({
       where: { userId: params.userId, entityId: { in: reachability.orphanEntityIds } },
     }),

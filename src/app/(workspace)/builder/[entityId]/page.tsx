@@ -24,8 +24,11 @@ export default async function BuilderDetailPage({ params }: Params) {
 
   const [subscription, channelPref, items] = await Promise.all([
     prisma.subscription.findFirst({
-      where: { userId: session.user.id, entityId },
-      select: { entityId: true },
+      where: {
+        userId: session.user.id,
+        builderId: { in: entity.builders.map((b) => b.id) },
+      },
+      select: { builderId: true },
     }),
     prisma.userChannelPreference.findUnique({
       where: { userId_entityId: { userId: session.user.id, entityId } },

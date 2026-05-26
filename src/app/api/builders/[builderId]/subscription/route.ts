@@ -6,9 +6,9 @@ import { prisma } from "@/lib/prisma";
 type Params = { params: Promise<{ builderId: string }> };
 
 /**
- * Follow / unfollow a creator. The URL is keyed by builderId (channel) for backward
- * compatibility, but the underlying Subscription is on the entity (the creator) — so
- * clicking Follow from any channel of the same creator results in a single subscription.
+ * Follow / unfollow a channel. Subscription is now per-channel (userId, builderId).
+ * UserChannelPreference is still entity-based and is set on subscribe to record
+ * which channel the user followed from.
  */
 export async function PATCH(request: Request, { params }: Params) {
   const session = await getCurrentSession();
@@ -26,8 +26,8 @@ export async function PATCH(request: Request, { params }: Params) {
     where: { id: builderId },
     select: { id: true, entityId: true },
   });
-  if (!builder?.entityId) {
-    return NextResponse.json({ error: "Builder has no entity binding" }, { status: 500 });
+  if (!builder) {
+    return NextResponse.json({ error: "Builder not found" }, { status: 404 });
   }
   const entityId = builder.entityId;
 
@@ -35,36 +35,34 @@ export async function PATCH(request: Request, { params }: Params) {
   const subscribed = Boolean(payload?.subscribed);
 
   if (subscribed) {
-    const existing = await prisma.subscription.findFirst({
-      where: { userId: session.user.id, entityId },
-      select: { id: true },
+    await prisma.subscription.upsert({
+      where: { userId_builderId: { userId: session.user.id, builderId } },
+      update: {},
+      create: { userId: session.user.id, builderId },
     });
-    if (!existing) {
-      await prisma.subscription.create({
-        data: { userId: session.user.id, builderId, entityId },
-      });
-    }
     // Establish primary channel preference if absent — defaults to the channel the user
     // followed from.
-    await prisma.userChannelPreference.upsert({
-      where: { userId_entityId: { userId: session.user.id, entityId } },
-      update: {},
-      create: {
-        userId: session.user.id,
-        entityId,
-        primaryBuilderId: builderId,
-        pinnedByUser: false,
-      },
-    });
+    if (entityId) {
+      await prisma.userChannelPreference.upsert({
+        where: { userId_entityId: { userId: session.user.id, entityId } },
+        update: {},
+        create: {
+          userId: session.user.id,
+          entityId,
+          primaryBuilderId: builderId,
+          pinnedByUser: false,
+        },
+      });
+    }
   } else {
-    await prisma.$transaction([
-      prisma.subscription.deleteMany({
+    await prisma.subscription.deleteMany({
+      where: { userId: session.user.id, builderId },
+    });
+    if (entityId) {
+      await prisma.userChannelPreference.deleteMany({
         where: { userId: session.user.id, entityId },
-      }),
-      prisma.userChannelPreference.deleteMany({
-        where: { userId: session.user.id, entityId },
-      }),
-    ]);
+      });
+    }
   }
 
   return NextResponse.json({ builderId, entityId, subscribed });
