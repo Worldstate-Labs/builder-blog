@@ -36,29 +36,44 @@ export async function POST(request: Request) {
 
   const item = await prisma.feedItem.findUnique({
     where: { id: feedItemId },
-    select: { id: true },
+    select: {
+      id: true,
+      kind: true,
+      externalId: true,
+      builder: { select: { entityId: true } },
+    },
   });
   if (!item) {
     return NextResponse.json({ error: "Missing feed item" }, { status: 404 });
   }
+  if (!item.builder?.entityId) {
+    return NextResponse.json({ error: "Feed item not bound to an entity" }, { status: 409 });
+  }
 
-  const read = await prisma.feedRead.upsert({
+  const entityId = item.builder.entityId;
+  // Read state is keyed by canonical content (entityId, kind, externalId) so reads on one
+  // channel mark the post read across all channels of the same creator.
+  const existing = await prisma.feedRead.findFirst({
     where: {
-      userId_feedItemId: {
-        userId: session.user.id,
-        feedItemId,
-      },
-    },
-    update: {
-      source: "recommendation",
-      readAt: new Date(),
-    },
-    create: {
       userId: session.user.id,
-      feedItemId,
-      source: "recommendation",
+      entityId,
+      kind: item.kind,
+      externalId: item.externalId,
     },
+    select: { id: true },
   });
+  const data = {
+    userId: session.user.id,
+    feedItemId,
+    entityId,
+    kind: item.kind,
+    externalId: item.externalId,
+    source: "recommendation",
+    readAt: new Date(),
+  };
+  const read = existing
+    ? await prisma.feedRead.update({ where: { id: existing.id }, data })
+    : await prisma.feedRead.create({ data });
 
   return NextResponse.json({ status: "ok", readAt: read.readAt.toISOString() });
 }

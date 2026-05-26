@@ -1,4 +1,4 @@
-import { BuilderKind, BuilderScope } from "@prisma/client";
+import { BuilderKind } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
@@ -32,7 +32,8 @@ export async function POST(request: Request) {
       ? kindInput
       : inferBuilderKind(sourceUrl || null, handle);
   const builder = await upsertBuilder({
-    scope: BuilderScope.CENTRAL,
+    // Admin-added builders live inside the admin's own library (the "community library").
+    ownerUserId: session.user.id,
     kind,
     sourceType: explicitSourceType || null,
     name,

@@ -1,4 +1,4 @@
-import { BuilderKind, BuilderScope, FeedItemKind } from "@prisma/client";
+import { BuilderKind, FeedItemKind } from "@prisma/client";
 import {
   builderLibraryKey,
   canonicalBuilderKey,
@@ -7,6 +7,8 @@ import {
   normalizedBuilderHandle,
   normalizeHandle,
 } from "@/lib/builder-keys";
+import { ensureBuilderEntity } from "@/lib/builder-entities";
+import { adminEmails } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 
 const FOLLOW_BUILDERS_BASE =
@@ -72,8 +74,7 @@ export {
 };
 
 export async function upsertBuilder(params: {
-  scope?: BuilderScope;
-  ownerUserId?: string | null;
+  ownerUserId: string;
   kind: BuilderKind;
   sourceType?: string | null;
   name: string;
@@ -83,14 +84,22 @@ export async function upsertBuilder(params: {
   bio?: string | null;
   addedByUserId?: string | null;
 }) {
-  const scope = params.scope ?? BuilderScope.CENTRAL;
+  if (!params.ownerUserId) {
+    throw new Error("upsertBuilder requires ownerUserId — every channel must belong to a user.");
+  }
   const handle = normalizedBuilderHandle(params.kind, params.handle);
   const uniqueValue = canonicalBuilderValueForInput(params);
   const canonicalKey = canonicalBuilderKey(params.kind, uniqueValue);
   const libraryKey = builderLibraryKey({
-    scope,
     canonicalKey,
     ownerUserId: params.ownerUserId,
+  });
+  const entityId = await ensureBuilderEntity({
+    kind: params.kind,
+    canonicalKey,
+    name: params.name,
+    handle,
+    bio: params.bio,
   });
   return prisma.builder.upsert({
     where: { libraryKey },
@@ -101,11 +110,10 @@ export async function upsertBuilder(params: {
       sourceUrl: params.sourceUrl ?? undefined,
       crawlUrl: params.crawlUrl ?? undefined,
       bio: params.bio ?? undefined,
-      ownerUserId: scope === BuilderScope.PERSONAL ? params.ownerUserId : undefined,
+      entityId,
     },
     create: {
-      scope,
-      ownerUserId: scope === BuilderScope.PERSONAL ? params.ownerUserId : null,
+      ownerUserId: params.ownerUserId,
       kind: params.kind,
       sourceType: params.sourceType ?? undefined,
       name: params.name,
@@ -116,6 +124,7 @@ export async function upsertBuilder(params: {
       addedByUserId: params.addedByUserId,
       canonicalKey,
       libraryKey,
+      entityId,
     },
   });
 }
@@ -128,7 +137,27 @@ async function fetchJson<T>(url: string): Promise<T> {
   return (await response.json()) as T;
 }
 
+/**
+ * Find the admin user that owns the community library. Throws if none exists, because
+ * cron seeding and feed import need an owner.
+ */
+async function getAdminUserId(): Promise<string> {
+  const admin = await prisma.user.findFirst({
+    where: { email: { in: adminEmails() } },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+  if (!admin) {
+    throw new Error(
+      `No admin user found (looked up by email: ${adminEmails().join(", ")}). ` +
+        "Cron seeding cannot proceed.",
+    );
+  }
+  return admin.id;
+}
+
 export async function seedDefaultBuilderPool() {
+  const adminUserId = await getAdminUserId();
   const sources = await fetchJson<DefaultSources>(
     `${FOLLOW_BUILDERS_BASE}/config/default-sources.json`,
   );
@@ -136,6 +165,7 @@ export async function seedDefaultBuilderPool() {
 
   for (const account of sources.x_accounts ?? []) {
     await upsertBuilder({
+      ownerUserId: adminUserId,
       kind: BuilderKind.X,
       name: account.name,
       handle: account.handle,
@@ -146,6 +176,7 @@ export async function seedDefaultBuilderPool() {
 
   for (const blog of sources.blogs ?? []) {
     await upsertBuilder({
+      ownerUserId: adminUserId,
       kind: BuilderKind.BLOG,
       name: blog.name,
       sourceUrl: blog.indexUrl,
@@ -156,6 +187,7 @@ export async function seedDefaultBuilderPool() {
 
   for (const podcast of sources.podcasts ?? []) {
     await upsertBuilder({
+      ownerUserId: adminUserId,
       kind: BuilderKind.PODCAST,
       name: podcast.name,
       sourceUrl: podcast.url,
@@ -168,6 +200,7 @@ export async function seedDefaultBuilderPool() {
 }
 
 export async function importFollowBuildersFeeds() {
+  const adminUserId = await getAdminUserId();
   const [xFeed, podcastFeed, blogFeed] = await Promise.all([
     fetchJson<RemoteXFeed>(`${FOLLOW_BUILDERS_BASE}/feed-x.json`),
     fetchJson<RemotePodcastFeed>(`${FOLLOW_BUILDERS_BASE}/feed-podcasts.json`),
@@ -179,6 +212,7 @@ export async function importFollowBuildersFeeds() {
 
   for (const account of xFeed.x ?? []) {
     const builder = await upsertBuilder({
+      ownerUserId: adminUserId,
       kind: BuilderKind.X,
       name: account.name,
       handle: account.handle,
@@ -221,6 +255,7 @@ export async function importFollowBuildersFeeds() {
 
   for (const episode of podcastFeed.podcasts ?? []) {
     const builder = await upsertBuilder({
+      ownerUserId: adminUserId,
       kind: BuilderKind.PODCAST,
       name: episode.name,
       sourceUrl: episode.url,
@@ -260,6 +295,7 @@ export async function importFollowBuildersFeeds() {
 
   for (const post of blogFeed.blogs ?? []) {
     const builder = await upsertBuilder({
+      ownerUserId: adminUserId,
       kind: BuilderKind.BLOG,
       name: post.name,
       sourceUrl: post.url,

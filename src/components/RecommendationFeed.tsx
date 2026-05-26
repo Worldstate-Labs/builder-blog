@@ -21,6 +21,7 @@ export type RecommendationFeedEntry = {
     crawlingTool: string | null;
     builder: {
       id: string;
+      entityId: string | null;
       name: string;
       sourceType: string;
       kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";

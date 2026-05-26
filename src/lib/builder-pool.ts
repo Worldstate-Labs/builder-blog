@@ -38,15 +38,9 @@ export async function activePoolBuilderIds(userId: string) {
 export async function ensureDefaultCommunityLibraryImport(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: {
-      email: true,
-      feedPreference: { select: { adminCommunityLibraryHidden: true } },
-    },
+    select: { email: true },
   });
   if (!user || isAdminEmail(user.email)) return { imported: false, builderCount: 0 };
-  if (user.feedPreference?.adminCommunityLibraryHidden) {
-    return { imported: false, builderCount: 0 };
-  }
 
   const adminUsers = await prisma.user.findMany({
     where: { email: { in: adminEmails() } },
@@ -56,26 +50,27 @@ export async function ensureDefaultCommunityLibraryImport(userId: string) {
 
   const library = await prisma.libraryHubEntry.findFirst({
     where: {
-      kind: "PERSONAL",
       ownerUserId: { in: adminUsers.map((admin) => admin.id) },
     },
     include: {
-      items: {
-        select: { builderId: true },
-      },
+      items: { select: { builderId: true } },
     },
     orderBy: { updatedAt: "desc" },
   });
   if (!library || library.items.length === 0) return { imported: false, builderCount: 0 };
 
+  // Respect user's library visibility preference (replaces adminCommunityLibraryHidden).
+  const visibility = await prisma.userLibraryVisibility.findUnique({
+    where: { userId_hubEntryId: { userId, hubEntryId: library.id } },
+    select: { hidden: true },
+  });
+  if (visibility?.hidden) {
+    return { imported: false, builderCount: 0 };
+  }
+
   const builderIds = [...new Set(library.items.map((item) => item.builderId))];
   const existingImport = await prisma.libraryImport.findUnique({
-    where: {
-      userId_hubEntryId: {
-        userId,
-        hubEntryId: library.id,
-      },
-    },
+    where: { userId_hubEntryId: { userId, hubEntryId: library.id } },
     select: { userId: true },
   });
 
@@ -99,10 +94,7 @@ export async function ensureDefaultCommunityLibraryImport(userId: string) {
       ? []
       : [
           prisma.libraryImport.create({
-            data: {
-              userId,
-              hubEntryId: library.id,
-            },
+            data: { userId, hubEntryId: library.id },
           }),
           prisma.libraryHubEntry.update({
             where: { id: library.id },

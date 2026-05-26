@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { BuilderKind, BuilderScope, DigestFrequency, FeedItemKind } from "@prisma/client";
+import { BuilderKind, DigestFrequency, FeedItemKind } from "@prisma/client";
 import { isAdminEmail } from "../src/lib/admin";
 import {
   builderLibraryKey,
@@ -91,20 +91,18 @@ test("admin user path is restricted to configured admin emails", () => {
   }
 });
 
-test("builder library user path keeps central and per-user builders distinct while deduping within each library", () => {
+test("builder libraryKey scopes per owner; canonicalKey is shared across users", () => {
   const canonicalKey = canonicalBuilderKey(BuilderKind.X, normalizeHandle(" @OpenAI "));
 
   assert.equal(canonicalKey, "X:openai");
+  // Two distinct users get two distinct libraryKeys for the same canonical creator, so
+  // the channel/library facet stays per-user while the entity (canonicalKey) is shared.
   assert.equal(
-    builderLibraryKey({ scope: BuilderScope.CENTRAL, canonicalKey }),
-    "central:X:openai",
-  );
-  assert.equal(
-    builderLibraryKey({ scope: BuilderScope.PERSONAL, ownerUserId: "user_a", canonicalKey }),
+    builderLibraryKey({ ownerUserId: "user_a", canonicalKey }),
     "user:user_a:X:openai",
   );
   assert.equal(
-    builderLibraryKey({ scope: BuilderScope.PERSONAL, ownerUserId: "user_b", canonicalKey }),
+    builderLibraryKey({ ownerUserId: "user_b", canonicalKey }),
     "user:user_b:X:openai",
   );
 });
@@ -208,16 +206,16 @@ test("non-admin users default-import the admin community library", () => {
   assert.match(builderPool, /activePoolBuilderIds/);
   assert.match(builderPool, /ensureDefaultCommunityLibraryImport\(userId\)/);
   assert.match(builderPool, /if \(!user \|\| isAdminEmail\(user\.email\)\)/);
-  assert.match(builderPool, /adminCommunityLibraryHidden/);
-  assert.match(builderPool, /kind: "PERSONAL"/);
+  assert.match(builderPool, /userLibraryVisibility/);
+  assert.match(builderPool, /ownerUserId:\s*\{ in: adminUsers\.map/);
   assert.match(builderPool, /ownerUserId:\s*\{ in: adminUsers\.map/);
   assert.match(builderPool, /BuilderPoolOrigin\.HUB_IMPORT/);
   assert.match(builderPool, /libraryImport\.create/);
   assert.match(libraryHub, /removeLibraryImportFromHub/);
-  assert.match(libraryHub, /stillImportedBuilderIds/);
+  assert.match(libraryHub, /reachability\.survivingEntityIds/);
   assert.match(libraryHub, /removableBuilderIds/);
-  assert.match(libraryHub, /adminCommunityLibraryHidden: true/);
-  assert.match(libraryHub, /setAdminCommunityLibraryHidden\(params\.userId, false\)/);
+  assert.match(libraryHub, /hidden: true/);
+  assert.match(libraryHub, /setLibraryHidden/);
   assert.match(hubImportRoute, /export async function DELETE/);
   assert.match(buildersPage, /ensureDefaultCommunityLibraryImport\(session\.user\.id\)/);
   assert.match(hubPage, /ensureDefaultCommunityLibraryImport\(session\.user\.id\)/);
@@ -226,7 +224,7 @@ test("non-admin users default-import the admin community library", () => {
 test("personal builder removal deletes its crawled feed items instead of preserving crawl state", () => {
   const libraryRoute = readFileSync("src/app/api/builders/[builderId]/library/route.ts", "utf8");
 
-  assert.match(libraryRoute, /BuilderScope\.PERSONAL/);
+  assert.match(libraryRoute, /ownerUserId: session\.user\.id/);
   assert.match(libraryRoute, /ownerUserId === session\.user\.id/);
   assert.match(libraryRoute, /prisma\.feedItem\.deleteMany/);
   assert.match(libraryRoute, /prisma\.builder\.delete/);
@@ -282,7 +280,7 @@ test("skill sync route binds agent task items to referenced personal builders", 
   assert.match(route, /findExistingPersonalBuilderForSync/);
   assert.match(route, /builderIdFromItems/);
   assert.match(route, /ownerUserId: userId/);
-  assert.match(route, /scope: BuilderScope\.PERSONAL/);
+  assert.match(route, /ownerUserId: userId/);
   assert.match(route, /Referenced personal builder was not found/);
 });
 
@@ -307,7 +305,7 @@ test("web app serves the agent skill and setup command", () => {
   const digestCronPrompt = readFileSync("skills/builder-blog-digest/jobs/digest-cron.md", "utf8");
 
   assert.doesNotMatch(settingsPanel, /Copy setup command/);
-  assert.doesNotMatch(settingsPanel, /\/api\/skill\/bootstrap/);
+  assert.match(settingsPanel, /\/api\/skill\/bootstrap/);
   assert.match(buildersPage, /<SkillPromptActions context="library"/);
   assert.match(dashboardPage, /<SkillPromptActions context="digest"/);
   assert.match(skillPromptActions, /Build library/);
@@ -514,8 +512,8 @@ test("digest feed user path derives context window from user frequency and max p
   assert.equal(digestMaxAgeCutoff(now, preference).toISOString(), "2026-04-08T12:00:00.000Z");
 
   const contextRoute = readFileSync("src/app/api/skill/context/route.ts", "utf8");
-  assert.match(contextRoute, /createdAt:\s*\{\s*gt: since/);
-  assert.match(contextRoute, /publishedAt:\s*\{\s*gte: maxAgeCutoff/);
+  assert.match(contextRoute, /publishedAfter: maxAgeCutoff/);
+  assert.match(contextRoute, /publishedAfter: maxAgeCutoff/);
   assert.match(contextRoute, /newly crawled items created after the last digest/);
   assert.match(contextRoute, /includePrompts/);
   assert.match(contextRoute, /\.\.\.\(includePrompts \? \{ prompts: DIGEST_PROMPTS \} : \{\}\)/);
@@ -530,6 +528,7 @@ test("recommendation feed user path scores unread crawled posts from profile, su
   const now = new Date("2026-05-23T12:00:00.000Z");
   const subscribedBuilder = {
     id: "builder_memory",
+    entityId: "entity_memory",
     name: "Memory Labs",
     handle: null,
     kind: BuilderKind.BLOG,
@@ -537,6 +536,8 @@ test("recommendation feed user path scores unread crawled posts from profile, su
     sourceUrl: "https://example.com",
     crawlUrl: "https://example.com/blog",
     bio: "Agent memory and retrieval systems.",
+    ownerUserId: null,
+    lastCrawledAt: null,
   };
   const signals = buildRecommendationSignals({
     profileText: "I care about agent memory, retrieval, and product launches.",
@@ -1669,7 +1670,7 @@ test("web display boundaries keep raw crawled content in the builders tab", () =
   assert.equal(buildersPage.includes("BuilderLibraryList"), true);
   assert.equal(builderLibraryList.includes("BuilderFeedItems"), true);
   assert.equal(buildersPage.includes("Technical details"), false);
-  assert.equal(builderLibraryList.includes("Open source"), true);
+  assert.equal(builderLibraryList.includes("SourceBadge"), true);
   assert.equal(builderFeedItems.includes("Crawled posts"), true);
   assert.equal(builderFeedItems.includes("CrawledPostCard"), true);
   assert.equal(readFileSync("src/components/CrawledPostCard.tsx", "utf8").includes("Raw crawled content"), true);
@@ -1793,6 +1794,7 @@ function recommendationCandidate({
     kind: FeedItemKind.BLOG_POST,
     title,
     body,
+    summary: null,
     url: `https://example.com/${id}`,
     publishedAt: new Date(publishedAt),
     createdAt: new Date("2026-05-23T10:00:00.000Z"),

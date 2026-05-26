@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
 import { getCurrentSession } from "@/lib/auth";
+import { fetchDedupedFeedForEntities } from "@/lib/builder-channel-resolver";
 import { prisma } from "@/lib/prisma";
 
 type Params = { params: Promise<{ builderId: string }> };
@@ -19,24 +20,35 @@ export async function GET(_request: Request, { params }: Params) {
     return NextResponse.json({ error: "Builder is not in your library" }, { status: 404 });
   }
 
-  const items = await prisma.feedItem.findMany({
-    where: { builderId },
-    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-    select: {
-      id: true,
-      kind: true,
-      externalId: true,
-      title: true,
-      body: true,
-      summary: true,
-      url: true,
-      publishedAt: true,
-      createdAt: true,
-      sourceName: true,
-      crawlingTool: true,
-    },
-    take: feedItemLimit,
+  // Resolve to entity, then fetch the deduped feed across all channels of that entity.
+  const builder = await prisma.builder.findUnique({
+    where: { id: builderId },
+    select: { entityId: true },
+  });
+  if (!builder?.entityId) {
+    return NextResponse.json({ items: [] });
+  }
+
+  const items = await fetchDedupedFeedForEntities({
+    userId: session.user.id,
+    entityIds: [builder.entityId],
+    limit: feedItemLimit,
   });
 
-  return NextResponse.json({ items });
+  return NextResponse.json({
+    items: items.map((item) => ({
+      id: item.id,
+      kind: item.kind,
+      externalId: item.externalId,
+      title: item.title,
+      body: item.body,
+      summary: item.summary,
+      url: item.url,
+      publishedAt: item.publishedAt,
+      createdAt: item.createdAt,
+      sourceName: item.sourceName,
+      crawlingTool: item.crawlingTool,
+      alternateChannelCount: item.alternateChannelCount,
+    })),
+  });
 }

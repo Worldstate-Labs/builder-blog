@@ -7,6 +7,7 @@ type RecommendationScope = "for-you" | "subscription";
 
 type RecommendationBuilder = {
   id: string;
+  entityId: string | null;
   name: string;
   handle: string | null;
   kind: BuilderKind;
@@ -14,6 +15,8 @@ type RecommendationBuilder = {
   sourceUrl: string | null;
   crawlUrl: string | null;
   bio: string | null;
+  ownerUserId: string | null;
+  lastCrawledAt: Date | null;
   hubItems?: {
     hubEntry: {
       name: string;
@@ -155,7 +158,7 @@ export async function createRecommendationSnapshot({
       }),
       prisma.subscription.findMany({
         where: { userId },
-        include: { builder: true },
+        include: { entity: true },
         orderBy: { createdAt: "desc" },
         take: 200,
       }),
@@ -175,7 +178,34 @@ export async function createRecommendationSnapshot({
         take: 5000,
       }),
     ]);
-  const subscriptionBuilderIds = subscriptions.map((subscription) => subscription.builderId);
+  const subscribedEntityIds = uniqueIds(
+    subscriptions
+      .map((subscription) => subscription.entityId)
+      .filter((id): id is string => Boolean(id)),
+  );
+
+  // For subscription scope, find every reachable channel (Builder facet) for the subscribed
+  // entities — across the user's own library + any imported library that contains the entity.
+  const subscriptionBuilderIds =
+    scope === "subscription" && subscribedEntityIds.length > 0
+      ? (
+          await prisma.builder.findMany({
+            where: {
+              entityId: { in: subscribedEntityIds },
+              OR: [
+                { ownerUserId: userId },
+                {
+                  hubItems: {
+                    some: { hubEntry: { imports: { some: { userId } } } },
+                  },
+                },
+              ],
+            },
+            select: { id: true },
+          })
+        ).map((b) => b.id)
+      : [];
+
   const eligibleBuilderIds =
     scope === "subscription"
       ? uniqueIds(subscriptionBuilderIds)
@@ -192,24 +222,42 @@ export async function createRecommendationSnapshot({
     };
   }
 
+  // Entity-level read state — a post counts as read regardless of which channel variant
+  // the user saw.
+  const readEntityKeys = new Set(
+    (
+      await prisma.feedRead.findMany({
+        where: { userId },
+        select: { entityId: true, kind: true, externalId: true },
+      })
+    ).map((r) => `${r.entityId}:${r.kind}:${r.externalId}`),
+  );
+
+  // Already-snapshotted: project to entity keys to suppress any other channel variant of the
+  // same canonical post.
+  const snapshottedEntityKeys = new Set(
+    (
+      await prisma.feedItem.findMany({
+        where: { id: { in: uniqueIds(snapshotRows.map((row) => row.feedItemId)) } },
+        select: {
+          kind: true,
+          externalId: true,
+          builder: { select: { entityId: true } },
+        },
+      })
+    )
+      .filter((r) => r.builder?.entityId)
+      .map((r) => `${r.builder!.entityId}:${r.kind}:${r.externalId}`),
+  );
+
   const unreadWhere: Prisma.FeedItemWhereInput = {
     builderId: { in: eligibleBuilderIds },
     reads: { none: { userId } },
   };
-  const alreadySnapshottedFeedItemIds = uniqueIds(
-    snapshotRows.map((row) => row.feedItemId),
-  );
-  const where: Prisma.FeedItemWhereInput = {
-    ...unreadWhere,
-    ...(alreadySnapshottedFeedItemIds.length > 0
-      ? { id: { notIn: alreadySnapshottedFeedItemIds } }
-      : {}),
-  };
-  const [unreadRemaining, newCandidateCount, candidates] = await Promise.all([
+  const [unreadRemaining, rawCandidates] = await Promise.all([
     prisma.feedItem.count({ where: unreadWhere }),
-    prisma.feedItem.count({ where }),
     prisma.feedItem.findMany({
-      where,
+      where: { builderId: { in: eligibleBuilderIds } },
       include: {
         builder: {
           include: {
@@ -232,12 +280,75 @@ export async function createRecommendationSnapshot({
       take: Math.max(candidateWindow, normalizedLimit * 3),
     }),
   ]);
+
+  // Dedup raw candidates by canonical key (entityId + kind + externalId).
+  const dedupGroups = new Map<string, typeof rawCandidates>();
+  for (const item of rawCandidates) {
+    const entityId = item.builder?.entityId;
+    if (!entityId) continue;
+    const key = `${entityId}:${item.kind}:${item.externalId}`;
+    // Skip if user has already read any variant of this post.
+    if (readEntityKeys.has(key)) continue;
+    // Skip if any variant has been shown in a prior snapshot.
+    if (snapshottedEntityKeys.has(key)) continue;
+    const list = dedupGroups.get(key) ?? [];
+    list.push(item);
+    dedupGroups.set(key, list);
+  }
+
+  // Pick primary channel variant per group based on UserChannelPreference.
+  const candidateEntityIds = [...new Set([...dedupGroups.keys()].map((k) => k.split(":")[0]))];
+  const channelPrefs = await prisma.userChannelPreference.findMany({
+    where: { userId, entityId: { in: candidateEntityIds } },
+    select: { entityId: true, primaryBuilderId: true },
+  });
+  const pinnedMap = new Map(channelPrefs.map((p) => [p.entityId, p.primaryBuilderId]));
+
+  const candidates: typeof rawCandidates = [];
+  for (const variants of dedupGroups.values()) {
+    const first = variants[0]!;
+    const entityId = first.builder!.entityId!;
+    const pinned = pinnedMap.get(entityId);
+    let pick: (typeof variants)[number] | undefined;
+    if (pinned) pick = variants.find((v) => v.builderId === pinned);
+    if (!pick) pick = variants.find((v) => v.builder?.ownerUserId === userId);
+    if (!pick) {
+      pick = [...variants].sort((a, b) => {
+        const aTime = (a.builder?.lastCrawledAt ?? a.publishedAt ?? a.createdAt).getTime();
+        const bTime = (b.builder?.lastCrawledAt ?? b.publishedAt ?? b.createdAt).getTime();
+        return bTime - aTime;
+      })[0]!;
+    }
+    candidates.push(pick);
+  }
+  const newCandidateCount = candidates.length;
+
   const signals = buildRecommendationSignals({
     profileText: [preference?.recommendationProfile, user?.name, user?.email]
       .filter(Boolean)
       .join(" "),
-    subscriptions: subscriptions.map((subscription) => subscription.builder),
-    reads: reads.map((read) => read.feedItem),
+    // After the entity migration, subscriptions are keyed by entity, not builder facet.
+    // The signal builder only needs identity + descriptive text; we synthesize a
+    // RecommendationBuilder-shaped object from the entity.
+    subscriptions: subscriptions
+      .map((subscription) => subscription.entity)
+      .filter((entity): entity is NonNullable<typeof entity> => Boolean(entity))
+      .map((entity) => ({
+        id: entity.id,
+        entityId: entity.id,
+        kind: entity.kind,
+        name: entity.name,
+        handle: entity.handle,
+        sourceType: "",
+        sourceUrl: null,
+        crawlUrl: null,
+        bio: entity.bio,
+        ownerUserId: null,
+        lastCrawledAt: null,
+      })),
+    reads: reads
+      .map((read) => read.feedItem)
+      .filter((item): item is NonNullable<typeof item> => Boolean(item)),
   });
   const ranked = candidates
     .map((item) => scoreRecommendation({ item, signals }))
@@ -283,15 +394,37 @@ async function unreadCandidateCount(userId: string, scope: RecommendationScope) 
   const [poolBuilderIds, hubRows, subscriptions] = await Promise.all([
     activePoolBuilderIds(userId),
     prisma.libraryHubItem.findMany({ select: { builderId: true } }),
-    prisma.subscription.findMany({ where: { userId }, select: { builderId: true } }),
+    prisma.subscription.findMany({
+      where: { userId },
+      select: { entityId: true },
+    }),
   ]);
-  const eligibleBuilderIds =
-    scope === "subscription"
-      ? uniqueIds(subscriptions.map((subscription) => subscription.builderId))
-      : uniqueIds([
-          ...poolBuilderIds,
-          ...hubRows.map((row) => row.builderId),
-        ]);
+
+  let eligibleBuilderIds: string[];
+  if (scope === "subscription") {
+    const entityIds = uniqueIds(
+      subscriptions
+        .map((s) => s.entityId)
+        .filter((id): id is string => Boolean(id)),
+    );
+    if (entityIds.length === 0) return 0;
+    const builders = await prisma.builder.findMany({
+      where: {
+        entityId: { in: entityIds },
+        OR: [
+          { ownerUserId: userId },
+          { hubItems: { some: { hubEntry: { imports: { some: { userId } } } } } },
+        ],
+      },
+      select: { id: true },
+    });
+    eligibleBuilderIds = builders.map((b) => b.id);
+  } else {
+    eligibleBuilderIds = uniqueIds([
+      ...poolBuilderIds,
+      ...hubRows.map((row) => row.builderId),
+    ]);
+  }
   if (eligibleBuilderIds.length === 0) return 0;
 
   return prisma.feedItem.count({

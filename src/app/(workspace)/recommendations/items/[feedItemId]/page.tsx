@@ -33,23 +33,29 @@ export default async function RecommendationItemPage({
     poolBuilderIds.includes(item.builderId) || hubItems.some((hubItem) => hubItem.builderId === item.builderId);
   if (!canRead) notFound();
 
-  const read = await prisma.feedRead.upsert({
+  if (!item.builder?.entityId) notFound();
+  const entityId = item.builder.entityId;
+  const existing = await prisma.feedRead.findFirst({
     where: {
-      userId_feedItemId: {
-        userId: session.user.id,
-        feedItemId: item.id,
-      },
-    },
-    update: {
-      source: "recommendation-detail",
-      readAt: new Date(),
-    },
-    create: {
       userId: session.user.id,
-      feedItemId: item.id,
-      source: "recommendation-detail",
+      entityId,
+      kind: item.kind,
+      externalId: item.externalId,
     },
+    select: { id: true },
   });
+  const readData = {
+    userId: session.user.id,
+    feedItemId: item.id,
+    entityId,
+    kind: item.kind,
+    externalId: item.externalId,
+    source: "recommendation-detail",
+    readAt: new Date(),
+  };
+  const read = existing
+    ? await prisma.feedRead.update({ where: { id: existing.id }, data: readData })
+    : await prisma.feedRead.create({ data: readData });
 
   const displayDate = item.publishedAt ?? item.createdAt;
 

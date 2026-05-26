@@ -1,4 +1,3 @@
-import { BuilderScope } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
@@ -13,11 +12,9 @@ export async function DELETE(_request: Request, { params }: Params) {
   }
 
   const { builderId } = await params;
+  // Admin can only delete builders they own (i.e., builders in the community library).
   await prisma.builder.deleteMany({
-    where: {
-      id: builderId,
-      scope: BuilderScope.CENTRAL,
-    },
+    where: { id: builderId, ownerUserId: session.user.id },
   });
 
   return NextResponse.json({ builderId, removed: true });

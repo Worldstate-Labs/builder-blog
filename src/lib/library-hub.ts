@@ -1,6 +1,10 @@
-import { BuilderPoolOrigin, BuilderScope, LibraryHubKind } from "@prisma/client";
+import { BuilderPoolOrigin } from "@prisma/client";
 import { isAdminEmail } from "@/lib/admin";
 import { addBuilderToPool } from "@/lib/builder-pool";
+import {
+  computeEntityReachabilityAfterRemoval,
+  rebindPrimaryChannels,
+} from "@/lib/builder-entities";
 import { prisma } from "@/lib/prisma";
 
 export const adminCommunityLibraryName = "Community Library";
@@ -12,11 +16,8 @@ export async function sharePersonalLibraryToHub(params: {
   name: string;
   description?: string | null;
 }) {
-  const personalBuilders = await prisma.builder.findMany({
-    where: {
-      scope: BuilderScope.PERSONAL,
-      ownerUserId: params.userId,
-    },
+  const ownedBuilders = await prisma.builder.findMany({
+    where: { ownerUserId: params.userId },
     select: { id: true },
     orderBy: { name: "asc" },
   });
@@ -28,7 +29,6 @@ export async function sharePersonalLibraryToHub(params: {
       description: params.description || null,
     },
     create: {
-      kind: LibraryHubKind.PERSONAL,
       slug: personalLibrarySlug(params.userId),
       name: params.name,
       description: params.description || null,
@@ -38,36 +38,51 @@ export async function sharePersonalLibraryToHub(params: {
 
   await replaceLibraryHubItems(
     entry.id,
-    personalBuilders.map((builder) => builder.id),
+    ownedBuilders.map((builder) => builder.id),
   );
 
-  return { entry, builderCount: personalBuilders.length };
+  return { entry, builderCount: ownedBuilders.length };
 }
 
-export async function adminCommunityLibraryHidden(userId: string) {
-  const preference = await prisma.userFeedPreference.findUnique({
-    where: { userId },
-    select: { adminCommunityLibraryHidden: true },
+export async function isLibraryHidden(userId: string, hubEntryId: string) {
+  const vis = await prisma.userLibraryVisibility.findUnique({
+    where: { userId_hubEntryId: { userId, hubEntryId } },
+    select: { hidden: true },
   });
-  return Boolean(preference?.adminCommunityLibraryHidden);
+  return Boolean(vis?.hidden);
 }
 
-export async function setAdminCommunityLibraryHidden(userId: string, hidden: boolean) {
-  await prisma.userFeedPreference.upsert({
-    where: { userId },
-    update: { adminCommunityLibraryHidden: hidden },
-    create: { userId, adminCommunityLibraryHidden: hidden },
+export async function setLibraryHidden(params: {
+  userId: string;
+  hubEntryId: string;
+  hidden: boolean;
+}) {
+  await prisma.userLibraryVisibility.upsert({
+    where: { userId_hubEntryId: { userId: params.userId, hubEntryId: params.hubEntryId } },
+    update: { hidden: params.hidden },
+    create: {
+      userId: params.userId,
+      hubEntryId: params.hubEntryId,
+      hidden: params.hidden,
+    },
   });
 }
 
-export async function ensureAdminCommunityLibrary(
-  userId: string,
-  options: { checkHidden?: boolean } = {},
-) {
-  if (options.checkHidden !== false && (await adminCommunityLibraryHidden(userId))) {
-    return { isPublic: false, builderCount: 0 };
-  }
+/**
+ * Look up the admin's library hub entry (the "Community Library"). Returns null if no admin
+ * user has shared one yet.
+ */
+export async function findAdminCommunityLibrary() {
+  return prisma.libraryHubEntry.findFirst({
+    where: { owner: { email: { not: null } } },
+    include: { owner: { select: { email: true } } },
+    orderBy: { updatedAt: "desc" },
+  }).then((entry) =>
+    entry && isAdminEmail(entry.owner?.email) ? entry : null,
+  );
+}
 
+export async function ensureAdminCommunityLibrary(userId: string) {
   const result = await sharePersonalLibraryToHub({
     userId,
     name: adminCommunityLibraryName,
@@ -86,7 +101,7 @@ export async function syncPersonalLibraryHubForUser(params: {
   }
 
   const sharedLibrary = await prisma.libraryHubEntry.findFirst({
-    where: { ownerUserId: params.userId, kind: LibraryHubKind.PERSONAL },
+    where: { ownerUserId: params.userId },
     select: { name: true, description: true },
   });
   if (!sharedLibrary) return { isPublic: false, builderCount: 0 };
@@ -101,12 +116,8 @@ export async function syncPersonalLibraryHubForUser(params: {
 
 export async function unsharePersonalLibraryFromHub(userId: string) {
   const result = await prisma.libraryHubEntry.deleteMany({
-    where: {
-      ownerUserId: userId,
-      kind: LibraryHubKind.PERSONAL,
-    },
+    where: { ownerUserId: userId },
   });
-
   return { removed: result.count };
 }
 
@@ -121,11 +132,7 @@ export async function importLibrariesFromHub(params: {
     where: { id: { in: libraryIds } },
     include: {
       owner: { select: { email: true } },
-      items: {
-        select: {
-          builderId: true,
-        },
-      },
+      items: { select: { builderId: true } },
     },
   });
 
@@ -133,7 +140,6 @@ export async function importLibrariesFromHub(params: {
   let newImports = 0;
   for (const library of libraries) {
     if (library.ownerUserId === params.userId) continue;
-    const isAdminCommunityLibrary = isAdminEmail(library.owner?.email);
 
     for (const item of library.items) {
       await addBuilderToPool({
@@ -157,12 +163,15 @@ export async function importLibrariesFromHub(params: {
         data: { importCount: { increment: 1 } },
       });
     } catch {
-      // Import count tracks first-time imports; re-importing still refreshes pool membership.
+      // Re-import: just refresh pool membership, don't double-count import.
     }
 
-    if (isAdminCommunityLibrary) {
-      await setAdminCommunityLibraryHidden(params.userId, false);
-    }
+    // Importing un-hides the library if previously hidden.
+    await setLibraryHidden({
+      userId: params.userId,
+      hubEntryId: library.id,
+      hidden: false,
+    });
   }
 
   return { libraries: newImports, builders };
@@ -174,40 +183,35 @@ export async function removeLibraryImportFromHub(params: {
 }) {
   const library = await prisma.libraryHubEntry.findUnique({
     where: { id: params.libraryId },
-    include: {
-      owner: { select: { email: true } },
-      items: { select: { builderId: true } },
-    },
+    include: { owner: { select: { email: true } } },
   });
   if (!library || library.ownerUserId === params.userId) {
     return { removed: false, builders: 0 };
   }
 
-  const builderIds = library.items.map((item) => item.builderId);
-  const otherImports = await prisma.libraryImport.findMany({
-    where: {
-      userId: params.userId,
-      hubEntryId: { not: params.libraryId },
-    },
-    include: {
-      hubEntry: {
-        include: {
-          items: { select: { builderId: true } },
-        },
-      },
-    },
+  const reachability = await computeEntityReachabilityAfterRemoval({
+    userId: params.userId,
+    removedLibraryId: params.libraryId,
   });
-  const stillImportedBuilderIds = new Set(
-    otherImports.flatMap((item) => item.hubEntry.items.map((hubItem) => hubItem.builderId)),
-  );
-  const removableBuilderIds = builderIds.filter(
-    (builderId) => !stillImportedBuilderIds.has(builderId),
+
+  // Compute the subset of removed builders that the user still reaches via other libraries.
+  const remainingBuilderIds = await prisma.libraryHubItem
+    .findMany({
+      where: {
+        hubEntryId: { not: params.libraryId },
+        hubEntry: { imports: { some: { userId: params.userId } } },
+        builderId: { in: reachability.removedBuilderIds },
+      },
+      select: { builderId: true },
+    })
+    .then((rows) => new Set(rows.map((r) => r.builderId)));
+
+  const removableBuilderIds = reachability.removedBuilderIds.filter(
+    (builderId) => !remainingBuilderIds.has(builderId),
   );
 
   await prisma.$transaction([
-    prisma.subscription.deleteMany({
-      where: { userId: params.userId, builderId: { in: removableBuilderIds } },
-    }),
+    // 1. Soft-delete pool entries for facets that disappear from this user's view.
     prisma.builderPoolEntry.updateMany({
       where: {
         userId: params.userId,
@@ -216,22 +220,37 @@ export async function removeLibraryImportFromHub(params: {
       },
       data: { removedAt: new Date() },
     }),
+    // 2. Remove the import record itself.
     prisma.libraryImport.deleteMany({
+      where: { userId: params.userId, hubEntryId: params.libraryId },
+    }),
+    // 3. Cascade-unfollow entities that became orphaned (no remaining reachable channel).
+    prisma.subscription.deleteMany({
+      where: { userId: params.userId, entityId: { in: reachability.orphanEntityIds } },
+    }),
+    prisma.userChannelPreference.deleteMany({
+      where: { userId: params.userId, entityId: { in: reachability.orphanEntityIds } },
+    }),
+    // 4. Mark the library hidden so auto-import (admin community) doesn't re-add it.
+    prisma.userLibraryVisibility.upsert({
       where: {
+        userId_hubEntryId: { userId: params.userId, hubEntryId: params.libraryId },
+      },
+      update: { hidden: true },
+      create: {
         userId: params.userId,
         hubEntryId: params.libraryId,
+        hidden: true,
       },
     }),
-    ...(isAdminEmail(library.owner?.email)
-      ? [
-          prisma.userFeedPreference.upsert({
-            where: { userId: params.userId },
-            update: { adminCommunityLibraryHidden: true },
-            create: { userId: params.userId, adminCommunityLibraryHidden: true },
-          }),
-        ]
-      : []),
   ]);
+
+  // 5. Rebind primary channels for surviving entities whose primary was inside the removed library.
+  await rebindPrimaryChannels({
+    userId: params.userId,
+    entityIds: reachability.survivingEntityIds,
+    excludeLibraryId: params.libraryId,
+  });
 
   return { removed: true, builders: removableBuilderIds.length };
 }

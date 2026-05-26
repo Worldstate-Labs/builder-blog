@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
 import { DIGEST_PROMPTS } from "@/lib/digest-prompts";
 import { subscriptionBuilderIdsInPool } from "@/lib/digest-library";
+import { projectBuildersToEntities } from "@/lib/builder-entities";
+import { fetchDedupedFeedForEntities } from "@/lib/builder-channel-resolver";
 import {
   digestFallbackSince,
   digestMaxAgeCutoff,
@@ -24,25 +26,16 @@ export async function GET(request: Request) {
   const now = new Date();
 
   const poolBuilderIds = await activePoolBuilderIds(user.id);
-  const [libraryBuilders, subscriptions, personalCrawlStates, preference, lastDigest] = await Promise.all([
+  const [libraryBuilders, subscriptions, preference, lastDigest] = await Promise.all([
     prisma.builder.findMany({
       where: { id: { in: poolBuilderIds } },
-      orderBy: [{ scope: "asc" }, { kind: "asc" }, { name: "asc" }],
+      include: { entity: true },
+      orderBy: [{ kind: "asc" }, { name: "asc" }],
     }),
     prisma.subscription.findMany({
-      where: {
-        userId: user.id,
-        builderId: { in: poolBuilderIds },
-      },
-      include: { builder: true },
+      where: { userId: user.id },
+      include: { entity: true },
       orderBy: { createdAt: "asc" },
-    }),
-    prisma.userBuilderCrawl.findMany({
-      where: {
-        userId: user.id,
-        builderId: { in: poolBuilderIds },
-      },
-      orderBy: { lastCrawledAt: "desc" },
     }),
     prisma.userFeedPreference.findUnique({
       where: { userId: user.id },
@@ -53,75 +46,86 @@ export async function GET(request: Request) {
       select: { createdAt: true },
     }),
   ]);
+
   const since = lastDigest?.createdAt ?? digestFallbackSince(now, preference);
   const maxAgeCutoff = digestMaxAgeCutoff(now, preference);
-  const subscribedBuilderIds = subscriptionBuilderIdsInPool(
-    poolBuilderIds,
-    subscriptions.map((subscription) => subscription.builderId),
-  );
+
+  // Personal channels = builders the requesting user owns (their own crawls).
   const personalBuilderIds = libraryBuilders
-    .filter((builder) => builder.scope === "PERSONAL")
+    .filter((builder) => builder.ownerUserId === user.id)
     .map((builder) => builder.id);
 
-  const [items, personalCrawledItems] = await Promise.all([
-    // Crawl dedupe is based on existing FeedItem rows, not user read/view state.
-    prisma.feedItem.findMany({
-      where: {
-        builderId: { in: subscribedBuilderIds },
-        OR: [
-          {
-            publishedAt: {
-              gt: since,
-              gte: maxAgeCutoff,
-              lte: now,
-            },
-          },
-          {
-            createdAt: {
-              gt: since,
-              lte: now,
-            },
-            OR: [
-              { publishedAt: null },
-              {
-                publishedAt: {
-                  gte: maxAgeCutoff,
-                  lte: now,
-                },
-              },
-            ],
-          },
-        ],
-      },
-      include: { builder: true },
-      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-      take: 80,
-    }),
-    prisma.feedItem.findMany({
-      where: { builderId: { in: personalBuilderIds } },
-      select: {
-        builderId: true,
-        kind: true,
-        externalId: true,
-        publishedAt: true,
-        createdAt: true,
-      },
-      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-      take: personalCrawledItemLimit,
-    }),
-  ]);
-  const latestPersonalCrawledItems = new Map<
+  // Subscriptions are entity-scoped; project to the candidate entity set for digest.
+  const subscribedEntityIds = [
+    ...new Set(
+      subscriptions
+        .map((sub) => sub.entityId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  // Backward-compat field: derive a per-pool builder list for any callers reading the
+  // legacy `subscribedBuilderIds` shape. Resolution: pool builders whose entity is followed.
+  const subscribedBuilderIds = subscriptionBuilderIdsInPool(
+    poolBuilderIds,
+    libraryBuilders
+      .filter((b) => b.entityId && subscribedEntityIds.includes(b.entityId))
+      .map((b) => b.id),
+  );
+
+  // Crawl-state per channel lives inline on Builder.
+  const personalCrawlStates = libraryBuilders
+    .filter((b) => personalBuilderIds.includes(b.id))
+    .map((b) => ({
+      builderId: b.id,
+      entityId: b.entityId,
+      lastCrawledAt: b.lastCrawledAt,
+      lastForcedAt: b.lastForcedAt,
+      itemCount: b.itemCount,
+      status: b.status,
+      lastError: b.lastError,
+    }));
+
+  // Digest candidates: deduped across channels of the subscribed entities.
+  const items = await fetchDedupedFeedForEntities({
+    userId: user.id,
+    entityIds: subscribedEntityIds,
+    publishedAfter: maxAgeCutoff,
+    limit: 80,
+  });
+
+  const personalEntityIds = await projectBuildersToEntities(personalBuilderIds);
+  const personalCrawledItems = await prisma.feedItem.findMany({
+    where: {
+      builderId: { in: personalBuilderIds },
+    },
+    select: {
+      builderId: true,
+      kind: true,
+      externalId: true,
+      publishedAt: true,
+      createdAt: true,
+      builder: { select: { entityId: true } },
+    },
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    take: personalCrawledItemLimit,
+  });
+
+  // Dedupe latestPersonalCrawledItems by entity rather than by builder, so we don't
+  // double-report the same canonical creator just because the user has two channels for them.
+  const latestByEntity = new Map<
     string,
-    { builderId: string; latestPostAt: string; publishedAt: string | null; createdAt: string }
+    { entityId: string; builderId: string; latestPostAt: string; publishedAt: string | null; createdAt: string }
   >();
   for (const item of personalCrawledItems) {
-    if (!item.builderId) continue;
-    const latestPostAt = item.publishedAt ?? item.createdAt;
-    const current = latestPersonalCrawledItems.get(item.builderId);
-    if (!current || new Date(current.latestPostAt) < latestPostAt) {
-      latestPersonalCrawledItems.set(item.builderId, {
+    const entityId = item.builder?.entityId;
+    if (!entityId || !item.builderId) continue;
+    const latestPostAtDate = item.publishedAt ?? item.createdAt;
+    const current = latestByEntity.get(entityId);
+    if (!current || new Date(current.latestPostAt) < latestPostAtDate) {
+      latestByEntity.set(entityId, {
+        entityId,
         builderId: item.builderId,
-        latestPostAt: latestPostAt.toISOString(),
+        latestPostAt: latestPostAtDate.toISOString(),
         publishedAt: item.publishedAt?.toISOString() ?? null,
         createdAt: item.createdAt.toISOString(),
       });
@@ -144,9 +148,17 @@ export async function GET(request: Request) {
     libraryBuilders,
     personalCrawlStates,
     personalCrawledItems,
-    latestPersonalCrawledItems: Array.from(latestPersonalCrawledItems.values()),
-    subscriptions: subscriptions.map((subscription) => subscription.builder),
-    subscriptionCount: subscriptions.length,
+    personalEntityIds,
+    latestPersonalCrawledItems: Array.from(latestByEntity.values()),
+    subscriptions: subscriptions
+      .map((s) => s.entity)
+      .filter((e): e is NonNullable<typeof e> => Boolean(e)),
+    subscriptionEntities: subscriptions
+      .map((s) => s.entity)
+      .filter((e): e is NonNullable<typeof e> => Boolean(e)),
+    subscribedBuilderIds,
+    subscribedEntityIds,
+    subscriptionCount: subscribedEntityIds.length,
     items,
     ...(includePrompts ? { prompts: DIGEST_PROMPTS } : {}),
   });

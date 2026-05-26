@@ -1,4 +1,4 @@
-import { BuilderPoolOrigin, BuilderScope } from "@prisma/client";
+import { BuilderPoolOrigin } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth";
 import { addBuilderToPool } from "@/lib/builder-pool";
@@ -29,7 +29,6 @@ export async function POST(request: Request) {
   }
 
   const builder = await upsertBuilder({
-    scope: BuilderScope.PERSONAL,
     ownerUserId: session.user.id,
     addedByUserId: session.user.id,
     ...input,

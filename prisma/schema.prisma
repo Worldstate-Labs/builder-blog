@@ -27,12 +27,13 @@ model User {
   deviceLogins            DeviceLogin[]
   personalBuilders        Builder[]                @relation("PersonalBuilders")
   builderPoolEntries      BuilderPoolEntry[]
-  builderCrawls           UserBuilderCrawl[]
   libraryHubEntries       LibraryHubEntry[]
   libraryImports          LibraryImport[]
   feedPreference          UserFeedPreference?
   feedReads               FeedRead[]
   recommendationSnapshots RecommendationSnapshot[]
+  channelPreferences      UserChannelPreference[]
+  libraryVisibilities     UserLibraryVisibility[]
 }
 
 model Account {
@@ -70,33 +71,82 @@ model VerificationToken {
 }
 
 model Builder {
-  id            String             @id @default(cuid())
-  scope         BuilderScope       @default(CENTRAL)
-  ownerUserId   String?
-  kind          BuilderKind        @default(X)
+  id            String                  @id @default(cuid())
+  ownerUserId   String
+  kind          BuilderKind             @default(X)
   name          String
   handle        String?
   canonicalKey  String
-  libraryKey    String             @unique
-  sourceType    String             @default("auto")
+  libraryKey    String                  @unique
+  sourceType    String                  @default("auto")
   sourceUrl     String?
   crawlUrl      String?
   bio           String?
   addedByUserId String?
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  owner         User?              @relation("PersonalBuilders", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  entityId      String
+  lastCrawledAt DateTime?
+  lastForcedAt  DateTime?
+  itemCount     Int                     @default(0)
+  status        CrawlStatus             @default(IDLE)
+  lastError     String?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  owner         User                    @relation("PersonalBuilders", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  entity        BuilderEntity           @relation(fields: [entityId], references: [id], onDelete: Cascade)
   poolEntries   BuilderPoolEntry[]
   subscriptions Subscription[]
   feedItems     FeedItem[]
-  userCrawls    UserBuilderCrawl[]
   hubItems      LibraryHubItem[]
+  channelPrefs  UserChannelPreference[]
 
-  @@index([scope, kind])
   @@index([ownerUserId, kind])
+  @@index([entityId])
   @@index([kind])
   @@index([handle])
   @@index([sourceType])
+}
+
+model BuilderEntity {
+  id            String                  @id @default(cuid())
+  canonicalKey  String                  @unique
+  kind          BuilderKind
+  name          String
+  handle        String?
+  bio           String?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  builders      Builder[]
+  subscriptions Subscription[]
+  feedReads     FeedRead[]
+  channelPrefs  UserChannelPreference[]
+
+  @@index([kind])
+  @@index([handle])
+}
+
+model UserChannelPreference {
+  userId           String
+  entityId         String
+  primaryBuilderId String
+  pinnedByUser     Boolean       @default(false)
+  updatedAt        DateTime      @updatedAt
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entity           BuilderEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  primaryBuilder   Builder       @relation(fields: [primaryBuilderId], references: [id], onDelete: Cascade)
+
+  @@id([userId, entityId])
+  @@index([primaryBuilderId])
+}
+
+model UserLibraryVisibility {
+  userId     String
+  hubEntryId String
+  hidden     Boolean         @default(true)
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hubEntry   LibraryHubEntry @relation(fields: [hubEntryId], references: [id], onDelete: Cascade)
+
+  @@id([userId, hubEntryId])
+  @@index([hubEntryId])
 }
 
 model BuilderPoolEntry {
@@ -116,21 +166,20 @@ model BuilderPoolEntry {
 }
 
 model LibraryHubEntry {
-  id          String           @id @default(cuid())
-  kind        LibraryHubKind
-  slug        String           @unique
-  name        String
-  description String?
-  ownerUserId String?
-  importCount Int              @default(0)
-  viewCount   Int              @default(0)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  owner       User?            @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
-  items       LibraryHubItem[]
-  imports     LibraryImport[]
+  id           String                  @id @default(cuid())
+  slug         String                  @unique
+  name         String
+  description  String?
+  ownerUserId  String?
+  importCount  Int                     @default(0)
+  viewCount    Int                     @default(0)
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+  owner        User?                   @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  items        LibraryHubItem[]
+  imports      LibraryImport[]
+  visibilities UserLibraryVisibility[]
 
-  @@index([kind])
   @@index([ownerUserId])
 }
 
@@ -156,32 +205,19 @@ model LibraryImport {
   @@index([hubEntryId])
 }
 
-model UserBuilderCrawl {
-  id            String    @id @default(cuid())
-  userId        String
-  builderId     String
-  lastCrawledAt DateTime  @default(now())
-  lastForcedAt  DateTime?
-  itemCount     Int       @default(0)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  builder       Builder   @relation(fields: [builderId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, builderId])
-  @@index([userId, lastCrawledAt])
-  @@index([builderId])
-}
-
 model Subscription {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   userId    String
-  builderId String
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  builder   Builder  @relation(fields: [builderId], references: [id], onDelete: Cascade)
+  // Channel that the user followed from (provenance). Nullable: survives Builder deletion.
+  builderId String?
+  entityId  String
+  createdAt DateTime      @default(now())
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  builder   Builder?      @relation(fields: [builderId], references: [id], onDelete: SetNull)
+  entity    BuilderEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, builderId])
+  @@unique([userId, entityId])
+  @@index([userId, builderId])
 }
 
 model FeedItem {
@@ -208,27 +244,33 @@ model FeedItem {
 }
 
 model UserFeedPreference {
-  userId                      String          @id
-  digestFrequency             DigestFrequency @default(DAILY)
-  digestCustomFrequencyDays   Int?
-  digestMaxPostAgeDays        Int             @default(90)
-  recommendationProfile       String?
-  adminCommunityLibraryHidden Boolean         @default(false)
-  createdAt                   DateTime        @default(now())
-  updatedAt                   DateTime        @updatedAt
-  user                        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                    String          @id
+  digestFrequency           DigestFrequency @default(DAILY)
+  digestCustomFrequencyDays Int?
+  digestMaxPostAgeDays      Int             @default(90)
+  recommendationProfile     String?
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
+  user                      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model FeedRead {
-  id         String   @id @default(cuid())
+  id         String        @id @default(cuid())
   userId     String
-  feedItemId String
-  source     String   @default("recommendation")
-  readAt     DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  feedItem   FeedItem @relation(fields: [feedItemId], references: [id], onDelete: Cascade)
+  // Provenance: which FeedItem variant was actually read. Nullable: survives FeedItem deletion.
+  feedItemId String?
+  // Canonical read identity — keyed at the entity level so reading one channel marks all
+  // channel variants of the same post as read.
+  entityId   String
+  kind       FeedItemKind
+  externalId String
+  source     String        @default("recommendation")
+  readAt     DateTime      @default(now())
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feedItem   FeedItem?     @relation(fields: [feedItemId], references: [id], onDelete: SetNull)
+  entity     BuilderEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, feedItemId])
+  @@unique([userId, entityId, kind, externalId])
   @@index([userId, readAt])
   @@index([feedItemId])
 }
@@ -311,20 +353,9 @@ enum BuilderKind {
   WEBSITE
 }
 
-enum BuilderScope {
-  CENTRAL
-  PERSONAL
-}
-
 enum BuilderPoolOrigin {
-  CENTRAL_DEFAULT
   PERSONAL_SYNC
   HUB_IMPORT
-}
-
-enum LibraryHubKind {
-  CENTRAL
-  PERSONAL
 }
 
 enum FeedItemKind {
@@ -342,4 +373,12 @@ enum DigestFrequency {
   DAILY
   WEEKLY
   CUSTOM
+}
+
+enum CrawlStatus {
+  IDLE
+  RUNNING
+  OK
+  ERROR
+  STALE
 }

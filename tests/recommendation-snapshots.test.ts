@@ -23,7 +23,7 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.match(crawledPostCard, /Raw crawled content/);
   assert.doesNotMatch(feed, /Mark read/);
   assert.match(detailPage, /Back to feed/);
-  assert.match(detailPage, /feedRead\.upsert/);
+  assert.match(detailPage, /feedRead\.create/);
   assert.match(detailPage, /item\.body/);
   assert.doesNotMatch(feed, /filter\(\(entry\) => entry\.item\.id !== feedItemId\)/);
 });
@@ -34,7 +34,7 @@ test("source logos are shared across recommendation and library surfaces", () =>
   assert.match(source("src/components/RecommendationFeed.tsx"), /CrawledPostCard/);
   assert.match(source("src/components/BuilderFeedItems.tsx"), /CrawledPostCard/);
   assert.match(source("src/components/BuilderLibraryList.tsx"), /SourceBadge/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceBadge/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /kindLabel/);
   assert.match(source("src/components/FeedCard.tsx"), /CrawledPostCard/);
 });
 

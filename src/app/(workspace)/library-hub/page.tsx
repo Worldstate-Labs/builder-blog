@@ -70,7 +70,7 @@ async function loadLibraryHubPageData() {
         },
         _count: { select: { items: true } },
       },
-      orderBy: [{ kind: "desc" }, { importCount: "desc" }, { viewCount: "desc" }, { updatedAt: "desc" }],
+      orderBy: [{ importCount: "desc" }, { viewCount: "desc" }, { updatedAt: "desc" }],
     }),
     prisma.libraryImport.findMany({
       where: { userId: session.user.id },
@@ -84,7 +84,7 @@ async function loadLibraryHubPageData() {
     const isCommunityLibrary = isAdminEmail(library.owner?.email);
     return {
       id: library.id,
-      kind: library.kind,
+      isCommunity: isCommunityLibrary,
       name: isCommunityLibrary ? adminCommunityLibraryName : library.name,
       description: library.description,
       ownerUserId: library.ownerUserId,

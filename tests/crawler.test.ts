@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { BuilderKind, BuilderScope, FeedItemKind } from "@prisma/client";
+import { BuilderKind, FeedItemKind } from "@prisma/client";
 import { builderLibraryKey, canonicalBuilderKey, normalizeHandle } from "../src/lib/builder-keys";
 import { isCronAuthorized } from "../src/lib/cron-auth";
 import { shouldImportFollowBuildersFallback } from "../src/lib/crawl-fallback";
@@ -35,13 +35,9 @@ function rawJsonTranscriptSource(rawJson: unknown) {
 test("builder dedupe keys normalize handles before canonicalization", () => {
   assert.equal(normalizeHandle(" @Thesephist "), "thesephist");
   assert.equal(canonicalBuilderKey(BuilderKind.X, normalizeHandle("@Thesephist")), "X:thesephist");
-  assert.equal(
-    builderLibraryKey({ scope: BuilderScope.CENTRAL, canonicalKey: "X:thesephist" }),
-    "central:X:thesephist",
-  );
+  // libraryKey is always per-owner now — no central facet.
   assert.equal(
     builderLibraryKey({
-      scope: BuilderScope.PERSONAL,
       ownerUserId: "user_1",
       canonicalKey: "X:thesephist",
     }),

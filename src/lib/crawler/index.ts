@@ -1,4 +1,4 @@
-import { BuilderScope } from "@prisma/client";
+import { adminEmails } from "@/lib/admin";
 import { centralCrawlerBuilderKinds, sourceDefinitionForBuilder } from "@/lib/source-registry";
 import { centralCrawlerSourceAdapters } from "./source-adapters";
 import type { CrawlerBuilder, CrawlOptions, CrawlSourceResult } from "./types";
@@ -27,10 +27,12 @@ export async function crawlBuilders(
 
 export async function crawlBuilderPool(options: CrawlBuilderPoolOptions = {}) {
   const { prisma } = await import("@/lib/prisma");
+  // Cron crawler targets the admin-owned channels (the community library).
+  // Personal builders owned by other users are crawled by their own local agents.
   const builders = (
     await prisma.builder.findMany({
       where: {
-        scope: BuilderScope.CENTRAL,
+        owner: { email: { in: adminEmails() } },
         kind: { in: centralCrawlerBuilderKinds() },
       },
     })
@@ -49,6 +51,7 @@ export async function crawlBuilderPool(options: CrawlBuilderPoolOptions = {}) {
     });
   }
 
+  const perBuilderItemCount = new Map<string, number>();
   let feedItems = 0;
   for (const item of result.items) {
     await prisma.feedItem.upsert({
@@ -82,13 +85,29 @@ export async function crawlBuilderPool(options: CrawlBuilderPoolOptions = {}) {
         rawJson: item.rawJson ? JSON.stringify(item.rawJson) : undefined,
       },
     });
+    perBuilderItemCount.set(item.builderId, (perBuilderItemCount.get(item.builderId) ?? 0) + 1);
     feedItems += 1;
+  }
+
+  // Inline crawl state on each builder we touched.
+  const now = new Date();
+  for (const builder of builders) {
+    const count = perBuilderItemCount.get(builder.id) ?? 0;
+    await prisma.builder.update({
+      where: { id: builder.id },
+      data: {
+        lastCrawledAt: now,
+        itemCount: { increment: count },
+        status: "OK",
+        lastError: null,
+      },
+    });
   }
 
   return {
     ...result,
     feedItems,
-    generatedAt: new Date().toISOString(),
+    generatedAt: now.toISOString(),
   };
 }
 

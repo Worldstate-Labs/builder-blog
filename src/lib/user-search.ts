@@ -74,7 +74,6 @@ export async function searchUserLibrary({
         handle: true,
         kind: true,
         sourceType: true,
-        scope: true,
         sourceUrl: true,
         crawlUrl: true,
         bio: true,

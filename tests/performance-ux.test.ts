@@ -73,10 +73,10 @@ test("desktop shell uses home rail, header search, and merged home feeds", () =>
   assert.doesNotMatch(appShell, /label: "Digest"/);
   assert.doesNotMatch(appShell, /label: "For You"/);
   assert.doesNotMatch(appShell, /label: "History"/);
-  assert.doesNotMatch(appShell, /label: "Search"/);
+  assert.match(appShell, /label: "Search"/);
   assert.doesNotMatch(appNav, /recommendations/);
-  assert.doesNotMatch(appNav, /"search"/);
-  assert.match(appShell, /className="app-topbar"/);
+  assert.match(appNav, /"search"/);
+  assert.match(appShell, /className="fb-top /);
   assert.match(appShell, /<SearchForm query="" variant="header" \/>/);
   assert.match(searchForm, /name="q"/);
   assert.match(dashboardPage, /DashboardHomeTabs/);
@@ -94,7 +94,7 @@ test("desktop shell uses home rail, header search, and merged home feeds", () =>
   assert.match(dashboardPage, /Digest archive/);
   assert.match(dashboardPage, /ForYouRecommendationSection/);
   assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
-  assert.match(digestDetails, /Today digest/);
+  assert.match(digestDetails, /mode === "today"/);
   assert.match(recommendationsPage, /redirect\("\/dashboard\?tab=for-you"\)/);
   assert.match(globals, /\.home-layout/);
   assert.match(globals, /\.home-rail/);
@@ -361,7 +361,7 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
   assert.match(personalBuilderRoute, /resolvePersonalBuilderInput/);
   assert.match(personalBuilderRoute, /NextResponse\.json/);
   assert.doesNotMatch(personalBuilderRoute, /redirect\(/);
-  assert.match(builderLibraryList, /Open source/);
+  assert.match(builderLibraryList, /SourceBadge/);
   assert.doesNotMatch(buildersPage, /Technical details/);
   assert.doesNotMatch(buildersPage, /name="handle"/);
   assert.doesNotMatch(buildersPage, /name="sourceUrl"/);
@@ -376,7 +376,7 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
   assert.match(source("src/components/CrawledPostCard.tsx"), /Raw crawled content/);
   assert.match(source("src/components/CrawledPostCard.tsx"), /Open source/);
   assert.match(source("src/components/CrawledPostCard.tsx"), /\/builders#\$\{builder\.id\}/);
-  assert.match(feedItemsRoute, /orderBy:\s*\[\{ publishedAt: "desc" \}, \{ createdAt: "desc" \}\]/);
+  assert.match(feedItemsRoute, /fetchDedupedFeedForEntities/);
   assert.match(feedItemsRoute, /activePoolBuilderIds/);
   assert.match(feedItemsRoute, /NextResponse\.json/);
 });
@@ -409,7 +409,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(appShell, /UserDataAutoRefresh/);
   assert.doesNotMatch(workspaceLayout, /builderLibraryState/);
   assert.doesNotMatch(appShell, /\{ href: "\/admin"/);
-  assert.match(appShell, /user-menu-item-static/);
+  assert.match(appShell, /UserMenu/);
   assert.match(buildersPage, /LibraryVisibilityToggle/);
   assert.match(buildersPage, /adminCommunityLibraryName/);
   assert.match(buildersPage, /ensureAdminCommunityLibrary/);
@@ -431,7 +431,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(visibilityToggle, /library-visibility-toggle/);
   assert.match(visibilityToggle, /aria-pressed/);
   assert.match(visibilityRoute, /export async function PATCH/);
-  assert.match(visibilityRoute, /setAdminCommunityLibraryHidden/);
+  assert.match(visibilityRoute, /unsharePersonalLibraryFromHub/);
   assert.match(visibilityRoute, /adminCommunityLibraryName/);
   assert.doesNotMatch(visibilityRoute, /redirect\(/);
   assert.match(builderActions, /"use client"/);
@@ -462,7 +462,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(builderLibraryAutoRefresh, /visibilitychange/);
   assert.match(builderLibraryAutoRefresh, /document\.visibilityState !== "visible"/);
   assert.doesNotMatch(builderLibraryAutoRefresh, /EventSource/);
-  assert.match(builderLibraryState, /userBuilderCrawl\.aggregate/);
+  assert.match(builderLibraryState, /builder\.aggregate/);
   assert.match(builderLibraryState, /feedItem\.aggregate/);
   assert.doesNotMatch(builderLibraryState, /digest\.aggregate/);
   assert.doesNotMatch(builderLibraryState, /recommendationSnapshot\.aggregate/);
@@ -492,14 +492,14 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /recordLibraryHubViews\(libraries\.map/);
   assert.match(hubImportForm, /"use client"/);
   assert.match(hubImportForm, /fetch\("\/api\/library-hub\/imports"/);
-  assert.match(hubImportForm, /Community Library is added to new accounts automatically/);
-  assert.match(hubImportForm, /selectableCount/);
+  assert.match(hubImportForm, /isCommunity/);
+  assert.match(hubImportForm, /counts\[filter\.key\]/);
   assert.match(hubImportForm, /function importLibrary\(libraryId: string\)/);
   assert.match(hubImportForm, /JSON\.stringify\(\{ libraryIds: \[libraryId\] \}\)/);
   assert.match(hubImportForm, /aria-label=\{`Import \$\{library\.name\}`\}/);
   assert.match(hubImportForm, /: "Import"/);
   assert.match(hubImportForm, /Importing/);
-  assert.match(hubImportForm, /In library/);
+  assert.match(hubImportForm, /Imported/);
   assert.match(hubImportForm, /method: "DELETE"/);
   assert.match(hubImportForm, /Remove/);
   assert.doesNotMatch(hubImportForm, /Import selected/);
@@ -519,7 +519,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(buildersPage, /LibraryImportRemoveButton/);
   assert.match(hubPage, /importCount/);
   assert.match(hubPage, /viewCount/);
-  assert.match(hubPage, /orderBy:\s*\[\{ kind: "desc" \}, \{ importCount: "desc" \}, \{ viewCount: "desc" \}/);
+  assert.match(hubPage, /orderBy:\s*\[\{ importCount: "desc" \}, \{ viewCount: "desc" \}/);
   assert.match(hubImportForm, /libraryId/);
   assert.match(visibilityRoute, /unsharePersonalLibraryFromHub/);
   assert.equal(existsSync(join(root, "src/app/actions.ts")), false);
@@ -527,7 +527,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(skillRoute, /crawlingTool: "Legacy crawl\/import"/);
   assert.match(schema, /model LibraryHubEntry/);
   assert.match(schema, /model LibraryImport/);
-  assert.match(schema, /adminCommunityLibraryHidden/);
+  assert.match(schema, /UserLibraryVisibility/);
   assert.match(builderPool, /ensureDefaultCommunityLibraryImport/);
   assert.match(builderPool, /isAdminEmail\(user\.email\)/);
   assert.match(builderPool, /adminCommunityLibraryHidden/);
@@ -626,9 +626,9 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.row-actions/);
   assert.doesNotMatch(css, /\.builder-row form,\s*\n\s*\.builder-row button\s*{\s*\n\s*width:\s*100%/);
   assert.match(source("src/components/BuilderLibraryList.tsx"), /row-actions/);
-  assert.match(builderActions, /button-light.*button-compact/);
+  assert.match(builderActions, /fb-btn/);
   assert.match(settingsPage, /AgentTokenPanel/);
-  assert.match(agentTokenPanel, /button-light button-compact/);
+  assert.match(agentTokenPanel, /fb-btn/);
   assert.match(adminPage, /AdminBuilderManager/);
   assert.match(adminBuilderManager, /button-light button-compact/);
 });

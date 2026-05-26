@@ -5,7 +5,6 @@ import { isAdminEmail } from "@/lib/admin";
 import {
   adminCommunityLibraryDescription,
   adminCommunityLibraryName,
-  setAdminCommunityLibraryHidden,
   sharePersonalLibraryToHub,
   unsharePersonalLibraryFromHub,
 } from "@/lib/library-hub";
@@ -24,17 +23,11 @@ export async function PATCH(request: Request) {
     `${session.user.name || session.user.email || "Personal"} library`;
 
   if (!isPublic) {
-    if (isAdmin) {
-      await setAdminCommunityLibraryHidden(session.user.id, true);
-    }
     await unsharePersonalLibraryFromHub(session.user.id);
     revalidatePath("/library-hub");
     return NextResponse.json({ isPublic: false, builderCount: 0 });
   }
 
-  if (isAdmin) {
-    await setAdminCommunityLibraryHidden(session.user.id, false);
-  }
   const result = await sharePersonalLibraryToHub({
     userId: session.user.id,
     name,

@@ -1,4 +1,4 @@
-import { BuilderKind, BuilderPoolOrigin, BuilderScope, LibraryHubKind } from "@prisma/client";
+import { BuilderKind, BuilderPoolOrigin } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { AddBuilderForm } from "@/components/AddBuilderForm";
@@ -24,8 +24,8 @@ import { SOURCE_DEFINITIONS } from "@/lib/source-registry";
 
 type BuilderWithCount = {
   id: string;
-  scope: BuilderScope;
   ownerUserId: string | null;
+  entityId: string | null;
   kind: BuilderKind;
   sourceType: string;
   name: string;
@@ -70,7 +70,7 @@ async function loadBuildersPageData() {
   const isAdmin = isAdminEmail(session.user.email);
   await ensureDefaultCommunityLibraryImport(session.user.id);
 
-  const [poolEntries, subscriptions, importedLibraries, ownSharedLibrary, feedPreference] = await Promise.all([
+  const [poolEntries, subscriptions, importedLibraries, ownSharedLibrary, adminLibVisibility] = await Promise.all([
     prisma.builderPoolEntry.findMany({
       where: { userId: session.user.id, removedAt: null },
       include: {
@@ -84,7 +84,7 @@ async function loadBuildersPageData() {
     }),
     prisma.subscription.findMany({
       where: { userId: session.user.id },
-      select: { builderId: true },
+      select: { entityId: true },
     }),
     prisma.libraryImport.findMany({
       where: { userId: session.user.id },
@@ -108,7 +108,7 @@ async function loadBuildersPageData() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.libraryHubEntry.findFirst({
-      where: { ownerUserId: session.user.id, kind: LibraryHubKind.PERSONAL },
+      where: { ownerUserId: session.user.id },
       select: {
         id: true,
         name: true,
@@ -116,13 +116,39 @@ async function loadBuildersPageData() {
         _count: { select: { items: true } },
       },
     }),
-    prisma.userFeedPreference.findUnique({
-      where: { userId: session.user.id },
-      select: { adminCommunityLibraryHidden: true },
-    }),
+    // Used to determine if the admin community library has been hidden by this user.
+    // Resolves to the (userId, adminLibraryId) row in UserLibraryVisibility.
+    (async () => {
+      const adminLib = await prisma.libraryHubEntry.findFirst({
+        where: { owner: { email: { not: null } } },
+        include: { owner: { select: { email: true } } },
+        orderBy: { updatedAt: "desc" },
+      });
+      if (!adminLib || !isAdminEmail(adminLib.owner?.email)) return null;
+      const vis = await prisma.userLibraryVisibility.findUnique({
+        where: {
+          userId_hubEntryId: { userId: session.user.id, hubEntryId: adminLib.id },
+        },
+        select: { hidden: true },
+      });
+      return { hidden: Boolean(vis?.hidden) };
+    })(),
   ]);
 
-  const subscribed = new Set(subscriptions.map((subscription) => subscription.builderId));
+  const subscribedEntityIds = new Set(
+    subscriptions
+      .map((subscription) => subscription.entityId)
+      .filter((id): id is string => Boolean(id)),
+  );
+  // Helper: tells whether a builder's entity is in the user's followed set.
+  const isBuilderSubscribed = (builder: { entityId?: string | null }) =>
+    Boolean(builder.entityId && subscribedEntityIds.has(builder.entityId));
+  const subscribed = {
+    has(builderId: string) {
+      const found = poolEntries.find((entry) => entry.builderId === builderId);
+      return Boolean(found && isBuilderSubscribed(found.builder));
+    },
+  };
   const activeEntryByBuilderId = new Map(poolEntries.map((entry) => [entry.builderId, entry]));
   const poolBuilders = poolEntries.map((entry) => entry.builder).sort(builderSort);
   const poolBuilderIds = poolBuilders.map((builder) => builder.id);
@@ -130,7 +156,6 @@ async function loadBuildersPageData() {
     .filter(
       (entry) =>
         entry.origin === BuilderPoolOrigin.PERSONAL_SYNC &&
-        entry.builder.scope === BuilderScope.PERSONAL &&
         entry.builder.ownerUserId === session.user.id,
     )
     .map((entry) => entry.builder)
@@ -155,7 +180,7 @@ async function loadBuildersPageData() {
     (count, builder) => count + builder._count.feedItems,
     0,
   );
-  const isAdminCommunityLibraryHidden = Boolean(feedPreference?.adminCommunityLibraryHidden);
+  const isAdminCommunityLibraryHidden = Boolean(adminLibVisibility?.hidden);
   let isPublicLibrary = isAdmin ? !isAdminCommunityLibraryHidden : Boolean(ownSharedLibrary);
   if (
     isAdmin &&
@@ -165,7 +190,7 @@ async function loadBuildersPageData() {
       ownSharedLibrary.description !== adminCommunityLibraryDescription ||
       ownSharedLibrary._count.items !== privateBuilders.length)
   ) {
-    const result = await ensureAdminCommunityLibrary(session.user.id, { checkHidden: false });
+    const result = await ensureAdminCommunityLibrary(session.user.id);
     isPublicLibrary = result.isPublic;
   } else if (
     !isAdmin &&
@@ -296,8 +321,10 @@ async function BuilderSections({
                 builderListItem({
                   allowRemove: false,
                   builder,
-                  crawlLabel:
-                    builder.scope === BuilderScope.CENTRAL ? "Webapp crawled" : "Hub imported",
+                  // Distinguish admin-curated channels (the community library) from other
+                  // imported personal libraries. Owner-based check replaces the legacy
+                  // BuilderScope.CENTRAL flag.
+                  crawlLabel: "Hub imported",
                   latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
                   subscribed: data.subscribed.has(builder.id),
                 }),

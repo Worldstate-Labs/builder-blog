@@ -1,8 +1,8 @@
-import { BuilderKind, BuilderScope, FeedItemKind } from "@prisma/client";
+import { BuilderKind, FeedItemKind } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AdminBuilderManager } from "@/components/AdminBuilderManager";
-import { isAdminEmail } from "@/lib/admin";
+import { adminEmails, isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -65,10 +65,10 @@ export default async function AdminPage() {
 async function AdminStats() {
   const since = recentImportSince();
   const [centralBuilderCount, personalBuilderCount, recentFeedItemCount] = await Promise.all([
-    prisma.builder.count({ where: { scope: BuilderScope.CENTRAL } }),
-    prisma.builder.count({ where: { scope: BuilderScope.PERSONAL } }),
+    prisma.builder.count({ where: { owner: { email: { in: adminEmails() } } } }),
+    prisma.builder.count({ where: { owner: { email: { notIn: adminEmails() } } } }),
     prisma.feedItem.count({
-      where: { createdAt: { gte: since }, builder: { scope: BuilderScope.CENTRAL } },
+      where: { createdAt: { gte: since }, builder: { owner: { email: { in: adminEmails() } } } },
     }),
   ]);
 
@@ -94,7 +94,7 @@ function AdminStatsFallback() {
 async function BuilderKindMetrics() {
   const builderKindCounts = await prisma.builder.groupBy({
     by: ["kind"],
-    where: { scope: BuilderScope.CENTRAL },
+    where: { owner: { email: { in: adminEmails() } } },
     _count: { _all: true },
   });
 
@@ -117,7 +117,7 @@ async function BuilderKindMetrics() {
 async function FeedKindMetrics() {
   const feedKindCounts = await prisma.feedItem.groupBy({
     by: ["kind"],
-    where: { builder: { scope: BuilderScope.CENTRAL } },
+    where: { builder: { owner: { email: { in: adminEmails() } } } },
     _count: { _all: true },
   });
 
@@ -153,7 +153,7 @@ function MetricPanelFallback({ title }: { title: string }) {
 
 async function CentralBuilderPool() {
   const builders = await prisma.builder.findMany({
-    where: { scope: BuilderScope.CENTRAL },
+    where: { owner: { email: { in: adminEmails() } } },
     include: { _count: { select: { subscriptions: true, feedItems: true } } },
     orderBy: [{ kind: "asc" }, { updatedAt: "desc" }, { name: "asc" }],
   });
@@ -186,7 +186,7 @@ async function CentralBuilderPool() {
 async function RecentImportedContent() {
   const since = recentImportSince();
   const feedItems = await prisma.feedItem.findMany({
-    where: { createdAt: { gte: since }, builder: { scope: BuilderScope.CENTRAL } },
+    where: { createdAt: { gte: since }, builder: { owner: { email: { in: adminEmails() } } } },
     include: { builder: true },
     orderBy: [{ createdAt: "desc" }, { publishedAt: "desc" }],
     take: 160,

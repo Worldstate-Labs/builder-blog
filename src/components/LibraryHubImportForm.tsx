@@ -16,7 +16,7 @@ type HubLibraryBuilder = {
 
 export type HubLibrary = {
   id: string;
-  kind: "CENTRAL" | "PERSONAL";
+  isCommunity: boolean;
   name: string;
   description: string | null;
   ownerUserId: string | null;
@@ -62,18 +62,18 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
 
   const counts = useMemo(() => {
     const all = libraries.length;
-    const community = libraries.filter((library) => library.kind === "CENTRAL").length;
+    const community = libraries.filter((library) => library.isCommunity).length;
     const my = libraries.filter((library) => library.owned).length;
     const imported = libraries.filter(
       (library) => importedIds.has(library.id) && !library.owned,
     ).length;
     const shared = libraries.filter(
-      (library) => library.kind !== "CENTRAL" && !library.owned,
+      (library) => !library.isCommunity && !library.owned,
     ).length;
     return { all, community, shared, my, imported };
   }, [libraries, importedIds]);
 
-  const featuredLibrary = libraries.find((library) => library.kind === "CENTRAL") ?? null;
+  const featuredLibrary = libraries.find((library) => library.isCommunity) ?? null;
   const otherLibraries = libraries.filter((library) => library.id !== featuredLibrary?.id);
 
   const filteredOther = otherLibraries.filter((library) => {
@@ -542,12 +542,12 @@ function SourceAvatar({
 
 function kindBadge(library: HubLibrary) {
   if (library.owned) return "private";
-  if (library.kind === "CENTRAL") return "community";
+  if (library.isCommunity) return "community";
   return "shared";
 }
 
 function topicLabel(library: HubLibrary) {
-  if (library.kind === "CENTRAL") return "Curated";
+  if (library.isCommunity) return "Curated";
   if (library.owned) return "Personal";
   return "Curated by user";
 }

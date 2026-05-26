@@ -1,4 +1,4 @@
-import { BuilderPoolOrigin, BuilderScope, FeedItemKind } from "@prisma/client";
+import { BuilderPoolOrigin, FeedItemKind } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { addBuilderToPool } from "@/lib/builder-pool";
 import { upsertBuilder } from "@/lib/builders";
@@ -31,7 +31,6 @@ export async function POST(request: Request) {
     const builder =
       referencedBuilder.builder ??
       (await upsertBuilder({
-        scope: BuilderScope.PERSONAL,
         ownerUserId: user.id,
         addedByUserId: user.id,
         kind: input.kind,
@@ -48,20 +47,31 @@ export async function POST(request: Request) {
       origin: BuilderPoolOrigin.PERSONAL_SYNC,
     });
     if (input.subscribe) {
-      await prisma.subscription.upsert({
-        where: {
-          userId_builderId: {
+      const entityId = builder.entityId;
+      if (entityId) {
+        const existing = await prisma.subscription.findFirst({
+          where: { userId: user.id, entityId },
+          select: { id: true },
+        });
+        if (!existing) {
+          await prisma.subscription.create({
+            data: { userId: user.id, builderId: builder.id, entityId },
+          });
+        }
+        // Establish primary channel preference if none exists yet (entity follows the channel
+        // the user just synced from).
+        await prisma.userChannelPreference.upsert({
+          where: { userId_entityId: { userId: user.id, entityId } },
+          update: {},
+          create: {
             userId: user.id,
-            builderId: builder.id,
+            entityId,
+            primaryBuilderId: builder.id,
+            pinnedByUser: false,
           },
-        },
-        update: {},
-        create: {
-          userId: user.id,
-          builderId: builder.id,
-        },
-      });
-      subscriptions += 1;
+        });
+        subscriptions += 1;
+      }
     }
     builders += 1;
 
@@ -143,24 +153,15 @@ export async function POST(request: Request) {
       feedItems += 1;
       syncedItemCount += 1;
     }
-    await prisma.userBuilderCrawl.upsert({
-      where: {
-        userId_builderId: {
-          userId: user.id,
-          builderId: builder.id,
-        },
-      },
-      update: {
+    // Inline crawl-state update on the builder channel itself.
+    await prisma.builder.update({
+      where: { id: builder.id },
+      data: {
         lastCrawledAt: now,
-        lastForcedAt: parsed.data.force ? now : undefined,
+        ...(parsed.data.force ? { lastForcedAt: now } : {}),
         itemCount: syncedItemCount,
-      },
-      create: {
-        userId: user.id,
-        builderId: builder.id,
-        lastCrawledAt: now,
-        lastForcedAt: parsed.data.force ? now : null,
-        itemCount: syncedItemCount,
+        status: "OK",
+        lastError: null,
       },
     });
   }
@@ -218,11 +219,7 @@ async function findExistingPersonalBuilderForSync(
   if (!builderId) return { status: "none" as const, builder: null };
 
   const builder = await prisma.builder.findFirst({
-    where: {
-      id: builderId,
-      ownerUserId: userId,
-      scope: BuilderScope.PERSONAL,
-    },
+    where: { id: builderId, ownerUserId: userId },
   });
   if (!builder) {
     return {

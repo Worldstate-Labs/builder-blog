@@ -1,4 +1,4 @@
-import { BuilderKind, BuilderScope } from "@prisma/client";
+import { BuilderKind } from "@prisma/client";
 
 export function normalizeHandle(handle: string) {
   return handle.trim().replace(/^@/, "").toLowerCase();
@@ -23,17 +23,19 @@ export function canonicalBuilderValueForInput(params: {
   return handle ?? params.sourceUrl ?? params.name;
 }
 
+/**
+ * libraryKey identifies a specific channel (Builder facet) inside its owner's library.
+ * After the central → admin migration, every builder has a non-null ownerUserId, so the
+ * key always takes the `user:<ownerUserId>:<canonicalKey>` form.
+ */
 export function builderLibraryKey(params: {
-  scope: BuilderScope;
   canonicalKey: string;
-  ownerUserId?: string | null;
+  ownerUserId: string;
 }) {
-  if (params.scope === BuilderScope.PERSONAL && !params.ownerUserId) {
-    throw new Error("Personal builders require ownerUserId");
+  if (!params.ownerUserId) {
+    throw new Error("builderLibraryKey requires ownerUserId");
   }
-  return params.scope === BuilderScope.CENTRAL
-    ? `central:${params.canonicalKey}`
-    : `user:${params.ownerUserId}:${params.canonicalKey}`;
+  return `user:${params.ownerUserId}:${params.canonicalKey}`;
 }
 
 export function inferBuilderKind(sourceUrl: string | null, handle: string | null) {

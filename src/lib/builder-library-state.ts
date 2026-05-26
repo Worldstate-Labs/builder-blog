@@ -1,3 +1,4 @@
+import { projectBuildersToEntities } from "@/lib/builder-entities";
 import { prisma } from "@/lib/prisma";
 
 export type BuilderLibraryState = {
@@ -7,20 +8,28 @@ export type BuilderLibraryState = {
   version: string;
 };
 
+/**
+ * Cache version + counts for the user's source view.
+ *
+ * Counts are computed against the user's reachable channels (own + imported library facets).
+ * Subscription count is entity-deduped (since the user follows creators, not channels).
+ */
 export async function builderLibraryState(
   userId: string,
   builderIds: string[],
 ): Promise<BuilderLibraryState> {
   const sortedBuilderIds = [...new Set(builderIds)].sort();
-  const [poolState, subscriptionState, builderState, crawlState, feedState] = await Promise.all([
+  const entityIds = await projectBuildersToEntities(sortedBuilderIds);
+
+  const [poolState, subscriptionState, builderState, feedState] = await Promise.all([
     prisma.builderPoolEntry.aggregate({
       where: { userId },
       _count: true,
       _max: { updatedAt: true },
     }),
-    sortedBuilderIds.length
+    entityIds.length
       ? prisma.subscription.aggregate({
-          where: { userId, builderId: { in: sortedBuilderIds } },
+          where: { userId, entityId: { in: entityIds } },
           _count: true,
           _max: { createdAt: true },
         })
@@ -28,12 +37,6 @@ export async function builderLibraryState(
     sortedBuilderIds.length
       ? prisma.builder.aggregate({
           where: { id: { in: sortedBuilderIds } },
-          _max: { updatedAt: true },
-        })
-      : Promise.resolve({ _max: { updatedAt: null } }),
-    sortedBuilderIds.length
-      ? prisma.userBuilderCrawl.aggregate({
-          where: { userId, builderId: { in: sortedBuilderIds } },
           _count: true,
           _max: { updatedAt: true, lastCrawledAt: true },
         })
@@ -49,14 +52,14 @@ export async function builderLibraryState(
 
   const version = [
     sortedBuilderIds.join(","),
+    entityIds.join(","),
     poolState._count,
     poolState._max.updatedAt?.toISOString() ?? "",
     subscriptionState._count,
     subscriptionState._max.createdAt?.toISOString() ?? "",
+    builderState._count,
     builderState._max.updatedAt?.toISOString() ?? "",
-    crawlState._count,
-    crawlState._max.updatedAt?.toISOString() ?? "",
-    crawlState._max.lastCrawledAt?.toISOString() ?? "",
+    builderState._max.lastCrawledAt?.toISOString() ?? "",
     feedState._count,
     feedState._max.createdAt?.toISOString() ?? "",
     feedState._max.publishedAt?.toISOString() ?? "",
