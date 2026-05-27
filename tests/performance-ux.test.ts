@@ -28,7 +28,6 @@ test("app shell reuses the page session instead of fetching it again", () => {
     "src/app/(workspace)/library-hub/page.tsx",
     "src/app/(workspace)/search/page.tsx",
     "src/app/(workspace)/settings/page.tsx",
-    "src/app/(workspace)/admin/page.tsx",
   ]) {
     assert.doesNotMatch(source(pagePath), /AppShell/);
   }
@@ -302,7 +301,6 @@ test("user library search can fetch operator-only candidate sets", () => {
 test("primary tabs use local loading fallbacks instead of full-route loaders", () => {
   assert.equal(existsSync(join(root, "src/app/history/loading.tsx")), true);
   for (const path of [
-    "src/app/(workspace)/admin/loading.tsx",
     "src/app/(workspace)/builders/loading.tsx",
     "src/app/(workspace)/library-hub/loading.tsx",
     "src/app/(workspace)/search/loading.tsx",
@@ -312,14 +310,12 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const libraryHubPage = source("src/app/(workspace)/library-hub/page.tsx");
   const searchPage = source("src/app/(workspace)/search/page.tsx");
-  const adminPage = source("src/app/(workspace)/admin/page.tsx");
   assert.match(buildersPage, /<Suspense fallback=\{<BuilderStatsFallback \/>/);
   assert.match(buildersPage, /<Suspense fallback=\{<BuilderSectionsFallback \/>/);
   assert.match(buildersPage, /function BuilderSectionsFallback/);
   assert.match(libraryHubPage, /<Suspense fallback=\{<LibraryHubImportFallback \/>/);
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
   assert.match(searchPage, /<Suspense[\s\S]*fallback=\{[\s\S]*<SearchResultsFallback/);
-  assert.match(adminPage, /<Suspense fallback=\{<AdminStatsFallback \/>/);
 });
 
 test("builders page avoids a global crawled-content query", () => {
@@ -570,40 +566,11 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(tokenRoute, /redirect\(/);
 });
 
-test("admin builder mutations stay local instead of using server action forms", () => {
-  const adminPage = source("src/app/(workspace)/admin/page.tsx");
-  const adminBuilderManager = source("src/components/AdminBuilderManager.tsx");
-  const adminBuildersRoute = source("src/app/api/admin/builders/route.ts");
-  const adminBuilderRoute = source("src/app/api/admin/builders/[builderId]/route.ts");
-
-  assert.match(adminPage, /AdminBuilderManager/);
-  assert.doesNotMatch(adminPage, /addCentralBuilderAction/);
-  assert.doesNotMatch(adminPage, /deleteCentralBuilderAction/);
-  assert.doesNotMatch(adminPage, /FormSubmitButton/);
-  assert.match(adminBuilderManager, /"use client"/);
-  assert.match(adminBuilderManager, /fetch\("\/api\/admin\/builders"/);
-  assert.match(adminBuilderManager, /fetch\(`\/api\/admin\/builders\/\$\{builderId\}`/);
-  assert.match(adminBuilderManager, /aria-live="polite"/);
-  assert.match(adminBuilderManager, /Adding/);
-  assert.match(adminBuilderManager, /Removing/);
-  assert.match(adminBuildersRoute, /export async function POST/);
-  assert.match(adminBuildersRoute, /isAdminEmail/);
-  assert.match(adminBuildersRoute, /upsertBuilder/);
-  assert.match(adminBuildersRoute, /NextResponse\.json/);
-  assert.doesNotMatch(adminBuildersRoute, /redirect\(/);
-  assert.match(adminBuilderRoute, /export async function DELETE/);
-  assert.match(adminBuilderRoute, /isAdminEmail/);
-  assert.match(adminBuilderRoute, /deleteMany/);
-  assert.doesNotMatch(adminBuilderRoute, /redirect\(/);
-});
-
 test("list actions use compact controls instead of full-width mobile buttons", () => {
   const css = source("src/app/globals.css");
   const builderActions = source("src/components/BuilderLibraryActions.tsx");
   const settingsPage = source("src/app/(workspace)/settings/page.tsx");
   const agentTokenPanel = source("src/components/AgentTokenPanel.tsx");
-  const adminPage = source("src/app/(workspace)/admin/page.tsx");
-  const adminBuilderManager = source("src/components/AdminBuilderManager.tsx");
 
   assert.match(css, /\.button-compact/);
   assert.match(css, /\.row-actions/);
@@ -612,6 +579,4 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(builderActions, /fb-btn/);
   assert.match(settingsPage, /AgentTokenPanel/);
   assert.match(agentTokenPanel, /fb-btn/);
-  assert.match(adminPage, /AdminBuilderManager/);
-  assert.match(adminBuilderManager, /button-light button-compact/);
 });
