@@ -1,4 +1,5 @@
 import { BuilderPoolOrigin } from "@prisma/client";
+import { revalidateTag } from "next/cache";
 import { formatZodError } from "@/lib/zod-error";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -85,5 +86,6 @@ export async function POST(request: Request) {
     subscribed: false,
   };
 
+  revalidateTag(`user:${session.user.id}:recs`, "default");
   return NextResponse.json({ builder: item });
 }

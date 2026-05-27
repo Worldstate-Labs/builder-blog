@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { formatZodError } from "@/lib/zod-error";
 import { z } from "zod";
@@ -76,5 +77,6 @@ export async function PATCH(request: Request, { params }: Params) {
     }
   }
 
+  revalidateTag(`user:${session.user.id}:recs`, "default");
   return NextResponse.json({ builderId, entityId, subscribed });
 }

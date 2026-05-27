@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
 import { getCurrentSession } from "@/lib/auth";
@@ -52,6 +53,7 @@ export async function POST() {
     });
   }
 
+  revalidateTag(`user:${session.user.id}:recs`, "default");
   return NextResponse.json({
     subscribed: poolBuilderIds.length,
     builderIds: poolBuilderIds,

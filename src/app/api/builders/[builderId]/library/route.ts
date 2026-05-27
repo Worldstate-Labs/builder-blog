@@ -1,4 +1,5 @@
 import { BuilderPoolOrigin } from "@prisma/client";
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -65,6 +66,7 @@ export async function DELETE(_request: Request, { params }: Params) {
       });
     }
 
+    revalidateTag(`user:${session.user.id}:recs`, "default");
     return NextResponse.json({
       builderId,
       removed: true,

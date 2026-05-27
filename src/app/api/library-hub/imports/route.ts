@@ -1,4 +1,4 @@
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { formatZodError } from "@/lib/zod-error";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -34,6 +34,7 @@ export async function POST(request: Request) {
 
   revalidatePath("/builders");
   revalidatePath("/dashboard");
+  revalidateTag(`user:${session.user.id}:recs`, "default");
   return NextResponse.json({ ...result, libraryIds });
 }
 
@@ -59,5 +60,6 @@ export async function DELETE(request: Request) {
   revalidatePath("/builders");
   revalidatePath("/dashboard");
   revalidatePath("/library-hub");
+  revalidateTag(`user:${session.user.id}:recs`, "default");
   return NextResponse.json({ ...result, libraryId });
 }

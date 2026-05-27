@@ -1,4 +1,4 @@
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin";
@@ -25,6 +25,7 @@ export async function PATCH(request: Request) {
   if (!isPublic) {
     await unsharePersonalLibraryFromHub(session.user.id);
     revalidatePath("/library-hub");
+    revalidateTag(`user:${session.user.id}:recs`, "default");
     return NextResponse.json({ isPublic: false, builderCount: 0 });
   }
 
@@ -35,6 +36,7 @@ export async function PATCH(request: Request) {
   });
 
   revalidatePath("/library-hub");
+  revalidateTag(`user:${session.user.id}:recs`, "default");
   return NextResponse.json({
     isPublic: true,
     builderCount: result.builderCount,

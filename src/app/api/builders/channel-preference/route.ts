@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { formatZodError } from "@/lib/zod-error";
 import { z } from "zod";
@@ -35,6 +36,7 @@ export async function PATCH(request: Request) {
     await prisma.userChannelPreference.deleteMany({
       where: { userId: session.user.id, entityId },
     });
+    revalidateTag(`user:${session.user.id}:recs`, "default");
     return NextResponse.json({ status: "ok", pinned: false });
   }
 
@@ -60,5 +62,6 @@ export async function PATCH(request: Request) {
     },
   });
 
+  revalidateTag(`user:${session.user.id}:recs`, "default");
   return NextResponse.json({ status: "ok", pinned: true, primaryBuilderId: builderId });
 }
