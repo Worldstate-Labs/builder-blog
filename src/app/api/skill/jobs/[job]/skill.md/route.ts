@@ -58,12 +58,19 @@ export async function GET(request: Request, { params }: Params) {
     // Insert before the first heading or content
     content = exchangeBlock + "\n" + content;
 
-    // 2. Rewrite every bash block: prepend BUILDER_BLOG_ACCOUNT env to node ... builder-digest.mjs ... lines
+    // 2. Rewrite every bash block: replace any placeholder
+    //    `BUILDER_BLOG_ACCOUNT="..." \` line that precedes a
+    //    `node ... builder-digest.mjs ...` command with the resolved
+    //    email, or prepend one when the command stands alone. Replacing
+    //    (not prepending) keeps the rendered block at one ACCOUNT= line
+    //    per node call instead of stacking the placeholder and the
+    //    resolved value on top of each other.
     const accountEnv = `BUILDER_BLOG_ACCOUNT="${email}"`;
     content = content.replace(/^```bash\n([\s\S]*?)^```/gm, (_match, blockBody) => {
       const rewritten = blockBody.replace(
-        /(^|\\\n\s*)(node\s+[^\n]*builder-digest\.mjs[^\n]*)/gm,
-        (_m: string, prefix: string, nodeCmd: string) => `${prefix}${accountEnv} \\\n${nodeCmd}`,
+        /(^|\n)(?:BUILDER_BLOG_ACCOUNT="[^"]*"\s*\\\n)?(node\s+[^\n]*builder-digest\.mjs[^\n]*)/gm,
+        (_m: string, lineStart: string, nodeCmd: string) =>
+          `${lineStart}${accountEnv} \\\n${nodeCmd}`,
       );
       return "```bash\n" + rewritten + "```";
     });
