@@ -12,7 +12,8 @@ Agent discretion boundary: this is a command-runner job unless the CLI returns
 custom tooling. Do not change paths, flags, cadence, titles, output files, JSON
 schema, or success criteria.
 During the `fetchTasks` step, failed extraction attempts are not command-contract
-failures. Keep trying available local capabilities until each task is completed
+failures. Keep trying available capabilities — web fetch, local CLI tools,
+transcription APIs, headless browser, etc. — until each task is completed
 or no available method can obtain real primary content.
 
 Fetch task boundary:
@@ -58,7 +59,8 @@ Rules:
     - For `ready`, use `task.item.body` as the final item body exactly; do not
       fetch or rewrite the source content.
     - For `requires_agent`, use `task.item.url`, `task.sourceType`, and
-      `task.agentWorkType` to choose local extraction methods. Keep trying
+      `task.agentWorkType` to pick any extraction method available (web fetch,
+      local CLI tools, transcription APIs, headless browser, etc.). Keep trying
       available methods until real primary content is obtained or no method
       remains.
   - Use `task.minimumContentQuality` for `requires_agent` tasks as the minimum
@@ -75,8 +77,8 @@ Rules:
     `rawJson.agentExecutionProof`; for YouTube include
     `rawJson.transcriptSource`.
 - For `fetchTasks` with `contentStatus="requires_agent"`, do not stop just
-  because one extraction method fails. Keep working through available local
-  methods until the content is extracted. Stop only if this agent has no
+  because one extraction method fails. Keep working through available methods
+  until the content is extracted. Stop only if this agent has no
   remaining available way to obtain real primary content for a task, and write
   the tried methods and concrete blocker to the scheduled job log.
 - For YouTube, title, description, and page metadata are auxiliary only. Do not

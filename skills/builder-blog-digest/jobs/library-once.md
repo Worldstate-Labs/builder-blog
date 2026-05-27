@@ -9,16 +9,17 @@ Execution contract:
 - If a command outside the explicit `fetchTasks` work fails, stop and report the
   command, exit code, and stderr.
 - Do not use `--force`.
-- Do not browse for extra context unless a `fetchTasks` payload requires local
-  extraction from a returned source URL.
+- Do not browse for extra context unless a `fetchTasks` payload requires you to
+  extract content from a URL the task supplies.
 - Do not change paths, flags, cadence, titles, output files, JSON schema, or
   success criteria.
 - Stay in command-runner mode until the CLI returns `fetchTasks` or says a
   personal source needs local cookies, credentials, transcription, or custom
   tooling.
 - During `fetchTasks`, failed extraction attempts are not command-contract
-  failures. Keep trying available local capabilities until each task is
-  completed or no available method can obtain real primary content.
+  failures. Keep trying available capabilities — web fetch, local CLI tools,
+  transcription APIs, headless browser, etc. — until each task is completed or
+  no available method can obtain real primary content.
 
 Fetch task boundary:
 - `fetchTasks` are the only work items. Each task represents one post that must
@@ -29,7 +30,8 @@ Fetch task boundary:
   required language), copy the original item fields from `task.item`, and
   include `rawJson.fetchTaskId`.
 - If `task.contentStatus="requires_agent"`, first obtain real primary content
-  using this agent's local capabilities, then generate one concise single-post
+  using whatever extraction capabilities this agent has (web fetch, local CLI
+  tools, transcription APIs, headless browser, etc.), then generate one concise single-post
   `summary` from `task.summaryInstructions.prompt`. Include
   `rawJson.fetchTaskId`, `rawJson.agentRuntime`, `rawJson.agentModel` if known,
   `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`.
@@ -73,9 +75,10 @@ How to execute each `fetchTask` in this step:
   - For `ready`, use `task.item.body` as the final item body exactly; do not
     fetch or rewrite the source content.
   - For `requires_agent`, use `task.item.url`, `task.sourceType`, and
-    `task.agentWorkType` to choose local extraction methods. Keep trying
-    available methods until real primary content is obtained or no method
-    remains.
+    `task.agentWorkType` to pick any extraction method available — web fetch,
+    local CLI tools (yt-dlp, curl, ffmpeg…), transcription APIs, headless
+    browser, anything you have. Keep trying available methods until real
+    primary content is obtained or no method remains.
 - Use `task.minimumContentQuality` for `requires_agent` tasks as the minimum
   acceptance bar for the extracted body. The structured fields drive
   acceptance: `minChars`, `minWords`, the optional ratios, and
