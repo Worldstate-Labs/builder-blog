@@ -37,7 +37,7 @@ function prettyOs(platformString: string | null): string {
  * falls back to parsing the user-agent string for tokens created
  * before machine headers existed.
  */
-function describeMachine(token: AgentTokenListItem): string {
+export function describeMachine(token: AgentTokenListItem): string {
   const host = token.lastHostname?.replace(/\.local$/, "") ?? null;
   const user = token.lastUser ?? null;
   const os = prettyOs(token.lastPlatform);
