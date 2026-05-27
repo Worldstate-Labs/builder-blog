@@ -1,4 +1,3 @@
-import { unstable_cache } from "next/cache";
 import type { BuilderKind, FeedItemKind, Prisma, PrismaClient } from "@prisma/client";
 
 const candidateWindow = 1000;
@@ -68,48 +67,39 @@ export type RecommendationSnapshotResult = {
 // Cached For-You candidate fetch — 2-minute TTL, per-user cache tag
 // ---------------------------------------------------------------------------
 
-function getForYouCandidates(userId: string) {
-  return unstable_cache(
-    async () => {
-      const { prisma } = await import("@/lib/prisma");
-      const cutoff = new Date(Date.now() - 90 * 86400000);
-      return prisma.feedItem.findMany({
-        where: {
-          createdAt: { gte: cutoff },
-          builder: {
-            OR: [
-              { ownerUserId: userId },
-              { hubItems: { some: {} } },
-            ],
-          },
-        },
-        include: {
-          builder: {
-            select: {
-              id: true,
-              entityId: true,
-              name: true,
-              handle: true,
-              kind: true,
-              sourceType: true,
-              sourceUrl: true,
-              crawlUrl: true,
-              bio: true,
-              ownerUserId: true,
-              lastCrawledAt: true,
-            },
-          },
-        },
-        orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-        take: candidateWindow,
-      });
+async function getForYouCandidates(userId: string) {
+  const { prisma } = await import("@/lib/prisma");
+  const cutoff = new Date(Date.now() - 90 * 86400000);
+  return prisma.feedItem.findMany({
+    where: {
+      createdAt: { gte: cutoff },
+      builder: {
+        OR: [
+          { ownerUserId: userId },
+          { hubItems: { some: {} } },
+        ],
+      },
     },
-    ["recommendation-candidates-for-you", userId],
-    {
-      revalidate: 120,
-      tags: [`user:${userId}:recs`],
+    include: {
+      builder: {
+        select: {
+          id: true,
+          entityId: true,
+          name: true,
+          handle: true,
+          kind: true,
+          sourceType: true,
+          sourceUrl: true,
+          crawlUrl: true,
+          bio: true,
+          ownerUserId: true,
+          lastCrawledAt: true,
+        },
+      },
     },
-  )();
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    take: candidateWindow,
+  });
 }
 
 async function attachHubItems(
