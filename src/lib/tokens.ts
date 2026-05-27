@@ -57,6 +57,13 @@ export async function getUserFromBearer(request: Request) {
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     (request.url ? new URL(request.url).hostname : null);
   const lastUserAgent = request.headers.get("user-agent");
+  // CLI-reported machine identity (clamped lengths to avoid header-stuffing
+  // junk landing in the DB).
+  const clamp = (value: string | null, max: number) =>
+    value ? value.trim().slice(0, max) : null;
+  const lastHostname = clamp(request.headers.get("x-machine-hostname"), 120);
+  const lastPlatform = clamp(request.headers.get("x-machine-platform"), 120);
+  const lastUser = clamp(request.headers.get("x-machine-user"), 80);
 
   await prisma.agentToken.update({
     where: { id: record.id },
@@ -64,6 +71,9 @@ export async function getUserFromBearer(request: Request) {
       lastUsedAt: new Date(),
       ...(lastIp ? { lastIp } : {}),
       ...(lastUserAgent ? { lastUserAgent } : {}),
+      ...(lastHostname ? { lastHostname } : {}),
+      ...(lastPlatform ? { lastPlatform } : {}),
+      ...(lastUser ? { lastUser } : {}),
     },
   });
 

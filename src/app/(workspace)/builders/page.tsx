@@ -140,6 +140,9 @@ async function loadBuildersPageData() {
         lastUsedAt: true,
         lastIp: true,
         lastUserAgent: true,
+        lastHostname: true,
+        lastPlatform: true,
+        lastUser: true,
       },
     }),
   ]);
@@ -216,6 +219,9 @@ async function loadBuildersPageData() {
     lastUsedAt: token.lastUsedAt?.toISOString() ?? null,
     lastIp: token.lastIp ?? null,
     lastUserAgent: token.lastUserAgent ?? null,
+    lastHostname: token.lastHostname ?? null,
+    lastPlatform: token.lastPlatform ?? null,
+    lastUser: token.lastUser ?? null,
     revokedAt: null,
   }));
 

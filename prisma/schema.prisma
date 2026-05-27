@@ -333,6 +333,12 @@ model AgentToken {
   lastUsedAt      DateTime?
   lastIp          String?
   lastUserAgent   String?
+  /// CLI-reported machine identity (best-effort; user can fake these
+  /// headers, but they're meant to help the user recognize their own
+  /// machines in the Settings UI, not as an auth signal).
+  lastHostname    String?
+  lastPlatform    String?
+  lastUser        String?
   createdAt       DateTime       @default(now())
   revokedAt       DateTime?
   user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)

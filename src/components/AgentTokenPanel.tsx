@@ -10,8 +10,46 @@ export type AgentTokenListItem = {
   lastUsedAt: string | null;
   lastIp: string | null;
   lastUserAgent: string | null;
+  lastHostname: string | null;
+  lastPlatform: string | null;
+  lastUser: string | null;
   revokedAt: string | null;
 };
+
+function prettyOs(platformString: string | null): string {
+  if (!platformString) return "";
+  const lower = platformString.toLowerCase();
+  if (lower.startsWith("darwin")) {
+    // "darwin 24.3.0" → "macOS 14"
+    const release = lower.match(/(\d+)/)?.[0];
+    const macMajor = release ? Number(release) - 9 : null;
+    return macMajor && macMajor > 9 ? `macOS ${macMajor}` : "macOS";
+  }
+  if (lower.startsWith("linux")) return "Linux";
+  if (lower.startsWith("win")) return "Windows";
+  if (lower.startsWith("freebsd")) return "FreeBSD";
+  return platformString.split(/\s+/)[0]!.slice(0, 32);
+}
+
+/**
+ * Build a short human-readable machine label from the token's recorded
+ * fields. Prefers CLI-reported identity (hostname + user + OS) and
+ * falls back to parsing the user-agent string for tokens created
+ * before machine headers existed.
+ */
+function describeMachine(token: AgentTokenListItem): string {
+  const host = token.lastHostname?.replace(/\.local$/, "") ?? null;
+  const user = token.lastUser ?? null;
+  const os = prettyOs(token.lastPlatform);
+  if (host || user || os) {
+    const parts: string[] = [];
+    if (host) parts.push(host);
+    if (user && user !== host) parts.push(user);
+    if (os) parts.push(os);
+    return parts.join(" · ");
+  }
+  return summarizeUserAgent(token.lastUserAgent);
+}
 
 function summarizeUserAgent(ua: string | null): string {
   if (!ua) return "unknown machine";
@@ -242,15 +280,10 @@ export function AgentTokenPanel({
                 <>
                   <p>
                     This token has been used by{" "}
-                    {revokeTarget.lastUserAgent ? (
-                      <strong>{summarizeUserAgent(revokeTarget.lastUserAgent)}</strong>
-                    ) : (
-                      <strong>an unknown machine</strong>
-                    )}
+                    <strong>{describeMachine(revokeTarget)}</strong>
                     {revokeTarget.lastIp ? (
                       <>
-                        {" "}
-                        from <strong>{revokeTarget.lastIp}</strong>
+                        {" "}from <span className="mono">{revokeTarget.lastIp}</span>
                       </>
                     ) : null}
                     {revokeTarget.lastUsedAt ? (
@@ -322,16 +355,16 @@ function TokenRow({
               <span>Last used {formatDate(token.lastUsedAt)}</span>
             </>
           ) : null}
+          {token.lastUsedAt ? (
+            <>
+              <span>·</span>
+              <span>{describeMachine(token)}</span>
+            </>
+          ) : null}
           {token.lastIp ? (
             <>
               <span>·</span>
-              <span>{token.lastIp}</span>
-            </>
-          ) : null}
-          {token.lastUserAgent ? (
-            <>
-              <span>·</span>
-              <span>{summarizeUserAgent(token.lastUserAgent)}</span>
+              <span className="mono">{token.lastIp}</span>
             </>
           ) : null}
           {token.revokedAt ? (

@@ -1,10 +1,30 @@
 #!/usr/bin/env node
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { homedir } from "node:os";
+import { homedir, hostname, platform, release, userInfo } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+
+// Best-effort machine identity reported to the server on every call so
+// the user can recognize which laptop / VM / container is using which
+// token in the Settings UI. These are NOT used for auth.
+const MACHINE_HEADERS = (() => {
+  const headers = {};
+  try {
+    const host = hostname();
+    if (host) headers["x-machine-hostname"] = String(host).slice(0, 120);
+  } catch {}
+  try {
+    const plat = `${platform()} ${release()}`.trim();
+    if (plat) headers["x-machine-platform"] = plat.slice(0, 120);
+  } catch {}
+  try {
+    const user = userInfo().username;
+    if (user) headers["x-machine-user"] = String(user).slice(0, 80);
+  } catch {}
+  return headers;
+})();
 
 const CONFIG_DIR = join(homedir(), ".builder-blog");
 const ACCOUNTS_DIR = join(CONFIG_DIR, "accounts");
@@ -196,7 +216,7 @@ async function postJson(url, body, token) {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(token ? { authorization: `Bearer ${token}`, ...MACHINE_HEADERS } : {}),
     },
     body: JSON.stringify(body),
   });
@@ -209,7 +229,9 @@ async function postJson(url, body, token) {
 
 async function getJson(url, token) {
   const response = await fetch(url, {
-    headers: token ? { authorization: `Bearer ${token}` } : {},
+    headers: token
+      ? { authorization: `Bearer ${token}`, ...MACHINE_HEADERS }
+      : {},
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok && data.status !== "pending") {

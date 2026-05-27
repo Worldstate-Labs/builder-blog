@@ -49,6 +49,9 @@ export async function POST(request: Request) {
       lastUsedAt: record.lastUsedAt?.toISOString() ?? null,
       lastIp: record.lastIp ?? null,
       lastUserAgent: record.lastUserAgent ?? null,
+      lastHostname: record.lastHostname ?? null,
+      lastPlatform: record.lastPlatform ?? null,
+      lastUser: record.lastUser ?? null,
       revokedAt: record.revokedAt?.toISOString() ?? null,
     },
   });
