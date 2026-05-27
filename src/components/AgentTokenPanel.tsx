@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { KeyRound, Plus } from "lucide-react";
 
 export type AgentTokenListItem = {
@@ -75,6 +76,7 @@ export function AgentTokenPanel({
 }: {
   initialTokens: AgentTokenListItem[];
 }) {
+  const router = useRouter();
   const [tokens, setTokens] = useState(initialTokens);
   const [tokenName, setTokenName] = useState("");
   const [status, setStatus] = useState("");
@@ -128,6 +130,10 @@ export function AgentTokenPanel({
         }
         setTokens((current) => [body.record, ...current]);
         closeCreateDialog();
+        // Refresh server components on other routes (/builders, /dashboard)
+        // so their cached token lists pick up the new row — otherwise the
+        // copy-prompt picker on those pages renders a stale list.
+        router.refresh();
       } catch (error) {
         setStatus(error instanceof Error ? error.message : "Token creation failed");
       }
@@ -161,6 +167,7 @@ export function AgentTokenPanel({
           const body = await response.json().catch(() => null);
           throw new Error(body?.error ?? `HTTP ${response.status}`);
         }
+        router.refresh();
       } catch (error) {
         setTokens(previousTokens);
         setStatus(error instanceof Error ? error.message : "Token revoke failed");
