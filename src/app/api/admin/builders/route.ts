@@ -7,6 +7,7 @@ import { getCurrentSession } from "@/lib/auth";
 import { inferBuilderKind, normalizeHandle } from "@/lib/builder-keys";
 import { upsertBuilder } from "@/lib/builders";
 import { prisma } from "@/lib/prisma";
+import { validatePublicHttpUrl } from "@/lib/safe-url";
 import { builderKindForSourceType, builderSourceLabel } from "@/lib/source-registry";
 
 const AdminBuilderSchema = z.object({
@@ -38,6 +39,19 @@ export async function POST(request: Request) {
 
   if (!handleInput && !sourceUrl) {
     return NextResponse.json({ error: "Missing builder source" }, { status: 400 });
+  }
+
+  // SSRF: a sourceUrl that resolves to a private network, loopback, or
+  // cloud metadata endpoint must not enter the central library — the
+  // server fetches these URLs during crawl.
+  if (sourceUrl) {
+    const check = validatePublicHttpUrl(sourceUrl);
+    if (!check.ok) {
+      return NextResponse.json(
+        { error: `Source URL rejected: ${check.reason}` },
+        { status: 400 },
+      );
+    }
   }
 
   const handle = handleInput ? normalizeHandle(handleInput) : null;

@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  rateLimit,
+  rateLimitKeyFromRequest,
+  tooManyRequestsResponse,
+} from "@/lib/rate-limit";
 import { readAgentTokenValue } from "@/lib/tokens";
 
 const EXCHANGE_CODE_PATTERN = /^bb_ec_[A-Za-z0-9_-]{8,256}$/;
@@ -14,6 +19,17 @@ function invalidCodeResponse() {
 }
 
 export async function POST(request: Request) {
+  // Anonymous endpoint — cap exchanges per IP to slow any brute-force
+  // attempt against the exchange-code space.
+  const r = rateLimit({
+    key: `exchange:${rateLimitKeyFromRequest(request)}`,
+    limit: 10,
+    windowMs: 60_000,
+  });
+  if (!r.ok) {
+    return tooManyRequestsResponse(r.retryAfterMs);
+  }
+
   let body: unknown;
   try {
     body = await request.json();

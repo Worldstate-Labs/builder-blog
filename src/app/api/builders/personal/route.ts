@@ -8,6 +8,7 @@ import { upsertBuilder } from "@/lib/builders";
 import type { BuilderLibraryEventItem } from "@/lib/builder-library-events";
 import { syncPersonalLibraryHubForUser } from "@/lib/library-hub";
 import { resolvePersonalBuilderInput } from "@/lib/personal-builder-input";
+import { validatePublicHttpUrl } from "@/lib/safe-url";
 
 const PersonalBuilderSchema = z.object({
   name: z.string().max(240).optional(),
@@ -35,6 +36,19 @@ export async function POST(request: Request) {
 
   if (!input) {
     return NextResponse.json({ error: "Missing builder source" }, { status: 400 });
+  }
+
+  // SSRF: reject sourceUrl / crawlUrl pointing at private networks, link-local,
+  // loopback, or cloud metadata before we ever fetch them server-side.
+  for (const candidate of [input.sourceUrl, input.crawlUrl]) {
+    if (!candidate) continue;
+    const check = validatePublicHttpUrl(candidate);
+    if (!check.ok) {
+      return NextResponse.json(
+        { error: `Source URL rejected: ${check.reason}` },
+        { status: 400 },
+      );
+    }
   }
 
   const builder = await upsertBuilder({

@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
+import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { createAgentToken } from "@/lib/tokens";
+import { formatZodError } from "@/lib/zod-error";
+
+const TokenCreateSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+});
 
 export async function POST(request: Request) {
   const session = await getCurrentSession();
@@ -8,15 +15,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let name = "Manual web token";
-  try {
-    const body = await request.json().catch(() => null);
-    if (body?.name && typeof body.name === "string" && body.name.trim()) {
-      name = body.name.trim();
-    }
-  } catch {
-    // use default name
+  // Token creation is a high-value action — cap to a handful per
+  // 5-minute window per user to slow account-takeover automation
+  // that may have already grabbed a session cookie.
+  const r = rateLimit({
+    key: `token-create:${session.user.id}`,
+    limit: 5,
+    windowMs: 5 * 60_000,
+  });
+  if (!r.ok) {
+    return tooManyRequestsResponse(r.retryAfterMs);
   }
+
+  const parsed = TokenCreateSchema.safeParse(
+    await request.json().catch(() => null),
+  );
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: formatZodError(parsed.error) },
+      { status: 400 },
+    );
+  }
+  const name = parsed.data.name ?? "Manual web token";
 
   const { token, record } = await createAgentToken(session.user.id, name);
 

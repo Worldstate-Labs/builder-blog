@@ -5,6 +5,8 @@ import { addBuilderToPool } from "@/lib/builder-pool";
 import { upsertBuilder } from "@/lib/builders";
 import { syncPersonalLibraryHubForUser } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
+import { validatePublicHttpUrl } from "@/lib/safe-url";
 import { parseSkillBuilderSyncPayload } from "@/lib/skill-contracts";
 import { getUserFromBearer } from "@/lib/tokens";
 
@@ -12,6 +14,17 @@ export async function POST(request: Request) {
   const user = await getUserFromBearer(request);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Cap sync calls per user — these can carry several MB of feed content,
+  // so bursts from a misbehaving or hostile agent are expensive.
+  const r = rateLimit({
+    key: `skill-builders:${user.id}`,
+    limit: 30,
+    windowMs: 60_000,
+  });
+  if (!r.ok) {
+    return tooManyRequestsResponse(r.retryAfterMs);
   }
 
   const parsed = parseSkillBuilderSyncPayload(await request.json());
@@ -25,6 +38,19 @@ export async function POST(request: Request) {
   let subscriptions = 0;
   const now = new Date();
   for (const input of parsed.data.builders) {
+    // SSRF: agents must not register sources whose URLs target the internal
+    // network. The web crawl + future server-side fetches would otherwise
+    // touch private endpoints.
+    for (const candidate of [input.sourceUrl, input.crawlUrl]) {
+      if (!candidate) continue;
+      const check = validatePublicHttpUrl(candidate);
+      if (!check.ok) {
+        return NextResponse.json(
+          { error: `Source URL rejected (${input.name}): ${check.reason}` },
+          { status: 400 },
+        );
+      }
+    }
     const referencedBuilder = await findExistingPersonalBuilderForSync(user.id, input);
     if (referencedBuilder.status === "invalid") {
       return NextResponse.json({ error: referencedBuilder.error }, { status: 400 });
