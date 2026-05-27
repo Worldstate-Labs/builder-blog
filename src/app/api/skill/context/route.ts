@@ -59,13 +59,16 @@ export async function GET(request: Request) {
   // the local agent CLI's personalBuildersForCrawl filter can pick them up.
   // Imported builders (from other users' hub libraries) are left without
   // a scope — the codebase intentionally has no "CENTRAL" concept; the
-  // owner-based check is the source of truth.
+  // owner-based check is the source of truth. Strip the original
+  // `ownerUserId` from rows the requester does not own to avoid leaking
+  // other users' internal IDs through the API.
   const personalBuilderIdSet = new Set(personalBuilderIds);
-  const annotatedLibraryBuilders = libraryBuilders.map((builder) =>
-    personalBuilderIdSet.has(builder.id)
-      ? { ...builder, scope: "PERSONAL" as const }
-      : builder,
-  );
+  const annotatedLibraryBuilders = libraryBuilders.map((builder) => {
+    if (personalBuilderIdSet.has(builder.id)) {
+      return { ...builder, scope: "PERSONAL" as const };
+    }
+    return { ...builder, ownerUserId: null };
+  });
 
   // Subscriptions are per-channel; derive the entity set from the builder's entityId.
   const subscribedEntityIds = [

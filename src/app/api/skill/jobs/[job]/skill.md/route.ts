@@ -16,6 +16,15 @@ export async function GET(request: Request, { params }: Params) {
   const url = new URL(request.url);
   const ecParam = url.searchParams.get("ec");
 
+  // Reject any ec value that doesn't match the exchange-code format so it
+  // can never carry shell metacharacters into the generated bash block.
+  if (ecParam && !/^bb_ec_[A-Za-z0-9_-]{8,256}$/.test(ecParam)) {
+    return NextResponse.json(
+      { error: "Exchange code invalid" },
+      { status: 400 },
+    );
+  }
+
   let content = await readFile(join(process.cwd(), path), "utf8");
 
   if (ecParam) {

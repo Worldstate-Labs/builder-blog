@@ -1,49 +1,77 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { readAgentTokenValue } from "@/lib/tokens";
+
+const EXCHANGE_CODE_PATTERN = /^bb_ec_[A-Za-z0-9_-]{8,256}$/;
+
+// Uniform error returned for any malformed / not-found / expired / used
+// code so the endpoint cannot be used as an enumeration oracle.
+function invalidCodeResponse() {
+  return NextResponse.json(
+    { error: "Exchange code is invalid or expired" },
+    { status: 400 },
+  );
+}
 
 export async function POST(request: Request) {
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return invalidCodeResponse();
   }
 
-  if (!body || typeof body !== "object" || !("code" in body) || typeof (body as Record<string, unknown>).code !== "string") {
-    return NextResponse.json({ error: "Missing code" }, { status: 400 });
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !("code" in body) ||
+    typeof (body as Record<string, unknown>).code !== "string"
+  ) {
+    return invalidCodeResponse();
   }
 
   const code = (body as { code: string }).code.trim();
-  if (!code) {
-    return NextResponse.json({ error: "Missing code" }, { status: 400 });
+  if (!EXCHANGE_CODE_PATTERN.test(code)) {
+    return invalidCodeResponse();
   }
 
   const record = await prisma.exchangeCode.findUnique({
     where: { code },
     include: {
       agentToken: {
-        include: { user: { select: { id: true, email: true } } },
+        select: {
+          tokenValue: true,
+          tokenCiphertext: true,
+          revokedAt: true,
+          user: { select: { id: true, email: true } },
+        },
       },
     },
   });
 
-  if (!record) {
-    return NextResponse.json({ error: "Exchange code not found" }, { status: 404 });
+  if (!record || record.usedAt || record.expiresAt < new Date() || record.agentToken.revokedAt) {
+    // Burn any partial state so a discovered code is single-use.
+    if (record && !record.usedAt) {
+      await prisma.exchangeCode.delete({ where: { id: record.id } }).catch(() => undefined);
+    }
+    return invalidCodeResponse();
   }
 
-  if (record.usedAt || record.expiresAt < new Date()) {
-    return NextResponse.json({ error: "Exchange code expired or already used" }, { status: 410 });
+  const tokenValue = readAgentTokenValue(record.agentToken);
+  if (!tokenValue) {
+    // Cannot recover the raw token (e.g. encryption key rotated and no
+    // legacy plaintext). Treat as invalid rather than leak a 500.
+    return invalidCodeResponse();
   }
 
-  await prisma.exchangeCode.update({
-    where: { id: record.id },
-    data: { usedAt: new Date() },
-  });
+  // Single-use: delete the row outright so the raw mapping cannot be
+  // re-exchanged or recovered from a DB dump.
+  await prisma.exchangeCode.delete({ where: { id: record.id } });
 
   const origin = new URL(request.url).origin;
 
   return NextResponse.json({
-    token: record.agentToken.tokenValue,
+    token: tokenValue,
     email: record.agentToken.user.email,
     userId: record.agentToken.user.id,
     appUrl: origin,

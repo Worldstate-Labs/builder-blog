@@ -52,7 +52,7 @@ export default async function LoginPage({
             </span>
           </div>
           <div className="mt-5">
-            <AuthButtons callbackUrl={params.callbackUrl ?? "/dashboard"} />
+            <AuthButtons callbackUrl={safeCallbackUrl(params.callbackUrl)} />
           </div>
           <p className="mt-4 text-[11px] leading-relaxed text-white/42">
             Tokens for terminal use are created after sign-in from Settings.
@@ -61,6 +61,19 @@ export default async function LoginPage({
       </div>
     </main>
   );
+}
+
+/**
+ * Validate `callbackUrl` so an attacker cannot phish via
+ * `?callbackUrl=https://evil.example/`. Only same-origin, relative
+ * paths (starting with `/` and NOT `//`) are accepted; anything else
+ * falls back to the default landing.
+ */
+function safeCallbackUrl(value: string | undefined): string {
+  if (typeof value !== "string") return "/dashboard";
+  if (!value.startsWith("/") || value.startsWith("//")) return "/dashboard";
+  if (value.includes("\\")) return "/dashboard";
+  return value;
 }
 
 function LoginProof({

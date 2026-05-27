@@ -1,45 +1,60 @@
 import { BuilderKind, FeedItemKind } from "@prisma/client";
 import { z } from "zod";
 
+// Size limits guard the skill ingest endpoints against accidental or
+// malicious payloads that could exhaust DB storage or serverless memory.
+const MAX_TITLE = 500;
+const MAX_BODY = 100_000; // ~100 KB per post
+const MAX_SUMMARY = 4_000;
+const MAX_BIO = 4_000;
+const MAX_URL = 2_048;
+const MAX_NAME = 240;
+const MAX_HANDLE = 240;
+const MAX_SOURCE_NAME = 240;
+const MAX_EXTERNAL_ID = 512;
+const MAX_DIGEST_CONTENT = 200_000; // ~200 KB per digest
+const MAX_ITEMS_PER_BUILDER = 500;
+const MAX_BUILDERS_PER_SYNC = 50;
+
 export const SkillFeedItemSchema = z.object({
   kind: z.enum(FeedItemKind),
-  externalId: z.string().min(1),
-  title: z.string().nullable().optional(),
-  body: z.string().min(1),
-  summary: z.string().min(1).nullable().optional(),
-  url: z.string().url(),
+  externalId: z.string().min(1).max(MAX_EXTERNAL_ID),
+  title: z.string().max(MAX_TITLE).nullable().optional(),
+  body: z.string().min(1).max(MAX_BODY),
+  summary: z.string().min(1).max(MAX_SUMMARY).nullable().optional(),
+  url: z.string().url().max(MAX_URL),
   publishedAt: z.string().datetime().nullable().optional(),
-  sourceName: z.string().nullable().optional(),
+  sourceName: z.string().max(MAX_SOURCE_NAME).nullable().optional(),
   crawlingTool: z.string().min(1).max(160).nullable().optional(),
   rawJson: z.unknown().optional(),
 });
 
 export const SkillBuilderSchema = z.object({
-  builderId: z.string().min(1).nullable().optional(),
+  builderId: z.string().min(1).max(64).nullable().optional(),
   kind: z.enum(BuilderKind),
   sourceType: z.string().min(1).max(80).nullable().optional(),
-  name: z.string().min(1),
-  handle: z.string().nullable().optional(),
-  sourceUrl: z.string().url().nullable().optional(),
-  crawlUrl: z.string().url().nullable().optional(),
-  bio: z.string().nullable().optional(),
+  name: z.string().min(1).max(MAX_NAME),
+  handle: z.string().max(MAX_HANDLE).nullable().optional(),
+  sourceUrl: z.string().url().max(MAX_URL).nullable().optional(),
+  crawlUrl: z.string().url().max(MAX_URL).nullable().optional(),
+  bio: z.string().max(MAX_BIO).nullable().optional(),
   subscribe: z.boolean().default(false),
-  items: z.array(SkillFeedItemSchema).default([]),
+  items: z.array(SkillFeedItemSchema).max(MAX_ITEMS_PER_BUILDER).default([]),
 });
 
 export const SkillBuilderSyncSchema = z.object({
   force: z.boolean().default(false),
   crawlingTool: z.string().min(1).max(160).default("Agent skill sync"),
-  builders: z.array(SkillBuilderSchema).min(1),
+  builders: z.array(SkillBuilderSchema).min(1).max(MAX_BUILDERS_PER_SYNC),
 });
 
 export const SkillDigestSchema = z.object({
   title: z.string().min(1).max(180),
-  content: z.string().min(1),
-  language: z.string().default("zh"),
+  content: z.string().min(1).max(MAX_DIGEST_CONTENT),
+  language: z.string().max(16).default("zh"),
   periodStart: z.string().datetime().optional(),
   periodEnd: z.string().datetime().optional(),
-  itemCount: z.number().int().min(0).default(0),
+  itemCount: z.number().int().min(0).max(10_000).default(0),
 });
 
 export function parseSkillBuilderSyncPayload(payload: unknown) {

@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "crypto";
+import { decryptToken, encryptToken } from "@/lib/token-encryption";
 
 export function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
@@ -16,10 +17,27 @@ export async function createAgentToken(userId: string, name: string) {
       userId,
       name,
       tokenHash: hashToken(token),
-      tokenValue: token,
+      tokenCiphertext: encryptToken(token),
+      // tokenValue intentionally left null — legacy column kept for
+      // backward-compat read only; new tokens never write plaintext.
     },
   });
   return { token, record };
+}
+
+/**
+ * Resolve the raw agent token from a stored row. Reads the encrypted
+ * column first; falls back to the legacy `tokenValue` column for rows
+ * created before the ciphertext rollout. Returns null when neither
+ * column can be resolved (e.g. stale row, missing key).
+ */
+export function readAgentTokenValue(record: {
+  tokenCiphertext: string | null;
+  tokenValue: string | null;
+}): string | null {
+  const decrypted = decryptToken(record.tokenCiphertext);
+  if (decrypted) return decrypted;
+  return record.tokenValue ?? null;
 }
 
 export async function getUserFromBearer(request: Request) {

@@ -314,18 +314,26 @@ model Digest {
 }
 
 model AgentToken {
-  id            String         @id @default(cuid())
-  userId        String
-  name          String
-  tokenHash     String         @unique
-  tokenValue    String?
-  lastUsedAt    DateTime?
-  lastIp        String?
-  lastUserAgent String?
-  createdAt     DateTime       @default(now())
-  revokedAt     DateTime?
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  exchangeCodes ExchangeCode[]
+  id              String         @id @default(cuid())
+  userId          String
+  name            String
+  tokenHash       String         @unique
+  /// Legacy plaintext column kept only so old rows still resolve until a
+  /// backfill+drop migration completes. New tokens MUST set
+  /// `tokenCiphertext` instead and leave `tokenValue` null.
+  tokenValue      String?
+  /// AES-256-GCM ciphertext of the raw token, encoded as
+  /// `iv.tag.ciphertext` (all base64url). The encryption key is derived
+  /// from `NEXTAUTH_SECRET` so a DB dump alone is not enough to recover
+  /// any token.
+  tokenCiphertext String?
+  lastUsedAt      DateTime?
+  lastIp          String?
+  lastUserAgent   String?
+  createdAt       DateTime       @default(now())
+  revokedAt       DateTime?
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exchangeCodes   ExchangeCode[]
 
   @@index([userId])
 }
