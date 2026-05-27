@@ -571,13 +571,12 @@ function FieldTextarea({
   return (
     <FieldShell label={label} description={description}>
       <textarea
-        className="fb-input w-full"
+        className="fb-textarea w-full"
         rows={rows}
         value={value}
         spellCheck={!mono}
         style={{
           resize: "vertical",
-          lineHeight: 1.55,
           ...(mono
             ? { fontFamily: "var(--font-geist-mono)", fontSize: "0.8125rem" }
             : {}),

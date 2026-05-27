@@ -85,24 +85,27 @@ export function AdminDigestConfigForm({
     <div className="fb-panel" style={{ padding: "1rem" }}>
       <Field label="Digest top prompt">
         <textarea
-          className="fb-input"
-          rows={4}
+          className="fb-textarea w-full"
+          rows={5}
+          style={{ resize: "vertical", fontFamily: "var(--font-geist-mono)", fontSize: "0.8125rem" }}
           value={draft.digestTopPrompt}
           onChange={(e) => update("digestTopPrompt", e.target.value)}
         />
       </Field>
       <Field label="Digest intro prompt">
         <textarea
-          className="fb-input"
-          rows={10}
+          className="fb-textarea w-full"
+          rows={14}
+          style={{ resize: "vertical", fontFamily: "var(--font-geist-mono)", fontSize: "0.8125rem" }}
           value={draft.digestIntro}
           onChange={(e) => update("digestIntro", e.target.value)}
         />
       </Field>
       <Field label="Translate prompt">
         <textarea
-          className="fb-input"
-          rows={8}
+          className="fb-textarea w-full"
+          rows={10}
+          style={{ resize: "vertical", fontFamily: "var(--font-geist-mono)", fontSize: "0.8125rem" }}
           value={draft.translate}
           onChange={(e) => update("translate", e.target.value)}
         />
