@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { formatZodError } from "@/lib/zod-error";
 import { prisma } from "@/lib/prisma";
 import { parseSkillDigestPayload } from "@/lib/skill-contracts";
 import { getUserFromBearer } from "@/lib/tokens";
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
 
   const parsed = parseSkillDigestPayload(await request.json());
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
 
   const now = new Date();

@@ -1,4 +1,5 @@
 import { BuilderPoolOrigin, FeedItemKind } from "@prisma/client";
+import { formatZodError } from "@/lib/zod-error";
 import { NextResponse } from "next/server";
 import { addBuilderToPool } from "@/lib/builder-pool";
 import { upsertBuilder } from "@/lib/builders";
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
 
   const parsed = parseSkillBuilderSyncPayload(await request.json());
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
 
   let builders = 0;

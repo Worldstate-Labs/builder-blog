@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { formatZodError } from "@/lib/zod-error";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
     await request.json().catch(() => null),
   );
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+    return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
   const { feedItemId } = parsed.data;
 

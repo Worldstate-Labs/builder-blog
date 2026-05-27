@@ -1,4 +1,5 @@
 import { BuilderPoolOrigin } from "@prisma/client";
+import { formatZodError } from "@/lib/zod-error";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
     await request.json().catch(() => null),
   );
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+    return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
   const input = resolvePersonalBuilderInput({
     displayName: parsed.data.name ?? "",
