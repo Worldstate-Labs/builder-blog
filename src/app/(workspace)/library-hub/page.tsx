@@ -66,7 +66,7 @@ async function loadLibraryHubPageData() {
             },
           },
           orderBy: { createdAt: "asc" },
-          take: 8,
+          take: 3,
         },
         _count: { select: { items: true } },
       },

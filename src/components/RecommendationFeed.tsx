@@ -50,6 +50,7 @@ export function RecommendationFeed({
 }) {
   const [snapshots, setSnapshots] = useState(initialSnapshots);
   const [loadingDirection, setLoadingDirection] = useState<"append" | "prepend" | null>(null);
+  const loadingGuard = useRef<"append" | "prepend" | null>(null);
   const [exhausted, setExhausted] = useState(initialSnapshots.length === 0);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
@@ -70,7 +71,8 @@ export function RecommendationFeed({
 
   const requestSnapshot = useCallback(
     async (direction: "append" | "prepend") => {
-      if (loadingDirection) return;
+      if (loadingGuard.current) return;
+      loadingGuard.current = direction;
       setLoadingDirection(direction);
       try {
         const response = await fetch(
@@ -90,10 +92,11 @@ export function RecommendationFeed({
         );
         setExhausted(false);
       } finally {
+        loadingGuard.current = null;
         setLoadingDirection(null);
       }
     },
-    [loadingDirection, scope],
+    [scope],
   );
 
   useEffect(() => {

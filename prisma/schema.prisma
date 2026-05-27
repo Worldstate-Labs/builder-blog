@@ -266,6 +266,7 @@ model FeedRead {
 
   @@unique([userId, entityId, kind, externalId])
   @@index([userId, readAt])
+  @@index([userId, entityId])
   @@index([feedItemId])
 }
 

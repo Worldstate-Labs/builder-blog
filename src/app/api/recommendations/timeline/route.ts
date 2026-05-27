@@ -12,6 +12,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const timeline = await getRecommendationTimeline({
     userId: session.user.id,
+    snapshotLimit: 1,
     itemLimit: 6,
     scope: recommendationScope(url.searchParams.get("scope")),
   });

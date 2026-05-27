@@ -85,19 +85,18 @@ function getForYouCandidates(userId: string) {
         },
         include: {
           builder: {
-            include: {
-              hubItems: {
-                include: {
-                  hubEntry: {
-                    select: {
-                      name: true,
-                      description: true,
-                      importCount: true,
-                      viewCount: true,
-                    },
-                  },
-                },
-              },
+            select: {
+              id: true,
+              entityId: true,
+              name: true,
+              handle: true,
+              kind: true,
+              sourceType: true,
+              sourceUrl: true,
+              crawlUrl: true,
+              bio: true,
+              ownerUserId: true,
+              lastCrawledAt: true,
             },
           },
         },
@@ -111,6 +110,47 @@ function getForYouCandidates(userId: string) {
       tags: [`user:${userId}:recs`],
     },
   )();
+}
+
+async function attachHubItems(
+  candidates: CandidateList,
+  prisma: PrismaClient,
+): Promise<CandidateList> {
+  const builderIds = [
+    ...new Set(candidates.map((c) => c.builder?.id).filter((id): id is string => Boolean(id))),
+  ];
+  if (builderIds.length === 0) return candidates;
+
+  const hubItems = await prisma.libraryHubItem.findMany({
+    where: { builderId: { in: builderIds } },
+    select: {
+      builderId: true,
+      hubEntry: {
+        select: {
+          name: true,
+          description: true,
+          importCount: true,
+          viewCount: true,
+        },
+      },
+    },
+  });
+
+  const hubMap = new Map<string, typeof hubItems>();
+  for (const item of hubItems) {
+    const list = hubMap.get(item.builderId) ?? [];
+    list.push(item);
+    hubMap.set(item.builderId, list);
+  }
+
+  return candidates.map((candidate) => {
+    if (!candidate.builder) return candidate;
+    const items = hubMap.get(candidate.builder.id) ?? [];
+    return {
+      ...candidate,
+      builder: { ...candidate.builder, hubItems: items },
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -329,10 +369,11 @@ export async function createRecommendationSnapshot({
     // unreadRemaining = distinct unread canonical keys in the candidate window
     unreadRemaining = dedupGroups.size;
 
-    const candidates = pickPrimaryVariants(userId, dedupGroups, await prisma.userChannelPreference.findMany({
+    const rawCandidates2 = pickPrimaryVariants(userId, dedupGroups, await prisma.userChannelPreference.findMany({
       where: { userId, entityId: { in: [...new Set([...dedupGroups.keys()].map((k) => k.split(":")[0]))] } },
       select: { entityId: true, primaryBuilderId: true },
     }));
+    const candidates = await attachHubItems(rawCandidates2, prisma);
 
     return buildAndSaveSnapshot({
       userId,
@@ -361,19 +402,18 @@ export async function createRecommendationSnapshot({
         },
         include: {
           builder: {
-            include: {
-              hubItems: {
-                include: {
-                  hubEntry: {
-                    select: {
-                      name: true,
-                      description: true,
-                      importCount: true,
-                      viewCount: true,
-                    },
-                  },
-                },
-              },
+            select: {
+              id: true,
+              entityId: true,
+              name: true,
+              handle: true,
+              kind: true,
+              sourceType: true,
+              sourceUrl: true,
+              crawlUrl: true,
+              bio: true,
+              ownerUserId: true,
+              lastCrawledAt: true,
             },
           },
         },
@@ -429,10 +469,11 @@ export async function createRecommendationSnapshot({
       dedupGroups.set(key, list);
     }
 
-    const candidates = pickPrimaryVariants(userId, dedupGroups, await prisma.userChannelPreference.findMany({
+    const rawCandidates3 = pickPrimaryVariants(userId, dedupGroups, await prisma.userChannelPreference.findMany({
       where: { userId, entityId: { in: [...new Set([...dedupGroups.keys()].map((k) => k.split(":")[0]))] } },
       select: { entityId: true, primaryBuilderId: true },
     }));
+    const candidates = await attachHubItems(rawCandidates3, prisma);
 
     return buildAndSaveSnapshot({
       userId,
@@ -468,14 +509,18 @@ function pickPrimaryVariants(
     const entityId = first.builder!.entityId!;
     const pinned = pinnedMap.get(entityId);
     let pick: CandidateList[number] | undefined;
-    if (pinned) pick = variants.find((v) => v.builderId === pinned);
-    if (!pick) pick = variants.find((v) => v.builder?.ownerUserId === userId);
-    if (!pick) {
-      pick = [...variants].sort((a, b) => {
-        const aTime = (a.builder?.lastCrawledAt ?? a.publishedAt ?? a.createdAt).getTime();
-        const bTime = (b.builder?.lastCrawledAt ?? b.publishedAt ?? b.createdAt).getTime();
-        return bTime - aTime;
-      })[0]!;
+    if (variants.length === 1) {
+      pick = variants[0]!;
+    } else {
+      const byBuilder = new Map(variants.map((v) => [v.builderId, v]));
+      pick =
+        (pinned ? byBuilder.get(pinned) : undefined) ||
+        variants.find((v) => v.builder?.ownerUserId === userId) ||
+        [...variants].sort((a, b) => {
+          const aT = (a.builder?.lastCrawledAt ?? a.publishedAt ?? a.createdAt).getTime();
+          const bT = (b.builder?.lastCrawledAt ?? b.publishedAt ?? b.createdAt).getTime();
+          return bT - aT;
+        })[0]!;
     }
     candidates.push(pick);
   }
