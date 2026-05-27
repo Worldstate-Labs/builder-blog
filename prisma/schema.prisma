@@ -359,6 +359,39 @@ model ExchangeCode {
   @@index([agentTokenId])
 }
 
+/// Admin-editable per-source-type configuration. The code-bound fields
+/// (builderKind, feedItemKinds, urlPatterns, crawl fn) still live in
+/// config/sources.json; this table is the runtime source of truth for
+/// every safe-to-hot-edit attribute. Seeded from sources.json +
+/// digest-prompts on app startup so the table is never empty.
+model SourceTypeConfig {
+  sourceId                          String   @id
+  label                             String
+  agentDefaultStatus                String   @default("ready")
+  defaultCrawlDays                  Int      @default(7)
+  defaultCrawlLimit                 Int      @default(3)
+  contentQuality                    Json
+  summaryPromptBody                 String
+  summaryPromptSinglePostAdaptation String
+  summaryStyle                      String
+  summaryLanguage                   String   @default("zh")
+  summaryLengthHint                 String?
+  updatedAt                         DateTime @updatedAt
+  updatedBy                         String?
+}
+
+/// Singleton (id="global") that holds digest-level prompts and the
+/// section order used by both digest-once and the assembly skill.
+model DigestConfig {
+  id              String   @id @default("global")
+  digestTopPrompt String
+  digestIntro     String
+  translate       String
+  digestOrder     Json
+  updatedAt       DateTime @updatedAt
+  updatedBy       String?
+}
+
 enum BuilderKind {
   X
   BLOG

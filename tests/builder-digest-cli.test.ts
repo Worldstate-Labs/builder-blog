@@ -463,12 +463,47 @@ test("agent sync validation accepts ready crawl task summaries", async () => {
 
 test("ready crawl tasks carry embedded source-specific single-post prompts", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
+  const sources = {
+    x: {
+      id: "x",
+      label: "X / Twitter",
+      summaryPrompt: {
+        body: "tweet prompt body",
+        singlePostAdaptation: "- adapt for one tweet",
+        style: "x_twitter",
+        language: "zh",
+        lengthHint: null,
+      },
+    },
+    youtube: {
+      id: "youtube",
+      label: "YouTube",
+      summaryPrompt: {
+        body: "podcast prompt body",
+        singlePostAdaptation: "- adapt for one video",
+        style: "podcast_or_video",
+        language: "zh",
+        lengthHint: null,
+      },
+    },
+    blog: {
+      id: "blog",
+      label: "Blog",
+      summaryPrompt: {
+        body: "blog prompt body",
+        singlePostAdaptation: "- adapt for one article",
+        style: "blog_or_document",
+        language: "zh",
+        lengthHint: null,
+      },
+    },
+  };
   const tasks = cli.crawlTasksForReadyBuilders(
     [
       {
         builderId: "builder_x",
         kind: "X",
-        name: "Example Builder",
+        name: "Example X Builder",
         sourceType: "x",
         items: [
           {
@@ -478,6 +513,14 @@ test("ready crawl tasks carry embedded source-specific single-post prompts", asy
             body: "A substantive product launch tweet.",
             url: "https://x.com/example/status/1",
           },
+        ],
+      },
+      {
+        builderId: "builder_yt",
+        kind: "PODCAST",
+        name: "Example YouTube Builder",
+        sourceType: "youtube",
+        items: [
           {
             kind: "PODCAST_EPISODE",
             externalId: "video_1",
@@ -485,6 +528,14 @@ test("ready crawl tasks carry embedded source-specific single-post prompts", asy
             body: "Transcript text with real primary content.",
             url: "https://www.youtube.com/watch?v=video_1",
           },
+        ],
+      },
+      {
+        builderId: "builder_blog",
+        kind: "BLOG",
+        name: "Example Blog Builder",
+        sourceType: "blog",
+        items: [
           {
             kind: "BLOG_POST",
             externalId: "https://example.com/blog/post",
@@ -495,11 +546,7 @@ test("ready crawl tasks carry embedded source-specific single-post prompts", asy
         ],
       },
     ],
-    {
-      summarizeTweets: "tweet prompt body",
-      summarizePodcast: "podcast prompt body",
-      summarizeBlogs: "blog prompt body",
-    },
+    sources,
   );
 
   assert.deepEqual(
@@ -531,9 +578,9 @@ test("ready crawl tasks carry embedded source-specific single-post prompts", asy
       subscribe: task.builderSync.subscribe,
     })),
     [
-      { builderId: "builder_x", kind: "X", sourceType: "x", name: "Example Builder", subscribe: false },
-      { builderId: "builder_x", kind: "X", sourceType: "x", name: "Example Builder", subscribe: false },
-      { builderId: "builder_x", kind: "X", sourceType: "x", name: "Example Builder", subscribe: false },
+      { builderId: "builder_x", kind: "X", sourceType: "x", name: "Example X Builder", subscribe: false },
+      { builderId: "builder_yt", kind: "PODCAST", sourceType: "youtube", name: "Example YouTube Builder", subscribe: false },
+      { builderId: "builder_blog", kind: "BLOG", sourceType: "blog", name: "Example Blog Builder", subscribe: false },
     ],
   );
   for (const task of tasks) {
@@ -546,6 +593,21 @@ test("ready crawl tasks carry embedded source-specific single-post prompts", asy
   assert.match(tasks[1].summaryInstructions.prompt, /podcast prompt body/);
   assert.match(tasks[2].summaryInstructions.prompt, /blog prompt body/);
   assert.equal(tasks[0].summaryInstructions.sourcePrompt, undefined);
+});
+
+test("singlePostSummaryInstructions throws when source is missing from context.sources", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  assert.throws(
+    () => cli.singlePostSummaryInstructions("youtube", {}),
+    /Missing summary prompt for sourceId="youtube"/,
+  );
+  assert.throws(
+    () =>
+      cli.singlePostSummaryInstructions("blog", {
+        blog: { id: "blog", label: "Blog", summaryPrompt: { body: "", style: "blog_or_document" } },
+      }),
+    /Missing summary prompt for sourceId="blog"/,
+  );
 });
 
 test("agent sync validation rejects legacy task result shapes", async () => {

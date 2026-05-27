@@ -21,7 +21,7 @@ import {
 import { builderLibraryState } from "@/lib/builder-library-state";
 import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
-import { SOURCE_DEFINITIONS } from "@/lib/source-registry";
+import { getMergedSourceDefinitions } from "@/lib/source-registry";
 
 type BuilderWithCount = {
   id: string;
@@ -207,10 +207,15 @@ async function loadBuildersPageData() {
       description: ownSharedLibrary.description,
     });
   }
-  const [latestPostCreatedAtByBuilderId, libraryState] = await Promise.all([
+  const [latestPostCreatedAtByBuilderId, libraryState, mergedSourceDefinitions] = await Promise.all([
     latestPostCreationTimes(poolBuilderIds),
     builderLibraryState(session.user.id, poolBuilderIds),
+    getMergedSourceDefinitions(),
   ]);
+  const sourceLabelOptions = mergedSourceDefinitions.map((source) => ({
+    id: source.id,
+    label: source.label,
+  }));
 
   const activeTokens: AgentTokenListItem[] = rawTokens.map((token) => ({
     id: token.id,
@@ -237,6 +242,7 @@ async function loadBuildersPageData() {
     privateBuilders,
     sessionUserEmail: session.user.email,
     sessionUserName: session.user.name,
+    sourceLabelOptions,
     subscribed,
     subscribedCount,
   };
@@ -273,9 +279,7 @@ async function BuilderSections({
     <PrivateLibraryPanel
       title={data.isAdmin ? adminCommunityLibraryName : "Private library"}
       count={data.privateBuilders.length}
-      sourceOptions={SOURCE_DEFINITIONS.filter((source) => source.id !== "pdf").map(
-        (source) => ({ id: source.id, label: source.label }),
-      )}
+      sourceOptions={data.sourceLabelOptions.filter((source) => source.id !== "pdf")}
       visibilityToggle={
         <LibraryVisibilityToggle
           compact

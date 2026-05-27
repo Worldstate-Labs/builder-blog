@@ -287,6 +287,7 @@ async function crawlPersonal(args) {
     `${config.appUrl}/api/skill/context?days=${encodeURIComponent(String(days))}`,
     config.token,
   );
+  const sources = context.sources ?? {};
   const subscribedBuilderIds = new Set(
     (context.subscriptions ?? []).map((builder) => builder.id),
   );
@@ -340,6 +341,7 @@ async function crawlPersonal(args) {
               error: new Error(
                 "No local crawler configured for this personal source.",
               ),
+              sources,
             }),
           );
           continue;
@@ -367,14 +369,14 @@ async function crawlPersonal(args) {
         kind: source.syncKind,
         sourceType: source.id,
       };
-      crawlTasks.push(...sourceAgentTasks.map((task) => crawlTaskFromAgentTask(task, builderSync)));
+      crawlTasks.push(...sourceAgentTasks.map((task) => crawlTaskFromAgentTask(task, builderSync, sources)));
       builders.push({
         ...builderSync,
         items,
       });
     } catch (error) {
       crawlTasks.push(
-        buildBuilderFallbackTask(builder, fallbackBuilderSync, { error }),
+        buildBuilderFallbackTask(builder, fallbackBuilderSync, { error, sources }),
       );
     }
   }
@@ -394,7 +396,7 @@ async function crawlPersonal(args) {
     return;
   }
 
-  crawlTasks.push(...crawlTasksForReadyBuilders(builders));
+  crawlTasks.push(...crawlTasksForReadyBuilders(builders, sources));
   if (crawlTasks.length > 0) {
     console.log(
       JSON.stringify(
@@ -431,7 +433,7 @@ function normalizePersonalCrawlResult(result) {
   };
 }
 
-export function crawlTasksForReadyBuilders(builders, prompts = {}) {
+export function crawlTasksForReadyBuilders(builders, sources = {}) {
   return builders.flatMap((builder) =>
     (builder.items ?? []).map((item) => ({
       type: "crawl_post",
@@ -459,7 +461,7 @@ export function crawlTasksForReadyBuilders(builders, prompts = {}) {
         sourceName: item.sourceName ?? builder.name,
         body: String(item.body ?? "").slice(0, 12000),
       },
-      summaryInstructions: singlePostSummaryInstructions(item.kind, prompts),
+      summaryInstructions: singlePostSummaryInstructions(builder.sourceType, sources),
       id: crawlTaskId({ builderId: builder.builderId, builder: builder.name, item }),
     })),
   );
@@ -472,7 +474,7 @@ const FALLBACK_FEED_ITEM_KIND_BY_BUILDER_KIND = {
   WEBSITE: "OTHER",
 };
 
-function buildBuilderFallbackTask(builder, builderSync, { error, prompts = {} } = {}) {
+function buildBuilderFallbackTask(builder, builderSync, { error, sources = {} } = {}) {
   const kind = FALLBACK_FEED_ITEM_KIND_BY_BUILDER_KIND[builder.kind] || "OTHER";
   const handle = builder.handle ? String(builder.handle).replace(/^@/, "") : null;
   const url =
@@ -489,36 +491,38 @@ function buildBuilderFallbackTask(builder, builderSync, { error, prompts = {} } 
     sourceName: builder.name,
     body: "",
   };
+  const sourceType = builderSync.sourceType ?? sourceTypeIdForBuilder(builder);
   const task = {
     type: "crawl_post",
     agentWorkType: "crawl_builder_fallback",
     contentStatus: "requires_agent",
     builder: builder.name,
     builderId: builder.id,
-    sourceType: builderSync.sourceType ?? sourceTypeIdForBuilder(builder),
+    sourceType,
     builderSync,
     item,
     minimumContentQuality: genericMinimumContentQuality(),
-    summaryInstructions: singlePostSummaryInstructions(kind, prompts),
+    summaryInstructions: singlePostSummaryInstructions(sourceType, sources),
     fallbackReason: error?.message || String(error || "Personal crawler failed"),
   };
   task.id = crawlTaskId({ builderId: builder.id, builder: builder.name, item });
   return task;
 }
 
-function crawlTaskFromAgentTask(task, builderSync, prompts = {}) {
+function crawlTaskFromAgentTask(task, builderSync, sources = {}) {
   const item = task.item ?? {};
+  const sourceType = task.sourceType ?? builderSync.sourceType;
   return {
     type: "crawl_post",
     agentWorkType: task.type,
     contentStatus: "requires_agent",
     builder: task.builder ?? builderSync.name,
     builderId: task.builderId ?? builderSync.builderId,
-    sourceType: task.sourceType ?? builderSync.sourceType,
+    sourceType,
     builderSync,
     item,
     minimumContentQuality: task.minimumContentQuality ?? genericMinimumContentQuality(),
-    summaryInstructions: task.summaryInstructions ?? singlePostSummaryInstructions(item.kind, prompts),
+    summaryInstructions: task.summaryInstructions ?? singlePostSummaryInstructions(sourceType, sources),
     id: crawlTaskId({ builderId: task.builderId ?? builderSync.builderId, builder: task.builder ?? builderSync.name, item }),
   };
 }
@@ -534,15 +538,26 @@ export function crawlTaskId(task) {
     .join(":");
 }
 
-export function singlePostSummaryInstructions(kind, prompts = {}) {
-  const source = summaryPromptReferenceForKind(kind, prompts);
+export function singlePostSummaryInstructions(sourceId, sources = {}) {
+  const source = sources?.[sourceId];
+  if (!source || !source.summaryPrompt || !source.summaryPrompt.body) {
+    throw new Error(
+      `Missing summary prompt for sourceId="${sourceId}" in context.sources. ` +
+        "The server must seed SourceTypeConfig rows before any once-skill runs.",
+    );
+  }
+  const summaryPrompt = source.summaryPrompt;
   return {
-    language: "zh",
+    language: summaryPrompt.language || "zh",
     scope: "single_post",
     sourceUrlRequired: true,
     useOnlySuppliedItem: true,
-    prompt: singlePostSummaryPrompt(source),
-    summaryStyle: source.style,
+    prompt: singlePostSummaryPrompt({
+      label: source.label || sourceId,
+      body: summaryPrompt.body,
+      singlePostAdaptation: summaryPrompt.singlePostAdaptation || "",
+    }),
+    summaryStyle: summaryPrompt.style,
   };
 }
 
@@ -553,7 +568,7 @@ function singlePostSummaryPrompt(source) {
     `Use the ${source.label} summary rules below. This task is self-contained: do not read external prompt files, do not fetch context.prompts, and do not write a multi-post digest.`,
     "",
     "Reference rules:",
-    source.body || source.fallback,
+    source.body,
     "",
     "Single-post adaptation:",
     source.singlePostAdaptation,
@@ -565,40 +580,6 @@ function singlePostSummaryPrompt(source) {
     "- Do not summarize from title, description, or page metadata alone.",
     "- Preserve the reference prompt's quality bar, no-fabrication rule, quote rule, and source-link rule.",
   ].join("\n");
-}
-
-function summaryPromptReferenceForKind(kind, prompts = {}) {
-  if (kind === "TWEET") {
-    return {
-      style: "x_twitter",
-      label: "X/Twitter",
-      body: prompts.summarizeTweets ?? null,
-      fallback:
-        "Summarize substantive original X/Twitter content from an AI builder. Skip weak promotional content, mundane posts, retweets without commentary, and engagement bait. For threads, summarize the full thread cohesively. Mention tools, demos, launches, resources, bold predictions, or contrarian takes when present.",
-      singlePostAdaptation:
-        "- Apply the X/Twitter rules to this one tweet or one thread from this builder/source.",
-    };
-  }
-  if (kind === "PODCAST_EPISODE") {
-    return {
-      style: "podcast_or_video",
-      label: "podcast/video",
-      body: prompts.summarizePodcast ?? null,
-      fallback:
-        "Summarize a podcast or video transcript for a busy professional. Lead with the most important takeaway, prioritize counterintuitive or specific insights, include direct quotes only when present in the transcript, and include the specific episode or video URL.",
-      singlePostAdaptation:
-        "- Apply the podcast/video rules to this one episode or one video transcript.",
-    };
-  }
-  return {
-    style: "blog_or_document",
-    label: "blog/document",
-    body: prompts.summarizeBlogs ?? null,
-    fallback:
-      "Summarize a blog post from an AI company or builder. Lead with the core announcement, finding, or insight; include named products, features, research results, numbers, benchmarks, practical implications, and direct quotes only when present in the article body.",
-    singlePostAdaptation:
-      "- Apply the blog/article rules to this one article or document.",
-  };
 }
 
 export function personalBuildersForCrawl(context) {
@@ -690,10 +671,6 @@ function sourceTypeIdForBuilder(builder) {
   return kindDefault?.id ?? "website";
 }
 
-function isYouTubeSource(builder) {
-  return sourceTypeIdForBuilder(builder) === "youtube";
-}
-
 function isPdfSource(builder) {
   return sourceTypeIdForBuilder(builder) === "pdf";
 }
@@ -768,6 +745,10 @@ export function crawlPersonalYouTubeBuilderForTest(builder, options) {
   return crawlPersonalYouTubeBuilder(builder, options);
 }
 
+/**
+ * @param {string} text
+ * @param {{ source?: string; title?: string; description?: string }} [options]
+ */
 export function youtubeContentQuality(text, { source, title = "", description = "" } = {}) {
   const normalized = normalizeContentText(text);
   const words = normalized.match(/[A-Za-z0-9\u4e00-\u9fff]+/g) ?? [];
@@ -1483,6 +1464,11 @@ export async function youtubeFeedUrl(sourceUrl, fetcher = fetch) {
   return externalId ? `https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(externalId)}` : "";
 }
 
+/**
+ * @param {string} sourceUrl
+ * @param {(input: string, init?: RequestInit) => Promise<Response>} [fetcher]
+ * @param {{ retryDelays?: number[] }} [options]
+ */
 export async function fetchYouTubeVideos(sourceUrl, fetcher = fetch, options = {}) {
   const feedUrl = await youtubeFeedUrl(sourceUrl, fetcher);
   if (!feedUrl) {

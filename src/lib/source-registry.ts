@@ -1,5 +1,10 @@
 import { BuilderKind, FeedItemKind } from "@prisma/client";
 import sourcesConfig from "../../config/sources.json";
+import {
+  getAllSourceConfigs,
+  getSourceConfig,
+  getSourceConfigMap,
+} from "./source-config-store";
 
 type BuilderSourceInput = {
   kind: BuilderKind;
@@ -8,14 +13,35 @@ type BuilderSourceInput = {
   crawlUrl?: string | null;
 };
 
-type SourceConfigEntry = (typeof sourcesConfig.sources)[number];
-
+// Code-bound static fields only. Admin-editable fields (label, prompts,
+// content quality, crawl defaults) live in `SourceTypeConfig` and must
+// be read via the async getters below — never from sources.json at
+// request time.
 export type SourceDefinition = {
   id: string;
-  label: string;
   builderKind: BuilderKind;
   feedItemKinds: FeedItemKind[];
+  urlPatterns: string[];
   matchesBuilder?: (builder: BuilderSourceInput) => boolean;
+  // Static label kept around so synchronous helpers that need a
+  // human-readable name (used by code paths that pre-date the DB-backed
+  // store) keep working. Treat as a fallback; admin-edited labels live
+  // in `SourceTypeConfig.label`.
+  staticLabel: string;
+};
+
+// Async-merged definition: static metadata + DB-backed admin fields.
+export type MergedSourceDefinition = SourceDefinition & {
+  label: string;
+  agentDefaultStatus: string;
+  defaultCrawlDays: number;
+  defaultCrawlLimit: number;
+  contentQuality: unknown;
+  summaryPromptBody: string;
+  summaryPromptSinglePostAdaptation: string;
+  summaryStyle: string;
+  summaryLanguage: string;
+  summaryLengthHint: string | null;
 };
 
 function buildSourceDefinitions(): SourceDefinition[] {
@@ -23,9 +49,10 @@ function buildSourceDefinitions(): SourceDefinition[] {
     const compiledPatterns = entry.urlPatterns.map((p) => new RegExp(p, "i"));
     const def: SourceDefinition = {
       id: entry.id,
-      label: entry.label,
       builderKind: entry.builderKind as BuilderKind,
       feedItemKinds: entry.feedItemKinds as FeedItemKind[],
+      urlPatterns: entry.urlPatterns,
+      staticLabel: entry.label,
     };
     if (compiledPatterns.length > 0) {
       def.matchesBuilder = (builder: BuilderSourceInput) => {
@@ -52,9 +79,10 @@ export function sourceDefinitionForType(sourceType: string | null | undefined) {
   return (
     SOURCE_DEFINITIONS.find((source) => source.id === id) ?? {
       id,
-      label: titleCase(id),
+      staticLabel: titleCase(id),
       builderKind: BuilderKind.WEBSITE,
       feedItemKinds: [] as FeedItemKind[],
+      urlPatterns: [] as string[],
     }
   );
 }
@@ -68,15 +96,18 @@ export function builderKindForSourceType(sourceType: string | null | undefined) 
   return sourceDefinitionForType(sourceType)?.builderKind ?? BuilderKind.WEBSITE;
 }
 
+// Synchronous label helper used in many code paths that can't go async.
+// Falls back to the static label baked into sources.json. Use the async
+// `getMergedSourceDefinitionForBuilder` when admin-edited labels matter.
 export function builderSourceLabel(builder: BuilderSourceInput) {
-  return sourceDefinitionForBuilder(builder)?.label ?? builderKindLabel(builder.kind);
+  return sourceDefinitionForBuilder(builder)?.staticLabel ?? builderKindLabel(builder.kind);
 }
 
 export function builderKindLabel(kind: BuilderKind) {
   return (
     SOURCE_DEFINITIONS.find(
       (source) => source.builderKind === kind && !source.matchesBuilder,
-    )?.label ?? titleCase(kind)
+    )?.staticLabel ?? titleCase(kind)
   );
 }
 
@@ -89,8 +120,69 @@ export function feedItemKindLabel(kind: FeedItemKind) {
   return labels[kind] ?? titleCase(kind);
 }
 
-export function sourceConfigFor(entry: SourceConfigEntry) {
-  return entry;
+// Async DB-merged getters. Throw when a static sourceId is missing from
+// the DB so callers don't silently fall back to stale defaults — the
+// seeder should have created the row on first boot.
+export async function getMergedSourceDefinitions(): Promise<MergedSourceDefinition[]> {
+  const configs = await getAllSourceConfigs();
+  return SOURCE_DEFINITIONS.map((def) => {
+    const config = configs.find((c) => c.sourceId === def.id);
+    if (!config) {
+      throw new Error(
+        `SourceTypeConfig row missing for sourceId="${def.id}"; run prisma db seed.`,
+      );
+    }
+    return mergeDefinition(def, config);
+  });
+}
+
+export async function getMergedSourceDefinitionForType(
+  sourceType: string | null | undefined,
+): Promise<MergedSourceDefinition | null> {
+  const def = sourceDefinitionForType(sourceType);
+  if (!def) return null;
+  const config = await getSourceConfig(def.id);
+  if (!config) {
+    if (SOURCE_DEFINITIONS.some((s) => s.id === def.id)) {
+      throw new Error(
+        `SourceTypeConfig row missing for sourceId="${def.id}"; run prisma db seed.`,
+      );
+    }
+    // Fully-unknown sourceType (titleCase fallback path) — best-effort
+    // synthesis instead of throwing so the rest of the UI keeps working.
+    return null;
+  }
+  return mergeDefinition(def, config);
+}
+
+export async function getMergedSourceDefinitionForBuilder(
+  builder: BuilderSourceInput,
+): Promise<MergedSourceDefinition | null> {
+  const def = sourceDefinitionForBuilder(builder);
+  if (!def) return null;
+  const map = await getSourceConfigMap();
+  const config = map.get(def.id);
+  if (!config) return null;
+  return mergeDefinition(def, config);
+}
+
+function mergeDefinition(
+  def: SourceDefinition,
+  config: Awaited<ReturnType<typeof getSourceConfig>> & object,
+): MergedSourceDefinition {
+  return {
+    ...def,
+    label: config.label,
+    agentDefaultStatus: config.agentDefaultStatus,
+    defaultCrawlDays: config.defaultCrawlDays,
+    defaultCrawlLimit: config.defaultCrawlLimit,
+    contentQuality: config.contentQuality,
+    summaryPromptBody: config.summaryPromptBody,
+    summaryPromptSinglePostAdaptation: config.summaryPromptSinglePostAdaptation,
+    summaryStyle: config.summaryStyle,
+    summaryLanguage: config.summaryLanguage,
+    summaryLengthHint: config.summaryLengthHint,
+  };
 }
 
 function sourceUrlText(builder: BuilderSourceInput) {

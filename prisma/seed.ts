@@ -1,10 +1,24 @@
-// The server-side crawler and seed functions have been removed.
-// Admin uses the local CLI (builder-digest.mjs) like every other user.
+// Seeds admin-editable runtime config that should never be empty:
+//   - SourceTypeConfig: one row per source id (x, blog, youtube, etc.)
+//   - DigestConfig: the "global" singleton with digest-level prompts.
+// Idempotent. Existing rows are preserved so admin hot-edits survive deploys.
+import { PrismaClient } from "@prisma/client";
+import { ensureSourceConfigsSeeded } from "../src/lib/source-config-seed";
+
+const prisma = new PrismaClient();
+
 async function main() {
-  console.log("No seed actions configured. Use the CLI to import builders.");
+  await ensureSourceConfigsSeeded(prisma);
+  console.log(
+    "Seeded SourceTypeConfig + DigestConfig defaults (existing rows preserved).",
+  );
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

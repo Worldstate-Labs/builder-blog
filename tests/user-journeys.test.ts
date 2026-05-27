@@ -10,7 +10,7 @@ import {
   normalizeHandle,
 } from "../src/lib/builder-keys";
 import { subscriptionBuilderIdsInPool } from "../src/lib/digest-library";
-import { DIGEST_PROMPTS } from "../src/lib/digest-prompts";
+import { DEFAULT_DIGEST_PROMPTS } from "../src/lib/digest-prompts";
 import {
   digestFallbackSince,
   digestFrequencyDays,
@@ -510,7 +510,9 @@ test("digest feed user path derives context window from user frequency and max p
   assert.match(contextRoute, /publishedAfter: maxAgeCutoff/);
   assert.match(contextRoute, /newly crawled items created after the last digest/);
   assert.match(contextRoute, /includePrompts/);
-  assert.match(contextRoute, /\.\.\.\(includePrompts \? \{ prompts: DIGEST_PROMPTS \} : \{\}\)/);
+  // context.prompts (kept for back-compat) is now derived from DB at request time,
+  // not from a static DIGEST_PROMPTS import. Just assert the field is still emitted.
+  assert.match(contextRoute, /prompts:/);
   const cli = readFileSync("scripts/builder-digest.mjs", "utf8");
   assert.match(cli, /api\/skill\/context\?includePrompts=1/);
   assert.match(cli, /api\/skill\/context\?days=/);
@@ -575,14 +577,14 @@ test("recommendation feed user path scores unread crawled posts from profile, su
 
 test("digest generation user path exposes source-specific prompt instructions", () => {
   assert.deepEqual(
-    Object.keys(DIGEST_PROMPTS).sort(),
+    Object.keys(DEFAULT_DIGEST_PROMPTS).sort(),
     ["digest", "digestIntro", "summarizeBlogs", "summarizePodcast", "summarizeTweets", "translate"].sort(),
   );
-  assert.match(DIGEST_PROMPTS.summarizePodcast, /podcast transcript/i);
-  assert.match(DIGEST_PROMPTS.summarizeTweets, /X\/Twitter Summary Prompt/);
-  assert.match(DIGEST_PROMPTS.summarizeBlogs, /Blog Post Summary Prompt/);
-  assert.match(DIGEST_PROMPTS.digestIntro, /Digest Intro Prompt/);
-  assert.match(DIGEST_PROMPTS.translate, /simplified Chinese/i);
+  assert.match(DEFAULT_DIGEST_PROMPTS.summarizePodcast, /podcast transcript/i);
+  assert.match(DEFAULT_DIGEST_PROMPTS.summarizeTweets, /X\/Twitter Summary Prompt/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.summarizeBlogs, /Blog Post Summary Prompt/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /Digest Intro Prompt/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.translate, /simplified Chinese/i);
 });
 
 test("search user path exact mode matches literal text across builders, feeds, and digests", () => {
@@ -1743,7 +1745,7 @@ test("source registry supports future source types without new BuilderKind enum 
     }),
     "pdf",
   );
-  assert.equal(sourceDefinitionForType("pdf")?.label, "PDF");
+  assert.equal(sourceDefinitionForType("pdf")?.staticLabel, "PDF");
   assert.equal(builderKindForSourceType("pdf"), BuilderKind.WEBSITE);
   assert.equal(
     sourceTypeIdForBuilder({
@@ -1754,7 +1756,7 @@ test("source registry supports future source types without new BuilderKind enum 
     }),
     "custom_media",
   );
-  assert.equal(sourceDefinitionForType("CUSTOM_MEDIA")?.label, "Custom media");
+  assert.equal(sourceDefinitionForType("CUSTOM_MEDIA")?.staticLabel, "Custom media");
   assert.equal(builderKindForSourceType("CUSTOM_MEDIA"), BuilderKind.WEBSITE);
 });
 

@@ -34,24 +34,28 @@ ${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/builder-blog-context.json
 ```
 
 The only creative step is writing a concise Chinese digest using only
-`context.items`. Before writing, read `context.prompts` from the JSON and use
-these five prompt bodies as the required digest-writing method:
+`context.items`. Before writing, read `context.sources` and `context.digest`
+from the JSON and use them as the required digest-writing method:
 
-- `context.prompts.summarizeTweets` (`summarize-tweets.md`) for `TWEET` items,
-  grouped by builder/source.
-- `context.prompts.summarizePodcast` (`summarize-podcast.md`) for
-  `PODCAST_EPISODE` items.
-- `context.prompts.summarizeBlogs` (`summarize-blogs.md`) for `BLOG_POST`
-  items.
-- `context.prompts.digestIntro` (`digest-intro.md`) to assemble the final
-  digest order, source-link rules, and no-fabrication rules.
-- `context.prompts.translate` (`translate.md`) to produce the final natural
-  simplified Chinese output.
+- For each `TWEET` item, group by builder/source and use
+  `context.sources.x.summaryPrompt.body` as the summary prompt.
+- For each `PODCAST_EPISODE` item, use
+  `context.sources.podcast.summaryPrompt.body` (or
+  `context.sources.youtube.summaryPrompt.body` when the item originated from a
+  YouTube source) as the summary prompt.
+- For each `BLOG_POST` item, use `context.sources.blog.summaryPrompt.body` as
+  the summary prompt.
+- Use `context.digest.digestIntro` to assemble the final digest order,
+  source-link rules, and no-fabrication rules. Respect `context.digest.order`
+  for section sequencing.
+- Use `context.digest.translate` to produce the final natural simplified
+  Chinese output.
 
 Do not collapse these into one generic summary. First create source-specific
-summaries with the matching prompt, then assemble them with `digestIntro`, then
-apply `translate`. Include source URLs for every claim. If there are no items,
-write a short Chinese digest saying there were no new subscription updates.
+summaries with the matching prompt, then assemble them with
+`context.digest.digestIntro`, then apply `context.digest.translate`. Include
+source URLs for every claim. If there are no items, write a short Chinese
+digest saying there were no new subscription updates.
 
 Save the final digest to:
 

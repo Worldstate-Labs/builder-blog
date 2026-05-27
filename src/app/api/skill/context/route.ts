@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
-import { DIGEST_PROMPTS } from "@/lib/digest-prompts";
+import { getDigestConfig, getAllSourceConfigs } from "@/lib/source-config-store";
+import { SOURCE_DEFINITIONS } from "@/lib/source-registry";
 import { subscriptionBuilderIdsInPool } from "@/lib/digest-library";
 import { projectBuildersToEntities } from "@/lib/builder-entities";
 import { fetchDedupedFeedForEntities } from "@/lib/builder-channel-resolver";
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
   const now = new Date();
 
   const poolBuilderIds = await activePoolBuilderIds(user.id);
-  const [libraryBuilders, subscriptions, preference, lastDigest] = await Promise.all([
+  const [libraryBuilders, subscriptions, preference, lastDigest, sourceConfigs, digestConfig] = await Promise.all([
     prisma.builder.findMany({
       where: { id: { in: poolBuilderIds } },
       include: { entity: true },
@@ -45,7 +46,74 @@ export async function GET(request: Request) {
       orderBy: { createdAt: "desc" },
       select: { createdAt: true },
     }),
+    getAllSourceConfigs(),
+    getDigestConfig(),
   ]);
+
+  // Per-source skill context: merge static fields from sources.json
+  // (id, builderKind, feedItemKinds, urlPatterns) with admin-edited
+  // fields from the DB. This is the runtime source of truth the
+  // once-skills (digest-once, library-once) read from.
+  const sourcesContext: Record<string, {
+    id: string;
+    label: string;
+    builderKind: string;
+    feedItemKinds: string[];
+    urlPatterns: string[];
+    agentDefaultStatus: string;
+    defaultCrawlDays: number;
+    defaultCrawlLimit: number;
+    contentQuality: unknown;
+    summaryPrompt: {
+      body: string;
+      singlePostAdaptation: string;
+      style: string;
+      language: string;
+      lengthHint: string | null;
+    };
+  }> = {};
+  for (const def of SOURCE_DEFINITIONS) {
+    const cfg = sourceConfigs.find((c) => c.sourceId === def.id);
+    if (!cfg) continue;
+    sourcesContext[def.id] = {
+      id: def.id,
+      label: cfg.label,
+      builderKind: def.builderKind,
+      feedItemKinds: def.feedItemKinds,
+      urlPatterns: def.urlPatterns,
+      agentDefaultStatus: cfg.agentDefaultStatus,
+      defaultCrawlDays: cfg.defaultCrawlDays,
+      defaultCrawlLimit: cfg.defaultCrawlLimit,
+      contentQuality: cfg.contentQuality,
+      summaryPrompt: {
+        body: cfg.summaryPromptBody,
+        singlePostAdaptation: cfg.summaryPromptSinglePostAdaptation,
+        style: cfg.summaryStyle,
+        language: cfg.summaryLanguage,
+        lengthHint: cfg.summaryLengthHint,
+      },
+    };
+  }
+
+  const digestContext = {
+    digestTopPrompt: digestConfig.digestTopPrompt,
+    digestIntro: digestConfig.digestIntro,
+    translate: digestConfig.translate,
+    order: digestConfig.digestOrder as string[],
+  };
+
+  // TODO(deprecated): `context.prompts` is the legacy shape used by
+  // older CLI binaries and the user-journeys back-compat test. New
+  // callers should read `context.sources[id].summaryPrompt.body` and
+  // `context.digest.*` instead.
+  const legacyPrompts = {
+    digest: digestContext.digestTopPrompt,
+    summarizeTweets: sourcesContext.x?.summaryPrompt.body ?? "",
+    summarizePodcast: sourcesContext.podcast?.summaryPrompt.body ?? "",
+    summarizeBlogs: sourcesContext.blog?.summaryPrompt.body ?? "",
+    digestIntro: digestContext.digestIntro,
+    translate: digestContext.translate,
+  };
 
   const since = lastDigest?.createdAt ?? digestFallbackSince(now, preference);
   const maxAgeCutoff = digestMaxAgeCutoff(now, preference);
@@ -175,6 +243,8 @@ export async function GET(request: Request) {
     subscribedEntityIds,
     subscriptionCount: subscribedEntityIds.length,
     items,
-    ...(includePrompts ? { prompts: DIGEST_PROMPTS } : {}),
+    sources: sourcesContext,
+    digest: digestContext,
+    ...(includePrompts ? { prompts: legacyPrompts } : {}),
   });
 }

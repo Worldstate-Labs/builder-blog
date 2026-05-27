@@ -1,4 +1,10 @@
-export const DIGEST_PROMPTS = {
+// Seed-only defaults for the DigestConfig + per-source SourceTypeConfig
+// rows. The runtime source of truth for these prompts is the database
+// (see `src/lib/source-config-store.ts`); admins hot-edit them from the
+// admin UI. Nothing in the request/response path should import this file
+// — only the seeder (`ensureSourceConfigsSeeded` / `prisma/seed.ts`)
+// should read these strings.
+export const DEFAULT_DIGEST_PROMPTS = {
   digest:
     "Create a concise FollowBrief digest in Chinese. Use only the supplied items. Group by source type and followed source. Include source URLs for every claim. Highlight launches, technical insights, funding/business moves, strong opinions, and implementation details. Do not invent missing facts.",
   summarizeTweets: `# X/Twitter Summary Prompt
@@ -107,4 +113,4 @@ You are translating an AI industry digest into simplified Chinese.
 - Maintain the same structure and formatting as the source digest.
 - The tone should be professional but conversational, like a knowledgeable friend briefing you.
 - Never use em dashes.`,
-};
+} as const;
