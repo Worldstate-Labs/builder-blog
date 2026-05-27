@@ -5,20 +5,20 @@ import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import { ExternalLink, FileText } from "lucide-react";
 import { SourceBadge } from "@/components/SourceBadge";
-import { CrawlingMethodPopover } from "@/components/CrawlingMethodPopover";
+import { FetchMethodPopover } from "@/components/FetchMethodPopover";
 import { RecommendationReasonsPopover } from "@/components/RecommendationReasonsPopover";
 
-type CrawledPostBuilder = {
+type FetchedPostBuilder = {
   id: string;
   entityId?: string | null;
   name: string;
   kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";
   sourceType: string;
   sourceUrl: string | null;
-  crawlUrl: string | null;
+  fetchUrl: string | null;
 };
 
-export type CrawledPostCardPost = {
+export type FetchedPostCardPost = {
   id: string;
   title: string | null;
   body: string;
@@ -28,13 +28,13 @@ export type CrawledPostCardPost = {
   createdAt: string;
   sourceName: string | null;
   sourceType?: string | null;
-  crawlingTool: string | null;
-  builder?: CrawledPostBuilder | null;
+  fetchTool: string | null;
+  builder?: FetchedPostBuilder | null;
   /** Number of additional channel variants of this canonical post — shown as "+N channels". */
   alternateChannelCount?: number;
 };
 
-export function CrawledPostCard({
+export function FetchedPostCard({
   context,
   dataRead,
   extraMeta,
@@ -50,9 +50,9 @@ export function CrawledPostCard({
   dataRead?: boolean;
   extraMeta?: ReactNode;
   extraActions?: ReactNode;
-  fallbackBuilder?: CrawledPostBuilder | null;
+  fallbackBuilder?: FetchedPostBuilder | null;
   onInteract?: () => void | Promise<void>;
-  post: CrawledPostCardPost;
+  post: FetchedPostCardPost;
   /** Recommendation reasons surfaced via a popover icon in the footer. */
   reasons?: string[];
   /**
@@ -91,7 +91,7 @@ export function CrawledPostCard({
 
   return (
     <article
-      className={`${variant === "row" ? "builder-post-row" : "feed-card"} crawled-post-card`}
+      className={`${variant === "row" ? "builder-post-row" : "feed-card"} fetched-post-card`}
       data-read={dataRead ? "true" : undefined}
     >
       <div className="min-w-0">
@@ -101,7 +101,7 @@ export function CrawledPostCard({
             {title}
           </h1>
         ) : (
-          <h3 className="crawled-post-title">{title}</h3>
+          <h3 className="fetched-post-title">{title}</h3>
         )}
 
         {/* Line 2: Meta row */}
@@ -152,7 +152,7 @@ export function CrawledPostCard({
             {post.body}
           </div>
         ) : (
-          <div className="crawled-post-summary post-summary">
+          <div className="fetched-post-summary post-summary">
             <p className="whitespace-pre-wrap text-sm leading-6 text-[var(--muted-strong)]">
               {summaryExpanded ? summary : summaryPreview}
             </p>
@@ -210,10 +210,10 @@ export function CrawledPostCard({
               <FileText className="h-4 w-4" />
             </button>
 
-            {/* 3. Crawling method popover (also surfaces summarized-at) */}
-            {post.crawlingTool || post.createdAt ? (
-              <CrawlingMethodPopover
-                crawlingTool={post.crawlingTool}
+            {/* 3. Fetching method popover (also surfaces summarized-at) */}
+            {post.fetchTool || post.createdAt ? (
+              <FetchMethodPopover
+                fetchTool={post.fetchTool}
                 summarizedAt={post.createdAt}
               />
             ) : null}

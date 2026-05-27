@@ -74,8 +74,8 @@ work:
 For copied web-app prompts and scheduled job prompts, treat the instructions as
 a runbook: run the named commands in order, keep the paths, flags, cadence,
 titles, output files, JSON schema, and success criteria unchanged, and use agent
-judgment only in the explicitly marked content-generation or `crawlTasks` steps.
-Within a `crawlTasks` step, failed extraction attempts are not command-contract
+judgment only in the explicitly marked content-generation or `fetchTasks` steps.
+Within a `fetchTasks` step, failed extraction attempts are not command-contract
 failures. The agent should keep using any available local capability until the
 task is complete, and stop only when no available method can obtain real primary
 content.
@@ -99,7 +99,7 @@ The runner chooses the first available execution path:
 3. Claude Code CLI.
 4. OpenClaw CLI.
 5. Gemini CLI.
-6. For `library-cron` only, a non-AI crawl fallback for simple supported
+6. For `library-cron` only, a non-AI fetch fallback for simple supported
    sources. Sources requiring AI, cookies, transcription, or custom tooling
    still require an agent.
 
@@ -116,25 +116,25 @@ Example schedules:
 
 ### Sync Personal Sources
 
-Agents are responsible for crawling user-owned personal sources with
+Agents are responsible for fetching user-owned personal sources with
 user-owned API keys, subscriptions, cookies, or network access. The FollowBrief
-web app only crawls central sources. For personal sources already in the
-user's library, run the local crawler and sync the resulting feed items to the
+web app only fetches central sources. For personal sources already in the
+user's library, run the local fetcher and sync the resulting feed items to the
 cloud:
 
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-node ~/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3
+node ~/.builder-blog/builder-digest.mjs fetch-personal --days 30 --limit 3
 ```
 
 This command:
 
 - fetches `/api/skill/context`;
 - filters to every `scope: PERSONAL` builder in the user's library;
-- skips already-crawled posts by `user + builder + item kind + externalId`.
+- skips already-fetched posts by `user + builder + item kind + externalId`.
   This uses existing `FeedItem` rows and is independent of whether the user has
   read or viewed the post;
-- crawls each supported source locally from the user's agent environment;
+- fetches each supported source locally from the user's agent environment;
 - uses the later of `--days` and the latest stored post creation time for that
   builder as the incremental cutoff unless `--force` is used;
 - for YouTube videos, primary content must come from captions, transcripts, or
@@ -144,25 +144,25 @@ This command:
   any available user-owned local capability instead of asking the web app to
   process the media. The agent chooses the method; the requirement is to obtain
   real primary content and sync it as the item's `body` through `sync-builders`;
-- for every newly crawled or agent-produced post, generate a concise Chinese
+- for every newly fetched or agent-produced post, generate a concise Chinese
   single-post `summary` using only that post's supplied body and metadata. Use
   the same discipline as the digest prompt: include source URLs for every
   claim, prioritize launches, technical insights, funding/business moves,
   strong opinions, and implementation details, and never invent missing facts;
 - if the transcript exists but is noisy, the agent may use its own model access
   to lightly clean timestamps, repeated fragments, and caption artifacts while
-  preserving factual content; record this in `crawlingTool`, for example
-  `Codex Desktop (model gpt-5.5) FollowBrief skill crawler (YouTube captions + agent transcript cleanup)`;
+  preserving factual content; record this in `fetchTool`, for example
+  `Codex Desktop (model gpt-5.5) FollowBrief skill fetcher (YouTube captions + agent transcript cleanup)`;
 - for sources requiring custom subscriptions, scripts, shell access, or model
-  work, agents can configure an external crawler command with
-  `BUILDER_BLOG_CRAWLER_<SOURCE_TYPE>` or `BUILDER_BLOG_CRAWLER_COMMAND`; the
+  work, agents can configure an external fetcher command with
+  `BUILDER_BLOG_FETCHER_<SOURCE_TYPE>` or `BUILDER_BLOG_FETCHER_COMMAND`; the
   command receives JSON on stdin and returns either an item array or
   `{ "items": [...] }`;
-- records the crawling tool as the local agent runtime, model, and concrete
-  crawler path, for example `Codex Desktop (model gpt-5.5) FollowBrief skill crawler (YouTube RSS + captions)`;
-- reports `crawlTasks` for every newly discovered post. Treat each task as one
+- records the fetching tool as the local agent runtime, model, and concrete
+  fetcher path, for example `Codex Desktop (model gpt-5.5) FollowBrief skill fetcher (YouTube RSS + captions)`;
+- reports `fetchTasks` for every newly discovered post. Treat each task as one
   post that must be synced only after it has both `body` and `summary`. For
-  `contentStatus="ready"`, the normal crawler already produced
+  `contentStatus="ready"`, the normal fetcher already produced
   `task.item.body`; copy it and generate only the summary. For
   `contentStatus="requires_agent"`, first obtain real primary content with the
   local agent, then generate the summary. Complete exactly the task IDs returned
@@ -171,7 +171,7 @@ This command:
   fails; keep trying available local methods until the content is extracted.
   Stop only if this agent has no remaining available way to obtain real primary
   content for a task, and report the tried methods and concrete blocker.
-  Completed items must include `rawJson.crawlTaskId`. `requires_agent` items
+  Completed items must include `rawJson.fetchTaskId`. `requires_agent` items
   must also include `rawJson.agentRuntime`, `rawJson.agentModel` if known,
   `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`. For YouTube,
   include `rawJson.transcriptSource="agent-transcript"` unless a better primary
@@ -183,7 +183,7 @@ Validate agent-produced items before syncing them:
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node ~/.builder-blog/builder-digest.mjs validate-agent-sync \
-  --tasks /tmp/builder-blog-crawl-result.json \
+  --tasks /tmp/builder-blog-fetch-result.json \
   --file /tmp/builder-blog-agent-sync.json
 ```
 
@@ -192,13 +192,13 @@ posts:
 
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-node ~/.builder-blog/builder-digest.mjs crawl-personal --days 30 --limit 3 --force
+node ~/.builder-blog/builder-digest.mjs fetch-personal --days 30 --limit 3 --force
 ```
 
 Use `--agent-model gpt-5.5` or `BUILDER_BLOG_AGENT_MODEL=gpt-5.5` when the
 runtime does not expose the current model automatically.
 
-Agents may also sync already-crawled user-owned sources manually. This is an
+Agents may also sync already-fetched user-owned sources manually. This is an
 `in library` operation, not a digest subscription unless `subscribe` is true:
 
 ```bash
@@ -210,7 +210,7 @@ Payload shape:
 
 ```json
 {
-  "crawlingTool": "Codex Desktop (model gpt-5.5) FollowBrief skill crawler (manual JSON sync)",
+  "fetchTool": "Codex Desktop (model gpt-5.5) FollowBrief skill fetcher (manual JSON sync)",
   "builders": [
     {
       "kind": "X",

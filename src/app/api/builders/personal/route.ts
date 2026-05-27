@@ -39,9 +39,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing builder source" }, { status: 400 });
   }
 
-  // SSRF: reject sourceUrl / crawlUrl pointing at private networks, link-local,
+  // SSRF: reject sourceUrl / fetchUrl pointing at private networks, link-local,
   // loopback, or cloud metadata before we ever fetch them server-side.
-  for (const candidate of [input.sourceUrl, input.crawlUrl]) {
+  for (const candidate of [input.sourceUrl, input.fetchUrl]) {
     if (!candidate) continue;
     const check = validatePublicHttpUrl(candidate);
     if (!check.ok) {
@@ -72,8 +72,8 @@ export async function POST(request: Request) {
 
   const item: BuilderLibraryEventItem = {
     allowRemove: true,
-    crawlLabel: "Agent synced",
-    crawlUrl: builder.crawlUrl,
+    fetchLabel: "Agent synced",
+    fetchUrl: builder.fetchUrl,
     entityId: builder.entityId,
     feedItemCount: 0,
     handle: builder.handle,

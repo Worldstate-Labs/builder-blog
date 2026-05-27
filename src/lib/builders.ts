@@ -25,7 +25,7 @@ export async function upsertBuilder(params: {
   name: string;
   handle?: string | null;
   sourceUrl?: string | null;
-  crawlUrl?: string | null;
+  fetchUrl?: string | null;
   bio?: string | null;
   addedByUserId?: string | null;
 }) {
@@ -53,7 +53,7 @@ export async function upsertBuilder(params: {
       sourceType: params.sourceType ?? undefined,
       handle,
       sourceUrl: params.sourceUrl ?? undefined,
-      crawlUrl: params.crawlUrl ?? undefined,
+      fetchUrl: params.fetchUrl ?? undefined,
       bio: params.bio ?? undefined,
       entityId,
     },
@@ -64,7 +64,7 @@ export async function upsertBuilder(params: {
       name: params.name,
       handle,
       sourceUrl: params.sourceUrl,
-      crawlUrl: params.crawlUrl,
+      fetchUrl: params.fetchUrl,
       bio: params.bio,
       addedByUserId: params.addedByUserId,
       canonicalKey,

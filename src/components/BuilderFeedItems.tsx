@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CrawledPostCard } from "@/components/CrawledPostCard";
+import { FetchedPostCard } from "@/components/FetchedPostCard";
 
 type BuilderSummary = {
   id: string;
@@ -9,7 +9,7 @@ type BuilderSummary = {
   kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";
   sourceType: string;
   sourceUrl: string | null;
-  crawlUrl: string | null;
+  fetchUrl: string | null;
 };
 
 type BuilderFeedItem = {
@@ -23,7 +23,7 @@ type BuilderFeedItem = {
   publishedAt: string | null;
   createdAt: string;
   sourceName: string | null;
-  crawlingTool: string | null;
+  fetchTool: string | null;
 };
 
 type BuilderFeedItemsProps = {
@@ -100,7 +100,7 @@ export function BuilderFeedItems({
           </div>
         ) : null}
         {items?.map((item) => (
-          <CrawledPostCard
+          <FetchedPostCard
             fallbackBuilder={builder}
             key={item.id}
             post={{

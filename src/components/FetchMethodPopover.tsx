@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Info } from "lucide-react";
 
-type ParsedCrawlingTool = {
+type ParsedFetchTool = {
   runtime: string | null;
   model: string | null;
   skill: string | null;
@@ -11,11 +11,11 @@ type ParsedCrawlingTool = {
   raw: string;
 };
 
-export function parseCrawlingTool(value: string | null): ParsedCrawlingTool {
+export function parseFetchTool(value: string | null): ParsedFetchTool {
   if (!value) return { runtime: null, model: null, skill: null, detail: null, raw: "" };
 
   // Format: "<runtime> (model <model>) <skill name>(<detail>)"
-  // Example: "Codex Desktop (model gpt-5.5) FollowBrief skill crawler (YouTube RSS + feed description)"
+  // Example: "Codex Desktop (model gpt-5.5) FollowBrief skill fetcher (YouTube RSS + feed description)"
   const pattern = /^(.+?)\s+\(model\s+(.+?)\)\s+(.+?)(?:\s+\((.+)\))?$/;
   const match = value.match(pattern);
 
@@ -32,16 +32,16 @@ export function parseCrawlingTool(value: string | null): ParsedCrawlingTool {
   };
 }
 
-export function CrawlingMethodPopover({
-  crawlingTool,
+export function FetchMethodPopover({
+  fetchTool,
   summarizedAt,
 }: {
-  crawlingTool: string | null;
+  fetchTool: string | null;
   summarizedAt?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const parsed = parseCrawlingTool(crawlingTool);
+  const parsed = parseFetchTool(fetchTool);
   const summarizedDate = summarizedAt
     ? new Date(summarizedAt).toLocaleDateString()
     : null;
@@ -91,7 +91,7 @@ export function CrawlingMethodPopover({
                 </div>
               ) : null}
             </>
-          ) : crawlingTool ? (
+          ) : fetchTool ? (
             <div className="fb-popover-row">
               <span className="fb-popover-label">Method</span>
               <span>{parsed.raw}</span>

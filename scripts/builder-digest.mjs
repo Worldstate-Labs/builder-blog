@@ -92,25 +92,25 @@ export function sourceConfigFor(builderOrSourceTypeId) {
 const DEFAULT_APP_URL = "https://builder-blog.worldstatelabs.com";
 const DEFAULT_AGENT_RUNTIME = detectedAgentRuntime();
 const DEFAULT_AGENT_MODEL = detectedAgentModel();
-const DEFAULT_PERSONAL_CRAWL_DAYS = 30;
+const DEFAULT_PERSONAL_FETCH_DAYS = 30;
 // Single source of truth for source metadata lives in config/sources.json.
-// This map only carries the per-source crawler function — the part that can't be
+// This map only carries the per-source fetcher function — the part that can't be
 // expressed as JSON. Source id is the join key with sources.json.
-const CRAWL_FN_BY_SOURCE_ID = {
-  x: crawlPersonalXBuilder,
-  blog: crawlPersonalBlogBuilder,
-  youtube: crawlPersonalYouTubeBuilder,
-  podcast: crawlPersonalPodcastBuilder,
-  pdf: crawlPersonalPdfBuilder,
-  website: crawlPersonalWebsiteBuilder,
+const FETCH_FN_BY_SOURCE_ID = {
+  x: fetchPersonalXBuilder,
+  blog: fetchPersonalBlogBuilder,
+  youtube: fetchPersonalYouTubeBuilder,
+  podcast: fetchPersonalPodcastBuilder,
+  pdf: fetchPersonalPdfBuilder,
+  website: fetchPersonalWebsiteBuilder,
 };
 
 function usage() {
   console.log(`builder-digest commands:
   exchange --ec <code> [--app-url ${DEFAULT_APP_URL}]
-  crawl-personal [--days ${DEFAULT_PERSONAL_CRAWL_DAYS}] [--limit 3] [--force] [--agent-model gpt-5.5]
+  fetch-personal [--days ${DEFAULT_PERSONAL_FETCH_DAYS}] [--limit 3] [--force] [--agent-model gpt-5.5]
   prepare
-  validate-agent-sync --tasks crawl-result.json --file personal-builders.json
+  validate-agent-sync --tasks fetch-result.json --file personal-builders.json
   sync-builders --file personal-builders.json [--agent-model gpt-5.5]
   sync --file digest.md [--title "AI Builder Digest"]
   status
@@ -120,12 +120,12 @@ The first command in the prompt exchanges a one-time code for an agent token
 saved to ~/.builder-blog/accounts/<email>.json`);
 }
 
-export function skillCrawlingTool(detail = "", agentModel = DEFAULT_AGENT_MODEL) {
-  const override = process.env.BUILDER_BLOG_CRAWLING_TOOL?.trim();
+export function skillFetchTool(detail = "", agentModel = DEFAULT_AGENT_MODEL) {
+  const override = process.env.BUILDER_BLOG_FETCH_TOOL?.trim();
   if (override) return override;
   const modelLabel = agentModel ? ` (model ${agentModel})` : "";
   const suffix = detail ? ` (${detail})` : "";
-  return `${DEFAULT_AGENT_RUNTIME}${modelLabel} FollowBrief skill crawler${suffix}`;
+  return `${DEFAULT_AGENT_RUNTIME}${modelLabel} FollowBrief skill fetcher${suffix}`;
 }
 
 function detectedAgentRuntime() {
@@ -275,11 +275,11 @@ async function prepare() {
   console.log(JSON.stringify(context, null, 2));
 }
 
-async function crawlPersonal(args) {
+async function fetchPersonal(args) {
   const config = await readConfig();
   requireLoggedIn(config);
 
-  const days = Math.max(1, Number(argValue(args, "--days", String(DEFAULT_PERSONAL_CRAWL_DAYS))));
+  const days = Math.max(1, Number(argValue(args, "--days", String(DEFAULT_PERSONAL_FETCH_DAYS))));
   const limit = Math.max(1, Number(argValue(args, "--limit", "3")));
   const force = args.includes("--force");
   const agentModel = argValue(args, "--agent-model", DEFAULT_AGENT_MODEL);
@@ -292,7 +292,7 @@ async function crawlPersonal(args) {
   const subscribedBuilderIds = new Set(
     (context.subscriptions ?? []).map((builder) => builder.id),
   );
-  const personalBuilders = personalBuildersForCrawl(context);
+  const personalBuilders = personalBuildersForFetch(context);
 
   if (personalBuilders.length === 0) {
     console.log(
@@ -300,7 +300,7 @@ async function crawlPersonal(args) {
         {
           status: "ok",
           localErrors: [],
-          crawlTasks: [],
+          fetchTasks: [],
         },
         null,
         2,
@@ -312,7 +312,7 @@ async function crawlPersonal(args) {
   const fallbackCutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const builders = [];
   const localErrors = [];
-  const crawlTasks = [];
+  const fetchTasks = [];
 
   for (const builder of personalBuilders) {
     const fallbackBuilderSync = {
@@ -322,14 +322,14 @@ async function crawlPersonal(args) {
       name: builder.name,
       handle: builder.handle,
       sourceUrl: builder.sourceUrl,
-      crawlUrl: builder.crawlUrl,
+      fetchUrl: builder.fetchUrl,
       bio: builder.bio,
       subscribe: subscribedBuilderIds.has(builder.id),
     };
     try {
-      const source = personalCrawlerSourceForBuilder(builder);
+      const source = personalFetcherSourceForBuilder(builder);
       if (!source) {
-        const externalItems = await crawlPersonalWithExternalCommand(builder, {
+        const externalItems = await fetchPersonalWithExternalCommand(builder, {
           fallbackCutoff,
           force,
           limit,
@@ -337,10 +337,10 @@ async function crawlPersonal(args) {
           agentModel,
         });
         if (!externalItems) {
-          crawlTasks.push(
+          fetchTasks.push(
             buildBuilderFallbackTask(builder, fallbackBuilderSync, {
               error: new Error(
-                "No local crawler configured for this personal source.",
+                "No local fetcher configured for this personal source.",
               ),
               sources,
               commonSummaryRules,
@@ -350,34 +350,34 @@ async function crawlPersonal(args) {
         }
         builders.push({
           ...fallbackBuilderSync,
-          items: filterCrawledItems(externalItems, {
+          items: filterFetchedItems(externalItems, {
             builderId: builder.id,
             cutoff: force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff),
             limit,
-            crawledItemKeys: force ? new Set() : crawledItemKeysForBuilder(context, builder.id),
+            fetchedItemKeys: force ? new Set() : fetchedItemKeysForBuilder(context, builder.id),
           }),
         });
         continue;
       }
-      const crawled = await source.crawl(builder, {
+      const fetched = await source.fetch(builder, {
         cutoff: force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff),
         limit,
         agentModel,
-        crawledItemKeys: force ? new Set() : crawledItemKeysForBuilder(context, builder.id),
+        fetchedItemKeys: force ? new Set() : fetchedItemKeysForBuilder(context, builder.id),
       });
-      const { items, agentTasks: sourceAgentTasks } = normalizePersonalCrawlResult(crawled);
+      const { items, agentTasks: sourceAgentTasks } = normalizePersonalFetchResult(fetched);
       const builderSync = {
         ...fallbackBuilderSync,
         kind: source.syncKind,
         sourceType: source.id,
       };
-      crawlTasks.push(...sourceAgentTasks.map((task) => crawlTaskFromAgentTask(task, builderSync, sources, commonSummaryRules)));
+      fetchTasks.push(...sourceAgentTasks.map((task) => fetchTaskFromAgentTask(task, builderSync, sources, commonSummaryRules)));
       builders.push({
         ...builderSync,
         items,
       });
     } catch (error) {
-      crawlTasks.push(
+      fetchTasks.push(
         buildBuilderFallbackTask(builder, fallbackBuilderSync, { error, sources, commonSummaryRules }),
       );
     }
@@ -389,7 +389,7 @@ async function crawlPersonal(args) {
         {
           status: "ok",
           localErrors,
-          crawlTasks,
+          fetchTasks,
         },
         null,
         2,
@@ -398,14 +398,14 @@ async function crawlPersonal(args) {
     return;
   }
 
-  crawlTasks.push(...crawlTasksForReadyBuilders(builders, sources, commonSummaryRules));
-  if (crawlTasks.length > 0) {
+  fetchTasks.push(...fetchTasksForReadyBuilders(builders, sources, commonSummaryRules));
+  if (fetchTasks.length > 0) {
     console.log(
       JSON.stringify(
         {
           status: "ok",
           localErrors,
-          crawlTasks,
+          fetchTasks,
         },
         null,
         2,
@@ -419,7 +419,7 @@ async function crawlPersonal(args) {
       {
         status: "ok",
         localErrors,
-        crawlTasks,
+        fetchTasks,
       },
       null,
       2,
@@ -427,7 +427,7 @@ async function crawlPersonal(args) {
   );
 }
 
-function normalizePersonalCrawlResult(result) {
+function normalizePersonalFetchResult(result) {
   if (Array.isArray(result)) return { items: result, agentTasks: [] };
   return {
     items: Array.isArray(result?.items) ? result.items : [],
@@ -435,10 +435,10 @@ function normalizePersonalCrawlResult(result) {
   };
 }
 
-export function crawlTasksForReadyBuilders(builders, sources = {}, commonSummaryRules = "") {
+export function fetchTasksForReadyBuilders(builders, sources = {}, commonSummaryRules = "") {
   return builders.flatMap((builder) =>
     (builder.items ?? []).map((item) => ({
-      type: "crawl_post",
+      type: "fetch_post",
       contentStatus: "ready",
       builder: builder.name,
       builderId: builder.builderId,
@@ -450,7 +450,7 @@ export function crawlTasksForReadyBuilders(builders, sources = {}, commonSummary
         name: builder.name,
         handle: builder.handle ?? null,
         sourceUrl: builder.sourceUrl ?? null,
-        crawlUrl: builder.crawlUrl ?? null,
+        fetchUrl: builder.fetchUrl ?? null,
         bio: builder.bio ?? null,
         subscribe: Boolean(builder.subscribe),
       },
@@ -464,7 +464,7 @@ export function crawlTasksForReadyBuilders(builders, sources = {}, commonSummary
         body: String(item.body ?? "").slice(0, 12000),
       },
       summaryInstructions: singlePostSummaryInstructions(builder.sourceType, sources, commonSummaryRules),
-      id: crawlTaskId({ builderId: builder.builderId, builder: builder.name, item }),
+      id: fetchTaskId({ builderId: builder.builderId, builder: builder.name, item }),
     })),
   );
 }
@@ -481,7 +481,7 @@ function buildBuilderFallbackTask(builder, builderSync, { error, sources = {}, c
   const handle = builder.handle ? String(builder.handle).replace(/^@/, "") : null;
   const url =
     builder.sourceUrl ||
-    builder.crawlUrl ||
+    builder.fetchUrl ||
     (handle && builder.kind === "X" ? `https://x.com/${handle}` : null) ||
     "";
   const item = {
@@ -495,8 +495,8 @@ function buildBuilderFallbackTask(builder, builderSync, { error, sources = {}, c
   };
   const sourceType = builderSync.sourceType ?? sourceTypeIdForBuilder(builder);
   const task = {
-    type: "crawl_post",
-    agentWorkType: "crawl_builder_fallback",
+    type: "fetch_post",
+    agentWorkType: "fetch_builder_fallback",
     contentStatus: "requires_agent",
     builder: builder.name,
     builderId: builder.id,
@@ -505,17 +505,17 @@ function buildBuilderFallbackTask(builder, builderSync, { error, sources = {}, c
     item,
     minimumContentQuality: genericMinimumContentQuality(),
     summaryInstructions: singlePostSummaryInstructions(sourceType, sources, commonSummaryRules),
-    fallbackReason: error?.message || String(error || "Personal crawler failed"),
+    fallbackReason: error?.message || String(error || "Personal fetcher failed"),
   };
-  task.id = crawlTaskId({ builderId: builder.id, builder: builder.name, item });
+  task.id = fetchTaskId({ builderId: builder.id, builder: builder.name, item });
   return task;
 }
 
-function crawlTaskFromAgentTask(task, builderSync, sources = {}, commonSummaryRules = "") {
+function fetchTaskFromAgentTask(task, builderSync, sources = {}, commonSummaryRules = "") {
   const item = task.item ?? {};
   const sourceType = task.sourceType ?? builderSync.sourceType;
   return {
-    type: "crawl_post",
+    type: "fetch_post",
     agentWorkType: task.type,
     contentStatus: "requires_agent",
     builder: task.builder ?? builderSync.name,
@@ -525,13 +525,13 @@ function crawlTaskFromAgentTask(task, builderSync, sources = {}, commonSummaryRu
     item,
     minimumContentQuality: task.minimumContentQuality ?? genericMinimumContentQuality(),
     summaryInstructions: task.summaryInstructions ?? singlePostSummaryInstructions(sourceType, sources, commonSummaryRules),
-    id: crawlTaskId({ builderId: task.builderId ?? builderSync.builderId, builder: task.builder ?? builderSync.name, item }),
+    id: fetchTaskId({ builderId: task.builderId ?? builderSync.builderId, builder: task.builder ?? builderSync.name, item }),
   };
 }
 
-export function crawlTaskId(task) {
+export function fetchTaskId(task) {
   return [
-    "crawl_post",
+    "fetch_post",
     task?.builderId || task?.builder || "builder",
     task?.item?.kind || "item",
     task?.item?.externalId || task?.item?.url || task?.item?.title || "unknown",
@@ -575,31 +575,31 @@ function singlePostSummaryPrompt(source) {
   ].join("\n");
 }
 
-export function personalBuildersForCrawl(context) {
+export function personalBuildersForFetch(context) {
   return (context.libraryBuilders ?? []).filter(
     (builder) => builder.scope === "PERSONAL",
   );
 }
 
-export function personalCrawlerSourceForBuilder(builder) {
+export function personalFetcherSourceForBuilder(builder) {
   const sourceId = sourceTypeIdForBuilder(builder);
-  const crawl = CRAWL_FN_BY_SOURCE_ID[sourceId];
-  if (!crawl) return null;
+  const fetch = FETCH_FN_BY_SOURCE_ID[sourceId];
+  if (!fetch) return null;
   const config = sourceConfigFor(sourceId);
   // Returned shape kept compatible with existing callers that do
-  // `source.crawl(builder, opts)` and read `source.id`.
+  // `source.fetch(builder, opts)` and read `source.id`.
   return {
     id: sourceId,
     label: config?.label ?? sourceId,
     builderKind: config?.builderKind ?? builder.kind,
     syncKind: config?.builderKind ?? builder.kind,
-    crawl,
+    fetch,
   };
 }
 
-export function crawledItemKeysForBuilder(context, builderId) {
+export function fetchedItemKeysForBuilder(context, builderId) {
   return new Set(
-    personalCrawledItemsForContext(context)
+    personalFetchedItemsForContext(context)
       .filter((item) => item?.builderId === builderId)
       .map((item) => personalItemKey(item.builderId, item.kind, item.externalId)),
   );
@@ -609,21 +609,21 @@ export function personalItemKey(builderId, kind, externalId) {
   return `${builderId}:${kind}:${externalId}`;
 }
 
-function personalCrawledItemsForContext(context) {
-  return context.personalCrawledItems ?? [];
+function personalFetchedItemsForContext(context) {
+  return context.personalFetchedItems ?? [];
 }
 
-function latestPersonalCrawledItemsForContext(context) {
-  return context.latestPersonalCrawledItems ?? [];
+function latestPersonalFetchedItemsForContext(context) {
+  return context.latestPersonalFetchedItems ?? [];
 }
 
 export function latestPostTimeForBuilder(context, builderId) {
-  const latest = latestPersonalCrawledItemsForContext(context).find(
+  const latest = latestPersonalFetchedItemsForContext(context).find(
     (item) => item?.builderId === builderId,
   )?.latestPostAt;
   if (latest) return normalizedDate(latest);
 
-  const matchingItems = personalCrawledItemsForContext(context).filter(
+  const matchingItems = personalFetchedItemsForContext(context).filter(
     (item) => item?.builderId === builderId,
   );
   return matchingItems.reduce((latestDate, item) => {
@@ -646,7 +646,7 @@ function sourceTypeIdForBuilder(builder) {
   if (explicit) return explicit;
 
   const sources = loadSourcesConfig().sources;
-  const urlText = `${builder.sourceUrl || ""} ${builder.crawlUrl || ""}`;
+  const urlText = `${builder.sourceUrl || ""} ${builder.fetchUrl || ""}`;
 
   // First: URL-pattern matches scoped to the builder kind (catches youtube/pdf).
   for (const source of sources) {
@@ -681,16 +681,16 @@ function normalizeSourceType(sourceType) {
   return normalized === "auto" ? "" : normalized;
 }
 
-async function crawlPersonalYouTubeBuilder(
+async function fetchPersonalYouTubeBuilder(
   builder,
-  { cutoff, limit, agentModel, crawledItemKeys = new Set(), fetcher = fetch },
+  { cutoff, limit, agentModel, fetchedItemKeys = new Set(), fetcher = fetch },
 ) {
-  const sourceUrl = builder.crawlUrl || builder.sourceUrl;
+  const sourceUrl = builder.fetchUrl || builder.sourceUrl;
   if (!sourceUrl) return { items: [], agentTasks: [] };
-  const { videos: crawledVideos, sourceDetail } = await fetchYouTubeVideos(sourceUrl, fetcher);
-  const videos = crawledVideos
+  const { videos: fetchedVideos, sourceDetail } = await fetchYouTubeVideos(sourceUrl, fetcher);
+  const videos = fetchedVideos
     .filter((video) => isAfterCutoff(video.publishedAt, cutoff))
-    .filter((video) => !crawledItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", video.videoId || video.url)))
+    .filter((video) => !fetchedItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", video.videoId || video.url)))
     .slice(0, limit);
   const items = [];
   const agentTasks = [];
@@ -714,7 +714,7 @@ async function crawlPersonalYouTubeBuilder(
       url: video.url,
       publishedAt: video.publishedAt,
       sourceName: builder.name,
-      crawlingTool: skillCrawlingTool(
+      fetchTool: skillFetchTool(
         `${sourceDetail} + captions`,
         agentModel,
       ),
@@ -734,8 +734,8 @@ async function crawlPersonalYouTubeBuilder(
   return { items, agentTasks };
 }
 
-export function crawlPersonalYouTubeBuilderForTest(builder, options) {
-  return crawlPersonalYouTubeBuilder(builder, options);
+export function fetchPersonalYouTubeBuilderForTest(builder, options) {
+  return fetchPersonalYouTubeBuilder(builder, options);
 }
 
 /**
@@ -855,12 +855,12 @@ function isNearDuplicate(text, reference) {
   return text.length <= normalizedReference.length + 20 && normalizedReference.includes(text);
 }
 
-async function crawlPersonalBlogBuilder(builder, { cutoff, limit, agentModel, crawledItemKeys = new Set() }) {
-  const indexUrl = builder.crawlUrl || builder.sourceUrl;
+async function fetchPersonalBlogBuilder(builder, { cutoff, limit, agentModel, fetchedItemKeys = new Set() }) {
+  const indexUrl = builder.fetchUrl || builder.sourceUrl;
   if (!indexUrl) return [];
 
   const indexResponse = await fetch(indexUrl, {
-    headers: { "User-Agent": "FollowBriefSkill/1.0 (personal agent crawler)" },
+    headers: { "User-Agent": "FollowBriefSkill/1.0 (personal agent fetcher)" },
   });
   if (!indexResponse.ok) {
     throw new Error(`Failed to fetch ${indexUrl}: HTTP ${indexResponse.status}`);
@@ -869,13 +869,13 @@ async function crawlPersonalBlogBuilder(builder, { cutoff, limit, agentModel, cr
   const indexBody = await indexResponse.text();
   const candidates = parseBlogCandidates(indexBody, indexUrl)
     .filter((article) => isAfterCutoff(article.publishedAt, cutoff))
-    .filter((article) => !crawledItemKeys.has(personalItemKey(builder.id, "BLOG_POST", article.url)))
+    .filter((article) => !fetchedItemKeys.has(personalItemKey(builder.id, "BLOG_POST", article.url)))
     .slice(0, limit);
   const items = [];
 
   for (const article of candidates) {
     const articleResponse = await fetch(article.url, {
-      headers: { "User-Agent": "FollowBriefSkill/1.0 (personal agent crawler)" },
+      headers: { "User-Agent": "FollowBriefSkill/1.0 (personal agent fetcher)" },
     });
     if (!articleResponse.ok) continue;
 
@@ -892,7 +892,7 @@ async function crawlPersonalBlogBuilder(builder, { cutoff, limit, agentModel, cr
       url: article.url,
       publishedAt: extracted.publishedAt || article.publishedAt,
       sourceName: builder.name,
-      crawlingTool: skillCrawlingTool("RSS/HTML article extractor", agentModel),
+      fetchTool: skillFetchTool("RSS/HTML article extractor", agentModel),
       rawJson: {
         source: "personal-blog",
         builderId: builder.id,
@@ -907,12 +907,12 @@ async function crawlPersonalBlogBuilder(builder, { cutoff, limit, agentModel, cr
   return items;
 }
 
-async function crawlPersonalPodcastBuilder(builder, { cutoff, limit, agentModel, crawledItemKeys = new Set() }) {
-  const feedUrl = builder.crawlUrl || builder.sourceUrl;
+async function fetchPersonalPodcastBuilder(builder, { cutoff, limit, agentModel, fetchedItemKeys = new Set() }) {
+  const feedUrl = builder.fetchUrl || builder.sourceUrl;
   if (!feedUrl) return [];
 
   const response = await fetch(feedUrl, {
-    headers: { "User-Agent": "FollowBriefSkill/1.0 (personal podcast crawler)" },
+    headers: { "User-Agent": "FollowBriefSkill/1.0 (personal podcast fetcher)" },
   });
   if (!response.ok) {
     throw new Error(`Failed to fetch podcast feed ${feedUrl}: HTTP ${response.status}`);
@@ -921,11 +921,11 @@ async function crawlPersonalPodcastBuilder(builder, { cutoff, limit, agentModel,
   const xml = await response.text();
   return parsePodcastFeedItems(xml, feedUrl)
     .filter((item) => isAfterCutoff(item.publishedAt, cutoff))
-    .filter((item) => !crawledItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", item.externalId)))
+    .filter((item) => !fetchedItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", item.externalId)))
     .map((item) => ({
       ...item,
       sourceName: builder.name,
-      crawlingTool: skillCrawlingTool("podcast RSS feed", agentModel),
+      fetchTool: skillFetchTool("podcast RSS feed", agentModel),
       rawJson: {
         source: "personal-podcast",
         builderId: builder.id,
@@ -971,8 +971,8 @@ export function parsePodcastFeedItems(xml, feedUrl) {
     .filter((item) => item.externalId && item.url && item.body.trim());
 }
 
-async function crawlPersonalPdfBuilder(builder) {
-  const sourceUrl = builder.crawlUrl || builder.sourceUrl;
+async function fetchPersonalPdfBuilder(builder) {
+  const sourceUrl = builder.fetchUrl || builder.sourceUrl;
   if (!sourceUrl) return { items: [], agentTasks: [] };
   return {
     items: [],
@@ -1000,15 +1000,15 @@ async function crawlPersonalPdfBuilder(builder) {
   };
 }
 
-async function crawlPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel, crawledItemKeys = new Set() }) {
+async function fetchPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel, fetchedItemKeys = new Set() }) {
   if (isPdfSource(builder)) {
-    return crawlPersonalPdfBuilder(builder);
+    return fetchPersonalPdfBuilder(builder);
   }
-  const sourceUrl = builder.crawlUrl || builder.sourceUrl;
+  const sourceUrl = builder.fetchUrl || builder.sourceUrl;
   if (!sourceUrl) return [];
 
   const response = await fetch(sourceUrl, {
-    headers: { "User-Agent": "FollowBriefSkill/1.0 (personal website crawler)" },
+    headers: { "User-Agent": "FollowBriefSkill/1.0 (personal website fetcher)" },
   });
   if (!response.ok) {
     throw new Error(`Failed to fetch ${sourceUrl}: HTTP ${response.status}`);
@@ -1018,7 +1018,7 @@ async function crawlPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel,
   const extracted = extractBlogArticle(html, sourceUrl);
   const publishedAt = extracted.publishedAt || null;
   if (!isAfterCutoff(publishedAt, cutoff)) return [];
-  if (crawledItemKeys.has(personalItemKey(builder.id, "BLOG_POST", sourceUrl))) return [];
+  if (fetchedItemKeys.has(personalItemKey(builder.id, "BLOG_POST", sourceUrl))) return [];
   const body = extracted.body || stripHtml(html).slice(0, 6000);
   if (!body.trim()) return [];
 
@@ -1031,7 +1031,7 @@ async function crawlPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel,
       url: sourceUrl,
       publishedAt,
       sourceName: builder.name,
-      crawlingTool: skillCrawlingTool("website HTML extractor", agentModel),
+      fetchTool: skillFetchTool("website HTML extractor", agentModel),
       rawJson: {
         source: "personal-website",
         builderId: builder.id,
@@ -1043,10 +1043,10 @@ async function crawlPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel,
   ].slice(0, limit);
 }
 
-async function crawlPersonalXBuilder(builder, { cutoff, limit, agentModel, crawledItemKeys = new Set() }) {
+async function fetchPersonalXBuilder(builder, { cutoff, limit, agentModel, fetchedItemKeys = new Set() }) {
   const bearerToken = process.env.X_BEARER_TOKEN?.trim();
   if (!bearerToken) {
-    throw new Error("X_BEARER_TOKEN is required for personal X crawling, or configure an external crawler command.");
+    throw new Error("X_BEARER_TOKEN is required for personal X fetching, or configure an external fetcher command.");
   }
   const handle = normalizeXHandle(builder.handle || builder.sourceUrl);
   if (!handle) return [];
@@ -1081,7 +1081,7 @@ async function crawlPersonalXBuilder(builder, { cutoff, limit, agentModel, crawl
         url,
         publishedAt: normalizedDate(tweet.created_at),
         sourceName: builder.name,
-        crawlingTool: skillCrawlingTool("X API v2", agentModel),
+        fetchTool: skillFetchTool("X API v2", agentModel),
         rawJson: {
           source: "personal-x",
           builderId: builder.id,
@@ -1092,15 +1092,15 @@ async function crawlPersonalXBuilder(builder, { cutoff, limit, agentModel, crawl
     })
     .filter((item) => item.body.trim())
     .filter((item) => isAfterCutoff(item.publishedAt, cutoff))
-    .filter((item) => !crawledItemKeys.has(personalItemKey(builder.id, "TWEET", item.externalId)))
+    .filter((item) => !fetchedItemKeys.has(personalItemKey(builder.id, "TWEET", item.externalId)))
     .slice(0, limit);
 }
 
-async function crawlPersonalWithExternalCommand(builder, { fallbackCutoff, force, limit, context, agentModel }) {
+async function fetchPersonalWithExternalCommand(builder, { fallbackCutoff, force, limit, context, agentModel }) {
   const sourceType = sourceTypeIdForBuilder(builder);
   const command =
-    process.env[`BUILDER_BLOG_CRAWLER_${sourceType.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`] ||
-    process.env.BUILDER_BLOG_CRAWLER_COMMAND;
+    process.env[`BUILDER_BLOG_FETCHER_${sourceType.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`] ||
+    process.env.BUILDER_BLOG_FETCHER_COMMAND;
   if (!command?.trim()) return null;
 
   const cutoff = force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff);
@@ -1112,14 +1112,14 @@ async function crawlPersonalWithExternalCommand(builder, { fallbackCutoff, force
     cutoff: cutoff?.toISOString() ?? null,
     agentModel,
   };
-  const output = await runExternalCrawler(command, payload);
+  const output = await runExternalFetcher(command, payload);
   const parsed = JSON.parse(output || "{}");
   if (Array.isArray(parsed)) return parsed;
   if (Array.isArray(parsed.items)) return parsed.items;
-  throw new Error("External crawler must return a JSON array or an object with an items array.");
+  throw new Error("External fetcher must return a JSON array or an object with an items array.");
 }
 
-function runExternalCrawler(command, payload) {
+function runExternalFetcher(command, payload) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, {
       shell: true,
@@ -1139,7 +1139,7 @@ function runExternalCrawler(command, payload) {
       reject(
         new Error(
           Buffer.concat(stderr).toString("utf8").trim() ||
-            `External crawler exited with code ${code}`,
+            `External fetcher exited with code ${code}`,
         ),
       );
     });
@@ -1147,11 +1147,11 @@ function runExternalCrawler(command, payload) {
   });
 }
 
-function filterCrawledItems(items, { builderId, cutoff, limit = Number.POSITIVE_INFINITY, crawledItemKeys = new Set() }) {
+function filterFetchedItems(items, { builderId, cutoff, limit = Number.POSITIVE_INFINITY, fetchedItemKeys = new Set() }) {
   return items
     .filter((item) => item?.kind && item?.externalId && item?.body && item?.url)
     .filter((item) => isAfterCutoff(item.publishedAt, cutoff))
-    .filter((item) => !crawledItemKeys.has(personalItemKey(builderId, item.kind, item.externalId)))
+    .filter((item) => !fetchedItemKeys.has(personalItemKey(builderId, item.kind, item.externalId)))
     .slice(0, limit);
 }
 
@@ -1445,7 +1445,7 @@ export async function youtubeFeedUrl(sourceUrl, fetcher = fetch) {
 
   const response = await fetcher(parsed.href, {
     headers: {
-      "User-Agent": "FollowBriefSkill/1.0 (personal YouTube crawler)",
+      "User-Agent": "FollowBriefSkill/1.0 (personal YouTube fetcher)",
       "Accept-Language": "en-US,en;q=0.9",
     },
   });
@@ -1491,7 +1491,7 @@ async function fetchYouTubeFeedWithRetry(feedUrl, fetcher, retryDelays = [500, 1
   let response;
   for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
     response = await fetcher(feedUrl, {
-      headers: { "User-Agent": "FollowBriefSkill/1.0 (personal YouTube crawler)" },
+      headers: { "User-Agent": "FollowBriefSkill/1.0 (personal YouTube fetcher)" },
     });
     if (response.ok || !shouldRetryYouTubeFeedStatus(response.status) || attempt === retryDelays.length) {
       return response;
@@ -1510,7 +1510,7 @@ async function fetchYouTubePageVideos(sourceUrl, fetcher) {
   if (!pageUrl) return [];
   const response = await fetcher(pageUrl, {
     headers: {
-      "User-Agent": "FollowBriefSkill/1.0 (personal YouTube crawler)",
+      "User-Agent": "FollowBriefSkill/1.0 (personal YouTube fetcher)",
       "Accept-Language": "en-US,en;q=0.9",
     },
   });
@@ -1670,7 +1670,7 @@ async function fetchYouTubeTranscript(videoUrl, fetcher = fetch) {
   if (!videoId) return "";
   const response = await fetcher(`https://www.youtube.com/watch?v=${videoId}`, {
     headers: {
-      "User-Agent": "FollowBriefSkill/1.0 (personal YouTube crawler)",
+      "User-Agent": "FollowBriefSkill/1.0 (personal YouTube fetcher)",
       "Accept-Language": "en-US,en;q=0.9",
     },
   });
@@ -1682,7 +1682,7 @@ async function fetchYouTubeTranscript(videoUrl, fetcher = fetch) {
   if (!track?.baseUrl) return "";
   const captionResponse = await fetcher(withYouTubeCaptionFormat(track.baseUrl, "json3"), {
     headers: {
-      "User-Agent": "FollowBriefSkill/1.0 (personal YouTube crawler)",
+      "User-Agent": "FollowBriefSkill/1.0 (personal YouTube fetcher)",
       "Accept-Language": "en-US,en;q=0.9",
     },
   });
@@ -1784,25 +1784,25 @@ function parseYouTubeXmlTranscript(xml) {
 async function validateAgentSync(args) {
   const tasksFile = argValue(args, "--tasks");
   const payloadFile = argValue(args, "--file");
-  if (!tasksFile) throw new Error("Missing --tasks crawl-result.json");
+  if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
   if (!payloadFile) throw new Error("Missing --file personal-builders.json");
 
-  const crawlResult = JSON.parse(await readFile(tasksFile, "utf8"));
+  const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
   const payload = JSON.parse(await readFile(payloadFile, "utf8"));
-  const result = validateAgentSyncPayload(crawlResult, payload);
+  const result = validateAgentSyncPayload(fetchResult, payload);
   console.log(JSON.stringify(result, null, 2));
 }
 
-export function validateAgentSyncPayload(crawlResult, payload) {
-  const crawlTasks = extractCrawlTasks(crawlResult);
+export function validateAgentSyncPayload(fetchResult, payload) {
+  const fetchTasks = extractFetchTasks(fetchResult);
   const syncItems = extractSyncItems(payload);
-  const validatedCrawlTasks = [];
+  const validatedFetchTasks = [];
   const errors = [];
 
-  for (const task of crawlTasks) {
-    const id = task.id || crawlTaskId(task);
+  for (const task of fetchTasks) {
+    const id = task.id || fetchTaskId(task);
     const matches =
-      task.agentWorkType === "crawl_builder_fallback"
+      task.agentWorkType === "fetch_builder_fallback"
         ? syncItems.filter((candidate) => itemMatchesBuilderFallback(candidate, task, id))
         : (() => {
             const found = syncItems.find((candidate) => itemMatchesAgentTask(candidate, task));
@@ -1810,20 +1810,20 @@ export function validateAgentSyncPayload(crawlResult, payload) {
           })();
     if (matches.length === 0) {
       errors.push({
-        crawlTaskId: id,
+        fetchTaskId: id,
         builder: task.builder,
         item: task.item?.externalId || task.item?.url || task.item?.title,
-        error: "missing_synced_item_for_crawl_task",
+        error: "missing_synced_item_for_fetch_task",
       });
       continue;
     }
 
     let anyValid = false;
     for (const match of matches) {
-      const taskErrors = validateCrawlTaskItem(task, match);
+      const taskErrors = validateFetchTaskItem(task, match);
       if (taskErrors.length > 0) {
         errors.push({
-          crawlTaskId: id,
+          fetchTaskId: id,
           builder: task.builder,
           item: match.item.externalId || match.item.url || match.item.title,
           errors: taskErrors,
@@ -1831,8 +1831,8 @@ export function validateAgentSyncPayload(crawlResult, payload) {
         continue;
       }
       anyValid = true;
-      validatedCrawlTasks.push({
-        crawlTaskId: id,
+      validatedFetchTasks.push({
+        fetchTaskId: id,
         builder: task.builder,
         externalId: match.item.externalId,
         contentStatus: task.contentStatus,
@@ -1852,20 +1852,20 @@ export function validateAgentSyncPayload(crawlResult, payload) {
 
   return {
     status: "ok",
-    crawlTasks: crawlTasks.length,
-    validatedCrawlTasks: validatedCrawlTasks.length,
+    fetchTasks: fetchTasks.length,
+    validatedFetchTasks: validatedFetchTasks.length,
   };
 }
 
-function extractCrawlTasks(crawlResult) {
+function extractFetchTasks(fetchResult) {
   if (
-    Array.isArray(crawlResult) ||
-    Array.isArray(crawlResult?.agentTasks) ||
-    Array.isArray(crawlResult?.summaryTasks)
+    Array.isArray(fetchResult) ||
+    Array.isArray(fetchResult?.agentTasks) ||
+    Array.isArray(fetchResult?.summaryTasks)
   ) {
-    throw new Error("crawlTasks are required; legacy agentTasks/summaryTasks are unsupported.");
+    throw new Error("fetchTasks are required; legacy agentTasks/summaryTasks are unsupported.");
   }
-  if (Array.isArray(crawlResult?.crawlTasks)) return crawlResult.crawlTasks;
+  if (Array.isArray(fetchResult?.fetchTasks)) return fetchResult.fetchTasks;
   return [];
 }
 
@@ -1881,7 +1881,7 @@ function extractSyncItems(payload) {
 function itemMatchesBuilderFallback(candidate, task, taskId) {
   const rawJson = candidate.item.rawJson;
   if (!rawJson || typeof rawJson !== "object" || Array.isArray(rawJson)) return false;
-  if (rawJson.crawlTaskId !== taskId) return false;
+  if (rawJson.fetchTaskId !== taskId) return false;
   const builder = candidate.builder;
   const sync = task.builderSync || {};
   if (builder.builderId && task.builderId && builder.builderId === task.builderId) return true;
@@ -1905,21 +1905,21 @@ function itemMatchesAgentTask(candidate, task) {
     builder.name === task.builder ||
     builder.handle === task.builder ||
     builder.sourceUrl === taskItem.sourceUrl ||
-    builder.crawlUrl === taskItem.sourceUrl ||
+    builder.fetchUrl === taskItem.sourceUrl ||
     builder.sourceUrl === taskItem.url ||
-    builder.crawlUrl === taskItem.url ||
+    builder.fetchUrl === taskItem.url ||
     item.rawJson?.builderId === task.builderId ||
     item.rawJson?.builderName === task.builder;
   return builderMatches || !task.builder;
 }
 
-function validateCrawlTaskItem(task, candidate) {
+function validateFetchTaskItem(task, candidate) {
   const errors = [];
   const rawJson = candidate.item.rawJson;
-  const taskId = task.id || crawlTaskId(task);
+  const taskId = task.id || fetchTaskId(task);
   if (!String(candidate.item.body || "").trim()) errors.push("item.body_required");
   if (task.item?.body && normalizeContentText(candidate.item.body) !== normalizeContentText(task.item.body)) {
-    errors.push("item.body_must_match_ready_crawl_task_body");
+    errors.push("item.body_must_match_ready_fetch_task_body");
   }
   const summaryErrors = validateItemSummary(candidate.item.summary, {
     title: task.item?.title || "",
@@ -1929,10 +1929,10 @@ function validateCrawlTaskItem(task, candidate) {
 
   if (task.contentStatus !== "requires_agent") {
     if (!rawJson || typeof rawJson !== "object" || Array.isArray(rawJson)) {
-      errors.push("rawJson.crawlTaskId_required");
+      errors.push("rawJson.fetchTaskId_required");
       return errors;
     }
-    if (rawJson.crawlTaskId !== taskId) errors.push("rawJson.crawlTaskId_must_match_task_id");
+    if (rawJson.fetchTaskId !== taskId) errors.push("rawJson.fetchTaskId_must_match_task_id");
     return errors;
   }
 
@@ -1940,7 +1940,7 @@ function validateCrawlTaskItem(task, candidate) {
     errors.push("rawJson_agent_execution_proof_required");
     return errors;
   }
-  if (rawJson.crawlTaskId !== taskId) errors.push("rawJson.crawlTaskId_must_match_task_id");
+  if (rawJson.fetchTaskId !== taskId) errors.push("rawJson.fetchTaskId_must_match_task_id");
   if (!String(rawJson.agentRuntime || "").trim()) errors.push("rawJson.agentRuntime_required");
   if (!String(rawJson.agentExecutionProof || "").trim()) {
     errors.push("rawJson.agentExecutionProof_required");
@@ -2036,7 +2036,7 @@ async function syncBuilders(args) {
   const file = argValue(args, "--file");
   if (!file) throw new Error("Missing --file personal-builders.json");
   const payload = JSON.parse(await readFile(file, "utf8"));
-  payload.crawlingTool ??= skillCrawlingTool(
+  payload.fetchTool ??= skillFetchTool(
     "manual JSON sync",
     argValue(args, "--agent-model", DEFAULT_AGENT_MODEL),
   );
@@ -2072,7 +2072,7 @@ async function main() {
     );
     process.exit(1);
   }
-  else if (command === "crawl-personal") await crawlPersonal(args);
+  else if (command === "fetch-personal") await fetchPersonal(args);
   else if (command === "prepare") await prepare();
   else if (command === "validate-agent-sync") await validateAgentSync(args);
   else if (command === "sync-builders") await syncBuilders(args);

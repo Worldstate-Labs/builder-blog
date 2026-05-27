@@ -5,7 +5,7 @@ type SourceBadgeBuilder = {
   kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";
   sourceType?: string | null;
   sourceUrl?: string | null;
-  crawlUrl?: string | null;
+  fetchUrl?: string | null;
 };
 
 const sourceIcons: Record<string, ComponentType<{ className?: string }>> = {
@@ -44,7 +44,7 @@ function sourceDisplayForBuilder(builder: SourceBadgeBuilder) {
   if (explicit) return sourceDisplayForType(explicit);
   if (
     builder.kind === "PODCAST" &&
-    /youtube\.com|youtu\.be/i.test(`${builder.sourceUrl ?? ""} ${builder.crawlUrl ?? ""}`)
+    /youtube\.com|youtu\.be/i.test(`${builder.sourceUrl ?? ""} ${builder.fetchUrl ?? ""}`)
   ) {
     return sourceDisplayForType("youtube");
   }

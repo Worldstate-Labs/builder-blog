@@ -47,7 +47,7 @@ export async function GET(_request: Request, { params }: Params) {
       publishedAt: item.publishedAt,
       createdAt: item.createdAt,
       sourceName: item.sourceName,
-      crawlingTool: item.crawlingTool,
+      fetchTool: item.fetchTool,
       alternateChannelCount: item.alternateChannelCount,
     })),
   });

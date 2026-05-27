@@ -8,12 +8,12 @@ export type FeedItemWithBuilder = FeedItem & {
     id: string;
     entityId: string | null;
     ownerUserId: string | null;
-    lastCrawledAt: Date | null;
+    lastFetchedAt: Date | null;
     name: string;
     handle: string | null;
     sourceType: string;
     sourceUrl: string | null;
-    crawlUrl: string | null;
+    fetchUrl: string | null;
     bio: string | null;
   } | null;
 };
@@ -55,7 +55,7 @@ export async function dedupeFeedItemsByEntity(params: {
       variants.map((v) => ({
         builderId: v.builderId!,
         ownerUserId: v.builder?.ownerUserId ?? "",
-        lastCrawledAt: v.builder?.lastCrawledAt ?? null,
+        lastFetchedAt: v.builder?.lastFetchedAt ?? null,
         publishedAt: v.publishedAt,
         createdAt: v.createdAt,
         __raw: v,
@@ -107,12 +107,12 @@ export async function fetchDedupedFeedForEntities(params: {
           id: true,
           entityId: true,
           ownerUserId: true,
-          lastCrawledAt: true,
+          lastFetchedAt: true,
           name: true,
           handle: true,
           sourceType: true,
           sourceUrl: true,
-          crawlUrl: true,
+          fetchUrl: true,
           bio: true,
         },
       },

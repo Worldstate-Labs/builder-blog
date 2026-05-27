@@ -40,9 +40,9 @@ export async function POST(request: Request) {
   const now = new Date();
   for (const input of parsed.data.builders) {
     // SSRF: agents must not register sources whose URLs target the internal
-    // network. The web crawl + future server-side fetches would otherwise
+    // network. The web fetch + future server-side fetches would otherwise
     // touch private endpoints.
-    for (const candidate of [input.sourceUrl, input.crawlUrl]) {
+    for (const candidate of [input.sourceUrl, input.fetchUrl]) {
       if (!candidate) continue;
       const check = validatePublicHttpUrl(candidate);
       if (!check.ok) {
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
         name: input.name,
         handle: input.handle,
         sourceUrl: input.sourceUrl,
-        crawlUrl: input.crawlUrl,
+        fetchUrl: input.fetchUrl,
         bio: input.bio,
       }));
     await addBuilderToPool({
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
         continue;
       }
       payloadItemKeys.add(key);
-      const crawlingTool = item.crawlingTool ?? parsed.data.crawlingTool;
+      const fetchTool = item.fetchTool ?? parsed.data.fetchTool;
       if (!parsed.data.force && existingItemKeys.has(key)) {
         const updateData = {
           ...(item.summary === undefined ? {} : { summary: item.summary }),
@@ -135,9 +135,9 @@ export async function POST(request: Request) {
             builderId: builder.id,
             kind: item.kind,
             externalId: item.externalId,
-            OR: [{ crawlingTool: null }, { crawlingTool: "Legacy crawl/import" }],
+            OR: [{ fetchTool: null }, { fetchTool: "Legacy fetch/import" }],
           },
-          data: { crawlingTool },
+          data: { fetchTool },
         });
         skippedFeedItems += 1;
         continue;
@@ -157,7 +157,7 @@ export async function POST(request: Request) {
           url: item.url,
           publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
           sourceName: item.sourceName ?? input.name,
-          crawlingTool,
+          fetchTool,
           rawJson: item.rawJson === undefined ? undefined : JSON.stringify(item.rawJson),
         },
         create: {
@@ -170,18 +170,18 @@ export async function POST(request: Request) {
           url: item.url,
           publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
           sourceName: item.sourceName ?? input.name,
-          crawlingTool,
+          fetchTool,
           rawJson: item.rawJson === undefined ? undefined : JSON.stringify(item.rawJson),
         },
       });
       feedItems += 1;
       syncedItemCount += 1;
     }
-    // Inline crawl-state update on the builder channel itself.
+    // Inline fetch-state update on the builder channel itself.
     await prisma.builder.update({
       where: { id: builder.id },
       data: {
-        lastCrawledAt: now,
+        lastFetchedAt: now,
         ...(parsed.data.force ? { lastForcedAt: now } : {}),
         itemCount: syncedItemCount,
         status: "OK",

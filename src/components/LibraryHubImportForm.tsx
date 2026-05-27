@@ -10,7 +10,7 @@ type HubLibraryBuilder = {
   name: string;
   handle: string | null;
   sourceUrl: string | null;
-  crawlUrl: string | null;
+  fetchUrl: string | null;
   _count: { feedItems: number };
 };
 

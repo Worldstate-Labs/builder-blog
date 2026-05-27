@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-test("personal blog crawler discovers RSS feed articles", async () => {
+test("personal blog fetcher discovers RSS feed articles", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const candidates = cli.parseBlogCandidates(
     `
@@ -22,7 +22,7 @@ test("personal blog crawler discovers RSS feed articles", async () => {
   assert.equal(candidates[0].publishedAt, "2026-05-22T10:00:00.000Z");
 });
 
-test("personal blog crawler keeps only article-like same-origin HTML links", async () => {
+test("personal blog fetcher keeps only article-like same-origin HTML links", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const candidates = cli.parseBlogCandidates(
     `
@@ -39,7 +39,7 @@ test("personal blog crawler keeps only article-like same-origin HTML links", asy
   );
 });
 
-test("personal blog crawler extracts article text", async () => {
+test("personal blog fetcher extracts article text", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const article = cli.extractBlogArticle(`
     <html>
@@ -60,7 +60,7 @@ test("personal blog crawler extracts article text", async () => {
   assert.match(article.body, /long enough/);
 });
 
-test("personal blog crawler uses Anthropic Next data when available", async () => {
+test("personal blog fetcher uses Anthropic Next data when available", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const candidates = cli.parseBlogCandidates(
     `
@@ -86,7 +86,7 @@ test("personal blog crawler uses Anthropic Next data when available", async () =
   assert.equal(article.body, "First structured paragraph.\n\nSecond structured paragraph.");
 });
 
-test("personal blog crawler uses Claude JSON-LD and rich text body when available", async () => {
+test("personal blog fetcher uses Claude JSON-LD and rich text body when available", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const candidates = cli.parseBlogCandidates(
     `
@@ -112,7 +112,7 @@ test("personal blog crawler uses Claude JSON-LD and rich text body when availabl
   assert.equal(article.body, "This is the rich text body from Claude Blog.");
 });
 
-test("personal YouTube crawler resolves channel pages to RSS feeds", async () => {
+test("personal YouTube fetcher resolves channel pages to RSS feeds", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const feedUrl = await cli.youtubeFeedUrl("https://www.youtube.com/@ExampleBuilder", async () =>
     new Response('<html>{"externalId":"UCabcdefghijklmnopqrstuvwx"}</html>'),
@@ -124,7 +124,7 @@ test("personal YouTube crawler resolves channel pages to RSS feeds", async () =>
   );
 });
 
-test("personal YouTube crawler maps feed entries into syncable episodes", async () => {
+test("personal YouTube fetcher maps feed entries into syncable episodes", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const videos = cli.parseYouTubeFeed(
     `
@@ -148,7 +148,7 @@ test("personal YouTube crawler maps feed entries into syncable episodes", async 
   assert.equal(videos[0].description, "Practical agent lessons.");
 });
 
-test("personal YouTube crawler retries transient feed failures", async () => {
+test("personal YouTube fetcher retries transient feed failures", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const calls: string[] = [];
   const result = await cli.fetchYouTubeVideos(
@@ -179,7 +179,7 @@ test("personal YouTube crawler retries transient feed failures", async () => {
   assert.equal(calls.filter((call) => call.includes("/feeds/videos.xml")).length, 2);
 });
 
-test("personal YouTube crawler falls back to channel videos page when RSS fails", async () => {
+test("personal YouTube fetcher falls back to channel videos page when RSS fails", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const result = await cli.fetchYouTubeVideos(
     "https://www.youtube.com/@ExampleBuilder",
@@ -212,7 +212,7 @@ test("personal YouTube crawler falls back to channel videos page when RSS fails"
   });
 });
 
-test("personal YouTube crawler parses modern channel lockup view models", async () => {
+test("personal YouTube fetcher parses modern channel lockup view models", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const videos = cli.parseYouTubePageData(`
     <script>
@@ -301,20 +301,20 @@ test("personal YouTube content quality requires useful transcript substance", as
   );
 });
 
-test("personal YouTube crawler returns agent tasks instead of syncing description-only content", async () => {
+test("personal YouTube fetcher returns agent tasks instead of syncing description-only content", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
-  const result = await cli.crawlPersonalYouTubeBuilderForTest(
+  const result = await cli.fetchPersonalYouTubeBuilderForTest(
     {
       id: "builder_youtube_needs_agent",
       name: "Needs Agent YouTube",
       sourceUrl: "https://www.youtube.com/@NeedsAgent",
-      crawlUrl: "https://www.youtube.com/@NeedsAgent",
+      fetchUrl: "https://www.youtube.com/@NeedsAgent",
     },
     {
       cutoff: null,
       limit: 1,
       agentModel: "gpt-test",
-      crawledItemKeys: new Set(),
+      fetchedItemKeys: new Set(),
       fetcher: async (url: string) => {
         if (url === "https://www.youtube.com/@NeedsAgent") {
           return new Response('<html>{"externalId":"UCneedsagent00000000000000"}</html>');
@@ -349,10 +349,10 @@ test("personal YouTube crawler returns agent tasks instead of syncing descriptio
   assert.equal("sourceDetail" in result.agentTasks[0], false);
 });
 
-test("agent sync validation accepts crawl task YouTube transcript with execution proof", async () => {
+test("agent sync validation accepts fetch task YouTube transcript with execution proof", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const task = {
-    type: "crawl_post",
+    type: "fetch_post",
     agentWorkType: "youtube_transcription",
     contentStatus: "requires_agent",
     builder: "Anthropic YouTube",
@@ -366,9 +366,9 @@ test("agent sync validation accepts crawl task YouTube transcript with execution
       description: "A short launch description.",
     },
   };
-  const taskId = cli.crawlTaskId(task);
+  const taskId = cli.fetchTaskId(task);
   const result = cli.validateAgentSyncPayload(
-    { crawlTasks: [{ ...task, id: taskId }] },
+    { fetchTasks: [{ ...task, id: taskId }] },
     {
       builders: [
         {
@@ -388,7 +388,7 @@ test("agent sync validation accepts crawl task YouTube transcript with execution
               url: "https://www.youtube.com/watch?v=dPn3GBI8lII",
               rawJson: {
                 builderId: "builder_anthropic_youtube",
-                crawlTaskId: taskId,
+                fetchTaskId: taskId,
                 agentRuntime: "Codex",
                 agentModel: "gpt-test",
                 agentCompletedAt: "2026-05-24T10:00:00.000Z",
@@ -403,14 +403,14 @@ test("agent sync validation accepts crawl task YouTube transcript with execution
   );
 
   assert.equal(result.status, "ok");
-  assert.equal(result.validatedCrawlTasks, 1);
-  assert.equal("validatedCrawlTaskItems" in result, false);
+  assert.equal(result.validatedFetchTasks, 1);
+  assert.equal("validatedFetchTaskItems" in result, false);
 });
 
-test("agent sync validation accepts ready crawl task summaries", async () => {
+test("agent sync validation accepts ready fetch task summaries", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const task = {
-    type: "crawl_post",
+    type: "fetch_post",
     contentStatus: "ready",
     builder: "Example Blog",
     builderId: "builder_blog",
@@ -420,13 +420,13 @@ test("agent sync validation accepts ready crawl task summaries", async () => {
       externalId: "https://example.com/post",
       title: "Shipping durable agents",
       url: "https://example.com/post",
-      body: "The post explains how the team shipped durable agents with explicit state, replayable event logs, and source-linked summaries for every crawled item.",
+      body: "The post explains how the team shipped durable agents with explicit state, replayable event logs, and source-linked summaries for every fetched item.",
     },
   };
-  const taskId = cli.crawlTaskId(task);
+  const taskId = cli.fetchTaskId(task);
   const result = cli.validateAgentSyncPayload(
     {
-      crawlTasks: [{ ...task, id: taskId }],
+      fetchTasks: [{ ...task, id: taskId }],
     },
     {
       builders: [
@@ -441,13 +441,13 @@ test("agent sync validation accepts ready crawl task summaries", async () => {
               kind: "BLOG_POST",
               externalId: "https://example.com/post",
               title: "Shipping durable agents",
-              body: "The post explains how the team shipped durable agents with explicit state, replayable event logs, and source-linked summaries for every crawled item.",
+              body: "The post explains how the team shipped durable agents with explicit state, replayable event logs, and source-linked summaries for every fetched item.",
               summary:
-                "这篇文章讲 durable agents 的实现：显式 state、可重放事件日志，以及为每个 crawled item 生成带来源的 summary。来源：https://example.com/post",
+                "这篇文章讲 durable agents 的实现：显式 state、可重放事件日志，以及为每个 fetched item 生成带来源的 summary。来源：https://example.com/post",
               url: "https://example.com/post",
               rawJson: {
                 builderId: "builder_blog",
-                crawlTaskId: taskId,
+                fetchTaskId: taskId,
               },
             },
           ],
@@ -457,11 +457,11 @@ test("agent sync validation accepts ready crawl task summaries", async () => {
   );
 
   assert.equal(result.status, "ok");
-  assert.equal(result.validatedCrawlTasks, 1);
-  assert.equal("validatedCrawlTaskItems" in result, false);
+  assert.equal(result.validatedFetchTasks, 1);
+  assert.equal("validatedFetchTaskItems" in result, false);
 });
 
-test("ready crawl tasks carry embedded source-specific single-post prompts", async () => {
+test("ready fetch tasks carry embedded source-specific single-post prompts", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const sources = {
     x: {
@@ -502,7 +502,7 @@ test("ready crawl tasks carry embedded source-specific single-post prompts", asy
     "- Use task.item.body as the primary content.",
     "- Apply the quality bar and no-fabrication, direct-quote-only, source-link rules stated in the source-specific prompt below.",
   ].join("\n");
-  const tasks = cli.crawlTasksForReadyBuilders(
+  const tasks = cli.fetchTasksForReadyBuilders(
     [
       {
         builderId: "builder_x",
@@ -560,14 +560,14 @@ test("ready crawl tasks carry embedded source-specific single-post prompts", asy
       contentStatus: task.contentStatus,
     })),
     [
-      { type: "crawl_post", contentStatus: "ready" },
-      { type: "crawl_post", contentStatus: "ready" },
-      { type: "crawl_post", contentStatus: "ready" },
+      { type: "fetch_post", contentStatus: "ready" },
+      { type: "fetch_post", contentStatus: "ready" },
+      { type: "fetch_post", contentStatus: "ready" },
     ],
   );
   for (const task of tasks) {
     assert.equal("reason" in task, false);
-    assert.equal("normalCrawler" in task, false);
+    assert.equal("normalFetcher" in task, false);
     assert.equal("suggestedAction" in task, false);
   }
   assert.deepEqual(
@@ -644,10 +644,10 @@ test("agent sync validation rejects legacy task result shapes", async () => {
   );
 });
 
-test("crawl task validation rejects YouTube metadata masquerading as content", async () => {
+test("fetch task validation rejects YouTube metadata masquerading as content", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const task = {
-    type: "crawl_post",
+    type: "fetch_post",
     agentWorkType: "youtube_transcription",
     contentStatus: "requires_agent",
     builder: "Anthropic YouTube",
@@ -661,12 +661,12 @@ test("crawl task validation rejects YouTube metadata masquerading as content", a
       description: "A short launch description.",
     },
   };
-  const taskId = cli.crawlTaskId(task);
+  const taskId = cli.fetchTaskId(task);
 
   assert.throws(
     () =>
       cli.validateAgentSyncPayload(
-        { crawlTasks: [{ ...task, id: taskId }] },
+        { fetchTasks: [{ ...task, id: taskId }] },
         {
           builders: [
             {
@@ -682,7 +682,7 @@ test("crawl task validation rejects YouTube metadata masquerading as content", a
                   url: "https://www.youtube.com/watch?v=dPn3GBI8lII",
                   rawJson: {
                     builderId: "builder_anthropic_youtube",
-                    crawlTaskId: taskId,
+                    fetchTaskId: taskId,
                     agentRuntime: "Codex",
                     agentCompletedAt: "2026-05-24T10:00:00.000Z",
                     agentExecutionProof: "metadata only",
@@ -698,7 +698,7 @@ test("crawl task validation rejects YouTube metadata masquerading as content", a
   );
 });
 
-test("personal podcast crawler parses RSS episodes as podcast items", async () => {
+test("personal podcast fetcher parses RSS episodes as podcast items", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const items = cli.parsePodcastFeedItems(
     `
@@ -720,15 +720,15 @@ test("personal podcast crawler parses RSS episodes as podcast items", async () =
   assert.equal(items[0].url, "https://pod.example.com/42");
 });
 
-test("personal crawler reports concrete crawling tool identity", async () => {
+test("personal fetcher reports concrete fetching tool identity", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   assert.match(
-    cli.skillCrawlingTool("YouTube RSS + captions", "gpt-5.5"),
-    /\(model gpt-5\.5\) FollowBrief skill crawler \(YouTube RSS \+ captions\)/,
+    cli.skillFetchTool("YouTube RSS + captions", "gpt-5.5"),
+    /\(model gpt-5\.5\) FollowBrief skill fetcher \(YouTube RSS \+ captions\)/,
   );
 });
 
-test("personal crawler keeps crawled builders eligible and tracks crawled post keys", async () => {
+test("personal fetcher keeps fetched builders eligible and tracks fetched post keys", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const context = {
     libraryBuilders: [
@@ -737,7 +737,7 @@ test("personal crawler keeps crawled builders eligible and tracks crawled post k
         scope: "PERSONAL",
         kind: "BLOG",
         sourceType: "auto",
-        name: "Already Crawled Blog",
+        name: "Already Fetched Blog",
         sourceUrl: "https://example.com/blog",
       },
       {
@@ -779,13 +779,13 @@ test("personal crawler keeps crawled builders eligible and tracks crawled post k
         sourceUrl: "https://example.com/central",
       },
     ],
-    personalCrawlStates: [
+    personalFetchStates: [
       {
         builderId: "builder_blog_1",
-        lastCrawledAt: "2026-05-22T10:00:00.000Z",
+        lastFetchedAt: "2026-05-22T10:00:00.000Z",
       },
     ],
-    personalCrawledItems: [
+    personalFetchedItems: [
       {
         builderId: "builder_blog_1",
         kind: "BLOG_POST",
@@ -794,7 +794,7 @@ test("personal crawler keeps crawled builders eligible and tracks crawled post k
         createdAt: "2026-05-22T10:05:00.000Z",
       },
     ],
-    latestPersonalCrawledItems: [
+    latestPersonalFetchedItems: [
       {
         builderId: "builder_blog_1",
         latestPostAt: "2026-05-22T10:00:00.000Z",
@@ -803,7 +803,7 @@ test("personal crawler keeps crawled builders eligible and tracks crawled post k
   };
 
   assert.deepEqual(
-    cli.personalBuildersForCrawl(context).map((builder: { id: string }) => builder.id),
+    cli.personalBuildersForFetch(context).map((builder: { id: string }) => builder.id),
     [
       "builder_blog_1",
       "builder_blog_2",
@@ -814,7 +814,7 @@ test("personal crawler keeps crawled builders eligible and tracks crawled post k
   );
   assert.equal(
     cli
-      .crawledItemKeysForBuilder(context, "builder_blog_1")
+      .fetchedItemKeysForBuilder(context, "builder_blog_1")
       .has(cli.personalItemKey("builder_blog_1", "BLOG_POST", "https://example.com/blog/launch-notes")),
     true,
   );

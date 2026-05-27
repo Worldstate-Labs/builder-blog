@@ -73,7 +73,7 @@ async function SourceTypeConfigSection() {
         <p className="fb-section-label">Admin · runtime configuration</p>
         <h2 className="fb-section-heading mt-1">Source type configuration</h2>
         <p className="fb-desc mt-1 max-w-3xl">
-          Edit prompts, crawl defaults, and content-quality thresholds used by
+          Edit prompts, fetch defaults, and content-quality thresholds used by
           both digest and library once-skills. Changes take effect on the next
           context fetch.
         </p>
@@ -85,8 +85,8 @@ async function SourceTypeConfigSection() {
             sourceId: c.sourceId,
             label: c.label,
             agentDefaultStatus: c.agentDefaultStatus,
-            defaultCrawlDays: c.defaultCrawlDays,
-            defaultCrawlLimit: c.defaultCrawlLimit,
+            defaultFetchDays: c.defaultFetchDays,
+            defaultFetchLimit: c.defaultFetchLimit,
             contentQuality: c.contentQuality,
             summaryPromptBody: c.summaryPromptBody,
             summaryStyle: c.summaryStyle,

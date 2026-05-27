@@ -67,7 +67,7 @@ export function BuilderLibraryList({
       setAddedBuilders((current) => [...current, builder]);
       setSubscribedByBuilderId((current) => ({ ...current, [builder.id]: builder.subscribed }));
       dispatchStatsChange({
-        crawledDelta: builder.feedItemCount,
+        fetchedDelta: builder.feedItemCount,
         inLibraryDelta: 1,
         subscribedDelta: builder.subscribed ? 1 : 0,
       });
@@ -93,7 +93,7 @@ export function BuilderLibraryList({
     const subscribed = subscribedByBuilderId[builderId] ?? builder?.subscribed ?? false;
     if (builder) {
       dispatchStatsChange({
-        crawledDelta: removed ? -builder.feedItemCount : builder.feedItemCount,
+        fetchedDelta: removed ? -builder.feedItemCount : builder.feedItemCount,
         inLibraryDelta: removed ? -1 : 1,
         subscribedDelta: subscribed ? (removed ? -1 : 1) : 0,
       });
@@ -215,7 +215,7 @@ function dispatchStatsChange(detail: BuilderLibraryStatsChange) {
 }
 
 function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
-  const sourceUrl = builder.sourceUrl ?? builder.crawlUrl;
+  const sourceUrl = builder.sourceUrl ?? builder.fetchUrl;
   const latestPostCreatedAt = builder.latestPostCreatedAt
     ? new Date(builder.latestPostCreatedAt)
     : null;
@@ -248,7 +248,7 @@ function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
           </>
         ) : null}
         <span>·</span>
-        <span>{builder.crawlLabel}</span>
+        <span>{builder.fetchLabel}</span>
         {sourceUrl ? (
           <a
             className="inline-flex items-center gap-1 text-[var(--accent)] hover:underline"

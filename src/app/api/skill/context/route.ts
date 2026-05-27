@@ -14,7 +14,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { getUserFromBearer } from "@/lib/tokens";
 
-const personalCrawledItemLimit = 5000;
+const personalFetchedItemLimit = 5000;
 
 export async function GET(request: Request) {
   const user = await getUserFromBearer(request);
@@ -61,8 +61,8 @@ export async function GET(request: Request) {
     feedItemKinds: string[];
     urlPatterns: string[];
     agentDefaultStatus: string;
-    defaultCrawlDays: number;
-    defaultCrawlLimit: number;
+    defaultFetchDays: number;
+    defaultFetchLimit: number;
     contentQuality: unknown;
     summaryPrompt: {
       body: string;
@@ -81,8 +81,8 @@ export async function GET(request: Request) {
       feedItemKinds: def.feedItemKinds,
       urlPatterns: def.urlPatterns,
       agentDefaultStatus: cfg.agentDefaultStatus,
-      defaultCrawlDays: cfg.defaultCrawlDays,
-      defaultCrawlLimit: cfg.defaultCrawlLimit,
+      defaultFetchDays: cfg.defaultFetchDays,
+      defaultFetchLimit: cfg.defaultFetchLimit,
       contentQuality: cfg.contentQuality,
       summaryPrompt: {
         body: cfg.summaryPromptBody,
@@ -117,13 +117,13 @@ export async function GET(request: Request) {
   const since = lastDigest?.createdAt ?? digestFallbackSince(now, preference);
   const maxAgeCutoff = digestMaxAgeCutoff(now, preference);
 
-  // Personal channels = builders the requesting user owns (their own crawls).
+  // Personal channels = builders the requesting user owns (their own fetches).
   const personalBuilderIds = libraryBuilders
     .filter((builder) => builder.ownerUserId === user.id)
     .map((builder) => builder.id);
 
   // Annotate the requesting user's own builders with scope="PERSONAL" so
-  // the local agent CLI's personalBuildersForCrawl filter can pick them up.
+  // the local agent CLI's personalBuildersForFetch filter can pick them up.
   // Imported builders (from other users' hub libraries) are left without
   // a scope — the codebase intentionally has no "CENTRAL" concept; the
   // owner-based check is the source of truth. Strip the original
@@ -154,13 +154,13 @@ export async function GET(request: Request) {
       .map((b) => b.id),
   );
 
-  // Crawl-state per channel lives inline on Builder.
-  const personalCrawlStates = libraryBuilders
+  // Fetch-state per channel lives inline on Builder.
+  const personalFetchStates = libraryBuilders
     .filter((b) => personalBuilderIds.includes(b.id))
     .map((b) => ({
       builderId: b.id,
       entityId: b.entityId,
-      lastCrawledAt: b.lastCrawledAt,
+      lastFetchedAt: b.lastFetchedAt,
       lastForcedAt: b.lastForcedAt,
       itemCount: b.itemCount,
       status: b.status,
@@ -176,7 +176,7 @@ export async function GET(request: Request) {
   });
 
   const personalEntityIds = await projectBuildersToEntities(personalBuilderIds);
-  const personalCrawledItems = await prisma.feedItem.findMany({
+  const personalFetchedItems = await prisma.feedItem.findMany({
     where: {
       builderId: { in: personalBuilderIds },
     },
@@ -189,16 +189,16 @@ export async function GET(request: Request) {
       builder: { select: { entityId: true } },
     },
     orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-    take: personalCrawledItemLimit,
+    take: personalFetchedItemLimit,
   });
 
-  // Dedupe latestPersonalCrawledItems by entity rather than by builder, so we don't
+  // Dedupe latestPersonalFetchedItems by entity rather than by builder, so we don't
   // double-report the same canonical creator just because the user has two channels for them.
   const latestByEntity = new Map<
     string,
     { entityId: string; builderId: string; latestPostAt: string; publishedAt: string | null; createdAt: string }
   >();
-  for (const item of personalCrawledItems) {
+  for (const item of personalFetchedItems) {
     const entityId = item.builder?.entityId;
     if (!entityId || !item.builderId) continue;
     const latestPostAtDate = item.publishedAt ?? item.createdAt;
@@ -225,13 +225,13 @@ export async function GET(request: Request) {
       maxPostAgeDays: digestMaxPostAgeDays(preference),
       lastDigestGeneratedAt: lastDigest?.createdAt.toISOString() ?? null,
       timestampRule:
-        "include items published after the last digest, plus newly crawled items created after the last digest when their publishedAt is still within max post age",
+        "include items published after the last digest, plus newly fetched items created after the last digest when their publishedAt is still within max post age",
     },
     libraryBuilders: annotatedLibraryBuilders,
-    personalCrawlStates,
-    personalCrawledItems,
+    personalFetchStates,
+    personalFetchedItems,
     personalEntityIds,
-    latestPersonalCrawledItems: Array.from(latestByEntity.values()),
+    latestPersonalFetchedItems: Array.from(latestByEntity.values()),
     subscriptions: subscriptions
       .map((s) => s.builder)
       .filter((b): b is NonNullable<typeof b> => Boolean(b)),

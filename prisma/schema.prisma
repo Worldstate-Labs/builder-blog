@@ -79,14 +79,14 @@ model Builder {
   libraryKey    String                  @unique
   sourceType    String                  @default("auto")
   sourceUrl     String?
-  crawlUrl      String?
+  fetchUrl      String?
   bio           String?
   addedByUserId String?
   entityId      String
-  lastCrawledAt DateTime?
+  lastFetchedAt DateTime?
   lastForcedAt  DateTime?
   itemCount     Int                     @default(0)
-  status        CrawlStatus             @default(IDLE)
+  status        FetchStatus             @default(IDLE)
   lastError     String?
   createdAt     DateTime                @default(now())
   updatedAt     DateTime                @updatedAt
@@ -227,7 +227,7 @@ model FeedItem {
   url                         String
   publishedAt                 DateTime?
   sourceName                  String?
-  crawlingTool                String?
+  fetchTool                   String?
   rawJson                     String?
   createdAt                   DateTime                     @default(now())
   builder                     Builder?                     @relation(fields: [builderId], references: [id], onDelete: SetNull)
@@ -360,7 +360,7 @@ model ExchangeCode {
 }
 
 /// Admin-editable per-source-type configuration. The code-bound fields
-/// (builderKind, feedItemKinds, urlPatterns, crawl fn) still live in
+/// (builderKind, feedItemKinds, urlPatterns, fetch fn) still live in
 /// config/sources.json; this table is the runtime source of truth for
 /// every safe-to-hot-edit attribute. Seeded from sources.json +
 /// digest-prompts on app startup so the table is never empty.
@@ -368,8 +368,8 @@ model SourceTypeConfig {
   sourceId           String   @id
   label              String
   agentDefaultStatus String   @default("ready")
-  defaultCrawlDays   Int      @default(7)
-  defaultCrawlLimit  Int      @default(3)
+  defaultFetchDays   Int      @default(7)
+  defaultFetchLimit  Int      @default(3)
   contentQuality     Json
   summaryPromptBody  String
   summaryStyle       String
@@ -421,7 +421,7 @@ enum DigestFrequency {
   CUSTOM
 }
 
-enum CrawlStatus {
+enum FetchStatus {
   IDLE
   RUNNING
   OK

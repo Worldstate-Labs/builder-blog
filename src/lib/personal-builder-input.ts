@@ -8,7 +8,7 @@ export type PersonalBuilderInput = {
   name: string;
   handle: string | null;
   sourceUrl: string | null;
-  crawlUrl: string | null;
+  fetchUrl: string | null;
 };
 
 export function resolvePersonalBuilderInput({
@@ -33,7 +33,7 @@ export function resolvePersonalBuilderInput({
       name: displayName.trim() || `@${handle}`,
       handle,
       sourceUrl: `https://x.com/${handle}`,
-      crawlUrl: null,
+      fetchUrl: null,
     };
   }
 
@@ -47,7 +47,7 @@ export function resolvePersonalBuilderInput({
       name: displayName.trim() || nameFromYouTubeUrl(sourceUrl),
       handle: null,
       sourceUrl,
-      crawlUrl: null,
+      fetchUrl: null,
     };
   }
 
@@ -60,7 +60,7 @@ export function resolvePersonalBuilderInput({
     name: displayName.trim() || nameFromUrl(sourceUrl),
     handle: null,
     sourceUrl,
-    crawlUrl: null,
+    fetchUrl: null,
   };
 }
 

@@ -12,7 +12,7 @@ type BuilderLibraryAutoRefreshProps = {
 };
 
 type LibraryStatePayload = {
-  crawledItems: number;
+  fetchedItems: number;
   inLibrary: number;
   subscribed: number;
   version: string;
@@ -37,7 +37,7 @@ export function BuilderLibraryAutoRefresh({
 
     function emitState(payload: LibraryStatePayload) {
       const detail: BuilderLibraryStatsChange = {
-        crawledCount: payload.crawledItems,
+        fetchedCount: payload.fetchedItems,
         inLibraryCount: payload.inLibrary,
         subscribedCount: payload.subscribed,
       };

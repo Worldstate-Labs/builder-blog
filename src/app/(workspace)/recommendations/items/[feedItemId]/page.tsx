@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { CrawledPostCard } from "@/components/CrawledPostCard";
+import { FetchedPostCard } from "@/components/FetchedPostCard";
 import { getCurrentSession } from "@/lib/auth";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
@@ -66,7 +66,7 @@ export default async function RecommendationItemPage({
         </Link>
       </div>
 
-      <CrawledPostCard
+      <FetchedPostCard
         dataRead={true}
         extraActions={
           <Link className="button-light button-compact gap-2" href="/dashboard">
@@ -83,7 +83,7 @@ export default async function RecommendationItemPage({
           publishedAt: item.publishedAt?.toISOString() ?? null,
           createdAt: item.createdAt.toISOString(),
           sourceName: item.sourceName,
-          crawlingTool: item.crawlingTool,
+          fetchTool: item.fetchTool,
           builder: item.builder
             ? {
                 id: item.builder.id,
@@ -92,7 +92,7 @@ export default async function RecommendationItemPage({
                 kind: item.builder.kind,
                 sourceType: item.builder.sourceType,
                 sourceUrl: item.builder.sourceUrl,
-                crawlUrl: item.builder.crawlUrl,
+                fetchUrl: item.builder.fetchUrl,
               }
             : null,
         }}

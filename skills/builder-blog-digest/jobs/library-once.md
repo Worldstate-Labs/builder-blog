@@ -1,37 +1,37 @@
-Objective: crawl this user's FollowBrief private source library once, complete
-the returned crawl tasks, and sync only fully completed posts.
+Objective: fetch this user's FollowBrief private source library once, complete
+the returned fetch tasks, and sync only fully completed posts.
 
 You are the local agent executing this job. Treat this file as the execution
 contract, not as user-facing documentation.
 
 Execution contract:
 - Run the numbered command steps exactly.
-- If a command outside the explicit `crawlTasks` work fails, stop and report the
+- If a command outside the explicit `fetchTasks` work fails, stop and report the
   command, exit code, and stderr.
 - Do not use `--force`.
-- Do not browse for extra context unless a `crawlTasks` payload requires local
+- Do not browse for extra context unless a `fetchTasks` payload requires local
   extraction from a returned source URL.
 - Do not change paths, flags, cadence, titles, output files, JSON schema, or
   success criteria.
-- Stay in command-runner mode until the CLI returns `crawlTasks` or says a
+- Stay in command-runner mode until the CLI returns `fetchTasks` or says a
   personal source needs local cookies, credentials, transcription, or custom
   tooling.
-- During `crawlTasks`, failed extraction attempts are not command-contract
+- During `fetchTasks`, failed extraction attempts are not command-contract
   failures. Keep trying available local capabilities until each task is
   completed or no available method can obtain real primary content.
 
-Crawl task boundary:
-- `crawlTasks` are the only work items. Each task represents one post that must
+Fetch task boundary:
+- `fetchTasks` are the only work items. Each task represents one post that must
   end as one synced item with both `body` and `summary`.
-- If `task.contentStatus="ready"`, the normal crawler already produced
-  `task.item.body`; do not crawl content again. Generate one concise
+- If `task.contentStatus="ready"`, the normal fetcher already produced
+  `task.item.body`; do not fetch content again. Generate one concise
   single-post `summary` from `task.summaryInstructions.prompt` (it declares the
   required language), copy the original item fields from `task.item`, and
-  include `rawJson.crawlTaskId`.
+  include `rawJson.fetchTaskId`.
 - If `task.contentStatus="requires_agent"`, first obtain real primary content
   using this agent's local capabilities, then generate one concise single-post
   `summary` from `task.summaryInstructions.prompt`. Include
-  `rawJson.crawlTaskId`, `rawJson.agentRuntime`, `rawJson.agentModel` if known,
+  `rawJson.fetchTaskId`, `rawJson.agentRuntime`, `rawJson.agentModel` if known,
   `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`.
 - `task.summaryInstructions.prompt` is the only prompt source for the summary;
   it already bakes in the global common rules and the per-source rules. Do not
@@ -45,33 +45,33 @@ Crawl task boundary:
 /bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}/api/skill/bootstrap)"
 ```
 
-2. Crawl normal personal source items and save the full result:
+2. Fetch normal personal source items and save the full result:
 
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" crawl-personal --days 30 --limit 3 \
-  > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-crawl-result.json"
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" fetch-personal --days 30 --limit 3 \
+  > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-fetch-result.json"
 ```
 
-3. Print the crawl result:
+3. Print the fetch result:
 
 ```bash
-cat "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-crawl-result.json"
+cat "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-fetch-result.json"
 ```
 
-4. If it contains a non-empty `crawlTasks` array: Complete exactly the task IDs
+4. If it contains a non-empty `fetchTasks` array: Complete exactly the task IDs
 returned by the CLI. Do not add new sources, URLs, or feed items that were not
 returned by the CLI or task payload. Every produced item must include
 `summary`.
 
-How to execute each `crawlTask` in this step:
-- Read `task.id`; the finished item must set `rawJson.crawlTaskId` to exactly
+How to execute each `fetchTask` in this step:
+- Read `task.id`; the finished item must set `rawJson.fetchTaskId` to exactly
   this value so validation can bind the output item to this task.
 - Copy `task.builderSync` exactly as the enclosing builder object in the sync
   payload. Do not infer builder fields from names, handles, or URLs.
 - Read `task.contentStatus`.
   - For `ready`, use `task.item.body` as the final item body exactly; do not
-    crawl or rewrite the source content.
+    fetch or rewrite the source content.
   - For `requires_agent`, use `task.item.url`, `task.sourceType`, and
     `task.agentWorkType` to choose local extraction methods. Keep trying
     available methods until real primary content is obtained or no method
@@ -86,34 +86,34 @@ How to execute each `crawlTask` in this step:
 - Build one output item under the copied builder. Copy stable item fields from
   `task.item` (`kind`, `externalId`, `title`, `url`, `publishedAt`,
   `sourceName`), set `body`, set `summary`, and set `rawJson`.
-- For every output item, include `rawJson.crawlTaskId`. For `requires_agent`,
+- For every output item, include `rawJson.fetchTaskId`. For `requires_agent`,
   also include `rawJson.agentRuntime`, `rawJson.agentModel` if known,
   `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`; for YouTube
   include `rawJson.transcriptSource`.
 
-5. If you completed `crawlTasks`, write a sync payload to:
+5. If you completed `fetchTasks`, write a sync payload to:
 
 ```text
 ${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-agent-sync.json
 ```
 
 Use each `task.builderSync` for the enclosing builder fields. Every item must
-include `rawJson.crawlTaskId`; for YouTube include
+include `rawJson.fetchTaskId`; for YouTube include
 `rawJson.transcriptSource="agent-transcript"` unless a better primary transcript
 source is used. Then run these commands exactly:
 
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" validate-agent-sync \
-  --tasks "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-crawl-result.json" \
+  --tasks "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-fetch-result.json" \
   --file "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-agent-sync.json"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" sync-builders \
   --file "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-agent-sync.json"
 ```
 
-6. Report the crawl JSON plus any `validate-agent-sync` and `sync-builders`
-JSON. Success means status is ok, localErrors is empty, and `crawlTasks` is
-empty or `validate-agent-sync` reports all crawl tasks validated and
-`sync-builders` succeeds. Already-crawled posts should remain skipped regardless
+6. Report the fetch JSON plus any `validate-agent-sync` and `sync-builders`
+JSON. Success means status is ok, localErrors is empty, and `fetchTasks` is
+empty or `validate-agent-sync` reports all fetch tasks validated and
+`sync-builders` succeeds. Already-fetched posts should remain skipped regardless
 of whether the user has read them.

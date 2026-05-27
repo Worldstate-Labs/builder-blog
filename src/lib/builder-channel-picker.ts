@@ -6,7 +6,7 @@
 export type ChannelVariant = {
   builderId: string;
   ownerUserId: string;
-  lastCrawledAt: Date | null;
+  lastFetchedAt: Date | null;
   publishedAt: Date | null;
   createdAt: Date;
 };
@@ -15,7 +15,7 @@ export type ChannelVariant = {
  * Order:
  *   1. User-pinned primary channel.
  *   2. Channel owned by the user.
- *   3. Channel with the most recent crawl / publish / create timestamp.
+ *   3. Channel with the most recent fetch / publish / create timestamp.
  */
 export function pickPrimaryVariant<T extends ChannelVariant>(
   variants: T[],
@@ -29,8 +29,8 @@ export function pickPrimaryVariant<T extends ChannelVariant>(
   const own = variants.find((v) => v.ownerUserId === userId);
   if (own) return own;
   return [...variants].sort((a, b) => {
-    const aTime = (a.lastCrawledAt ?? a.publishedAt ?? a.createdAt).getTime();
-    const bTime = (b.lastCrawledAt ?? b.publishedAt ?? b.createdAt).getTime();
+    const aTime = (a.lastFetchedAt ?? a.publishedAt ?? a.createdAt).getTime();
+    const bTime = (b.lastFetchedAt ?? b.publishedAt ?? b.createdAt).getTime();
     return bTime - aTime;
   })[0]!;
 }

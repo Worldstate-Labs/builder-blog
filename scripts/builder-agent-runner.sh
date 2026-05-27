@@ -30,13 +30,12 @@ refresh_skill_files() {
   chmod +x "$AGENT_DIR/builder-digest.mjs"
 }
 
+# Always pull latest CLI to avoid version drift between cached prompt/CLI and the server.
+refresh_skill_files
+
 if [ -n "${BUILDER_BLOG_PROMPT_URL:-}" ]; then
   mkdir -p "$AGENT_DIR/jobs"
   curl -fsSL "$BUILDER_BLOG_PROMPT_URL" -o "$PROMPT_FILE"
-fi
-
-if [ ! -f "$PROMPT_FILE" ]; then
-  refresh_skill_files
 fi
 
 if [ ! -f "$PROMPT_FILE" ]; then
@@ -66,19 +65,19 @@ run_with_gemini() {
 }
 
 run_shell_library_fallback() {
-  echo "No local agent runtime found; running non-AI library crawl fallback." >&2
+  echo "No local agent runtime found; running non-AI library fetch fallback." >&2
   echo "Sources requiring AI, cookies, transcription, summaries, or custom tools will need BUILDER_BLOG_AGENT_COMMAND, codex, claude, openclaw, or gemini." >&2
   refresh_skill_files
-  RESULT_FILE="$AGENT_DIR/tmp/library-fallback-crawl-result.json"
-  node "$AGENT_DIR/builder-digest.mjs" crawl-personal --days 30 --limit 3 > "$RESULT_FILE"
+  RESULT_FILE="$AGENT_DIR/tmp/library-fallback-fetch-result.json"
+  node "$AGENT_DIR/builder-digest.mjs" fetch-personal --days 30 --limit 3 > "$RESULT_FILE"
   cat "$RESULT_FILE"
   node - "$RESULT_FILE" <<'NODE'
 const fs = require("fs");
 const result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-const crawlTasks = Array.isArray(result.crawlTasks) ? result.crawlTasks.length : 0;
-if (crawlTasks > 0) {
+const fetchTasks = Array.isArray(result.fetchTasks) ? result.fetchTasks.length : 0;
+if (fetchTasks > 0) {
   console.error(
-    "Library crawl produced crawlTasks, but no local agent runtime is available to complete them.",
+    "Library fetch produced fetchTasks, but no local agent runtime is available to complete them.",
   );
   console.error("Install/configure Codex, Claude Code, OpenClaw, Gemini CLI, or set BUILDER_BLOG_AGENT_COMMAND.");
   process.exit(78);

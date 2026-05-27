@@ -10,25 +10,25 @@ import {
 } from "@/lib/builder-library-events";
 
 type BuilderLibraryStatsProps = {
-  initialCrawledItems: number;
+  initialFetchedItems: number;
   initialInLibrary: number;
   initialSubscribed: number;
 };
 
 type BuilderLibraryStatsValue = {
-  crawledItems: number;
+  fetchedItems: number;
   inLibrary: number;
   subscribed: number;
 };
 
 export function BuilderLibraryStats({
-  initialCrawledItems,
+  initialFetchedItems,
   initialInLibrary,
   initialSubscribed,
 }: BuilderLibraryStatsProps) {
-  const propKey = `${initialCrawledItems}:${initialInLibrary}:${initialSubscribed}`;
+  const propKey = `${initialFetchedItems}:${initialInLibrary}:${initialSubscribed}`;
   const propStats: BuilderLibraryStatsValue = {
-    crawledItems: initialCrawledItems,
+    fetchedItems: initialFetchedItems,
     inLibrary: initialInLibrary,
     subscribed: initialSubscribed,
   };
@@ -43,7 +43,7 @@ export function BuilderLibraryStats({
 
   useEffect(() => {
     const currentPropStats = {
-      crawledItems: initialCrawledItems,
+      fetchedItems: initialFetchedItems,
       inLibrary: initialInLibrary,
       subscribed: initialSubscribed,
     };
@@ -55,9 +55,9 @@ export function BuilderLibraryStats({
         return {
           key: propKey,
           stats: {
-            crawledItems:
-              detail.crawledCount ??
-              Math.max(0, currentStats.crawledItems + (detail.crawledDelta ?? 0)),
+            fetchedItems:
+              detail.fetchedCount ??
+              Math.max(0, currentStats.fetchedItems + (detail.fetchedDelta ?? 0)),
             inLibrary:
               detail.inLibraryCount ??
               Math.max(0, currentStats.inLibrary + (detail.inLibraryDelta ?? 0)),
@@ -71,7 +71,7 @@ export function BuilderLibraryStats({
 
     window.addEventListener(builderLibraryStatsChanged, onStatsChanged);
     return () => window.removeEventListener(builderLibraryStatsChanged, onStatsChanged);
-  }, [initialCrawledItems, initialInLibrary, initialSubscribed, propKey]);
+  }, [initialFetchedItems, initialInLibrary, initialSubscribed, propKey]);
 
   function onSubscribedAll() {
     window.dispatchEvent(new CustomEvent(builderLibrarySubscribeAll));
@@ -90,7 +90,7 @@ export function BuilderLibraryStats({
           <Bell className="h-3.5 w-3.5" />
           {stats.subscribed} subscribed
         </span>
-        <span className="status-chip">{stats.crawledItems} summarized</span>
+        <span className="status-chip">{stats.fetchedItems} summarized</span>
         <SubscribeAllLibraryBuildersButton onSubscribedAll={onSubscribedAll} />
       </div>
       <div className="at-mobile grid w-full grid-cols-3 gap-2">
@@ -108,7 +108,7 @@ export function BuilderLibraryStats({
         </div>
         <div className="fb-stat fb-stat--compact">
           <div className="min-w-0">
-            <div className="fb-stat-value">{stats.crawledItems.toLocaleString()}</div>
+            <div className="fb-stat-value">{stats.fetchedItems.toLocaleString()}</div>
             <div className="fb-stat-label">Summarized</div>
           </div>
         </div>

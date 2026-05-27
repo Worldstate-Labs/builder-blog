@@ -10,17 +10,17 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   const schema = source("prisma/schema.prisma");
   const apiRoute = source("src/app/api/recommendations/route.ts");
   const feed = source("src/components/RecommendationFeed.tsx");
-  const crawledPostCard = source("src/components/CrawledPostCard.tsx");
+  const fetchedPostCard = source("src/components/FetchedPostCard.tsx");
   const detailPage = source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx");
 
   assert.match(schema, /model RecommendationSnapshot/);
   assert.match(schema, /model RecommendationSnapshotItem/);
   assert.match(apiRoute, /readAt: read\.readAt\.toISOString\(\)/);
   assert.match(feed, /initialSnapshots/);
-  assert.match(feed, /CrawledPostCard/);
+  assert.match(feed, /FetchedPostCard/);
   assert.match(feed, /onInteract/);
-  assert.match(crawledPostCard, /data-read/);
-  assert.match(crawledPostCard, /Raw crawled content/);
+  assert.match(fetchedPostCard, /data-read/);
+  assert.match(fetchedPostCard, /Raw fetched content/);
   assert.doesNotMatch(feed, /Mark read/);
   assert.match(detailPage, /Back to feed/);
   assert.match(detailPage, /feedRead\.create/);
@@ -30,12 +30,12 @@ test("recommendation feed persists snapshots and marks reads without removing ca
 
 test("source logos are shared across recommendation and library surfaces", () => {
   assert.match(source("src/components/SourceBadge.tsx"), /data-source/);
-  assert.match(source("src/components/CrawledPostCard.tsx"), /SourceBadge/);
-  assert.match(source("src/components/RecommendationFeed.tsx"), /CrawledPostCard/);
-  assert.match(source("src/components/BuilderFeedItems.tsx"), /CrawledPostCard/);
+  assert.match(source("src/components/FetchedPostCard.tsx"), /SourceBadge/);
+  assert.match(source("src/components/RecommendationFeed.tsx"), /FetchedPostCard/);
+  assert.match(source("src/components/BuilderFeedItems.tsx"), /FetchedPostCard/);
   assert.match(source("src/components/BuilderLibraryList.tsx"), /SourceBadge/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /kindLabel/);
-  assert.match(source("src/components/FeedCard.tsx"), /CrawledPostCard/);
+  assert.match(source("src/components/FeedCard.tsx"), /FetchedPostCard/);
 });
 
 test("recommendation snapshots request six posts at a time", () => {

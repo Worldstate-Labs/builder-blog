@@ -231,7 +231,7 @@ async function pickPrimaryCandidateForEntity(params: {
         },
       },
     },
-    orderBy: [{ lastCrawledAt: "desc" }, { updatedAt: "desc" }],
+    orderBy: [{ lastFetchedAt: "desc" }, { updatedAt: "desc" }],
     select: { id: true },
   });
   return imported?.id ?? null;
@@ -251,8 +251,8 @@ export type BuilderEntityWithChannels = {
       | "ownerUserId"
       | "sourceType"
       | "sourceUrl"
-      | "crawlUrl"
-      | "lastCrawledAt"
+      | "fetchUrl"
+      | "lastFetchedAt"
       | "itemCount"
       | "status"
     >
@@ -269,8 +269,8 @@ export async function getEntityWithChannels(entityId: string) {
           ownerUserId: true,
           sourceType: true,
           sourceUrl: true,
-          crawlUrl: true,
-          lastCrawledAt: true,
+          fetchUrl: true,
+          lastFetchedAt: true,
           itemCount: true,
           status: true,
           owner: { select: { id: true, email: true, name: true } },

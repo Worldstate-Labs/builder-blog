@@ -1,7 +1,7 @@
 /**
  * SSRF defense for user-supplied URLs that the server will later fetch
  * (RSS feeds, blog index pages, podcast feeds, YouTube channels,
- * `crawlUrl` field on a personal builder, etc.).
+ * `fetchUrl` field on a personal builder, etc.).
  *
  * `validatePublicHttpUrl` returns the parsed URL when the string is a
  * well-formed http(s) URL whose host is a public, routable domain or

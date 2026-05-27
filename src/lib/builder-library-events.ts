@@ -4,8 +4,8 @@ export const builderLibraryBuilderAdded = "builder-blog:library-builder-added";
 
 export type BuilderLibraryEventItem = {
   allowRemove: boolean;
-  crawlLabel: string;
-  crawlUrl: string | null;
+  fetchLabel: string;
+  fetchUrl: string | null;
   /** Canonical creator id — used for grouping channels and navigation to /builder/[entityId]. Subscription itself stays per-channel. */
   entityId: string | null;
   feedItemCount: number;
@@ -20,8 +20,8 @@ export type BuilderLibraryEventItem = {
 };
 
 export type BuilderLibraryStatsChange = {
-  crawledCount?: number;
-  crawledDelta?: number;
+  fetchedCount?: number;
+  fetchedDelta?: number;
   inLibraryCount?: number;
   inLibraryDelta?: number;
   subscribedDelta?: number;

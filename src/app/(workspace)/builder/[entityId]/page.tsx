@@ -23,8 +23,8 @@ type ChannelInfo = {
   isAdminCommunity: boolean;
   isOwnChannel: boolean;
   sourceUrl: string | null;
-  crawlUrl: string | null;
-  lastCrawledAt: Date | null;
+  fetchUrl: string | null;
+  lastFetchedAt: Date | null;
   itemCount: number;
   status: string;
 };
@@ -53,16 +53,16 @@ export default async function BuilderDetailPage({ params }: Params) {
       isAdminCommunity: isAdmin,
       isOwnChannel: channel.ownerUserId === userId,
       sourceUrl: channel.sourceUrl,
-      crawlUrl: channel.crawlUrl,
-      lastCrawledAt: channel.lastCrawledAt,
+      fetchUrl: channel.fetchUrl,
+      lastFetchedAt: channel.lastFetchedAt,
       itemCount: channel.itemCount,
       status: channel.status,
     };
   });
 
-  const lastCrawledMax = channels.reduce<Date | null>((max, c) => {
-    if (!c.lastCrawledAt) return max;
-    if (!max || c.lastCrawledAt > max) return c.lastCrawledAt;
+  const lastFetchedMax = channels.reduce<Date | null>((max, c) => {
+    if (!c.lastFetchedAt) return max;
+    if (!max || c.lastFetchedAt > max) return c.lastFetchedAt;
     return max;
   }, null);
 
@@ -94,9 +94,9 @@ export default async function BuilderDetailPage({ params }: Params) {
                 targetBuilderId={targetBuilderId}
               />
             </Suspense>
-            {lastCrawledMax ? (
+            {lastFetchedMax ? (
               <div className="text-xs text-[var(--muted-strong)]">
-                Last summarized {dateFormatter.format(lastCrawledMax)}
+                Last summarized {dateFormatter.format(lastFetchedMax)}
               </div>
             ) : null}
           </div>
@@ -194,7 +194,7 @@ async function ChannelsListSlot({
             ) : null}
           </div>
           <div className="font-mono text-xs text-[var(--muted-strong)]">
-            {channel.lastCrawledAt ? dateFormatter.format(channel.lastCrawledAt) : "—"}
+            {channel.lastFetchedAt ? dateFormatter.format(channel.lastFetchedAt) : "—"}
           </div>
           <div className="font-mono text-xs text-[var(--muted-strong)]">
             {channel.status}
@@ -252,7 +252,7 @@ async function RecentPostsSlot({
         publishedAt: item.publishedAt?.toISOString() ?? null,
         createdAt: item.createdAt.toISOString(),
         sourceName: item.sourceName,
-        crawlingTool: item.crawlingTool,
+        fetchTool: item.fetchTool,
         builder: item.builder
           ? {
               id: item.builder.id,
@@ -261,7 +261,7 @@ async function RecentPostsSlot({
               kind: item.builder.sourceType as "X" | "BLOG" | "PODCAST" | "WEBSITE",
               sourceType: item.builder.sourceType,
               sourceUrl: item.builder.sourceUrl,
-              crawlUrl: item.builder.crawlUrl,
+              fetchUrl: item.builder.fetchUrl,
             }
           : null,
         alternateChannelCount: item.alternateChannelCount,

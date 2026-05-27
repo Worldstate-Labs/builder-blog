@@ -59,7 +59,7 @@ async function loadLibraryHubPageData() {
                 name: true,
                 handle: true,
                 sourceUrl: true,
-                crawlUrl: true,
+                fetchUrl: true,
                 _count: { select: { feedItems: true } },
               },
             },

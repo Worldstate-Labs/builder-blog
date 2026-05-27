@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, RefreshCcw } from "lucide-react";
-import { CrawledPostCard } from "@/components/CrawledPostCard";
+import { FetchedPostCard } from "@/components/FetchedPostCard";
 import { markPostRead } from "@/lib/mark-read";
 
 export type RecommendationFeedEntry = {
@@ -19,7 +19,7 @@ export type RecommendationFeedEntry = {
     publishedAt: string | null;
     createdAt: string;
     sourceName: string | null;
-    crawlingTool: string | null;
+    fetchTool: string | null;
     builder: {
       id: string;
       entityId: string | null;
@@ -27,7 +27,7 @@ export type RecommendationFeedEntry = {
       sourceType: string;
       kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";
       sourceUrl: string | null;
-      crawlUrl: string | null;
+      fetchUrl: string | null;
     } | null;
   };
 };
@@ -163,7 +163,7 @@ function RecommendationCard({
   const isRead = Boolean(entry.readAt);
 
   return (
-    <CrawledPostCard
+    <FetchedPostCard
       dataRead={isRead}
       onInteract={() => markRead(entry.item.id)}
       post={entry.item}

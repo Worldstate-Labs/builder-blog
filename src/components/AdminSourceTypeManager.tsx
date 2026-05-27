@@ -6,8 +6,8 @@ export type AdminSourceTypeConfig = {
   sourceId: string;
   label: string;
   agentDefaultStatus: string;
-  defaultCrawlDays: number;
-  defaultCrawlLimit: number;
+  defaultFetchDays: number;
+  defaultFetchLimit: number;
   contentQuality: unknown;
   summaryPromptBody: string;
   summaryStyle: string;
@@ -31,8 +31,8 @@ type Draft = {
   summaryStyle: string;
   summaryLanguage: string;
   agentDefaultStatus: string;
-  defaultCrawlDays: string;
-  defaultCrawlLimit: string;
+  defaultFetchDays: string;
+  defaultFetchLimit: string;
   summaryLengthHint: string;
   summaryPromptBody: string;
   contentQuality: ContentQuality;
@@ -73,8 +73,8 @@ function toDraft(config: AdminSourceTypeConfig): Draft {
     summaryStyle: config.summaryStyle,
     summaryLanguage: config.summaryLanguage,
     agentDefaultStatus: config.agentDefaultStatus,
-    defaultCrawlDays: String(config.defaultCrawlDays),
-    defaultCrawlLimit: String(config.defaultCrawlLimit),
+    defaultFetchDays: String(config.defaultFetchDays),
+    defaultFetchLimit: String(config.defaultFetchLimit),
     summaryLengthHint: config.summaryLengthHint ?? "",
     summaryPromptBody: config.summaryPromptBody,
     contentQuality: toContentQuality(config.contentQuality),
@@ -136,14 +136,14 @@ function SourceTypeCard({
   }
 
   function save() {
-    const days = Number(draft.defaultCrawlDays);
-    const limit = Number(draft.defaultCrawlLimit);
+    const days = Number(draft.defaultFetchDays);
+    const limit = Number(draft.defaultFetchLimit);
     if (!Number.isInteger(days) || days < 1) {
-      setStatus({ kind: "error", message: "Default crawl days must be an integer ≥ 1." });
+      setStatus({ kind: "error", message: "Default fetch days must be an integer ≥ 1." });
       return;
     }
     if (!Number.isInteger(limit) || limit < 1) {
-      setStatus({ kind: "error", message: "Default crawl limit must be an integer ≥ 1." });
+      setStatus({ kind: "error", message: "Default fetch limit must be an integer ≥ 1." });
       return;
     }
     const cq = draft.contentQuality;
@@ -174,8 +174,8 @@ function SourceTypeCard({
       summaryStyle: draft.summaryStyle,
       summaryLanguage: draft.summaryLanguage.trim(),
       agentDefaultStatus: draft.agentDefaultStatus,
-      defaultCrawlDays: days,
-      defaultCrawlLimit: limit,
+      defaultFetchDays: days,
+      defaultFetchLimit: limit,
       summaryLengthHint:
         draft.summaryLengthHint.trim() === "" ? null : draft.summaryLengthHint.trim(),
       summaryPromptBody: draft.summaryPromptBody,
@@ -237,7 +237,7 @@ function SourceTypeCard({
           </div>
         </Section>
 
-        <Section title="Crawl & agent behavior">
+        <Section title="Fetch & agent behavior">
           <div className="grid gap-4 md:grid-cols-[1fr_8rem_8rem]">
             <FieldSelect
               label="Agent default status"
@@ -248,14 +248,14 @@ function SourceTypeCard({
             <FieldNumber
               label="Default days"
               min={1}
-              value={draft.defaultCrawlDays}
-              onChange={(v) => update("defaultCrawlDays", v)}
+              value={draft.defaultFetchDays}
+              onChange={(v) => update("defaultFetchDays", v)}
             />
             <FieldNumber
               label="Default limit"
               min={1}
-              value={draft.defaultCrawlLimit}
-              onChange={(v) => update("defaultCrawlLimit", v)}
+              value={draft.defaultFetchLimit}
+              onChange={(v) => update("defaultFetchLimit", v)}
             />
           </div>
         </Section>

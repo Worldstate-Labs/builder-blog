@@ -13,10 +13,10 @@ type RecommendationBuilder = {
   kind: BuilderKind;
   sourceType: string;
   sourceUrl: string | null;
-  crawlUrl: string | null;
+  fetchUrl: string | null;
   bio: string | null;
   ownerUserId: string | null;
-  lastCrawledAt: Date | null;
+  lastFetchedAt: Date | null;
   hubItems?: {
     hubEntry: {
       name: string;
@@ -37,7 +37,7 @@ export type RecommendationCandidate = {
   publishedAt: Date | null;
   createdAt: Date;
   sourceName: string | null;
-  crawlingTool: string | null;
+  fetchTool: string | null;
   builder: RecommendationBuilder | null;
 };
 
@@ -90,10 +90,10 @@ async function getForYouCandidates(userId: string) {
           kind: true,
           sourceType: true,
           sourceUrl: true,
-          crawlUrl: true,
+          fetchUrl: true,
           bio: true,
           ownerUserId: true,
-          lastCrawledAt: true,
+          lastFetchedAt: true,
         },
       },
     },
@@ -250,10 +250,10 @@ export async function createRecommendationSnapshot({
             kind: true,
             sourceType: true,
             sourceUrl: true,
-            crawlUrl: true,
+            fetchUrl: true,
             bio: true,
             ownerUserId: true,
-            lastCrawledAt: true,
+            lastFetchedAt: true,
           },
         },
       },
@@ -274,7 +274,7 @@ export async function createRecommendationSnapshot({
             publishedAt: true,
             createdAt: true,
             sourceName: true,
-            crawlingTool: true,
+            fetchTool: true,
             builder: {
               select: {
                 id: true,
@@ -284,10 +284,10 @@ export async function createRecommendationSnapshot({
                 kind: true,
                 sourceType: true,
                 sourceUrl: true,
-                crawlUrl: true,
+                fetchUrl: true,
                 bio: true,
                 ownerUserId: true,
-                lastCrawledAt: true,
+                lastFetchedAt: true,
               },
             },
           },
@@ -400,10 +400,10 @@ export async function createRecommendationSnapshot({
               kind: true,
               sourceType: true,
               sourceUrl: true,
-              crawlUrl: true,
+              fetchUrl: true,
               bio: true,
               ownerUserId: true,
-              lastCrawledAt: true,
+              lastFetchedAt: true,
             },
           },
         },
@@ -507,8 +507,8 @@ function pickPrimaryVariants(
         (pinned ? byBuilder.get(pinned) : undefined) ||
         variants.find((v) => v.builder?.ownerUserId === userId) ||
         [...variants].sort((a, b) => {
-          const aT = (a.builder?.lastCrawledAt ?? a.publishedAt ?? a.createdAt).getTime();
-          const bT = (b.builder?.lastCrawledAt ?? b.publishedAt ?? b.createdAt).getTime();
+          const aT = (a.builder?.lastFetchedAt ?? a.publishedAt ?? a.createdAt).getTime();
+          const bT = (b.builder?.lastFetchedAt ?? b.publishedAt ?? b.createdAt).getTime();
           return bT - aT;
         })[0]!;
     }
@@ -546,10 +546,10 @@ async function buildAndSaveSnapshot({
       kind: BuilderKind;
       sourceType: string;
       sourceUrl: string | null;
-      crawlUrl: string | null;
+      fetchUrl: string | null;
       bio: string | null;
       ownerUserId: string | null;
-      lastCrawledAt: Date | null;
+      lastFetchedAt: Date | null;
     } | null;
   }>;
   reads: Array<{
@@ -563,7 +563,7 @@ async function buildAndSaveSnapshot({
       publishedAt: Date | null;
       createdAt: Date;
       sourceName: string | null;
-      crawlingTool: string | null;
+      fetchTool: string | null;
       builder: {
         id: string;
         entityId: string | null;
@@ -572,10 +572,10 @@ async function buildAndSaveSnapshot({
         kind: BuilderKind;
         sourceType: string;
         sourceUrl: string | null;
-        crawlUrl: string | null;
+        fetchUrl: string | null;
         bio: string | null;
         ownerUserId: string | null;
-        lastCrawledAt: Date | null;
+        lastFetchedAt: Date | null;
       } | null;
     } | null;
   }>;
@@ -913,7 +913,7 @@ function builderText(builder: RecommendationBuilder) {
     builder.sourceType,
     builder.bio,
     builder.sourceUrl,
-    builder.crawlUrl,
+    builder.fetchUrl,
   ]
     .filter(Boolean)
     .join(" ");

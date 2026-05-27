@@ -91,8 +91,8 @@ export async function getDigestConfig(): Promise<DigestConfig> {
 export type SourceConfigPatch = Partial<{
   label: string;
   agentDefaultStatus: AgentDefaultStatus;
-  defaultCrawlDays: number;
-  defaultCrawlLimit: number;
+  defaultFetchDays: number;
+  defaultFetchLimit: number;
   contentQuality: ContentQualityShape;
   summaryPromptBody: string;
   summaryStyle: SourceSummaryStyle;

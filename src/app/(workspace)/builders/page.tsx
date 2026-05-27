@@ -32,7 +32,7 @@ type BuilderWithCount = {
   name: string;
   handle: string | null;
   sourceUrl: string | null;
-  crawlUrl: string | null;
+  fetchUrl: string | null;
   canonicalKey: string;
   _count: { feedItems: number };
 };
@@ -180,7 +180,7 @@ async function loadBuildersPageData() {
       .sort(builderSort),
   }));
   const subscribedCount = poolBuilders.filter((builder) => subscribed.has(builder.id)).length;
-  const crawledItems = poolBuilders.reduce(
+  const fetchedItems = poolBuilders.reduce(
     (count, builder) => count + builder._count.feedItems,
     0,
   );
@@ -232,7 +232,7 @@ async function loadBuildersPageData() {
 
   return {
     activeTokens,
-    crawledItems,
+    fetchedItems,
     importedLibrarySections,
     isAdmin,
     isPublicLibrary,
@@ -257,7 +257,7 @@ async function BuilderStatsSlot({
 
   return (
     <BuilderLibraryStats
-      initialCrawledItems={data.crawledItems}
+      initialFetchedItems={data.fetchedItems}
       initialInLibrary={data.poolBuilders.length}
       initialSubscribed={data.subscribedCount}
     />
@@ -297,7 +297,7 @@ async function BuilderSections({
           builderListItem({
             allowRemove: true,
             builder,
-            crawlLabel: "Agent synced",
+            fetchLabel: "Agent synced",
             latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
             subscribed: data.subscribed.has(builder.id),
           }),
@@ -342,7 +342,7 @@ async function BuilderSections({
                   // Distinguish admin-curated channels (the community library) from other
                   // imported personal libraries. Detection is owner-based: admin-owned
                   // library entries are treated as community content.
-                  crawlLabel: "Hub imported",
+                  fetchLabel: "Hub imported",
                   latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
                   subscribed: data.subscribed.has(builder.id),
                 }),
@@ -409,7 +409,7 @@ function BuilderSectionsFallback() {
 function builderListItem({
   allowRemove,
   builder,
-  crawlLabel,
+  fetchLabel,
   latestPostCreatedAt,
   subscribed,
 }: {
@@ -417,7 +417,7 @@ function builderListItem({
   builder: BuilderWithCount;
   latestPostCreatedAt: Date | null;
   subscribed: boolean;
-  crawlLabel: string;
+  fetchLabel: string;
 }): BuilderLibraryListItem {
   return {
     id: builder.id,
@@ -427,11 +427,11 @@ function builderListItem({
     name: builder.name,
     handle: builder.handle,
     sourceUrl: builder.sourceUrl,
-    crawlUrl: builder.crawlUrl,
+    fetchUrl: builder.fetchUrl,
     feedItemCount: builder._count.feedItems,
     latestPostCreatedAt: latestPostCreatedAt?.toISOString() ?? null,
     subscribed,
-    crawlLabel,
+    fetchLabel,
     allowRemove,
   };
 }

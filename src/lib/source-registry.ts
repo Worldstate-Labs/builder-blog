@@ -10,11 +10,11 @@ type BuilderSourceInput = {
   kind: BuilderKind;
   sourceType?: string | null;
   sourceUrl?: string | null;
-  crawlUrl?: string | null;
+  fetchUrl?: string | null;
 };
 
 // Code-bound static fields only. Admin-editable fields (label, prompts,
-// content quality, crawl defaults) live in `SourceTypeConfig` and must
+// content quality, fetch defaults) live in `SourceTypeConfig` and must
 // be read via the async getters below — never from sources.json at
 // request time.
 export type SourceDefinition = {
@@ -34,8 +34,8 @@ export type SourceDefinition = {
 export type MergedSourceDefinition = SourceDefinition & {
   label: string;
   agentDefaultStatus: string;
-  defaultCrawlDays: number;
-  defaultCrawlLimit: number;
+  defaultFetchDays: number;
+  defaultFetchLimit: number;
   contentQuality: unknown;
   summaryPromptBody: string;
   summaryStyle: string;
@@ -173,8 +173,8 @@ function mergeDefinition(
     ...def,
     label: config.label,
     agentDefaultStatus: config.agentDefaultStatus,
-    defaultCrawlDays: config.defaultCrawlDays,
-    defaultCrawlLimit: config.defaultCrawlLimit,
+    defaultFetchDays: config.defaultFetchDays,
+    defaultFetchLimit: config.defaultFetchLimit,
     contentQuality: config.contentQuality,
     summaryPromptBody: config.summaryPromptBody,
     summaryStyle: config.summaryStyle,
@@ -184,7 +184,7 @@ function mergeDefinition(
 }
 
 function sourceUrlText(builder: BuilderSourceInput) {
-  return `${builder.sourceUrl ?? ""} ${builder.crawlUrl ?? ""}`;
+  return `${builder.sourceUrl ?? ""} ${builder.fetchUrl ?? ""}`;
 }
 
 function sourceDefinitionByRules(builder: BuilderSourceInput) {

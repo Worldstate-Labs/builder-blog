@@ -114,7 +114,7 @@ test("manual builder input derives canonical fields from one handle or URL", () 
     name: "DeepMind",
     handle: "googledeepmind",
     sourceUrl: "https://x.com/googledeepmind",
-    crawlUrl: null,
+    fetchUrl: null,
   });
 
   assert.deepEqual(resolvePersonalBuilderInput({
@@ -127,7 +127,7 @@ test("manual builder input derives canonical fields from one handle or URL", () 
     name: "googledeepmind",
     handle: null,
     sourceUrl: "https://www.youtube.com/@googledeepmind",
-    crawlUrl: null,
+    fetchUrl: null,
   });
 
   assert.deepEqual(resolvePersonalBuilderInput({
@@ -140,7 +140,7 @@ test("manual builder input derives canonical fields from one handle or URL", () 
     name: "feeds.example.com",
     handle: null,
     sourceUrl: "https://feeds.example.com/show.xml",
-    crawlUrl: null,
+    fetchUrl: null,
   });
 });
 
@@ -216,7 +216,7 @@ test("non-admin users default-import the admin community library", () => {
   assert.match(hubPage, /ensureDefaultCommunityLibraryImport\(session\.user\.id\)/);
 });
 
-test("personal builder removal deletes its crawled feed items instead of preserving crawl state", () => {
+test("personal builder removal deletes its fetched feed items instead of preserving fetch state", () => {
   const libraryRoute = readFileSync("src/app/api/builders/[builderId]/library/route.ts", "utf8");
 
   assert.match(libraryRoute, /ownerUserId: session\.user\.id/);
@@ -237,7 +237,7 @@ test("skill sync user path accepts personal YouTube builders with synced feed it
         sourceType: "YOUTUBE",
         name: "OpenAI YouTube",
         sourceUrl: "https://www.youtube.com/@OpenAI",
-        crawlUrl: "https://www.youtube.com/@OpenAI",
+        fetchUrl: "https://www.youtube.com/@OpenAI",
         subscribe: true,
         items: [
           {
@@ -265,8 +265,8 @@ test("skill sync user path accepts personal YouTube builders with synced feed it
   assert.equal(parsed.data.builders[0].subscribe, true);
   assert.equal(parsed.data.builders[0].items[0].kind, FeedItemKind.PODCAST_EPISODE);
   assert.match(parsed.data.builders[0].items[0].summary ?? "", /Workspace agents/);
-  assert.equal(parsed.data.crawlingTool, "Agent skill sync");
-  assert.equal(parsed.data.builders[0].items[0].crawlingTool, undefined);
+  assert.equal(parsed.data.fetchTool, "Agent skill sync");
+  assert.equal(parsed.data.builders[0].items[0].fetchTool, undefined);
 });
 
 test("skill sync route binds agent task items to referenced personal builders", () => {
@@ -313,17 +313,17 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /BUILDER_BLOG_PROMPT_URL/);
   assert.doesNotMatch(skillPromptActions, /builder-agent-runner\.sh \$\{job\}/);
   assert.doesNotMatch(skillPromptActions, /Run the commands exactly in order/);
-  assert.match(libraryOncePrompt, /crawl-personal --days 30 --limit 3/);
+  assert.match(libraryOncePrompt, /fetch-personal --days 30 --limit 3/);
   assert.match(libraryOncePrompt, /validate-agent-sync/);
   assert.match(libraryOncePrompt, /rawJson\.agentExecutionProof/);
   assert.match(libraryOncePrompt, /Complete exactly the task IDs\s+returned by the CLI/);
-  assert.match(libraryOncePrompt, /crawlTasks/);
+  assert.match(libraryOncePrompt, /fetchTasks/);
   assert.match(libraryOncePrompt, /single-post summary/);
   assert.match(libraryOncePrompt, /summaryInstructions\.prompt/);
   assert.match(libraryOncePrompt, /do not read prompt files/);
   assert.match(libraryOncePrompt, /do not fetch `context\.prompts`/);
-  assert.match(libraryOncePrompt, /Crawl task boundary/);
-  assert.match(libraryOncePrompt, /How to execute each `crawlTask`/);
+  assert.match(libraryOncePrompt, /Fetch task boundary/);
+  assert.match(libraryOncePrompt, /How to execute each `fetchTask`/);
   assert.match(libraryOncePrompt, /Read `task\.contentStatus`/);
   assert.match(libraryOncePrompt, /Copy `task\.builderSync` exactly/);
   assert.match(libraryOncePrompt, /Use `task\.minimumContentQuality`/);
@@ -340,9 +340,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryOncePrompt, /execution\s+contract, not as user-facing documentation/);
   assert.doesNotMatch(libraryOncePrompt, /Environment contract/);
   assertOrderedText(libraryOncePrompt, [
-    "4. If it contains a non-empty `crawlTasks` array",
-    "How to execute each `crawlTask`",
-    "5. If you completed `crawlTasks`",
+    "4. If it contains a non-empty `fetchTasks` array",
+    "How to execute each `fetchTask`",
+    "5. If you completed `fetchTasks`",
   ]);
   assert.match(digestOncePrompt, /prepare --days 1/);
   assert.match(digestOncePrompt, /Use agent judgment only for the digest-writing step/);
@@ -358,13 +358,13 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /First attempt the exact crontab install/);
   assert.match(libraryCronSetupPrompt, /crontab/);
   assert.match(libraryCronSetupPrompt, /Do not use `--force`/);
-  assert.match(libraryCronSetupPrompt, /crawlTasks/);
-  assert.match(libraryCronSetupPrompt, /How to execute each `crawlTask`/);
+  assert.match(libraryCronSetupPrompt, /fetchTasks/);
+  assert.match(libraryCronSetupPrompt, /How to execute each `fetchTask`/);
   assert.match(libraryCronSetupPrompt, /Read `task\.contentStatus`/);
   assertOrderedText(libraryCronSetupPrompt, [
     "5. Run one immediate smoke check",
-    "If the smoke check JSON contains a non-empty `crawlTasks` array",
-    "How to execute each `crawlTask`",
+    "If the smoke check JSON contains a non-empty `fetchTasks` array",
+    "How to execute each `fetchTask`",
     "Only if crontab is unavailable or blocked",
   ]);
   assert.match(libraryCronSetupPrompt, /single-post summary/);
@@ -372,19 +372,19 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronSetupPrompt, /builder-agent-runner\.sh digest-cron/);
   assert.match(digestCronSetupPrompt, /First attempt the exact crontab install/);
   assert.match(digestCronSetupPrompt, /crontab/);
-  assert.doesNotMatch(skillPromptActions, /crawl-personal[^\n`]*--force/);
+  assert.doesNotMatch(skillPromptActions, /fetch-personal[^\n`]*--force/);
   assert.match(cli, /realpathSync\(fileURLToPath\(import\.meta\.url\)\)/);
   assert.match(cli, /existsSync\(process\.argv\[1\]\)/);
   assert.match(cli, /validate-agent-sync/);
   assert.match(cli, /localErrors/);
-  assert.doesNotMatch(cli, /pendingReadyCrawlTasks/);
-  assert.doesNotMatch(cli, /pendingAgentCrawlTasks/);
-  assert.doesNotMatch(cli, /pendingCrawlBuilders/);
-  assert.doesNotMatch(cli, /validatedCrawlTaskItems/);
+  assert.doesNotMatch(cli, /pendingReadyFetchTasks/);
+  assert.doesNotMatch(cli, /pendingAgentFetchTasks/);
+  assert.doesNotMatch(cli, /pendingFetchBuilders/);
+  assert.doesNotMatch(cli, /validatedFetchTaskItems/);
   assert.doesNotMatch(cli, /legacyAgentTasks/);
   assert.doesNotMatch(cli, /legacySummaryTasks/);
   assert.doesNotMatch(cli, /postSummaryTasksForBuilders/);
-  assert.doesNotMatch(cli, /normalCrawler/);
+  assert.doesNotMatch(cli, /normalFetcher/);
   assert.doesNotMatch(cli, /suggestedAction/);
   assert.match(runner, /BUILDER_BLOG_AGENT_COMMAND/);
   assert.match(runner, /BUILDER_BLOG_PROMPT_URL/);
@@ -394,7 +394,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /openclaw agent --local --message/);
   assert.match(runner, /gemini -p/);
   assert.match(runner, /No local agent runtime found/);
-  assert.match(runner, /crawlTasks/);
+  assert.match(runner, /fetchTasks/);
   assert.match(runner, /process\.exit\(78\)/);
   assert.match(runner, /refresh_skill_files/);
   assert.match(runner, /api\/skill\/files\/builder-digest\.mjs/);
@@ -433,14 +433,14 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skill, /validate-agent-sync/);
   assert.match(skill, /failed extraction attempts are not command-contract\s+failures/);
   assert.match(skill, /~\/\.builder-blog\/builder-digest\.mjs/);
-  assert.match(libraryCronPrompt, /crawl-personal --days 30 --limit 3/);
+  assert.match(libraryCronPrompt, /fetch-personal --days 30 --limit 3/);
   assert.match(libraryCronPrompt, /validate-agent-sync/);
-  assert.match(libraryCronPrompt, /rawJson\.crawlTaskId/);
-  assert.match(libraryCronPrompt, /crawlTasks/);
+  assert.match(libraryCronPrompt, /rawJson\.fetchTaskId/);
+  assert.match(libraryCronPrompt, /fetchTasks/);
   assert.match(libraryCronPrompt, /single-post summary/);
   assert.match(libraryCronPrompt, /summaryInstructions\.prompt/);
-  assert.match(libraryCronPrompt, /Crawl task boundary/);
-  assert.match(libraryCronPrompt, /How to execute each `crawlTask`/);
+  assert.match(libraryCronPrompt, /Fetch task boundary/);
+  assert.match(libraryCronPrompt, /How to execute each `fetchTask`/);
   assert.match(libraryCronPrompt, /Read `task\.contentStatus`/);
   assert.match(libraryCronPrompt, /Copy `task\.builderSync` exactly/);
   assert.match(libraryCronPrompt, /Use `task\.minimumContentQuality`/);
@@ -461,7 +461,7 @@ test("web app serves the agent skill and setup command", () => {
   assertOrderedText(libraryCronPrompt, [
     "Rules:",
     "- Complete exactly the task IDs returned by the CLI",
-    "How to execute each `crawlTask`",
+    "How to execute each `fetchTask`",
     "- Before syncing agent-produced items or summaries, validate them",
   ]);
   assert.match(digestCronPrompt, /prepare --days 1/);
@@ -508,7 +508,7 @@ test("digest feed user path derives context window from user frequency and max p
   const contextRoute = readFileSync("src/app/api/skill/context/route.ts", "utf8");
   assert.match(contextRoute, /publishedAfter: maxAgeCutoff/);
   assert.match(contextRoute, /publishedAfter: maxAgeCutoff/);
-  assert.match(contextRoute, /newly crawled items created after the last digest/);
+  assert.match(contextRoute, /newly fetched items created after the last digest/);
   assert.match(contextRoute, /includePrompts/);
   // context.prompts (kept for back-compat) is now derived from DB at request time,
   // not from a static DIGEST_PROMPTS import. Just assert the field is still emitted.
@@ -520,7 +520,7 @@ test("digest feed user path derives context window from user frequency and max p
   assert.doesNotMatch(cli, /withSummaryInstructions\(task,\s*context\.prompts\)/);
 });
 
-test("recommendation feed user path scores unread crawled posts from profile, subscriptions, and read log", () => {
+test("recommendation feed user path scores unread fetched posts from profile, subscriptions, and read log", () => {
   const now = new Date("2026-05-23T12:00:00.000Z");
   const subscribedBuilder = {
     id: "builder_memory",
@@ -530,10 +530,10 @@ test("recommendation feed user path scores unread crawled posts from profile, su
     kind: BuilderKind.BLOG,
     sourceType: "blog",
     sourceUrl: "https://example.com",
-    crawlUrl: "https://example.com/blog",
+    fetchUrl: "https://example.com/blog",
     bio: "Agent memory and retrieval systems.",
     ownerUserId: null,
-    lastCrawledAt: null,
+    lastFetchedAt: null,
   };
   const signals = buildRecommendationSignals({
     profileText: "I care about agent memory, retrieval, and product launches.",
@@ -661,7 +661,7 @@ test("search user path semantic mode finds related language without a literal ph
         id: "feed_1",
         type: "feed",
         title: "Archive retrieval",
-        body: "Vector recall over crawled posts and saved digest history.",
+        body: "Vector recall over fetched posts and saved digest history.",
       },
       {
         id: "builder_1",
@@ -1653,7 +1653,7 @@ test("search user path only auto-searches corrected spellings when the original 
   );
 });
 
-test("web display boundaries keep raw crawled content in the builders tab", () => {
+test("web display boundaries keep raw fetched content in the builders tab", () => {
   const dashboardPage = readFileSync("src/app/(workspace)/dashboard/page.tsx", "utf8");
   const buildersPage = readFileSync("src/app/(workspace)/builders/page.tsx", "utf8");
   const builderLibraryList = readFileSync("src/components/BuilderLibraryList.tsx", "utf8");
@@ -1662,14 +1662,14 @@ test("web display boundaries keep raw crawled content in the builders tab", () =
   assert.equal(dashboardPage.includes("prisma.feedItem.findMany"), false);
   assert.equal(dashboardPage.includes("Latest digest inputs"), false);
   assert.equal(buildersPage.includes("prisma.feedItem.findMany"), false);
-  assert.equal(buildersPage.includes("Recent crawled content"), false);
+  assert.equal(buildersPage.includes("Recent fetched content"), false);
   assert.equal(buildersPage.includes("BuilderLibraryList"), true);
   assert.equal(builderLibraryList.includes("BuilderFeedItems"), true);
   assert.equal(buildersPage.includes("Technical details"), false);
   assert.equal(builderLibraryList.includes("SourceBadge"), true);
-  assert.equal(builderFeedItems.includes("Crawled posts"), true);
-  assert.equal(builderFeedItems.includes("CrawledPostCard"), true);
-  assert.equal(readFileSync("src/components/CrawledPostCard.tsx", "utf8").includes("Raw crawled content"), true);
+  assert.equal(builderFeedItems.includes("Fetched posts"), true);
+  assert.equal(builderFeedItems.includes("FetchedPostCard"), true);
+  assert.equal(readFileSync("src/components/FetchedPostCard.tsx", "utf8").includes("Raw fetched content"), true);
 });
 
 test("source registry centralizes current source categories", () => {
@@ -1679,7 +1679,7 @@ test("source registry centralizes current source categories", () => {
       kind: BuilderKind.PODCAST,
       sourceType: "youtube",
       sourceUrl: "https://www.youtube.com/@OpenAI",
-      crawlUrl: null,
+      fetchUrl: null,
     })?.id,
     "youtube",
   );
@@ -1687,7 +1687,7 @@ test("source registry centralizes current source categories", () => {
     sourceDefinitionForBuilder({
       kind: BuilderKind.PODCAST,
       sourceUrl: "https://www.youtube.com/@OpenAI",
-      crawlUrl: null,
+      fetchUrl: null,
     })?.id,
     "youtube",
   );
@@ -1696,7 +1696,7 @@ test("source registry centralizes current source categories", () => {
       kind: BuilderKind.PODCAST,
       sourceType: "youtube",
       sourceUrl: "https://video.example.com/openai",
-      crawlUrl: null,
+      fetchUrl: null,
     })?.id,
     "youtube",
   );
@@ -1704,7 +1704,7 @@ test("source registry centralizes current source categories", () => {
     sourceDefinitionForBuilder({
       kind: BuilderKind.PODCAST,
       sourceUrl: "https://feeds.example.com/show.xml",
-      crawlUrl: null,
+      fetchUrl: null,
     })?.id,
     "podcast",
   );
@@ -1712,7 +1712,7 @@ test("source registry centralizes current source categories", () => {
     sourceDefinitionForBuilder({
       kind: BuilderKind.X,
       sourceUrl: "https://x.com/example",
-      crawlUrl: null,
+      fetchUrl: null,
     })?.id,
     "x",
   );
@@ -1721,7 +1721,7 @@ test("source registry centralizes current source categories", () => {
       kind: BuilderKind.WEBSITE,
       sourceType: "website",
       sourceUrl: "https://example.com",
-      crawlUrl: null,
+      fetchUrl: null,
     })?.id,
     "website",
   );
@@ -1729,7 +1729,7 @@ test("source registry centralizes current source categories", () => {
     builderSourceLabel({
       kind: BuilderKind.BLOG,
       sourceUrl: "https://example.com/blog",
-      crawlUrl: null,
+      fetchUrl: null,
     }),
     "Blog",
   );
@@ -1741,7 +1741,7 @@ test("source registry supports future source types without new BuilderKind enum 
       kind: BuilderKind.WEBSITE,
       sourceType: null,
       sourceUrl: "https://example.com/research.pdf",
-      crawlUrl: null,
+      fetchUrl: null,
     }),
     "pdf",
   );
@@ -1752,7 +1752,7 @@ test("source registry supports future source types without new BuilderKind enum 
       kind: BuilderKind.WEBSITE,
       sourceType: "CUSTOM_MEDIA",
       sourceUrl: "https://example.com/media",
-      crawlUrl: null,
+      fetchUrl: null,
     }),
     "custom_media",
   );
@@ -1783,7 +1783,7 @@ function recommendationCandidate({
     publishedAt: new Date(publishedAt),
     createdAt: new Date("2026-05-23T10:00:00.000Z"),
     sourceName: builder?.name ?? "External",
-    crawlingTool: "test",
+    fetchTool: "test",
     builder,
   };
 }

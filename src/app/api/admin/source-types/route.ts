@@ -30,8 +30,8 @@ const SourceTypePatchSchema = z
   .object({
     label: z.string().trim().min(1).max(120).optional(),
     agentDefaultStatus: z.enum(["ready", "requires_agent"]).optional(),
-    defaultCrawlDays: z.number().int().positive().max(365).optional(),
-    defaultCrawlLimit: z.number().int().positive().max(1000).optional(),
+    defaultFetchDays: z.number().int().positive().max(365).optional(),
+    defaultFetchLimit: z.number().int().positive().max(1000).optional(),
     contentQuality: ContentQualitySchema.optional(),
     summaryPromptBody: z.string().min(1).max(20_000).optional(),
     summaryStyle: z.enum(["x_twitter", "podcast_or_video", "blog_or_document"]).optional(),

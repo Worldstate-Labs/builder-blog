@@ -1,4 +1,4 @@
-import { CrawledPostCard } from "@/components/CrawledPostCard";
+import { FetchedPostCard } from "@/components/FetchedPostCard";
 
 export function FeedCard({
   title,
@@ -6,7 +6,7 @@ export function FeedCard({
   body,
   url,
   date,
-  crawlingTool,
+  fetchTool,
   sourceType,
 }: {
   title?: string | null;
@@ -15,10 +15,10 @@ export function FeedCard({
   body: string;
   url: string;
   date?: Date | null;
-  crawlingTool?: string | null;
+  fetchTool?: string | null;
 }) {
   return (
-    <CrawledPostCard
+    <FetchedPostCard
       extraMeta={source ? <span>{source}</span> : null}
       post={{
         id: url,
@@ -30,7 +30,7 @@ export function FeedCard({
         createdAt: date?.toISOString() ?? new Date().toISOString(),
         sourceName: source ?? null,
         sourceType,
-        crawlingTool: crawlingTool ?? "Legacy crawl/import",
+        fetchTool: fetchTool ?? "Legacy fetch/import",
         builder: null,
       }}
     />

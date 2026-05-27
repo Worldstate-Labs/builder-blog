@@ -121,12 +121,12 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(serializer, /serializeRecommendationSnapshot/);
 });
 
-test("skill context caps personal crawled items to keep payloads bounded", () => {
+test("skill context caps personal fetched items to keep payloads bounded", () => {
   const contextRoute = source("src/app/api/skill/context/route.ts");
 
-  assert.match(contextRoute, /personalCrawledItemLimit/);
-  assert.match(contextRoute, /take:\s*personalCrawledItemLimit/);
-  assert.match(contextRoute, /personalCrawledItems/);
+  assert.match(contextRoute, /personalFetchedItemLimit/);
+  assert.match(contextRoute, /take:\s*personalFetchedItemLimit/);
+  assert.match(contextRoute, /personalFetchedItems/);
   assert.match(contextRoute, /includePrompts/);
 });
 
@@ -318,16 +318,16 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(searchPage, /<Suspense[\s\S]*fallback=\{[\s\S]*<SearchResultsFallback/);
 });
 
-test("builders page avoids a global crawled-content query", () => {
+test("builders page avoids a global fetched-content query", () => {
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
 
-  assert.doesNotMatch(buildersPage, /RecentCrawledContent/);
+  assert.doesNotMatch(buildersPage, /RecentFetchedContent/);
   assert.doesNotMatch(buildersPage, /prisma\.feedItem\.findMany/);
   assert.match(builderLibraryList, /BuilderFeedItems/);
 });
 
-test("builders page exposes per-builder crawled posts ordered by time", () => {
+test("builders page exposes per-builder fetched posts ordered by time", () => {
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const addBuilderForm = source("src/components/AddBuilderForm.tsx");
   const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
@@ -361,17 +361,17 @@ test("builders page exposes per-builder crawled posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /Technical details/);
   assert.doesNotMatch(buildersPage, /name="handle"/);
   assert.doesNotMatch(buildersPage, /name="sourceUrl"/);
-  assert.doesNotMatch(buildersPage, /name="crawlUrl"/);
+  assert.doesNotMatch(buildersPage, /name="fetchUrl"/);
   assert.match(builderFeedItems, /"use client"/);
   assert.match(builderFeedItems, /fetch\(`\/api\/builders\/\$\{builderId\}\/feed-items`/);
-  assert.match(builderFeedItems, /Crawled posts/);
-  assert.match(builderFeedItems, /CrawledPostCard/);
-  assert.match(builderFeedItems, /Crawled/);
-  assert.match(source("src/components/CrawledPostCard.tsx"), /Summary/);
-  assert.match(source("src/components/CrawledPostCard.tsx"), /See more/);
-  assert.match(source("src/components/CrawledPostCard.tsx"), /Raw crawled content/);
-  assert.match(source("src/components/CrawledPostCard.tsx"), /Open source/);
-  assert.match(source("src/components/CrawledPostCard.tsx"), /\/builders#\$\{builder\.id\}/);
+  assert.match(builderFeedItems, /Fetched posts/);
+  assert.match(builderFeedItems, /FetchedPostCard/);
+  assert.match(builderFeedItems, /Fetched/);
+  assert.match(source("src/components/FetchedPostCard.tsx"), /Summary/);
+  assert.match(source("src/components/FetchedPostCard.tsx"), /See more/);
+  assert.match(source("src/components/FetchedPostCard.tsx"), /Raw fetched content/);
+  assert.match(source("src/components/FetchedPostCard.tsx"), /Open source/);
+  assert.match(source("src/components/FetchedPostCard.tsx"), /\/builders#\$\{builder\.id\}/);
   assert.match(feedItemsRoute, /fetchDedupedFeedForEntities/);
   assert.match(feedItemsRoute, /activePoolBuilderIds/);
   assert.match(feedItemsRoute, /NextResponse\.json/);
@@ -412,7 +412,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(buildersPage, /adminCommunityBuilders/);
   assert.doesNotMatch(buildersPage, /ownSharedLibrary\?\.items\.map/);
   assert.match(buildersPage, /ownSharedLibrary\._count\.items !== privateBuilders\.length/);
-  assert.match(buildersPage, /crawlLabel: "Agent synced"/);
+  assert.match(buildersPage, /fetchLabel: "Agent synced"/);
   assert.match(buildersPage, /BuilderLibraryList/);
   assert.match(buildersPage, /BuilderLibraryStats/);
   assert.match(buildersPage, /BuilderLibraryAutoRefresh/);
@@ -520,7 +520,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(visibilityRoute, /unsharePersonalLibraryFromHub/);
   assert.equal(existsSync(join(root, "src/app/actions.ts")), false);
   assert.match(skillRoute, /syncPersonalLibraryHubForUser/);
-  assert.match(skillRoute, /crawlingTool: "Legacy crawl\/import"/);
+  assert.match(skillRoute, /fetchTool: "Legacy fetch\/import"/);
   assert.match(schema, /model LibraryHubEntry/);
   assert.match(schema, /model LibraryImport/);
   assert.match(schema, /UserLibraryVisibility/);

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 
 export type BuilderLibraryState = {
-  crawledItems: number;
+  fetchedItems: number;
   inLibrary: number;
   subscribed: number;
   version: string;
@@ -36,9 +36,9 @@ export async function builderLibraryState(
       ? prisma.builder.aggregate({
           where: { id: { in: sortedBuilderIds } },
           _count: true,
-          _max: { updatedAt: true, lastCrawledAt: true },
+          _max: { updatedAt: true, lastFetchedAt: true },
         })
-      : Promise.resolve({ _count: 0, _max: { updatedAt: null, lastCrawledAt: null } }),
+      : Promise.resolve({ _count: 0, _max: { updatedAt: null, lastFetchedAt: null } }),
     sortedBuilderIds.length
       ? prisma.feedItem.aggregate({
           where: { builderId: { in: sortedBuilderIds } },
@@ -61,14 +61,14 @@ export async function builderLibraryState(
     subscriptionState._max.createdAt?.toISOString() ?? "",
     builderCount,
     builderState._max.updatedAt?.toISOString() ?? "",
-    builderState._max.lastCrawledAt?.toISOString() ?? "",
+    builderState._max.lastFetchedAt?.toISOString() ?? "",
     feedCount,
     feedState._max.createdAt?.toISOString() ?? "",
     feedState._max.publishedAt?.toISOString() ?? "",
   ].join("|");
 
   return {
-    crawledItems: feedCount,
+    fetchedItems: feedCount,
     inLibrary: sortedBuilderIds.length,
     subscribed: subCount,
     version,

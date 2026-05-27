@@ -25,7 +25,7 @@ export const SkillFeedItemSchema = z.object({
   url: z.string().url().max(MAX_URL),
   publishedAt: z.string().datetime().nullable().optional(),
   sourceName: z.string().max(MAX_SOURCE_NAME).nullable().optional(),
-  crawlingTool: z.string().min(1).max(160).nullable().optional(),
+  fetchTool: z.string().min(1).max(160).nullable().optional(),
   rawJson: z.unknown().optional(),
 });
 
@@ -36,7 +36,7 @@ export const SkillBuilderSchema = z.object({
   name: z.string().min(1).max(MAX_NAME),
   handle: z.string().max(MAX_HANDLE).nullable().optional(),
   sourceUrl: z.string().url().max(MAX_URL).nullable().optional(),
-  crawlUrl: z.string().url().max(MAX_URL).nullable().optional(),
+  fetchUrl: z.string().url().max(MAX_URL).nullable().optional(),
   bio: z.string().max(MAX_BIO).nullable().optional(),
   subscribe: z.boolean().default(false),
   items: z.array(SkillFeedItemSchema).max(MAX_ITEMS_PER_BUILDER).default([]),
@@ -44,7 +44,7 @@ export const SkillBuilderSchema = z.object({
 
 export const SkillBuilderSyncSchema = z.object({
   force: z.boolean().default(false),
-  crawlingTool: z.string().min(1).max(160).default("Agent skill sync"),
+  fetchTool: z.string().min(1).max(160).default("Agent skill sync"),
   builders: z.array(SkillBuilderSchema).min(1).max(MAX_BUILDERS_PER_SYNC),
 });
 

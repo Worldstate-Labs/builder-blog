@@ -22,8 +22,8 @@ export type SourceTypeConfigShape = {
   sourceId: string;
   label: string;
   agentDefaultStatus: AgentDefaultStatus;
-  defaultCrawlDays: number;
-  defaultCrawlLimit: number;
+  defaultFetchDays: number;
+  defaultFetchLimit: number;
   contentQuality: ContentQualityShape;
   summaryPromptBody: string;
   summaryStyle: SourceSummaryStyle;
@@ -74,8 +74,8 @@ export const DEFAULT_SOURCE_CONFIGS: Record<string, SourceTypeConfigShape> =
         agentDefaultStatus: (entry.agentDefaultStatus === "requires_agent"
           ? "requires_agent"
           : "ready") as AgentDefaultStatus,
-        defaultCrawlDays: 7,
-        defaultCrawlLimit: 3,
+        defaultFetchDays: 7,
+        defaultFetchLimit: 3,
         contentQuality: entry.contentQuality as ContentQualityShape,
         summaryPromptBody: summaryPromptBodyForSourceId(entry.id),
         summaryStyle: summaryStyleForSourceId(entry.id),
@@ -107,8 +107,8 @@ export async function ensureSourceConfigsSeeded(client: PrismaClient): Promise<v
       sourceId: config.sourceId,
       label: config.label,
       agentDefaultStatus: config.agentDefaultStatus,
-      defaultCrawlDays: config.defaultCrawlDays,
-      defaultCrawlLimit: config.defaultCrawlLimit,
+      defaultFetchDays: config.defaultFetchDays,
+      defaultFetchLimit: config.defaultFetchLimit,
       contentQuality: config.contentQuality as object,
       summaryPromptBody: config.summaryPromptBody,
       summaryStyle: config.summaryStyle,

@@ -19,7 +19,7 @@ const now = new Date("2026-05-24T12:00:00.000Z");
 function variant(overrides: Partial<ChannelVariant> & { builderId: string }): ChannelVariant {
   return {
     ownerUserId: overrides.ownerUserId ?? "stranger",
-    lastCrawledAt: overrides.lastCrawledAt ?? null,
+    lastFetchedAt: overrides.lastFetchedAt ?? null,
     publishedAt: overrides.publishedAt ?? null,
     createdAt: overrides.createdAt ?? now,
     builderId: overrides.builderId,
@@ -28,8 +28,8 @@ function variant(overrides: Partial<ChannelVariant> & { builderId: string }): Ch
 
 test("channel resolution / user-pinned primary wins", () => {
   const variants = [
-    variant({ builderId: "b_alice", ownerUserId: "alice", lastCrawledAt: now }),
-    variant({ builderId: "b_bob", ownerUserId: "bob", lastCrawledAt: now }),
+    variant({ builderId: "b_alice", ownerUserId: "alice", lastFetchedAt: now }),
+    variant({ builderId: "b_bob", ownerUserId: "bob", lastFetchedAt: now }),
   ];
   const picked = pickPrimaryVariant(variants, "user_x", "b_bob");
   assert.equal(picked.builderId, "b_bob");
@@ -37,18 +37,18 @@ test("channel resolution / user-pinned primary wins", () => {
 
 test("channel resolution / own channel preferred over imported when no pin", () => {
   const variants = [
-    variant({ builderId: "b_other", ownerUserId: "stranger", lastCrawledAt: now }),
+    variant({ builderId: "b_other", ownerUserId: "stranger", lastFetchedAt: now }),
     variant({ builderId: "b_mine", ownerUserId: "user_x" }),
   ];
   const picked = pickPrimaryVariant(variants, "user_x");
   assert.equal(picked.builderId, "b_mine");
 });
 
-test("channel resolution / falls back to most recently crawled when no pin or own", () => {
+test("channel resolution / falls back to most recently fetched when no pin or own", () => {
   const yesterday = new Date(now.getTime() - 86400000);
   const variants = [
-    variant({ builderId: "b_stale", ownerUserId: "alice", lastCrawledAt: yesterday }),
-    variant({ builderId: "b_fresh", ownerUserId: "alice", lastCrawledAt: now }),
+    variant({ builderId: "b_stale", ownerUserId: "alice", lastFetchedAt: yesterday }),
+    variant({ builderId: "b_fresh", ownerUserId: "alice", lastFetchedAt: now }),
   ];
   const picked = pickPrimaryVariant(variants, "user_x");
   assert.equal(picked.builderId, "b_fresh");
@@ -57,7 +57,7 @@ test("channel resolution / falls back to most recently crawled when no pin or ow
 test("channel resolution / pin overrides own channel", () => {
   const variants = [
     variant({ builderId: "b_mine", ownerUserId: "user_x" }),
-    variant({ builderId: "b_pinned", ownerUserId: "alice", lastCrawledAt: now }),
+    variant({ builderId: "b_pinned", ownerUserId: "alice", lastFetchedAt: now }),
   ];
   const picked = pickPrimaryVariant(variants, "user_x", "b_pinned");
   assert.equal(picked.builderId, "b_pinned");

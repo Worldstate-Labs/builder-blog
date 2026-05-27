@@ -47,7 +47,7 @@ function serializeRecommendation(
       publishedAt: result.item.publishedAt?.toISOString() ?? null,
       createdAt: result.item.createdAt.toISOString(),
       sourceName: result.item.sourceName,
-      crawlingTool: result.item.crawlingTool,
+      fetchTool: result.item.fetchTool,
       builder: result.item.builder
         ? {
             id: result.item.builder.id,
@@ -56,7 +56,7 @@ function serializeRecommendation(
             sourceType: result.item.builder.sourceType,
             kind: result.item.builder.kind,
             sourceUrl: result.item.builder.sourceUrl,
-            crawlUrl: result.item.builder.crawlUrl,
+            fetchUrl: result.item.builder.fetchUrl,
           }
         : null,
     },
