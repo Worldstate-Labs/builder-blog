@@ -118,19 +118,15 @@ async function loadBuildersPageData() {
         _count: { select: { items: true } },
       },
     }),
-    // Used to determine if the admin community library has been hidden by this user.
-    // Resolves to the (userId, adminLibraryId) row in UserLibraryVisibility.
+    // Used to determine if the featured community library has been hidden by this user.
     (async () => {
-      const adminLib = await prisma.libraryHubEntry.findFirst({
-        where: { owner: { email: { not: null } } },
-        include: { owner: { select: { email: true } } },
-        orderBy: { updatedAt: "desc" },
+      const featuredLib = await prisma.libraryHubEntry.findFirst({
+        where: { isFeatured: true },
+        select: { id: true },
       });
-      if (!adminLib || !isAdminEmail(adminLib.owner?.email)) return null;
+      if (!featuredLib) return null;
       const vis = await prisma.userLibraryVisibility.findUnique({
-        where: {
-          userId_hubEntryId: { userId: session.user.id, hubEntryId: adminLib.id },
-        },
+        where: { userId_hubEntryId: { userId: session.user.id, hubEntryId: featuredLib.id } },
         select: { hidden: true },
       });
       return { hidden: Boolean(vis?.hidden) };

@@ -1,5 +1,5 @@
 import { BuilderPoolOrigin } from "@prisma/client";
-import { adminEmails, isAdminEmail } from "@/lib/admin";
+import { isAdminEmail } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 
 export async function addBuilderToPool(params: {
@@ -42,20 +42,11 @@ export async function ensureDefaultCommunityLibraryImport(userId: string) {
   });
   if (!user || isAdminEmail(user.email)) return { imported: false, builderCount: 0 };
 
-  const adminUsers = await prisma.user.findMany({
-    where: { email: { in: adminEmails() } },
-    select: { id: true },
-  });
-  if (adminUsers.length === 0) return { imported: false, builderCount: 0 };
-
   const library = await prisma.libraryHubEntry.findFirst({
-    where: {
-      ownerUserId: { in: adminUsers.map((admin) => admin.id) },
-    },
+    where: { isFeatured: true },
     include: {
       items: { select: { builderId: true } },
     },
-    orderBy: { updatedAt: "desc" },
   });
   if (!library || library.items.length === 0) return { imported: false, builderCount: 0 };
 

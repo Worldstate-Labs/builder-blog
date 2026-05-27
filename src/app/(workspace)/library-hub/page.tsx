@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { Plus } from "lucide-react";
 import { LibraryHubImportForm, type HubLibrary } from "@/components/LibraryHubImportForm";
-import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
 import { adminCommunityLibraryName, recordLibraryHubViews } from "@/lib/library-hub";
@@ -81,7 +80,7 @@ async function loadLibraryHubPageData() {
 
   const importedLibraryIds = new Set(imports.map((item) => item.hubEntryId));
   const hubLibraries: HubLibrary[] = libraries.map((library) => {
-    const isCommunityLibrary = isAdminEmail(library.owner?.email);
+    const isCommunityLibrary = library.isFeatured;
     return {
       id: library.id,
       isCommunity: isCommunityLibrary,
@@ -91,7 +90,7 @@ async function loadLibraryHubPageData() {
       importCount: library.importCount,
       viewCount: library.viewCount,
       itemCount: library._count.items,
-      ownerLabel: ownerLabel(library.owner),
+      ownerLabel: ownerLabel(library.owner, library.isFeatured),
       items: library.items,
       imported: importedLibraryIds.has(library.id),
       owned: library.ownerUserId === session.user.id,
@@ -156,8 +155,8 @@ function LibraryHubImportFallback() {
   );
 }
 
-function ownerLabel(owner: { name: string | null; email: string | null } | null) {
-  if (isAdminEmail(owner?.email)) return "Community Library";
+function ownerLabel(owner: { name: string | null; email: string | null } | null, isFeatured: boolean) {
+  if (isFeatured) return "Community Library";
   if (!owner) return "Curated by FollowBrief.";
   return `Shared by ${owner.name || owner.email || "a FollowBrief user"}.`;
 }

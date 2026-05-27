@@ -203,8 +203,7 @@ test("non-admin users default-import the admin community library", () => {
   assert.match(builderPool, /ensureDefaultCommunityLibraryImport\(userId\)/);
   assert.match(builderPool, /if \(!user \|\| isAdminEmail\(user\.email\)\)/);
   assert.match(builderPool, /userLibraryVisibility/);
-  assert.match(builderPool, /ownerUserId:\s*\{ in: adminUsers\.map/);
-  assert.match(builderPool, /ownerUserId:\s*\{ in: adminUsers\.map/);
+  assert.match(builderPool, /isFeatured:\s*true/);
   assert.match(builderPool, /BuilderPoolOrigin\.HUB_IMPORT/);
   assert.match(builderPool, /libraryImport\.create/);
   assert.match(libraryHub, /removeLibraryImportFromHub/);

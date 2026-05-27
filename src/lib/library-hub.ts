@@ -15,6 +15,7 @@ export async function sharePersonalLibraryToHub(params: {
   userId: string;
   name: string;
   description?: string | null;
+  email?: string | null;
 }) {
   const ownedBuilders = await prisma.builder.findMany({
     where: { ownerUserId: params.userId },
@@ -22,17 +23,21 @@ export async function sharePersonalLibraryToHub(params: {
     orderBy: { name: "asc" },
   });
 
+  const featured = isAdminEmail(params.email);
+
   const entry = await prisma.libraryHubEntry.upsert({
     where: { slug: personalLibrarySlug(params.userId) },
     update: {
       name: params.name,
       description: params.description || null,
+      isFeatured: featured,
     },
     create: {
       slug: personalLibrarySlug(params.userId),
       name: params.name,
       description: params.description || null,
       ownerUserId: params.userId,
+      isFeatured: featured,
     },
   });
 
@@ -69,24 +74,21 @@ export async function setLibraryHidden(params: {
 }
 
 /**
- * Look up the admin's library hub entry (the "Community Library"). Returns null if no admin
- * user has shared one yet.
+ * Look up the featured community library hub entry. Returns null if none has been flagged yet.
  */
 export async function findAdminCommunityLibrary() {
   return prisma.libraryHubEntry.findFirst({
-    where: { owner: { email: { not: null } } },
-    include: { owner: { select: { email: true } } },
+    where: { isFeatured: true },
     orderBy: { updatedAt: "desc" },
-  }).then((entry) =>
-    entry && isAdminEmail(entry.owner?.email) ? entry : null,
-  );
+  });
 }
 
-export async function ensureAdminCommunityLibrary(userId: string) {
+export async function ensureAdminCommunityLibrary(userId: string, email?: string | null) {
   const result = await sharePersonalLibraryToHub({
     userId,
     name: adminCommunityLibraryName,
     description: adminCommunityLibraryDescription,
+    email,
   });
   return { isPublic: true, builderCount: result.builderCount };
 }
@@ -97,7 +99,7 @@ export async function syncPersonalLibraryHubForUser(params: {
   name?: string | null;
 }) {
   if (isAdminEmail(params.email)) {
-    return ensureAdminCommunityLibrary(params.userId);
+    return ensureAdminCommunityLibrary(params.userId, params.email);
   }
 
   const sharedLibrary = await prisma.libraryHubEntry.findFirst({
@@ -110,6 +112,7 @@ export async function syncPersonalLibraryHubForUser(params: {
     userId: params.userId,
     name: sharedLibrary.name || `${params.name || params.email || "Personal"} library`,
     description: sharedLibrary.description,
+    email: params.email,
   });
   return { isPublic: true, builderCount: result.builderCount };
 }

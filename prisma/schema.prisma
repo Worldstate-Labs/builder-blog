@@ -169,6 +169,7 @@ model LibraryHubEntry {
   name         String
   description  String?
   ownerUserId  String?
+  isFeatured   Boolean                 @default(false)
   importCount  Int                     @default(0)
   viewCount    Int                     @default(0)
   createdAt    DateTime                @default(now())
@@ -179,6 +180,7 @@ model LibraryHubEntry {
   visibilities UserLibraryVisibility[]
 
   @@index([ownerUserId])
+  @@index([isFeatured])
 }
 
 model LibraryHubItem {
