@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+
+const SubscriptionBodySchema = z.object({
+  subscribed: z.boolean(),
+});
 
 type Params = { params: Promise<{ builderId: string }> };
 
@@ -31,8 +36,13 @@ export async function PATCH(request: Request, { params }: Params) {
   }
   const entityId = builder.entityId;
 
-  const payload = await request.json().catch(() => null);
-  const subscribed = Boolean(payload?.subscribed);
+  const parsed = SubscriptionBodySchema.safeParse(
+    await request.json().catch(() => null),
+  );
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
+  const { subscribed } = parsed.data;
 
   if (subscribed) {
     await prisma.subscription.upsert({

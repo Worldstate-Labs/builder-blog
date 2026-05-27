@@ -1,5 +1,6 @@
 import { BuilderPoolOrigin } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
 import { addBuilderToPool } from "@/lib/builder-pool";
 import { upsertBuilder } from "@/lib/builders";
@@ -7,21 +8,28 @@ import type { BuilderLibraryEventItem } from "@/lib/builder-library-events";
 import { syncPersonalLibraryHubForUser } from "@/lib/library-hub";
 import { resolvePersonalBuilderInput } from "@/lib/personal-builder-input";
 
+const PersonalBuilderSchema = z.object({
+  name: z.string().max(240).optional(),
+  sourceType: z.string().min(1).max(40).optional(),
+  sourceValue: z.string().min(1).max(2048),
+});
+
 export async function POST(request: Request) {
   const session = await getCurrentSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await request.json().catch(() => null)) as {
-    name?: string;
-    sourceType?: string;
-    sourceValue?: string;
-  } | null;
+  const parsed = PersonalBuilderSchema.safeParse(
+    await request.json().catch(() => null),
+  );
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
   const input = resolvePersonalBuilderInput({
-    displayName: body?.name ?? "",
-    sourceType: body?.sourceType ?? "x",
-    sourceValue: body?.sourceValue ?? "",
+    displayName: parsed.data.name ?? "",
+    sourceType: parsed.data.sourceType ?? "x",
+    sourceValue: parsed.data.sourceValue,
   });
 
   if (!input) {

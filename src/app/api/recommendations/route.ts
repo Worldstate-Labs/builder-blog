@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
+import { activePoolBuilderIds } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
 import { getRecommendationFeed } from "@/lib/recommendations";
+
+const ReadBodySchema = z.object({
+  feedItemId: z.string().trim().min(1).max(64),
+});
 
 export async function GET(request: Request) {
   const session = await getCurrentSession();
@@ -28,11 +34,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const payload = await request.json().catch(() => null);
-  const feedItemId = String(payload?.feedItemId ?? "");
-  if (!feedItemId) {
-    return NextResponse.json({ error: "Missing feedItemId" }, { status: 400 });
+  const parsed = ReadBodySchema.safeParse(
+    await request.json().catch(() => null),
+  );
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
+  const { feedItemId } = parsed.data;
 
   const item = await prisma.feedItem.findUnique({
     where: { id: feedItemId },
@@ -40,6 +48,7 @@ export async function POST(request: Request) {
       id: true,
       kind: true,
       externalId: true,
+      builderId: true,
       builder: { select: { entityId: true } },
     },
   });
@@ -48,6 +57,18 @@ export async function POST(request: Request) {
   }
   if (!item.builder?.entityId) {
     return NextResponse.json({ error: "Feed item not bound to an entity" }, { status: 409 });
+  }
+
+  // Authorization: the user can only mark items from their own pool as read.
+  // Otherwise any authenticated user could write FeedRead rows referencing
+  // arbitrary global feed items.
+  if (item.builderId) {
+    const poolIds = await activePoolBuilderIds(session.user.id);
+    if (!poolIds.includes(item.builderId)) {
+      return NextResponse.json({ error: "Feed item not in your pool" }, { status: 403 });
+    }
+  } else {
+    return NextResponse.json({ error: "Feed item not bound to a builder" }, { status: 409 });
   }
 
   const entityId = item.builder.entityId;

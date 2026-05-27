@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+
+const ChannelPreferenceSchema = z.object({
+  entityId: z.string().trim().min(1).max(64),
+  builderId: z.string().trim().min(1).max(64).nullable().optional(),
+});
 
 /**
  * Set (or clear) the user's primary channel preference for an entity.
@@ -15,17 +21,14 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const payload = (await request.json().catch(() => null)) as {
-    entityId?: string;
-    builderId?: string | null;
-  } | null;
-
-  const entityId = payload?.entityId?.trim();
-  if (!entityId) {
-    return NextResponse.json({ error: "Missing entityId" }, { status: 400 });
+  const parsed = ChannelPreferenceSchema.safeParse(
+    await request.json().catch(() => null),
+  );
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
-
-  const builderId = payload?.builderId ?? null;
+  const entityId = parsed.data.entityId;
+  const builderId = parsed.data.builderId ?? null;
 
   if (!builderId) {
     await prisma.userChannelPreference.deleteMany({

@@ -1,5 +1,6 @@
 import { BuilderKind } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { inferBuilderKind, normalizeHandle } from "@/lib/builder-keys";
@@ -7,22 +8,35 @@ import { upsertBuilder } from "@/lib/builders";
 import { prisma } from "@/lib/prisma";
 import { builderKindForSourceType, builderSourceLabel } from "@/lib/source-registry";
 
+const AdminBuilderSchema = z.object({
+  name: z.string().trim().min(1).max(240),
+  handle: z.string().trim().max(240).optional(),
+  sourceUrl: z.string().trim().max(2048).optional(),
+  sourceType: z.string().trim().max(40).optional(),
+  kind: z.string().trim().max(40).optional(),
+});
+
 export async function POST(request: Request) {
   const session = await getCurrentSession();
   if (!session?.user?.id || !isAdminEmail(session.user.email)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const payload = await request.json().catch(() => null);
-  const name = String(payload?.name ?? "").trim();
-  const handleInput = String(payload?.handle ?? "").trim();
-  const sourceUrl = String(payload?.sourceUrl ?? "").trim();
-  const sourceType = String(payload?.sourceType ?? "").trim();
-  const kindInput = String(payload?.kind ?? "").trim();
+  const parsed = AdminBuilderSchema.safeParse(
+    await request.json().catch(() => null),
+  );
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
+  const name = parsed.data.name;
+  const handleInput = parsed.data.handle?.trim() ?? "";
+  const sourceUrl = parsed.data.sourceUrl?.trim() ?? "";
+  const sourceType = parsed.data.sourceType?.trim() ?? "";
+  const kindInput = parsed.data.kind?.trim() ?? "";
   const explicitSourceType = sourceType.toLowerCase() === "auto" ? "" : sourceType;
 
-  if (!name || (!handleInput && !sourceUrl)) {
-    return NextResponse.json({ error: "Missing builder name or source" }, { status: 400 });
+  if (!handleInput && !sourceUrl) {
+    return NextResponse.json({ error: "Missing builder source" }, { status: 400 });
   }
 
   const handle = handleInput ? normalizeHandle(handleInput) : null;
