@@ -1,19 +1,25 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { KeyRound } from "lucide-react";
+import { AdminDigestConfigForm } from "@/components/AdminDigestConfigForm";
+import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
 import { AgentTokenPanel } from "@/components/AgentTokenPanel";
 import { FeedPreferenceForm } from "@/components/FeedPreferenceForm";
+import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import {
   defaultDigestMaxPostAgeDays,
   digestFrequencyDays,
 } from "@/lib/feed-preferences";
 import { prisma } from "@/lib/prisma";
+import { SEEDED_SOURCE_IDS } from "@/lib/source-config-seed";
+import { getAllSourceConfigs, getDigestConfig } from "@/lib/source-config-store";
 
 export default async function SettingsPage() {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
+  const isAdmin = isAdminEmail(session.user.email);
 
   return (
     <div className="page-pad">
@@ -46,7 +52,82 @@ export default async function SettingsPage() {
           <AgentTokenSlot userId={userId} />
         </Suspense>
       </div>
+
+      {isAdmin ? (
+        <Suspense fallback={<SourceTypeConfigSkeleton />}>
+          <SourceTypeConfigSection />
+        </Suspense>
+      ) : null}
     </div>
+  );
+}
+
+async function SourceTypeConfigSection() {
+  const [sourceConfigs, digestConfig] = await Promise.all([
+    getAllSourceConfigs(),
+    getDigestConfig(),
+  ]);
+  return (
+    <section className="mt-10">
+      <div>
+        <p className="fb-section-label">Admin · runtime configuration</p>
+        <h2 className="fb-section-heading mt-1">Source type configuration</h2>
+        <p className="fb-desc mt-1 max-w-3xl">
+          Edit prompts, crawl defaults, and content-quality thresholds used by
+          both digest and library once-skills. Changes take effect on the next
+          context fetch.
+        </p>
+      </div>
+
+      <div className="mt-5 grid gap-6">
+        <AdminSourceTypeManager
+          initialConfigs={sourceConfigs.map((c) => ({
+            sourceId: c.sourceId,
+            label: c.label,
+            agentDefaultStatus: c.agentDefaultStatus,
+            defaultCrawlDays: c.defaultCrawlDays,
+            defaultCrawlLimit: c.defaultCrawlLimit,
+            contentQuality: c.contentQuality,
+            summaryPromptBody: c.summaryPromptBody,
+            summaryPromptSinglePostAdaptation: c.summaryPromptSinglePostAdaptation,
+            summaryStyle: c.summaryStyle,
+            summaryLanguage: c.summaryLanguage,
+            summaryLengthHint: c.summaryLengthHint,
+            updatedAt: c.updatedAt.toISOString(),
+            updatedBy: c.updatedBy,
+          }))}
+        />
+        <div>
+          <h3 className="fb-section-heading">Digest config (singleton)</h3>
+          <AdminDigestConfigForm
+            knownSourceIds={SEEDED_SOURCE_IDS}
+            initialConfig={{
+              id: digestConfig.id,
+              digestTopPrompt: digestConfig.digestTopPrompt,
+              digestIntro: digestConfig.digestIntro,
+              translate: digestConfig.translate,
+              digestOrder: digestConfig.digestOrder as string[],
+              updatedAt: digestConfig.updatedAt.toISOString(),
+              updatedBy: digestConfig.updatedBy,
+            }}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SourceTypeConfigSkeleton() {
+  return (
+    <section className="mt-10" aria-busy="true" aria-live="polite">
+      <div className="h-3 w-40 animate-pulse rounded bg-black/10" />
+      <div className="mt-2 h-5 w-64 animate-pulse rounded bg-black/10" />
+      <div className="mt-5 grid gap-3">
+        <div className="h-24 animate-pulse rounded bg-black/10" />
+        <div className="h-24 animate-pulse rounded bg-black/10" />
+        <div className="h-24 animate-pulse rounded bg-black/10" />
+      </div>
+    </section>
   );
 }
 

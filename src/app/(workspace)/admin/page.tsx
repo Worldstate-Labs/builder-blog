@@ -2,11 +2,7 @@ import { BuilderKind, FeedItemKind } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AdminBuilderManager } from "@/components/AdminBuilderManager";
-import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
-import { AdminDigestConfigForm } from "@/components/AdminDigestConfigForm";
 import { adminEmails, isAdminEmail } from "@/lib/admin";
-import { getAllSourceConfigs, getDigestConfig } from "@/lib/source-config-store";
-import { SEEDED_SOURCE_IDS } from "@/lib/source-config-seed";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -57,10 +53,6 @@ export default async function AdminPage() {
 
         <Suspense fallback={<AdminPanelFallback title="Canonical sources" />}>
           <CentralBuilderPool />
-        </Suspense>
-
-        <Suspense fallback={<AdminPanelFallback title="Source type configuration" />}>
-          <SourceTypeConfigurationSection />
         </Suspense>
 
         <Suspense fallback={<AdminPanelFallback title="Recent imported content" />}>
@@ -191,62 +183,6 @@ async function CentralBuilderPool() {
         value: source.id,
       }))}
     />
-  );
-}
-
-async function SourceTypeConfigurationSection() {
-  const [sourceConfigs, digestConfig] = await Promise.all([
-    getAllSourceConfigs(),
-    getDigestConfig(),
-  ]);
-  return (
-    <section className="mt-10">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="fb-section-label">Runtime configuration</p>
-          <h2 className="fb-section-heading mt-1">Source type configuration</h2>
-          <p className="fb-desc mt-1">
-            Edit prompts, crawl defaults, and content-quality thresholds used by both digest
-            and library once-skills. Changes take effect on the next context fetch.
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-6">
-        <AdminSourceTypeManager
-          initialConfigs={sourceConfigs.map((c) => ({
-            sourceId: c.sourceId,
-            label: c.label,
-            agentDefaultStatus: c.agentDefaultStatus,
-            defaultCrawlDays: c.defaultCrawlDays,
-            defaultCrawlLimit: c.defaultCrawlLimit,
-            contentQuality: c.contentQuality,
-            summaryPromptBody: c.summaryPromptBody,
-            summaryPromptSinglePostAdaptation: c.summaryPromptSinglePostAdaptation,
-            summaryStyle: c.summaryStyle,
-            summaryLanguage: c.summaryLanguage,
-            summaryLengthHint: c.summaryLengthHint,
-            updatedAt: c.updatedAt.toISOString(),
-            updatedBy: c.updatedBy,
-          }))}
-        />
-        <div>
-          <h3 className="fb-section-heading">Digest config (singleton)</h3>
-          <AdminDigestConfigForm
-            knownSourceIds={SEEDED_SOURCE_IDS}
-            initialConfig={{
-              id: digestConfig.id,
-              digestTopPrompt: digestConfig.digestTopPrompt,
-              digestIntro: digestConfig.digestIntro,
-              translate: digestConfig.translate,
-              digestOrder: digestConfig.digestOrder as string[],
-              updatedAt: digestConfig.updatedAt.toISOString(),
-              updatedBy: digestConfig.updatedBy,
-            }}
-          />
-        </div>
-      </div>
-    </section>
   );
 }
 
