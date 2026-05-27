@@ -24,17 +24,20 @@ Crawl task boundary:
 - `crawlTasks` are the only work items. Each task represents one post that must
   end as one synced item with both `body` and `summary`.
 - If `task.contentStatus="ready"`, the normal crawler already produced
-  `task.item.body`; do not crawl content again. Generate one concise Chinese
-  single-post summary in `summary` from `task.summaryInstructions.prompt`, copy
-  the original item fields from `task.item`, and include
-  `rawJson.crawlTaskId`.
+  `task.item.body`; do not crawl content again. Generate one concise
+  single-post `summary` from `task.summaryInstructions.prompt` (it declares the
+  required language), copy the original item fields from `task.item`, and
+  include `rawJson.crawlTaskId`.
 - If `task.contentStatus="requires_agent"`, first obtain real primary content
-  using this agent's local capabilities, then generate one concise Chinese
-  single-post summary in `summary` from `task.summaryInstructions.prompt`.
-  Include `rawJson.crawlTaskId`, `rawJson.agentRuntime`, `rawJson.agentModel`
-  if known, `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`.
-- do not read prompt files, do not fetch `context.prompts`, and do not use any
-  separate digest prompt at runtime.
+  using this agent's local capabilities, then generate one concise single-post
+  `summary` from `task.summaryInstructions.prompt`. Include
+  `rawJson.crawlTaskId`, `rawJson.agentRuntime`, `rawJson.agentModel` if known,
+  `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`.
+- `task.summaryInstructions.prompt` is the only prompt source for the summary;
+  it already bakes in the global common rules and the per-source rules. Do not
+  read prompt files from disk, and do not fetch `context.prompts`,
+  `context.sources[*].summaryPrompt`, or `context.commonSummaryRules`
+  separately.
 
 1. Install or refresh the skill:
 
@@ -74,8 +77,10 @@ How to execute each `crawlTask` in this step:
     available methods until real primary content is obtained or no method
     remains.
 - Use `task.minimumContentQuality` for `requires_agent` tasks as the minimum
-  acceptance bar for the extracted body. For YouTube, title, description, feed
-  description, and page metadata are not acceptable body content.
+  acceptance bar for the extracted body. The structured fields drive
+  acceptance: `minChars`, `minWords`, the optional ratios, and
+  `disallowedPrimarySources` — never accept body content whose origin string
+  appears in `disallowedPrimarySources`.
 - Generate `summary` only after the body is final. Follow
   `task.summaryInstructions.prompt` and summarize this one task item only.
 - Build one output item under the copied builder. Copy stable item fields from
