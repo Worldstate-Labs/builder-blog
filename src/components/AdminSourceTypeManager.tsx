@@ -10,7 +10,6 @@ export type AdminSourceTypeConfig = {
   defaultCrawlLimit: number;
   contentQuality: unknown;
   summaryPromptBody: string;
-  summaryPromptSinglePostAdaptation: string;
   summaryStyle: string;
   summaryLanguage: string;
   summaryLengthHint: string | null;
@@ -36,7 +35,6 @@ type Draft = {
   defaultCrawlLimit: string;
   summaryLengthHint: string;
   summaryPromptBody: string;
-  summaryPromptSinglePostAdaptation: string;
   contentQuality: ContentQuality;
 };
 
@@ -79,7 +77,6 @@ function toDraft(config: AdminSourceTypeConfig): Draft {
     defaultCrawlLimit: String(config.defaultCrawlLimit),
     summaryLengthHint: config.summaryLengthHint ?? "",
     summaryPromptBody: config.summaryPromptBody,
-    summaryPromptSinglePostAdaptation: config.summaryPromptSinglePostAdaptation,
     contentQuality: toContentQuality(config.contentQuality),
   };
 }
@@ -182,7 +179,6 @@ function SourceTypeCard({
       summaryLengthHint:
         draft.summaryLengthHint.trim() === "" ? null : draft.summaryLengthHint.trim(),
       summaryPromptBody: draft.summaryPromptBody,
-      summaryPromptSinglePostAdaptation: draft.summaryPromptSinglePostAdaptation,
       contentQuality,
     };
 
@@ -280,13 +276,6 @@ function SourceTypeCard({
             mono
             value={draft.summaryPromptBody}
             onChange={(v) => update("summaryPromptBody", v)}
-          />
-          <FieldTextarea
-            label="Single-post adaptation"
-            rows={5}
-            description="One-line instruction prepended in library-once tasks."
-            value={draft.summaryPromptSinglePostAdaptation}
-            onChange={(v) => update("summaryPromptSinglePostAdaptation", v)}
           />
         </Section>
 

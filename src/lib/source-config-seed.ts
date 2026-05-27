@@ -26,7 +26,6 @@ export type SourceTypeConfigShape = {
   defaultCrawlLimit: number;
   contentQuality: ContentQualityShape;
   summaryPromptBody: string;
-  summaryPromptSinglePostAdaptation: string;
   summaryStyle: SourceSummaryStyle;
   summaryLanguage: string;
   summaryLengthHint: string | null;
@@ -38,17 +37,20 @@ export type DigestConfigShape = {
   digestIntro: string;
   translate: string;
   digestOrder: string[];
+  commonSummaryRules: string;
 };
 
-// `singlePostAdaptation` strings preserved verbatim from the old
-// `summaryPromptReferenceForKind` fallbacks in scripts/builder-digest.mjs
-// so the once-skill flows render identical instructions to before.
-const SINGLE_POST_ADAPTATION_X =
-  "- Apply the X/Twitter rules to this one tweet or one thread from this builder/source.";
-const SINGLE_POST_ADAPTATION_PODCAST =
-  "- Apply the podcast/video rules to this one episode or one video transcript.";
-const SINGLE_POST_ADAPTATION_BLOG =
-  "- Apply the blog/article rules to this one article or document.";
+// Verbatim default text seeded into `DigestConfig.commonSummaryRules`.
+// Mirrored in `prisma/migrations/000024_common_summary_rules` so existing
+// rows backfill with the identical block.
+export const DEFAULT_COMMON_SUMMARY_RULES = `This task is self-contained; do not read external prompt files.
+
+- Summarize exactly one supplied task item.
+- Use task.item.body as the primary content.
+- Use task.item.title, source metadata, and task.item.url only as context and source attribution.
+- Include the direct source URL for every claim.
+- Do not summarize from title, description, or page metadata alone.
+- Apply the quality bar and no-fabrication, direct-quote-only, source-link rules stated in the source-specific prompt below.`;
 
 function summaryStyleForSourceId(sourceId: string): SourceSummaryStyle {
   if (sourceId === "x") return "x_twitter";
@@ -61,13 +63,6 @@ function summaryPromptBodyForSourceId(sourceId: string): string {
   if (style === "x_twitter") return DEFAULT_DIGEST_PROMPTS.summarizeTweets;
   if (style === "podcast_or_video") return DEFAULT_DIGEST_PROMPTS.summarizePodcast;
   return DEFAULT_DIGEST_PROMPTS.summarizeBlogs;
-}
-
-function singlePostAdaptationForSourceId(sourceId: string): string {
-  const style = summaryStyleForSourceId(sourceId);
-  if (style === "x_twitter") return SINGLE_POST_ADAPTATION_X;
-  if (style === "podcast_or_video") return SINGLE_POST_ADAPTATION_PODCAST;
-  return SINGLE_POST_ADAPTATION_BLOG;
 }
 
 export const DEFAULT_SOURCE_CONFIGS: Record<string, SourceTypeConfigShape> =
@@ -83,7 +78,6 @@ export const DEFAULT_SOURCE_CONFIGS: Record<string, SourceTypeConfigShape> =
         defaultCrawlLimit: 3,
         contentQuality: entry.contentQuality as ContentQualityShape,
         summaryPromptBody: summaryPromptBodyForSourceId(entry.id),
-        summaryPromptSinglePostAdaptation: singlePostAdaptationForSourceId(entry.id),
         summaryStyle: summaryStyleForSourceId(entry.id),
         summaryLanguage: "zh",
         summaryLengthHint: null,
@@ -98,6 +92,7 @@ export const DEFAULT_DIGEST_CONFIG: DigestConfigShape = {
   digestIntro: DEFAULT_DIGEST_PROMPTS.digestIntro,
   translate: DEFAULT_DIGEST_PROMPTS.translate,
   digestOrder: ["x", "blog", "youtube", "podcast", "pdf", "website"],
+  commonSummaryRules: DEFAULT_COMMON_SUMMARY_RULES,
 };
 
 export const SEEDED_SOURCE_IDS = Object.keys(DEFAULT_SOURCE_CONFIGS);
@@ -116,7 +111,6 @@ export async function ensureSourceConfigsSeeded(client: PrismaClient): Promise<v
       defaultCrawlLimit: config.defaultCrawlLimit,
       contentQuality: config.contentQuality as object,
       summaryPromptBody: config.summaryPromptBody,
-      summaryPromptSinglePostAdaptation: config.summaryPromptSinglePostAdaptation,
       summaryStyle: config.summaryStyle,
       summaryLanguage: config.summaryLanguage,
       summaryLengthHint: config.summaryLengthHint,
@@ -134,6 +128,7 @@ export async function ensureSourceConfigsSeeded(client: PrismaClient): Promise<v
         digestIntro: DEFAULT_DIGEST_CONFIG.digestIntro,
         translate: DEFAULT_DIGEST_CONFIG.translate,
         digestOrder: DEFAULT_DIGEST_CONFIG.digestOrder as object,
+        commonSummaryRules: DEFAULT_DIGEST_CONFIG.commonSummaryRules,
       },
     ],
     skipDuplicates: true,

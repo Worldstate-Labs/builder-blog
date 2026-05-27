@@ -66,7 +66,6 @@ export async function GET(request: Request) {
     contentQuality: unknown;
     summaryPrompt: {
       body: string;
-      singlePostAdaptation: string;
       style: string;
       language: string;
       lengthHint: string | null;
@@ -87,7 +86,6 @@ export async function GET(request: Request) {
       contentQuality: cfg.contentQuality,
       summaryPrompt: {
         body: cfg.summaryPromptBody,
-        singlePostAdaptation: cfg.summaryPromptSinglePostAdaptation,
         style: cfg.summaryStyle,
         language: cfg.summaryLanguage,
         lengthHint: cfg.summaryLengthHint,
@@ -100,6 +98,7 @@ export async function GET(request: Request) {
     digestIntro: digestConfig.digestIntro,
     translate: digestConfig.translate,
     order: digestConfig.digestOrder as string[],
+    commonSummaryRules: digestConfig.commonSummaryRules,
   };
 
   // TODO(deprecated): `context.prompts` is the legacy shape used by
@@ -244,6 +243,7 @@ export async function GET(request: Request) {
     subscriptionCount: subscribedEntityIds.length,
     items,
     sources: sourcesContext,
+    commonSummaryRules: digestConfig.commonSummaryRules,
     digest: digestContext,
     ...(includePrompts ? { prompts: legacyPrompts } : {}),
   });

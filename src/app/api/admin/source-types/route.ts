@@ -34,7 +34,6 @@ const SourceTypePatchSchema = z
     defaultCrawlLimit: z.number().int().positive().max(1000).optional(),
     contentQuality: ContentQualitySchema.optional(),
     summaryPromptBody: z.string().min(1).max(20_000).optional(),
-    summaryPromptSinglePostAdaptation: z.string().min(0).max(20_000).optional(),
     summaryStyle: z.enum(["x_twitter", "podcast_or_video", "blog_or_document"]).optional(),
     summaryLanguage: z.string().trim().min(2).max(16).optional(),
     summaryLengthHint: z.string().max(240).nullable().optional(),

@@ -8,6 +8,7 @@ export type AdminDigestConfig = {
   digestIntro: string;
   translate: string;
   digestOrder: string[];
+  commonSummaryRules: string;
   updatedAt: string;
   updatedBy: string | null;
 };
@@ -23,6 +24,7 @@ export function AdminDigestConfigForm({
 }) {
   const [config, setConfig] = useState(initialConfig);
   const [draft, setDraft] = useState({
+    commonSummaryRules: initialConfig.commonSummaryRules,
     digestTopPrompt: initialConfig.digestTopPrompt,
     digestIntro: initialConfig.digestIntro,
     translate: initialConfig.translate,
@@ -52,7 +54,12 @@ export function AdminDigestConfigForm({
       });
       return;
     }
+    if (draft.commonSummaryRules.trim().length === 0) {
+      setStatus({ kind: "error", message: "commonSummaryRules cannot be empty" });
+      return;
+    }
     const patch = {
+      commonSummaryRules: draft.commonSummaryRules,
       digestTopPrompt: draft.digestTopPrompt,
       digestIntro: draft.digestIntro,
       translate: draft.translate,
@@ -83,6 +90,15 @@ export function AdminDigestConfigForm({
 
   return (
     <div className="fb-panel" style={{ padding: "1rem" }}>
+      <Field label="Common summarization rules">
+        <textarea
+          className="fb-textarea w-full"
+          rows={10}
+          style={{ resize: "vertical", fontFamily: "var(--font-geist-mono)", fontSize: "0.8125rem" }}
+          value={draft.commonSummaryRules}
+          onChange={(e) => update("commonSummaryRules", e.target.value)}
+        />
+      </Field>
       <Field label="Digest top prompt">
         <textarea
           className="fb-textarea w-full"

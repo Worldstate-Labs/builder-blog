@@ -78,6 +78,7 @@ export async function getDigestConfig(): Promise<DigestConfig> {
           digestIntro: DEFAULT_DIGEST_CONFIG.digestIntro,
           translate: DEFAULT_DIGEST_CONFIG.translate,
           digestOrder: DEFAULT_DIGEST_CONFIG.digestOrder as object,
+          commonSummaryRules: DEFAULT_DIGEST_CONFIG.commonSummaryRules,
         },
       }));
     cachedDigestConfig = row;
@@ -94,7 +95,6 @@ export type SourceConfigPatch = Partial<{
   defaultCrawlLimit: number;
   contentQuality: ContentQualityShape;
   summaryPromptBody: string;
-  summaryPromptSinglePostAdaptation: string;
   summaryStyle: SourceSummaryStyle;
   summaryLanguage: string;
   summaryLengthHint: string | null;

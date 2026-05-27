@@ -469,7 +469,6 @@ test("ready crawl tasks carry embedded source-specific single-post prompts", asy
       label: "X / Twitter",
       summaryPrompt: {
         body: "tweet prompt body",
-        singlePostAdaptation: "- adapt for one tweet",
         style: "x_twitter",
         language: "zh",
         lengthHint: null,
@@ -480,7 +479,6 @@ test("ready crawl tasks carry embedded source-specific single-post prompts", asy
       label: "YouTube",
       summaryPrompt: {
         body: "podcast prompt body",
-        singlePostAdaptation: "- adapt for one video",
         style: "podcast_or_video",
         language: "zh",
         lengthHint: null,
@@ -491,13 +489,19 @@ test("ready crawl tasks carry embedded source-specific single-post prompts", asy
       label: "Blog",
       summaryPrompt: {
         body: "blog prompt body",
-        singlePostAdaptation: "- adapt for one article",
         style: "blog_or_document",
         language: "zh",
         lengthHint: null,
       },
     },
   };
+  const commonSummaryRules = [
+    "This task is self-contained; do not read external prompt files.",
+    "",
+    "- Summarize exactly one supplied task item.",
+    "- Use task.item.body as the primary content.",
+    "- Apply the quality bar and no-fabrication, direct-quote-only, source-link rules stated in the source-specific prompt below.",
+  ].join("\n");
   const tasks = cli.crawlTasksForReadyBuilders(
     [
       {
@@ -547,6 +551,7 @@ test("ready crawl tasks carry embedded source-specific single-post prompts", asy
       },
     ],
     sources,
+    commonSummaryRules,
   );
 
   assert.deepEqual(
@@ -584,13 +589,17 @@ test("ready crawl tasks carry embedded source-specific single-post prompts", asy
     ],
   );
   for (const task of tasks) {
-    assert.match(task.summaryInstructions.prompt, /Write one concise Chinese FollowBrief single-post summary/);
+    assert.match(task.summaryInstructions.prompt, /Write one concise FollowBrief single-post summary in zh\./);
     assert.match(task.summaryInstructions.prompt, /do not read external prompt files/i);
-    assert.match(task.summaryInstructions.prompt, /do not fetch context\.prompts/i);
-    assert.match(task.summaryInstructions.prompt, /do not use digestIntro or translate/i);
+    assert.match(task.summaryInstructions.prompt, /Summarize exactly one supplied task item/);
+    assert.match(task.summaryInstructions.prompt, /Use task\.item\.body as the primary content/);
+    assert.match(task.summaryInstructions.prompt, /Source-specific rules \(/);
   }
+  assert.match(tasks[0].summaryInstructions.prompt, /Source-specific rules \(X \/ Twitter\):/);
   assert.match(tasks[0].summaryInstructions.prompt, /tweet prompt body/);
+  assert.match(tasks[1].summaryInstructions.prompt, /Source-specific rules \(YouTube\):/);
   assert.match(tasks[1].summaryInstructions.prompt, /podcast prompt body/);
+  assert.match(tasks[2].summaryInstructions.prompt, /Source-specific rules \(Blog\):/);
   assert.match(tasks[2].summaryInstructions.prompt, /blog prompt body/);
   assert.equal(tasks[0].summaryInstructions.sourcePrompt, undefined);
 });

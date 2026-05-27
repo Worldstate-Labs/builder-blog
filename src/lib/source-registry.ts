@@ -38,7 +38,6 @@ export type MergedSourceDefinition = SourceDefinition & {
   defaultCrawlLimit: number;
   contentQuality: unknown;
   summaryPromptBody: string;
-  summaryPromptSinglePostAdaptation: string;
   summaryStyle: string;
   summaryLanguage: string;
   summaryLengthHint: string | null;
@@ -178,7 +177,6 @@ function mergeDefinition(
     defaultCrawlLimit: config.defaultCrawlLimit,
     contentQuality: config.contentQuality,
     summaryPromptBody: config.summaryPromptBody,
-    summaryPromptSinglePostAdaptation: config.summaryPromptSinglePostAdaptation,
     summaryStyle: config.summaryStyle,
     summaryLanguage: config.summaryLanguage,
     summaryLengthHint: config.summaryLengthHint,

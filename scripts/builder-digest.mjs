@@ -288,6 +288,7 @@ async function crawlPersonal(args) {
     config.token,
   );
   const sources = context.sources ?? {};
+  const commonSummaryRules = context.commonSummaryRules ?? context.digest?.commonSummaryRules ?? "";
   const subscribedBuilderIds = new Set(
     (context.subscriptions ?? []).map((builder) => builder.id),
   );
@@ -342,6 +343,7 @@ async function crawlPersonal(args) {
                 "No local crawler configured for this personal source.",
               ),
               sources,
+              commonSummaryRules,
             }),
           );
           continue;
@@ -369,14 +371,14 @@ async function crawlPersonal(args) {
         kind: source.syncKind,
         sourceType: source.id,
       };
-      crawlTasks.push(...sourceAgentTasks.map((task) => crawlTaskFromAgentTask(task, builderSync, sources)));
+      crawlTasks.push(...sourceAgentTasks.map((task) => crawlTaskFromAgentTask(task, builderSync, sources, commonSummaryRules)));
       builders.push({
         ...builderSync,
         items,
       });
     } catch (error) {
       crawlTasks.push(
-        buildBuilderFallbackTask(builder, fallbackBuilderSync, { error, sources }),
+        buildBuilderFallbackTask(builder, fallbackBuilderSync, { error, sources, commonSummaryRules }),
       );
     }
   }
@@ -396,7 +398,7 @@ async function crawlPersonal(args) {
     return;
   }
 
-  crawlTasks.push(...crawlTasksForReadyBuilders(builders, sources));
+  crawlTasks.push(...crawlTasksForReadyBuilders(builders, sources, commonSummaryRules));
   if (crawlTasks.length > 0) {
     console.log(
       JSON.stringify(
@@ -433,7 +435,7 @@ function normalizePersonalCrawlResult(result) {
   };
 }
 
-export function crawlTasksForReadyBuilders(builders, sources = {}) {
+export function crawlTasksForReadyBuilders(builders, sources = {}, commonSummaryRules = "") {
   return builders.flatMap((builder) =>
     (builder.items ?? []).map((item) => ({
       type: "crawl_post",
@@ -461,7 +463,7 @@ export function crawlTasksForReadyBuilders(builders, sources = {}) {
         sourceName: item.sourceName ?? builder.name,
         body: String(item.body ?? "").slice(0, 12000),
       },
-      summaryInstructions: singlePostSummaryInstructions(builder.sourceType, sources),
+      summaryInstructions: singlePostSummaryInstructions(builder.sourceType, sources, commonSummaryRules),
       id: crawlTaskId({ builderId: builder.builderId, builder: builder.name, item }),
     })),
   );
@@ -474,7 +476,7 @@ const FALLBACK_FEED_ITEM_KIND_BY_BUILDER_KIND = {
   WEBSITE: "OTHER",
 };
 
-function buildBuilderFallbackTask(builder, builderSync, { error, sources = {} } = {}) {
+function buildBuilderFallbackTask(builder, builderSync, { error, sources = {}, commonSummaryRules = "" } = {}) {
   const kind = FALLBACK_FEED_ITEM_KIND_BY_BUILDER_KIND[builder.kind] || "OTHER";
   const handle = builder.handle ? String(builder.handle).replace(/^@/, "") : null;
   const url =
@@ -502,14 +504,14 @@ function buildBuilderFallbackTask(builder, builderSync, { error, sources = {} } 
     builderSync,
     item,
     minimumContentQuality: genericMinimumContentQuality(),
-    summaryInstructions: singlePostSummaryInstructions(sourceType, sources),
+    summaryInstructions: singlePostSummaryInstructions(sourceType, sources, commonSummaryRules),
     fallbackReason: error?.message || String(error || "Personal crawler failed"),
   };
   task.id = crawlTaskId({ builderId: builder.id, builder: builder.name, item });
   return task;
 }
 
-function crawlTaskFromAgentTask(task, builderSync, sources = {}) {
+function crawlTaskFromAgentTask(task, builderSync, sources = {}, commonSummaryRules = "") {
   const item = task.item ?? {};
   const sourceType = task.sourceType ?? builderSync.sourceType;
   return {
@@ -522,7 +524,7 @@ function crawlTaskFromAgentTask(task, builderSync, sources = {}) {
     builderSync,
     item,
     minimumContentQuality: task.minimumContentQuality ?? genericMinimumContentQuality(),
-    summaryInstructions: task.summaryInstructions ?? singlePostSummaryInstructions(sourceType, sources),
+    summaryInstructions: task.summaryInstructions ?? singlePostSummaryInstructions(sourceType, sources, commonSummaryRules),
     id: crawlTaskId({ builderId: task.builderId ?? builderSync.builderId, builder: task.builder ?? builderSync.name, item }),
   };
 }
@@ -538,7 +540,7 @@ export function crawlTaskId(task) {
     .join(":");
 }
 
-export function singlePostSummaryInstructions(sourceId, sources = {}) {
+export function singlePostSummaryInstructions(sourceId, sources = {}, commonSummaryRules = "") {
   const source = sources?.[sourceId];
   if (!source || !source.summaryPrompt || !source.summaryPrompt.body) {
     throw new Error(
@@ -554,8 +556,9 @@ export function singlePostSummaryInstructions(sourceId, sources = {}) {
     useOnlySuppliedItem: true,
     prompt: singlePostSummaryPrompt({
       label: source.label || sourceId,
+      language: summaryPrompt.language || "zh",
       body: summaryPrompt.body,
-      singlePostAdaptation: summaryPrompt.singlePostAdaptation || "",
+      commonSummaryRules,
     }),
     summaryStyle: summaryPrompt.style,
   };
@@ -563,22 +566,12 @@ export function singlePostSummaryInstructions(sourceId, sources = {}) {
 
 function singlePostSummaryPrompt(source) {
   return [
-    "Write one concise Chinese FollowBrief single-post summary.",
+    `Write one concise FollowBrief single-post summary in ${source.language}.`,
     "",
-    `Use the ${source.label} summary rules below. This task is self-contained: do not read external prompt files, do not fetch context.prompts, and do not write a multi-post digest.`,
+    source.commonSummaryRules,
     "",
-    "Reference rules:",
+    `Source-specific rules (${source.label}):`,
     source.body,
-    "",
-    "Single-post adaptation:",
-    source.singlePostAdaptation,
-    "- Summarize exactly one supplied task item.",
-    "- Use task.item.body as the primary content.",
-    "- Use task.item.title, source metadata, and task.item.url only as context and source attribution.",
-    "- Include the direct source URL for every claim.",
-    "- Do not group multiple posts, do not assemble a digest section, and do not use digestIntro or translate.",
-    "- Do not summarize from title, description, or page metadata alone.",
-    "- Preserve the reference prompt's quality bar, no-fabrication rule, quote rule, and source-link rule.",
   ].join("\n");
 }
 

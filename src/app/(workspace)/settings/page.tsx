@@ -89,7 +89,6 @@ async function SourceTypeConfigSection() {
             defaultCrawlLimit: c.defaultCrawlLimit,
             contentQuality: c.contentQuality,
             summaryPromptBody: c.summaryPromptBody,
-            summaryPromptSinglePostAdaptation: c.summaryPromptSinglePostAdaptation,
             summaryStyle: c.summaryStyle,
             summaryLanguage: c.summaryLanguage,
             summaryLengthHint: c.summaryLengthHint,
@@ -107,6 +106,7 @@ async function SourceTypeConfigSection() {
               digestIntro: digestConfig.digestIntro,
               translate: digestConfig.translate,
               digestOrder: digestConfig.digestOrder as string[],
+              commonSummaryRules: digestConfig.commonSummaryRules,
               updatedAt: digestConfig.updatedAt.toISOString(),
               updatedBy: digestConfig.updatedBy,
             }}
