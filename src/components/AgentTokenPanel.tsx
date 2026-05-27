@@ -40,7 +40,6 @@ export function AgentTokenPanel({
   const [tokens, setTokens] = useState(initialTokens);
   const [tokenName, setTokenName] = useState("");
   const [status, setStatus] = useState("");
-  const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   // Create dialog state
@@ -131,23 +130,6 @@ export function AgentTokenPanel({
     });
   }
 
-  // Build the bootstrap command from the live origin so the copied snippet always
-  // points at the deployment the user is signed into.
-  const bootstrapCommand =
-    typeof window !== "undefined"
-      ? `/bin/sh -c "$(curl -fsSL ${window.location.origin}/api/skill/bootstrap)"`
-      : '/bin/sh -c "$(curl -fsSL /api/skill/bootstrap)"';
-
-  async function copyBootstrap() {
-    try {
-      await navigator.clipboard.writeText(bootstrapCommand);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch {
-      setStatus("Could not copy bootstrap command");
-    }
-  }
-
   return (
     <section className="fb-panel">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -165,17 +147,6 @@ export function AgentTokenPanel({
         >
           <Plus aria-hidden="true" />
           New token
-        </button>
-      </div>
-
-      <div className="fb-code-block mt-4">
-        <code>{bootstrapCommand}</code>
-        <button
-          className="fb-code-block-copy"
-          onClick={copyBootstrap}
-          type="button"
-        >
-          {copied ? "Copied" : "Copy"}
         </button>
       </div>
 
@@ -267,23 +238,38 @@ export function AgentTokenPanel({
           <div className="fb-dialog-inner">
             <h3 className="fb-section-heading">Revoke token &ldquo;{revokeTarget.name}&rdquo;?</h3>
             <div className="mt-3 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-              {revokeTarget.lastIp || revokeTarget.lastUserAgent ? (
+              {revokeTarget.lastIp || revokeTarget.lastUserAgent || revokeTarget.lastUsedAt ? (
+                <>
+                  <p>
+                    This token has been used by{" "}
+                    {revokeTarget.lastUserAgent ? (
+                      <strong>{summarizeUserAgent(revokeTarget.lastUserAgent)}</strong>
+                    ) : (
+                      <strong>an unknown machine</strong>
+                    )}
+                    {revokeTarget.lastIp ? (
+                      <>
+                        {" "}
+                        from <strong>{revokeTarget.lastIp}</strong>
+                      </>
+                    ) : null}
+                    {revokeTarget.lastUsedAt ? (
+                      <> ({formatDate(revokeTarget.lastUsedAt)})</>
+                    ) : null}
+                    .
+                  </p>
+                  <p className="mt-2 text-[var(--danger)]">
+                    After revoke, any agent or terminal session on that machine will
+                    immediately lose access to FollowBrief and need a new token to
+                    sync again.
+                  </p>
+                </>
+              ) : (
                 <p>
-                  Last used from{" "}
-                  {revokeTarget.lastIp ? <strong>{revokeTarget.lastIp}</strong> : null}
-                  {revokeTarget.lastIp && revokeTarget.lastUserAgent ? " · " : null}
-                  {revokeTarget.lastUserAgent ? (
-                    <strong>{summarizeUserAgent(revokeTarget.lastUserAgent)}</strong>
-                  ) : null}
-                  {revokeTarget.lastUsedAt ? (
-                    <> · {formatDate(revokeTarget.lastUsedAt)}</>
-                  ) : null}
-                  .
+                  This token has never been used. Revoking it now is safe — no
+                  machine will lose access.
                 </p>
-              ) : null}
-              <p className="mt-2">
-                Any agent job running on this machine will stop being able to reach FollowBrief.
-              </p>
+              )}
             </div>
             <div className="mt-5 flex justify-end gap-2">
               <button
