@@ -16,11 +16,12 @@ function splitTaggedError(error: string): {
     errorSuggestId: error.slice(idx + ERROR_SUGGEST_SEP.length) as DetectedSourceId,
   };
 }
-import { Plus } from "lucide-react";
+import { Globe, Plus } from "lucide-react";
 import {
   builderLibraryBuilderAdded,
   type BuilderLibraryEventItem,
 } from "@/lib/builder-library-events";
+import { sourceIcons } from "@/lib/source-icons";
 import {
   crossTypeWarning,
   isLikelyEpisodeOrPostUrl,
@@ -117,10 +118,13 @@ function deriveDisplayName(sourceType: string, sourceValue: string): string {
 export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[] }) {
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
-  // Soft warning from the server (e.g. "blog has no RSS feed").
-  // Rendered as a full-width warm banner under the form so it can't
-  // be missed — the small inline status span is reserved for the
-  // success line ("Source added.").
+  // Pre-add confirmation: when the server returns a warning flagged
+  // as requiresConfirmation (e.g. blog has no RSS feed → agent path),
+  // we don't persist yet — we show this inline confirm block instead.
+  // The user clicks "Add anyway" to re-submit with confirmedWarning.
+  const [pendingConfirmation, setPendingConfirmation] = useState<{ warning: string } | null>(null);
+  // Post-add soft warning that doesn't require confirmation (e.g.
+  // transient 503, missing OG/title). Rendered as a warm banner.
   const [warning, setWarning] = useState("");
   const [isPending, startTransition] = useTransition();
   const [sourceType, setSourceType] = useState<string>(sourceOptions[0]?.id ?? "x");
@@ -163,11 +167,8 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
     setError("");
   }
 
-  function addBuilder(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function submitAdd(confirmedWarning: boolean) {
     if (isPending) return;
-    const form = event.currentTarget;
-    const formData = new FormData(form);
     setError("");
     setStatus("");
     setWarning("");
@@ -179,22 +180,28 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: effectiveName.trim(),
-            sourceType: String(formData.get("sourceType") ?? "x"),
-            sourceValue: String(formData.get("sourceValue") ?? ""),
+            sourceType,
+            sourceValue,
+            ...(confirmedWarning ? { confirmedWarning: true } : {}),
           }),
         });
         const payload = (await response.json().catch(() => null)) as {
           builder?: BuilderLibraryEventItem;
           error?: string;
           warning?: string;
+          needsConfirmation?: boolean;
           suggestId?: DetectedSourceId;
         } | null;
+        // 409 with needsConfirmation → show inline confirm prompt; do
+        // not treat as a failure or success.
+        if (response.status === 409 && payload?.needsConfirmation) {
+          setPendingConfirmation({
+            warning: payload.warning ?? "This source needs your confirmation before it can be added.",
+          });
+          return;
+        }
         if (!response.ok) {
-          // Surface the server's specific reason verbatim. Falls back to
-          // a generic message only if the response had no body at all.
           if (payload?.suggestId) {
-            // Stash the suggestion alongside the message so the click
-            // handler below can apply it.
             setError(
               `${payload.error ?? "Could not add source"}${ERROR_SUGGEST_SEP}${payload.suggestId}`,
             );
@@ -209,10 +216,10 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
             detail: { ...payload.builder, addWarning: payload.warning ?? null },
           }),
         );
-        form.reset();
         setSourceValue("");
         setName("");
         setNameTouched(false);
+        setPendingConfirmation(null);
         if (payload.warning) {
           setWarning(payload.warning);
           setStatus("");
@@ -226,38 +233,60 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
     });
   }
 
+  function addBuilder(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    submitAdd(false);
+  }
+
   // Split a possibly-tagged error message back into (message, suggestId).
   // Cheap string scan; no need to memoize.
   const { errorMessage, errorSuggestId } = splitTaggedError(error);
 
   return (
     <form className="grid gap-2" onSubmit={addBuilder}>
-      <div className="grid items-center gap-2 sm:grid-cols-[11rem_1fr_auto]">
-        <select
-          aria-label="Source type"
-          className="fb-input"
-          name="sourceType"
-          value={sourceType}
-          onChange={(event) => setSourceType(event.target.value)}
-        >
-          {sourceOptions.map((source) => (
-            <option key={source.id} value={source.id}>
-              {source.label}
-            </option>
-          ))}
-        </select>
+      <div role="radiogroup" aria-label="Source type" className="flex flex-wrap gap-1.5">
+        {sourceOptions.map((source) => {
+          const Icon = sourceIcons[source.id] ?? Globe;
+          const selected = source.id === sourceType;
+          return (
+            <button
+              key={source.id}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => {
+                setSourceType(source.id);
+                // The pending confirmation was tied to the previous
+                // source type — invalidate so the user isn't asked
+                // to confirm a different source than the one shown.
+                setPendingConfirmation(null);
+              }}
+              className="source-pick"
+              data-selected={selected ? "true" : undefined}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              <span>{source.label}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="grid items-center gap-2 sm:grid-cols-[1fr_auto]">
         <input
           aria-label="Handle or URL"
           className="fb-input"
           name="sourceValue"
           placeholder={placeholderForSourceId(sourceType)}
           value={sourceValue}
-          onChange={(event) => setSourceValue(event.target.value)}
+          onChange={(event) => {
+            setSourceValue(event.target.value);
+            // Editing the URL invalidates a stale confirm prompt.
+            setPendingConfirmation(null);
+          }}
           required
         />
         <button
           className="fb-btn dark w-full justify-center sm:w-auto"
-          disabled={isPending}
+          disabled={isPending || Boolean(pendingConfirmation)}
           type="submit"
         >
           <Plus aria-hidden="true" />
@@ -324,6 +353,51 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
           ) : null}
         </span>
       </div>
+      {pendingConfirmation ? (
+        <div
+          aria-live="polite"
+          role="status"
+          className="mt-1 rounded-md border px-3 py-2.5"
+          style={{
+            borderColor: "var(--warm-line, var(--line))",
+            background: "var(--warm-paper, var(--paper-strong))",
+            color: "var(--warm-strong, var(--ink))",
+          }}
+        >
+          <div className="flex items-baseline gap-2">
+            <span
+              style={{
+                fontFamily: "var(--font-geist-mono)",
+                fontSize: "11px",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "var(--muted-strong)",
+              }}
+            >
+              Confirm
+            </span>
+            <span className="text-[12.5px] leading-5">{pendingConfirmation.warning}</span>
+          </div>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              className="fb-btn dark compact"
+              disabled={isPending}
+              onClick={() => submitAdd(true)}
+            >
+              {isPending ? "Adding..." : "Add anyway"}
+            </button>
+            <button
+              type="button"
+              className="fb-btn compact"
+              disabled={isPending}
+              onClick={() => setPendingConfirmation(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
       {warning ? (
         <div
           aria-live="polite"

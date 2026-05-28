@@ -52,6 +52,14 @@ export type ProbeOutcome = {
    * instead of re-scraping HTML on every fetch.
    */
   discoveredFetchUrl?: string;
+  /**
+   * When true, the warning is significant enough that the route should
+   * surface it as a confirmation prompt BEFORE persisting — e.g. a
+   * blog with no RSS feed (fetch still works via the agent, but the
+   * user should know they're opting into the slower path). Transient
+   * warnings (network timeouts, 503s) don't set this flag.
+   */
+  requiresConfirmation?: boolean;
   /** What we managed to pull (name, avatarUrl). May be empty. */
   enrichment: BuilderEnrichment;
 };
@@ -354,20 +362,18 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
     return check.ok ? discoveredFeed : undefined;
   })();
   const warnings: string[] = [];
+  let requiresConfirmation = false;
   if (!name && !avatarUrl) {
     warnings.push(
       "The page is reachable but has no OpenGraph metadata or <title>; the agent will retry at sync time.",
     );
   }
-  // Soft warn (not hard reject) when a blog has no RSS/Atom feed:
-  // fetchPersonalBlogBuilder has an HTML index-scraping fallback that
-  // works for many feed-less blogs, but a feed is far more reliable.
-  // The CLI fallback also doesn't help SPA-rendered index pages, so
-  // surface a hint to switch to Website for single-page sites.
+  // Blog-with-no-RSS is a "still fetchable, just slower" outcome —
+  // surface it to the user as a confirmation prompt before persisting
+  // so they understand the agent path they're opting into.
   if (input.sourceType === "blog" && !discoveredFetchUrl) {
-    warnings.push(
-      "This blog doesn't expose an RSS/Atom feed. The agent will scrape the index page for article links at sync time — works for most blogs but is less reliable than a feed. If this is actually a single-page site, switch to Website instead.",
-    );
+    warnings.push("No RSS feed found — the agent will fetch articles by scraping the page.");
+    requiresConfirmation = true;
   }
   const warning = warnings.length > 0 ? warnings.join(" ") : undefined;
   return {
@@ -375,6 +381,7 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
     enrichment,
     ...(discoveredFetchUrl ? { discoveredFetchUrl } : {}),
     ...(warning ? { warning } : {}),
+    ...(requiresConfirmation ? { requiresConfirmation: true } : {}),
   };
 }
 

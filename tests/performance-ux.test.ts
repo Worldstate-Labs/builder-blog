@@ -374,7 +374,11 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(addBuilderForm, /"use client"/);
   assert.match(addBuilderForm, /fetch\("\/api\/builders\/personal"/);
   assert.match(addBuilderForm, /builderLibraryBuilderAdded/);
-  assert.match(addBuilderForm, /name="sourceType"/);
+  // Source type is now a segmented icon+label picker (role="radiogroup"),
+  // not a native <select name="sourceType">. The form submits sourceType
+  // via React state in the fetch body, not via form-data.
+  assert.match(addBuilderForm, /role="radiogroup"/);
+  assert.match(addBuilderForm, /aria-label="Source type"/);
   assert.match(addBuilderForm, /name="sourceValue"/);
   assert.match(addBuilderForm, /Handle or URL/);
   assert.match(personalBuilderRoute, /export async function POST/);

@@ -1,20 +1,11 @@
-import type { ComponentType } from "react";
-import { FileText, Globe, Podcast, Rss, X, Play } from "lucide-react";
+import { Globe } from "lucide-react";
+import { sourceIcons } from "@/lib/source-icons";
 
 type SourceBadgeBuilder = {
   kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";
   sourceType?: string | null;
   sourceUrl?: string | null;
   fetchUrl?: string | null;
-};
-
-const sourceIcons: Record<string, ComponentType<{ className?: string }>> = {
-  blog: Rss,
-  podcast: Podcast,
-  pdf: FileText,
-  website: Globe,
-  x: X,
-  youtube: Play,
 };
 
 export function SourceBadge({

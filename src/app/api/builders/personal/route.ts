@@ -24,6 +24,11 @@ const PersonalBuilderSchema = z.object({
   name: z.string().max(240).optional(),
   sourceType: z.string().min(1).max(40).optional(),
   sourceValue: z.string().min(1).max(2048),
+  // Set to true on the second submit after the user has acknowledged
+  // a probe warning that requires confirmation (e.g. blog with no RSS
+  // feed). First-submit without this flag returns a 409 with the
+  // warning so the UI can show a confirm prompt before persisting.
+  confirmedWarning: z.boolean().optional(),
 });
 
 export async function POST(request: Request) {
@@ -93,6 +98,18 @@ export async function POST(request: Request) {
   });
   if (!probe.ok) {
     return NextResponse.json({ error: probe.hardError }, { status: 400 });
+  }
+  // Gate: warnings flagged as requiresConfirmation must be acknowledged
+  // by the client before we persist. The client re-POSTs with
+  // confirmedWarning: true after the user accepts the prompt.
+  if (probe.requiresConfirmation && !parsed.data.confirmedWarning) {
+    return NextResponse.json(
+      {
+        needsConfirmation: true,
+        warning: probe.warning,
+      },
+      { status: 409 },
+    );
   }
   // Resolver-supplied enrichment (Apple Podcasts iTunes result) wins
   // over the probe's enrichment when present, since iTunes carries
