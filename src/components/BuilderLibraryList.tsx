@@ -141,7 +141,7 @@ export function BuilderLibraryList({
   }
 
   return (
-    <div className="overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)]">
+    <div className="builder-library-list overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)]">
       {visibleBuilders.map((builder, index) => (
         <BuilderCard
           builder={builder}
@@ -176,15 +176,18 @@ function BuilderCard({
   return (
     <article
       id={builder.id}
-      className={first ? "px-4 py-3.5" : "border-t border-[var(--line)] px-4 py-3.5"}
+      className={
+        first
+          ? "builder-library-card px-4 py-3.5"
+          : "builder-library-card border-t border-[var(--line)] px-4 py-3.5"
+      }
     >
-      <div
-        className="grid items-center gap-3.5"
-        style={{ gridTemplateColumns: "auto 1fr auto" }}
-      >
-        <span className="fb-src-icon">{builder.name.charAt(0).toUpperCase()}</span>
+      <div className="builder-library-card-main grid items-center gap-3.5">
+        <span className="builder-library-avatar fb-src-icon">
+          {builder.name.charAt(0).toUpperCase()}
+        </span>
         <BuilderInfo builder={builder} />
-        <div className="row-actions flex flex-shrink-0 items-center gap-3">
+        <div className="builder-library-actions row-actions flex flex-shrink-0 items-center gap-3">
           <BuilderLibraryActions
             allowRemove={builder.allowRemove}
             builderId={builder.id}
@@ -221,6 +224,7 @@ function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
     ? new Date(builder.latestPostCreatedAt)
     : null;
   const hostLabel = builder.handle ? `@${builder.handle}` : sourceSummary(sourceUrl);
+  const hasFeedItems = builder.feedItemCount > 0;
 
   return (
     <div className="min-w-0">
@@ -238,18 +242,30 @@ function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
         <SourceBadge builder={builder} />
       </div>
       <div className="fb-src-meta">
-        <span className="fb-kind-pill">{builder.kind.toLowerCase()}</span>
-        {hostLabel ? <span className="mono truncate max-w-[18rem]">{hostLabel}</span> : null}
-        <span>·</span>
-        <span>{builder.feedItemCount} items</span>
+        <span className="source-kind-meta fb-kind-pill">{builder.kind.toLowerCase()}</span>
+        {hostLabel ? (
+          <span className="source-host-meta mono truncate max-w-[18rem]">{hostLabel}</span>
+        ) : null}
+        <span className="source-count-dot source-meta-dot">·</span>
+        <span
+          className={
+            hasFeedItems
+              ? "source-count-meta"
+              : "source-count-meta source-count-meta-empty"
+          }
+        >
+          {builder.feedItemCount} items
+        </span>
         {latestPostCreatedAt ? (
           <>
-            <span>·</span>
-            <span>Latest {formatCompactDate(latestPostCreatedAt)}</span>
+            <span className="source-latest-dot source-meta-dot">·</span>
+            <span className="source-latest-meta">
+              Latest {formatCompactDate(latestPostCreatedAt)}
+            </span>
           </>
         ) : null}
-        <span>·</span>
-        <span>{builder.fetchLabel}</span>
+        <span className="source-fetch-dot source-meta-dot">·</span>
+        <span className="source-fetch-meta">{builder.fetchLabel}</span>
       </div>
     </div>
   );

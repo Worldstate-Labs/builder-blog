@@ -581,14 +581,20 @@ test("settings mutations stay local instead of refreshing the whole route", () =
 
 test("list actions use compact controls instead of full-width mobile buttons", () => {
   const css = source("src/app/globals.css");
+  const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
   const builderActions = source("src/components/BuilderLibraryActions.tsx");
   const settingsPage = source("src/app/(workspace)/settings/page.tsx");
   const agentTokenPanel = source("src/components/AgentTokenPanel.tsx");
 
   assert.match(css, /\.button-compact/);
   assert.match(css, /\.row-actions/);
+  assert.match(css, /\.builder-library-card-main\s*{\s*\n\s*grid-template-columns:\s*auto minmax\(0,\s*1fr\) auto/);
+  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta\s*{[\s\S]*display:\s*grid/);
+  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.source-fetch-meta[\s\S]*display:\s*none/);
   assert.doesNotMatch(css, /\.builder-row form,\s*\n\s*\.builder-row button\s*{\s*\n\s*width:\s*100%/);
-  assert.match(source("src/components/BuilderLibraryList.tsx"), /row-actions/);
+  assert.match(builderLibraryList, /builder-library-card-main/);
+  assert.match(builderLibraryList, /source-fetch-meta/);
   assert.match(builderActions, /fb-btn/);
   assert.match(settingsPage, /AgentTokenPanel/);
   assert.match(agentTokenPanel, /fb-btn/);
