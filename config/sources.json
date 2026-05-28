@@ -2,7 +2,7 @@
   "sources": [
     {
       "id": "x",
-      "label": "X / Twitter",
+      "label": "X",
       "builderKind": "X",
       "feedItemKinds": ["TWEET"],
       "urlPatterns": ["(^|//)((www\\.)?(x|twitter)\\.com)/"],

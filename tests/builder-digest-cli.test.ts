@@ -466,7 +466,7 @@ test("ready fetch tasks carry embedded source-specific single-post prompts", asy
   const sources = {
     x: {
       id: "x",
-      label: "X / Twitter",
+      label: "X",
       summaryPrompt: {
         body: "tweet prompt body",
         style: "x_twitter",
@@ -595,7 +595,7 @@ test("ready fetch tasks carry embedded source-specific single-post prompts", asy
     assert.match(task.summaryInstructions.prompt, /Use task\.item\.body as the primary content/);
     assert.match(task.summaryInstructions.prompt, /Source-specific rules \(/);
   }
-  assert.match(tasks[0].summaryInstructions.prompt, /Source-specific rules \(X \/ Twitter\):/);
+  assert.match(tasks[0].summaryInstructions.prompt, /Source-specific rules \(X\):/);
   assert.match(tasks[0].summaryInstructions.prompt, /tweet prompt body/);
   assert.match(tasks[1].summaryInstructions.prompt, /Source-specific rules \(YouTube\):/);
   assert.match(tasks[1].summaryInstructions.prompt, /podcast prompt body/);

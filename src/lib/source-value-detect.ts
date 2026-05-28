@@ -21,7 +21,7 @@
 export type DetectedSourceId = "x" | "blog" | "youtube" | "podcast" | "pdf" | "website";
 
 export const DETECTED_SOURCE_LABELS: Record<DetectedSourceId, string> = {
-  x: "X / Twitter",
+  x: "X",
   blog: "Blog",
   youtube: "YouTube",
   podcast: "Podcast",
