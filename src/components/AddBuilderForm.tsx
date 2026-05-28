@@ -76,12 +76,59 @@ function computePreview(sourceType: string, value: string): Preview {
   return { kind: "idle" };
 }
 
+function deriveDisplayName(sourceType: string, sourceValue: string): string {
+  const trimmed = sourceValue.trim();
+  if (!trimmed) return "";
+  if (sourceType === "x") {
+    const m = trimmed.match(/(?:x\.com|twitter\.com)\/@?([A-Za-z0-9_]+)/i);
+    if (m) return m[1];
+    if (trimmed.startsWith("@")) return trimmed.slice(1);
+    if (/^[A-Za-z0-9_]+$/.test(trimmed)) return trimmed;
+    return "";
+  }
+  if (sourceType === "youtube") {
+    const handle = trimmed.match(/youtube\.com\/@([A-Za-z0-9_.-]+)/i);
+    if (handle) return handle[1];
+    const cFmt = trimmed.match(/youtube\.com\/c\/([A-Za-z0-9_.-]+)/i);
+    if (cFmt) return cFmt[1];
+    const userFmt = trimmed.match(/youtube\.com\/user\/([A-Za-z0-9_.-]+)/i);
+    if (userFmt) return userFmt[1];
+    return "";
+  }
+  if (sourceType === "pdf") {
+    try {
+      const url = new URL(trimmed);
+      const filename = (url.pathname.split("/").pop() ?? "").trim();
+      const base = filename.replace(/\.pdf$/i, "").replace(/[-_]+/g, " ").trim();
+      if (base) return base;
+    } catch {
+      // fall through to empty
+    }
+    return "";
+  }
+  // blog / website / podcast — best we can do without network is the
+  // domain. Server-side resolver will usually overwrite with the feed
+  // title when the user submits with display name blank.
+  try {
+    const url = new URL(trimmed);
+    return url.hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
 export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[] }) {
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [isPending, startTransition] = useTransition();
   const [sourceType, setSourceType] = useState<string>(sourceOptions[0]?.id ?? "x");
   const [sourceValue, setSourceValue] = useState("");
+  // Display name auto-derives from sourceType + sourceValue when the
+  // user hasn't typed in the field themselves. Once they edit (or
+  // even clear the auto-filled value), we stop overwriting it so we
+  // don't fight the user's intent.
+  const [name, setName] = useState("");
+  const [nameTouched, setNameTouched] = useState(false);
 
   // Debounce the inline preview so a fast typer doesn't see the banner
   // strobing on every keystroke. 200ms is short enough to feel immediate
@@ -97,6 +144,17 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
     () => computePreview(sourceType, debouncedValue),
     [sourceType, debouncedValue],
   );
+
+  // Derived display name (computed at render-time, not via setState in
+  // useEffect — that lint rule fires on cascading-render patterns).
+  // The input shows the derived value until the user types in the
+  // field, at which point `nameTouched` flips and the typed value
+  // wins.
+  const derivedName = useMemo(
+    () => deriveDisplayName(sourceType, debouncedValue),
+    [sourceType, debouncedValue],
+  );
+  const effectiveName = nameTouched ? name : derivedName;
 
   function applySuggestion(target: DetectedSourceId) {
     setSourceType(target);
@@ -117,7 +175,7 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: String(formData.get("name") ?? ""),
+            name: effectiveName.trim(),
             sourceType: String(formData.get("sourceType") ?? "x"),
             sourceValue: String(formData.get("sourceValue") ?? ""),
           }),
@@ -150,6 +208,8 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
         );
         form.reset();
         setSourceValue("");
+        setName("");
+        setNameTouched(false);
         setStatus(payload.warning ? `Added — ${payload.warning}` : "Source added.");
       } catch {
         setError("Could not add source.");
@@ -225,7 +285,12 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
           aria-label="Display name"
           className="fb-input flex-1"
           name="name"
-          placeholder="Display name (optional)"
+          placeholder="Display name (auto-filled from URL — edit to override)"
+          value={effectiveName}
+          onChange={(event) => {
+            setName(event.target.value);
+            setNameTouched(true);
+          }}
         />
         <span aria-live="polite" className="text-[11.5px]">
           {errorMessage ? (
