@@ -211,17 +211,24 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
           return;
         }
         if (!payload?.builder) throw new Error("Missing source");
+        // When the user just came through the confirm flow, they've
+        // already acknowledged the warning — don't carry it through
+        // to the post-add UI (PrivateLibraryPanel would keep the
+        // panel open; the warm banner would re-state what the user
+        // just confirmed). The server still echoes payload.warning
+        // for diagnostic reasons; we drop it here.
+        const surfacedWarning = confirmedWarning ? null : payload.warning ?? null;
         window.dispatchEvent(
           new CustomEvent<BuilderLibraryEventItem>(builderLibraryBuilderAdded, {
-            detail: { ...payload.builder, addWarning: payload.warning ?? null },
+            detail: { ...payload.builder, addWarning: surfacedWarning },
           }),
         );
         setSourceValue("");
         setName("");
         setNameTouched(false);
         setPendingConfirmation(null);
-        if (payload.warning) {
-          setWarning(payload.warning);
+        if (surfacedWarning) {
+          setWarning(surfacedWarning);
           setStatus("");
         } else {
           setStatus("Source added.");
