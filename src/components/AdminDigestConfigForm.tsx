@@ -155,12 +155,24 @@ export function AdminDigestConfigForm({
           </span>
         ) : null}
         <span className="ml-auto text-xs text-[var(--muted)]">
-          Updated {new Date(config.updatedAt).toLocaleString()}
+          Updated {formatUtcDateTime(config.updatedAt)}
           {config.updatedBy ? ` · ${config.updatedBy}` : ""}
         </span>
       </div>
     </div>
   );
+}
+
+function formatUtcDateTime(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short",
+  }).format(new Date(value));
 }
 
 function Field({

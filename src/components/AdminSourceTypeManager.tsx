@@ -765,9 +765,21 @@ function FooterBar({
         className="ml-auto text-xs"
         style={{ color: "var(--muted)", fontFamily: "var(--font-geist-mono)" }}
       >
-        Updated {new Date(updatedAt).toLocaleString()}
+        Updated {formatUtcDateTime(updatedAt)}
         {updatedBy ? ` · ${updatedBy}` : ""}
       </span>
     </div>
   );
+}
+
+function formatUtcDateTime(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short",
+  }).format(new Date(value));
 }
