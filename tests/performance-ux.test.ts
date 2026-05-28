@@ -593,6 +593,8 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta\s*{[\s\S]*display:\s*grid/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.source-fetch-meta[\s\S]*display:\s*none/);
+  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.page-pad h2\s*{[\s\S]*font-size:\s*1\.25rem/);
+  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.fb-panel\s*{[\s\S]*padding:\s*0\.95rem/);
   assert.doesNotMatch(css, /\.builder-row form,\s*\n\s*\.builder-row button\s*{\s*\n\s*width:\s*100%/);
   assert.match(builderLibraryList, /builder-library-card-main/);
   assert.match(builderLibraryList, /source-fetch-meta/);

@@ -39,9 +39,7 @@ export default async function SettingsPage() {
         <section className="fb-panel">
           <h2 className="fb-section-heading">Feed preferences</h2>
           <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
-            Digest generation uses these settings when the skill asks for
-            context. Recommendations use the profile text and reading log to
-            rank unread summarized posts.
+            Control digest cadence, post age, and recommendation ranking.
           </p>
           <Suspense fallback={<FeedPreferenceSkeleton />}>
             <FeedPreferenceSlot userId={userId} />

@@ -4765,10 +4765,38 @@ body {
     line-height: 1.12;
   }
 
+  .page-pad h2 {
+    font-size: 1.25rem;
+    line-height: 1.18;
+  }
+
+  .page-pad h3 {
+    font-size: 1.05rem;
+    line-height: 1.22;
+  }
+
   .fb-desc,
   .page-description {
     font-size: 0.875rem;
     line-height: 1.45;
+  }
+
+  .fb-panel {
+    border-radius: 8px;
+    padding: 0.95rem;
+  }
+
+  .fb-field {
+    margin-top: 0.75rem;
+  }
+
+  .fb-field label {
+    font-size: 0.65625rem;
+    letter-spacing: 0.06em;
+  }
+
+  .fb-pill {
+    padding: 0.4375rem 0.75rem;
   }
 
   .stats-panel {
