@@ -36,6 +36,7 @@ type BuilderWithCount = {
   fetchUrl: string | null;
   avatarUrl: string | null;
   canonicalKey: string;
+  createdAt: Date;
   _count: { feedItems: number };
 };
 
@@ -527,7 +528,15 @@ function LibrarySection({
 }
 
 function builderSort(a: BuilderWithCount, b: BuilderWithCount) {
-  return a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name);
+  // Newest-added first. Avoids kind-clustering surprises (e.g. all
+  // YouTube rows being yanked into a contiguous block after the
+  // auto-refresh re-sorts) and keeps a row the user just added at
+  // the top until they reload from scratch. Fall back to name when
+  // createdAt is identical (seed rows often share a timestamp).
+  const ta = a.createdAt.getTime();
+  const tb = b.createdAt.getTime();
+  if (ta !== tb) return tb - ta;
+  return a.name.localeCompare(b.name);
 }
 
 async function latestPostCreationTimes(builderIds: string[]): Promise<LatestPostCreatedAtByBuilderId> {

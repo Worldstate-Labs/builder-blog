@@ -48,10 +48,14 @@ export function BuilderLibraryList({
   );
   const allBuilders = useMemo(
     () => [
-      ...builders,
+      // Newly-added rows render at the top until the server refetches
+      // and starts including them in `builders` (already
+      // newest-first). Filter dedupes by id so a refetch doesn't
+      // briefly double-render the row.
       ...addedBuilders.filter(
         (addedBuilder) => !builders.some((builder) => builder.id === addedBuilder.id),
       ),
+      ...builders,
     ],
     [addedBuilders, builders],
   );
@@ -75,7 +79,7 @@ export function BuilderLibraryList({
       const builder = (event as CustomEvent<BuilderLibraryListItem>).detail;
       if (!builder?.id) return;
       if (allBuilders.some((item) => item.id === builder.id)) return;
-      setAddedBuilders((current) => [...current, builder]);
+      setAddedBuilders((current) => [builder, ...current]);
       setSubscribedByBuilderId((current) => ({ ...current, [builder.id]: builder.subscribed }));
       dispatchStatsChange({
         fetchedDelta: builder.feedItemCount,
