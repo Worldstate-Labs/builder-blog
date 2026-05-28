@@ -25,7 +25,32 @@ export async function GET(request: Request, { params }: Params) {
     );
   }
 
+  // Runtime hint for cron-setup prompts: which agent will execute the
+  // scheduled job. We pin it server-side instead of letting the
+  // discovery chain pick whatever's first on PATH, so the unattended
+  // permission flags can be exact for that runtime. Whitelisted to a
+  // closed set so no shell metacharacters slip into the rendered md.
+  const runtimeRaw = url.searchParams.get("runtime");
+  const runtimeAllowed = new Set(["claude", "codex", "gemini", "openclaw"]);
+  const runtime = runtimeRaw && runtimeAllowed.has(runtimeRaw) ? runtimeRaw : null;
+  const runtimeLabels: Record<string, string> = {
+    claude: "Claude Code",
+    codex: "Codex",
+    gemini: "Gemini CLI",
+    openclaw: "OpenClaw",
+  };
+
   let content = await readFile(join(process.cwd(), path), "utf8");
+
+  // Substitute runtime placeholders. Markdown that doesn't use them
+  // is unaffected; cron-setup prompts use `{{AGENT_RUNTIME}}` and
+  // `{{AGENT_RUNTIME_LABEL}}` to print the choice and write it to
+  // ~/.builder-blog/runtime so the runner picks the right unattended
+  // invocation. When no runtime is pinned we keep the placeholders as
+  // empty strings — the runner falls back to its discovery chain.
+  content = content
+    .replaceAll("{{AGENT_RUNTIME}}", runtime ?? "")
+    .replaceAll("{{AGENT_RUNTIME_LABEL}}", runtime ? runtimeLabels[runtime] : "your local agent");
 
   if (ecParam) {
     // Validate the exchange code: must exist, not expired, not yet used.

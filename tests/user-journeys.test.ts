@@ -367,15 +367,24 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestOncePrompt, /context\.digest\.digestIntro/);
   assert.match(digestOncePrompt, /context\.digest\.translate/);
   assert.match(libraryCronSetupPrompt, /builder-agent-runner\.sh library-cron/);
-  assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_AGENT_COMMAND/);
-  assert.match(libraryCronSetupPrompt, /First attempt the exact crontab install/);
+  // Setup now pins the chosen runtime in $AGENT_DIR/runtime so the
+  // runner picks the matching unattended-mode invocation at cron-fire
+  // time. {{AGENT_RUNTIME}} is substituted server-side from the
+  // ?runtime= URL param the website picker sets.
+  assert.match(libraryCronSetupPrompt, /\{\{AGENT_RUNTIME\}\}/);
+  assert.match(libraryCronSetupPrompt, /\{\{AGENT_RUNTIME_LABEL\}\}/);
+  assert.match(libraryCronSetupPrompt, /Pin the scheduled runtime/);
+  assert.match(libraryCronSetupPrompt, /\/runtime"/);
+  assert.match(libraryCronSetupPrompt, /5\. Install the crontab/);
   assert.match(libraryCronSetupPrompt, /crontab/);
   assert.match(libraryCronSetupPrompt, /Do not use `--force`/);
   assert.match(libraryCronSetupPrompt, /fetchTasks/);
   assert.match(libraryCronSetupPrompt, /How to execute each `fetchTask`/);
   assert.match(libraryCronSetupPrompt, /Read `task\.contentStatus`/);
   assertOrderedText(libraryCronSetupPrompt, [
-    "5. Run one immediate smoke check",
+    "3. Pin the scheduled runtime",
+    "5. Install the crontab",
+    "7. Run one immediate smoke check",
     "If the smoke check JSON contains a non-empty `fetchTasks` array",
     "How to execute each `fetchTask`",
     "Only if crontab is unavailable or blocked",
@@ -406,6 +415,18 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /claude -p/);
   assert.match(runner, /openclaw agent --local --message/);
   assert.match(runner, /gemini -p/);
+  // Pinned-runtime dispatch for *-cron jobs: each runtime has an
+  // _unattended variant with the matching allowlist / auto-approve
+  // flags so cron never trips a permission prompt.
+  assert.match(runner, /run_with_claude_unattended/);
+  assert.match(runner, /run_with_codex_unattended/);
+  assert.match(runner, /run_with_gemini_unattended/);
+  assert.match(runner, /run_with_openclaw_unattended/);
+  assert.match(runner, /--permission-mode acceptEdits/);
+  assert.match(runner, /--full-auto/);
+  assert.match(runner, /--yolo/);
+  assert.match(runner, /--auto-approve/);
+  assert.match(runner, /\$AGENT_DIR\/runtime/);
   assert.match(runner, /No local agent runtime found/);
   assert.match(runner, /fetchTasks/);
   assert.match(runner, /process\.exit\(78\)/);

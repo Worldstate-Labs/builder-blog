@@ -9,6 +9,18 @@ import {
 
 type SkillPromptContext = "library" | "digest";
 type CopyTarget = "once" | "cron";
+type AgentRuntime = "claude" | "codex" | "gemini" | "openclaw";
+
+const RUNTIME_OPTIONS: { id: AgentRuntime; label: string; hint: string }[] = [
+  {
+    id: "claude",
+    label: "Claude Code",
+    hint: "Unattended: --permission-mode acceptEdits + Bash/Edit/Read/Write/Grep/Glob/WebFetch allowlist",
+  },
+  { id: "codex", label: "Codex", hint: "Unattended: --full-auto (approval=never, workspace-write sandbox)" },
+  { id: "gemini", label: "Gemini CLI", hint: "Unattended: --yolo (skip all confirmation prompts)" },
+  { id: "openclaw", label: "OpenClaw", hint: "Unattended: --auto-approve" },
+];
 
 const PROMPT_CONFIG = {
   library: {
@@ -49,6 +61,16 @@ export function SkillPromptActions({
   const [copiedTarget, setCopiedTarget] = useState<CopyTarget | null>(null);
   const [status, setStatus] = useState<{ kind: "error" | "info"; text: string } | null>(null);
   const [pickerTarget, setPickerTarget] = useState<CopyTarget | null>(null);
+  // Cron-only: which agent runtime the scheduled job should use. Set
+  // by the runtime picker before we hit the token picker. The chosen
+  // runtime is appended to the prompt URL so the server-rendered
+  // markdown bakes in the right unattended invocation.
+  const [runtimePickerOpen, setRuntimePickerOpen] = useState(false);
+  // The runtime selection survives between the runtime-picker dialog
+  // and the token-picker dialog. A ref (not state) so the token
+  // picker's onConfirm callback can read the latest value without an
+  // extra render cycle.
+  const pendingCronRuntimeRef = useRef<AgentRuntime | null>(null);
 
   async function fetchExchangeCode(tokenId: string): Promise<string | null> {
     try {
@@ -63,21 +85,31 @@ export function SkillPromptActions({
     }
   }
 
-  function buildCommand(target: CopyTarget, exchangeCode: string): string {
+  function buildCommand(
+    target: CopyTarget,
+    exchangeCode: string,
+    runtime: AgentRuntime | null,
+  ): string {
     const origin = window.location.origin;
     const job = target === "once" ? config.onceJob : config.cronJob;
-    const promptUrl = `${origin}/api/skill/jobs/${job}/skill.md?ec=${encodeURIComponent(exchangeCode)}`;
+    const params = new URLSearchParams({ ec: exchangeCode });
+    if (runtime) params.set("runtime", runtime);
+    const promptUrl = `${origin}/api/skill/jobs/${job}/skill.md?${params.toString()}`;
     return `Read ${promptUrl} and follow the instructions.`;
   }
 
-  async function copyForToken(target: CopyTarget, tokenId: string) {
+  async function copyForToken(
+    target: CopyTarget,
+    tokenId: string,
+    runtime: AgentRuntime | null,
+  ) {
     setStatus(null);
     const code = await fetchExchangeCode(tokenId);
     if (!code) {
       setStatus({ kind: "error", text: "Could not generate exchange code" });
       return;
     }
-    const command = buildCommand(target, code);
+    const command = buildCommand(target, code, runtime);
     try {
       await navigator.clipboard.writeText(command);
       setCopiedTarget(target);
@@ -92,6 +124,25 @@ export function SkillPromptActions({
     }
   }
 
+  // After the cron runtime is picked, continue to the token picker
+  // (or skip it when there's only one active token). The chosen
+  // runtime is held in a closure-captured ref so it survives the
+  // dialog round trip.
+  async function continueCronCopyAfterRuntime(runtime: AgentRuntime) {
+    if (activeTokens.length === 0) {
+      setStatus({ kind: "info", text: "Create a token in Settings first" });
+      return;
+    }
+    if (activeTokens.length === 1) {
+      await copyForToken("cron", activeTokens[0].id, runtime);
+      return;
+    }
+    // Open the token picker with the runtime stashed on a data field;
+    // we read it back when the user confirms a token.
+    pendingCronRuntimeRef.current = runtime;
+    setPickerTarget("cron");
+  }
+
   async function copyCommand(target: CopyTarget) {
     setStatus(null);
 
@@ -99,8 +150,15 @@ export function SkillPromptActions({
       setStatus({ kind: "info", text: "Create a token in Settings first" });
       return;
     }
+    // Cron flow: pick the agent runtime FIRST so the rendered prompt
+    // can bake in the right unattended-mode invocation. Once flow is
+    // interactive (user watching), no runtime gate needed.
+    if (target === "cron") {
+      setRuntimePickerOpen(true);
+      return;
+    }
     if (activeTokens.length === 1) {
-      await copyForToken(target, activeTokens[0].id);
+      await copyForToken(target, activeTokens[0].id, null);
       return;
     }
     setPickerTarget(target);
@@ -158,6 +216,15 @@ export function SkillPromptActions({
         ) : null}
       </span>
 
+      <RuntimePickerDialog
+        open={runtimePickerOpen}
+        onCancel={() => setRuntimePickerOpen(false)}
+        onConfirm={async (runtime) => {
+          setRuntimePickerOpen(false);
+          await continueCronCopyAfterRuntime(runtime);
+        }}
+      />
+
       <TokenPickerDialog
         open={pickerTarget !== null}
         target={pickerTarget}
@@ -165,11 +232,16 @@ export function SkillPromptActions({
         actionLabel={
           pickerTarget === "once" ? config.onceLabel : pickerTarget === "cron" ? config.cronLabel : ""
         }
-        onCancel={() => setPickerTarget(null)}
+        onCancel={() => {
+          setPickerTarget(null);
+          pendingCronRuntimeRef.current = null;
+        }}
         onConfirm={async (tokenId) => {
           const target = pickerTarget;
+          const runtime = target === "cron" ? pendingCronRuntimeRef.current : null;
           setPickerTarget(null);
-          if (target) await copyForToken(target, tokenId);
+          pendingCronRuntimeRef.current = null;
+          if (target) await copyForToken(target, tokenId, runtime);
         }}
       />
     </div>
@@ -338,6 +410,133 @@ function TokenPickerDialog({
           >
             <Copy aria-hidden="true" />
             {submitting ? "Copying…" : "Copy prompt"}
+          </button>
+        </footer>
+      </form>
+    </dialog>
+  );
+}
+
+function RuntimePickerDialog({
+  open,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  onCancel: () => void;
+  onConfirm: (runtime: AgentRuntime) => void | Promise<void>;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [picked, setPicked] = useState<AgentRuntime>(RUNTIME_OPTIONS[0].id);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const d = dialogRef.current;
+    if (!d) return;
+    if (open && !d.open) {
+      try {
+        d.showModal();
+      } catch {
+        // showModal throws if already open; ignore.
+      }
+    } else if (!open && d.open) {
+      d.close();
+    }
+  }, [open]);
+
+  useEffect(() => {
+    const d = dialogRef.current;
+    if (!d) return;
+    const onClose = () => {
+      setSubmitting(false);
+      onCancel();
+    };
+    d.addEventListener("close", onClose);
+    return () => d.removeEventListener("close", onClose);
+  }, [onCancel]);
+
+  async function confirm() {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await onConfirm(picked);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="runtime-picker-title"
+      className="token-picker-dialog"
+      onClick={(e) => {
+        if (e.target === dialogRef.current) onCancel();
+      }}
+    >
+      <form
+        method="dialog"
+        className="grid"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void confirm();
+        }}
+      >
+        <header className="token-picker-header">
+          <h2 id="runtime-picker-title" className="token-picker-title">
+            Which agent runs the scheduled job?
+          </h2>
+          <p className="token-picker-sub">
+            Cron is unattended — the runner pins this runtime and invokes it in
+            its allowlist / auto-approve mode so no permission prompts fire at
+            cron-fire time.
+          </p>
+        </header>
+
+        <fieldset className="token-picker-list">
+          <legend className="sr-only">Agent runtimes</legend>
+          {RUNTIME_OPTIONS.map((option) => {
+            const active = option.id === picked;
+            return (
+              <label
+                key={option.id}
+                className={`token-picker-row${active ? " is-active" : ""}`}
+              >
+                <input
+                  type="radio"
+                  name="agent-runtime"
+                  value={option.id}
+                  checked={active}
+                  onChange={() => setPicked(option.id)}
+                  className="token-picker-radio"
+                />
+                <span className="token-picker-row-body">
+                  <span className="token-picker-row-name">{option.label}</span>
+                  <span className="token-picker-row-meta">
+                    <span>{option.hint}</span>
+                  </span>
+                </span>
+              </label>
+            );
+          })}
+        </fieldset>
+
+        <footer className="token-picker-footer">
+          <button
+            type="button"
+            className="fb-btn light compact"
+            onClick={onCancel}
+            disabled={submitting}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="fb-btn dark compact"
+            disabled={submitting}
+          >
+            <CalendarClock aria-hidden="true" />
+            {submitting ? "…" : "Continue"}
           </button>
         </footer>
       </form>

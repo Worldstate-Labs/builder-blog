@@ -52,6 +52,9 @@ run_with_override() {
   BUILDER_BLOG_JOB="$JOB_NAME" BUILDER_BLOG_PROMPT_FILE="$PROMPT_FILE" sh -c "$BUILDER_BLOG_AGENT_COMMAND"
 }
 
+# Interactive (user is watching) — each runtime runs with its default
+# permission gates. Used when no runtime is pinned and the user is at
+# a TTY (library-once / digest-once from the command line).
 run_with_codex() {
   codex exec --skip-git-repo-check -C "$AGENT_DIR" - < "$PROMPT_FILE"
 }
@@ -66,6 +69,33 @@ run_with_openclaw() {
 
 run_with_gemini() {
   gemini -p "$(cat "$PROMPT_FILE")"
+}
+
+# Unattended (cron / launchd) — each runtime gets the permission
+# allowlist or auto-approve mode appropriate for it. Mirror these in
+# the user-facing cron setup prompt (library-cron-setup.md) so users
+# know what each runtime is allowed to do.
+run_with_codex_unattended() {
+  # Codex `--full-auto` = approval_policy=never + workspace-write sandbox.
+  codex exec --skip-git-repo-check --full-auto -C "$AGENT_DIR" - < "$PROMPT_FILE"
+}
+
+run_with_claude_unattended() {
+  # acceptEdits auto-approves edits; allowedTools whitelists the tool
+  # surface the library-once skill actually uses (Bash for node CLI +
+  # curl, WebFetch for content extraction, file IO under tmp/).
+  claude -p "$(cat "$PROMPT_FILE")" \
+    --add-dir "$AGENT_DIR" \
+    --permission-mode acceptEdits \
+    --allowedTools "Bash,Edit,Read,Write,Grep,Glob,WebFetch"
+}
+
+run_with_openclaw_unattended() {
+  openclaw agent --local --auto-approve --message "$(cat "$PROMPT_FILE")"
+}
+
+run_with_gemini_unattended() {
+  gemini --yolo -p "$(cat "$PROMPT_FILE")"
 }
 
 run_shell_library_fallback() {
@@ -89,21 +119,62 @@ if (fetchTasks > 0) {
 NODE
 }
 
+# When the user ran cron-setup, the pinned runtime lives in
+# $AGENT_DIR/runtime as a single word: claude | codex | gemini | openclaw.
+# We honor it for *-cron jobs so unattended runs use the matching
+# allowlist / auto-approve flags. Interactive jobs (library-once,
+# digest-once) keep the discovery chain — the user is at a TTY and
+# will see any permission prompts anyway.
+PINNED_RUNTIME=""
+if [ -r "$AGENT_DIR/runtime" ]; then
+  PINNED_RUNTIME="$(tr -d ' \t\r\n' < "$AGENT_DIR/runtime")"
+fi
+IS_CRON_JOB=0
+case "$JOB_NAME" in
+  *-cron) IS_CRON_JOB=1 ;;
+esac
+
 if [ -n "${BUILDER_BLOG_AGENT_COMMAND:-}" ]; then
   run_with_override
-elif command -v codex >/dev/null 2>&1; then
-  run_with_codex
-elif command -v claude >/dev/null 2>&1; then
-  run_with_claude
-elif command -v openclaw >/dev/null 2>&1; then
-  run_with_openclaw
-elif command -v gemini >/dev/null 2>&1; then
-  run_with_gemini
-elif [ "$JOB_NAME" = "library-cron" ] || [ "$JOB_NAME" = "library-once" ]; then
-  run_shell_library_fallback
-else
-  echo "No local agent runtime found for FollowBrief digest generation." >&2
-  echo "Install/configure Codex, Claude Code, OpenClaw, Gemini CLI, or set BUILDER_BLOG_AGENT_COMMAND." >&2
-  echo "Digest cron requires an agent because it must summarize returned items with AI before sync." >&2
-  exit 78
+elif [ "$IS_CRON_JOB" = 1 ] && [ -n "$PINNED_RUNTIME" ]; then
+  case "$PINNED_RUNTIME" in
+    claude)
+      command -v claude >/dev/null 2>&1 || { echo "Pinned runtime 'claude' not on PATH for cron." >&2; exit 78; }
+      run_with_claude_unattended
+      ;;
+    codex)
+      command -v codex >/dev/null 2>&1 || { echo "Pinned runtime 'codex' not on PATH for cron." >&2; exit 78; }
+      run_with_codex_unattended
+      ;;
+    gemini)
+      command -v gemini >/dev/null 2>&1 || { echo "Pinned runtime 'gemini' not on PATH for cron." >&2; exit 78; }
+      run_with_gemini_unattended
+      ;;
+    openclaw)
+      command -v openclaw >/dev/null 2>&1 || { echo "Pinned runtime 'openclaw' not on PATH for cron." >&2; exit 78; }
+      run_with_openclaw_unattended
+      ;;
+    *)
+      echo "Unknown pinned runtime '$PINNED_RUNTIME' in $AGENT_DIR/runtime — falling back to discovery chain." >&2
+      PINNED_RUNTIME=""
+      ;;
+  esac
+fi
+if [ -z "${BUILDER_BLOG_AGENT_COMMAND:-}" ] && { [ "$IS_CRON_JOB" = 0 ] || [ -z "$PINNED_RUNTIME" ]; }; then
+  if command -v codex >/dev/null 2>&1; then
+    run_with_codex
+  elif command -v claude >/dev/null 2>&1; then
+    run_with_claude
+  elif command -v openclaw >/dev/null 2>&1; then
+    run_with_openclaw
+  elif command -v gemini >/dev/null 2>&1; then
+    run_with_gemini
+  elif [ "$JOB_NAME" = "library-cron" ] || [ "$JOB_NAME" = "library-once" ]; then
+    run_shell_library_fallback
+  else
+    echo "No local agent runtime found for FollowBrief digest generation." >&2
+    echo "Install/configure Codex, Claude Code, OpenClaw, Gemini CLI, or set BUILDER_BLOG_AGENT_COMMAND." >&2
+    echo "Digest cron requires an agent because it must summarize returned items with AI before sync." >&2
+    exit 78
+  fi
 fi

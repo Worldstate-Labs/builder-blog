@@ -26,6 +26,10 @@ Fetch task boundary:
 - do not read prompt files, do not fetch `context.prompts`, and do not use any
   separate digest prompt at runtime.
 
+Scheduled runtime: **{{AGENT_RUNTIME_LABEL}}** ({{AGENT_RUNTIME}}). The picker
+on the website pinned this. Every step below assumes that pinned runtime; do
+not fall back to a different one.
+
 1. Install or refresh the skill:
 
 ```bash
@@ -38,21 +42,43 @@ Fetch task boundary:
 mkdir -p "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/logs"
 ```
 
-3. First attempt the exact crontab install below. It removes any previous
-FollowBrief library job for this account and installs one idempotent job that
-runs every 6 hours. Replace `<EMAIL>` with the value of `BUILDER_BLOG_ACCOUNT`:
+3. Pin the scheduled runtime so the runner uses the picked agent's unattended
+mode instead of discovering whatever's first on PATH. The runner reads this
+file at cron-fire time; if you skip this step the cron job will fall back to
+the discovery chain (which prompts for permissions every run).
+
+```bash
+printf '{{AGENT_RUNTIME}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime"
+```
+
+4. Verify the runtime CLI is on PATH for cron. Cron uses a minimal PATH; the
+runner injects `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`, so the
+relevant binary must live in one of those. Check:
+
+```bash
+PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" command -v {{AGENT_RUNTIME}}
+```
+
+If the path printed is empty, install or symlink the CLI into
+`/usr/local/bin` before continuing — cron will not find it otherwise.
+
+5. Install the crontab. It removes any previous FollowBrief library job for this
+account and installs one idempotent job that runs every 6 hours. Replace
+`<EMAIL>` with the value of `BUILDER_BLOG_ACCOUNT`:
 
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"; ( crontab -l 2>/dev/null | grep -v "# FollowBrief library cron · $ACCT" | grep -v "builder-agent-runner.sh library-cron.*BUILDER_BLOG_ACCOUNT=\"$ACCT\"" ; printf "# FollowBrief library cron · %s\n0 */6 * * * BUILDER_BLOG_ACCOUNT=\"%s\" %s/.builder-blog/builder-agent-runner.sh library-cron >> %s/.builder-blog/logs/library-cron.log 2>&1\n" "$ACCT" "$ACCT" "$HOME" "$HOME" ) | crontab -
 ```
 
-4. Verify the installed schedule:
+6. Verify the installed schedule:
 
 ```bash
 crontab -l | grep 'builder-agent-runner.sh library-cron'
 ```
 
-5. Run one immediate smoke check:
+7. Run one immediate smoke check. The runner will read
+`~/.builder-blog/runtime` and invoke {{AGENT_RUNTIME_LABEL}} in its unattended
+mode — no permission prompts.
 
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" $HOME/.builder-blog/builder-agent-runner.sh library-cron
@@ -103,16 +129,17 @@ through launchd or the local agent scheduler:
 0 */6 * * * BUILDER_BLOG_ACCOUNT="<EMAIL>" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1
 ```
 
-The runner selection order is:
+Permission allowlist that {{AGENT_RUNTIME_LABEL}} runs under at cron-fire time
+(applied by `builder-agent-runner.sh` based on the pinned runtime):
 
-1. `BUILDER_BLOG_AGENT_COMMAND`, if the user configured one
-2. Codex CLI
-3. Claude Code CLI
-4. OpenClaw CLI
-5. Gemini CLI
-6. Non-AI library fetch fallback for simple supported sources only; if it
-   returns `fetchTasks`, it exits and requires a local agent
-   runtime instead of silently leaving work incomplete
+- **claude** — `--permission-mode acceptEdits --allowedTools "Bash,Edit,Read,Write,Grep,Glob,WebFetch"` so no per-tool approval prompt fires under cron.
+- **codex** — `--full-auto` (Codex's documented unattended mode; combines `approval_policy=never` and the workspace-write sandbox).
+- **gemini** — `--yolo` (skip all confirmation prompts).
+- **openclaw** — `--auto-approve` (skip the interactive approval gate).
+
+If you want to widen or narrow what {{AGENT_RUNTIME_LABEL}} is allowed to do
+at cron-fire time, edit the `run_with_{{AGENT_RUNTIME}}_unattended` function
+in `~/.builder-blog/builder-agent-runner.sh` and re-run the smoke check.
 
 Do not duplicate an existing FollowBrief private library job for this account.
 Other accounts' cron markers must remain untouched.
