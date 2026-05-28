@@ -3701,6 +3701,7 @@ a {
   border-bottom: 1px solid var(--line);
   border-top: 1px solid var(--line);
   display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
   padding: 0.75rem 0;
 }
@@ -4696,9 +4697,17 @@ body {
     min-width: 0;
   }
 
-  /* Compress fb-skill on mobile: hide secondary buttons, keep icon + text. */
+  .fb-skill {
+    align-items: flex-start;
+  }
+
+  .fb-skill-text {
+    flex: 1 1 calc(100% - 2rem);
+  }
+
   .fb-skill .fb-btn {
-    display: none;
+    flex: 1 1 9rem;
+    justify-content: center;
   }
 
   /* Simplified source row meta — hide hostname, fetch label, Open link */
