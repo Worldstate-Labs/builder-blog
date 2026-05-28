@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Plus, X } from "lucide-react";
 import { AddBuilderForm } from "@/components/AddBuilderForm";
-import { builderLibraryBuilderAdded } from "@/lib/builder-library-events";
+import {
+  builderLibraryBuilderAdded,
+  type BuilderLibraryEventItem,
+} from "@/lib/builder-library-events";
 
 type SourceOption = {
   id: string;
@@ -27,7 +30,12 @@ export function PrivateLibraryPanel({
   const detailsRef = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
-    function onBuilderAdded() {
+    function onBuilderAdded(event: Event) {
+      // Keep the panel open when the add returned a soft warning —
+      // unmounting AddBuilderForm would also discard the warm banner
+      // before the user ever sees it. The user closes manually.
+      const detail = (event as CustomEvent<BuilderLibraryEventItem>).detail;
+      if (detail?.addWarning) return;
       setAddOpen(false);
     }
     window.addEventListener(builderLibraryBuilderAdded, onBuilderAdded);
