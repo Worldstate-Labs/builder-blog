@@ -17,6 +17,16 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID ?? "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+      // Google enforces verified email on every OAuth identity, so the
+      // takeover risk that this flag introduces for other providers
+      // does not apply here: only the actual owner of the gmail can
+      // present a Google sub bound to it. We re-enable linking on this
+      // provider specifically so a user whose Account row is missing
+      // (deleted, or never created in early-flag-on periods) can sign
+      // in again instead of being silently bounced with
+      // OAuthAccountNotLinked. GitHub keeps it off — its email field
+      // is user-claimed and would be unsafe.
+      allowDangerousEmailAccountLinking: true,
     }),
   ],
   callbacks: {

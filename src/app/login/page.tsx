@@ -7,11 +7,12 @@ import { getCurrentSession } from "@/lib/auth";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackUrl?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; error?: string }>;
 }) {
   const params = await searchParams;
   const session = await getCurrentSession();
   if (session) redirect("/dashboard");
+  const errorMessage = describeAuthError(params.error);
 
   return (
     <main className="fb-dark-frame">
@@ -51,6 +52,14 @@ export default async function LoginPage({
               <ShieldCheck className="h-[18px] w-[18px]" aria-hidden="true" />
             </span>
           </div>
+          {errorMessage ? (
+            <div
+              className="mt-5 rounded-lg border border-white/15 bg-white/5 px-3.5 py-3 text-[12.5px] leading-relaxed text-white/80"
+              role="alert"
+            >
+              {errorMessage}
+            </div>
+          ) : null}
           <div className="mt-5">
             <AuthButtons callbackUrl={safeCallbackUrl(params.callbackUrl)} />
           </div>
@@ -61,6 +70,28 @@ export default async function LoginPage({
       </div>
     </main>
   );
+}
+
+/**
+ * Translate NextAuth's `?error=<code>` redirect param into something a
+ * reader can act on. Without this, OAuth failures silently bounce the
+ * user back to a blank login page and they assume the click did
+ * nothing. Keys mirror the codes NextAuth documents in its OAuth
+ * callback flow; unknown codes fall through to a generic message.
+ */
+function describeAuthError(code: string | undefined): string | null {
+  if (!code) return null;
+  const messages: Record<string, string> = {
+    OAuthAccountNotLinked:
+      "This email is already linked to a different sign-in method. Use the original method, or contact support to merge accounts.",
+    OAuthSignin: "Could not start the sign-in flow. Try again.",
+    OAuthCallback: "The provider rejected the sign-in callback. Try again.",
+    OAuthCreateAccount: "Could not create your account. Try again.",
+    Callback: "Sign-in callback failed. Try again.",
+    AccessDenied: "Sign-in was denied.",
+    SessionRequired: "Please sign in to continue.",
+  };
+  return messages[code] ?? "Sign-in failed. Try again.";
 }
 
 /**
