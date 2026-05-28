@@ -263,15 +263,29 @@ function resolveWebsite(displayName: string, sourceType: string, value: string):
 // ──────────────────────────────────────────────────────────────────
 
 function handleFromXValue(value: string) {
-  if (!/^https?:\/\//i.test(value)) return normalizeHandle(value);
-  try {
-    const url = new URL(value);
-    if (!/(^|\.)x\.com$|(^|\.)twitter\.com$/i.test(url.hostname)) return null;
-    const [handle] = url.pathname.split("/").filter(Boolean);
-    return handle ? normalizeHandle(handle) : null;
-  } catch {
-    return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  // Catch host-shaped inputs WITHOUT a protocol (e.g. "x.com/karpathy"
+  // or "www.twitter.com/sama") — without this, the old fast-path
+  // treated the whole string as a bare handle and stored
+  // "www.x.com/karpathy" as the handle.
+  const looksLikeHost = /^(?:https?:\/\/)?(?:www\.)?(?:x|twitter)\.com\//i.test(trimmed);
+  if (looksLikeHost) {
+    const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    try {
+      const url = new URL(withProtocol);
+      if (!/(^|\.)x\.com$|(^|\.)twitter\.com$/i.test(url.hostname)) return null;
+      const [handle] = url.pathname.split("/").filter(Boolean);
+      return handle ? normalizeHandle(handle) : null;
+    } catch {
+      return null;
+    }
   }
+  // Bare handle (e.g. "@karpathy" or "karpathy"). Reject anything
+  // containing "/" or "." so a partial URL doesn't sneak through.
+  const bare = trimmed.replace(/^@/, "");
+  if (!/^[A-Za-z0-9_]{1,15}$/.test(bare)) return null;
+  return normalizeHandle(bare);
 }
 
 function normalizedUrl(value: string) {
@@ -284,17 +298,30 @@ function normalizedUrl(value: string) {
 }
 
 function youtubeUrlFromValue(value: string) {
-  if (!/^https?:\/\//i.test(value)) {
-    const handle = value.trim().replace(/^@/, "");
-    return handle ? `https://www.youtube.com/@${handle}` : null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  // Catch host-shaped inputs WITHOUT a protocol (e.g.
+  // "www.youtube.com/@RedpointAI") — without this, the old fast-path
+  // treated the whole string as a bare handle and produced
+  // "https://www.youtube.com/@www.youtube.com/@RedpointAI".
+  const looksLikeHost = /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(
+    trimmed,
+  );
+  if (looksLikeHost) {
+    const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    try {
+      const url = new URL(withProtocol);
+      if (!/(^|\.)youtube\.com$|(^|\.)youtu\.be$/i.test(url.hostname)) return null;
+      return url.toString();
+    } catch {
+      return null;
+    }
   }
-  try {
-    const url = new URL(value);
-    if (!/(^|\.)youtube\.com$|(^|\.)youtu\.be$/i.test(url.hostname)) return null;
-    return url.toString();
-  } catch {
-    return null;
-  }
+  // Bare @handle (e.g. "@RedpointAI" or "RedpointAI"). Reject
+  // anything with "/" or "." so a partial URL can't slip through.
+  const handle = trimmed.replace(/^@/, "");
+  if (!/^[A-Za-z0-9_.-]+$/.test(handle)) return null;
+  return `https://www.youtube.com/@${handle}`;
 }
 
 function nameFromYouTubeUrl(value: string) {
