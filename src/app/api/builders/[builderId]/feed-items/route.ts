@@ -29,26 +29,44 @@ export async function GET(_request: Request, { params }: Params) {
     return NextResponse.json({ items: [] });
   }
 
-  const items = await fetchDedupedFeedForEntities({
-    userId: session.user.id,
-    entityIds: [builder.entityId],
-    limit: feedItemLimit,
-  });
+  try {
+    const items = await fetchDedupedFeedForEntities({
+      userId: session.user.id,
+      entityIds: [builder.entityId],
+      limit: feedItemLimit,
+    });
 
-  return NextResponse.json({
-    items: items.map((item) => ({
-      id: item.id,
-      kind: item.kind,
-      externalId: item.externalId,
-      title: item.title,
-      body: item.body,
-      summary: item.summary,
-      url: item.url,
-      publishedAt: item.publishedAt,
-      createdAt: item.createdAt,
-      sourceName: item.sourceName,
-      fetchTool: item.fetchTool,
-      alternateChannelCount: item.alternateChannelCount,
-    })),
-  });
+    return NextResponse.json({
+      items: items.map((item) => ({
+        id: item.id,
+        kind: item.kind,
+        externalId: item.externalId,
+        title: item.title,
+        body: item.body,
+        summary: item.summary,
+        url: item.url,
+        publishedAt: item.publishedAt,
+        createdAt: item.createdAt,
+        sourceName: item.sourceName,
+        fetchTool: item.fetchTool,
+        alternateChannelCount: item.alternateChannelCount,
+      })),
+    });
+  } catch (error) {
+    // Without this, every prisma/dedup hiccup surfaces as a bare 500
+    // and the client only sees "Could not load summarized posts" with
+    // no way to triage. Logging the builder + entity pair makes the
+    // failure findable in server logs without leaking internals to
+    // the response.
+    console.error("feed-items query failed", {
+      builderId,
+      entityId: builder.entityId,
+      userId: session.user.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json(
+      { error: "Failed to load summarized posts", code: "fetch_failed" },
+      { status: 500 },
+    );
+  }
 }
