@@ -162,17 +162,9 @@ function AiDigestFeed({
 
   return (
     <section className="grid gap-5">
-      <details className="fb-panel dashed mt-4">
-        <summary className="cursor-pointer text-sm font-bold text-[var(--ink)]">
-          Sync with agent
-        </summary>
-        <p className="mt-2 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-          Copy these only when setting up a local agent or running a manual sync.
-        </p>
-        <div className="mt-3">
+      <div className="mt-4">
         <SkillPromptActions context="digest" tokens={activeTokens} />
-        </div>
-      </details>
+      </div>
       {todayDigest ? (
         <DigestDetails digest={serializeDigestSummary(todayDigest)} mode="today" />
       ) : (

@@ -314,8 +314,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(dashboardPage, /<SkillPromptActions context="digest"/);
   assert.match(skillPromptActions, /Source sync/);
   assert.match(skillPromptActions, /Digest sync/);
-  assert.match(skillPromptActions, /Copy once command/);
-  assert.match(skillPromptActions, /Copy scheduled command/);
+  assert.match(skillPromptActions, /Copy once prompt/);
+  assert.match(skillPromptActions, /Copy cron prompt/);
   assert.match(skillPromptActions, /Read \$\{promptUrl\} and follow the instructions/);
   assert.match(skillPromptActions, /\/api\/skill\/jobs\/\$\{job\}\/skill\.md/);
   assert.doesNotMatch(skillPromptActions, /\/api\/skill\/bootstrap/);
