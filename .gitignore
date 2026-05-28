@@ -48,3 +48,6 @@ next-env.d.ts
 
 /src/generated/prisma
 .env*.local
+
+# oh-my-claudecode runtime state (jobs.db, mission state, replay logs).
+.omc/
