@@ -37,7 +37,6 @@ test("settings live in the clickable user avatar menu", () => {
   const appShell = source("src/components/AppShell.tsx");
   const appNav = source("src/components/AppNav.tsx");
   const settingsPage = source("src/app/(workspace)/settings/page.tsx");
-  const settingsLoading = source("src/app/(workspace)/settings/loading.tsx");
   const userMenu = source("src/components/UserMenu.tsx");
   const globals = source("src/app/globals.css");
 
@@ -51,8 +50,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /href="\/settings" onClick=\{closeMenu\}[\s\S]*Settings/);
   assert.match(userMenu, /href="\/api\/auth\/signout"[\s\S]*onClick=\{closeMenu\}[\s\S]*Sign out/);
   assert.match(settingsPage, />\s*Settings\s*</);
-  assert.doesNotMatch(settingsLoading, /RouteLoading/);
-  assert.match(settingsLoading, /return null/);
+  assert.equal(existsSync(join(root, "src/app/(workspace)/settings/loading.tsx")), false);
   assert.match(settingsPage, /<Suspense fallback=\{<ActiveTokenChipFallback \/>/);
   assert.match(settingsPage, /<Suspense fallback=\{<FeedPreferenceSkeleton \/>/);
   assert.match(settingsPage, /<Suspense fallback=\{<AgentTokenPanelSkeleton \/>/);

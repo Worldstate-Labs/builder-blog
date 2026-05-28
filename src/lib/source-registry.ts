@@ -1,10 +1,5 @@
-import { BuilderKind, FeedItemKind } from "@prisma/client";
+import { BuilderKind, FeedItemKind, type SourceTypeConfig } from "@prisma/client";
 import sourcesConfig from "../../config/sources.json";
-import {
-  getAllSourceConfigs,
-  getSourceConfig,
-  getSourceConfigMap,
-} from "./source-config-store";
 
 type BuilderSourceInput = {
   kind: BuilderKind;
@@ -124,6 +119,7 @@ export function feedItemKindLabel(kind: FeedItemKind) {
 // the DB so callers don't silently fall back to stale defaults — the
 // seeder should have created the row on first boot.
 export async function getMergedSourceDefinitions(): Promise<MergedSourceDefinition[]> {
+  const { getAllSourceConfigs } = await import("./source-config-store");
   const configs = await getAllSourceConfigs();
   return SOURCE_DEFINITIONS.map((def) => {
     const config = configs.find((c) => c.sourceId === def.id);
@@ -139,6 +135,7 @@ export async function getMergedSourceDefinitions(): Promise<MergedSourceDefiniti
 export async function getMergedSourceDefinitionForType(
   sourceType: string | null | undefined,
 ): Promise<MergedSourceDefinition | null> {
+  const { getSourceConfig } = await import("./source-config-store");
   const def = sourceDefinitionForType(sourceType);
   if (!def) return null;
   const config = await getSourceConfig(def.id);
@@ -158,6 +155,7 @@ export async function getMergedSourceDefinitionForType(
 export async function getMergedSourceDefinitionForBuilder(
   builder: BuilderSourceInput,
 ): Promise<MergedSourceDefinition | null> {
+  const { getSourceConfigMap } = await import("./source-config-store");
   const def = sourceDefinitionForBuilder(builder);
   if (!def) return null;
   const map = await getSourceConfigMap();
@@ -168,7 +166,7 @@ export async function getMergedSourceDefinitionForBuilder(
 
 function mergeDefinition(
   def: SourceDefinition,
-  config: Awaited<ReturnType<typeof getSourceConfig>> & object,
+  config: SourceTypeConfig,
 ): MergedSourceDefinition {
   return {
     ...def,
