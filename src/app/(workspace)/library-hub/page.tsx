@@ -66,7 +66,10 @@ async function loadLibraryHubPageData() {
             },
           },
           orderBy: { createdAt: "asc" },
-          take: 3,
+          // Hard cap to keep payload sane on community libraries that
+          // could grow indefinitely. Tuned well above the largest
+          // hand-curated library we expect; bump if needed.
+          take: 200,
         },
         _count: { select: { items: true } },
       },

@@ -299,27 +299,53 @@ function HubCard({
       </div>
 
       {sourcePreview.length > 0 ? (
-        <div className="flex items-center gap-3">
-          <div className="flex">
-            {sourcePreview.map((item, index) => (
-              <SourceAvatar
+        <details className="fb-hub-sources">
+          <summary className="flex cursor-pointer items-center gap-3 list-none">
+            <div className="flex">
+              {sourcePreview.map((item, index) => (
+                <SourceAvatar
+                  key={item.builderId}
+                  name={item.builder.name}
+                  index={index}
+                  style={index === 0 ? undefined : { marginLeft: -8 }}
+                />
+              ))}
+            </div>
+            <div className="min-w-0 flex-1 text-[12px] leading-relaxed text-[var(--muted-strong)]">
+              {sourceNames.join(", ")}
+              {sourceKinds.length > 0 ? (
+                <span className="text-[var(--muted)]"> · {sourceKinds.join(", ")}</span>
+              ) : null}
+              {remainingSources > 0 ? (
+                <span className="text-[var(--muted)]"> · +{remainingSources} more</span>
+              ) : null}
+            </div>
+            <span
+              aria-hidden="true"
+              className="fb-hub-sources-caret text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]"
+            >
+              Show
+            </span>
+          </summary>
+          <ul className="mt-3 grid gap-1.5 border-t border-[var(--line)] pt-3">
+            {library.items.map((item) => (
+              <li
                 key={item.builderId}
-                name={item.builder.name}
-                index={index}
-                style={index === 0 ? undefined : { marginLeft: -8 }}
-              />
+                className="flex items-center gap-2 text-[12.5px] leading-snug"
+              >
+                <span className="fb-kind-pill" style={{ minWidth: "3.5rem", justifyContent: "center" }}>
+                  {kindLabel(item.builder.kind)}
+                </span>
+                <span className="truncate text-[var(--ink)]">{item.builder.name}</span>
+                {item.builder.handle ? (
+                  <span className="mono truncate text-[11.5px] text-[var(--muted)]">
+                    {item.builder.handle.startsWith("@") ? item.builder.handle : `@${item.builder.handle}`}
+                  </span>
+                ) : null}
+              </li>
             ))}
-          </div>
-          <div className="min-w-0 text-[12px] leading-relaxed text-[var(--muted-strong)]">
-            {sourceNames.join(", ")}
-            {sourceKinds.length > 0 ? (
-              <span className="text-[var(--muted)]"> · {sourceKinds.join(", ")}</span>
-            ) : null}
-            {remainingSources > 0 ? (
-              <span className="text-[var(--muted)]"> · +{remainingSources} more</span>
-            ) : null}
-          </div>
-        </div>
+          </ul>
+        </details>
       ) : null}
 
       <div className="flex flex-wrap items-center gap-4 border-t border-[var(--line)] pt-3 text-[11.5px] font-semibold text-[var(--muted)]">

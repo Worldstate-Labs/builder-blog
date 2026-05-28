@@ -4219,6 +4219,36 @@ a {
   width: 1.875rem;
 }
 
+/* Hub card source-list expand/collapse. Suppresses the native triangle
+ * so the avatar+name row reads as a normal label, with a tiny
+ * "Show"/"Hide" affordance on the right that toggles by [open]. */
+.fb-hub-sources > summary {
+  outline: none;
+}
+.fb-hub-sources > summary::-webkit-details-marker {
+  display: none;
+}
+.fb-hub-sources[open] > summary .fb-hub-sources-caret::before {
+  content: "Hide";
+}
+.fb-hub-sources:not([open]) > summary .fb-hub-sources-caret::before {
+  content: "Show";
+}
+.fb-hub-sources > summary .fb-hub-sources-caret {
+  color: var(--accent);
+}
+/* `::before` provides the toggle text, so hide the static fallback text
+ * the JSX renders so we don't get "ShowShow"/"ShowHide" combinations. */
+.fb-hub-sources > summary .fb-hub-sources-caret {
+  font-size: 0;
+}
+.fb-hub-sources > summary .fb-hub-sources-caret::before {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* Dark login/device frame */
 .fb-dark-frame {
   background: var(--charcoal);
