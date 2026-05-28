@@ -26,6 +26,12 @@ export type SourceTypeConfigShape = {
   defaultFetchLimit: number;
   contentQuality: ContentQualityShape;
   summaryPromptBody: string;
+  /// Optional per-source fetch prompt. Surfaced to the agent in
+  /// fallback fetch tasks so it can decide HOW to acquire content
+  /// (e.g. for podcast: try show notes first, else download audio +
+  /// Whisper transcribe). Null means "no agent instructions; CLI
+  /// deterministic behavior is authoritative".
+  fetchPromptBody: string | null;
   summaryStyle: SourceSummaryStyle;
   summaryLanguage: string;
   summaryLengthHint: string | null;
@@ -65,6 +71,11 @@ function summaryPromptBodyForSourceId(sourceId: string): string {
   return DEFAULT_DIGEST_PROMPTS.summarizeBlogs;
 }
 
+function fetchPromptBodyForSourceId(sourceId: string): string | null {
+  if (sourceId === "podcast") return DEFAULT_DIGEST_PROMPTS.fetchPodcastAudio;
+  return null;
+}
+
 export const DEFAULT_SOURCE_CONFIGS: Record<string, SourceTypeConfigShape> =
   Object.fromEntries(
     sourcesConfig.sources.map((entry) => {
@@ -78,6 +89,7 @@ export const DEFAULT_SOURCE_CONFIGS: Record<string, SourceTypeConfigShape> =
         defaultFetchLimit: 3,
         contentQuality: entry.contentQuality as ContentQualityShape,
         summaryPromptBody: summaryPromptBodyForSourceId(entry.id),
+        fetchPromptBody: fetchPromptBodyForSourceId(entry.id),
         summaryStyle: summaryStyleForSourceId(entry.id),
         summaryLanguage: "zh",
         summaryLengthHint: null,
@@ -111,6 +123,7 @@ export async function ensureSourceConfigsSeeded(client: PrismaClient): Promise<v
       defaultFetchLimit: config.defaultFetchLimit,
       contentQuality: config.contentQuality as object,
       summaryPromptBody: config.summaryPromptBody,
+      fetchPromptBody: config.fetchPromptBody,
       summaryStyle: config.summaryStyle,
       summaryLanguage: config.summaryLanguage,
       summaryLengthHint: config.summaryLengthHint,

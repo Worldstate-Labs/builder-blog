@@ -372,6 +372,12 @@ model SourceTypeConfig {
   defaultFetchLimit  Int      @default(3)
   contentQuality     Json
   summaryPromptBody  String
+  /// Optional per-source fetch prompt. When non-empty, this prompt is
+  /// surfaced to the agent in fallback fetch tasks so it can choose how
+  /// to acquire content (e.g. for podcast: try show notes first, else
+  /// download audio + Whisper transcribe). When empty, the CLI's
+  /// deterministic fetch behavior is the only thing that runs.
+  fetchPromptBody    String?
   summaryStyle       String
   summaryLanguage    String   @default("zh")
   summaryLengthHint  String?

@@ -10,6 +10,7 @@ export type AdminSourceTypeConfig = {
   defaultFetchLimit: number;
   contentQuality: unknown;
   summaryPromptBody: string;
+  fetchPromptBody: string | null;
   summaryStyle: string;
   summaryLanguage: string;
   summaryLengthHint: string | null;
@@ -35,6 +36,7 @@ type Draft = {
   defaultFetchLimit: string;
   summaryLengthHint: string;
   summaryPromptBody: string;
+  fetchPromptBody: string;
   contentQuality: ContentQuality;
 };
 
@@ -77,6 +79,7 @@ function toDraft(config: AdminSourceTypeConfig): Draft {
     defaultFetchLimit: String(config.defaultFetchLimit),
     summaryLengthHint: config.summaryLengthHint ?? "",
     summaryPromptBody: config.summaryPromptBody,
+    fetchPromptBody: config.fetchPromptBody ?? "",
     contentQuality: toContentQuality(config.contentQuality),
   };
 }
@@ -179,6 +182,7 @@ function SourceTypeCard({
       summaryLengthHint:
         draft.summaryLengthHint.trim() === "" ? null : draft.summaryLengthHint.trim(),
       summaryPromptBody: draft.summaryPromptBody,
+      fetchPromptBody: draft.fetchPromptBody.trim() === "" ? null : draft.fetchPromptBody,
       contentQuality,
     };
 
@@ -276,6 +280,19 @@ function SourceTypeCard({
             mono
             value={draft.summaryPromptBody}
             onChange={(v) => update("summaryPromptBody", v)}
+          />
+        </Section>
+
+        <Section
+          title="Fetch prompt"
+          description="Optional. Surfaced to the agent in fallback fetch tasks so it can decide HOW to acquire content (e.g. for podcasts: try show notes first, else download audio + Whisper transcribe). Leave empty to rely on the CLI's deterministic fetch behavior."
+        >
+          <FieldTextarea
+            label="Prompt body · optional"
+            rows={12}
+            mono
+            value={draft.fetchPromptBody}
+            onChange={(v) => update("fetchPromptBody", v)}
           />
         </Section>
 

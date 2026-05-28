@@ -907,11 +907,20 @@ async function fetchPersonalBlogBuilder(builder, { cutoff, limit, agentModel, fe
   return items;
 }
 
-async function fetchPersonalPodcastBuilder(builder, { cutoff, limit, agentModel, fetchedItemKeys = new Set() }) {
-  const feedUrl = builder.fetchUrl || builder.sourceUrl;
-  if (!feedUrl) return [];
+async function fetchPersonalPodcastBuilder(
+  builder,
+  { cutoff, limit, agentModel, fetchedItemKeys = new Set(), fetcher = fetch },
+) {
+  const rawFeedUrl = builder.fetchUrl || builder.sourceUrl;
+  if (!rawFeedUrl) return { items: [], agentTasks: [] };
 
-  const response = await fetch(feedUrl, {
+  // Apple Podcasts pages aren't RSS — they're directory listings. Resolve
+  // them to the publisher's actual RSS feedUrl via iTunes lookup so the
+  // rest of this fetcher stays a single RSS code path regardless of which
+  // platform URL the user pasted.
+  const feedUrl = await resolveApplePodcastFeedUrl(rawFeedUrl, fetcher);
+
+  const response = await fetcher(feedUrl, {
     headers: { "User-Agent": "FollowBriefSkill/1.0 (personal podcast fetcher)" },
   });
   if (!response.ok) {
@@ -919,21 +928,105 @@ async function fetchPersonalPodcastBuilder(builder, { cutoff, limit, agentModel,
   }
 
   const xml = await response.text();
-  return parsePodcastFeedItems(xml, feedUrl)
+  const parsed = parsePodcastFeedItems(xml, feedUrl)
     .filter((item) => isAfterCutoff(item.publishedAt, cutoff))
     .filter((item) => !fetchedItemKeys.has(personalItemKey(builder.id, "PODCAST_EPISODE", item.externalId)))
-    .map((item) => ({
-      ...item,
-      sourceName: builder.name,
-      fetchTool: skillFetchTool("podcast RSS feed", agentModel),
-      rawJson: {
-        source: "personal-podcast",
-        builderId: builder.id,
-        builderName: builder.name,
-        feedUrl,
-      },
-    }))
     .slice(0, limit);
+
+  const items = [];
+  const agentTasks = [];
+  for (const item of parsed) {
+    // Partition by show-notes substance. Episodes with substantial body
+    // copy ship as regular items. Episodes whose RSS body is a one-line
+    // tagline, ad copy, or empty go to the agent as a fallback fetch
+    // task carrying the audio enclosure URL — the agent decides whether
+    // to ASR the audio per the per-source fetchPrompt.
+    if (podcastShowNotesAreSubstantial(item.body)) {
+      items.push({
+        kind: item.kind,
+        externalId: item.externalId,
+        title: item.title,
+        body: item.body,
+        url: item.url,
+        publishedAt: item.publishedAt,
+        sourceName: builder.name,
+        fetchTool: skillFetchTool("podcast RSS feed", agentModel),
+        rawJson: {
+          source: "personal-podcast",
+          builderId: builder.id,
+          builderName: builder.name,
+          feedUrl,
+        },
+      });
+    } else {
+      agentTasks.push(podcastAgentTaskForEpisode(builder, item, feedUrl));
+    }
+  }
+
+  return { items, agentTasks };
+}
+
+const APPLE_PODCAST_URL_RE = /podcasts\.apple\.com\/[^?\s]*\/id(\d+)/i;
+
+async function resolveApplePodcastFeedUrl(url, fetcher = fetch) {
+  const match = String(url || "").match(APPLE_PODCAST_URL_RE);
+  if (!match) return url;
+  const collectionId = match[1];
+  try {
+    const lookup = await fetcher(`https://itunes.apple.com/lookup?id=${collectionId}`, {
+      headers: { "User-Agent": "FollowBriefSkill/1.0 (apple podcast resolver)" },
+    });
+    if (!lookup.ok) return url;
+    const json = await lookup.json();
+    const feedUrl = json?.results?.[0]?.feedUrl;
+    return typeof feedUrl === "string" && feedUrl ? feedUrl : url;
+  } catch {
+    // Fall back to the original URL — the downstream RSS fetch will
+    // surface a clearer error than "Apple lookup failed".
+    return url;
+  }
+}
+
+function podcastShowNotesAreSubstantial(body) {
+  const text = String(body || "").trim();
+  if (!text) return false;
+  const words = text.match(/[A-Za-z0-9一-鿿]+/g) ?? [];
+  // Mirrors the podcast contentQuality bar in config/sources.json
+  // (minChars: 200, minWords: 35). The agent's fetch prompt may apply a
+  // stricter "substantial" threshold for the audio-fallback decision.
+  return text.length >= 200 && words.length >= 35;
+}
+
+function podcastAgentTaskForEpisode(builder, item, feedUrl) {
+  const taskItem = {
+    kind: "PODCAST_EPISODE",
+    externalId: item.externalId,
+    title: item.title || "Untitled podcast episode",
+    url: item.url,
+    publishedAt: item.publishedAt,
+    sourceName: builder.name,
+    description: item.body || "",
+    rawJson: {
+      source: "personal-podcast-fallback",
+      builderId: builder.id,
+      builderName: builder.name,
+      feedUrl,
+      enclosureUrl: item.enclosureUrl ?? null,
+      enclosureType: item.enclosureType ?? null,
+      enclosureLength: item.enclosureLength ?? null,
+      itunesDuration: item.itunesDuration ?? null,
+      thinShowNotes: item.body || "",
+    },
+  };
+  const task = {
+    type: "podcast_audio_transcription",
+    builder: builder.name,
+    builderId: builder.id,
+    sourceType: "podcast",
+    item: taskItem,
+    minimumContentQuality: genericMinimumContentQuality(),
+  };
+  return { ...task, id: agentTaskId(task) };
 }
 
 export function parsePodcastFeedItems(xml, feedUrl) {
@@ -945,9 +1038,13 @@ export function parsePodcastFeedItems(xml, feedUrl) {
     .map((match) => {
       const block = match[0];
       const hrefMatch = block.match(/<link[^>]*href=["']([^"']+)["'][^>]*>/i);
-      const enclosureMatch = block.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]*>/i);
+      const enclosureMatch = block.match(/<enclosure\b([^>]*)>/i);
+      const enclosureAttrs = enclosureMatch?.[1] ?? "";
+      const enclosureUrl = enclosureAttrs.match(/\burl=["']([^"']+)["']/i)?.[1] ?? null;
+      const enclosureType = enclosureAttrs.match(/\btype=["']([^"']+)["']/i)?.[1] ?? null;
+      const enclosureLength = enclosureAttrs.match(/\blength=["']([^"']+)["']/i)?.[1] ?? null;
       const guid = tagText(block, "guid") || tagText(block, "id");
-      const url = absoluteUrl(hrefMatch?.[1] || tagText(block, "link") || enclosureMatch?.[1], feedUrl);
+      const url = absoluteUrl(hrefMatch?.[1] || tagText(block, "link") || enclosureUrl, feedUrl);
       const externalId = guid || url || tagText(block, "title");
       const body = stripHtml(
         tagText(block, "content:encoded") ||
@@ -966,9 +1063,16 @@ export function parsePodcastFeedItems(xml, feedUrl) {
             tagText(block, "published") ||
             tagText(block, "updated"),
         ),
+        enclosureUrl,
+        enclosureType,
+        enclosureLength,
+        itunesDuration: tagText(block, "itunes:duration") || null,
       };
     })
-    .filter((item) => item.externalId && item.url && item.body.trim());
+    // Keep episodes with at least an externalId + URL even if the body is
+    // empty — the agent fallback path handles thin/missing show notes by
+    // transcribing the audio enclosure.
+    .filter((item) => item.externalId && (item.url || item.enclosureUrl));
 }
 
 async function fetchPersonalPdfBuilder(builder) {

@@ -89,6 +89,7 @@ async function SourceTypeConfigSection() {
             defaultFetchLimit: c.defaultFetchLimit,
             contentQuality: c.contentQuality,
             summaryPromptBody: c.summaryPromptBody,
+            fetchPromptBody: c.fetchPromptBody,
             summaryStyle: c.summaryStyle,
             summaryLanguage: c.summaryLanguage,
             summaryLengthHint: c.summaryLengthHint,

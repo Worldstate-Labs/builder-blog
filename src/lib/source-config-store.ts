@@ -95,6 +95,7 @@ export type SourceConfigPatch = Partial<{
   defaultFetchLimit: number;
   contentQuality: ContentQualityShape;
   summaryPromptBody: string;
+  fetchPromptBody: string | null;
   summaryStyle: SourceSummaryStyle;
   summaryLanguage: string;
   summaryLengthHint: string | null;

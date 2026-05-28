@@ -26,7 +26,15 @@ export function SourceBadge({
   sourceType?: string | null;
   showLabel?: boolean;
 }) {
-  const source = builder ? sourceDisplayForBuilder(builder) : sourceDisplayForType(sourceType);
+  const base = builder ? sourceDisplayForBuilder(builder) : sourceDisplayForType(sourceType);
+  // For podcast builders, derive a platform-specific label from the URL
+  // so users see "Apple Podcasts" / "Spotify" / "小宇宙" instead of the
+  // generic "Podcast RSS". Underlying sourceType is still `podcast` —
+  // these platforms are all just directories over the same RSS feed.
+  const source =
+    builder && base.id === "podcast"
+      ? { id: base.id, label: podcastPlatformLabel(builder) }
+      : base;
   const Icon = sourceIcons[source.id] ?? Globe;
 
   return (
@@ -68,6 +76,18 @@ function sourceDisplayForType(sourceType: string | null | undefined) {
     id,
     label: labels[id] ?? titleCase(id),
   };
+}
+
+function podcastPlatformLabel(builder: SourceBadgeBuilder) {
+  const haystack = `${builder.sourceUrl ?? ""} ${builder.fetchUrl ?? ""}`.toLowerCase();
+  if (haystack.includes("podcasts.apple.com")) return "Apple Podcasts";
+  if (haystack.includes("open.spotify.com")) return "Spotify";
+  if (haystack.includes("xiaoyuzhoufm.com")) return "小宇宙";
+  if (haystack.includes("ximalaya.com")) return "喜马拉雅";
+  if (haystack.includes("music.amazon")) return "Amazon Music";
+  if (haystack.includes("overcast.fm")) return "Overcast";
+  if (haystack.includes("pca.st") || haystack.includes("pocketcasts.com")) return "Pocket Casts";
+  return "Podcast RSS";
 }
 
 function normalizeSourceType(sourceType: string | null | undefined) {

@@ -38,6 +38,7 @@ export type MergedSourceDefinition = SourceDefinition & {
   defaultFetchLimit: number;
   contentQuality: unknown;
   summaryPromptBody: string;
+  fetchPromptBody: string | null;
   summaryStyle: string;
   summaryLanguage: string;
   summaryLengthHint: string | null;
@@ -177,6 +178,7 @@ function mergeDefinition(
     defaultFetchLimit: config.defaultFetchLimit,
     contentQuality: config.contentQuality,
     summaryPromptBody: config.summaryPromptBody,
+    fetchPromptBody: config.fetchPromptBody,
     summaryStyle: config.summaryStyle,
     summaryLanguage: config.summaryLanguage,
     summaryLengthHint: config.summaryLengthHint,

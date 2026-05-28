@@ -70,6 +70,9 @@ export async function GET(request: Request) {
       language: string;
       lengthHint: string | null;
     };
+    fetchPrompt: {
+      body: string | null;
+    };
   }> = {};
   for (const def of SOURCE_DEFINITIONS) {
     const cfg = sourceConfigs.find((c) => c.sourceId === def.id);
@@ -89,6 +92,9 @@ export async function GET(request: Request) {
         style: cfg.summaryStyle,
         language: cfg.summaryLanguage,
         lengthHint: cfg.summaryLengthHint,
+      },
+      fetchPrompt: {
+        body: cfg.fetchPromptBody,
       },
     };
   }
