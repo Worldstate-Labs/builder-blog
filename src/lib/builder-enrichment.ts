@@ -353,19 +353,28 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
     const check = validatePublicHttpUrl(discoveredFeed);
     return check.ok ? discoveredFeed : undefined;
   })();
+  const warnings: string[] = [];
   if (!name && !avatarUrl) {
-    return {
-      ok: true,
-      warning:
-        "The page is reachable but has no OpenGraph metadata or <title>; the agent will retry at sync time.",
-      enrichment,
-      ...(discoveredFetchUrl ? { discoveredFetchUrl } : {}),
-    };
+    warnings.push(
+      "The page is reachable but has no OpenGraph metadata or <title>; the agent will retry at sync time.",
+    );
   }
+  // Soft warn (not hard reject) when a blog has no RSS/Atom feed:
+  // fetchPersonalBlogBuilder has an HTML index-scraping fallback that
+  // works for many feed-less blogs, but a feed is far more reliable.
+  // The CLI fallback also doesn't help SPA-rendered index pages, so
+  // surface a hint to switch to Website for single-page sites.
+  if (input.sourceType === "blog" && !discoveredFetchUrl) {
+    warnings.push(
+      "This blog doesn't expose an RSS/Atom feed. The agent will scrape the index page for article links at sync time — works for most blogs but is less reliable than a feed. If this is actually a single-page site, switch to Website instead.",
+    );
+  }
+  const warning = warnings.length > 0 ? warnings.join(" ") : undefined;
   return {
     ok: true,
     enrichment,
     ...(discoveredFetchUrl ? { discoveredFetchUrl } : {}),
+    ...(warning ? { warning } : {}),
   };
 }
 
