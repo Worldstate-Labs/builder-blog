@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { Plus } from "lucide-react";
 import { LibraryHubImportForm, type HubLibrary } from "@/components/LibraryHubImportForm";
+import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
 import { adminCommunityLibraryName, recordLibraryHubViews } from "@/lib/library-hub";
@@ -80,7 +81,7 @@ async function loadLibraryHubPageData() {
 
   const importedLibraryIds = new Set(imports.map((item) => item.hubEntryId));
   const hubLibraries: HubLibrary[] = libraries.map((library) => {
-    const isCommunityLibrary = library.isFeatured;
+    const isCommunityLibrary = library.isFeatured || isAdminEmail(library.owner?.email);
     return {
       id: library.id,
       isCommunity: isCommunityLibrary,
@@ -90,7 +91,7 @@ async function loadLibraryHubPageData() {
       importCount: library.importCount,
       viewCount: library.viewCount,
       itemCount: library._count.items,
-      ownerLabel: ownerLabel(library.owner, library.isFeatured),
+      ownerLabel: ownerLabel(library.owner, isCommunityLibrary),
       items: library.items,
       imported: importedLibraryIds.has(library.id),
       owned: library.ownerUserId === session.user.id,

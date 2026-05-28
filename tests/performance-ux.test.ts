@@ -496,6 +496,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /LibraryHubImportForm/);
   assert.match(hubPage, /adminCommunityLibraryName/);
   assert.match(hubPage, /library\.isFeatured/);
+  assert.match(hubPage, /isAdminEmail\(library\.owner\?\.email\)/);
+  assert.match(hubPage, /ownerLabel\(library\.owner, isCommunityLibrary\)/);
   assert.match(hubPage, /recordLibraryHubViews\(libraries\.map/);
   assert.match(hubImportForm, /"use client"/);
   assert.match(hubImportForm, /fetch\("\/api\/library-hub\/imports"/);
