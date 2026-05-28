@@ -317,6 +317,9 @@ async function BuilderSections({
       }
     >
       <SkillPromptActions context="library" tokens={data.activeTokens} />
+      <Suspense fallback={<FetchLogFallback />}>
+        <FetchLogPanel initialRuns={data.fetchRuns} />
+      </Suspense>
       <BuilderLibraryList
         acceptAddedBuilders
         builders={data.privateBuilders.map((builder) =>
@@ -331,9 +334,7 @@ async function BuilderSections({
         emptyBody="Add a source here, or sync richer summarized data from your agent later."
         emptyTitle="No personal sources yet"
       />
-      <Suspense fallback={<FetchLogFallback />}>
-        <FetchLogPanel initialRuns={data.fetchRuns} />
-      </Suspense>
+
     </PrivateLibraryPanel>
   );
 
