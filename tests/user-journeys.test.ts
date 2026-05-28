@@ -103,12 +103,14 @@ test("builder libraryKey scopes per owner; canonicalKey is shared across users",
   );
 });
 
-test("manual builder input derives canonical fields from one handle or URL", () => {
-  assert.deepEqual(resolvePersonalBuilderInput({
+test("manual builder input derives canonical fields from one handle or URL", async () => {
+  const xResult = await resolvePersonalBuilderInput({
     displayName: "DeepMind",
     sourceType: "x",
     sourceValue: "https://x.com/GoogleDeepMind",
-  }), {
+  });
+  assert.ok(xResult.ok);
+  assert.deepEqual(xResult.value, {
     kind: BuilderKind.X,
     sourceType: "x",
     name: "DeepMind",
@@ -117,11 +119,13 @@ test("manual builder input derives canonical fields from one handle or URL", () 
     fetchUrl: null,
   });
 
-  assert.deepEqual(resolvePersonalBuilderInput({
+  const ytResult = await resolvePersonalBuilderInput({
     displayName: "",
     sourceType: "youtube",
     sourceValue: "@googledeepmind",
-  }), {
+  });
+  assert.ok(ytResult.ok);
+  assert.deepEqual(ytResult.value, {
     kind: BuilderKind.PODCAST,
     sourceType: "youtube",
     name: "googledeepmind",
@@ -130,11 +134,13 @@ test("manual builder input derives canonical fields from one handle or URL", () 
     fetchUrl: null,
   });
 
-  assert.deepEqual(resolvePersonalBuilderInput({
+  const podcastResult = await resolvePersonalBuilderInput({
     displayName: "",
     sourceType: "podcast",
     sourceValue: "feeds.example.com/show.xml",
-  }), {
+  });
+  assert.ok(podcastResult.ok);
+  assert.deepEqual(podcastResult.value, {
     kind: BuilderKind.PODCAST,
     sourceType: "podcast",
     name: "feeds.example.com",
@@ -300,7 +306,10 @@ test("web app serves the agent skill and setup command", () => {
   const digestCronPrompt = readFileSync("skills/builder-blog-digest/jobs/digest-cron.md", "utf8");
 
   assert.doesNotMatch(settingsPanel, /Copy setup command/);
-  assert.match(settingsPanel, /\/api\/skill\/bootstrap/);
+  // The bootstrap curl block was intentionally removed from
+  // AgentTokenPanel — users now copy the setup prompt from
+  // SkillPromptActions, which references the bootstrap route directly.
+  assert.doesNotMatch(settingsPanel, /\/api\/skill\/bootstrap/);
   assert.match(buildersPage, /<SkillPromptActions context="library"/);
   assert.match(dashboardPage, /<SkillPromptActions context="digest"/);
   assert.match(skillPromptActions, /Build library/);
@@ -318,9 +327,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryOncePrompt, /rawJson\.agentExecutionProof/);
   assert.match(libraryOncePrompt, /Complete exactly the task IDs\s+returned by the CLI/);
   assert.match(libraryOncePrompt, /fetchTasks/);
-  assert.match(libraryOncePrompt, /single-post summary/);
+  assert.match(libraryOncePrompt, /single-post\s+`?summary`?/);
   assert.match(libraryOncePrompt, /summaryInstructions\.prompt/);
-  assert.match(libraryOncePrompt, /do not read prompt files/);
+  assert.match(libraryOncePrompt, /[Dd]o not\s+read prompt files/);
   assert.match(libraryOncePrompt, /do not fetch `context\.prompts`/);
   assert.match(libraryOncePrompt, /Fetch task boundary/);
   assert.match(libraryOncePrompt, /How to execute each `fetchTask`/);
@@ -348,11 +357,15 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestOncePrompt, /Use agent judgment only for the digest-writing step/);
   assert.match(digestOncePrompt, /execution\s+contract, not as user-facing documentation/);
   assert.doesNotMatch(digestOncePrompt, /Environment contract/);
-  assert.match(digestOncePrompt, /summarize-tweets\.md/);
-  assert.match(digestOncePrompt, /summarize-podcast\.md/);
-  assert.match(digestOncePrompt, /summarize-blogs\.md/);
-  assert.match(digestOncePrompt, /digest-intro\.md/);
-  assert.match(digestOncePrompt, /translate\.md/);
+  // Per-source prompt files were replaced with DB-backed prompts surfaced
+  // through context.sources.<id>.summaryPrompt.body and context.digest.*.
+  // The digest prompt now references those context paths instead of disk
+  // markdown files.
+  assert.match(digestOncePrompt, /context\.sources\.x\.summaryPrompt\.body/);
+  assert.match(digestOncePrompt, /context\.sources\.podcast\.summaryPrompt\.body/);
+  assert.match(digestOncePrompt, /context\.sources\.blog\.summaryPrompt\.body/);
+  assert.match(digestOncePrompt, /context\.digest\.digestIntro/);
+  assert.match(digestOncePrompt, /context\.digest\.translate/);
   assert.match(libraryCronSetupPrompt, /builder-agent-runner\.sh library-cron/);
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_AGENT_COMMAND/);
   assert.match(libraryCronSetupPrompt, /First attempt the exact crontab install/);
@@ -367,7 +380,7 @@ test("web app serves the agent skill and setup command", () => {
     "How to execute each `fetchTask`",
     "Only if crontab is unavailable or blocked",
   ]);
-  assert.match(libraryCronSetupPrompt, /single-post summary/);
+  assert.match(libraryCronSetupPrompt, /single-post\s+`?summary`?/);
   assert.match(libraryCronSetupPrompt, /task\.summaryInstructions\.prompt/);
   assert.match(digestCronSetupPrompt, /builder-agent-runner\.sh digest-cron/);
   assert.match(digestCronSetupPrompt, /First attempt the exact crontab install/);
@@ -437,7 +450,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronPrompt, /validate-agent-sync/);
   assert.match(libraryCronPrompt, /rawJson\.fetchTaskId/);
   assert.match(libraryCronPrompt, /fetchTasks/);
-  assert.match(libraryCronPrompt, /single-post summary/);
+  assert.match(libraryCronPrompt, /single-post\s+`?summary`?/);
   assert.match(libraryCronPrompt, /summaryInstructions\.prompt/);
   assert.match(libraryCronPrompt, /Fetch task boundary/);
   assert.match(libraryCronPrompt, /How to execute each `fetchTask`/);
@@ -578,13 +591,22 @@ test("recommendation feed user path scores unread fetched posts from profile, su
 test("digest generation user path exposes source-specific prompt instructions", () => {
   assert.deepEqual(
     Object.keys(DEFAULT_DIGEST_PROMPTS).sort(),
-    ["digest", "digestIntro", "summarizeBlogs", "summarizePodcast", "summarizeTweets", "translate"].sort(),
+    [
+      "digest",
+      "digestIntro",
+      "fetchPodcastAudio",
+      "summarizeBlogs",
+      "summarizePodcast",
+      "summarizeTweets",
+      "translate",
+    ].sort(),
   );
   assert.match(DEFAULT_DIGEST_PROMPTS.summarizePodcast, /podcast transcript/i);
   assert.match(DEFAULT_DIGEST_PROMPTS.summarizeTweets, /X\/Twitter Summary Prompt/);
   assert.match(DEFAULT_DIGEST_PROMPTS.summarizeBlogs, /Blog Post Summary Prompt/);
   assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /Digest Intro Prompt/);
   assert.match(DEFAULT_DIGEST_PROMPTS.translate, /simplified Chinese/i);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchPodcastAudio, /Podcast Fetch Prompt/);
 });
 
 test("search user path exact mode matches literal text across builders, feeds, and digests", () => {
@@ -1667,9 +1689,13 @@ test("web display boundaries keep raw fetched content in the builders tab", () =
   assert.equal(builderLibraryList.includes("BuilderFeedItems"), true);
   assert.equal(buildersPage.includes("Technical details"), false);
   assert.equal(builderLibraryList.includes("SourceBadge"), true);
-  assert.equal(builderFeedItems.includes("Fetched posts"), true);
+  // UI copy migrated from "fetched" to "summarized" for compliance — see
+  // CLAUDE.md design context. Internal type/identifier names (FetchedPostCard,
+  // fetched-post-* classes) still use "fetched" because the storage layer
+  // is still the FeedItem fetch path.
+  assert.equal(builderFeedItems.includes("Summarized posts"), true);
   assert.equal(builderFeedItems.includes("FetchedPostCard"), true);
-  assert.equal(readFileSync("src/components/FetchedPostCard.tsx", "utf8").includes("Raw fetched content"), true);
+  assert.equal(readFileSync("src/components/FetchedPostCard.tsx", "utf8").includes("Raw content"), true);
 });
 
 test("source registry centralizes current source categories", () => {

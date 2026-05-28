@@ -20,7 +20,7 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.match(feed, /FetchedPostCard/);
   assert.match(feed, /onInteract/);
   assert.match(fetchedPostCard, /data-read/);
-  assert.match(fetchedPostCard, /Raw fetched content/);
+  assert.match(fetchedPostCard, /Raw content/);
   assert.doesNotMatch(feed, /Mark read/);
   assert.match(detailPage, /Back to feed/);
   assert.match(detailPage, /feedRead\.create/);

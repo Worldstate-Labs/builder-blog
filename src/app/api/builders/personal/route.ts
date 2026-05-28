@@ -29,15 +29,25 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
-  const input = resolvePersonalBuilderInput({
+  const resolution = await resolvePersonalBuilderInput({
     displayName: parsed.data.name ?? "",
     sourceType: parsed.data.sourceType ?? "x",
     sourceValue: parsed.data.sourceValue,
   });
 
-  if (!input) {
-    return NextResponse.json({ error: "Missing builder source" }, { status: 400 });
+  if (!resolution.ok) {
+    return NextResponse.json(
+      {
+        error: resolution.reason,
+        // suggestId lets the client offer a one-click "switch source type
+        // and retry" affordance when the value clearly belongs to a
+        // different type.
+        ...(resolution.suggestId ? { suggestId: resolution.suggestId } : {}),
+      },
+      { status: 400 },
+    );
   }
+  const input = resolution.value;
 
   // SSRF: reject sourceUrl / fetchUrl pointing at private networks, link-local,
   // loopback, or cloud metadata before we ever fetch them server-side.
@@ -87,5 +97,12 @@ export async function POST(request: Request) {
   };
 
   revalidateTag(`user:${session.user.id}:recs`, "default");
-  return NextResponse.json({ builder: item });
+  return NextResponse.json({
+    builder: item,
+    // Non-blocking diagnostic from the resolver (e.g. Apple lookup
+    // timed out; agent will retry at sync time). Client surfaces this
+    // as an info banner so the user knows the row is partially
+    // hydrated but still functional.
+    ...(resolution.warning ? { warning: resolution.warning } : {}),
+  });
 }

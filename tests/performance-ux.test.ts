@@ -345,7 +345,12 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /Central defaults|Central library/);
   assert.match(buildersPage, /BuilderLibraryList/);
   assert.match(builderLibraryList, /BuilderFeedItems/);
-  assert.match(buildersPage, /AddBuilderForm/);
+  // AddBuilderForm is now embedded inside PrivateLibraryPanel rather
+  // than imported directly into the builders page. Keep both ends of the
+  // composition asserted so renames break this test rather than silently
+  // hiding the add-source form.
+  assert.match(buildersPage, /PrivateLibraryPanel/);
+  assert.match(source("src/components/PrivateLibraryPanel.tsx"), /AddBuilderForm/);
   assert.doesNotMatch(buildersPage, /addPersonalBuilderAction/);
   assert.match(addBuilderForm, /"use client"/);
   assert.match(addBuilderForm, /fetch\("\/api\/builders\/personal"/);
@@ -364,12 +369,15 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /name="fetchUrl"/);
   assert.match(builderFeedItems, /"use client"/);
   assert.match(builderFeedItems, /fetch\(`\/api\/builders\/\$\{builderId\}\/feed-items`/);
-  assert.match(builderFeedItems, /Fetched posts/);
+  // UI copy migrated from "Fetched" to "Summarized" / "Raw content"
+  // for compliance — see CLAUDE.md design context. Internal identifiers
+  // (FetchedPostCard etc.) still use "Fetched" because the storage path
+  // is the FeedItem fetch pipeline.
+  assert.match(builderFeedItems, /Summarized posts/);
   assert.match(builderFeedItems, /FetchedPostCard/);
-  assert.match(builderFeedItems, /Fetched/);
   assert.match(source("src/components/FetchedPostCard.tsx"), /Summary/);
   assert.match(source("src/components/FetchedPostCard.tsx"), /See more/);
-  assert.match(source("src/components/FetchedPostCard.tsx"), /Raw fetched content/);
+  assert.match(source("src/components/FetchedPostCard.tsx"), /Raw content/);
   assert.match(source("src/components/FetchedPostCard.tsx"), /Open source/);
   assert.match(source("src/components/FetchedPostCard.tsx"), /\/builders#\$\{builder\.id\}/);
   assert.match(feedItemsRoute, /fetchDedupedFeedForEntities/);
