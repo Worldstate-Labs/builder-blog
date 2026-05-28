@@ -174,7 +174,9 @@ function DigestBody({
 function formatDate(value: string, hydrated: boolean) {
   if (hydrated) return new Date(value).toLocaleDateString();
   return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
     timeZone: "UTC",
   }).format(new Date(value));
 }
@@ -182,8 +184,11 @@ function formatDate(value: string, hydrated: boolean) {
 function formatDateTime(value: string, hydrated: boolean) {
   if (hydrated) return new Date(value).toLocaleString();
   return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
     timeZone: "UTC",
     timeZoneName: "short",
   }).format(new Date(value));

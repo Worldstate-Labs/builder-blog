@@ -374,8 +374,11 @@ export function AgentTokenPanel({
 function formatDate(value: string, hydrated: boolean) {
   if (hydrated) return new Date(value).toLocaleString();
   return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
     timeZone: "UTC",
     timeZoneName: "short",
   }).format(new Date(value));

@@ -74,8 +74,11 @@ function formatRelative(iso: string): string {
 function formatAbsolute(iso: string): string {
   try {
     return new Intl.DateTimeFormat("en-US", {
-      dateStyle: "medium",
-      timeStyle: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
       timeZone: "UTC",
       timeZoneName: "short",
     }).format(new Date(iso));
