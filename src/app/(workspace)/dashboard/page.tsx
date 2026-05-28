@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Suspense, type ComponentType } from "react";
+import { type ComponentType } from "react";
 import { Archive, CheckCircle2, ChevronRight, Clock3, Sparkles, Terminal, UsersRound } from "lucide-react";
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
 import { ForYouRecommendationSection } from "@/components/ForYouRecommendationSection";
@@ -36,6 +36,10 @@ export default async function DashboardPage({
   const params = await searchParams;
   const selectedTab = parseTab(firstParam(params.tab));
   const archivePage = Math.max(1, Number(firstParam(params.archivePage) ?? "1") || 1);
+  const [aiDigest, homeStats] = await Promise.all([
+    AiDigestFeedSlot({ userId, archivePage }),
+    HomeStatsSlot({ userId }),
+  ]);
 
   return (
     <div className="page-pad">
@@ -44,11 +48,7 @@ export default async function DashboardPage({
         <div className="min-w-0">
           <DashboardHomeTabs
             initialTab={selectedTab}
-            aiDigest={
-              <Suspense fallback={<AiDigestFeedSkeleton />}>
-                <AiDigestFeedSlot userId={userId} archivePage={archivePage} />
-              </Suspense>
-            }
+            aiDigest={aiDigest}
             forYou={<ForYouRecommendationSection scope="for-you" />}
             subscription={
               <ForYouRecommendationSection scope="subscription" />
@@ -58,9 +58,7 @@ export default async function DashboardPage({
         <aside className="fb-rail at-desktop">
           <div>
             <h3>Status</h3>
-            <Suspense fallback={<HomeStatsSkeleton />}>
-              <HomeStatsSlot userId={userId} />
-            </Suspense>
+            {homeStats}
           </div>
           <Link className="fb-btn light compact" href="/builders">
             <UsersRound aria-hidden="true" />
@@ -282,36 +280,6 @@ async function HomeStatsSlot({ userId }: { userId: string }) {
       <Stat icon={Sparkles} label="For You" value="Live" />
       <Stat icon={Archive} label="Archive entries" value={archiveCount} />
     </div>
-  );
-}
-
-function HomeStatsSkeleton() {
-  return (
-    <div className="grid gap-2" aria-busy="true" aria-live="polite">
-      {[0, 1, 2, 3].map((index) => (
-        <div key={index} className="h-14 animate-pulse rounded-[10px] bg-black/10" />
-      ))}
-    </div>
-  );
-}
-
-function AiDigestFeedSkeleton() {
-  return (
-    <section className="grid gap-5" aria-busy="true" aria-live="polite">
-      <div className="mt-4 h-12 animate-pulse rounded-[10px] bg-black/10" />
-      <div className="h-72 animate-pulse rounded-[12px] bg-black/10" />
-      <section className="mt-8">
-        <div className="flex items-center gap-3">
-          <span className="fb-section-label">Digest archive</span>
-          <span className="inline-block h-5 w-32 animate-pulse rounded-full bg-black/10" />
-        </div>
-        <div className="mt-4 grid gap-3">
-          <div className="h-20 animate-pulse rounded-[10px] bg-black/10" />
-          <div className="h-20 animate-pulse rounded-[10px] bg-black/10" />
-          <div className="h-20 animate-pulse rounded-[10px] bg-black/10" />
-        </div>
-      </section>
-    </section>
   );
 }
 
