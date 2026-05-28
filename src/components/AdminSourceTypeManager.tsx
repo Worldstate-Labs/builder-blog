@@ -43,7 +43,7 @@ type Draft = {
 type Status = { kind: "idle" | "saving" | "saved" | "error"; message?: string };
 
 const SUMMARY_STYLE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-  { value: "x_twitter", label: "X / Twitter" },
+  { value: "x_twitter", label: "X" },
   { value: "podcast_or_video", label: "Podcast / Video" },
   { value: "blog_or_document", label: "Blog / Document" },
 ];
@@ -219,29 +219,23 @@ function SourceTypeCard({
       </summary>
 
       <div className="border-t border-[var(--line)]" style={{ padding: "1.25rem 1.125rem 1rem" }}>
-        <Section title="Identity & display">
-          <div className="grid gap-4 md:grid-cols-[1fr_1fr_8rem]">
-            <FieldText
-              label="Label"
-              value={draft.label}
-              onChange={(v) => update("label", v)}
-            />
-            <FieldSelect
-              label="Summary style"
-              value={draft.summaryStyle}
-              options={SUMMARY_STYLE_OPTIONS}
-              onChange={(v) => update("summaryStyle", v)}
-            />
-            <FieldText
-              label="Language"
-              mono
-              value={draft.summaryLanguage}
-              onChange={(v) => update("summaryLanguage", v)}
-            />
-          </div>
+        <Section
+          step="01"
+          title="Identity"
+          description="How this source type is named in the UI."
+        >
+          <FieldText
+            label="Label"
+            value={draft.label}
+            onChange={(v) => update("label", v)}
+          />
         </Section>
 
-        <Section title="Fetch & agent behavior">
+        <Section
+          step="02"
+          title="Fetching"
+          description="When and how the CLI / agent acquires items for this source."
+        >
           <div className="grid gap-4 md:grid-cols-[1fr_8rem_8rem]">
             <FieldSelect
               label="Agent default status"
@@ -262,20 +256,47 @@ function SourceTypeCard({
               onChange={(v) => update("defaultFetchLimit", v)}
             />
           </div>
+          <FieldTextarea
+            label="Fetch prompt · optional"
+            rows={12}
+            mono
+            description={
+              draft.agentDefaultStatus === "requires_agent"
+                ? "Surfaced to the agent in fallback fetch tasks so it can decide HOW to acquire content (e.g. for podcasts: try show notes first, else download audio + Whisper transcribe)."
+                : "Only used when this source is set to Requires agent. Currently unused — kept here in case the status changes."
+            }
+            value={draft.fetchPromptBody}
+            onChange={(v) => update("fetchPromptBody", v)}
+          />
         </Section>
 
         <Section
-          title="Summary prompt"
-          description="Used by both digest-once and library-once when summarizing items of this source type."
+          step="03"
+          title="Summarization"
+          description="How each item of this source is turned into a brief. Used by both digest-once and library-once."
         >
-          <FieldText
-            label="Length hint"
-            placeholder="Optional · e.g. 100–300 words"
-            value={draft.summaryLengthHint}
-            onChange={(v) => update("summaryLengthHint", v)}
-          />
+          <div className="grid gap-4 md:grid-cols-[1fr_8rem_1fr]">
+            <FieldSelect
+              label="Summary style"
+              value={draft.summaryStyle}
+              options={SUMMARY_STYLE_OPTIONS}
+              onChange={(v) => update("summaryStyle", v)}
+            />
+            <FieldText
+              label="Language"
+              mono
+              value={draft.summaryLanguage}
+              onChange={(v) => update("summaryLanguage", v)}
+            />
+            <FieldText
+              label="Length hint"
+              placeholder="Optional · e.g. 100–300 words"
+              value={draft.summaryLengthHint}
+              onChange={(v) => update("summaryLengthHint", v)}
+            />
+          </div>
           <FieldTextarea
-            label="Prompt body"
+            label="Summary prompt body"
             rows={16}
             mono
             value={draft.summaryPromptBody}
@@ -284,19 +305,10 @@ function SourceTypeCard({
         </Section>
 
         <Section
-          title="Fetch prompt"
-          description="Optional. Surfaced to the agent in fallback fetch tasks so it can decide HOW to acquire content (e.g. for podcasts: try show notes first, else download audio + Whisper transcribe). Leave empty to rely on the CLI's deterministic fetch behavior."
+          step="04"
+          title="Quality gates"
+          description="Filters applied after extraction. Items that fail are dropped from the pipeline."
         >
-          <FieldTextarea
-            label="Prompt body · optional"
-            rows={12}
-            mono
-            value={draft.fetchPromptBody}
-            onChange={(v) => update("fetchPromptBody", v)}
-          />
-        </Section>
-
-        <Section title="Content quality">
           <Toggle
             label="Primary content only"
             description="Reject extractions that fall back to title, description, or other metadata."
@@ -420,28 +432,41 @@ function CardHeader({
 }
 
 function Section({
+  step,
   title,
   description,
   children,
 }: {
+  step?: string;
   title: string;
   description?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-6 first:mt-0">
-      <div className="mb-3 border-b border-[var(--line)] pb-1.5">
-        <p
-          className="text-[11px] uppercase tracking-[0.16em]"
-          style={{ color: "var(--muted)", fontFamily: "var(--font-geist-mono)" }}
-        >
-          {title}
-        </p>
-        {description ? (
-          <p className="mt-1 text-sm" style={{ color: "var(--muted-strong)" }}>
-            {description}
-          </p>
+    <section className="mt-7 first:mt-0">
+      <div className="mb-3 flex items-baseline gap-3 border-b border-[var(--line)] pb-2">
+        {step ? (
+          <span
+            className="text-[11px] tracking-[0.16em]"
+            style={{ color: "var(--muted)", fontFamily: "var(--font-geist-mono)" }}
+            aria-hidden="true"
+          >
+            {step}
+          </span>
         ) : null}
+        <div className="min-w-0">
+          <p
+            className="text-[11px] uppercase tracking-[0.16em]"
+            style={{ color: "var(--ink)", fontFamily: "var(--font-geist-mono)" }}
+          >
+            {title}
+          </p>
+          {description ? (
+            <p className="mt-0.5 text-sm" style={{ color: "var(--muted-strong)" }}>
+              {description}
+            </p>
+          ) : null}
+        </div>
       </div>
       <div className="grid gap-4">{children}</div>
     </section>

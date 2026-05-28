@@ -66,40 +66,60 @@ async function SourceTypeConfigSection() {
     getDigestConfig(),
   ]);
   return (
-    <details className="fb-panel dashed mt-10">
-      <summary className="cursor-pointer text-sm font-bold text-[var(--ink)]">
-        Advanced source configuration
-      </summary>
-      <div className="mt-4">
+    <section className="mt-10 grid gap-4">
+      <header>
         <p className="fb-section-label">Admin · runtime configuration</p>
-        <h2 className="fb-section-heading mt-1">Source type configuration</h2>
+        <h2 className="fb-section-heading mt-1">Content pipeline</h2>
         <p className="fb-desc mt-1 max-w-3xl">
-          Edit prompts, fetch defaults, and content-quality thresholds used by
-          both digest and library once-skills. Changes take effect on the next
+          Edit the prompts, fetch defaults, and quality thresholds used by the
+          digest and library once-skills. Changes take effect on the next
           context fetch.
         </p>
-      </div>
+      </header>
 
-      <div className="mt-5 grid gap-6">
-        <AdminSourceTypeManager
-          initialConfigs={sourceConfigs.map((c) => ({
-            sourceId: c.sourceId,
-            label: c.label,
-            agentDefaultStatus: c.agentDefaultStatus,
-            defaultFetchDays: c.defaultFetchDays,
-            defaultFetchLimit: c.defaultFetchLimit,
-            contentQuality: c.contentQuality,
-            summaryPromptBody: c.summaryPromptBody,
-            fetchPromptBody: c.fetchPromptBody,
-            summaryStyle: c.summaryStyle,
-            summaryLanguage: c.summaryLanguage,
-            summaryLengthHint: c.summaryLengthHint,
-            updatedAt: c.updatedAt.toISOString(),
-            updatedBy: c.updatedBy,
-          }))}
-        />
-        <div>
-          <h3 className="fb-section-heading">Digest config (singleton)</h3>
+      <details className="fb-panel" open>
+        <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="fb-section-heading">Source types</h3>
+            <p className="mt-1 text-sm text-[var(--muted-strong)]">
+              Per-source: how items are fetched, summarized, and filtered.
+            </p>
+          </div>
+          <span className="fb-kind-pill">{sourceConfigs.length} sources</span>
+        </summary>
+        <div className="mt-4">
+          <AdminSourceTypeManager
+            initialConfigs={sourceConfigs.map((c) => ({
+              sourceId: c.sourceId,
+              label: c.label,
+              agentDefaultStatus: c.agentDefaultStatus,
+              defaultFetchDays: c.defaultFetchDays,
+              defaultFetchLimit: c.defaultFetchLimit,
+              contentQuality: c.contentQuality,
+              summaryPromptBody: c.summaryPromptBody,
+              fetchPromptBody: c.fetchPromptBody,
+              summaryStyle: c.summaryStyle,
+              summaryLanguage: c.summaryLanguage,
+              summaryLengthHint: c.summaryLengthHint,
+              updatedAt: c.updatedAt.toISOString(),
+              updatedBy: c.updatedBy,
+            }))}
+          />
+        </div>
+      </details>
+
+      <details className="fb-panel">
+        <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="fb-section-heading">Digest composition</h3>
+            <p className="mt-1 text-sm text-[var(--muted-strong)]">
+              Cross-source: how individual summaries are assembled into the
+              daily digest.
+            </p>
+          </div>
+          <span className="fb-kind-pill">singleton</span>
+        </summary>
+        <div className="mt-4">
           <AdminDigestConfigForm
             knownSourceIds={SEEDED_SOURCE_IDS}
             initialConfig={{
@@ -114,8 +134,8 @@ async function SourceTypeConfigSection() {
             }}
           />
         </div>
-      </div>
-    </details>
+      </details>
+    </section>
   );
 }
 

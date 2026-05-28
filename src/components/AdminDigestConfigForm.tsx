@@ -89,59 +89,105 @@ export function AdminDigestConfigForm({
   }
 
   return (
-    <div className="fb-panel" style={{ padding: "1rem" }}>
-      <Field label="Common summarization rules">
-        <textarea
-          className="fb-textarea w-full"
-          rows={10}
-          style={{ resize: "vertical", fontFamily: "var(--font-geist-mono)", fontSize: "0.8125rem" }}
-          value={draft.commonSummaryRules}
-          onChange={(e) => update("commonSummaryRules", e.target.value)}
-        />
-      </Field>
-      <Field label="Digest top prompt">
-        <textarea
-          className="fb-textarea w-full"
-          rows={5}
-          style={{ resize: "vertical", fontFamily: "var(--font-geist-mono)", fontSize: "0.8125rem" }}
-          value={draft.digestTopPrompt}
-          onChange={(e) => update("digestTopPrompt", e.target.value)}
-        />
-      </Field>
-      <Field label="Digest intro prompt">
-        <textarea
-          className="fb-textarea w-full"
-          rows={14}
-          style={{ resize: "vertical", fontFamily: "var(--font-geist-mono)", fontSize: "0.8125rem" }}
-          value={draft.digestIntro}
-          onChange={(e) => update("digestIntro", e.target.value)}
-        />
-      </Field>
-      <Field label="Translate prompt">
-        <textarea
-          className="fb-textarea w-full"
-          rows={10}
-          style={{ resize: "vertical", fontFamily: "var(--font-geist-mono)", fontSize: "0.8125rem" }}
-          value={draft.translate}
-          onChange={(e) => update("translate", e.target.value)}
-        />
-      </Field>
-      <Field label={`Digest order (comma-separated; known: ${knownSourceIds.join(", ")})`}>
-        <input
-          className="fb-input"
-          style={{ fontFamily: "var(--font-geist-mono)" }}
-          value={draft.digestOrder}
-          onChange={(e) => update("digestOrder", e.target.value)}
-        />
-      </Field>
-      <div className="mt-3 flex items-center gap-3">
+    <div className="fb-panel" style={{ padding: "1.25rem 1.125rem 1rem" }}>
+      <Section
+        title="Composition"
+        description="Which source types appear in the digest, in what order, and what rules every per-source summary must follow."
+      >
+        <Field label="Source order">
+          <input
+            className="fb-input w-full"
+            style={{ fontFamily: "var(--font-geist-mono)" }}
+            value={draft.digestOrder}
+            onChange={(e) => update("digestOrder", e.target.value)}
+            placeholder="e.g. x_twitter, podcast, blog"
+          />
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <span className="text-xs" style={{ color: "var(--muted)" }}>
+              Known IDs:
+            </span>
+            {knownSourceIds.map((id) => (
+              <span
+                key={id}
+                className="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs"
+                style={{
+                  background: "var(--paper-strong)",
+                  color: "var(--muted-strong)",
+                  fontFamily: "var(--font-geist-mono)",
+                }}
+              >
+                {id}
+              </span>
+            ))}
+          </div>
+        </Field>
+        <Field
+          label="Common summarization rules"
+          description="Appended to every per-source summary prompt — use for style guardrails that apply across all sources."
+        >
+          <textarea
+            className="fb-textarea w-full"
+            rows={10}
+            style={{ resize: "vertical", fontFamily: "var(--font-geist-mono)", fontSize: "0.8125rem" }}
+            value={draft.commonSummaryRules}
+            onChange={(e) => update("commonSummaryRules", e.target.value)}
+          />
+        </Field>
+      </Section>
+
+      <Section
+        title="Digest prompts"
+        description="Prompts that wrap the assembled per-source summaries into the final daily digest."
+      >
+        <Field
+          label="Top prompt"
+          description="Sent at the very start of the digest — sets the model's role and overall task."
+        >
+          <textarea
+            className="fb-textarea w-full"
+            rows={5}
+            style={{ resize: "vertical", fontFamily: "var(--font-geist-mono)", fontSize: "0.8125rem" }}
+            value={draft.digestTopPrompt}
+            onChange={(e) => update("digestTopPrompt", e.target.value)}
+          />
+        </Field>
+        <Field
+          label="Intro prompt"
+          description="Generates the digest's opening paragraph from the assembled summaries."
+        >
+          <textarea
+            className="fb-textarea w-full"
+            rows={14}
+            style={{ resize: "vertical", fontFamily: "var(--font-geist-mono)", fontSize: "0.8125rem" }}
+            value={draft.digestIntro}
+            onChange={(e) => update("digestIntro", e.target.value)}
+          />
+        </Field>
+        <Field
+          label="Translate prompt"
+          description="Used when translating finished summaries into a user's preferred language."
+        >
+          <textarea
+            className="fb-textarea w-full"
+            rows={10}
+            style={{ resize: "vertical", fontFamily: "var(--font-geist-mono)", fontSize: "0.8125rem" }}
+            value={draft.translate}
+            onChange={(e) => update("translate", e.target.value)}
+          />
+        </Field>
+      </Section>
+
+      <div
+        className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--line)]"
+        style={{ paddingTop: "0.875rem" }}
+      >
         <button
           type="button"
-          className="fb-button"
+          className="fb-btn"
           disabled={isPending || status.kind === "saving"}
           onClick={save}
         >
-          {isPending || status.kind === "saving" ? "Saving..." : "Save digest config"}
+          {isPending || status.kind === "saving" ? "Saving…" : "Save digest config"}
         </button>
         {status.message ? (
           <span
@@ -150,16 +196,49 @@ export function AdminDigestConfigForm({
                 ? "text-sm text-[var(--danger)]"
                 : "text-sm text-[var(--muted-strong)]"
             }
+            role={status.kind === "error" ? "alert" : undefined}
           >
             {status.message}
           </span>
         ) : null}
-        <span className="ml-auto text-xs text-[var(--muted)]">
+        <span
+          className="ml-auto text-xs"
+          style={{ color: "var(--muted)", fontFamily: "var(--font-geist-mono)" }}
+        >
           Updated {formatUtcDateTime(config.updatedAt)}
           {config.updatedBy ? ` · ${config.updatedBy}` : ""}
         </span>
       </div>
     </div>
+  );
+}
+
+function Section({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mt-6 first:mt-0">
+      <div className="mb-3 border-b border-[var(--line)] pb-2">
+        <p
+          className="text-[11px] uppercase tracking-[0.16em]"
+          style={{ color: "var(--ink)", fontFamily: "var(--font-geist-mono)" }}
+        >
+          {title}
+        </p>
+        {description ? (
+          <p className="mt-0.5 text-sm" style={{ color: "var(--muted-strong)" }}>
+            {description}
+          </p>
+        ) : null}
+      </div>
+      <div className="grid gap-4">{children}</div>
+    </section>
   );
 }
 
@@ -177,17 +256,24 @@ function formatUtcDateTime(value: string) {
 
 function Field({
   label,
+  description,
   children,
 }: {
   label: string;
+  description?: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="mt-3 block text-sm">
+    <label className="block text-sm">
       <span className="mb-1 block uppercase tracking-[0.12em] text-[var(--muted)] text-xs">
         {label}
       </span>
       {children}
+      {description ? (
+        <span className="mt-1 block text-xs" style={{ color: "var(--muted)" }}>
+          {description}
+        </span>
+      ) : null}
     </label>
   );
 }
