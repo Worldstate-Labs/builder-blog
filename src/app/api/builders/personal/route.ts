@@ -10,6 +10,7 @@ import {
   pickFinalName,
   probeAndEnrichSource,
   type BuilderEnrichment,
+  type ProbeOutcome,
 } from "@/lib/builder-enrichment";
 import { addBuilderToPool } from "@/lib/builder-pool";
 import { upsertBuilder } from "@/lib/builders";
@@ -80,11 +81,11 @@ export async function POST(request: Request) {
     sourceUrl: input.sourceUrl,
     fetchUrl: input.fetchUrl,
     handle: input.handle,
-  }).catch((error) => {
+  }).catch((error): ProbeOutcome => {
     console.warn("[personal-builder] probe threw", { error });
     return {
-      ok: true as const,
-      enrichment: {} as BuilderEnrichment,
+      ok: true,
+      enrichment: {},
       warning:
         "We couldn't verify the source right now; it was added but the agent will retry.",
     };
@@ -112,6 +113,10 @@ export async function POST(request: Request) {
     ...input,
     name: finalName,
     avatarUrl: enrichment.avatarUrl ?? null,
+    // If the probe auto-discovered an RSS/Atom feed link on the HTML
+    // page the user pasted, persist that as the fetchUrl so the CLI
+    // hits the real feed at sync time instead of re-scraping HTML.
+    fetchUrl: probe.discoveredFetchUrl ?? input.fetchUrl ?? null,
   });
 
   await addBuilderToPool({

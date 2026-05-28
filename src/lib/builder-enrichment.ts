@@ -45,6 +45,13 @@ export type ProbeOutcome = {
    * block the add.
    */
   warning?: string;
+  /**
+   * Auto-discovered RSS/Atom feed URL when the user pasted an HTML
+   * landing page instead of the feed itself. The route persists this
+   * as Builder.fetchUrl so the CLI hits the real feed at sync time
+   * instead of re-scraping HTML on every fetch.
+   */
+  discoveredFetchUrl?: string;
   /** What we managed to pull (name, avatarUrl). May be empty. */
   enrichment: BuilderEnrichment;
 };
@@ -336,15 +343,30 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
     ...(name ? { name } : {}),
     ...(avatarUrl ? { avatarUrl } : {}),
   };
+  // Same convenience as the podcast branch — if the HTML page links
+  // to an RSS/Atom feed, surface it so the route can persist it as
+  // the Builder's fetchUrl. Useful for blogs whose owners paste the
+  // homepage URL instead of /feed.xml.
+  const discoveredFeed = extractFeedLinkFromHtml(html, pageUrl);
+  const discoveredFetchUrl = (() => {
+    if (!discoveredFeed) return undefined;
+    const check = validatePublicHttpUrl(discoveredFeed);
+    return check.ok ? discoveredFeed : undefined;
+  })();
   if (!name && !avatarUrl) {
     return {
       ok: true,
       warning:
         "The page is reachable but has no OpenGraph metadata or <title>; the agent will retry at sync time.",
       enrichment,
+      ...(discoveredFetchUrl ? { discoveredFetchUrl } : {}),
     };
   }
-  return { ok: true, enrichment };
+  return {
+    ok: true,
+    enrichment,
+    ...(discoveredFetchUrl ? { discoveredFetchUrl } : {}),
+  };
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -407,14 +429,32 @@ async function probePodcast(input: ProbeInput): Promise<ProbeOutcome> {
     contentType.startsWith("text/xml") ||
     body.trimStart().startsWith("<?xml") ||
     /^<(?:rss|feed)\b/i.test(body.trimStart());
-  if (!looksLikeXml) {
-    return {
-      ok: false,
-      hardError: "That URL didn't return a parseable RSS feed — paste the actual RSS feed URL.",
-      enrichment: {},
-    };
+  if (looksLikeXml) {
+    return { ok: true, enrichment: {} };
   }
-  return { ok: true, enrichment: {} };
+  // Body isn't an RSS/Atom feed — maybe the user pasted an HTML
+  // landing page (Substack root, podcast website, etc.). Try to
+  // discover an alternate-feed link in the HTML <head>; if found,
+  // persist it as the fetchUrl so the CLI hits the real feed at
+  // sync time. The discovered URL is trusted on this pass (no
+  // second probe) to keep add latency bounded.
+  const discovered = extractFeedLinkFromHtml(body, fetchTarget);
+  if (discovered) {
+    const discoveredCheck = validatePublicHttpUrl(discovered);
+    if (discoveredCheck.ok) {
+      return {
+        ok: true,
+        discoveredFetchUrl: discovered,
+        enrichment: {},
+      };
+    }
+  }
+  return {
+    ok: false,
+    hardError:
+      "That URL didn't return a parseable RSS feed and we couldn't find one linked from the page — paste the actual RSS feed URL.",
+    enrichment: {},
+  };
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -565,6 +605,40 @@ function extractIconHref(html: string, relPattern: RegExp): string | null {
     if (!relPattern.test(relMatch[1])) continue;
     const hrefMatch = tag.match(/\bhref=["']([^"']+)["']/i);
     if (hrefMatch?.[1]) return decodeHtmlEntities(hrefMatch[1].trim());
+  }
+  return null;
+}
+
+/**
+ * Find an RSS/Atom feed URL declared in an HTML page's `<head>` via
+ * `<link rel="alternate" type="application/rss+xml" href="…">` (or
+ * the atom equivalent). Returns the first match resolved to an
+ * absolute URL against `pageUrl`, or null if none.
+ *
+ * Common case: user pastes a Substack root URL (no /feed) — we
+ * discover `<link rel="alternate" type="application/rss+xml"
+ * href="/feed">` and persist that as the Builder's fetchUrl so the
+ * CLI hits the real feed at sync time.
+ */
+function extractFeedLinkFromHtml(html: string, pageUrl: string): string | null {
+  const linkPattern = /<link\b[^>]*>/gi;
+  for (const tag of html.match(linkPattern) ?? []) {
+    const relMatch = tag.match(/\brel=["']([^"']+)["']/i);
+    if (!relMatch?.[1] || !/\balternate\b/i.test(relMatch[1])) continue;
+    const typeMatch = tag.match(/\btype=["']([^"']+)["']/i);
+    if (
+      !typeMatch?.[1] ||
+      !/application\/(?:rss|atom)\+xml/i.test(typeMatch[1])
+    ) {
+      continue;
+    }
+    const hrefMatch = tag.match(/\bhref=["']([^"']+)["']/i);
+    if (!hrefMatch?.[1]) continue;
+    const resolved = resolveMaybeRelative(
+      decodeHtmlEntities(hrefMatch[1].trim()),
+      pageUrl,
+    );
+    if (resolved) return resolved;
   }
   return null;
 }

@@ -147,3 +147,28 @@ test("probe maps thrown errors into friendly sentences (no raw exception leakage
   assert.match(PROBE_SOURCE, /SSL|TLS/);
   assert.match(PROBE_SOURCE, /4 seconds/);
 });
+
+test("probe auto-discovers an RSS/Atom feed link in HTML and surfaces it as discoveredFetchUrl", () => {
+  // The discover helper exists and the ProbeOutcome shape carries
+  // the discovered URL so the route can persist it as fetchUrl.
+  assert.match(PROBE_SOURCE, /function\s+extractFeedLinkFromHtml/);
+  assert.match(PROBE_SOURCE, /discoveredFetchUrl\?:\s*string/);
+  // Discovery matches the canonical alternate-feed link shape.
+  assert.match(PROBE_SOURCE, /alternate/);
+  assert.match(PROBE_SOURCE, /application\\\/\(\?:rss\|atom\)\\\+xml/);
+  // Podcast probe falls back to discovery when the body isn't XML,
+  // and HARD-fails only when discovery also returns nothing.
+  assert.match(
+    PROBE_SOURCE,
+    /didn't return a parseable RSS feed and we couldn't find one linked from the page/,
+  );
+});
+
+test("routes persist the discovered feed URL as Builder.fetchUrl", () => {
+  // POST and PATCH both prefer probe.discoveredFetchUrl over the
+  // resolver's fetchUrl, so a user who pasted an HTML landing page
+  // gets the real feed wired up for sync time.
+  for (const route of [POST_ROUTE, PATCH_ROUTE]) {
+    assert.match(route, /probe\.discoveredFetchUrl\s*\?\?\s*input\.fetchUrl/);
+  }
+});

@@ -15,6 +15,7 @@ import {
   pickFinalName,
   probeAndEnrichSource,
   type BuilderEnrichment,
+  type ProbeOutcome,
 } from "@/lib/builder-enrichment";
 import { prisma } from "@/lib/prisma";
 import { resolvePersonalBuilderInput } from "@/lib/personal-builder-input";
@@ -130,11 +131,11 @@ export async function PATCH(request: Request, { params }: Params) {
     sourceUrl: input.sourceUrl,
     fetchUrl: input.fetchUrl,
     handle: input.handle,
-  }).catch((error) => {
+  }).catch((error): ProbeOutcome => {
     console.warn("[personal-builder] probe threw", { error });
     return {
-      ok: true as const,
-      enrichment: {} as BuilderEnrichment,
+      ok: true,
+      enrichment: {},
       warning:
         "We couldn't verify the source right now; it was updated but the agent will retry.",
     };
@@ -161,7 +162,9 @@ export async function PATCH(request: Request, { params }: Params) {
         handle: handle ?? null,
         sourceType: input.sourceType,
         sourceUrl: input.sourceUrl ?? null,
-        fetchUrl: input.fetchUrl ?? null,
+        // Probe-discovered RSS/Atom feed link wins over the resolver's
+        // best guess when the user pasted an HTML landing page.
+        fetchUrl: probe.discoveredFetchUrl ?? input.fetchUrl ?? null,
         avatarUrl: enrichment.avatarUrl ?? null,
         kind,
         canonicalKey,
