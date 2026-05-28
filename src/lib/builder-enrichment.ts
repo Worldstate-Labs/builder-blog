@@ -1,18 +1,26 @@
 /**
- * Best-effort, server-side enrichment of a personal builder's display
- * name and avatar/thumbnail URL during the Add Builder flow. Every
- * per-source helper is wrapped in a 4-second timeout, an SSRF guard,
- * and a try/catch that swallows errors — enrichment never blocks or
- * fails the add flow.
+ * Server-side reachability probe + best-effort enrichment of a personal
+ * builder's display name and avatar/thumbnail URL during the Add Builder
+ * (and Edit Builder) flow.
  *
- * For each source:
- *   x        → X API v2 (only when X_BEARER_TOKEN is set)
+ * Unlike the previous "enrichment swallows everything" contract, this
+ * module now classifies the response into one of three outcomes:
+ *
+ *   ok        → reachable + extractable metadata (proceed)
+ *   warning   → reachable but degraded (proceed, surface info banner)
+ *   hardError → unreachable / definitively wrong (reject the add)
+ *
+ * For each source, the probe target:
+ *   x        → X API v2 user lookup (only when X_BEARER_TOKEN is set)
  *   youtube  → channel page <meta og:title> / og:image
  *   blog     → page <meta og:title>/og:image, fallback <title> + favicons
  *   website  → same as blog
- *   podcast  → already enriched inline by resolvePodcast (iTunes
- *              artworkUrl600) — this helper does not re-fetch.
- *   pdf      → skipped on purpose.
+ *   podcast  → Apple Podcasts iTunes lookup is owned by resolvePodcast;
+ *              non-Apple feeds are GET'd here and asserted to be XML.
+ *   pdf      → Range-byte probe of the magic header.
+ *
+ * Every probe runs under a single 4-second AbortController, behind the
+ * shared SSRF guard, and with the same FollowBriefBot User-Agent.
  */
 import { validatePublicHttpUrl } from "@/lib/safe-url";
 
@@ -21,7 +29,27 @@ export type BuilderEnrichment = {
   avatarUrl?: string;
 };
 
-type EnrichmentInput = {
+/**
+ * The structured outcome of probing a source. Callers (POST/PATCH
+ * `/api/builders/.../personal`) use `ok` to decide between a 400
+ * response (carrying `hardError`) and a successful upsert (carrying
+ * any `warning` and `enrichment`).
+ */
+export type ProbeOutcome = {
+  ok: boolean;
+  /** Present iff ok=false; user-facing reason the add should be rejected. */
+  hardError?: string;
+  /**
+   * Present iff ok=true and the source was reachable but degraded
+   * (slow, partial, bot-walled); surfaced as info to the UI but doesn't
+   * block the add.
+   */
+  warning?: string;
+  /** What we managed to pull (name, avatarUrl). May be empty. */
+  enrichment: BuilderEnrichment;
+};
+
+type ProbeInput = {
   sourceType: string;
   sourceUrl: string | null;
   fetchUrl: string | null;
@@ -33,62 +61,133 @@ const USER_AGENT =
 
 const FETCH_TIMEOUT_MS = 4000;
 
-export async function enrichBuilderFromSource(
-  input: EnrichmentInput,
-): Promise<BuilderEnrichment> {
+// ──────────────────────────────────────────────────────────────────
+// Public dispatch.
+// ──────────────────────────────────────────────────────────────────
+
+export async function probeAndEnrichSource(input: ProbeInput): Promise<ProbeOutcome> {
   const sourceType = (input.sourceType ?? "").toLowerCase();
   try {
-    if (sourceType === "x") return await enrichX(input);
-    if (sourceType === "youtube") return await enrichYouTube(input);
+    if (sourceType === "x") return await probeX(input);
+    if (sourceType === "youtube") return await probeYouTube(input);
     if (sourceType === "blog" || sourceType === "website") {
-      return await enrichHtmlPage(input);
+      return await probeHtmlPage(input);
     }
-    // podcast: enriched inline by resolvePodcast (iTunes already gives
-    // us collectionName + artworkUrl600 in the same response, so no
-    // second fetch here).
-    // pdf: skipped entirely.
-    return {};
+    if (sourceType === "podcast") return await probePodcast(input);
+    if (sourceType === "pdf") return await probePdf(input);
+    // Unknown source type → treat as a no-op probe (don't block the add).
+    return { ok: true, enrichment: {} };
   } catch (error) {
     console.warn("[builder-enrichment] dispatch failed", { sourceType, error });
-    return {};
+    // Defensive: any unexpected throw becomes a soft warning, not a
+    // hard reject — we don't want a bug in this module to break adds.
+    return {
+      ok: true,
+      warning: "We couldn't verify the source right now; it was added but the agent will retry.",
+      enrichment: {},
+    };
   }
 }
 
+/**
+ * Back-compat alias for the older enrichment-only API. Existing callers
+ * that only want the enrichment payload (and don't care about
+ * ok/warning/hardError) can keep working unchanged.
+ */
+export async function enrichBuilderFromSource(
+  input: ProbeInput,
+): Promise<BuilderEnrichment> {
+  const outcome = await probeAndEnrichSource(input);
+  return outcome.enrichment;
+}
+
 // ──────────────────────────────────────────────────────────────────
-// X / Twitter — opportunistic, only when bearer token is configured.
+// X / Twitter — only probes when bearer token is configured.
 // ──────────────────────────────────────────────────────────────────
 
-async function enrichX(input: EnrichmentInput): Promise<BuilderEnrichment> {
+async function probeX(input: ProbeInput): Promise<ProbeOutcome> {
   const bearer = process.env.X_BEARER_TOKEN?.trim();
-  if (!bearer) return {};
   const handle = (input.handle ?? "").trim();
-  if (!handle) return {};
+  if (!bearer) {
+    // Without a token we can't probe at all — treat as OK with no
+    // warning so the add isn't blocked nor noisily annotated.
+    return { ok: true, enrichment: {} };
+  }
+  if (!handle) {
+    return { ok: true, enrichment: {} };
+  }
   const apiUrl = `https://api.x.com/2/users/by/username/${encodeURIComponent(handle)}?user.fields=name,profile_image_url`;
   const check = validatePublicHttpUrl(apiUrl);
-  if (!check.ok) return {};
+  if (!check.ok) {
+    return { ok: true, enrichment: {} };
+  }
+  let response: Response;
   try {
-    const response = await fetchWithTimeout(apiUrl, {
+    response = await fetchWithTimeout(apiUrl, {
       headers: {
         "User-Agent": USER_AGENT,
         Authorization: `Bearer ${bearer}`,
       },
     });
-    if (!response.ok) return {};
-    const json = (await response.json().catch(() => null)) as
-      | { data?: { name?: string; profile_image_url?: string } }
-      | null;
-    const data = json?.data;
-    if (!data) return {};
-    return {
-      ...(data.name ? { name: data.name } : {}),
-      ...(toSafeAvatarUrl(upgradeXAvatarSize(data.profile_image_url))
-        ? { avatarUrl: toSafeAvatarUrl(upgradeXAvatarSize(data.profile_image_url)) ?? undefined }
-        : {}),
-    };
   } catch (error) {
     console.warn("[builder-enrichment] x fetch failed", { handle, error });
-    return {};
+    return {
+      ok: true,
+      warning: networkErrorMessage(error, "the X API"),
+      enrichment: {},
+    };
   }
+  if (response.status === 404) {
+    return {
+      ok: false,
+      hardError: `X account @${handle} doesn't exist.`,
+      enrichment: {},
+    };
+  }
+  if (response.status === 401 || response.status === 403) {
+    return {
+      ok: true,
+      warning:
+        "X API rejected the lookup; the source was added but we couldn't verify the handle.",
+      enrichment: {},
+    };
+  }
+  if (response.status === 429 || response.status >= 500) {
+    return {
+      ok: true,
+      warning: `Got HTTP ${response.status} from the X API; the agent will verify at sync time.`,
+      enrichment: {},
+    };
+  }
+  if (!response.ok) {
+    return {
+      ok: true,
+      warning: `Got HTTP ${response.status} from the X API.`,
+      enrichment: {},
+    };
+  }
+  const json = (await response.json().catch(() => null)) as
+    | { data?: { name?: string; profile_image_url?: string } }
+    | null;
+  const data = json?.data;
+  if (!data) {
+    // 200 but no user data — treat as hard error: the handle resolved
+    // to no account in X's database.
+    return {
+      ok: false,
+      hardError: `X account @${handle} doesn't exist.`,
+      enrichment: {},
+    };
+  }
+  const avatarUrl =
+    toSafeAvatarUrl(upgradeXAvatarSize(data.profile_image_url)) ?? undefined;
+  return {
+    ok: true,
+    enrichment: {
+      ...(data.name ? { name: data.name } : {}),
+      ...(avatarUrl ? { avatarUrl } : {}),
+    },
+  };
 }
 
 // X returns the 400x400 "_normal" thumbnail by default; swap to the
@@ -103,32 +202,72 @@ function upgradeXAvatarSize(url: string | undefined): string | undefined {
 // avatar JPEG, no API key required.
 // ──────────────────────────────────────────────────────────────────
 
-async function enrichYouTube(input: EnrichmentInput): Promise<BuilderEnrichment> {
+async function probeYouTube(input: ProbeInput): Promise<ProbeOutcome> {
   const pageUrl = input.sourceUrl ?? input.fetchUrl;
-  if (!pageUrl) return {};
+  if (!pageUrl) return { ok: true, enrichment: {} };
   const check = validatePublicHttpUrl(pageUrl);
-  if (!check.ok) return {};
+  if (!check.ok) return { ok: true, enrichment: {} };
+  let response: Response;
   try {
-    const response = await fetchWithTimeout(pageUrl, {
+    response = await fetchWithTimeout(pageUrl, {
       headers: { "User-Agent": USER_AGENT },
     });
-    if (!response.ok) return {};
-    const html = await response.text().catch(() => "");
-    if (!html) return {};
-    const ogTitle = extractMetaContent(html, "og:title");
-    const ogImage = extractMetaContent(html, "og:image");
-    const name = ogTitle
-      ? ogTitle.replace(/\s+-\s+YouTube\s*$/i, "").trim() || undefined
-      : undefined;
-    const avatarUrl = toSafeAvatarUrl(resolveMaybeRelative(ogImage, pageUrl));
-    return {
-      ...(name ? { name } : {}),
-      ...(avatarUrl ? { avatarUrl } : {}),
-    };
   } catch (error) {
     console.warn("[builder-enrichment] youtube fetch failed", { pageUrl, error });
-    return {};
+    return {
+      ok: true,
+      warning: networkErrorMessage(error, "the YouTube channel page"),
+      enrichment: {},
+    };
   }
+  if (response.status === 404) {
+    return {
+      ok: false,
+      hardError: "YouTube channel not found (HTTP 404).",
+      enrichment: {},
+    };
+  }
+  if (response.status === 403 || response.status === 429 || response.status >= 500) {
+    return {
+      ok: true,
+      warning: `Got HTTP ${response.status} from the YouTube channel page; the agent will retry at sync time.`,
+      enrichment: {},
+    };
+  }
+  if (!response.ok) {
+    return {
+      ok: true,
+      warning: `Got HTTP ${response.status} from the YouTube channel page.`,
+      enrichment: {},
+    };
+  }
+  const html = await response.text().catch(() => "");
+  if (!html) {
+    return {
+      ok: true,
+      warning: "YouTube returned an empty page; the agent will retry at sync time.",
+      enrichment: {},
+    };
+  }
+  const ogTitle = extractMetaContent(html, "og:title");
+  const ogImage = extractMetaContent(html, "og:image");
+  const name = ogTitle
+    ? ogTitle.replace(/\s+-\s+YouTube\s*$/i, "").trim() || undefined
+    : undefined;
+  const avatarUrl = toSafeAvatarUrl(resolveMaybeRelative(ogImage, pageUrl)) ?? undefined;
+  const enrichment: BuilderEnrichment = {
+    ...(name ? { name } : {}),
+    ...(avatarUrl ? { avatarUrl } : {}),
+  };
+  if (!name && !avatarUrl && !extractTitleTag(html)) {
+    return {
+      ok: true,
+      warning:
+        "YouTube returned a page without OpenGraph metadata; the agent will retry at sync time.",
+      enrichment,
+    };
+  }
+  return { ok: true, enrichment };
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -137,35 +276,205 @@ async function enrichYouTube(input: EnrichmentInput): Promise<BuilderEnrichment>
 // resolved against the page URL.
 // ──────────────────────────────────────────────────────────────────
 
-async function enrichHtmlPage(input: EnrichmentInput): Promise<BuilderEnrichment> {
+async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
   const pageUrl = input.sourceUrl ?? input.fetchUrl;
-  if (!pageUrl) return {};
+  if (!pageUrl) return { ok: true, enrichment: {} };
   const check = validatePublicHttpUrl(pageUrl);
-  if (!check.ok) return {};
+  if (!check.ok) return { ok: true, enrichment: {} };
+  let response: Response;
   try {
-    const response = await fetchWithTimeout(pageUrl, {
+    response = await fetchWithTimeout(pageUrl, {
       headers: { "User-Agent": USER_AGENT },
     });
-    if (!response.ok) return {};
-    const html = await response.text().catch(() => "");
-    if (!html) return {};
-    const ogTitle = extractMetaContent(html, "og:title");
-    const ogImage = extractMetaContent(html, "og:image");
-    const titleTag = ogTitle ? null : extractTitleTag(html);
-    const name = (ogTitle || titleTag || "").trim() || undefined;
-    const rawAvatar =
-      ogImage ||
-      extractIconHref(html, /apple-touch-icon/i) ||
-      extractIconHref(html, /(?:shortcut )?icon/i);
-    const avatarUrl = toSafeAvatarUrl(resolveMaybeRelative(rawAvatar, pageUrl));
-    return {
-      ...(name ? { name } : {}),
-      ...(avatarUrl ? { avatarUrl } : {}),
-    };
   } catch (error) {
     console.warn("[builder-enrichment] html fetch failed", { pageUrl, error });
-    return {};
+    return {
+      ok: true,
+      warning: networkErrorMessage(error, "the page"),
+      enrichment: {},
+    };
   }
+  if (response.status === 404 || response.status === 410) {
+    return {
+      ok: false,
+      hardError: `The page returned HTTP ${response.status}.`,
+      enrichment: {},
+    };
+  }
+  if (response.status === 403 || response.status === 429 || response.status >= 500) {
+    return {
+      ok: true,
+      warning: `Couldn't reach the page right now (HTTP ${response.status}); the source was added but the agent will retry.`,
+      enrichment: {},
+    };
+  }
+  if (!response.ok) {
+    return {
+      ok: true,
+      warning: `Got HTTP ${response.status} from the page.`,
+      enrichment: {},
+    };
+  }
+  const html = await response.text().catch(() => "");
+  if (!html) {
+    return {
+      ok: true,
+      warning: "The page returned an empty body; the agent will retry at sync time.",
+      enrichment: {},
+    };
+  }
+  const ogTitle = extractMetaContent(html, "og:title");
+  const ogImage = extractMetaContent(html, "og:image");
+  const titleTag = ogTitle ? null : extractTitleTag(html);
+  const name = (ogTitle || titleTag || "").trim() || undefined;
+  const rawAvatar =
+    ogImage ||
+    extractIconHref(html, /apple-touch-icon/i) ||
+    extractIconHref(html, /(?:shortcut )?icon/i);
+  const avatarUrl = toSafeAvatarUrl(resolveMaybeRelative(rawAvatar, pageUrl)) ?? undefined;
+  const enrichment: BuilderEnrichment = {
+    ...(name ? { name } : {}),
+    ...(avatarUrl ? { avatarUrl } : {}),
+  };
+  if (!name && !avatarUrl) {
+    return {
+      ok: true,
+      warning:
+        "The page is reachable but has no OpenGraph metadata or <title>; the agent will retry at sync time.",
+      enrichment,
+    };
+  }
+  return { ok: true, enrichment };
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Podcast — Apple Podcasts iTunes lookup is owned by resolvePodcast
+// (which can surface a HARD failure on its own); here we probe the
+// resolved RSS / sourceUrl for reachability + XML-ness.
+// ──────────────────────────────────────────────────────────────────
+
+async function probePodcast(input: ProbeInput): Promise<ProbeOutcome> {
+  // Apple Podcasts: the resolver already pre-fetched iTunes and (if
+  // it returned no results) surfaced a hard error. Here we have an
+  // Apple page URL with no separately-fetchable RSS — nothing useful
+  // to probe, so don't double-charge the user-visible add latency.
+  const isApple = !!input.sourceUrl?.match(/podcasts\.apple\.com\//i);
+  const fetchTarget = input.fetchUrl ?? (isApple ? null : input.sourceUrl);
+  if (!fetchTarget) return { ok: true, enrichment: {} };
+  const check = validatePublicHttpUrl(fetchTarget);
+  if (!check.ok) return { ok: true, enrichment: {} };
+
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(fetchTarget, {
+      headers: { "User-Agent": USER_AGENT },
+    });
+  } catch (error) {
+    console.warn("[builder-enrichment] podcast fetch failed", { fetchTarget, error });
+    return {
+      ok: true,
+      warning: networkErrorMessage(error, "the podcast RSS feed"),
+      enrichment: {},
+    };
+  }
+  if (response.status === 404 || response.status === 410) {
+    return {
+      ok: false,
+      hardError: `The podcast RSS feed returned HTTP ${response.status}.`,
+      enrichment: {},
+    };
+  }
+  if (response.status === 403 || response.status === 429 || response.status >= 500) {
+    return {
+      ok: true,
+      warning: `Couldn't reach the podcast RSS feed right now (HTTP ${response.status}); the agent will retry at sync time.`,
+      enrichment: {},
+    };
+  }
+  if (!response.ok) {
+    return {
+      ok: true,
+      warning: `Got HTTP ${response.status} from the podcast RSS feed.`,
+      enrichment: {},
+    };
+  }
+  const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
+  const body = await response.text().catch(() => "");
+  const looksLikeXml =
+    contentType.startsWith("application/xml") ||
+    contentType.startsWith("application/rss+xml") ||
+    contentType.startsWith("application/atom+xml") ||
+    contentType.startsWith("text/xml") ||
+    body.trimStart().startsWith("<?xml") ||
+    /^<(?:rss|feed)\b/i.test(body.trimStart());
+  if (!looksLikeXml) {
+    return {
+      ok: false,
+      hardError: "That URL didn't return a parseable RSS feed — paste the actual RSS feed URL.",
+      enrichment: {},
+    };
+  }
+  return { ok: true, enrichment: {} };
+}
+
+// ──────────────────────────────────────────────────────────────────
+// PDF — cheap Range probe of the first 32 bytes to peek the magic
+// header. Avoids downloading multi-megabyte PDFs at add-time.
+// ──────────────────────────────────────────────────────────────────
+
+async function probePdf(input: ProbeInput): Promise<ProbeOutcome> {
+  const pageUrl = input.sourceUrl;
+  if (!pageUrl) return { ok: true, enrichment: {} };
+  const check = validatePublicHttpUrl(pageUrl);
+  if (!check.ok) return { ok: true, enrichment: {} };
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(pageUrl, {
+      headers: {
+        "User-Agent": USER_AGENT,
+        Range: "bytes=0-32",
+      },
+    });
+  } catch (error) {
+    console.warn("[builder-enrichment] pdf fetch failed", { pageUrl, error });
+    return {
+      ok: true,
+      warning: networkErrorMessage(error, "the PDF"),
+      enrichment: {},
+    };
+  }
+  if (response.status === 404 || response.status === 410) {
+    return {
+      ok: false,
+      hardError: `The PDF URL returned HTTP ${response.status}.`,
+      enrichment: {},
+    };
+  }
+  if (response.status === 403 || response.status === 429 || response.status >= 500) {
+    return {
+      ok: true,
+      warning: `Couldn't reach the PDF right now (HTTP ${response.status}); the agent will retry at sync time.`,
+      enrichment: {},
+    };
+  }
+  if (!response.ok && response.status !== 206) {
+    return {
+      ok: true,
+      warning: `Got HTTP ${response.status} from the PDF.`,
+      enrichment: {},
+    };
+  }
+  const body = await response.text().catch(() => "");
+  const looksLikePdf = body.startsWith("%PDF");
+  const urlHasPdfExt = /\.pdf(\?|#|$)/i.test(pageUrl);
+  if (!looksLikePdf && !urlHasPdfExt) {
+    return {
+      ok: true,
+      warning: "URL doesn't look like a PDF — the agent will still try at sync time.",
+      enrichment: {},
+    };
+  }
+  return { ok: true, enrichment: {} };
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -187,6 +496,34 @@ async function fetchWithTimeout(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Map a thrown fetch error into a friendly sentence the UI can show.
+ * Distinguishes timeout (AbortError), DNS / network unreachable, and
+ * TLS handshake failures from a generic catch-all.
+ */
+function networkErrorMessage(error: unknown, subject: string): string {
+  const name = error instanceof Error ? error.name : "";
+  const message = error instanceof Error ? error.message : "";
+  if (name === "AbortError") {
+    return `${capitalize(subject)} took longer than 4 seconds to respond; the agent will retry at sync time.`;
+  }
+  if (/ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(message)) {
+    return `${capitalize(subject)} hostname couldn't be resolved (DNS).`;
+  }
+  if (/ECONNREFUSED|ECONNRESET|EHOSTUNREACH|ENETUNREACH/i.test(message)) {
+    return `${capitalize(subject)} refused the connection.`;
+  }
+  if (/SSL|TLS|CERT_|certificate/i.test(message)) {
+    return `${capitalize(subject)} returned an SSL/TLS error.`;
+  }
+  return `Couldn't reach ${subject}; the agent will retry at sync time.`;
+}
+
+function capitalize(value: string): string {
+  if (!value) return value;
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function extractMetaContent(html: string, property: string): string | null {
@@ -266,12 +603,6 @@ export function toSafeAvatarUrl(raw: string | null | undefined): string | null {
 }
 
 /**
- * Tiny helper used by the POST/PATCH routes to decide which name wins
- * after enrichment. The user's typed display name (when non-empty)
- * always wins; otherwise the enriched name is preferred; otherwise the
- * resolver's derived name (handle / hostname / og:title-less fallback).
- */
-/**
  * Best-effort hostname extraction for building urlSignals. Returns
  * null when the input isn't a parseable URL or has no host.
  */
@@ -285,6 +616,12 @@ export function hostnameOrNull(url: string | null | undefined): string | null {
   }
 }
 
+/**
+ * Tiny helper used by the POST/PATCH routes to decide which name wins
+ * after enrichment. The user's typed display name (when non-empty)
+ * always wins; otherwise the enriched name is preferred; otherwise the
+ * resolver's derived name (handle / hostname / og:title-less fallback).
+ */
 export function pickFinalName(
   userTyped: string | null | undefined,
   resolved: string,
@@ -319,4 +656,18 @@ export function pickFinalName(
   if (typed) return typed;
   if (fromEnrichment) return fromEnrichment;
   return resolved;
+}
+
+/**
+ * Combine an optional resolver warning with an optional probe warning
+ * into a single string suitable for the response `warning` field. Each
+ * is shown as-is when only one is present; both are concatenated with
+ * "; " when both are present.
+ */
+export function combineWarnings(
+  ...parts: ReadonlyArray<string | null | undefined>
+): string | undefined {
+  const filtered = parts.map((p) => (p ?? "").trim()).filter((p) => p.length > 0);
+  if (filtered.length === 0) return undefined;
+  return filtered.join("; ");
 }

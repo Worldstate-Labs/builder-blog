@@ -5,6 +5,9 @@ import test from "node:test";
 const ENRICHMENT_SOURCE = readFileSync("src/lib/builder-enrichment.ts", "utf8");
 
 test("builder-enrichment module exports the dispatch entry point", () => {
+  // The probe is the new entry point; enrichBuilderFromSource remains
+  // as a thin back-compat alias that returns probe.enrichment.
+  assert.match(ENRICHMENT_SOURCE, /export\s+async\s+function\s+probeAndEnrichSource/);
   assert.match(ENRICHMENT_SOURCE, /export\s+async\s+function\s+enrichBuilderFromSource/);
   assert.match(ENRICHMENT_SOURCE, /export\s+type\s+BuilderEnrichment/);
   // The helper used by the route to choose between user-typed,
@@ -12,24 +15,23 @@ test("builder-enrichment module exports the dispatch entry point", () => {
   assert.match(ENRICHMENT_SOURCE, /export\s+function\s+pickFinalName/);
 });
 
-test("builder-enrichment dispatches per source type and skips pdf", () => {
+test("builder-enrichment dispatches per source type including pdf and podcast", () => {
   // Each per-source branch is its own function call so the dispatch
   // table is readable and so an upstream failure can never accidentally
-  // run a different source's code path.
+  // run a different source's code path. The probe (unlike the old
+  // enrichment-only path) covers pdf + podcast for reachability checks
+  // even though no name/avatar comes back from those sources.
   assert.match(ENRICHMENT_SOURCE, /sourceType\s*===\s*"x"/);
   assert.match(ENRICHMENT_SOURCE, /sourceType\s*===\s*"youtube"/);
   assert.match(ENRICHMENT_SOURCE, /sourceType\s*===\s*"blog"/);
   assert.match(ENRICHMENT_SOURCE, /sourceType\s*===\s*"website"/);
-  // pdf must NOT have its own branch — enrichment is explicitly skipped
-  // for PDFs (no useful name/avatar metadata to fetch).
-  assert.doesNotMatch(ENRICHMENT_SOURCE, /sourceType\s*===\s*"pdf"/);
+  assert.match(ENRICHMENT_SOURCE, /sourceType\s*===\s*"podcast"/);
+  assert.match(ENRICHMENT_SOURCE, /sourceType\s*===\s*"pdf"/);
 });
 
-test("builder-enrichment podcast path is delegated to resolvePodcast (no second fetch)", () => {
-  // The podcast path is handled inline by resolvePodcast (the iTunes
-  // lookup already returns collectionName + artworkUrl600 in the same
-  // response). This module should NOT issue a separate podcast fetch.
-  assert.doesNotMatch(ENRICHMENT_SOURCE, /enrichPodcast/);
+test("builder-enrichment podcast probe does NOT re-call iTunes (resolver owns that path)", () => {
+  // iTunes lookup (and its 0-result hard-fail) is owned by
+  // resolvePodcast — the probe must not duplicate that round-trip.
   assert.doesNotMatch(ENRICHMENT_SOURCE, /itunes\.apple\.com/);
 });
 
@@ -107,17 +109,18 @@ test("builder model exposes avatarUrl + migration adds the column", () => {
   assert.match(migration, /ALTER\s+TABLE\s+"Builder"\s+ADD\s+COLUMN\s+"avatarUrl"\s+TEXT/);
 });
 
-test("personal builder POST + PATCH routes both run enrichment", () => {
+test("personal builder POST + PATCH routes both run the probe + enrichment", () => {
   const postRoute = readFileSync("src/app/api/builders/personal/route.ts", "utf8");
   const patchRoute = readFileSync(
     "src/app/api/builders/[builderId]/personal/route.ts",
     "utf8",
   );
   for (const source of [postRoute, patchRoute]) {
-    assert.match(source, /enrichBuilderFromSource/);
+    assert.match(source, /probeAndEnrichSource/);
     assert.match(source, /pickFinalName/);
-    // Catch-and-ignore so enrichment is never a blocker.
-    assert.match(source, /\.catch\(\(\)\s*=>\s*\(\{\}\)\)/);
+    // Probe failures must be caught defensively (a thrown probe should
+    // not 500 the request).
+    assert.match(source, /\.catch\(/);
     assert.match(source, /avatarUrl:\s*enrichment\.avatarUrl\s*\?\?\s*null/);
   }
 });

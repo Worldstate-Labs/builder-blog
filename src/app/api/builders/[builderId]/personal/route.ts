@@ -10,9 +10,10 @@ import {
   normalizedBuilderHandle,
 } from "@/lib/builder-keys";
 import {
-  enrichBuilderFromSource,
+  combineWarnings,
   hostnameOrNull,
   pickFinalName,
+  probeAndEnrichSource,
   type BuilderEnrichment,
 } from "@/lib/builder-enrichment";
 import { prisma } from "@/lib/prisma";
@@ -120,17 +121,28 @@ export async function PATCH(request: Request, { params }: Params) {
     ownerUserId: session.user.id,
   });
 
-  // Re-run enrichment on edit so a changed source URL/handle pulls a
-  // fresh name + avatar. Best-effort; failures fall back to whatever
-  // the resolver derived.
-  const enrichment: BuilderEnrichment =
-    resolution.enrichment ??
-    (await enrichBuilderFromSource({
-      sourceType: input.sourceType,
-      sourceUrl: input.sourceUrl,
-      fetchUrl: input.fetchUrl,
-      handle: input.handle,
-    }).catch(() => ({})));
+  // Re-probe + re-enrich on edit so a changed source URL/handle is
+  // verified before we overwrite the row, and so the fresh name +
+  // avatar are picked up in the same round-trip. Hard failures from
+  // the probe surface as 400s; soft failures degrade to a warning.
+  const probe = await probeAndEnrichSource({
+    sourceType: input.sourceType,
+    sourceUrl: input.sourceUrl,
+    fetchUrl: input.fetchUrl,
+    handle: input.handle,
+  }).catch((error) => {
+    console.warn("[personal-builder] probe threw", { error });
+    return {
+      ok: true as const,
+      enrichment: {} as BuilderEnrichment,
+      warning:
+        "We couldn't verify the source right now; it was updated but the agent will retry.",
+    };
+  });
+  if (!probe.ok) {
+    return NextResponse.json({ error: probe.hardError }, { status: 400 });
+  }
+  const enrichment: BuilderEnrichment = resolution.enrichment ?? probe.enrichment;
 
   const finalName = pickFinalName(parsed.data.name, input.name, enrichment.name, {
     urlSignals: [
@@ -157,9 +169,10 @@ export async function PATCH(request: Request, { params }: Params) {
       },
     });
     revalidateTag(`user:${session.user.id}:recs`, "default");
+    const warning = combineWarnings(resolution.warning, probe.warning);
     return NextResponse.json({
       builder: updated,
-      ...(resolution.warning ? { warning: resolution.warning } : {}),
+      ...(warning ? { warning } : {}),
     });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {

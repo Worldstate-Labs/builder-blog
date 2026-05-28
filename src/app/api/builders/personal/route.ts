@@ -5,9 +5,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
 import {
-  enrichBuilderFromSource,
+  combineWarnings,
   hostnameOrNull,
   pickFinalName,
+  probeAndEnrichSource,
   type BuilderEnrichment,
 } from "@/lib/builder-enrichment";
 import { addBuilderToPool } from "@/lib/builder-pool";
@@ -68,19 +69,33 @@ export async function POST(request: Request) {
     }
   }
 
-  // Best-effort name + avatar enrichment. The podcast resolver
-  // already filled `enrichment` inline (one network call covered both
-  // RSS lookup and avatar); for every other source we hit the source
-  // page once here. Failures are swallowed so the add flow never
-  // breaks because an upstream is slow.
-  const enrichment: BuilderEnrichment =
-    resolution.enrichment ??
-    (await enrichBuilderFromSource({
-      sourceType: input.sourceType,
-      sourceUrl: input.sourceUrl,
-      fetchUrl: input.fetchUrl,
-      handle: input.handle,
-    }).catch(() => ({})));
+  // Probe the upstream for reachability and pull display name + avatar
+  // in the same network round-trip. The probe classifies failures into
+  // hard (reject the add with a user-facing reason) and soft (accept
+  // but warn). The resolver may have already pre-resolved an
+  // enrichment payload (Apple Podcasts → iTunes); we still run the
+  // probe because the iTunes-resolved RSS can be dead.
+  const probe = await probeAndEnrichSource({
+    sourceType: input.sourceType,
+    sourceUrl: input.sourceUrl,
+    fetchUrl: input.fetchUrl,
+    handle: input.handle,
+  }).catch((error) => {
+    console.warn("[personal-builder] probe threw", { error });
+    return {
+      ok: true as const,
+      enrichment: {} as BuilderEnrichment,
+      warning:
+        "We couldn't verify the source right now; it was added but the agent will retry.",
+    };
+  });
+  if (!probe.ok) {
+    return NextResponse.json({ error: probe.hardError }, { status: 400 });
+  }
+  // Resolver-supplied enrichment (Apple Podcasts iTunes result) wins
+  // over the probe's enrichment when present, since iTunes carries
+  // richer fields than RSS first-bytes ever can.
+  const enrichment: BuilderEnrichment = resolution.enrichment ?? probe.enrichment;
 
   const finalName = pickFinalName(parsed.data.name, input.name, enrichment.name, {
     urlSignals: [
@@ -128,12 +143,12 @@ export async function POST(request: Request) {
   };
 
   revalidateTag(`user:${session.user.id}:recs`, "default");
+  // Non-blocking diagnostic: combine the resolver warning (e.g. Apple
+  // lookup timed out) with the probe warning (e.g. blog page returned
+  // 503) into a single sentence. Either or both may be present.
+  const warning = combineWarnings(resolution.warning, probe.warning);
   return NextResponse.json({
     builder: item,
-    // Non-blocking diagnostic from the resolver (e.g. Apple lookup
-    // timed out; agent will retry at sync time). Client surfaces this
-    // as an info banner so the user knows the row is partially
-    // hydrated but still functional.
-    ...(resolution.warning ? { warning: resolution.warning } : {}),
+    ...(warning ? { warning } : {}),
   });
 }

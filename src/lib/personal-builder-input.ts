@@ -170,6 +170,7 @@ async function resolvePodcast(displayName: string, value: string): Promise<Resol
       if (lookup.ok) {
         const json = (await lookup.json().catch(() => null)) as
           | {
+              resultCount?: number;
               results?: Array<{
                 feedUrl?: string;
                 collectionName?: string;
@@ -178,7 +179,19 @@ async function resolvePodcast(displayName: string, value: string): Promise<Resol
               }>;
             }
           | null;
-        const result = json?.results?.[0];
+        const results = json?.results ?? [];
+        // Apple's lookup is the canonical source for "does this podcast
+        // exist?". Zero results means the id is wrong / the show was
+        // pulled — treat that as a hard rejection so the user gets a
+        // concrete reason instead of an empty library row.
+        if (results.length === 0) {
+          return {
+            ok: false,
+            reason:
+              "Apple Podcasts has no record of this show — paste the actual RSS feed URL instead.",
+          };
+        }
+        const result = results[0];
         if (result?.feedUrl) {
           fetchUrl = result.feedUrl;
           if (result.collectionName) resolvedName = result.collectionName;
