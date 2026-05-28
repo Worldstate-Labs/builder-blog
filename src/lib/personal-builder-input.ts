@@ -263,63 +263,72 @@ function resolveWebsite(displayName: string, sourceType: string, value: string):
 // ──────────────────────────────────────────────────────────────────
 
 function handleFromXValue(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  // Catch host-shaped inputs WITHOUT a protocol (e.g. "x.com/karpathy"
-  // or "www.twitter.com/sama") — without this, the old fast-path
-  // treated the whole string as a bare handle and stored
-  // "www.x.com/karpathy" as the handle.
-  const looksLikeHost = /^(?:https?:\/\/)?(?:www\.)?(?:x|twitter)\.com\//i.test(trimmed);
-  if (looksLikeHost) {
-    const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-    try {
-      const url = new URL(withProtocol);
-      if (!/(^|\.)x\.com$|(^|\.)twitter\.com$/i.test(url.hostname)) return null;
-      const [handle] = url.pathname.split("/").filter(Boolean);
-      return handle ? normalizeHandle(handle) : null;
-    } catch {
-      return null;
-    }
+  // URL-shaped input (with or without protocol): pull the first path
+  // segment as the handle.
+  const url = coerceToUrl(value, { hostMatch: /(^|\.)(x|twitter)\.com$/i });
+  if (url) {
+    const [handle] = url.pathname.split("/").filter(Boolean);
+    return handle ? normalizeHandle(handle) : null;
   }
-  // Bare handle (e.g. "@karpathy" or "karpathy"). Reject anything
-  // containing "/" or "." so a partial URL doesn't sneak through.
-  const bare = trimmed.replace(/^@/, "");
+  // Bare handle ("@karpathy" or "karpathy"). X handles are
+  // [A-Za-z0-9_]{1,15} — reject anything with "/" or "." so a partial
+  // URL can't slip through this branch.
+  const bare = value.trim().replace(/^@/, "");
   if (!/^[A-Za-z0-9_]{1,15}$/.test(bare)) return null;
   return normalizeHandle(bare);
 }
 
-function normalizedUrl(value: string) {
-  const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+/**
+ * Single source of truth for "is this string a URL?" across every
+ * personal-builder resolver. Accepts URLs with or without a protocol
+ * but rejects bare handles ("@karpathy"), single words ("abc"), and
+ * anything whose hostname doesn't contain a dot (i.e. not a real
+ * registered domain shape).
+ *
+ * Pass `hostMatch` to additionally require the resolved hostname
+ * match a platform regex (e.g. only x.com / twitter.com for X).
+ */
+function coerceToUrl(
+  value: string,
+  options: { hostMatch?: RegExp } = {},
+): URL | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  // "@handle" inputs are bare handles, not URLs. They belong in
+  // each platform's handle branch.
+  if (trimmed.startsWith("@")) return null;
+  // Cheap host shape check before we throw at new URL() — must look
+  // like at least one label + dot + TLD-ish suffix, optionally with
+  // a path or query. This is what excludes bare words like "abc".
+  const looksLikeHost =
+    /^(?:https?:\/\/)?[A-Za-z0-9][A-Za-z0-9.-]*\.[A-Za-z]{2,}(?:[\/:?#]|$)/i.test(trimmed);
+  if (!looksLikeHost) return null;
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  let url: URL;
   try {
-    return new URL(withProtocol).toString();
+    url = new URL(withProtocol);
   } catch {
     return null;
   }
+  if (!url.hostname || !url.hostname.includes(".")) return null;
+  if (options.hostMatch && !options.hostMatch.test(url.hostname)) return null;
+  return url;
+}
+
+function normalizedUrl(value: string) {
+  return coerceToUrl(value)?.toString() ?? null;
 }
 
 function youtubeUrlFromValue(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  // Catch host-shaped inputs WITHOUT a protocol (e.g.
-  // "www.youtube.com/@RedpointAI") — without this, the old fast-path
-  // treated the whole string as a bare handle and produced
-  // "https://www.youtube.com/@www.youtube.com/@RedpointAI".
-  const looksLikeHost = /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(
-    trimmed,
-  );
-  if (looksLikeHost) {
-    const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-    try {
-      const url = new URL(withProtocol);
-      if (!/(^|\.)youtube\.com$|(^|\.)youtu\.be$/i.test(url.hostname)) return null;
-      return url.toString();
-    } catch {
-      return null;
-    }
-  }
-  // Bare @handle (e.g. "@RedpointAI" or "RedpointAI"). Reject
-  // anything with "/" or "." so a partial URL can't slip through.
-  const handle = trimmed.replace(/^@/, "");
+  // URL-shaped input: parse via the shared coercer with a YouTube
+  // host whitelist.
+  const url = coerceToUrl(value, {
+    hostMatch: /(^|\.)(youtube\.com|youtu\.be)$/i,
+  });
+  if (url) return url.toString();
+  // Bare @handle ("@RedpointAI" or "RedpointAI"). YouTube handles
+  // accept [A-Za-z0-9_.-]; reject "/" so partial URLs can't pass.
+  const handle = value.trim().replace(/^@/, "");
   if (!/^[A-Za-z0-9_.-]+$/.test(handle)) return null;
   return `https://www.youtube.com/@${handle}`;
 }
