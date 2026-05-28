@@ -21,6 +21,8 @@ type BuilderLibraryStatsValue = {
   subscribed: number;
 };
 
+const countFormatter = new Intl.NumberFormat("en-US");
+
 export function BuilderLibraryStats({
   initialFetchedItems,
   initialInLibrary,
@@ -108,7 +110,7 @@ export function BuilderLibraryStats({
         </div>
         <div className="fb-stat fb-stat--compact">
           <div className="min-w-0">
-            <div className="fb-stat-value">{stats.fetchedItems.toLocaleString()}</div>
+            <div className="fb-stat-value">{countFormatter.format(stats.fetchedItems)}</div>
             <div className="fb-stat-label">Summarized</div>
           </div>
         </div>
