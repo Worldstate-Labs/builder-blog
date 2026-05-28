@@ -88,8 +88,13 @@ export function BuilderLibraryList({
       setSubscribedByBuilderId((current) => ({ ...current, [builder.id]: builder.subscribed }));
       // Mark for scrolling on the next render cycle. The scroll
       // effect below fires AFTER React commits the new row so
-      // document.getElementById is guaranteed to find it.
-      pendingScrollIdRef.current = builder.id;
+      // document.getElementById is guaranteed to find it. When the
+      // server returned a soft warning (e.g. blog has no RSS feed),
+      // skip the scroll — AddBuilderForm renders a warm banner the
+      // user needs to see before we move focus away.
+      if (!builder.addWarning) {
+        pendingScrollIdRef.current = builder.id;
+      }
       dispatchStatsChange({
         fetchedDelta: builder.feedItemCount,
         inLibraryDelta: 1,

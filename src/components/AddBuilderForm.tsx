@@ -117,6 +117,11 @@ function deriveDisplayName(sourceType: string, sourceValue: string): string {
 export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[] }) {
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
+  // Soft warning from the server (e.g. "blog has no RSS feed").
+  // Rendered as a full-width warm banner under the form so it can't
+  // be missed — the small inline status span is reserved for the
+  // success line ("Source added.").
+  const [warning, setWarning] = useState("");
   const [isPending, startTransition] = useTransition();
   const [sourceType, setSourceType] = useState<string>(sourceOptions[0]?.id ?? "x");
   const [sourceValue, setSourceValue] = useState("");
@@ -165,6 +170,7 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
     const formData = new FormData(form);
     setError("");
     setStatus("");
+    setWarning("");
 
     startTransition(async () => {
       try {
@@ -200,14 +206,20 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
         if (!payload?.builder) throw new Error("Missing source");
         window.dispatchEvent(
           new CustomEvent<BuilderLibraryEventItem>(builderLibraryBuilderAdded, {
-            detail: payload.builder,
+            detail: { ...payload.builder, addWarning: payload.warning ?? null },
           }),
         );
         form.reset();
         setSourceValue("");
         setName("");
         setNameTouched(false);
-        setStatus(payload.warning ? `Added — ${payload.warning}` : "Source added.");
+        if (payload.warning) {
+          setWarning(payload.warning);
+          setStatus("");
+        } else {
+          setStatus("Source added.");
+          setWarning("");
+        }
       } catch {
         setError("Could not add source.");
       }
@@ -312,6 +324,23 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
           ) : null}
         </span>
       </div>
+      {warning ? (
+        <div
+          aria-live="polite"
+          role="status"
+          className="mt-1 rounded-md border px-3 py-2 text-[12.5px] leading-5"
+          style={{
+            borderColor: "var(--warm-line, var(--line))",
+            background: "var(--warm-paper, var(--paper-strong))",
+            color: "var(--warm-strong, var(--ink))",
+          }}
+        >
+          <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: "11px", letterSpacing: "0.08em", textTransform: "uppercase", marginRight: "0.5rem", color: "var(--muted-strong)" }}>
+            Heads up
+          </span>
+          {warning}
+        </div>
+      ) : null}
     </form>
   );
 }

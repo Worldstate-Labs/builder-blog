@@ -20,6 +20,8 @@ export type BuilderLibraryEventItem = {
   sourceType: string;
   sourceUrl: string | null;
   subscribed: boolean;
+  /** When non-empty, the add succeeded with a soft warning (e.g. blog has no RSS feed). UI uses this to keep the user's attention on the form's warning banner instead of auto-scrolling to the new row. */
+  addWarning?: string | null;
 };
 
 export type BuilderLibraryStatsChange = {
