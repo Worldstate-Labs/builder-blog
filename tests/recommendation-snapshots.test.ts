@@ -32,6 +32,9 @@ test("source logos are shared across recommendation and library surfaces", () =>
   assert.match(source("src/components/SourceBadge.tsx"), /data-source/);
   assert.match(source("src/components/FetchedPostCard.tsx"), /SourceBadge/);
   assert.match(source("src/components/RecommendationFeed.tsx"), /FetchedPostCard/);
+  assert.match(source("src/components/RecentPostsList.tsx"), /FetchedPostCard/);
+  assert.doesNotMatch(source("src/components/RecentPostsList.tsx"), /variant="row"/);
+  assert.doesNotMatch(source("src/components/RecentPostsList.tsx"), /showDebugActions=\{false\}/);
   assert.match(source("src/components/BuilderFeedItems.tsx"), /FetchedPostCard/);
   assert.match(source("src/components/BuilderLibraryList.tsx"), /SourceBadge/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /kindLabel/);
