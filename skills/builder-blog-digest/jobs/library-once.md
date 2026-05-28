@@ -71,6 +71,12 @@ How to execute each `fetchTask` in this step:
   this value so validation can bind the output item to this task.
 - Copy `task.builderSync` exactly as the enclosing builder object in the sync
   payload. Do not infer builder fields from names, handles, or URLs.
+- If `task.agentWorkType="x_token_missing"`, do NOT try to fetch. Print
+  `task.agentMessage` to the user verbatim as an "Action needed" notice
+  (it tells them where to get an X API bearer token and which env var to
+  set), and skip this task — do not include it in the sync payload. The
+  validator already treats these as informational and will not flag them
+  as missing.
 - Read `task.contentStatus`.
   - For `ready`, use `task.item.body` as the final item body exactly; do not
     fetch or rewrite the source content.

@@ -70,6 +70,10 @@ How to execute each `fetchTask` in this smoke-check step:
 - Read `task.contentStatus`.
   - For `ready`, use `task.item.body` as the final item body exactly; do not
     fetch or rewrite the source content.
+  - If `task.agentWorkType="x_token_missing"`, do NOT try to fetch. Surface
+    `task.agentMessage` to the user as an "Action needed" notice and skip
+    this task — do not include it in the sync payload. The validator
+    treats these as informational and will not flag them as missing.
   - For `requires_agent`, use `task.item.url`, `task.sourceType`, and
     `task.agentWorkType` to pick any extraction method available (web fetch,
     local CLI tools, transcription APIs, headless browser, etc.). Keep trying

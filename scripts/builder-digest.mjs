@@ -514,7 +514,7 @@ function buildBuilderFallbackTask(builder, builderSync, { error, sources = {}, c
 function fetchTaskFromAgentTask(task, builderSync, sources = {}, commonSummaryRules = "") {
   const item = task.item ?? {};
   const sourceType = task.sourceType ?? builderSync.sourceType;
-  return {
+  const out = {
     type: "fetch_post",
     agentWorkType: task.type,
     contentStatus: "requires_agent",
@@ -527,6 +527,11 @@ function fetchTaskFromAgentTask(task, builderSync, sources = {}, commonSummaryRu
     summaryInstructions: task.summaryInstructions ?? singlePostSummaryInstructions(sourceType, sources, commonSummaryRules),
     id: fetchTaskId({ builderId: task.builderId ?? builderSync.builderId, builder: task.builder ?? builderSync.name, item }),
   };
+  // Pass-through optional fields used by user-action tasks
+  // (e.g., x_token_missing) so the agent can surface them verbatim.
+  if (task.agentMessage) out.agentMessage = task.agentMessage;
+  if (task.agentHelpUrl) out.agentHelpUrl = task.agentHelpUrl;
+  return out;
 }
 
 export function fetchTaskId(task) {
@@ -1150,7 +1155,41 @@ async function fetchPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel,
 async function fetchPersonalXBuilder(builder, { cutoff, limit, agentModel, fetchedItemKeys = new Set() }) {
   const bearerToken = process.env.X_BEARER_TOKEN?.trim();
   if (!bearerToken) {
-    throw new Error("X_BEARER_TOKEN is required for personal X fetching, or configure an external fetcher command.");
+    // No throw: unauthenticated x.com scraping doesn't yield usable post
+    // content (login wall + JS challenge), so retry-with-agent is futile.
+    // Surface a structured task the agent prints to the user instead.
+    const handleString = normalizeXHandle(builder.handle || builder.sourceUrl) ?? "";
+    const profileUrl = handleString
+      ? `https://x.com/${handleString}`
+      : (builder.sourceUrl ?? "");
+    const task = {
+      type: "x_token_missing",
+      builder: builder.name,
+      builderId: builder.id,
+      sourceType: "x",
+      agentMessage:
+        `Action needed for X source "${builder.name}": personal X (Twitter) ` +
+        `fetching requires an X API bearer token. The CLI cannot fetch posts ` +
+        `without it, and unauthenticated x.com scraping does not return usable ` +
+        `content. Get a free bearer token at ` +
+        `https://developer.x.com/en/portal/dashboard (the Free tier covers ` +
+        `read-only access), then export X_BEARER_TOKEN=... in the shell that ` +
+        `runs this skill before re-running.`,
+      agentHelpUrl: "https://developer.x.com/en/portal/dashboard",
+      item: {
+        kind: "TWEET",
+        externalId: `x-token-missing:${builder.id}`,
+        title: builder.name,
+        url: profileUrl,
+        publishedAt: null,
+        sourceName: builder.name,
+      },
+      minimumContentQuality: genericMinimumContentQuality(),
+    };
+    return {
+      items: [],
+      agentTasks: [{ ...task, id: agentTaskId(task) }],
+    };
   }
   const handle = normalizeXHandle(builder.handle || builder.sourceUrl);
   if (!handle) return [];
@@ -1903,7 +1942,21 @@ export function validateAgentSyncPayload(fetchResult, payload) {
   const validatedFetchTasks = [];
   const errors = [];
 
+  const userActionTasks = [];
   for (const task of fetchTasks) {
+    // User-action tasks (e.g., x_token_missing) are informational: the
+    // agent prints them and does not include them in the sync payload,
+    // so the validator must not flag them as missing.
+    if (task.agentWorkType === "x_token_missing") {
+      userActionTasks.push({
+        fetchTaskId: task.id || fetchTaskId(task),
+        agentWorkType: task.agentWorkType,
+        builder: task.builder,
+        message: task.agentMessage ?? null,
+        helpUrl: task.agentHelpUrl ?? null,
+      });
+      continue;
+    }
     const id = task.id || fetchTaskId(task);
     const matches =
       task.agentWorkType === "fetch_builder_fallback"
@@ -1958,6 +2011,7 @@ export function validateAgentSyncPayload(fetchResult, payload) {
     status: "ok",
     fetchTasks: fetchTasks.length,
     validatedFetchTasks: validatedFetchTasks.length,
+    userActions: userActionTasks,
   };
 }
 

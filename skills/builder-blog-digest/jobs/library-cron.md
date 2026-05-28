@@ -58,7 +58,12 @@ Rules:
   - Read `task.contentStatus`.
     - For `ready`, use `task.item.body` as the final item body exactly; do not
       fetch or rewrite the source content.
-    - For `requires_agent`, use `task.item.url`, `task.sourceType`, and
+    - If `task.agentWorkType="x_token_missing"`, do NOT try to fetch. Log
+      `task.agentMessage` to the scheduled job log as an "Action needed"
+      notice and skip this task — do not include it in the sync payload.
+      The validator treats these as informational and will not flag them
+      as missing.
+  - For `requires_agent`, use `task.item.url`, `task.sourceType`, and
       `task.agentWorkType` to pick any extraction method available (web fetch,
       local CLI tools, transcription APIs, headless browser, etc.). Keep trying
       available methods until real primary content is obtained or no method
