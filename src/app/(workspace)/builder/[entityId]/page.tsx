@@ -117,11 +117,11 @@ export default async function BuilderDetailPage({ params }: Params) {
     return max;
   }, null);
 
-  // Resolve target builderId server-side: own channel first, else first channel.
-  const targetBuilderId =
-    channels.find((c) => c.isOwnChannel)?.builderId ??
-    channels[0]?.builderId ??
-    null;
+  // Every Builder (channel) of this entity that the user has access
+  // to — used by the entity-level Follow button to compute "any
+  // channel subscribed" and to fan out subscribe/unsubscribe across
+  // them.
+  const channelIds = channels.map((c) => c.builderId);
 
   return (
     <div className="page-pad">
@@ -223,7 +223,7 @@ export default async function BuilderDetailPage({ params }: Params) {
             <BuilderDetailActionsSlot
               entityId={entityId}
               userId={userId}
-              targetBuilderId={targetBuilderId}
+              channelIds={channelIds}
             />
           </Suspense>
         </div>
@@ -271,24 +271,26 @@ async function countDedupedItemsForEntity(entityId: string): Promise<number> {
 async function BuilderDetailActionsSlot({
   entityId,
   userId,
-  targetBuilderId,
+  channelIds,
 }: {
   entityId: string;
   userId: string;
-  targetBuilderId: string | null;
+  channelIds: string[];
 }) {
-  const subscription = await prisma.subscription.findFirst({
-    where: {
-      userId,
-      builderId: targetBuilderId ?? undefined,
-    },
-    select: { builderId: true },
-  });
+  // Follow state is "any channel of this entity is subscribed". Mirrors
+  // the entity-level toggle semantics: a user who follows the creator
+  // wants updates from any library that brings them in, so the toggle
+  // stays on as long as at least one channel is subscribed.
+  const subscribedCount =
+    channelIds.length === 0
+      ? 0
+      : await prisma.subscription.count({
+          where: { userId, builderId: { in: channelIds } },
+        });
   return (
     <BuilderDetailActions
       entityId={entityId}
-      initialSubscribed={Boolean(subscription)}
-      targetBuilderId={targetBuilderId}
+      initialSubscribed={subscribedCount > 0}
     />
   );
 }

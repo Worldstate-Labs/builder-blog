@@ -5,16 +5,21 @@ import { useState, useTransition } from "react";
 type BuilderDetailActionsProps = {
   entityId: string;
   initialSubscribed: boolean;
-  targetBuilderId: string | null;
 };
 
 /**
- * Client controls on the canonical builder detail page: Follow / Unfollow toggle only.
- * Channel preference is handled by ChannelPreferenceToggle in the Channels section.
+ * Follow / unfollow toggle on the entity detail page.
+ *
+ * "Follow" is entity-level from the user's perspective ("follow this
+ * creator"), even though Subscription rows are stored per-channel.
+ * The server endpoint fans the toggle out across every channel of
+ * this entity that the user has in their pool, and `initialSubscribed`
+ * reflects "any channel currently subscribed". Per-channel granular
+ * control still lives on the library row toggle.
  */
 export function BuilderDetailActions({
+  entityId,
   initialSubscribed,
-  targetBuilderId,
 }: BuilderDetailActionsProps) {
   const [subscribed, setSubscribed] = useState(initialSubscribed);
   const [error, setError] = useState<string | null>(null);
@@ -25,13 +30,15 @@ export function BuilderDetailActions({
     setSubscribed(next);
     setError(null);
     startTransition(async () => {
-      if (!targetBuilderId) return;
       try {
-        const response = await fetch(`/api/builders/${targetBuilderId}/subscription`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subscribed: next }),
-        });
+        const response = await fetch(
+          `/api/builders/entity/${entityId}/subscription`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ subscribed: next }),
+          },
+        );
         if (!response.ok) throw new Error("Subscription update failed");
       } catch {
         setSubscribed(previous);
@@ -45,7 +52,7 @@ export function BuilderDetailActions({
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
-          disabled={isPending || !targetBuilderId}
+          disabled={isPending}
           onClick={() => follow(!subscribed)}
           className={
             subscribed
