@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { FetchedPostCard } from "@/components/FetchedPostCard";
+import { PostCard } from "@/components/PostCard";
 import { getCurrentSession } from "@/lib/auth";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
@@ -66,7 +66,7 @@ export default async function RecommendationItemPage({
         </Link>
       </div>
 
-      <FetchedPostCard
+      <PostCard
         dataRead={true}
         extraActions={
           <Link className="button-light button-compact gap-2" href="/dashboard">

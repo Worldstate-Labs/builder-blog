@@ -1,4 +1,4 @@
-import { FetchedPostCard } from "@/components/FetchedPostCard";
+import { PostCard } from "@/components/PostCard";
 
 export function FeedCard({
   title,
@@ -18,7 +18,7 @@ export function FeedCard({
   fetchTool?: string | null;
 }) {
   return (
-    <FetchedPostCard
+    <PostCard
       extraMeta={source ? <span>{source}</span> : null}
       post={{
         id: url,

@@ -389,16 +389,16 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /"use client"/);
   assert.match(builderFeedItems, /fetch\(`\/api\/builders\/\$\{builderId\}\/feed-items`/);
   // UI copy migrated from "Fetched" to "Summarized" / "Raw content"
-  // for compliance — see CLAUDE.md design context. Internal identifiers
-  // (FetchedPostCard etc.) still use "Fetched" because the storage path
-  // is the FeedItem fetch pipeline.
+  // for compliance — see CLAUDE.md design context. The canonical display
+  // component is PostCard.
   assert.match(builderFeedItems, /Summarized posts/);
-  assert.match(builderFeedItems, /FetchedPostCard/);
-  assert.match(source("src/components/FetchedPostCard.tsx"), /Summary/);
-  assert.match(source("src/components/FetchedPostCard.tsx"), /See more/);
-  assert.match(source("src/components/FetchedPostCard.tsx"), /Raw content/);
-  assert.match(source("src/components/FetchedPostCard.tsx"), /Open source/);
-  assert.match(source("src/components/FetchedPostCard.tsx"), /\/builders#\$\{builder\.id\}/);
+  assert.match(builderFeedItems, /PostCard/);
+  assert.match(source("src/components/PostCard.tsx"), /Summary/);
+  assert.match(source("src/components/PostCard.tsx"), /export function PostCard/);
+  assert.match(source("src/components/PostCard.tsx"), /See more/);
+  assert.match(source("src/components/PostCard.tsx"), /Raw content/);
+  assert.match(source("src/components/PostCard.tsx"), /Open source/);
+  assert.match(source("src/components/PostCard.tsx"), /\/builders#\$\{builder\.id\}/);
   assert.match(feedItemsRoute, /fetchDedupedFeedForEntities/);
   assert.match(feedItemsRoute, /activePoolBuilderIds/);
   assert.match(feedItemsRoute, /NextResponse\.json/);

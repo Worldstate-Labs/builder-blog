@@ -10,17 +10,17 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   const schema = source("prisma/schema.prisma");
   const apiRoute = source("src/app/api/recommendations/route.ts");
   const feed = source("src/components/RecommendationFeed.tsx");
-  const fetchedPostCard = source("src/components/FetchedPostCard.tsx");
+  const postCard = source("src/components/PostCard.tsx");
   const detailPage = source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx");
 
   assert.match(schema, /model RecommendationSnapshot/);
   assert.match(schema, /model RecommendationSnapshotItem/);
   assert.match(apiRoute, /readAt: read\.readAt\.toISOString\(\)/);
   assert.match(feed, /initialSnapshots/);
-  assert.match(feed, /FetchedPostCard/);
+  assert.match(feed, /PostCard/);
   assert.match(feed, /onInteract/);
-  assert.match(fetchedPostCard, /data-read/);
-  assert.match(fetchedPostCard, /Raw content/);
+  assert.match(postCard, /data-read/);
+  assert.match(postCard, /Raw content/);
   assert.doesNotMatch(feed, /Mark read/);
   assert.match(detailPage, /Back to feed/);
   assert.match(detailPage, /feedRead\.create/);
@@ -30,15 +30,18 @@ test("recommendation feed persists snapshots and marks reads without removing ca
 
 test("source logos are shared across recommendation and library surfaces", () => {
   assert.match(source("src/components/SourceBadge.tsx"), /data-source/);
-  assert.match(source("src/components/FetchedPostCard.tsx"), /SourceBadge/);
-  assert.match(source("src/components/RecommendationFeed.tsx"), /FetchedPostCard/);
-  assert.match(source("src/components/RecentPostsList.tsx"), /FetchedPostCard/);
+  assert.match(source("src/components/PostCard.tsx"), /SourceBadge/);
+  assert.match(source("src/components/PostCard.tsx"), /export function PostCard/);
+  assert.match(source("src/components/FetchedPostCard.tsx"), /PostCard as FetchedPostCard/);
+  assert.match(source("src/components/RecommendationFeed.tsx"), /PostCard/);
+  assert.match(source("src/components/RecentPostsList.tsx"), /PostCard/);
   assert.doesNotMatch(source("src/components/RecentPostsList.tsx"), /variant="row"/);
+  assert.doesNotMatch(source("src/components/RecentPostsList.tsx"), /showBuilderRow=\{false\}/);
   assert.doesNotMatch(source("src/components/RecentPostsList.tsx"), /showDebugActions=\{false\}/);
-  assert.match(source("src/components/BuilderFeedItems.tsx"), /FetchedPostCard/);
+  assert.match(source("src/components/BuilderFeedItems.tsx"), /PostCard/);
   assert.match(source("src/components/BuilderLibraryList.tsx"), /SourceBadge/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /kindLabel/);
-  assert.match(source("src/components/FeedCard.tsx"), /FetchedPostCard/);
+  assert.match(source("src/components/FeedCard.tsx"), /PostCard/);
 });
 
 test("recommendation snapshots request six posts at a time", () => {

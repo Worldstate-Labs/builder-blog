@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FetchedPostCard } from "@/components/FetchedPostCard";
+import { PostCard } from "@/components/PostCard";
 
 type BuilderSummary = {
   id: string;
@@ -100,7 +100,7 @@ export function BuilderFeedItems({
           </div>
         ) : null}
         {items?.map((item) => (
-          <FetchedPostCard
+          <PostCard
             fallbackBuilder={builder}
             key={item.id}
             post={{
@@ -119,4 +119,3 @@ export function BuilderFeedItems({
     </details>
   );
 }
-

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, RefreshCcw } from "lucide-react";
-import { FetchedPostCard } from "@/components/FetchedPostCard";
+import { PostCard } from "@/components/PostCard";
 import { markPostRead } from "@/lib/mark-read";
 
 export type RecommendationFeedEntry = {
@@ -163,7 +163,7 @@ function RecommendationCard({
   const isRead = Boolean(entry.readAt);
 
   return (
-    <FetchedPostCard
+    <PostCard
       dataRead={isRead}
       onInteract={() => markRead(entry.item.id)}
       post={entry.item}
