@@ -1860,7 +1860,7 @@ a {
 
 .search-page-active .search-hero {
   margin: 0;
-  max-width: 66rem;
+  max-width: 76rem;
   text-align: left;
 }
 
@@ -2298,7 +2298,7 @@ a {
 
 .search-results-shell {
   margin: 1.5rem auto 0;
-  max-width: 66rem;
+  max-width: 76rem;
   min-width: 0;
 }
 
@@ -2709,11 +2709,24 @@ a {
 }
 
 .search-result-refinements {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
   margin-top: 0.7rem;
+}
+
+.search-result-refinements > summary {
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.76rem;
+  font-weight: 800;
+  list-style: none;
+}
+
+.search-result-refinements > summary::-webkit-details-marker {
+  display: none;
+}
+
+.search-result-refinements > summary:hover {
+  color: var(--accent);
 }
 
 .search-result-refinement {
@@ -4722,4 +4735,3 @@ body {
     display: none !important;
   }
 }
-

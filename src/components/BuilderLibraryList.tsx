@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { BuilderLibraryActions } from "@/components/BuilderLibraryActions";
 import { SourceBadge } from "@/components/SourceBadge";
@@ -113,7 +112,7 @@ export function BuilderLibraryList({
       if (removed) {
         delete next[builderId];
       } else {
-      next[builderId] = "Could not remove source.";
+        next[builderId] = "Could not remove source.";
       }
       return next;
     });
@@ -201,11 +200,13 @@ function BuilderCard({
           {removeError}
         </div>
       ) : null}
-      <BuilderFeedItems
-        builder={builder}
-        builderId={builder.id}
-        totalCount={builder.feedItemCount}
-      />
+      {builder.feedItemCount > 0 ? (
+        <BuilderFeedItems
+          builder={builder}
+          builderId={builder.id}
+          totalCount={builder.feedItemCount}
+        />
+      ) : null}
     </article>
   );
 }
@@ -249,17 +250,6 @@ function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
         ) : null}
         <span>·</span>
         <span>{builder.fetchLabel}</span>
-        {sourceUrl ? (
-          <a
-            className="inline-flex items-center gap-1 text-[var(--accent)] hover:underline"
-            href={sourceUrl}
-            rel="noreferrer"
-            target="_blank"
-          >
-            <ExternalLink className="h-3 w-3" aria-hidden="true" />
-            Open
-          </a>
-        ) : null}
       </div>
     </div>
   );

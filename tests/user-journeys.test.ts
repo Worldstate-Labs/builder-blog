@@ -312,10 +312,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(settingsPanel, /\/api\/skill\/bootstrap/);
   assert.match(buildersPage, /<SkillPromptActions context="library"/);
   assert.match(dashboardPage, /<SkillPromptActions context="digest"/);
-  assert.match(skillPromptActions, /Build library/);
-  assert.match(skillPromptActions, /Build digest feed/);
-  assert.match(skillPromptActions, /Copy once prompt/);
-  assert.match(skillPromptActions, /Copy cron prompt/);
+  assert.match(skillPromptActions, /Source sync/);
+  assert.match(skillPromptActions, /Digest sync/);
+  assert.match(skillPromptActions, /Copy once command/);
+  assert.match(skillPromptActions, /Copy scheduled command/);
   assert.match(skillPromptActions, /Read \$\{promptUrl\} and follow the instructions/);
   assert.match(skillPromptActions, /\/api\/skill\/jobs\/\$\{job\}\/skill\.md/);
   assert.doesNotMatch(skillPromptActions, /\/api\/skill\/bootstrap/);

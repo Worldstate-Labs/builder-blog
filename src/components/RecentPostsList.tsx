@@ -29,6 +29,7 @@ export function RecentPostsList({
             onInteract={() => markPostRead(item.id)}
             post={item.post}
             showBuilderRow={false}
+            showDebugActions={false}
             variant="row"
           />
         </li>

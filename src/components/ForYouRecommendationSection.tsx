@@ -107,5 +107,5 @@ function ForYouUnavailable({ scope }: { scope: RecommendationScope }) {
 }
 
 function scopeLabel(scope: RecommendationScope) {
-  return scope === "subscription" ? "Subscription" : "For You";
+  return scope === "subscription" ? "Following" : "For You";
 }

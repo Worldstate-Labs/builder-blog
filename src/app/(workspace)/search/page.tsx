@@ -280,7 +280,6 @@ async function SearchResultsSection({
   const isShowingCorrectedResults = Boolean(correctionSearch);
   const activeQuery = correctionSearch && correctedQuery ? correctedQuery : query;
   const results = correctionSearch?.results ?? originalSearch.results;
-  const candidateCount = correctionSearch?.candidateCount ?? originalSearch.candidateCount;
   const typeCounts = countResultTypes(results);
   const filteredResults =
     typeFilter === "all" ? results : results.filter((result) => result.type === typeFilter);
@@ -319,7 +318,7 @@ async function SearchResultsSection({
               <div className="search-meta-row">
                 About {filteredResults.length} result
                 {filteredResults.length === 1 ? "" : "s"} for{" "}
-                <span>{activeQuery}</span>. Searched {candidateCount} candidates in {mode} mode.
+                <span>{activeQuery}</span>.
               </div>
               {isShowingCorrectedResults && correctedQuery ? (
                 <div className="search-did-you-mean">
@@ -345,7 +344,6 @@ async function SearchResultsSection({
                 <summary>Search tools</summary>
                 <SearchQueryInsights
                   actions={recoveryActions}
-                  candidateCount={candidateCount}
                   mode={mode}
                   query={activeQuery}
                   resultCount={filteredResults.length}
@@ -471,7 +469,6 @@ function SearchResultsFallback({
 
 function SearchQueryInsights({
   actions,
-  candidateCount,
   mode,
   query,
   resultCount,
@@ -480,7 +477,6 @@ function SearchQueryInsights({
   typeFilter,
 }: {
   actions: SearchRecoveryAction[];
-  candidateCount: number;
   mode: SearchMode;
   query: string;
   resultCount: number;
@@ -498,7 +494,7 @@ function SearchQueryInsights({
           <div>
             <span>Query understood</span>
             <strong>
-              {resultCount} result{resultCount === 1 ? "" : "s"} from {candidateCount} candidates
+              {resultCount} result{resultCount === 1 ? "" : "s"}
             </strong>
           </div>
         </div>
@@ -685,30 +681,35 @@ function ResultCard({
           </a>
         ) : null}
       </div>
-      <div className="search-result-refinements" aria-label={`Refine search for ${result.title}`}>
-        {sourceSite ? (
-          <Link
-            className="search-result-refinement"
-            href={searchHref({
-              query: withSiteSearchOperator(query, sourceSite),
-              type: "all",
-              mode,
-              sort,
-              time,
-            })}
-          >
-            More from this source
-          </Link>
-        ) : null}
-        {typeFilter !== result.type ? (
-          <Link
-            className="search-result-refinement"
-            href={searchHref({ query, type: result.type, mode, sort, time })}
-          >
-            Only {resultTypeLabels[result.type]}
-          </Link>
-        ) : null}
-      </div>
+      {sourceSite || typeFilter !== result.type ? (
+        <details className="search-result-refinements" aria-label={`Refine search for ${result.title}`}>
+          <summary>Refine</summary>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {sourceSite ? (
+              <Link
+                className="search-result-refinement"
+                href={searchHref({
+                  query: withSiteSearchOperator(query, sourceSite),
+                  type: "all",
+                  mode,
+                  sort,
+                  time,
+                })}
+              >
+                More from this source
+              </Link>
+            ) : null}
+            {typeFilter !== result.type ? (
+              <Link
+                className="search-result-refinement"
+                href={searchHref({ query, type: result.type, mode, sort, time })}
+              >
+                Only {resultTypeLabels[result.type]}
+              </Link>
+            ) : null}
+          </div>
+        </details>
+      ) : null}
     </article>
   );
 }
@@ -801,19 +802,46 @@ function AdvancedSearchTips({
 }
 
 function HighlightText({ text, query }: { text: string; query: string }) {
-  const terms = searchHighlightTerms(query);
-  if (terms.length === 0) return text;
-  const pattern = new RegExp(`(${terms.map(escapeRegExp).join("|")})`, "ig");
-  const parts = text.split(pattern);
+  const decodedText = decodeHtmlEntities(text);
+  const terms = searchHighlightTerms(query).filter(Boolean);
+  if (terms.length === 0) return decodedText;
+  const pattern = new RegExp(
+    `(^|[^\\p{L}\\p{N}_])(${[...terms]
+      .sort((a, b) => b.length - a.length)
+      .map(escapeRegExp)
+      .join("|")})(es|s)?(?=$|[^\\p{L}\\p{N}_])`,
+    "giu",
+  );
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+
+  while ((match = pattern.exec(decodedText)) !== null) {
+    const fullMatch = match[0] ?? "";
+    const prefix = match[1] ?? "";
+    const highlightedText = `${match[2] ?? ""}${match[3] ?? ""}`;
+    const highlightStart = match.index + prefix.length;
+
+    if (highlightStart > lastIndex) {
+      parts.push(
+        <span key={`text:${key++}`}>
+          {decodedText.slice(lastIndex, highlightStart)}
+        </span>,
+      );
+    }
+    parts.push(<mark key={`mark:${key++}`}>{highlightedText}</mark>);
+    lastIndex = match.index + fullMatch.length;
+  }
+
+  if (parts.length === 0) return decodedText;
+  if (lastIndex < decodedText.length) {
+    parts.push(<span key={`text:${key++}`}>{decodedText.slice(lastIndex)}</span>);
+  }
+
   return (
     <>
-      {parts.map((part, index) =>
-        terms.some((term) => term.toLowerCase() === part.toLowerCase()) ? (
-          <mark key={`${part}:${index}`}>{part}</mark>
-        ) : (
-          <span key={`${part}:${index}`}>{part}</span>
-        ),
-      )}
+      {parts}
     </>
   );
 }
@@ -1349,4 +1377,33 @@ function normalizePage(value: string) {
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const htmlEntityMap: Record<string, string> = {
+  amp: "&",
+  apos: "'",
+  gt: ">",
+  lt: "<",
+  nbsp: " ",
+  quot: "\"",
+};
+
+function decodeHtmlEntities(value: string) {
+  return value.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (entity, code: string) => {
+    const normalizedCode = code.toLowerCase();
+    if (normalizedCode.startsWith("#x")) {
+      return codePointEntity(entity, Number.parseInt(normalizedCode.slice(2), 16));
+    }
+    if (normalizedCode.startsWith("#")) {
+      return codePointEntity(entity, Number.parseInt(normalizedCode.slice(1), 10));
+    }
+    return htmlEntityMap[normalizedCode] ?? entity;
+  });
+}
+
+function codePointEntity(entity: string, codePoint: number) {
+  if (!Number.isFinite(codePoint) || codePoint < 0 || codePoint > 0x10ffff) {
+    return entity;
+  }
+  return String.fromCodePoint(codePoint);
 }

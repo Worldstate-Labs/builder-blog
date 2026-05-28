@@ -68,8 +68,11 @@ async function SourceTypeConfigSection() {
     getDigestConfig(),
   ]);
   return (
-    <section className="mt-10">
-      <div>
+    <details className="fb-panel dashed mt-10">
+      <summary className="cursor-pointer text-sm font-bold text-[var(--ink)]">
+        Advanced source configuration
+      </summary>
+      <div className="mt-4">
         <p className="fb-section-label">Admin · runtime configuration</p>
         <h2 className="fb-section-heading mt-1">Source type configuration</h2>
         <p className="fb-desc mt-1 max-w-3xl">
@@ -114,7 +117,7 @@ async function SourceTypeConfigSection() {
           />
         </div>
       </div>
-    </section>
+    </details>
   );
 }
 

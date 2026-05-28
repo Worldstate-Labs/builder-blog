@@ -31,7 +31,7 @@ export function SubscribeAllLibraryBuildersButton({
         const response = await fetch("/api/builders/subscriptions", {
           method: "POST",
         });
-        if (!response.ok) throw new Error("Unable to subscribe sources");
+        if (!response.ok) throw new Error("Unable to follow sources");
         onSubscribedAll?.();
         setPhase("done");
       } catch {
@@ -50,11 +50,11 @@ export function SubscribeAllLibraryBuildersButton({
         type="button"
       >
         <Bell aria-hidden="true" />
-        {isPending ? "Subscribing..." : phase === "done" ? "Subscribed" : "Subscribe all in library"}
+        {isPending ? "Following..." : phase === "done" ? "Following" : "Follow all in library"}
       </button>
       {phase === "error" ? (
         <span className="text-xs text-[var(--danger)]" role="status">
-          Could not subscribe all sources.
+          Could not follow all sources.
         </span>
       ) : null}
     </div>
@@ -131,14 +131,14 @@ export function BuilderLibraryActions({
         <button
           aria-busy={isPending}
           aria-pressed={subscribed}
-          aria-label={subscribed ? "Unsubscribe" : "Subscribe"}
+          aria-label={subscribed ? "Unfollow" : "Follow"}
           className="inline-flex items-center gap-1.5"
           disabled={isPending}
           onClick={updateSubscription}
           type="button"
         >
           <span className="text-[12px] font-semibold text-[var(--muted-strong)]">
-            Subscribe
+            Follow
           </span>
           <span className={`fb-toggle${subscribed ? " on" : ""}`} aria-hidden="true" />
         </button>

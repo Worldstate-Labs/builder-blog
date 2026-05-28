@@ -95,6 +95,18 @@ export function AgentTokenPanel({
     () => tokens.filter((token) => !token.revokedAt).length,
     [tokens],
   );
+  const visibleTokens = useMemo(
+    () => tokens.filter((token) => !token.revokedAt).slice(0, 5),
+    [tokens],
+  );
+  const visibleTokenIds = useMemo(
+    () => new Set(visibleTokens.map((token) => token.id)),
+    [visibleTokens],
+  );
+  const hiddenTokens = useMemo(
+    () => tokens.filter((token) => !visibleTokenIds.has(token.id)),
+    [tokens, visibleTokenIds],
+  );
 
   function openCreateDialog() {
     setStatus("");
@@ -196,7 +208,7 @@ export function AgentTokenPanel({
       </div>
 
       <div className="mt-4 overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)]">
-        {tokens.map((token) => (
+        {visibleTokens.map((token) => (
           <TokenRow
             key={token.id}
             token={token}
@@ -209,7 +221,30 @@ export function AgentTokenPanel({
             No tokens yet. Create one when your local agent or terminal skill needs direct access.
           </div>
         ) : null}
+        {tokens.length > 0 && visibleTokens.length === 0 ? (
+          <div className="px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
+            No active tokens.
+          </div>
+        ) : null}
       </div>
+
+      {hiddenTokens.length > 0 ? (
+        <details className="mt-3 rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)]">
+          <summary className="cursor-pointer px-4 py-3 text-[13px] font-bold text-[var(--ink)]">
+            Token history ({hiddenTokens.length})
+          </summary>
+          <div className="border-t border-[var(--line)]">
+            {hiddenTokens.map((token) => (
+              <TokenRow
+                key={token.id}
+                token={token}
+                isPending={isPending}
+                onRevoke={() => openRevokeDialog(token)}
+              />
+            ))}
+          </div>
+        </details>
+      ) : null}
 
       <span aria-live="polite" className="mt-2 block">
         {status ? <span className="text-[12px] text-[var(--danger)]">{status}</span> : null}
@@ -377,13 +412,13 @@ function TokenRow({
           {token.revokedAt ? (
             <>
               <span>·</span>
-              <span>Revoked</span>
+              <span>Revoked {formatDate(token.revokedAt)}</span>
             </>
           ) : null}
         </div>
       </div>
       {token.revokedAt ? (
-        <span className="fb-kind-pill">revoked</span>
+        <span className="fb-kind-pill">inactive</span>
       ) : (
         <button
           className="fb-btn ghost compact"

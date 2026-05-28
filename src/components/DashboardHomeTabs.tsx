@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { type ReactNode } from "react";
 
 type DashboardTab = "ai-digest" | "subscription" | "for-you";
 
@@ -15,22 +16,16 @@ export function DashboardHomeTabs({
   initialTab: DashboardTab;
   subscription: ReactNode;
 }) {
-  const [selectedTab, setSelectedTab] = useState<DashboardTab>(initialTab);
-
-  useEffect(() => {
-    function syncFromUrl() {
-      const params = new URLSearchParams(window.location.search);
-      setSelectedTab(parseTab(params.get("tab")));
-    }
-
-    window.addEventListener("popstate", syncFromUrl);
-    return () => window.removeEventListener("popstate", syncFromUrl);
-  }, []);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const selectedTab =
+    searchParams.get("tab") === null
+      ? initialTab
+      : parseTab(searchParams.get("tab"));
 
   function selectTab(tab: DashboardTab) {
-    setSelectedTab(tab);
     const url = tab === "ai-digest" ? "/dashboard" : `/dashboard?tab=${tab}`;
-    window.history.pushState(null, "", url);
+    router.replace(url, { scroll: false });
   }
 
   return (
@@ -47,7 +42,7 @@ export function DashboardHomeTabs({
             role="tab"
             type="button"
           >
-            AI digest
+            Digest
           </button>
           <button
             aria-controls="home-panel-subscription"
@@ -59,7 +54,7 @@ export function DashboardHomeTabs({
             role="tab"
             type="button"
           >
-            Subscription
+            Following
           </button>
           <button
             aria-controls="home-panel-for-you"
@@ -78,8 +73,8 @@ export function DashboardHomeTabs({
       <div className="fb-m-segctl at-mobile" role="tablist" aria-label="Home feed">
         {(
           [
-            { id: "ai-digest", label: "AI digest" },
-            { id: "subscription", label: "Subscription" },
+            { id: "ai-digest", label: "Digest" },
+            { id: "subscription", label: "Following" },
             { id: "for-you", label: "For You" },
           ] as const
         ).map((tab) => (

@@ -50,7 +50,7 @@ export default function BuildersPage() {
         <div>
           <h1 className="fb-title">Sources</h1>
           <p className="fb-desc">
-            Manage your library, subscriptions, and per-source summary history.
+            Manage sources you follow and per-source summary history.
           </p>
         </div>
         <Suspense fallback={<BuilderStatsFallback />}>
@@ -290,7 +290,17 @@ async function BuilderSections({
         />
       }
     >
-      <SkillPromptActions context="library" tokens={data.activeTokens} />
+      <details className="fb-panel dashed">
+        <summary className="cursor-pointer text-sm font-bold text-[var(--ink)]">
+          Sync with agent
+        </summary>
+        <p className="mt-2 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+          Use these when connecting a local agent or running a one-time library sync.
+        </p>
+        <div className="mt-3">
+          <SkillPromptActions context="library" tokens={data.activeTokens} />
+        </div>
+      </details>
       <BuilderLibraryList
         acceptAddedBuilders
         builders={data.privateBuilders.map((builder) =>

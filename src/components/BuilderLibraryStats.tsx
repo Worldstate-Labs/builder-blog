@@ -88,7 +88,7 @@ export function BuilderLibraryStats({
         <span className="status-chip">{stats.inLibrary} in library</span>
         <span className="status-chip">
           <Bell className="h-3.5 w-3.5" />
-          {stats.subscribed} subscribed
+          {stats.subscribed} followed
         </span>
         <span className="status-chip">{stats.fetchedItems} summarized</span>
         <SubscribeAllLibraryBuildersButton onSubscribedAll={onSubscribedAll} />
@@ -103,7 +103,7 @@ export function BuilderLibraryStats({
         <div className="fb-stat fb-stat--compact">
           <div className="min-w-0">
             <div className="fb-stat-value">{stats.subscribed}</div>
-            <div className="fb-stat-label">Subscribed</div>
+            <div className="fb-stat-label">Followed</div>
           </div>
         </div>
         <div className="fb-stat fb-stat--compact">

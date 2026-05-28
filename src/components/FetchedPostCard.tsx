@@ -44,6 +44,7 @@ export function FetchedPostCard({
   post,
   reasons,
   showBuilderRow = true,
+  showDebugActions = true,
   variant = "card",
 }: {
   context?: ReactNode;
@@ -62,6 +63,7 @@ export function FetchedPostCard({
    * @default true
    */
   showBuilderRow?: boolean;
+  showDebugActions?: boolean;
   variant?: "card" | "row" | "detail";
 }) {
   const [summaryExpanded, setSummaryExpanded] = useState(false);
@@ -195,27 +197,31 @@ export function FetchedPostCard({
               <ExternalLink className="h-4 w-4" />
             </a>
 
-            {/* 2. Raw content toggle */}
-            <button
-              aria-label="Raw content"
-              aria-expanded={rawExpanded}
-              className={`post-action-btn${rawExpanded ? " post-action-btn--active" : ""}`}
-              onClick={() => {
-                setRawExpanded((v) => !v);
-                if (!rawExpanded) noteInteraction();
-              }}
-              title="Raw content"
-              type="button"
-            >
-              <FileText className="h-4 w-4" />
-            </button>
+            {showDebugActions ? (
+              <>
+                {/* 2. Raw content toggle */}
+                <button
+                  aria-label="Raw content"
+                  aria-expanded={rawExpanded}
+                  className={`post-action-btn${rawExpanded ? " post-action-btn--active" : ""}`}
+                  onClick={() => {
+                    setRawExpanded((v) => !v);
+                    if (!rawExpanded) noteInteraction();
+                  }}
+                  title="Raw content"
+                  type="button"
+                >
+                  <FileText className="h-4 w-4" />
+                </button>
 
-            {/* 3. Fetching method popover (also surfaces summarized-at) */}
-            {post.fetchTool || post.createdAt ? (
-              <FetchMethodPopover
-                fetchTool={post.fetchTool}
-                summarizedAt={post.createdAt}
-              />
+                {/* 3. Fetching method popover (also surfaces summarized-at) */}
+                {post.fetchTool || post.createdAt ? (
+                  <FetchMethodPopover
+                    fetchTool={post.fetchTool}
+                    summarizedAt={post.createdAt}
+                  />
+                ) : null}
+              </>
             ) : null}
 
             {/* 4. Recommendation reasons (only when present) */}

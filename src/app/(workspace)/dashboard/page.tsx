@@ -57,15 +57,9 @@ export default async function DashboardPage({
         </div>
         <aside className="fb-rail at-desktop">
           <div>
-            <h3>Home</h3>
+            <h3>Status</h3>
             <Suspense fallback={<HomeStatsSkeleton />}>
               <HomeStatsSlot userId={userId} />
-            </Suspense>
-          </div>
-          <div>
-            <h3>Recent digest</h3>
-            <Suspense fallback={<RecentDigestSkeleton />}>
-              <RecentDigestSlot userId={userId} />
             </Suspense>
           </div>
           <Link className="fb-btn light compact" href="/builders">
@@ -91,12 +85,13 @@ async function AiDigestFeedSlot({
     prisma.digest.findFirst({
       where: {
         userId,
+        itemCount: { gt: 0 },
         createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
       },
       orderBy: { createdAt: "desc" },
       select: digestSummarySelect,
     }),
-    prisma.digest.count({ where: { userId } }),
+    prisma.digest.count({ where: { userId, itemCount: { gt: 0 } } }),
     prisma.agentToken.findMany({
       where: { userId, revokedAt: null },
       orderBy: { createdAt: "desc" },
@@ -127,8 +122,8 @@ async function AiDigestFeedSlot({
     revokedAt: null,
   }));
   const archiveWhere = todayDigest
-    ? { userId, NOT: { id: todayDigest.id } }
-    : { userId };
+    ? { userId, itemCount: { gt: 0 }, NOT: { id: todayDigest.id } }
+    : { userId, itemCount: { gt: 0 } };
   const archiveCount = Math.max(0, digestCount - (todayDigest ? 1 : 0));
   const archiveDigests = await prisma.digest.findMany({
     where: archiveWhere,
@@ -167,9 +162,17 @@ function AiDigestFeed({
 
   return (
     <section className="grid gap-5">
-      <div className="mt-4">
+      <details className="fb-panel dashed mt-4">
+        <summary className="cursor-pointer text-sm font-bold text-[var(--ink)]">
+          Sync with agent
+        </summary>
+        <p className="mt-2 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+          Copy these only when setting up a local agent or running a manual sync.
+        </p>
+        <div className="mt-3">
         <SkillPromptActions context="digest" tokens={activeTokens} />
-      </div>
+        </div>
+      </details>
       {todayDigest ? (
         <DigestDetails digest={serializeDigestSummary(todayDigest)} mode="today" />
       ) : (
@@ -178,10 +181,10 @@ function AiDigestFeed({
             <Terminal className="mt-1 h-5 w-5 text-[var(--accent)]" aria-hidden="true" />
             <div>
               <h2 className="serif text-lg font-semibold text-[var(--ink)]">
-                No subscription sync today
+                No digest yet today
               </h2>
               <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
-                Run the skill from your terminal or agent, then sync the generated subscription here.
+                Your agent can sync a brief when there is new followed-source activity.
               </p>
             </div>
           </div>
@@ -204,7 +207,7 @@ function AiDigestFeed({
           ))}
           {archiveDigests.length === 0 ? (
             <div className="fb-panel dashed text-sm text-[var(--muted-strong)]">
-              Historical digests will appear here after more subscription syncs.
+              Non-empty digests will appear here after more syncs.
             </div>
           ) : null}
         </div>
@@ -232,7 +235,7 @@ function AiDigestFeed({
           ))}
           {archiveDigests.length === 0 ? (
             <div className="px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
-              Historical digests will appear here after more subscription syncs.
+              Non-empty digests will appear here after more syncs.
             </div>
           ) : null}
         </div>
@@ -266,20 +269,24 @@ function AiDigestFeed({
 async function HomeStatsSlot({ userId }: { userId: string }) {
   const [todayDigestExists, totalDigests] = await Promise.all([
     prisma.digest.findFirst({
-      where: { userId, createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) } },
+      where: {
+        userId,
+        itemCount: { gt: 0 },
+        createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+      },
       select: { id: true },
     }),
-    prisma.digest.count({ where: { userId } }),
+    prisma.digest.count({ where: { userId, itemCount: { gt: 0 } } }),
   ]);
   const archiveCount = Math.max(0, totalDigests - (todayDigestExists ? 1 : 0));
   return (
     <div className="grid gap-2">
       <Stat
         icon={todayDigestExists ? CheckCircle2 : Clock3}
-        label="AI digest"
+        label="Digest"
         value={todayDigestExists ? "Synced" : "Waiting"}
       />
-      <Stat icon={Sparkles} label="Subscription" value="Live" />
+      <Stat icon={Sparkles} label="Following" value="Live" />
       <Stat icon={Sparkles} label="For You" value="Live" />
       <Stat icon={Archive} label="Archive entries" value={archiveCount} />
     </div>
@@ -291,57 +298,6 @@ function HomeStatsSkeleton() {
     <div className="grid gap-2" aria-busy="true" aria-live="polite">
       {[0, 1, 2, 3].map((index) => (
         <div key={index} className="h-14 animate-pulse rounded-[10px] bg-black/10" />
-      ))}
-    </div>
-  );
-}
-
-async function RecentDigestSlot({ userId }: { userId: string }) {
-  const recent = await prisma.digest.findMany({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-    take: 5,
-    select: digestSummarySelect,
-  });
-  // Drop today's digest from the rail recent list.
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const archiveOnly = recent
-    .filter((digest) => digest.createdAt < today)
-    .slice(0, 4);
-  if (archiveOnly.length === 0) {
-    return (
-      <p className="text-sm leading-6 text-[var(--muted-strong)]">
-        Older digests appear here after another subscription sync.
-      </p>
-    );
-  }
-  return (
-    <div className="grid gap-1">
-      {archiveOnly.map((digest) => (
-        <Link
-          className="fb-rail-link"
-          href={`/dashboard?tab=ai-digest#${digest.id}`}
-          key={digest.id}
-        >
-          <strong>{digest.title}</strong>
-          <span>
-            {digest.itemCount} items · {digest.createdAt.toLocaleDateString()}
-          </span>
-        </Link>
-      ))}
-    </div>
-  );
-}
-
-function RecentDigestSkeleton() {
-  return (
-    <div className="grid gap-3" aria-busy="true" aria-live="polite">
-      {[0, 1, 2].map((index) => (
-        <div key={index} className="grid gap-1.5 border-t border-[var(--line)] pt-2 first:border-t-0 first:pt-0">
-          <div className="h-3 w-32 animate-pulse rounded bg-black/10" />
-          <div className="h-2.5 w-20 animate-pulse rounded bg-black/10" />
-        </div>
       ))}
     </div>
   );

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { isAdminEmail } from "@/lib/admin";
@@ -78,6 +79,9 @@ export default async function BuilderDetailPage({ params }: Params) {
     <div className="page-pad">
       <header className="fb-page-head">
         <div className="grid gap-2">
+          <Link className="fb-btn light compact w-fit" href="/builders">
+            Back to Sources
+          </Link>
           <div className="text-xs uppercase tracking-wide text-[var(--muted-strong)]">
             {entity.kind.toLowerCase()}
           </div>
@@ -110,8 +114,10 @@ export default async function BuilderDetailPage({ params }: Params) {
         </Suspense>
       </section>
 
-      <section className="mt-10 grid gap-3">
-        <h2 className="fb-section-title">Channels providing this source</h2>
+      <details className="fb-panel dashed mt-10">
+        <summary className="cursor-pointer text-sm font-bold text-[var(--ink)]">
+          Available through {channels.length} {channels.length === 1 ? "library" : "libraries"}
+        </summary>
         <Suspense fallback={null}>
           <ChannelsListSlot
             entityId={entityId}
@@ -119,7 +125,7 @@ export default async function BuilderDetailPage({ params }: Params) {
             channels={channels}
           />
         </Suspense>
-      </section>
+      </details>
     </div>
   );
 }
@@ -175,11 +181,11 @@ async function ChannelsListSlot({
     : null;
 
   return (
-    <ul className="grid gap-2">
+    <ul className="mt-3 grid gap-2">
       {channels.map((channel) => (
         <li
           key={channel.builderId}
-          className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 border-b border-[var(--line)] py-2 text-sm"
+          className="grid gap-3 border-b border-[var(--line)] py-3 text-sm md:grid-cols-[1fr_auto_auto] md:items-center"
         >
           <div>
             <div className="font-medium">
@@ -188,16 +194,18 @@ async function ChannelsListSlot({
               {channel.isOwnChannel ? " · own" : ""}
             </div>
             {channel.sourceUrl ? (
-              <div className="font-mono text-xs text-[var(--muted-strong)]">
-                {channel.sourceUrl}
-              </div>
+              <a
+                className="text-xs font-semibold text-[var(--accent)] hover:underline"
+                href={channel.sourceUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Open source
+              </a>
             ) : null}
           </div>
           <div className="font-mono text-xs text-[var(--muted-strong)]">
             {channel.lastFetchedAt ? dateFormatter.format(channel.lastFetchedAt) : "—"}
-          </div>
-          <div className="font-mono text-xs text-[var(--muted-strong)]">
-            {channel.status}
           </div>
           <ChannelPreferenceToggle
             entityId={entityId}

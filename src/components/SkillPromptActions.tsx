@@ -12,16 +12,16 @@ type CopyTarget = "once" | "cron";
 
 const PROMPT_CONFIG = {
   library: {
-    title: "Build library",
-    onceLabel: "Copy once prompt",
-    cronLabel: "Copy cron prompt",
+    title: "Source sync",
+    onceLabel: "Copy once command",
+    cronLabel: "Copy scheduled command",
     onceJob: "library-once",
     cronJob: "library-cron-setup",
   },
   digest: {
-    title: "Build digest feed",
-    onceLabel: "Copy once prompt",
-    cronLabel: "Copy cron prompt",
+    title: "Digest sync",
+    onceLabel: "Copy once command",
+    cronLabel: "Copy scheduled command",
     onceJob: "digest-once",
     cronJob: "digest-cron-setup",
   },
