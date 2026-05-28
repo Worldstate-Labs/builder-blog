@@ -105,6 +105,7 @@ model Builder {
   sourceType    String                  @default("auto")
   sourceUrl     String?
   fetchUrl      String?
+  avatarUrl     String?
   bio           String?
   addedByUserId String?
   entityId      String

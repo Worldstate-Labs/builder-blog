@@ -277,8 +277,33 @@ function avatarFaviconUrl(builder: BuilderLibraryListItem): string | null {
 
 function BuilderAvatar({ builder }: { builder: BuilderLibraryListItem }) {
   const monogram = avatarMonogram(builder);
+  const realAvatarUrl = builder.avatarUrl;
   const faviconUrl = avatarFaviconUrl(builder);
+  // Priority chain: server-resolved real photo → host favicon → monogram.
+  // Each step is collapsible via onError so a broken CDN never leaves
+  // the row showing an empty box.
+  const [showRealAvatar, setShowRealAvatar] = useState(Boolean(realAvatarUrl));
   const [showFavicon, setShowFavicon] = useState(Boolean(faviconUrl));
+  if (realAvatarUrl && showRealAvatar) {
+    return (
+      <span
+        className="builder-library-avatar fb-src-icon"
+        style={{ overflow: "hidden", padding: 0 }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          alt=""
+          aria-hidden="true"
+          height={36}
+          width={36}
+          loading="lazy"
+          onError={() => setShowRealAvatar(false)}
+          src={realAvatarUrl}
+          style={{ height: "100%", width: "100%", objectFit: "cover" }}
+        />
+      </span>
+    );
+  }
   if (faviconUrl && showFavicon) {
     return (
       <span

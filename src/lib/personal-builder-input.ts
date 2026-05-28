@@ -1,6 +1,7 @@
 import { BuilderKind } from "@prisma/client";
 import { builderKindForSourceType } from "@/lib/source-registry";
 import { normalizeHandle } from "@/lib/builder-keys";
+import { toSafeAvatarUrl, type BuilderEnrichment } from "@/lib/builder-enrichment";
 import {
   crossTypeWarning,
   isLikelyEpisodeOrPostUrl,
@@ -27,6 +28,14 @@ export type ResolutionSuccess = {
   ok: true;
   value: PersonalBuilderInput;
   warning?: string;
+  /**
+   * Optional pre-resolved enrichment carried inline from the resolver
+   * when the source's response already contained name/avatar fields
+   * (e.g. podcast's iTunes lookup gives us `collectionName` and
+   * `artworkUrl600` in the same call). Lets `POST /api/builders/personal`
+   * skip a second network round-trip.
+   */
+  enrichment?: BuilderEnrichment;
 };
 
 export type ResolutionFailure = {
@@ -140,10 +149,14 @@ async function resolvePodcast(displayName: string, value: string): Promise<Resol
   // Apple Podcasts: pre-resolve the publisher's RSS via iTunes lookup
   // so the CLI doesn't repeat the call on every sync. 4s timeout +
   // graceful fallback so a flaky Apple endpoint never blocks the form.
+  // The same response also gives us `collectionName` (display name)
+  // and `artworkUrl600` (avatar), so we surface them inline as
+  // enrichment without a second round-trip.
   const appleMatch = sourceUrl.match(/podcasts\.apple\.com\/[^?\s]*\/id(\d+)/i);
   let fetchUrl: string | null = null;
   let warning: string | undefined;
   let resolvedName: string | null = null;
+  let enrichment: BuilderEnrichment | undefined;
 
   if (appleMatch) {
     try {
@@ -156,7 +169,14 @@ async function resolvePodcast(displayName: string, value: string): Promise<Resol
       clearTimeout(timer);
       if (lookup.ok) {
         const json = (await lookup.json().catch(() => null)) as
-          | { results?: Array<{ feedUrl?: string; collectionName?: string }> }
+          | {
+              results?: Array<{
+                feedUrl?: string;
+                collectionName?: string;
+                artworkUrl600?: string;
+                artworkUrl100?: string;
+              }>;
+            }
           | null;
         const result = json?.results?.[0];
         if (result?.feedUrl) {
@@ -165,6 +185,15 @@ async function resolvePodcast(displayName: string, value: string): Promise<Resol
         } else {
           warning =
             "Apple returned no RSS feed for this podcast. The agent will retry at sync time.";
+        }
+        const artwork =
+          toSafeAvatarUrl(result?.artworkUrl600) ??
+          toSafeAvatarUrl(result?.artworkUrl100);
+        if (result?.collectionName || artwork) {
+          enrichment = {
+            ...(result?.collectionName ? { name: result.collectionName } : {}),
+            ...(artwork ? { avatarUrl: artwork } : {}),
+          };
         }
       } else {
         warning = "Apple lookup failed. The agent will retry at sync time.";
@@ -185,6 +214,7 @@ async function resolvePodcast(displayName: string, value: string): Promise<Resol
       fetchUrl,
     },
     ...(warning ? { warning } : {}),
+    ...(enrichment ? { enrichment } : {}),
   };
 }
 

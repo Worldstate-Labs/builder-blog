@@ -9,6 +9,11 @@ import {
   canonicalBuilderValueForInput,
   normalizedBuilderHandle,
 } from "@/lib/builder-keys";
+import {
+  enrichBuilderFromSource,
+  pickFinalName,
+  type BuilderEnrichment,
+} from "@/lib/builder-enrichment";
 import { prisma } from "@/lib/prisma";
 import { resolvePersonalBuilderInput } from "@/lib/personal-builder-input";
 import { validatePublicHttpUrl } from "@/lib/safe-url";
@@ -114,15 +119,30 @@ export async function PATCH(request: Request, { params }: Params) {
     ownerUserId: session.user.id,
   });
 
+  // Re-run enrichment on edit so a changed source URL/handle pulls a
+  // fresh name + avatar. Best-effort; failures fall back to whatever
+  // the resolver derived.
+  const enrichment: BuilderEnrichment =
+    resolution.enrichment ??
+    (await enrichBuilderFromSource({
+      sourceType: input.sourceType,
+      sourceUrl: input.sourceUrl,
+      fetchUrl: input.fetchUrl,
+      handle: input.handle,
+    }).catch(() => ({})));
+
+  const finalName = pickFinalName(parsed.data.name, input.name, enrichment.name);
+
   try {
     const updated = await prisma.builder.update({
       where: { id: existing.id },
       data: {
-        name: input.name,
+        name: finalName,
         handle: handle ?? null,
         sourceType: input.sourceType,
         sourceUrl: input.sourceUrl ?? null,
         fetchUrl: input.fetchUrl ?? null,
+        avatarUrl: enrichment.avatarUrl ?? null,
         kind,
         canonicalKey,
         libraryKey,

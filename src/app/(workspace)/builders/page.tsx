@@ -34,6 +34,7 @@ type BuilderWithCount = {
   handle: string | null;
   sourceUrl: string | null;
   fetchUrl: string | null;
+  avatarUrl: string | null;
   canonicalKey: string;
   _count: { feedItems: number };
 };
@@ -59,10 +60,37 @@ export default function BuildersPage() {
         </Suspense>
       </section>
 
+      <Suspense fallback={<SyncHeaderFallback />}>
+        <SyncHeader dataPromise={dataPromise} />
+      </Suspense>
+
       <Suspense fallback={<BuilderSectionsFallback />}>
         <BuilderSections dataPromise={dataPromise} />
       </Suspense>
     </div>
+  );
+}
+
+async function SyncHeader({
+  dataPromise,
+}: {
+  dataPromise: Promise<BuildersPageData>;
+}) {
+  const data = await dataPromise;
+  return (
+    <section className="mt-6 grid gap-3">
+      <SkillPromptActions context="library" tokens={data.activeTokens} />
+      <FetchLogPanel initialRuns={data.fetchRuns} />
+    </section>
+  );
+}
+
+function SyncHeaderFallback() {
+  return (
+    <section className="mt-6 grid gap-3" aria-live="polite" aria-busy="true">
+      <div className="h-10 rounded-[10px] bg-black/10" />
+      <div className="h-28 rounded-[10px] bg-black/10" />
+    </section>
   );
 }
 
@@ -316,10 +344,6 @@ async function BuilderSections({
         />
       }
     >
-      <SkillPromptActions context="library" tokens={data.activeTokens} />
-      <Suspense fallback={<FetchLogFallback />}>
-        <FetchLogPanel initialRuns={data.fetchRuns} />
-      </Suspense>
       <BuilderLibraryList
         acceptAddedBuilders
         builders={data.privateBuilders.map((builder) =>
@@ -416,18 +440,6 @@ function BuilderStatsFallback() {
   );
 }
 
-function FetchLogFallback() {
-  return (
-    <section className="fb-panel" aria-live="polite" aria-busy="true">
-      <div className="h-5 w-24 rounded bg-black/10" />
-      <div className="mt-3 grid gap-2">
-        <div className="h-16 rounded-[10px] bg-black/10" />
-        <div className="h-16 rounded-[10px] bg-black/10" />
-      </div>
-    </section>
-  );
-}
-
 function BuilderSectionsFallback() {
   return (
     <section className="mt-6 grid gap-5" aria-live="polite" aria-busy="true">
@@ -473,6 +485,7 @@ function builderListItem({
     handle: builder.handle,
     sourceUrl: builder.sourceUrl,
     fetchUrl: builder.fetchUrl,
+    avatarUrl: builder.avatarUrl ?? null,
     feedItemCount: builder._count.feedItems,
     latestPostCreatedAt: latestPostCreatedAt?.toISOString() ?? null,
     subscribed,

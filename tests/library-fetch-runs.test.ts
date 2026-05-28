@@ -112,14 +112,16 @@ test("FetchLogPanel renders status pills with semantic CSS variables and a refre
   assert.match(panel, /title=\{formatAbsolute\(run\.startedAt\)\}/);
 });
 
-test("builders page mounts the fetch log inside the private library section", () => {
+test("builders page mounts the fetch log inside the sync header section", () => {
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   assert.match(buildersPage, /FetchLogPanel/);
   // Fetch the user's recent runs server-side, ordered by startedAt desc.
   assert.match(buildersPage, /prisma\.libraryFetchRun\.findMany/);
   assert.match(buildersPage, /orderBy: \{ startedAt: "desc" \}/);
   assert.match(buildersPage, /take: 25/);
-  // Mounted in a Suspense slot with a dedicated fallback.
-  assert.match(buildersPage, /<Suspense fallback=\{<FetchLogFallback \/>/);
-  assert.match(buildersPage, /function FetchLogFallback/);
+  // Mounted in a Suspense slot alongside SkillPromptActions so the
+  // fetch log surfaces above the source list on every device.
+  assert.match(buildersPage, /<Suspense fallback=\{<SyncHeaderFallback \/>/);
+  assert.match(buildersPage, /function SyncHeaderFallback/);
+  assert.match(buildersPage, /<FetchLogPanel initialRuns=\{data\.fetchRuns\} \/>/);
 });

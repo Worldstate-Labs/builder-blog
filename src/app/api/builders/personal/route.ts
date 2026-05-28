@@ -4,6 +4,11 @@ import { formatZodError } from "@/lib/zod-error";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
+import {
+  enrichBuilderFromSource,
+  pickFinalName,
+  type BuilderEnrichment,
+} from "@/lib/builder-enrichment";
 import { addBuilderToPool } from "@/lib/builder-pool";
 import { upsertBuilder } from "@/lib/builders";
 import type { BuilderLibraryEventItem } from "@/lib/builder-library-events";
@@ -62,10 +67,28 @@ export async function POST(request: Request) {
     }
   }
 
+  // Best-effort name + avatar enrichment. The podcast resolver
+  // already filled `enrichment` inline (one network call covered both
+  // RSS lookup and avatar); for every other source we hit the source
+  // page once here. Failures are swallowed so the add flow never
+  // breaks because an upstream is slow.
+  const enrichment: BuilderEnrichment =
+    resolution.enrichment ??
+    (await enrichBuilderFromSource({
+      sourceType: input.sourceType,
+      sourceUrl: input.sourceUrl,
+      fetchUrl: input.fetchUrl,
+      handle: input.handle,
+    }).catch(() => ({})));
+
+  const finalName = pickFinalName(parsed.data.name, input.name, enrichment.name);
+
   const builder = await upsertBuilder({
     ownerUserId: session.user.id,
     addedByUserId: session.user.id,
     ...input,
+    name: finalName,
+    avatarUrl: enrichment.avatarUrl ?? null,
   });
 
   await addBuilderToPool({
@@ -82,6 +105,7 @@ export async function POST(request: Request) {
 
   const item: BuilderLibraryEventItem = {
     allowRemove: true,
+    avatarUrl: builder.avatarUrl ?? null,
     fetchLabel: "Agent synced",
     fetchUrl: builder.fetchUrl,
     entityId: builder.entityId,
