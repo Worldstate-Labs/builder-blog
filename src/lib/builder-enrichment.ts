@@ -271,14 +271,52 @@ export function toSafeAvatarUrl(raw: string | null | undefined): string | null {
  * always wins; otherwise the enriched name is preferred; otherwise the
  * resolver's derived name (handle / hostname / og:title-less fallback).
  */
+/**
+ * Best-effort hostname extraction for building urlSignals. Returns
+ * null when the input isn't a parseable URL or has no host.
+ */
+export function hostnameOrNull(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const host = new URL(url).hostname;
+    return host || null;
+  } catch {
+    return null;
+  }
+}
+
 export function pickFinalName(
   userTyped: string | null | undefined,
   resolved: string,
   enriched: string | null | undefined,
+  opts: { urlSignals?: ReadonlyArray<string | null | undefined> } = {},
 ): string {
   const typed = (userTyped ?? "").trim();
-  if (typed) return typed;
   const fromEnrichment = (enriched ?? "").trim();
+
+  // The client auto-fills the Display name field from the typed URL
+  // (e.g. "podcasts.apple.com" for an Apple Podcasts link). When the
+  // user submits without overriding it, that low-quality string would
+  // otherwise win over the much better enriched name (e.g. iTunes'
+  // "硅谷101" or a blog's og:title). Treat user input as "weak" if it
+  // exactly matches any URL-derivable signal — hostname (with or
+  // without "www."), handle, "@handle", or the resolved name itself.
+  if (typed && fromEnrichment) {
+    const weakSignals = new Set<string>();
+    for (const raw of opts.urlSignals ?? []) {
+      const value = (raw ?? "").trim().toLowerCase();
+      if (!value) continue;
+      weakSignals.add(value);
+      weakSignals.add(value.replace(/^www\./, ""));
+      weakSignals.add(value.replace(/^@/, ""));
+    }
+    weakSignals.add(resolved.trim().toLowerCase());
+    if (weakSignals.has(typed.toLowerCase())) {
+      return fromEnrichment;
+    }
+  }
+
+  if (typed) return typed;
   if (fromEnrichment) return fromEnrichment;
   return resolved;
 }

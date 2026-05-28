@@ -11,6 +11,7 @@ import {
 } from "@/lib/builder-keys";
 import {
   enrichBuilderFromSource,
+  hostnameOrNull,
   pickFinalName,
   type BuilderEnrichment,
 } from "@/lib/builder-enrichment";
@@ -131,7 +132,14 @@ export async function PATCH(request: Request, { params }: Params) {
       handle: input.handle,
     }).catch(() => ({})));
 
-  const finalName = pickFinalName(parsed.data.name, input.name, enrichment.name);
+  const finalName = pickFinalName(parsed.data.name, input.name, enrichment.name, {
+    urlSignals: [
+      input.handle,
+      hostnameOrNull(input.sourceUrl),
+      hostnameOrNull(input.fetchUrl),
+      parsed.data.sourceValue,
+    ],
+  });
 
   try {
     const updated = await prisma.builder.update({

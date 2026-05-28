@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
 import {
   enrichBuilderFromSource,
+  hostnameOrNull,
   pickFinalName,
   type BuilderEnrichment,
 } from "@/lib/builder-enrichment";
@@ -81,7 +82,14 @@ export async function POST(request: Request) {
       handle: input.handle,
     }).catch(() => ({})));
 
-  const finalName = pickFinalName(parsed.data.name, input.name, enrichment.name);
+  const finalName = pickFinalName(parsed.data.name, input.name, enrichment.name, {
+    urlSignals: [
+      input.handle,
+      hostnameOrNull(input.sourceUrl),
+      hostnameOrNull(input.fetchUrl),
+      parsed.data.sourceValue,
+    ],
+  });
 
   const builder = await upsertBuilder({
     ownerUserId: session.user.id,

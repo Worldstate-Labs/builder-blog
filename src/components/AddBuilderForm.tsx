@@ -106,15 +106,12 @@ function deriveDisplayName(sourceType: string, sourceValue: string): string {
     }
     return "";
   }
-  // blog / website / podcast — best we can do without network is the
-  // domain. Server-side resolver will usually overwrite with the feed
-  // title when the user submits with display name blank.
-  try {
-    const url = new URL(trimmed);
-    return url.hostname.replace(/^www\./, "");
-  } catch {
-    return "";
-  }
+  // blog / website / podcast — don't guess from the URL hostname.
+  // "podcasts.apple.com" or "feeds.fireside.fm" are never the source's
+  // real name. Leave blank so the server-side enrichment (og:title,
+  // iTunes collectionName, etc.) fills in the actual title when the
+  // user submits with display name empty.
+  return "";
 }
 
 export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[] }) {
