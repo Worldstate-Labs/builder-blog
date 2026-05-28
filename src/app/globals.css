@@ -3657,6 +3657,33 @@ a {
   width: 1rem;
 }
 
+/* Two-step confirmation label that replaces the row's X button after
+   the first click — second click commits the delete, otherwise it
+   auto-reverts after 4 s. */
+.builder-library-remove-confirm {
+  background: color-mix(in oklch, var(--danger) 12%, transparent);
+  border: 1px solid color-mix(in oklch, var(--danger) 38%, var(--line));
+  border-radius: 999px;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.1875rem 0.625rem;
+  transition: background-color 120ms ease;
+}
+
+.builder-library-remove-confirm:hover,
+.builder-library-remove-confirm:focus-visible {
+  background: color-mix(in oklch, var(--danger) 20%, transparent);
+  outline: 0;
+}
+
+.builder-library-remove-confirm:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
 .fb-src-icon {
   align-items: center;
   background: var(--rail);

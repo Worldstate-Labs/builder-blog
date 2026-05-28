@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Bell, X } from "lucide-react";
 
 type BuilderLibraryActionsProps = {
@@ -71,7 +71,16 @@ export function BuilderLibraryActions({
   const [subscribed, setSubscribed] = useState(initialSubscribed);
   const [removed, setRemoved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(
+    () => () => {
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+    },
+    [],
+  );
 
   if (removed) return null;
 
@@ -125,6 +134,28 @@ export function BuilderLibraryActions({
     });
   }
 
+  function handleRemoveClick() {
+    if (isPending) return;
+    if (!confirmingRemove) {
+      // Arm: first click switches the button to a danger-styled
+      // "Confirm?" label and auto-disarms after 4 s of no second click.
+      setConfirmingRemove(true);
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+      confirmTimerRef.current = setTimeout(() => {
+        setConfirmingRemove(false);
+        confirmTimerRef.current = null;
+      }, 4000);
+      return;
+    }
+    // Second click: commit the delete.
+    if (confirmTimerRef.current) {
+      clearTimeout(confirmTimerRef.current);
+      confirmTimerRef.current = null;
+    }
+    setConfirmingRemove(false);
+    removeFromLibrary();
+  }
+
   return (
     <div className="grid gap-1.5">
       <div className="flex items-center gap-2.5">
@@ -143,16 +174,29 @@ export function BuilderLibraryActions({
           <span className={`fb-toggle${subscribed ? " on" : ""}`} aria-hidden="true" />
         </button>
         {allowRemove ? (
-          <button
-            aria-busy={isPending}
-            aria-label="Remove from library"
-            className="fb-icon-btn fb-icon-btn--xs"
-            disabled={isPending}
-            onClick={removeFromLibrary}
-            type="button"
-          >
-            <X aria-hidden="true" className="h-3 w-3" />
-          </button>
+          confirmingRemove ? (
+            <button
+              aria-busy={isPending}
+              aria-label="Confirm remove from library"
+              className="builder-library-remove-confirm"
+              disabled={isPending}
+              onClick={handleRemoveClick}
+              type="button"
+            >
+              Remove?
+            </button>
+          ) : (
+            <button
+              aria-busy={isPending}
+              aria-label="Remove from library"
+              className="fb-icon-btn fb-icon-btn--xs"
+              disabled={isPending}
+              onClick={handleRemoveClick}
+              type="button"
+            >
+              <X aria-hidden="true" className="h-3 w-3" />
+            </button>
+          )
         ) : null}
       </div>
       {error ? (
