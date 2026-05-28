@@ -114,22 +114,32 @@ export async function POST(request: Request) {
         continue;
       }
       payloadItemKeys.add(key);
+      // Policy: a post without a summary is not useful to the reader and
+      // must not occupy a DB row. Empty / whitespace-only summaries are
+      // treated as "missing". This rule applies to both fresh inserts
+      // and incremental updates — if a new payload arrives without a
+      // valid summary, we skip the write instead of clobbering or
+      // creating a half-baked row. Existing rows with stale summaries
+      // are left alone here; the companion migration deletes them.
+      const summary = typeof item.summary === "string" ? item.summary.trim() : "";
+      if (!summary) {
+        skippedFeedItems += 1;
+        continue;
+      }
       const fetchTool = item.fetchTool ?? parsed.data.fetchTool;
       if (!parsed.data.force && existingItemKeys.has(key)) {
         const updateData = {
-          ...(item.summary === undefined ? {} : { summary: item.summary }),
+          summary,
           ...(item.rawJson === undefined ? {} : { rawJson: JSON.stringify(item.rawJson) }),
         };
-        if (Object.keys(updateData).length > 0) {
-          await prisma.feedItem.updateMany({
-            where: {
-              builderId: builder.id,
-              kind: item.kind,
-              externalId: item.externalId,
-            },
-            data: updateData,
-          });
-        }
+        await prisma.feedItem.updateMany({
+          where: {
+            builderId: builder.id,
+            kind: item.kind,
+            externalId: item.externalId,
+          },
+          data: updateData,
+        });
         await prisma.feedItem.updateMany({
           where: {
             builderId: builder.id,
@@ -153,7 +163,7 @@ export async function POST(request: Request) {
         update: {
           title: item.title,
           body: item.body,
-          summary: item.summary,
+          summary,
           url: item.url,
           publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
           sourceName: item.sourceName ?? input.name,
@@ -166,7 +176,7 @@ export async function POST(request: Request) {
           externalId: item.externalId,
           title: item.title,
           body: item.body,
-          summary: item.summary,
+          summary,
           url: item.url,
           publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
           sourceName: item.sourceName ?? input.name,
