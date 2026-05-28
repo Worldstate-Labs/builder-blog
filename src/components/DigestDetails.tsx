@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BookOpen, Loader2 } from "lucide-react";
+import { useHydrated } from "@/components/ThemeToggle";
 
 export type DigestSummary = {
   id: string;
@@ -21,6 +22,7 @@ export function DigestDetails({
   mode?: "archive" | "today";
 }) {
   const digestId = digest.id;
+  const hydrated = useHydrated();
   const [content, setContent] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [status, setStatus] = useState<"idle" | "loading" | "loaded" | "error">(
@@ -63,7 +65,7 @@ export function DigestDetails({
             <div className="fb-digest-sub">
               <span>{digest.itemCount} items</span>
               <span className="opacity-40">·</span>
-              <span>{formatDate(digest.createdAt)}</span>
+              <span>{formatDate(digest.createdAt, hydrated)}</span>
             </div>
           </div>
           <span className="fb-digest-chip">
@@ -95,7 +97,7 @@ export function DigestDetails({
         <summary className="item-summary">
           <span className="min-w-0">
             <span className="item-kicker">
-              <span>{formatDateTime(digest.createdAt)}</span>
+              <span>{formatDateTime(digest.createdAt, hydrated)}</span>
               <span>
                 {digest.itemCount} items · {digest.language}
               </span>
@@ -169,10 +171,20 @@ function DigestBody({
   );
 }
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString();
+function formatDate(value: string, hydrated: boolean) {
+  if (hydrated) return new Date(value).toLocaleDateString();
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeZone: "UTC",
+  }).format(new Date(value));
 }
 
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString();
+function formatDateTime(value: string, hydrated: boolean) {
+  if (hydrated) return new Date(value).toLocaleString();
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+    timeZoneName: "short",
+  }).format(new Date(value));
 }

@@ -41,6 +41,7 @@ test("settings live in the clickable user avatar menu", () => {
   const agentTokenPanel = source("src/components/AgentTokenPanel.tsx");
   const fetchLogPanel = source("src/components/FetchLogPanel.tsx");
   const skillPromptActions = source("src/components/SkillPromptActions.tsx");
+  const digestDetails = source("src/components/DigestDetails.tsx");
   const globals = source("src/app/globals.css");
 
   assert.doesNotMatch(appShell, /label: "Agent"/);
@@ -54,6 +55,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(agentTokenPanel, /useHydrated/);
   assert.match(fetchLogPanel, /startedAtLabel = hydrated \? formatRelative/);
   assert.match(skillPromptActions, /!\s*open \? null/);
+  assert.match(digestDetails, /useHydrated/);
   assert.match(userMenu, /href="\/settings" onClick=\{closeMenu\}[\s\S]*Settings/);
   assert.match(userMenu, /href="\/api\/auth\/signout"[\s\S]*onClick=\{closeMenu\}[\s\S]*Sign out/);
   assert.match(settingsPage, />\s*Settings\s*</);
