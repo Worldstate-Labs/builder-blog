@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { BuilderEditDialog } from "@/components/BuilderEditDialog";
@@ -72,6 +72,11 @@ export function BuilderLibraryList({
     return () => window.removeEventListener(builderLibrarySubscribeAll, onSubscribeAll);
   }, [allBuilders]);
 
+  // Track which builder id (if any) was just added but hasn't been
+  // scrolled into view yet. Read by the scroll effect below after
+  // React commits the new <article id> to the DOM.
+  const pendingScrollIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!acceptAddedBuilders) return;
 
@@ -80,21 +85,11 @@ export function BuilderLibraryList({
       if (!builder?.id) return;
       if (allBuilders.some((item) => item.id === builder.id)) return;
       setAddedBuilders((current) => [builder, ...current]);
-      // Smooth-scroll the freshly-added row into view next paint
-      // (after React commits the new <article id={builder.id}>).
-      // Two rAFs because the first guarantees the commit; the second
-      // guarantees the layout pass that gives the element its final
-      // position. `scrollIntoView({ behavior: "smooth" })` auto
-      // degrades to instant under prefers-reduced-motion per spec.
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const target = document.getElementById(builder.id);
-          if (target) {
-            target.scrollIntoView({ behavior: "smooth", block: "center" });
-          }
-        });
-      });
       setSubscribedByBuilderId((current) => ({ ...current, [builder.id]: builder.subscribed }));
+      // Mark for scrolling on the next render cycle. The scroll
+      // effect below fires AFTER React commits the new row so
+      // document.getElementById is guaranteed to find it.
+      pendingScrollIdRef.current = builder.id;
       dispatchStatsChange({
         fetchedDelta: builder.feedItemCount,
         inLibraryDelta: 1,
@@ -105,6 +100,20 @@ export function BuilderLibraryList({
     window.addEventListener(builderLibraryBuilderAdded, onBuilderAdded);
     return () => window.removeEventListener(builderLibraryBuilderAdded, onBuilderAdded);
   }, [acceptAddedBuilders, allBuilders]);
+
+  // Smooth-scroll the freshly-added row into view. Runs as a layout
+  // effect AFTER allBuilders changes (which happens on add and on
+  // every subsequent server refresh that re-confirms the new row).
+  // scrollIntoView({ behavior: "smooth" }) auto-degrades to instant
+  // under prefers-reduced-motion per the platform spec.
+  useEffect(() => {
+    const id = pendingScrollIdRef.current;
+    if (!id) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    pendingScrollIdRef.current = null;
+  }, [allBuilders]);
 
   const visibleBuilders = useMemo(
     () =>
