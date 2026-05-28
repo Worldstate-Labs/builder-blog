@@ -80,6 +80,20 @@ export function BuilderLibraryList({
       if (!builder?.id) return;
       if (allBuilders.some((item) => item.id === builder.id)) return;
       setAddedBuilders((current) => [builder, ...current]);
+      // Smooth-scroll the freshly-added row into view next paint
+      // (after React commits the new <article id={builder.id}>).
+      // Two rAFs because the first guarantees the commit; the second
+      // guarantees the layout pass that gives the element its final
+      // position. `scrollIntoView({ behavior: "smooth" })` auto
+      // degrades to instant under prefers-reduced-motion per spec.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const target = document.getElementById(builder.id);
+          if (target) {
+            target.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        });
+      });
       setSubscribedByBuilderId((current) => ({ ...current, [builder.id]: builder.subscribed }));
       dispatchStatsChange({
         fetchedDelta: builder.feedItemCount,
@@ -99,7 +113,12 @@ export function BuilderLibraryList({
         .map((builder) => ({
           ...builder,
           subscribed: subscribedByBuilderId[builder.id] ?? builder.subscribed,
-        })),
+        }))
+        // Mirror the server's builderSort so a just-prepended row
+        // lands at the top of its KIND group (not the top of the
+        // whole list), and so no visual jump happens when the server
+        // refetch eventually arrives with the same ordering.
+        .sort(clientBuilderSort),
     [allBuilders, removedBuilderIds, subscribedByBuilderId],
   );
 
@@ -248,6 +267,25 @@ function BuilderCard({
       ) : null}
     </article>
   );
+}
+
+/**
+ * Mirror of the server-side builderSort in builders/page.tsx —
+ * kind-grouped, newest-within-kind first, name as tiebreak. Keeping
+ * the two in sync means a row added optimistically client-side lands
+ * in the same slot the server would have placed it on next refresh,
+ * so there's no visual jump.
+ */
+function clientBuilderSort(
+  a: BuilderLibraryListItem,
+  b: BuilderLibraryListItem,
+): number {
+  const kindCmp = a.kind.localeCompare(b.kind);
+  if (kindCmp !== 0) return kindCmp;
+  const ta = Date.parse(a.createdAt);
+  const tb = Date.parse(b.createdAt);
+  if (ta !== tb) return tb - ta;
+  return a.name.localeCompare(b.name);
 }
 
 function dispatchStatsChange(detail: BuilderLibraryStatsChange) {

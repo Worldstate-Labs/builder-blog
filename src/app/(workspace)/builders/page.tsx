@@ -480,6 +480,7 @@ function builderListItem({
     sourceUrl: builder.sourceUrl,
     fetchUrl: builder.fetchUrl,
     avatarUrl: builder.avatarUrl ?? null,
+    createdAt: builder.createdAt.toISOString(),
     feedItemCount: builder._count.feedItems,
     latestPostCreatedAt: latestPostCreatedAt?.toISOString() ?? null,
     subscribed,
@@ -528,11 +529,14 @@ function LibrarySection({
 }
 
 function builderSort(a: BuilderWithCount, b: BuilderWithCount) {
-  // Newest-added first. Avoids kind-clustering surprises (e.g. all
-  // YouTube rows being yanked into a contiguous block after the
-  // auto-refresh re-sorts) and keeps a row the user just added at
-  // the top until they reload from scratch. Fall back to name when
-  // createdAt is identical (seed rows often share a timestamp).
+  // Kind-grouped, newest-first within each kind. The user prefers
+  // scanning by source type (all X together, all podcasts together),
+  // but within a group the most-recently-added row sits at the top
+  // so an Add lands somewhere immediately visible after the next
+  // refresh. Name is the deterministic tiebreaker when createdAt is
+  // identical (e.g. seeded rows).
+  const kindCmp = a.kind.localeCompare(b.kind);
+  if (kindCmp !== 0) return kindCmp;
   const ta = a.createdAt.getTime();
   const tb = b.createdAt.getTime();
   if (ta !== tb) return tb - ta;

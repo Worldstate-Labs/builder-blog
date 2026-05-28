@@ -134,6 +134,7 @@ export async function POST(request: Request) {
   const item: BuilderLibraryEventItem = {
     allowRemove: true,
     avatarUrl: builder.avatarUrl ?? null,
+    createdAt: builder.createdAt.toISOString(),
     fetchUrl: builder.fetchUrl,
     entityId: builder.entityId,
     feedItemCount: 0,

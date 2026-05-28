@@ -6,6 +6,8 @@ export type BuilderLibraryEventItem = {
   allowRemove: boolean;
   /** Real photo/thumbnail/artwork resolved server-side at add time; null when the source didn't expose one or enrichment was skipped (e.g. pdf, X without X_BEARER_TOKEN). UI falls back to a favicon or monogram. */
   avatarUrl: string | null;
+  /** ISO timestamp of when the Builder row was created. Used client-side to insert a newly-added row at the right "newest within kind" position without waiting for the next server refresh. */
+  createdAt: string;
   fetchUrl: string | null;
   /** Canonical creator id — used for grouping channels and navigation to /builder/[entityId]. Subscription itself stays per-channel. */
   entityId: string | null;
