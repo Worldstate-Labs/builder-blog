@@ -3630,6 +3630,33 @@ a {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
+/* Icon link in a library row that opens the builder's original source
+   page (X profile, YouTube channel, blog homepage). Mirrors
+   `.post-action-btn` so library and feed surfaces share the same
+   "open in new tab" affordance. */
+.builder-library-open-source {
+  align-items: center;
+  border-radius: 999px;
+  color: var(--muted);
+  display: inline-flex;
+  height: 1.875rem;
+  justify-content: center;
+  transition: color 120ms ease, background-color 120ms ease;
+  width: 1.875rem;
+}
+
+.builder-library-open-source:hover,
+.builder-library-open-source:focus-visible {
+  background: var(--paper-strong);
+  color: var(--ink);
+  outline: 0;
+}
+
+.builder-library-open-source svg {
+  height: 1rem;
+  width: 1rem;
+}
+
 .fb-src-icon {
   align-items: center;
   background: var(--rail);

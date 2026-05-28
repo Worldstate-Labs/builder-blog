@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { BuilderLibraryActions } from "@/components/BuilderLibraryActions";
 import { SourceBadge } from "@/components/SourceBadge";
@@ -188,6 +189,18 @@ function BuilderCard({
         </span>
         <BuilderInfo builder={builder} />
         <div className="builder-library-actions row-actions flex flex-shrink-0 items-center gap-3">
+          {builder.sourceUrl || builder.fetchUrl ? (
+            <a
+              aria-label={`Open ${builder.name} on its source site`}
+              className="builder-library-open-source"
+              href={(builder.sourceUrl ?? builder.fetchUrl) as string}
+              rel="noopener noreferrer"
+              target="_blank"
+              title="Open source"
+            >
+              <ExternalLink aria-hidden="true" />
+            </a>
+          ) : null}
           <BuilderLibraryActions
             allowRemove={builder.allowRemove}
             builderId={builder.id}
