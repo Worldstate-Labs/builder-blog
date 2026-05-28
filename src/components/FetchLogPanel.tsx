@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { RefreshCw } from "lucide-react";
+import { useHydrated } from "@/components/ThemeToggle";
 
 export type LibraryFetchRunListItem = {
   id: string;
@@ -72,7 +73,12 @@ function formatRelative(iso: string): string {
 
 function formatAbsolute(iso: string): string {
   try {
-    return new Date(iso).toLocaleString();
+    return new Intl.DateTimeFormat("en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "UTC",
+      timeZoneName: "short",
+    }).format(new Date(iso));
   } catch {
     return iso;
   }
@@ -209,9 +215,11 @@ export function FetchLogPanel({
 }
 
 function RunCard({ run }: { run: LibraryFetchRunListItem }) {
+  const hydrated = useHydrated();
   const style = statusStyle(run.status);
   const label = STATUS_LABEL[run.status] ?? run.status;
   const details = readDetails(run.details);
+  const startedAtLabel = hydrated ? formatRelative(run.startedAt) : formatAbsolute(run.startedAt);
 
   return (
     <article
@@ -234,7 +242,7 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
           dateTime={run.startedAt}
           title={formatAbsolute(run.startedAt)}
         >
-          {formatRelative(run.startedAt)}
+          {startedAtLabel}
         </time>
         <span className="fb-chip">{run.source}</span>
         {run.cliVersion ? (

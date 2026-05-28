@@ -279,7 +279,7 @@ function TokenPickerDialog({
 
         <fieldset className="token-picker-list">
           <legend className="sr-only">Active tokens</legend>
-          {tokens.length === 0 ? (
+          {!open ? null : tokens.length === 0 ? (
             <p className="px-3 py-6 text-center text-sm text-[var(--muted-strong)]">
               No active tokens.{" "}
               <a className="underline" href="/settings">

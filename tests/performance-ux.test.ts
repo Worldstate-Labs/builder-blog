@@ -38,6 +38,9 @@ test("settings live in the clickable user avatar menu", () => {
   const appNav = source("src/components/AppNav.tsx");
   const settingsPage = source("src/app/(workspace)/settings/page.tsx");
   const userMenu = source("src/components/UserMenu.tsx");
+  const agentTokenPanel = source("src/components/AgentTokenPanel.tsx");
+  const fetchLogPanel = source("src/components/FetchLogPanel.tsx");
+  const skillPromptActions = source("src/components/SkillPromptActions.tsx");
   const globals = source("src/app/globals.css");
 
   assert.doesNotMatch(appShell, /label: "Agent"/);
@@ -48,6 +51,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /aria-label=\{email \? `Account menu for \$\{email\}` : `Account menu for \$\{name\}`\}/);
   assert.match(userMenu, /detailsRef\.current\.open = false/);
   assert.match(userMenu, /themeHydrated/);
+  assert.match(agentTokenPanel, /useHydrated/);
+  assert.match(fetchLogPanel, /startedAtLabel = hydrated \? formatRelative/);
+  assert.match(skillPromptActions, /!\s*open \? null/);
   assert.match(userMenu, /href="\/settings" onClick=\{closeMenu\}[\s\S]*Settings/);
   assert.match(userMenu, /href="\/api\/auth\/signout"[\s\S]*onClick=\{closeMenu\}[\s\S]*Sign out/);
   assert.match(settingsPage, />\s*Settings\s*</);
