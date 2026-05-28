@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
+import { ExternalLink } from "lucide-react";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { fetchDedupedFeedForEntities, getReadEntityKeys } from "@/lib/builder-channel-resolver";
@@ -8,6 +9,7 @@ import { getEntityWithChannels } from "@/lib/builder-entities";
 import { BuilderDetailActions } from "@/components/BuilderDetailActions";
 import { ChannelPreferenceToggle } from "@/components/ChannelPreferenceToggle";
 import { RecentPostsList } from "@/components/RecentPostsList";
+import { SourceBadge } from "@/components/SourceBadge";
 import { prisma } from "@/lib/prisma";
 
 type Params = { params: Promise<{ entityId: string }> };
@@ -21,10 +23,14 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 type ChannelInfo = {
   builderId: string;
   libraryName: string;
+  libraryId: string | null;
   isAdminCommunity: boolean;
   isOwnChannel: boolean;
+  sourceType: string;
   sourceUrl: string | null;
   fetchUrl: string | null;
+  avatarUrl: string | null;
+  handle: string | null;
   lastFetchedAt: Date | null;
   itemCount: number;
   status: string;
@@ -53,21 +59,55 @@ export default async function BuilderDetailPage({ params }: Params) {
       libraryId: channel.hubItems[0]?.hubEntry.id ?? null,
       isAdminCommunity: isAdmin,
       isOwnChannel: channel.ownerUserId === userId,
+      sourceType: channel.sourceType,
       sourceUrl: channel.sourceUrl,
       fetchUrl: channel.fetchUrl,
+      avatarUrl: channel.avatarUrl,
+      handle: channel.handle,
       lastFetchedAt: channel.lastFetchedAt,
       itemCount: channel.itemCount,
       status: channel.status,
     };
   });
 
+  // BuilderEntity is the canonical creator; it may have multiple
+  // Builder rows (channels) — typically the user's own row + the
+  // copy from any imported library pointing at the same source. The
+  // header shows ONE representative view; pick the user's own
+  // channel first (their authoritative copy), else the first
+  // channel. Avatar, source URL, source type, handle, and the
+  // channel-level itemCount all come from this primary channel so
+  // we don't double-count duplicated copies across channels.
+  const primaryChannel =
+    channels.find((c) => c.isOwnChannel) ?? channels[0] ?? null;
+  const headerAvatarUrl =
+    primaryChannel?.avatarUrl ??
+    channels.find((c) => c.avatarUrl)?.avatarUrl ??
+    null;
+  const headerSourceType = primaryChannel?.sourceType ?? null;
+  const headerSourceUrl =
+    primaryChannel?.sourceUrl ?? primaryChannel?.fetchUrl ?? null;
+  const headerItemCount = primaryChannel?.itemCount ?? 0;
+  const headerHostLabel = (() => {
+    if (entity.handle) return `@${entity.handle}`;
+    if (primaryChannel?.handle) return `@${primaryChannel.handle}`;
+    if (!headerSourceUrl) return null;
+    try {
+      return new URL(headerSourceUrl).hostname.replace(/^www\./, "");
+    } catch {
+      return null;
+    }
+  })();
+  const headerMonogram = (() => {
+    const cleaned = entity.name.replace(/^@+/, "").trim();
+    return (cleaned.charAt(0) || entity.name.charAt(0) || "?").toUpperCase();
+  })();
+
   const lastFetchedMax = channels.reduce<Date | null>((max, c) => {
     if (!c.lastFetchedAt) return max;
     if (!max || c.lastFetchedAt > max) return c.lastFetchedAt;
     return max;
   }, null);
-
-  const handleDisplay = entity.handle ? `@${entity.handle}` : null;
 
   // Resolve target builderId server-side: own channel first, else first channel.
   const targetBuilderId =
@@ -78,32 +118,106 @@ export default async function BuilderDetailPage({ params }: Params) {
   return (
     <div className="page-pad">
       <header className="fb-page-head">
-        <div className="grid gap-2">
+        <div className="grid gap-3">
           <Link className="fb-btn light compact w-fit" href="/builders">
             Back to Sources
           </Link>
-          <div className="text-xs uppercase tracking-wide text-[var(--muted-strong)]">
-            {entity.kind.toLowerCase()}
-          </div>
-          <h1 className="fb-title font-display">{entity.name}</h1>
-          {handleDisplay ? (
-            <div className="font-mono text-sm text-[var(--muted-strong)]">{handleDisplay}</div>
-          ) : null}
-          {entity.bio ? <p className="fb-desc max-w-prose">{entity.bio}</p> : null}
-          <div className="mt-3 grid gap-2">
-            <Suspense fallback={<BuilderActionsSkeleton />}>
-              <BuilderDetailActionsSlot
-                entityId={entityId}
-                userId={userId}
-                targetBuilderId={targetBuilderId}
-              />
-            </Suspense>
-            {lastFetchedMax ? (
-              <div className="text-xs text-[var(--muted-strong)]">
-                Last summarized {dateFormatter.format(lastFetchedMax)}
+          <div className="flex items-start gap-4">
+            {headerAvatarUrl ? (
+              <span
+                className="fb-src-icon"
+                style={{
+                  height: "3.5rem",
+                  width: "3.5rem",
+                  overflow: "hidden",
+                  padding: 0,
+                  flexShrink: 0,
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  alt=""
+                  aria-hidden="true"
+                  src={headerAvatarUrl}
+                  style={{
+                    height: "100%",
+                    width: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+              </span>
+            ) : (
+              <span
+                className="fb-src-icon"
+                style={{
+                  height: "3.5rem",
+                  width: "3.5rem",
+                  fontSize: "1.5rem",
+                  flexShrink: 0,
+                }}
+              >
+                {headerMonogram}
+              </span>
+            )}
+            <div className="grid min-w-0 gap-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="fb-title font-display">{entity.name}</h1>
+                {headerSourceType ? (
+                  <SourceBadge sourceType={headerSourceType} />
+                ) : null}
               </div>
-            ) : null}
+              <div className="fb-src-meta">
+                <span className="source-kind-meta fb-kind-pill">
+                  {entity.kind.toLowerCase()}
+                </span>
+                {headerHostLabel ? (
+                  <span className="source-host-meta mono truncate max-w-[24rem]">
+                    {headerHostLabel}
+                  </span>
+                ) : null}
+                <span className="source-count-dot source-meta-dot">·</span>
+                <span
+                  className={
+                    headerItemCount > 0
+                      ? "source-count-meta"
+                      : "source-count-meta source-count-meta-empty"
+                  }
+                >
+                  {headerItemCount} items
+                </span>
+                {lastFetchedMax ? (
+                  <>
+                    <span className="source-latest-dot source-meta-dot">·</span>
+                    <span className="source-latest-meta">
+                      Last summarized {dateFormatter.format(lastFetchedMax)}
+                    </span>
+                  </>
+                ) : null}
+                {headerSourceUrl ? (
+                  <a
+                    aria-label={`Open ${entity.name} on its source site`}
+                    className="builder-library-open-source"
+                    href={headerSourceUrl}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                    title="Open source"
+                  >
+                    <ExternalLink aria-hidden="true" />
+                  </a>
+                ) : null}
+              </div>
+              {entity.bio ? (
+                <p className="fb-desc mt-1 max-w-prose">{entity.bio}</p>
+              ) : null}
+            </div>
           </div>
+          <Suspense fallback={<BuilderActionsSkeleton />}>
+            <BuilderDetailActionsSlot
+              entityId={entityId}
+              userId={userId}
+              targetBuilderId={targetBuilderId}
+            />
+          </Suspense>
         </div>
       </header>
 

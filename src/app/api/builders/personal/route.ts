@@ -114,7 +114,6 @@ export async function POST(request: Request) {
   const item: BuilderLibraryEventItem = {
     allowRemove: true,
     avatarUrl: builder.avatarUrl ?? null,
-    fetchLabel: "Agent synced",
     fetchUrl: builder.fetchUrl,
     entityId: builder.entityId,
     feedItemCount: 0,

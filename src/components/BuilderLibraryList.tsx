@@ -280,11 +280,20 @@ function BuilderAvatar({ builder }: { builder: BuilderLibraryListItem }) {
   const realAvatarUrl = builder.avatarUrl;
   const faviconUrl = avatarFaviconUrl(builder);
   // Priority chain: server-resolved real photo → host favicon → monogram.
-  // Each step is collapsible via onError so a broken CDN never leaves
-  // the row showing an empty box.
-  const [showRealAvatar, setShowRealAvatar] = useState(Boolean(realAvatarUrl));
-  const [showFavicon, setShowFavicon] = useState(Boolean(faviconUrl));
-  if (realAvatarUrl && showRealAvatar) {
+  // Track failed URLs in a Set so that when builder.avatarUrl changes
+  // (e.g. after an Edit + router.refresh fetches a freshly enriched
+  // avatar), the new URL gets a fresh attempt instead of inheriting
+  // a stale "this image already failed" flag.
+  const [failedUrls, setFailedUrls] = useState<ReadonlySet<string>>(() => new Set());
+  function markFailed(url: string) {
+    setFailedUrls((prev) => {
+      if (prev.has(url)) return prev;
+      const next = new Set(prev);
+      next.add(url);
+      return next;
+    });
+  }
+  if (realAvatarUrl && !failedUrls.has(realAvatarUrl)) {
     return (
       <span
         className="builder-library-avatar fb-src-icon"
@@ -296,15 +305,16 @@ function BuilderAvatar({ builder }: { builder: BuilderLibraryListItem }) {
           aria-hidden="true"
           height={36}
           width={36}
+          key={realAvatarUrl}
           loading="lazy"
-          onError={() => setShowRealAvatar(false)}
+          onError={() => markFailed(realAvatarUrl)}
           src={realAvatarUrl}
           style={{ height: "100%", width: "100%", objectFit: "cover" }}
         />
       </span>
     );
   }
-  if (faviconUrl && showFavicon) {
+  if (faviconUrl && !failedUrls.has(faviconUrl)) {
     return (
       <span
         className="builder-library-avatar fb-src-icon"
@@ -316,8 +326,9 @@ function BuilderAvatar({ builder }: { builder: BuilderLibraryListItem }) {
           aria-hidden="true"
           height={36}
           width={36}
+          key={faviconUrl}
           loading="lazy"
-          onError={() => setShowFavicon(false)}
+          onError={() => markFailed(faviconUrl)}
           src={faviconUrl}
           style={{ height: "100%", width: "100%", objectFit: "cover" }}
         />
@@ -375,8 +386,6 @@ function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
             </span>
           </>
         ) : null}
-        <span className="source-fetch-dot source-meta-dot">·</span>
-        <span className="source-fetch-meta">{builder.fetchLabel}</span>
       </div>
     </div>
   );

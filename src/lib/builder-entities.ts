@@ -270,6 +270,8 @@ export async function getEntityWithChannels(entityId: string) {
           sourceType: true,
           sourceUrl: true,
           fetchUrl: true,
+          avatarUrl: true,
+          handle: true,
           lastFetchedAt: true,
           itemCount: true,
           status: true,

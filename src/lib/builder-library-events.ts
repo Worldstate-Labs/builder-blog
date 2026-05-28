@@ -6,7 +6,6 @@ export type BuilderLibraryEventItem = {
   allowRemove: boolean;
   /** Real photo/thumbnail/artwork resolved server-side at add time; null when the source didn't expose one or enrichment was skipped (e.g. pdf, X without X_BEARER_TOKEN). UI falls back to a favicon or monogram. */
   avatarUrl: string | null;
-  fetchLabel: string;
   fetchUrl: string | null;
   /** Canonical creator id — used for grouping channels and navigation to /builder/[entityId]. Subscription itself stays per-channel. */
   entityId: string | null;

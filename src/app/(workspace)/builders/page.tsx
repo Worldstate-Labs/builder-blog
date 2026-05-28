@@ -350,7 +350,6 @@ async function BuilderSections({
           builderListItem({
             allowRemove: true,
             builder,
-            fetchLabel: "Agent synced",
             latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
             subscribed: data.subscribed.has(builder.id),
           }),
@@ -396,10 +395,6 @@ async function BuilderSections({
                 builderListItem({
                   allowRemove: false,
                   builder,
-                  // Distinguish admin-curated channels (the community library) from other
-                  // imported personal libraries. Detection is owner-based: admin-owned
-                  // library entries are treated as community content.
-                  fetchLabel: "Hub imported",
                   latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
                   subscribed: data.subscribed.has(builder.id),
                 }),
@@ -466,7 +461,6 @@ function BuilderSectionsFallback() {
 function builderListItem({
   allowRemove,
   builder,
-  fetchLabel,
   latestPostCreatedAt,
   subscribed,
 }: {
@@ -474,7 +468,6 @@ function builderListItem({
   builder: BuilderWithCount;
   latestPostCreatedAt: Date | null;
   subscribed: boolean;
-  fetchLabel: string;
 }): BuilderLibraryListItem {
   return {
     id: builder.id,
@@ -489,7 +482,6 @@ function builderListItem({
     feedItemCount: builder._count.feedItems,
     latestPostCreatedAt: latestPostCreatedAt?.toISOString() ?? null,
     subscribed,
-    fetchLabel,
     allowRemove,
   };
 }
