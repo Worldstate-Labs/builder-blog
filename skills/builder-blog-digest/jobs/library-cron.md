@@ -63,15 +63,14 @@ Rules:
       notice and skip this task — do not include it in the sync payload.
       The validator treats these as informational and will not flag them
       as missing.
-  - For `requires_agent`:
-    - If `task.fetchInstructions.prompt` exists, follow it as the authoritative
-      extraction guide for this source. The admin configured a per-source
-      fetch prompt; do not override it with your own heuristics.
-    - Otherwise (no `task.fetchInstructions`), use `task.item.url`,
-      `task.sourceType`, and `task.agentWorkType` to pick any extraction
-      method available (web fetch, local CLI tools, transcription APIs,
-      headless browser, etc.). Keep trying available methods until real
-      primary content is obtained or no method remains.
+  - For `requires_agent`, follow `task.fetchInstructions.prompt` as the
+    authoritative extraction guide. This string is always present and is
+    either the admin's per-source fetch prompt (when configured) or the
+    FollowBrief default extraction guidance (use task.item.url,
+    task.sourceType, task.agentWorkType, and any available method — web
+    fetch, local CLI tools, transcription APIs, headless browser, etc. —
+    until real primary content meeting task.minimumContentQuality is
+    obtained). Do not override the prompt with your own heuristics.
   - Use `task.minimumContentQuality` for `requires_agent` tasks as the minimum
     acceptance bar for the extracted body. For YouTube, title, description, feed
     description, and page metadata are not acceptable body content.

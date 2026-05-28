@@ -581,7 +581,8 @@ export function summarizeFetchTasksForLog(fetchTasks, sources = {}, commonSummar
     const fetchInstructions = singlePostFetchInstructions(sourceType, sources);
     promptsBySourceType[sourceType] = {
       summary: summaryInstructions?.prompt ?? null,
-      fetch: fetchInstructions?.prompt ?? null,
+      fetch: fetchInstructions.prompt,
+      fetchIsDefault: fetchInstructions.isDefault,
     };
   }
   return { slimFetchTasks, promptsBySourceType };
@@ -719,7 +720,7 @@ function buildBuilderFallbackTask(builder, builderSync, { error, sources = {}, c
     item,
     minimumContentQuality: genericMinimumContentQuality(),
     summaryInstructions: singlePostSummaryInstructions(sourceType, sources, commonSummaryRules),
-    ...(fetchInstructions ? { fetchInstructions } : {}),
+    fetchInstructions,
     fallbackReason: error?.message || String(error || "Personal fetcher failed"),
   };
   task.id = fetchTaskId({ builderId: builder.id, builder: builder.name, item });
@@ -741,7 +742,7 @@ function fetchTaskFromAgentTask(task, builderSync, sources = {}, commonSummaryRu
     item,
     minimumContentQuality: task.minimumContentQuality ?? genericMinimumContentQuality(),
     summaryInstructions: task.summaryInstructions ?? singlePostSummaryInstructions(sourceType, sources, commonSummaryRules),
-    ...(fetchInstructions ? { fetchInstructions } : {}),
+    fetchInstructions,
     id: fetchTaskId({ builderId: task.builderId ?? builderSync.builderId, builder: task.builder ?? builderSync.name, item }),
   };
   // Pass-through optional fields used by user-action tasks
@@ -762,23 +763,53 @@ export function fetchTaskId(task) {
     .join(":");
 }
 
+// Default extraction guidance the agent follows when admin hasn't
+// configured a custom fetchPromptBody for the source. Kept here so
+// the CLI is the single source of truth for "what prompt the agent
+// actually received" — both the skill markdown and the fetch log
+// point at task.fetchInstructions.prompt now, and that string is
+// always non-empty (custom-or-default).
+export const DEFAULT_FETCH_GUIDANCE = [
+  "Use `task.item.url`, `task.sourceType`, and `task.agentWorkType` to pick any",
+  "extraction method available: web fetch, local CLI tools (yt-dlp, curl,",
+  "ffmpeg, headless browser, etc.), transcription APIs — anything you have.",
+  "Keep trying available methods until real primary content that meets",
+  "`task.minimumContentQuality` is obtained, or no method remains.",
+].join("\n");
+
 // Build the per-source extraction instructions the agent literally
-// follows when a fetchTask is `requires_agent`. Returns null when the
-// admin hasn't configured a custom fetchPromptBody for this source —
-// the agent then falls back to the skill markdown's general
-// extraction guidance ("use web fetch, local CLI tools, etc.").
-// Opt-in by design: empty config = current behavior, set config =
-// agent reads exactly this string.
+// follows when a fetchTask is `requires_agent`. Always returns a
+// non-null record:
+//   - admin-configured fetchPromptBody → wraps it with a thin header
+//     and marks isDefault=false. The agent must follow this prompt
+//     verbatim and may not substitute its own heuristics.
+//   - empty config → returns the shared default extraction guidance
+//     with isDefault=true. Same string the fetch log surfaces, so the
+//     "this is what the agent received" promise stays true even when
+//     no custom prompt is configured.
 export function singlePostFetchInstructions(sourceId, sources = {}) {
   const source = sources?.[sourceId];
+  const label = source?.label || sourceId;
   const body = source?.fetchPrompt?.body;
-  if (typeof body !== "string" || body.trim().length === 0) return null;
+  const hasCustom = typeof body === "string" && body.trim().length > 0;
+  if (hasCustom) {
+    return {
+      scope: "single_post",
+      isDefault: false,
+      prompt: [
+        `Follow these extraction rules for one ${label} post.`,
+        "",
+        body,
+      ].join("\n"),
+    };
+  }
   return {
     scope: "single_post",
+    isDefault: true,
     prompt: [
-      `Follow these extraction rules for one ${source.label || sourceId} post.`,
+      `Default FollowBrief extraction for one ${label} post (admin has not configured a custom fetch prompt for this source).`,
       "",
-      body,
+      DEFAULT_FETCH_GUIDANCE,
     ].join("\n"),
   };
 }

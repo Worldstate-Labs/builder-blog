@@ -53,6 +53,11 @@ type FetchTaskLog = {
 type PromptBundle = {
   summary?: string | null;
   fetch?: string | null;
+  // When true, the fetch prompt above is the shared FollowBrief
+  // default — admin hasn't configured a custom fetch prompt for this
+  // source. UI flags this with a small "default" pill so users know
+  // editing the admin field would change it.
+  fetchIsDefault?: boolean;
 };
 
 type DetailsShape = {
@@ -442,30 +447,31 @@ function DetailsBody({ details }: { details: DetailsShape }) {
                   </div>
                   <div>
                     <p
-                      className="text-[10.5px] uppercase tracking-wide"
+                      className="flex items-center gap-1.5 text-[10.5px] uppercase tracking-wide"
                       style={{ color: "var(--muted)" }}
                     >
-                      Fetch prompt · what the agent received
+                      <span>Fetch prompt · what the agent received</span>
+                      {bundle.fetchIsDefault ? (
+                        <span
+                          className="rounded-sm px-1 py-[1px] text-[9.5px] font-bold uppercase"
+                          style={{
+                            background: "var(--paper)",
+                            border: "1px solid var(--line)",
+                            color: "var(--muted-strong)",
+                            letterSpacing: "0.05em",
+                          }}
+                          title="Admin hasn't configured a custom fetch prompt for this source — agent used the shared default."
+                        >
+                          default
+                        </span>
+                      ) : null}
                     </p>
-                    {bundle.fetch ? (
-                      <pre
-                        className="mono mt-1 max-h-72 overflow-auto whitespace-pre-wrap text-[11.5px]"
-                        style={{ color: "var(--muted-strong)" }}
-                      >
-                        {bundle.fetch}
-                      </pre>
-                    ) : (
-                      <p
-                        className="mt-1 text-[11.5px] italic"
-                        style={{ color: "var(--muted)" }}
-                      >
-                        Default extraction — admin hasn&rsquo;t set a custom
-                        fetch prompt for this source, so the agent used the
-                        general extraction guidance from the skill
-                        (web fetch / CLI tools / transcription APIs / headless
-                        browser).
-                      </p>
-                    )}
+                    <pre
+                      className="mono mt-1 max-h-72 overflow-auto whitespace-pre-wrap text-[11.5px]"
+                      style={{ color: "var(--muted-strong)" }}
+                    >
+                      {bundle.fetch ?? "(none)"}
+                    </pre>
                   </div>
                 </div>
               </details>
