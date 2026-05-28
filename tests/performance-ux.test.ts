@@ -47,6 +47,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /className="user-menu-trigger"/);
   assert.match(userMenu, /aria-label=\{email \? `Account menu for \$\{email\}` : `Account menu for \$\{name\}`\}/);
   assert.match(userMenu, /detailsRef\.current\.open = false/);
+  assert.match(userMenu, /themeHydrated/);
   assert.match(userMenu, /href="\/settings" onClick=\{closeMenu\}[\s\S]*Settings/);
   assert.match(userMenu, /href="\/api\/auth\/signout"[\s\S]*onClick=\{closeMenu\}[\s\S]*Sign out/);
   assert.match(settingsPage, />\s*Settings\s*</);

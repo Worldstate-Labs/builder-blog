@@ -7,6 +7,10 @@ export type Theme = "light" | "dark";
 
 const STORAGE_KEY = "fb-theme";
 
+function subscribeHydration(): () => void {
+  return () => {};
+}
+
 function subscribe(callback: () => void): () => void {
   const media = window.matchMedia("(prefers-color-scheme: dark)");
   media.addEventListener("change", callback);
@@ -33,6 +37,10 @@ export function useTheme(): Theme {
   return useSyncExternalStore(subscribe, getClientSnapshot, getServerSnapshot);
 }
 
+export function useHydrated(): boolean {
+  return useSyncExternalStore(subscribeHydration, () => true, () => false);
+}
+
 export function setTheme(next: Theme) {
   document.documentElement.dataset.theme = next;
   try {
@@ -45,12 +53,14 @@ export function setTheme(next: Theme) {
 
 export function ThemeToggle() {
   const theme = useTheme();
+  const themeHydrated = useHydrated();
 
   function toggle() {
     setTheme(theme === "dark" ? "light" : "dark");
   }
 
-  const label = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+  const resolvedTheme = themeHydrated ? theme : "light";
+  const label = resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode";
 
   return (
     <button
@@ -59,9 +69,8 @@ export function ThemeToggle() {
       aria-label={label}
       title={label}
       className="theme-toggle"
-      suppressHydrationWarning
     >
-      {theme === "dark" ? (
+      {resolvedTheme === "dark" ? (
         <Sun aria-hidden="true" />
       ) : (
         <Moon aria-hidden="true" />
