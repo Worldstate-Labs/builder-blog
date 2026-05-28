@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useState, type ReactNode } from "react";
 
 type DashboardTab = "ai-digest" | "subscription" | "for-you";
 
@@ -17,13 +17,10 @@ export function DashboardHomeTabs({
   subscription: ReactNode;
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const selectedTab =
-    searchParams.get("tab") === null
-      ? initialTab
-      : parseTab(searchParams.get("tab"));
+  const [selectedTab, setSelectedTab] = useState(initialTab);
 
   function selectTab(tab: DashboardTab) {
+    setSelectedTab(tab);
     const url = tab === "ai-digest" ? "/dashboard" : `/dashboard?tab=${tab}`;
     router.replace(url, { scroll: false });
   }
@@ -117,9 +114,4 @@ export function DashboardHomeTabs({
       </section>
     </>
   );
-}
-
-function parseTab(value: string | null): DashboardTab {
-  if (value === "subscription" || value === "for-you") return value;
-  return "ai-digest";
 }

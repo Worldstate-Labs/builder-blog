@@ -90,6 +90,8 @@ test("desktop shell uses home rail, header search, and merged home feeds", () =>
   assert.match(searchForm, /name="q"/);
   assert.match(dashboardPage, /DashboardHomeTabs/);
   assert.match(dashboardTabs, /role="tablist"/);
+  assert.match(dashboardTabs, /useState\(initialTab\)/);
+  assert.doesNotMatch(dashboardTabs, /useSearchParams/);
   assert.match(dashboardTabs, /router\.replace/);
   assert.doesNotMatch(dashboardTabs, /window\.history\.pushState/);
   assert.doesNotMatch(dashboardTabs, /router\.push/);
