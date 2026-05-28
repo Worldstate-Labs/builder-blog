@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
+import { BuilderEditDialog } from "@/components/BuilderEditDialog";
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { BuilderLibraryActions } from "@/components/BuilderLibraryActions";
 import { SourceBadge } from "@/components/SourceBadge";
@@ -16,11 +17,20 @@ import {
 
 export type BuilderLibraryListItem = BuilderLibraryEventItem;
 
+type SourceOption = { id: string; label: string };
+
 type BuilderLibraryListProps = {
   acceptAddedBuilders?: boolean;
   builders: BuilderLibraryListItem[];
   emptyBody: string;
   emptyTitle?: string;
+  /**
+   * Optional source-type options. When provided, each row's owner can
+   * open an Edit dialog that lets them change the same three fields
+   * (sourceType / sourceValue / display name) used at creation time.
+   * Omit on lists that don't grant edit rights (e.g. central pool).
+   */
+  editableSourceOptions?: SourceOption[];
 };
 
 export function BuilderLibraryList({
@@ -28,6 +38,7 @@ export function BuilderLibraryList({
   builders,
   emptyBody,
   emptyTitle,
+  editableSourceOptions,
 }: BuilderLibraryListProps) {
   const [addedBuilders, setAddedBuilders] = useState<BuilderLibraryListItem[]>([]);
   const [removedBuilderIds, setRemovedBuilderIds] = useState<Set<string>>(() => new Set());
@@ -148,6 +159,7 @@ export function BuilderLibraryList({
           builder={builder}
           first={index === 0}
           key={builder.id}
+          editableSourceOptions={editableSourceOptions}
           removeError={removeErrors[builder.id]}
           onRemoveStateChange={onRemoveStateChange}
           onSubscriptionStateChange={onSubscriptionStateChange}
@@ -160,12 +172,14 @@ export function BuilderLibraryList({
 function BuilderCard({
   builder,
   first,
+  editableSourceOptions,
   onRemoveStateChange,
   onSubscriptionStateChange,
   removeError,
 }: {
   builder: BuilderLibraryListItem;
   first: boolean;
+  editableSourceOptions?: SourceOption[];
   onRemoveStateChange: (builderId: string, removed: boolean) => void;
   onSubscriptionStateChange: (
     builderId: string,
@@ -174,6 +188,7 @@ function BuilderCard({
   ) => void;
   removeError?: string;
 }) {
+  const canEdit = Boolean(editableSourceOptions && builder.allowRemove);
   return (
     <article
       id={builder.id}
@@ -184,9 +199,7 @@ function BuilderCard({
       }
     >
       <div className="builder-library-card-main grid items-center gap-3.5">
-        <span className="builder-library-avatar fb-src-icon">
-          {builder.name.charAt(0).toUpperCase()}
-        </span>
+        <BuilderAvatar builder={builder} />
         <BuilderInfo builder={builder} />
         <div className="builder-library-actions row-actions flex flex-shrink-0 items-center gap-3">
           {builder.sourceUrl || builder.fetchUrl ? (
@@ -200,6 +213,12 @@ function BuilderCard({
             >
               <ExternalLink aria-hidden="true" />
             </a>
+          ) : null}
+          {canEdit && editableSourceOptions ? (
+            <BuilderEditDialog
+              builder={builder}
+              sourceOptions={editableSourceOptions}
+            />
           ) : null}
           <BuilderLibraryActions
             allowRemove={builder.allowRemove}
@@ -229,6 +248,60 @@ function BuilderCard({
 
 function dispatchStatsChange(detail: BuilderLibraryStatsChange) {
   window.dispatchEvent(new CustomEvent(builderLibraryStatsChanged, { detail }));
+}
+
+function avatarMonogram(builder: BuilderLibraryListItem): string {
+  // Strip a leading "@" so X handles like "@karpathy" render as "K"
+  // instead of "@", which was indistinguishable across rows.
+  const cleaned = builder.name.replace(/^@+/, "").trim();
+  const first = cleaned.charAt(0) || builder.name.charAt(0) || "?";
+  return first.toUpperCase();
+}
+
+function avatarFaviconUrl(builder: BuilderLibraryListItem): string | null {
+  // For X and YouTube every row shares the same platform host, so
+  // the favicon would be the same generic logo for every account —
+  // less informative than the monogram. Stick with the monogram
+  // there and use a real favicon only when the host varies per row.
+  if (builder.sourceType === "x" || builder.sourceType === "youtube") return null;
+  const url = builder.sourceUrl ?? builder.fetchUrl;
+  if (!url) return null;
+  try {
+    const host = new URL(url).host;
+    if (!host) return null;
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
+  } catch {
+    return null;
+  }
+}
+
+function BuilderAvatar({ builder }: { builder: BuilderLibraryListItem }) {
+  const monogram = avatarMonogram(builder);
+  const faviconUrl = avatarFaviconUrl(builder);
+  const [showFavicon, setShowFavicon] = useState(Boolean(faviconUrl));
+  if (faviconUrl && showFavicon) {
+    return (
+      <span
+        className="builder-library-avatar fb-src-icon"
+        style={{ overflow: "hidden", padding: 0 }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          alt=""
+          aria-hidden="true"
+          height={36}
+          width={36}
+          loading="lazy"
+          onError={() => setShowFavicon(false)}
+          src={faviconUrl}
+          style={{ height: "100%", width: "100%", objectFit: "cover" }}
+        />
+      </span>
+    );
+  }
+  return (
+    <span className="builder-library-avatar fb-src-icon">{monogram}</span>
+  );
 }
 
 function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {

@@ -1,0 +1,151 @@
+import { BuilderKind, Prisma } from "@prisma/client";
+import { revalidateTag } from "next/cache";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { getCurrentSession } from "@/lib/auth";
+import {
+  builderLibraryKey,
+  canonicalBuilderKey,
+  canonicalBuilderValueForInput,
+  normalizedBuilderHandle,
+} from "@/lib/builder-keys";
+import { prisma } from "@/lib/prisma";
+import { resolvePersonalBuilderInput } from "@/lib/personal-builder-input";
+import { validatePublicHttpUrl } from "@/lib/safe-url";
+import { formatZodError } from "@/lib/zod-error";
+
+type Params = { params: Promise<{ builderId: string }> };
+
+const PatchSchema = z.object({
+  name: z.string().trim().max(240).optional(),
+  sourceType: z.string().trim().min(1).max(40).optional(),
+  sourceValue: z.string().trim().min(1).max(2048).optional(),
+});
+
+// PATCH /api/builders/:builderId/personal — edit the three creation
+// fields (sourceType / sourceValue / display name) on a user-owned
+// builder. Unknown sourceType, malformed URL, SSRF target, or
+// canonical-key collision all surface as 400s with a clear `error`
+// string the UI can show inline.
+export async function PATCH(request: Request, { params }: Params) {
+  const session = await getCurrentSession();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { builderId } = await params;
+  const existing = await prisma.builder.findUnique({
+    where: { id: builderId },
+    select: {
+      id: true,
+      ownerUserId: true,
+      name: true,
+      sourceType: true,
+      sourceUrl: true,
+      handle: true,
+    },
+  });
+  if (!existing || existing.ownerUserId !== session.user.id) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const parsed = PatchSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+  }
+
+  const fallbackSourceValue =
+    existing.handle && existing.sourceType === "x"
+      ? `@${existing.handle}`
+      : (existing.sourceUrl ?? existing.handle ?? "");
+
+  const nextName = parsed.data.name ?? existing.name;
+  const nextSourceType = parsed.data.sourceType ?? existing.sourceType;
+  const nextSourceValue = parsed.data.sourceValue ?? fallbackSourceValue;
+
+  if (!nextSourceValue) {
+    return NextResponse.json(
+      { error: "sourceValue is required to resolve the source" },
+      { status: 400 },
+    );
+  }
+
+  const resolution = await resolvePersonalBuilderInput({
+    displayName: nextName,
+    sourceType: nextSourceType,
+    sourceValue: nextSourceValue,
+  });
+  if (!resolution.ok) {
+    return NextResponse.json(
+      {
+        error: resolution.reason,
+        ...(resolution.suggestId ? { suggestId: resolution.suggestId } : {}),
+      },
+      { status: 400 },
+    );
+  }
+  const input = resolution.value;
+
+  for (const candidate of [input.sourceUrl, input.fetchUrl]) {
+    if (!candidate) continue;
+    const check = validatePublicHttpUrl(candidate);
+    if (!check.ok) {
+      return NextResponse.json(
+        { error: `Source URL rejected: ${check.reason}` },
+        { status: 400 },
+      );
+    }
+  }
+
+  // Re-derive the canonical / library keys from the resolved input the
+  // same way upsertBuilder does, so the row stays addressable by the
+  // dedup key after an in-place edit.
+  const kind = input.kind as BuilderKind;
+  const handle = normalizedBuilderHandle(kind, input.handle);
+  const canonicalValue = canonicalBuilderValueForInput({
+    kind,
+    handle,
+    sourceUrl: input.sourceUrl ?? null,
+    name: input.name,
+  });
+  const canonicalKey = canonicalBuilderKey(kind, canonicalValue);
+  const libraryKey = builderLibraryKey({
+    canonicalKey,
+    ownerUserId: session.user.id,
+  });
+
+  try {
+    const updated = await prisma.builder.update({
+      where: { id: existing.id },
+      data: {
+        name: input.name,
+        handle: handle ?? null,
+        sourceType: input.sourceType,
+        sourceUrl: input.sourceUrl ?? null,
+        fetchUrl: input.fetchUrl ?? null,
+        kind,
+        canonicalKey,
+        libraryKey,
+      },
+    });
+    revalidateTag(`user:${session.user.id}:recs`, "default");
+    return NextResponse.json({
+      builder: updated,
+      ...(resolution.warning ? { warning: resolution.warning } : {}),
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json(
+        {
+          error:
+            "This source already exists in a library. Remove the duplicate first, or pick a different source.",
+        },
+        { status: 409 },
+      );
+    }
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Update failed" },
+      { status: 500 },
+    );
+  }
+}

@@ -331,6 +331,9 @@ async function BuilderSections({
             subscribed: data.subscribed.has(builder.id),
           }),
         )}
+        editableSourceOptions={data.sourceLabelOptions.filter(
+          (source) => source.id !== "pdf",
+        )}
         emptyBody="Add a source here, or sync richer summarized data from your agent later."
         emptyTitle="No personal sources yet"
       />
