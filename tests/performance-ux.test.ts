@@ -52,7 +52,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /aria-label=\{email \? `Account menu for \$\{email\}` : `Account menu for \$\{name\}`\}/);
   assert.match(userMenu, /detailsRef\.current\.open = false/);
   assert.match(userMenu, /themeHydrated/);
-  assert.match(agentTokenPanel, /useHydrated/);
+  assert.match(agentTokenPanel, /timeZone:\s*"UTC"/);
   assert.match(fetchLogPanel, /startedAtLabel = hydrated \? formatRelative/);
   assert.match(skillPromptActions, /!\s*open \? null/);
   assert.match(digestDetails, /useHydrated/);

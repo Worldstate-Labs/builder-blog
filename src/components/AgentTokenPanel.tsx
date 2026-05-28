@@ -3,7 +3,6 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound, Plus } from "lucide-react";
-import { useHydrated } from "@/components/ThemeToggle";
 
 export type AgentTokenListItem = {
   id: string;
@@ -78,7 +77,6 @@ export function AgentTokenPanel({
   initialTokens: AgentTokenListItem[];
 }) {
   const router = useRouter();
-  const hydrated = useHydrated();
   const [tokens, setTokens] = useState(initialTokens);
   const [tokenName, setTokenName] = useState("");
   const [status, setStatus] = useState("");
@@ -331,7 +329,7 @@ export function AgentTokenPanel({
                       </>
                     ) : null}
                     {revokeTarget.lastUsedAt ? (
-                      <> ({formatDate(revokeTarget.lastUsedAt, hydrated)})</>
+                      <> ({formatDate(revokeTarget.lastUsedAt)})</>
                     ) : null}
                     .
                   </p>
@@ -371,8 +369,7 @@ export function AgentTokenPanel({
   );
 }
 
-function formatDate(value: string, hydrated: boolean) {
-  if (hydrated) return new Date(value).toLocaleString();
+function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "short",
@@ -393,7 +390,6 @@ function TokenRow({
   isPending: boolean;
   onRevoke: () => void;
 }) {
-  const hydrated = useHydrated();
   return (
     <div className={`fb-token-row${token.revokedAt ? " fb-row--revoked" : ""}`}>
       <span className="fb-src-icon fb-src-icon--md">
@@ -402,11 +398,11 @@ function TokenRow({
       <div className="min-w-0 flex-1">
         <div className="text-[13.5px] font-bold">{token.name}</div>
         <div className="fb-src-meta">
-          <span>Created {formatDate(token.createdAt, hydrated)}</span>
+          <span>Created {formatDate(token.createdAt)}</span>
           {token.lastUsedAt ? (
             <>
               <span>·</span>
-              <span>Last used {formatDate(token.lastUsedAt, hydrated)}</span>
+              <span>Last used {formatDate(token.lastUsedAt)}</span>
             </>
           ) : null}
           {token.lastUsedAt ? (
@@ -424,7 +420,7 @@ function TokenRow({
           {token.revokedAt ? (
             <>
               <span>·</span>
-              <span>Revoked {formatDate(token.revokedAt, hydrated)}</span>
+              <span>Revoked {formatDate(token.revokedAt)}</span>
             </>
           ) : null}
         </div>
