@@ -476,6 +476,7 @@ async function fetchPersonal(args) {
     ({ slimFetchTasks, promptsBySourceType } = summarizeFetchTasksForLog(
       fetchTasks,
       sources,
+      commonSummaryRules,
     ));
 
     const payload = { status: "ok", localErrors, fetchTasks };
@@ -545,7 +546,7 @@ async function fetchPersonal(args) {
 // deduplicated by sourceType. This is what the user sees in the
 // Fetch log details panel — small enough for the 50 KB cap, but
 // faithful enough that the prompt history survives admin edits.
-export function summarizeFetchTasksForLog(fetchTasks, sources = {}) {
+export function summarizeFetchTasksForLog(fetchTasks, sources = {}, commonSummaryRules = "") {
   const slimFetchTasks = fetchTasks.map((task) => ({
     id: task?.id ?? null,
     builder: task?.builder ?? null,
@@ -560,13 +561,27 @@ export function summarizeFetchTasksForLog(fetchTasks, sources = {}) {
   for (const task of fetchTasks) {
     if (task?.sourceType) sourceTypesUsed.add(task.sourceType);
   }
+  // Emit the *composed* prompt strings — exactly what the agent reads
+  // as `task.summaryInstructions.prompt` (always) and
+  // `task.fetchInstructions.prompt` (when admin set a custom
+  // fetchPromptBody for the source). When fetchInstructions is null,
+  // we mirror that here as null so the UI can label it "default
+  // extraction" rather than fabricating a fetch prompt.
   const promptsBySourceType = {};
   for (const sourceType of sourceTypesUsed) {
     const source = sources?.[sourceType];
     if (!source) continue;
+    const summaryInstructions = (() => {
+      try {
+        return singlePostSummaryInstructions(sourceType, sources, commonSummaryRules);
+      } catch {
+        return null;
+      }
+    })();
+    const fetchInstructions = singlePostFetchInstructions(sourceType, sources);
     promptsBySourceType[sourceType] = {
-      summary: source.summaryPrompt?.body ?? null,
-      fetch: source.fetchPrompt?.body ?? null,
+      summary: summaryInstructions?.prompt ?? null,
+      fetch: fetchInstructions?.prompt ?? null,
     };
   }
   return { slimFetchTasks, promptsBySourceType };
@@ -692,6 +707,7 @@ function buildBuilderFallbackTask(builder, builderSync, { error, sources = {}, c
     body: "",
   };
   const sourceType = builderSync.sourceType ?? sourceTypeIdForBuilder(builder);
+  const fetchInstructions = singlePostFetchInstructions(sourceType, sources);
   const task = {
     type: "fetch_post",
     agentWorkType: "fetch_builder_fallback",
@@ -703,6 +719,7 @@ function buildBuilderFallbackTask(builder, builderSync, { error, sources = {}, c
     item,
     minimumContentQuality: genericMinimumContentQuality(),
     summaryInstructions: singlePostSummaryInstructions(sourceType, sources, commonSummaryRules),
+    ...(fetchInstructions ? { fetchInstructions } : {}),
     fallbackReason: error?.message || String(error || "Personal fetcher failed"),
   };
   task.id = fetchTaskId({ builderId: builder.id, builder: builder.name, item });
@@ -712,6 +729,7 @@ function buildBuilderFallbackTask(builder, builderSync, { error, sources = {}, c
 function fetchTaskFromAgentTask(task, builderSync, sources = {}, commonSummaryRules = "") {
   const item = task.item ?? {};
   const sourceType = task.sourceType ?? builderSync.sourceType;
+  const fetchInstructions = task.fetchInstructions ?? singlePostFetchInstructions(sourceType, sources);
   const out = {
     type: "fetch_post",
     agentWorkType: task.type,
@@ -723,6 +741,7 @@ function fetchTaskFromAgentTask(task, builderSync, sources = {}, commonSummaryRu
     item,
     minimumContentQuality: task.minimumContentQuality ?? genericMinimumContentQuality(),
     summaryInstructions: task.summaryInstructions ?? singlePostSummaryInstructions(sourceType, sources, commonSummaryRules),
+    ...(fetchInstructions ? { fetchInstructions } : {}),
     id: fetchTaskId({ builderId: task.builderId ?? builderSync.builderId, builder: task.builder ?? builderSync.name, item }),
   };
   // Pass-through optional fields used by user-action tasks
@@ -741,6 +760,27 @@ export function fetchTaskId(task) {
   ]
     .map((part) => encodeURIComponent(String(part)))
     .join(":");
+}
+
+// Build the per-source extraction instructions the agent literally
+// follows when a fetchTask is `requires_agent`. Returns null when the
+// admin hasn't configured a custom fetchPromptBody for this source —
+// the agent then falls back to the skill markdown's general
+// extraction guidance ("use web fetch, local CLI tools, etc.").
+// Opt-in by design: empty config = current behavior, set config =
+// agent reads exactly this string.
+export function singlePostFetchInstructions(sourceId, sources = {}) {
+  const source = sources?.[sourceId];
+  const body = source?.fetchPrompt?.body;
+  if (typeof body !== "string" || body.trim().length === 0) return null;
+  return {
+    scope: "single_post",
+    prompt: [
+      `Follow these extraction rules for one ${source.label || sourceId} post.`,
+      "",
+      body,
+    ].join("\n"),
+  };
 }
 
 export function singlePostSummaryInstructions(sourceId, sources = {}, commonSummaryRules = "") {

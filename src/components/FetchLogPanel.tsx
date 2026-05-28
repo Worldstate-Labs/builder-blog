@@ -408,7 +408,10 @@ function DetailsBody({ details }: { details: DetailsShape }) {
             Prompts used
           </h3>
           <p className="mt-1 text-[11.5px] text-[var(--muted)]">
-            Snapshot of the prompts the agent was instructed to follow on this run.
+            The exact strings the agent received as{" "}
+            <code>task.summaryInstructions.prompt</code> and (when the admin
+            configured one) <code>task.fetchInstructions.prompt</code> for each
+            source type on this run.
           </p>
           <div className="mt-2 grid gap-2">
             {promptEntries.map(([sourceType, bundle]) => (
@@ -428,7 +431,7 @@ function DetailsBody({ details }: { details: DetailsShape }) {
                       className="text-[10.5px] uppercase tracking-wide"
                       style={{ color: "var(--muted)" }}
                     >
-                      Summary prompt
+                      Summary prompt · what the agent received
                     </p>
                     <pre
                       className="mono mt-1 max-h-72 overflow-auto whitespace-pre-wrap text-[11.5px]"
@@ -437,22 +440,33 @@ function DetailsBody({ details }: { details: DetailsShape }) {
                       {bundle.summary ?? "(none)"}
                     </pre>
                   </div>
-                  {bundle.fetch ? (
-                    <div>
-                      <p
-                        className="text-[10.5px] uppercase tracking-wide"
-                        style={{ color: "var(--muted)" }}
-                      >
-                        Fetch prompt
-                      </p>
+                  <div>
+                    <p
+                      className="text-[10.5px] uppercase tracking-wide"
+                      style={{ color: "var(--muted)" }}
+                    >
+                      Fetch prompt · what the agent received
+                    </p>
+                    {bundle.fetch ? (
                       <pre
                         className="mono mt-1 max-h-72 overflow-auto whitespace-pre-wrap text-[11.5px]"
                         style={{ color: "var(--muted-strong)" }}
                       >
                         {bundle.fetch}
                       </pre>
-                    </div>
-                  ) : null}
+                    ) : (
+                      <p
+                        className="mt-1 text-[11.5px] italic"
+                        style={{ color: "var(--muted)" }}
+                      >
+                        Default extraction — admin hasn&rsquo;t set a custom
+                        fetch prompt for this source, so the agent used the
+                        general extraction guidance from the skill
+                        (web fetch / CLI tools / transcription APIs / headless
+                        browser).
+                      </p>
+                    )}
+                  </div>
                 </div>
               </details>
             ))}
