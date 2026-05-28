@@ -29,7 +29,7 @@ const MACHINE_HEADERS = (() => {
 // Bump when the CLI emits a meaningfully different fetch-run record
 // shape or behavior. The server stores this verbatim so the user can
 // see which CLI build produced a given run.
-const CLI_VERSION = "0.5.0";
+const CLI_VERSION = "0.6.0";
 
 // Cached for fetch-run logging so a single CLI run shares one host /
 // platform identity across success and failure paths.
@@ -313,6 +313,12 @@ async function fetchPersonal(args) {
   let itemsFetched = 0;
   let tasksGenerated = 0;
   let errorCount = 0;
+  // Audit trail uploaded with the fetch run so users can later see
+  // exactly which tasks were queued and which prompts the agent was
+  // asked to follow. Filled before each emitFetchRunRecord call so the
+  // catch path also reports whatever made it into the queue.
+  let slimFetchTasks = [];
+  let promptsBySourceType = {};
 
   try {
     const context = await getJson(
@@ -467,6 +473,10 @@ async function fetchPersonal(args) {
     }
 
     perBuilder = [...builderStats.values()];
+    ({ slimFetchTasks, promptsBySourceType } = summarizeFetchTasksForLog(
+      fetchTasks,
+      sources,
+    ));
 
     const payload = { status: "ok", localErrors, fetchTasks };
     console.log(JSON.stringify(payload, null, 2));
@@ -494,6 +504,8 @@ async function fetchPersonal(args) {
         userActions,
         localErrors,
         cliFlags,
+        fetchTasks: slimFetchTasks,
+        prompts: promptsBySourceType,
       },
     });
   } catch (error) {
@@ -516,6 +528,8 @@ async function fetchPersonal(args) {
         userActions,
         localErrors,
         cliFlags,
+        fetchTasks: slimFetchTasks,
+        prompts: promptsBySourceType,
         error: {
           message,
           stack: error instanceof Error ? error.stack : undefined,
@@ -524,6 +538,38 @@ async function fetchPersonal(args) {
     });
     throw error;
   }
+}
+
+// Build the audit-trail companion to a fetch run: a slim per-task
+// summary (no body, no full prompt) plus the per-source-type prompts
+// deduplicated by sourceType. This is what the user sees in the
+// Fetch log details panel — small enough for the 50 KB cap, but
+// faithful enough that the prompt history survives admin edits.
+export function summarizeFetchTasksForLog(fetchTasks, sources = {}) {
+  const slimFetchTasks = fetchTasks.map((task) => ({
+    id: task?.id ?? null,
+    builder: task?.builder ?? null,
+    builderId: task?.builderId ?? null,
+    sourceType: task?.sourceType ?? null,
+    contentStatus: task?.contentStatus ?? null,
+    agentWorkType: task?.agentWorkType ?? null,
+    title: task?.item?.title ?? null,
+    url: task?.item?.url ?? null,
+  }));
+  const sourceTypesUsed = new Set();
+  for (const task of fetchTasks) {
+    if (task?.sourceType) sourceTypesUsed.add(task.sourceType);
+  }
+  const promptsBySourceType = {};
+  for (const sourceType of sourceTypesUsed) {
+    const source = sources?.[sourceType];
+    if (!source) continue;
+    promptsBySourceType[sourceType] = {
+      summary: source.summaryPrompt?.body ?? null,
+      fetch: source.fetchPrompt?.body ?? null,
+    };
+  }
+  return { slimFetchTasks, promptsBySourceType };
 }
 
 function buildFetchRunSummary({

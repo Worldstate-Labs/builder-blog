@@ -74,7 +74,7 @@ test("skill fetch-runs route validates payload size and gates auth on user sessi
 test("CLI emits a fetch-run record on both success and failure paths", () => {
   const cli = source("scripts/builder-digest.mjs");
   // CLI_VERSION is bumped for this change.
-  assert.match(cli, /const CLI_VERSION = "0\.5\.0";/);
+  assert.match(cli, /const CLI_VERSION = "0\.6\.0";/);
   // The CLI POSTs to the new endpoint with the bearer token.
   assert.match(cli, /\/api\/skill\/fetch-runs/);
   // Detects cron vs manual via the env variable exported by the runner.
@@ -86,6 +86,11 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /Failed to upload fetch log:/);
   // Original error is printed and rethrown so the user still sees it.
   assert.match(cli, /console\.error\(message\);[\s\S]*throw error;/);
+  // Fetch-run details carry an audit trail of the queued tasks plus
+  // the deduped per-source-type prompts the agent was instructed with.
+  assert.match(cli, /summarizeFetchTasksForLog/);
+  assert.match(cli, /fetchTasks: slimFetchTasks/);
+  assert.match(cli, /prompts: promptsBySourceType/);
 });
 
 test("agent runner tags cron-driven CLI runs as source=cron", () => {

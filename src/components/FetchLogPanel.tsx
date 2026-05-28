@@ -39,12 +39,30 @@ type UserAction = {
   helpUrl?: string;
 };
 
+type FetchTaskLog = {
+  id?: string | null;
+  builder?: string | null;
+  builderId?: string | null;
+  sourceType?: string | null;
+  contentStatus?: string | null;
+  agentWorkType?: string | null;
+  title?: string | null;
+  url?: string | null;
+};
+
+type PromptBundle = {
+  summary?: string | null;
+  fetch?: string | null;
+};
+
 type DetailsShape = {
   perBuilder?: PerBuilder[];
   userActions?: UserAction[];
   localErrors?: string[];
   cliFlags?: Record<string, unknown>;
   error?: { message?: string; stack?: string };
+  fetchTasks?: FetchTaskLog[];
+  prompts?: Record<string, PromptBundle>;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -286,6 +304,12 @@ function DetailsBody({ details }: { details: DetailsShape }) {
   const perBuilder = Array.isArray(details.perBuilder) ? details.perBuilder : [];
   const userActions = Array.isArray(details.userActions) ? details.userActions : [];
   const localErrors = Array.isArray(details.localErrors) ? details.localErrors : [];
+  const fetchTasks = Array.isArray(details.fetchTasks) ? details.fetchTasks : [];
+  const prompts =
+    details.prompts && typeof details.prompts === "object" && !Array.isArray(details.prompts)
+      ? details.prompts
+      : {};
+  const promptEntries = Object.entries(prompts);
 
   return (
     <div className="grid gap-3">
@@ -316,6 +340,123 @@ function DetailsBody({ details }: { details: DetailsShape }) {
               </li>
             ))}
           </ul>
+        </div>
+      ) : null}
+
+      {fetchTasks.length > 0 ? (
+        <div>
+          <h3 className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted-strong)]">
+            Tasks ({fetchTasks.length})
+          </h3>
+          <ul className="mt-1.5 grid gap-1.5">
+            {fetchTasks.map((task, index) => (
+              <li
+                key={task.id ?? `${task.builderId ?? "task"}-${index}`}
+                className="text-[12.5px] leading-snug"
+              >
+                <span className="mr-1.5 inline-flex items-baseline gap-1.5">
+                  {task.sourceType ? (
+                    <span
+                      className="mono text-[11px]"
+                      style={{ color: "var(--muted-strong)" }}
+                    >
+                      {task.sourceType}
+                    </span>
+                  ) : null}
+                  {task.contentStatus ? (
+                    <span
+                      className="rounded px-1.5 py-0.5 text-[10.5px] uppercase tracking-wide"
+                      style={{
+                        background:
+                          task.contentStatus === "ready"
+                            ? "var(--signal-soft)"
+                            : "var(--warm-soft)",
+                        color:
+                          task.contentStatus === "ready"
+                            ? "color-mix(in oklch, var(--signal) 72%, var(--ink))"
+                            : "color-mix(in oklch, var(--warm) 68%, var(--ink))",
+                        fontFamily: "var(--font-geist-mono)",
+                      }}
+                    >
+                      {task.contentStatus === "ready" ? "ready" : "agent"}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="text-[var(--ink)]">
+                  {task.title ?? task.url ?? "—"}
+                </span>
+                {task.builder ? (
+                  <span className="text-[var(--muted-strong)]"> · {task.builder}</span>
+                ) : null}
+                {task.agentWorkType ? (
+                  <span
+                    className="mono ml-1.5 text-[11px]"
+                    style={{ color: "var(--muted)" }}
+                  >
+                    {task.agentWorkType}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {promptEntries.length > 0 ? (
+        <div>
+          <h3 className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted-strong)]">
+            Prompts used
+          </h3>
+          <p className="mt-1 text-[11.5px] text-[var(--muted)]">
+            Snapshot of the prompts the agent was instructed to follow on this run.
+          </p>
+          <div className="mt-2 grid gap-2">
+            {promptEntries.map(([sourceType, bundle]) => (
+              <details
+                key={sourceType}
+                className="rounded-[8px] border border-[var(--line)] bg-[var(--paper-strong)]"
+              >
+                <summary
+                  className="cursor-pointer px-3 py-2 text-[12px] font-bold text-[var(--ink)]"
+                  style={{ fontFamily: "var(--font-geist-mono)" }}
+                >
+                  {sourceType}
+                </summary>
+                <div className="grid gap-2 border-t border-[var(--line)] px-3 py-2">
+                  <div>
+                    <p
+                      className="text-[10.5px] uppercase tracking-wide"
+                      style={{ color: "var(--muted)" }}
+                    >
+                      Summary prompt
+                    </p>
+                    <pre
+                      className="mono mt-1 max-h-72 overflow-auto whitespace-pre-wrap text-[11.5px]"
+                      style={{ color: "var(--muted-strong)" }}
+                    >
+                      {bundle.summary ?? "(none)"}
+                    </pre>
+                  </div>
+                  {bundle.fetch ? (
+                    <div>
+                      <p
+                        className="text-[10.5px] uppercase tracking-wide"
+                        style={{ color: "var(--muted)" }}
+                      >
+                        Fetch prompt
+                      </p>
+                      <pre
+                        className="mono mt-1 max-h-72 overflow-auto whitespace-pre-wrap text-[11.5px]"
+                        style={{ color: "var(--muted-strong)" }}
+                      >
+                        {bundle.fetch}
+                      </pre>
+                    </div>
+                  ) : null}
+                </div>
+              </details>
+            ))}
+          </div>
         </div>
       ) : null}
 
@@ -398,6 +539,8 @@ function DetailsBody({ details }: { details: DetailsShape }) {
       {perBuilder.length === 0 &&
       userActions.length === 0 &&
       localErrors.length === 0 &&
+      fetchTasks.length === 0 &&
+      promptEntries.length === 0 &&
       !details.cliFlags &&
       !details.error ? (
         <p className="text-[12.5px] text-[var(--muted-strong)]">No structured details.</p>
