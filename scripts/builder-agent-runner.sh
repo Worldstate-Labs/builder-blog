@@ -7,7 +7,11 @@ AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 PROMPT_FILE="$AGENT_DIR/jobs/$JOB_NAME.md"
 
 PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
-export PATH BUILDER_BLOG_URL="$APP_URL" BUILDER_BLOG_AGENT_DIR="$AGENT_DIR"
+# Tag every fetch the CLI emits as "cron" while we're inside the cron
+# runner so the per-user fetch log can distinguish scheduled jobs from
+# manual terminal invocations.
+BUILDER_BLOG_RUN_SOURCE=cron
+export PATH BUILDER_BLOG_URL="$APP_URL" BUILDER_BLOG_AGENT_DIR="$AGENT_DIR" BUILDER_BLOG_RUN_SOURCE
 
 if [ -z "$JOB_NAME" ]; then
   echo "Usage: builder-agent-runner.sh <library-once|digest-once|library-cron-setup|digest-cron-setup|library-cron|digest-cron>" >&2

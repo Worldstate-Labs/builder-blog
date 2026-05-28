@@ -4,6 +4,7 @@ import { Suspense, type ReactNode } from "react";
 import { BuilderLibraryAutoRefresh } from "@/components/BuilderLibraryAutoRefresh";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
 import { BuilderLibraryStats } from "@/components/BuilderLibraryStats";
+import { FetchLogPanel, type LibraryFetchRunListItem } from "@/components/FetchLogPanel";
 import { LibraryImportRemoveButton } from "@/components/LibraryImportRemoveButton";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
 import { MobileSourcesSwitcher } from "@/components/MobileSourcesSwitcher";
@@ -71,7 +72,7 @@ async function loadBuildersPageData() {
   const isAdmin = isAdminEmail(session.user.email);
   await ensureDefaultCommunityLibraryImport(session.user.id);
 
-  const [poolEntries, subscriptions, importedLibraries, ownSharedLibrary, adminLibVisibility, rawTokens] = await Promise.all([
+  const [poolEntries, subscriptions, importedLibraries, ownSharedLibrary, adminLibVisibility, rawTokens, rawFetchRuns] = await Promise.all([
     prisma.builderPoolEntry.findMany({
       where: { userId: session.user.id, removedAt: null },
       include: {
@@ -144,6 +145,11 @@ async function loadBuildersPageData() {
         lastPlatform: true,
         lastUser: true,
       },
+    }),
+    prisma.libraryFetchRun.findMany({
+      where: { userId: session.user.id },
+      orderBy: { startedAt: "desc" },
+      take: 25,
     }),
   ]);
 
@@ -230,9 +236,29 @@ async function loadBuildersPageData() {
     revokedAt: null,
   }));
 
+  const fetchRuns: LibraryFetchRunListItem[] = rawFetchRuns.map((run) => ({
+    id: run.id,
+    startedAt: run.startedAt.toISOString(),
+    finishedAt: run.finishedAt.toISOString(),
+    durationMs: run.durationMs,
+    status: run.status,
+    source: run.source,
+    cliVersion: run.cliVersion,
+    hostname: run.hostname,
+    platform: run.platform,
+    buildersAttempted: run.buildersAttempted,
+    itemsFetched: run.itemsFetched,
+    tasksGenerated: run.tasksGenerated,
+    userActionsCount: run.userActionsCount,
+    errorCount: run.errorCount,
+    summary: run.summary,
+    details: run.details,
+  }));
+
   return {
     activeTokens,
     fetchedItems,
+    fetchRuns,
     importedLibrarySections,
     isAdmin,
     isPublicLibrary,
@@ -305,6 +331,9 @@ async function BuilderSections({
         emptyBody="Add a source here, or sync richer summarized data from your agent later."
         emptyTitle="No personal sources yet"
       />
+      <Suspense fallback={<FetchLogFallback />}>
+        <FetchLogPanel initialRuns={data.fetchRuns} />
+      </Suspense>
     </PrivateLibraryPanel>
   );
 
@@ -380,6 +409,18 @@ function BuilderStatsFallback() {
         <div key={index} className="h-8 w-24 rounded-full bg-black/10" />
       ))}
     </div>
+  );
+}
+
+function FetchLogFallback() {
+  return (
+    <section className="fb-panel" aria-live="polite" aria-busy="true">
+      <div className="h-5 w-24 rounded bg-black/10" />
+      <div className="mt-3 grid gap-2">
+        <div className="h-16 rounded-[10px] bg-black/10" />
+        <div className="h-16 rounded-[10px] bg-black/10" />
+      </div>
+    </section>
   );
 }
 

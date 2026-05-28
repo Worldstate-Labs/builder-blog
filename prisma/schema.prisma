@@ -33,6 +33,31 @@ model User {
   recommendationSnapshots RecommendationSnapshot[]
   channelPreferences      UserChannelPreference[]
   libraryVisibilities     UserLibraryVisibility[]
+  libraryFetchRuns        LibraryFetchRun[]
+}
+
+model LibraryFetchRun {
+  id                String   @id @default(cuid())
+  userId            String
+  startedAt         DateTime
+  finishedAt        DateTime
+  durationMs        Int
+  status            String
+  source            String
+  cliVersion        String?
+  hostname          String?
+  platform          String?
+  buildersAttempted Int      @default(0)
+  itemsFetched      Int      @default(0)
+  tasksGenerated    Int      @default(0)
+  userActionsCount  Int      @default(0)
+  errorCount        Int      @default(0)
+  summary           String
+  details           Json
+  createdAt         DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startedAt(sort: Desc)])
 }
 
 model Account {

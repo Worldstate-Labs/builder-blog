@@ -26,6 +26,20 @@ const MACHINE_HEADERS = (() => {
   return headers;
 })();
 
+// Bump when the CLI emits a meaningfully different fetch-run record
+// shape or behavior. The server stores this verbatim so the user can
+// see which CLI build produced a given run.
+const CLI_VERSION = "0.5.0";
+
+// Cached for fetch-run logging so a single CLI run shares one host /
+// platform identity across success and failure paths.
+const RUN_HOSTNAME = (() => {
+  try { return hostname() || null; } catch { return null; }
+})();
+const RUN_PLATFORM = (() => {
+  try { return `${platform()} ${release()}`.trim() || null; } catch { return null; }
+})();
+
 const CONFIG_DIR = join(homedir(), ".builder-blog");
 const ACCOUNTS_DIR = join(CONFIG_DIR, "accounts");
 const SOURCES_CONFIG_PATH = join(CONFIG_DIR, "sources.json");
@@ -276,155 +290,293 @@ async function prepare() {
 }
 
 async function fetchPersonal(args) {
-  const config = await readConfig();
-  requireLoggedIn(config);
-
+  const startedAt = new Date();
+  // Cron-driven invocations export BUILDER_BLOG_RUN_SOURCE=cron from
+  // builder-agent-runner.sh; anything else (manual terminal usage,
+  // ad-hoc agent runs) is recorded as "manual".
+  const runSource = process.env.BUILDER_BLOG_RUN_SOURCE?.trim() === "cron" ? "cron" : "manual";
   const days = Math.max(1, Number(argValue(args, "--days", String(DEFAULT_PERSONAL_FETCH_DAYS))));
   const limit = Math.max(1, Number(argValue(args, "--limit", "3")));
   const force = args.includes("--force");
   const agentModel = argValue(args, "--agent-model", DEFAULT_AGENT_MODEL);
-  const context = await getJson(
-    `${config.appUrl}/api/skill/context?days=${encodeURIComponent(String(days))}`,
-    config.token,
-  );
-  const sources = context.sources ?? {};
-  const commonSummaryRules = context.commonSummaryRules ?? context.digest?.commonSummaryRules ?? "";
-  const subscribedBuilderIds = new Set(
-    (context.subscriptions ?? []).map((builder) => builder.id),
-  );
-  const personalBuilders = personalBuildersForFetch(context);
+  const cliFlags = { days, limit, force, agentModel };
 
-  if (personalBuilders.length === 0) {
-    console.log(
-      JSON.stringify(
-        {
-          status: "ok",
-          localErrors: [],
-          fetchTasks: [],
-        },
-        null,
-        2,
-      ),
-    );
-    return;
-  }
+  const config = await readConfig();
+  // No token → no upload possible; let the original error bubble so
+  // the user sees the actionable login message.
+  requireLoggedIn(config);
 
-  const fallbackCutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-  const builders = [];
+  let perBuilder = [];
+  const userActions = [];
   const localErrors = [];
-  const fetchTasks = [];
+  let buildersAttempted = 0;
+  let itemsFetched = 0;
+  let tasksGenerated = 0;
+  let errorCount = 0;
 
-  for (const builder of personalBuilders) {
-    const fallbackBuilderSync = {
-      builderId: builder.id,
-      kind: builder.kind,
-      sourceType: sourceTypeIdForBuilder(builder),
-      name: builder.name,
-      handle: builder.handle,
-      sourceUrl: builder.sourceUrl,
-      fetchUrl: builder.fetchUrl,
-      bio: builder.bio,
-      subscribe: subscribedBuilderIds.has(builder.id),
-    };
-    try {
-      const source = personalFetcherSourceForBuilder(builder);
-      if (!source) {
-        const externalItems = await fetchPersonalWithExternalCommand(builder, {
-          fallbackCutoff,
-          force,
-          limit,
-          context,
-          agentModel,
-        });
-        if (!externalItems) {
-          fetchTasks.push(
-            buildBuilderFallbackTask(builder, fallbackBuilderSync, {
-              error: new Error(
-                "No local fetcher configured for this personal source.",
-              ),
+  try {
+    const context = await getJson(
+      `${config.appUrl}/api/skill/context?days=${encodeURIComponent(String(days))}`,
+      config.token,
+    );
+    const sources = context.sources ?? {};
+    const commonSummaryRules = context.commonSummaryRules ?? context.digest?.commonSummaryRules ?? "";
+    const subscribedBuilderIds = new Set(
+      (context.subscriptions ?? []).map((builder) => builder.id),
+    );
+    const personalBuilders = personalBuildersForFetch(context);
+    buildersAttempted = personalBuilders.length;
+
+    if (personalBuilders.length === 0) {
+      const payload = { status: "ok", localErrors: [], fetchTasks: [] };
+      console.log(JSON.stringify(payload, null, 2));
+      await emitFetchRunRecord(config, {
+        startedAt,
+        status: "ok",
+        source: runSource,
+        buildersAttempted: 0,
+        itemsFetched: 0,
+        tasksGenerated: 0,
+        userActionsCount: 0,
+        errorCount: 0,
+        summary: "No personal builders to fetch.",
+        details: {
+          perBuilder: [],
+          userActions: [],
+          localErrors: [],
+          cliFlags,
+        },
+      });
+      return;
+    }
+
+    const fallbackCutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const builders = [];
+    const fetchTasks = [];
+    const builderStats = new Map();
+
+    for (const builder of personalBuilders) {
+      const builderStat = {
+        builderId: builder.id,
+        name: builder.name,
+        sourceType: sourceTypeIdForBuilder(builder),
+        itemsFetched: 0,
+        tasksGenerated: 0,
+      };
+      builderStats.set(builder.id, builderStat);
+
+      const fallbackBuilderSync = {
+        builderId: builder.id,
+        kind: builder.kind,
+        sourceType: builderStat.sourceType,
+        name: builder.name,
+        handle: builder.handle,
+        sourceUrl: builder.sourceUrl,
+        fetchUrl: builder.fetchUrl,
+        bio: builder.bio,
+        subscribe: subscribedBuilderIds.has(builder.id),
+      };
+      try {
+        const source = personalFetcherSourceForBuilder(builder);
+        if (!source) {
+          const externalItems = await fetchPersonalWithExternalCommand(builder, {
+            fallbackCutoff,
+            force,
+            limit,
+            context,
+            agentModel,
+          });
+          if (!externalItems) {
+            const task = buildBuilderFallbackTask(builder, fallbackBuilderSync, {
+              error: new Error("No local fetcher configured for this personal source."),
               sources,
               commonSummaryRules,
-            }),
-          );
-          continue;
-        }
-        builders.push({
-          ...fallbackBuilderSync,
-          items: filterFetchedItems(externalItems, {
+            });
+            fetchTasks.push(task);
+            builderStat.tasksGenerated += 1;
+            continue;
+          }
+          const filtered = filterFetchedItems(externalItems, {
             builderId: builder.id,
             cutoff: force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff),
             limit,
             fetchedItemKeys: force ? new Set() : fetchedItemKeysForBuilder(context, builder.id),
-          }),
+          });
+          builders.push({ ...fallbackBuilderSync, items: filtered });
+          builderStat.itemsFetched += filtered.length;
+          continue;
+        }
+        const fetched = await source.fetch(builder, {
+          cutoff: force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff),
+          limit,
+          agentModel,
+          fetchedItemKeys: force ? new Set() : fetchedItemKeysForBuilder(context, builder.id),
         });
-        continue;
+        const { items, agentTasks: sourceAgentTasks } = normalizePersonalFetchResult(fetched);
+        const builderSync = {
+          ...fallbackBuilderSync,
+          kind: source.syncKind,
+          sourceType: source.id,
+        };
+        const fetchTasksFromAgentTasks = sourceAgentTasks.map((task) =>
+          fetchTaskFromAgentTask(task, builderSync, sources, commonSummaryRules),
+        );
+        fetchTasks.push(...fetchTasksFromAgentTasks);
+        builderStat.tasksGenerated += fetchTasksFromAgentTasks.length;
+        builders.push({ ...builderSync, items });
+        builderStat.itemsFetched += items.length;
+        builderStat.sourceType = source.id;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        builderStat.error = message;
+        errorCount += 1;
+        const task = buildBuilderFallbackTask(builder, fallbackBuilderSync, {
+          error,
+          sources,
+          commonSummaryRules,
+        });
+        fetchTasks.push(task);
+        builderStat.tasksGenerated += 1;
       }
-      const fetched = await source.fetch(builder, {
-        cutoff: force ? null : cutoffForBuilder(context, builder.id, fallbackCutoff),
-        limit,
-        agentModel,
-        fetchedItemKeys: force ? new Set() : fetchedItemKeysForBuilder(context, builder.id),
-      });
-      const { items, agentTasks: sourceAgentTasks } = normalizePersonalFetchResult(fetched);
-      const builderSync = {
-        ...fallbackBuilderSync,
-        kind: source.syncKind,
-        sourceType: source.id,
-      };
-      fetchTasks.push(...sourceAgentTasks.map((task) => fetchTaskFromAgentTask(task, builderSync, sources, commonSummaryRules)));
-      builders.push({
-        ...builderSync,
-        items,
-      });
-    } catch (error) {
-      fetchTasks.push(
-        buildBuilderFallbackTask(builder, fallbackBuilderSync, { error, sources, commonSummaryRules }),
-      );
     }
-  }
 
-  if (builders.length === 0) {
-    console.log(
-      JSON.stringify(
-        {
-          status: "ok",
-          localErrors,
-          fetchTasks,
-        },
-        null,
-        2,
-      ),
-    );
-    return;
-  }
+    if (builders.length > 0) {
+      fetchTasks.push(...fetchTasksForReadyBuilders(builders, sources, commonSummaryRules));
+    }
 
-  fetchTasks.push(...fetchTasksForReadyBuilders(builders, sources, commonSummaryRules));
-  if (fetchTasks.length > 0) {
-    console.log(
-      JSON.stringify(
-        {
-          status: "ok",
-          localErrors,
-          fetchTasks,
-        },
-        null,
-        2,
-      ),
-    );
-    return;
-  }
+    // Recount items/tasks: fetchTasksForReadyBuilders rewrote a task
+    // per item, so totals belong to the final tasks array, not the
+    // partial counters above. We keep builderStat per-builder counts
+    // separately for the UI's per-builder breakdown.
+    const agentTasks = fetchTasks.filter((task) => task?.contentStatus !== "ready");
+    itemsFetched = builders.reduce((sum, builder) => sum + (builder.items?.length ?? 0), 0);
+    tasksGenerated = fetchTasks.length;
 
-  console.log(
-    JSON.stringify(
-      {
-        status: "ok",
+    // Extract user-action items (e.g. x_token_missing) into a
+    // first-class collection so the UI can surface them prominently.
+    for (const task of agentTasks) {
+      const kind = task?.agentWorkType ?? "";
+      if (typeof kind === "string" && kind.startsWith("user_action_")) {
+        userActions.push({
+          kind,
+          builder: task.builder ?? task.builderId ?? "unknown",
+          message: task.agentMessage ?? task.fallbackReason ?? "",
+          ...(task.agentHelpUrl ? { helpUrl: task.agentHelpUrl } : {}),
+        });
+      }
+    }
+
+    perBuilder = [...builderStats.values()];
+
+    const payload = { status: "ok", localErrors, fetchTasks };
+    console.log(JSON.stringify(payload, null, 2));
+
+    const status = errorCount > 0 ? "partial" : "ok";
+    const summary = buildFetchRunSummary({
+      itemsFetched,
+      agentTaskCount: agentTasks.length - userActions.length,
+      userActions,
+      buildersAttempted,
+    });
+
+    await emitFetchRunRecord(config, {
+      startedAt,
+      status,
+      source: runSource,
+      buildersAttempted,
+      itemsFetched,
+      tasksGenerated,
+      userActionsCount: userActions.length,
+      errorCount,
+      summary,
+      details: {
+        perBuilder,
+        userActions,
         localErrors,
-        fetchTasks,
+        cliFlags,
       },
-      null,
-      2,
-    ),
-  );
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    // Always surface the original failure to the user — the upload is
+    // pure observability and must never replace the real error.
+    console.error(message);
+    await emitFetchRunRecord(config, {
+      startedAt,
+      status: "failed",
+      source: runSource,
+      buildersAttempted,
+      itemsFetched,
+      tasksGenerated,
+      userActionsCount: userActions.length,
+      errorCount: errorCount + 1,
+      summary: `Run failed: ${message}`.slice(0, 280),
+      details: {
+        perBuilder,
+        userActions,
+        localErrors,
+        cliFlags,
+        error: {
+          message,
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+      },
+    });
+    throw error;
+  }
+}
+
+function buildFetchRunSummary({
+  itemsFetched,
+  agentTaskCount,
+  userActions,
+  buildersAttempted,
+}) {
+  const parts = [];
+  if (itemsFetched > 0) {
+    parts.push(
+      `Synced ${itemsFetched} post${itemsFetched === 1 ? "" : "s"} from ${buildersAttempted} source${buildersAttempted === 1 ? "" : "s"}`,
+    );
+  } else {
+    parts.push(`Fetched 0 new posts from ${buildersAttempted} source${buildersAttempted === 1 ? "" : "s"}`);
+  }
+  if (agentTaskCount > 0) {
+    parts.push(`${agentTaskCount} source${agentTaskCount === 1 ? "" : "s"} require agent extraction`);
+  }
+  if (userActions.length > 0) {
+    parts.push(`${userActions.length} action${userActions.length === 1 ? "" : "s"} need attention`);
+  }
+  return parts.join(" · ").slice(0, 280);
+}
+
+async function emitFetchRunRecord(config, record) {
+  if (!config?.appUrl || !config?.token) return;
+  const finishedAt = new Date();
+  const body = {
+    startedAt: record.startedAt.toISOString(),
+    finishedAt: finishedAt.toISOString(),
+    status: record.status,
+    source: record.source,
+    cliVersion: CLI_VERSION,
+    hostname: RUN_HOSTNAME,
+    platform: RUN_PLATFORM,
+    buildersAttempted: record.buildersAttempted,
+    itemsFetched: record.itemsFetched,
+    tasksGenerated: record.tasksGenerated,
+    userActionsCount: record.userActionsCount,
+    errorCount: record.errorCount,
+    summary: record.summary,
+    details: record.details ?? {},
+  };
+  try {
+    await postJson(`${config.appUrl}/api/skill/fetch-runs`, body, config.token);
+  } catch (uploadError) {
+    const message = uploadError instanceof Error ? uploadError.message : String(uploadError);
+    // Upload failure is non-fatal: the CLI's primary contract (JSON
+    // output + downstream agent steps) must keep working even when
+    // the server is unreachable.
+    console.error(`Failed to upload fetch log: ${message}`);
+  }
 }
 
 function normalizePersonalFetchResult(result) {
