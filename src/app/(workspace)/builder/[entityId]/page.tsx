@@ -42,7 +42,10 @@ export default async function BuilderDetailPage({ params }: Params) {
   const userId = session.user.id;
 
   const { entityId } = await params;
-  const entity = await getEntityWithChannels(entityId);
+  const [entity, dedupedItemCount] = await Promise.all([
+    getEntityWithChannels(entityId),
+    countDedupedItemsForEntity(entityId),
+  ]);
   if (!entity) notFound();
 
   const channels: ChannelInfo[] = entity.builders.map((channel) => {
@@ -87,7 +90,12 @@ export default async function BuilderDetailPage({ params }: Params) {
   const headerSourceType = primaryChannel?.sourceType ?? null;
   const headerSourceUrl =
     primaryChannel?.sourceUrl ?? primaryChannel?.fetchUrl ?? null;
-  const headerItemCount = primaryChannel?.itemCount ?? 0;
+  // Match the count shown below the header: the RecentPostsList uses
+  // fetchDedupedFeedForEntities, which collapses duplicate copies of
+  // the same canonical post across channels. Reporting any single
+  // channel's itemCount here would either over- or under-count
+  // depending on which channel won.
+  const headerItemCount = dedupedItemCount;
   const headerHostLabel = (() => {
     if (entity.handle) return `@${entity.handle}`;
     if (primaryChannel?.handle) return `@${primaryChannel.handle}`;
@@ -242,6 +250,22 @@ export default async function BuilderDetailPage({ params }: Params) {
       </details>
     </div>
   );
+}
+
+/**
+ * Count canonical (deduped) FeedItems linked to this BuilderEntity
+ * across all its channels. Two FeedItems collapse into one when they
+ * share (kind, externalId) — that's the same dedup key used by
+ * fetchDedupedFeedForEntities for the post list below the header,
+ * so the header's "N items" matches what the user actually sees.
+ */
+async function countDedupedItemsForEntity(entityId: string): Promise<number> {
+  const distinct = await prisma.feedItem.findMany({
+    where: { builder: { entityId } },
+    distinct: ["kind", "externalId"],
+    select: { id: true },
+  });
+  return distinct.length;
 }
 
 async function BuilderDetailActionsSlot({
