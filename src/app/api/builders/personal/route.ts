@@ -17,6 +17,7 @@ import { upsertBuilder } from "@/lib/builders";
 import type { BuilderLibraryEventItem } from "@/lib/builder-library-events";
 import { syncPersonalLibraryHubForUser } from "@/lib/library-hub";
 import { resolvePersonalBuilderInput } from "@/lib/personal-builder-input";
+import { prisma } from "@/lib/prisma";
 import { validatePublicHttpUrl } from "@/lib/safe-url";
 
 const PersonalBuilderSchema = z.object({
@@ -125,6 +126,27 @@ export async function POST(request: Request) {
     origin: BuilderPoolOrigin.PERSONAL_SYNC,
   });
 
+  // Default-follow: every freshly-added personal source is subscribed
+  // immediately so it shows up in the digest without a second click.
+  // The user can still toggle it off via the per-row Subscribe button.
+  await prisma.subscription.upsert({
+    where: { userId_builderId: { userId: session.user.id, builderId: builder.id } },
+    update: {},
+    create: { userId: session.user.id, builderId: builder.id },
+  });
+  if (builder.entityId) {
+    await prisma.userChannelPreference.upsert({
+      where: { userId_entityId: { userId: session.user.id, entityId: builder.entityId } },
+      update: {},
+      create: {
+        userId: session.user.id,
+        entityId: builder.entityId,
+        primaryBuilderId: builder.id,
+        pinnedByUser: false,
+      },
+    });
+  }
+
   await syncPersonalLibraryHubForUser({
     userId: session.user.id,
     email: session.user.email,
@@ -145,7 +167,7 @@ export async function POST(request: Request) {
     name: builder.name,
     sourceType: builder.sourceType,
     sourceUrl: builder.sourceUrl,
-    subscribed: false,
+    subscribed: true,
   };
 
   revalidateTag(`user:${session.user.id}:recs`, "default");
