@@ -126,6 +126,18 @@ export async function GET(request: Request, { params }: Params) {
 
     const email = record.agentToken.user.email ?? "";
 
+    // Bake the resolved account into every `${BUILDER_BLOG_ACCOUNT}` in the
+    // prompt. The cron-setup smoke check (step 7) and the launchd/crontab
+    // account derive from this var, but only `node …builder-digest.mjs` lines
+    // get an injected account below — the `builder-agent-runner.sh` smoke
+    // check and the plist do not. codex/gemini run each command in a fresh
+    // shell, so an un-exported `${BUILDER_BLOG_ACCOUNT}` is empty there and the
+    // run dies with "No agent token". Since the exchange code already
+    // identifies the account, substitute it so setup never relies on shell env.
+    if (email) {
+      content = content.replaceAll("${BUILDER_BLOG_ACCOUNT}", email);
+    }
+
     // 1. Prepend the exchange step as the very first bash block
     const exchangeBlock = [
       "Exchange the one-time setup code for an agent token (writes to",
