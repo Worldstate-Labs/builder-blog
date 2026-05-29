@@ -84,46 +84,13 @@ mode — no permission prompts.
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" $HOME/.builder-blog/builder-agent-runner.sh library-cron
 ```
 
-If the smoke check JSON contains a non-empty `fetchTasks` array: complete
-exactly the task IDs returned by the CLI. Do not add new sources, URLs, or feed
-items that were not returned by the CLI or task payload.
-
-How to execute each `fetchTask` in this smoke-check step:
-- Read `task.id`; the finished item must set `rawJson.fetchTaskId` to exactly
-  this value so validation can bind the output item to this task.
-- Copy `task.builderSync` exactly as the enclosing builder object in the sync
-  payload. Do not infer builder fields from names, handles, or URLs.
-- Read `task.contentStatus`.
-  - For `ready`, use `task.item.body` as the final item body exactly; do not
-    fetch or rewrite the source content.
-  - If `task.agentWorkType="x_token_missing"`, do NOT try to fetch. Surface
-    `task.agentMessage` to the user as an "Action needed" notice and skip
-    this task — do not include it in the sync payload. The validator
-    treats these as informational and will not flag them as missing.
-  - For `requires_agent`, follow `task.fetchInstructions.prompt` as the
-    authoritative extraction guide. This string is always present and
-    is either the admin's per-source fetch prompt (when configured) or
-    the FollowBrief default extraction guidance (use task.item.url,
-    task.sourceType, task.agentWorkType, and any available method —
-    web fetch, local CLI tools, transcription APIs, headless browser,
-    etc. — until real primary content meeting
-    task.minimumContentQuality is obtained). Do not override the
-    prompt with your own heuristics.
-- Use `task.minimumContentQuality` for `requires_agent` tasks as the minimum
-  acceptance bar for the extracted body. For YouTube, title, description, feed
-  description, and page metadata are not acceptable body content.
-- Generate `summary` only after the body is final. Follow
-  `task.summaryInstructions.prompt` and summarize this one task item only.
-- Build one output item under the copied builder. Copy stable item fields from
-  `task.item` (`kind`, `externalId`, `title`, `url`, `publishedAt`,
-  `sourceName`), set `body`, set `summary`, and set `rawJson`.
-- For every output item, include `rawJson.fetchTaskId`. For `requires_agent`,
-  also include `rawJson.agentRuntime`, `rawJson.agentModel` if known,
-  `rawJson.agentCompletedAt`, and `rawJson.agentExecutionProof`; for YouTube
-  include `rawJson.transcriptSource`.
-
-Validate with `validate-agent-sync` before `sync-builders` is considered
-successful.
+The smoke check runs the exact scheduled job through the runner, which feeds it
+the `library-cron` prompt. That prompt is the single source of truth for how
+fetch tasks are completed, validated, and synced — this setup file does not
+restate it. Just run the command above and report its output: the run succeeds
+when the JSON shows status ok, localErrors empty, and `fetchTasks` either empty
+or all validated and synced. If it errors, report the command, exit code, and
+stderr, and stop.
 
 Only if crontab is unavailable or blocked, install the same command and cadence
 through launchd or the local agent scheduler:

@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { NextResponse } from "next/server";
+import { expandSkillIncludes } from "@/lib/skill-includes";
 
 type Params = { params: Promise<{ file: string }> };
 
@@ -54,7 +55,10 @@ export async function GET(_request: Request, { params }: Params) {
     return NextResponse.json({ error: "Skill file not found" }, { status: 404 });
   }
 
-  const content = await readFile(join(process.cwd(), asset.path), "utf8");
+  const raw = await readFile(join(process.cwd(), asset.path), "utf8");
+  // Expand {{INCLUDE:...}} directives so the library job prompts share one
+  // copy of the fetch-task contract. No-op for files without directives.
+  const content = await expandSkillIncludes(raw);
   return new Response(content, {
     headers: {
       "content-type": asset.contentType,

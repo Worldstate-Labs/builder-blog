@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { NextResponse } from "next/server";
 import { jobSkillFiles } from "@/lib/skill-job-files";
+import { expandSkillIncludes } from "@/lib/skill-includes";
 import { prisma } from "@/lib/prisma";
 
 type Params = { params: Promise<{ job: string }> };
@@ -41,6 +42,9 @@ export async function GET(request: Request, { params }: Params) {
   };
 
   let content = await readFile(join(process.cwd(), path), "utf8");
+  // Expand {{INCLUDE:...}} directives (shared fetch-task contract) before
+  // the exchange-code / runtime substitutions below.
+  content = await expandSkillIncludes(content);
 
   // Substitute runtime placeholders. Markdown that doesn't use them
   // is unaffected; cron-setup prompts use `{{AGENT_RUNTIME}}` and
