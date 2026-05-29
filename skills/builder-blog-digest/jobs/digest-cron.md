@@ -9,11 +9,9 @@ Agent discretion boundary: this is a command-runner job except for writing the
 digest body from the fetched FollowBrief context. Do not change paths, flags,
 cadence, titles, output files, JSON schema, or success criteria.
 
-Before doing work, ensure the skill is installed:
-
-```bash
-/bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}/api/skill/bootstrap)"
-```
+The runner already downloaded the latest skill files (CLI, prompts,
+sources.json) from the server before this prompt runs, so there is no install
+step here.
 
 Fetch the digest context and save it:
 

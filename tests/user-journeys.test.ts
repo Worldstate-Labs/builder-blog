@@ -494,6 +494,13 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /--auto-approve/);
   assert.match(runner, /\$AGENT_DIR\/runtime/);
   assert.match(runner, /No local agent runtime found/);
+  // Runner self-updates from the server each run and re-execs the new
+  // version, so cron jobs pick up runner fixes without re-running setup;
+  // the loop guard prevents an infinite re-exec.
+  assert.match(runner, /self_update_and_reexec/);
+  assert.match(runner, /BUILDER_BLOG_RUNNER_UPDATED/);
+  assert.match(runner, /exec "\$_self" "\$@"/);
+  assert.match(runner, /api\/skill\/files\/builder-agent-runner\.sh/);
   assert.match(runner, /fetchTasks/);
   assert.match(runner, /process\.exit\(78\)/);
   assert.match(runner, /refresh_skill_files/);
@@ -562,8 +569,13 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronPrompt, /Do not ask the user questions/);
   assert.match(libraryCronPrompt, /Agent discretion boundary/);
   assert.match(libraryCronPrompt, /scheduled job\s+log/);
+  // Cron jobs run via the runner, which already refreshes everything each
+  // run, so the prompt itself has no bootstrap/install step (only the
+  // user-invoked once prompts and cron-setup keep bootstrap).
+  assert.doesNotMatch(libraryCronPrompt, /api\/skill\/bootstrap/);
+  assert.match(libraryCronPrompt, /runner already downloaded the latest skill files/);
   assertOrderedText(libraryCronExpanded, [
-    "3. Print the fetch result",
+    "2. Print the fetch result",
     "How to execute each `fetchTask`",
     "validate-agent-sync",
     "sync-builders",
@@ -573,6 +585,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronPrompt, /Only use agent judgment to write the digest body/);
   assert.match(digestCronPrompt, /Agent discretion boundary/);
   assert.match(digestCronPrompt, /The only creative step is writing/);
+  assert.doesNotMatch(digestCronPrompt, /api\/skill\/bootstrap/);
+  assert.match(digestCronPrompt, /runner already downloaded the latest skill files/);
   assert.match(digestCronPrompt, /summarize-tweets\.md/);
   assert.match(digestCronPrompt, /summarize-podcast\.md/);
   assert.match(digestCronPrompt, /summarize-blogs\.md/);

@@ -20,6 +20,34 @@ fi
 
 mkdir -p "$AGENT_DIR/logs" "$AGENT_DIR/tmp"
 
+# Self-update: pull the latest runner and, if it changed, atomically swap it
+# in and re-exec, so scheduled jobs pick up runner fixes from the server
+# without the user re-running setup. refresh_skill_files below already keeps
+# the CLI, prompts (with server-expanded includes), and sources.json current
+# every run; the runner is the one file it can't refresh in place, so it
+# self-updates here. The temp+rename+exec pattern is safe: the running shell
+# keeps reading the old (now-unlinked) inode while exec hands off to the new
+# file — unlike an in-place `curl -o` over a running script. Guarded against
+# a re-exec loop by BUILDER_BLOG_RUNNER_UPDATED.
+self_update_and_reexec() {
+  if [ -n "${BUILDER_BLOG_RUNNER_UPDATED:-}" ]; then return 0; fi
+  command -v curl >/dev/null 2>&1 || return 0
+  _self="$AGENT_DIR/builder-agent-runner.sh"
+  _next="$AGENT_DIR/.builder-agent-runner.next"
+  if curl -fsSL "$APP_URL/api/skill/files/builder-agent-runner.sh" -o "$_next" 2>/dev/null && [ -s "$_next" ]; then
+    if ! cmp -s "$_next" "$_self" 2>/dev/null; then
+      chmod +x "$_next" 2>/dev/null || true
+      if mv "$_next" "$_self" 2>/dev/null; then
+        BUILDER_BLOG_RUNNER_UPDATED=1
+        export BUILDER_BLOG_RUNNER_UPDATED
+        exec "$_self" "$@"
+      fi
+    fi
+    rm -f "$_next" 2>/dev/null || true
+  fi
+}
+self_update_and_reexec "$@"
+
 refresh_skill_files() {
   mkdir -p "$AGENT_DIR" "$AGENT_DIR/jobs" "$AGENT_DIR/logs" "$AGENT_DIR/tmp"
   curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest.md" -o "$AGENT_DIR/SKILL.md"
