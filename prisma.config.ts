@@ -9,6 +9,12 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
+    // `||` (not `??`) so an empty-string DIRECT_URL falls back to
+    // DATABASE_URL. Vercel can inject a managed/sensitive env var as an
+    // empty string at build time; `??` would keep "" and break
+    // `prisma migrate deploy`. Migrations are pre-applied, so a
+    // build-time deploy is a no-op check that works fine over the
+    // pooled DATABASE_URL when DIRECT_URL isn't usable.
+    url: process.env["DIRECT_URL"] || process.env["DATABASE_URL"],
   },
 });
