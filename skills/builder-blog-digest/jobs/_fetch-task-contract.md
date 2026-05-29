@@ -55,6 +55,11 @@ How to execute each `fetchTask`:
     just because one extraction method fails; stop only if no available method
     can obtain real primary content for a task, then write the tried methods and
     concrete blocker {{REPORT_TARGET}} and skip it.
+    Never extract or analyze video frames/screenshots. For a video, the only
+    acceptable primary content is its transcript (captions, or speech-to-text of
+    the audio). If a video has no captions and no audible speech to transcribe
+    (e.g. a silent screen recording), treat it as having no primary content and
+    skip it — do not fall back to frame grabs, OCR, or visual analysis.
 - Use `task.minimumContentQuality` for `requires_agent` tasks as the minimum
   acceptance bar for the extracted body. The structured fields drive acceptance:
   `minChars`, `minWords`, the optional ratios, and `disallowedPrimarySources` —
