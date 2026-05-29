@@ -88,6 +88,15 @@ through launchd or the local agent scheduler:
 0 */6 * * * BUILDER_BLOG_ACCOUNT="<EMAIL>" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1
 ```
 
+The crontab command in step 5 is account-scoped and idempotent on its own (it
+strips this account's existing FollowBrief library entry before re-adding and
+filters only by `BUILDER_BLOG_ACCOUNT`). When you hand-install through launchd
+or another scheduler instead, preserve those same properties yourself: do not
+duplicate this account's existing FollowBrief library job, and leave other
+accounts' FollowBrief markers and any unrelated schedules untouched. (Multiple
+FollowBrief accounts can share one machine's schedule, each tagged by its own
+`BUILDER_BLOG_ACCOUNT`.)
+
 Permission allowlist that {{AGENT_RUNTIME_LABEL}} runs under at cron-fire time
 (applied by `builder-agent-runner.sh` based on the pinned runtime):
 
@@ -99,6 +108,3 @@ Permission allowlist that {{AGENT_RUNTIME_LABEL}} runs under at cron-fire time
 If you want to widen or narrow what {{AGENT_RUNTIME_LABEL}} is allowed to do
 at cron-fire time, edit the `run_with_{{AGENT_RUNTIME}}_unattended` function
 in `~/.builder-blog/builder-agent-runner.sh` and re-run the smoke check.
-
-Do not duplicate an existing FollowBrief private library job for this account.
-Other accounts' cron markers must remain untouched.
