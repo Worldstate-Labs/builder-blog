@@ -318,6 +318,24 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /Copy cron prompt/);
   assert.match(skillPromptActions, /Read \$\{promptUrl\} and follow the instructions/);
   assert.match(skillPromptActions, /\/api\/skill\/jobs\/\$\{job\}\/skill\.md/);
+  // Cron copy flow picks runtime AND cadence, both passed as URL params.
+  assert.match(skillPromptActions, /CronConfigDialog/);
+  assert.match(skillPromptActions, /FREQUENCY_OPTIONS/);
+  assert.match(skillPromptActions, /params\.set\("runtime"/);
+  assert.match(skillPromptActions, /params\.set\("freq"/);
+  assert.match(skillPromptActions, /Frequency/);
+  // Server validates freq against a whitelist → fixed cron expression and
+  // substitutes the schedule + cadence label into the cron-setup prompt.
+  assert.match(skillJobRoute, /cronSchedules/);
+  assert.match(skillJobRoute, /searchParams\.get\("freq"\)/);
+  assert.match(skillJobRoute, /\{\{CRON_SCHEDULE\}\}/);
+  assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_LABEL\}\}/);
+  // cron-setup prompts use the placeholders, not a hard-coded schedule.
+  assert.match(libraryCronSetupPrompt, /\{\{CRON_SCHEDULE\}\}/);
+  assert.match(libraryCronSetupPrompt, /\{\{CRON_FREQUENCY_LABEL\}\}/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /0 \*\/6 \* \* \*/);
+  assert.match(digestCronSetupPrompt, /\{\{CRON_SCHEDULE\}\}/);
+  assert.doesNotMatch(digestCronSetupPrompt, /0 8 \* \* \*/);
   assert.doesNotMatch(skillPromptActions, /\/api\/skill\/bootstrap/);
   assert.doesNotMatch(skillPromptActions, /BUILDER_BLOG_PROMPT_URL/);
   assert.doesNotMatch(skillPromptActions, /builder-agent-runner\.sh \$\{job\}/);

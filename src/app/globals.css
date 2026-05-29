@@ -3887,6 +3887,17 @@ a {
   padding: 1rem 1.25rem 0.875rem;
 }
 
+/* Section label above a radio group in the cron config dialog. */
+.token-picker-grouplabel {
+  color: var(--muted);
+  font-family: var(--font-geist-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0;
+  padding: 0.75rem 1.25rem 0.25rem;
+}
+
 .token-picker-title {
   color: var(--ink);
   font-family: var(--font-display);

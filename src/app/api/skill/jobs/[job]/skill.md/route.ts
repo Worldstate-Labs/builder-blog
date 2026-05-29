@@ -41,6 +41,25 @@ export async function GET(request: Request, { params }: Params) {
     openclaw: "OpenClaw",
   };
 
+  // Cron cadence for cron-setup prompts. Whitelisted key → fixed cron
+  // expression so the schedule that lands in the generated crontab printf
+  // can never carry arbitrary/injected text. Defaults to every 6 hours
+  // (the prior hard-coded behavior) when absent or unrecognized — so old
+  // copied prompts and the no-freq case keep working.
+  const cronSchedules: Record<string, { schedule: string; label: string }> = {
+    "3h": { schedule: "0 */3 * * *", label: "every 3 hours" },
+    "6h": { schedule: "0 */6 * * *", label: "every 6 hours" },
+    "12h": { schedule: "0 */12 * * *", label: "every 12 hours" },
+    daily: { schedule: "0 8 * * *", label: "once a day at 08:00" },
+    weekly: { schedule: "0 8 * * 1", label: "once a week (Monday 08:00)" },
+  };
+  // Default cadence matches each job's prior hard-coded schedule, so old
+  // copied prompts (no freq param) are unchanged: digest = daily, the
+  // fetch/library job = every 6 hours.
+  const defaultFreq = job.startsWith("digest") ? "daily" : "6h";
+  const freqRaw = url.searchParams.get("freq");
+  const freq = freqRaw && cronSchedules[freqRaw] ? freqRaw : defaultFreq;
+
   let content = await readFile(join(process.cwd(), path), "utf8");
   // Expand {{INCLUDE:...}} directives (shared fetch-task contract) before
   // the exchange-code / runtime substitutions below.
@@ -54,7 +73,9 @@ export async function GET(request: Request, { params }: Params) {
   // empty strings — the runner falls back to its discovery chain.
   content = content
     .replaceAll("{{AGENT_RUNTIME}}", runtime ?? "")
-    .replaceAll("{{AGENT_RUNTIME_LABEL}}", runtime ? runtimeLabels[runtime] : "your local agent");
+    .replaceAll("{{AGENT_RUNTIME_LABEL}}", runtime ? runtimeLabels[runtime] : "your local agent")
+    .replaceAll("{{CRON_SCHEDULE}}", cronSchedules[freq].schedule)
+    .replaceAll("{{CRON_FREQUENCY_LABEL}}", cronSchedules[freq].label);
 
   if (ecParam) {
     // Validate the exchange code: must exist, not expired, not yet used.

@@ -22,6 +22,31 @@ const RUNTIME_OPTIONS: { id: AgentRuntime; label: string; hint: string }[] = [
   { id: "openclaw", label: "OpenClaw", hint: "Unattended: --auto-approve" },
 ];
 
+// Cron cadence. `id` values match the server whitelist in the
+// jobs/[job]/skill.md route, which maps each to a fixed cron expression.
+type CronFrequency = "3h" | "6h" | "12h" | "daily" | "weekly";
+type CronConfig = { runtime: AgentRuntime; freq: CronFrequency };
+
+const FREQUENCY_OPTIONS: Record<SkillPromptContext, { id: CronFrequency; label: string }[]> = {
+  // The library fetch runs often; the digest is a daily roll-up.
+  library: [
+    { id: "3h", label: "Every 3 hours" },
+    { id: "6h", label: "Every 6 hours" },
+    { id: "12h", label: "Every 12 hours" },
+    { id: "daily", label: "Once a day · 08:00" },
+  ],
+  digest: [
+    { id: "daily", label: "Once a day · 08:00" },
+    { id: "12h", label: "Twice a day · every 12h" },
+    { id: "weekly", label: "Once a week · Mon 08:00" },
+  ],
+};
+
+const DEFAULT_FREQUENCY: Record<SkillPromptContext, CronFrequency> = {
+  library: "6h",
+  digest: "daily",
+};
+
 const PROMPT_CONFIG = {
   library: {
     title: "Source sync",
@@ -61,16 +86,15 @@ export function SkillPromptActions({
   const [copiedTarget, setCopiedTarget] = useState<CopyTarget | null>(null);
   const [status, setStatus] = useState<{ kind: "error" | "info"; text: string } | null>(null);
   const [pickerTarget, setPickerTarget] = useState<CopyTarget | null>(null);
-  // Cron-only: which agent runtime the scheduled job should use. Set
-  // by the runtime picker before we hit the token picker. The chosen
-  // runtime is appended to the prompt URL so the server-rendered
-  // markdown bakes in the right unattended invocation.
-  const [runtimePickerOpen, setRuntimePickerOpen] = useState(false);
-  // The runtime selection survives between the runtime-picker dialog
-  // and the token-picker dialog. A ref (not state) so the token
-  // picker's onConfirm callback can read the latest value without an
-  // extra render cycle.
-  const pendingCronRuntimeRef = useRef<AgentRuntime | null>(null);
+  // Cron-only: the runtime + cadence the scheduled job should use. Picked
+  // in one dialog before the token picker, then appended to the prompt URL
+  // so the server-rendered markdown bakes in the right unattended
+  // invocation and crontab schedule.
+  const [cronConfigOpen, setCronConfigOpen] = useState(false);
+  // The cron config survives between the config dialog and the token
+  // picker. A ref (not state) so the token picker's onConfirm can read it
+  // without an extra render cycle.
+  const pendingCronConfigRef = useRef<CronConfig | null>(null);
 
   async function fetchExchangeCode(tokenId: string): Promise<string | null> {
     try {
@@ -88,12 +112,15 @@ export function SkillPromptActions({
   function buildCommand(
     target: CopyTarget,
     exchangeCode: string,
-    runtime: AgentRuntime | null,
+    cron: CronConfig | null,
   ): string {
     const origin = window.location.origin;
     const job = target === "once" ? config.onceJob : config.cronJob;
     const params = new URLSearchParams({ ec: exchangeCode });
-    if (runtime) params.set("runtime", runtime);
+    if (cron) {
+      params.set("runtime", cron.runtime);
+      params.set("freq", cron.freq);
+    }
     const promptUrl = `${origin}/api/skill/jobs/${job}/skill.md?${params.toString()}`;
     return `Read ${promptUrl} and follow the instructions.`;
   }
@@ -101,7 +128,7 @@ export function SkillPromptActions({
   async function copyForToken(
     target: CopyTarget,
     tokenId: string,
-    runtime: AgentRuntime | null,
+    cron: CronConfig | null,
   ) {
     setStatus(null);
     const code = await fetchExchangeCode(tokenId);
@@ -109,7 +136,7 @@ export function SkillPromptActions({
       setStatus({ kind: "error", text: "Could not generate exchange code" });
       return;
     }
-    const command = buildCommand(target, code, runtime);
+    const command = buildCommand(target, code, cron);
     try {
       await navigator.clipboard.writeText(command);
       setCopiedTarget(target);
@@ -128,18 +155,18 @@ export function SkillPromptActions({
   // (or skip it when there's only one active token). The chosen
   // runtime is held in a closure-captured ref so it survives the
   // dialog round trip.
-  async function continueCronCopyAfterRuntime(runtime: AgentRuntime) {
+  async function continueCronCopy(cron: CronConfig) {
     if (activeTokens.length === 0) {
       setStatus({ kind: "info", text: "Create a token in Settings first" });
       return;
     }
     if (activeTokens.length === 1) {
-      await copyForToken("cron", activeTokens[0].id, runtime);
+      await copyForToken("cron", activeTokens[0].id, cron);
       return;
     }
-    // Open the token picker with the runtime stashed on a data field;
-    // we read it back when the user confirms a token.
-    pendingCronRuntimeRef.current = runtime;
+    // Open the token picker with the cron config stashed; we read it back
+    // when the user confirms a token.
+    pendingCronConfigRef.current = cron;
     setPickerTarget("cron");
   }
 
@@ -150,11 +177,11 @@ export function SkillPromptActions({
       setStatus({ kind: "info", text: "Create a token in Settings first" });
       return;
     }
-    // Cron flow: pick the agent runtime FIRST so the rendered prompt
-    // can bake in the right unattended-mode invocation. Once flow is
-    // interactive (user watching), no runtime gate needed.
+    // Cron flow: pick the agent runtime + cadence FIRST so the rendered
+    // prompt bakes in the right unattended invocation and crontab
+    // schedule. Once flow is interactive (user watching), no gate needed.
     if (target === "cron") {
-      setRuntimePickerOpen(true);
+      setCronConfigOpen(true);
       return;
     }
     if (activeTokens.length === 1) {
@@ -216,12 +243,13 @@ export function SkillPromptActions({
         ) : null}
       </span>
 
-      <RuntimePickerDialog
-        open={runtimePickerOpen}
-        onCancel={() => setRuntimePickerOpen(false)}
-        onConfirm={async (runtime) => {
-          setRuntimePickerOpen(false);
-          await continueCronCopyAfterRuntime(runtime);
+      <CronConfigDialog
+        open={cronConfigOpen}
+        context={context}
+        onCancel={() => setCronConfigOpen(false)}
+        onConfirm={async (cron) => {
+          setCronConfigOpen(false);
+          await continueCronCopy(cron);
         }}
       />
 
@@ -234,14 +262,14 @@ export function SkillPromptActions({
         }
         onCancel={() => {
           setPickerTarget(null);
-          pendingCronRuntimeRef.current = null;
+          pendingCronConfigRef.current = null;
         }}
         onConfirm={async (tokenId) => {
           const target = pickerTarget;
-          const runtime = target === "cron" ? pendingCronRuntimeRef.current : null;
+          const cron = target === "cron" ? pendingCronConfigRef.current : null;
           setPickerTarget(null);
-          pendingCronRuntimeRef.current = null;
-          if (target) await copyForToken(target, tokenId, runtime);
+          pendingCronConfigRef.current = null;
+          if (target) await copyForToken(target, tokenId, cron);
         }}
       />
     </div>
@@ -417,17 +445,21 @@ function TokenPickerDialog({
   );
 }
 
-function RuntimePickerDialog({
+function CronConfigDialog({
   open,
+  context,
   onCancel,
   onConfirm,
 }: {
   open: boolean;
+  context: SkillPromptContext;
   onCancel: () => void;
-  onConfirm: (runtime: AgentRuntime) => void | Promise<void>;
+  onConfirm: (cron: CronConfig) => void | Promise<void>;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [picked, setPicked] = useState<AgentRuntime>(RUNTIME_OPTIONS[0].id);
+  const [pickedRuntime, setPickedRuntime] = useState<AgentRuntime>(RUNTIME_OPTIONS[0].id);
+  const freqOptions = FREQUENCY_OPTIONS[context];
+  const [pickedFreq, setPickedFreq] = useState<CronFrequency>(DEFAULT_FREQUENCY[context]);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -459,7 +491,7 @@ function RuntimePickerDialog({
     if (submitting) return;
     setSubmitting(true);
     try {
-      await onConfirm(picked);
+      await onConfirm({ runtime: pickedRuntime, freq: pickedFreq });
     } finally {
       setSubmitting(false);
     }
@@ -468,7 +500,7 @@ function RuntimePickerDialog({
   return (
     <dialog
       ref={dialogRef}
-      aria-labelledby="runtime-picker-title"
+      aria-labelledby="cron-config-title"
       className="token-picker-dialog"
       onClick={(e) => {
         if (e.target === dialogRef.current) onCancel();
@@ -483,20 +515,21 @@ function RuntimePickerDialog({
         }}
       >
         <header className="token-picker-header">
-          <h2 id="runtime-picker-title" className="token-picker-title">
-            Which agent runs the scheduled job?
+          <h2 id="cron-config-title" className="token-picker-title">
+            Configure the scheduled job
           </h2>
           <p className="token-picker-sub">
-            Cron is unattended — the runner pins this runtime and invokes it in
-            its allowlist / auto-approve mode so no permission prompts fire at
-            cron-fire time.
+            Cron is unattended — the runner pins the runtime and invokes it in
+            its allowlist / auto-approve mode so no permission prompts fire, and
+            installs the crontab at the cadence you choose.
           </p>
         </header>
 
+        <p className="token-picker-grouplabel">Agent runtime</p>
         <fieldset className="token-picker-list">
           <legend className="sr-only">Agent runtimes</legend>
           {RUNTIME_OPTIONS.map((option) => {
-            const active = option.id === picked;
+            const active = option.id === pickedRuntime;
             return (
               <label
                 key={option.id}
@@ -507,7 +540,7 @@ function RuntimePickerDialog({
                   name="agent-runtime"
                   value={option.id}
                   checked={active}
-                  onChange={() => setPicked(option.id)}
+                  onChange={() => setPickedRuntime(option.id)}
                   className="token-picker-radio"
                 />
                 <span className="token-picker-row-body">
@@ -515,6 +548,32 @@ function RuntimePickerDialog({
                   <span className="token-picker-row-meta">
                     <span>{option.hint}</span>
                   </span>
+                </span>
+              </label>
+            );
+          })}
+        </fieldset>
+
+        <p className="token-picker-grouplabel">Frequency</p>
+        <fieldset className="token-picker-list">
+          <legend className="sr-only">Schedule frequency</legend>
+          {freqOptions.map((option) => {
+            const active = option.id === pickedFreq;
+            return (
+              <label
+                key={option.id}
+                className={`token-picker-row${active ? " is-active" : ""}`}
+              >
+                <input
+                  type="radio"
+                  name="cron-frequency"
+                  value={option.id}
+                  checked={active}
+                  onChange={() => setPickedFreq(option.id)}
+                  className="token-picker-radio"
+                />
+                <span className="token-picker-row-body">
+                  <span className="token-picker-row-name">{option.label}</span>
                 </span>
               </label>
             );

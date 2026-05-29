@@ -50,11 +50,11 @@ If the path printed is empty, install or symlink the CLI into
 `/usr/local/bin` before continuing — cron will not find it otherwise.
 
 5. Install the crontab. It removes any previous FollowBrief library job for this
-account and installs one idempotent job that runs every 6 hours. Replace
-`<EMAIL>` with the value of `BUILDER_BLOG_ACCOUNT`:
+account and installs one idempotent job that runs {{CRON_FREQUENCY_LABEL}}.
+Replace `<EMAIL>` with the value of `BUILDER_BLOG_ACCOUNT`:
 
 ```bash
-ACCT="${BUILDER_BLOG_ACCOUNT}"; ( crontab -l 2>/dev/null | grep -v "# FollowBrief library cron · $ACCT" | grep -v "builder-agent-runner.sh library-cron.*BUILDER_BLOG_ACCOUNT=\"$ACCT\"" ; printf "# FollowBrief library cron · %s\n0 */6 * * * BUILDER_BLOG_ACCOUNT=\"%s\" %s/.builder-blog/builder-agent-runner.sh library-cron >> %s/.builder-blog/logs/library-cron.log 2>&1\n" "$ACCT" "$ACCT" "$HOME" "$HOME" ) | crontab -
+ACCT="${BUILDER_BLOG_ACCOUNT}"; ( crontab -l 2>/dev/null | grep -v "# FollowBrief library cron · $ACCT" | grep -v "builder-agent-runner.sh library-cron.*BUILDER_BLOG_ACCOUNT=\"$ACCT\"" ; printf "# FollowBrief library cron · %s\n{{CRON_SCHEDULE}} BUILDER_BLOG_ACCOUNT=\"%s\" %s/.builder-blog/builder-agent-runner.sh library-cron >> %s/.builder-blog/logs/library-cron.log 2>&1\n" "$ACCT" "$ACCT" "$HOME" "$HOME" ) | crontab -
 ```
 
 6. Verify the installed schedule:
@@ -80,7 +80,7 @@ through launchd or the local agent scheduler:
 
 ```cron
 # FollowBrief library cron · <EMAIL>
-0 */6 * * * BUILDER_BLOG_ACCOUNT="<EMAIL>" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1
+{{CRON_SCHEDULE}} BUILDER_BLOG_ACCOUNT="<EMAIL>" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1
 ```
 
 The crontab command in step 5 is account-scoped and idempotent on its own (it

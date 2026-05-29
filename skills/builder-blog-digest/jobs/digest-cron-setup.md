@@ -25,11 +25,11 @@ mkdir -p "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/logs"
 
 3. First attempt the exact crontab install below. It removes any previous
 FollowBrief digest job for this account and installs one idempotent job that
-runs daily at 8:00 local time. Replace `<EMAIL>` with the value of
+runs {{CRON_FREQUENCY_LABEL}}. Replace `<EMAIL>` with the value of
 `BUILDER_BLOG_ACCOUNT`:
 
 ```bash
-ACCT="${BUILDER_BLOG_ACCOUNT}"; ( crontab -l 2>/dev/null | grep -v "# FollowBrief digest cron · $ACCT" | grep -v "builder-agent-runner.sh digest-cron.*BUILDER_BLOG_ACCOUNT=\"$ACCT\"" ; printf "# FollowBrief digest cron · %s\n0 8 * * * BUILDER_BLOG_ACCOUNT=\"%s\" %s/.builder-blog/builder-agent-runner.sh digest-cron >> %s/.builder-blog/logs/digest-cron.log 2>&1\n" "$ACCT" "$ACCT" "$HOME" "$HOME" ) | crontab -
+ACCT="${BUILDER_BLOG_ACCOUNT}"; ( crontab -l 2>/dev/null | grep -v "# FollowBrief digest cron · $ACCT" | grep -v "builder-agent-runner.sh digest-cron.*BUILDER_BLOG_ACCOUNT=\"$ACCT\"" ; printf "# FollowBrief digest cron · %s\n{{CRON_SCHEDULE}} BUILDER_BLOG_ACCOUNT=\"%s\" %s/.builder-blog/builder-agent-runner.sh digest-cron >> %s/.builder-blog/logs/digest-cron.log 2>&1\n" "$ACCT" "$ACCT" "$HOME" "$HOME" ) | crontab -
 ```
 
 4. Verify the installed schedule:
@@ -49,7 +49,7 @@ through launchd or the local agent scheduler:
 
 ```cron
 # FollowBrief digest cron · <EMAIL>
-0 8 * * * BUILDER_BLOG_ACCOUNT="<EMAIL>" $HOME/.builder-blog/builder-agent-runner.sh digest-cron >> $HOME/.builder-blog/logs/digest-cron.log 2>&1
+{{CRON_SCHEDULE}} BUILDER_BLOG_ACCOUNT="<EMAIL>" $HOME/.builder-blog/builder-agent-runner.sh digest-cron >> $HOME/.builder-blog/logs/digest-cron.log 2>&1
 ```
 
 The runner selection order is:
