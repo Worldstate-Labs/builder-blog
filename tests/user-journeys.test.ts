@@ -591,7 +591,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /--permission-mode acceptEdits/);
   assert.match(runner, /--full-auto/);
   assert.match(runner, /--yolo/);
-  assert.match(runner, /--auto-approve/);
+  // OpenClaw has no per-call approval flag; unattended runs apply the yolo
+  // exec-policy preset instead (the old --auto-approve flag was rejected).
+  assert.match(runner, /exec-policy preset yolo/);
+  assert.doesNotMatch(runner, /--auto-approve/);
   // Pins are read per-job ($AGENT_DIR/<base>-<job>) with a fallback to the
   // legacy global file, so two job types can pin different runtimes on one
   // machine and pre-split crons keep working after the runner self-updates.

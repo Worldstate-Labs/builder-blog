@@ -19,7 +19,7 @@ const RUNTIME_OPTIONS: { id: AgentRuntime; label: string; hint: string }[] = [
   },
   { id: "codex", label: "Codex", hint: "Unattended: --full-auto (approval=never, workspace-write sandbox)" },
   { id: "gemini", label: "Gemini CLI", hint: "Unattended: --yolo (skip all confirmation prompts)" },
-  { id: "openclaw", label: "OpenClaw", hint: "Unattended: --auto-approve" },
+  { id: "openclaw", label: "OpenClaw", hint: "Unattended: exec-policy preset yolo (auto-approves exec host-wide)" },
 ];
 
 // Cron cadence. `id` values match the server whitelist in the

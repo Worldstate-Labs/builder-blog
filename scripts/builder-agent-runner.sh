@@ -119,7 +119,13 @@ run_with_claude_unattended() {
 }
 
 run_with_openclaw_unattended() {
-  openclaw agent --local --auto-approve --message "$(cat "$PROMPT_FILE")"
+  # OpenClaw has no per-invocation approval flag (the flag we used before was
+  # rejected by the CLI). Unattended auto-approval is a host-level exec policy,
+  # so apply the "yolo" preset (idempotent) before the run. NOTE: this is
+  # host-global for openclaw — it auto-approves exec for all openclaw sessions
+  # on this machine, not just this cron.
+  openclaw exec-policy preset yolo >/dev/null 2>&1 || true
+  openclaw agent --local --message "$(cat "$PROMPT_FILE")"
 }
 
 run_with_gemini_unattended() {
