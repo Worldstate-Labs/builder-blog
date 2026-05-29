@@ -7,13 +7,10 @@ steps exactly. If any command fails, stop and report the command, exit code, and
 stderr. Do not invoke any other skill, plugin, or subagent — run the numbered
 steps yourself exactly as written; this prompt is the whole task.
 
-What this does: it removes only the recurring **schedule** — the launchd
-LaunchAgent on macOS, or the crontab entry on Linux. It does NOT delete any
-already-fetched library content on the server, and it does NOT touch the digest
-cron. The agent runtime (Claude Code, Codex, Gemini, OpenClaw) is irrelevant
-here: unscheduling removes the OS schedule, which never depends on which agent
-runs the job, so there is nothing runtime-specific below. No agent token or
-network call is needed.
+Scope — do not exceed it: remove only the recurring **schedule** (the launchd
+LaunchAgent on macOS, or the crontab entry on Linux). Do not delete any
+already-fetched library content, and do not touch the digest cron. Do not
+exchange a token or make any network call — this task is entirely local.
 
 1. Find the existing FollowBrief library job(s) on this machine. Run the path
 for this machine's OS — run `uname` if unsure.
@@ -73,15 +70,15 @@ fi
 crontab -l 2>/dev/null | grep -E 'builder-agent-runner\.sh library-cron' && echo "STILL PRESENT" || echo "removed"
 ```
 
-3. Clean up the per-job pin files so a future re-install starts fresh. These are
-inert once the schedule is gone, and the command is safe if they are absent:
+3. Remove the per-job pin files so a future re-install starts clean (safe if
+they are absent):
 
 ```bash
 rm -f "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-library-cron" \
       "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-force-library-cron"
 ```
 
-4. Report the outcome: which label (macOS) or crontab entry (Linux) was removed,
-or that none existed. Confirm the verification line printed "removed". Re-running
-this is safe — if nothing is scheduled, it reports "(none found)" and changes
-nothing. To resume later, re-run the library cron setup prompt.
+4. Report the outcome to the user: which label (macOS) or crontab entry (Linux)
+was removed (or that none existed), and that the step-2 verification line printed
+"removed". Tell the user they can resume later by re-running the library cron
+setup prompt.
