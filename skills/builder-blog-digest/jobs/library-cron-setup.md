@@ -14,9 +14,8 @@ the agent the `library-cron` prompt (the single source of truth for how fetch
 tasks are fetched, summarized, validated, and synced); this file does not
 restate any of it.
 
-Scheduled runtime: **{{AGENT_RUNTIME_LABEL}}** ({{AGENT_RUNTIME}}). The picker
-on the website pinned this. Every step below assumes that pinned runtime; do
-not fall back to a different one.
+Scheduled runtime: **{{AGENT_RUNTIME_LABEL}}** ({{AGENT_RUNTIME}}). Every step
+below uses this pinned runtime; do not fall back to a different one.
 
 1. Install or refresh the skill:
 
@@ -64,20 +63,16 @@ ACCT="${BUILDER_BLOG_ACCOUNT}"; ( crontab -l 2>/dev/null | grep -v "# FollowBrie
 crontab -l | grep 'builder-agent-runner.sh library-cron'
 ```
 
-7. Run one immediate smoke check. The runner will read
-`~/.builder-blog/runtime` and invoke {{AGENT_RUNTIME_LABEL}} in its unattended
-mode — no permission prompts.
+7. Run one immediate smoke check:
 
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" $HOME/.builder-blog/builder-agent-runner.sh library-cron
 ```
 
-The smoke check runs the exact scheduled job through the runner, which feeds it
-the `library-cron` prompt. That prompt is the single source of truth for how
-fetch tasks are completed, validated, and synced — this setup file does not
-restate it. Just run the command above and report its output: the run succeeds
-when the JSON shows status ok, localErrors empty, and `fetchTasks` either empty
-or all validated and synced. If it errors, report the command, exit code, and
+This delegates the fetch/summarize/sync to the runner (the `library-cron`
+prompt); do not do that work yourself. Just report its output: it succeeds when
+the JSON shows status ok, localErrors empty, and `fetchTasks` either empty or
+all validated and synced. If it errors, report the command, exit code, and
 stderr, and stop.
 
 Only if crontab is unavailable or blocked, install the same command and cadence
@@ -96,15 +91,3 @@ duplicate this account's existing FollowBrief library job, and leave other
 accounts' FollowBrief markers and any unrelated schedules untouched. (Multiple
 FollowBrief accounts can share one machine's schedule, each tagged by its own
 `BUILDER_BLOG_ACCOUNT`.)
-
-Permission allowlist that {{AGENT_RUNTIME_LABEL}} runs under at cron-fire time
-(applied by `builder-agent-runner.sh` based on the pinned runtime):
-
-- **claude** — `--permission-mode acceptEdits --allowedTools "Bash,Edit,Read,Write,Grep,Glob,WebFetch"` so no per-tool approval prompt fires under cron.
-- **codex** — `--full-auto` (Codex's documented unattended mode; combines `approval_policy=never` and the workspace-write sandbox).
-- **gemini** — `--yolo` (skip all confirmation prompts).
-- **openclaw** — `--auto-approve` (skip the interactive approval gate).
-
-If you want to widen or narrow what {{AGENT_RUNTIME_LABEL}} is allowed to do
-at cron-fire time, edit the `run_with_{{AGENT_RUNTIME}}_unattended` function
-in `~/.builder-blog/builder-agent-runner.sh` and re-run the smoke check.
