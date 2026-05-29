@@ -488,11 +488,20 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /\{\{AGENT_RUNTIME\}\}/);
   assert.match(libraryCronSetupPrompt, /\{\{AGENT_RUNTIME_LABEL\}\}/);
   assert.match(libraryCronSetupPrompt, /Pin the scheduled runtime/);
-  assert.match(libraryCronSetupPrompt, /\/runtime"/);
-  assert.match(libraryCronSetupPrompt, /5\. Install the schedule/);
+  // Pin files are per-job (suffixed with the cron job name) so a library cron
+  // and a digest cron can use different runtimes on one machine.
+  assert.match(libraryCronSetupPrompt, /runtime-library-cron"/);
+  assert.match(libraryCronSetupPrompt, /6\. Install the schedule/);
   assert.match(libraryCronSetupPrompt, /crontab/);
   assert.match(libraryCronSetupPrompt, /Do not use `--force`/);
   assert.match(libraryCronSetupPrompt, /fetchTasks/);
+  // Pre-install detection: list existing same-type crons and require explicit
+  // override confirmation before replacing.
+  assert.match(libraryCronSetupPrompt, /com\\?\.followbrief\\?\.library\\?\./);
+  assert.match(libraryCronSetupPrompt, /builder-agent-runner\\?\.sh library-cron/);
+  assert.match(libraryCronSetupPrompt, /launchctl list/);
+  assert.match(libraryCronSetupPrompt, /the user whether to\s+override/);
+  assert.match(libraryCronSetupPrompt, /\(none found\)/);
   // The smoke check delegates to the runner (library-cron); cron-setup must
   // NOT restate the fetch-task execution steps — that's library-cron's job.
   assert.match(libraryCronSetupPrompt, /single source of truth/);
@@ -505,10 +514,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(libraryCronSetupPrompt, /task\.summaryInstructions\.prompt/);
   assert.doesNotMatch(libraryCronSetupPrompt, /contentStatus="ready"/);
   assertOrderedText(libraryCronSetupPrompt, [
-    "3. Pin the scheduled runtime",
-    "5. Install the schedule",
+    "library fetch cron already exists",
+    "4. Pin the scheduled runtime",
+    "6. Install the schedule",
     "launchctl bootstrap",
-    "6. Run one immediate smoke check",
+    "7. Run one immediate smoke check",
     "report its output",
   ]);
   // Override-already-fetched toggle: cron-setup pins fetch-force (0/1) next to
@@ -518,7 +528,7 @@ test("web app serves the agent skill and setup command", () => {
   // route, no query params), so the choice must persist on disk — a copy-time
   // URL param alone could never reach the recurring fetch.
   assert.match(libraryCronSetupPrompt, /\{\{FETCH_FORCE\}\}/);
-  assert.match(libraryCronSetupPrompt, /fetch-force"/);
+  assert.match(libraryCronSetupPrompt, /fetch-force-library-cron"/);
   assert.match(
     libraryCronPrompt,
     /fetch-personal --days 30 --limit 3 \$\{BUILDER_BLOG_FETCH_FORCE:-\}/,
@@ -531,14 +541,19 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronSetupPrompt, /\{\{AGENT_RUNTIME\}\}/);
   assert.match(digestCronSetupPrompt, /\{\{AGENT_RUNTIME_LABEL\}\}/);
   assert.match(digestCronSetupPrompt, /Pin the scheduled runtime/);
-  assert.match(digestCronSetupPrompt, /\/runtime"/);
-  assert.match(digestCronSetupPrompt, /5\. Install the schedule/);
+  assert.match(digestCronSetupPrompt, /runtime-digest-cron"/);
+  assert.match(digestCronSetupPrompt, /6\. Install the schedule/);
   assert.match(digestCronSetupPrompt, /crontab/);
+  // Same pre-install detection + override gate as library.
+  assert.match(digestCronSetupPrompt, /com\\?\.followbrief\\?\.digest\\?\./);
+  assert.match(digestCronSetupPrompt, /the user whether to\s+override/);
+  assert.match(digestCronSetupPrompt, /\(none found\)/);
   assertOrderedText(digestCronSetupPrompt, [
-    "3. Pin the scheduled runtime",
-    "5. Install the schedule",
+    "digest cron already exists",
+    "4. Pin the scheduled runtime",
+    "6. Install the schedule",
     "launchctl bootstrap",
-    "6. Run one immediate smoke check",
+    "7. Run one immediate smoke check",
   ]);
   assert.doesNotMatch(skillPromptActions, /fetch-personal[^\n`]*--force/);
   assert.match(cli, /realpathSync\(fileURLToPath\(import\.meta\.url\)\)/);
@@ -572,11 +587,18 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /--full-auto/);
   assert.match(runner, /--yolo/);
   assert.match(runner, /--auto-approve/);
-  assert.match(runner, /\$AGENT_DIR\/runtime/);
-  // Forced re-fetch: runner reads $AGENT_DIR/fetch-force and exports
+  // Pins are read per-job ($AGENT_DIR/<base>-<job>) with a fallback to the
+  // legacy global file, so two job types can pin different runtimes on one
+  // machine and pre-split crons keep working after the runner self-updates.
+  assert.match(runner, /read_pin\(\)/);
+  assert.match(runner, /\$AGENT_DIR\/\$1-\$JOB_NAME/);
+  assert.match(runner, /\$AGENT_DIR\/\$1\b/);
+  assert.match(runner, /PINNED_RUNTIME="\$\(read_pin runtime\)"/);
+  // Forced re-fetch: runner reads the fetch-force pin and exports
   // BUILDER_BLOG_FETCH_FORCE=--force when it's 1, which library-cron threads
   // into the recurring fetch-personal command.
   assert.match(runner, /fetch-force/);
+  assert.match(runner, /read_pin fetch-force/);
   assert.match(runner, /BUILDER_BLOG_FETCH_FORCE="--force"/);
   assert.match(runner, /export BUILDER_BLOG_FETCH_FORCE/);
   assert.match(runner, /No local agent runtime found/);

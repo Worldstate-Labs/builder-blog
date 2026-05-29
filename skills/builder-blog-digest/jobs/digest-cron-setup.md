@@ -1,7 +1,9 @@
 Set up the FollowBrief subscription digest scheduled job.
 
 This is an interactive local agent setup run. Do not ask the user questions
-unless crontab permissions or a missing local agent runtime blocks the setup.
+except where step 3 requires it (confirming whether to replace an existing
+digest cron), or when crontab permissions or a missing local agent runtime
+blocks the setup.
 
 Run these steps exactly. If any command fails, stop and report the command, exit
 code, and stderr. Do not browse for extra context.
@@ -26,16 +28,40 @@ below uses this pinned runtime; do not fall back to a different one.
 mkdir -p "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/logs"
 ```
 
-3. Pin the scheduled runtime so the runner uses the picked agent's unattended
-mode instead of discovering whatever's first on PATH. The runner reads this
-file at fire time; if you skip this step the scheduled job will fall back to
-the discovery chain (which prompts for permissions every run).
+3. Before changing anything, check whether a digest cron already exists on this
+machine. Run the check for this machine's OS — run `uname` if unsure.
+
+### macOS (`uname` is Darwin)
 
 ```bash
-printf '{{AGENT_RUNTIME}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime"
+launchctl list 2>/dev/null | awk '{ print $3 }' | grep -E '^com\.followbrief\.digest\.' || echo "(none found)"
 ```
 
-4. Verify the runtime CLI is on PATH for the scheduler. Schedulers (launchd and
+### Linux / other
+
+```bash
+crontab -l 2>/dev/null | grep -E 'builder-agent-runner\.sh digest-cron' || echo "(none found)"
+```
+
+If the result is "(none found)", continue to the next step. If it lists one or
+more existing digest jobs, STOP: report exactly what was found, explain that
+continuing replaces this account's digest schedule and its pinned runtime
+(jobs for other accounts are left untouched), and ask the user whether to
+override. Only continue past this step after the user explicitly confirms. If
+they decline, stop and change nothing.
+
+4. Pin the scheduled runtime for this job. The pin file is per-job (suffixed
+with the cron job name), so a digest cron and a library cron can use different
+runtimes on the same machine, and re-running this setup replaces only the
+digest job's pin. The runner reads it at fire time; if you skip this step the
+scheduled job falls back to the discovery chain (which prompts for permissions
+every run).
+
+```bash
+printf '{{AGENT_RUNTIME}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-digest-cron"
+```
+
+5. Verify the runtime CLI is on PATH for the scheduler. Schedulers (launchd and
 cron) run with a minimal PATH; the runner injects
 `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`, so the relevant binary must
 live in one of those. Check:
@@ -47,7 +73,7 @@ PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" command -v {{AGENT_RUNTIME
 If the path printed is empty, install or symlink the CLI into
 `/usr/local/bin` before continuing — the scheduler will not find it otherwise.
 
-5. Install the schedule to run {{CRON_FREQUENCY_LABEL}}. Pick the path for this
+6. Install the schedule to run {{CRON_FREQUENCY_LABEL}}. Pick the path for this
 machine's OS — run `uname` if unsure.
 
 ### macOS (`uname` is Darwin) → launchd LaunchAgent
@@ -101,7 +127,7 @@ ACCT="${BUILDER_BLOG_ACCOUNT}"; ( crontab -l 2>/dev/null | grep -v "# FollowBrie
 crontab -l | grep 'builder-agent-runner.sh digest-cron'
 ```
 
-6. Run one immediate smoke check. This runs in your current session (which has
+7. Run one immediate smoke check. This runs in your current session (which has
 keychain access), so it validates the whole digest pipeline:
 
 ```bash

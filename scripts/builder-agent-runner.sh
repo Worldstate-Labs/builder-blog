@@ -147,25 +147,34 @@ if (fetchTasks > 0) {
 NODE
 }
 
-# When the user ran cron-setup, the pinned runtime lives in
-# $AGENT_DIR/runtime as a single word: claude | codex | gemini | openclaw.
-# We honor it for *-cron jobs so unattended runs use the matching
-# allowlist / auto-approve flags. Interactive jobs (library-once,
-# digest-once) keep the discovery chain — the user is at a TTY and
-# will see any permission prompts anyway.
-PINNED_RUNTIME=""
-if [ -r "$AGENT_DIR/runtime" ]; then
-  PINNED_RUNTIME="$(tr -d ' \t\r\n' < "$AGENT_DIR/runtime")"
-fi
+# Cron-setup pins config in per-job files so two job types (e.g. library-cron
+# + digest-cron) can use different runtimes/fetch modes on one machine. Read
+# the job-scoped file first ($AGENT_DIR/<base>-<job>), then fall back to the
+# legacy global $AGENT_DIR/<base> so crons installed before the per-job split
+# keep working after the runner self-updates.
+read_pin() {
+  # $1 = base name (runtime | fetch-force)
+  if [ -r "$AGENT_DIR/$1-$JOB_NAME" ]; then
+    tr -d ' \t\r\n' < "$AGENT_DIR/$1-$JOB_NAME"
+  elif [ -r "$AGENT_DIR/$1" ]; then
+    tr -d ' \t\r\n' < "$AGENT_DIR/$1"
+  fi
+}
 
-# Forced re-fetch: cron-setup writes 1 to $AGENT_DIR/fetch-force when the user
-# picked "override already-fetched posts" in the schedule dialog. We expose it
-# as BUILDER_BLOG_FETCH_FORCE, which the library-cron prompt drops straight
-# into the fetch-personal command (`${BUILDER_BLOG_FETCH_FORCE:-}` → --force).
-# "1" → --force (re-pull posts already in the library, ignoring the fetchedAt
-# cutoff + externalId dedup); anything else → no flag.
+# The pinned runtime is a single word: claude | codex | gemini | openclaw.
+# We honor it for *-cron jobs so unattended runs use the matching allowlist /
+# auto-approve flags. Interactive jobs (library-once, digest-once) keep the
+# discovery chain — the user is at a TTY and sees any permission prompts.
+PINNED_RUNTIME="$(read_pin runtime)"
+
+# Forced re-fetch: cron-setup writes 1 to the fetch-force pin when the user
+# picked "override already-fetched posts". We expose it as
+# BUILDER_BLOG_FETCH_FORCE, which the library-cron prompt drops straight into
+# the fetch-personal command (`${BUILDER_BLOG_FETCH_FORCE:-}` → --force). "1" →
+# --force (re-pull posts already in the library, ignoring the fetchedAt cutoff
+# + externalId dedup); anything else → no flag.
 BUILDER_BLOG_FETCH_FORCE=""
-if [ -r "$AGENT_DIR/fetch-force" ] && [ "$(tr -d ' \t\r\n' < "$AGENT_DIR/fetch-force")" = "1" ]; then
+if [ "$(read_pin fetch-force)" = "1" ]; then
   BUILDER_BLOG_FETCH_FORCE="--force"
 fi
 export BUILDER_BLOG_FETCH_FORCE
