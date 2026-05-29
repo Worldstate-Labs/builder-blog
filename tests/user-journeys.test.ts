@@ -467,6 +467,20 @@ test("web app serves the agent skill and setup command", () => {
   );
   assert.match(tracingForFilesRoute, /_fetch-task-contract\.md/);
   assert.match(tracingForJobsRoute, /_fetch-task-contract\.md/);
+  // Every job the [job]/skill.md route can serve must be in its tracing list,
+  // or that job 500s (ENOENT) on Vercel even though it works locally. Derive
+  // the set from the registry so a newly-added job can't be forgotten here
+  // (this is exactly how library-cron-stop slipped through and 500'd in prod).
+  const registeredJobFiles = [
+    ...skillJobFiles.matchAll(/jobs\/([a-z0-9-]+\.md)/g),
+  ].map((m) => m[1]);
+  assert.ok(registeredJobFiles.length >= 7, "expected jobSkillFiles to parse");
+  for (const file of registeredJobFiles) {
+    assert.ok(
+      tracingForJobsRoute.includes(file),
+      `next.config.ts outputFileTracingIncludes for the jobs route is missing ${file} — that job will 500 (ENOENT) on Vercel`,
+    );
+  }
   assert.match(digestOncePrompt, /prepare --days 1/);
   assert.match(digestOncePrompt, /Use agent judgment only for the digest-writing step/);
   assert.match(digestOncePrompt, /execution\s+contract, not as user-facing documentation/);
