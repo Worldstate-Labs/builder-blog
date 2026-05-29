@@ -143,6 +143,18 @@ export function skillFetchTool(detail = "", agentModel = DEFAULT_AGENT_MODEL) {
 }
 
 function detectedAgentRuntime() {
+  // The runner exports BUILDER_BLOG_RUNTIME with the pinned runtime for cron
+  // jobs. It's authoritative and covers gemini/openclaw, which the env sniff
+  // below can't detect. Fall back to per-agent env signals for interactive
+  // (un-pinned) runs.
+  const pinned = process.env.BUILDER_BLOG_RUNTIME?.trim().toLowerCase();
+  const pinnedLabels = {
+    claude: "Claude Code",
+    codex: "Codex",
+    gemini: "Gemini CLI",
+    openclaw: "OpenClaw",
+  };
+  if (pinned && pinnedLabels[pinned]) return pinnedLabels[pinned];
   if (process.env.CODEX_INTERNAL_ORIGINATOR_OVERRIDE) {
     return process.env.CODEX_INTERNAL_ORIGINATOR_OVERRIDE;
   }
@@ -628,7 +640,14 @@ async function emitFetchRunRecord(config, record) {
     userActionsCount: record.userActionsCount,
     errorCount: record.errorCount,
     summary: record.summary,
-    details: record.details ?? {},
+    // Record which agent ran this fetch and the model it used, so the web
+    // fetch log can show "Codex · gpt-5-codex" instead of the static CLI
+    // version. Stored in details (free-form JSON) to avoid a schema change.
+    details: {
+      ...(record.details ?? {}),
+      agentRuntime: DEFAULT_AGENT_RUNTIME || null,
+      agentModel: DEFAULT_AGENT_MODEL || null,
+    },
   };
   try {
     await postJson(`${config.appUrl}/api/skill/fetch-runs`, body, config.token);

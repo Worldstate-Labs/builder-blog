@@ -68,6 +68,10 @@ type DetailsShape = {
   error?: { message?: string; stack?: string };
   fetchTasks?: FetchTaskLog[];
   prompts?: Record<string, PromptBundle>;
+  // Which agent ran the fetch and the model it used. Recorded by the CLI at
+  // emit time; absent on runs from before this was captured.
+  agentRuntime?: string | null;
+  agentModel?: string | null;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -264,6 +268,11 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
   const style = statusStyle(run.status);
   const label = STATUS_LABEL[run.status] ?? run.status;
   const details = readDetails(run.details);
+  // Show the agent + model that ran this fetch (e.g. "Codex · gpt-5-codex").
+  // Fall back to the CLI version for runs recorded before this was captured.
+  const agentLabel =
+    [details.agentRuntime, details.agentModel].filter(Boolean).join(" · ") ||
+    (run.cliVersion ? `CLI ${run.cliVersion}` : "");
   const startedAtLabel = hydrated ? formatRelative(run.startedAt) : formatAbsolute(run.startedAt);
 
   return (
@@ -290,9 +299,9 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
           {startedAtLabel}
         </time>
         <span className="fb-chip">{run.source}</span>
-        {run.cliVersion ? (
+        {agentLabel ? (
           <span className="mono text-[11.5px] text-[var(--muted-strong)]">
-            CLI {run.cliVersion}
+            {agentLabel}
           </span>
         ) : null}
         {run.hostname ? (

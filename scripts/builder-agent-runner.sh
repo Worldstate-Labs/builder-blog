@@ -179,6 +179,13 @@ read_pin() {
 # discovery chain — the user is at a TTY and sees any permission prompts.
 PINNED_RUNTIME="$(read_pin runtime)"
 
+# Surface the resolved runtime to the CLI so the fetch-run record (and the web
+# fetch log) can label which agent ran it. The CLI also auto-detects
+# codex/claude from their own env, but the pin is authoritative and is the only
+# signal for gemini/openclaw. Empty for un-pinned interactive runs → the CLI
+# falls back to env detection.
+export BUILDER_BLOG_RUNTIME="$PINNED_RUNTIME"
+
 # Forced re-fetch: cron-setup writes 1 to the fetch-force pin when the user
 # picked "override already-fetched posts". We expose it as
 # BUILDER_BLOG_FETCH_FORCE, which the library-cron prompt drops straight into
