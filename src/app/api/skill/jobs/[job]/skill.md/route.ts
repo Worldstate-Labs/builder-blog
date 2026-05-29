@@ -79,10 +79,13 @@ export async function GET(request: Request, { params }: Params) {
   const freqRaw = url.searchParams.get("freq");
   const freq = freqRaw && cronSchedules[freqRaw] ? freqRaw : defaultFreq;
 
-  // Forced re-fetch toggle for the library cron-setup prompt. "1" → the setup
-  // pins fetch-force=1, and the runner exports BUILDER_BLOG_FETCH_FORCE=--force
-  // so the recurring fetch-personal ignores the fetchedAt cutoff + externalId
-  // dedup. Default 0. Closed value set → no injection into the rendered md.
+  // Forced re-fetch toggle. "1" → re-fetch posts already in the library
+  // (ignore the fetchedAt cutoff + externalId dedup). Default off. Closed
+  // value set → no injection into the rendered md. Two placeholders:
+  //  - {{FETCH_FORCE}} (0/1) is pinned to disk by library-cron-setup; the
+  //    runner turns 1 into --force for the recurring run.
+  //  - {{FETCH_FLAG}} (--force / "") is baked straight into the library-once
+  //    command, which the user pastes to the agent directly (no runner).
   const fetchForce = url.searchParams.get("force") === "1";
 
   let content = await readFile(join(process.cwd(), path), "utf8");
@@ -102,7 +105,8 @@ export async function GET(request: Request, { params }: Params) {
     .replaceAll("{{CRON_SCHEDULE}}", cronSchedules[freq].schedule)
     .replaceAll("{{CRON_FREQUENCY_LABEL}}", cronSchedules[freq].label)
     .replaceAll("{{LAUNCHD_SCHEDULE}}", launchdSchedules[freq] ?? launchdSchedules["6h"])
-    .replaceAll("{{FETCH_FORCE}}", fetchForce ? "1" : "0");
+    .replaceAll("{{FETCH_FORCE}}", fetchForce ? "1" : "0")
+    .replaceAll("{{FETCH_FLAG}}", fetchForce ? "--force" : "");
 
   if (ecParam) {
     // Validate the exchange code: must exist, not expired, not yet used.

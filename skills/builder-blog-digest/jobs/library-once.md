@@ -8,7 +8,10 @@ Execution contract:
 - Run the numbered command steps exactly.
 - If a command outside the explicit `fetchTasks` work fails, stop and report the
   command, exit code, and stderr to the user.
-- Do not use `--force`.
+- Run the fetch command exactly as written. It already carries the right
+  re-fetch flag for this run (a `--force` is present only when this run was
+  configured to override already-fetched posts). Do not add or remove `--force`
+  yourself.
 - Do not browse for extra context unless a `fetchTasks` payload requires you to
   extract content from a URL the task supplies.
 - Do not change paths, flags, cadence, titles, output files, JSON schema, or
@@ -27,7 +30,7 @@ Execution contract:
 
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" fetch-personal --days 30 --limit 3 \
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" fetch-personal --days 30 --limit 3 {{FETCH_FLAG}} \
   > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-fetch-result.json"
 ```
 

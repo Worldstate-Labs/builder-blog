@@ -331,6 +331,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /overrideFetched/);
   assert.match(skillPromptActions, /params\.set\("force", "1"\)/);
   assert.match(skillPromptActions, /context === "library"/);
+  // The library once flow has the same override, in its own small dialog.
+  assert.match(skillPromptActions, /OnceConfigDialog/);
+  assert.match(skillPromptActions, /continueOnceCopy/);
   // Server validates freq against a whitelist → fixed cron expression and
   // substitutes the schedule + cadence label into the cron-setup prompt.
   assert.match(skillJobRoute, /cronSchedules/);
@@ -344,6 +347,10 @@ test("web app serves the agent skill and setup command", () => {
   // Forced re-fetch toggle: ?force=1 → {{FETCH_FORCE}} substituted to 1.
   assert.match(skillJobRoute, /searchParams\.get\("force"\)/);
   assert.match(skillJobRoute, /\{\{FETCH_FORCE\}\}/);
+  // {{FETCH_FLAG}} bakes --force straight into the once command; the files
+  // route neutralizes it to "" for the runner-fed copy.
+  assert.match(skillJobRoute, /\{\{FETCH_FLAG\}\}/);
+  assert.match(skillFileRoute, /\{\{FETCH_FLAG\}\}/);
   // cron-setup prompts use the placeholders, not a hard-coded schedule, and
   // install via launchd on macOS / crontab on Linux.
   assert.match(libraryCronSetupPrompt, /\{\{CRON_SCHEDULE\}\}/);
@@ -421,7 +428,16 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(libraryOnceExpanded, /summarize-podcast\.md/);
   assert.doesNotMatch(libraryOnceExpanded, /summarize-blogs\.md/);
   assert.match(libraryOnceExpanded, /Do not add new sources, URLs, or feed items/);
-  assert.match(libraryOnceExpanded, /Do not use `--force`/);
+  // library-once carries a per-run --force toggle inline via {{FETCH_FLAG}}
+  // (the jobs route substitutes it from ?force=, the files route neutralizes
+  // it to ""). The old blanket "Do not use --force." is replaced by guidance
+  // to run the command verbatim.
+  assert.match(
+    libraryOnceExpanded,
+    /fetch-personal --days 30 --limit 3 \{\{FETCH_FLAG\}\}/,
+  );
+  assert.match(libraryOnceExpanded, /Do not add or remove `--force`\s+yourself/);
+  assert.doesNotMatch(libraryOnceExpanded, /Do not use `--force`\./);
   assert.match(libraryOnceExpanded, /execution\s+contract, not as user-facing documentation/);
   assert.doesNotMatch(libraryOnceExpanded, /Environment contract/);
   assertOrderedText(libraryOnceExpanded, [

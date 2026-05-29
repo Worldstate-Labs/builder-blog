@@ -58,7 +58,12 @@ export async function GET(_request: Request, { params }: Params) {
   const raw = await readFile(join(process.cwd(), asset.path), "utf8");
   // Expand {{INCLUDE:...}} directives so the library job prompts share one
   // copy of the fetch-task contract. No-op for files without directives.
-  const content = await expandSkillIncludes(raw);
+  let content = await expandSkillIncludes(raw);
+  // {{FETCH_FLAG}} is the per-copy --force toggle for library-once, normally
+  // substituted by the jobs route from ?force=. The raw file is also served
+  // here (the runner refreshes its local copy from this route), so neutralize
+  // it to empty — a runner-driven `library-once` is never the override path.
+  content = content.replaceAll("{{FETCH_FLAG}}", "");
   return new Response(content, {
     headers: {
       "content-type": asset.contentType,

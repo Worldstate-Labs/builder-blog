@@ -33,6 +33,10 @@ type CronConfig = {
   freq: CronFrequency;
   overrideFetched: boolean;
 };
+// What a copy carries beyond the exchange code. `cron` is set for the cron
+// flow (its own override lives inside it); `force` is the once flow's override
+// (no runtime/cadence to pick). Either source flips ?force=1.
+type CopyExtras = { cron: CronConfig | null; force: boolean };
 
 const FREQUENCY_CHOICES: { id: CronFrequency; label: string }[] = [
   { id: "30m", label: "Every 30 minutes" },
@@ -96,10 +100,13 @@ export function SkillPromptActions({
   // so the server-rendered markdown bakes in the right unattended
   // invocation and crontab schedule.
   const [cronConfigOpen, setCronConfigOpen] = useState(false);
-  // The cron config survives between the config dialog and the token
-  // picker. A ref (not state) so the token picker's onConfirm can read it
-  // without an extra render cycle.
-  const pendingCronConfigRef = useRef<CronConfig | null>(null);
+  // Library once: a tiny dialog to optionally override already-fetched posts
+  // before copying (digest once has nothing to configure → no dialog).
+  const [onceConfigOpen, setOnceConfigOpen] = useState(false);
+  // The picked config survives between a config dialog and the token picker.
+  // A ref (not state) so the picker's onConfirm can read it without an extra
+  // render. Holds the cron config (cron flow) and/or the once force toggle.
+  const pendingExtrasRef = useRef<CopyExtras | null>(null);
 
   async function fetchExchangeCode(tokenId: string): Promise<string | null> {
     try {
@@ -117,15 +124,17 @@ export function SkillPromptActions({
   function buildCommand(
     target: CopyTarget,
     exchangeCode: string,
-    cron: CronConfig | null,
+    extras: CopyExtras,
   ): string {
     const origin = window.location.origin;
     const job = target === "once" ? config.onceJob : config.cronJob;
     const params = new URLSearchParams({ ec: exchangeCode });
-    if (cron) {
-      params.set("runtime", cron.runtime);
-      params.set("freq", cron.freq);
-      if (cron.overrideFetched) params.set("force", "1");
+    if (extras.cron) {
+      params.set("runtime", extras.cron.runtime);
+      params.set("freq", extras.cron.freq);
+    }
+    if (extras.cron?.overrideFetched || extras.force) {
+      params.set("force", "1");
     }
     const promptUrl = `${origin}/api/skill/jobs/${job}/skill.md?${params.toString()}`;
     return `Read ${promptUrl} and follow the instructions.`;
@@ -134,7 +143,7 @@ export function SkillPromptActions({
   async function copyForToken(
     target: CopyTarget,
     tokenId: string,
-    cron: CronConfig | null,
+    extras: CopyExtras,
   ) {
     setStatus(null);
     const code = await fetchExchangeCode(tokenId);
@@ -142,7 +151,7 @@ export function SkillPromptActions({
       setStatus({ kind: "error", text: "Could not generate exchange code" });
       return;
     }
-    const command = buildCommand(target, code, cron);
+    const command = buildCommand(target, code, extras);
     try {
       await navigator.clipboard.writeText(command);
       setCopiedTarget(target);
@@ -162,18 +171,35 @@ export function SkillPromptActions({
   // runtime is held in a closure-captured ref so it survives the
   // dialog round trip.
   async function continueCronCopy(cron: CronConfig) {
+    const extras: CopyExtras = { cron, force: false };
     if (activeTokens.length === 0) {
       setStatus({ kind: "info", text: "Create a token in Settings first" });
       return;
     }
     if (activeTokens.length === 1) {
-      await copyForToken("cron", activeTokens[0].id, cron);
+      await copyForToken("cron", activeTokens[0].id, extras);
       return;
     }
     // Open the token picker with the cron config stashed; we read it back
     // when the user confirms a token.
-    pendingCronConfigRef.current = cron;
+    pendingExtrasRef.current = extras;
     setPickerTarget("cron");
+  }
+
+  // Library once: after the override choice, continue to the token picker
+  // (or copy directly when there's a single token).
+  async function continueOnceCopy(overrideFetched: boolean) {
+    const extras: CopyExtras = { cron: null, force: overrideFetched };
+    if (activeTokens.length === 0) {
+      setStatus({ kind: "info", text: "Create a token in Settings first" });
+      return;
+    }
+    if (activeTokens.length === 1) {
+      await copyForToken("once", activeTokens[0].id, extras);
+      return;
+    }
+    pendingExtrasRef.current = extras;
+    setPickerTarget("once");
   }
 
   async function copyCommand(target: CopyTarget) {
@@ -183,15 +209,19 @@ export function SkillPromptActions({
       setStatus({ kind: "info", text: "Create a token in Settings first" });
       return;
     }
-    // Cron flow: pick the agent runtime + cadence FIRST so the rendered
-    // prompt bakes in the right unattended invocation and crontab
-    // schedule. Once flow is interactive (user watching), no gate needed.
+    // Cron flow: pick runtime + cadence (+ override) first. Library once
+    // flow: a small dialog to pick the override. Both bake their choice into
+    // the rendered prompt. Digest once has nothing to configure.
     if (target === "cron") {
       setCronConfigOpen(true);
       return;
     }
+    if (target === "once" && context === "library") {
+      setOnceConfigOpen(true);
+      return;
+    }
     if (activeTokens.length === 1) {
-      await copyForToken(target, activeTokens[0].id, null);
+      await copyForToken(target, activeTokens[0].id, { cron: null, force: false });
       return;
     }
     setPickerTarget(target);
@@ -259,6 +289,15 @@ export function SkillPromptActions({
         }}
       />
 
+      <OnceConfigDialog
+        open={onceConfigOpen}
+        onCancel={() => setOnceConfigOpen(false)}
+        onConfirm={async (overrideFetched) => {
+          setOnceConfigOpen(false);
+          await continueOnceCopy(overrideFetched);
+        }}
+      />
+
       <TokenPickerDialog
         open={pickerTarget !== null}
         target={pickerTarget}
@@ -268,14 +307,14 @@ export function SkillPromptActions({
         }
         onCancel={() => {
           setPickerTarget(null);
-          pendingCronConfigRef.current = null;
+          pendingExtrasRef.current = null;
         }}
         onConfirm={async (tokenId) => {
           const target = pickerTarget;
-          const cron = target === "cron" ? pendingCronConfigRef.current : null;
+          const extras = pendingExtrasRef.current ?? { cron: null, force: false };
           setPickerTarget(null);
-          pendingCronConfigRef.current = null;
-          if (target) await copyForToken(target, tokenId, cron);
+          pendingExtrasRef.current = null;
+          if (target) await copyForToken(target, tokenId, extras);
         }}
       />
     </div>
@@ -642,6 +681,134 @@ function CronConfigDialog({
             disabled={submitting}
           >
             <CalendarClock aria-hidden="true" />
+            {submitting ? "…" : "Continue"}
+          </button>
+        </footer>
+      </form>
+    </dialog>
+  );
+}
+
+// Library once: a single optional toggle — re-fetch posts already saved in the
+// library (passes --force to the one-off fetch). Cron has its own dialog with
+// runtime + cadence; once only needs this.
+function OnceConfigDialog({
+  open,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  onCancel: () => void;
+  onConfirm: (overrideFetched: boolean) => void | Promise<void>;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [overrideFetched, setOverrideFetched] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const d = dialogRef.current;
+    if (!d) return;
+    if (open && !d.open) {
+      try {
+        d.showModal();
+      } catch {
+        // showModal throws if already open; ignore.
+      }
+    } else if (!open && d.open) {
+      d.close();
+    }
+  }, [open]);
+
+  useEffect(() => {
+    const d = dialogRef.current;
+    if (!d) return;
+    const onClose = () => {
+      setSubmitting(false);
+      onCancel();
+    };
+    d.addEventListener("close", onClose);
+    return () => d.removeEventListener("close", onClose);
+  }, [onCancel]);
+
+  async function confirm() {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await onConfirm(overrideFetched);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="once-config-title"
+      className="token-picker-dialog"
+      onClick={(e) => {
+        if (e.target === dialogRef.current) onCancel();
+      }}
+    >
+      <form
+        method="dialog"
+        className="grid"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void confirm();
+        }}
+      >
+        <header className="token-picker-header">
+          <h2 id="once-config-title" className="token-picker-title">
+            Run the sync once
+          </h2>
+          <p className="token-picker-sub">
+            By default this fetches only posts newer than what&rsquo;s already in
+            your library.
+          </p>
+        </header>
+
+        <p className="token-picker-grouplabel">Already-fetched posts</p>
+        <fieldset className="token-picker-list">
+          <legend className="sr-only">Re-fetch behavior</legend>
+          <label
+            className={`token-picker-row${overrideFetched ? " is-active" : ""}`}
+          >
+            <input
+              type="checkbox"
+              name="override-fetched"
+              checked={overrideFetched}
+              onChange={(e) => setOverrideFetched(e.target.checked)}
+              className="token-picker-radio"
+            />
+            <span className="token-picker-row-body">
+              <span className="token-picker-row-name">
+                Override already-fetched posts
+              </span>
+              <span className="token-picker-row-meta">
+                <span>
+                  Passes --force: ignores the last-fetched cutoff and re-pulls
+                  posts already in your library. One-time for this run only.
+                </span>
+              </span>
+            </span>
+          </label>
+        </fieldset>
+
+        <footer className="token-picker-footer">
+          <button
+            type="button"
+            className="fb-btn light compact"
+            onClick={onCancel}
+            disabled={submitting}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="fb-btn dark compact"
+            disabled={submitting}
+          >
+            <Copy aria-hidden="true" />
             {submitting ? "…" : "Continue"}
           </button>
         </footer>
