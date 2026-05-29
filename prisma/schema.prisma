@@ -271,6 +271,11 @@ model UserFeedPreference {
   digestCustomFrequencyDays Int?
   digestMaxPostAgeDays      Int             @default(90)
   recommendationProfile     String?
+  /// Account-wide summary output language. When set, /api/skill/context
+  /// overrides each source's per-type summaryLanguage with this value so all
+  /// of the user's summaries (library cron + once) are generated in it. Null =
+  /// fall back to the per-source SourceTypeConfig.summaryLanguage default.
+  summaryLanguage           String?
   createdAt                 DateTime        @default(now())
   updatedAt                 DateTime        @updatedAt
   user                      User            @relation(fields: [userId], references: [id], onDelete: Cascade)

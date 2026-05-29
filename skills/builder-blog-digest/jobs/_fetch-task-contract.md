@@ -16,16 +16,17 @@ Fetch task boundary:
 - `fetchTasks` are the only work items. Each task represents one post that must
   end as one synced item with both `body` and `summary`.
 - If `task.contentStatus="ready"`, the normal fetcher already produced
-  `task.item.body`; do not fetch content again. Generate one concise Chinese
-  single-post `summary` from `task.summaryInstructions.prompt`.
+  `task.item.body`; do not fetch content again. Generate one concise single-post
+  `summary` from `task.summaryInstructions.prompt`.
 - If `task.contentStatus="requires_agent"`, first obtain real primary content,
-  then generate one concise Chinese single-post `summary` from
+  then generate one concise single-post `summary` from
   `task.summaryInstructions.prompt`.
 - `task.summaryInstructions.prompt` is the only prompt source for the summary;
-  it already bakes in the global common rules and the per-source rules. Do not
-  read prompt files from disk, and do not fetch `context.prompts`,
-  `context.sources[*].summaryPrompt`, or `context.commonSummaryRules`
-  separately.
+  it already bakes in the global common rules, the per-source rules, and the
+  output language (do not assume a language — write the summary in the one that
+  prompt states). Do not read prompt files from disk, and do not fetch
+  `context.prompts`, `context.sources[*].summaryPrompt`, or
+  `context.commonSummaryRules` separately.
 
 If the fetch result contains a non-empty `fetchTasks` array, complete exactly
 the task IDs returned by the CLI. Do not add new sources, URLs, or feed items

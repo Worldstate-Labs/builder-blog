@@ -50,6 +50,11 @@ export async function GET(request: Request) {
     getDigestConfig(),
   ]);
 
+  // Account-wide summary language: when the user set one (cron dialog /
+  // settings), it overrides every source's per-type summaryLanguage so all of
+  // this user's summaries are generated in it. Null → per-source default.
+  const userSummaryLanguage = preference?.summaryLanguage?.trim() || null;
+
   // Per-source skill context: merge static fields from sources.json
   // (id, builderKind, feedItemKinds, urlPatterns) with admin-edited
   // fields from the DB. This is the runtime source of truth the
@@ -90,7 +95,7 @@ export async function GET(request: Request) {
       summaryPrompt: {
         body: cfg.summaryPromptBody,
         style: cfg.summaryStyle,
-        language: cfg.summaryLanguage,
+        language: userSummaryLanguage ?? cfg.summaryLanguage,
         lengthHint: cfg.summaryLengthHint,
       },
       fetchPrompt: {
@@ -223,7 +228,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     user: { id: user.id, name: user.name, email: user.email },
     generatedAt: now.toISOString(),
-    language: "zh",
+    language: userSummaryLanguage ?? "zh",
     digestWindow: {
       since: since.toISOString(),
       until: now.toISOString(),

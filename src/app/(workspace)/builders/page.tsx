@@ -80,7 +80,11 @@ async function SyncHeader({
   const data = await dataPromise;
   return (
     <section className="mt-6 grid gap-3">
-      <SkillPromptActions context="library" tokens={data.activeTokens} />
+      <SkillPromptActions
+        context="library"
+        tokens={data.activeTokens}
+        summaryLanguage={data.summaryLanguage}
+      />
       <FetchLogPanel initialRuns={data.fetchRuns} />
     </section>
   );
@@ -101,7 +105,7 @@ async function loadBuildersPageData() {
   const isAdmin = isAdminEmail(session.user.email);
   await ensureDefaultCommunityLibraryImport(session.user.id);
 
-  const [poolEntries, subscriptions, importedLibraries, ownSharedLibrary, adminLibVisibility, rawTokens, rawFetchRuns] = await Promise.all([
+  const [poolEntries, subscriptions, importedLibraries, ownSharedLibrary, adminLibVisibility, rawTokens, rawFetchRuns, feedPreference] = await Promise.all([
     prisma.builderPoolEntry.findMany({
       where: { userId: session.user.id, removedAt: null },
       include: {
@@ -179,6 +183,10 @@ async function loadBuildersPageData() {
       where: { userId: session.user.id },
       orderBy: { startedAt: "desc" },
       take: 25,
+    }),
+    prisma.userFeedPreference.findUnique({
+      where: { userId: session.user.id },
+      select: { summaryLanguage: true },
     }),
   ]);
 
@@ -300,6 +308,7 @@ async function loadBuildersPageData() {
     sourceLabelOptions,
     subscribed,
     subscribedCount,
+    summaryLanguage: feedPreference?.summaryLanguage ?? null,
   };
 }
 

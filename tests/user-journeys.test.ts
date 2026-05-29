@@ -310,8 +310,11 @@ test("web app serves the agent skill and setup command", () => {
   // AgentTokenPanel — users now copy the setup prompt from
   // SkillPromptActions, which references the bootstrap route directly.
   assert.doesNotMatch(settingsPanel, /\/api\/skill\/bootstrap/);
-  assert.match(buildersPage, /<SkillPromptActions context="library"/);
+  assert.match(buildersPage, /<SkillPromptActions\s+context="library"/);
   assert.match(dashboardPage, /<SkillPromptActions context="digest"/);
+  // Library page loads + passes the account-wide summary language to the dialog.
+  assert.match(buildersPage, /summaryLanguage: feedPreference\?\.summaryLanguage/);
+  assert.match(buildersPage, /summaryLanguage=\{data\.summaryLanguage\}/);
   assert.match(skillPromptActions, /Source sync/);
   assert.match(skillPromptActions, /Digest sync/);
   assert.match(skillPromptActions, /Copy once prompt/);
@@ -334,6 +337,25 @@ test("web app serves the agent skill and setup command", () => {
   // The library once flow has the same override, in its own small dialog.
   assert.match(skillPromptActions, /OnceConfigDialog/);
   assert.match(skillPromptActions, /continueOnceCopy/);
+  // Cron dialog redesign: compact <select> controls grouped into Schedule /
+  // Output sections (no long radio lists), plus an account-wide summary
+  // language select persisted via /api/settings/summary-language.
+  assert.match(skillPromptActions, /cron-field-select/);
+  assert.match(skillPromptActions, /Summary language/);
+  assert.match(skillPromptActions, /SUMMARY_LANGUAGE_OPTIONS/);
+  assert.match(skillPromptActions, /\/api\/settings\/summary-language/);
+  assert.match(skillPromptActions, /token-picker-grouplabel">Schedule/);
+  assert.match(skillPromptActions, /token-picker-grouplabel">Output/);
+  // Account-wide summary language is wired end to end: dedicated save route,
+  // schema field, and context override.
+  const summaryLanguageRoute = readFileSync(
+    "src/app/api/settings/summary-language/route.ts",
+    "utf8",
+  );
+  const prismaSchema = readFileSync("prisma/schema.prisma", "utf8");
+  assert.match(summaryLanguageRoute, /userFeedPreference\.upsert/);
+  assert.match(summaryLanguageRoute, /summaryLanguage/);
+  assert.match(prismaSchema, /summaryLanguage\s+String\?/);
   // Server validates freq against a whitelist → fixed cron expression and
   // substitutes the schedule + cadence label into the cron-setup prompt.
   assert.match(skillJobRoute, /cronSchedules/);
@@ -377,6 +399,11 @@ test("web app serves the agent skill and setup command", () => {
     "skills/builder-blog-digest/jobs/_fetch-task-contract.md",
     "utf8",
   );
+  // Summary language is no longer hardcoded to Chinese — the contract defers to
+  // the per-run language stated in summaryInstructions.prompt, which is what
+  // lets the account-wide summary-language setting actually take effect.
+  assert.doesNotMatch(fetchTaskContract, /concise Chinese/);
+  assert.match(fetchTaskContract, /the\s+output language/);
   function expandIncludes(content: string): string {
     return content.replace(
       /\{\{INCLUDE:fetch-task-contract REPORT_TARGET="([^"]*)"\}\}/g,
@@ -413,7 +440,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryOnceExpanded, /single-post\s+`?summary`?/);
   assert.match(libraryOnceExpanded, /summaryInstructions\.prompt/);
   assert.match(libraryOnceExpanded, /[Dd]o not\s+read prompt files/);
-  assert.match(libraryOnceExpanded, /do not fetch `context\.prompts`/);
+  assert.match(libraryOnceExpanded, /do not fetch\s+`context\.prompts`/);
   assert.match(libraryOnceExpanded, /Fetch task boundary/);
   assert.match(libraryOnceExpanded, /How to execute each `fetchTask`/);
   assert.match(libraryOnceExpanded, /Read `task\.contentStatus`/);
@@ -761,6 +788,10 @@ test("digest feed user path derives context window from user frequency and max p
   // context.prompts (kept for back-compat) is now derived from DB at request time,
   // not from a static DIGEST_PROMPTS import. Just assert the field is still emitted.
   assert.match(contextRoute, /prompts:/);
+  // Account-wide summary language: when the user set one, it overrides each
+  // source's per-type summaryLanguage (and the top-level language).
+  assert.match(contextRoute, /preference\?\.summaryLanguage/);
+  assert.match(contextRoute, /userSummaryLanguage \?\? cfg\.summaryLanguage/);
   const cli = readFileSync("scripts/builder-digest.mjs", "utf8");
   assert.match(cli, /api\/skill\/context\?includePrompts=1/);
   assert.match(cli, /api\/skill\/context\?days=/);

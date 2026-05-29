@@ -56,6 +56,20 @@ const DEFAULT_FREQUENCY: Record<SkillPromptContext, CronFrequency> = {
   digest: "daily",
 };
 
+// Account-wide summary output language. `value` is fed verbatim into the
+// summary prompt ("…summary in <value>"), so it must read naturally to the
+// model. "zh" is the existing per-source default, so picking 中文 is a no-op.
+const SUMMARY_LANGUAGE_OPTIONS: { value: string; label: string }[] = [
+  { value: "zh", label: "中文 (Chinese)" },
+  { value: "English", label: "English" },
+  { value: "日本語", label: "日本語 (Japanese)" },
+  { value: "한국어", label: "한국어 (Korean)" },
+  { value: "Español", label: "Español (Spanish)" },
+  { value: "Français", label: "Français (French)" },
+  { value: "Deutsch", label: "Deutsch (German)" },
+];
+const DEFAULT_SUMMARY_LANGUAGE = "zh";
+
 const PROMPT_CONFIG = {
   library: {
     title: "Source sync",
@@ -92,9 +106,13 @@ const PROMPT_CONFIG = {
 export function SkillPromptActions({
   context,
   tokens = [],
+  summaryLanguage = null,
 }: {
   context: SkillPromptContext;
   tokens?: AgentTokenListItem[];
+  // Current account-wide summary language (null = per-source default). Set in
+  // the library cron dialog; persisted via /api/settings/summary-language.
+  summaryLanguage?: string | null;
 }) {
   const config = PROMPT_CONFIG[context];
   const activeTokens = tokens.filter((t) => !t.revokedAt);
@@ -328,6 +346,7 @@ export function SkillPromptActions({
       <CronConfigDialog
         open={cronConfigOpen}
         context={context}
+        summaryLanguage={summaryLanguage}
         onCancel={() => setCronConfigOpen(false)}
         onConfirm={async (cron) => {
           setCronConfigOpen(false);
@@ -539,11 +558,13 @@ function TokenPickerDialog({
 function CronConfigDialog({
   open,
   context,
+  summaryLanguage,
   onCancel,
   onConfirm,
 }: {
   open: boolean;
   context: SkillPromptContext;
+  summaryLanguage: string | null;
   onCancel: () => void;
   onConfirm: (cron: CronConfig) => void | Promise<void>;
 }) {
@@ -551,11 +572,17 @@ function CronConfigDialog({
   const [pickedRuntime, setPickedRuntime] = useState<AgentRuntime>(RUNTIME_OPTIONS[0].id);
   const freqOptions = FREQUENCY_OPTIONS[context];
   const [pickedFreq, setPickedFreq] = useState<CronFrequency>(DEFAULT_FREQUENCY[context]);
-  // Override = re-fetch already-saved posts on every run. Only the library
-  // job fetches personal items, so the toggle is hidden for digest.
-  const showOverride = context === "library";
+  // Output options are library-only: the digest job doesn't fetch personal
+  // items (override), and its final language is governed by the digest
+  // translate step rather than per-source summaries.
+  const showOutput = context === "library";
+  const initialLanguage = summaryLanguage ?? DEFAULT_SUMMARY_LANGUAGE;
+  const [pickedLanguage, setPickedLanguage] = useState(initialLanguage);
   const [overrideFetched, setOverrideFetched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const runtimeHint =
+    RUNTIME_OPTIONS.find((o) => o.id === pickedRuntime)?.hint ?? "";
 
   useEffect(() => {
     const d = dialogRef.current;
@@ -585,11 +612,27 @@ function CronConfigDialog({
   async function confirm() {
     if (submitting) return;
     setSubmitting(true);
+    setError(null);
     try {
+      // Summary language is account-wide, so persist it server-side (not via
+      // the cron URL) — /api/skill/context reads it at every fetch. Only call
+      // when it actually changed.
+      if (showOutput && pickedLanguage !== initialLanguage) {
+        const res = await fetch("/api/settings/summary-language", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ summaryLanguage: pickedLanguage }),
+        });
+        if (!res.ok) {
+          setError("Couldn't save the summary language — try again.");
+          setSubmitting(false);
+          return;
+        }
+      }
       await onConfirm({
         runtime: pickedRuntime,
         freq: pickedFreq,
-        overrideFetched: showOverride && overrideFetched,
+        overrideFetched: showOutput && overrideFetched,
       });
     } finally {
       setSubmitting(false);
@@ -618,99 +661,101 @@ function CronConfigDialog({
             Configure the scheduled job
           </h2>
           <p className="token-picker-sub">
-            Cron is unattended — the runner pins the runtime and invokes it in
-            its allowlist / auto-approve mode so no permission prompts fire, and
-            installs the crontab at the cadence you choose.
+            Runs unattended — every setting below is pinned (or saved to your
+            account) so no permission prompts fire at run time.
           </p>
         </header>
 
-        <p className="token-picker-grouplabel">Agent runtime</p>
-        <fieldset className="token-picker-list">
-          <legend className="sr-only">Agent runtimes</legend>
-          {RUNTIME_OPTIONS.map((option) => {
-            const active = option.id === pickedRuntime;
-            return (
-              <label
-                key={option.id}
-                className={`token-picker-row${active ? " is-active" : ""}`}
-              >
-                <input
-                  type="radio"
-                  name="agent-runtime"
-                  value={option.id}
-                  checked={active}
-                  onChange={() => setPickedRuntime(option.id)}
-                  className="token-picker-radio"
-                />
-                <span className="token-picker-row-body">
-                  <span className="token-picker-row-name">{option.label}</span>
-                  <span className="token-picker-row-meta">
-                    <span>{option.hint}</span>
-                  </span>
-                </span>
-              </label>
-            );
-          })}
-        </fieldset>
+        <div className="cron-config-body">
+          <p className="token-picker-grouplabel">Schedule</p>
+          <div className="cron-field">
+            <label htmlFor="cron-freq" className="cron-field-label">
+              Frequency
+            </label>
+            <select
+              id="cron-freq"
+              className="cron-field-select"
+              value={pickedFreq}
+              onChange={(e) => setPickedFreq(e.target.value as CronFrequency)}
+            >
+              {freqOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="cron-field">
+            <label htmlFor="cron-runtime" className="cron-field-label">
+              Agent runtime
+            </label>
+            <select
+              id="cron-runtime"
+              className="cron-field-select"
+              value={pickedRuntime}
+              onChange={(e) => setPickedRuntime(e.target.value as AgentRuntime)}
+            >
+              {RUNTIME_OPTIONS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="cron-field-hint">{runtimeHint}</p>
 
-        <p className="token-picker-grouplabel">Frequency</p>
-        <fieldset className="token-picker-list">
-          <legend className="sr-only">Schedule frequency</legend>
-          {freqOptions.map((option) => {
-            const active = option.id === pickedFreq;
-            return (
-              <label
-                key={option.id}
-                className={`token-picker-row${active ? " is-active" : ""}`}
-              >
-                <input
-                  type="radio"
-                  name="cron-frequency"
-                  value={option.id}
-                  checked={active}
-                  onChange={() => setPickedFreq(option.id)}
-                  className="token-picker-radio"
-                />
-                <span className="token-picker-row-body">
-                  <span className="token-picker-row-name">{option.label}</span>
-                </span>
-              </label>
-            );
-          })}
-        </fieldset>
+          {showOutput ? (
+            <>
+              <p className="token-picker-grouplabel">Output</p>
+              <div className="cron-field">
+                <label htmlFor="cron-lang" className="cron-field-label">
+                  Summary language
+                </label>
+                <select
+                  id="cron-lang"
+                  className="cron-field-select"
+                  value={pickedLanguage}
+                  onChange={(e) => setPickedLanguage(e.target.value)}
+                >
+                  {SUMMARY_LANGUAGE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                  {SUMMARY_LANGUAGE_OPTIONS.every(
+                    (o) => o.value !== pickedLanguage,
+                  ) ? (
+                    <option value={pickedLanguage}>{pickedLanguage}</option>
+                  ) : null}
+                </select>
+              </div>
+              <p className="cron-field-hint">
+                Account-wide — applies to all your summaries (library cron + once).
+              </p>
 
-        {showOverride ? (
-          <>
-            <p className="token-picker-grouplabel">Already-fetched posts</p>
-            <fieldset className="token-picker-list">
-              <legend className="sr-only">Re-fetch behavior</legend>
-              <label
-                className={`token-picker-row${overrideFetched ? " is-active" : ""}`}
-              >
+              <label className="cron-check">
                 <input
                   type="checkbox"
                   name="override-fetched"
                   checked={overrideFetched}
                   onChange={(e) => setOverrideFetched(e.target.checked)}
-                  className="token-picker-radio"
+                  className="cron-check-input"
                 />
-                <span className="token-picker-row-body">
-                  <span className="token-picker-row-name">
+                <span className="cron-check-body">
+                  <span className="cron-check-name">
                     Override already-fetched posts
                   </span>
-                  <span className="token-picker-row-meta">
-                    <span>
-                      Re-fetch on every run (passes --force): ignores the
-                      last-fetched cutoff and re-pulls posts already in your
-                      library. Off by default — leave off unless you want each
-                      scheduled run to refresh everything.
-                    </span>
+                  <span className="cron-field-hint">
+                    Re-fetch on every run (--force): re-pulls posts already in
+                    your library. Off by default.
                   </span>
                 </span>
               </label>
-            </fieldset>
-          </>
-        ) : null}
+            </>
+          ) : null}
+
+          {error ? <p className="cron-field-error">{error}</p> : null}
+        </div>
 
         <footer className="token-picker-footer">
           <button
