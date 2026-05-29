@@ -48,6 +48,17 @@ type FetchTaskLog = {
   agentWorkType?: string | null;
   title?: string | null;
   url?: string | null;
+  // Per-post fetch/summary facts. Stage 1 (fetch-personal) fills fetchTool +
+  // bodyChars for ready posts; sync-builders patches the agent-stage fields
+  // (model, summary size, final status).
+  fetchTool?: string | null;
+  bodyChars?: number | null;
+  bodyWords?: number | null;
+  summaryChars?: number | null;
+  summaryWords?: number | null;
+  agentRuntime?: string | null;
+  agentModel?: string | null;
+  status?: string | null;
 };
 
 type PromptBundle = {
@@ -429,6 +440,27 @@ function DetailsBody({ details }: { details: DetailsShape }) {
                     {task.agentWorkType}
                   </span>
                 ) : null}
+                {(() => {
+                  const facts = [
+                    task.agentModel
+                      ? `${task.agentRuntime ? `${task.agentRuntime} ` : ""}${task.agentModel}`
+                      : null,
+                    typeof task.bodyChars === "number"
+                      ? `${task.bodyChars.toLocaleString()} chars`
+                      : null,
+                    typeof task.summaryChars === "number"
+                      ? `→ ${task.summaryChars.toLocaleString()}-char summary`
+                      : null,
+                  ].filter(Boolean);
+                  return facts.length ? (
+                    <div
+                      className="mono mt-0.5 text-[11px]"
+                      style={{ color: "var(--muted)" }}
+                    >
+                      {facts.join(" · ")}
+                    </div>
+                  ) : null;
+                })()}
               </li>
             ))}
           </ul>

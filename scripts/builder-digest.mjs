@@ -42,6 +42,11 @@ const RUN_PLATFORM = (() => {
 
 const CONFIG_DIR = join(homedir(), ".builder-blog");
 const ACCOUNTS_DIR = join(CONFIG_DIR, "accounts");
+const TMP_DIR = join(CONFIG_DIR, "tmp");
+// fetch-personal writes the emitted run's id here so the later, separate
+// sync-builders step can PATCH per-post fetch/summary outcomes onto the same
+// fetch-log record (the two run in the same job on the same machine).
+const FETCH_RUN_ID_FILE = join(TMP_DIR, "library-fetch-run-id");
 const SOURCES_CONFIG_PATH = join(CONFIG_DIR, "sources.json");
 
 let _sourcesConfig = null;
@@ -240,6 +245,22 @@ function argValue(args, name, fallback = undefined) {
 async function postJson(url, body, token) {
   const response = await fetch(url, {
     method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(token ? { authorization: `Bearer ${token}`, ...MACHINE_HEADERS } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || `HTTP ${response.status}`);
+  }
+  return data;
+}
+
+async function patchJson(url, body, token) {
+  const response = await fetch(url, {
+    method: "PATCH",
     headers: {
       "content-type": "application/json",
       ...(token ? { authorization: `Bearer ${token}`, ...MACHINE_HEADERS } : {}),
@@ -558,17 +579,40 @@ async function fetchPersonal(args) {
 // deduplicated by sourceType. This is what the user sees in the
 // Fetch log details panel — small enough for the 50 KB cap, but
 // faithful enough that the prompt history survives admin edits.
+export function textStats(value) {
+  const s = typeof value === "string" ? value : "";
+  const trimmed = s.trim();
+  return { chars: s.length, words: trimmed ? trimmed.split(/\s+/).length : 0 };
+}
+
 export function summarizeFetchTasksForLog(fetchTasks, sources = {}, commonSummaryRules = "") {
-  const slimFetchTasks = fetchTasks.map((task) => ({
-    id: task?.id ?? null,
-    builder: task?.builder ?? null,
-    builderId: task?.builderId ?? null,
-    sourceType: task?.sourceType ?? null,
-    contentStatus: task?.contentStatus ?? null,
-    agentWorkType: task?.agentWorkType ?? null,
-    title: task?.item?.title ?? null,
-    url: task?.item?.url ?? null,
-  }));
+  const slimFetchTasks = fetchTasks.map((task) => {
+    const ready = task?.contentStatus === "ready";
+    const isUserAction =
+      typeof task?.agentWorkType === "string" && task.agentWorkType.startsWith("user_action_");
+    // Stage 1: fetch-personal knows the plan and, for `ready` posts, the body
+    // it already fetched. The agent-stage fields (summary size, model, final
+    // status) stay null until sync-builders PATCHes them by matching `id`.
+    const readyBody = ready ? textStats(task?.item?.body) : { chars: null, words: null };
+    return {
+      id: task?.id ?? null,
+      builder: task?.builder ?? null,
+      builderId: task?.builderId ?? null,
+      sourceType: task?.sourceType ?? null,
+      contentStatus: task?.contentStatus ?? null,
+      agentWorkType: task?.agentWorkType ?? null,
+      title: task?.item?.title ?? null,
+      url: task?.item?.url ?? null,
+      fetchTool: task?.fetchTool ?? null,
+      bodyChars: readyBody.chars,
+      bodyWords: readyBody.words,
+      summaryChars: null,
+      summaryWords: null,
+      agentRuntime: null,
+      agentModel: null,
+      status: isUserAction ? "action_needed" : ready ? "fetched" : "pending",
+    };
+  });
   const sourceTypesUsed = new Set();
   for (const task of fetchTasks) {
     if (task?.sourceType) sourceTypesUsed.add(task.sourceType);
@@ -650,7 +694,18 @@ async function emitFetchRunRecord(config, record) {
     },
   };
   try {
-    await postJson(`${config.appUrl}/api/skill/fetch-runs`, body, config.token);
+    const result = await postJson(`${config.appUrl}/api/skill/fetch-runs`, body, config.token);
+    if (result?.id) {
+      // Hand the run id to the later sync-builders step so it can attach
+      // per-post outcomes. Best-effort: if persisting fails, the run is still
+      // recorded — sync-builders just skips the per-post patch.
+      try {
+        await mkdir(TMP_DIR, { recursive: true });
+        await writeFile(FETCH_RUN_ID_FILE, String(result.id), "utf8");
+      } catch {
+        // ignore — non-fatal
+      }
+    }
   } catch (uploadError) {
     const message = uploadError instanceof Error ? uploadError.message : String(uploadError);
     // Upload failure is non-fatal: the CLI's primary contract (JSON
@@ -2488,6 +2543,53 @@ async function syncBuilders(args) {
   );
   const result = await postJson(`${config.appUrl}/api/skill/builders`, payload, config.token);
   console.log(JSON.stringify(result, null, 2));
+  await patchFetchRunOutcomes(config, payload);
+}
+
+// After a successful sync, attach per-post fetch/summary facts (model, body
+// size, summary size, final status) to the fetch-log record emitted earlier by
+// fetch-personal. Keyed by rawJson.fetchTaskId so each outcome merges onto the
+// matching planned task. Best-effort and non-fatal: a missing run id (e.g. an
+// ad-hoc sync without a preceding fetch) or an unreachable server just skips it.
+async function patchFetchRunOutcomes(config, payload) {
+  if (!config?.appUrl || !config?.token) return;
+  let runId = "";
+  try {
+    runId = (await readFile(FETCH_RUN_ID_FILE, "utf8")).trim();
+  } catch {
+    return;
+  }
+  if (!runId) return;
+
+  const taskOutcomes = [];
+  for (const { item } of extractSyncItems(payload)) {
+    const fetchTaskId = item?.rawJson?.fetchTaskId;
+    if (!fetchTaskId) continue;
+    const body = textStats(item?.body);
+    const summary = textStats(item?.summary);
+    taskOutcomes.push({
+      fetchTaskId: String(fetchTaskId),
+      bodyChars: body.chars,
+      bodyWords: body.words,
+      summaryChars: summary.chars,
+      summaryWords: summary.words,
+      agentRuntime: item?.rawJson?.agentRuntime ?? null,
+      agentModel: item?.rawJson?.agentModel ?? null,
+      status: "synced",
+    });
+  }
+  if (taskOutcomes.length === 0) return;
+
+  try {
+    await patchJson(
+      `${config.appUrl}/api/skill/fetch-runs/${encodeURIComponent(runId)}`,
+      { taskOutcomes },
+      config.token,
+    );
+  } catch (patchError) {
+    const message = patchError instanceof Error ? patchError.message : String(patchError);
+    console.error(`Failed to attach per-post info to the fetch log: ${message}`);
+  }
 }
 
 async function status() {
