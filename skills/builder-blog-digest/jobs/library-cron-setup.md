@@ -38,32 +38,74 @@ the discovery chain (which prompts for permissions every run).
 printf '{{AGENT_RUNTIME}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime"
 ```
 
-4. Verify the runtime CLI is on PATH for cron. Cron uses a minimal PATH; the
-runner injects `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`, so the
-relevant binary must live in one of those. Check:
+4. Verify the runtime CLI is on PATH for the scheduler. Schedulers (launchd and
+cron) run with a minimal PATH; the runner injects
+`/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`, so the relevant binary must
+live in one of those. Check:
 
 ```bash
 PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" command -v {{AGENT_RUNTIME}}
 ```
 
 If the path printed is empty, install or symlink the CLI into
-`/usr/local/bin` before continuing — cron will not find it otherwise.
+`/usr/local/bin` before continuing — the scheduler will not find it otherwise.
 
-5. Install the crontab. It removes any previous FollowBrief library job for this
-account and installs one idempotent job that runs {{CRON_FREQUENCY_LABEL}}.
-Replace `<EMAIL>` with the value of `BUILDER_BLOG_ACCOUNT`:
+5. Install the schedule to run {{CRON_FREQUENCY_LABEL}}. Pick the path for this
+machine's OS — run `uname` if unsure.
+
+### macOS (`uname` is Darwin) → launchd LaunchAgent
+
+On macOS you MUST use a launchd LaunchAgent, not cron. A LaunchAgent runs
+inside your login session, so it can reach the login keychain and the pinned
+agent ({{AGENT_RUNTIME_LABEL}}) is authenticated. Plain `cron` runs outside
+your session and cannot reach the keychain, so the agent CLI fails every run
+with "Not logged in". The plist label is account-scoped, so multiple accounts
+coexist as separate agents, and re-running this replaces only this account's
+agent.
 
 ```bash
-ACCT="${BUILDER_BLOG_ACCOUNT}"; ( crontab -l 2>/dev/null | grep -v "# FollowBrief library cron · $ACCT" | grep -v "builder-agent-runner.sh library-cron.*BUILDER_BLOG_ACCOUNT=\"$ACCT\"" ; printf "# FollowBrief library cron · %s\n{{CRON_SCHEDULE}} BUILDER_BLOG_ACCOUNT=\"%s\" %s/.builder-blog/builder-agent-runner.sh library-cron >> %s/.builder-blog/logs/library-cron.log 2>&1\n" "$ACCT" "$ACCT" "$HOME" "$HOME" ) | crontab -
+ACCT="${BUILDER_BLOG_ACCOUNT}"
+LABEL="com.followbrief.library.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+mkdir -p "$HOME/Library/LaunchAgents"
+cat > "$PLIST" <<PLISTEOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+<key>Label</key><string>$LABEL</string>
+<key>ProgramArguments</key>
+<array>
+<string>$HOME/.builder-blog/builder-agent-runner.sh</string>
+<string>library-cron</string>
+</array>
+<key>EnvironmentVariables</key>
+<dict><key>BUILDER_BLOG_ACCOUNT</key><string>$ACCT</string></dict>
+{{LAUNCHD_SCHEDULE}}
+<key>StandardOutPath</key><string>$HOME/.builder-blog/logs/library-cron.log</string>
+<key>StandardErrorPath</key><string>$HOME/.builder-blog/logs/library-cron.log</string>
+</dict>
+</plist>
+PLISTEOF
+launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+launchctl bootstrap "gui/$(id -u)" "$PLIST"
+launchctl enable "gui/$(id -u)/$LABEL"
+launchctl print "gui/$(id -u)/$LABEL" | grep -E "state =|program ="
 ```
 
-6. Verify the installed schedule:
+### Linux / other (no keychain) → crontab
+
+The agent CLI's token is a plain file there, so cron works. This removes any
+previous FollowBrief library job for this account, then installs one idempotent
+job:
 
 ```bash
+ACCT="${BUILDER_BLOG_ACCOUNT}"; ( crontab -l 2>/dev/null | grep -v "# FollowBrief library cron · $ACCT" | grep -v "BUILDER_BLOG_ACCOUNT=\"$ACCT\".*builder-agent-runner.sh library-cron" ; printf "# FollowBrief library cron · %s\n{{CRON_SCHEDULE}} BUILDER_BLOG_ACCOUNT=\"%s\" %s/.builder-blog/builder-agent-runner.sh library-cron >> %s/.builder-blog/logs/library-cron.log 2>&1\n" "$ACCT" "$ACCT" "$HOME" "$HOME" ) | crontab -
 crontab -l | grep 'builder-agent-runner.sh library-cron'
 ```
 
-7. Run one immediate smoke check:
+6. Run one immediate smoke check. This runs in your current session (which has
+keychain access), so it validates the whole fetch → sync pipeline:
 
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" $HOME/.builder-blog/builder-agent-runner.sh library-cron
@@ -75,19 +117,6 @@ the JSON shows status ok, localErrors empty, and `fetchTasks` either empty or
 all validated and synced. If it errors, report the command, exit code, and
 stderr, and stop.
 
-Only if crontab is unavailable or blocked, install the same command and cadence
-through launchd or the local agent scheduler:
-
-```cron
-# FollowBrief library cron · <EMAIL>
-{{CRON_SCHEDULE}} BUILDER_BLOG_ACCOUNT="<EMAIL>" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1
-```
-
-The crontab command in step 5 is account-scoped and idempotent on its own (it
-strips this account's existing FollowBrief library entry before re-adding and
-filters only by `BUILDER_BLOG_ACCOUNT`). When you hand-install through launchd
-or another scheduler instead, preserve those same properties yourself: do not
-duplicate this account's existing FollowBrief library job, and leave other
-accounts' FollowBrief markers and any unrelated schedules untouched. (Multiple
-FollowBrief accounts can share one machine's schedule, each tagged by its own
-`BUILDER_BLOG_ACCOUNT`.)
+Multiple FollowBrief accounts can share one machine: each gets its own
+account-scoped LaunchAgent label (macOS) or cron marker (Linux), so installing
+one never touches another's, and re-running replaces only this account's.

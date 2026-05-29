@@ -56,6 +56,22 @@ export async function GET(request: Request, { params }: Params) {
     "3h": { schedule: "0 */3 * * *", label: "every 3 hours" },
     "6h": { schedule: "0 */6 * * *", label: "every 6 hours" },
   };
+  // macOS uses a launchd LaunchAgent (runs in the user's login session, so
+  // the agent CLI can reach the login keychain — plain cron cannot). One
+  // XML fragment per cadence, dropped into the plist via {{LAUNCHD_SCHEDULE}}.
+  const launchdSchedules: Record<string, string> = {
+    "30m":
+      "  <key>StartCalendarInterval</key>\n  <array>\n    <dict><key>Minute</key><integer>0</integer></dict>\n    <dict><key>Minute</key><integer>30</integer></dict>\n  </array>",
+    "1h": "  <key>StartCalendarInterval</key>\n  <dict><key>Minute</key><integer>0</integer></dict>",
+    "12h":
+      "  <key>StartCalendarInterval</key>\n  <array>\n    <dict><key>Hour</key><integer>0</integer><key>Minute</key><integer>0</integer></dict>\n    <dict><key>Hour</key><integer>12</integer><key>Minute</key><integer>0</integer></dict>\n  </array>",
+    daily: "  <key>StartCalendarInterval</key>\n  <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>",
+    weekly:
+      "  <key>StartCalendarInterval</key>\n  <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>",
+    "3h": "  <key>StartInterval</key>\n  <integer>10800</integer>",
+    "6h": "  <key>StartInterval</key>\n  <integer>21600</integer>",
+  };
+
   // Default cadence matches each job's prior hard-coded schedule, so old
   // copied prompts (no freq param) are unchanged: digest = daily, the
   // fetch/library job = every 6 hours.
@@ -78,7 +94,8 @@ export async function GET(request: Request, { params }: Params) {
     .replaceAll("{{AGENT_RUNTIME}}", runtime ?? "")
     .replaceAll("{{AGENT_RUNTIME_LABEL}}", runtime ? runtimeLabels[runtime] : "your local agent")
     .replaceAll("{{CRON_SCHEDULE}}", cronSchedules[freq].schedule)
-    .replaceAll("{{CRON_FREQUENCY_LABEL}}", cronSchedules[freq].label);
+    .replaceAll("{{CRON_FREQUENCY_LABEL}}", cronSchedules[freq].label)
+    .replaceAll("{{LAUNCHD_SCHEDULE}}", launchdSchedules[freq] ?? launchdSchedules["6h"]);
 
   if (ecParam) {
     // Validate the exchange code: must exist, not expired, not yet used.

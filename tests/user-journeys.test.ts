@@ -330,11 +330,21 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /searchParams\.get\("freq"\)/);
   assert.match(skillJobRoute, /\{\{CRON_SCHEDULE\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_LABEL\}\}/);
-  // cron-setup prompts use the placeholders, not a hard-coded schedule.
+  // macOS scheduling uses a launchd LaunchAgent (keychain access); the route
+  // provides a launchd schedule fragment per cadence.
+  assert.match(skillJobRoute, /launchdSchedules/);
+  assert.match(skillJobRoute, /\{\{LAUNCHD_SCHEDULE\}\}/);
+  // cron-setup prompts use the placeholders, not a hard-coded schedule, and
+  // install via launchd on macOS / crontab on Linux.
   assert.match(libraryCronSetupPrompt, /\{\{CRON_SCHEDULE\}\}/);
   assert.match(libraryCronSetupPrompt, /\{\{CRON_FREQUENCY_LABEL\}\}/);
+  assert.match(libraryCronSetupPrompt, /\{\{LAUNCHD_SCHEDULE\}\}/);
+  assert.match(libraryCronSetupPrompt, /launchctl bootstrap/);
+  assert.match(libraryCronSetupPrompt, /LaunchAgents/);
   assert.doesNotMatch(libraryCronSetupPrompt, /0 \*\/6 \* \* \*/);
   assert.match(digestCronSetupPrompt, /\{\{CRON_SCHEDULE\}\}/);
+  assert.match(digestCronSetupPrompt, /\{\{LAUNCHD_SCHEDULE\}\}/);
+  assert.match(digestCronSetupPrompt, /launchctl bootstrap/);
   assert.doesNotMatch(digestCronSetupPrompt, /0 8 \* \* \*/);
   assert.doesNotMatch(skillPromptActions, /\/api\/skill\/bootstrap/);
   assert.doesNotMatch(skillPromptActions, /BUILDER_BLOG_PROMPT_URL/);
@@ -453,7 +463,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /\{\{AGENT_RUNTIME_LABEL\}\}/);
   assert.match(libraryCronSetupPrompt, /Pin the scheduled runtime/);
   assert.match(libraryCronSetupPrompt, /\/runtime"/);
-  assert.match(libraryCronSetupPrompt, /5\. Install the crontab/);
+  assert.match(libraryCronSetupPrompt, /5\. Install the schedule/);
   assert.match(libraryCronSetupPrompt, /crontab/);
   assert.match(libraryCronSetupPrompt, /Do not use `--force`/);
   assert.match(libraryCronSetupPrompt, /fetchTasks/);
@@ -470,13 +480,13 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(libraryCronSetupPrompt, /contentStatus="ready"/);
   assertOrderedText(libraryCronSetupPrompt, [
     "3. Pin the scheduled runtime",
-    "5. Install the crontab",
-    "7. Run one immediate smoke check",
+    "5. Install the schedule",
+    "launchctl bootstrap",
+    "6. Run one immediate smoke check",
     "report its output",
-    "Only if crontab is unavailable or blocked",
   ]);
   assert.match(digestCronSetupPrompt, /builder-agent-runner\.sh digest-cron/);
-  assert.match(digestCronSetupPrompt, /First attempt the exact crontab install/);
+  assert.match(digestCronSetupPrompt, /3\. Install the schedule/);
   assert.match(digestCronSetupPrompt, /crontab/);
   assert.doesNotMatch(skillPromptActions, /fetch-personal[^\n`]*--force/);
   assert.match(cli, /realpathSync\(fileURLToPath\(import\.meta\.url\)\)/);
