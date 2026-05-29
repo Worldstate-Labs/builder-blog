@@ -105,7 +105,13 @@ run_with_gemini() {
 # know what each runtime is allowed to do.
 run_with_codex_unattended() {
   # Codex `--full-auto` = approval_policy=never + workspace-write sandbox.
-  codex exec --skip-git-repo-check --full-auto -C "$AGENT_DIR" - < "$PROMPT_FILE"
+  # workspace-write disables outbound network by default, which blocks the
+  # library fetch (FollowBrief API + content sources) and surfaces as a
+  # generic "fetch failed". Re-enable network for the workspace sandbox so the
+  # job can reach the network while keeping the filesystem sandbox intact.
+  codex exec --skip-git-repo-check --full-auto \
+    -c sandbox_workspace_write.network_access=true \
+    -C "$AGENT_DIR" - < "$PROMPT_FILE"
 }
 
 run_with_claude_unattended() {
