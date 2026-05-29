@@ -157,6 +157,19 @@ PINNED_RUNTIME=""
 if [ -r "$AGENT_DIR/runtime" ]; then
   PINNED_RUNTIME="$(tr -d ' \t\r\n' < "$AGENT_DIR/runtime")"
 fi
+
+# Forced re-fetch: cron-setup writes 1 to $AGENT_DIR/fetch-force when the user
+# picked "override already-fetched posts" in the schedule dialog. We expose it
+# as BUILDER_BLOG_FETCH_FORCE, which the library-cron prompt drops straight
+# into the fetch-personal command (`${BUILDER_BLOG_FETCH_FORCE:-}` → --force).
+# "1" → --force (re-pull posts already in the library, ignoring the fetchedAt
+# cutoff + externalId dedup); anything else → no flag.
+BUILDER_BLOG_FETCH_FORCE=""
+if [ -r "$AGENT_DIR/fetch-force" ] && [ "$(tr -d ' \t\r\n' < "$AGENT_DIR/fetch-force")" = "1" ]; then
+  BUILDER_BLOG_FETCH_FORCE="--force"
+fi
+export BUILDER_BLOG_FETCH_FORCE
+
 IS_CRON_JOB=0
 case "$JOB_NAME" in
   *-cron) IS_CRON_JOB=1 ;;

@@ -29,13 +29,17 @@ below uses this pinned runtime; do not fall back to a different one.
 mkdir -p "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/logs"
 ```
 
-3. Pin the scheduled runtime so the runner uses the picked agent's unattended
-mode instead of discovering whatever's first on PATH. The runner reads this
-file at cron-fire time; if you skip this step the cron job will fall back to
-the discovery chain (which prompts for permissions every run).
+3. Pin the scheduled runtime and fetch mode. The runner reads both files at
+cron-fire time. `runtime` makes the runner use the picked agent's unattended
+mode instead of discovering whatever's first on PATH (skip it and the cron
+job falls back to the discovery chain, which prompts for permissions every
+run). `fetch-force` is `1` when the schedule was configured to override
+already-fetched posts and `0` otherwise; the runner turns `1` into the
+`--force` flag so the recurring fetch re-pulls posts already in the library.
 
 ```bash
 printf '{{AGENT_RUNTIME}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime"
+printf '{{FETCH_FORCE}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-force"
 ```
 
 4. Verify the runtime CLI is on PATH for the scheduler. Schedulers (launchd and

@@ -324,6 +324,13 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /params\.set\("runtime"/);
   assert.match(skillPromptActions, /params\.set\("freq"/);
   assert.match(skillPromptActions, /Frequency/);
+  // Library cron dialog has an "override already-fetched posts" toggle that
+  // adds ?force=1; it's gated to the library context (digest doesn't fetch
+  // personal items) and defaults off.
+  assert.match(skillPromptActions, /Override already-fetched posts/);
+  assert.match(skillPromptActions, /overrideFetched/);
+  assert.match(skillPromptActions, /params\.set\("force", "1"\)/);
+  assert.match(skillPromptActions, /context === "library"/);
   // Server validates freq against a whitelist → fixed cron expression and
   // substitutes the schedule + cadence label into the cron-setup prompt.
   assert.match(skillJobRoute, /cronSchedules/);
@@ -334,6 +341,9 @@ test("web app serves the agent skill and setup command", () => {
   // provides a launchd schedule fragment per cadence.
   assert.match(skillJobRoute, /launchdSchedules/);
   assert.match(skillJobRoute, /\{\{LAUNCHD_SCHEDULE\}\}/);
+  // Forced re-fetch toggle: ?force=1 → {{FETCH_FORCE}} substituted to 1.
+  assert.match(skillJobRoute, /searchParams\.get\("force"\)/);
+  assert.match(skillJobRoute, /\{\{FETCH_FORCE\}\}/);
   // cron-setup prompts use the placeholders, not a hard-coded schedule, and
   // install via launchd on macOS / crontab on Linux.
   assert.match(libraryCronSetupPrompt, /\{\{CRON_SCHEDULE\}\}/);
@@ -485,6 +495,18 @@ test("web app serves the agent skill and setup command", () => {
     "6. Run one immediate smoke check",
     "report its output",
   ]);
+  // Override-already-fetched toggle: cron-setup pins fetch-force (0/1) next to
+  // the runtime, the runner turns 1 into --force, and library-cron threads the
+  // exported flag into the recurring fetch-personal command. Wired end to end
+  // because the runner re-downloads library-cron.md fresh each run (files
+  // route, no query params), so the choice must persist on disk — a copy-time
+  // URL param alone could never reach the recurring fetch.
+  assert.match(libraryCronSetupPrompt, /\{\{FETCH_FORCE\}\}/);
+  assert.match(libraryCronSetupPrompt, /fetch-force"/);
+  assert.match(
+    libraryCronPrompt,
+    /fetch-personal --days 30 --limit 3 \$\{BUILDER_BLOG_FETCH_FORCE:-\}/,
+  );
   assert.match(digestCronSetupPrompt, /builder-agent-runner\.sh digest-cron/);
   // digest cron-setup pins the runtime too (parity with library) so the
   // scheduled job is self-sufficient even when only the digest cron is
@@ -535,6 +557,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /--yolo/);
   assert.match(runner, /--auto-approve/);
   assert.match(runner, /\$AGENT_DIR\/runtime/);
+  // Forced re-fetch: runner reads $AGENT_DIR/fetch-force and exports
+  // BUILDER_BLOG_FETCH_FORCE=--force when it's 1, which library-cron threads
+  // into the recurring fetch-personal command.
+  assert.match(runner, /fetch-force/);
+  assert.match(runner, /BUILDER_BLOG_FETCH_FORCE="--force"/);
+  assert.match(runner, /export BUILDER_BLOG_FETCH_FORCE/);
   assert.match(runner, /No local agent runtime found/);
   // Runner self-updates from the server each run and re-execs the new
   // version, so cron jobs pick up runner fixes without re-running setup;

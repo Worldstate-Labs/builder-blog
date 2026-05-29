@@ -79,6 +79,12 @@ export async function GET(request: Request, { params }: Params) {
   const freqRaw = url.searchParams.get("freq");
   const freq = freqRaw && cronSchedules[freqRaw] ? freqRaw : defaultFreq;
 
+  // Forced re-fetch toggle for the library cron-setup prompt. "1" → the setup
+  // pins fetch-force=1, and the runner exports BUILDER_BLOG_FETCH_FORCE=--force
+  // so the recurring fetch-personal ignores the fetchedAt cutoff + externalId
+  // dedup. Default 0. Closed value set → no injection into the rendered md.
+  const fetchForce = url.searchParams.get("force") === "1";
+
   let content = await readFile(join(process.cwd(), path), "utf8");
   // Expand {{INCLUDE:...}} directives (shared fetch-task contract) before
   // the exchange-code / runtime substitutions below.
@@ -95,7 +101,8 @@ export async function GET(request: Request, { params }: Params) {
     .replaceAll("{{AGENT_RUNTIME_LABEL}}", runtime ? runtimeLabels[runtime] : "your local agent")
     .replaceAll("{{CRON_SCHEDULE}}", cronSchedules[freq].schedule)
     .replaceAll("{{CRON_FREQUENCY_LABEL}}", cronSchedules[freq].label)
-    .replaceAll("{{LAUNCHD_SCHEDULE}}", launchdSchedules[freq] ?? launchdSchedules["6h"]);
+    .replaceAll("{{LAUNCHD_SCHEDULE}}", launchdSchedules[freq] ?? launchdSchedules["6h"])
+    .replaceAll("{{FETCH_FORCE}}", fetchForce ? "1" : "0");
 
   if (ecParam) {
     // Validate the exchange code: must exist, not expired, not yet used.

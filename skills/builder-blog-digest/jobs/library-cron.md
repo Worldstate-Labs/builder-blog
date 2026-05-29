@@ -4,8 +4,10 @@ This is an unattended scheduled run. Do not ask the user questions.
 
 Run these steps exactly. If a command outside the explicit `fetchTasks` work
 fails, stop and write the command, exit code, and stderr to the scheduled job
-log. Do not browse for extra context. Do not use `--force` unless the scheduled
-job configuration requests a forced run.
+log. Do not browse for extra context. Run the fetch command verbatim, including
+the `${BUILDER_BLOG_FETCH_FORCE:-}` token — the runner sets it to `--force`
+only when this schedule was configured to override already-fetched posts, and
+to nothing otherwise. Do not add `--force` yourself.
 
 Agent discretion boundary: this is a command-runner job unless the CLI returns
 `fetchTasks` or a source requires local cookies, credentials, transcription, or
@@ -20,7 +22,7 @@ step here.
 
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" fetch-personal --days 30 --limit 3 \
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" fetch-personal --days 30 --limit 3 ${BUILDER_BLOG_FETCH_FORCE:-} \
   > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-fetch-result.json"
 ```
 

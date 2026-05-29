@@ -25,7 +25,14 @@ const RUNTIME_OPTIONS: { id: AgentRuntime; label: string; hint: string }[] = [
 // Cron cadence. `id` values match the server whitelist in the
 // jobs/[job]/skill.md route, which maps each to a fixed cron expression.
 type CronFrequency = "30m" | "1h" | "12h" | "daily" | "weekly";
-type CronConfig = { runtime: AgentRuntime; freq: CronFrequency };
+// `overrideFetched` = re-fetch posts already in the library (pass --force to
+// fetch-personal, which ignores both the fetchedAt cutoff and the externalId
+// dedup). Library context only — the digest job doesn't fetch personal items.
+type CronConfig = {
+  runtime: AgentRuntime;
+  freq: CronFrequency;
+  overrideFetched: boolean;
+};
 
 const FREQUENCY_CHOICES: { id: CronFrequency; label: string }[] = [
   { id: "30m", label: "Every 30 minutes" },
@@ -118,6 +125,7 @@ export function SkillPromptActions({
     if (cron) {
       params.set("runtime", cron.runtime);
       params.set("freq", cron.freq);
+      if (cron.overrideFetched) params.set("force", "1");
     }
     const promptUrl = `${origin}/api/skill/jobs/${job}/skill.md?${params.toString()}`;
     return `Read ${promptUrl} and follow the instructions.`;
@@ -458,6 +466,10 @@ function CronConfigDialog({
   const [pickedRuntime, setPickedRuntime] = useState<AgentRuntime>(RUNTIME_OPTIONS[0].id);
   const freqOptions = FREQUENCY_OPTIONS[context];
   const [pickedFreq, setPickedFreq] = useState<CronFrequency>(DEFAULT_FREQUENCY[context]);
+  // Override = re-fetch already-saved posts on every run. Only the library
+  // job fetches personal items, so the toggle is hidden for digest.
+  const showOverride = context === "library";
+  const [overrideFetched, setOverrideFetched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -489,7 +501,11 @@ function CronConfigDialog({
     if (submitting) return;
     setSubmitting(true);
     try {
-      await onConfirm({ runtime: pickedRuntime, freq: pickedFreq });
+      await onConfirm({
+        runtime: pickedRuntime,
+        freq: pickedFreq,
+        overrideFetched: showOverride && overrideFetched,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -577,6 +593,39 @@ function CronConfigDialog({
             );
           })}
         </fieldset>
+
+        {showOverride ? (
+          <>
+            <p className="token-picker-grouplabel">Already-fetched posts</p>
+            <fieldset className="token-picker-list">
+              <legend className="sr-only">Re-fetch behavior</legend>
+              <label
+                className={`token-picker-row${overrideFetched ? " is-active" : ""}`}
+              >
+                <input
+                  type="checkbox"
+                  name="override-fetched"
+                  checked={overrideFetched}
+                  onChange={(e) => setOverrideFetched(e.target.checked)}
+                  className="token-picker-radio"
+                />
+                <span className="token-picker-row-body">
+                  <span className="token-picker-row-name">
+                    Override already-fetched posts
+                  </span>
+                  <span className="token-picker-row-meta">
+                    <span>
+                      Re-fetch on every run (passes --force): ignores the
+                      last-fetched cutoff and re-pulls posts already in your
+                      library. Off by default — leave off unless you want each
+                      scheduled run to refresh everything.
+                    </span>
+                  </span>
+                </span>
+              </label>
+            </fieldset>
+          </>
+        ) : null}
 
         <footer className="token-picker-footer">
           <button
