@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarClock, Check, Copy, Terminal } from "lucide-react";
+import { CalendarClock, Check, CircleStop, Copy, Terminal } from "lucide-react";
 import {
   describeMachine,
   type AgentTokenListItem,
 } from "@/components/AgentTokenPanel";
 
 type SkillPromptContext = "library" | "digest";
-type CopyTarget = "once" | "cron";
+type CopyTarget = "once" | "cron" | "stop";
 type AgentRuntime = "claude" | "codex" | "gemini" | "openclaw";
 
 const RUNTIME_OPTIONS: { id: AgentRuntime; label: string; hint: string }[] = [
@@ -63,6 +63,11 @@ const PROMPT_CONFIG = {
     cronLabel: "Copy cron prompt",
     onceJob: "library-once",
     cronJob: "library-cron-setup",
+    // Stopping is runtime-agnostic — it only removes the launchd LaunchAgent
+    // (macOS) or crontab entry (Linux), neither of which depends on which
+    // agent ran the job — so there's no runtime/cadence/token to pick.
+    stopJob: "library-cron-stop",
+    stopLabel: "Stop cron",
   },
   digest: {
     title: "Digest sync",
@@ -79,6 +84,8 @@ const PROMPT_CONFIG = {
     cronLabel: string;
     onceJob: string;
     cronJob: string;
+    stopJob?: string;
+    stopLabel?: string;
   }
 >;
 
@@ -91,6 +98,10 @@ export function SkillPromptActions({
 }) {
   const config = PROMPT_CONFIG[context];
   const activeTokens = tokens.filter((t) => !t.revokedAt);
+  // Only the library context ships a stop prompt today; the `in` narrow keeps
+  // this typed against the per-context literal config shapes.
+  const stopJob = "stopJob" in config ? config.stopJob : undefined;
+  const stopLabel = "stopLabel" in config ? config.stopLabel : "Stop cron";
 
   const [copiedTarget, setCopiedTarget] = useState<CopyTarget | null>(null);
   const [status, setStatus] = useState<{ kind: "error" | "info"; text: string } | null>(null);
@@ -227,6 +238,27 @@ export function SkillPromptActions({
     setPickerTarget(target);
   }
 
+  // Stop flow: removing the schedule touches nothing on the server, so it
+  // needs no exchange code, no token, and no runtime/cadence — just copy the
+  // self-contained prompt. Works even with zero tokens.
+  async function copyStopCommand() {
+    if (!stopJob) return;
+    setStatus(null);
+    const command = `Read ${window.location.origin}/api/skill/jobs/${stopJob}/skill.md and follow the instructions.`;
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopiedTarget("stop");
+      window.setTimeout(() => setCopiedTarget(null), 1800);
+      setStatus({ kind: "info", text: "Copied · paste into your terminal agent" });
+      window.setTimeout(() => setStatus(null), 8000);
+    } catch (error) {
+      setStatus({
+        kind: "error",
+        text: error instanceof Error ? error.message : "Could not copy command",
+      });
+    }
+  }
+
   return (
     <div className="fb-skill">
       <Terminal aria-hidden="true" className="h-4 w-4 text-[var(--accent)]" />
@@ -258,6 +290,20 @@ export function SkillPromptActions({
         )}
         {copiedTarget === "cron" ? "Copied" : config.cronLabel}
       </button>
+      {stopJob ? (
+        <button
+          className="fb-btn light compact"
+          onClick={copyStopCommand}
+          type="button"
+        >
+          {copiedTarget === "stop" ? (
+            <Check aria-hidden="true" />
+          ) : (
+            <CircleStop aria-hidden="true" />
+          )}
+          {copiedTarget === "stop" ? "Copied" : stopLabel}
+        </button>
+      ) : null}
 
       <span aria-live="polite" className="ml-2">
         {status ? (
