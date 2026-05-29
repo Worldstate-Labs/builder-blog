@@ -399,6 +399,20 @@ test("web app serves the agent skill and setup command", () => {
   // Both routes expand includes.
   assert.match(skillFileRoute, /expandSkillIncludes/);
   assert.match(skillJobRoute, /expandSkillIncludes/);
+  // The shared fragment is read at runtime via readFile, so it MUST be in
+  // outputFileTracingIncludes for both routes that expand includes — else
+  // Vercel's serverless bundle omits it and the routes 500. (This class of
+  // bug can't be caught by tsc/tests at runtime, only by this guard.)
+  const nextConfig = readFileSync("next.config.ts", "utf8");
+  const tracingForFilesRoute = nextConfig.slice(
+    nextConfig.indexOf('"/api/skill/files/[file]"'),
+    nextConfig.indexOf('"/api/skill/jobs/[job]/skill.md"'),
+  );
+  const tracingForJobsRoute = nextConfig.slice(
+    nextConfig.indexOf('"/api/skill/jobs/[job]/skill.md"'),
+  );
+  assert.match(tracingForFilesRoute, /_fetch-task-contract\.md/);
+  assert.match(tracingForJobsRoute, /_fetch-task-contract\.md/);
   assert.match(digestOncePrompt, /prepare --days 1/);
   assert.match(digestOncePrompt, /Use agent judgment only for the digest-writing step/);
   assert.match(digestOncePrompt, /execution\s+contract, not as user-facing documentation/);

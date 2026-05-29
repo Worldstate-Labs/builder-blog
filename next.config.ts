@@ -22,6 +22,20 @@ const nextConfig: NextConfig = {
       "./skills/builder-blog-digest/jobs/digest-cron-setup.md",
       "./skills/builder-blog-digest/jobs/library-cron.md",
       "./skills/builder-blog-digest/jobs/digest-cron.md",
+      // Shared fragment pulled in via {{INCLUDE:...}} by the library
+      // job prompts; must be bundled or expandSkillIncludes 500s.
+      "./skills/builder-blog-digest/jobs/_fetch-task-contract.md",
+    ],
+    // The jobs/skill.md route also expands {{INCLUDE:...}}, so it needs
+    // the fragment (and the job prompts it serves) bundled too.
+    "/api/skill/jobs/[job]/skill.md": [
+      "./skills/builder-blog-digest/jobs/_fetch-task-contract.md",
+      "./skills/builder-blog-digest/jobs/library-once.md",
+      "./skills/builder-blog-digest/jobs/digest-once.md",
+      "./skills/builder-blog-digest/jobs/library-cron-setup.md",
+      "./skills/builder-blog-digest/jobs/digest-cron-setup.md",
+      "./skills/builder-blog-digest/jobs/library-cron.md",
+      "./skills/builder-blog-digest/jobs/digest-cron.md",
     ],
   },
 };
