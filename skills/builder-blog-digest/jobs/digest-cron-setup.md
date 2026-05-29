@@ -11,6 +11,9 @@ is the only component that should generate digest text. Do not change paths,
 flags, cadence, titles, output files, JSON schema, or success criteria. Only use
 agent judgment to write the digest body from the FollowBrief context items.
 
+Scheduled runtime: **{{AGENT_RUNTIME_LABEL}}** ({{AGENT_RUNTIME}}). Every step
+below uses this pinned runtime; do not fall back to a different one.
+
 1. Install or refresh the skill:
 
 ```bash
@@ -23,16 +26,39 @@ agent judgment to write the digest body from the FollowBrief context items.
 mkdir -p "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/logs"
 ```
 
-3. Install the schedule to run {{CRON_FREQUENCY_LABEL}}. Pick the path for this
+3. Pin the scheduled runtime so the runner uses the picked agent's unattended
+mode instead of discovering whatever's first on PATH. The runner reads this
+file at fire time; if you skip this step the scheduled job will fall back to
+the discovery chain (which prompts for permissions every run).
+
+```bash
+printf '{{AGENT_RUNTIME}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime"
+```
+
+4. Verify the runtime CLI is on PATH for the scheduler. Schedulers (launchd and
+cron) run with a minimal PATH; the runner injects
+`/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`, so the relevant binary must
+live in one of those. Check:
+
+```bash
+PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" command -v {{AGENT_RUNTIME}}
+```
+
+If the path printed is empty, install or symlink the CLI into
+`/usr/local/bin` before continuing — the scheduler will not find it otherwise.
+
+5. Install the schedule to run {{CRON_FREQUENCY_LABEL}}. Pick the path for this
 machine's OS — run `uname` if unsure.
 
 ### macOS (`uname` is Darwin) → launchd LaunchAgent
 
 On macOS you MUST use a launchd LaunchAgent, not cron. A LaunchAgent runs
-inside your login session, so it can reach the login keychain and the local
-agent CLI is authenticated. Plain `cron` runs outside your session and cannot
-reach the keychain, so the agent fails every run with "Not logged in". The
-plist label is account-scoped, so re-running replaces only this account's agent.
+inside your login session, so it can reach the login keychain and the pinned
+agent ({{AGENT_RUNTIME_LABEL}}) is authenticated. Plain `cron` runs outside
+your session and cannot reach the keychain, so the agent CLI fails every run
+with "Not logged in". The plist label is account-scoped, so multiple accounts
+coexist as separate agents, and re-running this replaces only this account's
+agent.
 
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
@@ -75,22 +101,19 @@ ACCT="${BUILDER_BLOG_ACCOUNT}"; ( crontab -l 2>/dev/null | grep -v "# FollowBrie
 crontab -l | grep 'builder-agent-runner.sh digest-cron'
 ```
 
-4. Run one immediate smoke check. This runs in your current session (which has
+6. Run one immediate smoke check. This runs in your current session (which has
 keychain access), so it validates the whole digest pipeline:
 
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" $HOME/.builder-blog/builder-agent-runner.sh digest-cron
 ```
 
-The runner selection order is:
+Just report its output: it succeeds when the digest is generated and synced
+without errors. If it errors, report the command, exit code, and stderr, and
+stop. If the pinned runtime CLI is not installed, do not claim the digest cron
+is installed successfully — record that the user must install
+{{AGENT_RUNTIME_LABEL}} (or set `BUILDER_BLOG_AGENT_COMMAND`) first.
 
-1. `BUILDER_BLOG_AGENT_COMMAND`, if the user configured one
-2. Codex CLI
-3. Claude Code CLI
-4. OpenClaw CLI
-5. Gemini CLI
-
-If no local agent runtime is available, do not claim the digest cron is
-installed successfully. Record that the user must install/configure an agent or
-set `BUILDER_BLOG_AGENT_COMMAND`. Do not duplicate an existing FollowBrief
-digest job for this account. Other accounts' cron markers must remain untouched.
+Multiple FollowBrief accounts can share one machine: each gets its own
+account-scoped LaunchAgent label (macOS) or cron marker (Linux), so installing
+one never touches another's, and re-running replaces only this account's.

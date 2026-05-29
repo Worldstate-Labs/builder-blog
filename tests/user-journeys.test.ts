@@ -486,8 +486,22 @@ test("web app serves the agent skill and setup command", () => {
     "report its output",
   ]);
   assert.match(digestCronSetupPrompt, /builder-agent-runner\.sh digest-cron/);
-  assert.match(digestCronSetupPrompt, /3\. Install the schedule/);
+  // digest cron-setup pins the runtime too (parity with library) so the
+  // scheduled job is self-sufficient even when only the digest cron is
+  // installed — without the pin it falls back to the discovery chain, which
+  // prompts for permissions every run.
+  assert.match(digestCronSetupPrompt, /\{\{AGENT_RUNTIME\}\}/);
+  assert.match(digestCronSetupPrompt, /\{\{AGENT_RUNTIME_LABEL\}\}/);
+  assert.match(digestCronSetupPrompt, /Pin the scheduled runtime/);
+  assert.match(digestCronSetupPrompt, /\/runtime"/);
+  assert.match(digestCronSetupPrompt, /5\. Install the schedule/);
   assert.match(digestCronSetupPrompt, /crontab/);
+  assertOrderedText(digestCronSetupPrompt, [
+    "3. Pin the scheduled runtime",
+    "5. Install the schedule",
+    "launchctl bootstrap",
+    "6. Run one immediate smoke check",
+  ]);
   assert.doesNotMatch(skillPromptActions, /fetch-personal[^\n`]*--force/);
   assert.match(cli, /realpathSync\(fileURLToPath\(import\.meta\.url\)\)/);
   assert.match(cli, /existsSync\(process\.argv\[1\]\)/);
