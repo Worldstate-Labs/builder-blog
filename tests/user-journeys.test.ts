@@ -487,6 +487,11 @@ test("web app serves the agent skill and setup command", () => {
   // ?runtime= URL param the website picker sets.
   assert.match(libraryCronSetupPrompt, /\{\{AGENT_RUNTIME\}\}/);
   assert.match(libraryCronSetupPrompt, /\{\{AGENT_RUNTIME_LABEL\}\}/);
+  // Setup prompts must run standalone — no other skills/plugins/subagents, so
+  // a host agent (OMC, superpowers, etc.) doesn't derail the deterministic
+  // install steps.
+  assert.match(libraryCronSetupPrompt, /Do not\s+invoke any other\s+skill, plugin, or subagent/);
+  assert.match(digestCronSetupPrompt, /Do not\s+invoke any other\s+skill, plugin, or subagent/);
   assert.match(libraryCronSetupPrompt, /Pin the scheduled runtime/);
   // Pin files are per-job (suffixed with the cron job name) so a library cron
   // and a digest cron can use different runtimes on one machine.

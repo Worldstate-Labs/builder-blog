@@ -6,7 +6,9 @@ digest cron), or when crontab permissions or a missing local agent runtime
 blocks the setup.
 
 Run these steps exactly. If any command fails, stop and report the command, exit
-code, and stderr. Do not browse for extra context.
+code, and stderr. Do not browse for extra context. Do not invoke any other
+skill, plugin, or subagent — run the numbered steps yourself exactly as written;
+this prompt is the whole task.
 
 Agent discretion boundary: this is a scheduler setup task; the scheduled runner
 is the only component that should generate digest text. Do not change paths,
