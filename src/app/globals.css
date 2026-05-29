@@ -4114,6 +4114,9 @@ svg.lucide {
   font-size: 0.6875rem;
   line-height: 1.5;
   margin: 0;
+  /* Runtime hints are long mono strings with slashes (allowlists) that have no
+     natural break points — let them wrap instead of overflowing the dialog. */
+  overflow-wrap: anywhere;
 }
 
 .cron-check {
