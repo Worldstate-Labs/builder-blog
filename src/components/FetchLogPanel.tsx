@@ -158,6 +158,8 @@ function readDetails(value: unknown): DetailsShape {
   return value as DetailsShape;
 }
 
+const VISIBLE_RUN_LIMIT = 3;
+
 export function FetchLogPanel({
   initialRuns,
 }: {
@@ -167,6 +169,7 @@ export function FetchLogPanel({
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const refresh = useCallback(() => {
     setIsLoading(true);
@@ -233,7 +236,23 @@ export function FetchLogPanel({
             No fetch runs yet. The next time your local CLI runs <code className="mono">fetch-personal</code> it will show up here.
           </div>
         ) : (
-          runs.map((run) => <RunCard key={run.id} run={run} />)
+          <>
+            {(expanded ? runs : runs.slice(0, VISIBLE_RUN_LIMIT)).map((run) => (
+              <RunCard key={run.id} run={run} />
+            ))}
+            {runs.length > VISIBLE_RUN_LIMIT ? (
+              <button
+                aria-expanded={expanded}
+                className="fb-btn light compact justify-center"
+                onClick={() => setExpanded((value) => !value)}
+                type="button"
+              >
+                {expanded
+                  ? "See less"
+                  : `See more (${runs.length - VISIBLE_RUN_LIMIT})`}
+              </button>
+            ) : null}
+          </>
         )}
       </div>
     </section>
