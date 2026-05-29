@@ -6,25 +6,13 @@ unless crontab permissions or a missing local credential blocks the setup.
 Run these steps exactly. If any command fails, stop and report the command, exit
 code, and stderr. Do not use `--force`. Do not browse for extra context.
 
-Agent discretion boundary: this is a scheduler setup task until the smoke check
-reports `fetchTasks`. Do not change paths, flags, cadence, titles, output
-files, JSON schema, or success criteria.
-During the `fetchTasks` step, failed extraction attempts are not
-command-contract failures. Keep trying available capabilities — web fetch,
-local CLI tools, transcription APIs, headless browser, etc. — until each
-task is completed or no available method can obtain real primary content.
-
-Fetch task boundary:
-- `fetchTasks` are the only work items. Each task represents one post that must
-  end as one synced item with both `body` and `summary`.
-- If `task.contentStatus="ready"`, copy `task.item.body` and generate only
-  one concise Chinese single-post summary in `summary` from
-  `task.summaryInstructions.prompt`.
-- If `task.contentStatus="requires_agent"`, first obtain real primary content,
-  then generate one concise Chinese single-post summary in `summary` from
-  `task.summaryInstructions.prompt`.
-- do not read prompt files, do not fetch `context.prompts`, and do not use any
-  separate digest prompt at runtime.
+Agent discretion boundary: this is a scheduler setup task. Do not change paths,
+flags, cadence, titles, output files, JSON schema, or success criteria. You are
+only installing the cron job and running one smoke check — you never complete
+fetch tasks yourself. The smoke check delegates that to the runner, which feeds
+the agent the `library-cron` prompt (the single source of truth for how fetch
+tasks are fetched, summarized, validated, and synced); this file does not
+restate any of it.
 
 Scheduled runtime: **{{AGENT_RUNTIME_LABEL}}** ({{AGENT_RUNTIME}}). The picker
 on the website pinned this. Every step below assumes that pinned runtime; do

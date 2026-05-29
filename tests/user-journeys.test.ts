@@ -445,11 +445,16 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(libraryCronSetupPrompt, /How to execute each `fetchTask`/);
   assert.doesNotMatch(libraryCronSetupPrompt, /Read `task\.contentStatus`/);
   assert.doesNotMatch(libraryCronSetupPrompt, /Copy `task\.builderSync`/);
+  // Setup delegates fetch-task work to library-cron; it must not restate
+  // any of the contract (the "Fetch task boundary" block had drifted).
+  assert.doesNotMatch(libraryCronSetupPrompt, /Fetch task boundary/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /task\.summaryInstructions\.prompt/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /contentStatus="ready"/);
   assertOrderedText(libraryCronSetupPrompt, [
     "3. Pin the scheduled runtime",
     "5. Install the crontab",
     "7. Run one immediate smoke check",
-    "single source of truth",
+    "report its output",
     "Only if crontab is unavailable or blocked",
   ]);
   assert.match(digestCronSetupPrompt, /builder-agent-runner\.sh digest-cron/);
