@@ -47,11 +47,14 @@ export async function GET(request: Request, { params }: Params) {
   // (the prior hard-coded behavior) when absent or unrecognized — so old
   // copied prompts and the no-freq case keep working.
   const cronSchedules: Record<string, { schedule: string; label: string }> = {
-    "3h": { schedule: "0 */3 * * *", label: "every 3 hours" },
-    "6h": { schedule: "0 */6 * * *", label: "every 6 hours" },
+    "30m": { schedule: "*/30 * * * *", label: "every 30 minutes" },
+    "1h": { schedule: "0 * * * *", label: "every hour" },
     "12h": { schedule: "0 */12 * * *", label: "every 12 hours" },
     daily: { schedule: "0 8 * * *", label: "once a day at 08:00" },
     weekly: { schedule: "0 8 * * 1", label: "once a week (Monday 08:00)" },
+    // Legacy keys kept so any previously-copied ?freq= link still resolves.
+    "3h": { schedule: "0 */3 * * *", label: "every 3 hours" },
+    "6h": { schedule: "0 */6 * * *", label: "every 6 hours" },
   };
   // Default cadence matches each job's prior hard-coded schedule, so old
   // copied prompts (no freq param) are unchanged: digest = daily, the

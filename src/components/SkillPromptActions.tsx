@@ -24,26 +24,24 @@ const RUNTIME_OPTIONS: { id: AgentRuntime; label: string; hint: string }[] = [
 
 // Cron cadence. `id` values match the server whitelist in the
 // jobs/[job]/skill.md route, which maps each to a fixed cron expression.
-type CronFrequency = "3h" | "6h" | "12h" | "daily" | "weekly";
+type CronFrequency = "30m" | "1h" | "12h" | "daily" | "weekly";
 type CronConfig = { runtime: AgentRuntime; freq: CronFrequency };
 
+const FREQUENCY_CHOICES: { id: CronFrequency; label: string }[] = [
+  { id: "30m", label: "Every 30 minutes" },
+  { id: "1h", label: "Every hour" },
+  { id: "12h", label: "Every 12 hours" },
+  { id: "daily", label: "Once a day · 08:00" },
+  { id: "weekly", label: "Once a week · Mon 08:00" },
+];
+
 const FREQUENCY_OPTIONS: Record<SkillPromptContext, { id: CronFrequency; label: string }[]> = {
-  // The library fetch runs often; the digest is a daily roll-up.
-  library: [
-    { id: "3h", label: "Every 3 hours" },
-    { id: "6h", label: "Every 6 hours" },
-    { id: "12h", label: "Every 12 hours" },
-    { id: "daily", label: "Once a day · 08:00" },
-  ],
-  digest: [
-    { id: "daily", label: "Once a day · 08:00" },
-    { id: "12h", label: "Twice a day · every 12h" },
-    { id: "weekly", label: "Once a week · Mon 08:00" },
-  ],
+  library: FREQUENCY_CHOICES,
+  digest: FREQUENCY_CHOICES,
 };
 
 const DEFAULT_FREQUENCY: Record<SkillPromptContext, CronFrequency> = {
-  library: "6h",
+  library: "12h",
   digest: "daily",
 };
 
