@@ -4147,6 +4147,29 @@ svg.lucide {
   margin: 0.25rem 0 0;
 }
 
+/* Section labels sit inside the padded body, so drop their own horizontal
+   padding or they double-indent past the field rows. */
+.cron-config-body .token-picker-grouplabel {
+  padding-inline: 0;
+}
+
+/* Phones: stack each field's label above a full-width control (the two-column
+   label|select grid is too tight at ~92vw), and use 16px selects so iOS
+   doesn't zoom on focus. Bigger vertical padding = comfortable tap targets. */
+@media (max-width: 767px) {
+  .cron-config-body {
+    padding-inline: 1rem;
+  }
+  .cron-field {
+    gap: 0.35rem;
+    grid-template-columns: 1fr;
+  }
+  .cron-field-select {
+    font-size: 1rem;
+    padding-block: 0.55rem;
+  }
+}
+
 /* Digest panel — dark glass */
 .fb-digest {
   background: linear-gradient(
