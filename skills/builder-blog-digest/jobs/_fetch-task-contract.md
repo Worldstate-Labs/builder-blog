@@ -92,7 +92,6 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" sync-bu
 
 Success means status is ok, localErrors is empty, and `fetchTasks` is empty or
 `validate-agent-sync` reports all fetch tasks validated and `sync-builders`
-succeeds. Already-fetched posts should remain skipped regardless of whether the
-user has read them. If the run cannot complete without a missing credential or
-unsupported local capability, write the concrete reason {{REPORT_TARGET}} and
-stop.
+succeeds. Already-fetched posts should remain skipped regardless of read state.
+If the run cannot complete without a missing credential or unsupported local
+capability, write the concrete reason {{REPORT_TARGET}} and stop.

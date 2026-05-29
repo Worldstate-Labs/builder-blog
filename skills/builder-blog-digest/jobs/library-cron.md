@@ -4,8 +4,8 @@ This is an unattended scheduled run. Do not ask the user questions.
 
 Run these steps exactly. If a command outside the explicit `fetchTasks` work
 fails, stop and write the command, exit code, and stderr to the scheduled job
-log. Do not browse for extra context. Do not use `--force` unless the user
-explicitly requested a forced run in the scheduled job configuration.
+log. Do not browse for extra context. Do not use `--force` unless the scheduled
+job configuration requests a forced run.
 
 Agent discretion boundary: this is a command-runner job unless the CLI returns
 `fetchTasks` or a source requires local cookies, credentials, transcription, or
