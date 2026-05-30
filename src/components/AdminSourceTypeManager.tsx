@@ -51,6 +51,10 @@ const SUMMARY_STYLE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: "blog_or_document", label: "Blog / Document" },
 ];
 
+const SUMMARY_STYLE_LABEL: Record<string, string> = Object.fromEntries(
+  SUMMARY_STYLE_OPTIONS.map((option) => [option.value, option.label]),
+);
+
 function toContentQuality(raw: unknown): ContentQuality {
   const obj = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {});
   return {
@@ -337,24 +341,16 @@ function CardHeader({
   config: AdminSourceTypeConfig;
   dirty: boolean;
 }) {
+  // summaryStyle drives which summary prompt family this source uses, so it
+  // earns a spot in the collapsed header — but as its human label, not the raw
+  // enum. The sourceId pill (a near-duplicate of the label) and the read-only
+  // agentDefaultStatus (no longer editable here) are dropped as header noise.
+  const styleLabel = SUMMARY_STYLE_LABEL[config.summaryStyle] ?? config.summaryStyle;
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      <span
-        className="rounded-md px-2 py-0.5 text-xs"
-        style={{
-          fontFamily: "var(--font-geist-mono)",
-          background: "var(--paper-strong)",
-          color: "var(--muted-strong)",
-        }}
-      >
-        {config.sourceId}
-      </span>
       <span className="text-base font-medium">{config.label}</span>
-      <span
-        className="text-xs"
-        style={{ color: "var(--muted)", fontFamily: "var(--font-geist-mono)" }}
-      >
-        {config.summaryStyle} · {config.agentDefaultStatus}
+      <span className="text-xs" style={{ color: "var(--muted)" }}>
+        {styleLabel}
       </span>
       {dirty ? (
         <span
