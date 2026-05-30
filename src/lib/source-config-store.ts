@@ -72,21 +72,20 @@ export async function getSourceConfig(sourceId: string): Promise<SourceTypeConfi
 export async function getDigestConfig(): Promise<DigestConfig> {
   await ensureSeededOnce();
   if (!cachedDigestConfig) {
-    const row =
-      (await client().digestConfig.findUnique({ where: { id: DEFAULT_DIGEST_CONFIG.id } })) ??
-      // Defensive: if a parallel writer wiped the row between seed and
-      // read, fall back to creating it again from defaults rather than
-      // throwing at request time.
-      (await client().digestConfig.create({
-        data: {
-          id: DEFAULT_DIGEST_CONFIG.id,
-          digestTopPrompt: DEFAULT_DIGEST_CONFIG.digestTopPrompt,
-          digestIntro: DEFAULT_DIGEST_CONFIG.digestIntro,
-          translate: DEFAULT_DIGEST_CONFIG.translate,
-          digestOrder: DEFAULT_DIGEST_CONFIG.digestOrder as object,
-          commonSummaryRules: DEFAULT_DIGEST_CONFIG.commonSummaryRules,
-        },
-      }));
+    const row = await client().digestConfig.findUnique({
+      where: { id: DEFAULT_DIGEST_CONFIG.id },
+    });
+    if (!row) {
+      // ensureSeededOnce() creates this row idempotently and nothing in the app
+      // deletes the default DigestConfig (only per-user UserDigestConfig rows
+      // are removed). A missing row here means seeding never ran or the row was
+      // wiped externally — fail loud rather than silently re-creating from
+      // defaults and masking a broken seed.
+      throw new Error(
+        `Default DigestConfig "${DEFAULT_DIGEST_CONFIG.id}" is missing after ` +
+          `ensureSeededOnce(); the config seed did not run or was deleted externally.`,
+      );
+    }
     cachedDigestConfig = row;
   }
   return cachedDigestConfig;

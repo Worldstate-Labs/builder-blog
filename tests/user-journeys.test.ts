@@ -2305,6 +2305,11 @@ test("content config is per-user, seeded from a system default", () => {
     assert.match(store, new RegExp(`export async function ${fn}\\b`));
   }
 
+  // R8: getDigestConfig no longer silently re-creates the default row on a
+  // cache miss (which masked a broken seed); a missing row fails loud.
+  assert.doesNotMatch(store, /digestConfig\.create\(/);
+  assert.match(store, /is missing after/);
+
   // Per-user editing routes exist; the old admin-only config routes are gone.
   assert.equal(existsSync("src/app/api/settings/source-types/route.ts"), true);
   assert.equal(existsSync("src/app/api/settings/digest-config/route.ts"), true);

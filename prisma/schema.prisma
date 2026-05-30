@@ -170,7 +170,7 @@ model UserChannelPreference {
 model UserLibraryVisibility {
   userId     String
   hubEntryId String
-  hidden     Boolean         @default(true)
+  hidden     Boolean
   user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   hubEntry   LibraryHubEntry @relation(fields: [hubEntryId], references: [id], onDelete: Cascade)
 
@@ -566,7 +566,6 @@ enum FeedItemKind {
 
 enum DigestStatus {
   SYNCED
-  GENERATED
 }
 
 enum DigestFrequency {
