@@ -1157,6 +1157,32 @@ export function fetchPersonalYouTubeBuilderForTest(builder, options) {
  * @param {string} text
  * @param {{ source?: string; title?: string; description?: string }} [options]
  */
+// Average the unique-word ratio over fixed-size windows. Unlike the global
+// type-token ratio \u2014 which decays ~1/sqrt(N) (Heaps' law) and so makes any long
+// transcript look "repetitive" \u2014 this stays high for real speech (each window
+// has fresh vocabulary) and only collapses for genuinely repetitive text such
+// as stuck captions or "music music music". Length-invariant by construction.
+function localUniqueRatio(words, windowSize = 100) {
+  const lower = words.map((word) => word.toLowerCase());
+  if (lower.length === 0) return 0;
+  if (lower.length <= windowSize) return new Set(lower).size / lower.length;
+  let sum = 0;
+  let windows = 0;
+  for (let i = 0; i + windowSize <= lower.length; i += windowSize) {
+    const win = lower.slice(i, i + windowSize);
+    sum += new Set(win).size / windowSize;
+    windows += 1;
+  }
+  // Fold in a trailing remainder window when it's big enough to be meaningful.
+  const rem = lower.length % windowSize;
+  if (rem >= 20) {
+    const win = lower.slice(lower.length - rem);
+    sum += new Set(win).size / rem;
+    windows += 1;
+  }
+  return windows ? sum / windows : 0;
+}
+
 export function youtubeContentQuality(text, { source, title = "", description = "" } = {}) {
   const normalized = normalizeContentText(text);
   const words = normalized.match(/[A-Za-z0-9\u4e00-\u9fff]+/g) ?? [];
@@ -1167,6 +1193,7 @@ export function youtubeContentQuality(text, { source, title = "", description = 
     words: words.length,
     uniqueWords: uniqueWords.size,
     uniqueWordRatio: words.length ? uniqueWords.size / words.length : 0,
+    localUniqueWordRatio: localUniqueRatio(words),
     timestampLike,
   };
 
@@ -1192,7 +1219,8 @@ export function youtubeContentQuality(text, { source, title = "", description = 
       standards: youtubeMinimumContentQuality(),
     };
   }
-  if (metrics.words >= 40 && metrics.uniqueWordRatio < 0.25) {
+  const minUniqueRatio = youtubeMinimumContentQuality()?.minUniqueWordRatio ?? 0.25;
+  if (metrics.words >= 40 && metrics.localUniqueWordRatio < minUniqueRatio) {
     return {
       ok: false,
       reason: "transcript_too_repetitive",
