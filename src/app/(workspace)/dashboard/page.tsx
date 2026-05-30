@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { type ComponentType } from "react";
 import { Archive, CheckCircle2, ChevronRight, Clock3, Sparkles, Terminal, UsersRound } from "lucide-react";
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
+import { DigestLogPanel } from "@/components/DigestLogPanel";
+import { getDigestRuns, type DigestRunListItem } from "@/lib/digest-runs";
 import { ForYouRecommendationSection } from "@/components/ForYouRecommendationSection";
 import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
@@ -79,7 +81,7 @@ async function AiDigestFeedSlot({
 }) {
   const archiveSkip = (archivePage - 1) * archivePageSize;
 
-  const [todayDigest, digestCount, rawTokens, feedPreference] = await Promise.all([
+  const [todayDigest, digestCount, rawTokens, feedPreference, digestRuns] = await Promise.all([
     prisma.digest.findFirst({
       where: {
         userId,
@@ -109,6 +111,7 @@ async function AiDigestFeedSlot({
       where: { userId },
       select: { summaryLanguage: true },
     }),
+    getDigestRuns(userId),
   ]);
 
   const activeTokens: AgentTokenListItem[] = rawTokens.map((token) => ({
@@ -141,6 +144,7 @@ async function AiDigestFeedSlot({
       archiveCount={archiveCount}
       archiveDigests={archiveDigests}
       archivePage={archivePage}
+      digestRuns={digestRuns}
       summaryLanguage={feedPreference?.summaryLanguage ?? null}
       todayDigest={todayDigest}
     />
@@ -152,6 +156,7 @@ function AiDigestFeed({
   archiveCount,
   archiveDigests,
   archivePage,
+  digestRuns,
   summaryLanguage,
   todayDigest,
 }: {
@@ -159,6 +164,7 @@ function AiDigestFeed({
   archiveCount: number;
   archiveDigests: DigestSummaryRow[];
   archivePage: number;
+  digestRuns: DigestRunListItem[];
   summaryLanguage: string | null;
   todayDigest: DigestSummaryRow | null;
 }) {
@@ -262,6 +268,9 @@ function AiDigestFeed({
             </Link>
           </nav>
         ) : null}
+      </section>
+      <section id="digest-log" className="mt-8 scroll-mt-24">
+        <DigestLogPanel initialRuns={digestRuns} />
       </section>
     </section>
   );
