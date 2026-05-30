@@ -344,6 +344,11 @@ function HubCard({
                 ) : null}
               </li>
             ))}
+            {library.itemCount > library.items.length ? (
+              <li className="pt-1 text-[11.5px] italic leading-snug text-[var(--muted)]">
+                Showing the first {library.items.length} of {library.itemCount} sources.
+              </li>
+            ) : null}
           </ul>
         </details>
       ) : null}

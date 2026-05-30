@@ -567,6 +567,15 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(builderPool, /userLibraryVisibility/);
   assert.match(builderPool, /BuilderPoolOrigin\.HUB_IMPORT/);
   assert.match(builderPool, /prisma\.libraryImport/);
+  // A HUB_IMPORT must never downgrade a user's own PERSONAL_SYNC pool entry
+  // (would make it non-removable + hide it from the private library). Guarded
+  // in both addBuilderToPool (upsert) and ensureDefaultCommunityLibraryImport
+  // (raw updateMany).
+  assert.match(builderPool, /existing\?\.origin === BuilderPoolOrigin\.PERSONAL_SYNC/);
+  assert.match(builderPool, /origin: \{ not: BuilderPoolOrigin\.PERSONAL_SYNC \}/);
+  // Library import preview is capped (page take: 200); show an honest "first N
+  // of M" notice instead of silently truncating below the reported count.
+  assert.match(hubImportForm, /Showing the first \{library\.items\.length\} of \{library\.itemCount\}/);
 });
 
 test("settings mutations stay local instead of refreshing the whole route", () => {

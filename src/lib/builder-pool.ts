@@ -7,15 +7,31 @@ export async function addBuilderToPool(params: {
   builderId: string;
   origin: BuilderPoolOrigin;
 }) {
-  return prisma.builderPoolEntry.upsert({
-    where: {
-      userId_builderId: {
-        userId: params.userId,
-        builderId: params.builderId,
-      },
+  const where = {
+    userId_builderId: {
+      userId: params.userId,
+      builderId: params.builderId,
     },
+  };
+  const existing = await prisma.builderPoolEntry.findUnique({
+    where,
+    select: { origin: true },
+  });
+  // A HUB_IMPORT must never downgrade a builder the user added themselves
+  // (PERSONAL_SYNC). Doing so makes their own builder non-removable (the
+  // builder library delete route blocks HUB_IMPORT origins) and hides it from
+  // the private library section (which filters to PERSONAL_SYNC). A direct
+  // PERSONAL_SYNC add is the stronger claim, so it may still upgrade an
+  // existing HUB_IMPORT entry.
+  const origin =
+    existing?.origin === BuilderPoolOrigin.PERSONAL_SYNC &&
+    params.origin === BuilderPoolOrigin.HUB_IMPORT
+      ? BuilderPoolOrigin.PERSONAL_SYNC
+      : params.origin;
+  return prisma.builderPoolEntry.upsert({
+    where,
     update: {
-      origin: params.origin,
+      origin,
       removedAt: null,
     },
     create: {
@@ -67,7 +83,15 @@ export async function ensureDefaultCommunityLibraryImport(userId: string) {
 
   await prisma.$transaction([
     prisma.builderPoolEntry.updateMany({
-      where: { userId, builderId: { in: builderIds } },
+      // Only normalize / re-activate hub entries. Excluding PERSONAL_SYNC keeps
+      // a builder the user added themselves from being downgraded to HUB_IMPORT
+      // (which would make it non-removable and hide it from the private
+      // library). Mirrors the guard in addBuilderToPool.
+      where: {
+        userId,
+        builderId: { in: builderIds },
+        origin: { not: BuilderPoolOrigin.PERSONAL_SYNC },
+      },
       data: {
         origin: BuilderPoolOrigin.HUB_IMPORT,
         removedAt: null,
