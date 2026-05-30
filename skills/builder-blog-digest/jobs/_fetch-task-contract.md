@@ -47,7 +47,7 @@ How to execute each `fetchTask`:
     fetch or rewrite the source content.
   - For `requires_agent`, follow `task.fetchInstructions.prompt` as the
     authoritative extraction guide. This string is always present and is either
-    the admin's per-source fetch prompt (when configured) or the FollowBrief
+    your per-source fetch prompt (when configured) or the FollowBrief
     default extraction guidance (use task.item.url, task.sourceType,
     task.agentWorkType, and any available method — web fetch, local CLI tools
     yt-dlp/curl/ffmpeg, transcription APIs, headless browser, anything you have
@@ -84,13 +84,15 @@ Per-task independence and accountability (CRITICAL):
   check every video).
 - EVERY planned fetchTaskId must end in exactly one terminal state: synced as an
   item, OR reported in a `taskOutcomes` entry. Do not silently omit any task.
-- `taskOutcomes` entries are `{ fetchTaskId, status, reason, evidence? }`:
-  - `skipped` — this item genuinely has no primary content. REQUIRES that item's
-    OWN `evidence` (the per-item check you ran, e.g. `{ meanVolumeDb: -91,
-    hasCaptions: false }`). A skip without per-task evidence is rejected.
+- Report every non-synced task as one `taskOutcomes` entry shaped
+  `{ fetchTaskId, status, reason, evidence? }`, where `status` is one of:
+  - `skipped` — the item genuinely has no primary content. Requires this item's
+    OWN `evidence` (the per-item check you ran, e.g.
+    `{ meanVolumeDb: -91, hasCaptions: false }`); a skip without per-task
+    evidence is rejected.
   - `failed` — you tried but couldn't finish; `reason` required (e.g.
     `fetch_error`, `content_too_short`, `summary_error`).
-  - `blocked` — missing credential/capability; `reason` required.
+  - `blocked` — a missing credential or capability; `reason` required.
 
 Write the sync payload to:
 

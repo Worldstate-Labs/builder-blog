@@ -948,7 +948,7 @@ export function singlePostFetchInstructions(sourceId, sources = {}) {
     scope: "single_post",
     isDefault: true,
     prompt: [
-      `Default FollowBrief extraction for one ${label} post (admin has not configured a custom fetch prompt for this source).`,
+      `Default FollowBrief extraction for one ${label} post (you have not configured a custom fetch prompt for this source).`,
       "",
       DEFAULT_FETCH_GUIDANCE,
     ].join("\n"),

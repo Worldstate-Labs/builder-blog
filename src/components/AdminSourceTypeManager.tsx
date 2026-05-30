@@ -19,8 +19,6 @@ export type AdminSourceTypeConfig = {
   sourceId: string;
   label: string;
   agentDefaultStatus: string;
-  defaultFetchDays: number;
-  defaultFetchLimit: number;
   contentQuality: unknown;
   summaryPromptBody: string;
   fetchPromptBody: string | null;
@@ -45,8 +43,6 @@ type Draft = {
   summaryStyle: string;
   summaryLanguage: string;
   agentDefaultStatus: string;
-  defaultFetchDays: string;
-  defaultFetchLimit: string;
   summaryLengthHint: string;
   summaryPromptBody: string;
   fetchPromptBody: string;
@@ -88,8 +84,6 @@ function toDraft(config: AdminSourceTypeConfig): Draft {
     summaryStyle: config.summaryStyle,
     summaryLanguage: config.summaryLanguage,
     agentDefaultStatus: config.agentDefaultStatus,
-    defaultFetchDays: String(config.defaultFetchDays),
-    defaultFetchLimit: String(config.defaultFetchLimit),
     summaryLengthHint: config.summaryLengthHint ?? "",
     summaryPromptBody: config.summaryPromptBody,
     fetchPromptBody: config.fetchPromptBody ?? "",
@@ -152,16 +146,6 @@ function SourceTypeCard({
   }
 
   function save() {
-    const days = Number(draft.defaultFetchDays);
-    const limit = Number(draft.defaultFetchLimit);
-    if (!Number.isInteger(days) || days < 1) {
-      setStatus({ kind: "error", message: "Default fetch days must be an integer ≥ 1." });
-      return;
-    }
-    if (!Number.isInteger(limit) || limit < 1) {
-      setStatus({ kind: "error", message: "Default fetch limit must be an integer ≥ 1." });
-      return;
-    }
     const cq = draft.contentQuality;
     if (!Number.isInteger(cq.minChars) || cq.minChars < 0) {
       setStatus({ kind: "error", message: "Min chars must be a non-negative integer." });
@@ -200,8 +184,6 @@ function SourceTypeCard({
       summaryStyle: draft.summaryStyle,
       summaryLanguage: draft.summaryLanguage.trim(),
       agentDefaultStatus: draft.agentDefaultStatus,
-      defaultFetchDays: days,
-      defaultFetchLimit: limit,
       summaryLengthHint:
         draft.summaryLengthHint.trim() === "" ? null : draft.summaryLengthHint.trim(),
       summaryPromptBody: draft.summaryPromptBody,
@@ -212,7 +194,7 @@ function SourceTypeCard({
     setStatus({ kind: "saving" });
     startTransition(async () => {
       try {
-        const response = await fetch("/api/admin/source-types", {
+        const response = await fetch("/api/settings/source-types", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sourceId: config.sourceId, patch }),
@@ -259,26 +241,12 @@ function SourceTypeCard({
           title="Fetching"
           description="When and how the CLI / agent acquires items for this source."
         >
-          <div className="grid gap-4 md:grid-cols-[1fr_8rem_8rem]">
-            <FieldSelect
-              label="Agent default status"
-              value={draft.agentDefaultStatus}
-              options={AGENT_STATUS_OPTIONS}
-              onChange={(v) => update("agentDefaultStatus", v)}
-            />
-            <FieldNumber
-              label="Default days"
-              min={1}
-              value={draft.defaultFetchDays}
-              onChange={(v) => update("defaultFetchDays", v)}
-            />
-            <FieldNumber
-              label="Default limit"
-              min={1}
-              value={draft.defaultFetchLimit}
-              onChange={(v) => update("defaultFetchLimit", v)}
-            />
-          </div>
+          <FieldSelect
+            label="Agent default status"
+            value={draft.agentDefaultStatus}
+            options={AGENT_STATUS_OPTIONS}
+            onChange={(v) => update("agentDefaultStatus", v)}
+          />
           <FieldTextarea
             label="Fetch prompt · optional"
             rows={12}
@@ -298,7 +266,7 @@ function SourceTypeCard({
           title="Summarization"
           description="How each item of this source is turned into a brief. Used by both digest-once and library-once."
         >
-          <div className="grid gap-4 md:grid-cols-[1fr_8rem_1fr]">
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
             <FieldSelect
               label="Summary style"
               value={draft.summaryStyle}
@@ -338,16 +306,18 @@ function SourceTypeCard({
             checked={draft.contentQuality.primaryContentOnly}
             onChange={(v) => updateQuality("primaryContentOnly", v)}
           />
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+          <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
             <FieldNumber
               label="Min chars"
               min={0}
+              description="Drop items whose body has fewer characters than this."
               value={String(draft.contentQuality.minChars)}
               onChange={(v) => updateQuality("minChars", Math.max(0, Number(v) || 0))}
             />
             <FieldNumber
               label="Min words"
               min={0}
+              description="Drop items whose body has fewer words than this."
               value={String(draft.contentQuality.minWords)}
               onChange={(v) => updateQuality("minWords", Math.max(0, Number(v) || 0))}
             />

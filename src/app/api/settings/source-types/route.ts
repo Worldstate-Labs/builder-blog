@@ -1,19 +1,18 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { formatZodError } from "@/lib/zod-error";
 import {
-  getAllSourceConfigs,
-  updateSourceConfig,
+  getUserSourceConfigs,
+  resetUserSourceConfigs,
+  updateUserSourceConfig,
   type SourceConfigPatch,
 } from "@/lib/source-config-store";
 import { SEEDED_SOURCE_IDS } from "@/lib/source-config-seed";
 
-// Admin-only endpoint. GET lists every SourceTypeConfig row; PATCH
-// applies a partial update to one row keyed by sourceId. The route is
-// the only entry point that should mutate this table — everything else
-// reads through `source-config-store`.
+// Per-user endpoint (any logged-in user, no admin gate). GET lists the user's
+// own (materialized-from-default) source configs; PATCH updates one; DELETE
+// resets all of the user's source configs back to the system default.
 
 const ContentQualitySchema = z
   .object({
@@ -48,16 +47,16 @@ const PatchBodySchema = z.object({
 
 export async function GET() {
   const session = await getCurrentSession();
-  if (!session?.user?.id || !isAdminEmail(session.user.email)) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const configs = await getAllSourceConfigs();
+  const configs = await getUserSourceConfigs(session.user.id);
   return NextResponse.json({ configs });
 }
 
 export async function PATCH(request: Request) {
   const session = await getCurrentSession();
-  if (!session?.user?.id || !isAdminEmail(session.user.email)) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const parsed = PatchBodySchema.safeParse(await request.json().catch(() => null));
@@ -69,7 +68,12 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: `Unknown sourceId: ${sourceId}` }, { status: 400 });
   }
   try {
-    const config = await updateSourceConfig(sourceId, patch as SourceConfigPatch, session.user.email ?? null);
+    const config = await updateUserSourceConfig(
+      session.user.id,
+      sourceId,
+      patch as SourceConfigPatch,
+      session.user.email ?? null,
+    );
     return NextResponse.json({ config });
   } catch (error) {
     return NextResponse.json(
@@ -77,4 +81,16 @@ export async function PATCH(request: Request) {
       { status: 500 },
     );
   }
+}
+
+// Reset all of the user's source configs to the system default (drops their
+// rows; the next read re-copies the default template).
+export async function DELETE() {
+  const session = await getCurrentSession();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  await resetUserSourceConfigs(session.user.id);
+  const configs = await getUserSourceConfigs(session.user.id);
+  return NextResponse.json({ configs });
 }

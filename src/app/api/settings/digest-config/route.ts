@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { formatZodError } from "@/lib/zod-error";
 import {
-  getDigestConfig,
-  updateDigestConfig,
+  getUserDigestConfig,
+  resetUserDigestConfig,
+  updateUserDigestConfig,
   type DigestConfigPatch,
 } from "@/lib/source-config-store";
 import { SEEDED_SOURCE_IDS } from "@/lib/source-config-seed";
 
-// Admin-only endpoint for the singleton DigestConfig row.
+// Per-user endpoint (any logged-in user) for the user's DigestConfig copy.
 
 const DigestPatchSchema = z
   .object({
@@ -34,16 +34,16 @@ const PatchBodySchema = z.object({ patch: DigestPatchSchema });
 
 export async function GET() {
   const session = await getCurrentSession();
-  if (!session?.user?.id || !isAdminEmail(session.user.email)) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const config = await getDigestConfig();
+  const config = await getUserDigestConfig(session.user.id);
   return NextResponse.json({ config });
 }
 
 export async function PATCH(request: Request) {
   const session = await getCurrentSession();
-  if (!session?.user?.id || !isAdminEmail(session.user.email)) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const parsed = PatchBodySchema.safeParse(await request.json().catch(() => null));
@@ -51,7 +51,11 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
   try {
-    const config = await updateDigestConfig(parsed.data.patch as DigestConfigPatch, session.user.email ?? null);
+    const config = await updateUserDigestConfig(
+      session.user.id,
+      parsed.data.patch as DigestConfigPatch,
+      session.user.email ?? null,
+    );
     return NextResponse.json({ config });
   } catch (error) {
     return NextResponse.json(
@@ -59,4 +63,15 @@ export async function PATCH(request: Request) {
       { status: 500 },
     );
   }
+}
+
+// Reset the user's digest config to the system default.
+export async function DELETE() {
+  const session = await getCurrentSession();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  await resetUserDigestConfig(session.user.id);
+  const config = await getUserDigestConfig(session.user.id);
+  return NextResponse.json({ config });
 }

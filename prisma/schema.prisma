@@ -35,6 +35,8 @@ model User {
   channelPreferences      UserChannelPreference[]
   libraryVisibilities     UserLibraryVisibility[]
   libraryFetchRuns        LibraryFetchRun[]
+  sourceTypeConfigs       UserSourceTypeConfig[]
+  digestConfig            UserDigestConfig?
 }
 
 model LibraryFetchRun {
@@ -459,6 +461,44 @@ model DigestConfig {
   commonSummaryRules String
   updatedAt          DateTime @updatedAt
   updatedBy          String?
+}
+
+/// Per-user copy of a SourceTypeConfig. Materialized (full copy) from the
+/// SourceTypeConfig "default" template on first touch; thereafter the user
+/// edits their own row. Mirrors every SourceTypeConfig field.
+model UserSourceTypeConfig {
+  userId             String
+  sourceId           String
+  label              String
+  agentDefaultStatus String   @default("ready")
+  defaultFetchDays   Int      @default(7)
+  defaultFetchLimit  Int      @default(3)
+  contentQuality     Json
+  summaryPromptBody  String
+  fetchPromptBody    String?
+  summaryStyle       String
+  summaryLanguage    String   @default("zh")
+  summaryLengthHint  String?
+  updatedAt          DateTime @updatedAt
+  updatedBy          String?
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, sourceId])
+  @@index([userId])
+}
+
+/// Per-user copy of the DigestConfig singleton. Materialized from the
+/// DigestConfig "default" template on first touch.
+model UserDigestConfig {
+  userId             String   @id
+  digestTopPrompt    String
+  digestIntro        String
+  translate          String
+  digestOrder        Json
+  commonSummaryRules String
+  updatedAt          DateTime @updatedAt
+  updatedBy          String?
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum BuilderKind {

@@ -118,6 +118,11 @@ export function feedItemKindLabel(kind: FeedItemKind) {
 // Async DB-merged getters. Throw when a static sourceId is missing from
 // the DB so callers don't silently fall back to stale defaults — the
 // seeder should have created the row on first boot.
+//
+// These merge against the DEFAULT (template) SourceTypeConfig, not a user's
+// per-user copy: callers (e.g. the builders page) use only source-type
+// metadata like id/label, which is canonical across users. Per-user content
+// config (prompts, quality bar) is resolved separately via getUserSourceConfigs.
 export async function getMergedSourceDefinitions(): Promise<MergedSourceDefinition[]> {
   const { getAllSourceConfigs } = await import("./source-config-store");
   const configs = await getAllSourceConfigs();

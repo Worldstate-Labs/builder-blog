@@ -5,18 +5,16 @@ import { AdminDigestConfigForm } from "@/components/AdminDigestConfigForm";
 import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
 import { AgentTokenPanel } from "@/components/AgentTokenPanel";
 import { FeedPreferenceForm } from "@/components/FeedPreferenceForm";
-import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { digestFrequencyDays } from "@/lib/feed-preferences";
 import { prisma } from "@/lib/prisma";
 import { SEEDED_SOURCE_IDS } from "@/lib/source-config-seed";
-import { getAllSourceConfigs, getDigestConfig } from "@/lib/source-config-store";
+import { getUserDigestConfig, getUserSourceConfigs } from "@/lib/source-config-store";
 
 export default async function SettingsPage() {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
-  const isAdmin = isAdminEmail(session.user.email);
 
   return (
     <div className="page-pad">
@@ -48,29 +46,27 @@ export default async function SettingsPage() {
         </Suspense>
       </div>
 
-      {isAdmin ? (
-        <Suspense fallback={<SourceTypeConfigSkeleton />}>
-          <SourceTypeConfigSection />
-        </Suspense>
-      ) : null}
+      <Suspense fallback={<SourceTypeConfigSkeleton />}>
+        <SourceTypeConfigSection userId={userId} />
+      </Suspense>
     </div>
   );
 }
 
-async function SourceTypeConfigSection() {
+async function SourceTypeConfigSection({ userId }: { userId: string }) {
   const [sourceConfigs, digestConfig] = await Promise.all([
-    getAllSourceConfigs(),
-    getDigestConfig(),
+    getUserSourceConfigs(userId),
+    getUserDigestConfig(userId),
   ]);
   return (
     <section className="mt-10 grid gap-4">
       <header>
-        <p className="fb-section-label">Admin · runtime configuration</p>
+        <p className="fb-section-label">Your content pipeline</p>
         <h2 className="fb-section-heading mt-1">Content pipeline</h2>
         <p className="fb-desc mt-1 max-w-3xl">
-          Edit the prompts, fetch defaults, and quality thresholds used by the
-          digest and library once-skills. Changes take effect on the next
-          context fetch.
+          Edit the prompts, fetch defaults, and quality thresholds used by your
+          digest and library once-skills. These are your own settings (seeded
+          from the defaults); changes take effect on the next context fetch.
         </p>
       </header>
 
@@ -90,8 +86,6 @@ async function SourceTypeConfigSection() {
               sourceId: c.sourceId,
               label: c.label,
               agentDefaultStatus: c.agentDefaultStatus,
-              defaultFetchDays: c.defaultFetchDays,
-              defaultFetchLimit: c.defaultFetchLimit,
               contentQuality: c.contentQuality,
               summaryPromptBody: c.summaryPromptBody,
               fetchPromptBody: c.fetchPromptBody,
@@ -120,7 +114,7 @@ async function SourceTypeConfigSection() {
           <AdminDigestConfigForm
             knownSourceIds={SEEDED_SOURCE_IDS}
             initialConfig={{
-              id: digestConfig.id,
+              id: digestConfig.userId,
               digestTopPrompt: digestConfig.digestTopPrompt,
               digestIntro: digestConfig.digestIntro,
               translate: digestConfig.translate,

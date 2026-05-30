@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
-import { getDigestConfig, getAllSourceConfigs } from "@/lib/source-config-store";
+import { getUserDigestConfig, getUserSourceConfigs } from "@/lib/source-config-store";
 import { SOURCE_DEFINITIONS } from "@/lib/source-registry";
 import { subscriptionBuilderIdsInPool } from "@/lib/digest-library";
 import { projectBuildersToEntities } from "@/lib/builder-entities";
@@ -49,8 +49,8 @@ export async function GET(request: Request) {
       orderBy: { createdAt: "desc" },
       select: { createdAt: true },
     }),
-    getAllSourceConfigs(),
-    getDigestConfig(),
+    getUserSourceConfigs(user.id),
+    getUserDigestConfig(user.id),
   ]);
 
   // Account-wide summary language: when the user set one (cron dialog /

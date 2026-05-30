@@ -1,4 +1,10 @@
-import type { PrismaClient, SourceTypeConfig, DigestConfig } from "@prisma/client";
+import type {
+  PrismaClient,
+  SourceTypeConfig,
+  DigestConfig,
+  UserSourceTypeConfig,
+  UserDigestConfig,
+} from "@prisma/client";
 import { prisma } from "./prisma";
 import {
   DEFAULT_DIGEST_CONFIG,
@@ -157,4 +163,130 @@ export function _resetSourceConfigStoreForTests() {
   cachedSourceConfigs = null;
   cachedDigestConfig = null;
   seedPromise = null;
+}
+
+// ---------------------------------------------------------------------------
+// Per-user content config. The SourceTypeConfig / DigestConfig rows above are
+// the system "default" template. Each user gets a full copy, materialized
+// lazily on first touch; thereafter the user edits their own rows. Per-user
+// rows are read per request (not process-cached) — config reads happen at
+// skill-context/sync time, not on a hot path, so we skip cache invalidation.
+// ---------------------------------------------------------------------------
+
+// Fields copied verbatim from a default SourceTypeConfig into a user's row
+// (everything except the managed updatedAt/updatedBy and the keys).
+function sourceConfigCopyData(row: SourceTypeConfig) {
+  return {
+    label: row.label,
+    agentDefaultStatus: row.agentDefaultStatus,
+    defaultFetchDays: row.defaultFetchDays,
+    defaultFetchLimit: row.defaultFetchLimit,
+    contentQuality: row.contentQuality as object,
+    summaryPromptBody: row.summaryPromptBody,
+    fetchPromptBody: row.fetchPromptBody,
+    summaryStyle: row.summaryStyle,
+    summaryLanguage: row.summaryLanguage,
+    summaryLengthHint: row.summaryLengthHint,
+  };
+}
+
+// Materialize: ensure the user has a row for every default source. Idempotent
+// (skipDuplicates) and forward-safe — sources added to the default later get
+// copied on the next call. Concurrent first-touch is safe via the PK conflict.
+export async function ensureUserSourceConfigs(
+  userId: string,
+): Promise<UserSourceTypeConfig[]> {
+  await ensureSeededOnce();
+  const [defaults, existing] = await Promise.all([
+    getSourceConfigMap(),
+    client().userSourceTypeConfig.findMany({ where: { userId } }),
+  ]);
+  const have = new Set(existing.map((r) => r.sourceId));
+  const missing = [...defaults.values()].filter((d) => !have.has(d.sourceId));
+  if (missing.length > 0) {
+    await client().userSourceTypeConfig.createMany({
+      data: missing.map((d) => ({ userId, sourceId: d.sourceId, ...sourceConfigCopyData(d) })),
+      skipDuplicates: true,
+    });
+    return client().userSourceTypeConfig.findMany({ where: { userId } });
+  }
+  return existing;
+}
+
+export async function getUserSourceConfigs(
+  userId: string,
+): Promise<UserSourceTypeConfig[]> {
+  return ensureUserSourceConfigs(userId);
+}
+
+export async function getUserSourceConfig(
+  userId: string,
+  sourceId: string,
+): Promise<UserSourceTypeConfig | null> {
+  const rows = await ensureUserSourceConfigs(userId);
+  return rows.find((r) => r.sourceId === sourceId) ?? null;
+}
+
+export async function updateUserSourceConfig(
+  userId: string,
+  sourceId: string,
+  patch: SourceConfigPatch,
+  actor: string | null,
+): Promise<UserSourceTypeConfig> {
+  await ensureUserSourceConfigs(userId);
+  return client().userSourceTypeConfig.update({
+    where: { userId_sourceId: { userId, sourceId } },
+    data: {
+      ...patch,
+      ...(patch.contentQuality !== undefined
+        ? { contentQuality: patch.contentQuality as object }
+        : {}),
+      updatedBy: actor,
+    },
+  });
+}
+
+// Reset: drop the user's rows so the next read re-copies the default template.
+export async function resetUserSourceConfigs(userId: string): Promise<void> {
+  await client().userSourceTypeConfig.deleteMany({ where: { userId } });
+}
+
+export async function getUserDigestConfig(userId: string): Promise<UserDigestConfig> {
+  const existing = await client().userDigestConfig.findUnique({ where: { userId } });
+  if (existing) return existing;
+  const def = await getDigestConfig();
+  return client().userDigestConfig.upsert({
+    where: { userId },
+    update: {},
+    create: {
+      userId,
+      digestTopPrompt: def.digestTopPrompt,
+      digestIntro: def.digestIntro,
+      translate: def.translate,
+      digestOrder: def.digestOrder as object,
+      commonSummaryRules: def.commonSummaryRules,
+    },
+  });
+}
+
+export async function updateUserDigestConfig(
+  userId: string,
+  patch: DigestConfigPatch,
+  actor: string | null,
+): Promise<UserDigestConfig> {
+  await getUserDigestConfig(userId);
+  return client().userDigestConfig.update({
+    where: { userId },
+    data: {
+      ...patch,
+      ...(patch.digestOrder !== undefined
+        ? { digestOrder: patch.digestOrder as object }
+        : {}),
+      updatedBy: actor,
+    },
+  });
+}
+
+export async function resetUserDigestConfig(userId: string): Promise<void> {
+  await client().userDigestConfig.deleteMany({ where: { userId } });
 }

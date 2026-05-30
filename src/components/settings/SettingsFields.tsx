@@ -197,6 +197,7 @@ export function FieldNumber({
       <input
         type="number"
         className="fb-input w-full"
+        style={{ maxWidth: "9rem" }}
         value={value}
         min={min}
         max={max}

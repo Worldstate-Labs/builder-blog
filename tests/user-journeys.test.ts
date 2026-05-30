@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 import { BuilderKind, DigestFrequency, FeedItemKind } from "@prisma/client";
 import { isAdminEmail } from "../src/lib/admin";
@@ -2265,3 +2265,60 @@ function recommendationCandidate({
     builder,
   };
 }
+
+test("content config is per-user, seeded from a system default", () => {
+  // Store exposes per-user materialize/resolve/update/reset on top of the
+  // default template (which getAllSourceConfigs/getDigestConfig still expose).
+  const store = readFileSync("src/lib/source-config-store.ts", "utf8");
+  for (const fn of [
+    "ensureUserSourceConfigs",
+    "getUserSourceConfigs",
+    "updateUserSourceConfig",
+    "resetUserSourceConfigs",
+    "getUserDigestConfig",
+    "updateUserDigestConfig",
+    "resetUserDigestConfig",
+  ]) {
+    assert.match(store, new RegExp(`export async function ${fn}\\b`));
+  }
+
+  // Per-user editing routes exist; the old admin-only config routes are gone.
+  assert.equal(existsSync("src/app/api/settings/source-types/route.ts"), true);
+  assert.equal(existsSync("src/app/api/settings/digest-config/route.ts"), true);
+  assert.equal(existsSync("src/app/api/admin/source-types/route.ts"), false);
+  assert.equal(existsSync("src/app/api/admin/digest-config/route.ts"), false);
+
+  // The settings routes are user-scoped and NOT admin-gated.
+  const srcRoute = readFileSync("src/app/api/settings/source-types/route.ts", "utf8");
+  assert.match(srcRoute, /getUserSourceConfigs\(session\.user\.id\)/);
+  assert.match(srcRoute, /updateUserSourceConfig\(/);
+  assert.doesNotMatch(srcRoute, /isAdminEmail/);
+
+  // Settings page shows the config section to every user (no isAdmin gate) and
+  // loads the requesting user's config.
+  const settingsPage = readFileSync("src/app/(workspace)/settings/page.tsx", "utf8");
+  assert.match(settingsPage, /getUserSourceConfigs\(userId\)/);
+  assert.match(settingsPage, /getUserDigestConfig\(userId\)/);
+  assert.doesNotMatch(settingsPage, /isAdmin \?/);
+
+  // Runtime reads resolve to the requesting user's config.
+  const contextRoute = readFileSync("src/app/api/skill/context/route.ts", "utf8");
+  assert.match(contextRoute, /getUserSourceConfigs\(user\.id\)/);
+  assert.match(contextRoute, /getUserDigestConfig\(user\.id\)/);
+  const buildersRoute = readFileSync("src/app/api/skill/builders/route.ts", "utf8");
+  assert.match(buildersRoute, /getUserSourceConfigs\(user\.id\)/);
+
+  // The editing components post to the per-user endpoints.
+  const srcManager = readFileSync("src/components/AdminSourceTypeManager.tsx", "utf8");
+  const digestForm = readFileSync("src/components/AdminDigestConfigForm.tsx", "utf8");
+  assert.match(srcManager, /\/api\/settings\/source-types/);
+  assert.match(digestForm, /\/api\/settings\/digest-config/);
+
+  // Config is no longer described as admin-owned in the agent contract / CLI.
+  const contract = readFileSync(
+    "skills/builder-blog-digest/jobs/_fetch-task-contract.md",
+    "utf8",
+  );
+  assert.match(contract, /your per-source fetch prompt/);
+  assert.doesNotMatch(contract, /the admin's per-source fetch prompt/);
+});

@@ -79,7 +79,7 @@ export function AdminDigestConfigForm({
     setStatus({ kind: "saving" });
     startTransition(async () => {
       try {
-        const response = await fetch("/api/admin/digest-config", {
+        const response = await fetch("/api/settings/digest-config", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ patch }),
