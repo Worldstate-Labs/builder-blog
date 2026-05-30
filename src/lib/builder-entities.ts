@@ -51,40 +51,6 @@ export async function projectBuildersToEntities(builderIds: string[]): Promise<s
 }
 
 /**
- * For a user, return the set of Builder ids they can reach across own + imported libraries.
- * Used by feed/digest pipelines as the candidate set.
- */
-export async function reachableBuilderIdsForUser(userId: string): Promise<string[]> {
-  // Own library: builders owned by this user.
-  // Imported libraries: builders linked via LibraryHubItem in any library this user has imported.
-  const [ownBuilders, importedHubItems, ownPoolEntries] = await Promise.all([
-    prisma.builder.findMany({
-      where: { ownerUserId: userId },
-      select: { id: true },
-    }),
-    prisma.libraryHubItem.findMany({
-      where: {
-        hubEntry: {
-          imports: { some: { userId } },
-        },
-      },
-      select: { builderId: true },
-    }),
-    prisma.builderPoolEntry.findMany({
-      where: { userId, removedAt: null },
-      select: { builderId: true },
-    }),
-  ]);
-  return [
-    ...new Set([
-      ...ownBuilders.map((b) => b.id),
-      ...importedHubItems.map((item) => item.builderId),
-      ...ownPoolEntries.map((entry) => entry.builderId),
-    ]),
-  ];
-}
-
-/**
  * Compute which entities become unreachable for this user after removing a library import,
  * versus which still have at least one channel via another library.
  */
