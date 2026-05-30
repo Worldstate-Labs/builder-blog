@@ -539,11 +539,11 @@ function LibrarySection({
 
 function builderSort(a: BuilderWithCount, b: BuilderWithCount) {
   // Kind-grouped, newest-first within each kind. The user prefers
-  // scanning by source type (all X together, all podcasts together),
-  // but within a group the most-recently-added row sits at the top
-  // so an Add lands somewhere immediately visible after the next
-  // refresh. Name is the deterministic tiebreaker when createdAt is
-  // identical (e.g. seeded rows).
+  // scanning by source type (all X together, all podcasts together);
+  // within a group the most-recently-added row sits at the top, so a
+  // newly added builder lands at the top of its KIND group — not
+  // necessarily the top of the page. Name is the deterministic
+  // tiebreaker when createdAt is identical (e.g. seeded rows).
   const kindCmp = a.kind.localeCompare(b.kind);
   if (kindCmp !== 0) return kindCmp;
   const ta = a.createdAt.getTime();
