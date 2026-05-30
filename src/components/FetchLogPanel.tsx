@@ -797,6 +797,23 @@ function sizeText(chars: number | null | undefined, words: number | null | undef
   return `${chars.toLocaleString()} chars${wordPart}`;
 }
 
+// Compression by characters, not words. Whitespace word-splitting badly
+// undercounts CJK text — a ~2,000-char Chinese body counts as a handful of
+// "words" — which made summaries read as longer than their source and produced
+// contradictory labels like "125 → 180 words (0.7× shorter)". Characters are
+// language-agnostic, so the ratio reflects real shrinkage, and the direction
+// word is derived from the sign so a longer summary never reads as "shorter".
+function compressionText(
+  bodyChars: number | null | undefined,
+  summaryChars: number | null | undefined,
+): string | null {
+  if (typeof bodyChars !== "number" || bodyChars <= 0) return null;
+  if (typeof summaryChars !== "number" || summaryChars <= 0) return null;
+  const pct = Math.round((1 - summaryChars / bodyChars) * 100);
+  const direction = pct > 0 ? `${pct}% shorter` : pct < 0 ? `${-pct}% longer` : "same length";
+  return `${bodyChars.toLocaleString()} → ${summaryChars.toLocaleString()} chars (${direction})`;
+}
+
 function FactRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex gap-2 text-[12px] leading-relaxed">
@@ -849,15 +866,7 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
   const agentLabel = [task.agentRuntime, task.agentModel].filter(Boolean).join(" · ");
   const bodySize = sizeText(task.bodyChars, task.bodyWords);
   const summarySize = sizeText(task.summaryChars, task.summaryWords);
-  const compression =
-    typeof task.bodyWords === "number" &&
-    task.bodyWords > 0 &&
-    typeof task.summaryWords === "number" &&
-    task.summaryWords > 0
-      ? `${task.bodyWords.toLocaleString()} → ${task.summaryWords.toLocaleString()} words (${(
-          task.bodyWords / task.summaryWords
-        ).toFixed(1)}× shorter)`
-      : null;
+  const compression = compressionText(task.bodyChars, task.summaryChars);
 
   return (
     <li>
