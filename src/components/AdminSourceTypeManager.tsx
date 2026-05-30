@@ -158,6 +158,16 @@ function SourceTypeCard({
       setStatus({ kind: "error", message: "Min words must be a non-negative integer." });
       return;
     }
+    for (const [field, label] of [
+      ["minUniqueWordRatio", "Min unique-word ratio"],
+      ["maxTimestampWordRatio", "Max timestamp-word ratio"],
+    ] as const) {
+      const ratio = cq[field];
+      if (ratio !== null && (!Number.isFinite(ratio) || ratio < 0 || ratio > 1)) {
+        setStatus({ kind: "error", message: `${label} must be between 0 and 1.` });
+        return;
+      }
+    }
 
     const contentQuality: Record<string, unknown> = {
       primaryContentOnly: cq.primaryContentOnly,
@@ -332,28 +342,38 @@ function SourceTypeCard({
               label="Min unique-word ratio"
               optional
               min={0}
+              max={1}
               step={0.01}
+              description="Averaged over 100-word windows (0–1). Real speech sits around 0.6; lower lets more repetitive transcripts through before an item is dropped."
               value={
                 draft.contentQuality.minUniqueWordRatio === null
                   ? ""
                   : String(draft.contentQuality.minUniqueWordRatio)
               }
               onChange={(v) =>
-                updateQuality("minUniqueWordRatio", v === "" ? null : Number(v))
+                updateQuality(
+                  "minUniqueWordRatio",
+                  v === "" ? null : clampRatio(v),
+                )
               }
             />
             <FieldNumber
               label="Max timestamp-word ratio"
               optional
               min={0}
+              max={1}
               step={0.01}
+              description="Fraction of tokens that look like timestamps (0–1). Above this the body is treated as timestamp noise and dropped."
               value={
                 draft.contentQuality.maxTimestampWordRatio === null
                   ? ""
                   : String(draft.contentQuality.maxTimestampWordRatio)
               }
               onChange={(v) =>
-                updateQuality("maxTimestampWordRatio", v === "" ? null : Number(v))
+                updateQuality(
+                  "maxTimestampWordRatio",
+                  v === "" ? null : clampRatio(v),
+                )
               }
             />
           </div>
@@ -473,6 +493,14 @@ function Section({
   );
 }
 
+// Ratios are constrained to [0, 1]; clamp on input so an admin can't store an
+// out-of-range value (e.g. a fat-fingered 5) that would silently disable a gate.
+function clampRatio(v: string): number {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(1, Math.max(0, n));
+}
+
 function FieldShell({
   label,
   description,
@@ -559,23 +587,28 @@ function FieldNumber({
   value,
   onChange,
   min,
+  max,
   step,
   optional,
+  description,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   min?: number;
+  max?: number;
   step?: number;
   optional?: boolean;
+  description?: string;
 }) {
   return (
-    <FieldShell label={optional ? `${label} · optional` : label}>
+    <FieldShell label={optional ? `${label} · optional` : label} description={description}>
       <input
         type="number"
         className="fb-input w-full"
         value={value}
         min={min}
+        max={max}
         step={step ?? 1}
         inputMode="decimal"
         onChange={(e) => onChange(e.target.value)}

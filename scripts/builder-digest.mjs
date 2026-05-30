@@ -1153,10 +1153,6 @@ export function fetchPersonalYouTubeBuilderForTest(builder, options) {
   return fetchPersonalYouTubeBuilder(builder, options);
 }
 
-/**
- * @param {string} text
- * @param {{ source?: string; title?: string; description?: string }} [options]
- */
 // Average the unique-word ratio over fixed-size windows. Unlike the global
 // type-token ratio \u2014 which decays ~1/sqrt(N) (Heaps' law) and so makes any long
 // transcript look "repetitive" \u2014 this stays high for real speech (each window
@@ -1183,6 +1179,10 @@ function localUniqueRatio(words, windowSize = 100) {
   return windows ? sum / windows : 0;
 }
 
+/**
+ * @param {string} text
+ * @param {{ source?: string; title?: string; description?: string }} [options]
+ */
 export function youtubeContentQuality(text, { source, title = "", description = "" } = {}) {
   const normalized = normalizeContentText(text);
   const words = normalized.match(/[A-Za-z0-9\u4e00-\u9fff]+/g) ?? [];
