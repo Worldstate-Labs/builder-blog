@@ -37,6 +37,18 @@ export async function POST(request: Request) {
   let feedItems = 0;
   let skippedFeedItems = 0;
   let subscriptions = 0;
+  // Per-fetchTask outcome the CLI patches onto the fetch log. A task succeeds
+  // only when its item is persisted with a non-empty summary; anything else is
+  // a failure with a reason. This is the authoritative success/failure record —
+  // the client-side validate step is advisory, so the gate that actually writes
+  // to the DB is the one that must classify each post.
+  const itemResults: Array<{
+    fetchTaskId: string;
+    kind: FeedItemKind;
+    externalId: string;
+    status: "synced" | "failed";
+    reason?: string;
+  }> = [];
   const now = new Date();
   for (const input of parsed.data.builders) {
     // SSRF: agents must not register sources whose URLs target the internal
@@ -114,6 +126,7 @@ export async function POST(request: Request) {
         continue;
       }
       payloadItemKeys.add(key);
+      const fetchTaskId = readFetchTaskId(item.rawJson);
       // Policy: a post without a summary is not useful to the reader and
       // must not occupy a DB row. Empty / whitespace-only summaries are
       // treated as "missing". This rule applies to both fresh inserts
@@ -121,9 +134,20 @@ export async function POST(request: Request) {
       // valid summary, we skip the write instead of clobbering or
       // creating a half-baked row. Existing rows with stale summaries
       // are left alone here; the companion migration deletes them.
+      // Crucially this is recorded as a FAILURE (not a silent skip) so the
+      // fetch log can show why the post never landed.
       const summary = typeof item.summary === "string" ? item.summary.trim() : "";
       if (!summary) {
         skippedFeedItems += 1;
+        if (fetchTaskId) {
+          itemResults.push({
+            fetchTaskId,
+            kind: item.kind,
+            externalId: item.externalId,
+            status: "failed",
+            reason: "summary_missing",
+          });
+        }
         continue;
       }
       const fetchTool = item.fetchTool ?? parsed.data.fetchTool;
@@ -150,6 +174,15 @@ export async function POST(request: Request) {
           data: { fetchTool },
         });
         skippedFeedItems += 1;
+        // Re-summarizing an existing post is still a successful task outcome.
+        if (fetchTaskId) {
+          itemResults.push({
+            fetchTaskId,
+            kind: item.kind,
+            externalId: item.externalId,
+            status: "synced",
+          });
+        }
         continue;
       }
       await prisma.feedItem.upsert({
@@ -165,7 +198,10 @@ export async function POST(request: Request) {
           body: item.body,
           summary,
           url: item.url,
-          publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
+          // Only overwrite when the source supplied a real date. Otherwise
+          // leave the existing value untouched (it was backfilled to fetch
+          // time on insert) so re-syncs don't clobber or bump it.
+          publishedAt: item.publishedAt ? new Date(item.publishedAt) : undefined,
           sourceName: item.sourceName ?? input.name,
           fetchTool,
           rawJson: item.rawJson === undefined ? undefined : JSON.stringify(item.rawJson),
@@ -178,7 +214,11 @@ export async function POST(request: Request) {
           body: item.body,
           summary,
           url: item.url,
-          publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
+          // Fall back to fetch time when the source has no parseable date.
+          // A null publishedAt would be silently excluded from digests (the
+          // candidate query requires publishedAt >= cutoff), so every post
+          // must carry a usable timestamp.
+          publishedAt: item.publishedAt ? new Date(item.publishedAt) : new Date(),
           sourceName: item.sourceName ?? input.name,
           fetchTool,
           rawJson: item.rawJson === undefined ? undefined : JSON.stringify(item.rawJson),
@@ -186,6 +226,14 @@ export async function POST(request: Request) {
       });
       feedItems += 1;
       syncedItemCount += 1;
+      if (fetchTaskId) {
+        itemResults.push({
+          fetchTaskId,
+          kind: item.kind,
+          externalId: item.externalId,
+          status: "synced",
+        });
+      }
     }
     // Inline fetch-state update on the builder channel itself.
     await prisma.builder.update({
@@ -214,8 +262,21 @@ export async function POST(request: Request) {
     skippedFeedItems,
     subscriptions,
     force: parsed.data.force,
+    // Authoritative per-task success/failure (keyed by fetchTaskId) so the CLI
+    // can patch the fetch log to match what actually persisted.
+    itemResults,
     generatedAt: new Date().toISOString(),
   });
+}
+
+// fetchTaskId travels on the synced item's rawJson (set by the agent per the
+// fetch-task contract). It binds a persisted item back to its planned task.
+function readFetchTaskId(rawJson: unknown): string | null {
+  if (rawJson && typeof rawJson === "object" && !Array.isArray(rawJson)) {
+    const value = (rawJson as Record<string, unknown>).fetchTaskId;
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
 }
 
 async function existingFeedItemKeys(
