@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BookOpen, Loader2 } from "lucide-react";
+import { DigestContent } from "@/components/DigestContent";
 import { useHydrated } from "@/components/ThemeToggle";
 
 export type DigestSummary = {
@@ -158,16 +159,13 @@ function DigestBody({
     );
   }
 
+  if (isToday) {
+    return <DigestContent content={content ?? ""} tone="dark" />;
+  }
   return (
-    <pre
-      className={
-        isToday
-          ? "whitespace-pre-wrap font-sans text-[13.5px] leading-7 text-white/74 m-0"
-          : "item-details whitespace-pre-wrap font-sans text-sm leading-7 text-[var(--muted-strong)]"
-      }
-    >
-      {content ?? ""}
-    </pre>
+    <div className="item-details">
+      <DigestContent content={content ?? ""} tone="paper" />
+    </div>
   );
 }
 
