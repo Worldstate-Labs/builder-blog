@@ -1829,17 +1829,87 @@ export function extractBlogArticle(html, articleUrl = "") {
   return extractGenericBlogArticle(html);
 }
 
+// Pull a publish date out of arbitrary article HTML using several
+// framework-agnostic strategies, in priority order. Returns an ISO string or
+// null. Built to survive site framework changes (e.g. Next.js Pages Router →
+// App Router) where the date moves between containers but keeps the same field
+// name. Strategies:
+//   1. schema.org JSON-LD `datePublished` (most reliable when present)
+//   2. a serialized "publishedOn"/"datePublished"/... JSON field — covers
+//      Next.js __next_f (App Router) and the legacy __NEXT_DATA__ blob, raw or
+//      backslash-escaped
+//   3. standard <meta> publish-time tags
+//   4. a visible "Published Mon DD, YYYY" line
+export function extractAnyPublishedDate(html) {
+  const source = String(html || "");
+
+  const jsonLdRegex = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let ld;
+  while ((ld = jsonLdRegex.exec(source)) !== null) {
+    const norm = normalizedDate(findDatePublishedInJsonLd(ld[1]));
+    if (norm) return norm;
+  }
+
+  // "publishedOn":"..." etc., raw or escaped (\"publishedOn\":\"...\").
+  const fieldMatch = source.match(
+    /\\?"(?:publishedOn|datePublished|publishedAt|publishDate|firstPublished|publicationDate|dateCreated)\\?"\s*:\s*\\?"([0-9][0-9T:.+\-Z]{3,40})\\?"/i,
+  );
+  if (fieldMatch) {
+    const norm = normalizedDate(fieldMatch[1]);
+    if (norm) return norm;
+  }
+
+  const metaDate =
+    metaContent(source, "property", "article:published_time") ||
+    metaContent(source, "name", "article:published_time") ||
+    metaContent(source, "name", "date") ||
+    metaContent(source, "itemprop", "datePublished") ||
+    metaContent(source, "property", "og:published_time");
+  if (metaDate) {
+    const norm = normalizedDate(metaDate);
+    if (norm) return norm;
+  }
+
+  // Visible "Published Mon DD, YYYY" — tags/comments between the label and the
+  // date are skipped (e.g. `Published <!-- -->Apr 08, 2026`).
+  const visible = source.match(
+    /Published(?:\s|<[^>]*>)*([A-Z][a-z]{2,8}\.?\s+\d{1,2},?\s+20\d{2})/,
+  );
+  if (visible) {
+    const norm = normalizedDate(visible[1]);
+    if (norm) return norm;
+  }
+
+  return null;
+}
+
+function findDatePublishedInJsonLd(raw) {
+  try {
+    const json = JSON.parse(raw);
+    const nodes = Array.isArray(json)
+      ? json
+      : Array.isArray(json["@graph"])
+        ? json["@graph"]
+        : [json];
+    for (const node of nodes) {
+      if (node && typeof node === "object") {
+        const value = node.datePublished || node.dateCreated || node.uploadDate;
+        if (typeof value === "string" && value.trim()) return value;
+      }
+    }
+  } catch {
+    // Not JSON / unexpected shape — fall through to the next strategy.
+  }
+  return null;
+}
+
 function extractGenericBlogArticle(html) {
   const title =
     metaContent(html, "property", "og:title") ||
     metaContent(html, "name", "twitter:title") ||
     tagText(html, "h1") ||
     tagText(html, "title");
-  const publishedAt = normalizedDate(
-    metaContent(html, "property", "article:published_time") ||
-      metaContent(html, "name", "date") ||
-      metaContent(html, "itemprop", "datePublished"),
-  );
+  const publishedAt = extractAnyPublishedDate(html);
   const articleMatch =
     html.match(/<article\b[\s\S]*?<\/article>/i) ||
     html.match(/<main\b[\s\S]*?<\/main>/i);
