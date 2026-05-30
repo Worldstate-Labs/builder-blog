@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useTransition } from "react";
 import {
-  ChipListField,
   clampRatio,
   FieldNumber,
   FieldSelect,
@@ -11,7 +10,6 @@ import {
   FooterBar,
   languageOptions,
   Section,
-  Toggle,
   type SaveStatusState,
 } from "@/components/settings/SettingsFields";
 
@@ -39,10 +37,8 @@ type ContentQuality = {
 };
 
 type Draft = {
-  label: string;
   summaryStyle: string;
   summaryLanguage: string;
-  agentDefaultStatus: string;
   summaryLengthHint: string;
   summaryPromptBody: string;
   fetchPromptBody: string;
@@ -55,11 +51,6 @@ const SUMMARY_STYLE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: "x_twitter", label: "X" },
   { value: "podcast_or_video", label: "Podcast / Video" },
   { value: "blog_or_document", label: "Blog / Document" },
-];
-
-const AGENT_STATUS_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-  { value: "ready", label: "Ready · no agent needed" },
-  { value: "requires_agent", label: "Requires agent" },
 ];
 
 function toContentQuality(raw: unknown): ContentQuality {
@@ -80,10 +71,8 @@ function toContentQuality(raw: unknown): ContentQuality {
 
 function toDraft(config: AdminSourceTypeConfig): Draft {
   return {
-    label: config.label,
     summaryStyle: config.summaryStyle,
     summaryLanguage: config.summaryLanguage,
-    agentDefaultStatus: config.agentDefaultStatus,
     summaryLengthHint: config.summaryLengthHint ?? "",
     summaryPromptBody: config.summaryPromptBody,
     fetchPromptBody: config.fetchPromptBody ?? "",
@@ -180,10 +169,8 @@ function SourceTypeCard({
     }
 
     const patch = {
-      label: draft.label.trim(),
       summaryStyle: draft.summaryStyle,
       summaryLanguage: draft.summaryLanguage.trim(),
-      agentDefaultStatus: draft.agentDefaultStatus,
       summaryLengthHint:
         draft.summaryLengthHint.trim() === "" ? null : draft.summaryLengthHint.trim(),
       summaryPromptBody: draft.summaryPromptBody,
@@ -220,41 +207,23 @@ function SourceTypeCard({
         className="cursor-pointer select-none"
         style={{ listStyle: "none", padding: "0.875rem 1.125rem" }}
       >
-        <CardHeader config={config} dirty={dirty} draftLabel={draft.label} />
+        <CardHeader config={config} dirty={dirty} />
       </summary>
 
       <div className="border-t border-[var(--line)]" style={{ padding: "1.25rem 1.125rem 1rem" }}>
         <Section
           step="01"
-          title="Identity"
-          description="How this source type is named in the UI."
-        >
-          <FieldText
-            label="Label"
-            value={draft.label}
-            onChange={(v) => update("label", v)}
-          />
-        </Section>
-
-        <Section
-          step="02"
           title="Fetching"
-          description="When and how the CLI / agent acquires items for this source."
+          description="The fetch prompt the agent receives when this source needs agent extraction."
         >
-          <FieldSelect
-            label="Agent default status"
-            value={draft.agentDefaultStatus}
-            options={AGENT_STATUS_OPTIONS}
-            onChange={(v) => update("agentDefaultStatus", v)}
-          />
           <FieldTextarea
             label="Fetch prompt · optional"
             rows={12}
             mono
             description={
-              draft.agentDefaultStatus === "requires_agent"
+              config.agentDefaultStatus === "requires_agent"
                 ? "Surfaced to the agent in fallback fetch tasks so it can decide HOW to acquire content (e.g. for podcasts: try show notes first, else download audio + Whisper transcribe)."
-                : "Only used when this source is set to Requires agent. Currently unused — kept here in case the status changes."
+                : "Only used when this source requires agent extraction. Currently unused for this source — kept in case that changes."
             }
             value={draft.fetchPromptBody}
             onChange={(v) => update("fetchPromptBody", v)}
@@ -262,7 +231,7 @@ function SourceTypeCard({
         </Section>
 
         <Section
-          step="03"
+          step="02"
           title="Summarization"
           description="How each item of this source is turned into a brief. Used by both digest-once and library-once."
         >
@@ -296,16 +265,10 @@ function SourceTypeCard({
         </Section>
 
         <Section
-          step="04"
+          step="03"
           title="Quality gates"
-          description="Filters applied after extraction. Items that fail are dropped from the pipeline."
+          description="Size and repetition floors applied after extraction. Items that fail are dropped from the pipeline."
         >
-          <Toggle
-            label="Primary content only"
-            description="Reject extractions that fall back to title, description, or other metadata."
-            checked={draft.contentQuality.primaryContentOnly}
-            onChange={(v) => updateQuality("primaryContentOnly", v)}
-          />
           <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
             <FieldNumber
               label="Min chars"
@@ -360,13 +323,6 @@ function SourceTypeCard({
               }
             />
           </div>
-          <ChipListField
-            label="Disallowed primary sources"
-            description="Strings the extractor must not accept as primary body content."
-            values={draft.contentQuality.disallowedPrimarySources}
-            placeholder='e.g. "title"'
-            onChange={(next) => updateQuality("disallowedPrimarySources", next)}
-          />
         </Section>
 
         <FooterBar
@@ -386,11 +342,9 @@ function SourceTypeCard({
 function CardHeader({
   config,
   dirty,
-  draftLabel,
 }: {
   config: AdminSourceTypeConfig;
   dirty: boolean;
-  draftLabel: string;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -404,7 +358,7 @@ function CardHeader({
       >
         {config.sourceId}
       </span>
-      <span className="text-base font-medium">{draftLabel || config.label}</span>
+      <span className="text-base font-medium">{config.label}</span>
       <span
         className="text-xs"
         style={{ color: "var(--muted)", fontFamily: "var(--font-geist-mono)" }}
