@@ -4,6 +4,8 @@ import { formatZodError } from "@/lib/zod-error";
 import { NextResponse } from "next/server";
 import { addBuilderToPool } from "@/lib/builder-pool";
 import { upsertBuilder } from "@/lib/builders";
+import { checkBodyContentQuality } from "@/lib/content-quality";
+import { getAllSourceConfigs } from "@/lib/source-config-store";
 import { syncPersonalLibraryHubForUser } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
@@ -49,6 +51,19 @@ export async function POST(request: Request) {
     status: "synced" | "failed";
     reason?: string;
   }> = [];
+
+  // Per-source content-quality floors (minChars/minWords) — the same standards
+  // the client validate step uses. We enforce them server-side too so a post
+  // with no real crawled content can't slip in when validate is bypassed.
+  const sourceConfigs = await getAllSourceConfigs();
+  const standardsBySourceId = new Map(
+    sourceConfigs.map((c) => [c.sourceId, c.contentQuality]),
+  );
+  const resolveStandards = (sourceType: string | null | undefined) =>
+    standardsBySourceId.get((sourceType ?? "").trim()) ??
+    standardsBySourceId.get("website") ??
+    null;
+
   const now = new Date();
   for (const input of parsed.data.builders) {
     // SSRF: agents must not register sources whose URLs target the internal
@@ -119,6 +134,7 @@ export async function POST(request: Request) {
         );
     let syncedItemCount = 0;
     const payloadItemKeys = new Set<string>();
+    const contentStandards = resolveStandards(input.sourceType);
     for (const item of input.items) {
       const key = feedItemKey(builder.id, item.kind, item.externalId);
       if (payloadItemKeys.has(key)) {
@@ -127,7 +143,25 @@ export async function POST(request: Request) {
       }
       payloadItemKeys.add(key);
       const fetchTaskId = readFetchTaskId(item.rawJson);
-      // Policy: a post without a summary is not useful to the reader and
+      // Gate 1 — real crawled content. A post with no body (or junk/too-short
+      // text below the source's floor) is a FAILURE: the agent didn't actually
+      // fetch usable content. Mirrors the client validate length check so it
+      // can't be bypassed by skipping validate. Recorded, not silently dropped.
+      const contentVerdict = checkBodyContentQuality(item.body, contentStandards);
+      if (!contentVerdict.ok) {
+        skippedFeedItems += 1;
+        if (fetchTaskId) {
+          itemResults.push({
+            fetchTaskId,
+            kind: item.kind,
+            externalId: item.externalId,
+            status: "failed",
+            reason: contentVerdict.reason,
+          });
+        }
+        continue;
+      }
+      // Gate 2 — a post without a summary is not useful to the reader and
       // must not occupy a DB row. Empty / whitespace-only summaries are
       // treated as "missing". This rule applies to both fresh inserts
       // and incremental updates — if a new payload arrives without a

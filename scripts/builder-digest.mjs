@@ -2648,15 +2648,29 @@ async function syncBuilders(args) {
   );
   const result = await postJson(`${config.appUrl}/api/skill/builders`, payload, config.token);
   console.log(JSON.stringify(result, null, 2));
-  await patchFetchRunOutcomes(config, payload);
+
+  // Reconcile the fetch log against the FULL planned task list so a task the
+  // agent dropped (fetched but never summarized) is recorded as a failure, not
+  // left pending. Read the planned tasks the CLI emitted in fetch-personal.
+  const agentDir = process.env.BUILDER_BLOG_AGENT_DIR?.trim() || CONFIG_DIR;
+  const tasksFile = argValue(args, "--tasks", join(agentDir, "tmp", "library-fetch-result.json"));
+  let plannedTasks = [];
+  try {
+    const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
+    plannedTasks = Array.isArray(fetchResult?.fetchTasks) ? fetchResult.fetchTasks : [];
+  } catch {
+    // No planned-tasks file (e.g. ad-hoc sync) → reconcile against payload only.
+  }
+  await patchFetchRunOutcomes(config, payload, result, plannedTasks);
 }
 
-// After a successful sync, attach per-post fetch/summary facts (model, body
-// size, summary size, final status) to the fetch-log record emitted earlier by
-// fetch-personal. Keyed by rawJson.fetchTaskId so each outcome merges onto the
-// matching planned task. Best-effort and non-fatal: a missing run id (e.g. an
-// ad-hoc sync without a preceding fetch) or an unreachable server just skips it.
-async function patchFetchRunOutcomes(config, payload) {
+// After a sync, attach per-post fetch/summary outcomes to the fetch-log record
+// emitted earlier by fetch-personal. Keyed by rawJson.fetchTaskId. The server
+// response is authoritative for success/failure (a task succeeds only when its
+// item persisted with a non-empty summary); the payload supplies sizes/model.
+// Every PLANNED task is classified so dropped ones surface as failures.
+// Best-effort and non-fatal: a missing run id or unreachable server just skips.
+async function patchFetchRunOutcomes(config, payload, serverResult = {}, plannedTasks = []) {
   if (!config?.appUrl || !config?.token) return;
   let runId = "";
   try {
@@ -2666,21 +2680,73 @@ async function patchFetchRunOutcomes(config, payload) {
   }
   if (!runId) return;
 
-  const taskOutcomes = [];
+  // Sizes / agent facts from the agent's sync payload, by fetchTaskId.
+  const sizesByTaskId = new Map();
   for (const { item } of extractSyncItems(payload)) {
-    const fetchTaskId = item?.rawJson?.fetchTaskId;
-    if (!fetchTaskId) continue;
+    const id = item?.rawJson?.fetchTaskId;
+    if (!id) continue;
     const body = textStats(item?.body);
     const summary = textStats(item?.summary);
-    taskOutcomes.push({
-      fetchTaskId: String(fetchTaskId),
+    sizesByTaskId.set(String(id), {
       bodyChars: body.chars,
       bodyWords: body.words,
       summaryChars: summary.chars,
       summaryWords: summary.words,
       agentRuntime: item?.rawJson?.agentRuntime ?? null,
       agentModel: item?.rawJson?.agentModel ?? null,
-      status: "synced",
+    });
+  }
+
+  // Authoritative success/failure from the server (what actually persisted).
+  const serverByTaskId = new Map();
+  const serverItemResults = Array.isArray(serverResult?.itemResults)
+    ? serverResult.itemResults
+    : [];
+  for (const r of serverItemResults) {
+    if (r?.fetchTaskId) serverByTaskId.set(String(r.fetchTaskId), r);
+  }
+
+  // Classify every planned task; fall back to payload+server ids when no
+  // planned list is available.
+  const plannedById = new Map(
+    plannedTasks.map((t) => [String(t?.id || fetchTaskId(t)), t]),
+  );
+  const taskIds =
+    plannedById.size > 0
+      ? [...plannedById.keys()]
+      : [...new Set([...serverByTaskId.keys(), ...sizesByTaskId.keys()])];
+
+  const taskOutcomes = [];
+  for (const id of taskIds) {
+    const planned = plannedById.get(id);
+    const work = String(planned?.agentWorkType || "");
+    // Informational user-action tasks (e.g. x_token_missing) aren't failures.
+    if (work === "x_token_missing" || work.startsWith("user_action_")) {
+      taskOutcomes.push({ fetchTaskId: id, status: "action_needed" });
+      continue;
+    }
+    const sizes = sizesByTaskId.get(id) ?? {};
+    const server = serverByTaskId.get(id);
+    let status;
+    let failureReason;
+    if (server) {
+      status = server.status === "synced" ? "synced" : "failed";
+      if (status === "failed") failureReason = server.reason || "not_synced";
+    } else if (sizesByTaskId.has(id)) {
+      // In the payload but unclassified by the server (older server) → trust the
+      // presence of a non-empty summary.
+      status = sizes.summaryChars > 0 ? "synced" : "failed";
+      if (status === "failed") failureReason = "summary_missing";
+    } else {
+      // Planned but absent from the sync payload → the agent never summarized it.
+      status = "failed";
+      failureReason = "not_summarized";
+    }
+    taskOutcomes.push({
+      fetchTaskId: id,
+      ...sizes,
+      status,
+      ...(failureReason ? { failureReason } : {}),
     });
   }
   if (taskOutcomes.length === 0) return;

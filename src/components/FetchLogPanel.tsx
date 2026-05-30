@@ -59,6 +59,9 @@ type FetchTaskLog = {
   agentRuntime?: string | null;
   agentModel?: string | null;
   status?: string | null;
+  // Why a task failed (e.g. "summary_missing", "not_summarized"). Present only
+  // when status is "failed".
+  failureReason?: string | null;
 };
 
 type PromptBundle = {
@@ -634,28 +637,61 @@ function isBlocked(task: FetchTaskLog): boolean {
   );
 }
 
+function isContentFailure(task: FetchTaskLog): boolean {
+  return (
+    task.status === "failed" &&
+    (task.failureReason === "content_missing" ||
+      task.failureReason === "content_too_short")
+  );
+}
+
 function fetchOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
   if (isBlocked(task)) return { label: "Blocked", tone: "fail" };
+  // A content failure is a fetch-stage failure (no real crawled content).
+  if (isContentFailure(task)) return { label: "Failed", tone: "fail" };
   if (typeof task.bodyChars === "number" && task.bodyChars > 0)
     return { label: "Fetched", tone: "ok" };
   if (task.contentStatus === "ready") return { label: "Fetched", tone: "ok" };
   return { label: "Fetched by agent", tone: "idle" };
 }
 
+// Human-readable labels for the server/CLI failure reasons.
+const FAILURE_REASON_LABEL: Record<string, string> = {
+  summary_missing: "No summary was produced",
+  not_summarized: "Fetched but the agent never summarized it",
+  not_synced: "Not saved",
+  content_missing: "No content was crawled",
+  content_too_short: "Crawled content was too short / not real content",
+};
+
+function failureReasonText(task: FetchTaskLog): string | null {
+  if (!task.failureReason) return null;
+  return FAILURE_REASON_LABEL[task.failureReason] ?? task.failureReason;
+}
+
+function isSummarized(task: FetchTaskLog): boolean {
+  return typeof task.summaryChars === "number" && task.summaryChars > 0;
+}
+
 function summarizeOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
-  if (typeof task.summaryChars === "number" && task.summaryChars > 0)
-    return { label: "Summarized", tone: "ok" };
+  if (isSummarized(task)) return { label: "Summarized", tone: "ok" };
+  // A task is successful only when it ends with a summary; a missing summary is
+  // a failure, not a benign "pending". A content failure happened upstream, so
+  // summarize never ran → "Not reached".
+  if (isContentFailure(task)) return { label: "Not reached", tone: "idle" };
+  if (task.status === "failed") return { label: "Failed", tone: "fail" };
   if (isBlocked(task)) return { label: "Not reached", tone: "idle" };
   return { label: "Pending", tone: "warn" };
 }
 
 function statusBanner(task: FetchTaskLog): { label: string; tone: Tone } {
-  const s = task.status ?? (task.contentStatus === "ready" ? "fetched" : "pending");
-  if (task.contentStatus === "ready" || s === "fetched")
-    return { label: "Fetched & summarized", tone: "ok" };
-  if (s === "action_needed") return { label: "Action needed", tone: "fail" };
-  if (s === "failed") return { label: "Failed", tone: "fail" };
-  return { label: "Awaiting agent", tone: "warn" };
+  // Success is defined by a persisted summary — NOT by contentStatus="ready"
+  // (that only means the body was fetched; the summarize step can still fail).
+  if (isSummarized(task)) return { label: "Fetched & summarized", tone: "ok" };
+  if (task.status === "failed") return { label: "Failed", tone: "fail" };
+  if (task.status === "action_needed") return { label: "Action needed", tone: "fail" };
+  if (isBlocked(task)) return { label: "Action needed", tone: "fail" };
+  return { label: "Awaiting summary", tone: "warn" };
 }
 
 function sizeText(chars: number | null | undefined, words: number | null | undefined): string | null {
@@ -709,7 +745,9 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
   const banner = statusBanner(task);
   const bannerStyle = toneStyle(banner.tone);
   const ready = task.contentStatus === "ready";
-  const pillTone: Tone = ready ? "ok" : banner.tone === "fail" ? "fail" : "warn";
+  // Colour the type pill by the real outcome, not by "ready" (a ready fetch can
+  // still fail to summarize).
+  const pillTone: Tone = banner.tone;
 
   const agentLabel = [task.agentRuntime, task.agentModel].filter(Boolean).join(" · ");
   const bodySize = sizeText(task.bodyChars, task.bodyWords);
@@ -780,6 +818,14 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
           <StageBlock title="① Fetch" tone={fetchRes.tone} outcome={fetchRes.label}>
             <FactRow label="Method" value={<span className="mono">{work.label}</span>} />
             {bodySize ? <FactRow label="Raw size" value={bodySize} /> : null}
+            {isContentFailure(task) && failureReasonText(task) ? (
+              <FactRow
+                label="Reason"
+                value={
+                  <span className="text-[var(--danger)]">{failureReasonText(task)}</span>
+                }
+              />
+            ) : null}
             {task.url ? (
               <FactRow
                 label="Source"
@@ -803,11 +849,21 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
             ) : null}
             {summarySize ? <FactRow label="Summary size" value={summarySize} /> : null}
             {compression ? <FactRow label="Compression" value={compression} /> : null}
-            {!agentLabel && !summarySize ? (
+            {!isSummarized(task) && !isContentFailure(task) && failureReasonText(task) ? (
+              <FactRow
+                label="Reason"
+                value={
+                  <span className="text-[var(--danger)]">{failureReasonText(task)}</span>
+                }
+              />
+            ) : null}
+            {!agentLabel && !summarySize && !failureReasonText(task) ? (
               <p className="text-[11.5px] text-[var(--muted)]">
                 {sumRes.label === "Not reached"
                   ? "Fetch was blocked, so no summary was produced."
-                  : "The agent hasn't summarized this item yet."}
+                  : sumRes.label === "Failed"
+                    ? "This item failed to summarize, so it was not saved."
+                    : "The agent hasn't summarized this item yet."}
               </p>
             ) : null}
           </StageBlock>

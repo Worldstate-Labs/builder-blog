@@ -16,6 +16,7 @@ import {
   digestMaxAgeCutoff,
   digestMaxPostAgeDays,
 } from "../src/lib/feed-preferences";
+import { checkBodyContentQuality } from "../src/lib/content-quality";
 import {
   buildRecommendationSignals,
   scoreRecommendation,
@@ -819,6 +820,78 @@ test("digest sync user path defaults optional fields and rejects empty content",
 
   const empty = parseSkillDigestPayload({ title: "Bad", content: "" });
   assert.equal(empty.success, false);
+});
+
+test("fetch task success requires a persisted summary; failures are recorded with a reason", () => {
+  // Server is the authoritative gate: a no-summary item is a recorded FAILURE
+  // (with reason), not a silent skip, and per-task results come back to the CLI.
+  const buildersRoute = readFileSync("src/app/api/skill/builders/route.ts", "utf8");
+  assert.match(buildersRoute, /itemResults/);
+  assert.match(buildersRoute, /reason: "summary_missing"/);
+  assert.match(buildersRoute, /status: "failed"/);
+  assert.match(buildersRoute, /readFetchTaskId/);
+  // Body / crawled-content gate: a post with no real content is also a recorded
+  // failure server-side (not just client-side validate), symmetric with summary.
+  assert.match(buildersRoute, /checkBodyContentQuality/);
+  assert.match(buildersRoute, /contentVerdict/);
+
+  // The fetch-log per-post outcome carries a failure reason.
+  const fetchRunsRoute = readFileSync("src/app/api/skill/fetch-runs/[id]/route.ts", "utf8");
+  assert.match(fetchRunsRoute, /failureReason/);
+
+  // The CLI reconciles the FULL planned task list against the server result, so
+  // a task the agent never summarized is marked failed/not_summarized, not left
+  // pending; the server result (not the payload) decides success.
+  const cli = readFileSync("scripts/builder-digest.mjs", "utf8");
+  assert.match(cli, /not_summarized/);
+  assert.match(cli, /serverResult/);
+  assert.match(cli, /plannedTasks/);
+  assert.match(cli, /library-fetch-result\.json/);
+
+  // The fetch log UI no longer claims "Fetched & summarized" for a ready fetch
+  // that has no summary, and renders the failure reason.
+  const panel = readFileSync("src/components/FetchLogPanel.tsx", "utf8");
+  assert.match(panel, /isSummarized/);
+  assert.match(panel, /failureReason/);
+  assert.match(panel, /FAILURE_REASON_LABEL/);
+  // Banner must key off a persisted summary, not contentStatus === "ready".
+  assert.doesNotMatch(panel, /task\.contentStatus === "ready"\s*\|\|\s*s === "fetched"/);
+
+  // The contract tells the agent a task is complete only when synced with a
+  // summary, and to not silently drop unsummarized tasks.
+  const contract = readFileSync(
+    "skills/builder-blog-digest/jobs/_fetch-task-contract.md",
+    "utf8",
+  );
+  assert.match(contract, /complete ONLY when its item is synced with real crawled content/);
+  assert.match(contract, /FAILURE/);
+});
+
+test("server content-quality floor rejects empty / too-short crawls", () => {
+  // No content → missing.
+  assert.deepEqual(checkBodyContentQuality(""), { ok: false, reason: "content_missing" });
+  assert.deepEqual(checkBodyContentQuality("   \n\t "), {
+    ok: false,
+    reason: "content_missing",
+  });
+  // Below the source floor → too short.
+  assert.deepEqual(
+    checkBodyContentQuality("short", { minChars: 200, minWords: 35 }),
+    { ok: false, reason: "content_too_short" },
+  );
+  // Real content meeting the floor → ok.
+  const realBody = "word ".repeat(40) + "x".repeat(200);
+  assert.deepEqual(checkBodyContentQuality(realBody, { minChars: 200, minWords: 35 }), {
+    ok: true,
+  });
+  // No standards → 1/1 floor: any non-whitespace text passes (never stricter
+  // than an unconfigured source).
+  assert.deepEqual(checkBodyContentQuality("hi"), { ok: true });
+  // CJK content counts toward chars/words.
+  assert.deepEqual(
+    checkBodyContentQuality("你好世界这是测试", { minChars: 4, minWords: 1 }),
+    { ok: true },
+  );
 });
 
 test("digest feed user path selects not-yet-digested posts within the optional lookback", () => {

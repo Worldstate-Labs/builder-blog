@@ -96,8 +96,21 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" sync-bu
   --file "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-agent-sync.json"
 ```
 
-Success means status is ok, localErrors is empty, and `fetchTasks` is empty or
-`validate-agent-sync` reports all fetch tasks validated and `sync-builders`
-succeeds. Already-fetched posts should remain skipped regardless of read state.
-If the run cannot complete without a missing credential or unsupported local
-capability, write the concrete reason {{REPORT_TARGET}} and stop.
+A fetchTask is complete ONLY when its item is synced with real crawled content
+(`body` meeting the source's `minimumContentQuality`) AND a non-empty `summary`.
+The server enforces both: a post with no/insufficient content, or with no
+summary, is refused and recorded in the fetch log as a FAILURE (reason
+`content_missing` / `content_too_short` / `summary_missing`) — not a partial
+success. So summarize every task you fetch before syncing — do not silently drop a
+task from the sync payload because you couldn't summarize it. If a specific task
+genuinely cannot be summarized, write the concrete reason {{REPORT_TARGET}} and
+continue with the rest; the server will mark that one failed.
+
+Run `validate-agent-sync` over the FULL fetch-result file (not a subset) before
+`sync-builders`, and stop if it reports errors — it checks that every task ends
+as one synced item with a valid summary. Success means status is ok, localErrors
+is empty, and `fetchTasks` is empty or `validate-agent-sync` reports all fetch
+tasks validated and `sync-builders` succeeds. Already-fetched posts remain
+skipped regardless of read state. If the run cannot complete without a missing
+credential or unsupported local capability, write the concrete reason
+{{REPORT_TARGET}} and stop.

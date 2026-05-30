@@ -23,6 +23,9 @@ const TaskOutcomeSchema = z.object({
     .enum(["fetched", "pending", "synced", "skipped", "failed", "action_needed"])
     .nullable()
     .optional(),
+  // Why a task failed (e.g. "summary_missing", "not_summarized"). Shown in the
+  // fetch log next to a failed summarize outcome.
+  failureReason: z.string().max(300).nullable().optional(),
 });
 
 const PatchSchema = z.object({
