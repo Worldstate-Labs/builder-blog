@@ -56,17 +56,16 @@ How to execute each `fetchTask`:
     just because one extraction method fails; stop only if no available method
     can obtain real primary content for a task, then write the tried methods and
     concrete blocker {{REPORT_TARGET}} and skip it.
-    For video, primary content is the transcript (captions or speech-to-text);
-    never use frame grabs, OCR, or visual analysis as primary content. The
-    per-video extraction strategy — captions-first, and how to confirm a video
-    genuinely has no content — lives in the source's fetch prompt
-    (`task.fetchInstructions.prompt`); follow it for EACH video independently.
+    Source-specific extraction rules — including what counts as primary content
+    for that medium and how to confirm an item genuinely has no content — live
+    in that source's fetch prompt, not here; follow
+    `task.fetchInstructions.prompt` for EACH task independently.
 - Use `task.minimumContentQuality` for `requires_agent` tasks as the minimum
   acceptance bar for the extracted body. The structured fields drive acceptance:
   `minChars`, `minWords`, the optional ratios, and `disallowedPrimarySources` —
   never accept body content whose origin string appears in
-  `disallowedPrimarySources`. For YouTube, title, description, feed description,
-  and page metadata are not acceptable body content.
+  `disallowedPrimarySources` (the list is per source). Title, description, feed
+  description, and page metadata are never acceptable body content for any source.
 - Generate `summary` only after the body is final. Follow
   `task.summaryInstructions.prompt` and summarize this one task item only.
 - Build one output item under the copied builder. Copy stable item fields from
