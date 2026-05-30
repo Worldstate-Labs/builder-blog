@@ -6,6 +6,7 @@ import {
   describeMachine,
   type AgentTokenListItem,
 } from "@/components/AgentTokenPanel";
+import { SUMMARY_LANGUAGE_OPTIONS } from "@/components/settings/SettingsFields";
 
 type SkillPromptContext = "library" | "digest";
 type CopyTarget = "once" | "cron" | "stop";
@@ -57,17 +58,9 @@ const DEFAULT_FREQUENCY: Record<SkillPromptContext, CronFrequency> = {
 };
 
 // Account-wide summary output language. `value` is fed verbatim into the
-// summary prompt ("…summary in <value>"), so it must read naturally to the
-// model. "zh" is the existing per-source default, so picking 中文 is a no-op.
-const SUMMARY_LANGUAGE_OPTIONS: { value: string; label: string }[] = [
-  { value: "zh", label: "中文 (Chinese)" },
-  { value: "English", label: "English" },
-  { value: "日本語", label: "日本語 (Japanese)" },
-  { value: "한국어", label: "한국어 (Korean)" },
-  { value: "Español", label: "Español (Spanish)" },
-  { value: "Français", label: "Français (French)" },
-  { value: "Deutsch", label: "Deutsch (German)" },
-];
+// summary prompt ("…summary in <value>"); the option list lives in
+// SettingsFields as the single source of truth, shared with the admin
+// per-source Language field. "zh" is the per-source default, so 中文 is a no-op.
 const DEFAULT_SUMMARY_LANGUAGE = "zh";
 
 // The override toggle reuses one URL channel (?force=1) but means different

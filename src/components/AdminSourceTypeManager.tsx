@@ -9,6 +9,7 @@ import {
   FieldText,
   FieldTextarea,
   FooterBar,
+  languageOptions,
   Section,
   Toggle,
   type SaveStatusState,
@@ -304,10 +305,10 @@ function SourceTypeCard({
               options={SUMMARY_STYLE_OPTIONS}
               onChange={(v) => update("summaryStyle", v)}
             />
-            <FieldText
+            <FieldSelect
               label="Language"
-              mono
               value={draft.summaryLanguage}
+              options={languageOptions(draft.summaryLanguage)}
               onChange={(v) => update("summaryLanguage", v)}
             />
             <FieldText

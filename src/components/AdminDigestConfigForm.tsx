@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import {
   FieldShell,
   formatUtcDateTime,
+  OrderedChoiceField,
   SaveStatus,
   Section,
   type SaveStatusState,
@@ -35,7 +36,7 @@ export function AdminDigestConfigForm({
     digestTopPrompt: initialConfig.digestTopPrompt,
     digestIntro: initialConfig.digestIntro,
     translate: initialConfig.translate,
-    digestOrder: initialConfig.digestOrder.join(", "),
+    digestOrder: initialConfig.digestOrder,
   });
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [isPending, startTransition] = useTransition();
@@ -45,10 +46,7 @@ export function AdminDigestConfigForm({
   }
 
   function save() {
-    const digestOrder = draft.digestOrder
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const digestOrder = draft.digestOrder;
     if (digestOrder.length === 0) {
       setStatus({
         kind: "error",
@@ -107,33 +105,14 @@ export function AdminDigestConfigForm({
         title="Composition"
         description="Which source types appear in the digest, in what order, and what rules every per-source summary must follow."
       >
-        <FieldShell label="Source order">
-          <input
-            className="fb-input w-full"
-            style={{ fontFamily: "var(--font-geist-mono)" }}
-            value={draft.digestOrder}
-            onChange={(e) => update("digestOrder", e.target.value)}
-            placeholder="e.g. x_twitter, podcast, blog"
-          />
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <span className="text-xs" style={{ color: "var(--muted)" }}>
-              Known IDs:
-            </span>
-            {knownSourceIds.map((id) => (
-              <span
-                key={id}
-                className="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs"
-                style={{
-                  background: "var(--paper-strong)",
-                  color: "var(--muted-strong)",
-                  fontFamily: "var(--font-geist-mono)",
-                }}
-              >
-                {id}
-              </span>
-            ))}
-          </div>
-        </FieldShell>
+        <OrderedChoiceField
+          label="Source order"
+          description="Sections appear in the digest in this order. Add known sources and reorder with the arrows."
+          value={draft.digestOrder}
+          options={knownSourceIds.map((id) => ({ value: id, label: id }))}
+          onChange={(next) => update("digestOrder", next)}
+          addLabel="Add a source…"
+        />
         <FieldShell
           label="Common summarization rules"
           description="Appended to every per-source summary prompt — use for style guardrails that apply across all sources."
