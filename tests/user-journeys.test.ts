@@ -435,23 +435,34 @@ test("web app serves the agent skill and setup command", () => {
     "skills/builder-blog-digest/jobs/_fetch-task-contract.md",
     "utf8",
   );
+  const digestTaskContract = readFileSync(
+    "skills/builder-blog-digest/jobs/_digest-task-contract.md",
+    "utf8",
+  );
   // Summary language is no longer hardcoded to Chinese — the contract defers to
   // the per-run language stated in summaryInstructions.prompt, which is what
   // lets the account-wide summary-language setting actually take effect.
   assert.doesNotMatch(fetchTaskContract, /concise Chinese/);
   assert.match(fetchTaskContract, /the\s+output language/);
   function expandIncludes(content: string): string {
-    return content.replace(
-      /\{\{INCLUDE:fetch-task-contract REPORT_TARGET="([^"]*)"\}\}/g,
-      (_m, target) =>
-        fetchTaskContract
-          .replace(/^\s*<!--[\s\S]*?-->\s*/, "")
-          .replaceAll("{{REPORT_TARGET}}", target)
-          .trim(),
-    );
+    return content
+      .replace(
+        /\{\{INCLUDE:fetch-task-contract REPORT_TARGET="([^"]*)"\}\}/g,
+        (_m, target) =>
+          fetchTaskContract
+            .replace(/^\s*<!--[\s\S]*?-->\s*/, "")
+            .replaceAll("{{REPORT_TARGET}}", target)
+            .trim(),
+      )
+      .replace(
+        /\{\{INCLUDE:digest-task-contract\}\}/g,
+        () => digestTaskContract.replace(/^\s*<!--[\s\S]*?-->\s*/, "").trim(),
+      );
   }
   const libraryOnceExpanded = expandIncludes(libraryOncePrompt);
   const libraryCronExpanded = expandIncludes(libraryCronPrompt);
+  const digestOnceExpanded = expandIncludes(digestOncePrompt);
+  const digestCronExpanded = expandIncludes(digestCronPrompt);
 
   // Anti-drift: both library jobs reference the shared contract via the
   // directive, and neither raw file restates the execution steps inline.
@@ -552,11 +563,16 @@ test("web app serves the agent skill and setup command", () => {
   // through context.sources.<id>.summaryPrompt.body and context.digest.*.
   // The digest prompt now references those context paths instead of disk
   // markdown files.
-  assert.match(digestOncePrompt, /context\.sources\.x\.summaryPrompt\.body/);
-  assert.match(digestOncePrompt, /context\.sources\.podcast\.summaryPrompt\.body/);
-  assert.match(digestOncePrompt, /context\.sources\.blog\.summaryPrompt\.body/);
-  assert.match(digestOncePrompt, /context\.digest\.digestIntro/);
-  assert.match(digestOncePrompt, /context\.digest\.translate/);
+  // Anti-drift: the digest-writing method lives in the shared partial included
+  // by both digest jobs; the raw file only carries the directive, and the
+  // expanded prompt references the current context.sources/context.digest paths.
+  assert.match(digestOncePrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
+  assert.doesNotMatch(digestOnceExpanded, /\{\{INCLUDE/);
+  assert.match(digestOnceExpanded, /context\.sources\.x\.summaryPrompt\.body/);
+  assert.match(digestOnceExpanded, /context\.sources\.podcast\.summaryPrompt\.body/);
+  assert.match(digestOnceExpanded, /context\.sources\.blog\.summaryPrompt\.body/);
+  assert.match(digestOnceExpanded, /context\.digest\.digestIntro/);
+  assert.match(digestOnceExpanded, /context\.digest\.translate/);
   assert.match(libraryCronSetupPrompt, /builder-agent-runner\.sh library-cron/);
   // Setup now pins the chosen runtime in $AGENT_DIR/runtime so the
   // runner picks the matching unattended-mode invocation at cron-fire
@@ -779,14 +795,19 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronPrompt, /builder-blog-digest\.md/);
   assert.match(digestCronPrompt, /Only use agent judgment to write the digest body/);
   assert.match(digestCronPrompt, /Agent discretion boundary/);
-  assert.match(digestCronPrompt, /The only creative step is writing/);
+  assert.match(digestCronExpanded, /The only creative step is writing/);
   assert.doesNotMatch(digestCronPrompt, /api\/skill\/bootstrap/);
   assert.match(digestCronPrompt, /runner already downloaded the latest skill files/);
-  assert.match(digestCronPrompt, /summarize-tweets\.md/);
-  assert.match(digestCronPrompt, /summarize-podcast\.md/);
-  assert.match(digestCronPrompt, /summarize-blogs\.md/);
-  assert.match(digestCronPrompt, /digest-intro\.md/);
-  assert.match(digestCronPrompt, /translate\.md/);
+  // The recurring run now shares the once job's digest-writing method via the
+  // partial: current context.sources/context.digest fields, not the deprecated
+  // context.prompts / *.md filenames it used to restate inline.
+  assert.match(digestCronPrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
+  assert.doesNotMatch(digestCronExpanded, /\{\{INCLUDE/);
+  assert.match(digestCronExpanded, /context\.sources\.x\.summaryPrompt\.body/);
+  assert.match(digestCronExpanded, /context\.digest\.digestIntro/);
+  assert.match(digestCronExpanded, /context\.digest\.translate/);
+  assert.doesNotMatch(digestCronExpanded, /summarize-tweets\.md/);
+  assert.doesNotMatch(digestCronExpanded, /context\.prompts/);
   assert.equal(skill.includes("/Users/jie/code/builder_blog"), false);
   assert.equal(skill.includes("node scripts/builder-digest.mjs"), false);
 });

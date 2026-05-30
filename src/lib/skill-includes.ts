@@ -15,6 +15,7 @@ import { join } from "node:path";
 
 const FRAGMENTS: Record<string, string> = {
   "fetch-task-contract": "skills/builder-blog-digest/jobs/_fetch-task-contract.md",
+  "digest-task-contract": "skills/builder-blog-digest/jobs/_digest-task-contract.md",
 };
 
 const INCLUDE_DIRECTIVE = /\{\{INCLUDE:([a-z0-9-]+)([^}]*)\}\}/g;

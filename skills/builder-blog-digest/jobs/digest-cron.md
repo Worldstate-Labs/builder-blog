@@ -36,24 +36,7 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" sync \
   --title "AI Builder Digest" ${BUILDER_BLOG_DIGEST_REGENERATE:-}
 ```
 
-Digest rules:
+{{INCLUDE:digest-task-contract}}
 
-- Use only `items` from `builder-blog-context.json`; do not browse the web and
-  do not invent facts.
-- The only creative step is writing the digest body from those items.
-- Before writing, read `prompts` from `builder-blog-context.json` and use these
-  five prompt bodies as the required digest-writing method:
-  `summarizeTweets` (`summarize-tweets.md`) for `TWEET` items grouped by
-  builder/source, `summarizePodcast` (`summarize-podcast.md`) for
-  `PODCAST_EPISODE` items, `summarizeBlogs` (`summarize-blogs.md`) for
-  `BLOG_POST` items, `digestIntro` (`digest-intro.md`) to assemble the final
-  digest, and `translate` (`translate.md`) to produce the final natural output
-  in `context.language` (default simplified Chinese).
-- Do not collapse these into one generic summary. First create source-specific
-  summaries with the matching prompt, then assemble them with `digestIntro`,
-  then apply `translate` to render the result in `context.language`.
-- Include source URLs for every claim.
-- If there are no items, sync a short digest in `context.language` saying there
-  were no new subscription updates in the period.
-- If the run cannot complete without a missing credential or unsupported local
-  capability, write the concrete reason to the scheduled job log and stop.
+If the run cannot complete without a missing credential or unsupported local
+capability, write the concrete reason to the scheduled job log and stop.
