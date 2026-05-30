@@ -1287,6 +1287,30 @@ svg.lucide {
   color: var(--accent);
 }
 
+/* Expandable fetch-task row (Fetch log details) */
+.fb-task > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.fb-task > summary::-webkit-details-marker {
+  display: none;
+}
+
+.fb-task-chev {
+  transition: transform 140ms ease;
+}
+
+.fb-task[open] > summary .fb-task-chev {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fb-task-chev {
+    transition: none;
+  }
+}
+
 /* Fetching method popover */
 .fb-popover-anchor {
   position: relative;

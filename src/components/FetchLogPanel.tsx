@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
-import { RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useState, useTransition, type ReactNode } from "react";
+import { ChevronRight, RefreshCw } from "lucide-react";
 import { useHydrated } from "@/components/ThemeToggle";
 
 export type LibraryFetchRunListItem = {
@@ -392,76 +392,12 @@ function DetailsBody({ details }: { details: DetailsShape }) {
           <h3 className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted-strong)]">
             Tasks ({fetchTasks.length})
           </h3>
-          <ul className="mt-1.5 grid gap-1.5">
+          <ul className="mt-1.5 grid gap-1">
             {fetchTasks.map((task, index) => (
-              <li
+              <TaskRow
                 key={task.id ?? `${task.builderId ?? "task"}-${index}`}
-                className="text-[12.5px] leading-snug"
-              >
-                <span className="mr-1.5 inline-flex items-baseline gap-1.5">
-                  {task.sourceType ? (
-                    <span
-                      className="mono text-[11px]"
-                      style={{ color: "var(--muted-strong)" }}
-                    >
-                      {task.sourceType}
-                    </span>
-                  ) : null}
-                  {task.contentStatus ? (
-                    <span
-                      className="rounded px-1.5 py-0.5 text-[10.5px] uppercase tracking-wide"
-                      style={{
-                        background:
-                          task.contentStatus === "ready"
-                            ? "var(--signal-soft)"
-                            : "var(--warm-soft)",
-                        color:
-                          task.contentStatus === "ready"
-                            ? "color-mix(in oklch, var(--signal) 72%, var(--ink))"
-                            : "color-mix(in oklch, var(--warm) 68%, var(--ink))",
-                        fontFamily: "var(--font-geist-mono)",
-                      }}
-                    >
-                      {task.contentStatus === "ready" ? "ready" : "agent"}
-                    </span>
-                  ) : null}
-                </span>
-                <span className="text-[var(--ink)]">
-                  {task.title ?? task.url ?? "—"}
-                </span>
-                {task.builder ? (
-                  <span className="text-[var(--muted-strong)]"> · {task.builder}</span>
-                ) : null}
-                {task.agentWorkType ? (
-                  <span
-                    className="mono ml-1.5 text-[11px]"
-                    style={{ color: "var(--muted)" }}
-                  >
-                    {task.agentWorkType}
-                  </span>
-                ) : null}
-                {(() => {
-                  const facts = [
-                    task.agentModel
-                      ? `${task.agentRuntime ? `${task.agentRuntime} ` : ""}${task.agentModel}`
-                      : null,
-                    typeof task.bodyChars === "number"
-                      ? `${task.bodyChars.toLocaleString()} chars`
-                      : null,
-                    typeof task.summaryChars === "number"
-                      ? `→ ${task.summaryChars.toLocaleString()}-char summary`
-                      : null,
-                  ].filter(Boolean);
-                  return facts.length ? (
-                    <div
-                      className="mono mt-0.5 text-[11px]"
-                      style={{ color: "var(--muted)" }}
-                    >
-                      {facts.join(" · ")}
-                    </div>
-                  ) : null;
-                })()}
-              </li>
+                task={task}
+              />
             ))}
           </ul>
         </div>
@@ -626,5 +562,266 @@ function DetailsBody({ details }: { details: DetailsShape }) {
         <p className="text-[12.5px] text-[var(--muted-strong)]">No structured details.</p>
       ) : null}
     </div>
+  );
+}
+
+type Tone = "ok" | "warn" | "fail" | "idle";
+
+function toneStyle(tone: Tone): { background: string; color: string } {
+  switch (tone) {
+    case "ok":
+      return {
+        background: "var(--signal-soft)",
+        color: "color-mix(in oklch, var(--signal) 72%, var(--ink))",
+      };
+    case "warn":
+      return {
+        background: "var(--warm-soft)",
+        color: "color-mix(in oklch, var(--warm) 68%, var(--ink))",
+      };
+    case "fail":
+      return { background: "var(--danger-soft)", color: "var(--danger)" };
+    default:
+      return { background: "var(--paper)", color: "var(--muted-strong)" };
+  }
+}
+
+type WorkInfo = {
+  label: string;
+  blurb: string | null;
+  fix: string | null;
+  fixHref?: string;
+};
+
+// Translate the machine work-type / fetch-tool code into a plain-language
+// description (and remediation for failure codes) so the panel reassures the
+// user about what actually happened, even when a fetch was blocked.
+function describeWork(task: FetchTaskLog): WorkInfo {
+  const code = (task.agentWorkType ?? task.fetchTool ?? "").trim();
+  switch (code) {
+    case "x_token_missing":
+      return {
+        label: "x_token_missing",
+        blurb:
+          "This X (Twitter) source needs a personal API token before its posts can be read.",
+        fix: "Add an X token under Settings → Tokens, then run fetch again.",
+        fixHref: "/settings",
+      };
+    case "youtube_transcription":
+      return {
+        label: "youtube_transcription",
+        blurb:
+          "The video transcript was pulled and handed to the agent to summarize.",
+        fix: null,
+      };
+    case "fetch_builder_fallback":
+      return {
+        label: "fetch_builder_fallback",
+        blurb:
+          "The standard fetcher couldn't pull the body, so the agent fetched the primary content itself before summarizing.",
+        fix: null,
+      };
+    default:
+      return { label: code || "—", blurb: null, fix: null };
+  }
+}
+
+function isBlocked(task: FetchTaskLog): boolean {
+  const code = task.agentWorkType ?? task.fetchTool ?? "";
+  return (
+    typeof code === "string" &&
+    (code.startsWith("user_action_") || code.includes("token_missing"))
+  );
+}
+
+function fetchOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
+  if (isBlocked(task)) return { label: "Blocked", tone: "fail" };
+  if (typeof task.bodyChars === "number" && task.bodyChars > 0)
+    return { label: "Fetched", tone: "ok" };
+  if (task.contentStatus === "ready") return { label: "Fetched", tone: "ok" };
+  return { label: "Fetched by agent", tone: "idle" };
+}
+
+function summarizeOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
+  if (typeof task.summaryChars === "number" && task.summaryChars > 0)
+    return { label: "Summarized", tone: "ok" };
+  if (isBlocked(task)) return { label: "Not reached", tone: "idle" };
+  return { label: "Pending", tone: "warn" };
+}
+
+function statusBanner(task: FetchTaskLog): { label: string; tone: Tone } {
+  const s = task.status ?? (task.contentStatus === "ready" ? "fetched" : "pending");
+  if (task.contentStatus === "ready" || s === "fetched")
+    return { label: "Fetched & summarized", tone: "ok" };
+  if (s === "action_needed") return { label: "Action needed", tone: "fail" };
+  if (s === "failed") return { label: "Failed", tone: "fail" };
+  return { label: "Awaiting agent", tone: "warn" };
+}
+
+function sizeText(chars: number | null | undefined, words: number | null | undefined): string | null {
+  if (typeof chars !== "number") return null;
+  const wordPart = typeof words === "number" ? ` · ~${words.toLocaleString()} words` : "";
+  return `${chars.toLocaleString()} chars${wordPart}`;
+}
+
+function FactRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex gap-2 text-[12px] leading-relaxed">
+      <dt className="w-24 shrink-0 text-[var(--muted)]">{label}</dt>
+      <dd className="min-w-0 flex-1 text-[var(--ink)]">{value}</dd>
+    </div>
+  );
+}
+
+function StageBlock({
+  title,
+  tone,
+  outcome,
+  children,
+}: {
+  title: string;
+  tone: Tone;
+  outcome: string;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <h4 className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted-strong)]">
+          {title}
+        </h4>
+        <span
+          className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+          style={{ ...toneStyle(tone), fontFamily: "var(--font-geist-mono)" }}
+        >
+          {outcome}
+        </span>
+      </div>
+      <dl className="mt-1 grid gap-0.5">{children}</dl>
+    </div>
+  );
+}
+
+function TaskRow({ task }: { task: FetchTaskLog }) {
+  const work = describeWork(task);
+  const fetchRes = fetchOutcome(task);
+  const sumRes = summarizeOutcome(task);
+  const banner = statusBanner(task);
+  const bannerStyle = toneStyle(banner.tone);
+  const ready = task.contentStatus === "ready";
+  const pillTone: Tone = ready ? "ok" : banner.tone === "fail" ? "fail" : "warn";
+
+  const agentLabel = [task.agentRuntime, task.agentModel].filter(Boolean).join(" · ");
+  const bodySize = sizeText(task.bodyChars, task.bodyWords);
+  const summarySize = sizeText(task.summaryChars, task.summaryWords);
+  const compression =
+    typeof task.bodyWords === "number" &&
+    task.bodyWords > 0 &&
+    typeof task.summaryWords === "number" &&
+    task.summaryWords > 0
+      ? `${task.bodyWords.toLocaleString()} → ${task.summaryWords.toLocaleString()} words (${(
+          task.bodyWords / task.summaryWords
+        ).toFixed(1)}× shorter)`
+      : null;
+
+  return (
+    <li>
+      <details className="fb-task rounded-[8px] border border-[var(--line)] bg-[var(--paper-strong)]">
+        <summary className="fb-task-summary flex items-center gap-1.5 px-2.5 py-1.5 text-[12.5px] leading-snug">
+          <ChevronRight
+            aria-hidden="true"
+            className="fb-task-chev h-3.5 w-3.5 shrink-0 text-[var(--muted)]"
+          />
+          {task.sourceType ? (
+            <span className="mono shrink-0 text-[11px] text-[var(--muted-strong)]">
+              {task.sourceType}
+            </span>
+          ) : null}
+          <span
+            className="shrink-0 rounded px-1.5 py-0.5 text-[10.5px] uppercase tracking-wide"
+            style={{ ...toneStyle(pillTone), fontFamily: "var(--font-geist-mono)" }}
+          >
+            {ready ? "ready" : "agent"}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[var(--ink)]">
+            {task.title ?? task.url ?? "—"}
+          </span>
+          {task.builder ? (
+            <span className="shrink-0 text-[var(--muted-strong)]">· {task.builder}</span>
+          ) : null}
+        </summary>
+
+        <div className="grid gap-3 border-t border-[var(--line)] px-3 py-2.5">
+          <div
+            className="rounded-[6px] px-2.5 py-1.5 text-[12px] font-bold"
+            style={bannerStyle}
+          >
+            {banner.label}
+            {work.blurb ? (
+              <span className="font-normal opacity-90"> — {work.blurb}</span>
+            ) : null}
+          </div>
+
+          {work.fix ? (
+            <div className="text-[12px] leading-relaxed text-[var(--muted-strong)]">
+              <span className="font-bold text-[var(--ink)]">How to fix: </span>
+              {work.fix}
+              {work.fixHref ? (
+                <>
+                  {" "}
+                  <a className="text-[var(--accent)] underline" href={work.fixHref}>
+                    open settings
+                  </a>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+
+          <StageBlock title="① Fetch" tone={fetchRes.tone} outcome={fetchRes.label}>
+            <FactRow label="Method" value={<span className="mono">{work.label}</span>} />
+            {bodySize ? <FactRow label="Raw size" value={bodySize} /> : null}
+            {task.url ? (
+              <FactRow
+                label="Source"
+                value={
+                  <a
+                    className="break-all text-[var(--accent)] underline"
+                    href={task.url}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    {task.url}
+                  </a>
+                }
+              />
+            ) : null}
+          </StageBlock>
+
+          <StageBlock title="② Summarize" tone={sumRes.tone} outcome={sumRes.label}>
+            {agentLabel ? (
+              <FactRow label="Agent" value={<span className="mono">{agentLabel}</span>} />
+            ) : null}
+            {summarySize ? <FactRow label="Summary size" value={summarySize} /> : null}
+            {compression ? <FactRow label="Compression" value={compression} /> : null}
+            {!agentLabel && !summarySize ? (
+              <p className="text-[11.5px] text-[var(--muted)]">
+                {sumRes.label === "Not reached"
+                  ? "Fetch was blocked, so no summary was produced."
+                  : "The agent hasn't summarized this item yet."}
+              </p>
+            ) : null}
+          </StageBlock>
+
+          <details className="rounded-[6px] border border-[var(--line)] bg-[var(--paper)]">
+            <summary className="cursor-pointer px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--muted-strong)]">
+              Raw JSON
+            </summary>
+            <pre className="mono max-h-72 overflow-auto px-2.5 pb-2.5 pt-1 text-[11px] text-[var(--muted-strong)]">
+              {JSON.stringify(task, null, 2)}
+            </pre>
+          </details>
+        </div>
+      </details>
+    </li>
   );
 }
