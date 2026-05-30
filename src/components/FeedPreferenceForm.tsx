@@ -1,6 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
+import {
+  SaveStatus,
+  type SaveStatusState,
+} from "@/components/settings/SettingsFields";
 
 type DigestFrequency = "DAILY" | "WEEKLY" | "CUSTOM";
 
@@ -18,6 +22,20 @@ function ageToInput(value: number | null): string {
   return value === null ? "" : String(value);
 }
 
+// Day-count bounds shared by the custom-frequency and max-post-age fields.
+const MIN_DAYS = 1;
+const MAX_DAYS = 365;
+
+// Mirrors the admin forms' integer-bound validation pattern. Returns an error
+// message when invalid, or null when the value is acceptable.
+function validateDays(value: string, fieldLabel: string): string | null {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < MIN_DAYS || n > MAX_DAYS) {
+    return `${fieldLabel} must be a whole number between ${MIN_DAYS} and ${MAX_DAYS}.`;
+  }
+  return null;
+}
+
 export function FeedPreferenceForm({
   initialValue,
 }: {
@@ -33,14 +51,33 @@ export function FeedPreferenceForm({
   const [recommendationProfile, setRecommendationProfile] = useState(
     initialValue.recommendationProfile,
   );
-  const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
-  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<SaveStatusState>({ kind: "idle" });
   const [isPending, startTransition] = useTransition();
+
+  const customDaysId = useId();
+  const maxAgeId = useId();
+  const profileId = useId();
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setStatus("idle");
-    setMessage("");
+
+    // Client-side validation, matching the admin forms: integers within bounds.
+    if (digestFrequency === "CUSTOM") {
+      const error = validateDays(digestCustomFrequencyDays, "Custom interval");
+      if (error) {
+        setStatus({ kind: "error", message: error });
+        return;
+      }
+    }
+    if (digestMaxPostAgeDays.trim() !== "") {
+      const error = validateDays(digestMaxPostAgeDays, "Max post age");
+      if (error) {
+        setStatus({ kind: "error", message: error });
+        return;
+      }
+    }
+
+    setStatus({ kind: "saving" });
     startTransition(async () => {
       try {
         const response = await fetch("/api/settings/feed-preferences", {
@@ -61,11 +98,12 @@ export function FeedPreferenceForm({
           const body = await response.json().catch(() => null);
           throw new Error(body?.error ?? `HTTP ${response.status}`);
         }
-        setStatus("saved");
-        setMessage("Saved");
+        setStatus({ kind: "saved", message: "Saved" });
       } catch (error) {
-        setStatus("error");
-        setMessage(error instanceof Error ? error.message : "Save failed");
+        setStatus({
+          kind: "error",
+          message: error instanceof Error ? error.message : "Save failed",
+        });
       }
     });
   }
@@ -79,12 +117,20 @@ export function FeedPreferenceForm({
   return (
     <form className="mt-4 grid gap-2" onSubmit={handleSubmit}>
       <div className="fb-field">
-        <label>Digest frequency</label>
-        <div className="fb-pill-group">
+        <span id="fb-digest-frequency-label" className="fb-field-label">
+          Digest frequency
+        </span>
+        <div
+          className="fb-pill-group"
+          role="radiogroup"
+          aria-labelledby="fb-digest-frequency-label"
+        >
           {frequencyOptions.map((option) => (
             <button
               className={`fb-pill${digestFrequency === option.value ? " active" : ""}`}
               key={option.value}
+              role="radio"
+              aria-checked={digestFrequency === option.value}
               onClick={() => setDigestFrequency(option.value)}
               type="button"
             >
@@ -96,14 +142,17 @@ export function FeedPreferenceForm({
 
       {digestFrequency === "CUSTOM" ? (
         <div className="fb-field">
-          <label>Custom interval</label>
+          <label htmlFor={customDaysId}>Custom interval</label>
           <div className="flex items-center gap-3">
             <input
+              id={customDaysId}
               aria-label="Custom interval in days"
               className="fb-input w-20"
-              min="1"
-              max="365"
+              min={MIN_DAYS}
+              max={MAX_DAYS}
+              step={1}
               type="number"
+              inputMode="numeric"
               value={digestCustomFrequencyDays}
               onChange={(event) => setDigestCustomFrequencyDays(event.target.value)}
             />
@@ -115,14 +164,17 @@ export function FeedPreferenceForm({
       ) : null}
 
       <div className="fb-field">
-        <label>Max post age</label>
+        <label htmlFor={maxAgeId}>Max post age</label>
         <div className="flex items-center gap-3">
           <input
+            id={maxAgeId}
             aria-label="Max post age in days"
             className="fb-input w-20"
-            min="1"
-            max="365"
+            min={MIN_DAYS}
+            max={MAX_DAYS}
+            step={1}
             type="number"
+            inputMode="numeric"
             placeholder="No limit"
             value={digestMaxPostAgeDays}
             onChange={(event) => setDigestMaxPostAgeDays(event.target.value)}
@@ -135,8 +187,10 @@ export function FeedPreferenceForm({
       </div>
 
       <div className="fb-field">
-        <label>Recommendation profile</label>
+        <label htmlFor={profileId}>Recommendation profile</label>
         <textarea
+          id={profileId}
+          aria-label="Recommendation profile"
           className="fb-textarea"
           maxLength={4000}
           value={recommendationProfile}
@@ -160,23 +214,14 @@ export function FeedPreferenceForm({
             setDigestCustomFrequencyDays(String(initialValue.digestCustomFrequencyDays));
             setDigestMaxPostAgeDays(ageToInput(initialValue.digestMaxPostAgeDays));
             setRecommendationProfile(initialValue.recommendationProfile);
-            setStatus("idle");
-            setMessage("");
+            setStatus({ kind: "idle" });
           }}
           type="button"
         >
           Reset
         </button>
-        <span aria-live="polite" className="ml-1 text-[11.5px]">
-          {message ? (
-            <span
-              className={
-                status === "saved" ? "text-[var(--signal)]" : "text-[var(--danger)]"
-              }
-            >
-              {message}
-            </span>
-          ) : null}
+        <span className="ml-1" aria-live="polite">
+          <SaveStatus status={status} />
         </span>
       </div>
     </form>

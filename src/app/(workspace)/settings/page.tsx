@@ -139,12 +139,12 @@ async function SourceTypeConfigSection() {
 function SourceTypeConfigSkeleton() {
   return (
     <section className="mt-10" aria-busy="true" aria-live="polite">
-      <div className="h-3 w-40 animate-pulse rounded bg-black/10" />
-      <div className="mt-2 h-5 w-64 animate-pulse rounded bg-black/10" />
+      <div className="h-3 w-40 animate-pulse rounded bg-[var(--paper-strong)]" />
+      <div className="mt-2 h-5 w-64 animate-pulse rounded bg-[var(--paper-strong)]" />
       <div className="mt-5 grid gap-3">
-        <div className="h-24 animate-pulse rounded bg-black/10" />
-        <div className="h-24 animate-pulse rounded bg-black/10" />
-        <div className="h-24 animate-pulse rounded bg-black/10" />
+        <div className="h-24 animate-pulse rounded bg-[var(--paper-strong)]" />
+        <div className="h-24 animate-pulse rounded bg-[var(--paper-strong)]" />
+        <div className="h-24 animate-pulse rounded bg-[var(--paper-strong)]" />
       </div>
     </section>
   );
@@ -166,7 +166,7 @@ function ActiveTokenChipFallback() {
   return (
     <span className="fb-chip" aria-busy="true" aria-live="polite">
       <KeyRound aria-hidden="true" />
-      <span className="inline-block h-3 w-16 animate-pulse rounded-full bg-black/10" />
+      <span className="inline-block h-3 w-16 animate-pulse rounded-full bg-[var(--paper-strong)]" />
     </span>
   );
 }
@@ -197,24 +197,24 @@ function FeedPreferenceSkeleton() {
   return (
     <div className="mt-4 grid gap-4" aria-busy="true" aria-live="polite">
       <div className="grid gap-2">
-        <div className="h-3 w-32 animate-pulse rounded bg-black/10" />
+        <div className="h-3 w-32 animate-pulse rounded bg-[var(--paper-strong)]" />
         <div className="flex gap-2">
-          <div className="h-9 w-16 animate-pulse rounded-full bg-black/10" />
-          <div className="h-9 w-20 animate-pulse rounded-full bg-black/10" />
-          <div className="h-9 w-20 animate-pulse rounded-full bg-black/10" />
+          <div className="h-9 w-16 animate-pulse rounded-full bg-[var(--paper-strong)]" />
+          <div className="h-9 w-20 animate-pulse rounded-full bg-[var(--paper-strong)]" />
+          <div className="h-9 w-20 animate-pulse rounded-full bg-[var(--paper-strong)]" />
         </div>
       </div>
       <div className="grid gap-2">
-        <div className="h-3 w-32 animate-pulse rounded bg-black/10" />
-        <div className="h-10 w-24 animate-pulse rounded bg-black/10" />
+        <div className="h-3 w-32 animate-pulse rounded bg-[var(--paper-strong)]" />
+        <div className="h-10 w-24 animate-pulse rounded bg-[var(--paper-strong)]" />
       </div>
       <div className="grid gap-2">
-        <div className="h-3 w-44 animate-pulse rounded bg-black/10" />
-        <div className="h-24 animate-pulse rounded bg-black/10" />
+        <div className="h-3 w-44 animate-pulse rounded bg-[var(--paper-strong)]" />
+        <div className="h-24 animate-pulse rounded bg-[var(--paper-strong)]" />
       </div>
       <div className="flex gap-2">
-        <div className="h-9 w-32 animate-pulse rounded-full bg-black/10" />
-        <div className="h-9 w-20 animate-pulse rounded-full bg-black/10" />
+        <div className="h-9 w-32 animate-pulse rounded-full bg-[var(--paper-strong)]" />
+        <div className="h-9 w-20 animate-pulse rounded-full bg-[var(--paper-strong)]" />
       </div>
     </div>
   );
@@ -245,16 +245,16 @@ function AgentTokenPanelSkeleton() {
     <section className="fb-panel" aria-busy="true" aria-live="polite">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-2">
-          <div className="h-5 w-32 animate-pulse rounded bg-black/10" />
-          <div className="h-3 w-64 animate-pulse rounded bg-black/10" />
+          <div className="h-5 w-32 animate-pulse rounded bg-[var(--paper-strong)]" />
+          <div className="h-3 w-64 animate-pulse rounded bg-[var(--paper-strong)]" />
         </div>
-        <div className="h-8 w-24 animate-pulse rounded-full bg-black/10" />
+        <div className="h-8 w-24 animate-pulse rounded-full bg-[var(--paper-strong)]" />
       </div>
-      <div className="mt-4 h-11 animate-pulse rounded-[10px] bg-black/10" />
+      <div className="mt-4 h-11 animate-pulse rounded-[10px] bg-[var(--paper-strong)]" />
       <div className="mt-4 grid gap-2 overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] p-3">
-        <div className="h-12 animate-pulse rounded bg-black/10" />
-        <div className="h-12 animate-pulse rounded bg-black/10" />
-        <div className="h-12 animate-pulse rounded bg-black/10" />
+        <div className="h-12 animate-pulse rounded bg-[var(--paper-strong)]" />
+        <div className="h-12 animate-pulse rounded bg-[var(--paper-strong)]" />
+        <div className="h-12 animate-pulse rounded bg-[var(--paper-strong)]" />
       </div>
     </section>
   );

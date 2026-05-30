@@ -1,6 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import {
+  FieldShell,
+  formatUtcDateTime,
+  SaveStatus,
+  Section,
+  type SaveStatusState,
+} from "@/components/settings/SettingsFields";
 
 export type AdminDigestConfig = {
   id: string;
@@ -13,7 +20,7 @@ export type AdminDigestConfig = {
   updatedBy: string | null;
 };
 
-type Status = { kind: "idle" | "saving" | "saved" | "error"; message?: string };
+type Status = SaveStatusState;
 
 export function AdminDigestConfigForm({
   initialConfig,
@@ -43,19 +50,25 @@ export function AdminDigestConfigForm({
       .map((s) => s.trim())
       .filter(Boolean);
     if (digestOrder.length === 0) {
-      setStatus({ kind: "error", message: "digestOrder cannot be empty" });
+      setStatus({
+        kind: "error",
+        message: "Add at least one source to the digest order.",
+      });
       return;
     }
     const unknown = digestOrder.filter((id) => !knownSourceIds.includes(id));
     if (unknown.length > 0) {
       setStatus({
         kind: "error",
-        message: `Unknown source IDs in digestOrder: ${unknown.join(", ")}. Known: ${knownSourceIds.join(", ")}`,
+        message: `These sources aren't recognized: ${unknown.join(", ")}.`,
       });
       return;
     }
     if (draft.commonSummaryRules.trim().length === 0) {
-      setStatus({ kind: "error", message: "commonSummaryRules cannot be empty" });
+      setStatus({
+        kind: "error",
+        message: "Common summary rules can't be empty.",
+      });
       return;
     }
     const patch = {
@@ -78,7 +91,7 @@ export function AdminDigestConfigForm({
           throw new Error(body?.error ?? `HTTP ${response.status}`);
         }
         setConfig(body.config);
-        setStatus({ kind: "saved", message: "Saved." });
+        setStatus({ kind: "saved", message: "Saved" });
       } catch (error) {
         setStatus({
           kind: "error",
@@ -94,7 +107,7 @@ export function AdminDigestConfigForm({
         title="Composition"
         description="Which source types appear in the digest, in what order, and what rules every per-source summary must follow."
       >
-        <Field label="Source order">
+        <FieldShell label="Source order">
           <input
             className="fb-input w-full"
             style={{ fontFamily: "var(--font-geist-mono)" }}
@@ -120,8 +133,8 @@ export function AdminDigestConfigForm({
               </span>
             ))}
           </div>
-        </Field>
-        <Field
+        </FieldShell>
+        <FieldShell
           label="Common summarization rules"
           description="Appended to every per-source summary prompt — use for style guardrails that apply across all sources."
         >
@@ -132,14 +145,14 @@ export function AdminDigestConfigForm({
             value={draft.commonSummaryRules}
             onChange={(e) => update("commonSummaryRules", e.target.value)}
           />
-        </Field>
+        </FieldShell>
       </Section>
 
       <Section
         title="Digest prompts"
         description="Prompts that wrap the assembled per-source summaries into the final daily digest."
       >
-        <Field
+        <FieldShell
           label="Top prompt"
           description="Sent at the very start of the digest — sets the model's role and overall task."
         >
@@ -150,8 +163,8 @@ export function AdminDigestConfigForm({
             value={draft.digestTopPrompt}
             onChange={(e) => update("digestTopPrompt", e.target.value)}
           />
-        </Field>
-        <Field
+        </FieldShell>
+        <FieldShell
           label="Intro prompt"
           description="Generates the digest's opening paragraph from the assembled summaries."
         >
@@ -162,8 +175,8 @@ export function AdminDigestConfigForm({
             value={draft.digestIntro}
             onChange={(e) => update("digestIntro", e.target.value)}
           />
-        </Field>
-        <Field
+        </FieldShell>
+        <FieldShell
           label="Translate prompt"
           description="Used when translating finished summaries into a user's preferred language."
         >
@@ -174,7 +187,7 @@ export function AdminDigestConfigForm({
             value={draft.translate}
             onChange={(e) => update("translate", e.target.value)}
           />
-        </Field>
+        </FieldShell>
       </Section>
 
       <div
@@ -189,18 +202,9 @@ export function AdminDigestConfigForm({
         >
           {isPending || status.kind === "saving" ? "Saving…" : "Save digest config"}
         </button>
-        {status.message ? (
-          <span
-            className={
-              status.kind === "error"
-                ? "text-sm text-[var(--danger)]"
-                : "text-sm text-[var(--muted-strong)]"
-            }
-            role={status.kind === "error" ? "alert" : undefined}
-          >
-            {status.message}
-          </span>
-        ) : null}
+        <SaveStatus
+          status={status.kind === "saving" ? { kind: "idle" } : status}
+        />
         <span
           className="ml-auto text-xs"
           style={{ color: "var(--muted)", fontFamily: "var(--font-geist-mono)" }}
@@ -210,70 +214,5 @@ export function AdminDigestConfigForm({
         </span>
       </div>
     </div>
-  );
-}
-
-function Section({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="mt-6 first:mt-0">
-      <div className="mb-3 border-b border-[var(--line)] pb-2">
-        <p
-          className="text-[11px] uppercase tracking-[0.16em]"
-          style={{ color: "var(--ink)", fontFamily: "var(--font-geist-mono)" }}
-        >
-          {title}
-        </p>
-        {description ? (
-          <p className="mt-0.5 text-sm" style={{ color: "var(--muted-strong)" }}>
-            {description}
-          </p>
-        ) : null}
-      </div>
-      <div className="grid gap-4">{children}</div>
-    </section>
-  );
-}
-
-function formatUtcDateTime(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-    timeZoneName: "short",
-  }).format(new Date(value));
-}
-
-function Field({
-  label,
-  description,
-  children,
-}: {
-  label: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block text-sm">
-      <span className="mb-1 block uppercase tracking-[0.12em] text-[var(--muted)] text-xs">
-        {label}
-      </span>
-      {children}
-      {description ? (
-        <span className="mt-1 block text-xs" style={{ color: "var(--muted)" }}>
-          {description}
-        </span>
-      ) : null}
-    </label>
   );
 }

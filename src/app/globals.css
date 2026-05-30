@@ -4581,7 +4581,8 @@ svg.lucide {
   margin-top: 0.875rem;
 }
 
-.fb-field label {
+.fb-field label,
+.fb-field-label {
   color: var(--muted);
   font-size: 0.71875rem;
   font-weight: 800;
@@ -4602,7 +4603,6 @@ svg.lucide {
 
 .fb-input:focus {
   border-color: color-mix(in oklch, var(--accent) 32%, var(--line));
-  outline: 0;
 }
 
 .fb-textarea {
@@ -4620,7 +4620,6 @@ svg.lucide {
 
 .fb-textarea:focus {
   border-color: color-mix(in oklch, var(--accent) 32%, var(--line));
-  outline: 0;
 }
 
 /* Pill segmented (radio-style) */
