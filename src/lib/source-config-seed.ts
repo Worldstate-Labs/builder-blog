@@ -6,13 +6,15 @@ import { DEFAULT_DIGEST_PROMPTS } from "./digest-prompts";
 // here (not exported from a Prisma model) so seed and store agree on
 // the exact serialized JSON columns even before Prisma generate runs.
 
+// primaryContentOnly + disallowedPrimarySources are intentionally NOT here:
+// "use real primary content only" is a fixed rule, enforced by the skill prompts
+// and the CLI's hardcoded per-source defaults (builder-digest.mjs), not an
+// admin-editable knob.
 export type ContentQualityShape = {
-  primaryContentOnly: boolean;
   minChars: number;
   minWords: number;
   minUniqueWordRatio?: number;
   maxTimestampWordRatio?: number;
-  disallowedPrimarySources: string[];
 };
 
 export type SourceSummaryStyle = "x_twitter" | "podcast_or_video" | "blog_or_document";

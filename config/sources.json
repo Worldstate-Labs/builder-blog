@@ -4,58 +4,63 @@
       "id": "x",
       "label": "X",
       "builderKind": "X",
-      "feedItemKinds": ["TWEET"],
-      "urlPatterns": ["(^|//)((www\\.)?(x|twitter)\\.com)/"],
+      "feedItemKinds": [
+        "TWEET"
+      ],
+      "urlPatterns": [
+        "(^|//)((www\\.)?(x|twitter)\\.com)/"
+      ],
       "agentDefaultStatus": "ready",
       "contentQuality": {
-        "primaryContentOnly": true,
         "minChars": 1,
-        "minWords": 1,
-        "disallowedPrimarySources": ["title", "description", "page metadata"]
+        "minWords": 1
       }
     },
     {
       "id": "blog",
       "label": "Blog",
       "builderKind": "BLOG",
-      "feedItemKinds": ["BLOG_POST"],
+      "feedItemKinds": [
+        "BLOG_POST"
+      ],
       "urlPatterns": [],
       "agentDefaultStatus": "ready",
       "contentQuality": {
-        "primaryContentOnly": true,
         "minChars": 200,
-        "minWords": 35,
-        "disallowedPrimarySources": ["title", "description", "page metadata", "file name"]
+        "minWords": 35
       }
     },
     {
       "id": "youtube",
       "label": "YouTube",
       "builderKind": "PODCAST",
-      "feedItemKinds": ["PODCAST_EPISODE"],
-      "urlPatterns": ["youtube\\.com", "youtu\\.be"],
+      "feedItemKinds": [
+        "PODCAST_EPISODE"
+      ],
+      "urlPatterns": [
+        "youtube\\.com",
+        "youtu\\.be"
+      ],
       "agentDefaultStatus": "requires_agent",
       "contentQuality": {
-        "primaryContentOnly": true,
         "minChars": 80,
         "minWords": 12,
         "minUniqueWordRatio": 0.25,
-        "maxTimestampWordRatio": 0.2,
-        "disallowedPrimarySources": ["title", "description", "feed description", "page metadata"]
+        "maxTimestampWordRatio": 0.2
       }
     },
     {
       "id": "podcast",
       "label": "Podcast RSS",
       "builderKind": "PODCAST",
-      "feedItemKinds": ["PODCAST_EPISODE"],
+      "feedItemKinds": [
+        "PODCAST_EPISODE"
+      ],
       "urlPatterns": [],
       "agentDefaultStatus": "ready",
       "contentQuality": {
-        "primaryContentOnly": true,
         "minChars": 200,
-        "minWords": 35,
-        "disallowedPrimarySources": ["title", "description", "page metadata"]
+        "minWords": 35
       }
     },
     {
@@ -63,13 +68,13 @@
       "label": "PDF",
       "builderKind": "WEBSITE",
       "feedItemKinds": [],
-      "urlPatterns": ["\\.pdf(?:\\s|$|[?#])"],
+      "urlPatterns": [
+        "\\.pdf(?:\\s|$|[?#])"
+      ],
       "agentDefaultStatus": "requires_agent",
       "contentQuality": {
-        "primaryContentOnly": true,
         "minChars": 200,
-        "minWords": 35,
-        "disallowedPrimarySources": ["title", "description", "page metadata", "file name"]
+        "minWords": 35
       }
     },
     {
@@ -80,10 +85,8 @@
       "urlPatterns": [],
       "agentDefaultStatus": "requires_agent",
       "contentQuality": {
-        "primaryContentOnly": true,
         "minChars": 200,
-        "minWords": 35,
-        "disallowedPrimarySources": ["title", "description", "page metadata"]
+        "minWords": 35
       }
     }
   ]

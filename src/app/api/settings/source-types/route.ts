@@ -16,12 +16,10 @@ import { SEEDED_SOURCE_IDS } from "@/lib/source-config-seed";
 
 const ContentQualitySchema = z
   .object({
-    primaryContentOnly: z.boolean(),
     minChars: z.number().int().min(0),
     minWords: z.number().int().min(0),
     minUniqueWordRatio: z.number().min(0).max(1).optional(),
     maxTimestampWordRatio: z.number().min(0).max(1).optional(),
-    disallowedPrimarySources: z.array(z.string()),
   })
   .strict();
 

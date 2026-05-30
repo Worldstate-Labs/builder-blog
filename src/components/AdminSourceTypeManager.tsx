@@ -28,12 +28,10 @@ export type AdminSourceTypeConfig = {
 };
 
 type ContentQuality = {
-  primaryContentOnly: boolean;
   minChars: number;
   minWords: number;
   minUniqueWordRatio: number | null;
   maxTimestampWordRatio: number | null;
-  disallowedPrimarySources: string[];
 };
 
 type Draft = {
@@ -55,17 +53,12 @@ const SUMMARY_STYLE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
 
 function toContentQuality(raw: unknown): ContentQuality {
   const obj = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {});
-  const disallowed = Array.isArray(obj.disallowedPrimarySources)
-    ? (obj.disallowedPrimarySources.filter((v) => typeof v === "string") as string[])
-    : [];
   return {
-    primaryContentOnly: obj.primaryContentOnly !== false,
     minChars: typeof obj.minChars === "number" ? obj.minChars : 0,
     minWords: typeof obj.minWords === "number" ? obj.minWords : 0,
     minUniqueWordRatio: typeof obj.minUniqueWordRatio === "number" ? obj.minUniqueWordRatio : null,
     maxTimestampWordRatio:
       typeof obj.maxTimestampWordRatio === "number" ? obj.maxTimestampWordRatio : null,
-    disallowedPrimarySources: disallowed,
   };
 }
 
@@ -156,10 +149,8 @@ function SourceTypeCard({
     }
 
     const contentQuality: Record<string, unknown> = {
-      primaryContentOnly: cq.primaryContentOnly,
       minChars: cq.minChars,
       minWords: cq.minWords,
-      disallowedPrimarySources: cq.disallowedPrimarySources,
     };
     if (cq.minUniqueWordRatio !== null && Number.isFinite(cq.minUniqueWordRatio)) {
       contentQuality.minUniqueWordRatio = cq.minUniqueWordRatio;
