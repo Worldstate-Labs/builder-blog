@@ -35,6 +35,7 @@ model User {
   channelPreferences      UserChannelPreference[]
   libraryVisibilities     UserLibraryVisibility[]
   libraryFetchRuns        LibraryFetchRun[]
+  digestRuns              DigestRun[]
   sourceTypeConfigs       UserSourceTypeConfig[]
   digestConfig            UserDigestConfig?
 }
@@ -379,6 +380,50 @@ model Digest {
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+/// Diagnostic record of one digest generation attempt — the digest analogue of
+/// LibraryFetchRun. Created at `prepare` (context fetch) with a snapshot of the
+/// candidate funnel the agent was handed, then updated to "synced" when the
+/// digest is posted back. Self-contained: the candidate/subscription snapshots
+/// and includedKeys are stored inline so the funnel survives deletion of the
+/// produced Digest or its DigestedItem markers (digestId is a soft link, no FK).
+model DigestRun {
+  id                String    @id @default(cuid())
+  userId            String
+  /// "prepared" (context fetched, no digest synced yet) | "synced".
+  status            String    @default("prepared")
+  source            String    @default("skill")
+  preparedAt        DateTime  @default(now())
+  syncedAt          DateTime?
+  // --- Window snapshot (from digestWindow at prepare time) ---
+  /// Optional publishedAt lookback floor; null = no floor (consider every
+  /// not-yet-digested post).
+  lookbackCutoff    DateTime?
+  maxPostAgeDays    Int?
+  lastDigestAt      DateTime?
+  regenerate        Boolean   @default(false)
+  // --- Funnel counts ---
+  subscriptionCount Int       @default(0)
+  candidateCount    Int       @default(0)
+  /// Set at sync = number of candidates the agent actually presented.
+  includedCount     Int?
+  // --- Snapshots (durable; independent of Digest / DigestedItem) ---
+  /// [{ entityId, kind, externalId, feedItemId, title, url, source, publishedAt }]
+  candidates        Json
+  /// [{ entityId, name }] — the subscribed entities at run time, so the log can
+  /// show which followed sources stayed silent.
+  subscriptions     Json
+  /// ["entityId:kind:externalId", ...] of the presented posts; set at sync.
+  /// A candidate not in this set is "eligible but dropped" by the editorial step.
+  includedKeys      Json?
+  // --- Outcome (soft link; nullable so the run survives digest deletion) ---
+  digestId          String?
+  digestTitle       String?
+  language          String?
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, preparedAt(sort: Desc)])
 }
 
 model AgentToken {

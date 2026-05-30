@@ -90,6 +90,11 @@ export const SkillDigestSchema = z.object({
   // The candidate posts presented to this digest. The create route upserts a
   // per-user DigestedItem for each so they don't participate in future digests.
   digestedItems: z.array(SkillDigestedItemSchema).max(5_000).default([]),
+  // Links this digest to the DigestRun recorded at `prepare`, so the diagnostic
+  // funnel (candidate pool, window, source coverage) is completed with the
+  // actual outcome. The CLI reads it from the same context file it already
+  // parses for `digestedItems`. Optional: older CLIs / missing context omit it.
+  runId: z.string().min(1).max(64).nullable().optional(),
 });
 
 export function parseSkillBuilderSyncPayload(payload: unknown) {

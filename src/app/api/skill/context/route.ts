@@ -228,8 +228,57 @@ export async function GET(request: Request) {
     }
   }
 
+  // Diagnostic funnel snapshot. Record this preparation as a DigestRun so the
+  // digest log can later show the candidate pool, window, and source coverage
+  // the agent was handed — the input that the produced digest is judged
+  // against. The subsequent `sync` call links back via this run id. Best-effort:
+  // a logging failure must never break the digest the user actually wants.
+  const entityNameById = new Map<string, string>();
+  for (const sub of subscriptions) {
+    const ent = sub.builder?.entity;
+    if (ent && !entityNameById.has(ent.id)) entityNameById.set(ent.id, ent.name);
+  }
+  const candidateSnapshot = items.map((it) => ({
+    entityId: it.entityId,
+    kind: it.kind,
+    externalId: it.externalId,
+    feedItemId: it.id ?? null,
+    title: it.title ?? null,
+    url: it.url ?? null,
+    source: it.sourceName ?? entityNameById.get(it.entityId) ?? null,
+    publishedAt: it.publishedAt ? new Date(it.publishedAt).toISOString() : null,
+  }));
+  const subscriptionSnapshot = subscribedEntityIds.map((id) => ({
+    entityId: id,
+    name: entityNameById.get(id) ?? "Unknown source",
+  }));
+  let runId: string | null = null;
+  try {
+    const digestRun = await prisma.digestRun.create({
+      data: {
+        userId: user.id,
+        status: "prepared",
+        source: "skill",
+        preparedAt: now,
+        lookbackCutoff,
+        maxPostAgeDays: digestMaxPostAgeDays(preference),
+        lastDigestAt: lastDigest?.createdAt ?? null,
+        regenerate,
+        subscriptionCount: subscribedEntityIds.length,
+        candidateCount: items.length,
+        candidates: candidateSnapshot,
+        subscriptions: subscriptionSnapshot,
+      },
+      select: { id: true },
+    });
+    runId = digestRun.id;
+  } catch (error) {
+    console.error("Failed to record DigestRun for digest prepare", error);
+  }
+
   return NextResponse.json({
     user: { id: user.id, name: user.name, email: user.email },
+    runId,
     generatedAt: now.toISOString(),
     language: userSummaryLanguage ?? "zh",
     digestWindow: {

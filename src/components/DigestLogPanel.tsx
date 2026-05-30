@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { useHydrated } from "@/components/ThemeToggle";
-import type { DigestRunListItem } from "@/lib/digest-runs";
+import type {
+  DigestRunCandidate,
+  DigestRunListItem,
+  DigestRunSource,
+} from "@/lib/digest-runs";
 
 const RELATIVE_FORMATTER =
   typeof Intl !== "undefined" && "RelativeTimeFormat" in Intl
@@ -52,6 +56,7 @@ function formatDay(iso: string): string {
 }
 
 const VISIBLE_RUN_LIMIT = 5;
+const VISIBLE_SOURCE_LIMIT = 4;
 
 export function DigestLogPanel({
   initialRuns,
@@ -102,7 +107,9 @@ export function DigestLogPanel({
         <div>
           <h2 className="fb-section-heading">Digest log</h2>
           <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-            Your last {runs.length || 0} digest generations, including empty runs.
+            What each generation actually considered — the eligible pool, the window,
+            and which followed sources it drew from. Use it to see why a digest came
+            out the way it did.
           </p>
         </div>
         <button
@@ -120,10 +127,11 @@ export function DigestLogPanel({
         <p className="mt-3 text-[12px] text-[var(--danger)]">{error}</p>
       ) : null}
 
-      <div className="mt-4 grid gap-2">
+      <div className="mt-4 grid gap-2.5">
         {runs.length === 0 ? (
           <div className="rounded-[10px] border border-dashed border-[var(--line)] bg-[var(--paper-strong)] px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
-            No digests generated yet. Each time your agent syncs a brief it will show up here.
+            No digest runs recorded yet. The next time your agent prepares a digest,
+            its candidate funnel will show up here.
           </div>
         ) : (
           <>
@@ -147,22 +155,54 @@ export function DigestLogPanel({
   );
 }
 
-function RunCard({ run }: { run: DigestRunListItem }) {
-  const hydrated = useHydrated();
-  const empty = run.itemCount === 0;
-  const startedAtLabel = hydrated ? formatRelative(run.createdAt) : formatAbsolute(run.createdAt);
+type ChipStyle = { background: string; color: string; border: string };
 
-  const statusStyle = empty
-    ? {
+function statusChip(run: DigestRunListItem): { label: string; style: ChipStyle } {
+  if (run.status !== "synced") {
+    return {
+      label: "Not synced",
+      style: {
+        background: "color-mix(in oklch, var(--warm) 12%, var(--paper-strong))",
+        color: "color-mix(in oklch, var(--warm) 70%, var(--ink))",
+        border: "color-mix(in oklch, var(--warm) 30%, var(--line))",
+      },
+    };
+  }
+  if (run.candidateCount === 0) {
+    return {
+      label: "Empty",
+      style: {
         background: "var(--paper-strong)",
         color: "var(--muted-strong)",
         border: "var(--line)",
-      }
-    : {
-        background: "var(--signal-soft)",
-        color: "color-mix(in oklch, var(--signal) 72%, var(--ink))",
-        border: "color-mix(in oklch, var(--signal) 28%, var(--line))",
-      };
+      },
+    };
+  }
+  return {
+    label: "Synced",
+    style: {
+      background: "var(--signal-soft)",
+      color: "color-mix(in oklch, var(--signal) 72%, var(--ink))",
+      border: "color-mix(in oklch, var(--signal) 28%, var(--line))",
+    },
+  };
+}
+
+function RunCard({ run }: { run: DigestRunListItem }) {
+  const hydrated = useHydrated();
+  const stampIso = run.syncedAt ?? run.preparedAt;
+  const timeLabel = hydrated ? formatRelative(stampIso) : formatAbsolute(stampIso);
+  const chip = statusChip(run);
+
+  const windowLabel = run.lookbackCutoff
+    ? `${formatDay(run.lookbackCutoff)} → ${formatDay(run.preparedAt)}`
+    : "all not-yet-digested";
+
+  const title =
+    run.digestTitle ?? (run.status === "synced" ? "Untitled digest" : "Prepared — no digest synced");
+
+  const contributing = run.sources.filter((s) => s.eligible > 0);
+  const silentCount = run.subscriptionCount - contributing.length;
 
   return (
     <article
@@ -172,85 +212,188 @@ function RunCard({ run }: { run: DigestRunListItem }) {
       <header className="flex flex-wrap items-center gap-2">
         <span
           className="fb-chip"
-          style={{
-            background: statusStyle.background,
-            color: statusStyle.color,
-            borderColor: statusStyle.border,
-          }}
+          style={{ background: chip.style.background, color: chip.style.color, borderColor: chip.style.border }}
         >
-          {empty ? "Empty" : String(run.status || "synced")}
+          {chip.label}
         </span>
         <time
           className="text-[12.5px] text-[var(--muted-strong)]"
-          dateTime={run.createdAt}
-          title={formatAbsolute(run.createdAt)}
+          dateTime={stampIso}
+          title={formatAbsolute(stampIso)}
         >
-          {startedAtLabel}
+          {timeLabel}
         </time>
-        <span className="fb-chip">{run.language}</span>
-        {run.source ? (
-          <span className="mono text-[11.5px] text-[var(--muted-strong)]">{run.source}</span>
+        {run.language ? <span className="fb-chip">{run.language}</span> : null}
+        {run.regenerate ? (
+          <span className="mono text-[11px] text-[var(--muted)]">regenerate</span>
         ) : null}
       </header>
 
-      <p className="mt-2 text-[13.5px] font-semibold leading-snug text-[var(--ink)]">
-        {run.title}
-      </p>
+      <p className="mt-2 text-[13.5px] font-semibold leading-snug text-[var(--ink)]">{title}</p>
 
-      <div className="mono mt-1 text-[11.5px] text-[var(--muted-strong)]">
-        {empty
-          ? "no new subscription updates"
-          : `${run.itemCount} item${run.itemCount === 1 ? "" : "s"}`}{" "}
-        · {formatDay(run.periodStart)} → {formatDay(run.periodEnd)}
+      <div className="mono mt-1 text-[11.5px] text-[var(--muted)]">
+        Window {windowLabel}
+        {run.lastDigestAt ? ` · last digest ${formatRelative(run.lastDigestAt)}` : ""}
       </div>
 
-      {empty ? null : (
-        <details className="mt-2 rounded-[8px] border border-[var(--line)] bg-[var(--paper)]">
-          <summary className="cursor-pointer px-3 py-2 text-[12.5px] font-bold text-[var(--ink)]">
-            Show {run.items.length || run.itemCount} included post
-            {(run.items.length || run.itemCount) === 1 ? "" : "s"}
-          </summary>
-          <div className="border-t border-[var(--line)] px-3 py-2.5">
-            {run.items.length === 0 ? (
-              <p className="text-[12px] text-[var(--muted)]">
-                Item details are no longer available for this digest.
-              </p>
-            ) : (
-              <ul className="grid gap-1.5">
-                {run.items.map((item, index) => (
-                  <li
-                    key={`${item.url ?? item.title ?? "item"}-${index}`}
-                    className="flex items-start gap-2 text-[12.5px] leading-snug"
-                  >
-                    <span className="mono mt-[1px] shrink-0 text-[10.5px] text-[var(--muted)]">
-                      {sourceTag(item.kind)}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="text-[var(--ink)]">{item.title ?? item.url ?? "—"}</span>
-                      {item.source ? (
-                        <span className="text-[var(--muted-strong)]"> · {item.source}</span>
-                      ) : null}
-                    </span>
-                    {item.url ? (
-                      <a
-                        aria-label="View the original on its source site"
-                        className="shrink-0 text-[var(--accent)]"
-                        href={item.url}
-                        rel="noreferrer"
-                        target="_blank"
-                        title="View original"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            )}
+      {/* The funnel — the diagnostic spine. */}
+      <div className="mt-2.5 flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-[12.5px]">
+        <FunnelStat value={run.candidateCount} label="eligible" />
+        {run.status === "synced" ? (
+          <>
+            <Arrow />
+            <FunnelStat value={run.includedCount ?? 0} label="included" tone="signal" />
+            <Arrow />
+            <FunnelStat value={run.droppedCount ?? 0} label="dropped" tone="muted" />
+          </>
+        ) : (
+          <span className="text-[var(--muted)]">· not synced yet</span>
+        )}
+      </div>
+
+      {run.candidateCount === 0 ? (
+        <p className="mt-1.5 text-[12px] text-[var(--muted-strong)]">
+          Nothing was eligible — no new posts from followed sources in this window
+          (everything else was already digested).
+        </p>
+      ) : (
+        <>
+          <div className="mt-2 text-[12px] text-[var(--muted-strong)]">
+            <span className="font-semibold text-[var(--ink)]">{run.contributingSourceCount}</span>{" "}
+            of {run.subscriptionCount} followed{" "}
+            {run.subscriptionCount === 1 ? "source" : "sources"} contributed
           </div>
-        </details>
+          {contributing.length > 0 ? (
+            <ul className="mt-1.5 grid gap-1">
+              {contributing.slice(0, VISIBLE_SOURCE_LIMIT).map((src) => (
+                <SourceRow key={src.entityId} src={src} synced={run.status === "synced"} />
+              ))}
+              {contributing.length > VISIBLE_SOURCE_LIMIT ? (
+                <li className="mono text-[11px] text-[var(--muted)]">
+                  + {contributing.length - VISIBLE_SOURCE_LIMIT} more contributing
+                </li>
+              ) : null}
+              {silentCount > 0 ? (
+                <li className="mono text-[11px] text-[var(--muted)]">
+                  {silentCount} silent · no new posts in window
+                </li>
+              ) : null}
+            </ul>
+          ) : null}
+        </>
       )}
+
+      {run.candidates.length > 0 ? (
+        <details className="mt-2.5 rounded-[8px] border border-[var(--line)] bg-[var(--paper)]">
+          <summary className="cursor-pointer px-3 py-2 text-[12.5px] font-bold text-[var(--ink)]">
+            Show {run.candidates.length} eligible{" "}
+            {run.candidates.length === 1 ? "post" : "posts"} (in / dropped)
+          </summary>
+          <ul className="grid gap-1.5 border-t border-[var(--line)] px-3 py-2.5">
+            {run.candidates.map((item, index) => (
+              <CandidateRow
+                key={`${item.url ?? item.title ?? "item"}-${index}`}
+                item={item}
+                synced={run.status === "synced"}
+              />
+            ))}
+          </ul>
+        </details>
+      ) : null}
     </article>
+  );
+}
+
+function Arrow() {
+  return (
+    <span aria-hidden="true" className="text-[var(--muted)]">
+      →
+    </span>
+  );
+}
+
+function FunnelStat({
+  value,
+  label,
+  tone,
+}: {
+  value: number;
+  label: string;
+  tone?: "signal" | "muted";
+}) {
+  const color =
+    tone === "signal"
+      ? "color-mix(in oklch, var(--signal) 72%, var(--ink))"
+      : tone === "muted"
+        ? "var(--muted-strong)"
+        : "var(--ink)";
+  return (
+    <span className="inline-flex items-baseline gap-1">
+      <span className="mono text-[14px] font-semibold" style={{ color }}>
+        {value}
+      </span>
+      <span className="text-[var(--muted-strong)]">{label}</span>
+    </span>
+  );
+}
+
+function SourceRow({ src, synced }: { src: DigestRunSource; synced: boolean }) {
+  return (
+    <li className="flex items-baseline justify-between gap-2 text-[12px]">
+      <span className="min-w-0 truncate text-[var(--ink)]">{src.name}</span>
+      <span className="mono shrink-0 text-[11px] text-[var(--muted-strong)]">
+        {src.eligible} eligible{synced ? ` · ${src.included} in` : ""}
+      </span>
+    </li>
+  );
+}
+
+function CandidateRow({ item, synced }: { item: DigestRunCandidate; synced: boolean }) {
+  // Three outcomes: presented (in), eligible-but-passed-over (drop), and — when
+  // the run never synced — simply pending (no editorial decision was ever made,
+  // so don't imply it was rejected).
+  const outcome = !synced ? "elig" : item.included ? "in" : "drop";
+  const outcomeColor = !synced
+    ? "var(--muted)"
+    : item.included
+      ? "color-mix(in oklch, var(--signal) 70%, var(--ink))"
+      : "var(--muted)";
+  const outcomeTitle = !synced
+    ? "Eligible; run not synced (no decision made)"
+    : item.included
+      ? "Included in the digest"
+      : "Eligible but not included";
+  return (
+    <li className="flex items-start gap-2 text-[12.5px] leading-snug">
+      <span
+        className="mono mt-[1px] w-[2.6em] shrink-0 text-[10px] font-semibold uppercase tracking-wide"
+        style={{ color: outcomeColor }}
+        title={outcomeTitle}
+      >
+        {outcome}
+      </span>
+      <span className="mono mt-[1px] shrink-0 text-[10.5px] text-[var(--muted)]">
+        {sourceTag(item.kind)}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className={item.included ? "text-[var(--ink)]" : "text-[var(--muted-strong)]"}>
+          {item.title ?? item.url ?? "—"}
+        </span>
+        {item.source ? <span className="text-[var(--muted)]"> · {item.source}</span> : null}
+      </span>
+      {item.url ? (
+        <a
+          aria-label="View the original on its source site"
+          className="shrink-0 text-[var(--accent)]"
+          href={item.url}
+          rel="noreferrer"
+          target="_blank"
+          title="View original"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
+      ) : null}
+    </li>
   );
 }
 

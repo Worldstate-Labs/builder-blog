@@ -105,5 +105,31 @@ export async function POST(request: Request) {
     );
   }
 
+  // Complete the diagnostic funnel: link this digest back to the DigestRun that
+  // recorded the candidate pool at `prepare`. includedKeys marks which
+  // candidates the editorial step actually presented (the rest are "eligible but
+  // dropped"). Scoped to this user and best-effort — a stale/missing runId must
+  // not fail the sync the user cares about.
+  if (parsed.data.runId) {
+    try {
+      await prisma.digestRun.updateMany({
+        where: { id: parsed.data.runId, userId: user.id },
+        data: {
+          status: "synced",
+          syncedAt: now,
+          digestId: digest.id,
+          digestTitle: digest.title,
+          language,
+          includedCount: parsed.data.digestedItems.length,
+          includedKeys: parsed.data.digestedItems.map(
+            (item) => `${item.entityId}:${item.kind}:${item.externalId}`,
+          ),
+        },
+      });
+    } catch (error) {
+      console.error("Failed to link DigestRun on digest sync", error);
+    }
+  }
+
   return NextResponse.json({ status: "ok", digest });
 }

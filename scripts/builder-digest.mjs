@@ -2737,8 +2737,12 @@ async function sync(args) {
     join(agentDir, "tmp", "builder-blog-context.json"),
   );
   let digestedItems = [];
+  // The DigestRun id the server issued at `prepare`; links this sync back to the
+  // recorded candidate funnel so the digest log shows included-vs-dropped.
+  let runId = null;
   try {
     const ctx = JSON.parse(await readFile(contextPath, "utf8"));
+    if (typeof ctx.runId === "string" && ctx.runId) runId = ctx.runId;
     digestedItems = (Array.isArray(ctx.items) ? ctx.items : [])
       .filter((it) => it && it.entityId && it.kind && it.externalId)
       .map((it) => ({
@@ -2768,6 +2772,7 @@ async function sync(args) {
       itemCount: Number(argValue(args, "--item-count", String(digestedItems.length))),
       regenerate,
       digestedItems,
+      ...(runId ? { runId } : {}),
     },
     config.token,
   );
