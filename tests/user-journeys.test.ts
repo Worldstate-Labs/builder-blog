@@ -12,7 +12,6 @@ import {
 import { subscriptionBuilderIdsInPool } from "../src/lib/digest-library";
 import { DEFAULT_DIGEST_PROMPTS } from "../src/lib/digest-prompts";
 import {
-  digestFallbackSince,
   digestFrequencyDays,
   digestMaxAgeCutoff,
   digestMaxPostAgeDays,
@@ -311,7 +310,11 @@ test("web app serves the agent skill and setup command", () => {
   // SkillPromptActions, which references the bootstrap route directly.
   assert.doesNotMatch(settingsPanel, /\/api\/skill\/bootstrap/);
   assert.match(buildersPage, /<SkillPromptActions\s+context="library"/);
-  assert.match(dashboardPage, /<SkillPromptActions context="digest"/);
+  assert.match(dashboardPage, /<SkillPromptActions\s+context="digest"/);
+  // Dashboard loads + passes the account-wide summary language to the digest dialog.
+  assert.match(dashboardPage, /userFeedPreference\.findUnique/);
+  assert.match(dashboardPage, /summaryLanguage=\{feedPreference\?\.summaryLanguage \?\? null\}/);
+  assert.match(dashboardPage, /summaryLanguage=\{summaryLanguage\}/);
   // Library page loads + passes the account-wide summary language to the dialog.
   assert.match(buildersPage, /summaryLanguage: feedPreference\?\.summaryLanguage/);
   assert.match(buildersPage, /summaryLanguage=\{data\.summaryLanguage\}/);
@@ -327,22 +330,26 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /params\.set\("runtime"/);
   assert.match(skillPromptActions, /params\.set\("freq"/);
   assert.match(skillPromptActions, /Frequency/);
-  // Library cron dialog has an "override already-fetched posts" toggle that
-  // adds ?force=1; it's gated to the library context (digest doesn't fetch
-  // personal items) and defaults off.
+  // The override toggle adds ?force=1; its copy is context-specific (library
+  // re-fetches already-saved posts, digest re-generates today's digest — the
+  // digest job never fetches). Both cron + once dialogs expose it for both
+  // contexts, defaulting off.
+  assert.match(skillPromptActions, /OVERRIDE_COPY/);
   assert.match(skillPromptActions, /Override already-fetched posts/);
+  assert.match(skillPromptActions, /Re-generate today's digest/);
   assert.match(skillPromptActions, /overrideFetched/);
   assert.match(skillPromptActions, /params\.set\("force", "1"\)/);
-  assert.match(skillPromptActions, /context === "library"/);
-  // The library once flow has the same override, in its own small dialog.
+  // The once flow opens a config dialog for BOTH contexts (digest gains the
+  // language picker + override; library keeps its override).
   assert.match(skillPromptActions, /OnceConfigDialog/);
   assert.match(skillPromptActions, /continueOnceCopy/);
-  // Cron dialog redesign: compact <select> controls grouped into Schedule /
-  // Output sections (no long radio lists), plus an account-wide summary
-  // language select persisted via /api/settings/summary-language.
+  // Cron + once dialogs: compact <select> controls grouped into Schedule /
+  // Output sections, plus an account-wide summary language select persisted via
+  // /api/settings/summary-language — now shown for digest as well as library.
   assert.match(skillPromptActions, /cron-field-select/);
   assert.match(skillPromptActions, /Summary language/);
   assert.match(skillPromptActions, /SUMMARY_LANGUAGE_OPTIONS/);
+  assert.match(skillPromptActions, /persistSummaryLanguage/);
   assert.match(skillPromptActions, /\/api\/settings\/summary-language/);
   assert.match(skillPromptActions, /token-picker-grouplabel">Schedule/);
   assert.match(skillPromptActions, /token-picker-grouplabel">Output/);
@@ -385,6 +392,34 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronSetupPrompt, /\{\{LAUNCHD_SCHEDULE\}\}/);
   assert.match(digestCronSetupPrompt, /launchctl bootstrap/);
   assert.doesNotMatch(digestCronSetupPrompt, /0 8 \* \* \*/);
+
+  // Digest "re-generate today's digest": the same ?force=1 channel drives
+  // digest-specific placeholders. The once command bakes --regenerate inline;
+  // the cron flow pins it to disk and the runner re-exports it.
+  assert.match(skillJobRoute, /\{\{DIGEST_REGENERATE\}\}/);
+  assert.match(skillJobRoute, /\{\{DIGEST_REGENERATE_FLAG\}\}/);
+  assert.match(digestOncePrompt, /\{\{DIGEST_REGENERATE_FLAG\}\}/);
+  assert.match(digestCronPrompt, /BUILDER_BLOG_DIGEST_REGENERATE/);
+  assert.match(digestCronSetupPrompt, /\{\{DIGEST_REGENERATE\}\}/);
+  assert.match(digestCronSetupPrompt, /regenerate-digest-cron/);
+  assert.match(runner, /BUILDER_BLOG_DIGEST_REGENERATE/);
+  assert.match(runner, /read_pin regenerate/);
+  assert.match(cli, /--regenerate/);
+  assert.match(cli, /&regenerate=1/);
+  // Digest output language is no longer hard-coded to Chinese — it defers to
+  // context.language so the account-wide summary-language setting takes effect.
+  assert.match(digestOncePrompt, /context\.language/);
+  assert.match(digestCronPrompt, /context\.language/);
+  assert.doesNotMatch(digestOncePrompt, /concise Chinese digest/);
+  // The digest create route replaces today's digest when regenerating, and
+  // records the account-wide language.
+  const digestCreateRoute = readFileSync(
+    "src/app/api/skill/digests/route.ts",
+    "utf8",
+  );
+  assert.match(digestCreateRoute, /regenerate/);
+  assert.match(digestCreateRoute, /deleteMany/);
+  assert.match(digestCreateRoute, /summaryLanguage/);
   assert.doesNotMatch(skillPromptActions, /\/api\/skill\/bootstrap/);
   assert.doesNotMatch(skillPromptActions, /BUILDER_BLOG_PROMPT_URL/);
   assert.doesNotMatch(skillPromptActions, /builder-agent-runner\.sh \$\{job\}/);
@@ -620,7 +655,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /library-once\|digest-once\|library-cron-setup\|digest-cron-setup\|library-cron\|digest-cron/);
   assert.match(runner, /codex exec --skip-git-repo-check/);
   assert.match(runner, /claude -p/);
-  assert.match(runner, /openclaw agent --local --message/);
+  // openclaw 2026.5.20+ requires a session selector, so the runner passes
+  // `--agent` between `--local` and `--message`.
+  assert.match(runner, /openclaw agent --local --agent .* --message/);
   assert.match(runner, /gemini -p/);
   // Pinned-runtime dispatch for *-cron jobs: each runtime has an
   // _unattended variant with the matching allowlist / auto-approve
@@ -762,39 +799,74 @@ test("digest sync user path defaults optional fields and rejects empty content",
   if (!parsed.success) return;
   assert.equal(parsed.data.language, "zh");
   assert.equal(parsed.data.itemCount, 0);
+  // New fields default safely for old callers.
+  assert.equal(parsed.data.regenerate, false);
+  assert.deepEqual(parsed.data.digestedItems, []);
+
+  // A caller that marks digested posts is accepted and validated.
+  const withMarks = parseSkillDigestPayload({
+    title: "Digest",
+    content: "Body",
+    regenerate: true,
+    digestedItems: [{ entityId: "e1", kind: "TWEET", externalId: "x1", feedItemId: "fi1" }],
+  });
+  assert.equal(withMarks.success, true);
+  if (withMarks.success) {
+    assert.equal(withMarks.data.regenerate, true);
+    assert.equal(withMarks.data.digestedItems.length, 1);
+    assert.equal(withMarks.data.digestedItems[0].entityId, "e1");
+  }
 
   const empty = parseSkillDigestPayload({ title: "Bad", content: "" });
   assert.equal(empty.success, false);
 });
 
-test("digest feed user path derives context window from user frequency and max post age", () => {
+test("digest feed user path selects not-yet-digested posts within the optional lookback", () => {
   const now = new Date("2026-05-23T12:00:00.000Z");
-  const preference = {
+  // Lookback set → a publishedAt floor; 45 days before now = 2026-04-08.
+  const withFloor = {
     digestFrequency: DigestFrequency.CUSTOM,
     digestCustomFrequencyDays: 3,
     digestMaxPostAgeDays: 45,
   };
+  assert.equal(digestFrequencyDays(withFloor), 3);
+  assert.equal(digestMaxPostAgeDays(withFloor), 45);
+  const cutoff = digestMaxAgeCutoff(now, withFloor);
+  assert.equal(cutoff?.toISOString(), "2026-04-08T12:00:00.000Z");
 
-  assert.equal(digestFrequencyDays(preference), 3);
-  assert.equal(digestMaxPostAgeDays(preference), 45);
-  assert.equal(digestFallbackSince(now, preference).toISOString(), "2026-05-20T12:00:00.000Z");
-  assert.equal(digestMaxAgeCutoff(now, preference).toISOString(), "2026-04-08T12:00:00.000Z");
+  // Lookback null (the new default) → no floor: removes the old mandatory 90-day cap.
+  const noFloor = { digestFrequency: DigestFrequency.DAILY, digestMaxPostAgeDays: null };
+  assert.equal(digestMaxPostAgeDays(noFloor), null);
+  assert.equal(digestMaxAgeCutoff(now, noFloor), null);
 
+  // Candidate selection is gated by the per-user DigestedItem marker, not a
+  // time window. Override (regenerate) re-includes already-digested posts.
   const contextRoute = readFileSync("src/app/api/skill/context/route.ts", "utf8");
-  assert.match(contextRoute, /publishedAfter: maxAgeCutoff/);
-  assert.match(contextRoute, /publishedAfter: maxAgeCutoff/);
-  assert.match(contextRoute, /newly fetched items created after the last digest/);
+  assert.match(contextRoute, /publishedAfter: lookbackCutoff/);
+  assert.match(contextRoute, /excludeDigestedForUserId: regenerate \? null : user\.id/);
+  assert.doesNotMatch(contextRoute, /newly fetched items created after the last digest/);
   assert.match(contextRoute, /includePrompts/);
-  // context.prompts (kept for back-compat) is now derived from DB at request time,
-  // not from a static DIGEST_PROMPTS import. Just assert the field is still emitted.
+  assert.match(contextRoute, /regenerate/);
   assert.match(contextRoute, /prompts:/);
-  // Account-wide summary language: when the user set one, it overrides each
-  // source's per-type summaryLanguage (and the top-level language).
   assert.match(contextRoute, /preference\?\.summaryLanguage/);
   assert.match(contextRoute, /userSummaryLanguage \?\? cfg\.summaryLanguage/);
+
+  // The exclusion is implemented in the shared deduped-feed helper.
+  const resolver = readFileSync("src/lib/builder-channel-resolver.ts", "utf8");
+  assert.match(resolver, /loadDigestedContentKeys/);
+  assert.match(resolver, /excludeDigestedForUserId/);
+
+  // Sync marks the presented candidate set as digested (per-user, idempotent).
+  const digestCreateRoute = readFileSync("src/app/api/skill/digests/route.ts", "utf8");
+  assert.match(digestCreateRoute, /digestedItem\.upsert/);
+  assert.match(digestCreateRoute, /userId_entityId_kind_externalId/);
+
+  // The CLI reads candidates from the prepared context file and sends them.
   const cli = readFileSync("scripts/builder-digest.mjs", "utf8");
   assert.match(cli, /api\/skill\/context\?includePrompts=1/);
   assert.match(cli, /api\/skill\/context\?days=/);
+  assert.match(cli, /digestedItems/);
+  assert.match(cli, /builder-blog-context\.json/);
   assert.doesNotMatch(cli, /postSummaryTasksForBuilders\(builders,\s*context\.prompts\)/);
   assert.doesNotMatch(cli, /withSummaryInstructions\(task,\s*context\.prompts\)/);
 });

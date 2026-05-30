@@ -128,10 +128,10 @@ function usage() {
   console.log(`builder-digest commands:
   exchange --ec <code> [--app-url ${DEFAULT_APP_URL}]
   fetch-personal [--days ${DEFAULT_PERSONAL_FETCH_DAYS}] [--limit 3] [--force] [--agent-model gpt-5.5]
-  prepare
+  prepare [--regenerate]
   validate-agent-sync --tasks fetch-result.json --file personal-builders.json
   sync-builders --file personal-builders.json [--agent-model gpt-5.5]
-  sync --file digest.md [--title "AI Builder Digest"]
+  sync --file digest.md [--title "AI Builder Digest"] [--regenerate] [--context builder-blog-context.json]
   status
 
 To set up an account, use the Copy-prompt button in the FollowBrief web app.
@@ -375,10 +375,17 @@ async function exchange(args) {
   console.log(`Exchanged for account ${data.email}; saved to accounts/${safeName}.json`);
 }
 
-async function prepare() {
+async function prepare(args = []) {
   const config = await readConfig();
   requireLoggedIn(config);
-  const context = await getJson(`${config.appUrl}/api/skill/context?includePrompts=1`, config.token);
+  // --regenerate ("re-generate today's digest"): ask the context route to
+  // ignore the last-digest cutoff so the full window is re-covered. Without it
+  // a same-day re-run would return an empty window.
+  const regenerate = args.includes("--regenerate");
+  const contextUrl =
+    `${config.appUrl}/api/skill/context?includePrompts=1` +
+    (regenerate ? "&regenerate=1" : "");
+  const context = await getJson(contextUrl, config.token);
   console.log(JSON.stringify(context, null, 2));
 }
 
@@ -2574,16 +2581,54 @@ async function sync(args) {
   }
   if (!content.trim()) throw new Error("Digest content is empty");
 
+  // --regenerate ("re-generate today's digest"): the create route replaces
+  // this user's existing same-day digest instead of stacking a duplicate.
+  const regenerate = args.includes("--regenerate");
+
+  // The candidate posts presented to this digest. Read them from the prepared
+  // context file (the same JSON `prepare` wrote and the agent read) so the
+  // server can mark exactly that set as digested for this user. Degrade
+  // gracefully — a missing/unreadable context just skips the marking.
+  // Default matches where the digest prompts write the context:
+  // ${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/builder-blog-context.json
+  const agentDir = process.env.BUILDER_BLOG_AGENT_DIR?.trim() || CONFIG_DIR;
+  const contextPath = argValue(
+    args,
+    "--context",
+    join(agentDir, "tmp", "builder-blog-context.json"),
+  );
+  let digestedItems = [];
+  try {
+    const ctx = JSON.parse(await readFile(contextPath, "utf8"));
+    digestedItems = (Array.isArray(ctx.items) ? ctx.items : [])
+      .filter((it) => it && it.entityId && it.kind && it.externalId)
+      .map((it) => ({
+        entityId: it.entityId,
+        kind: it.kind,
+        externalId: it.externalId,
+        feedItemId: it.id ?? null,
+      }));
+  } catch {
+    console.error(
+      `Could not read digest candidates from ${contextPath}; skipping the ` +
+        `digested-marking step (posts may reappear in the next digest).`,
+    );
+  }
+
   const now = new Date();
   const result = await postJson(
     `${config.appUrl}/api/skill/digests`,
     {
       title,
       content,
-      language: "zh",
+      // Recorded language is set server-side from the account-wide summary
+      // language preference; this is only the fallback when none is set.
+      language: argValue(args, "--language", "zh"),
       periodStart: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
       periodEnd: now.toISOString(),
-      itemCount: Number(argValue(args, "--item-count", "0")),
+      itemCount: Number(argValue(args, "--item-count", String(digestedItems.length))),
+      regenerate,
+      digestedItems,
     },
     config.token,
   );
@@ -2681,7 +2726,7 @@ async function main() {
     process.exit(1);
   }
   else if (command === "fetch-personal") await fetchPersonal(args);
-  else if (command === "prepare") await prepare();
+  else if (command === "prepare") await prepare(args);
   else if (command === "validate-agent-sync") await validateAgentSync(args);
   else if (command === "sync-builders") await syncBuilders(args);
   else if (command === "sync") await sync(args);

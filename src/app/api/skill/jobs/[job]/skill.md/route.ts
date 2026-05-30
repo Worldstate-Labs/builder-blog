@@ -106,7 +106,15 @@ export async function GET(request: Request, { params }: Params) {
     .replaceAll("{{CRON_FREQUENCY_LABEL}}", cronSchedules[freq].label)
     .replaceAll("{{LAUNCHD_SCHEDULE}}", launchdSchedules[freq] ?? launchdSchedules["6h"])
     .replaceAll("{{FETCH_FORCE}}", fetchForce ? "1" : "0")
-    .replaceAll("{{FETCH_FLAG}}", fetchForce ? "--force" : "");
+    .replaceAll("{{FETCH_FLAG}}", fetchForce ? "--force" : "")
+    // Digest analogue of the fetch force flag. The digest job never fetches —
+    // here `force=1` means "re-generate today's digest" (re-cover the full
+    // window + replace today's existing digest). Two placeholders mirror the
+    // fetch pair: {{DIGEST_REGENERATE_FLAG}} (--regenerate / "") is baked into
+    // the digest-once command; {{DIGEST_REGENERATE}} (1/0) is pinned to disk by
+    // digest-cron-setup and read back by the runner for the recurring run.
+    .replaceAll("{{DIGEST_REGENERATE}}", fetchForce ? "1" : "0")
+    .replaceAll("{{DIGEST_REGENERATE_FLAG}}", fetchForce ? "--regenerate" : "");
 
   if (ecParam) {
     // Validate the exchange code: must exist, not expired, not yet used.

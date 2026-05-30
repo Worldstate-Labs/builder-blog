@@ -48,6 +48,16 @@ export const SkillBuilderSyncSchema = z.object({
   builders: z.array(SkillBuilderSchema).min(1).max(MAX_BUILDERS_PER_SYNC),
 });
 
+// Canonical content identity of a post presented to a digest (matches the
+// DigestedItem / FeedRead key). Sent by the CLI so the create route can mark
+// exactly the candidate set as digested for this user.
+export const SkillDigestedItemSchema = z.object({
+  entityId: z.string().min(1).max(64),
+  kind: z.enum(FeedItemKind),
+  externalId: z.string().min(1).max(MAX_EXTERNAL_ID),
+  feedItemId: z.string().min(1).max(64).nullable().optional(),
+});
+
 export const SkillDigestSchema = z.object({
   title: z.string().min(1).max(180),
   content: z.string().min(1).max(MAX_DIGEST_CONTENT),
@@ -55,6 +65,13 @@ export const SkillDigestSchema = z.object({
   periodStart: z.string().datetime().optional(),
   periodEnd: z.string().datetime().optional(),
   itemCount: z.number().int().min(0).max(10_000).default(0),
+  // Re-generate today's digest: when true the create route replaces this
+  // user's existing same-day digest(s) instead of stacking a duplicate. Set
+  // by the digest "override" toggle (forwarded as `--regenerate` by the CLI).
+  regenerate: z.boolean().default(false),
+  // The candidate posts presented to this digest. The create route upserts a
+  // per-user DigestedItem for each so they don't participate in future digests.
+  digestedItems: z.array(SkillDigestedItemSchema).max(5_000).default([]),
 });
 
 export function parseSkillBuilderSyncPayload(payload: unknown) {

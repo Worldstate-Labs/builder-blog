@@ -85,17 +85,48 @@ export async function loadPinnedChannels(
   return new Map(prefs.map((p) => [p.entityId, p.primaryBuilderId]));
 }
 
+// Canonical content key shared by FeedRead / DigestedItem (entity-level, so it
+// matches across channel variants of the same post).
+function contentKey(entityId: string, kind: FeedItemKind, externalId: string) {
+  return `${entityId}:${kind}:${externalId}`;
+}
+
+/**
+ * Load the set of canonical content keys this user has already had digested,
+ * restricted to the given entities. Used to exclude already-digested posts from
+ * digest candidate selection.
+ */
+export async function loadDigestedContentKeys(
+  userId: string,
+  entityIds: string[],
+): Promise<Set<string>> {
+  if (entityIds.length === 0) return new Set();
+  const rows = await prisma.digestedItem.findMany({
+    where: { userId, entityId: { in: entityIds } },
+    select: { entityId: true, kind: true, externalId: true },
+  });
+  return new Set(rows.map((r) => contentKey(r.entityId, r.kind, r.externalId)));
+}
+
 /**
  * Given a user and a list of subscribed entity ids, fetch the candidate FeedItem rows
  * (channels) for those entities and return them deduped per (entityId, kind, externalId).
+ *
+ * When `excludeDigestedForUserId` is set, posts the user has already had digested
+ * are dropped (the digest's incremental gate). In that mode we fetch the full
+ * candidate set (bounded by the entity list + optional `publishedAfter` floor)
+ * before excluding + slicing, so already-digested posts can't starve the page —
+ * a tight pre-limit could otherwise be filled entirely by digested rows.
  */
 export async function fetchDedupedFeedForEntities(params: {
   userId: string;
   entityIds: string[];
   publishedAfter?: Date | null;
   limit?: number;
+  excludeDigestedForUserId?: string | null;
 }): Promise<DedupedFeedItem[]> {
   if (params.entityIds.length === 0) return [];
+  const excludeDigested = Boolean(params.excludeDigestedForUserId);
   const rawItems = (await prisma.feedItem.findMany({
     where: {
       builder: { entityId: { in: params.entityIds } },
@@ -118,10 +149,20 @@ export async function fetchDedupedFeedForEntities(params: {
       },
     },
     orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-    // overscan to ensure dedup has enough variants per group
-    take: params.limit ? params.limit * 3 : undefined,
+    // overscan to ensure dedup has enough variants per group. Skip the cap when
+    // excluding digested rows so exclusion happens against the full set.
+    take: !excludeDigested && params.limit ? params.limit * 3 : undefined,
   })) as FeedItemWithBuilder[];
-  const deduped = await dedupeFeedItemsByEntity({ userId: params.userId, items: rawItems });
+  let deduped = await dedupeFeedItemsByEntity({ userId: params.userId, items: rawItems });
+  if (excludeDigested) {
+    const digested = await loadDigestedContentKeys(
+      params.excludeDigestedForUserId!,
+      params.entityIds,
+    );
+    deduped = deduped.filter(
+      (item) => !digested.has(contentKey(item.entityId, item.kind, item.externalId)),
+    );
+  }
   if (params.limit) return deduped.slice(0, params.limit);
   return deduped;
 }

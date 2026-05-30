@@ -70,6 +70,82 @@ const SUMMARY_LANGUAGE_OPTIONS: { value: string; label: string }[] = [
 ];
 const DEFAULT_SUMMARY_LANGUAGE = "zh";
 
+// The override toggle reuses one URL channel (?force=1) but means different
+// things per context, so its copy is context-specific. Library: re-fetch posts
+// already in the library. Digest: re-generate today's digest (the job never
+// fetches — it re-covers the window and replaces today's stored digest).
+const OVERRIDE_COPY: Record<
+  SkillPromptContext,
+  { name: string; cronHint: string; onceHint: string }
+> = {
+  library: {
+    name: "Override already-fetched posts",
+    cronHint:
+      "Re-fetch on every run (--force): re-pulls posts already in your library. Off by default.",
+    onceHint:
+      "Passes --force: ignores the last-fetched cutoff and re-pulls posts already in your library. One-time for this run only.",
+  },
+  digest: {
+    name: "Re-generate today's digest",
+    cronHint:
+      "Re-includes posts already digested and replaces today's digest, instead of only covering not-yet-digested posts. Off by default.",
+    onceHint:
+      "Re-includes posts already digested and replaces today's digest, instead of only covering not-yet-digested posts. One-time for this run only.",
+  },
+};
+
+// Persist the account-wide summary language (shared by the cron + once dialogs).
+// No-op when unchanged. Returns false on failure so the caller can surface it.
+async function persistSummaryLanguage(
+  picked: string,
+  initial: string,
+): Promise<boolean> {
+  if (picked === initial) return true;
+  try {
+    const res = await fetch("/api/settings/summary-language", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ summaryLanguage: picked }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+function SummaryLanguageField({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="cron-field">
+      <label htmlFor={id} className="cron-field-label">
+        Summary language
+      </label>
+      <select
+        id={id}
+        className="cron-field-select"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {SUMMARY_LANGUAGE_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+        {SUMMARY_LANGUAGE_OPTIONS.every((o) => o.value !== value) ? (
+          <option value={value}>{value}</option>
+        ) : null}
+      </select>
+    </div>
+  );
+}
+
 const PROMPT_CONFIG = {
   library: {
     title: "Source sync",
@@ -129,8 +205,8 @@ export function SkillPromptActions({
   // so the server-rendered markdown bakes in the right unattended
   // invocation and crontab schedule.
   const [cronConfigOpen, setCronConfigOpen] = useState(false);
-  // Library once: a tiny dialog to optionally override already-fetched posts
-  // before copying (digest once has nothing to configure → no dialog).
+  // Once flow: a small dialog to pick language (digest) and the override
+  // before copying. Opened for both contexts.
   const [onceConfigOpen, setOnceConfigOpen] = useState(false);
   // The picked config survives between a config dialog and the token picker.
   // A ref (not state) so the picker's onConfirm can read it without an extra
@@ -215,7 +291,7 @@ export function SkillPromptActions({
     setPickerTarget("cron");
   }
 
-  // Library once: after the override choice, continue to the token picker
+  // Once flow: after the override (+ language) choice, continue to the token picker
   // (or copy directly when there's a single token).
   async function continueOnceCopy(overrideFetched: boolean) {
     const extras: CopyExtras = { cron: null, force: overrideFetched };
@@ -238,14 +314,14 @@ export function SkillPromptActions({
       setStatus({ kind: "info", text: "Create a token in Settings first" });
       return;
     }
-    // Cron flow: pick runtime + cadence (+ override) first. Library once
-    // flow: a small dialog to pick the override. Both bake their choice into
-    // the rendered prompt. Digest once has nothing to configure.
+    // Cron flow: pick runtime + cadence + language + override first. Once flow:
+    // a small dialog to pick language (digest) and the override. Both bake their
+    // choice into the rendered prompt (and persist language account-wide).
     if (target === "cron") {
       setCronConfigOpen(true);
       return;
     }
-    if (target === "once" && context === "library") {
+    if (target === "once") {
       setOnceConfigOpen(true);
       return;
     }
@@ -356,6 +432,8 @@ export function SkillPromptActions({
 
       <OnceConfigDialog
         open={onceConfigOpen}
+        context={context}
+        summaryLanguage={summaryLanguage}
         onCancel={() => setOnceConfigOpen(false)}
         onConfirm={async (overrideFetched) => {
           setOnceConfigOpen(false);
@@ -572,10 +650,7 @@ function CronConfigDialog({
   const [pickedRuntime, setPickedRuntime] = useState<AgentRuntime>(RUNTIME_OPTIONS[0].id);
   const freqOptions = FREQUENCY_OPTIONS[context];
   const [pickedFreq, setPickedFreq] = useState<CronFrequency>(DEFAULT_FREQUENCY[context]);
-  // Output options are library-only: the digest job doesn't fetch personal
-  // items (override), and its final language is governed by the digest
-  // translate step rather than per-source summaries.
-  const showOutput = context === "library";
+  const override = OVERRIDE_COPY[context];
   const initialLanguage = summaryLanguage ?? DEFAULT_SUMMARY_LANGUAGE;
   const [pickedLanguage, setPickedLanguage] = useState(initialLanguage);
   const [overrideFetched, setOverrideFetched] = useState(false);
@@ -615,24 +690,18 @@ function CronConfigDialog({
     setError(null);
     try {
       // Summary language is account-wide, so persist it server-side (not via
-      // the cron URL) — /api/skill/context reads it at every fetch. Only call
-      // when it actually changed.
-      if (showOutput && pickedLanguage !== initialLanguage) {
-        const res = await fetch("/api/settings/summary-language", {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ summaryLanguage: pickedLanguage }),
-        });
-        if (!res.ok) {
-          setError("Couldn't save the summary language — try again.");
-          setSubmitting(false);
-          return;
-        }
+      // the cron URL) — /api/skill/context reads it at every fetch. No-op when
+      // unchanged.
+      const saved = await persistSummaryLanguage(pickedLanguage, initialLanguage);
+      if (!saved) {
+        setError("Couldn't save the summary language — try again.");
+        setSubmitting(false);
+        return;
       }
       await onConfirm({
         runtime: pickedRuntime,
         freq: pickedFreq,
-        overrideFetched: showOutput && overrideFetched,
+        overrideFetched,
       });
     } finally {
       setSubmitting(false);
@@ -704,55 +773,29 @@ function CronConfigDialog({
           </div>
           <p className="cron-field-hint">{runtimeHint}</p>
 
-          {showOutput ? (
-            <>
-              <p className="token-picker-grouplabel">Output</p>
-              <div className="cron-field">
-                <label htmlFor="cron-lang" className="cron-field-label">
-                  Summary language
-                </label>
-                <select
-                  id="cron-lang"
-                  className="cron-field-select"
-                  value={pickedLanguage}
-                  onChange={(e) => setPickedLanguage(e.target.value)}
-                >
-                  {SUMMARY_LANGUAGE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                  {SUMMARY_LANGUAGE_OPTIONS.every(
-                    (o) => o.value !== pickedLanguage,
-                  ) ? (
-                    <option value={pickedLanguage}>{pickedLanguage}</option>
-                  ) : null}
-                </select>
-              </div>
-              <p className="cron-field-hint">
-                Account-wide — applies to all your summaries (library cron + once).
-              </p>
+          <p className="token-picker-grouplabel">Output</p>
+          <SummaryLanguageField
+            id="cron-lang"
+            value={pickedLanguage}
+            onChange={setPickedLanguage}
+          />
+          <p className="cron-field-hint">
+            Account-wide — applies to all your summaries (library + digest).
+          </p>
 
-              <label className="cron-check">
-                <input
-                  type="checkbox"
-                  name="override-fetched"
-                  checked={overrideFetched}
-                  onChange={(e) => setOverrideFetched(e.target.checked)}
-                  className="cron-check-input"
-                />
-                <span className="cron-check-body">
-                  <span className="cron-check-name">
-                    Override already-fetched posts
-                  </span>
-                  <span className="cron-field-hint">
-                    Re-fetch on every run (--force): re-pulls posts already in
-                    your library. Off by default.
-                  </span>
-                </span>
-              </label>
-            </>
-          ) : null}
+          <label className="cron-check">
+            <input
+              type="checkbox"
+              name="override-fetched"
+              checked={overrideFetched}
+              onChange={(e) => setOverrideFetched(e.target.checked)}
+              className="cron-check-input"
+            />
+            <span className="cron-check-body">
+              <span className="cron-check-name">{override.name}</span>
+              <span className="cron-field-hint">{override.cronHint}</span>
+            </span>
+          </label>
 
           {error ? <p className="cron-field-error">{error}</p> : null}
         </div>
@@ -780,21 +823,34 @@ function CronConfigDialog({
   );
 }
 
-// Library once: a single optional toggle — re-fetch posts already saved in the
-// library (passes --force to the one-off fetch). Cron has its own dialog with
-// runtime + cadence; once only needs this.
+// Once dialog: optional per-run config before copying. Library = a single
+// override toggle (re-fetch posts already saved in the library). Digest =
+// summary language + "re-generate today's digest" override. Cron has its own
+// dialog with runtime + cadence; once only needs these. Both reuse the same
+// ?force=1 channel for the override — the meaning differs by context.
 function OnceConfigDialog({
   open,
+  context,
+  summaryLanguage,
   onCancel,
   onConfirm,
 }: {
   open: boolean;
+  context: SkillPromptContext;
+  summaryLanguage: string | null;
   onCancel: () => void;
   onConfirm: (overrideFetched: boolean) => void | Promise<void>;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const override = OVERRIDE_COPY[context];
+  // Language is account-wide; digest output honors it, library once doesn't
+  // expose it (parity with the library cron/once split).
+  const showLanguage = context === "digest";
+  const initialLanguage = summaryLanguage ?? DEFAULT_SUMMARY_LANGUAGE;
+  const [pickedLanguage, setPickedLanguage] = useState(initialLanguage);
   const [overrideFetched, setOverrideFetched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const d = dialogRef.current;
@@ -824,7 +880,16 @@ function OnceConfigDialog({
   async function confirm() {
     if (submitting) return;
     setSubmitting(true);
+    setError(null);
     try {
+      if (showLanguage) {
+        const saved = await persistSummaryLanguage(pickedLanguage, initialLanguage);
+        if (!saved) {
+          setError("Couldn't save the summary language — try again.");
+          setSubmitting(false);
+          return;
+        }
+      }
       await onConfirm(overrideFetched);
     } finally {
       setSubmitting(false);
@@ -850,40 +915,46 @@ function OnceConfigDialog({
       >
         <header className="token-picker-header">
           <h2 id="once-config-title" className="token-picker-title">
-            Run the sync once
+            {context === "digest" ? "Generate the digest once" : "Run the sync once"}
           </h2>
           <p className="token-picker-sub">
-            By default this fetches only posts newer than what&rsquo;s already in
-            your library.
+            {context === "digest"
+              ? "By default this adds a digest from new items since your last one."
+              : "By default this fetches only posts newer than what’s already in your library."}
           </p>
         </header>
 
-        <p className="token-picker-grouplabel">Already-fetched posts</p>
-        <fieldset className="token-picker-list">
-          <legend className="sr-only">Re-fetch behavior</legend>
-          <label
-            className={`token-picker-row${overrideFetched ? " is-active" : ""}`}
-          >
+        <div className="cron-config-body">
+          {showLanguage ? (
+            <>
+              <p className="token-picker-grouplabel">Output</p>
+              <SummaryLanguageField
+                id="once-lang"
+                value={pickedLanguage}
+                onChange={setPickedLanguage}
+              />
+              <p className="cron-field-hint">
+                Account-wide — applies to all your summaries (library + digest).
+              </p>
+            </>
+          ) : null}
+
+          <label className="cron-check">
             <input
               type="checkbox"
               name="override-fetched"
               checked={overrideFetched}
               onChange={(e) => setOverrideFetched(e.target.checked)}
-              className="token-picker-radio"
+              className="cron-check-input"
             />
-            <span className="token-picker-row-body">
-              <span className="token-picker-row-name">
-                Override already-fetched posts
-              </span>
-              <span className="token-picker-row-meta">
-                <span>
-                  Passes --force: ignores the last-fetched cutoff and re-pulls
-                  posts already in your library. One-time for this run only.
-                </span>
-              </span>
+            <span className="cron-check-body">
+              <span className="cron-check-name">{override.name}</span>
+              <span className="cron-field-hint">{override.onceHint}</span>
             </span>
           </label>
-        </fieldset>
+
+          {error ? <p className="cron-field-error">{error}</p> : null}
+        </div>
 
         <footer className="token-picker-footer">
           <button

@@ -52,15 +52,19 @@ continuing replaces this account's digest schedule and its pinned runtime
 override. Only continue past this step after the user explicitly confirms. If
 they decline, stop and change nothing.
 
-4. Pin the scheduled runtime for this job. The pin file is per-job (suffixed
-with the cron job name), so a digest cron and a library cron can use different
-runtimes on the same machine, and re-running this setup replaces only the
-digest job's pin. The runner reads it at fire time; if you skip this step the
-scheduled job falls back to the discovery chain (which prompts for permissions
-every run).
+4. Pin the scheduled runtime and digest mode for this job. These pin files are
+per-job (suffixed with the cron job name), so a digest cron and a library cron
+can use different runtimes on the same machine, and re-running this setup
+replaces only the digest job's pins. The runner reads them at fire time; if you
+skip the runtime pin the scheduled job falls back to the discovery chain (which
+prompts for permissions every run). `regenerate-digest-cron` is `1` when the
+schedule was configured to re-generate today's digest and `0` otherwise; the
+runner turns `1` into the `--regenerate` flag so each recurring run replaces the
+account's existing same-day digest instead of stacking a duplicate.
 
 ```bash
 printf '{{AGENT_RUNTIME}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-digest-cron"
+printf '{{DIGEST_REGENERATE}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/regenerate-digest-cron"
 ```
 
 5. Verify the runtime CLI is on PATH for the scheduler. Schedulers (launchd and

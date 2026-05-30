@@ -17,7 +17,7 @@ Fetch the digest context and save it:
 
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" prepare --days 1 \
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" prepare --days 1 ${BUILDER_BLOG_DIGEST_REGENERATE:-} \
   > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/builder-blog-context.json"
 ```
 
@@ -33,7 +33,7 @@ Then sync it:
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" sync \
   --file "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/builder-blog-digest.md" \
-  --title "AI Builder Digest"
+  --title "AI Builder Digest" ${BUILDER_BLOG_DIGEST_REGENERATE:-}
 ```
 
 Digest rules:
@@ -47,13 +47,13 @@ Digest rules:
   builder/source, `summarizePodcast` (`summarize-podcast.md`) for
   `PODCAST_EPISODE` items, `summarizeBlogs` (`summarize-blogs.md`) for
   `BLOG_POST` items, `digestIntro` (`digest-intro.md`) to assemble the final
-  digest, and `translate` (`translate.md`) to produce the final natural
-  simplified Chinese output.
+  digest, and `translate` (`translate.md`) to produce the final natural output
+  in `context.language` (default simplified Chinese).
 - Do not collapse these into one generic summary. First create source-specific
   summaries with the matching prompt, then assemble them with `digestIntro`,
-  then apply `translate`.
+  then apply `translate` to render the result in `context.language`.
 - Include source URLs for every claim.
-- If there are no items, sync a short Chinese digest saying there were no new
-  subscription updates in the period.
+- If there are no items, sync a short digest in `context.language` saying there
+  were no new subscription updates in the period.
 - If the run cannot complete without a missing credential or unsupported local
   capability, write the concrete reason to the scheduled job log and stop.

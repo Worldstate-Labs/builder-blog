@@ -6,10 +6,8 @@ import { subscriptionBuilderIdsInPool } from "@/lib/digest-library";
 import { projectBuildersToEntities } from "@/lib/builder-entities";
 import { fetchDedupedFeedForEntities } from "@/lib/builder-channel-resolver";
 import {
-  digestFallbackSince,
   digestMaxAgeCutoff,
   digestMaxPostAgeDays,
-  digestFrequencyDays,
 } from "@/lib/feed-preferences";
 import { prisma } from "@/lib/prisma";
 import { getUserFromBearer } from "@/lib/tokens";
@@ -24,6 +22,11 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const includePrompts = url.searchParams.get("includePrompts") === "1";
+  // Re-generate today's digest: ignore the "since last digest" cutoff so the
+  // full fallback window is re-covered (otherwise a same-day re-run sees only
+  // items created after the last digest — usually none — and produces an empty
+  // digest). The create route separately replaces the existing same-day digest.
+  const regenerate = url.searchParams.get("regenerate") === "1";
   const now = new Date();
 
   const poolBuilderIds = await activePoolBuilderIds(user.id);
@@ -125,8 +128,10 @@ export async function GET(request: Request) {
     translate: digestContext.translate,
   };
 
-  const since = lastDigest?.createdAt ?? digestFallbackSince(now, preference);
-  const maxAgeCutoff = digestMaxAgeCutoff(now, preference);
+  // Optional publishedAt lookback floor (replaces the old mandatory 90-day cap).
+  // Null = no floor: consider every not-yet-digested post. The per-user
+  // DigestedItem marker — not a time window — is now what prevents repeats.
+  const lookbackCutoff = digestMaxAgeCutoff(now, preference);
 
   // Personal channels = builders the requesting user owns (their own fetches).
   const personalBuilderIds = libraryBuilders
@@ -178,12 +183,17 @@ export async function GET(request: Request) {
       lastError: b.lastError,
     }));
 
-  // Digest candidates: deduped across channels of the subscribed entities.
+  // Digest candidates: deduped across channels of the subscribed entities,
+  // excluding posts this user has already had digested — unless `regenerate`
+  // (the override toggle), which re-includes already-digested posts so the user
+  // can rebuild today's digest. Capped at 80; the cap self-drains because only
+  // the returned rows get marked digested at sync, leaving the rest for later.
   const items = await fetchDedupedFeedForEntities({
     userId: user.id,
     entityIds: subscribedEntityIds,
-    publishedAfter: maxAgeCutoff,
+    publishedAfter: lookbackCutoff,
     limit: 80,
+    excludeDigestedForUserId: regenerate ? null : user.id,
   });
 
   const personalEntityIds = await projectBuildersToEntities(personalBuilderIds);
@@ -230,13 +240,15 @@ export async function GET(request: Request) {
     generatedAt: now.toISOString(),
     language: userSummaryLanguage ?? "zh",
     digestWindow: {
-      since: since.toISOString(),
       until: now.toISOString(),
-      fallbackFrequencyDays: digestFrequencyDays(preference),
+      // Optional publishedAt lookback floor (null = no floor). Candidate
+      // selection is gated by the per-user digested marker, not a time window.
+      lookbackCutoff: lookbackCutoff?.toISOString() ?? null,
       maxPostAgeDays: digestMaxPostAgeDays(preference),
       lastDigestGeneratedAt: lastDigest?.createdAt.toISOString() ?? null,
-      timestampRule:
-        "include items published after the last digest, plus newly fetched items created after the last digest when their publishedAt is still within max post age",
+      regenerate,
+      selectionRule:
+        "include every subscribed-entity post the user has not yet had digested (within the optional lookback floor); regenerate=true re-includes already-digested posts",
     },
     libraryBuilders: annotatedLibraryBuilders,
     personalFetchStates,

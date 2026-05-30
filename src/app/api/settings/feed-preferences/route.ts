@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
 import {
-  defaultDigestMaxPostAgeDays,
   digestMaxPostAgeDays,
   normalizeDigestFrequency,
 } from "@/lib/feed-preferences";
@@ -19,7 +18,9 @@ const FeedPreferencesSchema = z.object({
     .max(365)
     .nullable()
     .optional(),
-  digestMaxPostAgeDays: z.number().int().min(1).max(365).optional(),
+  // Optional publishedAt lookback (days). Null = no floor (consider all
+  // not-yet-digested posts). The old mandatory 90-day cap is gone.
+  digestMaxPostAgeDays: z.number().int().min(1).max(365).nullable().optional(),
   recommendationProfile: z.string().max(4000).optional(),
 });
 
@@ -37,9 +38,9 @@ export async function PATCH(request: Request) {
   }
   const digestFrequency = normalizeDigestFrequency(parsed.data.digestFrequency ?? "");
   const digestCustomFrequencyDays = parsed.data.digestCustomFrequencyDays ?? null;
+  // null/absent → no floor; a set value is clamped to [1, 365].
   const maxPostAge = digestMaxPostAgeDays({
-    digestMaxPostAgeDays:
-      parsed.data.digestMaxPostAgeDays ?? defaultDigestMaxPostAgeDays,
+    digestMaxPostAgeDays: parsed.data.digestMaxPostAgeDays ?? null,
   });
   const recommendationProfile = parsed.data.recommendationProfile?.trim() ?? "";
 

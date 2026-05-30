@@ -7,10 +7,7 @@ import { AgentTokenPanel } from "@/components/AgentTokenPanel";
 import { FeedPreferenceForm } from "@/components/FeedPreferenceForm";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
-import {
-  defaultDigestMaxPostAgeDays,
-  digestFrequencyDays,
-} from "@/lib/feed-preferences";
+import { digestFrequencyDays } from "@/lib/feed-preferences";
 import { prisma } from "@/lib/prisma";
 import { SEEDED_SOURCE_IDS } from "@/lib/source-config-seed";
 import { getAllSourceConfigs, getDigestConfig } from "@/lib/source-config-store";
@@ -181,8 +178,8 @@ async function FeedPreferenceSlot({ userId }: { userId: string }) {
   const digestFrequency = preference?.digestFrequency ?? "DAILY";
   const digestCustomFrequencyDays =
     preference?.digestCustomFrequencyDays ?? digestFrequencyDays(preference);
-  const digestMaxAge =
-    preference?.digestMaxPostAgeDays ?? defaultDigestMaxPostAgeDays;
+  // null = no lookback floor (consider all not-yet-digested posts).
+  const digestMaxAge = preference?.digestMaxPostAgeDays ?? null;
 
   return (
     <FeedPreferenceForm

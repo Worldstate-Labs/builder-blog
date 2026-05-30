@@ -30,6 +30,7 @@ model User {
   libraryImports          LibraryImport[]
   feedPreference          UserFeedPreference?
   feedReads               FeedRead[]
+  digestedItems           DigestedItem[]
   recommendationSnapshots RecommendationSnapshot[]
   channelPreferences      UserChannelPreference[]
   libraryVisibilities     UserLibraryVisibility[]
@@ -142,6 +143,7 @@ model BuilderEntity {
   updatedAt    DateTime                @updatedAt
   builders     Builder[]
   feedReads    FeedRead[]
+  digestedItems DigestedItem[]
   channelPrefs UserChannelPreference[]
 
   @@index([kind])
@@ -258,6 +260,7 @@ model FeedItem {
   createdAt                   DateTime                     @default(now())
   builder                     Builder?                     @relation(fields: [builderId], references: [id], onDelete: SetNull)
   reads                       FeedRead[]
+  digestedItems               DigestedItem[]
   recommendationSnapshotItems RecommendationSnapshotItem[]
 
   @@unique([builderId, kind, externalId])
@@ -269,7 +272,10 @@ model UserFeedPreference {
   userId                    String          @id
   digestFrequency           DigestFrequency @default(DAILY)
   digestCustomFrequencyDays Int?
-  digestMaxPostAgeDays      Int             @default(90)
+  /// Optional publishedAt lookback (days) for digest candidate selection.
+  /// Null = no floor (consider all not-yet-digested posts). Replaces the old
+  /// mandatory 90-day cap; the per-user DigestedItem marker is now what dedups.
+  digestMaxPostAgeDays      Int?
   recommendationProfile     String?
   /// Account-wide summary output language. When set, /api/skill/context
   /// overrides each source's per-type summaryLanguage with this value so all
@@ -300,6 +306,32 @@ model FeedRead {
   @@unique([userId, entityId, kind, externalId])
   @@index([userId, readAt])
   @@index([userId, entityId])
+  @@index([feedItemId])
+}
+
+// Per-user record that a post has already been included in (presented to) a
+// digest. Mirrors FeedRead: keyed at the canonical content identity
+// (entityId + kind + externalId) so marking one channel covers every channel
+// variant of the same post, and scoped per user because the same content is
+// shared across users' channels. Digest candidate selection excludes posts
+// the user already has a DigestedItem for (unless the override toggle is on).
+model DigestedItem {
+  id         String        @id @default(cuid())
+  userId     String
+  // Provenance: which FeedItem variant was presented. Nullable: survives deletion.
+  feedItemId String?
+  entityId   String
+  kind       FeedItemKind
+  externalId String
+  // Provenance: which digest first included it. Nullable: survives digest deletion.
+  digestId   String?
+  digestedAt DateTime      @default(now())
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feedItem   FeedItem?     @relation(fields: [feedItemId], references: [id], onDelete: SetNull)
+  entity     BuilderEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, entityId, kind, externalId])
+  @@index([userId, digestedAt])
   @@index([feedItemId])
 }
 

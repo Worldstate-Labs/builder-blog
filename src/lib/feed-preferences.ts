@@ -18,15 +18,15 @@ export function digestFrequencyDays(
   return 1;
 }
 
+// Optional publishedAt lookback (days) for digest candidate selection.
+// Null/absent → no floor (the per-user DigestedItem marker is the real gate).
+// A set value is clamped to [1, 365]. The old mandatory 90-day default is gone.
 export function digestMaxPostAgeDays(
   preference?: Partial<DigestWindowPreference> | null,
-) {
-  return clampWholeDays(
-    preference?.digestMaxPostAgeDays,
-    1,
-    365,
-    defaultDigestMaxPostAgeDays,
-  );
+): number | null {
+  const raw = preference?.digestMaxPostAgeDays;
+  if (raw === null || raw === undefined) return null;
+  return clampWholeDays(raw, 1, 365);
 }
 
 export function digestFallbackSince(
@@ -36,11 +36,14 @@ export function digestFallbackSince(
   return new Date(now.getTime() - digestFrequencyDays(preference) * dayMs);
 }
 
+// Resolve the lookback floor into a cutoff Date, or null when no floor is set.
 export function digestMaxAgeCutoff(
   now: Date,
   preference?: Partial<DigestWindowPreference> | null,
-) {
-  return new Date(now.getTime() - digestMaxPostAgeDays(preference) * dayMs);
+): Date | null {
+  const days = digestMaxPostAgeDays(preference);
+  if (days === null) return null;
+  return new Date(now.getTime() - days * dayMs);
 }
 
 export function normalizeDigestFrequency(value: string | null | undefined) {

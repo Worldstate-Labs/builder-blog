@@ -23,7 +23,7 @@ Execution contract:
 
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" prepare --days 1 \
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" prepare --days 1 {{DIGEST_REGENERATE_FLAG}} \
   > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/builder-blog-context.json"
 ```
 
@@ -33,9 +33,10 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" prepare
 ${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/builder-blog-context.json
 ```
 
-The only creative step is writing a concise Chinese digest using only
-`context.items`. Before writing, read `context.sources` and `context.digest`
-from the JSON and use them as the required digest-writing method:
+The only creative step is writing a concise digest using only `context.items`,
+in the language given by `context.language` (defaults to simplified Chinese).
+Before writing, read `context.sources` and `context.digest` from the JSON and
+use them as the required digest-writing method:
 
 - For each `TWEET` item, group by builder/source and use
   `context.sources.x.summaryPrompt.body` as the summary prompt.
@@ -48,14 +49,15 @@ from the JSON and use them as the required digest-writing method:
 - Use `context.digest.digestIntro` to assemble the final digest order,
   source-link rules, and no-fabrication rules. Respect `context.digest.order`
   for section sequencing.
-- Use `context.digest.translate` to produce the final natural simplified
-  Chinese output.
+- Use `context.digest.translate` to produce the final natural output in
+  `context.language` (default simplified Chinese).
 
 Do not collapse these into one generic summary. First create source-specific
 summaries with the matching prompt, then assemble them with
-`context.digest.digestIntro`, then apply `context.digest.translate`. Include
-source URLs for every claim. If there are no items, write a short Chinese
-digest saying there were no new subscription updates.
+`context.digest.digestIntro`, then apply `context.digest.translate` to render
+the result in `context.language`. Include source URLs for every claim. If there
+are no items, write a short digest in `context.language` saying there were no
+new subscription updates.
 
 Save the final digest to:
 
@@ -69,5 +71,5 @@ ${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/builder-blog-digest.md
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" sync \
   --file "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/builder-blog-digest.md" \
-  --title "AI Builder Digest"
+  --title "AI Builder Digest" {{DIGEST_REGENERATE_FLAG}}
 ```

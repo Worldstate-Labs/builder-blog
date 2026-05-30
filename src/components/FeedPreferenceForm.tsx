@@ -7,9 +7,16 @@ type DigestFrequency = "DAILY" | "WEEKLY" | "CUSTOM";
 export type FeedPreferenceFormInitialValue = {
   digestFrequency: DigestFrequency;
   digestCustomFrequencyDays: number;
-  digestMaxPostAgeDays: number;
+  // null = no lookback floor (blank input). When set, posts published longer
+  // ago than this many days are excluded from digest candidate selection.
+  digestMaxPostAgeDays: number | null;
   recommendationProfile: string;
 };
+
+// null → "" so the field renders blank (= no floor); a number → its string.
+function ageToInput(value: number | null): string {
+  return value === null ? "" : String(value);
+}
 
 export function FeedPreferenceForm({
   initialValue,
@@ -21,7 +28,7 @@ export function FeedPreferenceForm({
     String(initialValue.digestCustomFrequencyDays),
   );
   const [digestMaxPostAgeDays, setDigestMaxPostAgeDays] = useState(
-    String(initialValue.digestMaxPostAgeDays),
+    ageToInput(initialValue.digestMaxPostAgeDays),
   );
   const [recommendationProfile, setRecommendationProfile] = useState(
     initialValue.recommendationProfile,
@@ -42,7 +49,11 @@ export function FeedPreferenceForm({
           body: JSON.stringify({
             digestFrequency,
             digestCustomFrequencyDays: Number(digestCustomFrequencyDays),
-            digestMaxPostAgeDays: Number(digestMaxPostAgeDays),
+            // Blank → null (no floor); otherwise the entered number of days.
+            digestMaxPostAgeDays:
+              digestMaxPostAgeDays.trim() === ""
+                ? null
+                : Number(digestMaxPostAgeDays),
             recommendationProfile,
           }),
         });
@@ -112,11 +123,13 @@ export function FeedPreferenceForm({
             min="1"
             max="365"
             type="number"
+            placeholder="No limit"
             value={digestMaxPostAgeDays}
             onChange={(event) => setDigestMaxPostAgeDays(event.target.value)}
           />
           <span className="text-[13px] text-[var(--muted-strong)]">
-            days. Items older than this are excluded from the next digest.
+            days. Posts older than this are excluded from digests. Leave blank
+            for no limit.
           </span>
         </div>
       </div>
@@ -145,7 +158,7 @@ export function FeedPreferenceForm({
           onClick={() => {
             setDigestFrequency(initialValue.digestFrequency);
             setDigestCustomFrequencyDays(String(initialValue.digestCustomFrequencyDays));
-            setDigestMaxPostAgeDays(String(initialValue.digestMaxPostAgeDays));
+            setDigestMaxPostAgeDays(ageToInput(initialValue.digestMaxPostAgeDays));
             setRecommendationProfile(initialValue.recommendationProfile);
             setStatus("idle");
             setMessage("");

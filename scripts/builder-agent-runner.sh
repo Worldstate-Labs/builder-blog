@@ -92,7 +92,9 @@ run_with_claude() {
 }
 
 run_with_openclaw() {
-  openclaw agent --local --message "$(cat "$PROMPT_FILE")"
+  # `agent` requires a session selector on 2026.5.20+ (the bare form errors
+  # with "Pass --to/--session-id/--agent"); default to the `main` agent.
+  openclaw agent --local --agent "${OPENCLAW_AGENT:-main}" --message "$(cat "$PROMPT_FILE")"
 }
 
 run_with_gemini() {
@@ -125,13 +127,17 @@ run_with_claude_unattended() {
 }
 
 run_with_openclaw_unattended() {
-  # OpenClaw has no per-invocation approval flag (the flag we used before was
-  # rejected by the CLI). Unattended auto-approval is a host-level exec policy,
-  # so apply the "yolo" preset (idempotent) before the run. NOTE: this is
-  # host-global for openclaw — it auto-approves exec for all openclaw sessions
-  # on this machine, not just this cron.
-  openclaw exec-policy preset yolo >/dev/null 2>&1 || true
-  openclaw agent --local --message "$(cat "$PROMPT_FILE")"
+  # OpenClaw's DEFAULT exec policy is already security=full / ask=off (verified
+  # via `openclaw exec-policy show` with no approvals file present), so a
+  # non-interactive `agent` turn auto-approves exec on its own — confirmed by a
+  # live non-TTY run. The old `exec-policy preset yolo` was both unnecessary AND
+  # harmful: it wrote the GLOBAL ~/.openclaw/exec-approvals.json, disarming
+  # approval for EVERY openclaw session on the host (and `--profile` does not
+  # relocate that file, so it can't be scoped that way). So we don't touch
+  # global policy at all. `agent` requires a session selector on 2026.5.20
+  # (the bare `--local --message` form errors "Pass --to/--session-id/--agent"),
+  # so pass `--agent`.
+  openclaw agent --local --agent "${OPENCLAW_AGENT:-main}" --message "$(cat "$PROMPT_FILE")"
 }
 
 run_with_gemini_unattended() {
@@ -165,7 +171,7 @@ NODE
 # legacy global $AGENT_DIR/<base> so crons installed before the per-job split
 # keep working after the runner self-updates.
 read_pin() {
-  # $1 = base name (runtime | fetch-force)
+  # $1 = base name (runtime | fetch-force | regenerate)
   if [ -r "$AGENT_DIR/$1-$JOB_NAME" ]; then
     tr -d ' \t\r\n' < "$AGENT_DIR/$1-$JOB_NAME"
   elif [ -r "$AGENT_DIR/$1" ]; then
@@ -197,6 +203,18 @@ if [ "$(read_pin fetch-force)" = "1" ]; then
   BUILDER_BLOG_FETCH_FORCE="--force"
 fi
 export BUILDER_BLOG_FETCH_FORCE
+
+# Re-generate today's digest: digest-cron-setup writes 1 to the regenerate pin
+# when the user picked "re-generate today's digest". We expose it as
+# BUILDER_BLOG_DIGEST_REGENERATE, which the digest-cron prompt drops into the
+# prepare/sync commands (`${BUILDER_BLOG_DIGEST_REGENERATE:-}` → --regenerate).
+# "1" → re-cover the full window and replace the existing same-day digest;
+# anything else → no flag (normal incremental digest).
+BUILDER_BLOG_DIGEST_REGENERATE=""
+if [ "$(read_pin regenerate)" = "1" ]; then
+  BUILDER_BLOG_DIGEST_REGENERATE="--regenerate"
+fi
+export BUILDER_BLOG_DIGEST_REGENERATE
 
 IS_CRON_JOB=0
 case "$JOB_NAME" in

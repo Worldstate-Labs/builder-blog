@@ -79,7 +79,7 @@ async function AiDigestFeedSlot({
 }) {
   const archiveSkip = (archivePage - 1) * archivePageSize;
 
-  const [todayDigest, digestCount, rawTokens] = await Promise.all([
+  const [todayDigest, digestCount, rawTokens, feedPreference] = await Promise.all([
     prisma.digest.findFirst({
       where: {
         userId,
@@ -104,6 +104,10 @@ async function AiDigestFeedSlot({
         lastPlatform: true,
         lastUser: true,
       },
+    }),
+    prisma.userFeedPreference.findUnique({
+      where: { userId },
+      select: { summaryLanguage: true },
     }),
   ]);
 
@@ -137,6 +141,7 @@ async function AiDigestFeedSlot({
       archiveCount={archiveCount}
       archiveDigests={archiveDigests}
       archivePage={archivePage}
+      summaryLanguage={feedPreference?.summaryLanguage ?? null}
       todayDigest={todayDigest}
     />
   );
@@ -147,12 +152,14 @@ function AiDigestFeed({
   archiveCount,
   archiveDigests,
   archivePage,
+  summaryLanguage,
   todayDigest,
 }: {
   activeTokens: AgentTokenListItem[];
   archiveCount: number;
   archiveDigests: DigestSummaryRow[];
   archivePage: number;
+  summaryLanguage: string | null;
   todayDigest: DigestSummaryRow | null;
 }) {
   const visibleStart = archiveCount === 0 ? 0 : (archivePage - 1) * archivePageSize + 1;
@@ -161,7 +168,11 @@ function AiDigestFeed({
   return (
     <section className="grid gap-5">
       <div className="mt-4">
-        <SkillPromptActions context="digest" tokens={activeTokens} />
+        <SkillPromptActions
+          context="digest"
+          tokens={activeTokens}
+          summaryLanguage={summaryLanguage}
+        />
       </div>
       {todayDigest ? (
         <DigestDetails digest={serializeDigestSummary(todayDigest)} mode="today" />
