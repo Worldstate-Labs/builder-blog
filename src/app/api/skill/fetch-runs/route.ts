@@ -29,7 +29,16 @@ const FetchRunInputSchema = z.object({
   // details is JSON; we re-serialize after parse to enforce the byte cap
   // and to normalize the value before passing to Prisma's Json column.
   details: z.unknown(),
-});
+})
+  // Enforce the status↔errorCount invariant the CLI guarantees (ok ⟺ 0 errors;
+  // partial/failed ⟹ ≥1) so a direct/buggy POST can't store a contradictory
+  // row (e.g. status "ok" with errorCount 100). The route is bearer-accessible,
+  // so the schema is the only gate.
+  .refine((v) => (v.status === "ok" ? v.errorCount === 0 : v.errorCount >= 1), {
+    message:
+      "status/errorCount mismatch: 'ok' requires errorCount 0; 'partial' and 'failed' require errorCount >= 1",
+    path: ["errorCount"],
+  });
 
 export type FetchRunInput = z.infer<typeof FetchRunInputSchema>;
 

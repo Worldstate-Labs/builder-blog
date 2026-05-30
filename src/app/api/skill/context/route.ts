@@ -114,10 +114,13 @@ export async function GET(request: Request) {
     commonSummaryRules: digestConfig.commonSummaryRules,
   };
 
-  // TODO(deprecated): `context.prompts` is the legacy shape used by
-  // older CLI binaries and the user-journeys back-compat test. New
-  // callers should read `context.sources[id].summaryPrompt.body` and
-  // `context.digest.*` instead.
+  // TODO(deprecated): `context.prompts` is the legacy shape. New callers read
+  // `context.sources[id].summaryPrompt.body` / `context.digest.*` instead; the
+  // CLI no longer uses it for summary logic (it only still passes
+  // `?includePrompts=1`). The only remaining reader is FetchLogPanel, for UI
+  // display. It also hardcodes just 3 of the 6 source types (x/podcast/blog),
+  // so new sources are invisible to it. Safe to delete once FetchLogPanel reads
+  // `context.sources[id].summaryPrompt` and the CLI drops `includePrompts=1`.
   const legacyPrompts = {
     digest: digestContext.digestTopPrompt,
     summarizeTweets: sourcesContext.x?.summaryPrompt.body ?? "",

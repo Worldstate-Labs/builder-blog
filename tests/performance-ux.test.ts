@@ -407,7 +407,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(source("src/components/PostCard.tsx"), /export function PostCard/);
   assert.match(source("src/components/PostCard.tsx"), /See more/);
   assert.match(source("src/components/PostCard.tsx"), /Raw content/);
-  assert.match(source("src/components/PostCard.tsx"), /Open source/);
+  assert.match(source("src/components/PostCard.tsx"), /View original/);
   assert.match(source("src/components/PostCard.tsx"), /\/builders#\$\{builder\.id\}/);
   assert.match(feedItemsRoute, /fetchDedupedFeedForEntities/);
   assert.match(feedItemsRoute, /activePoolBuilderIds/);

@@ -75,7 +75,12 @@ function ForYouRecommendationLoader({ scope }: { scope: RecommendationScope }) {
     );
   }
 
-  if (status === "error" || !timeline || timeline.snapshots.length === 0) {
+  // A fetch failure is distinct from "ready but nothing to show": the former is
+  // an error the user can retry, the latter is the normal empty state.
+  if (status === "error") {
+    return <ForYouError scope={scope} />;
+  }
+  if (!timeline || timeline.snapshots.length === 0) {
     return <ForYouUnavailable scope={scope} />;
   }
 
@@ -99,6 +104,24 @@ function ForYouUnavailable({ scope }: { scope: RecommendationScope }) {
           </h2>
           <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
             Recommendation snapshots will appear here after matching unread posts are available.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ForYouError({ scope }: { scope: RecommendationScope }) {
+  return (
+    <div className="empty-panel mt-6 border-dashed md:p-8" role="alert" aria-live="assertive">
+      <div className="flex items-start gap-3">
+        <Sparkles className="mt-1 h-5 w-5 text-[var(--danger)]" />
+        <div>
+          <h2 className="text-lg font-semibold text-[var(--ink)]">
+            Couldn&rsquo;t load {scopeLabel(scope)}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
+            Something went wrong fetching recommendations. Refresh the page to try again.
           </p>
         </div>
       </div>

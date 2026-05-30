@@ -184,7 +184,8 @@ export async function POST(request: Request) {
         }
         continue;
       }
-      const fetchTool = item.fetchTool ?? parsed.data.fetchTool;
+      const fetchTool =
+        item.fetchTool ?? fetchToolFromRawJson(item.rawJson) ?? parsed.data.fetchTool;
       if (!parsed.data.force && existingItemKeys.has(key)) {
         const updateData = {
           summary,
@@ -309,6 +310,20 @@ function readFetchTaskId(rawJson: unknown): string | null {
   if (rawJson && typeof rawJson === "object" && !Array.isArray(rawJson)) {
     const value = (rawJson as Record<string, unknown>).fetchTaskId;
     if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+// Attribution for an agent-extracted item. The fetch-task contract has agents
+// record the real runtime/model in rawJson (not item.fetchTool), so derive the
+// fetchTool label from those before falling back to the payload-level default
+// (which is the generic "manual JSON sync" string).
+function fetchToolFromRawJson(rawJson: unknown): string | null {
+  if (rawJson && typeof rawJson === "object" && !Array.isArray(rawJson)) {
+    const o = rawJson as Record<string, unknown>;
+    const runtime = typeof o.agentRuntime === "string" ? o.agentRuntime.trim() : "";
+    const model = typeof o.agentModel === "string" ? o.agentModel.trim() : "";
+    if (runtime) return model ? `${runtime} (model ${model})` : runtime;
   }
   return null;
 }

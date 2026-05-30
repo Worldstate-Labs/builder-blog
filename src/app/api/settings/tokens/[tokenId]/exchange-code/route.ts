@@ -18,11 +18,12 @@ export async function POST(_request: Request, { params }: Params) {
     select: { userId: true, revokedAt: true },
   });
 
-  if (!token || token.userId !== session.user.id) {
+  // Uniform failure for not-found / not-owned / revoked — mirrors
+  // /api/skill/exchange so the endpoint can't distinguish those states. (Impact
+  // is small here since it only operates on the caller's own tokens, but it
+  // keeps the error contract consistent.)
+  if (!token || token.userId !== session.user.id || token.revokedAt) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-  if (token.revokedAt) {
-    return NextResponse.json({ error: "Token revoked" }, { status: 410 });
   }
 
   const code = `bb_ec_${randomBytes(16).toString("base64url")}`;
