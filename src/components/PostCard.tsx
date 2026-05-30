@@ -184,17 +184,18 @@ export function PostCard({
           </span>
 
           <div className="post-actions">
-            {/* 1. Open source */}
+            {/* Primary action: open the original source to read the full content. */}
             <a
-              aria-label="Open source"
-              className="post-action-btn"
+              aria-label="View the original on its source site"
+              className="post-read-original"
               href={post.url}
               onClick={noteInteraction}
               rel="noreferrer"
               target="_blank"
-              title="Open source"
+              title="View the original on its source site"
             >
-              <ExternalLink className="h-4 w-4" />
+              View original
+              <ExternalLink aria-hidden="true" className="post-read-original-icon" />
             </a>
 
             {showDebugActions ? (

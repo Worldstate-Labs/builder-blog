@@ -1260,8 +1260,49 @@ svg.lucide {
 .post-actions {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 0.6rem;
   justify-content: flex-end;
+}
+
+/* Primary "go read the full thing" affordance. Labeled accent pill so it
+   reads as the main call to action, distinct from the muted utility icons. */
+.post-read-original {
+  align-items: center;
+  background: color-mix(in oklch, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in oklch, var(--accent) 30%, var(--line));
+  border-radius: 999px;
+  color: var(--accent);
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 600;
+  gap: 0.32rem;
+  letter-spacing: 0.01em;
+  margin-right: 0.15rem;
+  padding: 0.26rem 0.7rem;
+  transition: background 140ms ease, border-color 140ms ease;
+  white-space: nowrap;
+}
+
+.post-read-original:hover {
+  background: color-mix(in oklch, var(--accent) 15%, transparent);
+  border-color: color-mix(in oklch, var(--accent) 48%, var(--line));
+}
+
+.post-read-original-icon {
+  height: 0.85em;
+  width: 0.85em;
+  transition: transform 140ms ease;
+}
+
+.post-read-original:hover .post-read-original-icon {
+  transform: translate(1px, -1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .post-read-original-icon {
+    transition: none;
+  }
 }
 
 .post-action-btn {
