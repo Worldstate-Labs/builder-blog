@@ -11,6 +11,12 @@
   --accent: oklch(0.5 0.15 252);
   --accent-soft: oklch(0.91 0.04 252);
   --accent-strong: oklch(0.42 0.17 255);
+  /* Fixed dark-surface tokens for permanently-dark cards (digest hero, code
+     block, dark login frame) whose text is always light. Unlike --charcoal /
+     --accent-strong, these are intentionally NOT redefined per theme, so they
+     never invert to a light surface in dark mode. */
+  --surface-ink: oklch(0.145 0.024 248);
+  --surface-ink-accent: oklch(0.42 0.17 255);
   --signal: oklch(0.66 0.15 162);
   --signal-soft: oklch(0.93 0.044 162);
   --warm: oklch(0.68 0.12 68);
@@ -1926,7 +1932,9 @@ svg.lucide {
 }
 
 .source-badge[data-source="x"] .source-badge-mark {
-  background: var(--charcoal);
+  /* X's mark is a white glyph on a fixed black badge (brand). Use the non-
+     inverting surface token so dark mode doesn't flip it to white-on-white. */
+  background: var(--surface-ink);
 }
 
 .source-badge[data-source="youtube"] .source-badge-mark {
@@ -4241,10 +4249,14 @@ svg.lucide {
 
 /* Digest panel — dark glass */
 .fb-digest {
+  /* Permanently-dark feature card: its title, chips, and body text are all
+     white, so the background must stay dark in BOTH themes. Use the non-
+     inverting --surface-ink tokens (NOT --charcoal/--accent-strong, which flip
+     to a light surface in dark mode and would make this card white-on-white). */
   background: linear-gradient(
     145deg,
-    color-mix(in oklch, var(--charcoal) 96%, black),
-    color-mix(in oklch, var(--accent-strong) 22%, var(--charcoal))
+    color-mix(in oklch, var(--surface-ink) 96%, black),
+    color-mix(in oklch, var(--surface-ink-accent) 22%, var(--surface-ink))
   );
   border-radius: 12px;
   box-shadow: 0 22px 58px color-mix(in oklch, black 18%, transparent);
@@ -4863,7 +4875,9 @@ svg.lucide {
 
 /* Dark login/device frame */
 .fb-dark-frame {
-  background: var(--charcoal);
+  /* Always-dark frame (white text): use the non-inverting surface token so it
+     stays dark in dark mode instead of flipping to white-on-white. */
+  background: var(--surface-ink);
   color: white;
   display: flex;
   flex-direction: column;
@@ -5061,7 +5075,9 @@ svg.lucide {
 /* Code block (terminal bootstrap) */
 .fb-code-block {
   align-items: center;
-  background: var(--charcoal);
+  /* Always-dark code surface (light text): use the non-inverting surface token
+     so it stays dark in dark mode instead of flipping to white-on-white. */
+  background: var(--surface-ink);
   border: 1px solid var(--line);
   border-radius: 10px;
   color: rgba(255, 255, 255, 0.8);
