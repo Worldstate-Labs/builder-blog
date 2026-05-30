@@ -1183,7 +1183,7 @@ function localUniqueRatio(words, windowSize = 100) {
  * @param {string} text
  * @param {{ source?: string; title?: string; description?: string }} [options]
  */
-export function youtubeContentQuality(text, { source, title = "", description = "" } = {}) {
+export function youtubeContentQuality(text, { source = "", title = "", description = "" } = {}) {
   const normalized = normalizeContentText(text);
   const words = normalized.match(/[A-Za-z0-9\u4e00-\u9fff]+/g) ?? [];
   const uniqueWords = new Set(words.map((word) => word.toLowerCase()));
