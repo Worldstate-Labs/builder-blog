@@ -1299,8 +1299,9 @@ svg.lucide {
   bottom: calc(100% + 0.5rem);
   box-shadow: 0 4px 16px color-mix(in oklch, var(--ink) 10%, transparent);
   font-size: 0.72rem;
-  left: 0;
-  min-width: 18rem;
+  right: 0;
+  max-width: min(18rem, calc(100vw - 2rem));
+  min-width: min(18rem, calc(100vw - 2rem));
   padding: 0.65rem 0.8rem;
   position: absolute;
   z-index: 50;
