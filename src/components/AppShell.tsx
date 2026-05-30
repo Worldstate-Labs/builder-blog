@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Session } from "next-auth";
-import { Search, Settings } from "lucide-react";
+import { Search } from "lucide-react";
 import { AppNav, type AppNavItem } from "@/components/AppNav";
 import { BrandMark } from "@/components/BrandMark";
 import { SearchForm } from "@/components/SearchForm";
@@ -56,12 +56,6 @@ export function AppShell({
       <div className="app-body">
         <aside className="fb-side hidden lg:flex">
           <AppNav items={nav} mode="desktop" />
-          <div className="mt-auto pt-3.5 border-t border-[var(--line)]">
-            <Link href="/settings" className="fb-nav">
-              <Settings aria-hidden="true" />
-              <span>Settings</span>
-            </Link>
-          </div>
         </aside>
         <main className="flex min-w-0 flex-1 flex-col">
           {children}
