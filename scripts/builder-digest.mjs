@@ -168,9 +168,31 @@ function detectedAgentRuntime() {
   return "Local agent";
 }
 
-function detectedAgentModel() {
+function detectedAgentModel(runtime = DEFAULT_AGENT_RUNTIME) {
+  // An explicit override always wins, regardless of which runtime is active.
+  const override = process.env.BUILDER_BLOG_AGENT_MODEL?.trim();
+  if (override) return override;
+
+  // Model detection must match the runtime — otherwise a gemini run would report
+  // a model sniffed from Codex's config (e.g. "Gemini CLI (model gpt-5.5)").
+  // Each runtime reads only its own sources; an unknown source yields "" so the
+  // label degrades to just the runtime name.
+  switch (runtime) {
+    case "Codex":
+      return detectedCodexModel();
+    case "Claude Code":
+      return process.env.ANTHROPIC_MODEL?.trim() || process.env.CLAUDE_MODEL?.trim() || "";
+    case "Gemini CLI":
+      return detectedGeminiModel();
+    case "OpenClaw":
+      return detectedOpenClawModel();
+    default:
+      return "";
+  }
+}
+
+function detectedCodexModel() {
   const envModel =
-    process.env.BUILDER_BLOG_AGENT_MODEL ||
     process.env.CODEX_MODEL ||
     process.env.OPENAI_MODEL ||
     process.env.OMX_DEFAULT_FRONTIER_MODEL;
@@ -180,6 +202,44 @@ function detectedAgentModel() {
   if (!existsSync(codexConfigPath)) return "";
   const modelMatch = readFileSync(codexConfigPath, "utf8").match(/^\s*model\s*=\s*"([^"]+)"/m);
   return modelMatch?.[1]?.trim() ?? "";
+}
+
+function detectedOpenClawModel() {
+  const envModel = process.env.OPENCLAW_MODEL?.trim();
+  if (envModel) return envModel;
+
+  // OPENCLAW_CONFIG_PATH is set by `--profile`/`--dev`; default to ~/.openclaw.
+  const configPath =
+    process.env.OPENCLAW_CONFIG_PATH?.trim() || join(homedir(), ".openclaw", "openclaw.json");
+  if (!existsSync(configPath)) return "";
+  try {
+    const config = JSON.parse(readFileSync(configPath, "utf8"));
+    const agents = config?.agents ?? {};
+    // The runner selects the agent via OPENCLAW_AGENT (default "main"); a
+    // per-agent model overrides the shared default.
+    const agentName = process.env.OPENCLAW_AGENT?.trim() || "main";
+    const primary = agents?.[agentName]?.model?.primary ?? agents?.defaults?.model?.primary;
+    return typeof primary === "string" ? primary.trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+function detectedGeminiModel() {
+  const envModel = process.env.GEMINI_MODEL?.trim();
+  if (envModel) return envModel;
+
+  // Gemini CLI does not persist its model in settings.json today; read it
+  // defensively in case a future version does, otherwise report no model.
+  const geminiConfigPath = join(homedir(), ".gemini", "settings.json");
+  if (!existsSync(geminiConfigPath)) return "";
+  try {
+    const settings = JSON.parse(readFileSync(geminiConfigPath, "utf8"));
+    const model = settings?.model?.name ?? settings?.model;
+    return typeof model === "string" ? model.trim() : "";
+  } catch {
+    return "";
+  }
 }
 
 /**
