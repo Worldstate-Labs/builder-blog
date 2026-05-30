@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { ChevronRight, RefreshCw } from "lucide-react";
 import { useHydrated } from "@/components/ThemeToggle";
 
@@ -62,6 +62,9 @@ type FetchTaskLog = {
   // Why a task failed (e.g. "summary_missing", "not_summarized"). Present only
   // when status is "failed".
   failureReason?: string | null;
+  // Per-task evidence for a skipped (no-content) outcome, e.g.
+  // { meanVolumeDb: -91, hasCaptions: false }.
+  evidence?: Record<string, unknown> | null;
 };
 
 type PromptBundle = {
@@ -176,6 +179,20 @@ function readDetails(value: unknown): DetailsShape {
   return value as DetailsShape;
 }
 
+// A run is "in flight" between the two writes: fetch-personal POSTed the row
+// (tasks fetched/pending) but sync-builders hasn't PATCHed the per-post
+// outcomes yet (which flip them to synced/skipped/failed). We bound this by run
+// age so a run that ended without a PATCH (agent crashed mid-work) stops being
+// chased after a while instead of polling forever.
+const INFLIGHT_MAX_AGE_MS = 30 * 60_000;
+function isRunInflight(run: LibraryFetchRunListItem): boolean {
+  const ageMs = Date.now() - Date.parse(run.startedAt);
+  if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > INFLIGHT_MAX_AGE_MS) return false;
+  const tasks = readDetails(run.details).fetchTasks;
+  if (!Array.isArray(tasks) || tasks.length === 0) return false;
+  return tasks.some((task) => task?.status === "pending" || task?.status === "fetched");
+}
+
 const VISIBLE_RUN_LIMIT = 3;
 
 export function FetchLogPanel({
@@ -188,6 +205,14 @@ export function FetchLogPanel({
   const [, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
+
+  // Latest runs, readable inside the poll loop without re-arming the interval
+  // on every refresh. Synced in an effect (not during render) so the poll loop
+  // sees fresh data while keeping the [refresh]-only effect stable.
+  const runsRef = useRef(runs);
+  useEffect(() => {
+    runsRef.current = runs;
+  }, [runs]);
 
   const refresh = useCallback(() => {
     setIsLoading(true);
@@ -223,6 +248,44 @@ export function FetchLogPanel({
     const id = window.setInterval(() => setTick((value) => value + 1), 60_000);
     return () => window.clearInterval(id);
   }, []);
+
+  // Auto-refresh so a run's status flips (fetched/pending → synced) appear
+  // without a manual click. Poll fast while a run is mid-sync, slowly otherwise,
+  // and never while the tab is hidden (saves requests and respects rate limits).
+  // Unlike the timestamp tick above, this is data, not motion — so it runs
+  // regardless of prefers-reduced-motion.
+  const POLL_INFLIGHT_MS = 8_000;
+  const POLL_IDLE_MS = 45_000;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let cancelled = false;
+    let timer = 0;
+
+    const tick = () => {
+      if (cancelled) return;
+      if (document.visibilityState === "visible") refresh();
+      schedule();
+    };
+    const schedule = () => {
+      const inflight = runsRef.current.some(isRunInflight);
+      timer = window.setTimeout(tick, inflight ? POLL_INFLIGHT_MS : POLL_IDLE_MS);
+    };
+    // Refresh immediately when the user returns to the tab so they don't wait a
+    // full interval to see what changed while it was hidden.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+
+    schedule();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [refresh]);
 
   return (
     <section className="fb-panel">
@@ -282,6 +345,10 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
   const style = statusStyle(run.status);
   const label = STATUS_LABEL[run.status] ?? run.status;
   const details = readDetails(run.details);
+  // Mid-sync: fetch-personal recorded the run but sync-builders hasn't patched
+  // the per-post outcomes yet. The run-level status already reads "ok" here, so
+  // show a live "Syncing…" badge to make the in-between state legible.
+  const inflight = isRunInflight(run);
   // Show the agent + model that ran this fetch (e.g. "Codex · gpt-5-codex").
   // Fall back to the CLI version for runs recorded before this was captured.
   const agentLabel =
@@ -305,6 +372,22 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
         >
           {label}
         </span>
+        {inflight ? (
+          <span
+            className="fb-chip inline-flex items-center gap-1.5"
+            style={{
+              background: "var(--warm-soft)",
+              color: "color-mix(in oklch, var(--warm) 68%, var(--ink))",
+              borderColor: "color-mix(in oklch, var(--warm) 30%, var(--line))",
+            }}
+          >
+            <span
+              aria-hidden="true"
+              className="h-1.5 w-1.5 rounded-full bg-current motion-safe:animate-pulse"
+            />
+            Syncing…
+          </span>
+        ) : null}
         <time
           className="text-[12.5px] text-[var(--muted-strong)]"
           dateTime={run.startedAt}
@@ -669,22 +752,36 @@ function failureReasonText(task: FetchTaskLog): string | null {
   return FAILURE_REASON_LABEL[task.failureReason] ?? task.failureReason;
 }
 
+// Compact one-line render of per-task skip evidence, e.g.
+// "meanVolumeDb: -91 · hasCaptions: false".
+function formatEvidence(evidence: Record<string, unknown> | null | undefined): string | null {
+  if (!evidence || typeof evidence !== "object") return null;
+  const parts = Object.entries(evidence).map(
+    ([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`,
+  );
+  return parts.length ? parts.join(" · ") : null;
+}
+
 function isSummarized(task: FetchTaskLog): boolean {
   return typeof task.summaryChars === "number" && task.summaryChars > 0;
 }
 
 function summarizeOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
   if (isSummarized(task)) return { label: "Summarized", tone: "ok" };
-  // A task is successful only when it ends with a summary; a missing summary is
-  // a failure, not a benign "pending". A content failure happened upstream, so
-  // summarize never ran → "Not reached".
+  // Skipped (no content) or a content failure means summarize never ran.
+  if (task.status === "skipped") return { label: "Skipped", tone: "idle" };
   if (isContentFailure(task)) return { label: "Not reached", tone: "idle" };
+  // A task is successful only when it ends with a summary; a missing summary is
+  // a failure, not a benign "pending".
   if (task.status === "failed") return { label: "Failed", tone: "fail" };
   if (isBlocked(task)) return { label: "Not reached", tone: "idle" };
   return { label: "Pending", tone: "warn" };
 }
 
 function statusBanner(task: FetchTaskLog): { label: string; tone: Tone } {
+  // A deliberate, evidence-backed skip (no primary content) is a clean terminal
+  // state, not a failure.
+  if (task.status === "skipped") return { label: "Skipped — no content", tone: "idle" };
   // Success is defined by a persisted summary — NOT by contentStatus="ready"
   // (that only means the body was fetched; the summarize step can still fail).
   if (isSummarized(task)) return { label: "Fetched & summarized", tone: "ok" };
@@ -824,6 +921,20 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
                 value={
                   <span className="text-[var(--danger)]">{failureReasonText(task)}</span>
                 }
+              />
+            ) : null}
+            {task.status === "skipped" && failureReasonText(task) ? (
+              <FactRow
+                label="Skipped"
+                value={
+                  <span className="text-[var(--muted-strong)]">{failureReasonText(task)}</span>
+                }
+              />
+            ) : null}
+            {task.status === "skipped" && formatEvidence(task.evidence) ? (
+              <FactRow
+                label="Evidence"
+                value={<span className="mono">{formatEvidence(task.evidence)}</span>}
               />
             ) : null}
             {task.url ? (
