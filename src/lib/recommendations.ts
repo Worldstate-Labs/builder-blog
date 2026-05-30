@@ -385,7 +385,7 @@ export async function createRecommendationSnapshot({
       return { snapshot: null, unreadRemaining: 0, candidateCount: 0 };
     }
 
-    const [subCandidates, subUnread] = await Promise.all([
+    const [subCandidates] = await Promise.all([
       prisma.feedItem.findMany({
         where: {
           builderId: { in: subscriptionBuilderIds },
@@ -421,7 +421,7 @@ export async function createRecommendationSnapshot({
     ]);
 
     rawCandidates = subCandidates;
-    unreadRemaining = subUnread;
+    // unreadRemaining is set below to the post-dedup distinct count (see F12).
 
     // Fetch fresh read/snapshot state for subscription scope
     const readEntityKeys = new Set(
@@ -459,6 +459,12 @@ export async function createRecommendationSnapshot({
       list.push(item);
       dedupGroups.set(key, list);
     }
+
+    // Report distinct unread canonical posts (post-dedup, after read/snapshot
+    // filtering) — same semantics as the for-you scope. The earlier `subUnread`
+    // was a raw pre-dedup feedItem count that over-reported (counted each
+    // channel variant and ignored already-snapshotted items).
+    unreadRemaining = dedupGroups.size;
 
     const rawCandidates3 = pickPrimaryVariants(userId, dedupGroups, await prisma.userChannelPreference.findMany({
       where: { userId, entityId: { in: [...new Set([...dedupGroups.keys()].map((k) => k.split(":")[0]))] } },

@@ -55,48 +55,18 @@ function loadSourcesConfig() {
   if (_sourcesConfig) return _sourcesConfig;
   try {
     _sourcesConfig = JSON.parse(readFileSync(SOURCES_CONFIG_PATH, "utf8"));
-  } catch {
-    // Fall back to embedded defaults when the file hasn't been downloaded yet.
-    _sourcesConfig = {
-      sources: [
-        {
-          id: "x",
-          builderKind: "X",
-          urlPatterns: ["(^|//)((www\\.)?(x|twitter)\\.com)/"],
-          contentQuality: { primaryContentOnly: true, minChars: 1, minWords: 1, disallowedPrimarySources: ["title", "description", "page metadata"] },
-        },
-        {
-          id: "blog",
-          builderKind: "BLOG",
-          urlPatterns: [],
-          contentQuality: { primaryContentOnly: true, minChars: 200, minWords: 35, disallowedPrimarySources: ["title", "description", "page metadata", "file name"] },
-        },
-        {
-          id: "youtube",
-          builderKind: "PODCAST",
-          urlPatterns: ["youtube\\.com", "youtu\\.be"],
-          contentQuality: { primaryContentOnly: true, minChars: 80, minWords: 12, minUniqueWordRatio: 0.25, maxTimestampWordRatio: 0.2, disallowedPrimarySources: ["title", "description", "feed description", "page metadata"] },
-        },
-        {
-          id: "podcast",
-          builderKind: "PODCAST",
-          urlPatterns: [],
-          contentQuality: { primaryContentOnly: true, minChars: 200, minWords: 35, disallowedPrimarySources: ["title", "description", "page metadata"] },
-        },
-        {
-          id: "pdf",
-          builderKind: "WEBSITE",
-          urlPatterns: ["\\.pdf(?:\\s|$|[?#])"],
-          contentQuality: { primaryContentOnly: true, minChars: 200, minWords: 35, disallowedPrimarySources: ["title", "description", "page metadata", "file name"] },
-        },
-        {
-          id: "website",
-          builderKind: "WEBSITE",
-          urlPatterns: [],
-          contentQuality: { primaryContentOnly: true, minChars: 200, minWords: 35, disallowedPrimarySources: ["title", "description", "page metadata"] },
-        },
-      ],
-    };
+  } catch (error) {
+    // No embedded fallback: config/sources.json (served verbatim) is the single
+    // source of truth, and both entry points now guarantee it locally — the
+    // runner refreshes it every run, and bootstrap downloads it on install. If
+    // it's still missing the install is incomplete, so fail loud and actionable
+    // rather than silently running on stale/guessed values.
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Could not read ${SOURCES_CONFIG_PATH} (${reason}). Re-run the FollowBrief ` +
+        `skill bootstrap to download it: /bin/sh -c "$(curl -fsSL ` +
+        `${process.env.BUILDER_BLOG_URL || DEFAULT_APP_URL}/api/skill/bootstrap)"`,
+    );
   }
   return _sourcesConfig;
 }

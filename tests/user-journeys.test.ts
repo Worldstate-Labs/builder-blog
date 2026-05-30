@@ -737,6 +737,15 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(bootstrapRoute, /jobs\/library-cron\.md/);
   assert.match(bootstrapRoute, /jobs\/digest-cron\.md/);
   assert.match(bootstrapRoute, /Copy prompt button in the web app/);
+  // F9: config/sources.json is the single source of truth for content-quality
+  // floors / url patterns. bootstrap downloads it so the once-flow (bootstrap →
+  // direct CLI, no runner) always has it locally, and the CLI carries NO
+  // embedded fallback — a missing file fails loud with an actionable bootstrap
+  // hint instead of silently running on guessed values.
+  assert.match(bootstrapRoute, /api\/skill\/files\/sources\.json/);
+  assert.doesNotMatch(cli, /disallowedPrimarySources:\s*\[/);
+  assert.match(cli, /Could not read \$\{SOURCES_CONFIG_PATH\}/);
+  assert.match(cli, /Re-run the FollowBrief/);
   assert.match(skill, /Install From Web App/);
   assert.match(skill, /Scheduled Jobs/);
   assert.match(skill, /builder-agent-runner\.sh digest-cron/);
