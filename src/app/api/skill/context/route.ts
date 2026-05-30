@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
 import { getUserDigestConfig, getUserSourceConfigs } from "@/lib/source-config-store";
 import { SOURCE_DEFINITIONS } from "@/lib/source-registry";
-import { subscriptionBuilderIdsInPool } from "@/lib/digest-library";
 import { projectBuildersToEntities } from "@/lib/builder-entities";
 import { fetchDedupedFeedForEntities } from "@/lib/builder-channel-resolver";
 import {
@@ -161,15 +160,6 @@ export async function GET(request: Request) {
         .filter((id): id is string => Boolean(id)),
     ),
   ];
-  // Backward-compat field: derive a per-pool builder list for any callers reading the
-  // legacy `subscribedBuilderIds` shape. Resolution: pool builders whose entity is followed.
-  const subscribedBuilderIds = subscriptionBuilderIdsInPool(
-    poolBuilderIds,
-    libraryBuilders
-      .filter((b) => b.entityId && subscribedEntityIds.includes(b.entityId))
-      .map((b) => b.id),
-  );
-
   // Fetch-state per channel lives inline on Builder.
   const personalFetchStates = libraryBuilders
     .filter((b) => personalBuilderIds.includes(b.id))
@@ -261,7 +251,6 @@ export async function GET(request: Request) {
     subscriptionEntities: subscriptions
       .map((s) => s.builder?.entity ?? null)
       .filter((e): e is NonNullable<typeof e> => Boolean(e)),
-    subscribedBuilderIds,
     subscribedEntityIds,
     subscriptionCount: subscribedEntityIds.length,
     items,

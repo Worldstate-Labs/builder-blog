@@ -9,7 +9,6 @@ import {
   canonicalBuilderValueForInput,
   normalizeHandle,
 } from "../src/lib/builder-keys";
-import { subscriptionBuilderIdsInPool } from "../src/lib/digest-library";
 import { DEFAULT_DIGEST_PROMPTS } from "../src/lib/digest-prompts";
 import {
   digestFrequencyDays,
@@ -185,16 +184,6 @@ test("personal YouTube sync cannot create a duplicate builder through handle met
       sourceUrl: "https://x.com/googledeepmind",
     }),
     "googledeepmind",
-  );
-});
-
-test("subscription user path is a digest subset of the active builder pool", () => {
-  assert.deepEqual(
-    subscriptionBuilderIdsInPool(
-      ["central_openai", "personal_youtube"],
-      ["personal_youtube", "removed_builder", "central_openai"],
-    ),
-    ["personal_youtube", "central_openai"],
   );
 });
 
@@ -407,11 +396,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /read_pin regenerate/);
   assert.match(cli, /--regenerate/);
   assert.match(cli, /&regenerate=1/);
-  // Digest output language is no longer hard-coded to Chinese — it defers to
-  // context.language so the account-wide summary-language setting takes effect.
-  assert.match(digestOncePrompt, /context\.language/);
-  assert.match(digestCronPrompt, /context\.language/);
-  assert.doesNotMatch(digestOncePrompt, /concise Chinese digest/);
+  // The digest-writing instructions (incl. the context.language rule) now live
+  // in the shared digest-task-contract include, pulled into both digest jobs.
+  // The contract's content is asserted below where it's read (digestTaskContract).
+  assert.match(digestOncePrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
+  assert.match(digestCronPrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
   // The digest create route replaces today's digest when regenerating, and
   // records the account-wide language.
   const digestCreateRoute = readFileSync(
@@ -444,6 +433,10 @@ test("web app serves the agent skill and setup command", () => {
   // lets the account-wide summary-language setting actually take effect.
   assert.doesNotMatch(fetchTaskContract, /concise Chinese/);
   assert.match(fetchTaskContract, /the\s+output language/);
+  // Digest output language defers to context.language (default Chinese), not a
+  // hard-coded "concise Chinese digest".
+  assert.match(digestTaskContract, /context\.language/);
+  assert.doesNotMatch(digestTaskContract, /concise Chinese digest/);
   function expandIncludes(content: string): string {
     return content
       .replace(

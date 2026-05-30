@@ -11,15 +11,19 @@ export async function DELETE(_request: Request, { params }: Params) {
   }
 
   const { tokenId } = await params;
-  // Hard-delete the token row. Any in-flight requests using this token
-  // will get 401 because the bearer lookup will miss. Pending exchange
-  // codes for this token cascade away via the FK.
-  await prisma.agentToken.deleteMany({
+  // Soft-delete: stamp `revokedAt` instead of dropping the row. The bearer
+  // lookup rejects any token whose `revokedAt` is set (src/lib/tokens.ts:54),
+  // so access stops immediately, while the row persists for the audit trail and
+  // the "Revoked [date]" status the UI renders. Idempotent (only flips a token
+  // that's still active and owned by this user).
+  await prisma.agentToken.updateMany({
     where: {
       id: tokenId,
       userId: session.user.id,
+      revokedAt: null,
     },
+    data: { revokedAt: new Date() },
   });
 
-  return NextResponse.json({ tokenId, removed: true });
+  return NextResponse.json({ tokenId, revoked: true });
 }

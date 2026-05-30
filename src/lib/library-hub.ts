@@ -49,14 +49,6 @@ export async function sharePersonalLibraryToHub(params: {
   return { entry, builderCount: ownedBuilders.length };
 }
 
-export async function isLibraryHidden(userId: string, hubEntryId: string) {
-  const vis = await prisma.userLibraryVisibility.findUnique({
-    where: { userId_hubEntryId: { userId, hubEntryId } },
-    select: { hidden: true },
-  });
-  return Boolean(vis?.hidden);
-}
-
 export async function setLibraryHidden(params: {
   userId: string;
   hubEntryId: string;

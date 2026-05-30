@@ -37,15 +37,3 @@ export function builderLibraryKey(params: {
   }
   return `user:${params.ownerUserId}:${params.canonicalKey}`;
 }
-
-export function inferBuilderKind(sourceUrl: string | null, handle: string | null) {
-  if (handle) return BuilderKind.X;
-  if (!sourceUrl) return BuilderKind.WEBSITE;
-  if (sourceUrl.includes("youtube.com") || sourceUrl.includes("podcast")) {
-    return BuilderKind.PODCAST;
-  }
-  if (sourceUrl.includes("blog") || sourceUrl.includes("engineering")) {
-    return BuilderKind.BLOG;
-  }
-  return BuilderKind.WEBSITE;
-}

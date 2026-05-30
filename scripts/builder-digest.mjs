@@ -378,9 +378,9 @@ async function exchange(args) {
 async function prepare(args = []) {
   const config = await readConfig();
   requireLoggedIn(config);
-  // --regenerate ("re-generate today's digest"): ask the context route to
-  // ignore the last-digest cutoff so the full window is re-covered. Without it
-  // a same-day re-run would return an empty window.
+  // --regenerate ("re-generate today's digest"): pass ?regenerate=1 so the
+  // context route bypasses the per-user DigestedItem marker gate (re-includes
+  // already-digested posts). The publishedAt lookback floor still applies.
   const regenerate = args.includes("--regenerate");
   const contextUrl =
     `${config.appUrl}/api/skill/context?includePrompts=1` +

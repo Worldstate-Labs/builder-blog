@@ -50,7 +50,7 @@ export async function ensureDefaultCommunityLibraryImport(userId: string) {
   });
   if (!library || library.items.length === 0) return { imported: false, builderCount: 0 };
 
-  // Respect user's library visibility preference (replaces adminCommunityLibraryHidden).
+  // Respect the user's per-library visibility preference (UserLibraryVisibility).
   const visibility = await prisma.userLibraryVisibility.findUnique({
     where: { userId_hubEntryId: { userId, hubEntryId: library.id } },
     select: { hidden: true },

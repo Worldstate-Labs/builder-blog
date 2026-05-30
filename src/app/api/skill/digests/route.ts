@@ -36,23 +36,17 @@ export async function POST(request: Request) {
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
     );
     const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-    // Find the same-day digests first so we can also clear the digested
-    // markers they produced. DigestedItem has no FK to Digest (markers
-    // intentionally survive digest deletion), so deleting the digest alone
-    // would orphan its markers and block those posts from EVER reappearing in
-    // a future digest — even though the digest they belonged to is gone.
-    // Regenerate means "rebuild today's digest", so today's markers must be
-    // reset; the rebuilt digest re-marks whatever it actually presents.
-    const sameDayDigests = await prisma.digest.findMany({
-      where: { userId: user.id, createdAt: { gte: dayStart, lt: dayEnd } },
-      select: { id: true },
+    // Reset today's digested markers by their OWN timestamp window, not by
+    // matching today's digest ids. DigestedItem has no FK to Digest (markers
+    // intentionally survive digest deletion), so keying off digestId would miss
+    // (a) orphaned markers whose digest was already deleted elsewhere, and
+    // (b) the case where today's digest was removed before this regenerate —
+    // either way leaving markers that block those posts from EVER reappearing.
+    // Regenerate means "rebuild today's digest", so clear every marker created
+    // today; the rebuilt digest re-marks whatever it actually presents.
+    await prisma.digestedItem.deleteMany({
+      where: { userId: user.id, digestedAt: { gte: dayStart, lt: dayEnd } },
     });
-    const sameDayDigestIds = sameDayDigests.map((d) => d.id);
-    if (sameDayDigestIds.length > 0) {
-      await prisma.digestedItem.deleteMany({
-        where: { userId: user.id, digestId: { in: sameDayDigestIds } },
-      });
-    }
     await prisma.digest.deleteMany({
       where: { userId: user.id, createdAt: { gte: dayStart, lt: dayEnd } },
     });

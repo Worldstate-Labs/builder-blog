@@ -600,7 +600,11 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokensRoute, /createAgentToken/);
   assert.doesNotMatch(tokensRoute, /redirect\(/);
   assert.match(tokenRoute, /export async function DELETE/);
-  assert.match(tokenRoute, /agentToken\.deleteMany/);
+  // Revoke is a SOFT delete: stamp revokedAt (keeps the row + audit trail +
+  // "Revoked [date]" UI), never a hard row delete.
+  assert.match(tokenRoute, /agentToken\.updateMany/);
+  assert.match(tokenRoute, /revokedAt: new Date\(\)/);
+  assert.doesNotMatch(tokenRoute, /agentToken\.deleteMany/);
   assert.doesNotMatch(tokenRoute, /redirect\(/);
 });
 

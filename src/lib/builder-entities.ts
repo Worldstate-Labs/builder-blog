@@ -1,4 +1,4 @@
-import type { Builder, BuilderKind, Prisma } from "@prisma/client";
+import type { Builder, BuilderKind } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -237,28 +237,6 @@ async function pickPrimaryCandidateForEntity(params: {
   return imported?.id ?? null;
 }
 
-export type BuilderEntityWithChannels = {
-  id: string;
-  canonicalKey: string;
-  kind: BuilderKind;
-  name: string;
-  handle: string | null;
-  bio: string | null;
-  channels: Array<
-    Pick<
-      Builder,
-      | "id"
-      | "ownerUserId"
-      | "sourceType"
-      | "sourceUrl"
-      | "fetchUrl"
-      | "lastFetchedAt"
-      | "itemCount"
-      | "status"
-    >
-  >;
-};
-
 export async function getEntityWithChannels(entityId: string) {
   return prisma.builderEntity.findUnique({
     where: { id: entityId },
@@ -286,7 +264,3 @@ export async function getEntityWithChannels(entityId: string) {
     },
   });
 }
-
-export type SubscriptionWithBuilder = Prisma.SubscriptionGetPayload<{
-  include: { builder: true };
-}>;

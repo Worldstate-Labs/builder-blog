@@ -64,7 +64,8 @@ export type RecommendationSnapshotResult = {
 };
 
 // ---------------------------------------------------------------------------
-// Cached For-You candidate fetch — 2-minute TTL, per-user cache tag
+// For-You candidate fetch. Uncached: runs the Prisma query every call. A prior
+// unstable_cache wrapper was removed after a stale-cache production bug.
 // ---------------------------------------------------------------------------
 
 async function getForYouCandidates(userId: string) {

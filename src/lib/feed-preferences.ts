@@ -1,6 +1,5 @@
 import { DigestFrequency, type UserFeedPreference } from "@prisma/client";
 
-export const defaultDigestMaxPostAgeDays = 90;
 export const defaultDigestFrequency = DigestFrequency.DAILY;
 
 export type DigestWindowPreference = Pick<

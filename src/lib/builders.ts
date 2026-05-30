@@ -3,7 +3,6 @@ import {
   builderLibraryKey,
   canonicalBuilderKey,
   canonicalBuilderValueForInput,
-  inferBuilderKind,
   normalizedBuilderHandle,
   normalizeHandle,
 } from "@/lib/builder-keys";
@@ -14,7 +13,6 @@ export {
   builderLibraryKey,
   canonicalBuilderKey,
   canonicalBuilderValueForInput,
-  inferBuilderKind,
   normalizeHandle,
 };
 
