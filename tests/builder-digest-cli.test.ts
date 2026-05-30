@@ -827,3 +827,95 @@ test("personal fetcher keeps fetched builders eligible and tracks fetched post k
     "2026-05-22T10:00:00.000Z",
   );
 });
+
+// --- Per-task terminal-state accountability (taskOutcomes) ---
+
+function youtubePlannedTask(cli: typeof import("../scripts/builder-digest.mjs"), externalId: string) {
+  const task = {
+    type: "fetch_post",
+    agentWorkType: "youtube_transcription",
+    contentStatus: "requires_agent",
+    builder: "Anthropic YouTube",
+    builderId: "builder_yt",
+    sourceType: "youtube",
+    item: {
+      kind: "PODCAST_EPISODE",
+      externalId,
+      url: `https://www.youtube.com/watch?v=${externalId}`,
+    },
+  };
+  return { ...task, id: cli.fetchTaskId(task) };
+}
+
+test("a planned task neither synced nor in taskOutcomes is unaccounted (throws)", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = youtubePlannedTask(cli, "vid_unaccounted");
+  assert.throws(
+    () => cli.validateAgentSyncPayload({ fetchTasks: [task] }, { builders: [] }),
+    /Agent sync validation failed/,
+  );
+});
+
+test("a skipped task without per-task evidence is rejected (anti bulk-skip)", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = youtubePlannedTask(cli, "vid_skip_noevidence");
+  assert.throws(
+    () =>
+      cli.validateAgentSyncPayload(
+        { fetchTasks: [task] },
+        {
+          builders: [],
+          taskOutcomes: [
+            { fetchTaskId: task.id, status: "skipped", reason: "lacked audible speech" },
+          ],
+        },
+      ),
+    /Agent sync validation failed/,
+  );
+});
+
+test("a skipped task WITH per-task evidence is accounted for", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = youtubePlannedTask(cli, "vid_skip_evidence");
+  const result = cli.validateAgentSyncPayload(
+    { fetchTasks: [task] },
+    {
+      builders: [],
+      taskOutcomes: [
+        {
+          fetchTaskId: task.id,
+          status: "skipped",
+          reason: "no captions and silent audio",
+          evidence: { meanVolumeDb: -91, hasCaptions: false },
+        },
+      ],
+    },
+  );
+  assert.equal(result.status, "ok");
+  assert.equal(result.accountedOutcomes, 1);
+  assert.equal(result.validatedFetchTasks, 0);
+});
+
+test("failed / blocked outcomes require a reason", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const failTask = youtubePlannedTask(cli, "vid_failed_noreason");
+  assert.throws(
+    () =>
+      cli.validateAgentSyncPayload(
+        { fetchTasks: [failTask] },
+        { builders: [], taskOutcomes: [{ fetchTaskId: failTask.id, status: "failed", reason: "" }] },
+      ),
+    /Agent sync validation failed/,
+  );
+
+  const okTask = youtubePlannedTask(cli, "vid_failed_reason");
+  const result = cli.validateAgentSyncPayload(
+    { fetchTasks: [okTask] },
+    {
+      builders: [],
+      taskOutcomes: [{ fetchTaskId: okTask.id, status: "failed", reason: "fetch_error: 403" }],
+    },
+  );
+  assert.equal(result.status, "ok");
+  assert.equal(result.accountedOutcomes, 1);
+});

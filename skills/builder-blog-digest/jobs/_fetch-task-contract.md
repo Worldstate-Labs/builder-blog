@@ -56,11 +56,11 @@ How to execute each `fetchTask`:
     just because one extraction method fails; stop only if no available method
     can obtain real primary content for a task, then write the tried methods and
     concrete blocker {{REPORT_TARGET}} and skip it.
-    Never extract or analyze video frames/screenshots. For a video, the only
-    acceptable primary content is its transcript (captions, or speech-to-text of
-    the audio). If a video has no captions and no audible speech to transcribe
-    (e.g. a silent screen recording), treat it as having no primary content and
-    skip it — do not fall back to frame grabs, OCR, or visual analysis.
+    For video, primary content is the transcript (captions or speech-to-text);
+    never use frame grabs, OCR, or visual analysis as primary content. The
+    per-video extraction strategy — captions-first, and how to confirm a video
+    genuinely has no content — lives in the source's fetch prompt
+    (`task.fetchInstructions.prompt`); follow it for EACH video independently.
 - Use `task.minimumContentQuality` for `requires_agent` tasks as the minimum
   acceptance bar for the extracted body. The structured fields drive acceptance:
   `minChars`, `minWords`, the optional ratios, and `disallowedPrimarySources` —
@@ -78,11 +78,29 @@ How to execute each `fetchTask`:
   include `rawJson.transcriptSource="agent-transcript"` unless a better primary
   transcript source is used.
 
+Per-task independence and accountability (CRITICAL):
+- Process EACH task on its own. NEVER infer one task's content or availability
+  from another task, and NEVER apply a single blanket decision/reason to several
+  tasks (e.g. do not skip a batch of videos because the first one was silent —
+  check every video).
+- EVERY planned fetchTaskId must end in exactly one terminal state: synced as an
+  item, OR reported in a `taskOutcomes` entry. Do not silently omit any task.
+- `taskOutcomes` entries are `{ fetchTaskId, status, reason, evidence? }`:
+  - `skipped` — this item genuinely has no primary content. REQUIRES that item's
+    OWN `evidence` (the per-item check you ran, e.g. `{ meanVolumeDb: -91,
+    hasCaptions: false }`). A skip without per-task evidence is rejected.
+  - `failed` — you tried but couldn't finish; `reason` required (e.g.
+    `fetch_error`, `content_too_short`, `summary_error`).
+  - `blocked` — missing credential/capability; `reason` required.
+
 Write the sync payload to:
 
 ```text
 ${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-agent-sync.json
 ```
+
+The payload is `{ builders: [{ …builderSync, items: [synced items] }],
+taskOutcomes: [non-synced task outcomes] }`.
 
 Then validate before sync, and sync, running these commands exactly:
 
@@ -107,8 +125,10 @@ genuinely cannot be summarized, write the concrete reason {{REPORT_TARGET}} and
 continue with the rest; the server will mark that one failed.
 
 Run `validate-agent-sync` over the FULL fetch-result file (not a subset) before
-`sync-builders`, and stop if it reports errors — it checks that every task ends
-as one synced item with a valid summary. Success means status is ok, localErrors
+`sync-builders`, and stop if it reports errors — it checks that every planned
+task is either synced (with content + summary) or accounted for in
+`taskOutcomes`, and that every `skipped` carries its own per-task evidence (so a
+blanket bulk-skip fails). Success means status is ok, localErrors
 is empty, and `fetchTasks` is empty or `validate-agent-sync` reports all fetch
 tasks validated and `sync-builders` succeeds. Already-fetched posts remain
 skipped regardless of read state. If the run cannot complete without a missing

@@ -26,6 +26,9 @@ const TaskOutcomeSchema = z.object({
   // Why a task failed (e.g. "summary_missing", "not_summarized"). Shown in the
   // fetch log next to a failed summarize outcome.
   failureReason: z.string().max(300).nullable().optional(),
+  // Per-task evidence for a skipped (no-content) outcome, e.g.
+  // { meanVolumeDb: -91, hasCaptions: false }. Rendered in the fetch log.
+  evidence: z.record(z.string(), z.unknown()).nullable().optional(),
 });
 
 const PatchSchema = z.object({

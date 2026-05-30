@@ -867,6 +867,47 @@ test("fetch task success requires a persisted summary; failures are recorded wit
   assert.match(contract, /FAILURE/);
 });
 
+test("every fetchTask resolves to a terminal state; skips need per-task evidence", () => {
+  // Sync contract carries structured per-task outcomes for non-synced tasks.
+  const contracts = readFileSync("src/lib/skill-contracts.ts", "utf8");
+  assert.match(contracts, /SkillTaskOutcomeSchema/);
+  assert.match(contracts, /taskOutcomes/);
+  assert.match(contracts, /"skipped", "failed", "blocked"/);
+
+  // Validator enforces evidence-gated skips + full coverage.
+  const cli = readFileSync("scripts/builder-digest.mjs", "utf8");
+  assert.match(cli, /validateTaskOutcome/);
+  assert.match(cli, /skipped_requires_per_task_evidence/);
+  assert.match(cli, /accountedOutcomes/);
+
+  // Fetch-log carries per-task skip evidence.
+  const fetchRunsRoute = readFileSync("src/app/api/skill/fetch-runs/[id]/route.ts", "utf8");
+  assert.match(fetchRunsRoute, /evidence/);
+
+  // Fetch-log UI renders skipped + evidence and treats skip as a clean terminal.
+  const panel = readFileSync("src/components/FetchLogPanel.tsx", "utf8");
+  assert.match(panel, /Skipped — no content/);
+  assert.match(panel, /formatEvidence/);
+
+  // Contract forbids cross-task generalization / blanket skips.
+  const contract = readFileSync(
+    "skills/builder-blog-digest/jobs/_fetch-task-contract.md",
+    "utf8",
+  );
+  assert.match(contract, /NEVER infer one task's content/);
+  assert.match(contract, /per-task evidence/);
+  assert.match(contract, /taskOutcomes/);
+
+  // YouTube extraction strategy moved out of the contract into the source prompt.
+  assert.doesNotMatch(contract, /silent screen recording/);
+
+  // The YouTube fetch-prompt seed script exists and is captions-first.
+  const seed = readFileSync("scripts/seed-youtube-fetch-prompt.mts", "utf8");
+  assert.match(seed, /updateSourceConfig\("youtube"/);
+  assert.match(seed, /Captions first/);
+  assert.match(seed, /per-video evidence/);
+});
+
 test("server content-quality floor rejects empty / too-short crawls", () => {
   // No content → missing.
   assert.deepEqual(checkBodyContentQuality(""), { ok: false, reason: "content_missing" });

@@ -2416,20 +2416,49 @@ async function validateAgentSync(args) {
   console.log(JSON.stringify(result, null, 2));
 }
 
+// Validate a single non-synced terminal outcome. A task that wasn't synced as
+// an item must be one of skipped / failed / blocked, each with a reason; a
+// `skipped` (no-content) decision additionally requires that task's OWN
+// evidence — this is the gate that stops an agent skipping many tasks on one
+// assumption (e.g. bulk-skipping 11 videos after listening to only the first).
+function validateTaskOutcome(outcome) {
+  const errors = [];
+  const status = outcome?.status;
+  if (status !== "skipped" && status !== "failed" && status !== "blocked") {
+    errors.push("outcome.status_must_be_skipped_failed_or_blocked");
+    return errors;
+  }
+  if (!String(outcome?.reason || "").trim()) errors.push("outcome.reason_required");
+  if (status === "skipped") {
+    const ev = outcome?.evidence;
+    const hasEvidence =
+      ev && typeof ev === "object" && !Array.isArray(ev) && Object.keys(ev).length > 0;
+    if (!hasEvidence) errors.push("outcome.skipped_requires_per_task_evidence");
+  }
+  return errors;
+}
+
 export function validateAgentSyncPayload(fetchResult, payload) {
   const fetchTasks = extractFetchTasks(fetchResult);
   const syncItems = extractSyncItems(payload);
+  const outcomeById = new Map(
+    (Array.isArray(payload?.taskOutcomes) ? payload.taskOutcomes : [])
+      .filter((o) => o && o.fetchTaskId)
+      .map((o) => [String(o.fetchTaskId), o]),
+  );
   const validatedFetchTasks = [];
+  const accountedOutcomes = [];
   const errors = [];
 
   const userActionTasks = [];
   for (const task of fetchTasks) {
+    const id = task.id || fetchTaskId(task);
     // User-action tasks (e.g., x_token_missing) are informational: the
     // agent prints them and does not include them in the sync payload,
     // so the validator must not flag them as missing.
     if (task.agentWorkType === "x_token_missing") {
       userActionTasks.push({
-        fetchTaskId: task.id || fetchTaskId(task),
+        fetchTaskId: id,
         agentWorkType: task.agentWorkType,
         builder: task.builder,
         message: task.agentMessage ?? null,
@@ -2437,7 +2466,6 @@ export function validateAgentSyncPayload(fetchResult, payload) {
       });
       continue;
     }
-    const id = task.id || fetchTaskId(task);
     const matches =
       task.agentWorkType === "fetch_builder_fallback"
         ? syncItems.filter((candidate) => itemMatchesBuilderFallback(candidate, task, id))
@@ -2446,6 +2474,18 @@ export function validateAgentSyncPayload(fetchResult, payload) {
             return found ? [found] : [];
           })();
     if (matches.length === 0) {
+      // Not synced as an item → it MUST be accounted for by a structured
+      // outcome (skipped/failed/blocked). A bare omission is unaccounted.
+      const outcome = outcomeById.get(id);
+      if (outcome) {
+        const outcomeErrors = validateTaskOutcome(outcome);
+        if (outcomeErrors.length > 0) {
+          errors.push({ fetchTaskId: id, builder: task.builder, errors: outcomeErrors });
+        } else {
+          accountedOutcomes.push({ fetchTaskId: id, status: outcome.status });
+        }
+        continue;
+      }
       errors.push({
         fetchTaskId: id,
         builder: task.builder,
@@ -2491,6 +2531,7 @@ export function validateAgentSyncPayload(fetchResult, payload) {
     status: "ok",
     fetchTasks: fetchTasks.length,
     validatedFetchTasks: validatedFetchTasks.length,
+    accountedOutcomes: accountedOutcomes.length,
     userActions: userActionTasks,
   };
 }
@@ -2776,6 +2817,14 @@ async function patchFetchRunOutcomes(config, payload, serverResult = {}, planned
     if (r?.fetchTaskId) serverByTaskId.set(String(r.fetchTaskId), r);
   }
 
+  // Agent-reported terminal outcomes for tasks not synced as items
+  // (skipped / failed / blocked, with reason + per-task evidence).
+  const agentOutcomeById = new Map(
+    (Array.isArray(payload?.taskOutcomes) ? payload.taskOutcomes : [])
+      .filter((o) => o && o.fetchTaskId)
+      .map((o) => [String(o.fetchTaskId), o]),
+  );
+
   // Classify every planned task; fall back to payload+server ids when no
   // planned list is available.
   const plannedById = new Map(
@@ -2797,8 +2846,10 @@ async function patchFetchRunOutcomes(config, payload, serverResult = {}, planned
     }
     const sizes = sizesByTaskId.get(id) ?? {};
     const server = serverByTaskId.get(id);
+    const agentOutcome = agentOutcomeById.get(id);
     let status;
     let failureReason;
+    let evidence;
     if (server) {
       status = server.status === "synced" ? "synced" : "failed";
       if (status === "failed") failureReason = server.reason || "not_synced";
@@ -2807,8 +2858,21 @@ async function patchFetchRunOutcomes(config, payload, serverResult = {}, planned
       // presence of a non-empty summary.
       status = sizes.summaryChars > 0 ? "synced" : "failed";
       if (status === "failed") failureReason = "summary_missing";
+    } else if (agentOutcome) {
+      // Agent reported a non-synced terminal outcome: skipped (no content, with
+      // evidence) / failed / blocked. Maps onto the fetch-log status vocabulary.
+      status =
+        agentOutcome.status === "skipped"
+          ? "skipped"
+          : agentOutcome.status === "blocked"
+            ? "action_needed"
+            : "failed";
+      failureReason = agentOutcome.reason || agentOutcome.status;
+      if (agentOutcome.evidence && typeof agentOutcome.evidence === "object") {
+        evidence = agentOutcome.evidence;
+      }
     } else {
-      // Planned but absent from the sync payload → the agent never summarized it.
+      // Planned but neither synced nor reported by the agent → unaccounted.
       status = "failed";
       failureReason = "not_summarized";
     }
@@ -2817,6 +2881,7 @@ async function patchFetchRunOutcomes(config, payload, serverResult = {}, planned
       ...sizes,
       status,
       ...(failureReason ? { failureReason } : {}),
+      ...(evidence ? { evidence } : {}),
     });
   }
   if (taskOutcomes.length === 0) return;

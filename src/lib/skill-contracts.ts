@@ -42,10 +42,28 @@ export const SkillBuilderSchema = z.object({
   items: z.array(SkillFeedItemSchema).max(MAX_ITEMS_PER_BUILDER).default([]),
 });
 
+// A non-synced terminal outcome for a planned fetchTask. Every task that does
+// NOT end as a synced item must be reported here so it stays accountable (no
+// silent drops, no blanket bulk-skip). `evidence` is per-task proof for a skip
+// (e.g. { meanVolumeDb: -91, hasCaptions: false }); the validator requires it
+// for status="skipped" so an agent can't skip many tasks on one assumption.
+export const SkillTaskOutcomeSchema = z.object({
+  fetchTaskId: z.string().min(1).max(200),
+  status: z.enum(["skipped", "failed", "blocked"]),
+  reason: z.string().min(1).max(400),
+  evidence: z.record(z.string(), z.unknown()).optional(),
+  builderId: z.string().min(1).max(64).nullable().optional(),
+  externalId: z.string().max(MAX_EXTERNAL_ID).nullable().optional(),
+});
+
+const MAX_TASK_OUTCOMES = 500;
+
 export const SkillBuilderSyncSchema = z.object({
   force: z.boolean().default(false),
   fetchTool: z.string().min(1).max(160).default("Agent skill sync"),
   builders: z.array(SkillBuilderSchema).min(1).max(MAX_BUILDERS_PER_SYNC),
+  // Per-task outcomes for tasks not synced as items (skipped / failed / blocked).
+  taskOutcomes: z.array(SkillTaskOutcomeSchema).max(MAX_TASK_OUTCOMES).default([]),
 });
 
 // Canonical content identity of a post presented to a digest (matches the
