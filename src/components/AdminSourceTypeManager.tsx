@@ -35,7 +35,6 @@ type ContentQuality = {
 };
 
 type Draft = {
-  summaryStyle: string;
   summaryLanguage: string;
   summaryLengthHint: string;
   summaryPromptBody: string;
@@ -44,16 +43,6 @@ type Draft = {
 };
 
 type Status = SaveStatusState;
-
-const SUMMARY_STYLE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-  { value: "x_twitter", label: "X" },
-  { value: "podcast_or_video", label: "Podcast / Video" },
-  { value: "blog_or_document", label: "Blog / Document" },
-];
-
-const SUMMARY_STYLE_LABEL: Record<string, string> = Object.fromEntries(
-  SUMMARY_STYLE_OPTIONS.map((option) => [option.value, option.label]),
-);
 
 function toContentQuality(raw: unknown): ContentQuality {
   const obj = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {});
@@ -68,7 +57,6 @@ function toContentQuality(raw: unknown): ContentQuality {
 
 function toDraft(config: AdminSourceTypeConfig): Draft {
   return {
-    summaryStyle: config.summaryStyle,
     summaryLanguage: config.summaryLanguage,
     summaryLengthHint: config.summaryLengthHint ?? "",
     summaryPromptBody: config.summaryPromptBody,
@@ -164,7 +152,6 @@ function SourceTypeCard({
     }
 
     const patch = {
-      summaryStyle: draft.summaryStyle,
       summaryLanguage: draft.summaryLanguage.trim(),
       summaryLengthHint:
         draft.summaryLengthHint.trim() === "" ? null : draft.summaryLengthHint.trim(),
@@ -230,13 +217,7 @@ function SourceTypeCard({
           title="Summarization"
           description="How each item of this source is turned into a brief. Used by both digest-once and library-once."
         >
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-            <FieldSelect
-              label="Summary style"
-              value={draft.summaryStyle}
-              options={SUMMARY_STYLE_OPTIONS}
-              onChange={(v) => update("summaryStyle", v)}
-            />
+          <div className="grid gap-4 sm:grid-cols-2">
             <FieldSelect
               label="Language"
               value={draft.summaryLanguage}
@@ -341,17 +322,12 @@ function CardHeader({
   config: AdminSourceTypeConfig;
   dirty: boolean;
 }) {
-  // summaryStyle drives which summary prompt family this source uses, so it
-  // earns a spot in the collapsed header — but as its human label, not the raw
-  // enum. The sourceId pill (a near-duplicate of the label) and the read-only
-  // agentDefaultStatus (no longer editable here) are dropped as header noise.
-  const styleLabel = SUMMARY_STYLE_LABEL[config.summaryStyle] ?? config.summaryStyle;
+  // Just the source label. The sourceId pill duplicated it, agentDefaultStatus
+  // isn't editable here, and summaryStyle has no runtime effect (it only seeds
+  // the default prompt body) — so none of them belong in the header.
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <span className="text-base font-medium">{config.label}</span>
-      <span className="text-xs" style={{ color: "var(--muted)" }}>
-        {styleLabel}
-      </span>
       {dirty ? (
         <span
           className="ml-auto inline-flex items-center gap-1.5 text-xs"
