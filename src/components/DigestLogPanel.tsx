@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { useHydrated } from "@/components/ThemeToggle";
 import type {
@@ -89,6 +89,17 @@ export function DigestLogPanel({
       }
     });
   }, []);
+
+  // Confirm against live data once on mount. initialRuns gives an instant first
+  // paint, but the log's whole job is to show the run you just made, so a stale
+  // SSR payload (which showed "no runs" right after a sync) must not win. One
+  // lightweight fetch reconciles it; the timestamp ticker below stays separate.
+  const didHeal = useRef(false);
+  useEffect(() => {
+    if (didHeal.current) return;
+    didHeal.current = true;
+    refresh();
+  }, [refresh]);
 
   // Keep relative timestamps approximately fresh without re-fetching. Honor
   // reduced-motion by skipping the interval.
