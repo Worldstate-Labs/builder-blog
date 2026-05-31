@@ -80,15 +80,20 @@ async function SyncHeader({
   dataPromise: Promise<BuildersPageData>;
 }) {
   const data = await dataPromise;
+  const showStopCron = data.libraryCronJob?.status === "active";
   return (
     <section className="mt-6 grid gap-3">
-      <SkillPromptActions
-        context="library"
-        tokens={data.activeTokens}
-        summaryLanguage={data.summaryLanguage}
-        digestMaxPostAgeDays={data.digestMaxPostAgeDays}
-      />
       <FetchLogPanel
+        actions={
+          <SkillPromptActions
+            compactOnly
+            context="library"
+            showStop={showStopCron}
+            tokens={data.activeTokens}
+            summaryLanguage={data.summaryLanguage}
+            digestMaxPostAgeDays={data.digestMaxPostAgeDays}
+          />
+        }
         initialCronJob={data.libraryCronJob}
         initialCronRuns={data.cronRuns}
         initialRuns={data.fetchRuns}

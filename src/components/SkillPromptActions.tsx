@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarClock, Check, CircleStop, Copy, Terminal } from "lucide-react";
+import { CalendarClock, Check, CircleStop, Copy } from "lucide-react";
 import {
   describeMachine,
   type AgentTokenListItem,
@@ -190,7 +190,6 @@ function MaxAgeField({
 
 const PROMPT_CONFIG = {
   library: {
-    title: "Source sync",
     onceLabel: "Copy once prompt",
     cronLabel: "Copy cron prompt",
     onceJob: "library-once",
@@ -202,7 +201,6 @@ const PROMPT_CONFIG = {
     stopLabel: "Stop cron",
   },
   digest: {
-    title: "Digest sync",
     onceLabel: "Copy once prompt",
     cronLabel: "Copy cron prompt",
     onceJob: "digest-once",
@@ -215,7 +213,6 @@ const PROMPT_CONFIG = {
 } satisfies Record<
   SkillPromptContext,
   {
-    title: string;
     onceLabel: string;
     cronLabel: string;
     onceJob: string;
@@ -230,6 +227,8 @@ export function SkillPromptActions({
   tokens = [],
   summaryLanguage = null,
   digestMaxPostAgeDays = null,
+  compactOnly = false,
+  showStop = true,
 }: {
   context: SkillPromptContext;
   tokens?: AgentTokenListItem[];
@@ -239,6 +238,8 @@ export function SkillPromptActions({
   // Current digest max post-age floor (null = no limit). Set in the digest
   // dialogs; persisted via /api/settings/digest-max-age.
   digestMaxPostAgeDays?: number | null;
+  compactOnly?: boolean;
+  showStop?: boolean;
 }) {
   const config = PROMPT_CONFIG[context];
   const activeTokens = tokens.filter((t) => !t.revokedAt);
@@ -421,12 +422,7 @@ export function SkillPromptActions({
   }
 
   return (
-    <div className="fb-skill">
-      <Terminal aria-hidden="true" className="h-4 w-4 text-[var(--accent)]" />
-      <div className="fb-skill-text">
-        <span className="fb-section-label mr-2">{config.title}</span>
-        Run the terminal skill to sync new {context === "digest" ? "digests" : "sources"}.
-      </div>
+    <div className={compactOnly ? "flex flex-wrap items-center justify-end gap-2" : "fb-skill"}>
       <button
         className="fb-btn light compact"
         onClick={() => copyCommand("once")}
@@ -451,7 +447,7 @@ export function SkillPromptActions({
         )}
         {copiedTarget === "cron" ? "Copied" : config.cronLabel}
       </button>
-      {stopJob ? (
+      {stopJob && showStop ? (
         <button
           className="fb-btn light compact"
           onClick={copyStopCommand}

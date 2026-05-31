@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
-import { Activity, ChevronRight, Clock3, RefreshCw } from "lucide-react";
+import { Activity, ChevronRight, Clock3 } from "lucide-react";
 import { useHydrated } from "@/components/ThemeToggle";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
 
@@ -337,17 +337,18 @@ export function FetchLogPanel({
   initialRuns,
   initialCronRuns,
   initialCronJob,
+  actions,
 }: {
   initialRuns: LibraryFetchRunListItem[];
   initialCronRuns: LibraryFetchRunListItem[];
   initialCronJob: LibraryCronJobStatus | null;
+  actions?: ReactNode;
 }) {
   const [runs, setRuns] = useState(initialRuns);
   const [cronRuns, setCronRuns] = useState(initialCronRuns);
   const [cronJob, setCronJob] = useState(initialCronJob);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
-  const [isLoading, setIsLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<"status" | "log">("status");
   const cronStatus = useMemo(() => buildCronStatus(cronJob, cronRuns), [cronJob, cronRuns]);
@@ -361,7 +362,6 @@ export function FetchLogPanel({
   }, [runs]);
 
   const refresh = useCallback(() => {
-    setIsLoading(true);
     setError(null);
     startTransition(async () => {
       try {
@@ -384,8 +384,6 @@ export function FetchLogPanel({
         setCronJob(body?.cronJob ?? null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Refresh failed");
-      } finally {
-        setIsLoading(false);
       }
     });
   }, []);
@@ -460,15 +458,7 @@ export function FetchLogPanel({
             Cron health and the latest local CLI fetch runs.
           </p>
         </div>
-        <button
-          className="fb-btn light compact"
-          disabled={isLoading}
-          onClick={refresh}
-          type="button"
-        >
-          <RefreshCw aria-hidden="true" />
-          {isLoading ? "Refreshing..." : "Refresh"}
-        </button>
+        {actions ? <div className="min-w-0">{actions}</div> : null}
       </div>
 
       {error ? (

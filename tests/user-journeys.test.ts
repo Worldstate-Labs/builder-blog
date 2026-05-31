@@ -299,7 +299,9 @@ test("web app serves the agent skill and setup command", () => {
   // AgentTokenPanel — users now copy the setup prompt from
   // SkillPromptActions, which references the bootstrap route directly.
   assert.doesNotMatch(settingsPanel, /\/api\/skill\/bootstrap/);
-  assert.match(buildersPage, /<SkillPromptActions\s+context="library"/);
+  assert.match(buildersPage, /<SkillPromptActions[\s\S]*context="library"/);
+  assert.match(buildersPage, /compactOnly/);
+  assert.match(buildersPage, /showStop=\{showStopCron\}/);
   assert.match(dashboardPage, /<SkillPromptActions\s+context="digest"/);
   // Dashboard loads + passes the account-wide summary language to the digest dialog.
   assert.match(dashboardPage, /userFeedPreference\.findUnique/);
@@ -308,8 +310,8 @@ test("web app serves the agent skill and setup command", () => {
   // Library page loads + passes the account-wide summary language to the dialog.
   assert.match(buildersPage, /summaryLanguage: feedPreference\?\.summaryLanguage/);
   assert.match(buildersPage, /summaryLanguage=\{data\.summaryLanguage\}/);
-  assert.match(skillPromptActions, /Source sync/);
-  assert.match(skillPromptActions, /Digest sync/);
+  assert.doesNotMatch(skillPromptActions, /Source sync/);
+  assert.doesNotMatch(skillPromptActions, /Run the terminal skill/);
   assert.match(skillPromptActions, /Copy once prompt/);
   assert.match(skillPromptActions, /Copy cron prompt/);
   assert.match(skillPromptActions, /Read \$\{promptUrl\} and follow the instructions/);

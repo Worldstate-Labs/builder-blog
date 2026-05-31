@@ -121,14 +121,17 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /export[^\n]*BUILDER_BLOG_RUN_SOURCE/);
 });
 
-test("FetchLogPanel renders status pills with semantic CSS variables and a refresh button", () => {
+test("FetchLogPanel renders status pills and status/log tabs with semantic CSS variables", () => {
   const panel = source("src/components/FetchLogPanel.tsx");
   // Status pill colors must reuse existing tokens, not new colors.
   assert.match(panel, /var\(--signal\)/);
   assert.match(panel, /var\(--warm\)/);
   assert.match(panel, /var\(--danger\)/);
-  // Refresh button calls the GET endpoint.
+  // Background refresh still calls the GET endpoint, but the panel no longer
+  // renders its own manual Refresh button.
   assert.match(panel, /fetch\("\/api\/skill\/fetch-runs"/);
+  assert.doesNotMatch(panel, /RefreshCw/);
+  assert.doesNotMatch(panel, />Refresh</);
   assert.match(panel, /VISIBLE_RUN_LIMIT = 2/);
   assert.match(panel, /role="tablist"/);
   assert.match(panel, /Fetch status/);
@@ -155,10 +158,14 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   assert.match(buildersPage, /source: "cron"/);
   assert.match(buildersPage, /orderBy: \{ startedAt: "desc" \}/);
   assert.match(buildersPage, /take: 25/);
-  // Mounted in a Suspense slot alongside SkillPromptActions so the
-  // fetch log surfaces above the source list on every device.
+  // Mounted in a Suspense slot with SkillPromptActions embedded into the panel
+  // so the fetch sync surface stays together above the source list.
   assert.match(buildersPage, /<Suspense fallback=\{<SyncHeaderFallback \/>/);
   assert.match(buildersPage, /function SyncHeaderFallback/);
+  assert.match(buildersPage, /actions=\{/);
+  assert.match(buildersPage, /compactOnly/);
+  assert.match(buildersPage, /showStop=\{showStopCron\}/);
+  assert.match(buildersPage, /libraryCronJob\?\.status === "active"/);
   assert.match(buildersPage, /initialCronJob=\{data\.libraryCronJob\}/);
   assert.match(buildersPage, /initialCronRuns=\{data\.cronRuns\}/);
   assert.match(buildersPage, /initialRuns=\{data\.fetchRuns\}/);
