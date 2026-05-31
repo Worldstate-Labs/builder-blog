@@ -437,6 +437,8 @@ test("web app serves the agent skill and setup command", () => {
   // hard-coded "concise Chinese digest".
   assert.match(digestTaskContract, /context\.language/);
   assert.doesNotMatch(digestTaskContract, /concise Chinese digest/);
+  // Language is fully driven by context.language now — no hardcoded Chinese default.
+  assert.doesNotMatch(digestTaskContract, /defaults? (to )?simplified Chinese/i);
   function expandIncludes(content: string): string {
     return content
       .replace(
@@ -561,9 +563,12 @@ test("web app serves the agent skill and setup command", () => {
   // expanded prompt references the current context.sources/context.digest paths.
   assert.match(digestOncePrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
   assert.doesNotMatch(digestOnceExpanded, /\{\{INCLUDE/);
-  assert.match(digestOnceExpanded, /context\.sources\.x\.summaryPrompt\.body/);
-  assert.match(digestOnceExpanded, /context\.sources\.podcast\.summaryPrompt\.body/);
-  assert.match(digestOnceExpanded, /context\.sources\.blog\.summaryPrompt\.body/);
+  // Summary prompt is selected per SOURCE TYPE (covers all 6 + future), not per
+  // the coarser item.kind which can't tell youtube from podcast, or blog from
+  // pdf/website.
+  assert.match(digestOnceExpanded, /context\.sources\[item\.builder\.sourceType\]\.summaryPrompt\.body/);
+  assert.match(digestOnceExpanded, /x, blog, youtube, podcast, pdf, website/);
+  assert.doesNotMatch(digestOnceExpanded, /context\.sources\.x\.summaryPrompt\.body/);
   assert.match(digestOnceExpanded, /context\.digest\.digestIntro/);
   assert.match(digestOnceExpanded, /context\.digest\.translate/);
   assert.match(libraryCronSetupPrompt, /builder-agent-runner\.sh library-cron/);
@@ -805,7 +810,7 @@ test("web app serves the agent skill and setup command", () => {
   // context.prompts / *.md filenames it used to restate inline.
   assert.match(digestCronPrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
   assert.doesNotMatch(digestCronExpanded, /\{\{INCLUDE/);
-  assert.match(digestCronExpanded, /context\.sources\.x\.summaryPrompt\.body/);
+  assert.match(digestCronExpanded, /context\.sources\[item\.builder\.sourceType\]\.summaryPrompt\.body/);
   assert.match(digestCronExpanded, /context\.digest\.digestIntro/);
   assert.match(digestCronExpanded, /context\.digest\.translate/);
   assert.doesNotMatch(digestCronExpanded, /summarize-tweets\.md/);
