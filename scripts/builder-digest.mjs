@@ -102,6 +102,7 @@ function usage() {
   validate-agent-sync --tasks fetch-result.json --file personal-builders.json
   sync-builders --file personal-builders.json [--agent-model gpt-5.5]
   sync --file digest.md [--title "AI Builder Digest"] [--regenerate] [--context builder-blog-context.json]
+  cron-status --job library-cron --status active|stopped [--freq 6h] [--schedule "0 */6 * * *"]
   status
 
 To set up an account, use the Copy-prompt button in the FollowBrief web app.
@@ -2918,6 +2919,35 @@ async function status() {
   );
 }
 
+async function cronStatus(args) {
+  const config = await readConfig();
+  requireLoggedIn(config);
+  const job = argValue(args, "--job", "library-cron");
+  const statusValue = argValue(args, "--status", "active");
+  const freq = argValue(args, "--freq");
+  const schedule = argValue(args, "--schedule");
+  const label = argValue(args, "--label");
+  const runtime = argValue(args, "--runtime") || process.env.BUILDER_BLOG_RUNTIME || null;
+  const forceValue = argValue(args, "--force", "0");
+  const startedAt = argValue(args, "--started-at") || new Date().toISOString();
+
+  const result = await postJson(
+    `${config.appUrl}/api/skill/cron-jobs`,
+    {
+      job,
+      status: statusValue,
+      frequencyKey: freq,
+      frequencyLabel: label,
+      schedule,
+      runtime,
+      overrideFetched: forceValue === "1",
+      startedAt,
+    },
+    config.token,
+  );
+  console.log(JSON.stringify(result, null, 2));
+}
+
 async function main() {
   const [command, ...args] = process.argv.slice(2);
   if (command === "exchange") await exchange(args);
@@ -2934,6 +2964,7 @@ async function main() {
   else if (command === "validate-agent-sync") await validateAgentSync(args);
   else if (command === "sync-builders") await syncBuilders(args);
   else if (command === "sync") await sync(args);
+  else if (command === "cron-status") await cronStatus(args);
   else if (command === "status") await status();
   else usage();
 }

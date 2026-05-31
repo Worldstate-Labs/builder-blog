@@ -102,6 +102,7 @@ export async function GET(request: Request, { params }: Params) {
   content = content
     .replaceAll("{{AGENT_RUNTIME}}", runtime ?? "")
     .replaceAll("{{AGENT_RUNTIME_LABEL}}", runtime ? runtimeLabels[runtime] : "your local agent")
+    .replaceAll("{{CRON_FREQUENCY_KEY}}", freq)
     .replaceAll("{{CRON_SCHEDULE}}", cronSchedules[freq].schedule)
     .replaceAll("{{CRON_FREQUENCY_LABEL}}", cronSchedules[freq].label)
     .replaceAll("{{LAUNCHD_SCHEDULE}}", launchdSchedules[freq] ?? launchdSchedules["6h"])

@@ -137,7 +137,23 @@ ACCT="${BUILDER_BLOG_ACCOUNT}"; ( crontab -l 2>/dev/null | grep -v "# FollowBrie
 crontab -l | grep 'builder-agent-runner.sh library-cron'
 ```
 
-7. Run one immediate smoke check. This runs in your current session (which has
+7. Report the active schedule to FollowBrief so the web app can compare
+expected runs with fetch logs. This is a status update only; it does not fetch
+content:
+
+```bash
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-status \
+  --job library-cron \
+  --status active \
+  --freq "{{CRON_FREQUENCY_KEY}}" \
+  --label "{{CRON_FREQUENCY_LABEL}}" \
+  --schedule "{{CRON_SCHEDULE}}" \
+  --runtime "{{AGENT_RUNTIME}}" \
+  --force "{{FETCH_FORCE}}"
+```
+
+8. Run one immediate smoke check. This runs in your current session (which has
 keychain access), so it validates the whole fetch → sync pipeline:
 
 ```bash

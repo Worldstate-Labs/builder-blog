@@ -8,9 +8,9 @@ stderr. Do not invoke any other skill, plugin, or subagent — run the numbered
 steps yourself exactly as written; this prompt is the whole task.
 
 Scope — do not exceed it: remove only the recurring **schedule** (the launchd
-LaunchAgent on macOS, or the crontab entry on Linux). Do not delete any
-already-fetched library content, and do not touch the digest cron. Do not
-exchange a token or make any network call — this task is entirely local.
+LaunchAgent on macOS, or the crontab entry on Linux), then report that stopped
+state to FollowBrief. Do not delete any already-fetched library content, and do
+not touch the digest cron.
 
 1. Find the existing FollowBrief library job(s) on this machine. Run the path
 for this machine's OS — run `uname` if unsure.
@@ -78,7 +78,17 @@ rm -f "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-library-cron" \
       "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-force-library-cron"
 ```
 
-4. Report the outcome to the user: which label (macOS) or crontab entry (Linux)
+4. Report the stopped status to FollowBrief so the web app stops expecting
+future library fetch runs:
+
+```bash
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-status \
+  --job library-cron \
+  --status stopped
+```
+
+5. Report the outcome to the user: which label (macOS) or crontab entry (Linux)
 was removed (or that none existed), and that the step-2 verification line printed
 "removed". Tell the user they can resume later by re-running the library cron
 setup prompt.

@@ -242,8 +242,8 @@ export function SkillPromptActions({
 }) {
   const config = PROMPT_CONFIG[context];
   const activeTokens = tokens.filter((t) => !t.revokedAt);
-  // Only the library context ships a stop prompt today; the `in` narrow keeps
-  // this typed against the per-context literal config shapes.
+  // The `in` narrow keeps this typed against the per-context literal config
+  // shapes if a future context omits stop support.
   const stopJob = "stopJob" in config ? config.stopJob : undefined;
   const stopLabel = "stopLabel" in config ? config.stopLabel : "Stop cron";
 
@@ -282,7 +282,13 @@ export function SkillPromptActions({
     extras: CopyExtras,
   ): string {
     const origin = window.location.origin;
-    const job = target === "once" ? config.onceJob : config.cronJob;
+    const job =
+      target === "once"
+        ? config.onceJob
+        : target === "cron"
+          ? config.cronJob
+          : stopJob;
+    if (!job) return "";
     const params = new URLSearchParams({ ec: exchangeCode });
     if (extras.cron) {
       params.set("runtime", extras.cron.runtime);
@@ -382,12 +388,23 @@ export function SkillPromptActions({
     setPickerTarget(target);
   }
 
-  // Stop flow: removing the schedule touches nothing on the server, so it
-  // needs no exchange code, no token, and no runtime/cadence — just copy the
-  // self-contained prompt. Works even with zero tokens.
+  // Library stop flow reports "stopped" back to the server after local removal,
+  // so it needs a token-backed setup prompt. Digest stop is still local-only.
   async function copyStopCommand() {
     if (!stopJob) return;
     setStatus(null);
+    if (context === "library") {
+      if (activeTokens.length === 0) {
+        setStatus({ kind: "info", text: "Create a token in Settings first" });
+        return;
+      }
+      if (activeTokens.length === 1) {
+        await copyForToken("stop", activeTokens[0].id, { cron: null, force: false });
+        return;
+      }
+      setPickerTarget("stop");
+      return;
+    }
     const command = `Read ${window.location.origin}/api/skill/jobs/${stopJob}/skill.md and follow the instructions.`;
     try {
       await navigator.clipboard.writeText(command);
@@ -498,7 +515,11 @@ export function SkillPromptActions({
         target={pickerTarget}
         tokens={activeTokens}
         actionLabel={
-          pickerTarget === "once" ? config.onceLabel : pickerTarget === "cron" ? config.cronLabel : ""
+          pickerTarget === "once"
+            ? config.onceLabel
+            : pickerTarget === "cron"
+              ? config.cronLabel
+              : stopLabel
         }
         onCancel={() => {
           setPickerTarget(null);

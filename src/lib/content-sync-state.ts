@@ -32,6 +32,7 @@ export async function contentSyncState(userId: string): Promise<ContentSyncState
     digestRunState,
     fetchRunState,
     tokenState,
+    cronJob,
     feedPreference,
     sourceConfigState,
     digestConfig,
@@ -60,6 +61,10 @@ export async function contentSyncState(userId: string): Promise<ContentSyncState
       where: { userId },
       _count: true,
       _max: { createdAt: true, lastUsedAt: true, revokedAt: true },
+    }),
+    prisma.libraryCronJob.findUnique({
+      where: { userId },
+      select: { updatedAt: true },
     }),
     prisma.userFeedPreference.findUnique({
       where: { userId },
@@ -114,6 +119,7 @@ export async function contentSyncState(userId: string): Promise<ContentSyncState
       iso(tokenState._max.createdAt),
       iso(tokenState._max.lastUsedAt),
       iso(tokenState._max.revokedAt),
+      iso(cronJob?.updatedAt),
       iso(feedPreference?.updatedAt),
       count(sourceConfigState._count),
       iso(sourceConfigState._max.updatedAt),

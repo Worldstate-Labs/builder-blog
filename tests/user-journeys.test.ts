@@ -289,6 +289,7 @@ test("web app serves the agent skill and setup command", () => {
   const libraryOncePrompt = readFileSync("skills/builder-blog-digest/jobs/library-once.md", "utf8");
   const digestOncePrompt = readFileSync("skills/builder-blog-digest/jobs/digest-once.md", "utf8");
   const libraryCronSetupPrompt = readFileSync("skills/builder-blog-digest/jobs/library-cron-setup.md", "utf8");
+  const libraryCronStopPrompt = readFileSync("skills/builder-blog-digest/jobs/library-cron-stop.md", "utf8");
   const digestCronSetupPrompt = readFileSync("skills/builder-blog-digest/jobs/digest-cron-setup.md", "utf8");
   const libraryCronPrompt = readFileSync("skills/builder-blog-digest/jobs/library-cron.md", "utf8");
   const digestCronPrompt = readFileSync("skills/builder-blog-digest/jobs/digest-cron.md", "utf8");
@@ -356,6 +357,7 @@ test("web app serves the agent skill and setup command", () => {
   // substitutes the schedule + cadence label into the cron-setup prompt.
   assert.match(skillJobRoute, /cronSchedules/);
   assert.match(skillJobRoute, /searchParams\.get\("freq"\)/);
+  assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_KEY\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_SCHEDULE\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_LABEL\}\}/);
   // macOS scheduling uses a launchd LaunchAgent (keychain access); the route
@@ -372,6 +374,7 @@ test("web app serves the agent skill and setup command", () => {
   // cron-setup prompts use the placeholders, not a hard-coded schedule, and
   // install via launchd on macOS / crontab on Linux.
   assert.match(libraryCronSetupPrompt, /\{\{CRON_SCHEDULE\}\}/);
+  assert.match(libraryCronSetupPrompt, /\{\{CRON_FREQUENCY_KEY\}\}/);
   assert.match(libraryCronSetupPrompt, /\{\{CRON_FREQUENCY_LABEL\}\}/);
   assert.match(libraryCronSetupPrompt, /\{\{LAUNCHD_SCHEDULE\}\}/);
   assert.match(libraryCronSetupPrompt, /launchctl bootstrap/);
@@ -395,6 +398,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /read_pin regenerate/);
   assert.match(cli, /--regenerate/);
   assert.match(cli, /&regenerate=1/);
+  assert.match(cli, /cron-status/);
+  assert.match(cli, /api\/skill\/cron-jobs/);
   // The digest-writing instructions (incl. the context.language rule) now live
   // in the shared digest-task-contract include, pulled into both digest jobs.
   // The contract's content is asserted below where it's read (digestTaskContract).
@@ -574,6 +579,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestOnceExpanded, /context\.digest\.digestIntro/);
   assert.match(digestOnceExpanded, /context\.digest\.translate/);
   assert.match(libraryCronSetupPrompt, /builder-agent-runner\.sh library-cron/);
+  assert.match(libraryCronStopPrompt, /cron-status/);
+  assert.match(libraryCronStopPrompt, /--status stopped/);
+  assert.doesNotMatch(libraryCronStopPrompt, /Do not\s+exchange a token or make any network call/);
   // Setup now pins the chosen runtime in $AGENT_DIR/runtime so the
   // runner picks the matching unattended-mode invocation at cron-fire
   // time. {{AGENT_RUNTIME}} is substituted server-side from the
@@ -616,7 +624,9 @@ test("web app serves the agent skill and setup command", () => {
     "4. Pin the scheduled runtime",
     "6. Install the schedule",
     "launchctl bootstrap",
-    "7. Run one immediate smoke check",
+    "7. Report the active schedule to FollowBrief",
+    "cron-status",
+    "8. Run one immediate smoke check",
     "report its output",
   ]);
   // Override-already-fetched toggle: cron-setup pins fetch-force (0/1) next to

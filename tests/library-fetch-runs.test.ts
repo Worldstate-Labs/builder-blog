@@ -34,12 +34,16 @@ test("Prisma schema declares LibraryFetchRun with user-indexed ordering", () => 
   assert.match(schema, /details\s+Json/);
   // Cascade on user delete keeps logs from outliving the account.
   assert.match(schema, /libraryFetchRuns\s+LibraryFetchRun\[\]/);
+  assert.match(schema, /libraryCronJob\s+LibraryCronJob\?/);
   assert.match(
     schema,
     /model LibraryFetchRun \{[\s\S]*user\s+User\s+@relation\(fields: \[userId\], references: \[id\], onDelete: Cascade\)/,
   );
   // Index by (userId, startedAt DESC) supports the list query.
   assert.match(schema, /@@index\(\[userId, startedAt\(sort: Desc\)\]\)/);
+  assert.match(schema, /model LibraryCronJob \{/);
+  assert.match(schema, /intervalMinutes\s+Int/);
+  assert.match(schema, /@@index\(\[userId, status\]\)/);
 });
 
 test("migration creates LibraryFetchRun with the expected columns and index", () => {
@@ -48,10 +52,16 @@ test("migration creates LibraryFetchRun with the expected columns and index", ()
   assert.match(migration, /"details"\s+JSONB\s+NOT NULL/);
   assert.match(migration, /CREATE INDEX "LibraryFetchRun_userId_startedAt_idx"/);
   assert.match(migration, /REFERENCES "User"\("id"\) ON DELETE CASCADE/);
+  const cronMigration = source("prisma/migrations/000041_library_cron_job/migration.sql");
+  assert.match(cronMigration, /CREATE TABLE "LibraryCronJob"/);
+  assert.match(cronMigration, /"intervalMinutes"\s+INTEGER\s+NOT NULL/);
+  assert.match(cronMigration, /CREATE UNIQUE INDEX "LibraryCronJob_userId_key"/);
+  assert.match(cronMigration, /REFERENCES "User"\("id"\)[\s\S]*ON DELETE CASCADE/);
 });
 
 test("skill fetch-runs route validates payload size and gates auth on user session", () => {
   const route = source("src/app/api/skill/fetch-runs/route.ts");
+  const cronRoute = source("src/app/api/skill/cron-jobs/route.ts");
   // POST is bearer-token (CLI), GET is web session (browser).
   assert.match(route, /getUserFromBearer\(request\)/);
   assert.match(route, /getCurrentSession\(\)/);
@@ -65,10 +75,20 @@ test("skill fetch-runs route validates payload size and gates auth on user sessi
   assert.match(route, /details payload too large; cap at 50 KB/);
   // Server filters the GET by the caller's user id.
   assert.match(route, /where: \{ userId: session\.user\.id \}/);
+  assert.match(route, /source: "cron"/);
+  assert.match(route, /cronRuns/);
+  assert.match(route, /libraryCronJob\.findUnique/);
+  assert.match(route, /cronJob: cron/);
   // Server orders by startedAt desc and limits to the spec'd 25.
   assert.match(route, /orderBy: \{ startedAt: "desc" \}/);
   assert.match(route, /take: RUN_HISTORY_LIMIT/);
   assert.match(route, /RUN_HISTORY_LIMIT = 25/);
+  assert.match(cronRoute, /getUserFromBearer\(request\)/);
+  assert.match(cronRoute, /z\.literal\("library-cron"\)/);
+  assert.match(cronRoute, /z\.enum\(\["active", "stopped"\]\)/);
+  assert.match(cronRoute, /intervalMinutes/);
+  assert.match(cronRoute, /libraryCronJob\.upsert/);
+  assert.match(cronRoute, /libraryCronJob\.updateMany/);
 });
 
 test("CLI emits a fetch-run record on both success and failure paths", () => {
@@ -77,6 +97,8 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /const CLI_VERSION = "0\.6\.0";/);
   // The CLI POSTs to the new endpoint with the bearer token.
   assert.match(cli, /\/api\/skill\/fetch-runs/);
+  assert.match(cli, /cron-status/);
+  assert.match(cli, /\/api\/skill\/cron-jobs/);
   // Detects cron vs manual via the env variable exported by the runner.
   assert.match(cli, /BUILDER_BLOG_RUN_SOURCE/);
   // Success path logs the record after printing JSON to stdout.
@@ -107,6 +129,13 @@ test("FetchLogPanel renders status pills with semantic CSS variables and a refre
   assert.match(panel, /var\(--danger\)/);
   // Refresh button calls the GET endpoint.
   assert.match(panel, /fetch\("\/api\/skill\/fetch-runs"/);
+  assert.match(panel, /VISIBLE_RUN_LIMIT = 2/);
+  assert.match(panel, /role="tablist"/);
+  assert.match(panel, /Fetch status/);
+  assert.match(panel, /Fetch log/);
+  assert.match(panel, /Cron job status graph/);
+  assert.match(panel, /buildCronStatus/);
+  assert.match(panel, /run\.source === "cron"/);
   // Editorial design tokens — panel chrome and chips are reused.
   assert.match(panel, /fb-panel/);
   assert.match(panel, /fb-section-heading/);
@@ -122,11 +151,15 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   assert.match(buildersPage, /FetchLogPanel/);
   // Fetch the user's recent runs server-side, ordered by startedAt desc.
   assert.match(buildersPage, /prisma\.libraryFetchRun\.findMany/);
+  assert.match(buildersPage, /prisma\.libraryCronJob\.findUnique/);
+  assert.match(buildersPage, /source: "cron"/);
   assert.match(buildersPage, /orderBy: \{ startedAt: "desc" \}/);
   assert.match(buildersPage, /take: 25/);
   // Mounted in a Suspense slot alongside SkillPromptActions so the
   // fetch log surfaces above the source list on every device.
   assert.match(buildersPage, /<Suspense fallback=\{<SyncHeaderFallback \/>/);
   assert.match(buildersPage, /function SyncHeaderFallback/);
-  assert.match(buildersPage, /<FetchLogPanel initialRuns=\{data\.fetchRuns\} \/>/);
+  assert.match(buildersPage, /initialCronJob=\{data\.libraryCronJob\}/);
+  assert.match(buildersPage, /initialCronRuns=\{data\.cronRuns\}/);
+  assert.match(buildersPage, /initialRuns=\{data\.fetchRuns\}/);
 });

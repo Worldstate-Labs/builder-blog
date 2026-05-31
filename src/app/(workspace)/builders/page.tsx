@@ -3,7 +3,11 @@ import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
 import { BuilderLibraryStats } from "@/components/BuilderLibraryStats";
-import { FetchLogPanel, type LibraryFetchRunListItem } from "@/components/FetchLogPanel";
+import {
+  FetchLogPanel,
+  type LibraryCronJobStatus,
+  type LibraryFetchRunListItem,
+} from "@/components/FetchLogPanel";
 import { LibraryImportRemoveButton } from "@/components/LibraryImportRemoveButton";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
 import { MobileSourcesSwitcher } from "@/components/MobileSourcesSwitcher";
@@ -84,7 +88,11 @@ async function SyncHeader({
         summaryLanguage={data.summaryLanguage}
         digestMaxPostAgeDays={data.digestMaxPostAgeDays}
       />
-      <FetchLogPanel initialRuns={data.fetchRuns} />
+      <FetchLogPanel
+        initialCronJob={data.libraryCronJob}
+        initialCronRuns={data.cronRuns}
+        initialRuns={data.fetchRuns}
+      />
     </section>
   );
 }
@@ -104,7 +112,18 @@ async function loadBuildersPageData() {
   const isAdmin = isAdminEmail(session.user.email);
   await ensureDefaultCommunityLibraryImport(session.user.id);
 
-  const [poolEntries, subscriptions, importedLibraries, ownSharedLibrary, adminLibVisibility, rawTokens, rawFetchRuns, feedPreference] = await Promise.all([
+  const [
+    poolEntries,
+    subscriptions,
+    importedLibraries,
+    ownSharedLibrary,
+    adminLibVisibility,
+    rawTokens,
+    rawFetchRuns,
+    rawCronRuns,
+    rawLibraryCronJob,
+    feedPreference,
+  ] = await Promise.all([
     prisma.builderPoolEntry.findMany({
       where: { userId: session.user.id, removedAt: null },
       include: {
@@ -182,6 +201,14 @@ async function loadBuildersPageData() {
       where: { userId: session.user.id },
       orderBy: { startedAt: "desc" },
       take: 25,
+    }),
+    prisma.libraryFetchRun.findMany({
+      where: { userId: session.user.id, source: "cron" },
+      orderBy: { startedAt: "desc" },
+      take: 25,
+    }),
+    prisma.libraryCronJob.findUnique({
+      where: { userId: session.user.id },
     }),
     prisma.userFeedPreference.findUnique({
       where: { userId: session.user.id },
@@ -289,11 +316,48 @@ async function loadBuildersPageData() {
     summary: run.summary,
     details: run.details,
   }));
+  const cronRuns: LibraryFetchRunListItem[] = rawCronRuns.map((run) => ({
+    id: run.id,
+    startedAt: run.startedAt.toISOString(),
+    finishedAt: run.finishedAt.toISOString(),
+    durationMs: run.durationMs,
+    status: run.status,
+    source: run.source,
+    cliVersion: run.cliVersion,
+    hostname: run.hostname,
+    platform: run.platform,
+    buildersAttempted: run.buildersAttempted,
+    itemsFetched: run.itemsFetched,
+    tasksGenerated: run.tasksGenerated,
+    userActionsCount: run.userActionsCount,
+    errorCount: run.errorCount,
+    summary: run.summary,
+    details: run.details,
+  }));
+  const libraryCronJob: LibraryCronJobStatus | null = rawLibraryCronJob
+    ? {
+        id: rawLibraryCronJob.id,
+        status: rawLibraryCronJob.status,
+        startedAt: rawLibraryCronJob.startedAt.toISOString(),
+        stoppedAt: rawLibraryCronJob.stoppedAt?.toISOString() ?? null,
+        frequencyKey: rawLibraryCronJob.frequencyKey,
+        frequencyLabel: rawLibraryCronJob.frequencyLabel,
+        schedule: rawLibraryCronJob.schedule,
+        intervalMinutes: rawLibraryCronJob.intervalMinutes,
+        runtime: rawLibraryCronJob.runtime,
+        overrideFetched: rawLibraryCronJob.overrideFetched,
+        hostname: rawLibraryCronJob.hostname,
+        platform: rawLibraryCronJob.platform,
+        updatedAt: rawLibraryCronJob.updatedAt.toISOString(),
+      }
+    : null;
 
   return {
     activeTokens,
     fetchedItems,
+    cronRuns,
     fetchRuns,
+    libraryCronJob,
     importedLibrarySections,
     isAdmin,
     isPublicLibrary,

@@ -183,6 +183,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(contentSyncState, /digest\.aggregate/);
   assert.match(contentSyncState, /digestRun\.aggregate/);
   assert.match(contentSyncState, /libraryFetchRun\.aggregate/);
+  assert.match(contentSyncState, /libraryCronJob\.findUnique/);
   assert.doesNotMatch(contentSyncState, /feedRead\.aggregate/);
   assert.doesNotMatch(contentSyncState, /recommendationSnapshot\.aggregate/);
   assert.match(contentSyncState, /agentToken\.aggregate/);

@@ -136,19 +136,41 @@ export type LibraryFetchRunListItem = {
   details: unknown;
 };
 
-export async function GET() {
-  const session = await getCurrentSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export type LibraryCronJobStatus = {
+  id: string;
+  status: string;
+  startedAt: string;
+  stoppedAt: string | null;
+  frequencyKey: string;
+  frequencyLabel: string;
+  schedule: string;
+  intervalMinutes: number;
+  runtime: string | null;
+  overrideFetched: boolean;
+  hostname: string | null;
+  platform: string | null;
+  updatedAt: string;
+};
 
-  const rows = await prisma.libraryFetchRun.findMany({
-    where: { userId: session.user.id },
-    orderBy: { startedAt: "desc" },
-    take: RUN_HISTORY_LIMIT,
-  });
-
-  const runs: LibraryFetchRunListItem[] = rows.map((row) => ({
+function serializeRun(row: {
+  id: string;
+  startedAt: Date;
+  finishedAt: Date;
+  durationMs: number;
+  status: string;
+  source: string;
+  cliVersion: string | null;
+  hostname: string | null;
+  platform: string | null;
+  buildersAttempted: number;
+  itemsFetched: number;
+  tasksGenerated: number;
+  userActionsCount: number;
+  errorCount: number;
+  summary: string;
+  details: unknown;
+}): LibraryFetchRunListItem {
+  return {
     id: row.id,
     startedAt: row.startedAt.toISOString(),
     finishedAt: row.finishedAt.toISOString(),
@@ -165,7 +187,51 @@ export async function GET() {
     errorCount: row.errorCount,
     summary: row.summary,
     details: row.details,
-  }));
+  };
+}
 
-  return NextResponse.json({ runs });
+export async function GET() {
+  const session = await getCurrentSession();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const [rows, cronRows, cronJob] = await Promise.all([
+    prisma.libraryFetchRun.findMany({
+      where: { userId: session.user.id },
+      orderBy: { startedAt: "desc" },
+      take: RUN_HISTORY_LIMIT,
+    }),
+    prisma.libraryFetchRun.findMany({
+      where: { userId: session.user.id, source: "cron" },
+      orderBy: { startedAt: "desc" },
+      take: RUN_HISTORY_LIMIT,
+    }),
+    prisma.libraryCronJob.findUnique({
+      where: { userId: session.user.id },
+    }),
+  ]);
+
+  const runs = rows.map(serializeRun);
+  const cronRuns = cronRows.map(serializeRun);
+
+  const cron: LibraryCronJobStatus | null = cronJob
+    ? {
+        id: cronJob.id,
+        status: cronJob.status,
+        startedAt: cronJob.startedAt.toISOString(),
+        stoppedAt: cronJob.stoppedAt?.toISOString() ?? null,
+        frequencyKey: cronJob.frequencyKey,
+        frequencyLabel: cronJob.frequencyLabel,
+        schedule: cronJob.schedule,
+        intervalMinutes: cronJob.intervalMinutes,
+        runtime: cronJob.runtime,
+        overrideFetched: cronJob.overrideFetched,
+        hostname: cronJob.hostname,
+        platform: cronJob.platform,
+        updatedAt: cronJob.updatedAt.toISOString(),
+      }
+    : null;
+
+  return NextResponse.json({ runs, cronRuns, cronJob: cron });
 }
