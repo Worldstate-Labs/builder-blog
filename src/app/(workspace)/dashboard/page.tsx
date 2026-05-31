@@ -4,6 +4,7 @@ import { type ComponentType } from "react";
 import { Archive, CheckCircle2, Clock3, Sparkles, Terminal, UsersRound } from "lucide-react";
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
 import { DigestLogPanel } from "@/components/DigestLogPanel";
+import { DigestPipelineVisibilityToggle } from "@/components/DigestPipelineVisibilityToggle";
 import { getDigestRuns, type DigestRunListItem } from "@/lib/digest-runs";
 import { ForYouRecommendationSection } from "@/components/ForYouRecommendationSection";
 import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
@@ -125,41 +126,48 @@ async function AiDigestFeedSlot({
   const digestOwnerUserId = selectedPipeline.ownerUserId;
   const isOwnPipeline = selectedPipeline.isOwnPipeline;
 
-  const [latestDigest, digestCount, rawTokens, feedPreference, digestRuns] = await Promise.all([
-    // The hero shows the user's most recent non-empty digest (any age), labeled
-    // with its own date. Not a "today" window: a brief stays featured until a
-    // newer one replaces it, instead of vanishing at the UTC day boundary.
-    prisma.digest.findFirst({
-      where: { userId: digestOwnerUserId, itemCount: { gt: 0 } },
-      orderBy: { createdAt: "desc" },
-      select: digestSummarySelect,
-    }),
-    prisma.digest.count({ where: { userId: digestOwnerUserId, itemCount: { gt: 0 } } }),
-    isOwnPipeline
-      ? prisma.agentToken.findMany({
-          where: { userId, revokedAt: null },
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            name: true,
-            createdAt: true,
-            lastUsedAt: true,
-            lastIp: true,
-            lastUserAgent: true,
-            lastHostname: true,
-            lastPlatform: true,
-            lastUser: true,
-          },
-        })
-      : Promise.resolve([]),
-    isOwnPipeline
-      ? prisma.userFeedPreference.findUnique({
-          where: { userId },
-          select: { summaryLanguage: true },
-        })
-      : Promise.resolve(null),
-    isOwnPipeline ? getDigestRuns(userId) : Promise.resolve([]),
-  ]);
+  const [latestDigest, digestCount, rawTokens, feedPreference, digestRuns, ownPipelineShare] =
+    await Promise.all([
+      // The hero shows the user's most recent non-empty digest (any age), labeled
+      // with its own date. Not a "today" window: a brief stays featured until a
+      // newer one replaces it, instead of vanishing at the UTC day boundary.
+      prisma.digest.findFirst({
+        where: { userId: digestOwnerUserId, itemCount: { gt: 0 } },
+        orderBy: { createdAt: "desc" },
+        select: digestSummarySelect,
+      }),
+      prisma.digest.count({ where: { userId: digestOwnerUserId, itemCount: { gt: 0 } } }),
+      isOwnPipeline
+        ? prisma.agentToken.findMany({
+            where: { userId, revokedAt: null },
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              name: true,
+              createdAt: true,
+              lastUsedAt: true,
+              lastIp: true,
+              lastUserAgent: true,
+              lastHostname: true,
+              lastPlatform: true,
+              lastUser: true,
+            },
+          })
+        : Promise.resolve([]),
+      isOwnPipeline
+        ? prisma.userFeedPreference.findUnique({
+            where: { userId },
+            select: { summaryLanguage: true, digestMaxPostAgeDays: true },
+          })
+        : Promise.resolve(null),
+      isOwnPipeline ? getDigestRuns(userId) : Promise.resolve([]),
+      isOwnPipeline
+        ? prisma.digestPipelineShare.findUnique({
+            where: { ownerUserId: userId },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+    ]);
 
   const activeTokens: AgentTokenListItem[] = rawTokens.map((token) => ({
     id: token.id,
@@ -193,7 +201,9 @@ async function AiDigestFeedSlot({
       archivePage={archivePage}
       digestPipelineOptions={digestPipelineOptions}
       digestRuns={digestRuns}
+      ownPipelineShared={Boolean(ownPipelineShare)}
       summaryLanguage={feedPreference?.summaryLanguage ?? null}
+      digestMaxPostAgeDays={feedPreference?.digestMaxPostAgeDays ?? null}
       latestDigest={latestDigest}
       selectedPipeline={selectedPipeline}
     />
@@ -207,7 +217,9 @@ function AiDigestFeed({
   archivePage,
   digestPipelineOptions,
   digestRuns,
+  ownPipelineShared,
   summaryLanguage,
+  digestMaxPostAgeDays,
   latestDigest,
   selectedPipeline,
 }: {
@@ -217,7 +229,9 @@ function AiDigestFeed({
   archivePage: number;
   digestPipelineOptions: DigestPipelineOption[];
   digestRuns: DigestRunListItem[];
+  ownPipelineShared: boolean;
   summaryLanguage: string | null;
+  digestMaxPostAgeDays: number | null;
   latestDigest: DigestSummaryRow | null;
   selectedPipeline: DigestPipelineOption;
 }) {
@@ -234,10 +248,15 @@ function AiDigestFeed({
       />
       {isOwnPipeline ? (
         <div className="mt-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <span className="fb-section-label">My Digest</span>
+            <DigestPipelineVisibilityToggle initialShared={ownPipelineShared} />
+          </div>
           <SkillPromptActions
             context="digest"
             tokens={activeTokens}
             summaryLanguage={summaryLanguage}
+            digestMaxPostAgeDays={digestMaxPostAgeDays}
           />
         </div>
       ) : null}

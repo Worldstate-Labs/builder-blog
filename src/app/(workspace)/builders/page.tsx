@@ -1,7 +1,6 @@
 import { BuilderKind, BuilderPoolOrigin } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
-import { BuilderLibraryAutoRefresh } from "@/components/BuilderLibraryAutoRefresh";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
 import { BuilderLibraryStats } from "@/components/BuilderLibraryStats";
 import { FetchLogPanel, type LibraryFetchRunListItem } from "@/components/FetchLogPanel";
@@ -19,7 +18,6 @@ import {
   ensureAdminCommunityLibrary,
   sharePersonalLibraryToHub,
 } from "@/lib/library-hub";
-import { builderLibraryState } from "@/lib/builder-library-state";
 import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
 import { getMergedSourceDefinitions } from "@/lib/source-registry";
@@ -84,6 +82,7 @@ async function SyncHeader({
         context="library"
         tokens={data.activeTokens}
         summaryLanguage={data.summaryLanguage}
+        digestMaxPostAgeDays={data.digestMaxPostAgeDays}
       />
       <FetchLogPanel initialRuns={data.fetchRuns} />
     </section>
@@ -186,7 +185,7 @@ async function loadBuildersPageData() {
     }),
     prisma.userFeedPreference.findUnique({
       where: { userId: session.user.id },
-      select: { summaryLanguage: true },
+      select: { summaryLanguage: true, digestMaxPostAgeDays: true },
     }),
   ]);
 
@@ -250,9 +249,8 @@ async function loadBuildersPageData() {
       description: ownSharedLibrary.description,
     });
   }
-  const [latestPostCreatedAtByBuilderId, libraryState, mergedSourceDefinitions] = await Promise.all([
+  const [latestPostCreatedAtByBuilderId, mergedSourceDefinitions] = await Promise.all([
     latestPostCreationTimes(poolBuilderIds),
-    builderLibraryState(session.user.id, poolBuilderIds),
     getMergedSourceDefinitions(),
   ]);
   const sourceLabelOptions = mergedSourceDefinitions.map((source) => ({
@@ -300,7 +298,6 @@ async function loadBuildersPageData() {
     isAdmin,
     isPublicLibrary,
     latestPostCreatedAtByBuilderId,
-    libraryState,
     poolBuilders,
     privateBuilders,
     sessionUserEmail: session.user.email,
@@ -309,6 +306,7 @@ async function loadBuildersPageData() {
     subscribed,
     subscribedCount,
     summaryLanguage: feedPreference?.summaryLanguage ?? null,
+    digestMaxPostAgeDays: feedPreference?.digestMaxPostAgeDays ?? null,
   };
 }
 
@@ -424,7 +422,6 @@ async function BuilderSections({
 
   return (
     <section className="mt-6 grid gap-5">
-      <BuilderLibraryAutoRefresh initialVersion={data.libraryState.version} />
       <MobileSourcesSwitcher
         privateLabel="Private"
         importedLabel="Imported"

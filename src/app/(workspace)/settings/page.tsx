@@ -4,9 +4,7 @@ import { KeyRound } from "lucide-react";
 import { AdminDigestConfigForm } from "@/components/AdminDigestConfigForm";
 import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
 import { AgentTokenPanel } from "@/components/AgentTokenPanel";
-import { FeedPreferenceForm } from "@/components/FeedPreferenceForm";
 import { getCurrentSession } from "@/lib/auth";
-import { digestFrequencyDays } from "@/lib/feed-preferences";
 import { prisma } from "@/lib/prisma";
 import { SEEDED_SOURCE_IDS } from "@/lib/source-config-seed";
 import { getUserDigestConfig, getUserSourceConfigs } from "@/lib/source-config-store";
@@ -31,16 +29,6 @@ export default async function SettingsPage() {
       </section>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-2">
-        <section className="fb-panel">
-          <h2 className="fb-section-heading">Feed preferences</h2>
-          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
-            Control digest cadence, post age, and recommendation ranking.
-          </p>
-          <Suspense fallback={<FeedPreferenceSkeleton />}>
-            <FeedPreferenceSlot userId={userId} />
-          </Suspense>
-        </section>
-
         <Suspense fallback={<AgentTokenPanelSkeleton />}>
           <AgentTokenSlot userId={userId} />
         </Suspense>
@@ -161,55 +149,6 @@ function ActiveTokenChipFallback() {
       <KeyRound aria-hidden="true" />
       <span className="inline-block h-3 w-16 animate-pulse rounded-full bg-[var(--paper-strong)]" />
     </span>
-  );
-}
-
-async function FeedPreferenceSlot({ userId }: { userId: string }) {
-  const preference = await prisma.userFeedPreference.findUnique({
-    where: { userId },
-  });
-  const digestFrequency = preference?.digestFrequency ?? "DAILY";
-  const digestCustomFrequencyDays =
-    preference?.digestCustomFrequencyDays ?? digestFrequencyDays(preference);
-  // null = no lookback floor (consider all not-yet-digested posts).
-  const digestMaxAge = preference?.digestMaxPostAgeDays ?? null;
-
-  return (
-    <FeedPreferenceForm
-      initialValue={{
-        digestFrequency,
-        digestCustomFrequencyDays,
-        digestMaxPostAgeDays: digestMaxAge,
-        recommendationProfile: preference?.recommendationProfile ?? "",
-      }}
-    />
-  );
-}
-
-function FeedPreferenceSkeleton() {
-  return (
-    <div className="mt-4 grid gap-4" aria-busy="true" aria-live="polite">
-      <div className="grid gap-2">
-        <div className="h-3 w-32 animate-pulse rounded bg-[var(--paper-strong)]" />
-        <div className="flex gap-2">
-          <div className="h-9 w-16 animate-pulse rounded-full bg-[var(--paper-strong)]" />
-          <div className="h-9 w-20 animate-pulse rounded-full bg-[var(--paper-strong)]" />
-          <div className="h-9 w-20 animate-pulse rounded-full bg-[var(--paper-strong)]" />
-        </div>
-      </div>
-      <div className="grid gap-2">
-        <div className="h-3 w-32 animate-pulse rounded bg-[var(--paper-strong)]" />
-        <div className="h-10 w-24 animate-pulse rounded bg-[var(--paper-strong)]" />
-      </div>
-      <div className="grid gap-2">
-        <div className="h-3 w-44 animate-pulse rounded bg-[var(--paper-strong)]" />
-        <div className="h-24 animate-pulse rounded bg-[var(--paper-strong)]" />
-      </div>
-      <div className="flex gap-2">
-        <div className="h-9 w-32 animate-pulse rounded-full bg-[var(--paper-strong)]" />
-        <div className="h-9 w-20 animate-pulse rounded-full bg-[var(--paper-strong)]" />
-      </div>
-    </div>
   );
 }
 

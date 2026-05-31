@@ -65,8 +65,8 @@ const DEFAULT_SUMMARY_LANGUAGE = "zh";
 
 // The override toggle reuses one URL channel (?force=1) but means different
 // things per context, so its copy is context-specific. Library: re-fetch posts
-// already in the library. Digest: re-generate today's digest (the job never
-// fetches — it re-covers the window and replaces today's stored digest).
+// already in the library. Digest: re-include already-digested posts (additive —
+// adds a new digest that re-covers those posts, never deletes or replaces past ones).
 const OVERRIDE_COPY: Record<
   SkillPromptContext,
   { name: string; cronHint: string; onceHint: string }
@@ -79,11 +79,11 @@ const OVERRIDE_COPY: Record<
       "Passes --force: ignores the last-fetched cutoff and re-pulls posts already in your library. One-time for this run only.",
   },
   digest: {
-    name: "Re-generate today's digest",
+    name: "Re-include already-digested posts",
     cronHint:
-      "Re-includes posts already digested and replaces today's digest, instead of only covering not-yet-digested posts. Off by default.",
+      "Re-includes posts you've already had digested so they can appear again. Adds a new digest; never deletes or replaces past ones. Off by default.",
     onceHint:
-      "Re-includes posts already digested and replaces today's digest, instead of only covering not-yet-digested posts. One-time for this run only.",
+      "Re-includes posts you've already had digested so they can appear again. Adds a new digest; never deletes or replaces past ones. Off by default. One-time for this run only.",
   },
 };
 
@@ -139,6 +139,55 @@ function SummaryLanguageField({
   );
 }
 
+// Persist the account-wide digest max post-age floor (digest dialogs only).
+// No-op when unchanged. Returns false on failure so the caller can surface it.
+async function persistDigestMaxAge(
+  picked: number | null,
+  initial: number | null,
+): Promise<boolean> {
+  if (picked === initial) return true;
+  try {
+    const res = await fetch("/api/settings/digest-max-age", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ digestMaxPostAgeDays: picked }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+function MaxAgeField({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="cron-field">
+      <label htmlFor={id} className="cron-field-label">
+        Max post age (days)
+      </label>
+      <input
+        id={id}
+        className="cron-field-select"
+        type="number"
+        min={1}
+        max={365}
+        step={1}
+        inputMode="numeric"
+        placeholder="No limit"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
 const PROMPT_CONFIG = {
   library: {
     title: "Source sync",
@@ -180,12 +229,16 @@ export function SkillPromptActions({
   context,
   tokens = [],
   summaryLanguage = null,
+  digestMaxPostAgeDays = null,
 }: {
   context: SkillPromptContext;
   tokens?: AgentTokenListItem[];
   // Current account-wide summary language (null = per-source default). Set in
   // the library cron dialog; persisted via /api/settings/summary-language.
   summaryLanguage?: string | null;
+  // Current digest max post-age floor (null = no limit). Set in the digest
+  // dialogs; persisted via /api/settings/digest-max-age.
+  digestMaxPostAgeDays?: number | null;
 }) {
   const config = PROMPT_CONFIG[context];
   const activeTokens = tokens.filter((t) => !t.revokedAt);
@@ -420,6 +473,7 @@ export function SkillPromptActions({
         open={cronConfigOpen}
         context={context}
         summaryLanguage={summaryLanguage}
+        digestMaxPostAgeDays={digestMaxPostAgeDays}
         onCancel={() => setCronConfigOpen(false)}
         onConfirm={async (cron) => {
           setCronConfigOpen(false);
@@ -431,6 +485,7 @@ export function SkillPromptActions({
         open={onceConfigOpen}
         context={context}
         summaryLanguage={summaryLanguage}
+        digestMaxPostAgeDays={digestMaxPostAgeDays}
         onCancel={() => setOnceConfigOpen(false)}
         onConfirm={async (overrideFetched) => {
           setOnceConfigOpen(false);
@@ -634,12 +689,14 @@ function CronConfigDialog({
   open,
   context,
   summaryLanguage,
+  digestMaxPostAgeDays,
   onCancel,
   onConfirm,
 }: {
   open: boolean;
   context: SkillPromptContext;
   summaryLanguage: string | null;
+  digestMaxPostAgeDays: number | null;
   onCancel: () => void;
   onConfirm: (cron: CronConfig) => void | Promise<void>;
 }) {
@@ -650,6 +707,10 @@ function CronConfigDialog({
   const override = OVERRIDE_COPY[context];
   const initialLanguage = summaryLanguage ?? DEFAULT_SUMMARY_LANGUAGE;
   const [pickedLanguage, setPickedLanguage] = useState(initialLanguage);
+  const initialMaxAge = digestMaxPostAgeDays;
+  const [pickedMaxAge, setPickedMaxAge] = useState(
+    initialMaxAge === null ? "" : String(initialMaxAge),
+  );
   const [overrideFetched, setOverrideFetched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -694,6 +755,24 @@ function CronConfigDialog({
         setError("Couldn't save the summary language — try again.");
         setSubmitting(false);
         return;
+      }
+      if (context === "digest") {
+        const trimmed = pickedMaxAge.trim();
+        if (trimmed !== "" && !Number.isFinite(Number(trimmed))) {
+          setError("Max post age must be a whole number of days.");
+          setSubmitting(false);
+          return;
+        }
+        const maxAge =
+          trimmed === ""
+            ? null
+            : Math.min(365, Math.max(1, Math.floor(Number(trimmed))));
+        const savedAge = await persistDigestMaxAge(maxAge, initialMaxAge);
+        if (!savedAge) {
+          setError("Couldn't save max post age. Try again.");
+          setSubmitting(false);
+          return;
+        }
       }
       await onConfirm({
         runtime: pickedRuntime,
@@ -780,6 +859,20 @@ function CronConfigDialog({
             Account-wide — applies to all your summaries (library + digest).
           </p>
 
+          {context === "digest" ? (
+            <>
+              <MaxAgeField
+                id="cron-max-age"
+                value={pickedMaxAge}
+                onChange={setPickedMaxAge}
+              />
+              <p className="cron-field-hint">
+                Posts published more than this many days ago are excluded. Blank
+                = no limit.
+              </p>
+            </>
+          ) : null}
+
           <label className="cron-check">
             <input
               type="checkbox"
@@ -829,12 +922,14 @@ function OnceConfigDialog({
   open,
   context,
   summaryLanguage,
+  digestMaxPostAgeDays,
   onCancel,
   onConfirm,
 }: {
   open: boolean;
   context: SkillPromptContext;
   summaryLanguage: string | null;
+  digestMaxPostAgeDays: number | null;
   onCancel: () => void;
   onConfirm: (overrideFetched: boolean) => void | Promise<void>;
 }) {
@@ -845,6 +940,10 @@ function OnceConfigDialog({
   const showLanguage = context === "digest";
   const initialLanguage = summaryLanguage ?? DEFAULT_SUMMARY_LANGUAGE;
   const [pickedLanguage, setPickedLanguage] = useState(initialLanguage);
+  const initialMaxAge = digestMaxPostAgeDays;
+  const [pickedMaxAge, setPickedMaxAge] = useState(
+    initialMaxAge === null ? "" : String(initialMaxAge),
+  );
   const [overrideFetched, setOverrideFetched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -883,6 +982,24 @@ function OnceConfigDialog({
         const saved = await persistSummaryLanguage(pickedLanguage, initialLanguage);
         if (!saved) {
           setError("Couldn't save the summary language — try again.");
+          setSubmitting(false);
+          return;
+        }
+      }
+      if (context === "digest") {
+        const trimmed = pickedMaxAge.trim();
+        if (trimmed !== "" && !Number.isFinite(Number(trimmed))) {
+          setError("Max post age must be a whole number of days.");
+          setSubmitting(false);
+          return;
+        }
+        const maxAge =
+          trimmed === ""
+            ? null
+            : Math.min(365, Math.max(1, Math.floor(Number(trimmed))));
+        const savedAge = await persistDigestMaxAge(maxAge, initialMaxAge);
+        if (!savedAge) {
+          setError("Couldn't save max post age. Try again.");
           setSubmitting(false);
           return;
         }
@@ -932,6 +1049,20 @@ function OnceConfigDialog({
               />
               <p className="cron-field-hint">
                 Account-wide — applies to all your summaries (library + digest).
+              </p>
+            </>
+          ) : null}
+
+          {context === "digest" ? (
+            <>
+              <MaxAgeField
+                id="once-max-age"
+                value={pickedMaxAge}
+                onChange={setPickedMaxAge}
+              />
+              <p className="cron-field-hint">
+                Posts published more than this many days ago are excluded. Blank
+                = no limit.
               </p>
             </>
           ) : null}

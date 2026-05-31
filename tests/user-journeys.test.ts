@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
-import { BuilderKind, DigestFrequency, FeedItemKind } from "@prisma/client";
+import { BuilderKind, FeedItemKind } from "@prisma/client";
 import { isAdminEmail } from "../src/lib/admin";
 import {
   builderLibraryKey,
@@ -11,7 +11,6 @@ import {
 } from "../src/lib/builder-keys";
 import { DEFAULT_DIGEST_PROMPTS } from "../src/lib/digest-prompts";
 import {
-  digestFrequencyDays,
   digestMaxAgeCutoff,
   digestMaxPostAgeDays,
 } from "../src/lib/feed-preferences";
@@ -321,12 +320,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /params\.set\("freq"/);
   assert.match(skillPromptActions, /Frequency/);
   // The override toggle adds ?force=1; its copy is context-specific (library
-  // re-fetches already-saved posts, digest re-generates today's digest — the
-  // digest job never fetches). Both cron + once dialogs expose it for both
-  // contexts, defaulting off.
+  // re-fetches already-saved posts, digest re-includes already-digested posts
+  // additively — the digest job never fetches and never deletes past digests).
+  // Both cron + once dialogs expose it for both contexts, defaulting off.
   assert.match(skillPromptActions, /OVERRIDE_COPY/);
   assert.match(skillPromptActions, /Override already-fetched posts/);
-  assert.match(skillPromptActions, /Re-generate today's digest/);
+  assert.match(skillPromptActions, /Re-include already-digested posts/);
   assert.match(skillPromptActions, /overrideFetched/);
   assert.match(skillPromptActions, /params\.set\("force", "1"\)/);
   // The once flow opens a config dialog for BOTH contexts (digest gains the
@@ -401,17 +400,17 @@ test("web app serves the agent skill and setup command", () => {
   // The contract's content is asserted below where it's read (digestTaskContract).
   assert.match(digestOncePrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
   assert.match(digestCronPrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
-  // Regenerate rebuilds the current UTC day's digest by clearing same-day
-  // markers and same-day digests first, while preserving older archive entries.
-  // It also records the account-wide language.
+  // Regenerate is additive: it never deletes past digests or digestedItem
+  // markers — it re-includes already-digested candidates and re-points each
+  // presented post's provenance to the new digest. It also records the
+  // account-wide language.
   const digestCreateRoute = readFileSync(
     "src/app/api/skill/digests/route.ts",
     "utf8",
   );
   assert.match(digestCreateRoute, /regenerate/);
-  assert.match(digestCreateRoute, /digestedItem\.deleteMany/);
-  assert.match(digestCreateRoute, /digest\.deleteMany/);
-  assert.match(digestCreateRoute, /createdAt:\s*\{\s*gte:\s*dayStart,\s*lt:\s*dayEnd\s*\}/);
+  assert.doesNotMatch(digestCreateRoute, /deleteMany/);
+  assert.match(digestCreateRoute, /digestedItem\.upsert/);
   assert.match(digestCreateRoute, /summaryLanguage/);
   assert.doesNotMatch(skillPromptActions, /\/api\/skill\/bootstrap/);
   assert.doesNotMatch(skillPromptActions, /BUILDER_BLOG_PROMPT_URL/);
@@ -970,17 +969,14 @@ test("digest feed user path selects not-yet-digested posts within the optional l
   const now = new Date("2026-05-23T12:00:00.000Z");
   // Lookback set → a publishedAt floor; 45 days before now = 2026-04-08.
   const withFloor = {
-    digestFrequency: DigestFrequency.CUSTOM,
-    digestCustomFrequencyDays: 3,
     digestMaxPostAgeDays: 45,
   };
-  assert.equal(digestFrequencyDays(withFloor), 3);
   assert.equal(digestMaxPostAgeDays(withFloor), 45);
   const cutoff = digestMaxAgeCutoff(now, withFloor);
   assert.equal(cutoff?.toISOString(), "2026-04-08T12:00:00.000Z");
 
   // Lookback null (the new default) → no floor: removes the old mandatory 90-day cap.
-  const noFloor = { digestFrequency: DigestFrequency.DAILY, digestMaxPostAgeDays: null };
+  const noFloor = { digestMaxPostAgeDays: null };
   assert.equal(digestMaxPostAgeDays(noFloor), null);
   assert.equal(digestMaxAgeCutoff(now, noFloor), null);
 

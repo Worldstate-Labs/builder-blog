@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CheckCircle2, Download, Radio, Trash2, UploadCloud } from "lucide-react";
+import { CheckCircle2, Download, Radio, Trash2 } from "lucide-react";
 
 export type HubDigestPipeline = {
   id: string;
@@ -18,15 +18,12 @@ export type HubDigestPipeline = {
 };
 
 type DigestPipelineImportFormProps = {
-  ownPipelineShared: boolean;
   pipelines: HubDigestPipeline[];
 };
 
 export function DigestPipelineImportForm({
-  ownPipelineShared,
   pipelines,
 }: DigestPipelineImportFormProps) {
-  const [shared, setShared] = useState(ownPipelineShared);
   const [importedIds, setImportedIds] = useState<Set<string>>(
     () => new Set(pipelines.filter((pipeline) => pipeline.imported).map((pipeline) => pipeline.id)),
   );
@@ -34,43 +31,8 @@ export function DigestPipelineImportForm({
     pipelineId: string;
     type: "import" | "remove";
   } | null>(null);
-  const [sharePending, startShareTransition] = useTransition();
   const [importPending, startImportTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-
-  function sharePipeline() {
-    if (sharePending) return;
-    setError(null);
-    setShared(true);
-    startShareTransition(async () => {
-      try {
-        const response = await fetch("/api/digest-pipelines/share", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        });
-        if (!response.ok) throw new Error("Unable to share digest pipeline");
-      } catch {
-        setShared(false);
-        setError("Could not share your digest pipeline.");
-      }
-    });
-  }
-
-  function unsharePipeline() {
-    if (sharePending) return;
-    setError(null);
-    setShared(false);
-    startShareTransition(async () => {
-      try {
-        const response = await fetch("/api/digest-pipelines/share", { method: "DELETE" });
-        if (!response.ok) throw new Error("Unable to remove digest pipeline share");
-      } catch {
-        setShared(true);
-        setError("Could not remove your digest pipeline from Hub.");
-      }
-    });
-  }
 
   function importPipeline(pipelineId: string) {
     if (pendingAction) return;
@@ -139,15 +101,6 @@ export function DigestPipelineImportForm({
             Import another user&apos;s live digest pipeline, including its latest digest and archive.
           </p>
         </div>
-        <button
-          aria-busy={sharePending}
-          className="fb-btn dark compact disabled:cursor-wait"
-          onClick={shared ? unsharePipeline : sharePipeline}
-          type="button"
-        >
-          {shared ? <Trash2 aria-hidden="true" /> : <UploadCloud aria-hidden="true" />}
-          {shared ? "Remove my digest" : "Share my digest"}
-        </button>
       </div>
 
       {error ? (

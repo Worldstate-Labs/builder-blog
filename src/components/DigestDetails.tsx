@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, Loader2 } from "lucide-react";
 import { DigestContent } from "@/components/DigestContent";
 import { useHydrated } from "@/components/ThemeToggle";
@@ -11,6 +11,13 @@ export type DigestSummary = {
   itemCount: number;
   language: string;
   createdAt: string;
+};
+
+type DigestLoadState = {
+  content: string | null;
+  isOpen: boolean;
+  key: string;
+  status: "idle" | "loading" | "loaded" | "error";
 };
 
 export function DigestDetails({
@@ -24,38 +31,62 @@ export function DigestDetails({
 }) {
   const digestId = digest.id;
   const hydrated = useHydrated();
-  const [content, setContent] = useState<string | null>(null);
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  const [status, setStatus] = useState<"idle" | "loading" | "loaded" | "error">(
-    defaultOpen || mode === "today" ? "loading" : "idle",
+  const stateKey = `${digestId}:${defaultOpen ? "open" : "closed"}:${mode}`;
+  const initialStatus = defaultOpen || mode === "today" ? "loading" : "idle";
+  const initialState: DigestLoadState = useMemo(
+    () => ({
+      content: null,
+      isOpen: defaultOpen,
+      key: stateKey,
+      status: initialStatus,
+    }),
+    [defaultOpen, initialStatus, stateKey],
   );
+  const [digestState, setDigestState] = useState<DigestLoadState>(initialState);
+  const currentState = digestState.key === stateKey ? digestState : initialState;
+  const { content, isOpen, status } = currentState;
 
-  async function fetchDigest() {
+  const updateDigestState = useCallback((
+    updater: (current: DigestLoadState) => Omit<DigestLoadState, "key">,
+  ) => {
+    setDigestState((current) => {
+      const base = current.key === stateKey ? current : initialState;
+      return { ...updater(base), key: stateKey };
+    });
+  }, [initialState, stateKey]);
+
+  const fetchDigest = useCallback(async () => {
     try {
       const response = await fetch(`/api/digests/${digestId}`, {
         cache: "no-store",
       });
       const body = await response.json().catch(() => null);
       if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`);
-      setContent(String(body.content ?? ""));
-      setStatus("loaded");
+      updateDigestState((current) => ({
+        ...current,
+        content: String(body.content ?? ""),
+        status: "loaded",
+      }));
     } catch {
-      setStatus("error");
+      updateDigestState((current) => ({
+        ...current,
+        status: "error",
+      }));
     }
-  }
+  }, [digestId, updateDigestState]);
 
   function loadDigest() {
     if (content || status === "loading") return;
-    setStatus("loading");
+    updateDigestState((current) => ({ ...current, status: "loading" }));
     void fetchDigest();
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (defaultOpen || mode === "today") void fetchDigest();
-    // Loading on mount is intentionally tied to the initial open mode only.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (defaultOpen || mode === "today") {
+      const id = window.setTimeout(() => void fetchDigest(), 0);
+      return () => window.clearTimeout(id);
+    }
+  }, [defaultOpen, fetchDigest, mode]);
 
   if (mode === "today") {
     return (
@@ -83,7 +114,7 @@ export function DigestDetails({
         open={isOpen}
         onToggle={(event) => {
           const nextOpen = event.currentTarget.open;
-          setIsOpen(nextOpen);
+          updateDigestState((current) => ({ ...current, isOpen: nextOpen }));
           if (nextOpen) void loadDigest();
         }}
       >

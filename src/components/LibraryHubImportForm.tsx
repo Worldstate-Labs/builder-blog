@@ -49,9 +49,6 @@ const FILTERS: Array<{ key: FilterKey; label: string }> = [
 const AVATAR_COLORS = ["#e6e0d3", "#dde2ec", "#e9e0e6", "#d8e3dc", "#e7dccb"];
 
 export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
-  const [importedIds, setImportedIds] = useState<Set<string>>(
-    () => new Set(libraries.filter((library) => library.imported).map((library) => library.id)),
-  );
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const [error, setError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<{
@@ -59,6 +56,39 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
     type: "import" | "remove";
   } | null>(null);
   const [isPending, startTransition] = useTransition();
+  const importedSignature = useMemo(
+    () =>
+      libraries
+        .filter((library) => library.imported)
+        .map((library) => library.id)
+        .sort()
+        .join("|"),
+    [libraries],
+  );
+  const propImportedIds = useMemo(
+    () => new Set(libraries.filter((library) => library.imported).map((library) => library.id)),
+    [libraries],
+  );
+  const [importedState, setImportedState] = useState<{
+    ids: Set<string>;
+    key: string;
+  }>({
+    ids: propImportedIds,
+    key: importedSignature,
+  });
+  const importedIds =
+    importedState.key === importedSignature ? importedState.ids : propImportedIds;
+
+  function setImportedIds(updater: (current: Set<string>) => Set<string>) {
+    setImportedState((current) => {
+      const currentIds =
+        current.key === importedSignature ? current.ids : propImportedIds;
+      return {
+        ids: updater(currentIds),
+        key: importedSignature,
+      };
+    });
+  }
 
   const counts = useMemo(() => {
     const all = libraries.length;

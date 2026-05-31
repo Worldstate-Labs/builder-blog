@@ -1,21 +1,9 @@
-import { DigestFrequency, type UserFeedPreference } from "@prisma/client";
-
-export const defaultDigestFrequency = DigestFrequency.DAILY;
+import { type UserFeedPreference } from "@prisma/client";
 
 export type DigestWindowPreference = Pick<
   UserFeedPreference,
-  "digestFrequency" | "digestCustomFrequencyDays" | "digestMaxPostAgeDays"
+  "digestMaxPostAgeDays"
 >;
-
-export function digestFrequencyDays(
-  preference?: Partial<DigestWindowPreference> | null,
-) {
-  if (preference?.digestFrequency === DigestFrequency.WEEKLY) return 7;
-  if (preference?.digestFrequency === DigestFrequency.CUSTOM) {
-    return clampWholeDays(preference.digestCustomFrequencyDays, 1, 365);
-  }
-  return 1;
-}
 
 // Optional publishedAt lookback (days) for digest candidate selection.
 // Null/absent → no floor (the per-user DigestedItem marker is the real gate).
@@ -28,13 +16,6 @@ export function digestMaxPostAgeDays(
   return clampWholeDays(raw, 1, 365);
 }
 
-export function digestFallbackSince(
-  now: Date,
-  preference?: Partial<DigestWindowPreference> | null,
-) {
-  return new Date(now.getTime() - digestFrequencyDays(preference) * dayMs);
-}
-
 // Resolve the lookback floor into a cutoff Date, or null when no floor is set.
 export function digestMaxAgeCutoff(
   now: Date,
@@ -43,13 +24,6 @@ export function digestMaxAgeCutoff(
   const days = digestMaxPostAgeDays(preference);
   if (days === null) return null;
   return new Date(now.getTime() - days * dayMs);
-}
-
-export function normalizeDigestFrequency(value: string | null | undefined) {
-  const normalized = value?.trim().toUpperCase();
-  if (normalized === DigestFrequency.WEEKLY) return DigestFrequency.WEEKLY;
-  if (normalized === DigestFrequency.CUSTOM) return DigestFrequency.CUSTOM;
-  return defaultDigestFrequency;
 }
 
 function clampWholeDays(

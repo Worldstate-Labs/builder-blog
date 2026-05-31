@@ -304,13 +304,10 @@ model FeedItem {
 
 model UserFeedPreference {
   userId                    String          @id
-  digestFrequency           DigestFrequency @default(DAILY)
-  digestCustomFrequencyDays Int?
   /// Optional publishedAt lookback (days) for digest candidate selection.
   /// Null = no floor (consider all not-yet-digested posts). Replaces the old
   /// mandatory 90-day cap; the per-user DigestedItem marker is now what dedups.
   digestMaxPostAgeDays      Int?
-  recommendationProfile     String?
   /// Account-wide summary output language. When set, /api/skill/context
   /// overrides each source's per-type summaryLanguage with this value so all
   /// of the user's summaries (library cron + once) are generated in it. Null =
@@ -595,12 +592,6 @@ enum FeedItemKind {
 
 enum DigestStatus {
   SYNCED
-}
-
-enum DigestFrequency {
-  DAILY
-  WEEKLY
-  CUSTOM
 }
 
 enum FetchStatus {

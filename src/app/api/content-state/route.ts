@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth";
-import { activePoolBuilderIds } from "@/lib/builder-pool";
-import { builderLibraryState } from "@/lib/builder-library-state";
+import { contentSyncState } from "@/lib/content-sync-state";
 
 export const runtime = "nodejs";
 
@@ -11,8 +10,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const builderIds = await activePoolBuilderIds(session.user.id);
-  const state = await builderLibraryState(session.user.id, builderIds);
+  const state = await contentSyncState(session.user.id);
   return NextResponse.json(state, {
     headers: {
       "Cache-Control": "no-store",

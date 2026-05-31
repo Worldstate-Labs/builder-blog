@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { ChevronRight, RefreshCw } from "lucide-react";
 import { useHydrated } from "@/components/ThemeToggle";
+import { contentSyncStateChanged } from "@/lib/content-sync-events";
 
 export type LibraryFetchRunListItem = {
   id: string;
@@ -284,6 +285,17 @@ export function FetchLogPanel({
       window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
+    };
+  }, [refresh]);
+
+  useEffect(() => {
+    function refreshWhenContentChanges() {
+      if (document.visibilityState === "visible") refresh();
+    }
+
+    window.addEventListener(contentSyncStateChanged, refreshWhenContentChanges);
+    return () => {
+      window.removeEventListener(contentSyncStateChanged, refreshWhenContentChanges);
     };
   }, [refresh]);
 

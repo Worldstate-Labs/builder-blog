@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { useHydrated } from "@/components/ThemeToggle";
+import { contentSyncStateChanged } from "@/lib/content-sync-events";
 import type {
   DigestRunCandidate,
   DigestRunListItem,
@@ -57,6 +58,13 @@ function formatDay(iso: string): string {
 
 const VISIBLE_RUN_LIMIT = 5;
 const VISIBLE_SOURCE_LIMIT = 4;
+const PREPARED_RUN_MAX_AGE_MS = 30 * 60_000;
+
+function isRunInflight(run: DigestRunListItem): boolean {
+  const ageMs = Date.now() - Date.parse(run.preparedAt);
+  if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > PREPARED_RUN_MAX_AGE_MS) return false;
+  return run.status !== "synced";
+}
 
 export function DigestLogPanel({
   initialRuns,
@@ -68,6 +76,11 @@ export function DigestLogPanel({
   const [, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const runsRef = useRef(runs);
+
+  useEffect(() => {
+    runsRef.current = runs;
+  }, [runs]);
 
   const refresh = useCallback(() => {
     setIsLoading(true);
@@ -101,6 +114,17 @@ export function DigestLogPanel({
     refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    function refreshWhenContentChanges() {
+      if (document.visibilityState === "visible") refresh();
+    }
+
+    window.addEventListener(contentSyncStateChanged, refreshWhenContentChanges);
+    return () => {
+      window.removeEventListener(contentSyncStateChanged, refreshWhenContentChanges);
+    };
+  }, [refresh]);
+
   // Keep relative timestamps approximately fresh without re-fetching. Honor
   // reduced-motion by skipping the interval.
   const [, setTick] = useState(0);
@@ -111,6 +135,37 @@ export function DigestLogPanel({
     const id = window.setInterval(() => setTick((v) => v + 1), 60_000);
     return () => window.clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let cancelled = false;
+    let timer = 0;
+    const pollInflightMs = 8_000;
+    const pollIdleMs = 45_000;
+
+    const tick = () => {
+      if (cancelled) return;
+      if (document.visibilityState === "visible") refresh();
+      schedule();
+    };
+    const schedule = () => {
+      const inflight = runsRef.current.some(isRunInflight);
+      timer = window.setTimeout(tick, inflight ? pollInflightMs : pollIdleMs);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+
+    schedule();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [refresh]);
 
   return (
     <section className="fb-panel">

@@ -232,8 +232,7 @@ export async function createRecommendationSnapshot({
 
   const cutoff = new Date(Date.now() - 90 * 86400000);
 
-  const [preference, user, subscriptions, reads, snapshotRows] = await Promise.all([
-    prisma.userFeedPreference.findUnique({ where: { userId } }),
+  const [user, subscriptions, reads, snapshotRows] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { name: true, email: true },
@@ -375,7 +374,6 @@ export async function createRecommendationSnapshot({
       unreadRemaining,
       subscriptions,
       reads,
-      preference,
       user,
       prisma,
     });
@@ -481,7 +479,6 @@ export async function createRecommendationSnapshot({
       unreadRemaining,
       subscriptions,
       reads,
-      preference,
       user,
       prisma,
     });
@@ -533,7 +530,6 @@ async function buildAndSaveSnapshot({
   unreadRemaining,
   subscriptions,
   reads,
-  preference,
   user,
   prisma,
 }: {
@@ -586,7 +582,6 @@ async function buildAndSaveSnapshot({
       } | null;
     } | null;
   }>;
-  preference: { recommendationProfile: string | null } | null;
   user: { name: string | null; email: string | null } | null;
   prisma: PrismaClient;
 }): Promise<{
@@ -597,9 +592,7 @@ async function buildAndSaveSnapshot({
   const newCandidateCount = candidates.length;
 
   const signals = buildRecommendationSignals({
-    profileText: [preference?.recommendationProfile, user?.name, user?.email]
-      .filter(Boolean)
-      .join(" "),
+    profileText: [user?.name, user?.email].filter(Boolean).join(" "),
     subscriptions: subscriptions
       .map((s) => s.builder)
       .filter((b): b is NonNullable<typeof b> => Boolean(b)),

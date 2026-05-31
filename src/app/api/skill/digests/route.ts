@@ -27,29 +27,37 @@ export async function POST(request: Request) {
 
   const now = new Date();
 
-  // "Re-generate today's digest": replace this user's existing same-day
-  // digest(s) instead of stacking a duplicate. "Today" = the current UTC
-  // calendar day, scoped strictly to this user. Default flow (regenerate
-  // false) is unchanged — always create.
-  if (parsed.data.regenerate) {
-    const dayStart = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-    );
-    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-    // Reset today's digested markers by their OWN timestamp window, not by
-    // matching today's digest ids. DigestedItem has no FK to Digest (markers
-    // intentionally survive digest deletion), so keying off digestId would miss
-    // (a) orphaned markers whose digest was already deleted elsewhere, and
-    // (b) the case where today's digest was removed before this regenerate —
-    // either way leaving markers that block those posts from EVER reappearing.
-    // Regenerate means "rebuild today's digest", so clear every marker created
-    // today; the rebuilt digest re-marks whatever it actually presents.
-    await prisma.digestedItem.deleteMany({
-      where: { userId: user.id, digestedAt: { gte: dayStart, lt: dayEnd } },
+  // `regenerate` never deletes history. Its only meaning is "let posts the user
+  // already had digested be reused in a new digest", which the prepare/context
+  // step implements by re-including already-digested candidates
+  // (excludeDigestedForUserId is null when regenerate). At sync time we always
+  // create a new digest and never remove past ones; the digestedItem upsert
+  // below simply re-points an already-digested post's provenance to this new
+  // digest while keeping its original digestedAt.
+
+  // Coverage window = the published range of the posts this digest actually
+  // presents, computed from the real candidates rather than the cosmetic 24h
+  // label the CLI sends. Falls back to that label (or now-24h..now) only when
+  // the digest presents no dated items (e.g. an empty "no updates" digest).
+  let periodStart = parsed.data.periodStart
+    ? new Date(parsed.data.periodStart)
+    : new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  let periodEnd = parsed.data.periodEnd ? new Date(parsed.data.periodEnd) : now;
+  const presentedFeedItemIds = parsed.data.digestedItems
+    .map((item) => item.feedItemId)
+    .filter((id): id is string => Boolean(id));
+  if (presentedFeedItemIds.length > 0) {
+    const dated = await prisma.feedItem.findMany({
+      where: { id: { in: presentedFeedItemIds }, publishedAt: { not: null } },
+      select: { publishedAt: true },
     });
-    await prisma.digest.deleteMany({
-      where: { userId: user.id, createdAt: { gte: dayStart, lt: dayEnd } },
-    });
+    const times = dated
+      .map((row) => row.publishedAt?.getTime())
+      .filter((t): t is number => typeof t === "number");
+    if (times.length > 0) {
+      periodStart = new Date(Math.min(...times));
+      periodEnd = new Date(Math.max(...times));
+    }
   }
 
   const digest = await prisma.digest.create({
@@ -58,10 +66,8 @@ export async function POST(request: Request) {
       title: parsed.data.title,
       content: parsed.data.content,
       language,
-      periodStart: parsed.data.periodStart
-        ? new Date(parsed.data.periodStart)
-        : new Date(now.getTime() - 24 * 60 * 60 * 1000),
-      periodEnd: parsed.data.periodEnd ? new Date(parsed.data.periodEnd) : now,
+      periodStart,
+      periodEnd,
       itemCount: parsed.data.itemCount,
       source: "skill",
       status: "SYNCED",

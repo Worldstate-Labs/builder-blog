@@ -171,15 +171,10 @@ async function loadLibraryHubPageData() {
       owned,
     };
   });
-  const ownPipelineShared = digestPipelineShares.some(
-    (pipeline) => pipeline.ownerUserId === session.user.id,
-  );
-
   return {
     hubLibraries,
     hubDigestPipelines,
     libraryCount: libraries.length,
-    ownPipelineShared,
   };
 }
 
@@ -210,12 +205,7 @@ async function DigestPipelineImportSection({
 }) {
   const data = await dataPromise;
 
-  return (
-    <DigestPipelineImportForm
-      ownPipelineShared={data.ownPipelineShared}
-      pipelines={data.hubDigestPipelines}
-    />
-  );
+  return <DigestPipelineImportForm pipelines={data.hubDigestPipelines} />;
 }
 
 function LibraryHubImportFallback() {

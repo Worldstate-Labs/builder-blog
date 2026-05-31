@@ -77,7 +77,6 @@ export function AgentTokenPanel({
   initialTokens: AgentTokenListItem[];
 }) {
   const router = useRouter();
-  const [tokens, setTokens] = useState(initialTokens);
   const [tokenName, setTokenName] = useState("");
   const [status, setStatus] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -90,6 +89,50 @@ export function AgentTokenPanel({
   // Revoke confirm dialog state
   const [revokeTarget, setRevokeTarget] = useState<AgentTokenListItem | null>(null);
   const revokeDialogRef = useRef<HTMLDialogElement>(null);
+  const initialTokenSignature = useMemo(
+    () =>
+      initialTokens
+        .map((token) =>
+          [
+            token.id,
+            token.createdAt,
+            token.lastUsedAt,
+            token.lastHostname,
+            token.lastPlatform,
+            token.lastUser,
+            token.revokedAt,
+          ].join(":"),
+        )
+        .join("|"),
+    [initialTokens],
+  );
+  const [tokenState, setTokenState] = useState<{
+    key: string;
+    tokens: AgentTokenListItem[];
+  }>({
+    key: initialTokenSignature,
+    tokens: initialTokens,
+  });
+  const tokens =
+    tokenState.key === initialTokenSignature ? tokenState.tokens : initialTokens;
+
+  function setTokens(
+    updater:
+      | AgentTokenListItem[]
+      | ((current: AgentTokenListItem[]) => AgentTokenListItem[]),
+  ) {
+    setTokenState((current) => {
+      const currentTokens =
+        current.key === initialTokenSignature ? current.tokens : initialTokens;
+      return {
+        key: initialTokenSignature,
+        tokens:
+          typeof updater === "function"
+            ? updater(currentTokens)
+            : updater,
+      };
+    });
+  }
 
   const activeCount = useMemo(
     () => tokens.filter((token) => !token.revokedAt).length,

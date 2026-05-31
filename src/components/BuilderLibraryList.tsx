@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { BuilderEditDialog } from "@/components/BuilderEditDialog";
@@ -43,9 +43,25 @@ export function BuilderLibraryList({
   const [addedBuilders, setAddedBuilders] = useState<BuilderLibraryListItem[]>([]);
   const [removedBuilderIds, setRemovedBuilderIds] = useState<Set<string>>(() => new Set());
   const [removeErrors, setRemoveErrors] = useState<Record<string, string>>({});
-  const [subscribedByBuilderId, setSubscribedByBuilderId] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(builders.map((builder) => [builder.id, builder.subscribed])),
+  const builderSubscriptionSignature = useMemo(
+    () => builders.map((builder) => `${builder.id}:${builder.subscribed}`).join("|"),
+    [builders],
   );
+  const propSubscribedByBuilderId = useMemo(
+    () => Object.fromEntries(builders.map((builder) => [builder.id, builder.subscribed])),
+    [builders],
+  );
+  const [subscribedState, setSubscribedState] = useState<{
+    key: string;
+    values: Record<string, boolean>;
+  }>({
+    key: builderSubscriptionSignature,
+    values: propSubscribedByBuilderId,
+  });
+  const subscribedByBuilderId =
+    subscribedState.key === builderSubscriptionSignature
+      ? subscribedState.values
+      : propSubscribedByBuilderId;
   const allBuilders = useMemo(
     () => [
       // Newly-added rows render at the top until the server refetches
@@ -60,6 +76,26 @@ export function BuilderLibraryList({
     [addedBuilders, builders],
   );
 
+  const setSubscribedByBuilderId = useCallback((
+    updater:
+      | Record<string, boolean>
+      | ((current: Record<string, boolean>) => Record<string, boolean>),
+  ) => {
+    setSubscribedState((current) => {
+      const currentValues =
+        current.key === builderSubscriptionSignature
+          ? current.values
+          : propSubscribedByBuilderId;
+      return {
+        key: builderSubscriptionSignature,
+        values:
+          typeof updater === "function"
+            ? updater(currentValues)
+            : updater,
+      };
+    });
+  }, [builderSubscriptionSignature, propSubscribedByBuilderId]);
+
   useEffect(() => {
     function onSubscribeAll() {
       setSubscribedByBuilderId((current) => ({
@@ -70,7 +106,7 @@ export function BuilderLibraryList({
 
     window.addEventListener(builderLibrarySubscribeAll, onSubscribeAll);
     return () => window.removeEventListener(builderLibrarySubscribeAll, onSubscribeAll);
-  }, [allBuilders]);
+  }, [allBuilders, setSubscribedByBuilderId]);
 
   // Track which builder id (if any) was just added but hasn't been
   // scrolled into view yet. Read by the scroll effect below after
@@ -104,7 +140,7 @@ export function BuilderLibraryList({
 
     window.addEventListener(builderLibraryBuilderAdded, onBuilderAdded);
     return () => window.removeEventListener(builderLibraryBuilderAdded, onBuilderAdded);
-  }, [acceptAddedBuilders, allBuilders]);
+  }, [acceptAddedBuilders, allBuilders, setSubscribedByBuilderId]);
 
   // Smooth-scroll the freshly-added row into view. Runs as a layout
   // effect AFTER allBuilders changes (which happens on add and on

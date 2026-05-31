@@ -3,26 +3,21 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
-  builderLibraryStatsChanged,
-  type BuilderLibraryStatsChange,
-} from "@/lib/builder-library-events";
+  contentSyncStateChanged,
+  type ContentSyncStateChange,
+} from "@/lib/content-sync-events";
 
-type BuilderLibraryAutoRefreshProps = {
-  initialVersion: string;
-};
-
-type LibraryStatePayload = {
-  fetchedItems: number;
-  inLibrary: number;
-  subscribed: number;
+type ContentStatePayload = {
   version: string;
 };
 
 const visibleCheckIntervalMs = 30_000;
 
-export function BuilderLibraryAutoRefresh({
+export function WorkspaceAutoRefresh({
   initialVersion,
-}: BuilderLibraryAutoRefreshProps) {
+}: {
+  initialVersion: string;
+}) {
   const router = useRouter();
   const versionRef = useRef(initialVersion);
 
@@ -35,13 +30,9 @@ export function BuilderLibraryAutoRefresh({
     let inFlight: AbortController | null = null;
     let timer: number | null = null;
 
-    function emitState(payload: LibraryStatePayload) {
-      const detail: BuilderLibraryStatsChange = {
-        fetchedCount: payload.fetchedItems,
-        inLibraryCount: payload.inLibrary,
-        subscribedCount: payload.subscribed,
-      };
-      window.dispatchEvent(new CustomEvent(builderLibraryStatsChanged, { detail }));
+    function publishChange(version: string) {
+      const detail: ContentSyncStateChange = { version };
+      window.dispatchEvent(new CustomEvent(contentSyncStateChanged, { detail }));
     }
 
     async function checkForChanges() {
@@ -49,15 +40,15 @@ export function BuilderLibraryAutoRefresh({
       const controller = new AbortController();
       inFlight = controller;
       try {
-        const response = await fetch("/api/builders/library-state", {
+        const response = await fetch("/api/content-state", {
           cache: "no-store",
           signal: controller.signal,
         });
         if (!response.ok) return;
-        const payload = (await response.json()) as LibraryStatePayload;
+        const payload = (await response.json()) as ContentStatePayload;
         if (!payload.version || payload.version === versionRef.current) return;
         versionRef.current = payload.version;
-        emitState(payload);
+        publishChange(payload.version);
         router.refresh();
       } catch {
         /* retry on the next visible check */

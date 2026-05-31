@@ -72,11 +72,10 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /@\/components\/settings\/SettingsFields/);
   assert.match(userMenu, /href="\/settings" onClick=\{closeMenu\}[\s\S]*Settings/);
   assert.match(userMenu, /signOut\(\{ callbackUrl: "\/login" \}\)/);
-  assert.match(userMenu, /closeMenu\(\);[\s\S]*signOut[\s\S]*Sign out/);
+  assert.match(userMenu, /closeMenu\(\);[\s\S]*signOut\(\{ callbackUrl: "\/login" \}\)[\s\S]*Sign out/);
   assert.match(settingsPage, />\s*Settings\s*</);
   assert.equal(existsSync(join(root, "src/app/(workspace)/settings/loading.tsx")), false);
   assert.match(settingsPage, /<Suspense fallback=\{<ActiveTokenChipFallback \/>/);
-  assert.match(settingsPage, /<Suspense fallback=\{<FeedPreferenceSkeleton \/>/);
   assert.match(settingsPage, /<Suspense fallback=\{<AgentTokenPanelSkeleton \/>/);
   assert.doesNotMatch(settingsPage, /Agent login/);
   assert.match(globals, /\.user-avatar/);
@@ -140,6 +139,9 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(forYouSection, /"use client"/);
   assert.match(forYouSection, /scope=\$\{scope\}/);
   assert.doesNotMatch(forYouSection, /followBriefDataChanged/);
+  assert.doesNotMatch(forYouSection, /contentSyncStateChanged/);
+  assert.doesNotMatch(forYouSection, /window\.addEventListener/);
+  assert.match(source("src/components/RecommendationFeed.tsx"), /Refresh snapshot/);
   assert.match(forYouSection, /Loading \{scopeLabel\(scope\)\} recommendations/);
   assert.match(forYouSection, /aria-live="polite"/);
   assert.match(timelineRoute, /export async function GET/);
@@ -148,6 +150,58 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(timelineRoute, /NextResponse\.json/);
   assert.match(serializer, /serializeRecommendationTimeline/);
   assert.match(serializer, /serializeRecommendationSnapshot/);
+});
+
+test("workspace auto-refresh covers server-side data changes without manual reloads", () => {
+  const workspaceLayout = source("src/app/(workspace)/layout.tsx");
+  const appShell = source("src/components/AppShell.tsx");
+  const workspaceAutoRefresh = source("src/components/WorkspaceAutoRefresh.tsx");
+  const contentStateRoute = source("src/app/api/content-state/route.ts");
+  const contentSyncState = source("src/lib/content-sync-state.ts");
+  const contentSyncEvents = source("src/lib/content-sync-events.ts");
+  const fetchLogPanel = source("src/components/FetchLogPanel.tsx");
+  const digestLogPanel = source("src/components/DigestLogPanel.tsx");
+  const digestDetails = source("src/components/DigestDetails.tsx");
+  const agentTokenPanel = source("src/components/AgentTokenPanel.tsx");
+  const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
+  const libraryHubImportForm = source("src/components/LibraryHubImportForm.tsx");
+
+  assert.match(workspaceLayout, /contentSyncState\(session\.user\.id\)/);
+  assert.match(workspaceLayout, /<WorkspaceAutoRefresh initialVersion=\{syncState\.version\} \/>/);
+  assert.match(appShell, /<AppNav items=\{nav\} mode="mobile" \/>/);
+  assert.match(workspaceAutoRefresh, /fetch\("\/api\/content-state"/);
+  assert.match(workspaceAutoRefresh, /cache: "no-store"/);
+  assert.match(workspaceAutoRefresh, /router\.refresh\(\)/);
+  assert.match(workspaceAutoRefresh, /contentSyncStateChanged/);
+  assert.match(workspaceAutoRefresh, /visibilitychange/);
+  assert.match(workspaceAutoRefresh, /window\.addEventListener\("focus"/);
+  assert.match(contentStateRoute, /Cache-Control": "no-store"/);
+  assert.match(contentStateRoute, /getCurrentSession/);
+  assert.match(contentStateRoute, /contentSyncState\(session\.user\.id\)/);
+  assert.match(contentSyncState, /builderPoolEntry\.findMany/);
+  assert.doesNotMatch(contentSyncState, /activePoolBuilderIds/);
+  assert.match(contentSyncState, /digest\.aggregate/);
+  assert.match(contentSyncState, /digestRun\.aggregate/);
+  assert.match(contentSyncState, /libraryFetchRun\.aggregate/);
+  assert.doesNotMatch(contentSyncState, /feedRead\.aggregate/);
+  assert.doesNotMatch(contentSyncState, /recommendationSnapshot\.aggregate/);
+  assert.match(contentSyncState, /agentToken\.aggregate/);
+  assert.match(contentSyncState, /userSourceTypeConfig\.aggregate/);
+  assert.match(contentSyncState, /userDigestConfig\.findUnique/);
+  assert.match(contentSyncState, /libraryImport\.aggregate/);
+  assert.match(contentSyncState, /_sum:\s*\{ importCount: true \}/);
+  assert.match(contentSyncState, /digestPipelineShare\.aggregate/);
+  assert.match(contentSyncState, /digestPipelineImport\.aggregate/);
+  assert.doesNotMatch(contentSyncState, /viewCount/);
+  assert.doesNotMatch(contentSyncState, /libraryHubEntry\.aggregate\(\{[\s\S]*updatedAt:\s*true/);
+  assert.match(contentSyncEvents, /contentSyncStateChanged/);
+  assert.match(fetchLogPanel, /window\.addEventListener\(contentSyncStateChanged/);
+  assert.match(digestLogPanel, /window\.addEventListener\(contentSyncStateChanged/);
+  assert.match(digestLogPanel, /isRunInflight/);
+  assert.match(digestDetails, /stateKey = `\$\{digestId\}/);
+  assert.match(agentTokenPanel, /initialTokenSignature/);
+  assert.match(builderLibraryList, /builderSubscriptionSignature/);
+  assert.match(libraryHubImportForm, /importedSignature/);
 });
 
 test("skill context caps personal fetched items to keep payloads bounded", () => {
@@ -164,6 +218,7 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   const historyPage = source("src/app/history/page.tsx");
   const digestDetails = source("src/components/DigestDetails.tsx");
   const digestRoute = source("src/app/api/digests/[digestId]/route.ts");
+  const digestPipelineVisibilityToggle = source("src/components/DigestPipelineVisibilityToggle.tsx");
 
   assert.match(dashboardPage, /archivePageSize/);
   assert.match(dashboardPage, /pipeline\?: string \| string\[\]/);
@@ -177,6 +232,13 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(dashboardPage, /DigestDetails/);
   assert.match(dashboardPage, /DigestPipelineSelector/);
   assert.match(dashboardPage, /My Digest/);
+  assert.match(dashboardPage, /DigestPipelineVisibilityToggle/);
+  assert.match(dashboardPage, /ownPipelineShared/);
+  assert.match(dashboardPage, /digestPipelineShare\.findUnique/);
+  assert.match(digestPipelineVisibilityToggle, /Share to Hub/);
+  assert.match(digestPipelineVisibilityToggle, /fetch\("\/api\/digest-pipelines\/share"/);
+  assert.match(digestPipelineVisibilityToggle, /method: nextShared \? "POST" : "DELETE"/);
+  assert.match(digestPipelineVisibilityToggle, /aria-pressed=\{shared\}/);
   assert.match(dashboardPage, /Imported pipeline view/);
   assert.match(dashboardPage, /isOwnPipeline \? \(/);
   assert.match(dashboardPage, /isOwnPipeline[\s\S]*<SkillPromptActions/);
@@ -440,10 +502,8 @@ test("library hub exposes share and multi-import flows", () => {
   const visibilityToggle = source("src/components/LibraryVisibilityToggle.tsx");
   const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
   const builderLibraryStats = source("src/components/BuilderLibraryStats.tsx");
-  const builderLibraryAutoRefresh = source("src/components/BuilderLibraryAutoRefresh.tsx");
   const builderLibraryEvents = source("src/lib/builder-library-events.ts");
   const builderLibraryState = source("src/lib/builder-library-state.ts");
-  const builderLibraryStateRoute = source("src/app/api/builders/library-state/route.ts");
   const libraryImportRemoveButton = source("src/components/LibraryImportRemoveButton.tsx");
   const builderPool = source("src/lib/builder-pool.ts");
   const visibilityRoute = source("src/app/api/library-hub/personal-availability/route.ts");
@@ -453,6 +513,7 @@ test("library hub exposes share and multi-import flows", () => {
   const hubImportForm = source("src/components/LibraryHubImportForm.tsx");
   const hubImportRoute = source("src/app/api/library-hub/imports/route.ts");
   const digestPipelineForm = optionalSource("src/components/DigestPipelineImportForm.tsx");
+  const digestPipelineVisibilityToggle = source("src/components/DigestPipelineVisibilityToggle.tsx");
   const digestPipelineShareRoute = optionalSource("src/app/api/digest-pipelines/share/route.ts");
   const digestPipelineImportRoute = optionalSource("src/app/api/digest-pipelines/imports/route.ts");
   const digestPipelineRemoveRoute = optionalSource("src/app/api/digest-pipelines/imports/[pipelineId]/route.ts");
@@ -463,6 +524,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(appShell, /library-hub/);
   assert.doesNotMatch(appShell, /UserDataAutoRefresh/);
   assert.doesNotMatch(workspaceLayout, /builderLibraryState/);
+  assert.match(workspaceLayout, /WorkspaceAutoRefresh/);
   assert.doesNotMatch(appShell, /\{ href: "\/admin"/);
   assert.match(appShell, /UserMenu/);
   assert.match(buildersPage, /LibraryVisibilityToggle/);
@@ -473,8 +535,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(buildersPage, /ownSharedLibrary\._count\.items !== privateBuilders\.length/);
   assert.match(buildersPage, /BuilderLibraryList/);
   assert.match(buildersPage, /BuilderLibraryStats/);
-  assert.match(buildersPage, /BuilderLibraryAutoRefresh/);
-  assert.match(buildersPage, /builderLibraryState/);
+  assert.doesNotMatch(buildersPage, /BuilderLibraryAutoRefresh/);
+  assert.doesNotMatch(buildersPage, /builderLibraryState/);
+  assert.equal(existsSync(join(root, "src/components/BuilderLibraryAutoRefresh.tsx")), false);
+  assert.equal(existsSync(join(root, "src/app/api/builders/library-state/route.ts")), false);
   assert.match(builderLibraryList, /BuilderLibraryActions/);
   assert.doesNotMatch(buildersPage, /togglePersonalLibraryHubAvailabilityAction/);
   assert.doesNotMatch(buildersPage, /subscribeAllLibraryBuildersAction/);
@@ -511,19 +575,11 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(builderLibraryStats, /builderLibraryStatsChanged/);
   assert.match(builderLibraryStats, /addEventListener/);
   assert.match(builderLibraryStats, /SubscribeAllLibraryBuildersButton/);
-  assert.match(builderLibraryAutoRefresh, /fetch\("\/api\/builders\/library-state"/);
-  assert.match(builderLibraryAutoRefresh, /visibleCheckIntervalMs = 30_000/);
-  assert.match(builderLibraryAutoRefresh, /visibilitychange/);
-  assert.match(builderLibraryAutoRefresh, /document\.visibilityState !== "visible"/);
-  assert.doesNotMatch(builderLibraryAutoRefresh, /EventSource/);
   assert.match(builderLibraryState, /builder\.aggregate/);
   assert.match(builderLibraryState, /feedItem\.aggregate/);
   assert.doesNotMatch(builderLibraryState, /digest\.aggregate/);
   assert.doesNotMatch(builderLibraryState, /recommendationSnapshot\.aggregate/);
   assert.doesNotMatch(builderLibraryState, /feedRead\.aggregate/);
-  assert.match(builderLibraryStateRoute, /NextResponse\.json/);
-  assert.match(builderLibraryStateRoute, /Cache-Control": "no-store"/);
-  assert.match(builderLibraryStateRoute, /activePoolBuilderIds/);
   assert.equal(existsSync(join(root, "src/app/api/builders/library-stream/route.ts")), false);
   assert.match(builderLibraryEvents, /builderLibraryStatsChanged/);
   assert.doesNotMatch(builderLibraryEvents, /followBriefDataChanged/);
@@ -582,6 +638,11 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /libraryId/);
   assert.match(digestPipelineForm, /"use client"/);
   assert.match(digestPipelineForm, /Digest Pipelines/);
+  assert.doesNotMatch(digestPipelineForm, /Share my digest/);
+  assert.doesNotMatch(digestPipelineForm, /Remove my digest/);
+  assert.doesNotMatch(digestPipelineForm, /ownPipelineShared/);
+  assert.match(digestPipelineVisibilityToggle, /Share to Hub/);
+  assert.match(digestPipelineVisibilityToggle, /fetch\("\/api\/digest-pipelines\/share"/);
   assert.match(digestPipelineForm, /fetch\("\/api\/digest-pipelines\/imports"/);
   assert.match(digestPipelineForm, /fetch\(`\/api\/digest-pipelines\/imports\/\$\{pipelineId\}`/);
   assert.match(digestPipelineForm, /aria-label=\{`Import \$\{pipeline\.title\}`\}/);
@@ -629,31 +690,32 @@ test("library hub exposes share and multi-import flows", () => {
 
 test("settings mutations stay local instead of refreshing the whole route", () => {
   const settingsPage = source("src/app/(workspace)/settings/page.tsx");
-  const feedPreferenceForm = source("src/components/FeedPreferenceForm.tsx");
+  const skillPromptActions = source("src/components/SkillPromptActions.tsx");
   const tokenPanel = source("src/components/AgentTokenPanel.tsx");
-  const feedPreferenceRoute = source("src/app/api/settings/feed-preferences/route.ts");
+  const digestMaxAgeRoute = source("src/app/api/settings/digest-max-age/route.ts");
   const tokensRoute = source("src/app/api/settings/tokens/route.ts");
   const tokenRoute = source("src/app/api/settings/tokens/[tokenId]/route.ts");
 
-  assert.match(settingsPage, /FeedPreferenceForm/);
+  // The Feed preferences module is gone; the digest max-age editor now lives in
+  // the digest prompt dialogs, persisted via the dedicated digest-max-age route.
+  assert.doesNotMatch(settingsPage, /FeedPreferenceForm/);
   assert.match(settingsPage, /AgentTokenPanel/);
   assert.doesNotMatch(settingsPage, /createPersonalTokenAction/);
   assert.doesNotMatch(settingsPage, /revokeTokenAction/);
   assert.doesNotMatch(settingsPage, /updateFeedPreferenceAction/);
   assert.doesNotMatch(settingsPage, /FormSubmitButton/);
-  assert.match(feedPreferenceForm, /"use client"/);
-  assert.match(feedPreferenceForm, /fetch\("\/api\/settings\/feed-preferences"/);
-  assert.match(feedPreferenceForm, /useTransition/);
-  assert.match(feedPreferenceForm, /aria-live="polite"/);
+  assert.match(skillPromptActions, /"use client"/);
+  assert.match(skillPromptActions, /fetch\("\/api\/settings\/digest-max-age"/);
   assert.match(tokenPanel, /"use client"/);
   assert.match(tokenPanel, /fetch\("\/api\/settings\/tokens"/);
   assert.match(tokenPanel, /fetch\(`\/api\/settings\/tokens\/\$\{tokenId\}`/);
   assert.match(tokenPanel, /"New agent token"/);
   assert.match(tokenPanel, /fb-dialog/);
-  assert.match(feedPreferenceRoute, /export async function PATCH/);
-  assert.match(feedPreferenceRoute, /userFeedPreference\.upsert/);
-  assert.match(feedPreferenceRoute, /NextResponse\.json/);
-  assert.doesNotMatch(feedPreferenceRoute, /redirect\(/);
+  assert.match(digestMaxAgeRoute, /export async function PATCH/);
+  assert.match(digestMaxAgeRoute, /userFeedPreference\.upsert/);
+  assert.match(digestMaxAgeRoute, /digestMaxPostAgeDays/);
+  assert.match(digestMaxAgeRoute, /NextResponse\.json/);
+  assert.doesNotMatch(digestMaxAgeRoute, /redirect\(/);
   assert.match(tokensRoute, /export async function POST/);
   assert.match(tokensRoute, /createAgentToken/);
   assert.doesNotMatch(tokensRoute, /redirect\(/);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import {
   RecommendationFeed,
@@ -36,34 +36,31 @@ function ForYouRecommendationLoader({ scope }: { scope: RecommendationScope }) {
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadTimeline = useCallback(async () => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
 
-    async function loadInitialTimeline() {
-      try {
-        const response = await fetch(`/api/recommendations/timeline?scope=${scope}`, {
-          cache: "no-store",
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = (await response.json()) as TimelineResponse;
-        if (!cancelled && mountedRef.current && requestIdRef.current === requestId) {
-          setTimeline(data);
-          setStatus("ready");
-        }
-      } catch {
-        if (!cancelled && mountedRef.current && requestIdRef.current === requestId) {
-          setStatus("error");
-        }
+    try {
+      const response = await fetch(`/api/recommendations/timeline?scope=${scope}`, {
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = (await response.json()) as TimelineResponse;
+      if (mountedRef.current && requestIdRef.current === requestId) {
+        setTimeline(data);
+        setStatus("ready");
+      }
+    } catch {
+      if (mountedRef.current && requestIdRef.current === requestId) {
+        setStatus("error");
       }
     }
-
-    void loadInitialTimeline();
-    return () => {
-      cancelled = true;
-    };
   }, [scope]);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => void loadTimeline(), 0);
+    return () => window.clearTimeout(id);
+  }, [loadTimeline]);
 
   if (status === "loading") {
     return (
@@ -121,7 +118,7 @@ function ForYouError({ scope }: { scope: RecommendationScope }) {
             Couldn&rsquo;t load {scopeLabel(scope)}
           </h2>
           <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
-            Something went wrong fetching recommendations. Refresh the page to try again.
+            Something went wrong fetching recommendations. Use Refresh snapshot to try again.
           </p>
         </div>
       </div>
