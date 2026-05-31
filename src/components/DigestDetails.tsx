@@ -65,17 +65,9 @@ export function DigestDetails({
             <div className="fb-digest-title">{digest.title}</div>
             <div className="fb-digest-sub">
               <span>{digest.itemCount} items</span>
-              <span className="opacity-40">·</span>
-              <span>{formatDate(digest.createdAt, hydrated)}</span>
             </div>
           </div>
-          <span className="fb-digest-chip">
-            <span
-              aria-hidden="true"
-              className="block h-2 w-2 rounded-full bg-[color:var(--signal)]"
-            />
-            Today
-          </span>
+          <span className="fb-digest-chip">{formatDate(digest.createdAt, hydrated)}</span>
         </div>
         <div className="fb-digest-body">
           <DigestBody content={content} status={status} variant="today" />

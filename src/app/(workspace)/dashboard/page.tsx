@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { type ComponentType } from "react";
-import { Archive, CheckCircle2, ChevronRight, Clock3, Sparkles, Terminal, UsersRound } from "lucide-react";
+import { Archive, CheckCircle2, Clock3, Sparkles, Terminal, UsersRound } from "lucide-react";
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
 import { DigestLogPanel } from "@/components/DigestLogPanel";
 import { getDigestRuns, type DigestRunListItem } from "@/lib/digest-runs";
@@ -81,13 +81,12 @@ async function AiDigestFeedSlot({
 }) {
   const archiveSkip = (archivePage - 1) * archivePageSize;
 
-  const [todayDigest, digestCount, rawTokens, feedPreference, digestRuns] = await Promise.all([
+  const [latestDigest, digestCount, rawTokens, feedPreference, digestRuns] = await Promise.all([
+    // The hero shows the user's most recent non-empty digest (any age), labeled
+    // with its own date. Not a "today" window: a brief stays featured until a
+    // newer one replaces it, instead of vanishing at the UTC day boundary.
     prisma.digest.findFirst({
-      where: {
-        userId,
-        itemCount: { gt: 0 },
-        createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
-      },
+      where: { userId, itemCount: { gt: 0 } },
       orderBy: { createdAt: "desc" },
       select: digestSummarySelect,
     }),
@@ -126,10 +125,10 @@ async function AiDigestFeedSlot({
     lastUser: token.lastUser ?? null,
     revokedAt: null,
   }));
-  const archiveWhere = todayDigest
-    ? { userId, itemCount: { gt: 0 }, NOT: { id: todayDigest.id } }
+  const archiveWhere = latestDigest
+    ? { userId, itemCount: { gt: 0 }, NOT: { id: latestDigest.id } }
     : { userId, itemCount: { gt: 0 } };
-  const archiveCount = Math.max(0, digestCount - (todayDigest ? 1 : 0));
+  const archiveCount = Math.max(0, digestCount - (latestDigest ? 1 : 0));
   const archiveDigests = await prisma.digest.findMany({
     where: archiveWhere,
     orderBy: { createdAt: "desc" },
@@ -146,7 +145,7 @@ async function AiDigestFeedSlot({
       archivePage={archivePage}
       digestRuns={digestRuns}
       summaryLanguage={feedPreference?.summaryLanguage ?? null}
-      todayDigest={todayDigest}
+      latestDigest={latestDigest}
     />
   );
 }
@@ -158,7 +157,7 @@ function AiDigestFeed({
   archivePage,
   digestRuns,
   summaryLanguage,
-  todayDigest,
+  latestDigest,
 }: {
   activeTokens: AgentTokenListItem[];
   archiveCount: number;
@@ -166,7 +165,7 @@ function AiDigestFeed({
   archivePage: number;
   digestRuns: DigestRunListItem[];
   summaryLanguage: string | null;
-  todayDigest: DigestSummaryRow | null;
+  latestDigest: DigestSummaryRow | null;
 }) {
   const visibleStart = archiveCount === 0 ? 0 : (archivePage - 1) * archivePageSize + 1;
   const visibleEnd = Math.min((archivePage - 1) * archivePageSize + archiveDigests.length, archiveCount);
@@ -180,15 +179,15 @@ function AiDigestFeed({
           summaryLanguage={summaryLanguage}
         />
       </div>
-      {todayDigest ? (
-        <DigestDetails digest={serializeDigestSummary(todayDigest)} mode="today" />
+      {latestDigest ? (
+        <DigestDetails digest={serializeDigestSummary(latestDigest)} mode="today" />
       ) : (
         <div className="fb-panel dashed">
           <div className="flex items-start gap-3">
             <Terminal className="mt-1 h-5 w-5 text-[var(--accent)]" aria-hidden="true" />
             <div>
               <h2 className="serif text-lg font-semibold text-[var(--ink)]">
-                No digest yet today
+                No digest yet
               </h2>
               <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
                 Your agent can sync a brief when there is new followed-source activity.
@@ -204,7 +203,10 @@ function AiDigestFeed({
             Showing {visibleStart}-{visibleEnd} of {archiveCount}
           </span>
         </div>
-        <div className="mt-4 at-desktop gap-3 lg:grid">
+        {/* One expandable disclosure per archived digest, on every viewport.
+            (The old mobile variant linked to #id anchors that lived only in the
+            desktop-only block, so tapping a card on mobile opened nothing.) */}
+        <div className="mt-4 grid gap-3">
           {archiveDigests.map((digest, index) => (
             <DigestDetails
               defaultOpen={index === 0}
@@ -214,34 +216,6 @@ function AiDigestFeed({
           ))}
           {archiveDigests.length === 0 ? (
             <div className="fb-panel dashed text-sm text-[var(--muted-strong)]">
-              Non-empty digests will appear here after more syncs.
-            </div>
-          ) : null}
-        </div>
-        <div className="at-mobile mt-4 overflow-hidden rounded-[12px] border border-[var(--line)] bg-[var(--paper-strong)]">
-          {archiveDigests.map((digest, index) => (
-            <Link
-              className="flex items-center justify-between px-3.5 py-3"
-              href={`/dashboard?tab=ai-digest#${digest.id}`}
-              key={digest.id}
-              style={{ borderTop: index === 0 ? 0 : "1px solid var(--line)" }}
-            >
-              <div className="min-w-0 flex-1">
-                <div className="serif text-[15px] font-semibold leading-tight tracking-tight">
-                  {digest.title}
-                </div>
-                <div className="mt-1 text-[11px] text-[var(--muted)]">
-                  {digest.itemCount} items
-                </div>
-              </div>
-              <ChevronRight
-                aria-hidden="true"
-                className="h-3.5 w-3.5 flex-shrink-0 text-[var(--muted)]"
-              />
-            </Link>
-          ))}
-          {archiveDigests.length === 0 ? (
-            <div className="px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
               Non-empty digests will appear here after more syncs.
             </div>
           ) : null}
@@ -277,24 +251,18 @@ function AiDigestFeed({
 }
 
 async function HomeStatsSlot({ userId }: { userId: string }) {
-  const [todayDigestExists, totalDigests] = await Promise.all([
-    prisma.digest.findFirst({
-      where: {
-        userId,
-        itemCount: { gt: 0 },
-        createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
-      },
-      select: { id: true },
-    }),
-    prisma.digest.count({ where: { userId, itemCount: { gt: 0 } } }),
-  ]);
-  const archiveCount = Math.max(0, totalDigests - (todayDigestExists ? 1 : 0));
+  const totalDigests = await prisma.digest.count({
+    where: { userId, itemCount: { gt: 0 } },
+  });
+  // The latest digest is the hero; the rest are archive entries.
+  const hasDigest = totalDigests > 0;
+  const archiveCount = Math.max(0, totalDigests - (hasDigest ? 1 : 0));
   return (
     <div className="grid gap-2">
       <Stat
-        icon={todayDigestExists ? CheckCircle2 : Clock3}
+        icon={hasDigest ? CheckCircle2 : Clock3}
         label="Digest"
-        value={todayDigestExists ? "Synced" : "Waiting"}
+        value={hasDigest ? "Synced" : "Waiting"}
       />
       <Stat icon={Sparkles} label="Following" value="Live" />
       <Stat icon={Sparkles} label="For You" value="Live" />
