@@ -41,6 +41,7 @@ const nextConfig: NextConfig = {
       // Stop prompt is served by this route too; without it Vercel omits the
       // file from the bundle and the route 500s (ENOENT) in production.
       "./skills/builder-blog-digest/jobs/library-cron-stop.md",
+      "./skills/builder-blog-digest/jobs/digest-cron-stop.md",
     ],
   },
 };

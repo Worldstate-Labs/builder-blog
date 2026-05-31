@@ -6,7 +6,7 @@
 // should read these strings.
 export const DEFAULT_DIGEST_PROMPTS = {
   digest:
-    "Create a concise FollowBrief digest in Chinese. Use only the supplied items. Group by source type and followed source. Include source URLs for every claim. Highlight launches, technical insights, funding/business moves, strong opinions, and implementation details. Do not invent missing facts.",
+    "Create a concise FollowBrief digest in the language given by context.language. Use only the supplied items. Group by source type and followed source. Include source URLs for every claim. Highlight launches, technical insights, funding/business moves, strong opinions, and implementation details. Do not invent missing facts.",
   summarizeTweets: `# X/Twitter Summary Prompt
 
 You are summarizing recent posts from an AI builder for a busy professional who wants
@@ -154,14 +154,16 @@ Example (one post under one source — translate the prose to the target languag
 - Keep formatting clean and scannable for a phone screen.`,
   translate: `# Translation Prompt
 
-You are translating an AI industry digest into simplified Chinese.
+You are rendering an AI industry digest into the target language given by
+context.language.
 
 ## Instructions
 
-- Translate the full digest into natural, fluent Mandarin Chinese using simplified characters.
-- The translated version must sound like it was originally written in Chinese, not translated.
-- Keep technical terms in English where Chinese AI professionals typically use them:
-  AI, LLM, GPU, API, fine-tuning, RAG, token, prompt, agent, transformer, etc.
+- Render the full digest into natural, fluent prose in the target language. It
+  must read as if originally written in that language, not translated.
+- Keep technical terms in English where professionals in that language typically
+  use them: AI, LLM, GPU, API, fine-tuning, RAG, token, prompt, agent,
+  transformer, etc.
 - Keep all proper nouns in English: names of people, companies, products, and tools.
 - Keep all URLs unchanged.
 - Maintain the same structure and formatting as the source digest.

@@ -1085,7 +1085,11 @@ test("digest generation user path exposes source-specific prompt instructions", 
   assert.match(DEFAULT_DIGEST_PROMPTS.summarizeTweets, /X\/Twitter Summary Prompt/);
   assert.match(DEFAULT_DIGEST_PROMPTS.summarizeBlogs, /Blog Post Summary Prompt/);
   assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /Digest Intro Prompt/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.translate, /simplified Chinese/i);
+  // Translate step is language-agnostic now — it renders into context.language,
+  // not hardcoded Chinese.
+  assert.match(DEFAULT_DIGEST_PROMPTS.translate, /target language given by\s+context\.language/);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.translate, /simplified Chinese|Mandarin/i);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.digest, /in Chinese/i);
   assert.match(DEFAULT_DIGEST_PROMPTS.fetchPodcastAudio, /Podcast Fetch Prompt/);
 });
 
