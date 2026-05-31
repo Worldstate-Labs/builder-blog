@@ -2,11 +2,21 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { Plus } from "lucide-react";
+import {
+  DigestPipelineImportForm,
+  type HubDigestPipeline,
+} from "@/components/DigestPipelineImportForm";
 import { LibraryHubImportForm, type HubLibrary } from "@/components/LibraryHubImportForm";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
-import { adminCommunityLibraryName, recordLibraryHubViews } from "@/lib/library-hub";
+import {
+  adminCommunityLibraryName,
+  digestPipelineTitle,
+  displayDigestPipelineTitle,
+  recordDigestPipelineHubViews,
+  recordLibraryHubViews,
+} from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 
 type LibraryHubPageData = Awaited<ReturnType<typeof loadLibraryHubPageData>>;
@@ -37,6 +47,10 @@ export default function LibraryHubPage() {
       <Suspense fallback={<LibraryHubImportFallback />}>
         <LibraryHubImportSection dataPromise={dataPromise} />
       </Suspense>
+
+      <Suspense fallback={<DigestPipelineImportFallback />}>
+        <DigestPipelineImportSection dataPromise={dataPromise} />
+      </Suspense>
     </div>
   );
 }
@@ -46,7 +60,7 @@ async function loadLibraryHubPageData() {
   if (!session?.user?.id) redirect("/login");
   await ensureDefaultCommunityLibraryImport(session.user.id);
 
-  const [libraries, imports] = await Promise.all([
+  const [libraries, imports, digestPipelineShares, digestPipelineImports] = await Promise.all([
     prisma.libraryHubEntry.findMany({
       include: {
         owner: { select: { name: true, email: true } },
@@ -79,10 +93,33 @@ async function loadLibraryHubPageData() {
       where: { userId: session.user.id },
       select: { hubEntryId: true },
     }),
+    prisma.digestPipelineShare.findMany({
+      where: { isPublic: true },
+      include: {
+        owner: { select: { name: true, email: true } },
+        imports: {
+          where: { userId: session.user.id },
+          select: { userId: true },
+        },
+      },
+      orderBy: [{ importCount: "desc" }, { viewCount: "desc" }, { updatedAt: "desc" }],
+    }),
+    prisma.digestPipelineImport.findMany({
+      where: { userId: session.user.id },
+      select: { pipelineId: true },
+    }),
   ]);
   await recordLibraryHubViews(libraries.map((library) => library.id));
+  await recordDigestPipelineHubViews(
+    digestPipelineShares
+      .filter((pipeline) => pipeline.ownerUserId !== session.user.id)
+      .map((pipeline) => pipeline.id),
+  );
 
   const importedLibraryIds = new Set(imports.map((item) => item.hubEntryId));
+  const importedDigestPipelineIds = new Set(
+    digestPipelineImports.map((item) => item.pipelineId),
+  );
   const hubLibraries: HubLibrary[] = libraries.map((library) => {
     const isCommunityLibrary = library.isFeatured || isAdminEmail(library.owner?.email);
     return {
@@ -101,7 +138,49 @@ async function loadLibraryHubPageData() {
     };
   });
 
-  return { hubLibraries, libraryCount: libraries.length };
+  const digestCounts = await Promise.all(
+    digestPipelineShares.map(async (pipeline) => {
+      const [digestCount, latestDigest] = await Promise.all([
+        prisma.digest.count({ where: { userId: pipeline.ownerUserId, itemCount: { gt: 0 } } }),
+        prisma.digest.findFirst({
+          where: { userId: pipeline.ownerUserId, itemCount: { gt: 0 } },
+          orderBy: { createdAt: "desc" },
+          select: { createdAt: true },
+        }),
+      ]);
+      return [pipeline.id, { digestCount, latestDigestAt: latestDigest?.createdAt ?? null }] as const;
+    }),
+  );
+  const digestCountByPipelineId = new Map(digestCounts);
+  const hubDigestPipelines: HubDigestPipeline[] = digestPipelineShares.map((pipeline) => {
+    const owned = pipeline.ownerUserId === session.user.id;
+    const owner = pipeline.owner;
+    const stats = digestCountByPipelineId.get(pipeline.id);
+    return {
+      id: pipeline.id,
+      title: displayDigestPipelineTitle(pipeline.title || digestPipelineTitle(owner)),
+      description: pipeline.description,
+      ownerUserId: pipeline.ownerUserId,
+      ownerLabel: `Shared by ${owner.name || owner.email || "a FollowBrief user"}.`,
+      importCount: pipeline.importCount,
+      viewCount: pipeline.viewCount,
+      digestCount: stats?.digestCount ?? 0,
+      latestDigestAt: stats?.latestDigestAt?.toISOString() ?? null,
+      imported:
+        importedDigestPipelineIds.has(pipeline.id) || pipeline.imports.length > 0,
+      owned,
+    };
+  });
+  const ownPipelineShared = digestPipelineShares.some(
+    (pipeline) => pipeline.ownerUserId === session.user.id,
+  );
+
+  return {
+    hubLibraries,
+    hubDigestPipelines,
+    libraryCount: libraries.length,
+    ownPipelineShared,
+  };
 }
 
 async function LibraryHubCount({
@@ -122,6 +201,21 @@ async function LibraryHubImportSection({
   const data = await dataPromise;
 
   return <LibraryHubImportForm libraries={data.hubLibraries} />;
+}
+
+async function DigestPipelineImportSection({
+  dataPromise,
+}: {
+  dataPromise: Promise<LibraryHubPageData>;
+}) {
+  const data = await dataPromise;
+
+  return (
+    <DigestPipelineImportForm
+      ownPipelineShared={data.ownPipelineShared}
+      pipelines={data.hubDigestPipelines}
+    />
+  );
 }
 
 function LibraryHubImportFallback() {
@@ -154,6 +248,24 @@ function LibraryHubImportFallback() {
             </div>
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+function DigestPipelineImportFallback() {
+  return (
+    <section className="mt-10" aria-live="polite" aria-busy="true">
+      <div className="library-hub-toolbar">
+        <div>
+          <div className="h-5 w-40 rounded bg-black/10" />
+          <div className="mt-3 h-4 w-72 rounded bg-black/10" />
+        </div>
+        <div className="h-10 w-36 rounded-full bg-black/10" />
+      </div>
+      <div className="mt-5 grid gap-3.5 lg:grid-cols-2">
+        <div className="library-hub-card h-44" />
+        <div className="library-hub-card h-44" />
       </div>
     </section>
   );

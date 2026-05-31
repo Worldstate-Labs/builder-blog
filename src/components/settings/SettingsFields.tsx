@@ -441,21 +441,24 @@ export function SaveStatus({
   onAutoDismiss?: () => void;
 }) {
   const onAutoDismissRef = useRef(onAutoDismiss);
-  onAutoDismissRef.current = onAutoDismiss;
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissedStatusKey, setDismissedStatusKey] = useState<string | null>(null);
+  const statusKey = `${status.kind}:${status.message ?? ""}`;
 
   useEffect(() => {
-    setDismissed(false);
+    onAutoDismissRef.current = onAutoDismiss;
+  }, [onAutoDismiss]);
+
+  useEffect(() => {
     if (status.kind !== "saved") return;
     const timer = setTimeout(() => {
-      setDismissed(true);
+      setDismissedStatusKey(statusKey);
       onAutoDismissRef.current?.();
     }, 2500);
     return () => clearTimeout(timer);
-  }, [status.kind, status.message]);
+  }, [status.kind, statusKey]);
 
   if (status.kind === "idle") return null;
-  if (status.kind === "saved" && dismissed) return null;
+  if (status.kind === "saved" && dismissedStatusKey === statusKey) return null;
 
   if (status.kind === "saving") {
     return (

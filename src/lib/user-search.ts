@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
+import { displayDigestPipelineTitle } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 import { builderSourceLabel } from "@/lib/source-registry";
 import {
@@ -62,6 +63,26 @@ export async function searchUserLibrary({
   const hasCandidateTerms = terms.length > 0;
   const typeFilter = parsedQuery.type;
   const poolBuilderIds = await activePoolBuilderIds(userId);
+  const importedDigestPipelines =
+    typeFilter && typeFilter !== "digest"
+      ? []
+      : await prisma.digestPipelineImport.findMany({
+          where: { userId, pipeline: { isPublic: true } },
+          include: {
+            pipeline: {
+              select: {
+                id: true,
+                title: true,
+                ownerUserId: true,
+              },
+            },
+          },
+        });
+  const digestOwnerToPipeline = new Map(
+    importedDigestPipelines.map(({ pipeline }) => [pipeline.ownerUserId, pipeline]),
+  );
+  const digestOwnerIds = [userId, ...importedDigestPipelines.map(({ pipeline }) => pipeline.ownerUserId)];
+
   const [builders, feedItems, digests] = await Promise.all([
     typeFilter && typeFilter !== "builder" ? Promise.resolve([]) : prisma.builder.findMany({
       where: {
@@ -94,7 +115,7 @@ export async function searchUserLibrary({
     }),
     typeFilter && typeFilter !== "digest" ? Promise.resolve([]) : prisma.digest.findMany({
       where: {
-        userId,
+        userId: { in: digestOwnerIds },
         ...(hasCandidateTerms ? { OR: digestSearchConditions(terms) } : {}),
       },
       orderBy: { createdAt: "desc" },
@@ -131,15 +152,23 @@ export async function searchUserLibrary({
       sourceName: item.builder?.name ?? item.sourceName,
       date: item.publishedAt ?? item.createdAt,
     })),
-    ...digests.map<SearchDocument>((digest) => ({
-      id: digest.id,
-      type: "digest",
-      title: digest.title,
-      body: digest.content,
-      url: `/dashboard?tab=ai-digest#${digest.id}`,
-      sourceName: `${digest.itemCount} items · ${digest.language}`,
-      date: digest.createdAt,
-    })),
+    ...digests.map<SearchDocument>((digest) => {
+      const pipeline =
+        digest.userId === userId ? null : digestOwnerToPipeline.get(digest.userId);
+      return {
+        id: digest.id,
+        type: "digest",
+        title: digest.title,
+        body: digest.content,
+        url: pipeline
+          ? `/dashboard?tab=ai-digest&pipeline=${pipeline.id}#${digest.id}`
+          : `/dashboard?tab=ai-digest#${digest.id}`,
+        sourceName: pipeline
+          ? `${displayDigestPipelineTitle(pipeline.title)} · ${digest.itemCount} items · ${digest.language}`
+          : `${digest.itemCount} items · ${digest.language}`,
+        date: digest.createdAt,
+      };
+    }),
   ];
 
   return {

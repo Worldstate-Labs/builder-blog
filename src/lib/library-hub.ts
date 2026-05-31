@@ -11,6 +11,22 @@ export const adminCommunityLibraryName = "Community Library";
 export const adminCommunityLibraryDescription =
   "Community source library curated by FollowBrief.";
 
+export function digestPipelineTitle(owner: {
+  name?: string | null;
+  email?: string | null;
+}) {
+  const identity = owner.name || owner.email?.split("@")[0] || "Builder";
+  return `${identity}'s Digest`;
+}
+
+export function displayDigestPipelineTitle(title: string) {
+  return title.replace(/'s AI Builder Digest$/, "'s Digest");
+}
+
+export function digestPipelineSlug(userId: string) {
+  return `digest-${userId}`;
+}
+
 export async function sharePersonalLibraryToHub(params: {
   userId: string;
   name: string;
@@ -256,6 +272,88 @@ export async function recordLibraryHubViews(libraryIds: string[]) {
   if (ids.length === 0) return;
   await prisma.libraryHubEntry.updateMany({
     where: { id: { in: ids } },
+    data: { viewCount: { increment: 1 } },
+  });
+}
+
+export async function shareDigestPipelineToHub(params: {
+  userId: string;
+  title?: string | null;
+  description?: string | null;
+  name?: string | null;
+  email?: string | null;
+}) {
+  return prisma.digestPipelineShare.upsert({
+    where: { ownerUserId: params.userId },
+    update: {
+      title: params.title?.trim() || digestPipelineTitle(params),
+      description: params.description?.trim() || null,
+      isPublic: true,
+    },
+    create: {
+      ownerUserId: params.userId,
+      slug: digestPipelineSlug(params.userId),
+      title: params.title?.trim() || digestPipelineTitle(params),
+      description: params.description?.trim() || null,
+      isPublic: true,
+    },
+  });
+}
+
+export async function unshareDigestPipelineFromHub(userId: string) {
+  const result = await prisma.digestPipelineShare.deleteMany({
+    where: { ownerUserId: userId },
+  });
+  return { removed: result.count };
+}
+
+export async function importDigestPipelineFromHub(params: {
+  userId: string;
+  pipelineId: string;
+}) {
+  const pipeline = await prisma.digestPipelineShare.findFirst({
+    where: { id: params.pipelineId, isPublic: true },
+    select: { id: true, ownerUserId: true },
+  });
+  if (!pipeline || pipeline.ownerUserId === params.userId) {
+    return { imported: false };
+  }
+
+  try {
+    await prisma.digestPipelineImport.create({
+      data: {
+        userId: params.userId,
+        pipelineId: pipeline.id,
+      },
+    });
+    await prisma.digestPipelineShare.update({
+      where: { id: pipeline.id },
+      data: { importCount: { increment: 1 } },
+    });
+    return { imported: true };
+  } catch {
+    return { imported: false };
+  }
+}
+
+export async function removeDigestPipelineImportFromHub(params: {
+  userId: string;
+  pipelineId: string;
+}) {
+  const result = await prisma.digestPipelineImport.deleteMany({
+    where: {
+      userId: params.userId,
+      pipelineId: params.pipelineId,
+    },
+  });
+  return { removed: result.count > 0 };
+}
+
+export async function recordDigestPipelineHubViews(pipelineIds: string[]) {
+  const ids = [...new Set(pipelineIds.filter(Boolean))];
+  if (ids.length === 0) return;
+  await prisma.digestPipelineShare.updateMany({
+    where: { id: { in: ids }, isPublic: true },
     data: { viewCount: { increment: 1 } },
   });
 }

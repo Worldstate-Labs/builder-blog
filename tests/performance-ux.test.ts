@@ -9,6 +9,10 @@ function source(path: string) {
   return readFileSync(join(root, path), "utf8");
 }
 
+function optionalSource(path: string) {
+  return existsSync(join(root, path)) ? source(path) : "";
+}
+
 test("primary app navigation keeps route prefetching enabled", () => {
   const appNav = source("src/components/AppNav.tsx");
 
@@ -67,7 +71,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /@\/components\/settings\/SettingsFields/);
   assert.match(adminSourceTypeManager, /@\/components\/settings\/SettingsFields/);
   assert.match(userMenu, /href="\/settings" onClick=\{closeMenu\}[\s\S]*Settings/);
-  assert.match(userMenu, /href="\/api\/auth\/signout"[\s\S]*onClick=\{closeMenu\}[\s\S]*Sign out/);
+  assert.match(userMenu, /signOut\(\{ callbackUrl: "\/login" \}\)/);
+  assert.match(userMenu, /closeMenu\(\);[\s\S]*signOut[\s\S]*Sign out/);
   assert.match(settingsPage, />\s*Settings\s*</);
   assert.equal(existsSync(join(root, "src/app/(workspace)/settings/loading.tsx")), false);
   assert.match(settingsPage, /<Suspense fallback=\{<ActiveTokenChipFallback \/>/);
@@ -161,12 +166,22 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   const digestRoute = source("src/app/api/digests/[digestId]/route.ts");
 
   assert.match(dashboardPage, /archivePageSize/);
+  assert.match(dashboardPage, /pipeline\?: string \| string\[\]/);
+  assert.match(dashboardPage, /selectedPipeline/);
+  assert.match(dashboardPage, /digestPipelineImport\.findMany/);
   assert.match(dashboardPage, /take:\s*archivePageSize/);
   assert.match(dashboardPage, /digestSummarySelect/);
   assert.match(dashboardPage, /id:\s*true/);
   assert.match(dashboardPage, /select:\s*digestSummarySelect/);
   assert.doesNotMatch(dashboardPage, /digest\.content/);
   assert.match(dashboardPage, /DigestDetails/);
+  assert.match(dashboardPage, /DigestPipelineSelector/);
+  assert.match(dashboardPage, /My Digest/);
+  assert.match(dashboardPage, /Imported pipeline view/);
+  assert.match(dashboardPage, /isOwnPipeline \? \(/);
+  assert.match(dashboardPage, /isOwnPipeline[\s\S]*<SkillPromptActions/);
+  assert.match(dashboardPage, /isOwnPipeline[\s\S]*<DigestLogPanel/);
+  assert.match(dashboardPage, /pipelineQuery/);
   assert.match(dashboardPage, /id="digest-archive"/);
   assert.match(dashboardPage, /Digest archive/);
   assert.match(historyPage, /redirect\(`\/dashboard\?tab=ai-digest&archivePage=\$\{page\}#digest-archive`\)/);
@@ -178,7 +193,9 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(digestDetails, /aria-live="polite"/);
   assert.match(digestRoute, /export async function GET/);
   assert.match(digestRoute, /content: true/);
-  assert.match(digestRoute, /userId: session\.user\.id/);
+  assert.match(digestRoute, /digestPipelineImport\.findFirst/);
+  assert.match(digestRoute, /ownerUserId: digest\.userId/);
+  assert.match(digestRoute, /isPublic:\s*true/);
   assert.match(digestRoute, /NextResponse\.json/);
 });
 
@@ -435,6 +452,10 @@ test("library hub exposes share and multi-import flows", () => {
   const builderSubscribeAllRoute = source("src/app/api/builders/subscriptions/route.ts");
   const hubImportForm = source("src/components/LibraryHubImportForm.tsx");
   const hubImportRoute = source("src/app/api/library-hub/imports/route.ts");
+  const digestPipelineForm = optionalSource("src/components/DigestPipelineImportForm.tsx");
+  const digestPipelineShareRoute = optionalSource("src/app/api/digest-pipelines/share/route.ts");
+  const digestPipelineImportRoute = optionalSource("src/app/api/digest-pipelines/imports/route.ts");
+  const digestPipelineRemoveRoute = optionalSource("src/app/api/digest-pipelines/imports/[pipelineId]/route.ts");
   const hubPage = source("src/app/(workspace)/library-hub/page.tsx");
   const skillRoute = source("src/app/api/skill/builders/route.ts");
   const schema = source("prisma/schema.prisma");
@@ -520,6 +541,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(hubPage, /importHubLibrariesAction/);
   assert.match(hubPage, /ensureDefaultCommunityLibraryImport\(session\.user\.id\)/);
   assert.match(hubPage, /LibraryHubImportForm/);
+  assert.match(hubPage, /DigestPipelineImportForm/);
+  assert.match(hubPage, /digestPipelineShare\.findMany/);
+  assert.match(hubPage, /digestPipelineImport\.findMany/);
   assert.match(hubPage, /adminCommunityLibraryName/);
   assert.match(hubPage, /library\.isFeatured/);
   assert.match(hubPage, /isAdminEmail\(library\.owner\?\.email\)/);
@@ -556,13 +580,37 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /viewCount/);
   assert.match(hubPage, /orderBy:\s*\[\{ importCount: "desc" \}, \{ viewCount: "desc" \}/);
   assert.match(hubImportForm, /libraryId/);
+  assert.match(digestPipelineForm, /"use client"/);
+  assert.match(digestPipelineForm, /Digest Pipelines/);
+  assert.match(digestPipelineForm, /fetch\("\/api\/digest-pipelines\/imports"/);
+  assert.match(digestPipelineForm, /fetch\(`\/api\/digest-pipelines\/imports\/\$\{pipelineId\}`/);
+  assert.match(digestPipelineForm, /aria-label=\{`Import \$\{pipeline\.title\}`\}/);
+  assert.match(digestPipelineForm, /Imported/);
+  assert.match(digestPipelineForm, /Remove/);
+  assert.match(digestPipelineShareRoute, /shareDigestPipelineToHub/);
+  assert.match(digestPipelineShareRoute, /unshareDigestPipelineFromHub/);
+  assert.match(digestPipelineImportRoute, /importDigestPipelineFromHub/);
+  assert.match(digestPipelineRemoveRoute, /removeDigestPipelineImportFromHub/);
   assert.match(visibilityRoute, /unsharePersonalLibraryFromHub/);
   assert.equal(existsSync(join(root, "src/app/actions.ts")), false);
   assert.match(skillRoute, /syncPersonalLibraryHubForUser/);
   assert.match(skillRoute, /fetchTool: "Legacy fetch\/import"/);
   assert.match(schema, /model LibraryHubEntry/);
   assert.match(schema, /model LibraryImport/);
+  assert.match(schema, /model DigestPipelineShare \{/);
+  assert.match(schema, /ownerUserId\s+String/);
+  assert.match(schema, /importCount\s+Int\s+@default\(0\)/);
+  assert.match(schema, /@@unique\(\[ownerUserId\]\)/);
+  assert.match(schema, /model DigestPipelineImport \{/);
+  assert.match(schema, /@@id\(\[userId, pipelineId\]\)/);
   assert.match(schema, /UserLibraryVisibility/);
+  assert.match(source("src/lib/library-hub.ts"), /shareDigestPipelineToHub/);
+  assert.match(source("src/lib/library-hub.ts"), /importDigestPipelineFromHub/);
+  assert.match(source("src/lib/library-hub.ts"), /removeDigestPipelineImportFromHub/);
+  assert.match(source("src/lib/library-hub.ts"), /digestPipelineTitle/);
+  assert.match(source("src/lib/library-hub.ts"), /displayDigestPipelineTitle/);
+  assert.match(source("src/lib/library-hub.ts"), /\$\{identity\}'s Digest/);
+  assert.doesNotMatch(source("src/lib/library-hub.ts"), /\$\{identity\}'s AI Builder Digest/);
   assert.match(builderPool, /ensureDefaultCommunityLibraryImport/);
   assert.match(builderPool, /isAdminEmail\(user\.email\)/);
   assert.match(builderPool, /userLibraryVisibility/);

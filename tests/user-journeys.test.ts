@@ -401,16 +401,17 @@ test("web app serves the agent skill and setup command", () => {
   // The contract's content is asserted below where it's read (digestTaskContract).
   assert.match(digestOncePrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
   assert.match(digestCronPrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
-  // The digest create route never deletes history: `regenerate` only re-includes
-  // already-digested posts (handled at prepare/context), so a regenerated digest
-  // is always additive and past digests survive. It also records the
-  // account-wide language.
+  // Regenerate rebuilds the current UTC day's digest by clearing same-day
+  // markers and same-day digests first, while preserving older archive entries.
+  // It also records the account-wide language.
   const digestCreateRoute = readFileSync(
     "src/app/api/skill/digests/route.ts",
     "utf8",
   );
   assert.match(digestCreateRoute, /regenerate/);
-  assert.doesNotMatch(digestCreateRoute, /digest\.deleteMany/);
+  assert.match(digestCreateRoute, /digestedItem\.deleteMany/);
+  assert.match(digestCreateRoute, /digest\.deleteMany/);
+  assert.match(digestCreateRoute, /createdAt:\s*\{\s*gte:\s*dayStart,\s*lt:\s*dayEnd\s*\}/);
   assert.match(digestCreateRoute, /summaryLanguage/);
   assert.doesNotMatch(skillPromptActions, /\/api\/skill\/bootstrap/);
   assert.doesNotMatch(skillPromptActions, /BUILDER_BLOG_PROMPT_URL/);
@@ -1122,6 +1123,19 @@ test("search user path exact mode matches literal text across builders, feeds, a
   assert.deepEqual(results.map((result) => result.id), ["digest_1", "builder_1"]);
   assert.equal(results[0].type, "digest");
   assert.match(results[0].snippet, /AGENT MEMORY/);
+});
+
+test("search user path includes imported digest pipeline digests", () => {
+  const userSearch = readFileSync("src/lib/user-search.ts", "utf8");
+
+  assert.match(userSearch, /digestPipelineImport\.findMany/);
+  assert.match(userSearch, /pipeline:\s*\{/);
+  assert.match(userSearch, /isPublic:\s*true/);
+  assert.match(userSearch, /importedDigestPipelines/);
+  assert.match(userSearch, /digestOwnerToPipeline/);
+  assert.match(userSearch, /userId:\s*\{\s*in:\s*digestOwnerIds\s*\}/);
+  assert.match(userSearch, /pipeline=\$\{pipeline\.id\}#\$\{digest\.id\}/);
+  assert.match(userSearch, /displayDigestPipelineTitle\(pipeline\.title\)/);
 });
 
 test("search user path supports wildcard terms inside quoted phrases", () => {

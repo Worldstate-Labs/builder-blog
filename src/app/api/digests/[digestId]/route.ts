@@ -11,14 +11,12 @@ export async function GET(_request: Request, { params }: Params) {
   }
 
   const { digestId } = await params;
-  const digest = await prisma.digest.findFirst({
-    where: {
-      id: digestId,
-      userId: session.user.id,
-    },
+  const digest = await prisma.digest.findUnique({
+    where: { id: digestId },
     select: {
       id: true,
       content: true,
+      userId: true,
     },
   });
 
@@ -26,5 +24,22 @@ export async function GET(_request: Request, { params }: Params) {
     return NextResponse.json({ error: "Digest not found" }, { status: 404 });
   }
 
-  return NextResponse.json(digest);
+  if (digest.userId !== session.user.id) {
+    const importedPipeline = await prisma.digestPipelineImport.findFirst({
+      where: {
+        userId: session.user.id,
+        pipeline: {
+          isPublic: true,
+          ownerUserId: digest.userId,
+        },
+      },
+      select: { pipelineId: true },
+    });
+
+    if (!importedPipeline) {
+      return NextResponse.json({ error: "Digest not found" }, { status: 404 });
+    }
+  }
+
+  return NextResponse.json({ id: digest.id, content: digest.content });
 }

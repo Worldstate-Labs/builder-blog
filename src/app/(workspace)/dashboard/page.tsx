@@ -10,6 +10,7 @@ import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
 import { getCurrentSession } from "@/lib/auth";
+import { displayDigestPipelineTitle } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 
 const archivePageSize = 20;
@@ -21,9 +22,17 @@ const digestSummarySelect = {
   createdAt: true,
 };
 type DigestSummaryRow = Omit<DigestSummary, "createdAt"> & { createdAt: Date };
+type DigestPipelineOption = {
+  id: string;
+  title: string;
+  ownerLabel: string;
+  ownerUserId: string;
+  isOwnPipeline: boolean;
+};
 
 type DashboardSearchParams = Promise<{
   archivePage?: string | string[];
+  pipeline?: string | string[];
   tab?: string | string[];
 }>;
 
@@ -38,8 +47,9 @@ export default async function DashboardPage({
   const params = await searchParams;
   const selectedTab = parseTab(firstParam(params.tab));
   const archivePage = Math.max(1, Number(firstParam(params.archivePage) ?? "1") || 1);
+  const pipelineId = firstParam(params.pipeline);
   const [aiDigest, homeStats] = await Promise.all([
-    AiDigestFeedSlot({ userId, archivePage }),
+    AiDigestFeedSlot({ userId, archivePage, pipelineId }),
     HomeStatsSlot({ userId }),
   ]);
 
@@ -75,42 +85,80 @@ export default async function DashboardPage({
 async function AiDigestFeedSlot({
   userId,
   archivePage,
+  pipelineId,
 }: {
   userId: string;
   archivePage: number;
+  pipelineId?: string;
 }) {
   const archiveSkip = (archivePage - 1) * archivePageSize;
+  const importedDigestPipelines = await prisma.digestPipelineImport.findMany({
+    where: { userId, pipeline: { isPublic: true } },
+    include: {
+      pipeline: {
+        include: {
+          owner: { select: { name: true, email: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  const digestPipelineOptions: DigestPipelineOption[] = [
+    {
+      id: "own",
+      title: "My Digest",
+      ownerLabel: "Your digest pipeline",
+      ownerUserId: userId,
+      isOwnPipeline: true,
+    },
+    ...importedDigestPipelines.map(({ pipeline }) => ({
+      id: pipeline.id,
+      title: displayDigestPipelineTitle(pipeline.title),
+      ownerLabel: `Imported from ${pipeline.owner.name || pipeline.owner.email || "a FollowBrief user"}`,
+      ownerUserId: pipeline.ownerUserId,
+      isOwnPipeline: false,
+    })),
+  ];
+  const selectedPipeline =
+    digestPipelineOptions.find((pipeline) => pipeline.id === pipelineId) ??
+    digestPipelineOptions[0];
+  const digestOwnerUserId = selectedPipeline.ownerUserId;
+  const isOwnPipeline = selectedPipeline.isOwnPipeline;
 
   const [latestDigest, digestCount, rawTokens, feedPreference, digestRuns] = await Promise.all([
     // The hero shows the user's most recent non-empty digest (any age), labeled
     // with its own date. Not a "today" window: a brief stays featured until a
     // newer one replaces it, instead of vanishing at the UTC day boundary.
     prisma.digest.findFirst({
-      where: { userId, itemCount: { gt: 0 } },
+      where: { userId: digestOwnerUserId, itemCount: { gt: 0 } },
       orderBy: { createdAt: "desc" },
       select: digestSummarySelect,
     }),
-    prisma.digest.count({ where: { userId, itemCount: { gt: 0 } } }),
-    prisma.agentToken.findMany({
-      where: { userId, revokedAt: null },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        name: true,
-        createdAt: true,
-        lastUsedAt: true,
-        lastIp: true,
-        lastUserAgent: true,
-        lastHostname: true,
-        lastPlatform: true,
-        lastUser: true,
-      },
-    }),
-    prisma.userFeedPreference.findUnique({
-      where: { userId },
-      select: { summaryLanguage: true },
-    }),
-    getDigestRuns(userId),
+    prisma.digest.count({ where: { userId: digestOwnerUserId, itemCount: { gt: 0 } } }),
+    isOwnPipeline
+      ? prisma.agentToken.findMany({
+          where: { userId, revokedAt: null },
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            name: true,
+            createdAt: true,
+            lastUsedAt: true,
+            lastIp: true,
+            lastUserAgent: true,
+            lastHostname: true,
+            lastPlatform: true,
+            lastUser: true,
+          },
+        })
+      : Promise.resolve([]),
+    isOwnPipeline
+      ? prisma.userFeedPreference.findUnique({
+          where: { userId },
+          select: { summaryLanguage: true },
+        })
+      : Promise.resolve(null),
+    isOwnPipeline ? getDigestRuns(userId) : Promise.resolve([]),
   ]);
 
   const activeTokens: AgentTokenListItem[] = rawTokens.map((token) => ({
@@ -126,8 +174,8 @@ async function AiDigestFeedSlot({
     revokedAt: null,
   }));
   const archiveWhere = latestDigest
-    ? { userId, itemCount: { gt: 0 }, NOT: { id: latestDigest.id } }
-    : { userId, itemCount: { gt: 0 } };
+    ? { userId: digestOwnerUserId, itemCount: { gt: 0 }, NOT: { id: latestDigest.id } }
+    : { userId: digestOwnerUserId, itemCount: { gt: 0 } };
   const archiveCount = Math.max(0, digestCount - (latestDigest ? 1 : 0));
   const archiveDigests = await prisma.digest.findMany({
     where: archiveWhere,
@@ -143,9 +191,11 @@ async function AiDigestFeedSlot({
       archiveCount={archiveCount}
       archiveDigests={archiveDigests}
       archivePage={archivePage}
+      digestPipelineOptions={digestPipelineOptions}
       digestRuns={digestRuns}
       summaryLanguage={feedPreference?.summaryLanguage ?? null}
       latestDigest={latestDigest}
+      selectedPipeline={selectedPipeline}
     />
   );
 }
@@ -155,30 +205,42 @@ function AiDigestFeed({
   archiveCount,
   archiveDigests,
   archivePage,
+  digestPipelineOptions,
   digestRuns,
   summaryLanguage,
   latestDigest,
+  selectedPipeline,
 }: {
   activeTokens: AgentTokenListItem[];
   archiveCount: number;
   archiveDigests: DigestSummaryRow[];
   archivePage: number;
+  digestPipelineOptions: DigestPipelineOption[];
   digestRuns: DigestRunListItem[];
   summaryLanguage: string | null;
   latestDigest: DigestSummaryRow | null;
+  selectedPipeline: DigestPipelineOption;
 }) {
   const visibleStart = archiveCount === 0 ? 0 : (archivePage - 1) * archivePageSize + 1;
   const visibleEnd = Math.min((archivePage - 1) * archivePageSize + archiveDigests.length, archiveCount);
+  const isOwnPipeline = selectedPipeline.isOwnPipeline;
+  const pipelineQuery = isOwnPipeline ? "" : `&pipeline=${selectedPipeline.id}`;
 
   return (
     <section className="grid gap-5">
-      <div className="mt-4">
-        <SkillPromptActions
-          context="digest"
-          tokens={activeTokens}
-          summaryLanguage={summaryLanguage}
-        />
-      </div>
+      <DigestPipelineSelector
+        options={digestPipelineOptions}
+        selectedPipelineId={selectedPipeline.id}
+      />
+      {isOwnPipeline ? (
+        <div className="mt-4">
+          <SkillPromptActions
+            context="digest"
+            tokens={activeTokens}
+            summaryLanguage={summaryLanguage}
+          />
+        </div>
+      ) : null}
       {latestDigest ? (
         <DigestDetails digest={serializeDigestSummary(latestDigest)} mode="today" />
       ) : (
@@ -190,11 +252,16 @@ function AiDigestFeed({
                 No digest yet
               </h2>
               <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
-                Your agent can sync a brief when there is new followed-source activity.
+                {isOwnPipeline
+                  ? "Your agent can sync a brief when there is new followed-source activity."
+                  : "This imported pipeline has no digests yet."}
               </p>
             </div>
           </div>
         </div>
+      )}
+      {isOwnPipeline ? null : (
+        <p className="sr-only">Imported pipeline view: read-only digest results.</p>
       )}
       <section id="digest-archive" className="mt-8 scroll-mt-24">
         <div className="flex flex-wrap items-center gap-3">
@@ -207,9 +274,8 @@ function AiDigestFeed({
             (The old mobile variant linked to #id anchors that lived only in the
             desktop-only block, so tapping a card on mobile opened nothing.) */}
         <div className="mt-4 grid gap-3">
-          {archiveDigests.map((digest, index) => (
+          {archiveDigests.map((digest) => (
             <DigestDetails
-              defaultOpen={index === 0}
               digest={serializeDigestSummary(digest)}
               key={digest.id}
             />
@@ -227,7 +293,7 @@ function AiDigestFeed({
               className={`fb-btn light compact ${
                 archivePage === 1 ? "pointer-events-none opacity-45" : ""
               }`}
-              href={`/dashboard?tab=ai-digest&archivePage=${Math.max(1, archivePage - 1)}#digest-archive`}
+              href={`/dashboard?tab=ai-digest${pipelineQuery}&archivePage=${Math.max(1, archivePage - 1)}#digest-archive`}
             >
               Newer
             </Link>
@@ -236,16 +302,52 @@ function AiDigestFeed({
               className={`fb-btn light compact ${
                 visibleEnd >= archiveCount ? "pointer-events-none opacity-45" : ""
               }`}
-              href={`/dashboard?tab=ai-digest&archivePage=${archivePage + 1}#digest-archive`}
+              href={`/dashboard?tab=ai-digest${pipelineQuery}&archivePage=${archivePage + 1}#digest-archive`}
             >
               Older
             </Link>
           </nav>
         ) : null}
       </section>
-      <section id="digest-log" className="mt-8 scroll-mt-24">
-        <DigestLogPanel initialRuns={digestRuns} />
-      </section>
+      {isOwnPipeline ? (
+        <section id="digest-log" className="mt-8 scroll-mt-24">
+          <DigestLogPanel initialRuns={digestRuns} />
+        </section>
+      ) : null}
+    </section>
+  );
+}
+
+function DigestPipelineSelector({
+  options,
+  selectedPipelineId,
+}: {
+  options: DigestPipelineOption[];
+  selectedPipelineId: string;
+}) {
+  if (options.length <= 1) return null;
+
+  return (
+    <section aria-label="Digest pipeline" className="mt-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {options.map((pipeline) => {
+          const active = pipeline.id === selectedPipelineId;
+          const href = pipeline.isOwnPipeline
+            ? "/dashboard?tab=ai-digest"
+            : `/dashboard?tab=ai-digest&pipeline=${pipeline.id}`;
+          return (
+            <Link
+              aria-current={active ? "page" : undefined}
+              className={`fb-btn compact ${active ? "dark" : "light"}`}
+              href={href}
+              key={pipeline.id}
+            >
+              <span className="truncate">{pipeline.title}</span>
+              <span className="sr-only">{pipeline.ownerLabel}</span>
+            </Link>
+          );
+        })}
+      </div>
     </section>
   );
 }

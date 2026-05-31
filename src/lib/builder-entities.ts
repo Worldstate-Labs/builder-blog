@@ -1,4 +1,4 @@
-import type { Builder, BuilderKind } from "@prisma/client";
+import type { BuilderKind } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 

@@ -28,6 +28,8 @@ model User {
   builderPoolEntries      BuilderPoolEntry[]
   libraryHubEntries       LibraryHubEntry[]
   libraryImports          LibraryImport[]
+  digestPipelineShares    DigestPipelineShare[]
+  digestPipelineImports   DigestPipelineImport[]
   feedPreference          UserFeedPreference?
   feedReads               FeedRead[]
   digestedItems           DigestedItem[]
@@ -234,6 +236,35 @@ model LibraryImport {
 
   @@id([userId, hubEntryId])
   @@index([hubEntryId])
+}
+
+model DigestPipelineShare {
+  id          String                 @id @default(cuid())
+  ownerUserId String
+  slug        String                 @unique
+  title       String
+  description String?
+  isPublic    Boolean                @default(true)
+  importCount Int                    @default(0)
+  viewCount   Int                    @default(0)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  owner       User                   @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  imports     DigestPipelineImport[]
+
+  @@unique([ownerUserId])
+  @@index([isPublic])
+}
+
+model DigestPipelineImport {
+  userId     String
+  pipelineId String
+  createdAt  DateTime            @default(now())
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pipeline   DigestPipelineShare @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+
+  @@id([userId, pipelineId])
+  @@index([pipelineId])
 }
 
 model Subscription {
