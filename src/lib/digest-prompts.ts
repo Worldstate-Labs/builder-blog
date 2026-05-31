@@ -114,6 +114,30 @@ Then organize content in this order:
 2. Official Blogs section - list each blog post from AI companies or builders
 3. Podcasts section - list each podcast or video episode with new content
 
+## Output structure (Markdown — follow EXACTLY)
+
+The FollowBrief web app parses this exact structure. Putting a title on the
+wrong line makes it render as a tiny gray monospace "source" label instead of a
+title, so follow this precisely:
+
+- \`## <Section name>\` — one heading per section (translated to the target language).
+- \`### <source>\` — the SOURCE identity ONLY: a domain or handle such as
+  \`### claude.com\` or \`### LatentSpacePod\`. NEVER put an article title on a
+  \`###\` line.
+- \`**<Article title>**\` — each post's title, alone on its own line and fully
+  wrapped in \`**\`. This is the ONLY correct place for a title.
+- Then the summary paragraphs for that post.
+- End each post with its source link on its own line, e.g. \`原文：<url>\`
+  (a localized label is fine) or a bare URL.
+
+Example (one post under one source — translate the prose to the target language):
+
+  ## Official Blogs
+  ### claude.com
+  **Claude Managed Agents: get to production 10x faster**
+  <summary paragraphs>
+  原文：https://www.claude.com/...
+
 ## Rules
 
 - Only include sources that have new content.
