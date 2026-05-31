@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRef } from "react";
+import { signOut } from "next-auth/react";
 import type { Session } from "next-auth";
 import { LogOut, Moon, Settings, ShieldCheck, Sun } from "lucide-react";
 import { setTheme, useHydrated, useTheme } from "@/components/ThemeToggle";
@@ -93,15 +94,19 @@ export function UserMenu({
           {themeHydrated && theme === "dark" ? "Light mode" : "Dark mode"}
         </button>
         <div className="user-menu-separator" />
-        <Link
-          className="user-menu-item"
-          href="/api/auth/signout"
-          onClick={closeMenu}
-          prefetch={false}
+        <button
+          className="user-menu-item w-full text-left"
+          onClick={() => {
+            closeMenu();
+            // POST directly via next-auth so we skip NextAuth's GET
+            // confirmation page ("Sign out?") and log out in one click.
+            void signOut({ callbackUrl: "/login" });
+          }}
+          type="button"
         >
           <LogOut className="h-4 w-4" />
           Sign out
-        </Link>
+        </button>
       </div>
     </details>
   );
