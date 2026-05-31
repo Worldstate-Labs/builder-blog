@@ -143,11 +143,9 @@ Example (one post under one source — translate the prose to the target languag
 - Only include sources that have new content.
 - Skip any source with nothing substantive.
 - Under each source, paste the individual summary you generated.
-- Every single piece of content MUST have an original source link.
-- Blog posts: include the direct article URL.
-- Podcasts: include the specific episode or video URL, not a channel page.
-- Tweets: include the direct tweet URL.
-- If you do not have a link for something, do NOT include it in the digest.
+- Use each item's url field as its original source link — every item already
+  has one. Render it on the source-link line per the Output structure above
+  (原文：<url>). Never invent or substitute a different URL.
 - Use the author's full name and role/company when known.
 - Never write X/Twitter handles with @ in the digest.
 - Only include content that came from the supplied FollowBrief context JSON.
