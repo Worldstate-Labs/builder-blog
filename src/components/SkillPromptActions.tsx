@@ -158,6 +158,10 @@ const PROMPT_CONFIG = {
     cronLabel: "Copy cron prompt",
     onceJob: "digest-once",
     cronJob: "digest-cron-setup",
+    // Same as library: stopping only removes the launchd LaunchAgent (macOS) or
+    // crontab entry (Linux) for the digest job — purely local, no token/runtime.
+    stopJob: "digest-cron-stop",
+    stopLabel: "Stop cron",
   },
 } satisfies Record<
   SkillPromptContext,
