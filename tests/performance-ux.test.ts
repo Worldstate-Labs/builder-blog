@@ -184,6 +184,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(contentSyncState, /digestRun\.aggregate/);
   assert.match(contentSyncState, /libraryFetchRun\.aggregate/);
   assert.match(contentSyncState, /libraryCronJob\.findUnique/);
+  assert.match(contentSyncState, /digestCronJob\.findUnique/);
   assert.doesNotMatch(contentSyncState, /feedRead\.aggregate/);
   assert.doesNotMatch(contentSyncState, /recommendationSnapshot\.aggregate/);
   assert.match(contentSyncState, /agentToken\.aggregate/);
@@ -212,6 +213,9 @@ test("skill context caps personal fetched items to keep payloads bounded", () =>
   assert.match(contextRoute, /take:\s*personalFetchedItemLimit/);
   assert.match(contextRoute, /personalFetchedItems/);
   assert.match(contextRoute, /includePrompts/);
+  assert.match(contextRoute, /dryRun/);
+  assert.match(contextRoute, /sourceParam/);
+  assert.match(contextRoute, /if \(!dryRun\)/);
 });
 
 test("dashboard subscription feed owns the paginated digest archive", () => {
@@ -236,6 +240,8 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(dashboardPage, /DigestPipelineVisibilityToggle/);
   assert.match(dashboardPage, /ownPipelineShared/);
   assert.match(dashboardPage, /digestPipelineShare\.findUnique/);
+  assert.match(dashboardPage, /digestCronJob\.findUnique/);
+  assert.match(dashboardPage, /getDigestRuns\(userId, 25, "cron"\)/);
   assert.match(digestPipelineVisibilityToggle, /Share to Hub/);
   assert.match(digestPipelineVisibilityToggle, /fetch\("\/api\/digest-pipelines\/share"/);
   assert.match(digestPipelineVisibilityToggle, /method: nextShared \? "POST" : "DELETE"/);
@@ -244,6 +250,9 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(dashboardPage, /isOwnPipeline \? \(/);
   assert.match(dashboardPage, /isOwnPipeline[\s\S]*<SkillPromptActions/);
   assert.match(dashboardPage, /isOwnPipeline[\s\S]*<DigestLogPanel/);
+  assert.match(dashboardPage, /initialCronJob=\{digestCronJob\}/);
+  assert.match(dashboardPage, /initialCronRuns=\{digestCronRuns\}/);
+  assert.match(dashboardPage, /showStop=\{showStopDigestCron\}/);
   assert.match(dashboardPage, /pipelineQuery/);
   assert.match(dashboardPage, /id="digest-archive"/);
   assert.match(dashboardPage, /Digest archive/);

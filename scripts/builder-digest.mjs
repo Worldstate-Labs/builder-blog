@@ -102,7 +102,7 @@ function usage() {
   validate-agent-sync --tasks fetch-result.json --file personal-builders.json
   sync-builders --file personal-builders.json [--agent-model gpt-5.5]
   sync --file digest.md [--title "AI Builder Digest"] [--regenerate] [--context builder-blog-context.json]
-  cron-status --job library-cron --status active|stopped [--freq 6h] [--schedule "0 */6 * * *"]
+  cron-status --job library-cron|digest-cron --status active|stopped [--freq 6h] [--schedule "0 */6 * * *"]
   status
 
 To set up an account, use the Copy-prompt button in the FollowBrief web app.
@@ -273,6 +273,10 @@ function argValue(args, name, fallback = undefined) {
   return args[index + 1] ?? fallback;
 }
 
+function webSyncDisabled() {
+  return process.env.BUILDER_BLOG_DISABLE_WEB_SYNC?.trim() === "1";
+}
+
 async function postJson(url, body, token) {
   const response = await fetch(url, {
     method: "POST",
@@ -353,9 +357,11 @@ async function prepare(args = []) {
   // context route bypasses the per-user DigestedItem marker gate (re-includes
   // already-digested posts). The publishedAt lookback floor still applies.
   const regenerate = args.includes("--regenerate");
+  const runSource = process.env.BUILDER_BLOG_RUN_SOURCE?.trim() === "cron" ? "cron" : "manual";
   const contextUrl =
     `${config.appUrl}/api/skill/context?includePrompts=1` +
-    (regenerate ? "&regenerate=1" : "");
+    (regenerate ? "&regenerate=1" : "") +
+    (webSyncDisabled() ? "&dryRun=1" : `&source=${encodeURIComponent(runSource)}`);
   const context = await getJson(contextUrl, config.token);
   console.log(JSON.stringify(context, null, 2));
 }
@@ -706,6 +712,7 @@ function buildFetchRunSummary({
 }
 
 async function emitFetchRunRecord(config, record) {
+  if (webSyncDisabled()) return;
   if (!config?.appUrl || !config?.token) return;
   const finishedAt = new Date();
   const body = {
@@ -2729,6 +2736,22 @@ async function sync(args) {
     );
   }
 
+  if (webSyncDisabled()) {
+    console.log(JSON.stringify(
+      {
+        status: "skipped",
+        webSyncDisabled: true,
+        digestChars: content.length,
+        digestedItems: digestedItems.length,
+        runId,
+        message: "Web sync disabled for smoke check; no digest, digested items, or digest log were uploaded.",
+      },
+      null,
+      2,
+    ));
+    return;
+  }
+
   const now = new Date();
   const result = await postJson(
     `${config.appUrl}/api/skill/digests`,
@@ -2761,6 +2784,20 @@ async function syncBuilders(args) {
     "manual JSON sync",
     argValue(args, "--agent-model", DEFAULT_AGENT_MODEL),
   );
+  if (webSyncDisabled()) {
+    console.log(JSON.stringify(
+      {
+        status: "skipped",
+        webSyncDisabled: true,
+        builders: Array.isArray(payload.builders) ? payload.builders.length : 0,
+        taskOutcomes: Array.isArray(payload.taskOutcomes) ? payload.taskOutcomes.length : 0,
+        message: "Web sync disabled for smoke check; no builders, feed items, or fetch log were uploaded.",
+      },
+      null,
+      2,
+    ));
+    return;
+  }
   const result = await postJson(`${config.appUrl}/api/skill/builders`, payload, config.token);
   console.log(JSON.stringify(result, null, 2));
 
@@ -2929,6 +2966,7 @@ async function cronStatus(args) {
   const label = argValue(args, "--label");
   const runtime = argValue(args, "--runtime") || process.env.BUILDER_BLOG_RUNTIME || null;
   const forceValue = argValue(args, "--force", "0");
+  const regenerateValue = argValue(args, "--regenerate", "0");
   const startedAt = argValue(args, "--started-at") || new Date().toISOString();
 
   const result = await postJson(
@@ -2941,6 +2979,7 @@ async function cronStatus(args) {
       schedule,
       runtime,
       overrideFetched: forceValue === "1",
+      regenerateDigest: regenerateValue === "1",
       startedAt,
     },
     config.token,

@@ -137,9 +137,28 @@ ACCT="${BUILDER_BLOG_ACCOUNT}"; ( crontab -l 2>/dev/null | grep -v "# FollowBrie
 crontab -l | grep 'builder-agent-runner.sh library-cron'
 ```
 
-7. Report the active schedule to FollowBrief so the web app can compare
-expected runs with fetch logs. This is a status update only; it does not fetch
-content:
+7. Run one immediate smoke check. This runs in your current session (which has
+keychain access), so it validates the local fetch/task pipeline without writing
+fetch-log rows, builders, or feed items to FollowBrief. Only the recurring job
+started later by launchd/crontab is allowed to sync results to the web app:
+
+```bash
+BUILDER_BLOG_DISABLE_WEB_SYNC=1 \
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+$HOME/.builder-blog/builder-agent-runner.sh library-cron
+```
+
+This delegates the fetch/summarize/sync to the runner (the `library-cron`
+prompt); do not do that work yourself. Just report its output: it succeeds when
+the JSON shows status ok, localErrors empty, and `fetchTasks` either empty or
+all validated. If `sync-builders` runs during the smoke check, it must print
+`webSyncDisabled: true`; that means no web sync occurred. If it errors, report
+the command, exit code, and stderr, and stop.
+
+8. After the smoke check succeeds, report the active schedule to FollowBrief so
+the web app can compare expected runs with fetch logs. This is a status update
+only; it does not fetch content. Do not run this step before the smoke check
+has finished successfully:
 
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
@@ -152,19 +171,6 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-st
   --runtime "{{AGENT_RUNTIME}}" \
   --force "{{FETCH_FORCE}}"
 ```
-
-8. Run one immediate smoke check. This runs in your current session (which has
-keychain access), so it validates the whole fetch → sync pipeline:
-
-```bash
-BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" $HOME/.builder-blog/builder-agent-runner.sh library-cron
-```
-
-This delegates the fetch/summarize/sync to the runner (the `library-cron`
-prompt); do not do that work yourself. Just report its output: it succeeds when
-the JSON shows status ok, localErrors empty, and `fetchTasks` either empty or
-all validated and synced. If it errors, report the command, exit code, and
-stderr, and stop.
 
 Multiple FollowBrief accounts can share one machine: each gets its own
 account-scoped LaunchAgent label (macOS) or cron marker (Linux), so installing

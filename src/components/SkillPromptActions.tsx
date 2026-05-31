@@ -194,9 +194,6 @@ const PROMPT_CONFIG = {
     cronLabel: "Copy cron prompt",
     onceJob: "library-once",
     cronJob: "library-cron-setup",
-    // Stopping is runtime-agnostic — it only removes the launchd LaunchAgent
-    // (macOS) or crontab entry (Linux), neither of which depends on which
-    // agent ran the job — so there's no runtime/cadence/token to pick.
     stopJob: "library-cron-stop",
     stopLabel: "Stop cron",
   },
@@ -205,8 +202,6 @@ const PROMPT_CONFIG = {
     cronLabel: "Copy cron prompt",
     onceJob: "digest-once",
     cronJob: "digest-cron-setup",
-    // Same as library: stopping only removes the launchd LaunchAgent (macOS) or
-    // crontab entry (Linux) for the digest job — purely local, no token/runtime.
     stopJob: "digest-cron-stop",
     stopLabel: "Stop cron",
   },
@@ -389,36 +384,20 @@ export function SkillPromptActions({
     setPickerTarget(target);
   }
 
-  // Library stop flow reports "stopped" back to the server after local removal,
-  // so it needs a token-backed setup prompt. Digest stop is still local-only.
+  // Stop flows report "stopped" back to the server after local removal, so they
+  // need a token-backed prompt just like setup.
   async function copyStopCommand() {
     if (!stopJob) return;
     setStatus(null);
-    if (context === "library") {
-      if (activeTokens.length === 0) {
-        setStatus({ kind: "info", text: "Create a token in Settings first" });
-        return;
-      }
-      if (activeTokens.length === 1) {
-        await copyForToken("stop", activeTokens[0].id, { cron: null, force: false });
-        return;
-      }
-      setPickerTarget("stop");
+    if (activeTokens.length === 0) {
+      setStatus({ kind: "info", text: "Create a token in Settings first" });
       return;
     }
-    const command = `Read ${window.location.origin}/api/skill/jobs/${stopJob}/skill.md and follow the instructions.`;
-    try {
-      await navigator.clipboard.writeText(command);
-      setCopiedTarget("stop");
-      window.setTimeout(() => setCopiedTarget(null), 1800);
-      setStatus({ kind: "info", text: "Copied · paste into your terminal agent" });
-      window.setTimeout(() => setStatus(null), 8000);
-    } catch (error) {
-      setStatus({
-        kind: "error",
-        text: error instanceof Error ? error.message : "Could not copy command",
-      });
+    if (activeTokens.length === 1) {
+      await copyForToken("stop", activeTokens[0].id, { cron: null, force: false });
+      return;
     }
+    setPickerTarget("stop");
   }
 
   return (

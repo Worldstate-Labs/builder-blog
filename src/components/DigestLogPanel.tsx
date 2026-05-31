@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { ExternalLink, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { Activity, Clock3, ExternalLink } from "lucide-react";
 import { useHydrated } from "@/components/ThemeToggle";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
 import type {
+  DigestCronJobStatus,
   DigestRunCandidate,
   DigestRunListItem,
   DigestRunSource,
@@ -56,9 +57,19 @@ function formatDay(iso: string): string {
   }
 }
 
-const VISIBLE_RUN_LIMIT = 5;
+const VISIBLE_RUN_LIMIT = 2;
 const VISIBLE_SOURCE_LIMIT = 4;
 const PREPARED_RUN_MAX_AGE_MS = 30 * 60_000;
+const CRON_SLOT_LIMIT = 12;
+
+type CronSlotStatus = "ok" | "failed" | "missed" | "waiting";
+
+type CronSlot = {
+  expectedAt: string;
+  windowEnd: string;
+  status: CronSlotStatus;
+  run: DigestRunListItem | null;
+};
 
 function isRunInflight(run: DigestRunListItem): boolean {
   const ageMs = Date.now() - Date.parse(run.preparedAt);
@@ -66,16 +77,136 @@ function isRunInflight(run: DigestRunListItem): boolean {
   return run.status !== "synced";
 }
 
+function addScheduleInterval(date: Date, cronJob: DigestCronJobStatus, steps = 1): Date {
+  const next = new Date(date);
+  switch (cronJob.frequencyKey) {
+    case "daily":
+      next.setDate(next.getDate() + steps);
+      return next;
+    case "weekly":
+      next.setDate(next.getDate() + steps * 7);
+      return next;
+    default:
+      return new Date(date.getTime() + cronJob.intervalMinutes * 60_000 * steps);
+  }
+}
+
+function floorToExpectedSchedule(now: Date, cronJob: DigestCronJobStatus): Date {
+  const value = new Date(now);
+  value.setSeconds(0, 0);
+
+  switch (cronJob.frequencyKey) {
+    case "30m":
+      value.setMinutes(value.getMinutes() >= 30 ? 30 : 0);
+      return value;
+    case "1h":
+      value.setMinutes(0);
+      return value;
+    case "3h":
+    case "6h":
+    case "12h": {
+      const hours = cronJob.intervalMinutes / 60;
+      value.setHours(Math.floor(value.getHours() / hours) * hours, 0, 0, 0);
+      return value;
+    }
+    case "daily":
+      value.setHours(8, 0, 0, 0);
+      if (value.getTime() > now.getTime()) value.setDate(value.getDate() - 1);
+      return value;
+    case "weekly": {
+      value.setHours(8, 0, 0, 0);
+      const daysSinceMonday = (value.getDay() + 6) % 7;
+      value.setDate(value.getDate() - daysSinceMonday);
+      if (value.getTime() > now.getTime()) value.setDate(value.getDate() - 7);
+      return value;
+    }
+    default: {
+      const startedAt = Date.parse(cronJob.startedAt);
+      const intervalMs = Math.max(1, cronJob.intervalMinutes) * 60_000;
+      const elapsed = now.getTime() - startedAt;
+      const slotIndex = Number.isFinite(elapsed) && elapsed > 0 ? Math.floor(elapsed / intervalMs) : 0;
+      return new Date(startedAt + slotIndex * intervalMs);
+    }
+  }
+}
+
+function cronGraceMs(cronJob: DigestCronJobStatus): number {
+  const minutes = Math.min(30, Math.max(5, Math.round(cronJob.intervalMinutes * 0.1)));
+  return minutes * 60_000;
+}
+
+function buildCronStatus(
+  cronJob: DigestCronJobStatus | null,
+  runs: DigestRunListItem[],
+  nowMs = Date.now(),
+): { slots: CronSlot[]; nextExpectedAt: string | null } {
+  if (!cronJob || cronJob.status !== "active" || cronJob.intervalMinutes <= 0) {
+    return { slots: [], nextExpectedAt: null };
+  }
+
+  const now = new Date(nowMs);
+  const startedAt = Date.parse(cronJob.startedAt);
+  const graceMs = cronGraceMs(cronJob);
+  const cronRuns = runs
+    .filter((run) => run.source === "cron")
+    .map((run) => ({ run, startedMs: Date.parse(run.preparedAt) }))
+    .filter(({ startedMs }) => Number.isFinite(startedMs))
+    .sort((a, b) => a.startedMs - b.startedMs);
+
+  let cursor = floorToExpectedSchedule(now, cronJob);
+  const nextExpected = addScheduleInterval(cursor, cronJob);
+  const expected: Date[] = [];
+  for (let index = 0; index < CRON_SLOT_LIMIT * 3 && expected.length < CRON_SLOT_LIMIT; index += 1) {
+    if (cursor.getTime() + graceMs >= startedAt) {
+      expected.unshift(new Date(cursor));
+    }
+    cursor = addScheduleInterval(cursor, cronJob, -1);
+  }
+
+  const slots = expected.map((expectedAt) => {
+    const windowEnd = addScheduleInterval(expectedAt, cronJob);
+    const expectedMs = expectedAt.getTime();
+    const endMs = windowEnd.getTime();
+    const match = cronRuns.find(
+      ({ startedMs }) => startedMs >= expectedMs - graceMs && startedMs < endMs,
+    )?.run ?? null;
+    const status: CronSlotStatus = match
+      ? match.status === "synced"
+        ? "ok"
+        : "failed"
+      : nowMs - expectedMs <= graceMs
+        ? "waiting"
+        : "missed";
+    return {
+      expectedAt: expectedAt.toISOString(),
+      windowEnd: windowEnd.toISOString(),
+      status,
+      run: match,
+    };
+  });
+
+  return { slots, nextExpectedAt: nextExpected.toISOString() };
+}
+
 export function DigestLogPanel({
   initialRuns,
+  initialCronRuns,
+  initialCronJob,
+  actions,
 }: {
   initialRuns: DigestRunListItem[];
+  initialCronRuns: DigestRunListItem[];
+  initialCronJob: DigestCronJobStatus | null;
+  actions?: ReactNode;
 }) {
   const [runs, setRuns] = useState(initialRuns);
+  const [cronRuns, setCronRuns] = useState(initialCronRuns);
+  const [cronJob, setCronJob] = useState(initialCronJob);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
-  const [isLoading, setIsLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState<"status" | "log">("status");
+  const cronStatus = useMemo(() => buildCronStatus(cronJob, cronRuns), [cronJob, cronRuns]);
   const runsRef = useRef(runs);
 
   useEffect(() => {
@@ -83,7 +214,6 @@ export function DigestLogPanel({
   }, [runs]);
 
   const refresh = useCallback(() => {
-    setIsLoading(true);
     setError(null);
     startTransition(async () => {
       try {
@@ -91,14 +221,19 @@ export function DigestLogPanel({
           headers: { accept: "application/json" },
         });
         const body = (await response.json().catch(() => null)) as
-          | { runs?: DigestRunListItem[]; error?: string }
+          | {
+              runs?: DigestRunListItem[];
+              cronRuns?: DigestRunListItem[];
+              cronJob?: DigestCronJobStatus | null;
+              error?: string;
+            }
           | null;
         if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`);
         setRuns(Array.isArray(body?.runs) ? body.runs : []);
+        setCronRuns(Array.isArray(body?.cronRuns) ? body.cronRuns : []);
+        setCronJob(body?.cronJob ?? null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Refresh failed");
-      } finally {
-        setIsLoading(false);
       }
     });
   }, []);
@@ -171,57 +306,307 @@ export function DigestLogPanel({
     <section className="fb-panel">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="fb-section-heading">Digest log</h2>
+          <h2 className="fb-section-heading">Digest sync</h2>
           <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-            What each generation actually considered — the eligible pool, the window,
-            and which followed sources it drew from. Use it to see why a digest came
-            out the way it did.
+            Cron health and the latest local CLI digest generations.
           </p>
         </div>
-        <button
-          className="fb-btn light compact"
-          disabled={isLoading}
-          onClick={refresh}
-          type="button"
-        >
-          <RefreshCw aria-hidden="true" />
-          {isLoading ? "Refreshing..." : "Refresh"}
-        </button>
+        {actions ? <div className="min-w-0">{actions}</div> : null}
       </div>
 
       {error ? (
         <p className="mt-3 text-[12px] text-[var(--danger)]">{error}</p>
       ) : null}
 
-      <div className="mt-4 grid gap-2.5">
-        {runs.length === 0 ? (
-          <div className="rounded-[10px] border border-dashed border-[var(--line)] bg-[var(--paper-strong)] px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
-            No digest runs recorded yet. The next time your agent prepares a digest,
-            its candidate funnel will show up here.
-          </div>
-        ) : (
-          <>
-            {(expanded ? runs : runs.slice(0, VISIBLE_RUN_LIMIT)).map((run) => (
-              <RunCard key={run.id} run={run} />
-            ))}
-            {runs.length > VISIBLE_RUN_LIMIT ? (
-              <button
-                aria-expanded={expanded}
-                className="fb-btn light compact justify-center"
-                onClick={() => setExpanded((v) => !v)}
-                type="button"
-              >
-                {expanded ? "See less" : `See more (${runs.length - VISIBLE_RUN_LIMIT})`}
-              </button>
-            ) : null}
-          </>
-        )}
+      <div
+        aria-label="Digest sync views"
+        className="mt-4 inline-flex rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] p-1"
+        role="tablist"
+      >
+        <button
+          aria-selected={activeTab === "status"}
+          className={`fb-btn compact ${activeTab === "status" ? "" : "light"}`}
+          onClick={() => setActiveTab("status")}
+          role="tab"
+          type="button"
+        >
+          <Activity aria-hidden="true" />
+          Digest status
+        </button>
+        <button
+          aria-selected={activeTab === "log"}
+          className={`fb-btn compact ${activeTab === "log" ? "" : "light"}`}
+          onClick={() => setActiveTab("log")}
+          role="tab"
+          type="button"
+        >
+          <Clock3 aria-hidden="true" />
+          Digest log
+        </button>
       </div>
+
+      {activeTab === "status" ? (
+        <DigestStatusPanel
+          cronJob={cronJob}
+          nextExpectedAt={cronStatus.nextExpectedAt}
+          slots={cronStatus.slots}
+        />
+      ) : (
+        <DigestRunList
+          expanded={expanded}
+          runs={runs}
+          setExpanded={setExpanded}
+        />
+      )}
     </section>
   );
 }
 
 type ChipStyle = { background: string; color: string; border: string };
+
+function statusStyle(status: "ok" | "partial" | "failed"): ChipStyle {
+  switch (status) {
+    case "ok":
+      return {
+        background: "var(--signal-soft)",
+        color: "color-mix(in oklch, var(--signal) 72%, var(--ink))",
+        border: "color-mix(in oklch, var(--signal) 28%, var(--line))",
+      };
+    case "failed":
+      return {
+        background: "var(--danger-soft)",
+        color: "var(--danger)",
+        border: "color-mix(in oklch, var(--danger) 30%, var(--line))",
+      };
+    default:
+      return {
+        background: "var(--warm-soft)",
+        color: "color-mix(in oklch, var(--warm) 68%, var(--ink))",
+        border: "color-mix(in oklch, var(--warm) 30%, var(--line))",
+      };
+  }
+}
+
+function DigestStatusPanel({
+  cronJob,
+  nextExpectedAt,
+  slots,
+}: {
+  cronJob: DigestCronJobStatus | null;
+  nextExpectedAt: string | null;
+  slots: CronSlot[];
+}) {
+  const hydrated = useHydrated();
+  if (!cronJob) {
+    return (
+      <div className="mt-4 rounded-[10px] border border-dashed border-[var(--line)] bg-[var(--paper-strong)] px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
+        No digest cron has reported its schedule yet.
+      </div>
+    );
+  }
+
+  if (cronJob.status !== "active") {
+    return (
+      <div className="mt-4 rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="fb-chip">Stopped</span>
+          {cronJob.stoppedAt ? (
+            <time
+              className="text-[12.5px] text-[var(--muted-strong)]"
+              dateTime={cronJob.stoppedAt}
+              title={formatAbsolute(cronJob.stoppedAt)}
+            >
+              stopped {hydrated ? formatRelative(cronJob.stoppedAt) : formatAbsolute(cronJob.stoppedAt)}
+            </time>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  const okCount = slots.filter((slot) => slot.status === "ok").length;
+  const problemCount = slots.filter((slot) => slot.status === "failed" || slot.status === "missed").length;
+  const waitingCount = slots.filter((slot) => slot.status === "waiting").length;
+  const statusTone =
+    problemCount > 0
+      ? statusStyle("failed")
+      : okCount > 0
+        ? statusStyle("ok")
+        : statusStyle("partial");
+
+  return (
+    <div className="mt-4 grid gap-3">
+      <div className="rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className="fb-chip"
+                style={{
+                  background: statusTone.background,
+                  borderColor: statusTone.border,
+                  color: statusTone.color,
+                }}
+              >
+                {problemCount > 0 ? "Needs attention" : okCount > 0 ? "Healthy" : "Waiting"}
+              </span>
+              <span className="fb-chip">{cronJob.frequencyLabel}</span>
+              {cronJob.regenerateDigest ? <span className="fb-chip">regenerate</span> : null}
+            </div>
+            <p className="mt-2 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+              Started {hydrated ? formatRelative(cronJob.startedAt) : formatAbsolute(cronJob.startedAt)}
+              {nextExpectedAt
+                ? ` · next expected ${hydrated ? formatRelative(nextExpectedAt) : formatAbsolute(nextExpectedAt)}`
+                : ""}
+            </p>
+          </div>
+          <div className="mono text-right text-[11.5px] text-[var(--muted-strong)]">
+            <div>{cronJob.schedule}</div>
+            <div>{cronJob.runtime || "agent"}{cronJob.hostname ? ` · ${cronJob.hostname.replace(/\.local$/, "")}` : ""}</div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+          <MetricPill label="Succeeded" value={okCount} />
+          <MetricPill label="Not successful" value={problemCount} />
+          <MetricPill label="Waiting" value={waitingCount} />
+        </div>
+
+        {slots.length > 0 ? (
+          <div className="mt-4">
+            <div className="flex items-end gap-1.5" aria-label="Digest cron job status graph">
+              {slots.map((slot) => (
+                <CronSlotBar key={slot.expectedAt} slot={slot} />
+              ))}
+            </div>
+            <div className="mt-3 grid gap-1.5">
+              {slots.slice(-4).reverse().map((slot) => (
+                <CronSlotRow key={slot.expectedAt} hydrated={hydrated} slot={slot} />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-[8px] border border-dashed border-[var(--line)] px-3 py-3 text-sm text-[var(--muted-strong)]">
+            No expected scheduled run has elapsed since setup. The first status point appears after the next scheduled time.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MetricPill({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-[8px] border border-[var(--line)] bg-[var(--paper)] px-3 py-2">
+      <div className="mono text-[16px] font-bold text-[var(--ink)]">{value}</div>
+      <div className="text-[11.5px] text-[var(--muted-strong)]">{label}</div>
+    </div>
+  );
+}
+
+function cronSlotStyle(status: CronSlotStatus): ChipStyle {
+  if (status === "ok") return statusStyle("ok");
+  if (status === "failed" || status === "missed") return statusStyle("failed");
+  return statusStyle("partial");
+}
+
+function CronSlotBar({ slot }: { slot: CronSlot }) {
+  const style = cronSlotStyle(slot.status);
+  const height =
+    slot.status === "ok" ? "h-12" : slot.status === "waiting" ? "h-8" : "h-10";
+  return (
+    <span
+      aria-label={`${slot.status} at ${formatAbsolute(slot.expectedAt)}`}
+      className={`block min-w-0 flex-1 rounded-sm border ${height}`}
+      role="img"
+      style={{
+        background: style.background,
+        borderColor: style.border,
+        color: style.color,
+      }}
+      title={`${slot.status} · ${formatAbsolute(slot.expectedAt)}`}
+    />
+  );
+}
+
+function CronSlotRow({
+  hydrated,
+  slot,
+}: {
+  hydrated: boolean;
+  slot: CronSlot;
+}) {
+  const style = cronSlotStyle(slot.status);
+  const label =
+    slot.status === "ok"
+      ? "Succeeded"
+      : slot.status === "failed"
+        ? "Failed"
+        : slot.status === "missed"
+          ? "Missed"
+          : "Waiting";
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px]">
+      <div className="flex min-w-0 items-center gap-2">
+        <span
+          className="fb-chip"
+          style={{ background: style.background, borderColor: style.border, color: style.color }}
+        >
+          {label}
+        </span>
+        <time
+          className="text-[var(--ink)]"
+          dateTime={slot.expectedAt}
+          title={formatAbsolute(slot.expectedAt)}
+        >
+          {hydrated ? formatRelative(slot.expectedAt) : formatAbsolute(slot.expectedAt)}
+        </time>
+      </div>
+      <span className="mono truncate text-[11.5px] text-[var(--muted-strong)]">
+        {slot.run
+          ? `${slot.run.includedCount ?? 0}/${slot.run.candidateCount} included`
+          : "no matching cron run"}
+      </span>
+    </div>
+  );
+}
+
+function DigestRunList({
+  expanded,
+  runs,
+  setExpanded,
+}: {
+  expanded: boolean;
+  runs: DigestRunListItem[];
+  setExpanded: (value: (previous: boolean) => boolean) => void;
+}) {
+  return (
+    <div className="mt-4 grid gap-2.5">
+      {runs.length === 0 ? (
+        <div className="rounded-[10px] border border-dashed border-[var(--line)] bg-[var(--paper-strong)] px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
+          No digest runs recorded yet. The next time your agent prepares a digest,
+          its candidate funnel will show up here.
+        </div>
+      ) : (
+        <>
+          {(expanded ? runs : runs.slice(0, VISIBLE_RUN_LIMIT)).map((run) => (
+            <RunCard key={run.id} run={run} />
+          ))}
+          {runs.length > VISIBLE_RUN_LIMIT ? (
+            <button
+              aria-expanded={expanded}
+              className="fb-btn light compact justify-center"
+              onClick={() => setExpanded((value) => !value)}
+              type="button"
+            >
+              {expanded ? "See less" : `See more (${runs.length - VISIBLE_RUN_LIMIT})`}
+            </button>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+}
 
 function statusChip(run: DigestRunListItem): { label: string; style: ChipStyle } {
   if (run.status !== "synced") {

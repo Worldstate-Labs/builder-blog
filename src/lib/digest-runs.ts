@@ -52,6 +52,22 @@ export type DigestRunListItem = {
   candidates: DigestRunCandidate[];
 };
 
+export type DigestCronJobStatus = {
+  id: string;
+  status: string;
+  startedAt: string;
+  stoppedAt: string | null;
+  frequencyKey: string;
+  frequencyLabel: string;
+  schedule: string;
+  intervalMinutes: number;
+  runtime: string | null;
+  regenerateDigest: boolean;
+  hostname: string | null;
+  platform: string | null;
+  updatedAt: string;
+};
+
 const DIGEST_RUN_LIMIT = 25;
 const CANDIDATES_PER_RUN = 120;
 
@@ -82,9 +98,10 @@ function asArray<T>(value: unknown): T[] {
 export async function getDigestRuns(
   userId: string,
   limit = DIGEST_RUN_LIMIT,
+  source?: string,
 ): Promise<DigestRunListItem[]> {
   const runs = await prisma.digestRun.findMany({
-    where: { userId },
+    where: { userId, ...(source ? { source } : {}) },
     orderBy: { preparedAt: "desc" },
     take: limit,
   });
@@ -184,4 +201,39 @@ export async function getDigestRuns(
       candidates: shapedCandidates,
     };
   });
+}
+
+export function serializeDigestCronJob(
+  cronJob: {
+    id: string;
+    status: string;
+    startedAt: Date;
+    stoppedAt: Date | null;
+    frequencyKey: string;
+    frequencyLabel: string;
+    schedule: string;
+    intervalMinutes: number;
+    runtime: string | null;
+    regenerateDigest: boolean;
+    hostname: string | null;
+    platform: string | null;
+    updatedAt: Date;
+  } | null,
+): DigestCronJobStatus | null {
+  if (!cronJob) return null;
+  return {
+    id: cronJob.id,
+    status: cronJob.status,
+    startedAt: cronJob.startedAt.toISOString(),
+    stoppedAt: cronJob.stoppedAt?.toISOString() ?? null,
+    frequencyKey: cronJob.frequencyKey,
+    frequencyLabel: cronJob.frequencyLabel,
+    schedule: cronJob.schedule,
+    intervalMinutes: cronJob.intervalMinutes,
+    runtime: cronJob.runtime,
+    regenerateDigest: cronJob.regenerateDigest,
+    hostname: cronJob.hostname,
+    platform: cronJob.platform,
+    updatedAt: cronJob.updatedAt.toISOString(),
+  };
 }

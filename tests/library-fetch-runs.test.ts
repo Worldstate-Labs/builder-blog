@@ -35,6 +35,7 @@ test("Prisma schema declares LibraryFetchRun with user-indexed ordering", () => 
   // Cascade on user delete keeps logs from outliving the account.
   assert.match(schema, /libraryFetchRuns\s+LibraryFetchRun\[\]/);
   assert.match(schema, /libraryCronJob\s+LibraryCronJob\?/);
+  assert.match(schema, /digestCronJob\s+DigestCronJob\?/);
   assert.match(
     schema,
     /model LibraryFetchRun \{[\s\S]*user\s+User\s+@relation\(fields: \[userId\], references: \[id\], onDelete: Cascade\)/,
@@ -44,6 +45,8 @@ test("Prisma schema declares LibraryFetchRun with user-indexed ordering", () => 
   assert.match(schema, /model LibraryCronJob \{/);
   assert.match(schema, /intervalMinutes\s+Int/);
   assert.match(schema, /@@index\(\[userId, status\]\)/);
+  assert.match(schema, /model DigestCronJob \{/);
+  assert.match(schema, /regenerateDigest\s+Boolean\s+@default\(false\)/);
 });
 
 test("migration creates LibraryFetchRun with the expected columns and index", () => {
@@ -57,6 +60,11 @@ test("migration creates LibraryFetchRun with the expected columns and index", ()
   assert.match(cronMigration, /"intervalMinutes"\s+INTEGER\s+NOT NULL/);
   assert.match(cronMigration, /CREATE UNIQUE INDEX "LibraryCronJob_userId_key"/);
   assert.match(cronMigration, /REFERENCES "User"\("id"\)[\s\S]*ON DELETE CASCADE/);
+  const digestCronMigration = source("prisma/migrations/000042_digest_cron_job/migration.sql");
+  assert.match(digestCronMigration, /CREATE TABLE "DigestCronJob"/);
+  assert.match(digestCronMigration, /"regenerateDigest"\s+BOOLEAN\s+NOT NULL DEFAULT false/);
+  assert.match(digestCronMigration, /CREATE UNIQUE INDEX "DigestCronJob_userId_key"/);
+  assert.match(digestCronMigration, /REFERENCES "User"\("id"\)[\s\S]*ON DELETE CASCADE/);
 });
 
 test("skill fetch-runs route validates payload size and gates auth on user session", () => {
@@ -84,11 +92,14 @@ test("skill fetch-runs route validates payload size and gates auth on user sessi
   assert.match(route, /take: RUN_HISTORY_LIMIT/);
   assert.match(route, /RUN_HISTORY_LIMIT = 25/);
   assert.match(cronRoute, /getUserFromBearer\(request\)/);
-  assert.match(cronRoute, /z\.literal\("library-cron"\)/);
+  assert.match(cronRoute, /z\.enum\(\["library-cron", "digest-cron"\]\)/);
   assert.match(cronRoute, /z\.enum\(\["active", "stopped"\]\)/);
   assert.match(cronRoute, /intervalMinutes/);
   assert.match(cronRoute, /libraryCronJob\.upsert/);
   assert.match(cronRoute, /libraryCronJob\.updateMany/);
+  assert.match(cronRoute, /digestCronJob\.upsert/);
+  assert.match(cronRoute, /digestCronJob\.updateMany/);
+  assert.match(cronRoute, /regenerateDigest/);
 });
 
 test("CLI emits a fetch-run record on both success and failure paths", () => {
@@ -97,6 +108,8 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /const CLI_VERSION = "0\.6\.0";/);
   // The CLI POSTs to the new endpoint with the bearer token.
   assert.match(cli, /\/api\/skill\/fetch-runs/);
+  assert.match(cli, /BUILDER_BLOG_DISABLE_WEB_SYNC/);
+  assert.match(cli, /webSyncDisabled\(\)/);
   assert.match(cli, /cron-status/);
   assert.match(cli, /\/api\/skill\/cron-jobs/);
   // Detects cron vs manual via the env variable exported by the runner.
@@ -147,6 +160,30 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /prefers-reduced-motion/);
   // Absolute timestamp is exposed via title for hover discoverability.
   assert.match(panel, /title=\{formatAbsolute\(run\.startedAt\)\}/);
+});
+
+test("DigestLogPanel renders digest status and digest log tabs from cron data", () => {
+  const panel = source("src/components/DigestLogPanel.tsx");
+  const route = source("src/app/api/digest-runs/route.ts");
+  const digestRuns = source("src/lib/digest-runs.ts");
+
+  assert.match(panel, /Digest sync/);
+  assert.match(panel, /Digest status/);
+  assert.match(panel, /Digest log/);
+  assert.match(panel, /role="tablist"/);
+  assert.match(panel, /Digest cron job status graph/);
+  assert.match(panel, /buildCronStatus/);
+  assert.match(panel, /run\.source === "cron"/);
+  assert.match(panel, /run\.status === "synced"/);
+  assert.match(panel, /VISIBLE_RUN_LIMIT = 2/);
+  assert.doesNotMatch(panel, /RefreshCw/);
+  assert.doesNotMatch(panel, />Refresh</);
+  assert.match(route, /cronRuns/);
+  assert.match(route, /digestCronJob\.findUnique/);
+  assert.match(route, /serializeDigestCronJob/);
+  assert.match(digestRuns, /export type DigestCronJobStatus/);
+  assert.match(digestRuns, /source\?: string/);
+  assert.match(digestRuns, /serializeDigestCronJob/);
 });
 
 test("builders page mounts the fetch log inside the sync header section", () => {

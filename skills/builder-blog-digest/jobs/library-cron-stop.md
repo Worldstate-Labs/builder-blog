@@ -18,7 +18,7 @@ for this machine's OS — run `uname` if unsure.
 ### macOS (`uname` is Darwin)
 
 ```bash
-ACCT="${BUILDER_BLOG_ACCOUNT:-}"
+ACCT="${BUILDER_BLOG_ACCOUNT}"
 if [ -n "$ACCT" ]; then
   printf 'com.followbrief.library.%s\n' "$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
 else
@@ -49,7 +49,7 @@ derives the label exactly as the setup did; otherwise set `LABEL` to the exact
 label printed in step 1.
 
 ```bash
-ACCT="${BUILDER_BLOG_ACCOUNT:-}"
+ACCT="${BUILDER_BLOG_ACCOUNT}"
 [ -n "$ACCT" ] && LABEL="com.followbrief.library.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
 # If BUILDER_BLOG_ACCOUNT is unset, replace the line above with the label from
 # step 1, e.g. LABEL="com.followbrief.library.jie_worldstatelabs_com"
@@ -61,7 +61,7 @@ launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1 && echo "STILL PRESENT: $L
 ### Linux / other → drop the crontab entry
 
 ```bash
-ACCT="${BUILDER_BLOG_ACCOUNT:-}"
+ACCT="${BUILDER_BLOG_ACCOUNT}"
 if [ -n "$ACCT" ]; then
   crontab -l 2>/dev/null | grep -v "# FollowBrief library cron · $ACCT" | grep -v "BUILDER_BLOG_ACCOUNT=\"$ACCT\".*builder-agent-runner.sh library-cron" | crontab -
 else

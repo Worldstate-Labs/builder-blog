@@ -28,6 +28,9 @@ export async function GET(request: Request) {
   // not-yet-digested posts — usually none. It never deletes history; the create
   // route is purely additive.
   const regenerate = url.searchParams.get("regenerate") === "1";
+  const dryRun = url.searchParams.get("dryRun") === "1";
+  const sourceParam = url.searchParams.get("source");
+  const runSource = sourceParam === "cron" || sourceParam === "manual" ? sourceParam : "skill";
   const now = new Date();
 
   const poolBuilderIds = await activePoolBuilderIds(user.id);
@@ -253,32 +256,35 @@ export async function GET(request: Request) {
     name: entityNameById.get(id) ?? "Unknown source",
   }));
   let runId: string | null = null;
-  try {
-    const digestRun = await prisma.digestRun.create({
-      data: {
-        userId: user.id,
-        status: "prepared",
-        source: "skill",
-        preparedAt: now,
-        lookbackCutoff,
-        maxPostAgeDays: digestMaxPostAgeDays(preference),
-        lastDigestAt: lastDigest?.createdAt ?? null,
-        regenerate,
-        subscriptionCount: subscribedEntityIds.length,
-        candidateCount: items.length,
-        candidates: candidateSnapshot,
-        subscriptions: subscriptionSnapshot,
-      },
-      select: { id: true },
-    });
-    runId = digestRun.id;
-  } catch (error) {
-    console.error("Failed to record DigestRun for digest prepare", error);
+  if (!dryRun) {
+    try {
+      const digestRun = await prisma.digestRun.create({
+        data: {
+          userId: user.id,
+          status: "prepared",
+          source: runSource,
+          preparedAt: now,
+          lookbackCutoff,
+          maxPostAgeDays: digestMaxPostAgeDays(preference),
+          lastDigestAt: lastDigest?.createdAt ?? null,
+          regenerate,
+          subscriptionCount: subscribedEntityIds.length,
+          candidateCount: items.length,
+          candidates: candidateSnapshot,
+          subscriptions: subscriptionSnapshot,
+        },
+        select: { id: true },
+      });
+      runId = digestRun.id;
+    } catch (error) {
+      console.error("Failed to record DigestRun for digest prepare", error);
+    }
   }
 
   return NextResponse.json({
     user: { id: user.id, name: user.name, email: user.email },
     runId,
+    dryRun,
     generatedAt: now.toISOString(),
     language: userSummaryLanguage ?? "zh",
     digestWindow: {

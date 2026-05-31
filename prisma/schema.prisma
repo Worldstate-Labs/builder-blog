@@ -38,6 +38,7 @@ model User {
   libraryVisibilities     UserLibraryVisibility[]
   libraryFetchRuns        LibraryFetchRun[]
   libraryCronJob          LibraryCronJob?
+  digestCronJob           DigestCronJob?
   digestRuns              DigestRun[]
   sourceTypeConfigs       UserSourceTypeConfig[]
   digestConfig            UserDigestConfig?
@@ -84,6 +85,27 @@ model LibraryCronJob {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}
+
+model DigestCronJob {
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  status           String    @default("active")
+  startedAt        DateTime
+  stoppedAt        DateTime?
+  frequencyKey     String
+  frequencyLabel   String
+  schedule         String
+  intervalMinutes  Int
+  runtime          String?
+  regenerateDigest Boolean   @default(false)
+  hostname         String?
+  platform         String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
 }

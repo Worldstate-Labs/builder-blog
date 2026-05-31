@@ -9,8 +9,7 @@ steps yourself exactly as written; this prompt is the whole task.
 
 Scope — do not exceed it: remove only the recurring **schedule** (the launchd
 LaunchAgent on macOS, or the crontab entry on Linux). Do not delete any
-already-generated digests, and do not touch the library cron. Do not exchange a
-token or make any network call — this task is entirely local.
+already-generated digests, and do not touch the library cron.
 
 1. Find the existing FollowBrief digest job(s) on this machine. Run the path for
 this machine's OS — run `uname` if unsure.
@@ -18,7 +17,7 @@ this machine's OS — run `uname` if unsure.
 ### macOS (`uname` is Darwin)
 
 ```bash
-ACCT="${BUILDER_BLOG_ACCOUNT:-}"
+ACCT="${BUILDER_BLOG_ACCOUNT}"
 if [ -n "$ACCT" ]; then
   printf 'com.followbrief.digest.%s\n' "$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
 else
@@ -49,7 +48,7 @@ derives the label exactly as the setup did; otherwise set `LABEL` to the exact
 label printed in step 1.
 
 ```bash
-ACCT="${BUILDER_BLOG_ACCOUNT:-}"
+ACCT="${BUILDER_BLOG_ACCOUNT}"
 [ -n "$ACCT" ] && LABEL="com.followbrief.digest.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
 # If BUILDER_BLOG_ACCOUNT is unset, replace the line above with the label from
 # step 1, e.g. LABEL="com.followbrief.digest.jie_worldstatelabs_com"
@@ -61,7 +60,7 @@ launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1 && echo "STILL PRESENT: $L
 ### Linux / other → drop the crontab entry
 
 ```bash
-ACCT="${BUILDER_BLOG_ACCOUNT:-}"
+ACCT="${BUILDER_BLOG_ACCOUNT}"
 if [ -n "$ACCT" ]; then
   crontab -l 2>/dev/null | grep -v "# FollowBrief digest cron · $ACCT" | grep -v "BUILDER_BLOG_ACCOUNT=\"$ACCT\".*builder-agent-runner.sh digest-cron" | crontab -
 else
@@ -78,7 +77,17 @@ rm -f "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-digest-cron" \
       "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/regenerate-digest-cron"
 ```
 
-4. Report the outcome to the user: which label (macOS) or crontab entry (Linux)
+4. Report the stopped status to FollowBrief so the web app can hide Stop cron
+and show the schedule as stopped:
+
+```bash
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-status \
+  --job digest-cron \
+  --status stopped
+```
+
+5. Report the outcome to the user: which label (macOS) or crontab entry (Linux)
 was removed (or that none existed), and that the step-2 verification line printed
 "removed". Tell the user they can resume later by re-running the digest cron
 setup prompt.

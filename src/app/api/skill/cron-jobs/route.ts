@@ -16,13 +16,14 @@ const cronFrequencies: Record<string, { intervalMinutes: number; label: string }
 };
 
 const CronJobSchema = z.object({
-  job: z.literal("library-cron"),
+  job: z.enum(["library-cron", "digest-cron"]),
   status: z.enum(["active", "stopped"]),
   frequencyKey: z.string().optional(),
   frequencyLabel: z.string().max(80).optional(),
   schedule: z.string().max(80).optional(),
   runtime: z.string().max(40).nullable().optional(),
   overrideFetched: z.boolean().optional(),
+  regenerateDigest: z.boolean().optional(),
   startedAt: z.string().datetime().optional(),
 });
 
@@ -46,7 +47,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
 
+  const isDigestCron = parsed.data.job === "digest-cron";
+
   if (parsed.data.status === "stopped") {
+    if (isDigestCron) {
+      const stopped = await prisma.digestCronJob.updateMany({
+        where: { userId: user.id },
+        data: { status: "stopped", stoppedAt: new Date() },
+      });
+      return NextResponse.json({ status: "stopped", updated: stopped.count });
+    }
     const stopped = await prisma.libraryCronJob.updateMany({
       where: { userId: user.id },
       data: { status: "stopped", stoppedAt: new Date() },
@@ -58,12 +68,58 @@ export async function POST(request: Request) {
   const frequency = cronFrequencies[frequencyKey];
   if (!frequency || !parsed.data.schedule) {
     return NextResponse.json(
-      { error: "Active library cron jobs require a supported frequencyKey and schedule" },
+      { error: "Active cron jobs require a supported frequencyKey and schedule" },
       { status: 400 },
     );
   }
 
   const startedAt = parsed.data.startedAt ? new Date(parsed.data.startedAt) : new Date();
+  if (isDigestCron) {
+    const record = await prisma.digestCronJob.upsert({
+      where: { userId: user.id },
+      update: {
+        status: "active",
+        stoppedAt: null,
+        startedAt,
+        frequencyKey,
+        frequencyLabel: parsed.data.frequencyLabel || frequency.label,
+        schedule: parsed.data.schedule,
+        intervalMinutes: frequency.intervalMinutes,
+        runtime: parsed.data.runtime || null,
+        regenerateDigest: Boolean(parsed.data.regenerateDigest),
+        hostname: request.headers.get("x-machine-hostname"),
+        platform: request.headers.get("x-machine-platform"),
+      },
+      create: {
+        userId: user.id,
+        status: "active",
+        startedAt,
+        frequencyKey,
+        frequencyLabel: parsed.data.frequencyLabel || frequency.label,
+        schedule: parsed.data.schedule,
+        intervalMinutes: frequency.intervalMinutes,
+        runtime: parsed.data.runtime || null,
+        regenerateDigest: Boolean(parsed.data.regenerateDigest),
+        hostname: request.headers.get("x-machine-hostname"),
+        platform: request.headers.get("x-machine-platform"),
+      },
+    });
+
+    return NextResponse.json({
+      job: {
+        id: record.id,
+        status: record.status,
+        startedAt: record.startedAt.toISOString(),
+        frequencyKey: record.frequencyKey,
+        frequencyLabel: record.frequencyLabel,
+        schedule: record.schedule,
+        intervalMinutes: record.intervalMinutes,
+        runtime: record.runtime,
+        regenerateDigest: record.regenerateDigest,
+      },
+    });
+  }
+
   const record = await prisma.libraryCronJob.upsert({
     where: { userId: user.id },
     update: {

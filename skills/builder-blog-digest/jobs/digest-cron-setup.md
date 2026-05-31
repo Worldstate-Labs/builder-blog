@@ -134,17 +134,37 @@ crontab -l | grep 'builder-agent-runner.sh digest-cron'
 ```
 
 7. Run one immediate smoke check. This runs in your current session (which has
-keychain access), so it validates the whole digest pipeline:
+keychain access), so it validates the local digest pipeline without writing a
+DigestRun, digest, or digested-item markers to FollowBrief. The recurring
+launchd/crontab job is the only run that should sync web state:
 
 ```bash
-BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" $HOME/.builder-blog/builder-agent-runner.sh digest-cron
+BUILDER_BLOG_DISABLE_WEB_SYNC=1 \
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+$HOME/.builder-blog/builder-agent-runner.sh digest-cron
 ```
 
-Just report its output: it succeeds when the digest is generated and synced
-without errors. If it errors, report the command, exit code, and stderr, and
-stop. If the pinned runtime CLI is not installed, do not claim the digest cron
-is installed successfully — record that the user must install
-{{AGENT_RUNTIME_LABEL}} (or set `BUILDER_BLOG_AGENT_COMMAND`) first.
+Just report its output: it succeeds when the digest is generated locally and
+the final sync step prints `webSyncDisabled: true`. If it errors, report the
+command, exit code, and stderr, and stop. If the pinned runtime CLI is not
+installed, do not claim the digest cron is installed successfully — record that
+the user must install {{AGENT_RUNTIME_LABEL}} (or set
+`BUILDER_BLOG_AGENT_COMMAND`) first.
+
+8. After the smoke check succeeds, report the active scheduled job to
+FollowBrief. Do not run this before the smoke check succeeds.
+
+```bash
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-status \
+  --job digest-cron \
+  --status active \
+  --freq "{{CRON_FREQUENCY_KEY}}" \
+  --label "{{CRON_FREQUENCY_LABEL}}" \
+  --schedule "{{CRON_SCHEDULE}}" \
+  --runtime "{{AGENT_RUNTIME}}" \
+  --regenerate "{{DIGEST_REGENERATE}}"
+```
 
 Multiple FollowBrief accounts can share one machine: each gets its own
 account-scoped LaunchAgent label (macOS) or cron marker (Linux), so installing

@@ -5,7 +5,12 @@ import { Archive, CheckCircle2, Clock3, Sparkles, Terminal, UsersRound } from "l
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
 import { DigestLogPanel } from "@/components/DigestLogPanel";
 import { DigestPipelineVisibilityToggle } from "@/components/DigestPipelineVisibilityToggle";
-import { getDigestRuns, type DigestRunListItem } from "@/lib/digest-runs";
+import {
+  getDigestRuns,
+  serializeDigestCronJob,
+  type DigestCronJobStatus,
+  type DigestRunListItem,
+} from "@/lib/digest-runs";
 import { ForYouRecommendationSection } from "@/components/ForYouRecommendationSection";
 import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
@@ -126,8 +131,16 @@ async function AiDigestFeedSlot({
   const digestOwnerUserId = selectedPipeline.ownerUserId;
   const isOwnPipeline = selectedPipeline.isOwnPipeline;
 
-  const [latestDigest, digestCount, rawTokens, feedPreference, digestRuns, ownPipelineShare] =
-    await Promise.all([
+  const [
+    latestDigest,
+    digestCount,
+    rawTokens,
+    feedPreference,
+    digestRuns,
+    digestCronRuns,
+    digestCronJob,
+    ownPipelineShare,
+  ] = await Promise.all([
       // The hero shows the user's most recent non-empty digest (any age), labeled
       // with its own date. Not a "today" window: a brief stays featured until a
       // newer one replaces it, instead of vanishing at the UTC day boundary.
@@ -161,6 +174,10 @@ async function AiDigestFeedSlot({
           })
         : Promise.resolve(null),
       isOwnPipeline ? getDigestRuns(userId) : Promise.resolve([]),
+      isOwnPipeline ? getDigestRuns(userId, 25, "cron") : Promise.resolve([]),
+      isOwnPipeline
+        ? prisma.digestCronJob.findUnique({ where: { userId } })
+        : Promise.resolve(null),
       isOwnPipeline
         ? prisma.digestPipelineShare.findUnique({
             where: { ownerUserId: userId },
@@ -200,6 +217,8 @@ async function AiDigestFeedSlot({
       archiveDigests={archiveDigests}
       archivePage={archivePage}
       digestPipelineOptions={digestPipelineOptions}
+      digestCronJob={serializeDigestCronJob(digestCronJob)}
+      digestCronRuns={digestCronRuns}
       digestRuns={digestRuns}
       ownPipelineShared={Boolean(ownPipelineShare)}
       summaryLanguage={feedPreference?.summaryLanguage ?? null}
@@ -216,6 +235,8 @@ function AiDigestFeed({
   archiveDigests,
   archivePage,
   digestPipelineOptions,
+  digestCronJob,
+  digestCronRuns,
   digestRuns,
   ownPipelineShared,
   summaryLanguage,
@@ -228,6 +249,8 @@ function AiDigestFeed({
   archiveDigests: DigestSummaryRow[];
   archivePage: number;
   digestPipelineOptions: DigestPipelineOption[];
+  digestCronJob: DigestCronJobStatus | null;
+  digestCronRuns: DigestRunListItem[];
   digestRuns: DigestRunListItem[];
   ownPipelineShared: boolean;
   summaryLanguage: string | null;
@@ -239,6 +262,7 @@ function AiDigestFeed({
   const visibleEnd = Math.min((archivePage - 1) * archivePageSize + archiveDigests.length, archiveCount);
   const isOwnPipeline = selectedPipeline.isOwnPipeline;
   const pipelineQuery = isOwnPipeline ? "" : `&pipeline=${selectedPipeline.id}`;
+  const showStopDigestCron = digestCronJob?.status === "active";
 
   return (
     <section className="grid gap-5">
@@ -252,12 +276,6 @@ function AiDigestFeed({
             <span className="fb-section-label">My Digest</span>
             <DigestPipelineVisibilityToggle initialShared={ownPipelineShared} />
           </div>
-          <SkillPromptActions
-            context="digest"
-            tokens={activeTokens}
-            summaryLanguage={summaryLanguage}
-            digestMaxPostAgeDays={digestMaxPostAgeDays}
-          />
         </div>
       ) : null}
       {latestDigest ? (
@@ -330,7 +348,21 @@ function AiDigestFeed({
       </section>
       {isOwnPipeline ? (
         <section id="digest-log" className="mt-8 scroll-mt-24">
-          <DigestLogPanel initialRuns={digestRuns} />
+          <DigestLogPanel
+            actions={
+              <SkillPromptActions
+                compactOnly
+                context="digest"
+                digestMaxPostAgeDays={digestMaxPostAgeDays}
+                showStop={showStopDigestCron}
+                summaryLanguage={summaryLanguage}
+                tokens={activeTokens}
+              />
+            }
+            initialCronJob={digestCronJob}
+            initialCronRuns={digestCronRuns}
+            initialRuns={digestRuns}
+          />
         </section>
       ) : null}
     </section>

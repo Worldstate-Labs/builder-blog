@@ -290,6 +290,7 @@ test("web app serves the agent skill and setup command", () => {
   const digestOncePrompt = readFileSync("skills/builder-blog-digest/jobs/digest-once.md", "utf8");
   const libraryCronSetupPrompt = readFileSync("skills/builder-blog-digest/jobs/library-cron-setup.md", "utf8");
   const libraryCronStopPrompt = readFileSync("skills/builder-blog-digest/jobs/library-cron-stop.md", "utf8");
+  const digestCronStopPrompt = readFileSync("skills/builder-blog-digest/jobs/digest-cron-stop.md", "utf8");
   const digestCronSetupPrompt = readFileSync("skills/builder-blog-digest/jobs/digest-cron-setup.md", "utf8");
   const libraryCronPrompt = readFileSync("skills/builder-blog-digest/jobs/library-cron.md", "utf8");
   const digestCronPrompt = readFileSync("skills/builder-blog-digest/jobs/digest-cron.md", "utf8");
@@ -302,7 +303,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(buildersPage, /<SkillPromptActions[\s\S]*context="library"/);
   assert.match(buildersPage, /compactOnly/);
   assert.match(buildersPage, /showStop=\{showStopCron\}/);
-  assert.match(dashboardPage, /<SkillPromptActions\s+context="digest"/);
+  assert.match(dashboardPage, /<SkillPromptActions[\s\S]*context="digest"/);
+  assert.match(dashboardPage, /compactOnly/);
+  assert.match(dashboardPage, /showStop=\{showStopDigestCron\}/);
   // Dashboard loads + passes the account-wide summary language to the digest dialog.
   assert.match(dashboardPage, /userFeedPreference\.findUnique/);
   assert.match(dashboardPage, /summaryLanguage=\{feedPreference\?\.summaryLanguage \?\? null\}/);
@@ -400,6 +403,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /read_pin regenerate/);
   assert.match(cli, /--regenerate/);
   assert.match(cli, /&regenerate=1/);
+  assert.match(cli, /&dryRun=1/);
+  assert.match(cli, /source=\$\{encodeURIComponent\(runSource\)\}/);
+  assert.match(cli, /regenerateDigest/);
   assert.match(cli, /cron-status/);
   assert.match(cli, /api\/skill\/cron-jobs/);
   // The digest-writing instructions (incl. the context.language rule) now live
@@ -581,9 +587,21 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestOnceExpanded, /context\.digest\.digestIntro/);
   assert.match(digestOnceExpanded, /context\.digest\.translate/);
   assert.match(libraryCronSetupPrompt, /builder-agent-runner\.sh library-cron/);
+  assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_DISABLE_WEB_SYNC=1/);
+  assert.match(libraryCronSetupPrompt, /webSyncDisabled: true/);
   assert.match(libraryCronStopPrompt, /cron-status/);
   assert.match(libraryCronStopPrompt, /--status stopped/);
+  assert.match(libraryCronStopPrompt, /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"/);
   assert.doesNotMatch(libraryCronStopPrompt, /Do not\s+exchange a token or make any network call/);
+  assert.match(digestCronSetupPrompt, /BUILDER_BLOG_DISABLE_WEB_SYNC=1/);
+  assert.match(digestCronSetupPrompt, /webSyncDisabled: true/);
+  assert.match(digestCronSetupPrompt, /--job digest-cron/);
+  assert.match(digestCronSetupPrompt, /--regenerate "\{\{DIGEST_REGENERATE\}\}"/);
+  assert.match(digestCronStopPrompt, /cron-status/);
+  assert.match(digestCronStopPrompt, /--job digest-cron/);
+  assert.match(digestCronStopPrompt, /--status stopped/);
+  assert.match(digestCronStopPrompt, /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"/);
+  assert.doesNotMatch(digestCronStopPrompt, /Do not\s+exchange a token or make any network call/);
   // Setup now pins the chosen runtime in $AGENT_DIR/runtime so the
   // runner picks the matching unattended-mode invocation at cron-fire
   // time. {{AGENT_RUNTIME}} is substituted server-side from the
@@ -626,10 +644,11 @@ test("web app serves the agent skill and setup command", () => {
     "4. Pin the scheduled runtime",
     "6. Install the schedule",
     "launchctl bootstrap",
-    "7. Report the active schedule to FollowBrief",
-    "cron-status",
-    "8. Run one immediate smoke check",
+    "7. Run one immediate smoke check",
+    "BUILDER_BLOG_DISABLE_WEB_SYNC=1",
     "report its output",
+    "8. After the smoke check succeeds",
+    "cron-status",
   ]);
   // Override-already-fetched toggle: cron-setup pins fetch-force (0/1) next to
   // the runtime, the runner turns 1 into --force, and library-cron threads the
@@ -664,11 +683,17 @@ test("web app serves the agent skill and setup command", () => {
     "6. Install the schedule",
     "launchctl bootstrap",
     "7. Run one immediate smoke check",
+    "BUILDER_BLOG_DISABLE_WEB_SYNC=1",
+    "report its output",
+    "8. After the smoke check succeeds",
+    "cron-status",
   ]);
   assert.doesNotMatch(skillPromptActions, /fetch-personal[^\n`]*--force/);
   assert.match(cli, /realpathSync\(fileURLToPath\(import\.meta\.url\)\)/);
   assert.match(cli, /existsSync\(process\.argv\[1\]\)/);
   assert.match(cli, /validate-agent-sync/);
+  assert.match(cli, /BUILDER_BLOG_DISABLE_WEB_SYNC/);
+  assert.match(cli, /Web sync disabled for smoke check/);
   assert.match(cli, /localErrors/);
   assert.doesNotMatch(cli, /pendingReadyFetchTasks/);
   assert.doesNotMatch(cli, /pendingAgentFetchTasks/);
