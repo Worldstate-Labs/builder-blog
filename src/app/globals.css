@@ -4247,26 +4247,21 @@ svg.lucide {
   }
 }
 
-/* Digest panel — dark glass */
+/* Digest panel — the featured latest-brief card. Theme-following (light paper
+   in light mode, dark surface in dark mode) so it sits inside the editorial page
+   instead of reading as a black slab. */
 .fb-digest {
-  /* Permanently-dark feature card: its title, chips, and body text are all
-     white, so the background must stay dark in BOTH themes. Use the non-
-     inverting --surface-ink tokens (NOT --charcoal/--accent-strong, which flip
-     to a light surface in dark mode and would make this card white-on-white). */
-  background: linear-gradient(
-    145deg,
-    color-mix(in oklch, var(--surface-ink) 96%, black),
-    color-mix(in oklch, var(--surface-ink-accent) 22%, var(--surface-ink))
-  );
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
   border-radius: 12px;
-  box-shadow: 0 22px 58px color-mix(in oklch, black 18%, transparent);
-  color: white;
+  box-shadow: 0 12px 32px var(--shadow);
+  color: var(--ink);
   overflow: hidden;
 }
 
 .fb-digest-head {
   align-items: flex-start;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--line);
   display: flex;
   gap: 0.875rem;
   justify-content: space-between;
@@ -4283,7 +4278,7 @@ svg.lucide {
 
 .fb-digest-sub {
   align-items: center;
-  color: rgba(255, 255, 255, 0.62);
+  color: var(--muted-strong);
   display: flex;
   flex-wrap: wrap;
   font-size: 0.75rem;
@@ -4294,9 +4289,10 @@ svg.lucide {
 
 .fb-digest-chip {
   align-items: center;
-  background: rgba(255, 255, 255, 0.1);
+  background: color-mix(in oklch, var(--ink) 5%, transparent);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  color: rgba(255, 255, 255, 0.86);
+  color: var(--muted-strong);
   display: inline-flex;
   font-size: 0.6875rem;
   font-weight: 700;
@@ -4314,7 +4310,7 @@ svg.lucide {
 }
 
 .fb-digest-item {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--line);
   padding-top: 0.875rem;
 }
 
@@ -4325,7 +4321,7 @@ svg.lucide {
 
 .fb-digest-item h4,
 .fb-digest-item .fb-digest-item-title {
-  color: white;
+  color: var(--ink);
   font-family: var(--font-display);
   font-size: 1.0625rem;
   font-weight: 600;
@@ -4335,7 +4331,7 @@ svg.lucide {
 
 .fb-digest-item p,
 .fb-digest-item .fb-digest-item-body {
-  color: rgba(255, 255, 255, 0.74);
+  color: var(--muted-strong);
   font-size: 0.8125rem;
   line-height: 1.6;
   margin: 0.5rem 0 0;
@@ -4349,9 +4345,9 @@ svg.lucide {
 }
 
 .fb-cite {
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in oklch, var(--ink) 6%, transparent);
   border-radius: 999px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--muted-strong);
   font-size: 0.65625rem;
   font-weight: 700;
   padding: 0.1875rem 0.5rem;
@@ -4359,8 +4355,8 @@ svg.lucide {
 }
 
 .fb-cite:hover {
-  background: rgba(255, 255, 255, 0.16);
-  color: white;
+  background: color-mix(in oklch, var(--ink) 12%, transparent);
+  color: var(--ink);
 }
 
 /* Rich digest content — multimedia renderer (DigestContent). Two tones via

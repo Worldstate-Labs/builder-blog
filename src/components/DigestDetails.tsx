@@ -140,9 +140,7 @@ function DigestBody({
     return (
       <div
         className={
-          isToday
-            ? "text-sm text-[color:color-mix(in_oklch,var(--danger)_72%,white)]"
-            : "item-details text-sm text-[var(--danger)]"
+          isToday ? "text-sm text-[var(--danger)]" : "item-details text-sm text-[var(--danger)]"
         }
         aria-live="polite"
       >
@@ -152,7 +150,7 @@ function DigestBody({
   }
 
   if (isToday) {
-    return <DigestContent content={content ?? ""} tone="dark" />;
+    return <DigestContent content={content ?? ""} tone="paper" />;
   }
   return (
     <div className="item-details">
