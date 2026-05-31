@@ -173,6 +173,7 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.doesNotMatch(historyPage, /AppShell/);
   assert.match(digestDetails, /"use client"/);
   assert.match(digestDetails, /fetch\(`\/api\/digests\/\$\{digestId\}`/);
+  assert.match(digestDetails, /<span className="fb-digest-chip">\{formatDateTime\(digest\.createdAt, hydrated\)\}<\/span>/);
   assert.match(digestDetails, /Loading digest/);
   assert.match(digestDetails, /aria-live="polite"/);
   assert.match(digestRoute, /export async function GET/);

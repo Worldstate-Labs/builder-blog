@@ -67,7 +67,7 @@ export function DigestDetails({
               <span>{digest.itemCount} items</span>
             </div>
           </div>
-          <span className="fb-digest-chip">{formatDate(digest.createdAt, hydrated)}</span>
+          <span className="fb-digest-chip">{formatDateTime(digest.createdAt, hydrated)}</span>
         </div>
         <div className="fb-digest-body">
           <DigestBody content={content} status={status} variant="today" />
@@ -157,16 +157,6 @@ function DigestBody({
       <DigestContent content={content ?? ""} tone="paper" />
     </div>
   );
-}
-
-function formatDate(value: string, hydrated: boolean) {
-  if (hydrated) return new Date(value).toLocaleDateString();
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(value));
 }
 
 function formatDateTime(value: string, hydrated: boolean) {
