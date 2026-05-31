@@ -21,10 +21,12 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const includePrompts = url.searchParams.get("includePrompts") === "1";
-  // Re-generate today's digest: ignore the "since last digest" cutoff so the
-  // full fallback window is re-covered (otherwise a same-day re-run sees only
-  // items created after the last digest — usually none — and produces an empty
-  // digest). The create route separately replaces the existing same-day digest.
+  // `regenerate` re-includes posts the user has already had digested: it nulls
+  // the per-user DigestedItem gate below so already-digested posts become
+  // candidates again. Without it, candidate selection is gated purely by that
+  // marker (not by any "since last digest" time cutoff), so a re-run sees only
+  // not-yet-digested posts — usually none. It never deletes history; the create
+  // route is purely additive.
   const regenerate = url.searchParams.get("regenerate") === "1";
   const now = new Date();
 
@@ -107,7 +109,6 @@ export async function GET(request: Request) {
   }
 
   const digestContext = {
-    digestTopPrompt: digestConfig.digestTopPrompt,
     digestIntro: digestConfig.digestIntro,
     translate: digestConfig.translate,
     order: digestConfig.digestOrder as string[],
@@ -122,7 +123,6 @@ export async function GET(request: Request) {
   // so new sources are invisible to it. Safe to delete once FetchLogPanel reads
   // `context.sources[id].summaryPrompt` and the CLI drops `includePrompts=1`.
   const legacyPrompts = {
-    digest: digestContext.digestTopPrompt,
     summarizeTweets: sourcesContext.x?.summaryPrompt.body ?? "",
     summarizePodcast: sourcesContext.podcast?.summaryPrompt.body ?? "",
     summarizeBlogs: sourcesContext.blog?.summaryPrompt.body ?? "",

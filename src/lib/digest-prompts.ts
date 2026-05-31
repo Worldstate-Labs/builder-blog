@@ -5,8 +5,6 @@
 // — only the seeder (`ensureSourceConfigsSeeded` / `prisma/seed.ts`)
 // should read these strings.
 export const DEFAULT_DIGEST_PROMPTS = {
-  digest:
-    "Create a concise FollowBrief digest in the language given by context.language. Use only the supplied items. Group by source type and followed source. Include source URLs for every claim. Highlight launches, technical insights, funding/business moves, strong opinions, and implementation details. Do not invent missing facts.",
   summarizeTweets: `# X/Twitter Summary Prompt
 
 You are summarizing recent posts from an AI builder for a busy professional who wants

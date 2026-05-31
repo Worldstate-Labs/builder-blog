@@ -12,7 +12,6 @@ import {
 
 export type AdminDigestConfig = {
   id: string;
-  digestTopPrompt: string;
   digestIntro: string;
   translate: string;
   digestOrder: string[];
@@ -33,7 +32,6 @@ export function AdminDigestConfigForm({
   const [config, setConfig] = useState(initialConfig);
   const [draft, setDraft] = useState({
     commonSummaryRules: initialConfig.commonSummaryRules,
-    digestTopPrompt: initialConfig.digestTopPrompt,
     digestIntro: initialConfig.digestIntro,
     translate: initialConfig.translate,
     digestOrder: initialConfig.digestOrder,
@@ -71,7 +69,6 @@ export function AdminDigestConfigForm({
     }
     const patch = {
       commonSummaryRules: draft.commonSummaryRules,
-      digestTopPrompt: draft.digestTopPrompt,
       digestIntro: draft.digestIntro,
       translate: draft.translate,
       digestOrder,
@@ -102,8 +99,8 @@ export function AdminDigestConfigForm({
   return (
     <div className="fb-panel" style={{ padding: "1.25rem 1.125rem 1rem" }}>
       <Section
-        title="Composition"
-        description="Which source types appear in the digest, in what order, and what rules every per-source summary must follow."
+        title="Sections & order"
+        description="Which source types appear in the digest, and in what order."
       >
         <OrderedChoiceField
           label="Source order"
@@ -113,9 +110,15 @@ export function AdminDigestConfigForm({
           onChange={(next) => update("digestOrder", next)}
           addLabel="Add a source…"
         />
+      </Section>
+
+      <Section
+        title="Per-post summary rules"
+        description="Applied when each post is summarized at fetch time — appended to every per-source summary prompt. This shapes the individual summaries, not how the digest is assembled."
+      >
         <FieldShell
           label="Common summarization rules"
-          description="Appended to every per-source summary prompt — use for style guardrails that apply across all sources."
+          description="Style guardrails that apply across all sources (every per-source summary prompt gets these appended)."
         >
           <textarea
             className="fb-textarea w-full"
@@ -131,18 +134,6 @@ export function AdminDigestConfigForm({
         title="Digest prompts"
         description="Prompts that wrap the assembled per-source summaries into the final daily digest."
       >
-        <FieldShell
-          label="Top prompt"
-          description="Sent at the very start of the digest — sets the model's role and overall task."
-        >
-          <textarea
-            className="fb-textarea w-full"
-            rows={5}
-            style={{ resize: "vertical", fontFamily: "var(--font-geist-mono)", fontSize: "0.8125rem" }}
-            value={draft.digestTopPrompt}
-            onChange={(e) => update("digestTopPrompt", e.target.value)}
-          />
-        </FieldShell>
         <FieldShell
           label="Intro prompt"
           description="Generates the digest's opening paragraph from the assembled summaries."

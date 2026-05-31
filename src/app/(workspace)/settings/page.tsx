@@ -115,7 +115,6 @@ async function SourceTypeConfigSection({ userId }: { userId: string }) {
             knownSourceIds={SEEDED_SOURCE_IDS}
             initialConfig={{
               id: digestConfig.userId,
-              digestTopPrompt: digestConfig.digestTopPrompt,
               digestIntro: digestConfig.digestIntro,
               translate: digestConfig.translate,
               digestOrder: digestConfig.digestOrder as string[],

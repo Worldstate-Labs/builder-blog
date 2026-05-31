@@ -1,5 +1,5 @@
 // One-time update: push the corrected DigestConfig text defaults
-// (digestTopPrompt, digestIntro, translate) into the database. The seeder only
+// (digestIntro, translate) into the database. The seeder only
 // inserts on first run and never overwrites existing rows, so this script is how
 // prompt fixes reach data that was already seeded.
 //
@@ -10,34 +10,18 @@
 //
 // Run: set -a && . ./.env.local && set +a && npx tsx scripts/update-digest-config-defaults.mts
 
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../src/lib/prisma";
 import { DEFAULT_DIGEST_PROMPTS } from "../src/lib/digest-prompts";
-
-const prisma = new PrismaClient();
 
 async function main() {
   const def = await prisma.digestConfig.findUnique({
     where: { id: "global" },
-    select: { digestTopPrompt: true, digestIntro: true, translate: true },
+    select: { digestIntro: true, translate: true },
   });
   if (!def) {
     console.error('No default DigestConfig ("global") row found — run the config seed first.');
     process.exit(1);
     return;
-  }
-
-  if (def.digestTopPrompt !== DEFAULT_DIGEST_PROMPTS.digest) {
-    const r = await prisma.userDigestConfig.updateMany({
-      where: { digestTopPrompt: def.digestTopPrompt },
-      data: { digestTopPrompt: DEFAULT_DIGEST_PROMPTS.digest },
-    });
-    await prisma.digestConfig.update({
-      where: { id: "global" },
-      data: { digestTopPrompt: DEFAULT_DIGEST_PROMPTS.digest },
-    });
-    console.log(`digestTopPrompt: default updated, ${r.count} user copies refreshed.`);
-  } else {
-    console.log("digestTopPrompt: already up to date.");
   }
 
   if (def.digestIntro !== DEFAULT_DIGEST_PROMPTS.digestIntro) {

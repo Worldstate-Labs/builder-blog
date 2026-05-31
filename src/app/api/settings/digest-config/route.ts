@@ -14,7 +14,6 @@ import { SEEDED_SOURCE_IDS } from "@/lib/source-config-seed";
 
 const DigestPatchSchema = z
   .object({
-    digestTopPrompt: z.string().min(1).max(20_000).optional(),
     digestIntro: z.string().min(1).max(20_000).optional(),
     translate: z.string().min(1).max(20_000).optional(),
     commonSummaryRules: z.string().min(1).max(20_000).optional(),

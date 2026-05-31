@@ -401,14 +401,16 @@ test("web app serves the agent skill and setup command", () => {
   // The contract's content is asserted below where it's read (digestTaskContract).
   assert.match(digestOncePrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
   assert.match(digestCronPrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
-  // The digest create route replaces today's digest when regenerating, and
-  // records the account-wide language.
+  // The digest create route never deletes history: `regenerate` only re-includes
+  // already-digested posts (handled at prepare/context), so a regenerated digest
+  // is always additive and past digests survive. It also records the
+  // account-wide language.
   const digestCreateRoute = readFileSync(
     "src/app/api/skill/digests/route.ts",
     "utf8",
   );
   assert.match(digestCreateRoute, /regenerate/);
-  assert.match(digestCreateRoute, /deleteMany/);
+  assert.doesNotMatch(digestCreateRoute, /digest\.deleteMany/);
   assert.match(digestCreateRoute, /summaryLanguage/);
   assert.doesNotMatch(skillPromptActions, /\/api\/skill\/bootstrap/);
   assert.doesNotMatch(skillPromptActions, /BUILDER_BLOG_PROMPT_URL/);
@@ -1072,7 +1074,6 @@ test("digest generation user path exposes source-specific prompt instructions", 
   assert.deepEqual(
     Object.keys(DEFAULT_DIGEST_PROMPTS).sort(),
     [
-      "digest",
       "digestIntro",
       "fetchPodcastAudio",
       "summarizeBlogs",
@@ -1089,7 +1090,6 @@ test("digest generation user path exposes source-specific prompt instructions", 
   // not hardcoded Chinese.
   assert.match(DEFAULT_DIGEST_PROMPTS.translate, /target language given by\s+context\.language/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.translate, /simplified Chinese|Mandarin/i);
-  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.digest, /in Chinese/i);
   assert.match(DEFAULT_DIGEST_PROMPTS.fetchPodcastAudio, /Podcast Fetch Prompt/);
 });
 

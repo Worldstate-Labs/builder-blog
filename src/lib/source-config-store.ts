@@ -259,7 +259,6 @@ export async function getUserDigestConfig(userId: string): Promise<UserDigestCon
     update: {},
     create: {
       userId,
-      digestTopPrompt: def.digestTopPrompt,
       digestIntro: def.digestIntro,
       translate: def.translate,
       digestOrder: def.digestOrder as object,
