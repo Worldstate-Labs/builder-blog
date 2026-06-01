@@ -215,7 +215,10 @@ test("skill context caps personal fetched items to keep payloads bounded", () =>
   assert.match(contextRoute, /includePrompts/);
   assert.match(contextRoute, /dryRun/);
   assert.match(contextRoute, /sourceParam/);
-  assert.match(contextRoute, /if \(!dryRun\)/);
+  // A DigestRun is recorded only for a digest prepare, never a library fetch —
+  // gated by intent so library fetches don't pollute the digest history.
+  assert.match(contextRoute, /const isDigest =/);
+  assert.match(contextRoute, /if \(isDigest && !dryRun\)/);
 });
 
 test("dashboard subscription feed owns the paginated digest archive", () => {

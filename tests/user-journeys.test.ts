@@ -1043,8 +1043,11 @@ test("digest feed user path selects not-yet-digested posts within the optional l
 
   // The CLI reads candidates from the prepared context file and sends them.
   const cli = readFileSync("scripts/builder-digest.mjs", "utf8");
-  assert.match(cli, /api\/skill\/context\?includePrompts=1/);
-  assert.match(cli, /api\/skill\/context\?days=/);
+  // Each caller declares its intent so the shared context endpoint does only its
+  // own work: digest prepare records a DigestRun + computes candidates; library
+  // fetch does neither.
+  assert.match(cli, /api\/skill\/context\?intent=digest&includePrompts=1/);
+  assert.match(cli, /api\/skill\/context\?intent=library&days=/);
   assert.match(cli, /digestedItems/);
   assert.match(cli, /builder-blog-context\.json/);
   assert.doesNotMatch(cli, /postSummaryTasksForBuilders\(builders,\s*context\.prompts\)/);

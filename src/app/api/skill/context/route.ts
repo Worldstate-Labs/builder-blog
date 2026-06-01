@@ -31,6 +31,18 @@ export async function GET(request: Request) {
   const dryRun = url.searchParams.get("dryRun") === "1";
   const sourceParam = url.searchParams.get("source");
   const runSource = sourceParam === "cron" || sourceParam === "manual" ? sourceParam : "skill";
+
+  // Two independent callers share this endpoint: the digest `prepare` command
+  // and the library `fetch-personal` command. They declare which via `intent`,
+  // so each only does its own work — a library fetch must never compute digest
+  // candidates or record a DigestRun (that polluted the digest history with
+  // "prepared, never synced" rows), and a digest prepare must never run the
+  // library fetch-state queries. Fallback for pre-`intent` CLIs (replaced on the
+  // next run, since the runner re-downloads the CLI before each run): a `days`
+  // param means a library fetch.
+  const intent = url.searchParams.get("intent");
+  const isDigest = intent ? intent === "digest" : !url.searchParams.has("days");
+  const isLibrary = !isDigest;
   const now = new Date();
 
   const poolBuilderIds = await activePoolBuilderIds(user.id);
@@ -184,30 +196,38 @@ export async function GET(request: Request) {
   // (the override toggle), which re-includes already-digested posts so the user
   // can rebuild today's digest. Capped at 80; the cap self-drains because only
   // the returned rows get marked digested at sync, leaving the rest for later.
-  const items = await fetchDedupedFeedForEntities({
-    userId: user.id,
-    entityIds: subscribedEntityIds,
-    publishedAfter: lookbackCutoff,
-    limit: 80,
-    excludeDigestedForUserId: regenerate ? null : user.id,
-  });
+  // Digest-only: the subscribed-entity candidate pool. Skipped for a library
+  // fetch, which never reads `items`.
+  const items = isDigest
+    ? await fetchDedupedFeedForEntities({
+        userId: user.id,
+        entityIds: subscribedEntityIds,
+        publishedAfter: lookbackCutoff,
+        limit: 80,
+        excludeDigestedForUserId: regenerate ? null : user.id,
+      })
+    : [];
 
-  const personalEntityIds = await projectBuildersToEntities(personalBuilderIds);
-  const personalFetchedItems = await prisma.feedItem.findMany({
-    where: {
-      builderId: { in: personalBuilderIds },
-    },
-    select: {
-      builderId: true,
-      kind: true,
-      externalId: true,
-      publishedAt: true,
-      createdAt: true,
-      builder: { select: { entityId: true } },
-    },
-    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-    take: personalFetchedItemLimit,
-  });
+  // Library-only: the user's own fetched-item state (for dedup + recency).
+  // Skipped for a digest prepare, which never reads these.
+  const personalEntityIds = isLibrary ? await projectBuildersToEntities(personalBuilderIds) : [];
+  const personalFetchedItems = isLibrary
+    ? await prisma.feedItem.findMany({
+        where: {
+          builderId: { in: personalBuilderIds },
+        },
+        select: {
+          builderId: true,
+          kind: true,
+          externalId: true,
+          publishedAt: true,
+          createdAt: true,
+          builder: { select: { entityId: true } },
+        },
+        orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+        take: personalFetchedItemLimit,
+      })
+    : [];
 
   // Dedupe latestPersonalFetchedItems by entity rather than by builder, so we don't
   // double-report the same canonical creator just because the user has two channels for them.
@@ -256,7 +276,7 @@ export async function GET(request: Request) {
     name: entityNameById.get(id) ?? "Unknown source",
   }));
   let runId: string | null = null;
-  if (!dryRun) {
+  if (isDigest && !dryRun) {
     try {
       const digestRun = await prisma.digestRun.create({
         data: {

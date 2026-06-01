@@ -359,7 +359,7 @@ async function prepare(args = []) {
   const regenerate = args.includes("--regenerate");
   const runSource = process.env.BUILDER_BLOG_RUN_SOURCE?.trim() === "cron" ? "cron" : "manual";
   const contextUrl =
-    `${config.appUrl}/api/skill/context?includePrompts=1` +
+    `${config.appUrl}/api/skill/context?intent=digest&includePrompts=1` +
     (regenerate ? "&regenerate=1" : "") +
     (webSyncDisabled() ? "&dryRun=1" : `&source=${encodeURIComponent(runSource)}`);
   const context = await getJson(contextUrl, config.token);
@@ -399,7 +399,7 @@ async function fetchPersonal(args) {
 
   try {
     const context = await getJson(
-      `${config.appUrl}/api/skill/context?days=${encodeURIComponent(String(days))}`,
+      `${config.appUrl}/api/skill/context?intent=library&days=${encodeURIComponent(String(days))}`,
       config.token,
     );
     const sources = context.sources ?? {};

@@ -157,7 +157,11 @@ function buildCronStatus(
   const nextExpected = addScheduleInterval(cursor, cronJob);
   const expected: Date[] = [];
   for (let index = 0; index < CRON_SLOT_LIMIT * 3 && expected.length < CRON_SLOT_LIMIT; index += 1) {
-    if (cursor.getTime() + graceMs >= startedAt) {
+    // Only expect slots at or after activation. A slot that fell before the job
+    // was set up could never have run, so it must not count as "missed" (this
+    // produced a false "Needs attention" on the activation-boundary slot). The
+    // grace window applies to matching a run to a slot, not to inventing slots.
+    if (cursor.getTime() >= startedAt) {
       expected.unshift(new Date(cursor));
     }
     cursor = addScheduleInterval(cursor, cronJob, -1);
@@ -426,7 +430,9 @@ function DigestStatusPanel({
   }
 
   const okCount = slots.filter((slot) => slot.status === "ok").length;
-  const problemCount = slots.filter((slot) => slot.status === "failed" || slot.status === "missed").length;
+  const missedCount = slots.filter((slot) => slot.status === "missed").length;
+  const failedCount = slots.filter((slot) => slot.status === "failed").length;
+  const problemCount = missedCount + failedCount;
   const waitingCount = slots.filter((slot) => slot.status === "waiting").length;
   const statusTone =
     problemCount > 0
@@ -460,6 +466,17 @@ function DigestStatusPanel({
                 ? ` · next expected ${hydrated ? formatRelative(nextExpectedAt) : formatAbsolute(nextExpectedAt)}`
                 : ""}
             </p>
+            {problemCount > 0 ? (
+              <p className="mt-1.5 text-[12.5px] leading-relaxed" style={{ color: statusTone.color }}>
+                {problemCount} scheduled {problemCount === 1 ? "run" : "runs"} produced no saved digest
+                {missedCount > 0 && failedCount > 0
+                  ? ` — ${missedCount} never ran at the expected time, ${failedCount} ran but didn't sync a digest.`
+                  : missedCount > 0
+                    ? " — no run was recorded at the expected time (agent offline, machine asleep, or runtime not authenticated)."
+                    : " — a run prepared candidates but never synced a digest."}{" "}
+                Each one is listed in the timeline below.
+              </p>
+            ) : null}
           </div>
           <div className="text-right text-[11.5px] text-[var(--muted-strong)]">
             <div>{cronJob.runtime || "Local helper"}</div>
