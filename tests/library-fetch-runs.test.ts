@@ -134,9 +134,12 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /export[^\n]*BUILDER_BLOG_RUN_SOURCE/);
   assert.match(runner, /acquire_cron_lock/);
   assert.match(runner, /mkdir "\$LOCK_DIR"/);
+  assert.match(runner, /ACCOUNT_SLUG/);
+  assert.match(runner, /\$LOCK_ROOT\/\$ACCOUNT_SLUG\/\$JOB_NAME\.lock/);
+  assert.match(runner, /BUILDER_BLOG_JOB_TMP_DIR/);
   assert.match(runner, /kill -0 "\$LOCK_PID"/);
   assert.match(runner, /skipping duplicate cron launch/);
-  assert.match(runner, /Removing stale FollowBrief \$JOB_NAME lock/);
+  assert.match(runner, /Removing stale FollowBrief \$JOB_NAME lock for \$ACCOUNT_SLUG/);
   assert.match(runner, /\*\-cron\)/);
 });
 

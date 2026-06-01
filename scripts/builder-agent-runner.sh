@@ -5,6 +5,8 @@ JOB_NAME="${1:-}"
 APP_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}"
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 PROMPT_FILE="$AGENT_DIR/jobs/$JOB_NAME.md"
+ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
+JOB_TMP_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/$JOB_NAME"
 
 PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 # Tag every fetch the CLI emits as "cron" while we're inside the cron
@@ -12,13 +14,14 @@ PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 # manual terminal invocations.
 BUILDER_BLOG_RUN_SOURCE=cron
 export PATH BUILDER_BLOG_URL="$APP_URL" BUILDER_BLOG_AGENT_DIR="$AGENT_DIR" BUILDER_BLOG_RUN_SOURCE
+export BUILDER_BLOG_ACCOUNT_SLUG="$ACCOUNT_SLUG" BUILDER_BLOG_JOB_TMP_DIR="$JOB_TMP_DIR"
 
 if [ -z "$JOB_NAME" ]; then
   echo "Usage: builder-agent-runner.sh <library-once|digest-once|library-cron-setup|digest-cron-setup|library-cron|digest-cron>" >&2
   exit 64
 fi
 
-mkdir -p "$AGENT_DIR/logs" "$AGENT_DIR/tmp"
+mkdir -p "$AGENT_DIR/logs" "$AGENT_DIR/tmp" "$JOB_TMP_DIR"
 
 # Self-update: pull the latest runner and, if it changed, atomically swap it
 # in and re-exec, so scheduled jobs pick up runner fixes from the server
@@ -33,7 +36,7 @@ self_update_and_reexec() {
   if [ -n "${BUILDER_BLOG_RUNNER_UPDATED:-}" ]; then return 0; fi
   command -v curl >/dev/null 2>&1 || return 0
   _self="$AGENT_DIR/builder-agent-runner.sh"
-  _next="$AGENT_DIR/.builder-agent-runner.next"
+  _next="$AGENT_DIR/.builder-agent-runner.$ACCOUNT_SLUG.$JOB_NAME.next"
   if curl -fsSL "$APP_URL/api/skill/files/builder-agent-runner.sh" -o "$_next" 2>/dev/null && [ -s "$_next" ]; then
     if ! cmp -s "$_next" "$_self" 2>/dev/null; then
       chmod +x "$_next" 2>/dev/null || true
@@ -55,9 +58,9 @@ acquire_cron_lock() {
   esac
 
   LOCK_ROOT="$AGENT_DIR/tmp/locks"
-  LOCK_DIR="$LOCK_ROOT/$JOB_NAME.lock"
+  LOCK_DIR="$LOCK_ROOT/$ACCOUNT_SLUG/$JOB_NAME.lock"
   LOCK_PID_FILE="$LOCK_DIR/pid"
-  mkdir -p "$LOCK_ROOT"
+  mkdir -p "$LOCK_ROOT/$ACCOUNT_SLUG"
 
   if mkdir "$LOCK_DIR" 2>/dev/null; then
     printf '%s\n' "$$" > "$LOCK_PID_FILE"
@@ -71,11 +74,11 @@ acquire_cron_lock() {
   fi
 
   if [ -n "$LOCK_PID" ] && kill -0 "$LOCK_PID" 2>/dev/null; then
-    echo "FollowBrief $JOB_NAME is already running (pid $LOCK_PID); skipping duplicate cron launch." >&2
+    echo "FollowBrief $JOB_NAME for $ACCOUNT_SLUG is already running (pid $LOCK_PID); skipping duplicate cron launch." >&2
     exit 0
   fi
 
-  echo "Removing stale FollowBrief $JOB_NAME lock." >&2
+  echo "Removing stale FollowBrief $JOB_NAME lock for $ACCOUNT_SLUG." >&2
   rm -rf "$LOCK_DIR"
   if mkdir "$LOCK_DIR" 2>/dev/null; then
     printf '%s\n' "$$" > "$LOCK_PID_FILE"
@@ -83,7 +86,7 @@ acquire_cron_lock() {
     return 0
   fi
 
-  echo "FollowBrief $JOB_NAME lock was acquired by another process; skipping duplicate cron launch." >&2
+  echo "FollowBrief $JOB_NAME lock for $ACCOUNT_SLUG was acquired by another process; skipping duplicate cron launch." >&2
   exit 0
 }
 acquire_cron_lock
@@ -188,7 +191,7 @@ run_shell_library_fallback() {
   echo "No local agent runtime found; running non-AI library fetch fallback." >&2
   echo "Sources requiring AI, cookies, transcription, summaries, or custom tools will need BUILDER_BLOG_AGENT_COMMAND, codex, claude, openclaw, or gemini." >&2
   refresh_skill_files
-  RESULT_FILE="$AGENT_DIR/tmp/library-fallback-fetch-result.json"
+  RESULT_FILE="$JOB_TMP_DIR/library-fallback-fetch-result.json"
   node "$AGENT_DIR/builder-digest.mjs" fetch-personal --days 30 --limit 3 > "$RESULT_FILE"
   cat "$RESULT_FILE"
   node - "$RESULT_FILE" <<'NODE'
@@ -205,14 +208,16 @@ if (fetchTasks > 0) {
 NODE
 }
 
-# Cron-setup pins config in per-job files so two job types (e.g. library-cron
-# + digest-cron) can use different runtimes/fetch modes on one machine. Read
-# the job-scoped file first ($AGENT_DIR/<base>-<job>), then fall back to the
-# legacy global $AGENT_DIR/<base> so crons installed before the per-job split
-# keep working after the runner self-updates.
+# Cron-setup pins config in per-account, per-job files so two FollowBrief
+# accounts and two job types can use different runtimes/fetch modes on one
+# machine. Read the account-scoped file first, then fall back to the legacy
+# per-job/global files so crons installed before the split keep working after
+# the runner self-updates.
 read_pin() {
   # $1 = base name (runtime | fetch-force | regenerate)
-  if [ -r "$AGENT_DIR/$1-$JOB_NAME" ]; then
+  if [ -r "$AGENT_DIR/$1-$JOB_NAME-$ACCOUNT_SLUG" ]; then
+    tr -d ' \t\r\n' < "$AGENT_DIR/$1-$JOB_NAME-$ACCOUNT_SLUG"
+  elif [ -r "$AGENT_DIR/$1-$JOB_NAME" ]; then
     tr -d ' \t\r\n' < "$AGENT_DIR/$1-$JOB_NAME"
   elif [ -r "$AGENT_DIR/$1" ]; then
     tr -d ' \t\r\n' < "$AGENT_DIR/$1"

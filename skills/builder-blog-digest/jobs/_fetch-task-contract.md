@@ -97,7 +97,7 @@ Per-task independence and accountability (CRITICAL):
 Write the sync payload to:
 
 ```text
-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-agent-sync.json
+${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}/library-agent-sync.json
 ```
 
 The payload is `{ builders: [{ …builderSync, items: [synced items] }],
@@ -106,13 +106,15 @@ taskOutcomes: [non-synced task outcomes] }`.
 Then validate before sync, and sync, running these commands exactly:
 
 ```bash
+TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" validate-agent-sync \
-  --tasks "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-fetch-result.json" \
-  --file "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-agent-sync.json"
+  --tasks "$TMP_DIR/library-fetch-result.json" \
+  --file "$TMP_DIR/library-agent-sync.json"
+TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" sync-builders \
-  --file "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-agent-sync.json"
+  --file "$TMP_DIR/library-agent-sync.json"
 ```
 
 A fetchTask is complete ONLY when its item is synced with real crawled content

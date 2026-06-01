@@ -33,42 +33,49 @@ below uses this pinned runtime; do not fall back to a different one.
 mkdir -p "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/logs"
 ```
 
-3. Before changing anything, check whether a library fetch cron already exists
-on this machine. Run the check for this machine's OS — run `uname` if unsure.
+3. Before changing anything, check whether this account's library fetch cron
+already exists on this machine. Run the check for this machine's OS — run
+`uname` if unsure.
 
 ### macOS (`uname` is Darwin)
 
 ```bash
-launchctl list 2>/dev/null | awk '{ print $3 }' | grep -E '^com\.followbrief\.library\.' || echo "(none found)"
+ACCT="${BUILDER_BLOG_ACCOUNT}"
+LABEL="com.followbrief.library.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+launchctl list 2>/dev/null | awk '{ print $3 }' | grep -x "$LABEL" || echo "(none found)"
 ```
 
 ### Linux / other
 
 ```bash
-crontab -l 2>/dev/null | grep -E 'builder-agent-runner\.sh library-cron' || echo "(none found)"
+ACCT="${BUILDER_BLOG_ACCOUNT}"
+crontab -l 2>/dev/null | grep "BUILDER_BLOG_ACCOUNT=\"$ACCT\".*builder-agent-runner.sh library-cron" || echo "(none found)"
 ```
 
 If the result is "(none found)", continue to the next step. If it lists one or
-more existing library fetch jobs, STOP: report exactly what was found, explain
+more existing library fetch jobs for this account, STOP: report exactly what was found, explain
 that continuing replaces this account's library fetch schedule and its pinned
 runtime/fetch settings (jobs for other accounts are left untouched), and ask
 the user whether to override. Only continue past this step after the user
 explicitly confirms. If they decline, stop and change nothing.
 
-4. Pin the scheduled runtime and fetch mode for this job. These pin files are
-per-job (suffixed with the cron job name), so a library cron and a digest cron
-can use different runtimes on the same machine, and re-running this setup
-replaces only the library job's pins. The runner reads them at cron-fire time.
-`runtime-library-cron` makes the runner use the picked agent's unattended mode
-instead of discovering whatever's first on PATH (skip it and the cron job
-falls back to the discovery chain, which prompts for permissions every run).
-`fetch-force-library-cron` is `1` when the schedule was configured to override
-already-fetched posts and `0` otherwise; the runner turns `1` into the
-`--force` flag so the recurring fetch re-pulls posts already in the library.
+4. Pin the scheduled runtime and fetch mode for this account's job. These pin
+files are per-account and per-job (suffixed with the cron job name and account
+slug), so multiple FollowBrief accounts and job types can use different
+runtimes on the same machine. The runner reads them at cron-fire time.
+`runtime-library-cron-$ACCOUNT_SLUG` makes the runner use the picked agent's
+unattended mode instead of discovering whatever's first on PATH (skip it and the
+cron job falls back to the discovery chain, which prompts for permissions every
+run). `fetch-force-library-cron-$ACCOUNT_SLUG` is `1` when the schedule was
+configured to override already-fetched posts and `0` otherwise; the runner
+turns `1` into the `--force` flag so the recurring fetch re-pulls posts already
+in the library.
 
 ```bash
-printf '{{AGENT_RUNTIME}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-library-cron"
-printf '{{FETCH_FORCE}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-force-library-cron"
+ACCT="${BUILDER_BLOG_ACCOUNT}"
+ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+printf '{{AGENT_RUNTIME}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-library-cron-$ACCOUNT_SLUG"
+printf '{{FETCH_FORCE}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-force-library-cron-$ACCOUNT_SLUG"
 ```
 
 5. Verify the runtime CLI is on PATH for the scheduler. Schedulers (launchd and
@@ -115,8 +122,8 @@ cat > "$PLIST" <<PLISTEOF
 <key>EnvironmentVariables</key>
 <dict><key>BUILDER_BLOG_ACCOUNT</key><string>$ACCT</string></dict>
 {{LAUNCHD_SCHEDULE}}
-<key>StandardOutPath</key><string>$HOME/.builder-blog/logs/library-cron.log</string>
-<key>StandardErrorPath</key><string>$HOME/.builder-blog/logs/library-cron.log</string>
+<key>StandardOutPath</key><string>$HOME/.builder-blog/logs/$LABEL.log</string>
+<key>StandardErrorPath</key><string>$HOME/.builder-blog/logs/$LABEL.log</string>
 </dict>
 </plist>
 PLISTEOF
@@ -133,7 +140,7 @@ previous FollowBrief library job for this account, then installs one idempotent
 job:
 
 ```bash
-ACCT="${BUILDER_BLOG_ACCOUNT}"; ( crontab -l 2>/dev/null | grep -v "# FollowBrief library cron · $ACCT" | grep -v "BUILDER_BLOG_ACCOUNT=\"$ACCT\".*builder-agent-runner.sh library-cron" ; printf "# FollowBrief library cron · %s\n{{CRON_SCHEDULE}} BUILDER_BLOG_ACCOUNT=\"%s\" %s/.builder-blog/builder-agent-runner.sh library-cron >> %s/.builder-blog/logs/library-cron.log 2>&1\n" "$ACCT" "$ACCT" "$HOME" "$HOME" ) | crontab -
+ACCT="${BUILDER_BLOG_ACCOUNT}"; LABEL="com.followbrief.library.$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"; ( crontab -l 2>/dev/null | grep -v "# FollowBrief library cron · $ACCT" | grep -v "BUILDER_BLOG_ACCOUNT=\"$ACCT\".*builder-agent-runner.sh library-cron" ; printf "# FollowBrief library cron · %s\n{{CRON_SCHEDULE}} BUILDER_BLOG_ACCOUNT=\"%s\" %s/.builder-blog/builder-agent-runner.sh library-cron >> %s/.builder-blog/logs/%s.log 2>&1\n" "$ACCT" "$ACCT" "$HOME" "$HOME" "$LABEL" ) | crontab -
 crontab -l | grep 'builder-agent-runner.sh library-cron'
 ```
 

@@ -70,12 +70,14 @@ fi
 crontab -l 2>/dev/null | grep -E 'builder-agent-runner\.sh library-cron' && echo "STILL PRESENT" || echo "removed"
 ```
 
-3. Remove the per-job pin files so a future re-install starts clean (safe if
-they are absent):
+3. Remove this account's per-job pin files so a future re-install starts clean
+(safe if they are absent):
 
 ```bash
-rm -f "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-library-cron" \
-      "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-force-library-cron"
+ACCT="${BUILDER_BLOG_ACCOUNT}"
+ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+rm -f "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-library-cron-$ACCOUNT_SLUG" \
+      "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-force-library-cron-$ACCOUNT_SLUG"
 ```
 
 4. Report the stopped status to FollowBrief so the web app stops expecting

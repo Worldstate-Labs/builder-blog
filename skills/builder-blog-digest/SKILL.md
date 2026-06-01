@@ -36,8 +36,8 @@ saved to `~/.builder-blog/accounts/<email>.json`. This is the only setup step
 required — no manual token copying, no `/login` command.
 
 The CLI resolves the token for each run:
-1. `BUILDER_BLOG_TOKEN` environment variable — direct token override (for adhoc/debug)
-2. `BUILDER_BLOG_ACCOUNT` environment variable — reads `~/.builder-blog/accounts/<email>.json`
+1. `BUILDER_BLOG_ACCOUNT` environment variable — reads `~/.builder-blog/accounts/<email>.json`
+2. `BUILDER_BLOG_TOKEN` environment variable — direct token override (for adhoc/debug only)
 3. Error: "No agent token. Use the Copy-prompt button in the FollowBrief web app."
 
 Never print the token to shared logs.
@@ -110,8 +110,8 @@ installed correctly.
 Example schedules:
 
 ```cron
-0 */6 * * * BUILDER_BLOG_ACCOUNT="jie@worldstatelabs.com" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/library-cron.log 2>&1
-0 8 * * * BUILDER_BLOG_ACCOUNT="jie@worldstatelabs.com" $HOME/.builder-blog/builder-agent-runner.sh digest-cron >> $HOME/.builder-blog/logs/digest-cron.log 2>&1
+0 */6 * * * BUILDER_BLOG_ACCOUNT="jie@worldstatelabs.com" $HOME/.builder-blog/builder-agent-runner.sh library-cron >> $HOME/.builder-blog/logs/com.followbrief.library.jie_worldstatelabs_com.log 2>&1
+0 8 * * * BUILDER_BLOG_ACCOUNT="jie@worldstatelabs.com" $HOME/.builder-blog/builder-agent-runner.sh digest-cron >> $HOME/.builder-blog/logs/com.followbrief.digest.jie_worldstatelabs_com.log 2>&1
 ```
 
 ### Sync Personal Sources

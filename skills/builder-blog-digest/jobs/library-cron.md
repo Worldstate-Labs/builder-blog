@@ -21,15 +21,18 @@ step here.
 1. Fetch normal personal source items and save the full result:
 
 ```bash
+TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}"
+mkdir -p "$TMP_DIR"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" fetch-personal --days 30 --limit 3 ${BUILDER_BLOG_FETCH_FORCE:-} \
-  > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-fetch-result.json"
+  > "$TMP_DIR/library-fetch-result.json"
 ```
 
 2. Print the fetch result:
 
 ```bash
-cat "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/library-fetch-result.json"
+TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}"
+cat "$TMP_DIR/library-fetch-result.json"
 ```
 
 3. Complete and sync the fetch tasks exactly as specified below.

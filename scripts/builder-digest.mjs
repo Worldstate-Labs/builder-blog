@@ -240,8 +240,8 @@ async function loadAccountFile(email) {
 /**
  * Resolve token and appUrl.
  * Priority:
- *   1. BUILDER_BLOG_TOKEN env — direct token override
- *   2. BUILDER_BLOG_ACCOUNT env — read accounts/<email>.json
+ *   1. BUILDER_BLOG_ACCOUNT env — read accounts/<email>.json
+ *   2. BUILDER_BLOG_TOKEN env — direct token override for adhoc/debug runs
  *   3. Error
  */
 async function readConfig() {
@@ -249,18 +249,18 @@ async function readConfig() {
   const envUrl = process.env.BUILDER_BLOG_URL?.trim().replace(/\/$/, "");
   const envAccount = process.env.BUILDER_BLOG_ACCOUNT?.trim();
 
-  if (envToken) {
-    return {
-      token: envToken,
-      appUrl: envUrl ?? DEFAULT_APP_URL,
-    };
-  }
-
   if (envAccount) {
     const account = await loadAccountFile(envAccount);
     return {
       token: account.token,
       appUrl: envUrl ?? account.appUrl,
+    };
+  }
+
+  if (envToken) {
+    return {
+      token: envToken,
+      appUrl: envUrl ?? DEFAULT_APP_URL,
     };
   }
 
@@ -2706,13 +2706,15 @@ async function sync(args) {
   // context file (the same JSON `prepare` wrote and the agent read) so the
   // server can mark exactly that set as digested for this user. Degrade
   // gracefully — a missing/unreadable context just skips the marking.
-  // Default matches where the digest prompts write the context:
-  // ${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp/builder-blog-context.json
+  // Default matches where the digest prompts write the context. Scheduled
+  // runner jobs set BUILDER_BLOG_JOB_TMP_DIR so multiple accounts on the same
+  // machine do not read each other's prepared context.
   const agentDir = process.env.BUILDER_BLOG_AGENT_DIR?.trim() || CONFIG_DIR;
+  const jobTmpDir = process.env.BUILDER_BLOG_JOB_TMP_DIR?.trim();
   const contextPath = argValue(
     args,
     "--context",
-    join(agentDir, "tmp", "builder-blog-context.json"),
+    join(jobTmpDir || join(agentDir, "tmp"), "builder-blog-context.json"),
   );
   let digestedItems = [];
   // The DigestRun id the server issued at `prepare`; links this sync back to the
