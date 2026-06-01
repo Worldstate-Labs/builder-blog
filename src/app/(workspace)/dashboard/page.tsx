@@ -271,12 +271,27 @@ function AiDigestFeed({
         selectedPipelineId={selectedPipeline.id}
       />
       {isOwnPipeline ? (
-        <div className="mt-4">
+        <section id="digest-log" className="mt-4 scroll-mt-24">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <span className="fb-section-label">My Digest</span>
             <DigestPipelineVisibilityToggle initialShared={ownPipelineShared} />
           </div>
-        </div>
+          <DigestLogPanel
+            actions={
+              <SkillPromptActions
+                compactOnly
+                context="digest"
+                digestMaxPostAgeDays={digestMaxPostAgeDays}
+                showStop={showStopDigestCron}
+                summaryLanguage={summaryLanguage}
+                tokens={activeTokens}
+              />
+            }
+            initialCronJob={digestCronJob}
+            initialCronRuns={digestCronRuns}
+            initialRuns={digestRuns}
+          />
+        </section>
       ) : null}
       {latestDigest ? (
         <DigestDetails digest={serializeDigestSummary(latestDigest)} mode="today" />
@@ -346,25 +361,6 @@ function AiDigestFeed({
           </nav>
         ) : null}
       </section>
-      {isOwnPipeline ? (
-        <section id="digest-log" className="mt-8 scroll-mt-24">
-          <DigestLogPanel
-            actions={
-              <SkillPromptActions
-                compactOnly
-                context="digest"
-                digestMaxPostAgeDays={digestMaxPostAgeDays}
-                showStop={showStopDigestCron}
-                summaryLanguage={summaryLanguage}
-                tokens={activeTokens}
-              />
-            }
-            initialCronJob={digestCronJob}
-            initialCronRuns={digestCronRuns}
-            initialRuns={digestRuns}
-          />
-        </section>
-      ) : null}
     </section>
   );
 }
