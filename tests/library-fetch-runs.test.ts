@@ -182,6 +182,15 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /run\.source === "cron"/);
   assert.match(panel, /run\.status === "synced"/);
   assert.match(panel, /VISIBLE_RUN_LIMIT = 2/);
+  assert.match(panel, /slotDomId/);
+  assert.match(panel, /onOpenRun/);
+  assert.match(panel, /setActiveTab\("log"\)/);
+  assert.match(panel, /document\.getElementById\(runDomId\(runId\)\)/);
+  assert.match(panel, /Last \{slots\.length\} scheduled/);
+  assert.match(panel, /Each block has a matching row below/);
+  assert.match(panel, /no run recorded for this scheduled time/);
+  assert.match(panel, /Open log/);
+  assert.doesNotMatch(panel, /slots\.slice\(-4\)/);
   assert.doesNotMatch(panel, /RefreshCw/);
   assert.doesNotMatch(panel, />Refresh</);
   assert.match(route, /cronRuns/);

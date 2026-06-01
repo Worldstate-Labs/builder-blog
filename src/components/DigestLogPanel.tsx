@@ -71,6 +71,14 @@ type CronSlot = {
   run: DigestRunListItem | null;
 };
 
+function slotDomId(slot: CronSlot): string {
+  return `digest-slot-${Date.parse(slot.expectedAt)}`;
+}
+
+function runDomId(runId: string): string {
+  return `digest-run-${runId}`;
+}
+
 function isRunInflight(run: DigestRunListItem): boolean {
   const ageMs = Date.now() - Date.parse(run.preparedAt);
   if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > PREPARED_RUN_MAX_AGE_MS) return false;
@@ -217,6 +225,17 @@ export function DigestLogPanel({
     runsRef.current = runs;
   }, [runs]);
 
+  const openRun = useCallback((runId: string) => {
+    setExpanded(true);
+    setActiveTab("log");
+    window.setTimeout(() => {
+      document.getElementById(runDomId(runId))?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 0);
+  }, []);
+
   const refresh = useCallback(() => {
     setError(null);
     startTransition(async () => {
@@ -354,6 +373,7 @@ export function DigestLogPanel({
         <DigestStatusPanel
           cronJob={cronJob}
           nextExpectedAt={cronStatus.nextExpectedAt}
+          onOpenRun={openRun}
           slots={cronStatus.slots}
         />
       ) : (
@@ -395,10 +415,12 @@ function statusStyle(status: "ok" | "partial" | "failed"): ChipStyle {
 function DigestStatusPanel({
   cronJob,
   nextExpectedAt,
+  onOpenRun,
   slots,
 }: {
   cronJob: DigestCronJobStatus | null;
   nextExpectedAt: string | null;
+  onOpenRun: (runId: string) => void;
   slots: CronSlot[];
 }) {
   const hydrated = useHydrated();
@@ -434,6 +456,12 @@ function DigestStatusPanel({
   const failedCount = slots.filter((slot) => slot.status === "failed").length;
   const problemCount = missedCount + failedCount;
   const waitingCount = slots.filter((slot) => slot.status === "waiting").length;
+  const problemDetail =
+    missedCount > 0 && failedCount > 0
+      ? `${missedCount} scheduled ${missedCount === 1 ? "window has" : "windows have"} no recorded run; ${failedCount} recorded ${failedCount === 1 ? "run did" : "runs did"} not save a digest.`
+      : missedCount > 0
+        ? `${missedCount} scheduled ${missedCount === 1 ? "window has" : "windows have"} no recorded run in ${missedCount === 1 ? "its" : "their"} expected time range.`
+        : `${failedCount} recorded ${failedCount === 1 ? "run did" : "runs did"} not save a digest.`;
   const statusTone =
     problemCount > 0
       ? statusStyle("failed")
@@ -468,13 +496,9 @@ function DigestStatusPanel({
             </p>
             {problemCount > 0 ? (
               <p className="mt-1.5 text-[12.5px] leading-relaxed" style={{ color: statusTone.color }}>
-                {problemCount} scheduled {problemCount === 1 ? "run" : "runs"} produced no saved digest
-                {missedCount > 0 && failedCount > 0
-                  ? ` — ${missedCount} never ran at the expected time, ${failedCount} ran but didn't sync a digest.`
-                  : missedCount > 0
-                    ? " — no run was recorded at the expected time (agent offline, machine asleep, or runtime not authenticated)."
-                    : " — a run prepared candidates but never synced a digest."}{" "}
-                Each one is listed in the timeline below.
+                {problemCount} scheduled {problemCount === 1 ? "run" : "runs"} produced no saved digest.
+                {" "}
+                {problemDetail} This is based on matching the expected schedule windows to recorded cron digest runs.
               </p>
             ) : null}
           </div>
@@ -492,14 +516,34 @@ function DigestStatusPanel({
 
         {slots.length > 0 ? (
           <div className="mt-4">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[11.5px] text-[var(--muted-strong)]">
+              <span className="font-semibold text-[var(--ink)]">
+                Last {slots.length} scheduled {slots.length === 1 ? "window" : "windows"}
+              </span>
+              <span>Each block has a matching row below.</span>
+            </div>
             <div className="flex items-end gap-1.5" aria-label="Digest schedule status graph">
               {slots.map((slot) => (
-                <CronSlotBar key={slot.expectedAt} slot={slot} />
+                <CronSlotBar
+                  key={slot.expectedAt}
+                  onSelect={() => {
+                    document.getElementById(slotDomId(slot))?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "center",
+                    });
+                  }}
+                  slot={slot}
+                />
               ))}
             </div>
             <div className="mt-3 grid gap-1.5">
-              {slots.slice(-4).reverse().map((slot) => (
-                <CronSlotRow key={slot.expectedAt} hydrated={hydrated} slot={slot} />
+              {slots.slice().reverse().map((slot) => (
+                <CronSlotRow
+                  key={slot.expectedAt}
+                  hydrated={hydrated}
+                  onOpenRun={onOpenRun}
+                  slot={slot}
+                />
               ))}
             </div>
           </div>
@@ -528,43 +572,50 @@ function cronSlotStyle(status: CronSlotStatus): ChipStyle {
   return statusStyle("partial");
 }
 
-function CronSlotBar({ slot }: { slot: CronSlot }) {
+function cronSlotLabel(status: CronSlotStatus): string {
+  if (status === "ok") return "Succeeded";
+  if (status === "failed") return "Failed";
+  if (status === "missed") return "Missed";
+  return "Waiting";
+}
+
+function CronSlotBar({ onSelect, slot }: { onSelect: () => void; slot: CronSlot }) {
   const style = cronSlotStyle(slot.status);
   const height =
     slot.status === "ok" ? "h-12" : slot.status === "waiting" ? "h-8" : "h-10";
+  const label = cronSlotLabel(slot.status);
   return (
-    <span
-      aria-label={`${slot.status} at ${formatAbsolute(slot.expectedAt)}`}
-      className={`block min-w-0 flex-1 rounded-sm border ${height}`}
-      role="img"
+    <button
+      aria-label={`${label} scheduled digest run at ${formatAbsolute(slot.expectedAt)}`}
+      className={`block min-w-0 flex-1 cursor-pointer rounded-sm border ${height} transition hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]`}
+      onClick={onSelect}
       style={{
         background: style.background,
         borderColor: style.border,
         color: style.color,
       }}
-      title={`${slot.status} · ${formatAbsolute(slot.expectedAt)}`}
+      title={`${label} · ${formatAbsolute(slot.expectedAt)}`}
+      type="button"
     />
   );
 }
 
 function CronSlotRow({
   hydrated,
+  onOpenRun,
   slot,
 }: {
   hydrated: boolean;
+  onOpenRun: (runId: string) => void;
   slot: CronSlot;
 }) {
   const style = cronSlotStyle(slot.status);
-  const label =
-    slot.status === "ok"
-      ? "Succeeded"
-      : slot.status === "failed"
-        ? "Failed"
-        : slot.status === "missed"
-          ? "Missed"
-          : "Waiting";
+  const label = cronSlotLabel(slot.status);
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px]">
+    <div
+      className="flex flex-wrap items-center justify-between gap-2 rounded-[7px] px-1 py-1 text-[12.5px] target:bg-[var(--accent-soft)]"
+      id={slotDomId(slot)}
+    >
       <div className="flex min-w-0 items-center gap-2">
         <span
           className="fb-chip"
@@ -580,11 +631,22 @@ function CronSlotRow({
           {hydrated ? formatRelative(slot.expectedAt) : formatAbsolute(slot.expectedAt)}
         </time>
       </div>
-      <span className="mono truncate text-[11.5px] text-[var(--muted-strong)]">
-        {slot.run
-          ? `${slot.run.includedCount ?? 0}/${slot.run.candidateCount} used`
-          : "no matching scheduled update"}
-      </span>
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="mono truncate text-[11.5px] text-[var(--muted-strong)]">
+          {slot.run
+            ? `${slot.run.includedCount ?? 0}/${slot.run.candidateCount} used`
+            : "no run recorded for this scheduled time"}
+        </span>
+        {slot.run ? (
+          <button
+            className="fb-btn light compact"
+            onClick={() => onOpenRun(slot.run!.id)}
+            type="button"
+          >
+            Open log
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -676,6 +738,7 @@ function RunCard({ run }: { run: DigestRunListItem }) {
   return (
     <article
       className="rounded-[10px] border bg-[var(--paper-strong)] px-3.5 py-3"
+      id={runDomId(run.id)}
       style={{ borderColor: "var(--line)" }}
     >
       <header className="flex flex-wrap items-center gap-2">
