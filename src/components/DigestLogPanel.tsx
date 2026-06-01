@@ -205,11 +205,13 @@ export function DigestLogPanel({
   initialCronRuns,
   initialCronJob,
   actions,
+  shareToggle,
 }: {
   initialRuns: DigestRunListItem[];
   initialCronRuns: DigestRunListItem[];
   initialCronJob: DigestCronJobStatus | null;
   actions?: ReactNode;
+  shareToggle?: ReactNode;
 }) {
   const [runs, setRuns] = useState(initialRuns);
   const [cronRuns, setCronRuns] = useState(initialCronRuns);
@@ -220,6 +222,7 @@ export function DigestLogPanel({
   const [activeTab, setActiveTab] = useState<"status" | "log">("status");
   const cronStatus = useMemo(() => buildCronStatus(cronJob, cronRuns), [cronJob, cronRuns]);
   const runsRef = useRef(runs);
+  const hydrated = useHydrated();
 
   useEffect(() => {
     runsRef.current = runs;
@@ -326,16 +329,25 @@ export function DigestLogPanel({
   }, [refresh]);
 
   return (
-    <section className="fb-panel">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="fb-section-heading">Digest updates</h2>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-            See schedule health, recent digest builds, and what made it into
-            each brief.
-          </p>
+    <section className="fb-panel digest-updates-panel">
+      <div className="digest-updates-head">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="fb-section-heading">Digest updates</h2>
+            <ScheduleHealthChip cronJob={cronJob} slots={cronStatus.slots} />
+          </div>
+          <DigestScheduleSummary
+            cronJob={cronJob}
+            hydrated={hydrated}
+            nextExpectedAt={cronStatus.nextExpectedAt}
+          />
         </div>
-        {actions ? <div className="min-w-0">{actions}</div> : null}
+        {(shareToggle || actions) ? (
+          <div className="digest-updates-actions">
+            {shareToggle}
+            {actions}
+          </div>
+        ) : null}
       </div>
 
       {error ? (
@@ -388,6 +400,83 @@ export function DigestLogPanel({
 }
 
 type ChipStyle = { background: string; color: string; border: string };
+
+function summarizeSchedule(cronJob: DigestCronJobStatus | null, slots: CronSlot[]) {
+  if (!cronJob) return { label: "Not connected", style: statusStyle("partial") };
+  if (cronJob.status !== "active") return { label: "Stopped", style: statusStyle("partial") };
+  const problemCount = slots.filter((slot) => slot.status === "missed" || slot.status === "failed").length;
+  const okCount = slots.filter((slot) => slot.status === "ok").length;
+  return {
+    label: problemCount > 0 ? "Needs attention" : okCount > 0 ? "Healthy" : "Waiting",
+    style: problemCount > 0 ? statusStyle("failed") : okCount > 0 ? statusStyle("ok") : statusStyle("partial"),
+  };
+}
+
+function ScheduleHealthChip({
+  cronJob,
+  slots,
+}: {
+  cronJob: DigestCronJobStatus | null;
+  slots: CronSlot[];
+}) {
+  const summary = summarizeSchedule(cronJob, slots);
+  return (
+    <span
+      className="fb-chip"
+      style={{
+        background: summary.style.background,
+        borderColor: summary.style.border,
+        color: summary.style.color,
+      }}
+    >
+      {summary.label}
+    </span>
+  );
+}
+
+function DigestScheduleSummary({
+  cronJob,
+  hydrated,
+  nextExpectedAt,
+}: {
+  cronJob: DigestCronJobStatus | null;
+  hydrated: boolean;
+  nextExpectedAt: string | null;
+}) {
+  if (!cronJob) {
+    return (
+      <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+        No local helper schedule has reported yet. Build history appears after a digest prompt runs.
+      </p>
+    );
+  }
+
+  if (cronJob.status !== "active") {
+    return (
+      <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+        Schedule stopped
+        {cronJob.stoppedAt
+          ? ` ${hydrated ? formatRelative(cronJob.stoppedAt) : formatAbsolute(cronJob.stoppedAt)}`
+          : ""}
+        . One-time digest builds can still be copied.
+      </p>
+    );
+  }
+
+  const nextLabel = nextExpectedAt
+    ? hydrated
+      ? formatRelative(nextExpectedAt)
+      : formatAbsolute(nextExpectedAt)
+    : null;
+
+  return (
+    <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+      {cronJob.frequencyLabel}
+      {nextLabel ? ` · next ${nextLabel}` : ""}
+      {cronJob.regenerateDigest ? " · includes already digested items" : ""}
+    </p>
+  );
+}
 
 function statusStyle(status: "ok" | "partial" | "failed"): ChipStyle {
   switch (status) {
@@ -470,57 +559,65 @@ function DigestStatusPanel({
         : statusStyle("partial");
 
   return (
-    <div className="mt-4 grid gap-3">
-      <div className="rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className="fb-chip"
-                style={{
-                  background: statusTone.background,
-                  borderColor: statusTone.border,
-                  color: statusTone.color,
-                }}
-              >
-                {problemCount > 0 ? "Needs attention" : okCount > 0 ? "Healthy" : "Waiting"}
-              </span>
-              <span className="fb-chip">{cronJob.frequencyLabel}</span>
-              {cronJob.regenerateDigest ? <span className="fb-chip">includes past items</span> : null}
+    <div className="mt-4 rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-4">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className="fb-chip"
+              style={{
+                background: statusTone.background,
+                borderColor: statusTone.border,
+                color: statusTone.color,
+              }}
+            >
+              {problemCount > 0 ? "Needs attention" : okCount > 0 ? "Healthy" : "Waiting"}
+            </span>
+            <span className="fb-chip">{cronJob.frequencyLabel}</span>
+            {cronJob.regenerateDigest ? <span className="fb-chip">rebuilds past items</span> : null}
+          </div>
+          <dl className="mt-3 grid gap-2 text-[12.5px] text-[var(--muted-strong)]">
+            <div className="flex items-baseline justify-between gap-3">
+              <dt>Started</dt>
+              <dd className="text-right text-[var(--ink)]">
+                {hydrated ? formatRelative(cronJob.startedAt) : formatAbsolute(cronJob.startedAt)}
+              </dd>
             </div>
-            <p className="mt-2 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-              Started {hydrated ? formatRelative(cronJob.startedAt) : formatAbsolute(cronJob.startedAt)}
-              {nextExpectedAt
-                ? ` · next expected ${hydrated ? formatRelative(nextExpectedAt) : formatAbsolute(nextExpectedAt)}`
-                : ""}
-            </p>
-            {problemCount > 0 ? (
-              <p className="mt-1.5 text-[12.5px] leading-relaxed" style={{ color: statusTone.color }}>
-                {problemCount} scheduled {problemCount === 1 ? "run" : "runs"} produced no saved digest.
-                {" "}
-                {problemDetail} This is based on matching the expected schedule windows to recorded cron digest runs.
-              </p>
+            {nextExpectedAt ? (
+              <div className="flex items-baseline justify-between gap-3">
+                <dt>Next run</dt>
+                <dd className="text-right text-[var(--ink)]">
+                  {hydrated ? formatRelative(nextExpectedAt) : formatAbsolute(nextExpectedAt)}
+                </dd>
+              </div>
             ) : null}
+            <div className="flex items-baseline justify-between gap-3">
+              <dt>Runner</dt>
+              <dd className="truncate text-right text-[var(--ink)]">
+                {cronJob.runtime || "Local helper"}
+                {cronJob.hostname ? ` · ${cronJob.hostname.replace(/\.local$/, "")}` : ""}
+              </dd>
+            </div>
+          </dl>
+          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+            <MetricPill label="OK" value={okCount} />
+            <MetricPill label="Issue" value={problemCount} />
+            <MetricPill label="Waiting" value={waitingCount} />
           </div>
-          <div className="text-right text-[11.5px] text-[var(--muted-strong)]">
-            <div>{cronJob.runtime || "Local helper"}</div>
-            {cronJob.hostname ? <div>{cronJob.hostname.replace(/\.local$/, "")}</div> : null}
-          </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-          <MetricPill label="Succeeded" value={okCount} />
-          <MetricPill label="Needs attention" value={problemCount} />
-          <MetricPill label="Waiting" value={waitingCount} />
+          {problemCount > 0 ? (
+            <p className="mt-2 text-[12.5px] leading-relaxed" style={{ color: statusTone.color }}>
+              {problemDetail}
+            </p>
+          ) : null}
         </div>
 
         {slots.length > 0 ? (
-          <div className="mt-4">
+          <div className="min-w-0">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[11.5px] text-[var(--muted-strong)]">
               <span className="font-semibold text-[var(--ink)]">
                 Last {slots.length} scheduled {slots.length === 1 ? "window" : "windows"}
               </span>
-              <span>Each block has a matching row below.</span>
+              <span>Green saved, amber waiting, red missed or failed.</span>
             </div>
             <div className="flex items-end gap-1.5" aria-label="Digest schedule status graph">
               {slots.map((slot) => (
@@ -536,8 +633,8 @@ function DigestStatusPanel({
                 />
               ))}
             </div>
-            <div className="mt-3 grid gap-1.5">
-              {slots.slice().reverse().map((slot) => (
+            <div className="mt-3 grid gap-1">
+              {slots.slice().reverse().slice(0, 6).map((slot) => (
                 <CronSlotRow
                   key={slot.expectedAt}
                   hydrated={hydrated}
@@ -548,7 +645,7 @@ function DigestStatusPanel({
             </div>
           </div>
         ) : (
-          <div className="mt-4 rounded-[8px] border border-dashed border-[var(--line)] px-3 py-3 text-sm text-[var(--muted-strong)]">
+          <div className="rounded-[8px] border border-dashed border-[var(--line)] px-3 py-3 text-sm text-[var(--muted-strong)]">
             No expected scheduled run has elapsed since setup. The first status point appears after the next scheduled time.
           </div>
         )}
@@ -734,6 +831,7 @@ function RunCard({ run }: { run: DigestRunListItem }) {
 
   const contributing = run.sources.filter((s) => s.eligible > 0);
   const silentCount = run.subscriptionCount - contributing.length;
+  const detailCount = run.candidates.length + contributing.length + Math.max(0, silentCount);
 
   return (
     <article
@@ -755,6 +853,7 @@ function RunCard({ run }: { run: DigestRunListItem }) {
         >
           {timeLabel}
         </time>
+        <span className="fb-chip">{run.source === "cron" ? "scheduled" : "one-time"}</span>
         {run.language ? <span className="fb-chip">{run.language}</span> : null}
         {run.regenerate ? (
           <span className="text-[11px] text-[var(--muted)]">rebuilt</span>
@@ -763,13 +862,7 @@ function RunCard({ run }: { run: DigestRunListItem }) {
 
       <p className="mt-2 text-[13.5px] font-semibold leading-snug text-[var(--ink)]">{title}</p>
 
-      <div className="mono mt-1 text-[11.5px] text-[var(--muted)]">
-        Covered {windowLabel}
-        {run.lastDigestAt ? ` · last digest ${formatRelative(run.lastDigestAt)}` : ""}
-      </div>
-
-      {/* The funnel — the diagnostic spine. */}
-      <div className="mt-2.5 flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-[12.5px]">
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-[12.5px]">
         <FunnelStat value={run.candidateCount} label="found" />
         {run.status === "synced" ? (
           <>
@@ -783,52 +876,66 @@ function RunCard({ run }: { run: DigestRunListItem }) {
         )}
       </div>
 
+      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-[var(--muted-strong)]">
+        <span>
+          <span className="font-semibold text-[var(--ink)]">{run.contributingSourceCount}</span>
+          /{run.subscriptionCount} sources contributed
+        </span>
+        <span>Covered {windowLabel}</span>
+        {run.lastDigestAt ? <span>Previous digest {formatRelative(run.lastDigestAt)}</span> : null}
+      </div>
+
       {run.candidateCount === 0 ? (
         <p className="mt-1.5 text-[12px] text-[var(--muted-strong)]">
-          No new posts were found from followed sources in this window.
+          No new posts were found in this window.
         </p>
-      ) : (
-        <>
-          <div className="mt-2 text-[12px] text-[var(--muted-strong)]">
-            <span className="font-semibold text-[var(--ink)]">{run.contributingSourceCount}</span>{" "}
-            of {run.subscriptionCount} followed{" "}
-            {run.subscriptionCount === 1 ? "source" : "sources"} contributed
-          </div>
-          {contributing.length > 0 ? (
-            <ul className="mt-1.5 grid gap-1">
-              {contributing.slice(0, VISIBLE_SOURCE_LIMIT).map((src) => (
-                <SourceRow key={src.entityId} src={src} synced={run.status === "synced"} />
-              ))}
-              {contributing.length > VISIBLE_SOURCE_LIMIT ? (
-                <li className="mono text-[11px] text-[var(--muted)]">
-                  + {contributing.length - VISIBLE_SOURCE_LIMIT} more with new posts
-                </li>
-              ) : null}
-              {silentCount > 0 ? (
-                <li className="mono text-[11px] text-[var(--muted)]">
-                  {silentCount} without new posts in this window
-                </li>
-              ) : null}
-            </ul>
-          ) : null}
-        </>
-      )}
+      ) : null}
 
-      {run.candidates.length > 0 ? (
+      {detailCount > 0 ? (
         <details className="mt-2.5 rounded-[8px] border border-[var(--line)] bg-[var(--paper)]">
           <summary className="cursor-pointer px-3 py-2 text-[12.5px] font-bold text-[var(--ink)]">
-            Show {run.candidates.length} found{" "}
-            {run.candidates.length === 1 ? "post" : "posts"} (used / skipped)
+            Show run details
           </summary>
-          <ul className="grid gap-1.5 border-t border-[var(--line)] px-3 py-2.5">
-            {run.candidates.map((item, index) => (
-              <CandidateRow
-                key={`${item.url ?? item.title ?? "item"}-${index}`}
-                item={item}
-                synced={run.status === "synced"}
-              />
-            ))}
-          </ul>
+          <div className="grid gap-3 border-t border-[var(--line)] px-3 py-2.5">
+            {contributing.length > 0 || silentCount > 0 ? (
+              <section aria-label="Source coverage">
+                <div className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                  Sources
+                </div>
+                <ul className="grid gap-1">
+                  {contributing.slice(0, VISIBLE_SOURCE_LIMIT).map((src) => (
+                    <SourceRow key={src.entityId} src={src} synced={run.status === "synced"} />
+                  ))}
+                  {contributing.length > VISIBLE_SOURCE_LIMIT ? (
+                    <li className="mono text-[11px] text-[var(--muted)]">
+                      + {contributing.length - VISIBLE_SOURCE_LIMIT} more with new posts
+                    </li>
+                  ) : null}
+                  {silentCount > 0 ? (
+                    <li className="mono text-[11px] text-[var(--muted)]">
+                      {silentCount} without new posts in this window
+                    </li>
+                  ) : null}
+                </ul>
+              </section>
+            ) : null}
+            {run.candidates.length > 0 ? (
+              <section aria-label="Found posts">
+                <div className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                  Found posts
+                </div>
+                <ul className="grid gap-1.5">
+                  {run.candidates.map((item, index) => (
+                    <CandidateRow
+                      key={`${item.url ?? item.title ?? "item"}-${index}`}
+                      item={item}
+                      synced={run.status === "synced"}
+                    />
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+          </div>
         </details>
       ) : null}
     </article>

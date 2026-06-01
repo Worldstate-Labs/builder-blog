@@ -272,10 +272,6 @@ function AiDigestFeed({
       />
       {isOwnPipeline ? (
         <section id="digest-log" className="mt-4 scroll-mt-24">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <span className="fb-section-label">My Digest</span>
-            <DigestPipelineVisibilityToggle initialShared={ownPipelineShared} />
-          </div>
           <DigestLogPanel
             actions={
               <SkillPromptActions
@@ -290,6 +286,7 @@ function AiDigestFeed({
             initialCronJob={digestCronJob}
             initialCronRuns={digestCronRuns}
             initialRuns={digestRuns}
+            shareToggle={<DigestPipelineVisibilityToggle initialShared={ownPipelineShared} />}
           />
         </section>
       ) : null}

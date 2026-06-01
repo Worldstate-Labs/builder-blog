@@ -3614,6 +3614,26 @@ svg.lucide {
   border-style: dashed;
 }
 
+.digest-updates-panel {
+  overflow: hidden;
+}
+
+.digest-updates-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.digest-updates-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
 .fb-divider {
   background: var(--line);
   border: 0;
@@ -5538,6 +5558,16 @@ body {
   .fb-panel {
     border-radius: 8px;
     padding: 0.95rem;
+  }
+
+  .digest-updates-head,
+  .digest-updates-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .digest-updates-actions > * {
+    justify-content: flex-start;
   }
 
   .fb-field {
