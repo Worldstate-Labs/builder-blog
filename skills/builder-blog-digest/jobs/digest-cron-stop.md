@@ -8,8 +8,10 @@ stderr. Do not invoke any other skill, plugin, or subagent — run the numbered
 steps yourself exactly as written; this prompt is the whole task.
 
 Scope — do not exceed it: remove only the recurring **schedule** (the launchd
-LaunchAgent on macOS, or the crontab entry on Linux). Do not delete any
-already-generated digests, and do not touch the library cron.
+LaunchAgent on macOS, or the crontab entry on Linux), stop this account's active
+digest cron worker if one is still running, then report that stopped state to
+FollowBrief. Do not delete any already-generated digests, and do not touch the
+library cron.
 
 1. Find the existing FollowBrief digest job(s) on this machine. Run the path for
 this machine's OS — run `uname` if unsure.
@@ -69,7 +71,80 @@ fi
 crontab -l 2>/dev/null | grep -E 'builder-agent-runner\.sh digest-cron' && echo "STILL PRESENT" || echo "removed"
 ```
 
-3. Remove this account's per-job pin files so a future re-install starts clean
+3. Stop this account's active digest cron worker instance, if one is still
+running. This matters because the LaunchAgent only prevents future scheduled
+fires; the current worker may already have been detached by the supervisor.
+
+```bash
+ACCT="${BUILDER_BLOG_ACCOUNT}"
+ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+CURRENT_FILE="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/digest-cron/current.json"
+
+json_get_number() {
+  sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p" "$2" 2>/dev/null | head -n 1
+}
+json_get_string() {
+  sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$2" 2>/dev/null | head -n 1
+}
+terminate_process_tree() {
+  pid="${1:-}"
+  signal="${2:-TERM}"
+  wait_seconds="${3:-30}"
+  [ -n "$pid" ] || return 0
+  children="$(pgrep -P "$pid" 2>/dev/null || true)"
+  for child in $children; do terminate_process_tree "$child" "$signal" "$wait_seconds"; done
+  kill "-$signal" "$pid" 2>/dev/null || kill -s "$signal" "$pid" 2>/dev/null || true
+  left="$wait_seconds"
+  while [ "$left" -gt 0 ]; do
+    kill -0 "$pid" 2>/dev/null || return 0
+    sleep 1
+    left=$((left - 1))
+  done
+  return 1
+}
+
+if [ -r "$CURRENT_FILE" ]; then
+  WORKER_PID="$(json_get_number workerPid "$CURRENT_FILE")"
+  INSTANCE_ID="$(json_get_string instanceId "$CURRENT_FILE")"
+  STARTED_AT="$(json_get_string startedAt "$CURRENT_FILE")"
+  EXPECTED_AT="$(json_get_string expectedAt "$CURRENT_FILE")"
+  if [ -n "$WORKER_PID" ] && kill -0 "$WORKER_PID" 2>/dev/null; then
+    CMD="$(ps -p "$WORKER_PID" -o command= 2>/dev/null || true)"
+    if printf '%s' "$CMD" | grep -q 'builder-agent-runner.sh\|codex exec\|claude -p\|gemini\|openclaw'; then
+      terminate_process_tree "$WORKER_PID" TERM 30 || terminate_process_tree "$WORKER_PID" KILL 3 || true
+      node "$AGENT_DIR/builder-digest.mjs" job-run-update \
+        --job-type digest-build \
+        --trigger scheduled \
+        --schedule-job digest-cron \
+        --instance-id "$INSTANCE_ID" \
+        --expected-at "$EXPECTED_AT" \
+        --started-at "${STARTED_AT:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}" \
+        --status killed \
+        --summary "Stopped by user." \
+        --reason "stop_cron"
+    else
+      echo "current worker pid $WORKER_PID is not a FollowBrief worker; leaving it alone"
+    fi
+  elif [ -n "$INSTANCE_ID" ]; then
+    node "$AGENT_DIR/builder-digest.mjs" job-run-update \
+      --job-type digest-build \
+      --trigger scheduled \
+      --schedule-job digest-cron \
+      --instance-id "$INSTANCE_ID" \
+      --expected-at "$EXPECTED_AT" \
+      --started-at "${STARTED_AT:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}" \
+      --status stale \
+      --summary "Stop cron found no live worker for the recorded instance." \
+      --reason "stop_cron_stale"
+  fi
+  rm -f "$CURRENT_FILE"
+else
+  echo "no active digest cron worker recorded"
+fi
+```
+
+4. Remove this account's per-job pin files so a future re-install starts clean
 (safe if they are absent):
 
 ```bash
@@ -79,7 +154,7 @@ rm -f "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-digest-cron-$ACCOU
       "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/regenerate-digest-cron-$ACCOUNT_SLUG"
 ```
 
-4. Report the stopped status to FollowBrief so the web app can hide Stop cron
+5. Report the stopped status to FollowBrief so the web app can hide Stop cron
 and show the schedule as stopped:
 
 ```bash
@@ -89,7 +164,8 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-st
   --status stopped
 ```
 
-5. Report the outcome to the user: which label (macOS) or crontab entry (Linux)
-was removed (or that none existed), and that the step-2 verification line printed
+6. Report the outcome to the user: which label (macOS) or crontab entry (Linux)
+was removed (or that none existed), whether an active worker was stopped or no
+active worker was recorded, and that the step-2 verification line printed
 "removed". Tell the user they can resume later by re-running the digest cron
 setup prompt.
