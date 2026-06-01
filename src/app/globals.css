@@ -3517,6 +3517,38 @@ svg.lucide {
   width: 0.875rem;
 }
 
+.fb-segmented-tabs {
+  gap: 0.125rem;
+}
+
+.fb-segmented-tabs .fb-btn {
+  border-color: transparent;
+  color: var(--muted-strong);
+}
+
+.fb-segmented-tabs .fb-btn[aria-selected="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 8px 18px color-mix(in oklch, var(--accent) 22%, transparent);
+  color: #fff;
+}
+
+.fb-segmented-tabs .fb-btn[aria-selected="true"]:hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+.fb-segmented-tabs .fb-btn[aria-selected="false"] {
+  background: color-mix(in oklch, var(--paper-strong) 78%, transparent);
+  border-color: color-mix(in oklch, var(--line) 86%, transparent);
+}
+
+.fb-segmented-tabs .fb-btn[aria-selected="false"]:hover {
+  background: var(--paper-strong);
+  border-color: color-mix(in oklch, var(--ink) 22%, transparent);
+  color: var(--ink);
+}
+
 .fb-btn.danger {
   background: var(--danger);
   border-color: transparent;

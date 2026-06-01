@@ -156,6 +156,7 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.doesNotMatch(panel, />Refresh</);
   assert.match(panel, /VISIBLE_RUN_LIMIT = 2/);
   assert.match(panel, /role="tablist"/);
+  assert.match(panel, /fb-segmented-tabs/);
   assert.match(panel, /Fetch status/);
   assert.match(panel, /Fetch log/);
   assert.match(panel, /digest-updates-panel/);
@@ -191,6 +192,7 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /Schedule status/);
   assert.match(panel, /Build history/);
   assert.match(panel, /role="tablist"/);
+  assert.match(panel, /fb-segmented-tabs/);
   assert.match(panel, /Digest schedule status graph/);
   assert.match(panel, /buildCronStatus/);
   assert.match(panel, /run\.source === "cron"/);

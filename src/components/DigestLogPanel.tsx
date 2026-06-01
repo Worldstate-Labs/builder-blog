@@ -381,7 +381,7 @@ export function DigestLogPanel({
         <div id="digest-update-details">
           <div
             aria-label="Digest update views"
-            className="mt-4 inline-flex rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] p-1"
+            className="fb-segmented-tabs mt-4 inline-flex rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] p-1"
             role="tablist"
           >
             <button

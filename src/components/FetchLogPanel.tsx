@@ -524,7 +524,7 @@ export function FetchLogPanel({
         <div id="fetch-sync-details">
           <div
             aria-label="Fetch sync views"
-            className="mt-4 inline-flex rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] p-1"
+            className="fb-segmented-tabs mt-4 inline-flex rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] p-1"
             role="tablist"
           >
             <button

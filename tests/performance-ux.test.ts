@@ -104,6 +104,8 @@ test("desktop shell uses home rail, header search, and merged home feeds", () =>
   assert.match(searchForm, /name="q"/);
   assert.match(dashboardPage, /DashboardHomeTabs/);
   assert.match(dashboardTabs, /role="tablist"/);
+  assert.match(globals, /\.fb-segmented-tabs/);
+  assert.match(globals, /\.fb-segmented-tabs \.fb-btn\[aria-selected="true"\]/);
   assert.match(dashboardTabs, /useState\(initialTab\)/);
   assert.doesNotMatch(dashboardTabs, /useSearchParams/);
   assert.match(dashboardTabs, /router\.replace/);
