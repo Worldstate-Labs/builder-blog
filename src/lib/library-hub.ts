@@ -16,11 +16,11 @@ export function digestPipelineTitle(owner: {
   email?: string | null;
 }) {
   const identity = owner.name || owner.email?.split("@")[0] || "Builder";
-  return `${identity}'s Digest`;
+  return `${identity}'s AI Digest`;
 }
 
 export function displayDigestPipelineTitle(title: string) {
-  return title.replace(/'s AI Builder Digest$/, "'s Digest");
+  return title.replace(/'s AI Builder Digest$/, "'s AI Digest");
 }
 
 export function digestPipelineSlug(userId: string) {

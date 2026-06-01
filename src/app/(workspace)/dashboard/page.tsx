@@ -112,8 +112,8 @@ async function AiDigestFeedSlot({
   const digestPipelineOptions: DigestPipelineOption[] = [
     {
       id: "own",
-      title: "My Digest",
-      ownerLabel: "Your digest",
+      title: "AI Digest",
+      ownerLabel: "Your AI Digest",
       ownerUserId: userId,
       isOwnPipeline: true,
     },
@@ -270,93 +270,117 @@ function AiDigestFeed({
         options={digestPipelineOptions}
         selectedPipelineId={selectedPipeline.id}
       />
-      {isOwnPipeline ? (
-        <section id="digest-log" className="mt-4 scroll-mt-24">
-          <DigestLogPanel
-            actions={
-              <SkillPromptActions
-                compactOnly
-                context="digest"
-                digestMaxPostAgeDays={digestMaxPostAgeDays}
-                showStop={showStopDigestCron}
-                summaryLanguage={summaryLanguage}
-                tokens={activeTokens}
-              />
-            }
-            initialCronJob={digestCronJob}
-            initialCronRuns={digestCronRuns}
-            initialRuns={digestRuns}
-            shareToggle={<DigestPipelineVisibilityToggle initialShared={ownPipelineShared} />}
-          />
-        </section>
-      ) : null}
-      {latestDigest ? (
-        <DigestDetails digest={serializeDigestSummary(latestDigest)} mode="today" />
-      ) : (
-        <div className="fb-panel dashed">
-          <div className="flex items-start gap-3">
-            <Terminal className="mt-1 h-5 w-5 text-[var(--accent)]" aria-hidden="true" />
-            <div>
-              <h2 className="serif text-lg font-semibold text-[var(--ink)]">
-                No digest yet
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
-                {isOwnPipeline
-                  ? "Your local helper can save a brief when followed sources have new activity."
-                  : "This imported digest has no saved briefs yet."}
-              </p>
-            </div>
+      <section className="ai-digest-panel" aria-labelledby="ai-digest-heading">
+        <header className="ai-digest-head">
+          <div className="min-w-0">
+            <span className="fb-section-label">AI Digest</span>
+            <h2 id="ai-digest-heading" className="fb-section-heading mt-1">
+              {isOwnPipeline ? "AI Digest" : selectedPipeline.title}
+            </h2>
           </div>
-        </div>
-      )}
-      {isOwnPipeline ? null : (
-        <p className="sr-only">Imported digest view: read-only results.</p>
-      )}
-      <section id="digest-archive" className="mt-8 scroll-mt-24">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="fb-section-label">Digest archive</span>
-          <span className="fb-chip">
-            Showing {visibleStart}-{visibleEnd} of {archiveCount}
-          </span>
-        </div>
-        {/* One expandable disclosure per archived digest, on every viewport.
-            (The old mobile variant linked to #id anchors that lived only in the
-            desktop-only block, so tapping a card on mobile opened nothing.) */}
-        <div className="mt-4 grid gap-3">
-          {archiveDigests.map((digest) => (
-            <DigestDetails
-              digest={serializeDigestSummary(digest)}
-              key={digest.id}
-            />
-          ))}
-          {archiveDigests.length === 0 ? (
-            <div className="fb-panel dashed text-sm text-[var(--muted-strong)]">
-              Non-empty digests will appear here after more updates.
-            </div>
+          {isOwnPipeline ? (
+            <DigestPipelineVisibilityToggle initialShared={ownPipelineShared} />
           ) : null}
+        </header>
+
+        <div className="ai-digest-body">
+          {isOwnPipeline ? (
+            <section id="digest-log" className="scroll-mt-24">
+              <DigestLogPanel
+                actions={
+                  <SkillPromptActions
+                    compactOnly
+                    context="digest"
+                    digestMaxPostAgeDays={digestMaxPostAgeDays}
+                    showStop={showStopDigestCron}
+                    summaryLanguage={summaryLanguage}
+                    tokens={activeTokens}
+                  />
+                }
+                initialCronJob={digestCronJob}
+                initialCronRuns={digestCronRuns}
+                initialRuns={digestRuns}
+              />
+            </section>
+          ) : null}
+
+          <section className="ai-digest-section" aria-labelledby="latest-digest-heading">
+            <div className="ai-digest-section-head">
+              <h3 id="latest-digest-heading" className="fb-section-label m-0">
+                Latest digest
+              </h3>
+            </div>
+            {latestDigest ? (
+              <DigestDetails digest={serializeDigestSummary(latestDigest)} mode="today" />
+            ) : (
+              <div className="fb-panel dashed">
+                <div className="flex items-start gap-3">
+                  <Terminal className="mt-1 h-5 w-5 text-[var(--accent)]" aria-hidden="true" />
+                  <div>
+                    <h4 className="serif text-lg font-semibold text-[var(--ink)]">
+                      No digest yet
+                    </h4>
+                    <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
+                      {isOwnPipeline
+                        ? "Your local helper can save a brief when followed sources have new activity."
+                        : "This imported digest has no saved briefs yet."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+
+          {isOwnPipeline ? null : (
+            <p className="sr-only">Imported digest view: read-only results.</p>
+          )}
+          <section id="digest-archive" className="ai-digest-section scroll-mt-24">
+            <div className="ai-digest-section-head">
+              <h3 className="fb-section-label m-0">Archived digests</h3>
+              <span className="fb-chip">
+                Showing {visibleStart}-{visibleEnd} of {archiveCount}
+              </span>
+            </div>
+            {/* One expandable disclosure per archived digest, on every viewport.
+                (The old mobile variant linked to #id anchors that lived only in the
+                desktop-only block, so tapping a card on mobile opened nothing.) */}
+            <div className="mt-4 grid gap-3">
+              {archiveDigests.map((digest) => (
+                <DigestDetails
+                  digest={serializeDigestSummary(digest)}
+                  key={digest.id}
+                />
+              ))}
+              {archiveDigests.length === 0 ? (
+                <div className="fb-panel dashed text-sm text-[var(--muted-strong)]">
+                  Non-empty digests will appear here after more updates.
+                </div>
+              ) : null}
+            </div>
+            {archiveCount > archivePageSize ? (
+              <nav className="mt-6 flex flex-wrap gap-3" aria-label="Digest archive pagination">
+                <Link
+                  aria-disabled={archivePage === 1}
+                  className={`fb-btn light compact ${
+                    archivePage === 1 ? "pointer-events-none opacity-45" : ""
+                  }`}
+                  href={`/dashboard?tab=ai-digest${pipelineQuery}&archivePage=${Math.max(1, archivePage - 1)}#digest-archive`}
+                >
+                  Newer
+                </Link>
+                <Link
+                  aria-disabled={visibleEnd >= archiveCount}
+                  className={`fb-btn light compact ${
+                    visibleEnd >= archiveCount ? "pointer-events-none opacity-45" : ""
+                  }`}
+                  href={`/dashboard?tab=ai-digest${pipelineQuery}&archivePage=${archivePage + 1}#digest-archive`}
+                >
+                  Older
+                </Link>
+              </nav>
+            ) : null}
+          </section>
         </div>
-        {archiveCount > archivePageSize ? (
-          <nav className="mt-6 flex flex-wrap gap-3" aria-label="Digest archive pagination">
-            <Link
-              aria-disabled={archivePage === 1}
-              className={`fb-btn light compact ${
-                archivePage === 1 ? "pointer-events-none opacity-45" : ""
-              }`}
-              href={`/dashboard?tab=ai-digest${pipelineQuery}&archivePage=${Math.max(1, archivePage - 1)}#digest-archive`}
-            >
-              Newer
-            </Link>
-            <Link
-              aria-disabled={visibleEnd >= archiveCount}
-              className={`fb-btn light compact ${
-                visibleEnd >= archiveCount ? "pointer-events-none opacity-45" : ""
-              }`}
-              href={`/dashboard?tab=ai-digest${pipelineQuery}&archivePage=${archivePage + 1}#digest-archive`}
-            >
-              Older
-            </Link>
-          </nav>
-        ) : null}
       </section>
     </section>
   );
@@ -449,6 +473,11 @@ function parseTab(value: string | undefined) {
 function serializeDigestSummary(digest: DigestSummaryRow) {
   return {
     ...digest,
+    title: displayDigestTitle(digest.title),
     createdAt: digest.createdAt.toISOString(),
   };
+}
+
+function displayDigestTitle(title: string) {
+  return title.replace(/^AI Builder Digest\b/, "AI Digest");
 }

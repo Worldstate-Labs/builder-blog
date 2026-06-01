@@ -104,7 +104,7 @@ You are assembling the final FollowBrief digest from individual source summaries
 
 Start with this header, replacing [Date] with today's date:
 
-AI Builder Digest - [Date]
+AI Digest - [Date]
 
 Then organize content in this order:
 

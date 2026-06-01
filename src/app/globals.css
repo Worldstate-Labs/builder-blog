@@ -3614,6 +3614,48 @@ svg.lucide {
   border-style: dashed;
 }
 
+.ai-digest-panel {
+  background: color-mix(in oklch, var(--paper-strong) 72%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ai-digest-head {
+  align-items: center;
+  background: color-mix(in oklch, var(--paper-strong) 86%, transparent);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 1rem 1.125rem;
+}
+
+.ai-digest-body {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.125rem;
+}
+
+.ai-digest-section {
+  border-top: 1px solid var(--line);
+  padding-top: 1.125rem;
+}
+
+.ai-digest-body > .ai-digest-section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.ai-digest-section-head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
 .digest-updates-panel {
   overflow: hidden;
 }
@@ -5582,6 +5624,16 @@ body {
 
   .fb-panel {
     border-radius: 8px;
+    padding: 0.95rem;
+  }
+
+  .ai-digest-head,
+  .ai-digest-section-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ai-digest-body {
     padding: 0.95rem;
   }
 

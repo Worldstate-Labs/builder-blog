@@ -220,13 +220,11 @@ export function DigestLogPanel({
   initialCronRuns,
   initialCronJob,
   actions,
-  shareToggle,
 }: {
   initialRuns: DigestRunListItem[];
   initialCronRuns: DigestRunListItem[];
   initialCronJob: DigestCronJobStatus | null;
   actions?: ReactNode;
-  shareToggle?: ReactNode;
 }) {
   const [runs, setRuns] = useState(initialRuns);
   const [cronRuns, setCronRuns] = useState(initialCronRuns);
@@ -368,9 +366,8 @@ export function DigestLogPanel({
             status={updateStatus}
           />
         </div>
-        {(shareToggle || actions) ? (
+        {actions ? (
           <div className="digest-updates-actions">
-            {shareToggle}
             {actions}
           </div>
         ) : null}
