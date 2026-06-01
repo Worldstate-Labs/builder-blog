@@ -239,7 +239,7 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.doesNotMatch(dashboardPage, /digest\.content/);
   assert.match(dashboardPage, /DigestDetails/);
   assert.match(dashboardPage, /DigestPipelineSelector/);
-  assert.match(dashboardPage, /My Digest/);
+  assert.match(dashboardPage, /AI Digest/);
   assert.match(dashboardPage, /DigestPipelineVisibilityToggle/);
   assert.match(dashboardPage, /ownPipelineShared/);
   assert.match(dashboardPage, /digestPipelineShare\.findUnique/);
@@ -683,7 +683,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(source("src/lib/library-hub.ts"), /removeDigestPipelineImportFromHub/);
   assert.match(source("src/lib/library-hub.ts"), /digestPipelineTitle/);
   assert.match(source("src/lib/library-hub.ts"), /displayDigestPipelineTitle/);
-  assert.match(source("src/lib/library-hub.ts"), /\$\{identity\}'s Digest/);
+  assert.match(source("src/lib/library-hub.ts"), /\$\{identity\}'s AI Digest/);
   assert.doesNotMatch(source("src/lib/library-hub.ts"), /\$\{identity\}'s AI Builder Digest/);
   assert.match(builderPool, /ensureDefaultCommunityLibraryImport/);
   assert.match(builderPool, /isAdminEmail\(user\.email\)/);

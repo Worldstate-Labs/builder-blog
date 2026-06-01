@@ -158,9 +158,20 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /role="tablist"/);
   assert.match(panel, /Fetch status/);
   assert.match(panel, /Fetch log/);
-  assert.match(panel, /Cron job status graph/);
+  assert.match(panel, /digest-updates-panel/);
+  assert.match(panel, /FetchStatusToggle/);
+  assert.match(panel, /FetchScheduleSummary/);
+  assert.match(panel, /aria-controls="fetch-sync-details"/);
+  assert.match(panel, /Fetch schedule status graph/);
   assert.match(panel, /buildCronStatus/);
   assert.match(panel, /run\.source === "cron"/);
+  assert.match(panel, /slotDomId/);
+  assert.match(panel, /runDomId/);
+  assert.match(panel, /onOpenRun/);
+  assert.match(panel, /setActiveTab\("log"\)/);
+  assert.match(panel, /Open log/);
+  assert.match(panel, /slots\.slice\(\)\.reverse\(\)\.slice\(0, 6\)/);
+  assert.doesNotMatch(panel, /slots\.slice\(-4\)/);
   // Editorial design tokens — panel chrome and chips are reused.
   assert.match(panel, /fb-panel/);
   assert.match(panel, /fb-section-heading/);
@@ -190,7 +201,7 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /setActiveTab\("log"\)/);
   assert.match(panel, /document\.getElementById\(runDomId\(runId\)\)/);
   assert.match(panel, /Last \{slots\.length\} scheduled/);
-  assert.match(panel, /Each block has a matching row below/);
+  assert.match(panel, /Green saved, amber waiting, red missed or failed/);
   assert.match(panel, /no run recorded for this scheduled time/);
   assert.match(panel, /Open log/);
   assert.doesNotMatch(panel, /slots\.slice\(-4\)/);

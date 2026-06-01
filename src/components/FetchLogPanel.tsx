@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
-import { Activity, ChevronRight, Clock3 } from "lucide-react";
+import { Activity, ChevronDown, ChevronRight, ChevronUp, Clock3 } from "lucide-react";
 import { useHydrated } from "@/components/ThemeToggle";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
 
@@ -222,6 +222,29 @@ type CronSlot = {
   run: LibraryFetchRunListItem | null;
 };
 
+type FetchUpdateStatusKey =
+  | "not-connected"
+  | "stopped"
+  | "syncing"
+  | "waiting"
+  | "healthy"
+  | "needs-attention";
+
+type FetchUpdateStatus = {
+  key: FetchUpdateStatusKey;
+  label: string;
+  summary: string;
+  style: ReturnType<typeof statusStyle>;
+};
+
+function slotDomId(slot: CronSlot): string {
+  return `fetch-slot-${Date.parse(slot.expectedAt)}`;
+}
+
+function runDomId(runId: string): string {
+  return `fetch-run-${runId}`;
+}
+
 function addScheduleInterval(date: Date, cronJob: LibraryCronJobStatus, steps = 1): Date {
   const next = new Date(date);
   switch (cronJob.frequencyKey) {
@@ -350,8 +373,14 @@ export function FetchLogPanel({
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const [expanded, setExpanded] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"status" | "log">("status");
   const cronStatus = useMemo(() => buildCronStatus(cronJob, cronRuns), [cronJob, cronRuns]);
+  const updateStatus = useMemo(
+    () => getFetchUpdateStatus(cronJob, cronStatus.slots, runs),
+    [cronJob, cronStatus.slots, runs],
+  );
+  const hydrated = useHydrated();
 
   // Latest runs, readable inside the poll loop without re-arming the interval
   // on every refresh. Synced in an effect (not during render) so the poll loop
@@ -360,6 +389,18 @@ export function FetchLogPanel({
   useEffect(() => {
     runsRef.current = runs;
   }, [runs]);
+
+  const openRun = useCallback((runId: string) => {
+    setDetailsOpen(true);
+    setExpanded(true);
+    setActiveTab("log");
+    window.setTimeout(() => {
+      document.getElementById(runDomId(runId))?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 0);
+  }, []);
 
   const refresh = useCallback(() => {
     setError(null);
@@ -450,72 +491,228 @@ export function FetchLogPanel({
   }, [refresh]);
 
   return (
-    <section className="fb-panel">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="fb-section-heading">Fetch sync</h2>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-            Cron health and the latest local CLI fetch runs.
-          </p>
+    <section className="fb-panel digest-updates-panel">
+      <div className="digest-updates-head">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="fb-section-heading">Fetch sync</h2>
+            <FetchStatusToggle
+              detailsOpen={detailsOpen}
+              onToggle={() => setDetailsOpen((value) => !value)}
+              status={updateStatus}
+            />
+          </div>
+          <FetchScheduleSummary
+            cronJob={cronJob}
+            hydrated={hydrated}
+            nextExpectedAt={cronStatus.nextExpectedAt}
+            status={updateStatus}
+          />
         </div>
-        {actions ? <div className="min-w-0">{actions}</div> : null}
+        {actions ? (
+          <div className="digest-updates-actions">
+            {actions}
+          </div>
+        ) : null}
       </div>
 
       {error ? (
         <p className="mt-3 text-[12px] text-[var(--danger)]">{error}</p>
       ) : null}
 
-      <div
-        aria-label="Fetch sync views"
-        className="mt-4 inline-flex rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] p-1"
-        role="tablist"
-      >
-        <button
-          aria-selected={activeTab === "status"}
-          className={`fb-btn compact ${activeTab === "status" ? "" : "light"}`}
-          onClick={() => setActiveTab("status")}
-          role="tab"
-          type="button"
-        >
-          <Activity aria-hidden="true" />
-          Fetch status
-        </button>
-        <button
-          aria-selected={activeTab === "log"}
-          className={`fb-btn compact ${activeTab === "log" ? "" : "light"}`}
-          onClick={() => setActiveTab("log")}
-          role="tab"
-          type="button"
-        >
-          <Clock3 aria-hidden="true" />
-          Fetch log
-        </button>
-      </div>
+      {detailsOpen ? (
+        <div id="fetch-sync-details">
+          <div
+            aria-label="Fetch sync views"
+            className="mt-4 inline-flex rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] p-1"
+            role="tablist"
+          >
+            <button
+              aria-selected={activeTab === "status"}
+              className={`fb-btn compact ${activeTab === "status" ? "" : "light"}`}
+              onClick={() => setActiveTab("status")}
+              role="tab"
+              type="button"
+            >
+              <Activity aria-hidden="true" />
+              Fetch status
+            </button>
+            <button
+              aria-selected={activeTab === "log"}
+              className={`fb-btn compact ${activeTab === "log" ? "" : "light"}`}
+              onClick={() => setActiveTab("log")}
+              role="tab"
+              type="button"
+            >
+              <Clock3 aria-hidden="true" />
+              Fetch log
+            </button>
+          </div>
 
-      {activeTab === "status" ? (
-        <FetchStatusPanel
-          cronJob={cronJob}
-          nextExpectedAt={cronStatus.nextExpectedAt}
-          slots={cronStatus.slots}
-        />
-      ) : (
-        <FetchRunList
-          expanded={expanded}
-          runs={runs}
-          setExpanded={setExpanded}
-        />
-      )}
+          {activeTab === "status" ? (
+            <FetchStatusPanel
+              cronJob={cronJob}
+              nextExpectedAt={cronStatus.nextExpectedAt}
+              onOpenRun={openRun}
+              slots={cronStatus.slots}
+            />
+          ) : (
+            <FetchRunList
+              expanded={expanded}
+              runs={runs}
+              setExpanded={setExpanded}
+            />
+          )}
+        </div>
+      ) : null}
     </section>
+  );
+}
+
+function getFetchUpdateStatus(
+  cronJob: LibraryCronJobStatus | null,
+  slots: CronSlot[],
+  runs: LibraryFetchRunListItem[],
+): FetchUpdateStatus {
+  const activeRun = runs.find(isRunInflight);
+  if (activeRun) {
+    return {
+      key: "syncing",
+      label: "Syncing",
+      summary: "A fetch run is still updating item outcomes.",
+      style: statusStyle("partial"),
+    };
+  }
+  if (!cronJob) {
+    return {
+      key: "not-connected",
+      label: "Not connected",
+      summary: "No local fetch schedule has reported yet.",
+      style: statusStyle("partial"),
+    };
+  }
+  if (cronJob.status !== "active") {
+    return {
+      key: "stopped",
+      label: "Stopped",
+      summary: "The recurring fetch schedule is stopped.",
+      style: statusStyle("partial"),
+    };
+  }
+
+  const problemCount = slots.filter((slot) => slot.status === "missed" || slot.status === "failed").length;
+  const okCount = slots.filter((slot) => slot.status === "ok").length;
+  if (problemCount > 0) {
+    return {
+      key: "needs-attention",
+      label: "Needs attention",
+      summary: `${problemCount} scheduled ${problemCount === 1 ? "run needs" : "runs need"} review.`,
+      style: statusStyle("failed"),
+    };
+  }
+  if (okCount > 0) {
+    return {
+      key: "healthy",
+      label: "Healthy",
+      summary: "Recent scheduled fetch runs are completing successfully.",
+      style: statusStyle("ok"),
+    };
+  }
+
+  return {
+    key: "waiting",
+    label: "Waiting",
+    summary: "The schedule is active; the first expected run has not finished yet.",
+    style: statusStyle("partial"),
+  };
+}
+
+function FetchStatusToggle({
+  detailsOpen,
+  onToggle,
+  status,
+}: {
+  detailsOpen: boolean;
+  onToggle: () => void;
+  status: FetchUpdateStatus;
+}) {
+  const Icon = detailsOpen ? ChevronUp : ChevronDown;
+  return (
+    <button
+      aria-controls="fetch-sync-details"
+      aria-expanded={detailsOpen}
+      className="fb-chip digest-status-toggle"
+      onClick={onToggle}
+      style={{
+        background: status.style.background,
+        borderColor: status.style.border,
+        color: status.style.color,
+      }}
+      title={detailsOpen ? "Hide fetch sync details" : "Show fetch sync details"}
+      type="button"
+    >
+      {status.label}
+      <span aria-hidden="true" className="digest-status-toggle-hint">Details</span>
+      <Icon aria-hidden="true" />
+    </button>
+  );
+}
+
+function FetchScheduleSummary({
+  cronJob,
+  hydrated,
+  nextExpectedAt,
+  status,
+}: {
+  cronJob: LibraryCronJobStatus | null;
+  hydrated: boolean;
+  nextExpectedAt: string | null;
+  status: FetchUpdateStatus;
+}) {
+  if (!cronJob) {
+    return (
+      <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+        {status.summary} Fetch history appears after the local CLI runs.
+      </p>
+    );
+  }
+
+  if (cronJob.status !== "active") {
+    return (
+      <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+        Schedule stopped
+        {cronJob.stoppedAt
+          ? ` ${hydrated ? formatRelative(cronJob.stoppedAt) : formatAbsolute(cronJob.stoppedAt)}`
+          : ""}
+        . One-time fetch runs can still be started from the local helper.
+      </p>
+    );
+  }
+
+  const nextLabel = nextExpectedAt
+    ? hydrated
+      ? formatRelative(nextExpectedAt)
+      : formatAbsolute(nextExpectedAt)
+    : null;
+
+  return (
+    <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+      {status.summary} · {cronJob.frequencyLabel}
+      {nextLabel ? ` · next ${nextLabel}` : ""}
+      {cronJob.overrideFetched ? " · refreshes already fetched items" : ""}
+    </p>
   );
 }
 
 function FetchStatusPanel({
   cronJob,
   nextExpectedAt,
+  onOpenRun,
   slots,
 }: {
   cronJob: LibraryCronJobStatus | null;
   nextExpectedAt: string | null;
+  onOpenRun: (runId: string) => void;
   slots: CronSlot[];
 }) {
   const hydrated = useHydrated();
@@ -547,8 +744,16 @@ function FetchStatusPanel({
   }
 
   const okCount = slots.filter((slot) => slot.status === "ok").length;
-  const problemCount = slots.filter((slot) => slot.status === "failed" || slot.status === "missed").length;
+  const missedCount = slots.filter((slot) => slot.status === "missed").length;
+  const failedCount = slots.filter((slot) => slot.status === "failed").length;
+  const problemCount = missedCount + failedCount;
   const waitingCount = slots.filter((slot) => slot.status === "waiting").length;
+  const problemDetail =
+    missedCount > 0 && failedCount > 0
+      ? `${missedCount} scheduled ${missedCount === 1 ? "window has" : "windows have"} no recorded fetch run; ${failedCount} recorded ${failedCount === 1 ? "run did" : "runs did"} not finish successfully.`
+      : missedCount > 0
+        ? `${missedCount} scheduled ${missedCount === 1 ? "window has" : "windows have"} no recorded fetch run in ${missedCount === 1 ? "its" : "their"} expected time range.`
+        : `${failedCount} recorded ${failedCount === 1 ? "run did" : "runs did"} not finish successfully.`;
   const statusTone =
     problemCount > 0
       ? statusStyle("failed")
@@ -557,58 +762,93 @@ function FetchStatusPanel({
         : statusStyle("partial");
 
   return (
-    <div className="mt-4 grid gap-3">
-      <div className="rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className="fb-chip"
-                style={{
-                  background: statusTone.background,
-                  borderColor: statusTone.border,
-                  color: statusTone.color,
-                }}
-              >
-                {problemCount > 0 ? "Needs attention" : okCount > 0 ? "Healthy" : "Waiting"}
-              </span>
-              <span className="fb-chip">{cronJob.frequencyLabel}</span>
-              {cronJob.overrideFetched ? <span className="fb-chip">override fetched</span> : null}
+    <div className="mt-4 rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-4">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className="fb-chip"
+              style={{
+                background: statusTone.background,
+                borderColor: statusTone.border,
+                color: statusTone.color,
+              }}
+            >
+              {problemCount > 0 ? "Needs attention" : okCount > 0 ? "Healthy" : "Waiting"}
+            </span>
+            <span className="fb-chip">{cronJob.frequencyLabel}</span>
+            {cronJob.overrideFetched ? <span className="fb-chip">refreshes fetched items</span> : null}
+          </div>
+          <dl className="mt-3 grid gap-2 text-[12.5px] text-[var(--muted-strong)]">
+            <div className="flex items-baseline justify-between gap-3">
+              <dt>Started</dt>
+              <dd className="text-right text-[var(--ink)]">
+                {hydrated ? formatRelative(cronJob.startedAt) : formatAbsolute(cronJob.startedAt)}
+              </dd>
             </div>
-            <p className="mt-2 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-              Started {hydrated ? formatRelative(cronJob.startedAt) : formatAbsolute(cronJob.startedAt)}
-              {nextExpectedAt
-                ? ` · next expected ${hydrated ? formatRelative(nextExpectedAt) : formatAbsolute(nextExpectedAt)}`
-                : ""}
+            {nextExpectedAt ? (
+              <div className="flex items-baseline justify-between gap-3">
+                <dt>Next run</dt>
+                <dd className="text-right text-[var(--ink)]">
+                  {hydrated ? formatRelative(nextExpectedAt) : formatAbsolute(nextExpectedAt)}
+                </dd>
+              </div>
+            ) : null}
+            <div className="flex items-baseline justify-between gap-3">
+              <dt>Runner</dt>
+              <dd className="truncate text-right text-[var(--ink)]">
+                {cronJob.runtime || "Local helper"}
+                {cronJob.hostname ? ` · ${cronJob.hostname.replace(/\.local$/, "")}` : ""}
+              </dd>
+            </div>
+          </dl>
+          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+            <MetricPill label="OK" value={okCount} />
+            <MetricPill label="Issue" value={problemCount} />
+            <MetricPill label="Waiting" value={waitingCount} />
+          </div>
+          {problemCount > 0 ? (
+            <p className="mt-2 text-[12.5px] leading-relaxed" style={{ color: statusTone.color }}>
+              {problemDetail}
             </p>
-          </div>
-          <div className="mono text-right text-[11.5px] text-[var(--muted-strong)]">
-            <div>{cronJob.schedule}</div>
-            <div>{cronJob.runtime || "agent"}{cronJob.hostname ? ` · ${cronJob.hostname.replace(/\.local$/, "")}` : ""}</div>
-          </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-          <MetricPill label="Succeeded" value={okCount} />
-          <MetricPill label="Not successful" value={problemCount} />
-          <MetricPill label="Waiting" value={waitingCount} />
+          ) : null}
         </div>
 
         {slots.length > 0 ? (
-          <div className="mt-4">
-            <div className="flex items-end gap-1.5" aria-label="Cron job status graph">
+          <div className="min-w-0">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[11.5px] text-[var(--muted-strong)]">
+              <span className="font-semibold text-[var(--ink)]">
+                Last {slots.length} scheduled {slots.length === 1 ? "window" : "windows"}
+              </span>
+              <span>Green completed, amber waiting, red missed or failed.</span>
+            </div>
+            <div className="flex items-end gap-1.5" aria-label="Fetch schedule status graph">
               {slots.map((slot) => (
-                <CronSlotBar key={slot.expectedAt} slot={slot} />
+                <CronSlotBar
+                  key={slot.expectedAt}
+                  onSelect={() => {
+                    document.getElementById(slotDomId(slot))?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "center",
+                    });
+                  }}
+                  slot={slot}
+                />
               ))}
             </div>
-            <div className="mt-3 grid gap-1.5">
-              {slots.slice(-4).reverse().map((slot) => (
-                <CronSlotRow key={slot.expectedAt} slot={slot} hydrated={hydrated} />
+            <div className="mt-3 grid gap-1">
+              {slots.slice().reverse().slice(0, 6).map((slot) => (
+                <CronSlotRow
+                  key={slot.expectedAt}
+                  hydrated={hydrated}
+                  onOpenRun={onOpenRun}
+                  slot={slot}
+                />
               ))}
             </div>
           </div>
         ) : (
-          <div className="mt-4 rounded-[8px] border border-dashed border-[var(--line)] px-3 py-3 text-sm text-[var(--muted-strong)]">
+          <div className="rounded-[8px] border border-dashed border-[var(--line)] px-3 py-3 text-sm text-[var(--muted-strong)]">
             No expected scheduled run has elapsed since setup. The first status point appears after the next scheduled time.
           </div>
         )}
@@ -632,43 +872,50 @@ function cronSlotStyle(status: CronSlotStatus): { background: string; border: st
   return statusStyle("partial");
 }
 
-function CronSlotBar({ slot }: { slot: CronSlot }) {
+function cronSlotLabel(status: CronSlotStatus): string {
+  if (status === "ok") return "Succeeded";
+  if (status === "failed") return "Failed";
+  if (status === "missed") return "Missed";
+  return "Waiting";
+}
+
+function CronSlotBar({ onSelect, slot }: { onSelect: () => void; slot: CronSlot }) {
   const style = cronSlotStyle(slot.status);
   const height =
     slot.status === "ok" ? "h-12" : slot.status === "waiting" ? "h-8" : "h-10";
+  const label = cronSlotLabel(slot.status);
   return (
-    <span
-      aria-label={`${slot.status} at ${formatAbsolute(slot.expectedAt)}`}
-      className={`block min-w-0 flex-1 rounded-sm border ${height}`}
-      role="img"
+    <button
+      aria-label={`${label} scheduled fetch run at ${formatAbsolute(slot.expectedAt)}`}
+      className={`block min-w-0 flex-1 cursor-pointer rounded-sm border ${height} transition hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]`}
+      onClick={onSelect}
       style={{
         background: style.background,
         borderColor: style.border,
         color: style.color,
       }}
-      title={`${slot.status} · ${formatAbsolute(slot.expectedAt)}`}
+      title={`${label} · ${formatAbsolute(slot.expectedAt)}`}
+      type="button"
     />
   );
 }
 
 function CronSlotRow({
   hydrated,
+  onOpenRun,
   slot,
 }: {
   hydrated: boolean;
+  onOpenRun: (runId: string) => void;
   slot: CronSlot;
 }) {
   const style = cronSlotStyle(slot.status);
-  const label =
-    slot.status === "ok"
-      ? "Succeeded"
-      : slot.status === "failed"
-        ? "Failed"
-        : slot.status === "missed"
-          ? "Missed"
-          : "Waiting";
+  const label = cronSlotLabel(slot.status);
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px]">
+    <div
+      className="flex flex-wrap items-center justify-between gap-2 rounded-[7px] px-1 py-1 text-[12.5px] target:bg-[var(--accent-soft)]"
+      id={slotDomId(slot)}
+    >
       <div className="flex min-w-0 items-center gap-2">
         <span
           className="fb-chip"
@@ -684,9 +931,22 @@ function CronSlotRow({
           {hydrated ? formatRelative(slot.expectedAt) : formatAbsolute(slot.expectedAt)}
         </time>
       </div>
-      <span className="mono truncate text-[11.5px] text-[var(--muted-strong)]">
-        {slot.run ? `${slot.run.itemsFetched} fetched · ${formatDuration(slot.run.durationMs)}` : "no matching cron run"}
-      </span>
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="mono truncate text-[11.5px] text-[var(--muted-strong)]">
+          {slot.run
+            ? `${slot.run.itemsFetched} fetched · ${formatDuration(slot.run.durationMs)}`
+            : "no run recorded for this scheduled time"}
+        </span>
+        {slot.run ? (
+          <button
+            className="fb-btn light compact"
+            onClick={() => onOpenRun(slot.run!.id)}
+            type="button"
+          >
+            Open log
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -701,7 +961,7 @@ function FetchRunList({
   setExpanded: (value: (previous: boolean) => boolean) => void;
 }) {
   return (
-    <div className="mt-4 grid gap-2">
+    <div className="mt-4 grid gap-2.5">
       {runs.length === 0 ? (
         <div className="rounded-[10px] border border-dashed border-[var(--line)] bg-[var(--paper-strong)] px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
           No fetch runs yet. The next time your local CLI runs <code className="mono">fetch-personal</code> it will show up here.
@@ -747,6 +1007,7 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
   return (
     <article
       className="rounded-[10px] border bg-[var(--paper-strong)] px-3.5 py-3"
+      id={runDomId(run.id)}
       style={{ borderColor: "var(--line)" }}
     >
       <header className="flex flex-wrap items-center gap-2">
