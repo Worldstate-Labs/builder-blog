@@ -738,11 +738,10 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
   // the per-post outcomes yet. The run-level status already reads "ok" here, so
   // show a live "Syncing…" badge to make the in-between state legible.
   const inflight = isRunInflight(run);
-  // Show the agent + model that ran this fetch (e.g. "Codex · gpt-5-codex").
-  // Fall back to the CLI version for runs recorded before this was captured.
+  // Show the local helper that ran this fetch. Model names are kept out of the
+  // run header because they are not useful for everyday readers.
   const agentLabel =
-    [details.agentRuntime, details.agentModel].filter(Boolean).join(" · ") ||
-    (run.cliVersion ? `CLI ${run.cliVersion}` : "");
+    details.agentRuntime || (run.cliVersion ? "Local helper" : "");
   const startedAtLabel = hydrated ? formatRelative(run.startedAt) : formatAbsolute(run.startedAt);
 
   return (
@@ -774,7 +773,7 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
               aria-hidden="true"
               className="h-1.5 w-1.5 rounded-full bg-current motion-safe:animate-pulse"
             />
-            Syncing…
+            Updating…
           </span>
         ) : null}
         <time
@@ -786,13 +785,8 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
         </time>
         <span className="fb-chip">{run.source}</span>
         {agentLabel ? (
-          <span className="mono text-[11.5px] text-[var(--muted-strong)]">
+          <span className="text-[11.5px] text-[var(--muted-strong)]">
             {agentLabel}
-          </span>
-        ) : null}
-        {run.hostname ? (
-          <span className="mono text-[11.5px] text-[var(--muted-strong)]">
-            {run.hostname.replace(/\.local$/, "")}
           </span>
         ) : null}
       </header>
@@ -802,7 +796,7 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
       </p>
 
       <div className="mono mt-2 text-[11.5px] text-[var(--muted-strong)]">
-        {run.itemsFetched} fetched · {run.tasksGenerated} tasks ·{" "}
+        {run.itemsFetched} items read · {run.tasksGenerated} checked ·{" "}
         {run.userActionsCount} action{run.userActionsCount === 1 ? "" : "s"} needed ·{" "}
         {formatDuration(run.durationMs)}
       </div>
@@ -835,7 +829,7 @@ function DetailsBody({ details }: { details: DetailsShape }) {
       {perBuilder.length > 0 ? (
         <div>
           <h3 className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted-strong)]">
-            Per builder
+            Sources
           </h3>
           <ul className="mt-1.5 grid gap-1">
             {perBuilder.map((entry, index) => (
@@ -849,7 +843,7 @@ function DetailsBody({ details }: { details: DetailsShape }) {
                 <span className="text-[var(--muted-strong)]"> · </span>
                 <span>{entry.itemsFetched ?? 0} items</span>
                 <span className="text-[var(--muted-strong)]"> · </span>
-                <span>{entry.tasksGenerated ?? 0} tasks</span>
+                <span>{entry.tasksGenerated ?? 0} checked</span>
                 {entry.error ? (
                   <>
                     <span className="text-[var(--muted-strong)]"> · </span>
@@ -865,7 +859,7 @@ function DetailsBody({ details }: { details: DetailsShape }) {
       {fetchTasks.length > 0 ? (
         <div>
           <h3 className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted-strong)]">
-            Tasks ({fetchTasks.length})
+            Items checked ({fetchTasks.length})
           </h3>
           <ul className="mt-1.5 grid gap-1">
             {fetchTasks.map((task, index) => (
@@ -881,13 +875,11 @@ function DetailsBody({ details }: { details: DetailsShape }) {
       {promptEntries.length > 0 ? (
         <div>
           <h3 className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted-strong)]">
-            Prompts used
+            Helper instructions
           </h3>
           <p className="mt-1 text-[11.5px] text-[var(--muted)]">
-            The exact strings the agent received as{" "}
-            <code>task.summaryInstructions.prompt</code> and (when the admin
-            configured one) <code>task.fetchInstructions.prompt</code> for each
-            source type on this run.
+            The instructions used to read and summarize each source type on
+            this update.
           </p>
           <div className="mt-2 grid gap-2">
             {promptEntries.map(([sourceType, bundle]) => (
@@ -907,7 +899,7 @@ function DetailsBody({ details }: { details: DetailsShape }) {
                       className="text-[10.5px] uppercase tracking-wide"
                       style={{ color: "var(--muted)" }}
                     >
-                      Summary prompt · what the agent received
+                      Summary instructions
                     </p>
                     <pre
                       className="mono mt-1 max-h-72 overflow-auto whitespace-pre-wrap text-[11.5px]"
@@ -921,7 +913,7 @@ function DetailsBody({ details }: { details: DetailsShape }) {
                       className="flex items-center gap-1.5 text-[10.5px] uppercase tracking-wide"
                       style={{ color: "var(--muted)" }}
                     >
-                      <span>Fetch prompt · what the agent received</span>
+                      <span>Fetch instructions</span>
                       {bundle.fetchIsDefault ? (
                         <span
                           className="rounded-sm px-1 py-[1px] text-[9.5px] font-bold uppercase"
@@ -1076,28 +1068,28 @@ function describeWork(task: FetchTaskLog): WorkInfo {
   switch (code) {
     case "x_token_missing":
       return {
-        label: "x_token_missing",
+        label: "Needs X access",
         blurb:
-          "This X (Twitter) source needs a personal API token before its posts can be read.",
-        fix: "Add an X token under Settings → Tokens, then run fetch again.",
+          "This X source needs personal access before its posts can be read.",
+        fix: "Add X access in Settings, then update sources again.",
         fixHref: "/settings",
       };
     case "youtube_transcription":
       return {
-        label: "youtube_transcription",
+        label: "YouTube transcript",
         blurb:
-          "The video transcript was pulled and handed to the agent to summarize.",
+          "The video transcript was read and summarized.",
         fix: null,
       };
     case "fetch_builder_fallback":
       return {
-        label: "fetch_builder_fallback",
+        label: "Local helper",
         blurb:
-          "The standard fetcher couldn't pull the body, so the agent fetched the primary content itself before summarizing.",
+          "The local helper read the primary content before summarizing it.",
         fix: null,
       };
     default:
-      return { label: code || "—", blurb: null, fix: null };
+      return { label: code || "Standard read", blurb: null, fix: null };
   }
 }
 
@@ -1124,16 +1116,16 @@ function fetchOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
   if (typeof task.bodyChars === "number" && task.bodyChars > 0)
     return { label: "Fetched", tone: "ok" };
   if (task.contentStatus === "ready") return { label: "Fetched", tone: "ok" };
-  return { label: "Fetched by agent", tone: "idle" };
+  return { label: "Read by helper", tone: "idle" };
 }
 
 // Human-readable labels for the server/CLI failure reasons.
 const FAILURE_REASON_LABEL: Record<string, string> = {
   summary_missing: "No summary was produced",
-  not_summarized: "Fetched but the agent never summarized it",
+  not_summarized: "Fetched but no summary was created",
   not_synced: "Not saved",
-  content_missing: "No content was crawled",
-  content_too_short: "Crawled content was too short / not real content",
+  content_missing: "No readable content was found",
+  content_too_short: "The readable content was too short",
 };
 
 function failureReasonText(task: FetchTaskLog): string | null {
@@ -1274,7 +1266,7 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
             className="shrink-0 rounded px-1.5 py-0.5 text-[10.5px] uppercase tracking-wide"
             style={{ ...toneStyle(pillTone), fontFamily: "var(--font-geist-mono)" }}
           >
-            {ready ? "ready" : "agent"}
+            {ready ? "ready" : "helper"}
           </span>
           <span className="min-w-0 flex-1 truncate text-[var(--ink)]">
             {task.title ?? task.url ?? "—"}
@@ -1310,9 +1302,9 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
             </div>
           ) : null}
 
-          <StageBlock title="① Fetch" tone={fetchRes.tone} outcome={fetchRes.label}>
-            <FactRow label="Method" value={<span className="mono">{work.label}</span>} />
-            {bodySize ? <FactRow label="Raw size" value={bodySize} /> : null}
+          <StageBlock title="① Read" tone={fetchRes.tone} outcome={fetchRes.label}>
+            <FactRow label="Method" value={<span>{work.label}</span>} />
+            {bodySize ? <FactRow label="Content size" value={bodySize} /> : null}
             {isContentFailure(task) && failureReasonText(task) ? (
               <FactRow
                 label="Reason"
@@ -1354,7 +1346,7 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
 
           <StageBlock title="② Summarize" tone={sumRes.tone} outcome={sumRes.label}>
             {agentLabel ? (
-              <FactRow label="Agent" value={<span className="mono">{agentLabel}</span>} />
+              <FactRow label="Helper" value={<span>{agentLabel}</span>} />
             ) : null}
             {summarySize ? <FactRow label="Summary size" value={summarySize} /> : null}
             {compression ? <FactRow label="Compression" value={compression} /> : null}
@@ -1372,14 +1364,14 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
                   ? "Fetch was blocked, so no summary was produced."
                   : sumRes.label === "Failed"
                     ? "This item failed to summarize, so it was not saved."
-                    : "The agent hasn't summarized this item yet."}
+                    : "The local helper hasn't summarized this item yet."}
               </p>
             ) : null}
           </StageBlock>
 
           <details className="rounded-[6px] border border-[var(--line)] bg-[var(--paper)]">
             <summary className="cursor-pointer px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--muted-strong)]">
-              Raw JSON
+              Technical details
             </summary>
             <pre className="mono max-h-72 overflow-auto px-2.5 pb-2.5 pt-1 text-[11px] text-[var(--muted-strong)]">
               {JSON.stringify(task, null, 2)}

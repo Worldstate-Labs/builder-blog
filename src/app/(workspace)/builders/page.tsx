@@ -434,7 +434,7 @@ async function BuilderSections({
         editableSourceOptions={data.sourceLabelOptions.filter(
           (source) => source.id !== "pdf",
         )}
-        emptyBody="Add a source here, or sync richer summarized data from your agent later."
+        emptyBody="Add a source here, or let your local helper bring in richer summaries later."
         emptyTitle="No personal sources yet"
       />
 

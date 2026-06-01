@@ -74,19 +74,13 @@ export function FetchMethodPopover({
             <>
               {parsed.runtime ? (
                 <div className="fb-popover-row">
-                  <span className="fb-popover-label">Agent runtime</span>
+                  <span className="fb-popover-label">Local helper</span>
                   <span>{parsed.runtime}</span>
-                </div>
-              ) : null}
-              {parsed.model ? (
-                <div className="fb-popover-row">
-                  <span className="fb-popover-label">Model</span>
-                  <span>{parsed.model}</span>
                 </div>
               ) : null}
               {parsed.detail ? (
                 <div className="fb-popover-row">
-                  <span className="fb-popover-label">Source detail</span>
+                  <span className="fb-popover-label">Source note</span>
                   <span>{parsed.detail}</span>
                 </div>
               ) : null}

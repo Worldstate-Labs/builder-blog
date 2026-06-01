@@ -173,11 +173,11 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   const route = source("src/app/api/digest-runs/route.ts");
   const digestRuns = source("src/lib/digest-runs.ts");
 
-  assert.match(panel, /Digest sync/);
-  assert.match(panel, /Digest status/);
-  assert.match(panel, /Digest log/);
+  assert.match(panel, /Digest updates/);
+  assert.match(panel, /Schedule status/);
+  assert.match(panel, /Build history/);
   assert.match(panel, /role="tablist"/);
-  assert.match(panel, /Digest cron job status graph/);
+  assert.match(panel, /Digest schedule status graph/);
   assert.match(panel, /buildCronStatus/);
   assert.match(panel, /run\.source === "cron"/);
   assert.match(panel, /run\.status === "synced"/);

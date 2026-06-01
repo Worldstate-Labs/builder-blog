@@ -28,13 +28,13 @@ export default async function LoginPage({
             Sign in to your<br />briefing desk.
           </h1>
           <p className="mt-5 max-w-lg text-base leading-relaxed text-white/68 md:text-lg">
-            Follow people and sources, collect new updates, and publish your
-            agent-generated digests to a searchable archive.
+            Follow people and sources, collect new updates, and keep your
+            digests in a searchable archive.
           </p>
           <div className="mt-8 hidden max-w-lg gap-2.5 sm:grid sm:grid-cols-3 lg:grid">
             <LoginProof icon={Archive} label="Archive" />
             <LoginProof icon={Search} label="Search" />
-            <LoginProof icon={KeyRound} label="Agent token" />
+            <LoginProof icon={KeyRound} label="Local helper" />
           </div>
         </section>
 
@@ -45,7 +45,7 @@ export default async function LoginPage({
                 Continue securely
               </h2>
               <p className="mt-2.5 text-[12.5px] leading-relaxed text-white/62 md:text-[13px]">
-                Use the same identity for your web archive and terminal agent bridge.
+                Use the same identity for your web archive and local reading helper.
               </p>
             </div>
             <span className="rounded-lg bg-white/10 p-2 text-white/70">
@@ -64,7 +64,7 @@ export default async function LoginPage({
             <AuthButtons callbackUrl={safeCallbackUrl(params.callbackUrl)} />
           </div>
           <p className="mt-4 text-[11px] leading-relaxed text-white/42">
-            Tokens for terminal use are created after sign-in from Settings.
+            Local helper access is set up after sign-in from Settings.
           </p>
         </section>
       </div>
@@ -85,9 +85,9 @@ function describeAuthError(code: string | undefined): string | null {
     OAuthAccountNotLinked:
       "This email is already linked to a different sign-in method. Use the original method, or contact support to merge accounts.",
     OAuthSignin: "Could not start the sign-in flow. Try again.",
-    OAuthCallback: "The provider rejected the sign-in callback. Try again.",
+    OAuthCallback: "The sign-in service could not finish. Try again.",
     OAuthCreateAccount: "Could not create your account. Try again.",
-    Callback: "Sign-in callback failed. Try again.",
+    Callback: "Sign-in could not finish. Try again.",
     AccessDenied: "Sign-in was denied.",
     SessionRequired: "Please sign in to continue.",
   };

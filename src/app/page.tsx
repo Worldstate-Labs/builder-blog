@@ -55,7 +55,7 @@ export default async function Home() {
               <div>
                 <div className="text-sm font-bold">Today&apos;s digest</div>
                 <div className="text-xs text-[var(--muted-strong)]">
-                  Synced 12 minutes ago
+                  Updated 12 minutes ago
                 </div>
               </div>
             </div>
@@ -72,7 +72,7 @@ export default async function Home() {
                   "Launch notes, essays, podcasts, and pricing shifts grouped into one readable brief.",
               },
               {
-                title: "Agent-native ingestion is now the differentiator.",
+                title: "Private sources belong in the brief.",
                 detail:
                   "Personal feeds can carry paid newsletters, YouTube transcripts, and private source notes.",
               },
@@ -112,19 +112,19 @@ export default async function Home() {
               i: "01",
               icon: UsersRound,
               title: "Choose sources",
-              copy: "Start from shared libraries, then add people, publications, and private sources your agent can reach.",
+              copy: "Start from shared libraries, then add people, publications, and private sources your local helper can reach.",
             },
             {
               i: "02",
               icon: Terminal,
               title: "Generate briefs",
-              copy: "Run the terminal skill to summarize followed sources and push the digest into the app.",
+              copy: "Copy a prompt for your local helper to summarize followed sources and save the digest.",
             },
             {
               i: "03",
               icon: Archive,
               title: "Keep memory",
-              copy: "Browse today, inspect summarized inputs, and search the full archive when a detail matters later.",
+              copy: "Browse today, open the items behind each brief, and search the full archive when a detail matters later.",
             },
           ].map(({ i, icon: Icon, title, copy }) => (
             <div key={title} className="fb-panel">
@@ -145,7 +145,7 @@ export default async function Home() {
 
       <section className="mx-auto grid max-w-7xl gap-5 border-t border-[var(--line)] py-10 md:grid-cols-[0.9fr_1.1fr]">
         <div>
-          <span className="fb-section-label">Product surface</span>
+          <span className="fb-section-label">Workspace</span>
           <h2 className="serif mt-3 text-3xl font-semibold leading-tight tracking-tight">
             Calm enough for daily use. Dense enough for real recall.
           </h2>
@@ -154,12 +154,12 @@ export default async function Home() {
           <Feature
             icon={Sparkles}
             title="Digest-first home"
-            copy="Today stays focused on generated briefings, not raw feed noise."
+            copy="Today stays focused on readable briefings, not raw feed noise."
           />
           <Feature
             icon={Search}
             title="Library search"
-            copy="Sources, feed inputs, and digest history share one retrieval surface."
+            copy="Sources, saved items, and digest history share one search surface."
           />
         </div>
       </section>

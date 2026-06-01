@@ -93,7 +93,7 @@ export async function POST(request: Request) {
       ok: true,
       enrichment: {},
       warning:
-        "We couldn't verify the source right now; it was added but the agent will retry.",
+        "We couldn't verify the source right now; it was added and your local helper can retry later.",
     };
   });
   if (!probe.ok) {

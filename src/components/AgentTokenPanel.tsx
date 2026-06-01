@@ -168,7 +168,7 @@ export function AgentTokenPanel({
   function submitCreate() {
     const name = tokenName.trim();
     if (!name) {
-      setStatus("Give the token a name first.");
+      setStatus("Name this access key first.");
       return;
     }
     setStatus("");
@@ -190,7 +190,7 @@ export function AgentTokenPanel({
         // copy-prompt picker on those pages renders a stale list.
         router.refresh();
       } catch (error) {
-        setStatus(error instanceof Error ? error.message : "Token creation failed");
+        setStatus(error instanceof Error ? error.message : "Could not create access key");
       }
     });
   }
@@ -225,7 +225,7 @@ export function AgentTokenPanel({
         router.refresh();
       } catch (error) {
         setTokens(previousTokens);
-        setStatus(error instanceof Error ? error.message : "Token revoke failed");
+        setStatus(error instanceof Error ? error.message : "Could not revoke access key");
       }
     });
   }
@@ -234,9 +234,9 @@ export function AgentTokenPanel({
     <section className="fb-panel">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="fb-section-heading">Agent tokens</h2>
+          <h2 className="fb-section-heading">Local helper access</h2>
           <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-            Long-lived tokens for the terminal skill. Treat them like passwords.
+            Let a local helper save sources and digests to FollowBrief. Treat access keys like passwords.
           </p>
         </div>
         <button
@@ -246,7 +246,7 @@ export function AgentTokenPanel({
           type="button"
         >
           <Plus aria-hidden="true" />
-          New token
+          Add access key
         </button>
       </div>
 
@@ -261,12 +261,12 @@ export function AgentTokenPanel({
         ))}
         {tokens.length === 0 ? (
           <div className="px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
-            No tokens yet. Create one when your local agent or terminal skill needs direct access.
+            No access keys yet. Add one when you connect a local helper.
           </div>
         ) : null}
         {tokens.length > 0 && visibleTokens.length === 0 ? (
           <div className="px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
-            No active tokens.
+            No active access keys.
           </div>
         ) : null}
       </div>
@@ -274,7 +274,7 @@ export function AgentTokenPanel({
       {hiddenTokens.length > 0 ? (
         <details className="mt-3 rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)]">
           <summary className="cursor-pointer px-4 py-3 text-[13px] font-bold text-[var(--ink)]">
-            Token history ({hiddenTokens.length})
+            Past access keys ({hiddenTokens.length})
           </summary>
           <div className="border-t border-[var(--line)]">
             {hiddenTokens.map((token) => (
@@ -293,13 +293,13 @@ export function AgentTokenPanel({
         {status ? <span className="text-[12px] text-[var(--danger)]">{status}</span> : null}
       </span>
       <span className="sr-only" aria-live="polite">
-        {activeCount} active tokens
+        {activeCount} active access keys
       </span>
 
       {/* Create token dialog */}
       <dialog
         ref={createDialogRef}
-        aria-label="New agent token"
+        aria-label="New access key"
         className="fb-dialog"
         onClose={() => {
           setCreateOpen(false);
@@ -308,9 +308,9 @@ export function AgentTokenPanel({
       >
         {createOpen ? (
           <div className="fb-dialog-inner">
-            <h3 className="fb-section-heading">New agent token</h3>
+            <h3 className="fb-section-heading">New access key</h3>
             <p className="mt-2 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-              Give this token a name so you can recognize it later
+              Give this access key a name so you can recognize it later
               (e.g. <em>My Mac · Claude Code</em>).
             </p>
             <input
@@ -325,7 +325,7 @@ export function AgentTokenPanel({
                   submitCreate();
                 }
               }}
-              placeholder="Token name"
+              placeholder="Access key name"
               ref={createInputRef}
               type="text"
               value={tokenName}
@@ -344,7 +344,7 @@ export function AgentTokenPanel({
                 onClick={submitCreate}
                 type="button"
               >
-                {isPending ? "Creating..." : "Create token"}
+                {isPending ? "Creating..." : "Create access key"}
               </button>
             </div>
           </div>
@@ -359,12 +359,12 @@ export function AgentTokenPanel({
       >
         {revokeTarget ? (
           <div className="fb-dialog-inner">
-            <h3 className="fb-section-heading">Revoke token &ldquo;{revokeTarget.name}&rdquo;?</h3>
+            <h3 className="fb-section-heading">Revoke access key &ldquo;{revokeTarget.name}&rdquo;?</h3>
             <div className="mt-3 text-[13px] leading-relaxed text-[var(--muted-strong)]">
               {revokeTarget.lastIp || revokeTarget.lastUserAgent || revokeTarget.lastUsedAt ? (
                 <>
                   <p>
-                    This token has been used by{" "}
+                    This access key has been used by{" "}
                     <strong>{describeMachine(revokeTarget)}</strong>
                     {revokeTarget.lastIp ? (
                       <>
@@ -377,15 +377,14 @@ export function AgentTokenPanel({
                     .
                   </p>
                   <p className="mt-2 text-[var(--danger)]">
-                    After revoke, any agent or terminal session on that machine will
-                    immediately lose access to FollowBrief and need a new token to
-                    sync again.
+                    After revoking it, that local helper will lose access to
+                    FollowBrief and need a new access key to update again.
                   </p>
                 </>
               ) : (
                 <p>
-                  This token has never been used. Revoking it now is safe — no
-                  machine will lose access.
+                  This access key has never been used. Revoking it now is safe.
+                  No machine will lose access.
                 </p>
               )}
             </div>

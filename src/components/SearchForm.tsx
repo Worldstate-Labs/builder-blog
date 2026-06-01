@@ -333,11 +333,11 @@ export function SearchForm({
         {isHeader ? null : (
           <>
             <label className="search-mode-select">
-              <span>Search mode</span>
+              <span>Match style</span>
               <select name="mode" defaultValue={mode}>
-                <option value="hybrid">Hybrid</option>
-                <option value="exact">Exact</option>
-                <option value="semantic">Semantic</option>
+                <option value="hybrid">Best match</option>
+                <option value="exact">Exact words</option>
+                <option value="semantic">Meaning</option>
               </select>
             </label>
             <label className="search-mode-select">

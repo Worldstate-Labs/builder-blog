@@ -16,11 +16,11 @@ const RUNTIME_OPTIONS: { id: AgentRuntime; label: string; hint: string }[] = [
   {
     id: "claude",
     label: "Claude Code",
-    hint: "Unattended: --permission-mode acceptEdits + Bash/Edit/Read/Write/Grep/Glob/WebFetch allowlist",
+    hint: "Use this if Claude Code is the local helper that will run the schedule.",
   },
-  { id: "codex", label: "Codex", hint: "Unattended: --full-auto (approval=never, workspace-write sandbox)" },
-  { id: "gemini", label: "Gemini CLI", hint: "Unattended: --yolo (skip all confirmation prompts)" },
-  { id: "openclaw", label: "OpenClaw", hint: "Unattended: exec-policy preset yolo (auto-approves exec host-wide)" },
+  { id: "codex", label: "Codex", hint: "Use this if Codex is the local helper that will run the schedule." },
+  { id: "gemini", label: "Gemini CLI", hint: "Use this if Gemini CLI is the local helper that will run the schedule." },
+  { id: "openclaw", label: "OpenClaw", hint: "Use this if OpenClaw is the local helper that will run the schedule." },
 ];
 
 // Cron cadence. `id` values match the server whitelist in the
@@ -72,18 +72,18 @@ const OVERRIDE_COPY: Record<
   { name: string; cronHint: string; onceHint: string }
 > = {
   library: {
-    name: "Override already-fetched posts",
+    name: "Refresh posts already saved",
     cronHint:
-      "Re-fetch on every run (--force): re-pulls posts already in your library. Off by default.",
+      "Refreshes posts already in your library on every run. Leave off for normal updates.",
     onceHint:
-      "Passes --force: ignores the last-fetched cutoff and re-pulls posts already in your library. One-time for this run only.",
+      "Refreshes posts already in your library this time only.",
   },
   digest: {
-    name: "Re-include already-digested posts",
+    name: "Include already digested items",
     cronHint:
-      "Re-includes posts you've already had digested so they can appear again. Adds a new digest; never deletes or replaces past ones. Off by default.",
+      "Lets items from past digests appear again. Adds a new digest and never deletes older ones. Leave off for normal daily briefs.",
     onceHint:
-      "Re-includes posts you've already had digested so they can appear again. Adds a new digest; never deletes or replaces past ones. Off by default. One-time for this run only.",
+      "Lets items from past digests appear again this time only. Adds a new digest and never deletes older ones.",
   },
 };
 
@@ -190,24 +190,27 @@ function MaxAgeField({
 
 const PROMPT_CONFIG = {
   library: {
-    onceLabel: "Copy once prompt",
-    cronLabel: "Copy cron prompt",
+    title: "Update sources",
+    onceLabel: "Copy one-time prompt",
+    cronLabel: "Copy schedule prompt",
     onceJob: "library-once",
     cronJob: "library-cron-setup",
     stopJob: "library-cron-stop",
-    stopLabel: "Stop cron",
+    stopLabel: "Stop schedule",
   },
   digest: {
-    onceLabel: "Copy once prompt",
-    cronLabel: "Copy cron prompt",
+    title: "Build digest",
+    onceLabel: "Copy one-time prompt",
+    cronLabel: "Copy schedule prompt",
     onceJob: "digest-once",
     cronJob: "digest-cron-setup",
     stopJob: "digest-cron-stop",
-    stopLabel: "Stop cron",
+    stopLabel: "Stop schedule",
   },
 } satisfies Record<
   SkillPromptContext,
   {
+    title: string;
     onceLabel: string;
     cronLabel: string;
     onceJob: string;
@@ -241,7 +244,7 @@ export function SkillPromptActions({
   // The `in` narrow keeps this typed against the per-context literal config
   // shapes if a future context omits stop support.
   const stopJob = "stopJob" in config ? config.stopJob : undefined;
-  const stopLabel = "stopLabel" in config ? config.stopLabel : "Stop cron";
+  const stopLabel = "stopLabel" in config ? config.stopLabel : "Stop schedule";
 
   const [copiedTarget, setCopiedTarget] = useState<CopyTarget | null>(null);
   const [status, setStatus] = useState<{ kind: "error" | "info"; text: string } | null>(null);
@@ -305,7 +308,7 @@ export function SkillPromptActions({
     setStatus(null);
     const code = await fetchExchangeCode(tokenId);
     if (!code) {
-      setStatus({ kind: "error", text: "Could not generate exchange code" });
+      setStatus({ kind: "error", text: "Could not prepare a secure setup code" });
       return;
     }
     const command = buildCommand(target, code, extras);
@@ -313,12 +316,12 @@ export function SkillPromptActions({
       await navigator.clipboard.writeText(command);
       setCopiedTarget(target);
       window.setTimeout(() => setCopiedTarget(null), 1800);
-      setStatus({ kind: "info", text: "Copied · expires in 10 min" });
+      setStatus({ kind: "info", text: "Copied · valid for 10 minutes" });
       window.setTimeout(() => setStatus(null), 8000);
     } catch (error) {
       setStatus({
         kind: "error",
-        text: error instanceof Error ? error.message : "Could not copy command",
+        text: error instanceof Error ? error.message : "Could not copy prompt",
       });
     }
   }
@@ -330,7 +333,7 @@ export function SkillPromptActions({
   async function continueCronCopy(cron: CronConfig) {
     const extras: CopyExtras = { cron, force: false };
     if (activeTokens.length === 0) {
-      setStatus({ kind: "info", text: "Create a token in Settings first" });
+      setStatus({ kind: "info", text: "Connect a local helper in Settings first" });
       return;
     }
     if (activeTokens.length === 1) {
@@ -348,7 +351,7 @@ export function SkillPromptActions({
   async function continueOnceCopy(overrideFetched: boolean) {
     const extras: CopyExtras = { cron: null, force: overrideFetched };
     if (activeTokens.length === 0) {
-      setStatus({ kind: "info", text: "Create a token in Settings first" });
+      setStatus({ kind: "info", text: "Connect a local helper in Settings first" });
       return;
     }
     if (activeTokens.length === 1) {
@@ -363,7 +366,7 @@ export function SkillPromptActions({
     setStatus(null);
 
     if (activeTokens.length === 0) {
-      setStatus({ kind: "info", text: "Create a token in Settings first" });
+      setStatus({ kind: "info", text: "Connect a local helper in Settings first" });
       return;
     }
     // Cron flow: pick runtime + cadence + language + override first. Once flow:
@@ -390,7 +393,7 @@ export function SkillPromptActions({
     if (!stopJob) return;
     setStatus(null);
     if (activeTokens.length === 0) {
-      setStatus({ kind: "info", text: "Create a token in Settings first" });
+      setStatus({ kind: "info", text: "Connect a local helper in Settings first" });
       return;
     }
     if (activeTokens.length === 1) {
@@ -402,6 +405,12 @@ export function SkillPromptActions({
 
   return (
     <div className={compactOnly ? "flex flex-wrap items-center justify-end gap-2" : "fb-skill"}>
+      {!compactOnly ? (
+        <div className="fb-skill-text">
+          <span className="fb-section-label mr-2">{config.title}</span>
+          Copy a prompt for your local helper to update new {context === "digest" ? "digests" : "sources"}.
+        </div>
+      ) : null}
       <button
         className="fb-btn light compact"
         onClick={() => copyCommand("once")}
@@ -446,7 +455,7 @@ export function SkillPromptActions({
           status.kind === "info" ? (
             <span className="text-[11px] text-[var(--muted-strong)]">
               {status.text}
-              {status.text.includes("Create a token") ? (
+              {status.text.includes("Connect a local helper") ? (
                 <>
                   {" "}
                   <a className="underline" href="/settings">
@@ -605,21 +614,21 @@ function TokenPickerDialog({
       >
         <header className="token-picker-header">
           <h2 id="token-picker-title" className="token-picker-title">
-            Choose a token
+            Choose a local helper
           </h2>
           <p className="token-picker-sub">
-            We&rsquo;ll mint a one-time exchange code (expires in 10 minutes) and copy the
-            runner command for {actionLabel.toLowerCase().replace(/^copy\s/, "")}.
+            We&rsquo;ll create a short-lived setup code and copy the prompt for{" "}
+            {actionLabel.toLowerCase().replace(/^copy\s/, "")}.
           </p>
         </header>
 
         <fieldset className="token-picker-list">
-          <legend className="sr-only">Active tokens</legend>
+          <legend className="sr-only">Connected helpers</legend>
           {!open ? null : tokens.length === 0 ? (
             <p className="px-3 py-6 text-center text-sm text-[var(--muted-strong)]">
-              No active tokens.{" "}
+              No connected helpers.{" "}
               <a className="underline" href="/settings">
-                Create one in Settings
+                Add one in Settings
               </a>
               .
             </p>
@@ -799,11 +808,11 @@ function CronConfigDialog({
       >
         <header className="token-picker-header">
           <h2 id="cron-config-title" className="token-picker-title">
-            Configure the scheduled job
+            Set the schedule
           </h2>
           <p className="token-picker-sub">
-            Runs unattended — every setting below is pinned (or saved to your
-            account) so no permission prompts fire at run time.
+            These choices are saved into the prompt so it can run later without
+            asking again.
           </p>
         </header>
 
@@ -828,7 +837,7 @@ function CronConfigDialog({
           </div>
           <div className="cron-field">
             <label htmlFor="cron-runtime" className="cron-field-label">
-              Agent runtime
+              Local helper
             </label>
             <select
               id="cron-runtime"
@@ -852,7 +861,7 @@ function CronConfigDialog({
             onChange={setPickedLanguage}
           />
           <p className="cron-field-hint">
-            Account-wide — applies to all your summaries (library + digest).
+            Saved for future summaries.
           </p>
 
           {context === "digest" ? (
@@ -1025,12 +1034,12 @@ function OnceConfigDialog({
       >
         <header className="token-picker-header">
           <h2 id="once-config-title" className="token-picker-title">
-            {context === "digest" ? "Generate the digest once" : "Run the sync once"}
+            {context === "digest" ? "Build the digest once" : "Update sources once"}
           </h2>
           <p className="token-picker-sub">
             {context === "digest"
-              ? "By default this adds a digest from new items since your last one."
-              : "By default this fetches only posts newer than what’s already in your library."}
+              ? "By default this builds a digest from new items since your last one."
+              : "By default this saves only posts newer than what’s already in your library."}
           </p>
         </header>
 
@@ -1044,7 +1053,7 @@ function OnceConfigDialog({
                 onChange={setPickedLanguage}
               />
               <p className="cron-field-hint">
-                Account-wide — applies to all your summaries (library + digest).
+                Saved for future summaries.
               </p>
             </>
           ) : null}

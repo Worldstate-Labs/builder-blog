@@ -315,8 +315,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(buildersPage, /summaryLanguage=\{data\.summaryLanguage\}/);
   assert.doesNotMatch(skillPromptActions, /Source sync/);
   assert.doesNotMatch(skillPromptActions, /Run the terminal skill/);
-  assert.match(skillPromptActions, /Copy once prompt/);
-  assert.match(skillPromptActions, /Copy cron prompt/);
+  assert.match(skillPromptActions, /Update sources/);
+  assert.match(skillPromptActions, /Build digest/);
+  assert.match(skillPromptActions, /Copy one-time prompt/);
+  assert.match(skillPromptActions, /Copy schedule prompt/);
   assert.match(skillPromptActions, /Read \$\{promptUrl\} and follow the instructions/);
   assert.match(skillPromptActions, /\/api\/skill\/jobs\/\$\{job\}\/skill\.md/);
   // Cron copy flow picks runtime AND cadence, both passed as URL params.
@@ -330,8 +332,8 @@ test("web app serves the agent skill and setup command", () => {
   // additively — the digest job never fetches and never deletes past digests).
   // Both cron + once dialogs expose it for both contexts, defaulting off.
   assert.match(skillPromptActions, /OVERRIDE_COPY/);
-  assert.match(skillPromptActions, /Override already-fetched posts/);
-  assert.match(skillPromptActions, /Re-include already-digested posts/);
+  assert.match(skillPromptActions, /Refresh posts already saved/);
+  assert.match(skillPromptActions, /Include already digested items/);
   assert.match(skillPromptActions, /overrideFetched/);
   assert.match(skillPromptActions, /params\.set\("force", "1"\)/);
   // The once flow opens a config dialog for BOTH contexts (digest gains the

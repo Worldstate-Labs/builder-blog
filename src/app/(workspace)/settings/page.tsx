@@ -20,7 +20,7 @@ export default async function SettingsPage() {
         <div>
           <h1 className="fb-title">Settings</h1>
           <p className="fb-desc">
-            Configure feed preferences and agent access.
+            Configure feed preferences and local helper access.
           </p>
         </div>
         <Suspense fallback={<ActiveTokenChipFallback />}>
@@ -49,21 +49,20 @@ async function SourceTypeConfigSection({ userId }: { userId: string }) {
   return (
     <section className="mt-10 grid gap-4">
       <header>
-        <p className="fb-section-label">Your content pipeline</p>
-        <h2 className="fb-section-heading mt-1">Content pipeline</h2>
+        <p className="fb-section-label">Advanced</p>
+        <h2 className="fb-section-heading mt-1">Briefing rules</h2>
         <p className="fb-desc mt-1 max-w-3xl">
-          Edit the prompts, fetch defaults, and quality thresholds used by your
-          digest and library once-skills. These are your own settings (seeded
-          from the defaults); changes take effect on the next context fetch.
+          Tune how source types are read and how digests are written. Changes
+          apply the next time your local helper updates sources.
         </p>
       </header>
 
-      <details className="fb-panel" open>
+      <details className="fb-panel">
         <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="fb-section-heading">Source types</h3>
             <p className="mt-1 text-sm text-[var(--muted-strong)]">
-              Per-source: how items are fetched, summarized, and filtered.
+              How each source type is read, summarized, and filtered.
             </p>
           </div>
           <span className="fb-kind-pill">{sourceConfigs.length} sources</span>
@@ -92,11 +91,10 @@ async function SourceTypeConfigSection({ userId }: { userId: string }) {
           <div>
             <h3 className="fb-section-heading">Digest composition</h3>
             <p className="mt-1 text-sm text-[var(--muted-strong)]">
-              Cross-source: how individual summaries are assembled into the
-              daily digest.
+              How source summaries are assembled into the daily digest.
             </p>
           </div>
-          <span className="fb-kind-pill">singleton</span>
+          <span className="fb-kind-pill">one set</span>
         </summary>
         <div className="mt-4">
           <AdminDigestConfigForm
@@ -138,7 +136,7 @@ async function ActiveTokenChip({ userId }: { userId: string }) {
   return (
     <span className="fb-chip">
       <KeyRound aria-hidden="true" />
-      {count} active tokens
+      {count} active access keys
     </span>
   );
 }

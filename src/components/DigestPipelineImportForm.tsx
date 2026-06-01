@@ -49,14 +49,14 @@ export function DigestPipelineImportForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pipelineId }),
         });
-        if (!response.ok) throw new Error("Unable to import digest pipeline");
+        if (!response.ok) throw new Error("Unable to import digest");
       } catch {
         setImportedIds((current) => {
           const next = new Set(current);
           next.delete(pipelineId);
           return next;
         });
-        setError("Could not import digest pipeline.");
+        setError("Could not import digest.");
       } finally {
         setPendingAction(null);
       }
@@ -80,10 +80,10 @@ export function DigestPipelineImportForm({
         const response = await fetch(`/api/digest-pipelines/imports/${pipelineId}`, {
           method: "DELETE",
         });
-        if (!response.ok) throw new Error("Unable to remove digest pipeline import");
+        if (!response.ok) throw new Error("Unable to remove digest import");
       } catch {
         setImportedIds((current) => new Set([...current, pipelineId]));
-        setError("Could not remove imported digest pipeline.");
+        setError("Could not remove imported digest.");
       } finally {
         setPendingAction(null);
       }
@@ -96,9 +96,9 @@ export function DigestPipelineImportForm({
     <section className="mt-10">
       <div className="library-hub-toolbar">
         <div>
-          <h2 className="fb-section-heading">Digest Pipelines</h2>
+          <h2 className="fb-section-heading">Shared Digests</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
-            Import another user&apos;s live digest pipeline, including its latest digest and archive.
+            Import another user&apos;s latest digest and saved archive.
           </p>
         </div>
       </div>
@@ -123,7 +123,7 @@ export function DigestPipelineImportForm({
         ))}
         {visiblePipelines.length === 0 ? (
           <div className="fb-panel dashed col-span-full text-sm text-[var(--muted-strong)]">
-            No public digest pipelines are available yet.
+            No shared digests are available yet.
           </div>
         ) : null}
       </div>
@@ -187,7 +187,7 @@ function DigestPipelineCard({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="fb-kind-pill">digest</span>
-              <span className="text-[11px] text-[var(--muted)]">· Live pipeline</span>
+              <span className="text-[11px] text-[var(--muted)]">· Always up to date</span>
             </div>
             <h3 className="serif mt-2 text-xl font-semibold leading-snug tracking-tight">
               {pipeline.title}
@@ -211,7 +211,7 @@ function DigestPipelineCard({
                 : "No digests yet"}
             </div>
             <div className="mt-1 text-xs">
-              {pipeline.digestCount} archived {pipeline.digestCount === 1 ? "digest" : "digests"}
+              {pipeline.digestCount} saved {pipeline.digestCount === 1 ? "digest" : "digests"}
             </div>
           </div>
         </div>

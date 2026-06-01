@@ -45,42 +45,42 @@ type SearchParams = Promise<{
 
 const searchPageSize = 10;
 const defaultSuggestions = [
-  "claude",
-  "claude ai",
-  "claude code",
-  "agent memory",
-  "embedding search",
-  "builder launch",
+  "model pricing",
+  "open source models",
+  "founder essays",
+  "product launch",
   "digest archive",
   "podcast transcript",
+  "research notes",
+  "tool benchmarks",
 ];
 
 const advancedSearchExamples = [
-  '"agent memory"',
-  '"agent * memory"',
-  "agent memory -pricing",
-  "agent memory +retrieval",
-  'agent -"memory leak"',
-  "agent OR embedding",
-  '"agent memory" OR "retrieval quality"',
-  '("agent memory" OR "retrieval quality") launch',
-  "agent AROUND(3) memory",
-  "agent memory site:example.com",
-  "agent memory site:example.com/articles",
-  "agent memory -site:example.com",
-  "agent memory intitle:launch",
-  "agent memory -intitle:pricing",
-  "allintitle:agent memory",
-  "agent memory -allintitle:pricing launch",
-  "agent memory intext:transcript",
-  "allintext:agent memory",
-  "agent memory inurl:release",
-  "allinurl:release agent",
-  "agent memory type:feed",
-  "agent memory filetype:digest",
-  "agent memory -filetype:digest",
-  "agent memory after:2026-01-01",
-  "agent memory before:2026-12-31",
+  '"model pricing"',
+  '"model * pricing"',
+  "model pricing -enterprise",
+  "model pricing +open",
+  'model -"pricing page"',
+  "models OR benchmarks",
+  '"model pricing" OR "launch notes"',
+  '("model pricing" OR "launch notes") open',
+  "model AROUND(3) pricing",
+  "model pricing site:example.com",
+  "model pricing site:example.com/articles",
+  "model pricing -site:example.com",
+  "model pricing intitle:launch",
+  "model pricing -intitle:enterprise",
+  "allintitle:model pricing",
+  "model pricing -allintitle:enterprise launch",
+  "model pricing intext:transcript",
+  "allintext:model pricing",
+  "model pricing inurl:release",
+  "allinurl:release model",
+  "model pricing type:feed",
+  "model pricing filetype:digest",
+  "model pricing -filetype:digest",
+  "model pricing after:2026-01-01",
+  "model pricing before:2026-12-31",
 ];
 
 const resultTypeLabels: Record<SearchDocumentType, string> = {
@@ -90,9 +90,9 @@ const resultTypeLabels: Record<SearchDocumentType, string> = {
 };
 
 const searchModeLabels: Record<SearchMode, string> = {
-  exact: "Exact",
-  hybrid: "Hybrid",
-  semantic: "Semantic",
+  exact: "Exact words",
+  hybrid: "Best match",
+  semantic: "Meaning",
 };
 
 const searchSortLabels: Record<SearchSort, string> = {
@@ -153,7 +153,7 @@ export default async function SearchPage({
           </h1>
           <p className="fb-m-sub at-mobile">Sources, posts, and digest history.</p>
           <p className="at-desktop fb-desc">
-            Find sources, summarized posts, and digest history.
+            Find sources, saved posts, and digest history.
           </p>
           <form
             action="/search"
@@ -409,8 +409,8 @@ async function SearchResultsSection({
           ) : (
             <>
               <EmptyState>
-                Enter a query to search across your builder library, summarized feed
-                inputs, and synced digest archive.
+                Enter a query to search across your sources, saved items, and
+                digest archive.
               </EmptyState>
               <RelatedSearches query={query} searches={defaultSuggestions} mode={mode} sort={sort} time={time} />
               <details className="search-advanced-tools">
@@ -459,8 +459,8 @@ function SearchResultsFallback({
         </>
       ) : (
         <EmptyState>
-          Enter a query to search across your builder library, summarized feed
-          inputs, and synced digest archive.
+          Enter a query to search across your sources, saved items, and digest
+          archive.
         </EmptyState>
       )}
     </section>
@@ -903,7 +903,7 @@ function buildSearchRecoveryActions({
   if (mode !== "hybrid") {
     actions.push({
       href: searchHref({ query, type: typeFilter, mode: "hybrid", sort, time }),
-      label: "Broaden to Hybrid",
+      label: "Use best match",
     });
   }
   if (typeFilter !== "all") {

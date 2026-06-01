@@ -113,7 +113,7 @@ async function AiDigestFeedSlot({
     {
       id: "own",
       title: "My Digest",
-      ownerLabel: "Your digest pipeline",
+      ownerLabel: "Your digest",
       ownerUserId: userId,
       isOwnPipeline: true,
     },
@@ -305,15 +305,15 @@ function AiDigestFeed({
               </h2>
               <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
                 {isOwnPipeline
-                  ? "Your agent can sync a brief when there is new followed-source activity."
-                  : "This imported pipeline has no digests yet."}
+                  ? "Your local helper can save a brief when followed sources have new activity."
+                  : "This imported digest has no saved briefs yet."}
               </p>
             </div>
           </div>
         </div>
       )}
       {isOwnPipeline ? null : (
-        <p className="sr-only">Imported pipeline view: read-only digest results.</p>
+        <p className="sr-only">Imported digest view: read-only results.</p>
       )}
       <section id="digest-archive" className="mt-8 scroll-mt-24">
         <div className="flex flex-wrap items-center gap-3">
@@ -334,7 +334,7 @@ function AiDigestFeed({
           ))}
           {archiveDigests.length === 0 ? (
             <div className="fb-panel dashed text-sm text-[var(--muted-strong)]">
-              Non-empty digests will appear here after more syncs.
+              Non-empty digests will appear here after more updates.
             </div>
           ) : null}
         </div>
@@ -375,7 +375,7 @@ function DigestPipelineSelector({
   if (options.length <= 1) return null;
 
   return (
-    <section aria-label="Digest pipeline" className="mt-4">
+    <section aria-label="Digest source" className="mt-4">
       <div className="flex flex-wrap items-center gap-2">
         {options.map((pipeline) => {
           const active = pipeline.id === selectedPipelineId;
@@ -411,11 +411,11 @@ async function HomeStatsSlot({ userId }: { userId: string }) {
       <Stat
         icon={hasDigest ? CheckCircle2 : Clock3}
         label="Digest"
-        value={hasDigest ? "Synced" : "Waiting"}
+        value={hasDigest ? "Updated" : "Waiting"}
       />
       <Stat icon={Sparkles} label="Following" value="Live" />
       <Stat icon={Sparkles} label="For You" value="Live" />
-      <Stat icon={Archive} label="Archive entries" value={archiveCount} />
+      <Stat icon={Archive} label="Saved briefs" value={archiveCount} />
     </div>
   );
 }
