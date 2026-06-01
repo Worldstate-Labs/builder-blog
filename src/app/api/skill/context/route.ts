@@ -31,6 +31,7 @@ export async function GET(request: Request) {
   const dryRun = url.searchParams.get("dryRun") === "1";
   const sourceParam = url.searchParams.get("source");
   const runSource = sourceParam === "cron" || sourceParam === "manual" ? sourceParam : "skill";
+  const jobRunId = url.searchParams.get("jobRunId")?.slice(0, 160) || null;
 
   // Two independent callers share this endpoint: the digest `prepare` command
   // and the library `fetch-personal` command. They declare which via `intent`,
@@ -283,6 +284,7 @@ export async function GET(request: Request) {
           userId: user.id,
           status: "prepared",
           source: runSource,
+          jobRunId,
           preparedAt: now,
           lookbackCutoff,
           maxPostAgeDays: digestMaxPostAgeDays(preference),
@@ -304,6 +306,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     user: { id: user.id, name: user.name, email: user.email },
     runId,
+    jobRunId,
     dryRun,
     generatedAt: now.toISOString(),
     language: userSummaryLanguage ?? "zh",

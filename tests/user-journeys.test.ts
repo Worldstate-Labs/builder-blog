@@ -747,7 +747,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /\$AGENT_DIR\/\$1-\$JOB_NAME/);
   assert.match(runner, /\$AGENT_DIR\/\$1\b/);
   assert.match(runner, /BUILDER_BLOG_JOB_TMP_DIR/);
-  assert.match(runner, /\$LOCK_ROOT\/\$ACCOUNT_SLUG\/\$JOB_NAME\.lock/);
+  assert.match(runner, /CURRENT_FILE="\$JOB_TMP_DIR\/current\.json"/);
+  assert.match(runner, /run_cron_supervisor/);
+  assert.match(runner, /terminate_process_tree/);
   assert.match(runner, /PINNED_RUNTIME="\$\(read_pin runtime\)"/);
   // Forced re-fetch: runner reads the fetch-force pin and exports
   // BUILDER_BLOG_FETCH_FORCE=--force when it's 1, which library-cron threads

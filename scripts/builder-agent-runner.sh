@@ -7,6 +7,7 @@ AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 PROMPT_FILE="$AGENT_DIR/jobs/$JOB_NAME.md"
 ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
 JOB_TMP_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/$JOB_NAME"
+HEARTBEAT_INTERVAL_SECONDS=60
 
 PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 # Tag every fetch the CLI emits as "cron" while we're inside the cron
@@ -50,46 +51,6 @@ self_update_and_reexec() {
   fi
 }
 self_update_and_reexec "$@"
-
-acquire_cron_lock() {
-  case "$JOB_NAME" in
-    *-cron) ;;
-    *) return 0 ;;
-  esac
-
-  LOCK_ROOT="$AGENT_DIR/tmp/locks"
-  LOCK_DIR="$LOCK_ROOT/$ACCOUNT_SLUG/$JOB_NAME.lock"
-  LOCK_PID_FILE="$LOCK_DIR/pid"
-  mkdir -p "$LOCK_ROOT/$ACCOUNT_SLUG"
-
-  if mkdir "$LOCK_DIR" 2>/dev/null; then
-    printf '%s\n' "$$" > "$LOCK_PID_FILE"
-    trap 'rm -rf "$LOCK_DIR"' EXIT HUP INT TERM
-    return 0
-  fi
-
-  LOCK_PID=""
-  if [ -r "$LOCK_PID_FILE" ]; then
-    LOCK_PID="$(tr -dc '0-9' < "$LOCK_PID_FILE" 2>/dev/null || true)"
-  fi
-
-  if [ -n "$LOCK_PID" ] && kill -0 "$LOCK_PID" 2>/dev/null; then
-    echo "FollowBrief $JOB_NAME for $ACCOUNT_SLUG is already running (pid $LOCK_PID); skipping duplicate cron launch." >&2
-    exit 0
-  fi
-
-  echo "Removing stale FollowBrief $JOB_NAME lock for $ACCOUNT_SLUG." >&2
-  rm -rf "$LOCK_DIR"
-  if mkdir "$LOCK_DIR" 2>/dev/null; then
-    printf '%s\n' "$$" > "$LOCK_PID_FILE"
-    trap 'rm -rf "$LOCK_DIR"' EXIT HUP INT TERM
-    return 0
-  fi
-
-  echo "FollowBrief $JOB_NAME lock for $ACCOUNT_SLUG was acquired by another process; skipping duplicate cron launch." >&2
-  exit 0
-}
-acquire_cron_lock
 
 refresh_skill_files() {
   mkdir -p "$AGENT_DIR" "$AGENT_DIR/jobs" "$AGENT_DIR/logs" "$AGENT_DIR/tmp"
@@ -261,52 +222,281 @@ if [ "$(read_pin regenerate)" = "1" ]; then
 fi
 export BUILDER_BLOG_DIGEST_REGENERATE
 
+job_type_for_name() {
+  case "$JOB_NAME" in
+    library-*) printf '%s\n' "library-fetch" ;;
+    digest-*) printf '%s\n' "digest-build" ;;
+    *) printf '%s\n' "library-fetch" ;;
+  esac
+}
+
+schedule_job_for_name() {
+  case "$JOB_NAME" in
+    library-cron) printf '%s\n' "library-cron" ;;
+    digest-cron) printf '%s\n' "digest-cron" ;;
+    *) printf '%s\n' "" ;;
+  esac
+}
+
+timeout_seconds_for_job() {
+  _interval="${1:-60}"
+  _job="${2:-$JOB_NAME}"
+  _base=$(( _interval * 48 ))
+  _min=$(( 20 * 60 ))
+  case "$_job" in
+    library-cron) _max=$(( 75 * 60 )) ;;
+    digest-cron) _max=$(( 45 * 60 )) ;;
+    *) _max=$(( 45 * 60 )) ;;
+  esac
+  if [ "$_base" -lt "$_min" ]; then _base="$(( 20 * 60 ))"; fi
+  if [ "$_base" -gt "$_max" ]; then _base="$_max"; fi
+  printf '%s\n' "$_base"
+}
+
+iso_now() {
+  date -u +"%Y-%m-%dT%H:%M:%SZ"
+}
+
+job_run_update() {
+  if [ "${BUILDER_BLOG_DISABLE_WEB_SYNC:-}" = "1" ]; then return 0; fi
+  _status="$1"
+  _summary="${2:-}"
+  _reason="${3:-}"
+  _finished=""
+  case "$_status" in
+    succeeded|failed|timed_out|killed|replaced|stale) _finished="$(iso_now)" ;;
+  esac
+  node "$AGENT_DIR/builder-digest.mjs" job-run-update \
+    --job-type "$(job_type_for_name)" \
+    --trigger "${BUILDER_BLOG_JOB_TRIGGER:-manual_cli}" \
+    --schedule-job "${BUILDER_BLOG_SCHEDULE_JOB:-}" \
+    --instance-id "${BUILDER_BLOG_JOB_RUN_ID:-}" \
+    --expected-at "${BUILDER_BLOG_EXPECTED_AT:-}" \
+    --started-at "${BUILDER_BLOG_JOB_STARTED_AT:-$(iso_now)}" \
+    --heartbeat-at "$(iso_now)" \
+    --status "$_status" \
+    --runtime "${BUILDER_BLOG_RUNTIME:-}" \
+    --runner-pid "${BUILDER_BLOG_RUNNER_PID:-$$}" \
+    --worker-pid "${BUILDER_BLOG_WORKER_PID:-$$}" \
+    --finished-at "$_finished" \
+    --summary "$_summary" \
+    --reason "$_reason" >/dev/null 2>&1 || true
+}
+
+verify_followbrief_pid() {
+  _pid="${1:-}"
+  [ -n "$_pid" ] || return 1
+  kill -0 "$_pid" 2>/dev/null || return 1
+  _args="$(ps -p "$_pid" -o command= 2>/dev/null || true)"
+  printf '%s' "$_args" | grep -q "BUILDER_BLOG_WORKER_MODE=1\|builder-agent-runner.sh\|codex exec\|claude -p\|gemini\|openclaw" || return 1
+}
+
+terminate_process_tree() {
+  _pid="${1:-}"
+  _signal="${2:-TERM}"
+  _wait_seconds="${3:-30}"
+  [ -n "$_pid" ] || return 0
+  _children="$(pgrep -P "$_pid" 2>/dev/null || true)"
+  for _child in $_children; do
+    terminate_process_tree "$_child" "$_signal" "$_wait_seconds"
+  done
+  kill "-$_signal" "$_pid" 2>/dev/null || kill -s "$_signal" "$_pid" 2>/dev/null || true
+  _left="$_wait_seconds"
+  while [ "$_left" -gt 0 ]; do
+    kill -0 "$_pid" 2>/dev/null || return 0
+    sleep 1
+    _left=$(( _left - 1 ))
+  done
+  return 1
+}
+
+json_get_number() {
+  _key="$1"
+  _file="$2"
+  sed -n "s/.*\"$_key\"[[:space:]]*:[[:space:]]*\\([0-9][0-9]*\\).*/\\1/p" "$_file" 2>/dev/null | head -n 1
+}
+
+json_get_string() {
+  _key="$1"
+  _file="$2"
+  sed -n "s/.*\"$_key\"[[:space:]]*:[[:space:]]*\"\\([^\"]*\\)\".*/\\1/p" "$_file" 2>/dev/null | head -n 1
+}
+
+next_schedule_arrived() {
+  return 0
+}
+
+write_current_file() {
+  _file="$1"
+  _instance="$2"
+  _worker_pid="$3"
+  _started="$4"
+  _expected="$5"
+  printf '{\n  "instanceId": "%s",\n  "workerPid": %s,\n  "startedAt": "%s",\n  "expectedAt": "%s"\n}\n' \
+    "$_instance" "$_worker_pid" "$_started" "$_expected" > "$_file"
+}
+
+run_cron_supervisor() {
+  INSTANCE_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
+  STARTED_AT="$(iso_now)"
+  EXPECTED_AT="$STARTED_AT"
+  CURRENT_FILE="$JOB_TMP_DIR/current.json"
+  LOG_FILE="$AGENT_DIR/logs/$JOB_NAME.log"
+  export BUILDER_BLOG_JOB_RUN_ID="$INSTANCE_ID"
+  export BUILDER_BLOG_JOB_TRIGGER="scheduled"
+  export BUILDER_BLOG_SCHEDULE_JOB="$JOB_NAME"
+  export BUILDER_BLOG_EXPECTED_AT="$EXPECTED_AT"
+  export BUILDER_BLOG_JOB_STARTED_AT="$STARTED_AT"
+  export BUILDER_BLOG_RUNNER_PID="$$"
+
+  if [ -r "$CURRENT_FILE" ]; then
+    OLD_PID="$(json_get_number workerPid "$CURRENT_FILE")"
+    OLD_INSTANCE="$(json_get_string instanceId "$CURRENT_FILE")"
+    if [ -n "$OLD_PID" ] && verify_followbrief_pid "$OLD_PID"; then
+      OLD_ENV_INSTANCE="$BUILDER_BLOG_JOB_RUN_ID"
+      BUILDER_BLOG_JOB_RUN_ID="$OLD_INSTANCE"
+      export BUILDER_BLOG_JOB_RUN_ID
+      job_run_update replaced "Replaced by a newer scheduled run." "status replaced next_schedule_arrived"
+      if ! terminate_process_tree "$OLD_PID" TERM 30; then
+        terminate_process_tree "$OLD_PID" KILL 3 || true
+        job_run_update killed "Previous run was force-killed before the new schedule." "status killed next_schedule_arrived"
+      fi
+      BUILDER_BLOG_JOB_RUN_ID="$OLD_ENV_INSTANCE"
+      export BUILDER_BLOG_JOB_RUN_ID
+    elif [ -n "$OLD_INSTANCE" ]; then
+      OLD_ENV_INSTANCE="$BUILDER_BLOG_JOB_RUN_ID"
+      BUILDER_BLOG_JOB_RUN_ID="$OLD_INSTANCE"
+      export BUILDER_BLOG_JOB_RUN_ID
+      job_run_update stale "Previous run pid was no longer alive." "stale_pid"
+      BUILDER_BLOG_JOB_RUN_ID="$OLD_ENV_INSTANCE"
+      export BUILDER_BLOG_JOB_RUN_ID
+    fi
+  fi
+
+  job_run_update starting "Scheduled run accepted by local supervisor." "next_schedule_arrived"
+  (
+    export BUILDER_BLOG_WORKER_MODE=1
+    export BUILDER_BLOG_WORKER_PID="$$"
+    "$AGENT_DIR/builder-agent-runner.sh" "$JOB_NAME"
+  ) >> "$LOG_FILE" 2>&1 &
+  WORKER_PID="$!"
+  export BUILDER_BLOG_WORKER_PID="$WORKER_PID"
+  write_current_file "$CURRENT_FILE" "$INSTANCE_ID" "$WORKER_PID" "$STARTED_AT" "$EXPECTED_AT"
+  job_run_update running "Scheduled worker started." "worker_started"
+  exit 0
+}
+
+run_cron_worker() {
+  run_with_job_tracking scheduled
+}
+
+run_with_job_tracking() {
+  _trigger="$1"
+  export BUILDER_BLOG_JOB_TRIGGER="$_trigger"
+  export BUILDER_BLOG_SCHEDULE_JOB="$(schedule_job_for_name)"
+  export BUILDER_BLOG_JOB_RUN_ID="${BUILDER_BLOG_JOB_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
+  export BUILDER_BLOG_JOB_STARTED_AT="${BUILDER_BLOG_JOB_STARTED_AT:-$(iso_now)}"
+  export BUILDER_BLOG_EXPECTED_AT="${BUILDER_BLOG_EXPECTED_AT:-$BUILDER_BLOG_JOB_STARTED_AT}"
+  export BUILDER_BLOG_WORKER_PID="$$"
+  export BUILDER_BLOG_RUNNER_PID="${BUILDER_BLOG_RUNNER_PID:-$$}"
+  if [ "$_trigger" = "scheduled" ]; then
+    BUILDER_BLOG_RUN_SOURCE=cron
+  else
+    BUILDER_BLOG_RUN_SOURCE=manual
+  fi
+  export BUILDER_BLOG_RUN_SOURCE
+
+  _timeout="$(timeout_seconds_for_job "${INTERVAL_MINUTES:-60}" "$JOB_NAME")"
+  job_run_update running "Runtime agent started." "runtime_agent_started"
+  run_selected_runtime &
+  RUNTIME_PID="$!"
+  _elapsed=0
+  _status="succeeded"
+  while kill -0 "$RUNTIME_PID" 2>/dev/null; do
+    if [ "$_elapsed" -ge "$_timeout" ]; then
+      _status="timed_out"
+      job_run_update timed_out "Runtime exceeded timeout and will be terminated." "timeout_seconds_for_job"
+      terminate_process_tree "$RUNTIME_PID" TERM 30 || terminate_process_tree "$RUNTIME_PID" KILL 3 || true
+      wait "$RUNTIME_PID" 2>/dev/null || true
+      job_run_update timed_out "Runtime timed out." "timeout_seconds_for_job"
+      return 124
+    fi
+    if [ $(( _elapsed % HEARTBEAT_INTERVAL_SECONDS )) -eq 0 ]; then
+      job_run_update running "Runtime heartbeat." "heartbeat"
+    fi
+    sleep 5
+    _elapsed=$(( _elapsed + 5 ))
+  done
+  wait "$RUNTIME_PID"
+  _code="$?"
+  if [ "$_code" -eq 0 ]; then
+    job_run_update succeeded "Runtime completed successfully." "runtime_finished"
+  else
+    job_run_update failed "Runtime exited with code $_code." "runtime_finished"
+  fi
+  return "$_code"
+}
+
 IS_CRON_JOB=0
 case "$JOB_NAME" in
   *-cron) IS_CRON_JOB=1 ;;
 esac
 
-if [ -n "${BUILDER_BLOG_AGENT_COMMAND:-}" ]; then
-  run_with_override
-elif [ "$IS_CRON_JOB" = 1 ] && [ -n "$PINNED_RUNTIME" ]; then
-  case "$PINNED_RUNTIME" in
-    claude)
-      command -v claude >/dev/null 2>&1 || { echo "Pinned runtime 'claude' not on PATH for cron." >&2; exit 78; }
-      run_with_claude_unattended
-      ;;
-    codex)
-      command -v codex >/dev/null 2>&1 || { echo "Pinned runtime 'codex' not on PATH for cron." >&2; exit 78; }
-      run_with_codex_unattended
-      ;;
-    gemini)
-      command -v gemini >/dev/null 2>&1 || { echo "Pinned runtime 'gemini' not on PATH for cron." >&2; exit 78; }
-      run_with_gemini_unattended
-      ;;
-    openclaw)
-      command -v openclaw >/dev/null 2>&1 || { echo "Pinned runtime 'openclaw' not on PATH for cron." >&2; exit 78; }
-      run_with_openclaw_unattended
-      ;;
-    *)
-      echo "Unknown pinned runtime '$PINNED_RUNTIME' in $AGENT_DIR/runtime — falling back to discovery chain." >&2
-      PINNED_RUNTIME=""
-      ;;
-  esac
-fi
-if [ -z "${BUILDER_BLOG_AGENT_COMMAND:-}" ] && { [ "$IS_CRON_JOB" = 0 ] || [ -z "$PINNED_RUNTIME" ]; }; then
-  if command -v codex >/dev/null 2>&1; then
-    run_with_codex
-  elif command -v claude >/dev/null 2>&1; then
-    run_with_claude
-  elif command -v openclaw >/dev/null 2>&1; then
-    run_with_openclaw
-  elif command -v gemini >/dev/null 2>&1; then
-    run_with_gemini
-  elif [ "$JOB_NAME" = "library-cron" ] || [ "$JOB_NAME" = "library-once" ]; then
-    run_shell_library_fallback
-  else
-    echo "No local agent runtime found for FollowBrief digest generation." >&2
-    echo "Install/configure Codex, Claude Code, OpenClaw, Gemini CLI, or set BUILDER_BLOG_AGENT_COMMAND." >&2
-    echo "Digest cron requires an agent because it must summarize returned items with AI before sync." >&2
-    exit 78
+run_selected_runtime() {
+  if [ -n "${BUILDER_BLOG_AGENT_COMMAND:-}" ]; then
+    run_with_override
+  elif [ "$IS_CRON_JOB" = 1 ] && [ -n "$PINNED_RUNTIME" ]; then
+    case "$PINNED_RUNTIME" in
+      claude)
+        command -v claude >/dev/null 2>&1 || { echo "Pinned runtime 'claude' not on PATH for cron." >&2; exit 78; }
+        run_with_claude_unattended
+        ;;
+      codex)
+        command -v codex >/dev/null 2>&1 || { echo "Pinned runtime 'codex' not on PATH for cron." >&2; exit 78; }
+        run_with_codex_unattended
+        ;;
+      gemini)
+        command -v gemini >/dev/null 2>&1 || { echo "Pinned runtime 'gemini' not on PATH for cron." >&2; exit 78; }
+        run_with_gemini_unattended
+        ;;
+      openclaw)
+        command -v openclaw >/dev/null 2>&1 || { echo "Pinned runtime 'openclaw' not on PATH for cron." >&2; exit 78; }
+        run_with_openclaw_unattended
+        ;;
+      *)
+        echo "Unknown pinned runtime '$PINNED_RUNTIME' in $AGENT_DIR/runtime — falling back to discovery chain." >&2
+        PINNED_RUNTIME=""
+        ;;
+    esac
   fi
+  if [ -z "${BUILDER_BLOG_AGENT_COMMAND:-}" ] && { [ "$IS_CRON_JOB" = 0 ] || [ -z "$PINNED_RUNTIME" ]; }; then
+    if command -v codex >/dev/null 2>&1; then
+      run_with_codex
+    elif command -v claude >/dev/null 2>&1; then
+      run_with_claude
+    elif command -v openclaw >/dev/null 2>&1; then
+      run_with_openclaw
+    elif command -v gemini >/dev/null 2>&1; then
+      run_with_gemini
+    elif [ "$JOB_NAME" = "library-cron" ] || [ "$JOB_NAME" = "library-once" ]; then
+      run_shell_library_fallback
+    else
+      echo "No local agent runtime found for FollowBrief digest generation." >&2
+      echo "Install/configure Codex, Claude Code, OpenClaw, Gemini CLI, or set BUILDER_BLOG_AGENT_COMMAND." >&2
+      echo "Digest cron requires an agent because it must summarize returned items with AI before sync." >&2
+      exit 78
+    fi
+  fi
+}
+
+if [ "$IS_CRON_JOB" = 1 ] && [ "${BUILDER_BLOG_WORKER_MODE:-0}" != "1" ] && [ "${BUILDER_BLOG_DISABLE_WEB_SYNC:-0}" != "1" ]; then
+  run_cron_supervisor
+fi
+
+if [ "$IS_CRON_JOB" = 1 ] && [ "${BUILDER_BLOG_WORKER_MODE:-0}" = "1" ]; then
+  run_cron_worker
+elif [ "$JOB_NAME" = "library-once" ] || [ "$JOB_NAME" = "digest-once" ]; then
+  run_with_job_tracking one_time
+else
+  run_selected_runtime
 fi

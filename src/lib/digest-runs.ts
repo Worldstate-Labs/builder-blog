@@ -32,6 +32,7 @@ export type DigestRunListItem = {
   id: string;
   status: string; // "prepared" | "synced"
   source: string;
+  jobRunId: string | null;
   preparedAt: string;
   syncedAt: string | null;
   language: string | null;
@@ -184,6 +185,7 @@ export async function getDigestRuns(
       id: run.id,
       status: run.status,
       source: run.source,
+      jobRunId: run.jobRunId,
       preparedAt: run.preparedAt.toISOString(),
       syncedAt: run.syncedAt?.toISOString() ?? null,
       language: run.language,

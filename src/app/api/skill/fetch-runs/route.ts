@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
+import { getAgentJobRuns, getScheduledAgentJobRuns } from "@/lib/agent-job-runs";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { getUserFromBearer } from "@/lib/tokens";
@@ -17,6 +18,7 @@ const FetchRunInputSchema = z.object({
   finishedAt: z.string().datetime(),
   status: z.enum(["ok", "partial", "failed"]),
   source: z.enum(["manual", "cron"]),
+  jobRunId: z.string().min(1).max(160).nullable().optional(),
   cliVersion: z.string().max(40).nullable().optional(),
   hostname: z.string().max(120).nullable().optional(),
   platform: z.string().max(120).nullable().optional(),
@@ -100,6 +102,7 @@ export async function POST(request: Request) {
       durationMs,
       status: parsed.data.status,
       source: parsed.data.source,
+      jobRunId: parsed.data.jobRunId ?? null,
       cliVersion: parsed.data.cliVersion ?? null,
       hostname: parsed.data.hostname ?? null,
       platform: parsed.data.platform ?? null,
@@ -124,6 +127,7 @@ export type LibraryFetchRunListItem = {
   durationMs: number;
   status: string;
   source: string;
+  jobRunId: string | null;
   cliVersion: string | null;
   hostname: string | null;
   platform: string | null;
@@ -159,6 +163,7 @@ function serializeRun(row: {
   durationMs: number;
   status: string;
   source: string;
+  jobRunId: string | null;
   cliVersion: string | null;
   hostname: string | null;
   platform: string | null;
@@ -177,6 +182,7 @@ function serializeRun(row: {
     durationMs: row.durationMs,
     status: row.status,
     source: row.source,
+    jobRunId: row.jobRunId,
     cliVersion: row.cliVersion,
     hostname: row.hostname,
     platform: row.platform,
@@ -196,7 +202,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [rows, cronRows, cronJob] = await Promise.all([
+  const [rows, cronRows, cronJob, jobRuns, scheduledJobRuns] = await Promise.all([
     prisma.libraryFetchRun.findMany({
       where: { userId: session.user.id },
       orderBy: { startedAt: "desc" },
@@ -210,6 +216,9 @@ export async function GET() {
     prisma.libraryCronJob.findUnique({
       where: { userId: session.user.id },
     }),
+    // getAgentJobRuns wraps prisma.agentJobRun.findMany for all fetch runtime instances.
+    getAgentJobRuns(session.user.id, "library-fetch", RUN_HISTORY_LIMIT),
+    getScheduledAgentJobRuns(session.user.id, "library-cron", RUN_HISTORY_LIMIT),
   ]);
 
   const runs = rows.map(serializeRun);
@@ -233,5 +242,5 @@ export async function GET() {
       }
     : null;
 
-  return NextResponse.json({ runs, cronRuns, cronJob: cron });
+  return NextResponse.json({ runs, cronRuns, cronJob: cron, jobRuns, scheduledJobRuns });
 }

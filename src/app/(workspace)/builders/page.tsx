@@ -15,6 +15,7 @@ import { PrivateLibraryPanel } from "@/components/PrivateLibraryPanel";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
 import { isAdminEmail } from "@/lib/admin";
+import { getAgentJobRuns, getScheduledAgentJobRuns } from "@/lib/agent-job-runs";
 import { getCurrentSession } from "@/lib/auth";
 import {
   adminCommunityLibraryDescription,
@@ -96,6 +97,8 @@ async function SyncHeader({
         }
         initialCronJob={data.libraryCronJob}
         initialCronRuns={data.cronRuns}
+        initialJobRuns={data.jobRuns}
+        initialScheduledJobRuns={data.scheduledJobRuns}
         initialRuns={data.fetchRuns}
       />
     </section>
@@ -127,6 +130,8 @@ async function loadBuildersPageData() {
     rawFetchRuns,
     rawCronRuns,
     rawLibraryCronJob,
+    jobRuns,
+    scheduledJobRuns,
     feedPreference,
   ] = await Promise.all([
     prisma.builderPoolEntry.findMany({
@@ -215,6 +220,8 @@ async function loadBuildersPageData() {
     prisma.libraryCronJob.findUnique({
       where: { userId: session.user.id },
     }),
+    getAgentJobRuns(session.user.id, "library-fetch", 25),
+    getScheduledAgentJobRuns(session.user.id, "library-cron", 25),
     prisma.userFeedPreference.findUnique({
       where: { userId: session.user.id },
       select: { summaryLanguage: true, digestMaxPostAgeDays: true },
@@ -310,6 +317,7 @@ async function loadBuildersPageData() {
     durationMs: run.durationMs,
     status: run.status,
     source: run.source,
+    jobRunId: run.jobRunId,
     cliVersion: run.cliVersion,
     hostname: run.hostname,
     platform: run.platform,
@@ -328,6 +336,7 @@ async function loadBuildersPageData() {
     durationMs: run.durationMs,
     status: run.status,
     source: run.source,
+    jobRunId: run.jobRunId,
     cliVersion: run.cliVersion,
     hostname: run.hostname,
     platform: run.platform,
@@ -362,7 +371,9 @@ async function loadBuildersPageData() {
     fetchedItems,
     cronRuns,
     fetchRuns,
+    jobRuns,
     libraryCronJob,
+    scheduledJobRuns,
     importedLibrarySections,
     isAdmin,
     isPublicLibrary,

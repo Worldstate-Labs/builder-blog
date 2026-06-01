@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { Activity, ChevronDown, ChevronRight, ChevronUp, Clock3 } from "lucide-react";
 import { useHydrated } from "@/components/ThemeToggle";
+import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
 
 export type LibraryFetchRunListItem = {
@@ -12,6 +13,7 @@ export type LibraryFetchRunListItem = {
   durationMs: number;
   status: string;
   source: string;
+  jobRunId: string | null;
   cliVersion: string | null;
   hostname: string | null;
   platform: string | null;
@@ -213,13 +215,14 @@ function isRunInflight(run: LibraryFetchRunListItem): boolean {
 const VISIBLE_RUN_LIMIT = 2;
 const CRON_SLOT_LIMIT = 12;
 
-type CronSlotStatus = "ok" | "failed" | "missed" | "waiting";
+type CronSlotStatus = "ok" | "failed" | "missed" | "waiting" | "running" | "stalled";
 
 type CronSlot = {
   expectedAt: string;
   windowEnd: string;
   status: CronSlotStatus;
   run: LibraryFetchRunListItem | null;
+  jobRun: AgentJobRunListItem | null;
 };
 
 type FetchUpdateStatusKey =
@@ -303,9 +306,27 @@ function cronGraceMs(cronJob: LibraryCronJobStatus): number {
   return minutes * 60_000;
 }
 
+function isActiveJobRun(jobRun: AgentJobRunListItem): boolean {
+  return jobRun.status === "starting" || jobRun.status === "running";
+}
+
+function isStalledJobRun(jobRun: AgentJobRunListItem, nowMs = Date.now()): boolean {
+  if (!isActiveJobRun(jobRun)) return false;
+  const heartbeatMs = Date.parse(jobRun.heartbeatAt ?? jobRun.startedAt);
+  return Number.isFinite(heartbeatMs) && nowMs - heartbeatMs > 2 * 60_000;
+}
+
+function jobRunSlotStatus(jobRun: AgentJobRunListItem, nowMs = Date.now()): CronSlotStatus {
+  if (jobRun.status === "succeeded") return "ok";
+  if (isStalledJobRun(jobRun, nowMs)) return "stalled";
+  if (isActiveJobRun(jobRun)) return "running";
+  return "failed";
+}
+
 function buildCronStatus(
   cronJob: LibraryCronJobStatus | null,
   runs: LibraryFetchRunListItem[],
+  scheduledJobRuns: AgentJobRunListItem[] = [],
   nowMs = Date.now(),
 ): { slots: CronSlot[]; nextExpectedAt: string | null } {
   if (!cronJob || cronJob.status !== "active" || cronJob.intervalMinutes <= 0) {
@@ -338,7 +359,14 @@ function buildCronStatus(
     const match = cronRuns.find(
       ({ startedMs }) => startedMs >= expectedMs - graceMs && startedMs < endMs,
     )?.run ?? null;
-    const status: CronSlotStatus = match
+    const jobRun = scheduledJobRuns.find((candidate) => {
+      if (candidate.trigger !== "scheduled") return false;
+      const candidateMs = Date.parse(candidate.expectedAt ?? candidate.startedAt);
+      return Number.isFinite(candidateMs) && candidateMs >= expectedMs - graceMs && candidateMs < endMs;
+    }) ?? null;
+    const status: CronSlotStatus = jobRun
+      ? jobRunSlotStatus(jobRun, nowMs)
+      : match
       ? match.status === "ok"
         ? "ok"
         : "failed"
@@ -350,6 +378,7 @@ function buildCronStatus(
       windowEnd: windowEnd.toISOString(),
       status,
       run: match,
+      jobRun,
     };
   });
 
@@ -359,23 +388,32 @@ function buildCronStatus(
 export function FetchLogPanel({
   initialRuns,
   initialCronRuns,
+  initialJobRuns = [],
+  initialScheduledJobRuns = [],
   initialCronJob,
   actions,
 }: {
   initialRuns: LibraryFetchRunListItem[];
   initialCronRuns: LibraryFetchRunListItem[];
+  initialJobRuns?: AgentJobRunListItem[];
+  initialScheduledJobRuns?: AgentJobRunListItem[];
   initialCronJob: LibraryCronJobStatus | null;
   actions?: ReactNode;
 }) {
   const [runs, setRuns] = useState(initialRuns);
   const [cronRuns, setCronRuns] = useState(initialCronRuns);
+  const [jobRuns, setJobRuns] = useState(initialJobRuns);
+  const [scheduledJobRuns, setScheduledJobRuns] = useState(initialScheduledJobRuns);
   const [cronJob, setCronJob] = useState(initialCronJob);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const [expanded, setExpanded] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"status" | "log">("status");
-  const cronStatus = useMemo(() => buildCronStatus(cronJob, cronRuns), [cronJob, cronRuns]);
+  const cronStatus = useMemo(
+    () => buildCronStatus(cronJob, cronRuns, scheduledJobRuns),
+    [cronJob, cronRuns, scheduledJobRuns],
+  );
   const updateStatus = useMemo(
     () => getFetchUpdateStatus(cronJob, cronStatus.slots, runs),
     [cronJob, cronStatus.slots, runs],
@@ -386,9 +424,13 @@ export function FetchLogPanel({
   // on every refresh. Synced in an effect (not during render) so the poll loop
   // sees fresh data while keeping the [refresh]-only effect stable.
   const runsRef = useRef(runs);
+  const jobRunsRef = useRef(jobRuns);
   useEffect(() => {
     runsRef.current = runs;
   }, [runs]);
+  useEffect(() => {
+    jobRunsRef.current = jobRuns;
+  }, [jobRuns]);
 
   const openRun = useCallback((runId: string) => {
     setDetailsOpen(true);
@@ -413,6 +455,8 @@ export function FetchLogPanel({
           | {
               runs?: LibraryFetchRunListItem[];
               cronRuns?: LibraryFetchRunListItem[];
+              jobRuns?: AgentJobRunListItem[];
+              scheduledJobRuns?: AgentJobRunListItem[];
               cronJob?: LibraryCronJobStatus | null;
               error?: string;
             }
@@ -422,6 +466,8 @@ export function FetchLogPanel({
         }
         setRuns(Array.isArray(body?.runs) ? body.runs : []);
         setCronRuns(Array.isArray(body?.cronRuns) ? body.cronRuns : []);
+        setJobRuns(Array.isArray(body?.jobRuns) ? body.jobRuns : []);
+        setScheduledJobRuns(Array.isArray(body?.scheduledJobRuns) ? body.scheduledJobRuns : []);
         setCronJob(body?.cronJob ?? null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Refresh failed");
@@ -459,7 +505,8 @@ export function FetchLogPanel({
       schedule();
     };
     const schedule = () => {
-      const inflight = runsRef.current.some(isRunInflight);
+      const inflight = runsRef.current.some(isRunInflight) ||
+        jobRunsRef.current.some((run) => isActiveJobRun(run));
       timer = window.setTimeout(tick, inflight ? POLL_INFLIGHT_MS : POLL_IDLE_MS);
     };
     // Refresh immediately when the user returns to the tab so they don't wait a
@@ -546,6 +593,7 @@ export function FetchLogPanel({
             >
               <Clock3 aria-hidden="true" />
               Fetch log
+              <span className="sr-only">Run history</span>
             </button>
           </div>
 
@@ -559,6 +607,7 @@ export function FetchLogPanel({
           ) : (
             <FetchRunList
               expanded={expanded}
+              jobRuns={jobRuns}
               runs={runs}
               setExpanded={setExpanded}
             />
@@ -869,6 +918,7 @@ function MetricPill({ label, value }: { label: string; value: number }) {
 function cronSlotStyle(status: CronSlotStatus): { background: string; border: string; color: string } {
   if (status === "ok") return statusStyle("ok");
   if (status === "failed" || status === "missed") return statusStyle("failed");
+  if (status === "stalled") return statusStyle("failed");
   return statusStyle("partial");
 }
 
@@ -876,13 +926,15 @@ function cronSlotLabel(status: CronSlotStatus): string {
   if (status === "ok") return "Succeeded";
   if (status === "failed") return "Failed";
   if (status === "missed") return "Missed";
+  if (status === "running") return "Running";
+  if (status === "stalled") return "Stalled";
   return "Waiting";
 }
 
 function CronSlotBar({ onSelect, slot }: { onSelect: () => void; slot: CronSlot }) {
   const style = cronSlotStyle(slot.status);
   const height =
-    slot.status === "ok" ? "h-12" : slot.status === "waiting" ? "h-8" : "h-10";
+    slot.status === "ok" ? "h-12" : slot.status === "waiting" || slot.status === "running" ? "h-8" : "h-10";
   const label = cronSlotLabel(slot.status);
   return (
     <button
@@ -933,7 +985,9 @@ function CronSlotRow({
       </div>
       <div className="flex min-w-0 items-center gap-2">
         <span className="mono truncate text-[11.5px] text-[var(--muted-strong)]">
-          {slot.run
+          {slot.jobRun && !slot.run
+            ? `${slot.jobRun.status} · ${slot.jobRun.runtime || "Local helper"}`
+            : slot.run
             ? `${slot.run.itemsFetched} fetched · ${formatDuration(slot.run.durationMs)}`
             : "no run recorded for this scheduled time"}
         </span>
@@ -953,25 +1007,43 @@ function CronSlotRow({
 
 function FetchRunList({
   expanded,
+  jobRuns,
   runs,
   setExpanded,
 }: {
   expanded: boolean;
+  jobRuns: AgentJobRunListItem[];
   runs: LibraryFetchRunListItem[];
   setExpanded: (value: (previous: boolean) => boolean) => void;
 }) {
+  const runJobIds = new Set(runs.map((run) => run.jobRunId).filter((id): id is string => Boolean(id)));
+  const entries = [
+    ...runs.map((run) => ({ kind: "fetch" as const, id: run.id, startedAt: run.startedAt, run })),
+    ...jobRuns
+      .filter((jobRun) => !runJobIds.has(jobRun.instanceId))
+      .map((jobRun) => ({
+        kind: "job" as const,
+        id: jobRun.id,
+        startedAt: jobRun.startedAt,
+        jobRun,
+      })),
+  ].sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
+  const visibleEntries = expanded ? entries : entries.slice(0, VISIBLE_RUN_LIMIT);
+
   return (
     <div className="mt-4 grid gap-2.5">
-      {runs.length === 0 ? (
+      {entries.length === 0 ? (
         <div className="rounded-[10px] border border-dashed border-[var(--line)] bg-[var(--paper-strong)] px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
           No fetch runs yet. The next time your local CLI runs <code className="mono">fetch-personal</code> it will show up here.
         </div>
       ) : (
         <>
-          {(expanded ? runs : runs.slice(0, VISIBLE_RUN_LIMIT)).map((run) => (
-            <RunCard key={run.id} run={run} />
+          {visibleEntries.map((entry) => (
+            entry.kind === "fetch"
+              ? <RunCard key={entry.id} run={entry.run} />
+              : <JobRunCard key={entry.id} jobRun={entry.jobRun} />
           ))}
-          {runs.length > VISIBLE_RUN_LIMIT ? (
+          {entries.length > VISIBLE_RUN_LIMIT ? (
             <button
               aria-expanded={expanded}
               className="fb-btn light compact justify-center"
@@ -980,12 +1052,69 @@ function FetchRunList({
             >
               {expanded
                 ? "See less"
-                : `See more (${runs.length - VISIBLE_RUN_LIMIT})`}
+                : `See more (${entries.length - VISIBLE_RUN_LIMIT})`}
             </button>
           ) : null}
         </>
       )}
     </div>
+  );
+}
+
+function jobRunLabel(jobRun: AgentJobRunListItem): string {
+  if (jobRun.trigger === "scheduled") return "Scheduled";
+  if (jobRun.trigger === "one_time") return "One-time";
+  return "Manual";
+}
+
+function jobRunStatusStyle(jobRun: AgentJobRunListItem): ReturnType<typeof statusStyle> {
+  if (jobRun.status === "succeeded") return statusStyle("ok");
+  if (jobRun.status === "running" || jobRun.status === "starting") return statusStyle("partial");
+  return statusStyle("failed");
+}
+
+function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
+  const hydrated = useHydrated();
+  const style = jobRunStatusStyle(jobRun);
+  const startedAtLabel = hydrated ? formatRelative(jobRun.startedAt) : formatAbsolute(jobRun.startedAt);
+  return (
+    <article
+      className="rounded-[10px] border bg-[var(--paper-strong)] px-3.5 py-3"
+      style={{ borderColor: "var(--line)" }}
+    >
+      <header className="flex flex-wrap items-center gap-2">
+        <span
+          className="fb-chip"
+          style={{
+            background: style.background,
+            color: style.color,
+            borderColor: style.border,
+          }}
+        >
+          {jobRun.status === "timed_out" ? "Timed out" : jobRun.status}
+        </span>
+        <time
+          className="text-[12.5px] text-[var(--muted-strong)]"
+          dateTime={jobRun.startedAt}
+          title={formatAbsolute(jobRun.startedAt)}
+        >
+          {startedAtLabel}
+        </time>
+        <span className="fb-chip">{jobRunLabel(jobRun)}</span>
+        {jobRun.runtime ? (
+          <span className="text-[11.5px] text-[var(--muted-strong)]">
+            {jobRun.runtime}
+            {jobRun.hostname ? ` · ${jobRun.hostname.replace(/\.local$/, "")}` : ""}
+          </span>
+        ) : null}
+      </header>
+      <p className="mt-2 text-[13.5px] leading-relaxed text-[var(--ink)]">
+        {jobRun.summary || "Runtime job did not create a fetch log entry."}
+      </p>
+      <div className="mono mt-2 text-[11.5px] text-[var(--muted-strong)]">
+        {jobRun.stage || "runtime"} · {jobRun.finishedAt ? "finished" : "active"}
+      </div>
+    </article>
   );
 }
 
@@ -1044,7 +1173,7 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
         >
           {startedAtLabel}
         </time>
-        <span className="fb-chip">{run.source}</span>
+        <span className="fb-chip">{run.source === "cron" ? "Scheduled" : "One-time"}</span>
         {agentLabel ? (
           <span className="text-[11.5px] text-[var(--muted-strong)]">
             {agentLabel}

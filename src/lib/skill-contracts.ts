@@ -95,6 +95,10 @@ export const SkillDigestSchema = z.object({
   // actual outcome. The CLI reads it from the same context file it already
   // parses for `digestedItems`. Optional: older CLIs / missing context omit it.
   runId: z.string().min(1).max(64).nullable().optional(),
+  // Local runner instance id. Different from runId: this belongs to the
+  // runtime/schedule lifecycle, while runId belongs to the digest candidate
+  // funnel recorded at prepare.
+  jobRunId: z.string().min(1).max(160).nullable().optional(),
 });
 
 export function parseSkillBuilderSyncPayload(payload: unknown) {

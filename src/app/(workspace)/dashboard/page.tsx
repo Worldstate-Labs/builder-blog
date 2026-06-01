@@ -15,6 +15,7 @@ import { ForYouRecommendationSection } from "@/components/ForYouRecommendationSe
 import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
+import { getAgentJobRuns, getScheduledAgentJobRuns, type AgentJobRunListItem } from "@/lib/agent-job-runs";
 import { getCurrentSession } from "@/lib/auth";
 import { displayDigestPipelineTitle } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
@@ -138,6 +139,8 @@ async function AiDigestFeedSlot({
     feedPreference,
     digestRuns,
     digestCronRuns,
+    digestJobRuns,
+    digestScheduledJobRuns,
     digestCronJob,
     ownPipelineShare,
   ] = await Promise.all([
@@ -175,6 +178,8 @@ async function AiDigestFeedSlot({
         : Promise.resolve(null),
       isOwnPipeline ? getDigestRuns(userId) : Promise.resolve([]),
       isOwnPipeline ? getDigestRuns(userId, 25, "cron") : Promise.resolve([]),
+      isOwnPipeline ? getAgentJobRuns(userId, "digest-build", 25) : Promise.resolve([]),
+      isOwnPipeline ? getScheduledAgentJobRuns(userId, "digest-cron", 25) : Promise.resolve([]),
       isOwnPipeline
         ? prisma.digestCronJob.findUnique({ where: { userId } })
         : Promise.resolve(null),
@@ -219,7 +224,9 @@ async function AiDigestFeedSlot({
       digestPipelineOptions={digestPipelineOptions}
       digestCronJob={serializeDigestCronJob(digestCronJob)}
       digestCronRuns={digestCronRuns}
+      digestJobRuns={digestJobRuns}
       digestRuns={digestRuns}
+      digestScheduledJobRuns={digestScheduledJobRuns}
       ownPipelineShared={Boolean(ownPipelineShare)}
       summaryLanguage={feedPreference?.summaryLanguage ?? null}
       digestMaxPostAgeDays={feedPreference?.digestMaxPostAgeDays ?? null}
@@ -237,7 +244,9 @@ function AiDigestFeed({
   digestPipelineOptions,
   digestCronJob,
   digestCronRuns,
+  digestJobRuns,
   digestRuns,
+  digestScheduledJobRuns,
   ownPipelineShared,
   summaryLanguage,
   digestMaxPostAgeDays,
@@ -251,7 +260,9 @@ function AiDigestFeed({
   digestPipelineOptions: DigestPipelineOption[];
   digestCronJob: DigestCronJobStatus | null;
   digestCronRuns: DigestRunListItem[];
+  digestJobRuns: AgentJobRunListItem[];
   digestRuns: DigestRunListItem[];
+  digestScheduledJobRuns: AgentJobRunListItem[];
   ownPipelineShared: boolean;
   summaryLanguage: string | null;
   digestMaxPostAgeDays: number | null;
@@ -270,6 +281,27 @@ function AiDigestFeed({
         options={digestPipelineOptions}
         selectedPipelineId={selectedPipeline.id}
       />
+      {isOwnPipeline ? (
+        <section id="digest-log" className="scroll-mt-24">
+          <DigestLogPanel
+            actions={
+              <SkillPromptActions
+                compactOnly
+                context="digest"
+                digestMaxPostAgeDays={digestMaxPostAgeDays}
+                showStop={showStopDigestCron}
+                summaryLanguage={summaryLanguage}
+                tokens={activeTokens}
+              />
+            }
+            initialCronJob={digestCronJob}
+            initialCronRuns={digestCronRuns}
+            initialJobRuns={digestJobRuns}
+            initialRuns={digestRuns}
+            initialScheduledJobRuns={digestScheduledJobRuns}
+          />
+        </section>
+      ) : null}
       <section className="ai-digest-panel" aria-labelledby="ai-digest-heading">
         <header className="ai-digest-head">
           <div className="min-w-0">
@@ -284,26 +316,6 @@ function AiDigestFeed({
         </header>
 
         <div className="ai-digest-body">
-          {isOwnPipeline ? (
-            <section id="digest-log" className="scroll-mt-24">
-              <DigestLogPanel
-                actions={
-                  <SkillPromptActions
-                    compactOnly
-                    context="digest"
-                    digestMaxPostAgeDays={digestMaxPostAgeDays}
-                    showStop={showStopDigestCron}
-                    summaryLanguage={summaryLanguage}
-                    tokens={activeTokens}
-                  />
-                }
-                initialCronJob={digestCronJob}
-                initialCronRuns={digestCronRuns}
-                initialRuns={digestRuns}
-              />
-            </section>
-          ) : null}
-
           <section className="ai-digest-section" aria-labelledby="latest-digest-heading">
             <div className="ai-digest-section-head">
               <h3 id="latest-digest-heading" className="fb-section-label m-0">

@@ -103,6 +103,8 @@ function usage() {
   sync-builders --file personal-builders.json [--agent-model gpt-5.5]
   sync --file digest.md [--title "AI Builder Digest"] [--regenerate] [--context builder-blog-context.json]
   cron-status --job library-cron|digest-cron --status active|stopped [--freq 6h] [--schedule "0 */6 * * *"]
+  job-run-start --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id>
+  job-run-update --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id> --status running|succeeded|failed|timed_out|killed|replaced|stale
   status
 
 To set up an account, use the Copy-prompt button in the FollowBrief web app.
@@ -277,6 +279,36 @@ function webSyncDisabled() {
   return process.env.BUILDER_BLOG_DISABLE_WEB_SYNC?.trim() === "1";
 }
 
+function envJobRunId() {
+  return process.env.BUILDER_BLOG_JOB_RUN_ID?.trim() || "";
+}
+
+function envJobTrigger() {
+  const trigger = process.env.BUILDER_BLOG_JOB_TRIGGER?.trim();
+  return trigger === "scheduled" || trigger === "one_time" || trigger === "manual_cli"
+    ? trigger
+    : "manual_cli";
+}
+
+function envScheduleJob() {
+  const scheduleJob = process.env.BUILDER_BLOG_SCHEDULE_JOB?.trim();
+  return scheduleJob === "library-cron" || scheduleJob === "digest-cron" ? scheduleJob : null;
+}
+
+function envIso(name, fallback = null) {
+  const value = process.env[name]?.trim();
+  return value || fallback;
+}
+
+function stringOrNull(value) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function numberOrNull(value) {
+  const numeric = Number(value || 0);
+  return numeric || null;
+}
+
 async function postJson(url, body, token) {
   const response = await fetch(url, {
     method: "POST",
@@ -322,6 +354,76 @@ async function getJson(url, token) {
   return data;
 }
 
+async function emitAgentJobRunRecord(config, record) {
+  if (webSyncDisabled()) return null;
+  if (!config?.appUrl || !config?.token) return null;
+  const startedAt =
+    record.startedAt ||
+    envIso("BUILDER_BLOG_JOB_STARTED_AT") ||
+    new Date().toISOString();
+  const body = {
+    jobType: record.jobType,
+    trigger: record.trigger || envJobTrigger(),
+    scheduleJob: record.scheduleJob ?? envScheduleJob(),
+    instanceId: record.instanceId || envJobRunId(),
+    expectedAt: record.expectedAt ?? envIso("BUILDER_BLOG_EXPECTED_AT"),
+    startedAt,
+    heartbeatAt: record.heartbeatAt ?? new Date().toISOString(),
+    finishedAt: record.finishedAt ?? null,
+    status: record.status,
+    exitCode: record.exitCode ?? null,
+    signal: record.signal ?? null,
+    runtime: record.runtime ?? DEFAULT_AGENT_RUNTIME,
+    runnerPid: record.runnerPid ?? numberOrNull(process.env.BUILDER_BLOG_RUNNER_PID),
+    workerPid: record.workerPid ?? numberOrNull(process.env.BUILDER_BLOG_WORKER_PID),
+    hostname: RUN_HOSTNAME,
+    platform: RUN_PLATFORM,
+    stage: record.stage ?? null,
+    summary: record.summary ?? null,
+    details: record.details ?? {},
+  };
+  if (!body.instanceId) return null;
+  return postJson(`${config.appUrl}/api/skill/job-runs`, body, config.token);
+}
+
+async function jobRunCommand(args, defaultStatus = "running") {
+  const config = await readConfig();
+  requireLoggedIn(config);
+  const jobType = argValue(args, "--job-type");
+  const trigger = argValue(args, "--trigger", envJobTrigger());
+  const instanceId = argValue(args, "--instance-id", envJobRunId());
+  const scheduleJobRaw = argValue(args, "--schedule-job", envScheduleJob() ?? undefined);
+  const scheduleJob =
+    scheduleJobRaw === "library-cron" || scheduleJobRaw === "digest-cron" ? scheduleJobRaw : null;
+  const statusValue = argValue(args, "--status", defaultStatus);
+  const startedAt = stringOrNull(argValue(args, "--started-at", envIso("BUILDER_BLOG_JOB_STARTED_AT"))) ?? new Date().toISOString();
+  const expectedAt = stringOrNull(argValue(args, "--expected-at", envIso("BUILDER_BLOG_EXPECTED_AT")));
+  const finishedAt = stringOrNull(argValue(args, "--finished-at"));
+  const result = await emitAgentJobRunRecord(config, {
+    jobType,
+    trigger,
+    scheduleJob,
+    instanceId,
+    expectedAt,
+    startedAt,
+    heartbeatAt: stringOrNull(argValue(args, "--heartbeat-at", new Date().toISOString())) ?? new Date().toISOString(),
+    finishedAt,
+    status: statusValue,
+    exitCode: Number(argValue(args, "--exit-code", "")) || null,
+    signal: argValue(args, "--signal", null),
+    runtime: argValue(args, "--runtime", DEFAULT_AGENT_RUNTIME),
+    runnerPid: Number(argValue(args, "--runner-pid", "")) || null,
+    workerPid: Number(argValue(args, "--worker-pid", "")) || null,
+    stage: argValue(args, "--stage", null),
+    summary: argValue(args, "--summary", null),
+    details: {
+      reason: argValue(args, "--reason", null),
+      cliVersion: CLI_VERSION,
+    },
+  });
+  console.log(JSON.stringify(result ?? { status: "skipped" }, null, 2));
+}
+
 
 function requireLoggedIn(config) {
   if (!config.token) {
@@ -361,7 +463,8 @@ async function prepare(args = []) {
   const contextUrl =
     `${config.appUrl}/api/skill/context?intent=digest&includePrompts=1` +
     (regenerate ? "&regenerate=1" : "") +
-    (webSyncDisabled() ? "&dryRun=1" : `&source=${encodeURIComponent(runSource)}`);
+    (webSyncDisabled() ? "&dryRun=1" : `&source=${encodeURIComponent(runSource)}`) +
+    (envJobRunId() ? `&jobRunId=${encodeURIComponent(envJobRunId())}` : "");
   const context = await getJson(contextUrl, config.token);
   console.log(JSON.stringify(context, null, 2));
 }
@@ -720,6 +823,7 @@ async function emitFetchRunRecord(config, record) {
     finishedAt: finishedAt.toISOString(),
     status: record.status,
     source: record.source,
+    jobRunId: envJobRunId() || record.jobRunId || null,
     cliVersion: CLI_VERSION,
     hostname: RUN_HOSTNAME,
     platform: RUN_PLATFORM,
@@ -734,6 +838,7 @@ async function emitFetchRunRecord(config, record) {
     // version. Stored in details (free-form JSON) to avoid a schema change.
     details: {
       ...(record.details ?? {}),
+      jobRunId: envJobRunId() || record.jobRunId || null,
       agentRuntime: DEFAULT_AGENT_RUNTIME || null,
       agentModel: DEFAULT_AGENT_MODEL || null,
     },
@@ -2720,9 +2825,11 @@ async function sync(args) {
   // The DigestRun id the server issued at `prepare`; links this sync back to the
   // recorded candidate funnel so the digest log shows included-vs-dropped.
   let runId = null;
+  let jobRunId = envJobRunId() || null;
   try {
     const ctx = JSON.parse(await readFile(contextPath, "utf8"));
     if (typeof ctx.runId === "string" && ctx.runId) runId = ctx.runId;
+    if (typeof ctx.jobRunId === "string" && ctx.jobRunId) jobRunId = ctx.jobRunId;
     digestedItems = (Array.isArray(ctx.items) ? ctx.items : [])
       .filter((it) => it && it.entityId && it.kind && it.externalId)
       .map((it) => ({
@@ -2746,6 +2853,7 @@ async function sync(args) {
         digestChars: content.length,
         digestedItems: digestedItems.length,
         runId,
+        jobRunId,
         message: "Web sync disabled for smoke check; no digest, digested items, or digest log were uploaded.",
       },
       null,
@@ -2769,6 +2877,7 @@ async function sync(args) {
       regenerate,
       digestedItems,
       ...(runId ? { runId } : {}),
+      ...(jobRunId ? { jobRunId } : {}),
     },
     config.token,
   );
@@ -3006,6 +3115,8 @@ async function main() {
   else if (command === "sync-builders") await syncBuilders(args);
   else if (command === "sync") await sync(args);
   else if (command === "cron-status") await cronStatus(args);
+  else if (command === "job-run-start") await jobRunCommand(args, "starting");
+  else if (command === "job-run-update") await jobRunCommand(args, "running");
   else if (command === "status") await status();
   else usage();
 }

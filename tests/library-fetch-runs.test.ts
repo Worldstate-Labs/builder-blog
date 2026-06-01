@@ -132,14 +132,15 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   const runner = source("scripts/builder-agent-runner.sh");
   assert.match(runner, /BUILDER_BLOG_RUN_SOURCE=cron/);
   assert.match(runner, /export[^\n]*BUILDER_BLOG_RUN_SOURCE/);
-  assert.match(runner, /acquire_cron_lock/);
-  assert.match(runner, /mkdir "\$LOCK_DIR"/);
+  assert.match(runner, /run_cron_supervisor/);
+  assert.match(runner, /run_cron_worker/);
   assert.match(runner, /ACCOUNT_SLUG/);
-  assert.match(runner, /\$LOCK_ROOT\/\$ACCOUNT_SLUG\/\$JOB_NAME\.lock/);
+  assert.match(runner, /CURRENT_FILE="\$JOB_TMP_DIR\/current\.json"/);
   assert.match(runner, /BUILDER_BLOG_JOB_TMP_DIR/);
-  assert.match(runner, /kill -0 "\$LOCK_PID"/);
-  assert.match(runner, /skipping duplicate cron launch/);
-  assert.match(runner, /Removing stale FollowBrief \$JOB_NAME lock for \$ACCOUNT_SLUG/);
+  assert.match(runner, /verify_followbrief_pid/);
+  assert.match(runner, /terminate_process_tree/);
+  assert.match(runner, /job_run_update replaced/);
+  assert.match(runner, /job_run_update killed/);
   assert.match(runner, /\*\-cron\)/);
 });
 
@@ -159,6 +160,7 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /fb-segmented-tabs/);
   assert.match(panel, /Fetch status/);
   assert.match(panel, /Fetch log/);
+  assert.match(panel, /Run history/);
   assert.match(panel, /digest-updates-panel/);
   assert.match(panel, /FetchStatusToggle/);
   assert.match(panel, /FetchScheduleSummary/);

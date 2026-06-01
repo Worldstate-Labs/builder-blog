@@ -37,6 +37,7 @@ model User {
   channelPreferences      UserChannelPreference[]
   libraryVisibilities     UserLibraryVisibility[]
   libraryFetchRuns        LibraryFetchRun[]
+  agentJobRuns            AgentJobRun[]
   libraryCronJob          LibraryCronJob?
   digestCronJob           DigestCronJob?
   digestRuns              DigestRun[]
@@ -62,10 +63,44 @@ model LibraryFetchRun {
   errorCount        Int      @default(0)
   summary           String
   details           Json
+  jobRunId          String?
   createdAt         DateTime @default(now())
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, startedAt(sort: Desc)])
+  @@index([userId, jobRunId])
+}
+
+model AgentJobRun {
+  id          String    @id @default(cuid())
+  userId      String
+  jobType     String
+  trigger     String
+  scheduleJob String?
+  instanceId  String
+  expectedAt  DateTime?
+  startedAt   DateTime
+  heartbeatAt DateTime?
+  finishedAt  DateTime?
+  status      String
+  exitCode    Int?
+  signal      String?
+  runtime     String?
+  runnerPid   Int?
+  workerPid   Int?
+  hostname    String?
+  platform    String?
+  stage       String?
+  summary     String?
+  details     Json      @default("{}")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, instanceId])
+  @@index([userId, jobType, startedAt(sort: Desc)])
+  @@index([userId, scheduleJob, expectedAt(sort: Desc)])
+  @@index([userId, status])
 }
 
 model LibraryCronJob {
@@ -493,9 +528,11 @@ model DigestRun {
   digestId          String?
   digestTitle       String?
   language          String?
+  jobRunId          String?
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, preparedAt(sort: Desc)])
+  @@index([userId, jobRunId])
 }
 
 model AgentToken {

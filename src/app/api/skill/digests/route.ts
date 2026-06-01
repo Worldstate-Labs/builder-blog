@@ -126,6 +126,7 @@ export async function POST(request: Request) {
           digestId: digest.id,
           digestTitle: digest.title,
           language,
+          jobRunId: parsed.data.jobRunId ?? undefined,
           includedCount: parsed.data.digestedItems.length,
           includedKeys: parsed.data.digestedItems.map(
             (item) => `${item.entityId}:${item.kind}:${item.externalId}`,
