@@ -48,6 +48,46 @@ self_update_and_reexec() {
 }
 self_update_and_reexec "$@"
 
+acquire_cron_lock() {
+  case "$JOB_NAME" in
+    *-cron) ;;
+    *) return 0 ;;
+  esac
+
+  LOCK_ROOT="$AGENT_DIR/tmp/locks"
+  LOCK_DIR="$LOCK_ROOT/$JOB_NAME.lock"
+  LOCK_PID_FILE="$LOCK_DIR/pid"
+  mkdir -p "$LOCK_ROOT"
+
+  if mkdir "$LOCK_DIR" 2>/dev/null; then
+    printf '%s\n' "$$" > "$LOCK_PID_FILE"
+    trap 'rm -rf "$LOCK_DIR"' EXIT HUP INT TERM
+    return 0
+  fi
+
+  LOCK_PID=""
+  if [ -r "$LOCK_PID_FILE" ]; then
+    LOCK_PID="$(tr -dc '0-9' < "$LOCK_PID_FILE" 2>/dev/null || true)"
+  fi
+
+  if [ -n "$LOCK_PID" ] && kill -0 "$LOCK_PID" 2>/dev/null; then
+    echo "FollowBrief $JOB_NAME is already running (pid $LOCK_PID); skipping duplicate cron launch." >&2
+    exit 0
+  fi
+
+  echo "Removing stale FollowBrief $JOB_NAME lock." >&2
+  rm -rf "$LOCK_DIR"
+  if mkdir "$LOCK_DIR" 2>/dev/null; then
+    printf '%s\n' "$$" > "$LOCK_PID_FILE"
+    trap 'rm -rf "$LOCK_DIR"' EXIT HUP INT TERM
+    return 0
+  fi
+
+  echo "FollowBrief $JOB_NAME lock was acquired by another process; skipping duplicate cron launch." >&2
+  exit 0
+}
+acquire_cron_lock
+
 refresh_skill_files() {
   mkdir -p "$AGENT_DIR" "$AGENT_DIR/jobs" "$AGENT_DIR/logs" "$AGENT_DIR/tmp"
   curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest.md" -o "$AGENT_DIR/SKILL.md"

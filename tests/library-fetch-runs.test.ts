@@ -132,6 +132,12 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   const runner = source("scripts/builder-agent-runner.sh");
   assert.match(runner, /BUILDER_BLOG_RUN_SOURCE=cron/);
   assert.match(runner, /export[^\n]*BUILDER_BLOG_RUN_SOURCE/);
+  assert.match(runner, /acquire_cron_lock/);
+  assert.match(runner, /mkdir "\$LOCK_DIR"/);
+  assert.match(runner, /kill -0 "\$LOCK_PID"/);
+  assert.match(runner, /skipping duplicate cron launch/);
+  assert.match(runner, /Removing stale FollowBrief \$JOB_NAME lock/);
+  assert.match(runner, /\*\-cron\)/);
 });
 
 test("FetchLogPanel renders status pills and status/log tabs with semantic CSS variables", () => {
