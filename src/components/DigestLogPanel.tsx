@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
-import { Activity, Clock3, ExternalLink } from "lucide-react";
+import { Activity, ChevronDown, ChevronUp, Clock3, ExternalLink } from "lucide-react";
 import { useHydrated } from "@/components/ThemeToggle";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
 import type {
@@ -69,6 +69,21 @@ type CronSlot = {
   windowEnd: string;
   status: CronSlotStatus;
   run: DigestRunListItem | null;
+};
+
+type DigestUpdateStatusKey =
+  | "not-connected"
+  | "stopped"
+  | "building"
+  | "waiting"
+  | "healthy"
+  | "needs-attention";
+
+type DigestUpdateStatus = {
+  key: DigestUpdateStatusKey;
+  label: string;
+  summary: string;
+  style: ChipStyle;
 };
 
 function slotDomId(slot: CronSlot): string {
@@ -219,8 +234,13 @@ export function DigestLogPanel({
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const [expanded, setExpanded] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"status" | "log">("status");
   const cronStatus = useMemo(() => buildCronStatus(cronJob, cronRuns), [cronJob, cronRuns]);
+  const updateStatus = useMemo(
+    () => getDigestUpdateStatus(cronJob, cronStatus.slots, runs),
+    [cronJob, cronStatus.slots, runs],
+  );
   const runsRef = useRef(runs);
   const hydrated = useHydrated();
 
@@ -229,6 +249,7 @@ export function DigestLogPanel({
   }, [runs]);
 
   const openRun = useCallback((runId: string) => {
+    setDetailsOpen(true);
     setExpanded(true);
     setActiveTab("log");
     window.setTimeout(() => {
@@ -334,12 +355,17 @@ export function DigestLogPanel({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="fb-section-heading">Digest updates</h2>
-            <ScheduleHealthChip cronJob={cronJob} slots={cronStatus.slots} />
+            <DigestStatusToggle
+              detailsOpen={detailsOpen}
+              onToggle={() => setDetailsOpen((value) => !value)}
+              status={updateStatus}
+            />
           </div>
           <DigestScheduleSummary
             cronJob={cronJob}
             hydrated={hydrated}
             nextExpectedAt={cronStatus.nextExpectedAt}
+            status={updateStatus}
           />
         </div>
         {(shareToggle || actions) ? (
@@ -354,83 +380,143 @@ export function DigestLogPanel({
         <p className="mt-3 text-[12px] text-[var(--danger)]">{error}</p>
       ) : null}
 
-      <div
-        aria-label="Digest update views"
-        className="mt-4 inline-flex rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] p-1"
-        role="tablist"
-      >
-        <button
-          aria-selected={activeTab === "status"}
-          className={`fb-btn compact ${activeTab === "status" ? "" : "light"}`}
-          onClick={() => setActiveTab("status")}
-          role="tab"
-          type="button"
-        >
-          <Activity aria-hidden="true" />
-          Schedule status
-        </button>
-        <button
-          aria-selected={activeTab === "log"}
-          className={`fb-btn compact ${activeTab === "log" ? "" : "light"}`}
-          onClick={() => setActiveTab("log")}
-          role="tab"
-          type="button"
-        >
-          <Clock3 aria-hidden="true" />
-          Build history
-        </button>
-      </div>
+      {detailsOpen ? (
+        <div id="digest-update-details">
+          <div
+            aria-label="Digest update views"
+            className="mt-4 inline-flex rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] p-1"
+            role="tablist"
+          >
+            <button
+              aria-selected={activeTab === "status"}
+              className={`fb-btn compact ${activeTab === "status" ? "" : "light"}`}
+              onClick={() => setActiveTab("status")}
+              role="tab"
+              type="button"
+            >
+              <Activity aria-hidden="true" />
+              Schedule status
+            </button>
+            <button
+              aria-selected={activeTab === "log"}
+              className={`fb-btn compact ${activeTab === "log" ? "" : "light"}`}
+              onClick={() => setActiveTab("log")}
+              role="tab"
+              type="button"
+            >
+              <Clock3 aria-hidden="true" />
+              Build history
+            </button>
+          </div>
 
-      {activeTab === "status" ? (
-        <DigestStatusPanel
-          cronJob={cronJob}
-          nextExpectedAt={cronStatus.nextExpectedAt}
-          onOpenRun={openRun}
-          slots={cronStatus.slots}
-        />
-      ) : (
-        <DigestRunList
-          expanded={expanded}
-          runs={runs}
-          setExpanded={setExpanded}
-        />
-      )}
+          {activeTab === "status" ? (
+            <DigestStatusPanel
+              cronJob={cronJob}
+              nextExpectedAt={cronStatus.nextExpectedAt}
+              onOpenRun={openRun}
+              slots={cronStatus.slots}
+            />
+          ) : (
+            <DigestRunList
+              expanded={expanded}
+              runs={runs}
+              setExpanded={setExpanded}
+            />
+          )}
+        </div>
+      ) : null}
     </section>
   );
 }
 
 type ChipStyle = { background: string; color: string; border: string };
 
-function summarizeSchedule(cronJob: DigestCronJobStatus | null, slots: CronSlot[]) {
-  if (!cronJob) return { label: "Not connected", style: statusStyle("partial") };
-  if (cronJob.status !== "active") return { label: "Stopped", style: statusStyle("partial") };
+function getDigestUpdateStatus(
+  cronJob: DigestCronJobStatus | null,
+  slots: CronSlot[],
+  runs: DigestRunListItem[],
+): DigestUpdateStatus {
+  const activeRun = runs.find(isRunInflight);
+  if (activeRun) {
+    return {
+      key: "building",
+      label: "Building",
+      summary: "A digest build has started and is waiting to be saved.",
+      style: statusStyle("partial"),
+    };
+  }
+  if (!cronJob) {
+    return {
+      key: "not-connected",
+      label: "Not connected",
+      summary: "No local helper schedule has reported yet.",
+      style: statusStyle("partial"),
+    };
+  }
+  if (cronJob.status !== "active") {
+    return {
+      key: "stopped",
+      label: "Stopped",
+      summary: "The recurring digest schedule is stopped.",
+      style: statusStyle("partial"),
+    };
+  }
+
   const problemCount = slots.filter((slot) => slot.status === "missed" || slot.status === "failed").length;
   const okCount = slots.filter((slot) => slot.status === "ok").length;
+  if (problemCount > 0) {
+    return {
+      key: "needs-attention",
+      label: "Needs attention",
+      summary: `${problemCount} scheduled ${problemCount === 1 ? "run needs" : "runs need"} review.`,
+      style: statusStyle("failed"),
+    };
+  }
+  if (okCount > 0) {
+    return {
+      key: "healthy",
+      label: "Healthy",
+      summary: "Recent scheduled digest runs are saving successfully.",
+      style: statusStyle("ok"),
+    };
+  }
+
   return {
-    label: problemCount > 0 ? "Needs attention" : okCount > 0 ? "Healthy" : "Waiting",
-    style: problemCount > 0 ? statusStyle("failed") : okCount > 0 ? statusStyle("ok") : statusStyle("partial"),
+    key: "waiting",
+    label: "Waiting",
+    summary: "The schedule is active; the first expected run has not finished yet.",
+    style: statusStyle("partial"),
   };
 }
 
-function ScheduleHealthChip({
-  cronJob,
-  slots,
+function DigestStatusToggle({
+  detailsOpen,
+  onToggle,
+  status,
 }: {
-  cronJob: DigestCronJobStatus | null;
-  slots: CronSlot[];
+  detailsOpen: boolean;
+  onToggle: () => void;
+  status: DigestUpdateStatus;
 }) {
-  const summary = summarizeSchedule(cronJob, slots);
+  const Icon = detailsOpen ? ChevronUp : ChevronDown;
   return (
-    <span
-      className="fb-chip"
+    <button
+      aria-controls="digest-update-details"
+      aria-expanded={detailsOpen}
+      className="fb-chip digest-status-toggle"
+      onClick={onToggle}
       style={{
-        background: summary.style.background,
-        borderColor: summary.style.border,
-        color: summary.style.color,
+        background: status.style.background,
+        borderColor: status.style.border,
+        color: status.style.color,
       }}
+      title={detailsOpen ? "Hide digest update details" : "Show digest update details"}
+      type="button"
     >
-      {summary.label}
-    </span>
+      {status.label}
+      <span aria-hidden="true" className="digest-status-toggle-hint">Details</span>
+      <Icon aria-hidden="true" />
+    </button>
   );
 }
 
@@ -438,15 +524,17 @@ function DigestScheduleSummary({
   cronJob,
   hydrated,
   nextExpectedAt,
+  status,
 }: {
   cronJob: DigestCronJobStatus | null;
   hydrated: boolean;
   nextExpectedAt: string | null;
+  status: DigestUpdateStatus;
 }) {
   if (!cronJob) {
     return (
       <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-        No local helper schedule has reported yet. Build history appears after a digest prompt runs.
+        {status.summary} Build history appears after a digest prompt runs.
       </p>
     );
   }
@@ -471,7 +559,7 @@ function DigestScheduleSummary({
 
   return (
     <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-      {cronJob.frequencyLabel}
+      {status.summary} · {cronJob.frequencyLabel}
       {nextLabel ? ` · next ${nextLabel}` : ""}
       {cronJob.regenerateDigest ? " · includes already digested items" : ""}
     </p>
