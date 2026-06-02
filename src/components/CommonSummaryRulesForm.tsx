@@ -65,7 +65,7 @@ export function CommonSummaryRulesForm({
     >
       <div className="common-summary-rules-form">
         <FieldShell
-          label="Common post-summary rules"
+          label="Rule text"
           description="Global guardrails appended to every source-specific summary prompt when a single fetched post is summarized."
         >
           <textarea
