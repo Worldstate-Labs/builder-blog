@@ -146,25 +146,29 @@ async function loadLibraryHubPageData() {
     }),
   );
   const digestCountByPipelineId = new Map(digestCounts);
-  const hubDigestPipelines: HubDigestPipeline[] = digestPipelineShares.map((pipeline) => {
-    const owned = pipeline.ownerUserId === session.user.id;
-    const owner = pipeline.owner;
-    const stats = digestCountByPipelineId.get(pipeline.id);
-    return {
-      id: pipeline.id,
-      title: displayDigestPipelineTitle(pipeline.title || digestPipelineTitle(owner)),
-      description: pipeline.description,
-      ownerUserId: pipeline.ownerUserId,
-      ownerLabel: `Shared by ${owner.name || owner.email || "a FollowBrief user"}.`,
-      importCount: pipeline.importCount,
-      viewCount: pipeline.viewCount,
-      digestCount: stats?.digestCount ?? 0,
-      latestDigestAt: stats?.latestDigestAt?.toISOString() ?? null,
-      imported:
-        importedDigestPipelineIds.has(pipeline.id) || pipeline.imports.length > 0,
-      owned,
-    };
-  });
+  const hubDigestPipelines: HubDigestPipeline[] = digestPipelineShares
+    .map((pipeline) => {
+      const owned = pipeline.ownerUserId === session.user.id;
+      const owner = pipeline.owner;
+      const stats = digestCountByPipelineId.get(pipeline.id);
+      return {
+        id: pipeline.id,
+        title: displayDigestPipelineTitle(pipeline.title || digestPipelineTitle(owner)),
+        description: pipeline.description,
+        ownerUserId: pipeline.ownerUserId,
+        ownerLabel: owned
+          ? "Shared by you."
+          : `Shared by ${owner.name || owner.email || "a FollowBrief user"}.`,
+        importCount: pipeline.importCount,
+        viewCount: pipeline.viewCount,
+        digestCount: stats?.digestCount ?? 0,
+        latestDigestAt: stats?.latestDigestAt?.toISOString() ?? null,
+        imported:
+          importedDigestPipelineIds.has(pipeline.id) || pipeline.imports.length > 0,
+        owned,
+      };
+    })
+    .sort((a, b) => Number(b.owned) - Number(a.owned));
   return {
     hubLibraries,
     hubDigestPipelines,

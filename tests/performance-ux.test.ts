@@ -628,6 +628,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /DigestPipelineImportForm/);
   assert.match(hubPage, /digestPipelineShare\.findMany/);
   assert.match(hubPage, /digestPipelineImport\.findMany/);
+  assert.match(hubPage, /Number\(b\.owned\) - Number\(a\.owned\)/);
   assert.match(hubPage, /adminCommunityLibraryName/);
   assert.match(hubPage, /library\.isFeatured/);
   assert.match(hubPage, /isAdminEmail\(library\.owner\?\.email\)/);
@@ -672,6 +673,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(digestPipelineForm, /Share my digest/);
   assert.doesNotMatch(digestPipelineForm, /Remove my digest/);
   assert.doesNotMatch(digestPipelineForm, /ownPipelineShared/);
+  assert.doesNotMatch(digestPipelineForm, /filter\(\(pipeline\) => !pipeline\.owned\)/);
+  assert.match(digestPipelineForm, /Your digest/);
+  assert.match(digestPipelineForm, /pipeline\.owned \? \(/);
   assert.match(digestPipelineVisibilityToggle, /Share to Hub/);
   assert.match(digestPipelineVisibilityToggle, /fetch\("\/api\/digest-pipelines\/share"/);
   assert.match(digestPipelineTitleEditor, /"use client"/);

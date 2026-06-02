@@ -90,8 +90,6 @@ export function DigestPipelineImportForm({
     });
   }
 
-  const visiblePipelines = pipelines.filter((pipeline) => !pipeline.owned);
-
   return (
     <section className="mt-10">
       <div className="library-hub-toolbar">
@@ -110,7 +108,7 @@ export function DigestPipelineImportForm({
       ) : null}
 
       <div className="mt-5 grid gap-3.5 lg:grid-cols-2">
-        {visiblePipelines.map((pipeline) => (
+        {pipelines.map((pipeline) => (
           <DigestPipelineCard
             imported={importedIds.has(pipeline.id)}
             isPending={importPending}
@@ -121,7 +119,7 @@ export function DigestPipelineImportForm({
             pipeline={pipeline}
           />
         ))}
-        {visiblePipelines.length === 0 ? (
+        {pipelines.length === 0 ? (
           <div className="fb-panel dashed col-span-full text-sm text-[var(--muted-strong)]">
             No shared digests are available yet.
           </div>
@@ -146,7 +144,12 @@ function DigestPipelineCard({
   pending: "import" | "remove" | null;
   pipeline: HubDigestPipeline;
 }) {
-  const action = imported ? (
+  const action = pipeline.owned ? (
+    <span className="fb-chip success">
+      <CheckCircle2 aria-hidden="true" />
+      Your digest
+    </span>
+  ) : imported ? (
     <div className="flex flex-wrap items-center gap-2">
       <span className="fb-chip success">
         <CheckCircle2 aria-hidden="true" />
