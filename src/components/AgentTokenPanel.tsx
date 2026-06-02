@@ -79,6 +79,7 @@ export function AgentTokenPanel({
   const router = useRouter();
   const [tokenName, setTokenName] = useState("");
   const [status, setStatus] = useState("");
+  const [showAllTokens, setShowAllTokens] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   // Create dialog state
@@ -134,22 +135,12 @@ export function AgentTokenPanel({
     });
   }
 
-  const activeCount = useMemo(
-    () => tokens.filter((token) => !token.revokedAt).length,
+  const activeTokens = useMemo(
+    () => tokens.filter((token) => !token.revokedAt),
     [tokens],
   );
-  const visibleTokens = useMemo(
-    () => tokens.filter((token) => !token.revokedAt).slice(0, 5),
-    [tokens],
-  );
-  const visibleTokenIds = useMemo(
-    () => new Set(visibleTokens.map((token) => token.id)),
-    [visibleTokens],
-  );
-  const hiddenTokens = useMemo(
-    () => tokens.filter((token) => !visibleTokenIds.has(token.id)),
-    [tokens, visibleTokenIds],
-  );
+  const visibleTokens = showAllTokens ? activeTokens : activeTokens.slice(0, 2);
+  const hiddenActiveCount = Math.max(0, activeTokens.length - 2);
 
   function openCreateDialog() {
     setStatus("");
@@ -234,9 +225,9 @@ export function AgentTokenPanel({
     <section className="fb-panel">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="fb-section-heading">Local helper access</h2>
+          <h2 className="fb-section-heading">Access keys</h2>
           <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-            Let a local helper save sources and digests to FollowBrief. Treat access keys like passwords.
+            Keys let your local agent securely send fetched sources and digests to your FollowBrief cloud account.
           </p>
         </div>
         <button
@@ -261,39 +252,28 @@ export function AgentTokenPanel({
         ))}
         {tokens.length === 0 ? (
           <div className="px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
-            No access keys yet. Add one when you connect a local helper.
+            No access keys yet. Add one when you connect a local agent.
           </div>
         ) : null}
-        {tokens.length > 0 && visibleTokens.length === 0 ? (
-          <div className="px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
-            No active access keys.
-          </div>
+        {hiddenActiveCount > 0 ? (
+          <button
+            className="block w-full border-t border-[var(--line)] px-4 py-3 text-left text-[13px] font-bold text-[var(--ink)] transition hover:bg-[var(--paper)]"
+            onClick={() => setShowAllTokens((current) => !current)}
+            type="button"
+          >
+            {showAllTokens ? "See less" : `See more (${hiddenActiveCount})`}
+          </button>
         ) : null}
       </div>
 
-      {hiddenTokens.length > 0 ? (
-        <details className="mt-3 rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)]">
-          <summary className="cursor-pointer px-4 py-3 text-[13px] font-bold text-[var(--ink)]">
-            Past access keys ({hiddenTokens.length})
-          </summary>
-          <div className="border-t border-[var(--line)]">
-            {hiddenTokens.map((token) => (
-              <TokenRow
-                key={token.id}
-                token={token}
-                isPending={isPending}
-                onRevoke={() => openRevokeDialog(token)}
-              />
-            ))}
-          </div>
-        </details>
+      {tokens.length > 0 && activeTokens.length === 0 ? (
+        <p className="mt-2 text-[12px] text-[var(--muted-strong)]">
+          No active keys to show. Revoked keys are hidden from this list.
+        </p>
       ) : null}
 
       <span aria-live="polite" className="mt-2 block">
         {status ? <span className="text-[12px] text-[var(--danger)]">{status}</span> : null}
-      </span>
-      <span className="sr-only" aria-live="polite">
-        {activeCount} active access keys
       </span>
 
       {/* Create token dialog */}

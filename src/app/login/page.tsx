@@ -64,7 +64,7 @@ export default async function LoginPage({
             <AuthButtons callbackUrl={safeCallbackUrl(params.callbackUrl)} />
           </div>
           <p className="mt-4 text-[11px] leading-relaxed text-white/42">
-            Local helper access is set up after sign-in from Settings.
+            Access keys are set up after sign-in from Settings.
           </p>
         </section>
       </div>

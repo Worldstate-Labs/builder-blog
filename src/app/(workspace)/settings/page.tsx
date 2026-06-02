@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { KeyRound } from "lucide-react";
 import { AdminDigestConfigForm } from "@/components/AdminDigestConfigForm";
 import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
 import { AgentTokenPanel } from "@/components/AgentTokenPanel";
@@ -20,13 +19,7 @@ export default async function SettingsPage() {
       <section className="fb-page-head">
         <div>
           <h1 className="fb-title">Settings</h1>
-          <p className="fb-desc">
-            Configure source rules and local helper access.
-          </p>
         </div>
-        <Suspense fallback={<ActiveTokenChipFallback />}>
-          <ActiveTokenChip userId={userId} />
-        </Suspense>
       </section>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-2">
@@ -131,27 +124,6 @@ function SourceTypeConfigSkeleton() {
         <div className="h-24 animate-pulse rounded bg-[var(--paper-strong)]" />
       </div>
     </section>
-  );
-}
-
-async function ActiveTokenChip({ userId }: { userId: string }) {
-  const count = await prisma.agentToken.count({
-    where: { userId, revokedAt: null },
-  });
-  return (
-    <span className="fb-chip">
-      <KeyRound aria-hidden="true" />
-      {count} active access keys
-    </span>
-  );
-}
-
-function ActiveTokenChipFallback() {
-  return (
-    <span className="fb-chip" aria-busy="true" aria-live="polite">
-      <KeyRound aria-hidden="true" />
-      <span className="inline-block h-3 w-16 animate-pulse rounded-full bg-[var(--paper-strong)]" />
-    </span>
   );
 }
 

@@ -75,7 +75,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /closeMenu\(\);[\s\S]*signOut\(\{ callbackUrl: "\/login" \}\)[\s\S]*Sign out/);
   assert.match(settingsPage, />\s*Settings\s*</);
   assert.equal(existsSync(join(root, "src/app/(workspace)/settings/loading.tsx")), false);
-  assert.match(settingsPage, /<Suspense fallback=\{<ActiveTokenChipFallback \/>/);
+  assert.doesNotMatch(settingsPage, /ActiveTokenChip/);
   assert.match(settingsPage, /<Suspense fallback=\{<AgentTokenPanelSkeleton \/>/);
   assert.doesNotMatch(settingsPage, /Agent login/);
   assert.match(globals, /\.user-avatar/);
