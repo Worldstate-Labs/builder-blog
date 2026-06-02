@@ -70,6 +70,10 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /BUILDER_BLOG_WORKER_MODE=1/);
   assert.match(runner, /INSTANCE_ID=/);
   assert.match(runner, /CURRENT_FILE=/);
+  assert.match(runner, /clear_current_file/);
+  assert.match(runner, /write_current_file "\$CURRENT_FILE" "\$INSTANCE_ID" "\$BUILDER_BLOG_WORKER_PID"/);
+  assert.match(runner, /Scheduled worker running in launchd foreground/);
+  assert.match(runner, /set \+e[\s\S]*run_cron_worker[\s\S]*_code="\$\?"/);
   assert.match(runner, /verify_followbrief_pid/);
   assert.match(runner, /terminate_process_tree/);
   assert.match(runner, /next_schedule_arrived/);
@@ -81,6 +85,8 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /digest-cron\)[\s\S]*45 \* 60/);
   assert.match(runner, /20 \* 60/);
   assert.doesNotMatch(runner, /skipping duplicate cron launch/);
+  assert.doesNotMatch(runner, /\)\s*>> "\$LOG_FILE" 2>&1 &/);
+  assert.doesNotMatch(runner, /WORKER_PID="\$!"/);
 });
 
 test("web status uses scheduled job instances while history can show one-time runs", () => {

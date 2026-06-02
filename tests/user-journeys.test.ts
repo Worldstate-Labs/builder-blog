@@ -735,9 +735,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /--permission-mode acceptEdits/);
   assert.match(runner, /--full-auto/);
   assert.match(runner, /--yolo/);
-  // OpenClaw has no per-call approval flag; unattended runs apply the yolo
-  // exec-policy preset instead (the old --auto-approve flag was rejected).
-  assert.match(runner, /exec-policy preset yolo/);
+  // OpenClaw unattended runs rely on its default non-interactive policy and
+  // must not rewrite the global exec approval file from a scheduled job.
+  assert.match(runner, /openclaw agent --local/);
+  assert.match(runner, /don't touch[\s\S]*global policy/);
+  assert.doesNotMatch(runner, /exec-policy preset yolo/);
   assert.doesNotMatch(runner, /--auto-approve/);
   // Pins are read per-account and per-job with a fallback to legacy files, so
   // two accounts can run the same job type without sharing runtime or mode.
@@ -749,6 +751,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /BUILDER_BLOG_JOB_TMP_DIR/);
   assert.match(runner, /CURRENT_FILE="\$JOB_TMP_DIR\/current\.json"/);
   assert.match(runner, /run_cron_supervisor/);
+  assert.match(runner, /Scheduled worker running in launchd foreground/);
   assert.match(runner, /terminate_process_tree/);
   assert.match(runner, /PINNED_RUNTIME="\$\(read_pin runtime\)"/);
   // Forced re-fetch: runner reads the fetch-force pin and exports

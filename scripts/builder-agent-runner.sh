@@ -134,7 +134,7 @@ run_with_openclaw_unattended() {
   # OpenClaw's DEFAULT exec policy is already security=full / ask=off (verified
   # via `openclaw exec-policy show` with no approvals file present), so a
   # non-interactive `agent` turn auto-approves exec on its own — confirmed by a
-  # live non-TTY run. The old `exec-policy preset yolo` was both unnecessary AND
+  # live non-TTY run. The old global-yolo preset command was both unnecessary AND
   # harmful: it wrote the GLOBAL ~/.openclaw/exec-approvals.json, disarming
   # approval for EVERY openclaw session on the host (and `--profile` does not
   # relocate that file, so it can't be scoped that way). So we don't touch
@@ -336,12 +336,19 @@ write_current_file() {
     "$_instance" "$_worker_pid" "$_started" "$_expected" > "$_file"
 }
 
+clear_current_file() {
+  _file="$1"
+  _instance="$2"
+  if [ -r "$_file" ] && [ "$(json_get_string instanceId "$_file")" = "$_instance" ]; then
+    rm -f "$_file"
+  fi
+}
+
 run_cron_supervisor() {
   INSTANCE_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
   STARTED_AT="$(iso_now)"
   EXPECTED_AT="$STARTED_AT"
   CURRENT_FILE="$JOB_TMP_DIR/current.json"
-  LOG_FILE="$AGENT_DIR/logs/$JOB_NAME.log"
   export BUILDER_BLOG_JOB_RUN_ID="$INSTANCE_ID"
   export BUILDER_BLOG_JOB_TRIGGER="scheduled"
   export BUILDER_BLOG_SCHEDULE_JOB="$JOB_NAME"
@@ -374,16 +381,17 @@ run_cron_supervisor() {
   fi
 
   job_run_update starting "Scheduled run accepted by local supervisor." "next_schedule_arrived"
-  (
-    export BUILDER_BLOG_WORKER_MODE=1
-    export BUILDER_BLOG_WORKER_PID="$$"
-    "$AGENT_DIR/builder-agent-runner.sh" "$JOB_NAME"
-  ) >> "$LOG_FILE" 2>&1 &
-  WORKER_PID="$!"
-  export BUILDER_BLOG_WORKER_PID="$WORKER_PID"
-  write_current_file "$CURRENT_FILE" "$INSTANCE_ID" "$WORKER_PID" "$STARTED_AT" "$EXPECTED_AT"
-  job_run_update running "Scheduled worker started." "worker_started"
-  exit 0
+  export BUILDER_BLOG_WORKER_MODE=1
+  export BUILDER_BLOG_WORKER_PID="$$"
+  write_current_file "$CURRENT_FILE" "$INSTANCE_ID" "$BUILDER_BLOG_WORKER_PID" "$STARTED_AT" "$EXPECTED_AT"
+  job_run_update running "Scheduled worker running in launchd foreground." "worker_started"
+
+  set +e
+  run_cron_worker
+  _code="$?"
+  set -e
+  clear_current_file "$CURRENT_FILE" "$INSTANCE_ID"
+  exit "$_code"
 }
 
 run_cron_worker() {
