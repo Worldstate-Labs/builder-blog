@@ -2,11 +2,11 @@
 
 import { useState, useTransition } from "react";
 import {
-  FieldShell,
   FooterBar,
   Section,
   type SaveStatusState,
 } from "@/components/settings/SettingsFields";
+import { MarkdownEditor } from "@/components/settings/MarkdownEditor";
 
 type CommonSummaryRulesFormProps = {
   initialValue: string;
@@ -64,25 +64,15 @@ export function CommonSummaryRulesForm({
       description="Applied when each fetched post is summarized before it can appear in feeds or AI Digest."
     >
       <div className="common-summary-rules-form">
-        <FieldShell
-          label="Rule text"
-          description="Global guardrails appended to every source-specific summary prompt when a single fetched post is summarized."
-        >
-          <textarea
-            className="fb-textarea w-full"
-            rows={10}
-            style={{
-              resize: "vertical",
-              fontFamily: "var(--font-geist-mono)",
-              fontSize: "0.8125rem",
-            }}
-            value={value}
-            onChange={(event) => {
-              setValue(event.target.value);
-              if (status.kind !== "idle") setStatus({ kind: "idle" });
-            }}
-          />
-        </FieldShell>
+        <MarkdownEditor
+          ariaLabel="Common post-summary rules"
+          height={340}
+          value={value}
+          onChange={(next) => {
+            setValue(next);
+            if (status.kind !== "idle") setStatus({ kind: "idle" });
+          }}
+        />
         <FooterBar
           dirty={dirty}
           isPending={isPending}

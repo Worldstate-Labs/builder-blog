@@ -5499,6 +5499,65 @@ svg.lucide {
   box-shadow: inset 0 1px 0 color-mix(in oklch, white 36%, transparent);
 }
 
+.settings-markdown-editor {
+  --md-editor-bg: var(--paper-strong);
+  --md-editor-border: color-mix(in oklch, var(--line) 76%, transparent);
+}
+
+.settings-markdown-editor-loading,
+.settings-markdown-editor .w-md-editor {
+  background: var(--md-editor-bg);
+  border: 1px solid var(--md-editor-border);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 color-mix(in oklch, white 36%, transparent);
+  overflow: hidden;
+}
+
+.settings-markdown-editor-loading {
+  height: 20rem;
+}
+
+.settings-markdown-editor .w-md-editor-toolbar {
+  background: color-mix(in oklch, var(--paper) 88%, var(--paper-strong));
+  border-bottom: 1px solid var(--line);
+  padding: 0.25rem 0.4rem;
+}
+
+.settings-markdown-editor .w-md-editor-toolbar button {
+  border-radius: 6px;
+  color: var(--muted-strong);
+}
+
+.settings-markdown-editor .w-md-editor-toolbar button:hover,
+.settings-markdown-editor .w-md-editor-toolbar button.active {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.settings-markdown-editor .w-md-editor-content,
+.settings-markdown-editor .w-md-editor-area,
+.settings-markdown-editor .w-md-editor-text,
+.settings-markdown-editor .w-md-editor-preview,
+.settings-markdown-editor .wmde-markdown {
+  background: var(--paper-strong) !important;
+  color: var(--ink);
+}
+
+.settings-markdown-editor .w-md-editor-text-pre,
+.settings-markdown-editor .w-md-editor-text-input,
+.settings-markdown-editor .w-md-editor-text-pre > code {
+  color: var(--ink) !important;
+  font-family: var(--font-geist-mono) !important;
+  font-size: 0.8125rem !important;
+  line-height: 1.55 !important;
+}
+
+.settings-markdown-editor .w-md-editor-preview {
+  border-left-color: var(--line);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
 /* Pill segmented (radio-style) */
 .fb-pill-group {
   display: flex;

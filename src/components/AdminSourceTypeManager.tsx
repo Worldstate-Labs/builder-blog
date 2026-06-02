@@ -4,11 +4,11 @@ import { useMemo, useState, useTransition } from "react";
 import {
   clampRatio,
   FieldNumber,
-  FieldTextarea,
   FooterBar,
   Section,
   type SaveStatusState,
 } from "@/components/settings/SettingsFields";
+import { MarkdownEditor } from "@/components/settings/MarkdownEditor";
 
 export type AdminSourceTypeConfig = {
   sourceId: string;
@@ -186,15 +186,9 @@ function SourceTypeCard({
           title="Fetching"
           description="The fetch prompt the agent receives when this source needs agent extraction."
         >
-          <FieldTextarea
-            label="Fetch prompt · optional"
-            rows={12}
-            mono
-            description={
-              config.agentDefaultStatus === "requires_agent"
-                ? "Surfaced to the agent in fallback fetch tasks so it can decide HOW to acquire content (e.g. for podcasts: try show notes first, else download audio + Whisper transcribe)."
-                : "Only used when this source requires agent extraction. Currently unused for this source — kept in case that changes."
-            }
+          <MarkdownEditor
+            ariaLabel={`${config.label} fetch prompt`}
+            height={340}
             value={draft.fetchPromptBody}
             onChange={(v) => update("fetchPromptBody", v)}
           />
@@ -205,10 +199,9 @@ function SourceTypeCard({
           title="Summarization"
           description="How each item of this source is turned into a brief. Output language comes from the one-time or cron run prompt."
         >
-          <FieldTextarea
-            label="Summary prompt body"
-            rows={16}
-            mono
+          <MarkdownEditor
+            ariaLabel={`${config.label} summary prompt`}
+            height={420}
             value={draft.summaryPromptBody}
             onChange={(v) => update("summaryPromptBody", v)}
           />
