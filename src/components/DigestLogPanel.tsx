@@ -710,14 +710,14 @@ function DigestStatusPanel({
           </div>
           <dl className="mt-3 grid gap-2 text-[12.5px] text-[var(--muted-strong)]">
             <div className="flex items-baseline justify-between gap-3">
-              <dt>Started</dt>
+              <dt>Schedule enabled</dt>
               <dd className="text-right text-[var(--ink)]">
                 {hydrated ? formatRelative(cronJob.startedAt) : formatAbsolute(cronJob.startedAt)}
               </dd>
             </div>
             {nextExpectedAt ? (
               <div className="flex items-baseline justify-between gap-3">
-                <dt>Next run</dt>
+                <dt>Next scheduled run</dt>
                 <dd className="text-right text-[var(--ink)]">
                   {hydrated ? formatRelative(nextExpectedAt) : formatAbsolute(nextExpectedAt)}
                 </dd>
@@ -749,7 +749,7 @@ function DigestStatusPanel({
               <span className="font-semibold text-[var(--ink)]">
                 Last {slots.length} scheduled {slots.length === 1 ? "window" : "windows"}
               </span>
-              <span>Green saved, amber waiting, red missed or failed.</span>
+              <span>Green saved · amber waiting · red issue.</span>
             </div>
             <div className="flex items-end gap-1.5" aria-label="Digest schedule status graph">
               {slots.map((slot) => (
@@ -778,7 +778,7 @@ function DigestStatusPanel({
           </div>
         ) : (
           <div className="rounded-[8px] border border-dashed border-[var(--line)] px-3 py-3 text-sm text-[var(--muted-strong)]">
-            No expected scheduled run has elapsed since setup. The first status point appears after the next scheduled time.
+            No scheduled run has elapsed yet.
           </div>
         )}
       </div>
@@ -866,10 +866,10 @@ function CronSlotRow({
       <div className="flex min-w-0 items-center gap-2">
         <span className="mono truncate text-[11.5px] text-[var(--muted-strong)]">
           {slot.jobRun && !slot.run
-            ? `${slot.jobRun.status} · ${slot.jobRun.runtime || "Local helper"}`
+            ? `${jobRunStatusLabel(slot.jobRun)} · ${slot.jobRun.runtime || "Local helper"}`
             : slot.run
             ? `${slot.run.includedCount ?? 0}/${slot.run.candidateCount} used`
-            : "no run recorded for this scheduled time"}
+            : "No run recorded"}
         </span>
         {slot.run ? (
           <button
@@ -952,6 +952,29 @@ function jobRunStatusStyle(jobRun: AgentJobRunListItem): ChipStyle {
   return statusStyle("failed");
 }
 
+function jobRunStatusLabel(jobRun: AgentJobRunListItem): string {
+  switch (jobRun.status) {
+    case "succeeded":
+      return "Succeeded";
+    case "starting":
+      return "Starting";
+    case "running":
+      return "Running";
+    case "timed_out":
+      return "Timed out";
+    case "killed":
+      return "Killed";
+    case "stale":
+      return "Stale";
+    case "replaced":
+      return "Replaced";
+    case "failed":
+      return "Failed";
+    default:
+      return jobRun.status.replace(/_/g, " ");
+  }
+}
+
 function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
   const hydrated = useHydrated();
   const style = jobRunStatusStyle(jobRun);
@@ -966,7 +989,7 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
           className="fb-chip"
           style={{ background: style.background, color: style.color, borderColor: style.border }}
         >
-          {jobRun.status === "timed_out" ? "Timed out" : jobRun.status}
+          {jobRunStatusLabel(jobRun)}
         </span>
         <time
           className="text-[12.5px] text-[var(--muted-strong)]"
@@ -1061,7 +1084,7 @@ function RunCard({ run }: { run: DigestRunListItem }) {
         >
           {timeLabel}
         </time>
-        <span className="fb-chip">{run.source === "cron" ? "scheduled" : "one-time"}</span>
+        <span className="fb-chip">{run.source === "cron" ? "Scheduled" : "One-time"}</span>
         {run.language ? <span className="fb-chip">{run.language}</span> : null}
         {run.regenerate ? (
           <span className="text-[11px] text-[var(--muted)]">rebuilt</span>

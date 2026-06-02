@@ -20,7 +20,7 @@ export default async function SettingsPage() {
         <div>
           <h1 className="fb-title">Settings</h1>
           <p className="fb-desc">
-            Configure feed preferences and local helper access.
+            Configure source rules and local helper access.
           </p>
         </div>
         <Suspense fallback={<ActiveTokenChipFallback />}>
@@ -94,7 +94,7 @@ async function SourceTypeConfigSection({ userId }: { userId: string }) {
               How source summaries are assembled into the daily digest.
             </p>
           </div>
-          <span className="fb-kind-pill">one set</span>
+          <span className="fb-kind-pill">Digest rules</span>
         </summary>
         <div className="mt-4">
           <AdminDigestConfigForm

@@ -26,7 +26,7 @@ export async function PATCH(request: Request, { params }: Params) {
   const { builderId } = await params;
   const poolBuilderIds = await activePoolBuilderIds(session.user.id);
   if (!poolBuilderIds.includes(builderId)) {
-    return NextResponse.json({ error: "Builder is not in your library" }, { status: 404 });
+    return NextResponse.json({ error: "Source is not in your library" }, { status: 404 });
   }
 
   const builder = await prisma.builder.findUnique({
@@ -34,7 +34,7 @@ export async function PATCH(request: Request, { params }: Params) {
     select: { id: true, entityId: true },
   });
   if (!builder) {
-    return NextResponse.json({ error: "Builder not found" }, { status: 404 });
+    return NextResponse.json({ error: "Source not found" }, { status: 404 });
   }
   const entityId = builder.entityId;
 

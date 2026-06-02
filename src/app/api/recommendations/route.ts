@@ -54,10 +54,10 @@ export async function POST(request: Request) {
     },
   });
   if (!item) {
-    return NextResponse.json({ error: "Missing feed item" }, { status: 404 });
+    return NextResponse.json({ error: "Missing post" }, { status: 404 });
   }
   if (!item.builder?.entityId) {
-    return NextResponse.json({ error: "Feed item not bound to an entity" }, { status: 409 });
+    return NextResponse.json({ error: "Post is not linked to a source" }, { status: 409 });
   }
 
   // Authorization: the user can only mark items from their own pool as read.
@@ -66,10 +66,10 @@ export async function POST(request: Request) {
   if (item.builderId) {
     const poolIds = await activePoolBuilderIds(session.user.id);
     if (!poolIds.includes(item.builderId)) {
-      return NextResponse.json({ error: "Feed item not in your pool" }, { status: 403 });
+      return NextResponse.json({ error: "Post is not in your sources" }, { status: 403 });
     }
   } else {
-    return NextResponse.json({ error: "Feed item not bound to a builder" }, { status: 409 });
+    return NextResponse.json({ error: "Post is not linked to a source" }, { status: 409 });
   }
 
   const entityId = item.builder.entityId;

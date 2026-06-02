@@ -46,7 +46,7 @@ export async function PATCH(request: Request) {
   });
   if (!builder || builder.entityId !== entityId) {
     return NextResponse.json(
-      { error: "Builder does not belong to this entity" },
+      { error: "Source channel does not belong to this source" },
       { status: 400 },
     );
   }

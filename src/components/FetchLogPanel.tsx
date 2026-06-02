@@ -830,14 +830,14 @@ function FetchStatusPanel({
           </div>
           <dl className="mt-3 grid gap-2 text-[12.5px] text-[var(--muted-strong)]">
             <div className="flex items-baseline justify-between gap-3">
-              <dt>Started</dt>
+              <dt>Schedule enabled</dt>
               <dd className="text-right text-[var(--ink)]">
                 {hydrated ? formatRelative(cronJob.startedAt) : formatAbsolute(cronJob.startedAt)}
               </dd>
             </div>
             {nextExpectedAt ? (
               <div className="flex items-baseline justify-between gap-3">
-                <dt>Next run</dt>
+                <dt>Next scheduled run</dt>
                 <dd className="text-right text-[var(--ink)]">
                   {hydrated ? formatRelative(nextExpectedAt) : formatAbsolute(nextExpectedAt)}
                 </dd>
@@ -869,7 +869,7 @@ function FetchStatusPanel({
               <span className="font-semibold text-[var(--ink)]">
                 Last {slots.length} scheduled {slots.length === 1 ? "window" : "windows"}
               </span>
-              <span>Green completed, amber waiting, red missed or failed.</span>
+              <span>Green OK · amber waiting · red issue.</span>
             </div>
             <div className="flex items-end gap-1.5" aria-label="Fetch schedule status graph">
               {slots.map((slot) => (
@@ -898,7 +898,7 @@ function FetchStatusPanel({
           </div>
         ) : (
           <div className="rounded-[8px] border border-dashed border-[var(--line)] px-3 py-3 text-sm text-[var(--muted-strong)]">
-            No expected scheduled run has elapsed since setup. The first status point appears after the next scheduled time.
+            No scheduled run has elapsed yet.
           </div>
         )}
       </div>
@@ -986,10 +986,10 @@ function CronSlotRow({
       <div className="flex min-w-0 items-center gap-2">
         <span className="mono truncate text-[11.5px] text-[var(--muted-strong)]">
           {slot.jobRun && !slot.run
-            ? `${slot.jobRun.status} · ${slot.jobRun.runtime || "Local helper"}`
+            ? `${jobRunStatusLabel(slot.jobRun)} · ${slot.jobRun.runtime || "Local helper"}`
             : slot.run
             ? `${slot.run.itemsFetched} fetched · ${formatDuration(slot.run.durationMs)}`
-            : "no run recorded for this scheduled time"}
+            : "No run recorded"}
         </span>
         {slot.run ? (
           <button
@@ -1034,7 +1034,7 @@ function FetchRunList({
     <div className="mt-4 grid gap-2.5">
       {entries.length === 0 ? (
         <div className="rounded-[10px] border border-dashed border-[var(--line)] bg-[var(--paper-strong)] px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
-          No fetch runs yet. The next time your local CLI runs <code className="mono">fetch-personal</code> it will show up here.
+          No fetch runs yet. Runs appear after your local helper updates sources.
         </div>
       ) : (
         <>
@@ -1073,6 +1073,29 @@ function jobRunStatusStyle(jobRun: AgentJobRunListItem): ReturnType<typeof statu
   return statusStyle("failed");
 }
 
+function jobRunStatusLabel(jobRun: AgentJobRunListItem): string {
+  switch (jobRun.status) {
+    case "succeeded":
+      return "Succeeded";
+    case "starting":
+      return "Starting";
+    case "running":
+      return "Running";
+    case "timed_out":
+      return "Timed out";
+    case "killed":
+      return "Killed";
+    case "stale":
+      return "Stale";
+    case "replaced":
+      return "Replaced";
+    case "failed":
+      return "Failed";
+    default:
+      return jobRun.status.replace(/_/g, " ");
+  }
+}
+
 function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
   const hydrated = useHydrated();
   const style = jobRunStatusStyle(jobRun);
@@ -1091,7 +1114,7 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
             borderColor: style.border,
           }}
         >
-          {jobRun.status === "timed_out" ? "Timed out" : jobRun.status}
+          {jobRunStatusLabel(jobRun)}
         </span>
         <time
           className="text-[12.5px] text-[var(--muted-strong)]"

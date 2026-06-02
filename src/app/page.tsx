@@ -42,7 +42,7 @@ export default async function Home() {
             </a>
           </div>
           <div className="mt-7 grid max-w-xl gap-2.5 sm:grid-cols-3">
-            <MiniMetric label="Sources" value="Central + personal" />
+            <MiniMetric label="Sources" value="Shared + private" />
             <MiniMetric label="Output" value="Daily digest" />
             <MiniMetric label="Recall" value="Searchable archive" />
           </div>
@@ -55,19 +55,19 @@ export default async function Home() {
               <div>
                 <div className="text-sm font-bold">Today&apos;s digest</div>
                 <div className="text-xs text-[var(--muted-strong)]">
-                  Updated 12 minutes ago
+                  Preview
                 </div>
               </div>
             </div>
             <span className="fb-chip success">
               <Radio aria-hidden="true" />
-              Live
+              Sample
             </span>
           </div>
           <div className="grid gap-3 p-5">
             {[
               {
-                title: "Model context windows moved from spec sheet to product primitive.",
+                title: "Context windows became product infrastructure.",
                 detail:
                   "Launch notes, essays, podcasts, and pricing shifts grouped into one readable brief.",
               },
@@ -118,7 +118,7 @@ export default async function Home() {
               i: "02",
               icon: Terminal,
               title: "Generate briefs",
-              copy: "Copy a prompt for your local helper to summarize followed sources and save the digest.",
+              copy: "Use a local helper to summarize followed sources and save the digest.",
             },
             {
               i: "03",

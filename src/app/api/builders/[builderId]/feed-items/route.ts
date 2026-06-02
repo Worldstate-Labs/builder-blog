@@ -17,7 +17,7 @@ export async function GET(_request: Request, { params }: Params) {
   const { builderId } = await params;
   const poolBuilderIds = await activePoolBuilderIds(session.user.id);
   if (!poolBuilderIds.includes(builderId)) {
-    return NextResponse.json({ error: "Builder is not in your library" }, { status: 404 });
+    return NextResponse.json({ error: "Source is not in your library" }, { status: 404 });
   }
 
   // Resolve to entity, then fetch the deduped feed across all channels of that entity.

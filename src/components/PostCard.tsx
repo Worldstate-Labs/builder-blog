@@ -57,7 +57,7 @@ export function PostCard({
   /** Recommendation reasons surfaced via a popover icon in the footer. */
   reasons?: string[];
   /**
-   * Whether to render the "Author: X" segment in the meta line. Keep the
+   * Whether to render the source name segment in the meta line. Keep the
    * default for feed-style post lists so every post surface uses the same
    * information hierarchy.
    * @default true
@@ -110,7 +110,6 @@ export function PostCard({
         <div className="post-meta">
           {showBuilderRow && authorName ? (
             <>
-              <span className="post-meta-author-label">Author:</span>
               {authorHref ? (
                 <Link className="post-meta-author-link" href={authorHref}>
                   {authorName}

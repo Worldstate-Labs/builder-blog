@@ -118,7 +118,7 @@ function ForYouError({ scope }: { scope: RecommendationScope }) {
             Couldn&rsquo;t load {scopeLabel(scope)}
           </h2>
           <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
-            Something went wrong fetching recommendations. Use Refresh snapshot to try again.
+            Something went wrong fetching recommendations. Use Refresh to try again.
           </p>
         </div>
       </div>

@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { Plus } from "lucide-react";
 import {
   DigestPipelineImportForm,
   type HubDigestPipeline,
@@ -30,17 +28,13 @@ export default function LibraryHubPage() {
         <div>
           <h1 className="fb-title">Library Hub</h1>
           <p className="fb-desc">
-            Import shared source libraries, or publish your own so others can follow what you read.
+            Import shared source libraries and AI Digest archives.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Suspense fallback={<span className="fb-chip" aria-busy="true">Loading</span>}>
             <LibraryHubCount dataPromise={dataPromise} />
           </Suspense>
-          <Link className="fb-btn light" href="/builders">
-            <Plus aria-hidden="true" />
-            Share my library
-          </Link>
         </div>
       </section>
 

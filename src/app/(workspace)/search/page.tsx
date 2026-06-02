@@ -85,7 +85,7 @@ const advancedSearchExamples = [
 
 const resultTypeLabels: Record<SearchDocumentType, string> = {
   builder: "Sources",
-  feed: "Feed",
+  feed: "Posts",
   digest: "Digests",
 };
 

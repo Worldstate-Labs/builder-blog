@@ -122,14 +122,14 @@ export function RecommendationFeed({
           type="button"
         >
           <RefreshCcw className="h-4 w-4" />
-          Refresh snapshot
+          Refresh
         </button>
       </div>
       <div className="item-list">
         {snapshots.map((snapshot) => (
           <section className="recommendation-snapshot" key={snapshot.id}>
             <div className="recommendation-snapshot-header">
-              <span>Snapshot</span>
+              <span>Picks</span>
               <span>{formatDate(snapshot.createdAt)}</span>
               <span>{snapshot.items.length} posts</span>
             </div>

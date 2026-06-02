@@ -86,9 +86,9 @@ const OVERRIDE_COPY: Record<
   digest: {
     name: "Include already digested items",
     cronHint:
-      "Lets items from past digests appear again. Adds a new digest and never deletes older ones. Leave off for normal daily briefs.",
+      "Allows older digest items to appear again on each run. Older digests stay saved.",
     onceHint:
-      "Lets items from past digests appear again this time only. Adds a new digest and never deletes older ones.",
+      "Allows older digest items to appear again this time. Older digests stay saved.",
   },
 };
 
@@ -197,20 +197,20 @@ const PROMPT_CONFIG = {
   library: {
     title: "Update sources",
     onceLabel: "Copy one-time prompt",
-    cronLabel: "Copy job prompt",
+    cronLabel: "Run or schedule",
     onceJob: "library-once",
     cronJob: "library-cron-setup",
     stopJob: "library-cron-stop",
-    stopLabel: "Stop schedule",
+    stopLabel: "Copy stop prompt",
   },
   digest: {
     title: "Build digest",
     onceLabel: "Copy one-time prompt",
-    cronLabel: "Copy job prompt",
+    cronLabel: "Run or schedule",
     onceJob: "digest-once",
     cronJob: "digest-cron-setup",
     stopJob: "digest-cron-stop",
-    stopLabel: "Stop schedule",
+    stopLabel: "Copy stop prompt",
   },
 } satisfies Record<
   SkillPromptContext,
@@ -249,7 +249,7 @@ export function SkillPromptActions({
   // The `in` narrow keeps this typed against the per-context literal config
   // shapes if a future context omits stop support.
   const stopJob = "stopJob" in config ? config.stopJob : undefined;
-  const stopLabel = "stopLabel" in config ? config.stopLabel : "Stop schedule";
+  const stopLabel = "stopLabel" in config ? config.stopLabel : "Copy stop prompt";
 
   const [copiedTarget, setCopiedTarget] = useState<CopyTarget | null>(null);
   const [status, setStatus] = useState<{ kind: "error" | "info"; text: string } | null>(null);
@@ -479,13 +479,6 @@ export function SkillPromptActions({
         open={pickerTarget !== null}
         target={pickerTarget}
         tokens={activeTokens}
-        actionLabel={
-          pickerTarget === "once"
-            ? config.onceLabel
-            : pickerTarget === "cron"
-              ? config.cronLabel
-              : stopLabel
-        }
         onCancel={() => {
           setPickerTarget(null);
           pendingExtrasRef.current = null;
@@ -506,14 +499,12 @@ function TokenPickerDialog({
   open,
   target,
   tokens,
-  actionLabel,
   onCancel,
   onConfirm,
 }: {
   open: boolean;
   target: CopyTarget | null;
   tokens: AgentTokenListItem[];
-  actionLabel: string;
   onCancel: () => void;
   onConfirm: (tokenId: string) => void | Promise<void>;
 }) {
@@ -598,8 +589,7 @@ function TokenPickerDialog({
             Choose a local helper
           </h2>
           <p className="token-picker-sub">
-            We&rsquo;ll create a short-lived setup code and copy the prompt for{" "}
-            {actionLabel.toLowerCase().replace(/^copy\s/, "")}.
+            We&rsquo;ll create a short-lived setup code and copy the prompt.
           </p>
         </header>
 
@@ -797,10 +787,10 @@ function CronConfigDialog({
       >
         <header className="token-picker-header">
           <h2 id="cron-config-title" className="token-picker-title">
-            Choose the job
+            Choose run type
           </h2>
           <p className="token-picker-sub">
-            Run it once now, or save a recurring local schedule.
+            Copy a prompt for one run or for a recurring local schedule.
           </p>
         </header>
 
@@ -864,8 +854,8 @@ function CronConfigDialog({
                 onChange={setPickedMaxAge}
               />
               <p className="cron-field-hint">
-                Posts published more than this many days ago are excluded. Blank
-                = no limit.
+                Posts published more than this many days ago are excluded. Leave
+                blank for no limit.
               </p>
             </>
           ) : null}

@@ -22,7 +22,7 @@ export async function DELETE(_request: Request, { params }: Params) {
   });
 
   if (!poolEntry || poolEntry.removedAt) {
-    return NextResponse.json({ error: "Builder is not in your library" }, { status: 404 });
+    return NextResponse.json({ error: "Source is not in your library" }, { status: 404 });
   }
   if (poolEntry.origin === BuilderPoolOrigin.HUB_IMPORT) {
     return NextResponse.json(

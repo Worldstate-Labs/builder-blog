@@ -9,7 +9,7 @@ const defaultSuggestions = [
   "claude code",
   "agent memory",
   "embedding search",
-  "builder launch",
+  "product launch",
   "digest archive",
   "podcast transcript",
 ];
@@ -119,8 +119,8 @@ function titlePrefixCompletions(query: string, title: string) {
 }
 
 function resultTypeDetail(type: string) {
-  if (type === "builder") return "Builder";
-  if (type === "feed") return "Feed item";
+  if (type === "builder") return "Source";
+  if (type === "feed") return "Post";
   if (type === "digest") return "Digest";
   return "Library item";
 }

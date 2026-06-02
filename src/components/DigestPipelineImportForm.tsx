@@ -96,9 +96,9 @@ export function DigestPipelineImportForm({
     <section className="mt-10">
       <div className="library-hub-toolbar">
         <div>
-          <h2 className="fb-section-heading">Shared Digests</h2>
+          <h2 className="fb-section-heading">Shared AI Digests</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
-            Import another user&apos;s latest digest and saved archive.
+            Import another user&apos;s latest digest and archive.
           </p>
         </div>
       </div>
@@ -187,7 +187,7 @@ function DigestPipelineCard({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="fb-kind-pill">digest</span>
-              <span className="text-[11px] text-[var(--muted)]">· Always up to date</span>
+              <span className="text-[11px] text-[var(--muted)]">· Shared archive</span>
             </div>
             <h3 className="serif mt-2 text-xl font-semibold leading-snug tracking-tight">
               {pipeline.title}

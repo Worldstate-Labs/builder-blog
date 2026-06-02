@@ -305,8 +305,11 @@ function AiDigestFeed({
       <section className="ai-digest-panel" aria-labelledby="ai-digest-heading">
         <header className="ai-digest-head">
           <div className="min-w-0">
-            <span className="fb-section-label">AI Digest</span>
-            <h2 id="ai-digest-heading" className="fb-section-heading mt-1">
+            {isOwnPipeline ? null : <span className="fb-section-label">AI Digest</span>}
+            <h2
+              id="ai-digest-heading"
+              className={isOwnPipeline ? "fb-section-heading" : "fb-section-heading mt-1"}
+            >
               {isOwnPipeline ? "AI Digest" : selectedPipeline.title}
             </h2>
           </div>
@@ -446,8 +449,8 @@ async function HomeStatsSlot({ userId }: { userId: string }) {
         label="Digest"
         value={hasDigest ? "Updated" : "Waiting"}
       />
-      <Stat icon={Sparkles} label="Following" value="Live" />
-      <Stat icon={Sparkles} label="For You" value="Live" />
+      <Stat icon={Sparkles} label="Following" value="Active" />
+      <Stat icon={Sparkles} label="For You" value="Active" />
       <Stat icon={Archive} label="Saved briefs" value={archiveCount} />
     </div>
   );

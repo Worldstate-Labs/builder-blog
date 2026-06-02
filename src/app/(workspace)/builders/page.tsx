@@ -56,7 +56,7 @@ export default function BuildersPage() {
         <div>
           <h1 className="fb-title">Sources</h1>
           <p className="fb-desc">
-            Manage sources you follow and per-source summary history.
+            Manage followed, private, and imported sources.
           </p>
         </div>
         <Suspense fallback={<BuilderStatsFallback />}>
@@ -445,7 +445,7 @@ async function BuilderSections({
         editableSourceOptions={data.sourceLabelOptions.filter(
           (source) => source.id !== "pdf",
         )}
-        emptyBody="Add a source here, or let your local helper bring in richer summaries later."
+        emptyBody="Add a source, or run your local helper to import private sources."
         emptyTitle="No personal sources yet"
       />
 
