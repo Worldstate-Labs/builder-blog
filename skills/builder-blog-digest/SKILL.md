@@ -259,10 +259,15 @@ node ~/.builder-blog/builder-digest.mjs prepare --days 1
 - `prompts.digestIntro`: the `digest-intro.md` assembly rules.
 - `prompts.translate`: the `translate.md` Chinese translation rules.
 
-3. Produce a concise Chinese digest:
+3. Produce a concise Chinese digest and a separate headline summary:
 
 - Use only supplied `items`.
-- The only creative step is writing the digest body from those items.
+- The only creative step is writing the digest body and headlineSummary from
+  those items.
+- Also write a plain-text `headlineSummary` under 300 Chinese characters (or
+  equivalent target-language length) for the posts included in the digest.
+- Keep `headlineSummary` separate from the full digest body; do not shorten the
+  digest body to satisfy the headline limit.
 - Group items by source type and builder/source.
 - First summarize X/Twitter, podcast/video, and blog items with their matching
   source-specific prompt.
@@ -279,8 +284,15 @@ cat > /tmp/builder-blog-digest.md <<'DIGEST'
 <final digest text>
 DIGEST
 
+cat > /tmp/builder-blog-digest-headlines.txt <<'HEADLINES'
+<headline summary text>
+HEADLINES
+
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-node ~/.builder-blog/builder-digest.mjs sync --file /tmp/builder-blog-digest.md --title "AI Builder Digest"
+node ~/.builder-blog/builder-digest.mjs sync \
+  --file /tmp/builder-blog-digest.md \
+  --summary-file /tmp/builder-blog-digest-headlines.txt \
+  --title "AI Builder Digest"
 ```
 
 After sync, tell the user it is visible in the FollowBrief web app history.

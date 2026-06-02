@@ -25,6 +25,7 @@ const archivePageSize = 20;
 const digestSummarySelect = {
   id: true,
   title: true,
+  headlineSummary: true,
   itemCount: true,
   language: true,
   createdAt: true,

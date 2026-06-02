@@ -65,6 +65,7 @@ export async function POST(request: Request) {
       userId: user.id,
       title: parsed.data.title,
       content: parsed.data.content,
+      headlineSummary: parsed.data.headlineSummary?.trim() || null,
       language,
       periodStart,
       periodEnd,

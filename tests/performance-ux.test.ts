@@ -237,9 +237,13 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(dashboardPage, /take:\s*archivePageSize/);
   assert.match(dashboardPage, /digestSummarySelect/);
   assert.match(dashboardPage, /id:\s*true/);
+  assert.match(dashboardPage, /headlineSummary:\s*true/);
   assert.match(dashboardPage, /select:\s*digestSummarySelect/);
   assert.doesNotMatch(dashboardPage, /digest\.content/);
   assert.match(dashboardPage, /DigestDetails/);
+  assert.match(digestDetails, /headlineSummary/);
+  assert.match(digestDetails, /digest-headline-summary/);
+  assert.match(digestRoute, /headlineSummary/);
   assert.match(dashboardPage, /DigestPipelineSelector/);
   assert.match(dashboardPage, /AI Digest/);
   assert.match(dashboardPage, /DigestPipelineVisibilityToggle/);
@@ -701,6 +705,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(schema, /model LibraryHubEntry/);
   assert.match(schema, /model LibraryImport/);
   assert.match(schema, /model DigestPipelineShare \{/);
+  assert.match(schema, /headlineSummary\s+String\?/);
   assert.match(schema, /ownerUserId\s+String/);
   assert.match(schema, /importCount\s+Int\s+@default\(0\)/);
   assert.match(schema, /@@unique\(\[ownerUserId\]\)/);

@@ -8,6 +8,7 @@ import { useHydrated } from "@/components/ThemeToggle";
 export type DigestSummary = {
   id: string;
   title: string;
+  headlineSummary: string | null;
   itemCount: number;
   language: string;
   createdAt: string;
@@ -101,7 +102,12 @@ export function DigestDetails({
           <span className="fb-digest-chip">{formatDateTime(digest.createdAt, hydrated)}</span>
         </div>
         <div className="fb-digest-body">
-          <DigestBody content={content} status={status} variant="today" />
+          <DigestBody
+            content={content}
+            headlineSummary={digest.headlineSummary}
+            status={status}
+            variant="today"
+          />
         </div>
       </article>
     );
@@ -133,7 +139,11 @@ export function DigestDetails({
             Read
           </span>
         </summary>
-        <DigestBody content={content} status={status} />
+        <DigestBody
+          content={content}
+          headlineSummary={digest.headlineSummary}
+          status={status}
+        />
       </details>
     </article>
   );
@@ -141,52 +151,98 @@ export function DigestDetails({
 
 function DigestBody({
   content,
+  headlineSummary,
   status,
   variant = "archive",
 }: {
   content: string | null;
+  headlineSummary?: string | null;
   status: "idle" | "loading" | "loaded" | "error";
   variant?: "today" | "archive";
 }) {
   const isToday = variant === "today";
+  const normalizedHeadlineSummary = headlineSummary?.trim() || null;
+  const headlineNode = normalizedHeadlineSummary ? (
+    <DigestHeadlineSummary text={normalizedHeadlineSummary} />
+  ) : null;
 
   if (status === "loading") {
+    const loadingChip = (
+      <span
+        className={
+          isToday
+            ? "fb-digest-chip inline-flex items-center gap-1.5"
+            : "status-chip"
+        }
+      >
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        Loading digest
+      </span>
+    );
+
+    if (isToday) {
+      return (
+        <>
+          {headlineNode}
+          {loadingChip}
+        </>
+      );
+    }
+
     return (
       <div className="item-details" aria-live="polite" aria-busy="true">
-        <span
-          className={
-            isToday
-              ? "fb-digest-chip inline-flex items-center gap-1.5"
-              : "status-chip"
-          }
-        >
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Loading digest
-        </span>
+        {headlineNode}
+        {loadingChip}
       </div>
     );
   }
 
   if (status === "error") {
+    const errorNode = <span>Could not load digest.</span>;
+    if (isToday) {
+      return (
+        <>
+          {headlineNode}
+          <div className="text-sm text-[var(--danger)]" aria-live="polite">
+            {errorNode}
+          </div>
+        </>
+      );
+    }
+
     return (
       <div
-        className={
-          isToday ? "text-sm text-[var(--danger)]" : "item-details text-sm text-[var(--danger)]"
-        }
+        className="item-details text-sm text-[var(--danger)]"
         aria-live="polite"
       >
-        Could not load digest.
+        {headlineNode}
+        {errorNode}
       </div>
     );
   }
 
   if (isToday) {
-    return <DigestContent content={content ?? ""} tone="paper" />;
+    return (
+      <>
+        {headlineNode}
+        <DigestContent content={content ?? ""} tone="paper" />
+      </>
+    );
   }
   return (
     <div className="item-details">
+      {headlineNode}
       <DigestContent content={content ?? ""} tone="paper" />
     </div>
+  );
+}
+
+function DigestHeadlineSummary({ text }: { text: string }) {
+  return (
+    <section className="digest-headline-summary" aria-label="Digest headlines">
+      <div className="digest-headline-kicker">Headlines</div>
+      <p className="digest-headline-text">{text}</p>
+    </section>
   );
 }
 

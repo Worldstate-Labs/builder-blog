@@ -363,6 +363,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(summaryLanguageRoute, /userFeedPreference\.upsert/);
   assert.match(summaryLanguageRoute, /summaryLanguage/);
   assert.match(prismaSchema, /summaryLanguage\s+String\?/);
+  assert.match(prismaSchema, /headlineSummary\s+String\?/);
   // Server validates freq against a whitelist → fixed cron expression and
   // substitutes the schedule + cadence label into the cron-setup prompt.
   assert.match(skillJobRoute, /cronSchedules/);
@@ -591,7 +592,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(digestOnceExpanded, /context\.sources\.x\.summaryPrompt\.body/);
   assert.match(digestOnceExpanded, /context\.digest\.digestIntro/);
   assert.match(digestOnceExpanded, /context\.digest\.translate/);
+  assert.match(digestOnceExpanded, /headlineSummary/);
+  assert.match(digestOnceExpanded, /300/);
+  assert.match(digestOnceExpanded, /do not shorten the body/i);
   assert.match(digestOncePrompt, /BUILDER_BLOG_JOB_TMP_DIR/);
+  assert.match(digestOncePrompt, /builder-blog-digest-headlines\.txt/);
+  assert.match(digestOncePrompt, /--summary-file "\$TMP_DIR\/builder-blog-digest-headlines\.txt"/);
   assert.match(digestOncePrompt, /--context "\$TMP_DIR\/builder-blog-context\.json"/);
   assert.match(libraryCronSetupPrompt, /builder-agent-runner\.sh library-cron/);
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_DISABLE_WEB_SYNC=1/);
@@ -870,9 +876,9 @@ test("web app serves the agent skill and setup command", () => {
   ]);
   assert.match(digestCronPrompt, /prepare --days 1/);
   assert.match(digestCronPrompt, /builder-blog-digest\.md/);
-  assert.match(digestCronPrompt, /Only use agent judgment to write the digest body/);
+  assert.match(digestCronPrompt, /Only use agent judgment to write the digest body and headlineSummary/);
   assert.match(digestCronPrompt, /Agent discretion boundary/);
-  assert.match(digestCronExpanded, /The only creative step is writing/);
+  assert.match(digestCronExpanded, /digest body and headlineSummary/);
   assert.doesNotMatch(digestCronPrompt, /api\/skill\/bootstrap/);
   assert.match(digestCronPrompt, /runner already downloaded the latest skill files/);
   // The recurring run now shares the once job's digest-writing method via the
@@ -883,6 +889,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronExpanded, /context\.sources\[item\.builder\.sourceType\]\.summaryPrompt\.body/);
   assert.match(digestCronExpanded, /context\.digest\.digestIntro/);
   assert.match(digestCronExpanded, /context\.digest\.translate/);
+  assert.match(digestCronExpanded, /headlineSummary/);
+  assert.match(digestCronExpanded, /300/);
+  assert.match(digestCronExpanded, /do not shorten the body/i);
+  assert.match(digestCronPrompt, /builder-blog-digest-headlines\.txt/);
+  assert.match(digestCronPrompt, /--summary-file "\$TMP_DIR\/builder-blog-digest-headlines\.txt"/);
   assert.doesNotMatch(digestCronExpanded, /summarize-tweets\.md/);
   assert.doesNotMatch(digestCronExpanded, /context\.prompts/);
   assert.equal(skill.includes("/Users/jie/code/builder_blog"), false);
@@ -898,6 +909,7 @@ test("digest sync user path defaults optional fields and rejects empty content",
   if (!parsed.success) return;
   assert.equal(parsed.data.language, "zh");
   assert.equal(parsed.data.itemCount, 0);
+  assert.equal(parsed.data.headlineSummary, undefined);
   // New fields default safely for old callers.
   assert.equal(parsed.data.regenerate, false);
   assert.deepEqual(parsed.data.digestedItems, []);
@@ -915,6 +927,26 @@ test("digest sync user path defaults optional fields and rejects empty content",
     assert.equal(withMarks.data.digestedItems.length, 1);
     assert.equal(withMarks.data.digestedItems[0].entityId, "e1");
   }
+
+  const withHeadlineSummary = parseSkillDigestPayload({
+    title: "Digest",
+    content: "Body",
+    headlineSummary: "OpenAI 发布新工具；Claude 更新 agents；开发者生态继续加速。",
+  });
+  assert.equal(withHeadlineSummary.success, true);
+  if (withHeadlineSummary.success) {
+    assert.equal(
+      withHeadlineSummary.data.headlineSummary,
+      "OpenAI 发布新工具；Claude 更新 agents；开发者生态继续加速。",
+    );
+  }
+
+  const tooLongHeadlineSummary = parseSkillDigestPayload({
+    title: "Digest",
+    content: "Body",
+    headlineSummary: "x".repeat(301),
+  });
+  assert.equal(tooLongHeadlineSummary.success, false);
 
   const empty = parseSkillDigestPayload({ title: "Bad", content: "" });
   assert.equal(empty.success, false);
@@ -1154,6 +1186,10 @@ test("digest generation user path exposes source-specific prompt instructions", 
   assert.match(DEFAULT_DIGEST_PROMPTS.summarizeTweets, /X\/Twitter Summary Prompt/);
   assert.match(DEFAULT_DIGEST_PROMPTS.summarizeBlogs, /Blog Post Summary Prompt/);
   assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /Digest Intro Prompt/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /headlineSummary/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /300/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /do not replace or shorten the full digest/i);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.digestIntro, /final digest must be no more than 300/);
   // Translate step is language-agnostic now — it renders into context.language,
   // not hardcoded Chinese.
   assert.match(DEFAULT_DIGEST_PROMPTS.translate, /target language given by\s+context\.language/);

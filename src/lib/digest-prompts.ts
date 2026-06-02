@@ -100,6 +100,13 @@ professional who wants the key announcements and insights without reading the fu
 
 You are assembling the final FollowBrief digest from individual source summaries.
 
+Also produce a separate plain-text headlineSummary for the posts included in the
+digest. Keep headlineSummary under 300 Chinese characters (or the equivalent
+compact length in the target language), make it read like a short news
+headlines paragraph, and do not include raw URLs in headlineSummary.
+headlineSummary is stored separately; do not replace or shorten the full digest
+body to satisfy this limit.
+
 ## Format
 
 Start with this header, replacing [Date] with today's date:

@@ -1452,6 +1452,32 @@ svg.lucide {
   padding: 0.9rem 1rem 1rem;
 }
 
+.digest-headline-summary {
+  background: color-mix(in oklch, var(--accent) 7%, var(--paper));
+  border-left: 3px solid var(--accent);
+  color: var(--ink);
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.95rem;
+  padding: 0.75rem 0.875rem;
+}
+
+.digest-headline-kicker {
+  color: var(--accent);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.digest-headline-text {
+  color: var(--ink);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
 .item-row-disclosure {
   border-bottom: 1px solid var(--line);
 }
@@ -4463,7 +4489,6 @@ svg.lucide {
 .fb-digest-body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
   max-width: var(--measure);
   padding: 1.125rem 1.375rem 1.375rem;
 }

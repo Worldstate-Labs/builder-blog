@@ -13,6 +13,7 @@ const MAX_HANDLE = 240;
 const MAX_SOURCE_NAME = 240;
 const MAX_EXTERNAL_ID = 512;
 const MAX_DIGEST_CONTENT = 200_000; // ~200 KB per digest
+const MAX_DIGEST_HEADLINE_SUMMARY = 300;
 const MAX_ITEMS_PER_BUILDER = 500;
 const MAX_BUILDERS_PER_SYNC = 50;
 
@@ -79,6 +80,7 @@ export const SkillDigestedItemSchema = z.object({
 export const SkillDigestSchema = z.object({
   title: z.string().min(1).max(180),
   content: z.string().min(1).max(MAX_DIGEST_CONTENT),
+  headlineSummary: z.string().trim().min(1).max(MAX_DIGEST_HEADLINE_SUMMARY).nullable().optional(),
   language: z.string().max(16).default("zh"),
   periodStart: z.string().datetime().optional(),
   periodEnd: z.string().datetime().optional(),

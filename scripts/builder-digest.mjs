@@ -101,7 +101,7 @@ function usage() {
   prepare [--regenerate]
   validate-agent-sync --tasks fetch-result.json --file personal-builders.json
   sync-builders --file personal-builders.json [--agent-model gpt-5.5]
-  sync --file digest.md [--title "AI Builder Digest"] [--regenerate] [--context builder-blog-context.json]
+  sync --file digest.md [--summary-file digest-headlines.txt] [--title "AI Builder Digest"] [--regenerate] [--context builder-blog-context.json]
   cron-status --job library-cron|digest-cron --status active|stopped [--freq 6h] [--schedule "0 */6 * * *"]
   job-run-start --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id>
   job-run-update --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id> --status running|succeeded|failed|timed_out|killed|replaced|stale
@@ -2802,6 +2802,10 @@ async function sync(args) {
     content = Buffer.concat(chunks).toString("utf8");
   }
   if (!content.trim()) throw new Error("Digest content is empty");
+  const summaryFile = argValue(args, "--summary-file", null);
+  const headlineSummary = summaryFile
+    ? stringOrNull(await readFile(summaryFile, "utf8"))
+    : stringOrNull(argValue(args, "--summary", null));
 
   // --regenerate ("re-generate today's digest"): the create route replaces
   // this user's existing same-day digest instead of stacking a duplicate.
@@ -2868,6 +2872,7 @@ async function sync(args) {
     {
       title,
       content,
+      ...(headlineSummary ? { headlineSummary } : {}),
       // Recorded language is set server-side from the account-wide summary
       // language preference; this is only the fallback when none is set.
       language: argValue(args, "--language", "zh"),

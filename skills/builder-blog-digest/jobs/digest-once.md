@@ -43,6 +43,12 @@ Save the final digest to:
 ${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}/builder-blog-digest.md
 ```
 
+Save the headlineSummary to:
+
+```text
+${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}/builder-blog-digest-headlines.txt
+```
+
 4. Sync the digest:
 
 ```bash
@@ -50,6 +56,7 @@ TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-bl
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" sync \
   --file "$TMP_DIR/builder-blog-digest.md" \
+  --summary-file "$TMP_DIR/builder-blog-digest-headlines.txt" \
   --context "$TMP_DIR/builder-blog-context.json" \
   --title "AI Builder Digest" {{DIGEST_REGENERATE_FLAG}}
 ```
