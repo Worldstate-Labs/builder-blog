@@ -13,7 +13,7 @@
       "agentDefaultStatus": "ready",
       "contentQuality": {
         "minChars": 1,
-        "minWords": 1
+        "minContentUnits": 1
       }
     },
     {
@@ -27,7 +27,7 @@
       "agentDefaultStatus": "ready",
       "contentQuality": {
         "minChars": 200,
-        "minWords": 35
+        "minContentUnits": 35
       }
     },
     {
@@ -44,9 +44,9 @@
       "agentDefaultStatus": "requires_agent",
       "contentQuality": {
         "minChars": 80,
-        "minWords": 12,
-        "minUniqueWordRatio": 0.25,
-        "maxTimestampWordRatio": 0.2
+        "minContentUnits": 12,
+        "minLocalDiversity": 0.25,
+        "maxTimestampDensity": 0.1
       }
     },
     {
@@ -60,7 +60,7 @@
       "agentDefaultStatus": "ready",
       "contentQuality": {
         "minChars": 200,
-        "minWords": 35
+        "minContentUnits": 35
       }
     },
     {
@@ -74,7 +74,7 @@
       "agentDefaultStatus": "requires_agent",
       "contentQuality": {
         "minChars": 200,
-        "minWords": 35
+        "minContentUnits": 35
       }
     },
     {
@@ -86,7 +86,7 @@
       "agentDefaultStatus": "requires_agent",
       "contentQuality": {
         "minChars": 200,
-        "minWords": 35
+        "minContentUnits": 35
       }
     }
   ]

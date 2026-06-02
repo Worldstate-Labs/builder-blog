@@ -1047,20 +1047,29 @@ test("server content-quality floor rejects empty / too-short crawls", () => {
   });
   // Below the source floor → too short.
   assert.deepEqual(
-    checkBodyContentQuality("short", { minChars: 200, minWords: 35 }),
+    checkBodyContentQuality("short", { minChars: 200, minContentUnits: 35 }),
     { ok: false, reason: "content_too_short" },
   );
   // Real content meeting the floor → ok.
   const realBody = "word ".repeat(40) + "x".repeat(200);
-  assert.deepEqual(checkBodyContentQuality(realBody, { minChars: 200, minWords: 35 }), {
+  assert.deepEqual(checkBodyContentQuality(realBody, { minChars: 200, minContentUnits: 35 }), {
     ok: true,
   });
   // No standards → 1/1 floor: any non-whitespace text passes (never stricter
   // than an unconfigured source).
   assert.deepEqual(checkBodyContentQuality("hi"), { ok: true });
-  // CJK content counts toward chars/words.
+  // CJK content counts toward chars/content units.
   assert.deepEqual(
-    checkBodyContentQuality("你好世界这是测试", { minChars: 4, minWords: 1 }),
+    checkBodyContentQuality("你好世界这是测试", { minChars: 4, minContentUnits: 8 }),
+    { ok: true },
+  );
+  assert.deepEqual(
+    checkBodyContentQuality("你好世界这是测试", { minChars: 4, minContentUnits: 9 }),
+    { ok: false, reason: "content_too_short" },
+  );
+  // Legacy minWords remains accepted for already-materialized user configs.
+  assert.deepEqual(
+    checkBodyContentQuality("你好世界这是测试", { minChars: 4, minWords: 8 }),
     { ok: true },
   );
 });

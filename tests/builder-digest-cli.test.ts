@@ -299,6 +299,29 @@ test("personal YouTube content quality requires useful transcript substance", as
     ).ok,
     true,
   );
+  assert.equal(
+    cli.youtubeContentQuality("谢谢观看".repeat(20), {
+      source: "youtube-captions",
+      title: "中文重复字幕",
+      description: "",
+    }).reason,
+    "transcript_too_repetitive",
+  );
+  assert.equal(
+    cli.youtubeContentQuality(
+      [
+        "00:00",
+        "00:04",
+        "00:08",
+        "00:12",
+        "00:16",
+        "00:20",
+        "这是 一段 有 足够 内容 单元 的 transcript 但是 时间戳 密度 明显 太 高",
+      ].join("\n"),
+      { source: "youtube-captions", title: "Timestamp noise", description: "" },
+    ).reason,
+    "transcript_is_timestamp_heavy",
+  );
 });
 
 test("personal YouTube fetcher returns agent tasks instead of syncing description-only content", async () => {
@@ -343,7 +366,7 @@ test("personal YouTube fetcher returns agent tasks instead of syncing descriptio
   assert.equal(result.items.length, 0);
   assert.equal(result.agentTasks.length, 1);
   assert.match(result.agentTasks[0].id, /^youtube_transcription:/);
-  assert.equal(result.agentTasks[0].minimumContentQuality.minWords, 12);
+  assert.equal(result.agentTasks[0].minimumContentQuality.minContentUnits, 12);
   assert.equal("reason" in result.agentTasks[0], false);
   assert.equal("quality" in result.agentTasks[0], false);
   assert.equal("sourceDetail" in result.agentTasks[0], false);

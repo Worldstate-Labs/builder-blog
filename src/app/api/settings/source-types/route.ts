@@ -17,9 +17,9 @@ import { SEEDED_SOURCE_IDS } from "@/lib/source-config-seed";
 const ContentQualitySchema = z
   .object({
     minChars: z.number().int().min(0),
-    minWords: z.number().int().min(0),
-    minUniqueWordRatio: z.number().min(0).max(1).optional(),
-    maxTimestampWordRatio: z.number().min(0).max(1).optional(),
+    minContentUnits: z.number().int().min(0),
+    minLocalDiversity: z.number().min(0).max(1).optional(),
+    maxTimestampDensity: z.number().min(0).max(1).optional(),
   })
   .strict();
 

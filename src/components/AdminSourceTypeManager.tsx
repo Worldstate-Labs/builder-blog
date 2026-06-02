@@ -24,9 +24,9 @@ export type AdminSourceTypeConfig = {
 
 type ContentQuality = {
   minChars: number;
-  minWords: number;
-  minUniqueWordRatio: number | null;
-  maxTimestampWordRatio: number | null;
+  minContentUnits: number;
+  minLocalDiversity: number | null;
+  maxTimestampDensity: number | null;
 };
 
 type Draft = {
@@ -41,10 +41,24 @@ function toContentQuality(raw: unknown): ContentQuality {
   const obj = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {});
   return {
     minChars: typeof obj.minChars === "number" ? obj.minChars : 0,
-    minWords: typeof obj.minWords === "number" ? obj.minWords : 0,
-    minUniqueWordRatio: typeof obj.minUniqueWordRatio === "number" ? obj.minUniqueWordRatio : null,
-    maxTimestampWordRatio:
-      typeof obj.maxTimestampWordRatio === "number" ? obj.maxTimestampWordRatio : null,
+    minContentUnits:
+      typeof obj.minContentUnits === "number"
+        ? obj.minContentUnits
+        : typeof obj.minWords === "number"
+          ? obj.minWords
+          : 0,
+    minLocalDiversity:
+      typeof obj.minLocalDiversity === "number"
+        ? obj.minLocalDiversity
+        : typeof obj.minUniqueWordRatio === "number"
+          ? obj.minUniqueWordRatio
+          : null,
+    maxTimestampDensity:
+      typeof obj.maxTimestampDensity === "number"
+        ? obj.maxTimestampDensity
+        : typeof obj.maxTimestampWordRatio === "number"
+          ? obj.maxTimestampWordRatio
+          : null,
   };
 }
 
@@ -116,13 +130,13 @@ function SourceTypeCard({
       setStatus({ kind: "error", message: "Min chars must be a non-negative integer." });
       return;
     }
-    if (!Number.isInteger(cq.minWords) || cq.minWords < 0) {
-      setStatus({ kind: "error", message: "Min words must be a non-negative integer." });
+    if (!Number.isInteger(cq.minContentUnits) || cq.minContentUnits < 0) {
+      setStatus({ kind: "error", message: "Min content units must be a non-negative integer." });
       return;
     }
     for (const [field, label] of [
-      ["minUniqueWordRatio", "Min unique-word ratio"],
-      ["maxTimestampWordRatio", "Max timestamp-word ratio"],
+      ["minLocalDiversity", "Min local diversity"],
+      ["maxTimestampDensity", "Max timestamp density"],
     ] as const) {
       const ratio = cq[field];
       if (ratio !== null && (!Number.isFinite(ratio) || ratio < 0 || ratio > 1)) {
@@ -133,13 +147,13 @@ function SourceTypeCard({
 
     const contentQuality: Record<string, unknown> = {
       minChars: cq.minChars,
-      minWords: cq.minWords,
+      minContentUnits: cq.minContentUnits,
     };
-    if (cq.minUniqueWordRatio !== null && Number.isFinite(cq.minUniqueWordRatio)) {
-      contentQuality.minUniqueWordRatio = cq.minUniqueWordRatio;
+    if (cq.minLocalDiversity !== null && Number.isFinite(cq.minLocalDiversity)) {
+      contentQuality.minLocalDiversity = cq.minLocalDiversity;
     }
-    if (cq.maxTimestampWordRatio !== null && Number.isFinite(cq.maxTimestampWordRatio)) {
-      contentQuality.maxTimestampWordRatio = cq.maxTimestampWordRatio;
+    if (cq.maxTimestampDensity !== null && Number.isFinite(cq.maxTimestampDensity)) {
+      contentQuality.maxTimestampDensity = cq.maxTimestampDensity;
     }
 
     const patch = {
@@ -210,7 +224,7 @@ function SourceTypeCard({
         <Section
           step="03"
           title="Quality gates"
-          description="Size and repetition floors applied after extraction. Items that fail are dropped from the pipeline."
+          description="Length, diversity, and timestamp-density checks applied after extraction. Items that fail are dropped from the pipeline."
         >
           <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
             <FieldNumber
@@ -221,46 +235,48 @@ function SourceTypeCard({
               onChange={(v) => updateQuality("minChars", Math.max(0, Number(v) || 0))}
             />
             <FieldNumber
-              label="Min words"
+              label="Min content units"
               min={0}
-              description="Drop items whose body has fewer words than this."
-              value={String(draft.contentQuality.minWords)}
-              onChange={(v) => updateQuality("minWords", Math.max(0, Number(v) || 0))}
+              description="Drop items with too little real text. Latin words count as units; CJK text counts by character."
+              value={String(draft.contentQuality.minContentUnits)}
+              onChange={(v) =>
+                updateQuality("minContentUnits", Math.max(0, Number(v) || 0))
+              }
             />
             <FieldNumber
-              label="Min unique-word ratio"
+              label="Min local diversity"
               optional
               min={0}
               max={1}
               step={0.01}
-              description="Averaged over 100-word windows (0–1). Real speech sits around 0.6; lower lets more repetitive transcripts through before an item is dropped."
+              description="Average unique-unit ratio over 100-unit windows (0–1). Lower values allow more repetitive transcripts through."
               value={
-                draft.contentQuality.minUniqueWordRatio === null
+                draft.contentQuality.minLocalDiversity === null
                   ? ""
-                  : String(draft.contentQuality.minUniqueWordRatio)
+                  : String(draft.contentQuality.minLocalDiversity)
               }
               onChange={(v) =>
                 updateQuality(
-                  "minUniqueWordRatio",
+                  "minLocalDiversity",
                   v === "" ? null : clampRatio(v),
                 )
               }
             />
             <FieldNumber
-              label="Max timestamp-word ratio"
+              label="Max timestamp density"
               optional
               min={0}
               max={1}
               step={0.01}
-              description="Fraction of tokens that look like timestamps (0–1). Above this the body is treated as timestamp noise and dropped."
+              description="Timestamp count divided by content units (0–1). Above this the body is treated as timestamp noise and dropped."
               value={
-                draft.contentQuality.maxTimestampWordRatio === null
+                draft.contentQuality.maxTimestampDensity === null
                   ? ""
-                  : String(draft.contentQuality.maxTimestampWordRatio)
+                  : String(draft.contentQuality.maxTimestampDensity)
               }
               onChange={(v) =>
                 updateQuality(
-                  "maxTimestampWordRatio",
+                  "maxTimestampDensity",
                   v === "" ? null : clampRatio(v),
                 )
               }

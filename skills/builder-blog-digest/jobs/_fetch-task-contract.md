@@ -62,8 +62,8 @@ How to execute each `fetchTask`:
     `task.fetchInstructions.prompt` for EACH task independently.
 - Use `task.minimumContentQuality` for `requires_agent` tasks as the minimum
   acceptance bar for the extracted body. The structured fields drive acceptance:
-  `minChars`, `minWords`, the optional ratios, and `disallowedPrimarySources` —
-  never accept body content whose origin string appears in
+  `minChars`, `minContentUnits`, and optional density/diversity gates such as
+  `minLocalDiversity` and `maxTimestampDensity`. Never accept body content whose origin string appears in
   `disallowedPrimarySources` (the list is per source). Title, description, feed
   description, and page metadata are never acceptable body content for any source.
 - Generate `summary` only after the body is final. Follow

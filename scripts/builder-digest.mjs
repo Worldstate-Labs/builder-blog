@@ -1236,26 +1236,94 @@ export function fetchPersonalYouTubeBuilderForTest(builder, options) {
   return fetchPersonalYouTubeBuilder(builder, options);
 }
 
-// Average the unique-word ratio over fixed-size windows. Unlike the global
-// type-token ratio \u2014 which decays ~1/sqrt(N) (Heaps' law) and so makes any long
-// transcript look "repetitive" \u2014 this stays high for real speech (each window
-// has fresh vocabulary) and only collapses for genuinely repetitive text such
-// as stuck captions or "music music music". Length-invariant by construction.
-function localUniqueRatio(words, windowSize = 100) {
-  const lower = words.map((word) => word.toLowerCase());
-  if (lower.length === 0) return 0;
-  if (lower.length <= windowSize) return new Set(lower).size / lower.length;
+const CJK_CONTENT_UNIT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+const ALNUM_CONTENT_UNIT = /[\p{Letter}\p{Number}]/u;
+const TIMESTAMP_TOKEN_RE = /\b\d{1,2}:\d{2}(?::\d{2})?\b/g;
+
+function readQualityNumber(standards, primaryField, legacyField, fallback) {
+  const primary = standards?.[primaryField];
+  if (typeof primary === "number" && Number.isFinite(primary)) return primary;
+  const legacy = standards?.[legacyField];
+  if (typeof legacy === "number" && Number.isFinite(legacy)) return legacy;
+  return fallback;
+}
+
+function normalizedMinimumContentQuality(standards = {}) {
+  const source = standards && typeof standards === "object" ? standards : {};
+  const output = { ...source };
+  delete output.minWords;
+  delete output.minUniqueWordRatio;
+  delete output.maxTimestampWordRatio;
+  output.minChars = readQualityNumber(source, "minChars", "minChars", 0);
+  output.minContentUnits = readQualityNumber(source, "minContentUnits", "minWords", 0);
+  const minLocalDiversity = readQualityNumber(
+    source,
+    "minLocalDiversity",
+    "minUniqueWordRatio",
+    null,
+  );
+  if (typeof minLocalDiversity === "number") {
+    output.minLocalDiversity = minLocalDiversity;
+  }
+  const maxTimestampDensity = readQualityNumber(
+    source,
+    "maxTimestampDensity",
+    "maxTimestampWordRatio",
+    null,
+  );
+  if (typeof maxTimestampDensity === "number") {
+    output.maxTimestampDensity = maxTimestampDensity;
+  }
+  return output;
+}
+
+// Content units are language-neutral enough for quality gating: Latin/number
+// runs count as one unit, while CJK scripts count per character. Timestamps are
+// removed first so time-only transcripts don't satisfy the content floor.
+function contentUnits(text) {
+  const units = [];
+  let current = "";
+  for (const char of String(text || "").replace(TIMESTAMP_TOKEN_RE, " ")) {
+    if (CJK_CONTENT_UNIT.test(char)) {
+      if (current) {
+        units.push(current.toLowerCase());
+        current = "";
+      }
+      units.push(char);
+    } else if (ALNUM_CONTENT_UNIT.test(char)) {
+      current += char;
+    } else if (current) {
+      units.push(current.toLowerCase());
+      current = "";
+    }
+  }
+  if (current) units.push(current.toLowerCase());
+  return units;
+}
+
+function countTimestamps(text) {
+  return (String(text || "").match(TIMESTAMP_TOKEN_RE) ?? []).length;
+}
+
+// Average local diversity over fixed-size windows. Unlike the global type-token
+// ratio \u2014 which decays ~1/sqrt(N) (Heaps' law) and so makes any long transcript
+// look "repetitive" \u2014 this stays high for real speech (each window has fresh
+// vocabulary) and only collapses for genuinely repetitive text. Length-invariant
+// by construction.
+function localDiversity(units, windowSize = 100) {
+  if (units.length === 0) return 0;
+  if (units.length <= windowSize) return new Set(units).size / units.length;
   let sum = 0;
   let windows = 0;
-  for (let i = 0; i + windowSize <= lower.length; i += windowSize) {
-    const win = lower.slice(i, i + windowSize);
+  for (let i = 0; i + windowSize <= units.length; i += windowSize) {
+    const win = units.slice(i, i + windowSize);
     sum += new Set(win).size / windowSize;
     windows += 1;
   }
   // Fold in a trailing remainder window when it's big enough to be meaningful.
-  const rem = lower.length % windowSize;
+  const rem = units.length % windowSize;
   if (rem >= 20) {
-    const win = lower.slice(lower.length - rem);
+    const win = units.slice(units.length - rem);
     sum += new Set(win).size / rem;
     windows += 1;
   }
@@ -1268,16 +1336,16 @@ function localUniqueRatio(words, windowSize = 100) {
  */
 export function youtubeContentQuality(text, { source = "", title = "", description = "" } = {}) {
   const normalized = normalizeContentText(text);
-  const words = normalized.match(/[A-Za-z0-9\u4e00-\u9fff]+/g) ?? [];
-  const uniqueWords = new Set(words.map((word) => word.toLowerCase()));
-  const timestampLike = words.filter((word) => /^\d{1,2}:\d{2}(?::\d{2})?$/.test(word)).length;
+  const units = contentUnits(normalized);
+  const timestampCount = countTimestamps(normalized);
+  const standards = youtubeMinimumContentQuality();
   const metrics = {
     chars: normalized.length,
-    words: words.length,
-    uniqueWords: uniqueWords.size,
-    uniqueWordRatio: words.length ? uniqueWords.size / words.length : 0,
-    localUniqueWordRatio: localUniqueRatio(words),
-    timestampLike,
+    contentUnits: units.length,
+    uniqueContentUnits: new Set(units).size,
+    localDiversity: localDiversity(units),
+    timestampCount,
+    timestampDensity: timestampCount / Math.max(units.length, 1),
   };
 
   const transcriptSources = new Set([
@@ -1291,32 +1359,45 @@ export function youtubeContentQuality(text, { source = "", title = "", descripti
       ok: false,
       reason: "description_or_title_is_not_primary_content",
       metrics,
-      standards: youtubeMinimumContentQuality(),
+      standards,
     };
   }
-  if (metrics.chars < 80 || metrics.words < 12) {
+  const minChars = readQualityNumber(standards, "minChars", "minChars", 80);
+  const minContentUnits = readQualityNumber(standards, "minContentUnits", "minWords", 12);
+  if (metrics.chars < minChars || metrics.contentUnits < minContentUnits) {
     return {
       ok: false,
       reason: "transcript_too_short",
       metrics,
-      standards: youtubeMinimumContentQuality(),
+      standards,
     };
   }
-  const minUniqueRatio = youtubeMinimumContentQuality()?.minUniqueWordRatio ?? 0.25;
-  if (metrics.words >= 40 && metrics.localUniqueWordRatio < minUniqueRatio) {
+  const minLocalDiversity = readQualityNumber(
+    standards,
+    "minLocalDiversity",
+    "minUniqueWordRatio",
+    0.25,
+  );
+  if (metrics.contentUnits >= 40 && metrics.localDiversity < minLocalDiversity) {
     return {
       ok: false,
       reason: "transcript_too_repetitive",
       metrics,
-      standards: youtubeMinimumContentQuality(),
+      standards,
     };
   }
-  if (metrics.timestampLike > 0 && metrics.timestampLike / metrics.words > 0.2) {
+  const maxTimestampDensity = readQualityNumber(
+    standards,
+    "maxTimestampDensity",
+    "maxTimestampWordRatio",
+    0.1,
+  );
+  if (metrics.timestampCount > 0 && metrics.timestampDensity > maxTimestampDensity) {
     return {
       ok: false,
       reason: "transcript_is_timestamp_heavy",
       metrics,
-      standards: youtubeMinimumContentQuality(),
+      standards,
     };
   }
   if (isNearDuplicate(normalized, title) || isNearDuplicate(normalized, description)) {
@@ -1324,18 +1405,18 @@ export function youtubeContentQuality(text, { source = "", title = "", descripti
       ok: false,
       reason: "transcript_duplicates_title_or_description",
       metrics,
-      standards: youtubeMinimumContentQuality(),
+      standards,
     };
   }
-  return { ok: true, reason: "ok", metrics, standards: youtubeMinimumContentQuality() };
+  return { ok: true, reason: "ok", metrics, standards };
 }
 
 function youtubeMinimumContentQuality() {
-  return sourceConfigFor("youtube").contentQuality;
+  return normalizedMinimumContentQuality(sourceConfigFor("youtube").contentQuality);
 }
 
 function genericMinimumContentQuality() {
-  return sourceConfigFor("website").contentQuality;
+  return normalizedMinimumContentQuality(sourceConfigFor("website").contentQuality);
 }
 
 export function agentTaskId(task) {
@@ -1516,11 +1597,11 @@ async function resolveApplePodcastFeedUrl(url, fetcher = fetch) {
 function podcastShowNotesAreSubstantial(body) {
   const text = String(body || "").trim();
   if (!text) return false;
-  const words = text.match(/[A-Za-z0-9一-鿿]+/g) ?? [];
+  const units = contentUnits(text);
   // Mirrors the podcast contentQuality bar in config/sources.json
-  // (minChars: 200, minWords: 35). The agent's fetch prompt may apply a
+  // (minChars: 200, minContentUnits: 35). The agent's fetch prompt may apply a
   // stricter "substantial" threshold for the audio-fallback decision.
-  return text.length >= 200 && words.length >= 35;
+  return text.length >= 200 && units.length >= 35;
 }
 
 function podcastAgentTaskForEpisode(builder, item, feedUrl) {
@@ -2772,13 +2853,15 @@ function validateItemSummary(summary, { title = "", body = "" } = {}) {
 
 function genericContentQuality(text, { title = "", description = "" } = {}) {
   const normalized = normalizeContentText(text);
-  const words = normalized.match(/[A-Za-z0-9\u4e00-\u9fff]+/g) ?? [];
+  const units = contentUnits(normalized);
   const standards = genericMinimumContentQuality();
   const metrics = {
     chars: normalized.length,
-    words: words.length,
+    contentUnits: units.length,
   };
-  if (metrics.chars < standards.minChars || metrics.words < standards.minWords) {
+  const minChars = readQualityNumber(standards, "minChars", "minChars", 1);
+  const minContentUnits = readQualityNumber(standards, "minContentUnits", "minWords", 1);
+  if (metrics.chars < minChars || metrics.contentUnits < minContentUnits) {
     return { ok: false, reason: "content_too_short", metrics, standards };
   }
   if (isNearDuplicate(normalized, title) || isNearDuplicate(normalized, description)) {

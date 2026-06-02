@@ -12,9 +12,9 @@ import { DEFAULT_DIGEST_PROMPTS } from "./digest-prompts";
 // admin-editable knob.
 export type ContentQualityShape = {
   minChars: number;
-  minWords: number;
-  minUniqueWordRatio?: number;
-  maxTimestampWordRatio?: number;
+  minContentUnits: number;
+  minLocalDiversity?: number;
+  maxTimestampDensity?: number;
 };
 
 export type SourceSummaryStyle = "x_twitter" | "podcast_or_video" | "blog_or_document";

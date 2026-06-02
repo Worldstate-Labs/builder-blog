@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     reason?: string;
   }> = [];
 
-  // Per-source content-quality floors (minChars/minWords) — the same standards
+  // Per-source content-quality floors (minChars/minContentUnits) — the same standards
   // the client validate step uses. We enforce them server-side too so a post
   // with no real crawled content can't slip in when validate is bypassed.
   const sourceConfigs = await getUserSourceConfigs(user.id);
