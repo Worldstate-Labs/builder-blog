@@ -283,17 +283,23 @@ export async function shareDigestPipelineToHub(params: {
   name?: string | null;
   email?: string | null;
 }) {
+  const existing = await prisma.digestPipelineShare.findUnique({
+    where: { ownerUserId: params.userId },
+    select: { title: true },
+  });
+  const title = params.title?.trim() || existing?.title || digestPipelineTitle(params);
+
   return prisma.digestPipelineShare.upsert({
     where: { ownerUserId: params.userId },
     update: {
-      title: params.title?.trim() || digestPipelineTitle(params),
+      title,
       description: params.description?.trim() || null,
       isPublic: true,
     },
     create: {
       ownerUserId: params.userId,
       slug: digestPipelineSlug(params.userId),
-      title: params.title?.trim() || digestPipelineTitle(params),
+      title,
       description: params.description?.trim() || null,
       isPublic: true,
     },
@@ -301,10 +307,37 @@ export async function shareDigestPipelineToHub(params: {
 }
 
 export async function unshareDigestPipelineFromHub(userId: string) {
-  const result = await prisma.digestPipelineShare.deleteMany({
+  const result = await prisma.digestPipelineShare.updateMany({
     where: { ownerUserId: userId },
+    data: { isPublic: false },
   });
   return { removed: result.count };
+}
+
+export async function updateDigestPipelineTitle(params: {
+  userId: string;
+  title: string;
+}) {
+  const title = params.title.trim();
+  const existing = await prisma.digestPipelineShare.findUnique({
+    where: { ownerUserId: params.userId },
+    select: { isPublic: true },
+  });
+
+  return prisma.digestPipelineShare.upsert({
+    where: { ownerUserId: params.userId },
+    update: {
+      title,
+      isPublic: existing?.isPublic ?? false,
+    },
+    create: {
+      ownerUserId: params.userId,
+      slug: digestPipelineSlug(params.userId),
+      title,
+      description: null,
+      isPublic: false,
+    },
+  });
 }
 
 export async function importDigestPipelineFromHub(params: {

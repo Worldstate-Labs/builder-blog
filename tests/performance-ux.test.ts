@@ -540,10 +540,12 @@ test("library hub exposes share and multi-import flows", () => {
   const hubImportRoute = source("src/app/api/library-hub/imports/route.ts");
   const digestPipelineForm = optionalSource("src/components/DigestPipelineImportForm.tsx");
   const digestPipelineVisibilityToggle = source("src/components/DigestPipelineVisibilityToggle.tsx");
+  const digestPipelineTitleEditor = optionalSource("src/components/DigestPipelineTitleEditor.tsx");
   const digestPipelineShareRoute = optionalSource("src/app/api/digest-pipelines/share/route.ts");
   const digestPipelineImportRoute = optionalSource("src/app/api/digest-pipelines/imports/route.ts");
   const digestPipelineRemoveRoute = optionalSource("src/app/api/digest-pipelines/imports/[pipelineId]/route.ts");
   const hubPage = source("src/app/(workspace)/library-hub/page.tsx");
+  const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const skillRoute = source("src/app/api/skill/builders/route.ts");
   const schema = source("prisma/schema.prisma");
 
@@ -631,6 +633,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /isAdminEmail\(library\.owner\?\.email\)/);
   assert.match(hubPage, /ownerLabel\(library\.owner, isCommunityLibrary\)/);
   assert.match(hubPage, /recordLibraryHubViews\(libraries\.map/);
+  assert.match(dashboardPage, /DigestPipelineTitleEditor/);
+  assert.match(dashboardPage, /ownPipelineShare\?\.title/);
+  assert.match(dashboardPage, /ownPipelineShare\?\.isPublic === true/);
   assert.match(hubImportForm, /"use client"/);
   assert.match(hubImportForm, /fetch\("\/api\/library-hub\/imports"/);
   assert.match(hubImportForm, /isCommunity/);
@@ -669,12 +674,19 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(digestPipelineForm, /ownPipelineShared/);
   assert.match(digestPipelineVisibilityToggle, /Share to Hub/);
   assert.match(digestPipelineVisibilityToggle, /fetch\("\/api\/digest-pipelines\/share"/);
+  assert.match(digestPipelineTitleEditor, /"use client"/);
+  assert.match(digestPipelineTitleEditor, /Pencil/);
+  assert.match(digestPipelineTitleEditor, /fetch\("\/api\/digest-pipelines\/share"/);
+  assert.match(digestPipelineTitleEditor, /method: "PATCH"/);
+  assert.match(digestPipelineTitleEditor, /router\.refresh/);
   assert.match(digestPipelineForm, /fetch\("\/api\/digest-pipelines\/imports"/);
   assert.match(digestPipelineForm, /fetch\(`\/api\/digest-pipelines\/imports\/\$\{pipelineId\}`/);
   assert.match(digestPipelineForm, /aria-label=\{`Import \$\{pipeline\.title\}`\}/);
   assert.match(digestPipelineForm, /Imported/);
   assert.match(digestPipelineForm, /Remove/);
   assert.match(digestPipelineShareRoute, /shareDigestPipelineToHub/);
+  assert.match(digestPipelineShareRoute, /updateDigestPipelineTitle/);
+  assert.match(digestPipelineShareRoute, /export async function PATCH/);
   assert.match(digestPipelineShareRoute, /unshareDigestPipelineFromHub/);
   assert.match(digestPipelineImportRoute, /importDigestPipelineFromHub/);
   assert.match(digestPipelineRemoveRoute, /removeDigestPipelineImportFromHub/);
@@ -692,6 +704,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(schema, /@@id\(\[userId, pipelineId\]\)/);
   assert.match(schema, /UserLibraryVisibility/);
   assert.match(source("src/lib/library-hub.ts"), /shareDigestPipelineToHub/);
+  assert.match(source("src/lib/library-hub.ts"), /updateDigestPipelineTitle/);
+  assert.match(source("src/lib/library-hub.ts"), /isPublic: existing\?\.isPublic \?\? false/);
   assert.match(source("src/lib/library-hub.ts"), /importDigestPipelineFromHub/);
   assert.match(source("src/lib/library-hub.ts"), /removeDigestPipelineImportFromHub/);
   assert.match(source("src/lib/library-hub.ts"), /digestPipelineTitle/);

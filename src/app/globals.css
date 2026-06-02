@@ -3652,6 +3652,57 @@ svg.lucide {
   padding: 1rem 1.125rem;
 }
 
+.digest-title-row {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.digest-title-row .fb-section-heading {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.digest-title-edit-button {
+  flex: 0 0 auto;
+  padding-inline: 0.5rem;
+}
+
+.digest-title-edit-form {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: min(34rem, 100%);
+}
+
+.digest-title-edit-input {
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  flex: 1 1 14rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  height: 2.25rem;
+  min-width: 0;
+  outline: 0;
+  padding: 0 0.875rem;
+}
+
+.digest-title-edit-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 18%, transparent);
+}
+
+.digest-title-edit-error {
+  color: var(--danger);
+  flex-basis: 100%;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 .ai-digest-body {
   display: grid;
   gap: 1.25rem;

@@ -4,6 +4,7 @@ import { type ComponentType } from "react";
 import { Archive, CheckCircle2, Clock3, Sparkles, Terminal, UsersRound } from "lucide-react";
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
 import { DigestLogPanel } from "@/components/DigestLogPanel";
+import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
 import { DigestPipelineVisibilityToggle } from "@/components/DigestPipelineVisibilityToggle";
 import {
   getDigestRuns,
@@ -99,21 +100,28 @@ async function AiDigestFeedSlot({
   pipelineId?: string;
 }) {
   const archiveSkip = (archivePage - 1) * archivePageSize;
-  const importedDigestPipelines = await prisma.digestPipelineImport.findMany({
-    where: { userId, pipeline: { isPublic: true } },
-    include: {
-      pipeline: {
-        include: {
-          owner: { select: { name: true, email: true } },
+  const [importedDigestPipelines, ownPipelineShare] = await Promise.all([
+    prisma.digestPipelineImport.findMany({
+      where: { userId, pipeline: { isPublic: true } },
+      include: {
+        pipeline: {
+          include: {
+            owner: { select: { name: true, email: true } },
+          },
         },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.digestPipelineShare.findUnique({
+      where: { ownerUserId: userId },
+      select: { title: true, isPublic: true },
+    }),
+  ]);
+  const ownPipelineTitle = displayDigestPipelineTitle(ownPipelineShare?.title ?? "AI Digest");
   const digestPipelineOptions: DigestPipelineOption[] = [
     {
       id: "own",
-      title: "AI Digest",
+      title: ownPipelineTitle,
       ownerLabel: "Your AI Digest",
       ownerUserId: userId,
       isOwnPipeline: true,
@@ -142,7 +150,6 @@ async function AiDigestFeedSlot({
     digestJobRuns,
     digestScheduledJobRuns,
     digestCronJob,
-    ownPipelineShare,
   ] = await Promise.all([
       // The hero shows the user's most recent non-empty digest (any age), labeled
       // with its own date. Not a "today" window: a brief stays featured until a
@@ -183,12 +190,6 @@ async function AiDigestFeedSlot({
       isOwnPipeline
         ? prisma.digestCronJob.findUnique({ where: { userId } })
         : Promise.resolve(null),
-      isOwnPipeline
-        ? prisma.digestPipelineShare.findUnique({
-            where: { ownerUserId: userId },
-            select: { id: true },
-          })
-        : Promise.resolve(null),
     ]);
 
   const activeTokens: AgentTokenListItem[] = rawTokens.map((token) => ({
@@ -227,7 +228,7 @@ async function AiDigestFeedSlot({
       digestJobRuns={digestJobRuns}
       digestRuns={digestRuns}
       digestScheduledJobRuns={digestScheduledJobRuns}
-      ownPipelineShared={Boolean(ownPipelineShare)}
+      ownPipelineShared={ownPipelineShare?.isPublic === true}
       summaryLanguage={feedPreference?.summaryLanguage ?? null}
       digestMaxPostAgeDays={feedPreference?.digestMaxPostAgeDays ?? null}
       latestDigest={latestDigest}
@@ -306,12 +307,16 @@ function AiDigestFeed({
         <header className="ai-digest-head">
           <div className="min-w-0">
             {isOwnPipeline ? null : <span className="fb-section-label">AI Digest</span>}
-            <h2
-              id="ai-digest-heading"
-              className={isOwnPipeline ? "fb-section-heading" : "fb-section-heading mt-1"}
-            >
-              {isOwnPipeline ? "AI Digest" : selectedPipeline.title}
-            </h2>
+            {isOwnPipeline ? (
+              <DigestPipelineTitleEditor
+                headingId="ai-digest-heading"
+                initialTitle={selectedPipeline.title}
+              />
+            ) : (
+              <h2 id="ai-digest-heading" className="fb-section-heading mt-1">
+                {selectedPipeline.title}
+              </h2>
+            )}
           </div>
           {isOwnPipeline ? (
             <DigestPipelineVisibilityToggle initialShared={ownPipelineShared} />
