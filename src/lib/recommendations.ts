@@ -3,7 +3,6 @@ import type { BuilderKind, FeedItemKind, Prisma, PrismaClient } from "@prisma/cl
 const candidateWindow = 1000;
 const defaultRecommendationLimit = 6;
 const defaultTimelineSnapshotLimit = 3;
-type RecommendationScope = "for-you" | "subscription";
 
 type RecommendationBuilder = {
   id: string;
@@ -63,46 +62,6 @@ export type RecommendationSnapshotResult = {
   items: Array<RecommendationResult & { rank: number; readAt: Date | null }>;
 };
 
-// ---------------------------------------------------------------------------
-// For-You candidate fetch. Uncached: runs the Prisma query every call. A prior
-// unstable_cache wrapper was removed after a stale-cache production bug.
-// ---------------------------------------------------------------------------
-
-async function getForYouCandidates(userId: string) {
-  const { prisma } = await import("@/lib/prisma");
-  const cutoff = new Date(Date.now() - 90 * 86400000);
-  return prisma.feedItem.findMany({
-    where: {
-      createdAt: { gte: cutoff },
-      builder: {
-        OR: [
-          { ownerUserId: userId },
-          { hubItems: { some: {} } },
-        ],
-      },
-    },
-    include: {
-      builder: {
-        select: {
-          id: true,
-          entityId: true,
-          name: true,
-          handle: true,
-          kind: true,
-          sourceType: true,
-          sourceUrl: true,
-          fetchUrl: true,
-          bio: true,
-          ownerUserId: true,
-          lastFetchedAt: true,
-        },
-      },
-    },
-    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-    take: candidateWindow,
-  });
-}
-
 async function attachHubItems(
   candidates: CandidateList,
   prisma: PrismaClient,
@@ -152,27 +111,25 @@ export async function getRecommendationTimeline({
   userId,
   snapshotLimit = defaultTimelineSnapshotLimit,
   itemLimit = defaultRecommendationLimit,
-  scope = "for-you",
 }: {
   userId: string;
   snapshotLimit?: number;
   itemLimit?: number;
-  scope?: RecommendationScope;
 }) {
   const { prisma } = await import("@/lib/prisma");
   const snapshots = await prisma.recommendationSnapshot.findMany({
-    where: snapshotWhere(userId, scope),
+    where: snapshotWhere(userId),
     include: snapshotInclude(userId),
     orderBy: { createdAt: "desc" },
     take: Math.max(1, Math.floor(snapshotLimit)),
   });
 
   if (snapshots.length > 0) {
-    const unreadRemaining = await unreadCandidateCount(userId, scope);
+    const unreadRemaining = await unreadCandidateCount(userId);
     return {
       snapshots: snapshots.map((snapshot) => formatSnapshot(snapshot)),
       unreadRemaining,
-      strategy: recommendationStrategy(scope),
+      strategy: "snapshot-subscription-v1" as const,
     };
   }
 
@@ -180,13 +137,12 @@ export async function getRecommendationTimeline({
     userId,
     limit: itemLimit,
     reason: "initial",
-    scope,
   });
 
   return {
     snapshots: created.snapshot ? [created.snapshot] : [],
     unreadRemaining: created.unreadRemaining,
-    strategy: recommendationStrategy(scope),
+    strategy: "snapshot-subscription-v1" as const,
   };
 }
 
@@ -194,21 +150,19 @@ export async function getRecommendationFeed({
   userId,
   limit = defaultRecommendationLimit,
   reason = "recommendation",
-  scope = "for-you",
 }: {
   userId: string;
   limit?: number;
   reason?: string;
-  scope?: RecommendationScope;
 }) {
-  const created = await createRecommendationSnapshot({ userId, limit, reason, scope });
+  const created = await createRecommendationSnapshot({ userId, limit, reason });
   return {
     items: created.snapshot?.items ?? [],
     snapshot: created.snapshot,
     nextOffset: created.snapshot?.items.length ? 1 : null,
     unreadRemaining: created.unreadRemaining,
     candidateCount: created.candidateCount,
-    strategy: recommendationStrategy(scope),
+    strategy: "snapshot-subscription-v1" as const,
   };
 }
 
@@ -216,12 +170,10 @@ export async function createRecommendationSnapshot({
   userId,
   limit = defaultRecommendationLimit,
   reason = "recommendation",
-  scope = "for-you",
 }: {
   userId: string;
   limit?: number;
   reason?: string;
-  scope?: RecommendationScope;
 }): Promise<{
   snapshot: RecommendationSnapshotResult | null;
   unreadRemaining: number;
@@ -297,199 +249,124 @@ export async function createRecommendationSnapshot({
       take: 50,
     }),
     prisma.recommendationSnapshotItem.findMany({
-      where: { snapshot: snapshotWhere(userId, scope) },
+      where: { snapshot: snapshotWhere(userId) },
       select: { feedItemId: true },
       take: 5000,
     }),
   ]);
 
-  // For subscription scope, use the builder ids the user directly subscribed to.
-  const subscriptionBuilderIds =
-    scope === "subscription" ? subscriptions.map((s) => s.builderId) : [];
+  const subscriptionBuilderIds = subscriptions.map((s) => s.builderId);
 
   // ---------------------------------------------------------------------------
   // Fetch candidates
   // ---------------------------------------------------------------------------
 
-  let rawCandidates: Awaited<ReturnType<typeof getForYouCandidates>>;
-  let unreadRemaining: number;
-
-  if (scope === "for-you") {
-    rawCandidates = await getForYouCandidates(userId);
-
-    // Fetch fresh read state (NEVER cached)
-    const readEntityKeys = new Set(
-      (
-        await prisma.feedRead.findMany({
-          where: { userId },
-          select: { entityId: true, kind: true, externalId: true },
-        })
-      ).map((r) => `${r.entityId}:${r.kind}:${r.externalId}`),
-    );
-
-    // Already-snapshotted: project to entity keys
-    const snapshottedEntityKeys = new Set(
-      (
-        await prisma.feedItem.findMany({
-          where: { id: { in: uniqueIds(snapshotRows.map((row) => row.feedItemId)) } },
-          select: {
-            kind: true,
-            externalId: true,
-            builder: { select: { entityId: true } },
-          },
-        })
-      )
-        .filter((r) => r.builder?.entityId)
-        .map((r) => `${r.builder!.entityId}:${r.kind}:${r.externalId}`),
-    );
-
-    // Dedup raw candidates by canonical key in JS (after cache hit)
-    const dedupGroups = new Map<string, typeof rawCandidates>();
-    for (const item of rawCandidates) {
-      const entityId = item.builder?.entityId;
-      if (!entityId) continue;
-      const key = `${entityId}:${item.kind}:${item.externalId}`;
-      if (readEntityKeys.has(key)) continue;
-      if (snapshottedEntityKeys.has(key)) continue;
-      const list = dedupGroups.get(key) ?? [];
-      list.push(item);
-      dedupGroups.set(key, list);
-    }
-
-    // unreadRemaining = distinct unread canonical keys in the candidate window
-    unreadRemaining = dedupGroups.size;
-
-    const rawCandidates2 = pickPrimaryVariants(userId, dedupGroups, await prisma.userChannelPreference.findMany({
-      where: { userId, entityId: { in: [...new Set([...dedupGroups.keys()].map((k) => k.split(":")[0]))] } },
-      select: { entityId: true, primaryBuilderId: true },
-    }));
-    const candidates = await attachHubItems(rawCandidates2, prisma);
-
-    return buildAndSaveSnapshot({
-      userId,
-      normalizedLimit,
-      reason,
-      scope,
-      candidates,
-      unreadRemaining,
-      subscriptions,
-      reads,
-      user,
-      prisma,
-    });
-  } else {
-    // Subscription scope
-    if (subscriptionBuilderIds.length === 0) {
-      return { snapshot: null, unreadRemaining: 0, candidateCount: 0 };
-    }
-
-    const [subCandidates] = await Promise.all([
-      prisma.feedItem.findMany({
-        where: {
-          builderId: { in: subscriptionBuilderIds },
-          createdAt: { gte: cutoff },
-        },
-        include: {
-          builder: {
-            select: {
-              id: true,
-              entityId: true,
-              name: true,
-              handle: true,
-              kind: true,
-              sourceType: true,
-              sourceUrl: true,
-              fetchUrl: true,
-              bio: true,
-              ownerUserId: true,
-              lastFetchedAt: true,
-            },
-          },
-        },
-        orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-        take: Math.max(candidateWindow, normalizedLimit * 3),
-      }),
-      prisma.feedItem.count({
-        where: {
-          builderId: { in: subscriptionBuilderIds },
-          createdAt: { gte: cutoff },
-          reads: { none: { userId } },
-        },
-      }),
-    ]);
-
-    rawCandidates = subCandidates;
-    // unreadRemaining is set below to the post-dedup distinct count (see F12).
-
-    // Fetch fresh read/snapshot state for subscription scope
-    const readEntityKeys = new Set(
-      (
-        await prisma.feedRead.findMany({
-          where: { userId },
-          select: { entityId: true, kind: true, externalId: true },
-        })
-      ).map((r) => `${r.entityId}:${r.kind}:${r.externalId}`),
-    );
-
-    const snapshottedEntityKeys = new Set(
-      (
-        await prisma.feedItem.findMany({
-          where: { id: { in: uniqueIds(snapshotRows.map((row) => row.feedItemId)) } },
-          select: {
-            kind: true,
-            externalId: true,
-            builder: { select: { entityId: true } },
-          },
-        })
-      )
-        .filter((r) => r.builder?.entityId)
-        .map((r) => `${r.builder!.entityId}:${r.kind}:${r.externalId}`),
-    );
-
-    const dedupGroups = new Map<string, typeof rawCandidates>();
-    for (const item of rawCandidates) {
-      const entityId = item.builder?.entityId;
-      if (!entityId) continue;
-      const key = `${entityId}:${item.kind}:${item.externalId}`;
-      if (readEntityKeys.has(key)) continue;
-      if (snapshottedEntityKeys.has(key)) continue;
-      const list = dedupGroups.get(key) ?? [];
-      list.push(item);
-      dedupGroups.set(key, list);
-    }
-
-    // Report distinct unread canonical posts (post-dedup, after read/snapshot
-    // filtering) — same semantics as the for-you scope. The earlier `subUnread`
-    // was a raw pre-dedup feedItem count that over-reported (counted each
-    // channel variant and ignored already-snapshotted items).
-    unreadRemaining = dedupGroups.size;
-
-    const rawCandidates3 = pickPrimaryVariants(userId, dedupGroups, await prisma.userChannelPreference.findMany({
-      where: { userId, entityId: { in: [...new Set([...dedupGroups.keys()].map((k) => k.split(":")[0]))] } },
-      select: { entityId: true, primaryBuilderId: true },
-    }));
-    const candidates = await attachHubItems(rawCandidates3, prisma);
-
-    return buildAndSaveSnapshot({
-      userId,
-      normalizedLimit,
-      reason,
-      scope,
-      candidates,
-      unreadRemaining,
-      subscriptions,
-      reads,
-      user,
-      prisma,
-    });
+  if (subscriptionBuilderIds.length === 0) {
+    return { snapshot: null, unreadRemaining: 0, candidateCount: 0 };
   }
+
+  const rawCandidates: CandidateList = await prisma.feedItem.findMany({
+    where: {
+      builderId: { in: subscriptionBuilderIds },
+      createdAt: { gte: cutoff },
+    },
+    include: {
+      builder: {
+        select: {
+          id: true,
+          entityId: true,
+          name: true,
+          handle: true,
+          kind: true,
+          sourceType: true,
+          sourceUrl: true,
+          fetchUrl: true,
+          bio: true,
+          ownerUserId: true,
+          lastFetchedAt: true,
+        },
+      },
+    },
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    take: Math.max(candidateWindow, normalizedLimit * 3),
+  });
+
+  const readEntityKeys = new Set(
+    (
+      await prisma.feedRead.findMany({
+        where: { userId },
+        select: { entityId: true, kind: true, externalId: true },
+      })
+    ).map((r) => `${r.entityId}:${r.kind}:${r.externalId}`),
+  );
+
+  const snapshottedEntityKeys = new Set(
+    (
+      await prisma.feedItem.findMany({
+        where: { id: { in: uniqueIds(snapshotRows.map((row) => row.feedItemId)) } },
+        select: {
+          kind: true,
+          externalId: true,
+          builder: { select: { entityId: true } },
+        },
+      })
+    )
+      .filter((r) => r.builder?.entityId)
+      .map((r) => `${r.builder!.entityId}:${r.kind}:${r.externalId}`),
+  );
+
+  const dedupGroups = new Map<string, typeof rawCandidates>();
+  for (const item of rawCandidates) {
+    const entityId = item.builder?.entityId;
+    if (!entityId) continue;
+    const key = `${entityId}:${item.kind}:${item.externalId}`;
+    if (readEntityKeys.has(key)) continue;
+    if (snapshottedEntityKeys.has(key)) continue;
+    const list = dedupGroups.get(key) ?? [];
+    list.push(item);
+    dedupGroups.set(key, list);
+  }
+
+  const unreadRemaining = dedupGroups.size;
+
+  const candidates = await attachHubItems(
+    pickPrimaryVariants(
+      userId,
+      dedupGroups,
+      await prisma.userChannelPreference.findMany({
+        where: {
+          userId,
+          entityId: { in: [...new Set([...dedupGroups.keys()].map((key) => key.split(":")[0]))] },
+        },
+        select: { entityId: true, primaryBuilderId: true },
+      }),
+    ),
+    prisma,
+  );
+
+  return buildAndSaveSnapshot({
+    userId,
+    normalizedLimit,
+    reason,
+    candidates,
+    unreadRemaining,
+    subscriptions,
+    reads,
+    user,
+    prisma,
+  });
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-type CandidateList = Awaited<ReturnType<typeof getForYouCandidates>>;
+type CandidateList = Array<
+  RecommendationCandidate & {
+    builderId: string | null;
+    externalId: string;
+  }
+>;
 
 function pickPrimaryVariants(
   userId: string,
@@ -525,7 +402,6 @@ async function buildAndSaveSnapshot({
   userId,
   normalizedLimit,
   reason,
-  scope,
   candidates,
   unreadRemaining,
   subscriptions,
@@ -536,7 +412,6 @@ async function buildAndSaveSnapshot({
   userId: string;
   normalizedLimit: number;
   reason: string;
-  scope: RecommendationScope;
   candidates: CandidateList;
   unreadRemaining: number;
   subscriptions: Array<{
@@ -613,7 +488,7 @@ async function buildAndSaveSnapshot({
   const snapshot = await prisma.recommendationSnapshot.create({
     data: {
       userId,
-      reason: snapshotReason(scope, reason),
+      reason: snapshotReason(reason),
       items: {
         create: page.map((result, index) => ({
           feedItemId: result.item.id,
@@ -633,28 +508,29 @@ async function buildAndSaveSnapshot({
   };
 }
 
-async function unreadCandidateCount(userId: string, scope: RecommendationScope) {
+async function unreadCandidateCount(userId: string) {
   const { prisma } = await import("@/lib/prisma");
   const cutoff = new Date(Date.now() - 90 * 86400000);
 
-  if (scope === "subscription") {
-    const subscriptions = await prisma.subscription.findMany({
-      where: { userId },
-      select: { builderId: true },
-    });
-    const builderIds = subscriptions.map((s) => s.builderId);
-    if (builderIds.length === 0) return 0;
-    return prisma.feedItem.count({
-      where: {
-        builderId: { in: builderIds },
-        createdAt: { gte: cutoff },
-        reads: { none: { userId } },
-      },
-    });
-  }
-
-  // For-You: count distinct unread candidates from cached pool
-  const cached = await getForYouCandidates(userId);
+  const subscriptions = await prisma.subscription.findMany({
+    where: { userId },
+    select: { builderId: true },
+  });
+  const builderIds = subscriptions.map((s) => s.builderId);
+  if (builderIds.length === 0) return 0;
+  const candidates = await prisma.feedItem.findMany({
+    where: {
+      builderId: { in: builderIds },
+      createdAt: { gte: cutoff },
+    },
+    select: {
+      kind: true,
+      externalId: true,
+      builder: { select: { entityId: true } },
+    },
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    take: candidateWindow,
+  });
   const readEntityKeys = new Set(
     (
       await prisma.feedRead.findMany({
@@ -665,35 +541,25 @@ async function unreadCandidateCount(userId: string, scope: RecommendationScope) 
   );
 
   const seen = new Set<string>();
-  let count = 0;
-  for (const item of cached) {
+  for (const item of candidates) {
     const entityId = item.builder?.entityId;
     if (!entityId) continue;
     const key = `${entityId}:${item.kind}:${item.externalId}`;
     if (readEntityKeys.has(key) || seen.has(key)) continue;
     seen.add(key);
-    count++;
   }
-  return count;
+  return seen.size;
 }
 
-function snapshotWhere(userId: string, scope: RecommendationScope): Prisma.RecommendationSnapshotWhereInput {
+function snapshotWhere(userId: string): Prisma.RecommendationSnapshotWhereInput {
   return {
     userId,
-    ...(scope === "subscription"
-      ? { reason: { startsWith: "subscription:" } }
-      : { NOT: { reason: { startsWith: "subscription:" } } }),
+    reason: { startsWith: "subscription:" },
   };
 }
 
-function snapshotReason(scope: RecommendationScope, reason: string) {
-  return scope === "subscription" ? `subscription:${reason}` : reason;
-}
-
-function recommendationStrategy(scope: RecommendationScope) {
-  return scope === "subscription"
-    ? ("snapshot-subscription-v1" as const)
-    : ("snapshot-personalized-v1" as const);
+function snapshotReason(reason: string) {
+  return `subscription:${reason}`;
 }
 
 function snapshotInclude(userId: string) {

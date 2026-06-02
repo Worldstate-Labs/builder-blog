@@ -3,16 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
-type DashboardTab = "ai-digest" | "subscription" | "for-you";
+type DashboardTab = "ai-digest" | "subscription";
 
 export function DashboardHomeTabs({
   aiDigest,
-  forYou,
   initialTab,
   subscription,
 }: {
   aiDigest: ReactNode;
-  forYou: ReactNode;
   initialTab: DashboardTab;
   subscription: ReactNode;
 }) {
@@ -53,18 +51,6 @@ export function DashboardHomeTabs({
           >
             Following
           </button>
-          <button
-            aria-controls="home-panel-for-you"
-            aria-selected={selectedTab === "for-you"}
-            className={`fb-tab${selectedTab === "for-you" ? " active" : ""}`}
-            data-active={selectedTab === "for-you" ? "true" : undefined}
-            id="home-tab-for-you"
-            onClick={() => selectTab("for-you")}
-            role="tab"
-            type="button"
-          >
-            For You
-          </button>
         </div>
       </div>
       <div className="fb-m-segctl at-mobile" role="tablist" aria-label="Home feed">
@@ -72,7 +58,6 @@ export function DashboardHomeTabs({
           [
             { id: "ai-digest", label: "Digest" },
             { id: "subscription", label: "Following" },
-            { id: "for-you", label: "For You" },
           ] as const
         ).map((tab) => (
           <button
@@ -103,14 +88,6 @@ export function DashboardHomeTabs({
         role="tabpanel"
       >
         {selectedTab === "subscription" ? subscription : null}
-      </section>
-      <section
-        aria-labelledby="home-tab-for-you"
-        hidden={selectedTab !== "for-you"}
-        id="home-panel-for-you"
-        role="tabpanel"
-      >
-        {selectedTab === "for-you" ? forYou : null}
       </section>
     </>
   );

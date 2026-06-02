@@ -12,7 +12,7 @@ import {
   type DigestCronJobStatus,
   type DigestRunListItem,
 } from "@/lib/digest-runs";
-import { ForYouRecommendationSection } from "@/components/ForYouRecommendationSection";
+import { FollowingRecommendationSection } from "@/components/FollowingRecommendationSection";
 import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
@@ -70,9 +70,8 @@ export default async function DashboardPage({
           <DashboardHomeTabs
             initialTab={selectedTab}
             aiDigest={aiDigest}
-            forYou={<ForYouRecommendationSection scope="for-you" />}
             subscription={
-              <ForYouRecommendationSection scope="subscription" />
+              <FollowingRecommendationSection />
             }
           />
         </div>
@@ -456,7 +455,6 @@ async function HomeStatsSlot({ userId }: { userId: string }) {
         value={hasDigest ? "Updated" : "Waiting"}
       />
       <Stat icon={Sparkles} label="Following" value="Active" />
-      <Stat icon={Sparkles} label="For You" value="Active" />
       <Stat icon={Archive} label="Saved briefs" value={archiveCount} />
     </div>
   );
@@ -487,7 +485,7 @@ function firstParam(value: string | string[] | undefined) {
 }
 
 function parseTab(value: string | undefined) {
-  if (value === "subscription" || value === "for-you") return value;
+  if (value === "subscription") return value;
   return "ai-digest";
 }
 
