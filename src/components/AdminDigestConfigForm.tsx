@@ -97,7 +97,7 @@ export function AdminDigestConfigForm({
   }
 
   return (
-    <div className="fb-panel" style={{ padding: "1.25rem 1.125rem 1rem" }}>
+    <div className="digest-composition-form">
       <Section
         title="Sections & order"
         description="Which source types appear in the digest, and in what order."

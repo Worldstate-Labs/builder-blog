@@ -37,11 +37,11 @@ export function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-7 first:mt-0">
-      <div className="mb-3 flex items-baseline gap-3 border-b border-[var(--line)] pb-2">
+    <section className="settings-section mt-7 first:mt-0">
+      <div className="settings-section-head mb-3 flex items-baseline gap-3 border-b border-[var(--line)] pb-2">
         {step ? (
           <span
-            className="text-[11px] tracking-[0.16em]"
+            className="settings-section-step text-[11px] tracking-[0.16em]"
             style={{ color: "var(--muted)", fontFamily: "var(--font-geist-mono)" }}
             aria-hidden="true"
           >
@@ -50,19 +50,19 @@ export function Section({
         ) : null}
         <div className="min-w-0">
           <p
-            className="text-[11px] uppercase tracking-[0.16em]"
+            className="settings-section-title text-[11px] uppercase tracking-[0.16em]"
             style={{ color: "var(--ink)", fontFamily: "var(--font-geist-mono)" }}
           >
             {title}
           </p>
           {description ? (
-            <p className="mt-0.5 text-sm" style={{ color: "var(--muted-strong)" }}>
+            <p className="settings-section-desc mt-0.5 text-sm" style={{ color: "var(--muted-strong)" }}>
               {description}
             </p>
           ) : null}
         </div>
       </div>
-      <div className="grid gap-4">{children}</div>
+      <div className="settings-section-body grid gap-4">{children}</div>
     </section>
   );
 }
@@ -77,7 +77,7 @@ function FieldLabelText({
 }) {
   return (
     <span
-      className="mb-1 flex items-baseline gap-1.5 text-[11px] uppercase tracking-[0.12em]"
+      className="settings-field-label mb-1 flex items-baseline gap-1.5 text-[11px] uppercase tracking-[0.12em]"
       style={{ color: "var(--muted)" }}
     >
       <span>{children}</span>
@@ -105,11 +105,11 @@ export function FieldShell({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block text-sm">
+    <label className="settings-field block text-sm">
       <FieldLabelText optional={optional}>{label}</FieldLabelText>
       {children}
       {description ? (
-        <span className="mt-1 block text-xs" style={{ color: "var(--muted)" }}>
+        <span className="settings-field-help mt-1 block text-xs" style={{ color: "var(--muted)" }}>
           {description}
         </span>
       ) : null}
@@ -540,16 +540,16 @@ export function OrderedChoiceField({
   }
 
   return (
-    <fieldset className="block text-sm" aria-describedby={description ? descId : undefined}>
+    <fieldset className="settings-choice-field block text-sm" aria-describedby={description ? descId : undefined}>
       <legend
         id={legendId}
-        className="mb-1 block text-[11px] uppercase tracking-[0.12em]"
+        className="settings-field-label mb-1 block text-[11px] uppercase tracking-[0.12em]"
         style={{ color: "var(--muted)" }}
       >
         {label}
       </legend>
       <div
-        className="rounded-[10px] border border-[var(--line)]"
+        className="settings-choice-list rounded-[10px] border border-[var(--line)]"
         style={{ background: "var(--paper-strong)", padding: "0.625rem" }}
       >
         {value.length === 0 ? (
@@ -561,7 +561,7 @@ export function OrderedChoiceField({
             {value.map((v, i) => (
               <li
                 key={v}
-                className="flex items-center gap-2 rounded-md px-2 py-1 text-sm"
+                className="settings-choice-row flex items-center gap-2 rounded-md px-2 py-1 text-sm"
                 style={{ background: "var(--paper)", border: "1px solid var(--line)" }}
               >
                 <span
@@ -622,7 +622,7 @@ export function OrderedChoiceField({
         ) : null}
       </div>
       {description ? (
-        <span id={descId} className="mt-1 block text-xs" style={{ color: "var(--muted)" }}>
+        <span id={descId} className="settings-field-help mt-1 block text-xs" style={{ color: "var(--muted)" }}>
           {description}
         </span>
       ) : null}

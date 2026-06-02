@@ -133,10 +133,19 @@ test("BuilderLibraryEventItem carries avatarUrl alongside the existing fields", 
   );
 });
 
-test("BuilderLibraryList keeps library avatars neutral and avoids image noise", () => {
+test("BuilderLibraryList renders builder.avatarUrl ahead of favicon/monogram", () => {
   const list = readFileSync("src/components/BuilderLibraryList.tsx", "utf8");
-  assert.match(list, /function BuilderAvatar/);
-  assert.match(list, /avatarMonogram\(builder\)/);
-  assert.doesNotMatch(list, /builder\.avatarUrl/);
-  assert.doesNotMatch(list, /google\.com\/s2\/favicons/);
+  assert.match(list, /builder\.avatarUrl/);
+  // The real-avatar branch must come before the favicon branch in
+  // BuilderAvatar so the priority chain is preserved.
+  const realIndex = list.search(/if \(realAvatarUrl/);
+  const faviconIndex = list.search(/if \(faviconUrl/);
+  assert.ok(
+    realIndex >= 0 && faviconIndex >= 0,
+    "BuilderAvatar should branch on realAvatarUrl and faviconUrl",
+  );
+  assert.ok(
+    realIndex < faviconIndex,
+    "real-avatar branch must precede favicon branch in BuilderAvatar",
+  );
 });
