@@ -46,6 +46,7 @@ export function DigestDetails({
   const [digestState, setDigestState] = useState<DigestLoadState>(initialState);
   const currentState = digestState.key === stateKey ? digestState : initialState;
   const { content, isOpen, status } = currentState;
+  const headerHeadline = resolveHeadlineSummary(digest.headlineSummary, content, status);
 
   const updateDigestState = useCallback((
     updater: (current: DigestLoadState) => Omit<DigestLoadState, "key">,
@@ -93,21 +94,23 @@ export function DigestDetails({
     return (
       <article className="fb-digest">
         <div className="fb-digest-head">
-          <div className="min-w-0">
-            <div className="fb-digest-title">{digest.title}</div>
-            <div className="fb-digest-sub">
-              <span>{digest.itemCount} items</span>
+          <div className="fb-digest-title-row">
+            <div className="min-w-0">
+              <div className="fb-digest-title">{digest.title}</div>
+              <div className="fb-digest-sub">
+                <span>{digest.itemCount} items</span>
+              </div>
             </div>
+            <span className="fb-digest-chip">{formatDateTime(digest.createdAt, hydrated)}</span>
           </div>
-          <span className="fb-digest-chip">{formatDateTime(digest.createdAt, hydrated)}</span>
+          {headerHeadline ? (
+            <DigestHeadlineSummary text={headerHeadline} />
+          ) : status === "loading" ? (
+            <DigestHeadlineSummary loading />
+          ) : null}
         </div>
         <div className="fb-digest-body">
-          <DigestBody
-            content={content}
-            headlineSummary={digest.headlineSummary}
-            status={status}
-            variant="today"
-          />
+          <DigestBody content={content} status={status} variant="today" />
         </div>
       </article>
     );
@@ -133,17 +136,16 @@ export function DigestDetails({
               </span>
             </span>
             <span className="item-title">{digest.title}</span>
+            {headerHeadline ? (
+              <span className="item-headline-preview">{headerHeadline}</span>
+            ) : null}
           </span>
           <span className="item-summary-action">
             <BookOpen className="h-3.5 w-3.5" />
             Read
           </span>
         </summary>
-        <DigestBody
-          content={content}
-          headlineSummary={digest.headlineSummary}
-          status={status}
-        />
+        <DigestBody content={content} status={status} />
       </details>
     </article>
   );
@@ -151,20 +153,14 @@ export function DigestDetails({
 
 function DigestBody({
   content,
-  headlineSummary,
   status,
   variant = "archive",
 }: {
   content: string | null;
-  headlineSummary?: string | null;
   status: "idle" | "loading" | "loaded" | "error";
   variant?: "today" | "archive";
 }) {
   const isToday = variant === "today";
-  const normalizedHeadlineSummary = headlineSummary?.trim() || null;
-  const headlineNode = normalizedHeadlineSummary ? (
-    <DigestHeadlineSummary text={normalizedHeadlineSummary} />
-  ) : null;
 
   if (status === "loading") {
     const loadingChip = (
@@ -181,17 +177,11 @@ function DigestBody({
     );
 
     if (isToday) {
-      return (
-        <>
-          {headlineNode}
-          {loadingChip}
-        </>
-      );
+      return loadingChip;
     }
 
     return (
       <div className="item-details" aria-live="polite" aria-busy="true">
-        {headlineNode}
         {loadingChip}
       </div>
     );
@@ -201,12 +191,9 @@ function DigestBody({
     const errorNode = <span>Could not load digest.</span>;
     if (isToday) {
       return (
-        <>
-          {headlineNode}
-          <div className="text-sm text-[var(--danger)]" aria-live="polite">
-            {errorNode}
-          </div>
-        </>
+        <div className="text-sm text-[var(--danger)]" aria-live="polite">
+          {errorNode}
+        </div>
       );
     }
 
@@ -215,35 +202,80 @@ function DigestBody({
         className="item-details text-sm text-[var(--danger)]"
         aria-live="polite"
       >
-        {headlineNode}
         {errorNode}
       </div>
     );
   }
 
   if (isToday) {
-    return (
-      <>
-        {headlineNode}
-        <DigestContent content={content ?? ""} tone="paper" />
-      </>
-    );
+    return <DigestContent content={content ?? ""} tone="paper" />;
   }
   return (
     <div className="item-details">
-      {headlineNode}
       <DigestContent content={content ?? ""} tone="paper" />
     </div>
   );
 }
 
-function DigestHeadlineSummary({ text }: { text: string }) {
+function DigestHeadlineSummary({
+  loading = false,
+  text,
+}: {
+  loading?: boolean;
+  text?: string;
+}) {
   return (
-    <section className="digest-headline-summary" aria-label="Digest headlines">
+    <section
+      className={`digest-headline-summary${loading ? " is-loading" : ""}`}
+      aria-busy={loading || undefined}
+      aria-label="Digest headlines"
+    >
       <div className="digest-headline-kicker">Headlines</div>
-      <p className="digest-headline-text">{text}</p>
+      {loading ? (
+        <div className="digest-headline-loading" aria-hidden="true">
+          <span />
+          <span />
+        </div>
+      ) : (
+        <p className="digest-headline-text">{text}</p>
+      )}
     </section>
   );
+}
+
+function resolveHeadlineSummary(
+  headlineSummary: string | null,
+  content: string | null,
+  status: DigestLoadState["status"],
+) {
+  const stored = headlineSummary?.trim();
+  if (stored) return stored;
+  if (status !== "loaded" || !content?.trim()) return null;
+  return digestPreviewFromContent(content);
+}
+
+function digestPreviewFromContent(content: string) {
+  const text = content
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter((line) => {
+      if (!line) return false;
+      if (/^#{1,6}\s+/.test(line)) return false;
+      if (/^AI Digest\b/i.test(line)) return false;
+      if (/^(原文|source|link)[:：]/i.test(line)) return false;
+      if (/^https?:\/\//i.test(line)) return false;
+      return true;
+    })
+    .join(" ")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!text) return null;
+  return text.length > 300 ? `${text.slice(0, 297).trimEnd()}...` : text;
 }
 
 function formatDateTime(value: string, hydrated: boolean) {

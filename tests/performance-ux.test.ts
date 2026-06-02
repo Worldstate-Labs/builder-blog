@@ -243,6 +243,10 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(dashboardPage, /DigestDetails/);
   assert.match(digestDetails, /headlineSummary/);
   assert.match(digestDetails, /digest-headline-summary/);
+  assert.match(digestDetails, /item-headline-preview/);
+  assert.match(digestDetails, /digestPreviewFromContent/);
+  assert.match(source("src/app/globals.css"), /fb-digest-title-row/);
+  assert.match(source("src/app/globals.css"), /item-headline-preview/);
   assert.match(digestRoute, /headlineSummary/);
   assert.match(dashboardPage, /DigestPipelineSelector/);
   assert.match(dashboardPage, /AI Digest/);

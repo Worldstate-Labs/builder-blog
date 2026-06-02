@@ -1453,13 +1453,32 @@ svg.lucide {
 }
 
 .digest-headline-summary {
-  background: color-mix(in oklch, var(--accent) 7%, var(--paper));
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--accent) 13%, transparent),
+      color-mix(in oklch, var(--accent) 4%, transparent)
+    );
+  border: 1px solid color-mix(in oklch, var(--accent) 18%, var(--line));
   border-left: 3px solid var(--accent);
+  border-radius: 8px;
   color: var(--ink);
   display: grid;
   gap: 0.35rem;
-  margin-bottom: 0.95rem;
-  padding: 0.75rem 0.875rem;
+  padding: 0.7rem 0.85rem 0.75rem;
+}
+
+.item-headline-preview {
+  color: var(--muted-strong);
+  display: -webkit-box;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.55;
+  margin-top: 0.45rem;
+  max-width: 58rem;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .digest-headline-kicker {
@@ -1476,6 +1495,26 @@ svg.lucide {
   font-size: 0.9375rem;
   line-height: 1.6;
   margin: 0;
+}
+
+.digest-headline-loading {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.digest-headline-loading span {
+  background: color-mix(in oklch, var(--muted) 18%, transparent);
+  border-radius: 999px;
+  display: block;
+  height: 0.65rem;
+}
+
+.digest-headline-loading span:first-child {
+  max-width: 30rem;
+}
+
+.digest-headline-loading span:last-child {
+  max-width: 20rem;
 }
 
 .item-row-disclosure {
@@ -4445,12 +4484,17 @@ svg.lucide {
 }
 
 .fb-digest-head {
-  align-items: flex-start;
   border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 0.95rem;
+  padding: 1.125rem 1.375rem;
+}
+
+.fb-digest-title-row {
+  align-items: flex-start;
   display: flex;
   gap: 0.875rem;
   justify-content: space-between;
-  padding: 1.125rem 1.375rem;
 }
 
 .fb-digest-title {
@@ -4491,6 +4535,17 @@ svg.lucide {
   flex-direction: column;
   max-width: var(--measure);
   padding: 1.125rem 1.375rem 1.375rem;
+}
+
+@media (max-width: 640px) {
+  .fb-digest-title-row {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .fb-digest-title-row .fb-digest-chip {
+    justify-self: start;
+  }
 }
 
 .fb-digest-item {
