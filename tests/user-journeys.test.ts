@@ -2483,6 +2483,10 @@ test("content config is per-user, seeded from a system default", () => {
   const settingsPage = readFileSync("src/app/(workspace)/settings/page.tsx", "utf8");
   assert.match(settingsPage, /getUserSourceConfigs\(userId\)/);
   assert.match(settingsPage, /getUserDigestConfig\(userId\)/);
+  assert.match(settingsPage, /Source and digest rules/);
+  assert.match(settingsPage, /Source update rules/);
+  assert.match(settingsPage, /AI Digest rules/);
+  assert.match(settingsPage, /CommonSummaryRulesForm/);
   assert.doesNotMatch(settingsPage, /isAdmin \?/);
 
   // Runtime reads resolve to the requesting user's config.
@@ -2495,8 +2499,12 @@ test("content config is per-user, seeded from a system default", () => {
   // The editing components post to the per-user endpoints.
   const srcManager = readFileSync("src/components/AdminSourceTypeManager.tsx", "utf8");
   const digestForm = readFileSync("src/components/AdminDigestConfigForm.tsx", "utf8");
+  const commonSummaryRulesForm = readFileSync("src/components/CommonSummaryRulesForm.tsx", "utf8");
   assert.match(srcManager, /\/api\/settings\/source-types/);
   assert.match(digestForm, /\/api\/settings\/digest-config/);
+  assert.match(commonSummaryRulesForm, /commonSummaryRules/);
+  assert.match(commonSummaryRulesForm, /\/api\/settings\/digest-config/);
+  assert.doesNotMatch(digestForm, /commonSummaryRules/);
 
   // Config is no longer described as admin-owned in the agent contract / CLI.
   const contract = readFileSync(

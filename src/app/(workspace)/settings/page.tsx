@@ -4,6 +4,7 @@ import { KeyRound } from "lucide-react";
 import { AdminDigestConfigForm } from "@/components/AdminDigestConfigForm";
 import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
 import { AgentTokenPanel } from "@/components/AgentTokenPanel";
+import { CommonSummaryRulesForm } from "@/components/CommonSummaryRulesForm";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SEEDED_SOURCE_IDS } from "@/lib/source-config-seed";
@@ -50,24 +51,31 @@ async function SourceTypeConfigSection({ userId }: { userId: string }) {
     <section className="settings-rules mt-10 grid gap-4">
       <header className="settings-rules-head">
         <p className="fb-section-label">Advanced</p>
-        <h2 className="fb-section-heading mt-1">Briefing rules</h2>
+        <h2 className="fb-section-heading mt-1">Source and digest rules</h2>
         <p className="fb-desc mt-1 max-w-3xl">
-          Tune how source types are read and how digests are written. Changes
-          apply the next time your local helper updates sources.
+          Configure how source updates fetch and summarize posts, then how AI
+          Digest assembles those summaries.
         </p>
       </header>
 
       <details className="settings-rules-panel fb-panel">
         <summary className="settings-rules-summary flex cursor-pointer flex-wrap items-center justify-between gap-3">
           <div className="settings-rules-summary-copy">
-            <h3 className="fb-section-heading">Source types</h3>
+            <h3 className="fb-section-heading">Source update rules</h3>
             <p className="mt-1 text-sm text-[var(--muted-strong)]">
-              How each source type is read, summarized, and filtered.
+              How source content is fetched, filtered, and summarized into per-post summaries.
             </p>
           </div>
-          <span className="fb-kind-pill">{sourceConfigs.length} sources</span>
+          <span className="fb-kind-pill">{sourceConfigs.length} source types</span>
         </summary>
         <div className="settings-rules-body mt-4">
+          <div className="settings-config-form mb-4">
+            <CommonSummaryRulesForm
+              initialValue={digestConfig.commonSummaryRules}
+              updatedAt={digestConfig.updatedAt.toISOString()}
+              updatedBy={digestConfig.updatedBy}
+            />
+          </div>
           <AdminSourceTypeManager
             initialConfigs={sourceConfigs.map((c) => ({
               sourceId: c.sourceId,
@@ -89,12 +97,12 @@ async function SourceTypeConfigSection({ userId }: { userId: string }) {
       <details className="settings-rules-panel fb-panel">
         <summary className="settings-rules-summary flex cursor-pointer flex-wrap items-center justify-between gap-3">
           <div className="settings-rules-summary-copy">
-            <h3 className="fb-section-heading">Digest composition</h3>
+            <h3 className="fb-section-heading">AI Digest rules</h3>
             <p className="mt-1 text-sm text-[var(--muted-strong)]">
-              How source summaries are assembled into the daily digest.
+              How finished post summaries are ordered, assembled, and translated.
             </p>
           </div>
-          <span className="fb-kind-pill">Digest rules</span>
+          <span className="fb-kind-pill">Digest composition</span>
         </summary>
         <div className="settings-rules-body mt-4">
           <AdminDigestConfigForm
@@ -104,7 +112,6 @@ async function SourceTypeConfigSection({ userId }: { userId: string }) {
               digestIntro: digestConfig.digestIntro,
               translate: digestConfig.translate,
               digestOrder: digestConfig.digestOrder as string[],
-              commonSummaryRules: digestConfig.commonSummaryRules,
               updatedAt: digestConfig.updatedAt.toISOString(),
               updatedBy: digestConfig.updatedBy,
             }}

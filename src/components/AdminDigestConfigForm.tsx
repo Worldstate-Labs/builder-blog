@@ -15,7 +15,6 @@ export type AdminDigestConfig = {
   digestIntro: string;
   translate: string;
   digestOrder: string[];
-  commonSummaryRules: string;
   updatedAt: string;
   updatedBy: string | null;
 };
@@ -31,7 +30,6 @@ export function AdminDigestConfigForm({
 }) {
   const [config, setConfig] = useState(initialConfig);
   const [draft, setDraft] = useState({
-    commonSummaryRules: initialConfig.commonSummaryRules,
     digestIntro: initialConfig.digestIntro,
     translate: initialConfig.translate,
     digestOrder: initialConfig.digestOrder,
@@ -60,15 +58,7 @@ export function AdminDigestConfigForm({
       });
       return;
     }
-    if (draft.commonSummaryRules.trim().length === 0) {
-      setStatus({
-        kind: "error",
-        message: "Common summary rules can't be empty.",
-      });
-      return;
-    }
     const patch = {
-      commonSummaryRules: draft.commonSummaryRules,
       digestIntro: draft.digestIntro,
       translate: draft.translate,
       digestOrder,
@@ -99,8 +89,8 @@ export function AdminDigestConfigForm({
   return (
     <div className="settings-config-form digest-composition-form">
       <Section
-        title="Sections & order"
-        description="Which source types appear in the digest, and in what order."
+        title="Digest sections & order"
+        description="Which source-summary sections appear in AI Digest, and in what order."
       >
         <OrderedChoiceField
           label="Source order"
@@ -113,26 +103,8 @@ export function AdminDigestConfigForm({
       </Section>
 
       <Section
-        title="Per-post summary rules"
-        description="Applied when each post is summarized at fetch time — appended to every per-source summary prompt. This shapes the individual summaries, not how the digest is assembled."
-      >
-        <FieldShell
-          label="Common summarization rules"
-          description="Style guardrails that apply across all sources (every per-source summary prompt gets these appended)."
-        >
-          <textarea
-            className="fb-textarea w-full"
-            rows={10}
-            style={{ resize: "vertical", fontFamily: "var(--font-geist-mono)", fontSize: "0.8125rem" }}
-            value={draft.commonSummaryRules}
-            onChange={(e) => update("commonSummaryRules", e.target.value)}
-          />
-        </FieldShell>
-      </Section>
-
-      <Section
         title="Digest prompts"
-        description="Prompts that wrap the assembled per-source summaries into the final daily digest."
+        description="Prompts that assemble and translate the final digest from existing per-post summaries."
       >
         <FieldShell
           label="Intro prompt"
