@@ -317,7 +317,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /Run the terminal skill/);
   assert.match(skillPromptActions, /Update sources/);
   assert.match(skillPromptActions, /Build digest/);
-  assert.match(skillPromptActions, /Copy job prompt/);
+  assert.match(skillPromptActions, /Run or schedule/);
   assert.doesNotMatch(skillPromptActions, /onClick=\{\(\) => copyCommand\("once"\)\}/);
   assert.match(skillPromptActions, /Read \$\{promptUrl\} and follow the instructions/);
   assert.match(skillPromptActions, /\/api\/skill\/jobs\/\$\{job\}\/skill\.md/);
@@ -1423,6 +1423,37 @@ test("search result refinement builds source-limited queries", () => {
     withSiteSearchOperator("agent memory site:old.example.com -site:spam.example.com", "example.com"),
     "agent memory -site:spam.example.com site:example.com",
   );
+});
+
+test("source search results keep detail links while matching external URLs", () => {
+  const results = rankSearchDocuments({
+    query: "site:claude.com claude",
+    mode: "exact",
+    documents: [
+      {
+        id: "builder_claude",
+        type: "builder",
+        title: "claude.com",
+        body: "Claude blog source for Anthropic product updates.",
+        url: "/builder/entity_claude",
+        externalUrl: "https://claude.com/blog",
+        sourceName: "Blog",
+      },
+      {
+        id: "builder_other",
+        type: "builder",
+        title: "other.example",
+        body: "Other blog source for Anthropic product updates.",
+        url: "/builder/entity_other",
+        externalUrl: "https://other.example/blog",
+        sourceName: "Blog",
+      },
+    ],
+  });
+
+  assert.deepEqual(results.map((result) => result.id), ["builder_claude"]);
+  assert.equal(results[0].url, "/builder/entity_claude");
+  assert.equal(results[0].externalUrl, "https://claude.com/blog");
 });
 
 test("search tool clearing removes whole all-in operator groups", () => {

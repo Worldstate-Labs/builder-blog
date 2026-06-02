@@ -9,6 +9,7 @@ export type SearchDocument = {
   type: SearchDocumentType;
   title: string;
   body: string;
+  externalUrl?: string | null;
   url?: string | null;
   sourceName?: string | null;
   date?: Date | null;
@@ -742,6 +743,7 @@ function stripRankCandidateScores(candidate: SearchRankCandidate): SearchResult 
     type: candidate.type,
     title: candidate.title,
     body: candidate.body,
+    externalUrl: candidate.externalUrl,
     url: candidate.url,
     sourceName: candidate.sourceName,
     date: candidate.date,
@@ -785,14 +787,14 @@ function documentMatchesFilters(
 ) {
   const title = normalizeText(document.title);
   const body = normalizeText(document.body);
-  const url = normalizeText(document.url ?? "");
+  const url = normalizeText([document.url ?? "", document.externalUrl ?? ""].join(" "));
   const source = normalizeText(document.sourceName ?? "");
   const haystack = `${title} ${body} ${url} ${source}`;
 
   if (parsedQuery.type && document.type !== parsedQuery.type) return false;
   if (parsedQuery.excludedTypes.includes(document.type)) return false;
-  if (parsedQuery.site && !urlSiteMatches(document.url, parsedQuery.site)) return false;
-  if (parsedQuery.excludedSites.some((site) => urlSiteMatches(document.url, site))) return false;
+  if (parsedQuery.site && !documentSiteMatches(document, parsedQuery.site)) return false;
+  if (parsedQuery.excludedSites.some((site) => documentSiteMatches(document, site))) return false;
   if (parsedQuery.bodyTerms.some((term) => !body.includes(term))) return false;
   if (parsedQuery.titleTerms.some((term) => !title.includes(term))) return false;
   if (parsedQuery.urlTerms.some((term) => !url.includes(term))) return false;
@@ -832,6 +834,10 @@ function documentMatchesFilters(
   if (before && (!date || date > before)) return false;
 
   return true;
+}
+
+function documentSiteMatches(document: SearchDocument, site: string) {
+  return urlSiteMatches(document.url, site) || urlSiteMatches(document.externalUrl, site);
 }
 
 function exactMatchScore(

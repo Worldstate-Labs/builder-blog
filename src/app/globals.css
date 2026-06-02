@@ -2868,17 +2868,6 @@ svg.lucide {
   margin-top: 0.65rem;
 }
 
-.search-result-open {
-  align-items: center;
-  color: var(--accent);
-  display: inline-flex;
-  gap: 0.25rem;
-}
-
-.search-result-open:hover {
-  text-decoration: underline;
-}
-
 .search-result-refinements {
   margin-top: 0.7rem;
 }

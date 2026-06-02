@@ -143,7 +143,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.doesNotMatch(forYouSection, /followBriefDataChanged/);
   assert.doesNotMatch(forYouSection, /contentSyncStateChanged/);
   assert.doesNotMatch(forYouSection, /window\.addEventListener/);
-  assert.match(source("src/components/RecommendationFeed.tsx"), /Refresh snapshot/);
+  assert.match(source("src/components/RecommendationFeed.tsx"), /Refresh/);
   assert.match(forYouSection, /Loading \{scopeLabel\(scope\)\} recommendations/);
   assert.match(forYouSection, /aria-live="polite"/);
   assert.match(timelineRoute, /export async function GET/);
@@ -410,11 +410,22 @@ test("search suggestions API exists for autocomplete-style queries", () => {
 
 test("user library search can fetch operator-only candidate sets", () => {
   const userSearch = source("src/lib/user-search.ts");
+  const searchPage = source("src/app/(workspace)/search/page.tsx");
+  const searchLib = source("src/lib/search.ts");
 
   assert.match(userSearch, /terms\.length > 0/);
   assert.match(userSearch, /builderSearchConditions\(terms\)/);
   assert.match(userSearch, /feedSearchConditions\(terms\)/);
   assert.match(userSearch, /digestSearchConditions\(terms\)/);
+  assert.match(userSearch, /entityId: true/);
+  assert.match(userSearch, /externalUrl: builder\.sourceUrl \?\? builder\.fetchUrl/);
+  assert.match(userSearch, /url: builder\.entityId \? `\/builder\/\$\{builder\.entityId\}` : `\/builders#\$\{builder\.id\}`/);
+  assert.match(searchLib, /externalUrl\?: string \| null/);
+  assert.match(searchLib, /documentSiteMatches\(document, parsedQuery\.site\)/);
+  assert.match(searchPage, /const originalUrl = result\.externalUrl \?\? \(titleIsExternal \? result\.url : null\)/);
+  assert.match(searchPage, /className="post-read-original"/);
+  assert.match(searchPage, /View original/);
+  assert.doesNotMatch(searchPage, /className="search-result-open"/);
 });
 
 test("primary tabs use local loading fallbacks instead of full-route loaders", () => {
@@ -503,7 +514,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(source("src/components/PostCard.tsx"), /See more/);
   assert.match(source("src/components/PostCard.tsx"), /Raw content/);
   assert.match(source("src/components/PostCard.tsx"), /View original/);
-  assert.match(source("src/components/PostCard.tsx"), /\/builders#\$\{builder\.id\}/);
+  assert.match(source("src/components/PostCard.tsx"), /\/builder\/\$\{builder\.entityId\}/);
   assert.match(feedItemsRoute, /fetchDedupedFeedForEntities/);
   assert.match(feedItemsRoute, /activePoolBuilderIds/);
   assert.match(feedItemsRoute, /NextResponse\.json/);
@@ -652,7 +663,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /orderBy:\s*\[\{ importCount: "desc" \}, \{ viewCount: "desc" \}/);
   assert.match(hubImportForm, /libraryId/);
   assert.match(digestPipelineForm, /"use client"/);
-  assert.match(digestPipelineForm, /Shared Digests/);
+  assert.match(digestPipelineForm, /Shared AI Digests/);
   assert.doesNotMatch(digestPipelineForm, /Share my digest/);
   assert.doesNotMatch(digestPipelineForm, /Remove my digest/);
   assert.doesNotMatch(digestPipelineForm, /ownPipelineShared/);

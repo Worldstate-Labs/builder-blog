@@ -208,8 +208,8 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /setActiveTab\("log"\)/);
   assert.match(panel, /document\.getElementById\(runDomId\(runId\)\)/);
   assert.match(panel, /Last \{slots\.length\} scheduled/);
-  assert.match(panel, /Green saved, amber waiting, red missed or failed/);
-  assert.match(panel, /no run recorded for this scheduled time/);
+  assert.match(panel, /Green saved · amber waiting · red issue/);
+  assert.match(panel, /No run recorded/);
   assert.match(panel, /Open log/);
   assert.doesNotMatch(panel, /slots\.slice\(-4\)/);
   assert.doesNotMatch(panel, /RefreshCw/);

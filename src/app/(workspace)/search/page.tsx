@@ -634,16 +634,17 @@ function ResultCard({
   time: SearchTimeRange;
   typeFilter: SearchTypeFilter;
 }) {
-  const isExternal = result.url?.startsWith("http");
-  const displayUrl = formatDisplayUrl(result.url);
-  const sourceSite = searchSiteFromUrl(result.url);
+  const titleIsExternal = isExternalUrl(result.url);
+  const originalUrl = result.externalUrl ?? (titleIsExternal ? result.url : null);
+  const displayUrl = formatDisplayUrl(originalUrl ?? result.url);
+  const sourceSite = searchSiteFromUrl(originalUrl ?? result.url);
   const sourceName = result.sourceName ?? resultTypeLabels[result.type];
   const title = result.url ? (
     <a
       className="search-result-title"
       href={result.url}
-      rel={isExternal ? "noreferrer" : undefined}
-      target={isExternal ? "_blank" : undefined}
+      rel={titleIsExternal ? "noreferrer" : undefined}
+      target={titleIsExternal ? "_blank" : undefined}
     >
       <HighlightText text={result.title} query={query} />
     </a>
@@ -669,15 +670,17 @@ function ResultCard({
       <div className="search-result-meta">
         <span>{resultTypeLabels[result.type]}</span>
         {result.date ? <span>{formatDistanceToNow(result.date, { addSuffix: true })}</span> : null}
-        {result.url ? (
+        {originalUrl ? (
           <a
-            className="search-result-open"
-            href={result.url}
-            rel={isExternal ? "noreferrer" : undefined}
-            target={isExternal ? "_blank" : undefined}
+            aria-label={`View ${result.title} on its source site`}
+            className="post-read-original"
+            href={originalUrl}
+            rel="noreferrer"
+            target="_blank"
+            title="View original"
           >
-            Open
-            <ExternalLink className="h-3.5 w-3.5" />
+            View original
+            <ExternalLink aria-hidden="true" className="post-read-original-icon" />
           </a>
         ) : null}
       </div>
@@ -712,6 +715,10 @@ function ResultCard({
       ) : null}
     </article>
   );
+}
+
+function isExternalUrl(url: string | null | undefined) {
+  return Boolean(url?.startsWith("http"));
 }
 
 function PageLink({

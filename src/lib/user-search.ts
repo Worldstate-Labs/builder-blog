@@ -91,6 +91,7 @@ export async function searchUserLibrary({
       },
       select: {
         id: true,
+        entityId: true,
         name: true,
         handle: true,
         kind: true,
@@ -138,7 +139,8 @@ export async function searchUserLibrary({
           builder.fetchUrl ?? "",
           builder.canonicalKey,
         ].join(" "),
-        url: `/builders#${builder.id}`,
+        externalUrl: builder.sourceUrl ?? builder.fetchUrl,
+        url: builder.entityId ? `/builder/${builder.entityId}` : `/builders#${builder.id}`,
         sourceName: sourceLabel,
         date: builder.updatedAt,
       };
