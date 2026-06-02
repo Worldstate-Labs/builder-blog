@@ -317,13 +317,17 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /Run the terminal skill/);
   assert.match(skillPromptActions, /Update sources/);
   assert.match(skillPromptActions, /Build digest/);
-  assert.match(skillPromptActions, /Copy one-time prompt/);
-  assert.match(skillPromptActions, /Copy schedule prompt/);
+  assert.match(skillPromptActions, /Copy job prompt/);
+  assert.doesNotMatch(skillPromptActions, /onClick=\{\(\) => copyCommand\("once"\)\}/);
   assert.match(skillPromptActions, /Read \$\{promptUrl\} and follow the instructions/);
   assert.match(skillPromptActions, /\/api\/skill\/jobs\/\$\{job\}\/skill\.md/);
-  // Cron copy flow picks runtime AND cadence, both passed as URL params.
+  // The single job dialog includes one-time as the first frequency option;
+  // recurring selections still pick runtime + cadence and pass both as URL params.
   assert.match(skillPromptActions, /CronConfigDialog/);
   assert.match(skillPromptActions, /FREQUENCY_OPTIONS/);
+  assert.match(skillPromptActions, /\{ id: "once", label: "One-time" \}[\s\S]*\{ id: "30m"/);
+  assert.match(skillPromptActions, /pickedFreq === "once"/);
+  assert.match(skillPromptActions, /target: "once"/);
   assert.match(skillPromptActions, /params\.set\("runtime"/);
   assert.match(skillPromptActions, /params\.set\("freq"/);
   assert.match(skillPromptActions, /Frequency/);
@@ -336,9 +340,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /Include already digested items/);
   assert.match(skillPromptActions, /overrideFetched/);
   assert.match(skillPromptActions, /params\.set\("force", "1"\)/);
-  // The once flow opens a config dialog for BOTH contexts (digest gains the
-  // language picker + override; library keeps its override).
-  assert.match(skillPromptActions, /OnceConfigDialog/);
+  // One-time runs now share the schedule dialog instead of a separate button/dialog.
+  assert.doesNotMatch(skillPromptActions, /<OnceConfigDialog/);
   assert.match(skillPromptActions, /continueOnceCopy/);
   // Cron + once dialogs: compact <select> controls grouped into Schedule /
   // Output sections, plus an account-wide summary language select persisted via

@@ -26,6 +26,7 @@ const RUNTIME_OPTIONS: { id: AgentRuntime; label: string; hint: string }[] = [
 // Cron cadence. `id` values match the server whitelist in the
 // jobs/[job]/skill.md route, which maps each to a fixed cron expression.
 type CronFrequency = "30m" | "1h" | "12h" | "daily" | "weekly";
+type ScheduleFrequency = "once" | CronFrequency;
 // `overrideFetched` = re-fetch posts already in the library (pass --force to
 // fetch-personal, which ignores both the fetchedAt cutoff and the externalId
 // dedup). Library context only — the digest job doesn't fetch personal items.
@@ -34,12 +35,16 @@ type CronConfig = {
   freq: CronFrequency;
   overrideFetched: boolean;
 };
+type SchedulePromptSelection =
+  | { target: "once"; overrideFetched: boolean }
+  | { target: "cron"; cron: CronConfig };
 // What a copy carries beyond the exchange code. `cron` is set for the cron
 // flow (its own override lives inside it); `force` is the once flow's override
 // (no runtime/cadence to pick). Either source flips ?force=1.
 type CopyExtras = { cron: CronConfig | null; force: boolean };
 
-const FREQUENCY_CHOICES: { id: CronFrequency; label: string }[] = [
+const FREQUENCY_CHOICES: { id: ScheduleFrequency; label: string }[] = [
+  { id: "once", label: "One-time" },
   { id: "30m", label: "Every 30 minutes" },
   { id: "1h", label: "Every hour" },
   { id: "12h", label: "Every 12 hours" },
@@ -47,14 +52,14 @@ const FREQUENCY_CHOICES: { id: CronFrequency; label: string }[] = [
   { id: "weekly", label: "Once a week · Mon 08:00" },
 ];
 
-const FREQUENCY_OPTIONS: Record<SkillPromptContext, { id: CronFrequency; label: string }[]> = {
+const FREQUENCY_OPTIONS: Record<SkillPromptContext, { id: ScheduleFrequency; label: string }[]> = {
   library: FREQUENCY_CHOICES,
   digest: FREQUENCY_CHOICES,
 };
 
-const DEFAULT_FREQUENCY: Record<SkillPromptContext, CronFrequency> = {
-  library: "12h",
-  digest: "daily",
+const DEFAULT_FREQUENCY: Record<SkillPromptContext, ScheduleFrequency> = {
+  library: "once",
+  digest: "once",
 };
 
 // Account-wide summary output language. `value` is fed verbatim into the
@@ -192,7 +197,7 @@ const PROMPT_CONFIG = {
   library: {
     title: "Update sources",
     onceLabel: "Copy one-time prompt",
-    cronLabel: "Copy schedule prompt",
+    cronLabel: "Copy job prompt",
     onceJob: "library-once",
     cronJob: "library-cron-setup",
     stopJob: "library-cron-stop",
@@ -201,7 +206,7 @@ const PROMPT_CONFIG = {
   digest: {
     title: "Build digest",
     onceLabel: "Copy one-time prompt",
-    cronLabel: "Copy schedule prompt",
+    cronLabel: "Copy job prompt",
     onceJob: "digest-once",
     cronJob: "digest-cron-setup",
     stopJob: "digest-cron-stop",
@@ -249,14 +254,10 @@ export function SkillPromptActions({
   const [copiedTarget, setCopiedTarget] = useState<CopyTarget | null>(null);
   const [status, setStatus] = useState<{ kind: "error" | "info"; text: string } | null>(null);
   const [pickerTarget, setPickerTarget] = useState<CopyTarget | null>(null);
-  // Cron-only: the runtime + cadence the scheduled job should use. Picked
-  // in one dialog before the token picker, then appended to the prompt URL
-  // so the server-rendered markdown bakes in the right unattended
-  // invocation and crontab schedule.
+  // Job dialog: pick one-time or recurring cadence before the token picker.
+  // Recurring copies also include runtime + cadence URL params so the
+  // server-rendered markdown bakes in the unattended invocation and schedule.
   const [cronConfigOpen, setCronConfigOpen] = useState(false);
-  // Once flow: a small dialog to pick language (digest) and the override
-  // before copying. Opened for both contexts.
-  const [onceConfigOpen, setOnceConfigOpen] = useState(false);
   // The picked config survives between a config dialog and the token picker.
   // A ref (not state) so the picker's onConfirm can read it without an extra
   // render. Holds the cron config (cron flow) and/or the once force toggle.
@@ -362,6 +363,14 @@ export function SkillPromptActions({
     setPickerTarget("once");
   }
 
+  async function continueScheduleCopy(selection: SchedulePromptSelection) {
+    if (selection.target === "once") {
+      await continueOnceCopy(selection.overrideFetched);
+      return;
+    }
+    await continueCronCopy(selection.cron);
+  }
+
   async function copyCommand(target: CopyTarget) {
     setStatus(null);
 
@@ -369,15 +378,11 @@ export function SkillPromptActions({
       setStatus({ kind: "info", text: "Connect a local helper in Settings first" });
       return;
     }
-    // Cron flow: pick runtime + cadence + language + override first. Once flow:
-    // a small dialog to pick language (digest) and the override. Both bake their
-    // choice into the rendered prompt (and persist language account-wide).
+    // Schedule dialog handles both one-time and recurring runs. Recurring
+    // selections bake runtime/cadence into the prompt URL; one-time selections
+    // reuse the once prompt with the same output settings.
     if (target === "cron") {
       setCronConfigOpen(true);
-      return;
-    }
-    if (target === "once") {
-      setOnceConfigOpen(true);
       return;
     }
     if (activeTokens.length === 1) {
@@ -412,28 +417,16 @@ export function SkillPromptActions({
         </div>
       ) : null}
       <button
-        className="fb-btn light compact"
-        onClick={() => copyCommand("once")}
-        type="button"
-      >
-        {copiedTarget === "once" ? (
-          <Check aria-hidden="true" />
-        ) : (
-          <Copy aria-hidden="true" />
-        )}
-        {copiedTarget === "once" ? "Copied" : config.onceLabel}
-      </button>
-      <button
         className="fb-btn dark compact"
         onClick={() => copyCommand("cron")}
         type="button"
       >
-        {copiedTarget === "cron" ? (
+        {copiedTarget === "cron" || copiedTarget === "once" ? (
           <Check aria-hidden="true" />
         ) : (
           <CalendarClock aria-hidden="true" />
         )}
-        {copiedTarget === "cron" ? "Copied" : config.cronLabel}
+        {copiedTarget === "cron" || copiedTarget === "once" ? "Copied" : config.cronLabel}
       </button>
       {stopJob && showStop ? (
         <button
@@ -476,21 +469,9 @@ export function SkillPromptActions({
         summaryLanguage={summaryLanguage}
         digestMaxPostAgeDays={digestMaxPostAgeDays}
         onCancel={() => setCronConfigOpen(false)}
-        onConfirm={async (cron) => {
+        onConfirm={async (selection) => {
           setCronConfigOpen(false);
-          await continueCronCopy(cron);
-        }}
-      />
-
-      <OnceConfigDialog
-        open={onceConfigOpen}
-        context={context}
-        summaryLanguage={summaryLanguage}
-        digestMaxPostAgeDays={digestMaxPostAgeDays}
-        onCancel={() => setOnceConfigOpen(false)}
-        onConfirm={async (overrideFetched) => {
-          setOnceConfigOpen(false);
-          await continueOnceCopy(overrideFetched);
+          await continueScheduleCopy(selection);
         }}
       />
 
@@ -703,12 +684,13 @@ function CronConfigDialog({
   summaryLanguage: string | null;
   digestMaxPostAgeDays: number | null;
   onCancel: () => void;
-  onConfirm: (cron: CronConfig) => void | Promise<void>;
+  onConfirm: (selection: SchedulePromptSelection) => void | Promise<void>;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [pickedRuntime, setPickedRuntime] = useState<AgentRuntime>(RUNTIME_OPTIONS[0].id);
   const freqOptions = FREQUENCY_OPTIONS[context];
-  const [pickedFreq, setPickedFreq] = useState<CronFrequency>(DEFAULT_FREQUENCY[context]);
+  const [pickedFreq, setPickedFreq] = useState<ScheduleFrequency>(DEFAULT_FREQUENCY[context]);
+  const isOneTime = pickedFreq === "once";
   const override = OVERRIDE_COPY[context];
   const initialLanguage = summaryLanguage ?? DEFAULT_SUMMARY_LANGUAGE;
   const [pickedLanguage, setPickedLanguage] = useState(initialLanguage);
@@ -720,7 +702,7 @@ function CronConfigDialog({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const runtimeHint =
-    RUNTIME_OPTIONS.find((o) => o.id === pickedRuntime)?.hint ?? "";
+    isOneTime ? "" : RUNTIME_OPTIONS.find((o) => o.id === pickedRuntime)?.hint ?? "";
 
   useEffect(() => {
     const d = dialogRef.current;
@@ -779,11 +761,18 @@ function CronConfigDialog({
           return;
         }
       }
-      await onConfirm({
-        runtime: pickedRuntime,
-        freq: pickedFreq,
-        overrideFetched,
-      });
+      if (pickedFreq === "once") {
+        await onConfirm({ target: "once", overrideFetched });
+      } else {
+        await onConfirm({
+          target: "cron",
+          cron: {
+            runtime: pickedRuntime,
+            freq: pickedFreq,
+            overrideFetched,
+          },
+        });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -808,11 +797,10 @@ function CronConfigDialog({
       >
         <header className="token-picker-header">
           <h2 id="cron-config-title" className="token-picker-title">
-            Set the schedule
+            Choose the job
           </h2>
           <p className="token-picker-sub">
-            These choices are saved into the prompt so it can run later without
-            asking again.
+            Run it once now, or save a recurring local schedule.
           </p>
         </header>
 
@@ -826,7 +814,7 @@ function CronConfigDialog({
               id="cron-freq"
               className="cron-field-select"
               value={pickedFreq}
-              onChange={(e) => setPickedFreq(e.target.value as CronFrequency)}
+              onChange={(e) => setPickedFreq(e.target.value as ScheduleFrequency)}
             >
               {freqOptions.map((option) => (
                 <option key={option.id} value={option.id}>
@@ -835,24 +823,28 @@ function CronConfigDialog({
               ))}
             </select>
           </div>
-          <div className="cron-field">
-            <label htmlFor="cron-runtime" className="cron-field-label">
-              Local helper
-            </label>
-            <select
-              id="cron-runtime"
-              className="cron-field-select"
-              value={pickedRuntime}
-              onChange={(e) => setPickedRuntime(e.target.value as AgentRuntime)}
-            >
-              {RUNTIME_OPTIONS.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <p className="cron-field-hint">{runtimeHint}</p>
+          {isOneTime ? null : (
+            <>
+              <div className="cron-field">
+                <label htmlFor="cron-runtime" className="cron-field-label">
+                  Local helper
+                </label>
+                <select
+                  id="cron-runtime"
+                  className="cron-field-select"
+                  value={pickedRuntime}
+                  onChange={(e) => setPickedRuntime(e.target.value as AgentRuntime)}
+                >
+                  {RUNTIME_OPTIONS.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="cron-field-hint">{runtimeHint}</p>
+            </>
+          )}
 
           <p className="token-picker-grouplabel">Output</p>
           <SummaryLanguageField
@@ -888,7 +880,9 @@ function CronConfigDialog({
             />
             <span className="cron-check-body">
               <span className="cron-check-name">{override.name}</span>
-              <span className="cron-field-hint">{override.cronHint}</span>
+              <span className="cron-field-hint">
+                {isOneTime ? override.onceHint : override.cronHint}
+              </span>
             </span>
           </label>
 
@@ -910,200 +904,6 @@ function CronConfigDialog({
             disabled={submitting}
           >
             <CalendarClock aria-hidden="true" />
-            {submitting ? "…" : "Continue"}
-          </button>
-        </footer>
-      </form>
-    </dialog>
-  );
-}
-
-// Once dialog: optional per-run config before copying. Library = a single
-// override toggle (re-fetch posts already saved in the library). Digest =
-// summary language + "re-generate today's digest" override. Cron has its own
-// dialog with runtime + cadence; once only needs these. Both reuse the same
-// ?force=1 channel for the override — the meaning differs by context.
-function OnceConfigDialog({
-  open,
-  context,
-  summaryLanguage,
-  digestMaxPostAgeDays,
-  onCancel,
-  onConfirm,
-}: {
-  open: boolean;
-  context: SkillPromptContext;
-  summaryLanguage: string | null;
-  digestMaxPostAgeDays: number | null;
-  onCancel: () => void;
-  onConfirm: (overrideFetched: boolean) => void | Promise<void>;
-}) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const override = OVERRIDE_COPY[context];
-  // Language is account-wide; digest output honors it, library once doesn't
-  // expose it (parity with the library cron/once split).
-  const showLanguage = context === "digest";
-  const initialLanguage = summaryLanguage ?? DEFAULT_SUMMARY_LANGUAGE;
-  const [pickedLanguage, setPickedLanguage] = useState(initialLanguage);
-  const initialMaxAge = digestMaxPostAgeDays;
-  const [pickedMaxAge, setPickedMaxAge] = useState(
-    initialMaxAge === null ? "" : String(initialMaxAge),
-  );
-  const [overrideFetched, setOverrideFetched] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const d = dialogRef.current;
-    if (!d) return;
-    if (open && !d.open) {
-      try {
-        d.showModal();
-      } catch {
-        // showModal throws if already open; ignore.
-      }
-    } else if (!open && d.open) {
-      d.close();
-    }
-  }, [open]);
-
-  useEffect(() => {
-    const d = dialogRef.current;
-    if (!d) return;
-    const onClose = () => {
-      setSubmitting(false);
-      onCancel();
-    };
-    d.addEventListener("close", onClose);
-    return () => d.removeEventListener("close", onClose);
-  }, [onCancel]);
-
-  async function confirm() {
-    if (submitting) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      if (showLanguage) {
-        const saved = await persistSummaryLanguage(pickedLanguage, initialLanguage);
-        if (!saved) {
-          setError("Couldn't save the summary language — try again.");
-          setSubmitting(false);
-          return;
-        }
-      }
-      if (context === "digest") {
-        const trimmed = pickedMaxAge.trim();
-        if (trimmed !== "" && !Number.isFinite(Number(trimmed))) {
-          setError("Max post age must be a whole number of days.");
-          setSubmitting(false);
-          return;
-        }
-        const maxAge =
-          trimmed === ""
-            ? null
-            : Math.min(365, Math.max(1, Math.floor(Number(trimmed))));
-        const savedAge = await persistDigestMaxAge(maxAge, initialMaxAge);
-        if (!savedAge) {
-          setError("Couldn't save max post age. Try again.");
-          setSubmitting(false);
-          return;
-        }
-      }
-      await onConfirm(overrideFetched);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <dialog
-      ref={dialogRef}
-      aria-labelledby="once-config-title"
-      className="token-picker-dialog"
-      onClick={(e) => {
-        if (e.target === dialogRef.current) onCancel();
-      }}
-    >
-      <form
-        method="dialog"
-        className="grid"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void confirm();
-        }}
-      >
-        <header className="token-picker-header">
-          <h2 id="once-config-title" className="token-picker-title">
-            {context === "digest" ? "Build the digest once" : "Update sources once"}
-          </h2>
-          <p className="token-picker-sub">
-            {context === "digest"
-              ? "By default this builds a digest from new items since your last one."
-              : "By default this saves only posts newer than what’s already in your library."}
-          </p>
-        </header>
-
-        <div className="cron-config-body">
-          {showLanguage ? (
-            <>
-              <p className="token-picker-grouplabel">Output</p>
-              <SummaryLanguageField
-                id="once-lang"
-                value={pickedLanguage}
-                onChange={setPickedLanguage}
-              />
-              <p className="cron-field-hint">
-                Saved for future summaries.
-              </p>
-            </>
-          ) : null}
-
-          {context === "digest" ? (
-            <>
-              <MaxAgeField
-                id="once-max-age"
-                value={pickedMaxAge}
-                onChange={setPickedMaxAge}
-              />
-              <p className="cron-field-hint">
-                Posts published more than this many days ago are excluded. Blank
-                = no limit.
-              </p>
-            </>
-          ) : null}
-
-          <label className="cron-check">
-            <input
-              type="checkbox"
-              name="override-fetched"
-              checked={overrideFetched}
-              onChange={(e) => setOverrideFetched(e.target.checked)}
-              className="cron-check-input"
-            />
-            <span className="cron-check-body">
-              <span className="cron-check-name">{override.name}</span>
-              <span className="cron-field-hint">{override.onceHint}</span>
-            </span>
-          </label>
-
-          {error ? <p className="cron-field-error">{error}</p> : null}
-        </div>
-
-        <footer className="token-picker-footer">
-          <button
-            type="button"
-            className="fb-btn light compact"
-            onClick={onCancel}
-            disabled={submitting}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="fb-btn dark compact"
-            disabled={submitting}
-          >
-            <Copy aria-hidden="true" />
             {submitting ? "…" : "Continue"}
           </button>
         </footer>
