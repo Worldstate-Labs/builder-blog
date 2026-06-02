@@ -64,8 +64,8 @@ const DEFAULT_FREQUENCY: Record<SkillPromptContext, ScheduleFrequency> = {
 
 // Account-wide summary output language. `value` is fed verbatim into the
 // summary prompt ("…summary in <value>"); the option list lives in
-// SettingsFields as the single source of truth, shared with the admin
-// per-source Language field. "zh" is the per-source default, so 中文 is a no-op.
+// SettingsFields as the single source of truth. "zh" is the default when no
+// one-time or cron prompt has selected another language.
 const DEFAULT_SUMMARY_LANGUAGE = "zh";
 
 // The override toggle reuses one URL channel (?force=1) but means different
@@ -235,8 +235,8 @@ export function SkillPromptActions({
 }: {
   context: SkillPromptContext;
   tokens?: AgentTokenListItem[];
-  // Current account-wide summary language (null = per-source default). Set in
-  // the library cron dialog; persisted via /api/settings/summary-language.
+  // Current account-wide summary language (null = default zh). Set in the
+  // one-time/cron dialogs; persisted via /api/settings/summary-language.
   summaryLanguage?: string | null;
   // Current digest max post-age floor (null = no limit). Set in the digest
   // dialogs; persisted via /api/settings/digest-max-age.

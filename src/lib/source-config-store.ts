@@ -102,8 +102,6 @@ export type SourceConfigPatch = Partial<{
   summaryPromptBody: string;
   fetchPromptBody: string | null;
   summaryStyle: SourceSummaryStyle;
-  summaryLanguage: string;
-  summaryLengthHint: string | null;
 }>;
 
 export async function updateSourceConfig(
@@ -184,8 +182,6 @@ function sourceConfigCopyData(row: SourceTypeConfig) {
     summaryPromptBody: row.summaryPromptBody,
     fetchPromptBody: row.fetchPromptBody,
     summaryStyle: row.summaryStyle,
-    summaryLanguage: row.summaryLanguage,
-    summaryLengthHint: row.summaryLengthHint,
   };
 }
 

@@ -70,10 +70,10 @@ export async function GET(request: Request) {
     getUserDigestConfig(user.id),
   ]);
 
-  // Account-wide summary language: when the user set one (cron dialog /
-  // settings), it overrides every source's per-type summaryLanguage so all of
-  // this user's summaries are generated in it. Null → per-source default.
-  const userSummaryLanguage = preference?.summaryLanguage?.trim() || null;
+  // Account-wide summary language selected by the one-time or cron prompt.
+  // Skill context always uses this run-level language, never a per-source
+  // language override.
+  const summaryLanguage = preference?.summaryLanguage?.trim() || "zh";
 
   // Per-source skill context: merge static fields from sources.json
   // (id, builderKind, feedItemKinds, urlPatterns) with admin-edited
@@ -93,7 +93,6 @@ export async function GET(request: Request) {
       body: string;
       style: string;
       language: string;
-      lengthHint: string | null;
     };
     fetchPrompt: {
       body: string | null;
@@ -115,8 +114,7 @@ export async function GET(request: Request) {
       summaryPrompt: {
         body: cfg.summaryPromptBody,
         style: cfg.summaryStyle,
-        language: userSummaryLanguage ?? cfg.summaryLanguage,
-        lengthHint: cfg.summaryLengthHint,
+        language: summaryLanguage,
       },
       fetchPrompt: {
         body: cfg.fetchPromptBody,
@@ -309,7 +307,7 @@ export async function GET(request: Request) {
     jobRunId,
     dryRun,
     generatedAt: now.toISOString(),
-    language: userSummaryLanguage ?? "zh",
+    language: summaryLanguage,
     digestWindow: {
       until: now.toISOString(),
       // Optional publishedAt lookback floor (null = no floor). Candidate

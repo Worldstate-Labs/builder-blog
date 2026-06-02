@@ -4,11 +4,8 @@ import { useMemo, useState, useTransition } from "react";
 import {
   clampRatio,
   FieldNumber,
-  FieldSelect,
-  FieldText,
   FieldTextarea,
   FooterBar,
-  languageOptions,
   Section,
   type SaveStatusState,
 } from "@/components/settings/SettingsFields";
@@ -21,8 +18,6 @@ export type AdminSourceTypeConfig = {
   summaryPromptBody: string;
   fetchPromptBody: string | null;
   summaryStyle: string;
-  summaryLanguage: string;
-  summaryLengthHint: string | null;
   updatedAt: string;
   updatedBy: string | null;
 };
@@ -35,8 +30,6 @@ type ContentQuality = {
 };
 
 type Draft = {
-  summaryLanguage: string;
-  summaryLengthHint: string;
   summaryPromptBody: string;
   fetchPromptBody: string;
   contentQuality: ContentQuality;
@@ -57,8 +50,6 @@ function toContentQuality(raw: unknown): ContentQuality {
 
 function toDraft(config: AdminSourceTypeConfig): Draft {
   return {
-    summaryLanguage: config.summaryLanguage,
-    summaryLengthHint: config.summaryLengthHint ?? "",
     summaryPromptBody: config.summaryPromptBody,
     fetchPromptBody: config.fetchPromptBody ?? "",
     contentQuality: toContentQuality(config.contentQuality),
@@ -152,9 +143,6 @@ function SourceTypeCard({
     }
 
     const patch = {
-      summaryLanguage: draft.summaryLanguage.trim(),
-      summaryLengthHint:
-        draft.summaryLengthHint.trim() === "" ? null : draft.summaryLengthHint.trim(),
       summaryPromptBody: draft.summaryPromptBody,
       fetchPromptBody: draft.fetchPromptBody.trim() === "" ? null : draft.fetchPromptBody,
       contentQuality,
@@ -215,22 +203,8 @@ function SourceTypeCard({
         <Section
           step="02"
           title="Summarization"
-          description="How each item of this source is turned into a brief. Used by both digest-once and library-once."
+          description="How each item of this source is turned into a brief. Output language comes from the one-time or cron run prompt."
         >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FieldSelect
-              label="Language"
-              value={draft.summaryLanguage}
-              options={languageOptions(draft.summaryLanguage)}
-              onChange={(v) => update("summaryLanguage", v)}
-            />
-            <FieldText
-              label="Length hint"
-              placeholder="Optional · e.g. 100–300 words"
-              value={draft.summaryLengthHint}
-              onChange={(v) => update("summaryLengthHint", v)}
-            />
-          </div>
           <FieldTextarea
             label="Summary prompt body"
             rows={16}

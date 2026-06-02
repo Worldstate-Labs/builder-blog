@@ -35,8 +35,6 @@ export type SourceTypeConfigShape = {
   /// deterministic behavior is authoritative".
   fetchPromptBody: string | null;
   summaryStyle: SourceSummaryStyle;
-  summaryLanguage: string;
-  summaryLengthHint: string | null;
 };
 
 export type DigestConfigShape = {
@@ -92,8 +90,6 @@ export const DEFAULT_SOURCE_CONFIGS: Record<string, SourceTypeConfigShape> =
         summaryPromptBody: summaryPromptBodyForSourceId(entry.id),
         fetchPromptBody: fetchPromptBodyForSourceId(entry.id),
         summaryStyle: summaryStyleForSourceId(entry.id),
-        summaryLanguage: "zh",
-        summaryLengthHint: null,
       };
       return [entry.id, config];
     }),
@@ -125,8 +121,6 @@ export async function ensureSourceConfigsSeeded(client: PrismaClient): Promise<v
       summaryPromptBody: config.summaryPromptBody,
       fetchPromptBody: config.fetchPromptBody,
       summaryStyle: config.summaryStyle,
-      summaryLanguage: config.summaryLanguage,
-      summaryLengthHint: config.summaryLengthHint,
     })),
     skipDuplicates: true,
   });

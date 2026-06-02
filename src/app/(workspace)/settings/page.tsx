@@ -85,8 +85,6 @@ async function SourceTypeConfigSection({ userId }: { userId: string }) {
               summaryPromptBody: c.summaryPromptBody,
               fetchPromptBody: c.fetchPromptBody,
               summaryStyle: c.summaryStyle,
-              summaryLanguage: c.summaryLanguage,
-              summaryLengthHint: c.summaryLengthHint,
               updatedAt: c.updatedAt.toISOString(),
               updatedBy: c.updatedBy,
             }))}

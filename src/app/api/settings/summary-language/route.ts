@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 // Account-wide summary output language. Dedicated endpoint (not the broader
 // feed-preferences PATCH) so the cron dialog can set just the language without
 // resetting the user's digest-frequency/max-age preferences. Empty string
-// clears the override (falls back to the per-source default).
+// clears the saved value; skill context then falls back to zh.
 const SummaryLanguageSchema = z.object({
   summaryLanguage: z.string().max(40),
 });

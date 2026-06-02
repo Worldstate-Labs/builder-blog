@@ -471,7 +471,6 @@ test("ready fetch tasks carry embedded source-specific single-post prompts", asy
         body: "tweet prompt body",
         style: "x_twitter",
         language: "zh",
-        lengthHint: null,
       },
     },
     youtube: {
@@ -481,7 +480,6 @@ test("ready fetch tasks carry embedded source-specific single-post prompts", asy
         body: "podcast prompt body",
         style: "podcast_or_video",
         language: "zh",
-        lengthHint: null,
       },
     },
     blog: {
@@ -491,7 +489,6 @@ test("ready fetch tasks carry embedded source-specific single-post prompts", asy
         body: "blog prompt body",
         style: "blog_or_document",
         language: "zh",
-        lengthHint: null,
       },
     },
   };

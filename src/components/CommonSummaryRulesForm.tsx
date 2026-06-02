@@ -60,7 +60,7 @@ export function CommonSummaryRulesForm({
 
   return (
     <Section
-      title="Post summary rules"
+      title="Common post-summary rules"
       description="Applied when each fetched post is summarized before it can appear in feeds or AI Digest."
     >
       <div className="common-summary-rules-form">

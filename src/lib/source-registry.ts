@@ -35,8 +35,6 @@ export type MergedSourceDefinition = SourceDefinition & {
   summaryPromptBody: string;
   fetchPromptBody: string | null;
   summaryStyle: string;
-  summaryLanguage: string;
-  summaryLengthHint: string | null;
 };
 
 function buildSourceDefinitions(): SourceDefinition[] {
@@ -183,8 +181,6 @@ function mergeDefinition(
     summaryPromptBody: config.summaryPromptBody,
     fetchPromptBody: config.fetchPromptBody,
     summaryStyle: config.summaryStyle,
-    summaryLanguage: config.summaryLanguage,
-    summaryLengthHint: config.summaryLengthHint,
   };
 }
 

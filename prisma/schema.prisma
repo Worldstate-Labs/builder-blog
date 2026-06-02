@@ -387,10 +387,8 @@ model UserFeedPreference {
   /// Null = no floor (consider all not-yet-digested posts). Replaces the old
   /// mandatory 90-day cap; the per-user DigestedItem marker is now what dedups.
   digestMaxPostAgeDays      Int?
-  /// Account-wide summary output language. When set, /api/skill/context
-  /// overrides each source's per-type summaryLanguage with this value so all
-  /// of the user's summaries (library cron + once) are generated in it. Null =
-  /// fall back to the per-source SourceTypeConfig.summaryLanguage default.
+  /// Account-wide summary output language selected by the one-time / cron
+  /// prompt. Null = use the runtime default language (zh).
   summaryLanguage           String?
   createdAt                 DateTime        @default(now())
   updatedAt                 DateTime        @updatedAt
@@ -599,6 +597,8 @@ model SourceTypeConfig {
   /// deterministic fetch behavior is the only thing that runs.
   fetchPromptBody    String?
   summaryStyle       String
+  /// Legacy compatibility fields. Runtime language comes from
+  /// UserFeedPreference.summaryLanguage; length hint is unused.
   summaryLanguage    String   @default("zh")
   summaryLengthHint  String?
   updatedAt          DateTime @updatedAt
@@ -631,6 +631,8 @@ model UserSourceTypeConfig {
   summaryPromptBody  String
   fetchPromptBody    String?
   summaryStyle       String
+  /// Legacy compatibility fields. Runtime language comes from
+  /// UserFeedPreference.summaryLanguage; length hint is unused.
   summaryLanguage    String   @default("zh")
   summaryLengthHint  String?
   updatedAt          DateTime @updatedAt

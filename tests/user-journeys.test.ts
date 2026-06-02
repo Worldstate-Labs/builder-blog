@@ -1090,7 +1090,10 @@ test("digest feed user path selects not-yet-digested posts within the optional l
   assert.match(contextRoute, /regenerate/);
   assert.match(contextRoute, /prompts:/);
   assert.match(contextRoute, /preference\?\.summaryLanguage/);
-  assert.match(contextRoute, /userSummaryLanguage \?\? cfg\.summaryLanguage/);
+  assert.match(contextRoute, /const summaryLanguage = preference\?\.summaryLanguage\?\.trim\(\) \|\| "zh"/);
+  assert.match(contextRoute, /language: summaryLanguage/);
+  assert.doesNotMatch(contextRoute, /cfg\.summaryLanguage/);
+  assert.doesNotMatch(contextRoute, /lengthHint: cfg\.summaryLengthHint/);
 
   // The exclusion is implemented in the shared deduped-feed helper.
   const resolver = readFileSync("src/lib/builder-channel-resolver.ts", "utf8");
