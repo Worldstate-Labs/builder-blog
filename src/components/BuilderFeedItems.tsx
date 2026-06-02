@@ -82,9 +82,9 @@ export function BuilderFeedItems({
       ref={detailsRef}
     >
       <summary>
-        <span>Summarized posts</span>
+        <span>Posts</span>
         <span className="text-[var(--muted)]">
-          {items ? `Latest ${items.length} of ${totalCount}` : `${totalCount} posts`}
+          {items ? `${items.length} shown` : `${totalCount} saved`}
         </span>
       </summary>
       <div className="builder-post-list">

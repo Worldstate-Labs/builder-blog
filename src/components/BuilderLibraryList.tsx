@@ -274,25 +274,28 @@ function BuilderCard({
       <div className="builder-library-card-main grid items-center gap-3.5">
         <BuilderAvatar builder={builder} />
         <BuilderInfo builder={builder} />
+        <BuilderStats builder={builder} />
         <div className="builder-library-actions row-actions flex flex-shrink-0 items-center gap-3">
-          {builder.sourceUrl || builder.fetchUrl ? (
-            <a
-              aria-label={`Open ${builder.name} on its source site`}
-              className="builder-library-open-source"
-              href={(builder.sourceUrl ?? builder.fetchUrl) as string}
-              rel="noopener noreferrer"
-              target="_blank"
-              title="Open source"
-            >
-              <ExternalLink aria-hidden="true" />
-            </a>
-          ) : null}
-          {canEdit && editableSourceOptions ? (
-            <BuilderEditDialog
-              builder={builder}
-              sourceOptions={editableSourceOptions}
-            />
-          ) : null}
+          <div className="builder-library-row-tools" aria-label="Source tools">
+            {builder.sourceUrl || builder.fetchUrl ? (
+              <a
+                aria-label={`Open ${builder.name} on its source site`}
+                className="builder-library-open-source"
+                href={(builder.sourceUrl ?? builder.fetchUrl) as string}
+                rel="noopener noreferrer"
+                target="_blank"
+                title="Open source"
+              >
+                <ExternalLink aria-hidden="true" />
+              </a>
+            ) : null}
+            {canEdit && editableSourceOptions ? (
+              <BuilderEditDialog
+                builder={builder}
+                sourceOptions={editableSourceOptions}
+              />
+            ) : null}
+          </div>
           <BuilderLibraryActions
             allowRemove={builder.allowRemove}
             builderId={builder.id}
@@ -350,83 +353,8 @@ function avatarMonogram(builder: BuilderLibraryListItem): string {
   return first.toUpperCase();
 }
 
-function avatarFaviconUrl(builder: BuilderLibraryListItem): string | null {
-  // For X and YouTube every row shares the same platform host, so
-  // the favicon would be the same generic logo for every account —
-  // less informative than the monogram. Stick with the monogram
-  // there and use a real favicon only when the host varies per row.
-  if (builder.sourceType === "x" || builder.sourceType === "youtube") return null;
-  const url = builder.sourceUrl ?? builder.fetchUrl;
-  if (!url) return null;
-  try {
-    const host = new URL(url).host;
-    if (!host) return null;
-    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
-  } catch {
-    return null;
-  }
-}
-
 function BuilderAvatar({ builder }: { builder: BuilderLibraryListItem }) {
   const monogram = avatarMonogram(builder);
-  const realAvatarUrl = builder.avatarUrl;
-  const faviconUrl = avatarFaviconUrl(builder);
-  // Priority chain: server-resolved real photo → host favicon → monogram.
-  // Track failed URLs in a Set so that when builder.avatarUrl changes
-  // (e.g. after an Edit + router.refresh fetches a freshly enriched
-  // avatar), the new URL gets a fresh attempt instead of inheriting
-  // a stale "this image already failed" flag.
-  const [failedUrls, setFailedUrls] = useState<ReadonlySet<string>>(() => new Set());
-  function markFailed(url: string) {
-    setFailedUrls((prev) => {
-      if (prev.has(url)) return prev;
-      const next = new Set(prev);
-      next.add(url);
-      return next;
-    });
-  }
-  if (realAvatarUrl && !failedUrls.has(realAvatarUrl)) {
-    return (
-      <span
-        className="builder-library-avatar fb-src-icon"
-        style={{ overflow: "hidden", padding: 0 }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          alt=""
-          aria-hidden="true"
-          height={36}
-          width={36}
-          key={realAvatarUrl}
-          loading="lazy"
-          onError={() => markFailed(realAvatarUrl)}
-          src={realAvatarUrl}
-          style={{ height: "100%", width: "100%", objectFit: "cover" }}
-        />
-      </span>
-    );
-  }
-  if (faviconUrl && !failedUrls.has(faviconUrl)) {
-    return (
-      <span
-        className="builder-library-avatar fb-src-icon"
-        style={{ overflow: "hidden", padding: 0 }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          alt=""
-          aria-hidden="true"
-          height={36}
-          width={36}
-          key={faviconUrl}
-          loading="lazy"
-          onError={() => markFailed(faviconUrl)}
-          src={faviconUrl}
-          style={{ height: "100%", width: "100%", objectFit: "cover" }}
-        />
-      </span>
-    );
-  }
   return (
     <span className="builder-library-avatar fb-src-icon">{monogram}</span>
   );
@@ -434,11 +362,7 @@ function BuilderAvatar({ builder }: { builder: BuilderLibraryListItem }) {
 
 function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
   const sourceUrl = builder.sourceUrl ?? builder.fetchUrl;
-  const latestPostCreatedAt = builder.latestPostCreatedAt
-    ? new Date(builder.latestPostCreatedAt)
-    : null;
   const hostLabel = builder.handle ? `@${builder.handle}` : sourceSummary(sourceUrl);
-  const hasFeedItems = builder.feedItemCount > 0;
 
   return (
     <div className="min-w-0">
@@ -456,29 +380,27 @@ function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
         <SourceBadge builder={builder} />
       </div>
       <div className="fb-src-meta">
-        <span className="source-kind-meta fb-kind-pill">{builder.kind.toLowerCase()}</span>
         {hostLabel ? (
           <span className="source-host-meta mono truncate max-w-[18rem]">{hostLabel}</span>
         ) : null}
-        <span className="source-count-dot source-meta-dot">·</span>
-        <span
-          className={
-            hasFeedItems
-              ? "source-count-meta"
-              : "source-count-meta source-count-meta-empty"
-          }
-        >
-          {builder.feedItemCount} items
-        </span>
-        {latestPostCreatedAt ? (
-          <>
-            <span className="source-latest-dot source-meta-dot">·</span>
-            <span className="source-latest-meta">
-              Latest {formatCompactDate(latestPostCreatedAt)}
-            </span>
-          </>
-        ) : null}
       </div>
+    </div>
+  );
+}
+
+function BuilderStats({ builder }: { builder: BuilderLibraryListItem }) {
+  const latestPostCreatedAt = builder.latestPostCreatedAt
+    ? new Date(builder.latestPostCreatedAt)
+    : null;
+
+  return (
+    <div className="builder-library-stats" aria-label="Source summary">
+      <span className="builder-library-stats-primary">
+        {builder.feedItemCount} {builder.feedItemCount === 1 ? "item" : "items"}
+      </span>
+      <span className="builder-library-stats-secondary">
+        {latestPostCreatedAt ? `Latest ${formatCompactDate(latestPostCreatedAt)}` : "No posts yet"}
+      </span>
     </div>
   );
 }

@@ -112,7 +112,7 @@ export function BuilderEditDialog({
     <>
       <button
         aria-label={`Edit ${builder.name}`}
-        className="fb-icon-btn fb-icon-btn--xs"
+        className="builder-library-edit-button fb-icon-btn fb-icon-btn--xs"
         onClick={openDialog}
         title="Edit source"
         type="button"

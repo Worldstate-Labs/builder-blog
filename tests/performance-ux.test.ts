@@ -476,7 +476,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
   assert.match(buildersPage, /title=\{data\.isAdmin \? adminCommunityLibraryName : "Private library"\}[\s\S]*defaultOpen/);
-  assert.match(builderLibraryList, /Latest \{formatCompactDate\(latestPostCreatedAt\)\}/);
+  assert.match(builderLibraryList, /function BuilderStats/);
+  assert.match(builderLibraryList, /`Latest \$\{formatCompactDate\(latestPostCreatedAt\)\}`/);
   assert.match(builderLibraryList, /timeZone:\s*"UTC"/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported libraries/);
@@ -513,10 +514,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /name="fetchUrl"/);
   assert.match(builderFeedItems, /"use client"/);
   assert.match(builderFeedItems, /fetch\(`\/api\/builders\/\$\{builderId\}\/feed-items`/);
-  // UI copy migrated from "Fetched" to "Summarized" / "Raw content"
-  // for compliance — see CLAUDE.md design context. The canonical display
-  // component is PostCard.
-  assert.match(builderFeedItems, /Summarized posts/);
+  // UI copy avoids "Fetched" in the row; detailed content still renders
+  // through PostCard.
+  assert.match(builderFeedItems, /<span>Posts<\/span>/);
   assert.match(builderFeedItems, /PostCard/);
   assert.match(source("src/components/PostCard.tsx"), /Summary/);
   assert.match(source("src/components/PostCard.tsx"), /export function PostCard/);
@@ -791,14 +791,19 @@ test("list actions use compact controls instead of full-width mobile buttons", (
 
   assert.match(css, /\.button-compact/);
   assert.match(css, /\.row-actions/);
-  assert.match(css, /\.builder-library-card-main\s*{\s*\n\s*grid-template-columns:\s*auto minmax\(0,\s*1fr\) auto/);
-  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(css, /\.builder-library-card-main\s*{\s*\n\s*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) minmax\(6\.75rem,\s*auto\) auto/);
+  assert.match(css, /\.builder-library-stats\s*{[\s\S]*justify-self:\s*end/);
+  assert.match(css, /\.builder-library-row-tools\s*{[\s\S]*opacity:\s*0\.62/);
+  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*grid-template-areas:[\s\S]*"avatar info"[\s\S]*"\. stats"[\s\S]*"\. actions"/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta\s*{[\s\S]*display:\s*grid/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.page-pad h2\s*{[\s\S]*font-size:\s*1\.25rem/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.fb-panel\s*{[\s\S]*padding:\s*0\.95rem/);
   assert.doesNotMatch(css, /\.builder-row form,\s*\n\s*\.builder-row button\s*{\s*\n\s*width:\s*100%/);
   assert.match(builderLibraryList, /builder-library-card-main/);
+  assert.match(builderLibraryList, /BuilderStats/);
+  assert.match(builderLibraryList, /builder-library-row-tools/);
   assert.match(builderActions, /fb-btn/);
+  assert.match(builderActions, /builder-library-follow-toggle/);
   assert.match(settingsPage, /AgentTokenPanel/);
   assert.match(agentTokenPanel, /fb-btn/);
 });

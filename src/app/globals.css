@@ -1807,21 +1807,22 @@ svg.lucide {
 }
 
 .builder-posts {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid color-mix(in oklch, var(--line) 70%, transparent);
+  margin: 0.65rem 0 0 2.875rem;
 }
 
 .builder-posts > summary {
   align-items: center;
-  color: var(--accent);
+  color: var(--muted-strong);
   cursor: pointer;
   display: grid;
-  font-size: 0.78rem;
-  font-weight: 800;
-  gap: 0.75rem;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  font-size: 0.75rem;
+  font-weight: 700;
+  gap: 0.5rem;
+  grid-template-columns: auto auto auto;
+  justify-content: start;
   list-style: none;
-  padding: 0.72rem 0.95rem;
-  text-transform: uppercase;
+  padding: 0.55rem 0 0;
 }
 
 .builder-posts > summary::-webkit-details-marker {
@@ -1830,6 +1831,8 @@ svg.lucide {
 
 .builder-posts > summary::after {
   content: "+";
+  color: var(--accent);
+  font-weight: 850;
 }
 
 .builder-posts[open] > summary::after {
@@ -1837,8 +1840,9 @@ svg.lucide {
 }
 
 .builder-post-list {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid color-mix(in oklch, var(--line) 70%, transparent);
   display: grid;
+  margin-top: 0.55rem;
 }
 
 .builder-post-row {
@@ -4022,7 +4026,110 @@ svg.lucide {
 }
 
 .builder-library-card-main {
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: 2rem minmax(0, 1fr) minmax(6.75rem, auto) auto;
+}
+
+.builder-library-card {
+  background: var(--paper-strong);
+  transition: background-color 140ms ease;
+}
+
+.builder-library-card:hover,
+.builder-library-card:focus-within {
+  background: color-mix(in oklch, var(--paper-strong) 82%, var(--rail));
+}
+
+.builder-library-avatar.fb-src-icon {
+  background: color-mix(in oklch, var(--rail) 68%, var(--paper-strong));
+  border: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
+  box-shadow: none;
+  color: var(--muted-strong);
+  font-size: 0.75rem;
+  height: 2rem;
+  width: 2rem;
+}
+
+.builder-library-card .source-badge {
+  background: transparent;
+  border-color: color-mix(in oklch, var(--line) 72%, transparent);
+  color: var(--muted-strong);
+  font-size: 0.625rem;
+  min-height: 1.35rem;
+  padding: 0.08rem 0.45rem 0.08rem 0.24rem;
+}
+
+.builder-library-card .source-badge-mark {
+  background: var(--muted-strong) !important;
+  height: 0.9rem;
+  opacity: 0.76;
+  width: 0.9rem;
+}
+
+.builder-library-stats {
+  color: var(--muted);
+  display: grid;
+  gap: 0.15rem;
+  justify-self: end;
+  min-width: 6.75rem;
+  text-align: right;
+}
+
+.builder-library-stats-primary {
+  color: var(--muted-strong);
+  font-size: 0.75rem;
+  font-weight: 750;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.builder-library-stats-secondary {
+  font-size: 0.6875rem;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.builder-library-actions {
+  justify-self: end;
+  min-width: 13rem;
+}
+
+.builder-library-row-tools,
+.builder-library-action-stack,
+.builder-library-follow-row {
+  align-items: center;
+  display: inline-flex;
+}
+
+.builder-library-row-tools {
+  gap: 0.2rem;
+  opacity: 0.62;
+  transition: opacity 140ms ease;
+}
+
+.builder-library-card:hover .builder-library-row-tools,
+.builder-library-card:focus-within .builder-library-row-tools {
+  opacity: 1;
+}
+
+.builder-library-action-stack {
+  gap: 0.45rem;
+}
+
+.builder-library-follow-row {
+  gap: 0.35rem;
+}
+
+.builder-library-follow-toggle {
+  align-items: center;
+  border: 0;
+  color: var(--muted-strong);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 700;
+  gap: 0.4rem;
+  padding: 0;
+  white-space: nowrap;
 }
 
 /* Icon link in a library row that opens the builder's original source
@@ -4031,25 +4138,33 @@ svg.lucide {
    "open in new tab" affordance. */
 .builder-library-open-source {
   align-items: center;
-  border-radius: 999px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   color: var(--muted);
   display: inline-flex;
-  height: 1.875rem;
+  height: 1.75rem;
   justify-content: center;
   transition: color 120ms ease, background-color 120ms ease;
-  width: 1.875rem;
+  width: 1.75rem;
 }
 
 .builder-library-open-source:hover,
 .builder-library-open-source:focus-visible {
   background: var(--paper-strong);
+  border-color: var(--line);
   color: var(--ink);
   outline: 0;
 }
 
 .builder-library-open-source svg {
-  height: 1rem;
-  width: 1rem;
+  height: 0.9rem;
+  width: 0.9rem;
+}
+
+.builder-library-edit-button,
+.builder-library-remove-button {
+  border-color: transparent;
+  color: var(--muted);
 }
 
 /* Two-step confirmation label that replaces the row's X button after
@@ -5892,13 +6007,23 @@ body {
   }
 
   .builder-library-card-main {
-    align-items: start;
-    gap: 0.65rem;
-    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+    column-gap: 0.65rem;
+    grid-template-areas:
+      "avatar info"
+      ". stats"
+      ". actions";
+    grid-template-columns: 2rem minmax(0, 1fr);
+    row-gap: 0.5rem;
   }
 
   .builder-library-avatar {
-    display: none;
+    display: inline-flex;
+    grid-area: avatar;
+  }
+
+  .builder-library-card-main > .min-w-0 {
+    grid-area: info;
   }
 
   .builder-library-card .fb-src-name {
@@ -5923,24 +6048,35 @@ body {
     margin-top: 0.3rem;
   }
 
-  .builder-library-card .source-kind-meta,
-  .builder-library-card .source-host-meta,
-  .builder-library-card .source-count-dot,
-  .builder-library-card .source-count-meta-empty,
-  .builder-library-card .source-fetch-dot,
-  .builder-library-card .source-fetch-meta {
-    display: none;
+  .builder-library-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.6rem;
+    grid-area: stats;
+    justify-self: start;
+    min-width: 0;
+    text-align: left;
   }
 
   .builder-library-card .builder-library-actions,
   .builder-library-card .row-actions {
+    grid-area: actions;
     justify-content: flex-start;
+    min-width: 0;
     width: 100%;
   }
 
-  .builder-library-actions > div,
+  .builder-library-row-tools {
+    opacity: 1;
+  }
+
+  .builder-library-action-stack,
   .builder-library-actions button {
     min-width: 0;
+  }
+
+  .builder-posts {
+    margin-left: 2.65rem;
   }
 
   .fb-skill {

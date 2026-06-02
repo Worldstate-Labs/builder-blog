@@ -2321,11 +2321,10 @@ test("web display boundaries keep raw fetched content in the builders tab", () =
   assert.equal(builderLibraryList.includes("BuilderFeedItems"), true);
   assert.equal(buildersPage.includes("Technical details"), false);
   assert.equal(builderLibraryList.includes("SourceBadge"), true);
-  // UI copy migrated from "fetched" to "summarized" for compliance — see
-  // CLAUDE.md design context. The canonical display component is PostCard;
-  // fetched-post-* classes still use "fetched" because the storage layer is
-  // still the FeedItem fetch path.
-  assert.equal(builderFeedItems.includes("Summarized posts"), true);
+  // UI copy stays away from "fetched" inside the library row; the canonical
+  // display component is PostCard, while fetched-post-* classes still use
+  // "fetched" because the storage layer is still the FeedItem fetch path.
+  assert.equal(builderFeedItems.includes("<span>Posts</span>"), true);
   assert.equal(builderFeedItems.includes("PostCard"), true);
   assert.equal(readFileSync("src/components/PostCard.tsx", "utf8").includes("Raw content"), true);
 });

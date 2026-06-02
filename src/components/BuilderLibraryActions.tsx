@@ -157,20 +157,18 @@ export function BuilderLibraryActions({
   }
 
   return (
-    <div className="grid gap-1.5">
-      <div className="flex items-center gap-2.5">
+    <div className="builder-library-action-stack">
+      <div className="builder-library-follow-row">
         <button
           aria-busy={isPending}
           aria-pressed={subscribed}
           aria-label={subscribed ? "Unfollow" : "Follow"}
-          className="inline-flex items-center gap-1.5"
+          className="builder-library-follow-toggle"
           disabled={isPending}
           onClick={updateSubscription}
           type="button"
         >
-          <span className="text-[12px] font-semibold text-[var(--muted-strong)]">
-            Follow
-          </span>
+          <span>{subscribed ? "Following" : "Follow"}</span>
           <span className={`fb-toggle${subscribed ? " on" : ""}`} aria-hidden="true" />
         </button>
         {allowRemove ? (
@@ -189,7 +187,7 @@ export function BuilderLibraryActions({
             <button
               aria-busy={isPending}
               aria-label="Remove from library"
-              className="fb-icon-btn fb-icon-btn--xs"
+              className="builder-library-remove-button fb-icon-btn fb-icon-btn--xs"
               disabled={isPending}
               onClick={handleRemoveClick}
               type="button"
