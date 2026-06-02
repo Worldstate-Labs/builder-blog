@@ -72,7 +72,7 @@ export function AdminSourceTypeManager({
 }) {
   const [configs, setConfigs] = useState(initialConfigs);
   return (
-    <div className="grid gap-3">
+    <div className="settings-source-type-manager grid gap-3">
       {configs.map((config) => (
         <SourceTypeCard
           key={config.sourceId}
@@ -184,15 +184,15 @@ function SourceTypeCard({
   }
 
   return (
-    <details className="fb-panel" style={{ padding: 0 }}>
+    <details className="source-type-config-card">
       <summary
-        className="cursor-pointer select-none"
-        style={{ listStyle: "none", padding: "0.875rem 1.125rem" }}
+        className="source-type-config-summary cursor-pointer select-none"
+        style={{ listStyle: "none" }}
       >
         <CardHeader config={config} dirty={dirty} />
       </summary>
 
-      <div className="border-t border-[var(--line)]" style={{ padding: "1.25rem 1.125rem 1rem" }}>
+      <div className="settings-config-form source-type-config-form">
         <Section
           step="01"
           title="Fetching"
@@ -326,8 +326,8 @@ function CardHeader({
   // isn't editable here, and summaryStyle has no runtime effect (it only seeds
   // the default prompt body) — so none of them belong in the header.
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      <span className="text-base font-medium">{config.label}</span>
+    <div className="source-type-config-header flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span className="source-type-config-title text-base font-medium">{config.label}</span>
       {dirty ? (
         <span
           className="ml-auto inline-flex items-center gap-1.5 text-xs"

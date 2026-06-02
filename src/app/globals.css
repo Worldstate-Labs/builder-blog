@@ -5346,31 +5346,97 @@ svg.lucide {
   border-color: color-mix(in oklch, var(--accent) 32%, var(--line));
 }
 
-/* Digest composition settings: make nested rule hierarchy readable. */
-.digest-composition-form {
+/* Settings rules: consistent hierarchy for briefing configuration. */
+.settings-rules {
+  max-width: 76rem;
+}
+
+.settings-rules-head {
+  border-left: 3px solid var(--accent);
+  padding-left: 1rem;
+}
+
+.settings-rules-panel {
+  padding: 0;
+}
+
+.settings-rules-summary {
+  list-style: none;
+  padding: 1rem 1.125rem;
+}
+
+.settings-rules-summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-rules-summary-copy .fb-section-heading {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.settings-rules-summary-copy p {
+  max-width: 44rem;
+}
+
+.settings-rules-body {
+  border-top: 1px solid color-mix(in oklch, var(--line) 80%, transparent);
+  padding: 1rem 1.125rem 1.1rem;
+}
+
+.settings-source-type-manager {
+  gap: 0.75rem;
+}
+
+.source-type-config-card {
+  background: color-mix(in oklch, var(--rail) 24%, transparent);
+  border: 1px solid color-mix(in oklch, var(--line) 78%, transparent);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.source-type-config-summary {
+  padding: 0.8rem 0.9rem;
+}
+
+.source-type-config-header {
+  align-items: center;
+}
+
+.source-type-config-title {
+  color: var(--ink);
+  font-size: 0.9375rem;
+  font-weight: 780;
+}
+
+.source-type-config-form {
+  border-top: 1px solid color-mix(in oklch, var(--line) 78%, transparent);
+  padding: 1rem 0.9rem 0.95rem;
+}
+
+.settings-config-form {
   display: grid;
   gap: 1.25rem;
   padding-top: 0.15rem;
 }
 
-.digest-composition-form .settings-section {
+.settings-config-form .settings-section {
   border-left: 3px solid color-mix(in oklch, var(--accent) 32%, var(--line));
   margin-top: 0;
   padding-left: 1rem;
 }
 
-.digest-composition-form .settings-section + .settings-section {
+.settings-config-form .settings-section + .settings-section {
   margin-top: 0.15rem;
 }
 
-.digest-composition-form .settings-section-head {
+.settings-config-form .settings-section-head {
   align-items: start;
   border-bottom: 0;
   margin-bottom: 0.75rem;
   padding-bottom: 0;
 }
 
-.digest-composition-form .settings-section-title {
+.settings-config-form .settings-section-title {
   color: var(--ink) !important;
   font-family: var(--font-geist-sans) !important;
   font-size: 0.8125rem;
@@ -5379,26 +5445,26 @@ svg.lucide {
   line-height: 1.25;
 }
 
-.digest-composition-form .settings-section-desc {
+.settings-config-form .settings-section-desc {
   color: var(--muted-strong) !important;
   font-size: 0.8125rem;
   line-height: 1.45;
   max-width: 52rem;
 }
 
-.digest-composition-form .settings-section-body {
+.settings-config-form .settings-section-body {
   gap: 0.875rem;
 }
 
-.digest-composition-form .settings-field,
-.digest-composition-form .settings-choice-field {
+.settings-config-form .settings-field,
+.settings-config-form .settings-choice-field {
   background: color-mix(in oklch, var(--rail) 34%, transparent);
   border: 1px solid color-mix(in oklch, var(--line) 78%, transparent);
   border-radius: 8px;
   padding: 0.8rem;
 }
 
-.digest-composition-form .settings-field-label {
+.settings-config-form .settings-field-label {
   color: var(--muted-strong) !important;
   font-size: 0.6875rem;
   font-weight: 850;
@@ -5407,27 +5473,27 @@ svg.lucide {
   margin-bottom: 0.45rem;
 }
 
-.digest-composition-form .settings-field-help {
+.settings-config-form .settings-field-help {
   color: var(--muted) !important;
   font-size: 0.75rem;
   line-height: 1.45;
   margin-top: 0.45rem;
 }
 
-.digest-composition-form .settings-choice-list {
+.settings-config-form .settings-choice-list {
   background: var(--paper-strong) !important;
   border-color: color-mix(in oklch, var(--line) 72%, transparent);
   border-radius: 8px;
   padding: 0.45rem !important;
 }
 
-.digest-composition-form .settings-choice-row {
+.settings-config-form .settings-choice-row {
   background: color-mix(in oklch, var(--paper) 82%, var(--paper-strong)) !important;
   border-color: color-mix(in oklch, var(--line) 70%, transparent) !important;
   min-height: 2rem;
 }
 
-.digest-composition-form .fb-textarea {
+.settings-config-form .fb-textarea {
   background: var(--paper-strong);
   border-color: color-mix(in oklch, var(--line) 76%, transparent);
   box-shadow: inset 0 1px 0 color-mix(in oklch, white 36%, transparent);
@@ -6006,6 +6072,24 @@ body {
   .fb-field label {
     font-size: 0.65625rem;
     letter-spacing: 0.06em;
+  }
+
+  .settings-rules-head {
+    padding-left: 0.75rem;
+  }
+
+  .settings-rules-summary,
+  .settings-rules-body {
+    padding-inline: 0.85rem;
+  }
+
+  .settings-config-form .settings-section {
+    padding-left: 0.75rem;
+  }
+
+  .settings-config-form .settings-field,
+  .settings-config-form .settings-choice-field {
+    padding: 0.7rem;
   }
 
   .fb-pill {

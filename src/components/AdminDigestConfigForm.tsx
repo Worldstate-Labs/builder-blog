@@ -97,7 +97,7 @@ export function AdminDigestConfigForm({
   }
 
   return (
-    <div className="digest-composition-form">
+    <div className="settings-config-form digest-composition-form">
       <Section
         title="Sections & order"
         description="Which source types appear in the digest, and in what order."

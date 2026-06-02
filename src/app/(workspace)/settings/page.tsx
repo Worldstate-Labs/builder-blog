@@ -47,8 +47,8 @@ async function SourceTypeConfigSection({ userId }: { userId: string }) {
     getUserDigestConfig(userId),
   ]);
   return (
-    <section className="mt-10 grid gap-4">
-      <header>
+    <section className="settings-rules mt-10 grid gap-4">
+      <header className="settings-rules-head">
         <p className="fb-section-label">Advanced</p>
         <h2 className="fb-section-heading mt-1">Briefing rules</h2>
         <p className="fb-desc mt-1 max-w-3xl">
@@ -57,9 +57,9 @@ async function SourceTypeConfigSection({ userId }: { userId: string }) {
         </p>
       </header>
 
-      <details className="fb-panel">
-        <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3">
-          <div>
+      <details className="settings-rules-panel fb-panel">
+        <summary className="settings-rules-summary flex cursor-pointer flex-wrap items-center justify-between gap-3">
+          <div className="settings-rules-summary-copy">
             <h3 className="fb-section-heading">Source types</h3>
             <p className="mt-1 text-sm text-[var(--muted-strong)]">
               How each source type is read, summarized, and filtered.
@@ -67,7 +67,7 @@ async function SourceTypeConfigSection({ userId }: { userId: string }) {
           </div>
           <span className="fb-kind-pill">{sourceConfigs.length} sources</span>
         </summary>
-        <div className="mt-4">
+        <div className="settings-rules-body mt-4">
           <AdminSourceTypeManager
             initialConfigs={sourceConfigs.map((c) => ({
               sourceId: c.sourceId,
@@ -86,9 +86,9 @@ async function SourceTypeConfigSection({ userId }: { userId: string }) {
         </div>
       </details>
 
-      <details className="fb-panel">
-        <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3">
-          <div>
+      <details className="settings-rules-panel fb-panel">
+        <summary className="settings-rules-summary flex cursor-pointer flex-wrap items-center justify-between gap-3">
+          <div className="settings-rules-summary-copy">
             <h3 className="fb-section-heading">Digest composition</h3>
             <p className="mt-1 text-sm text-[var(--muted-strong)]">
               How source summaries are assembled into the daily digest.
@@ -96,7 +96,7 @@ async function SourceTypeConfigSection({ userId }: { userId: string }) {
           </div>
           <span className="fb-kind-pill">Digest rules</span>
         </summary>
-        <div className="mt-4">
+        <div className="settings-rules-body mt-4">
           <AdminDigestConfigForm
             knownSourceIds={SEEDED_SOURCE_IDS}
             initialConfig={{
