@@ -877,7 +877,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /className="builder-post-loading-line"/);
   assert.match(builderFeedItems, /className="builder-post-loading-card"/);
   assert.match(builderFeedItems, /className="builder-post-state builder-post-state--error"/);
-  assert.match(builderFeedItems, /className="builder-post-state"/);
+  assert.match(builderFeedItems, /@\/components\/EmptyState/);
+  assert.match(builderFeedItems, /<EmptyState[\s\S]*className="builder-post-empty"/);
+  assert.match(globals, /\.builder-post-empty\s*{\s*margin:\s*0\.75rem 0\.95rem;\s*}/);
+  assert.doesNotMatch(builderFeedItems, /No summarized posts have been stored for this builder yet/);
   assert.doesNotMatch(builderFeedItems, /bg-black\/10|className="h-/);
   assert.doesNotMatch(builderFeedItems, /className="p-4 text-sm/);
   assert.match(builderFeedItems, /timeZone:\s*"UTC"/);

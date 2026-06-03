@@ -2128,6 +2128,10 @@ svg.lucide {
   color: var(--danger);
 }
 
+.builder-post-empty {
+  margin: 0.75rem 0.95rem;
+}
+
 .builder-post-loading-line,
 .builder-post-loading-card {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;

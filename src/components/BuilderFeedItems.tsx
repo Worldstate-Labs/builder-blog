@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CountMeta } from "@/components/Count";
+import { EmptyState } from "@/components/EmptyState";
 import { PostCard } from "@/components/PostCard";
 
 type BuilderSummary = {
@@ -122,9 +123,10 @@ export function BuilderFeedItems({
           />
         ))}
         {items?.length === 0 ? (
-          <div className="builder-post-state">
-            No summarized posts have been stored for this builder yet.
-          </div>
+          <EmptyState
+            body="No summarized posts have been stored for this source yet."
+            className="builder-post-empty"
+          />
         ) : null}
       </div>
     </details>
