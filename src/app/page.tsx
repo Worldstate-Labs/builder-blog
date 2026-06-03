@@ -29,11 +29,11 @@ export default async function Home() {
           <h1 className="fb-public-title">
             Keep up with people<br />and sources you follow.
           </h1>
-          <p className="mt-6 max-w-xl text-lg leading-8 text-[var(--muted-strong)]">
+          <p className="fb-public-copy">
             Follow creators, newsletters, channels, feeds, and private sources,
             then turn their updates into cited AI briefs and a searchable archive.
           </p>
-          <div className="mt-8 flex flex-wrap gap-2.5">
+          <div className="fb-public-actions">
             <Link className="fb-btn dark" href="/login">
               Open workspace
             </Link>
@@ -41,7 +41,7 @@ export default async function Home() {
               See workflow
             </a>
           </div>
-          <div className="mt-7 grid max-w-xl gap-2.5 sm:grid-cols-3">
+          <div className="fb-public-metrics">
             <MiniMetric label="Sources" value="Shared + private" />
             <MiniMetric label="Output" value="Daily digest" />
             <MiniMetric label="Recall" value="Searchable archive" />
@@ -106,7 +106,7 @@ export default async function Home() {
             Built around the loop of following, briefing, and returning to sources later.
           </span>
         </div>
-        <div className="mt-5 grid gap-3.5 md:grid-cols-3">
+        <div className="fb-public-card-grid">
           {[
             {
               i: "01",
@@ -132,7 +132,7 @@ export default async function Home() {
                 <span className="fb-section-label">{i}</span>
                 <Icon className="h-[18px] w-[18px] text-[var(--accent)]" aria-hidden="true" />
               </div>
-              <h2 className="fb-public-card-title mt-3.5">
+              <h2 className="fb-public-card-title fb-public-card-title-spaced">
                 {title}
               </h2>
               <p className="mt-2.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
@@ -146,7 +146,7 @@ export default async function Home() {
       <section className="fb-public-section grid gap-5 border-t border-[var(--line)] py-10 md:grid-cols-[0.9fr_1.1fr]">
         <div>
           <span className="fb-section-label">Workspace</span>
-          <h2 className="fb-public-section-title mt-3">
+          <h2 className="fb-public-section-title fb-public-section-title-spaced">
             Calm enough for daily use. Dense enough for real recall.
           </h2>
         </div>

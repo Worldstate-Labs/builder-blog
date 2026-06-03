@@ -27,24 +27,24 @@ export default async function LoginPage({
           <h1 className="fb-login-title">
             Sign in to your<br />briefing desk.
           </h1>
-          <p className="mt-5 max-w-lg text-base leading-relaxed text-white/68 md:text-lg">
+          <p className="fb-login-copy">
             Follow people and sources, collect new updates, and keep your
             digests in a searchable archive.
           </p>
-          <div className="mt-8 hidden max-w-lg gap-2.5 sm:grid sm:grid-cols-3 lg:grid">
+          <div className="fb-login-proof-grid">
             <LoginProof icon={Archive} label="Archive" />
             <LoginProof icon={Search} label="Search" />
             <LoginProof icon={KeyRound} label="Local helper" />
           </div>
         </section>
 
-        <section className="fb-dark-panel lg:max-w-md">
+        <section className="fb-dark-panel">
           <div className="flex items-start justify-between gap-5">
             <div>
               <h2 className="fb-login-panel-title">
                 Continue securely
               </h2>
-              <p className="mt-2.5 text-[12.5px] leading-relaxed text-white/62 md:text-[13px]">
+              <p className="fb-login-panel-copy">
                 Use the same identity for your web archive and local reading helper.
               </p>
             </div>
@@ -54,16 +54,16 @@ export default async function LoginPage({
           </div>
           {errorMessage ? (
             <div
-              className="mt-5 rounded-lg border border-white/15 bg-white/5 px-3.5 py-3 text-[12.5px] leading-relaxed text-white/80"
+              className="fb-login-error"
               role="alert"
             >
               {errorMessage}
             </div>
           ) : null}
-          <div className="mt-5">
+          <div className="fb-login-auth">
             <AuthButtons callbackUrl={safeCallbackUrl(params.callbackUrl)} />
           </div>
-          <p className="mt-4 text-[11px] leading-relaxed text-white/42">
+          <p className="fb-login-note">
             Access keys are set up after sign-in from Settings.
           </p>
         </section>

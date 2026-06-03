@@ -5290,6 +5290,56 @@ svg.lucide {
   line-height: 1.15;
 }
 
+.fb-login-copy {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 1rem;
+  line-height: 1.65;
+  margin-top: 1.25rem;
+  max-width: 32rem;
+}
+
+.fb-login-proof-grid {
+  display: none;
+  gap: 0.625rem;
+  margin-top: 2rem;
+  max-width: 32rem;
+}
+
+.fb-login-error {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.78125rem;
+  line-height: 1.55;
+  margin-top: 1.25rem;
+  padding: 0.75rem 0.875rem;
+}
+
+.fb-login-auth {
+  margin-top: 1.25rem;
+}
+
+.fb-login-note {
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 0.6875rem;
+  line-height: 1.55;
+  margin-top: 1rem;
+}
+
+@media (min-width: 640px) {
+  .fb-login-proof-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .fb-login-copy {
+    font-size: 1.125rem;
+  }
+}
+
 .fb-dark-mark {
   align-items: center;
   background: white;
@@ -5308,7 +5358,15 @@ svg.lucide {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
+  max-width: 28rem;
   padding: 1.625rem;
+}
+
+.fb-login-panel-copy {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.78125rem;
+  line-height: 1.55;
+  margin-top: 0.625rem;
 }
 
 .fb-dark-proof {
@@ -5933,6 +5991,53 @@ svg.lucide {
   font-weight: 780;
   letter-spacing: 0;
   line-height: 1.3;
+}
+
+.fb-public-copy {
+  color: var(--muted-strong);
+  font-size: 1.125rem;
+  line-height: 1.8;
+  margin-top: 1.5rem;
+  max-width: 36rem;
+}
+
+.fb-public-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  margin-top: 2rem;
+}
+
+.fb-public-metrics,
+.fb-public-card-grid {
+  display: grid;
+  gap: 0.875rem;
+  margin-top: 1.75rem;
+  max-width: 36rem;
+}
+
+.fb-public-card-grid {
+  max-width: none;
+}
+
+.fb-public-card-title-spaced {
+  margin-top: 0.875rem;
+}
+
+.fb-public-section-title-spaced {
+  margin-top: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .fb-public-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .fb-public-card-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 /* Mark (search highlight, anywhere) */
