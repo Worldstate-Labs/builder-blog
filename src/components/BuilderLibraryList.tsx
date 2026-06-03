@@ -6,6 +6,7 @@ import { ExternalLink } from "lucide-react";
 import { BuilderEditDialog } from "@/components/BuilderEditDialog";
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { BuilderLibraryActions } from "@/components/BuilderLibraryActions";
+import { EmptyState } from "@/components/EmptyState";
 import { SourceBadge } from "@/components/SourceBadge";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import {
@@ -217,12 +218,7 @@ export function BuilderLibraryList({
 
   if (visibleBuilders.length === 0) {
     return (
-      <div className="fb-panel dashed text-[var(--muted-strong)]">
-        {emptyTitle ? (
-          <h3 className="serif text-lg font-semibold text-[var(--ink)]">{emptyTitle}</h3>
-        ) : null}
-        <p className={emptyTitle ? "mt-2 text-sm leading-6" : "text-sm"}>{emptyBody}</p>
-      </div>
+      <EmptyState body={emptyBody} title={emptyTitle} />
     );
   }
 

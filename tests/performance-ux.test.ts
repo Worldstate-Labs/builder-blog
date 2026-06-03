@@ -278,6 +278,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(builderDetailActions, /text-xs text-\[var\(--danger\)\]/);
   assert.match(builderDetailPage, /className="builder-detail-channel-list"/);
   assert.match(builderDetailPage, /className="builder-detail-channel-row"/);
+  assert.match(builderDetailPage, /EmptyState/);
+  assert.match(builderDetailPage, /body="No posts summarized yet\."/);
   assert.match(builderDetailPage, /className="recent-post-list recent-post-list--skeleton"/);
   assert.match(builderDetailPage, /className="recent-post-skeleton-card fb-panel"/);
   assert.match(builderDetailPage, /className="recent-post-skeleton-line recent-post-skeleton-line--meta"/);
@@ -313,6 +315,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.fb-top\s*{[\s\S]*position:\s*sticky/);
   assert.match(globals, /\.fb-top-inner\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
   assert.match(globals, /\.fb-page-head\s*{[\s\S]*border-bottom:/);
+  assert.match(globals, /\.empty-state\s*{[\s\S]*border:\s*1px dashed var\(--line\)/);
+  assert.match(globals, /\.hub-list-empty\s*{[\s\S]*grid-column:\s*1 \/ -1/);
   assert.match(globals, /\.route-loading-title\s*{[\s\S]*height:\s*1\.75rem/);
   assert.match(globals, /\.route-loading-list\s*{[\s\S]*display:\s*grid/);
   assert.doesNotMatch(globals, /\.home-rail/);
@@ -760,6 +764,9 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-head"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-sources-summary"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-stats"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /EmptyState/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-empty"/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-panel dashed col-span-full/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /AVATAR_COLORS/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /style=\{\{/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-section-copy"/);
@@ -767,6 +774,9 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-card-head"/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-digest-preview"/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-card-stats"/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /EmptyState/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-list-empty"/);
+  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /fb-panel dashed col-span-full/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /<section className="mt-10"/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-list mt-5"/);
   assert.match(source("src/app/globals.css"), /\.hub-list-region\.has-filters/);
@@ -810,6 +820,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderLibraryList, /No posts yet/);
   assert.doesNotMatch(builderLibraryList, /builder-library-stats/);
   assert.match(builderLibraryList, /className="builder-library-error"/);
+  assert.match(builderLibraryList, /<EmptyState body=\{emptyBody\} title=\{emptyTitle\} \/>/);
+  assert.match(buildersPage, /<EmptyState body="Import shared libraries from the Hub to see them here\." \/>/);
   assert.doesNotMatch(builderLibraryList, /mt-2 text-sm text-\[var\(--danger\)\]/);
   assert.doesNotMatch(builderLibraryList, /builder-posts-latest/);
   assert.doesNotMatch(builderLibraryList, /Latest \{formatCompactDate|latest \{formatCompactDate/);

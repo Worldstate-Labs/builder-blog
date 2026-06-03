@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { CheckCircle2, Download, Sliders, Trash2 } from "lucide-react";
 import { CountBadge, CountMeta, CountRange, formatCount } from "@/components/Count";
+import { EmptyState } from "@/components/EmptyState";
 
 type HubLibraryBuilder = {
   id: string;
@@ -233,9 +234,10 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
             />
           ))}
           {filteredLibraries.length === 0 ? (
-            <div className="fb-panel dashed col-span-full text-sm text-[var(--muted-strong)]">
-              No libraries match this filter yet.
-            </div>
+            <EmptyState
+              body="No libraries match this filter yet."
+              className="hub-list-empty"
+            />
           ) : null}
         </div>
       </section>

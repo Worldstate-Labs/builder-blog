@@ -4,6 +4,7 @@ import { Suspense, type ReactNode } from "react";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
 import { BuilderLibraryStats } from "@/components/BuilderLibraryStats";
 import { CountChip } from "@/components/Count";
+import { EmptyState } from "@/components/EmptyState";
 import {
   FetchLogPanel,
   type LibraryCronJobStatus,
@@ -493,9 +494,7 @@ async function BuilderSections({
           </LibrarySection>
         ))}
         {data.importedLibrarySections.length === 0 ? (
-          <div className="fb-panel dashed text-[var(--muted-strong)]">
-            Import shared libraries from the Hub to see them here.
-          </div>
+          <EmptyState body="Import shared libraries from the Hub to see them here." />
         ) : null}
       </div>
     </section>

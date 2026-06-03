@@ -3975,6 +3975,34 @@ svg.lucide {
   border-style: dashed;
 }
 
+.empty-state {
+  background: color-mix(in oklch, var(--paper-strong) 50%, transparent);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--muted-strong);
+  padding: 1.125rem;
+}
+
+.empty-state-title {
+  color: var(--ink);
+  font-size: 0.9375rem;
+  font-weight: 760;
+  line-height: 1.25;
+}
+
+.empty-state-body {
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.empty-state-title + .empty-state-body {
+  margin-top: 0.375rem;
+}
+
+.hub-list-empty {
+  grid-column: 1 / -1;
+}
+
 .ai-digest-panel {
   background: color-mix(in oklch, var(--paper-strong) 72%, transparent);
   border: 1px solid var(--line);

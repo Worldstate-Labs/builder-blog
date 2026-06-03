@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { CheckCircle2, Download, Radio, Trash2 } from "lucide-react";
 import { CountMeta } from "@/components/Count";
+import { EmptyState } from "@/components/EmptyState";
 
 export type HubDigestPipeline = {
   id: string;
@@ -121,9 +122,10 @@ export function DigestPipelineImportForm({
           />
         ))}
         {pipelines.length === 0 ? (
-          <div className="fb-panel dashed col-span-full text-sm text-[var(--muted-strong)]">
-            No shared digests are available yet.
-          </div>
+          <EmptyState
+            body="No shared digests are available yet."
+            className="hub-list-empty"
+          />
         ) : null}
       </div>
     </section>

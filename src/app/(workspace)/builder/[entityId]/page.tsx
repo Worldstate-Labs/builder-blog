@@ -9,6 +9,7 @@ import { getEntityWithChannels } from "@/lib/builder-entities";
 import { BuilderDetailActions } from "@/components/BuilderDetailActions";
 import { ChannelPreferenceToggle } from "@/components/ChannelPreferenceToggle";
 import { CountMeta } from "@/components/Count";
+import { EmptyState } from "@/components/EmptyState";
 import { RecentPostsList } from "@/components/RecentPostsList";
 import { SourceBadge } from "@/components/SourceBadge";
 import { SourceAvatar } from "@/components/SourceAvatar";
@@ -351,9 +352,7 @@ async function RecentPostsSlot({
 
   if (items.length === 0) {
     return (
-      <div className="fb-panel dashed text-[var(--muted-strong)]">
-        No posts summarized yet.
-      </div>
+      <EmptyState body="No posts summarized yet." />
     );
   }
 
