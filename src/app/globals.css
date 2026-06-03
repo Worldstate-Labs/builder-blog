@@ -3387,7 +3387,7 @@ svg.lucide {
   gap: 1rem;
   justify-content: center;
   min-height: 3.5rem;
-  padding: 0.5rem 1.25rem;
+  padding: 0.5rem var(--workspace-gutter);
   position: sticky;
   top: 0;
   z-index: 50;
@@ -7507,7 +7507,7 @@ mark.fb-mark-highlight {
   display: flex;
   flex-shrink: 0;
   gap: 0.625rem;
-  padding: 0.5rem 1rem 0.625rem;
+  padding: 0.5rem var(--workspace-gutter) 0.625rem;
   position: sticky;
   top: 0;
   z-index: 50;
