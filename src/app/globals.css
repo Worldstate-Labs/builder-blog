@@ -47,6 +47,7 @@
   --copy-max: 42rem;
   --dialog-max: 28rem;
   --empty-max: 48rem;
+  --login-copy-max: 32rem;
   --measure: 68ch;
   --public-copy-max: 36rem;
   --reading-max: 58rem;
@@ -5954,7 +5955,7 @@ svg.lucide {
   font-size: 1rem;
   line-height: 1.65;
   margin-top: 1.25rem;
-  max-width: 32rem;
+  max-width: var(--login-copy-max);
 }
 
 .fb-login-proof-rail {
@@ -5964,7 +5965,7 @@ svg.lucide {
   flex-wrap: wrap;
   gap: 0.875rem 1.1rem;
   margin-top: 2.25rem;
-  max-width: 32rem;
+  max-width: var(--login-copy-max);
   padding-top: 1rem;
 }
 

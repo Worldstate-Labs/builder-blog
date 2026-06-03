@@ -117,12 +117,14 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /--copy-max:\s*42rem/);
   assert.match(globals, /--dialog-max:\s*28rem/);
   assert.match(globals, /--empty-max:\s*48rem/);
+  assert.match(globals, /--login-copy-max:\s*32rem/);
   assert.match(globals, /--public-copy-max:\s*36rem/);
   assert.match(globals, /\.fb-login-shell\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
   assert.match(globals, /\.fb-public-flow\s*{[\s\S]*max-width:\s*var\(--public-copy-max\)/);
   assert.match(globals, /\.fb-public-step-body\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.equal((globals.match(/\.fb-public-flow\s*\{/g) ?? []).length, 1);
-  assert.match(globals, /\.fb-login-copy\s*{[\s\S]*max-width:\s*32rem/);
+  assert.match(globals, /\.fb-login-copy\s*{[\s\S]*max-width:\s*var\(--login-copy-max\)/);
+  assert.match(globals, /\.fb-login-proof-rail\s*{[\s\S]*max-width:\s*var\(--login-copy-max\)/);
   assert.match(globals, /\.fb-dark-panel\s*{[\s\S]*max-width:\s*var\(--dialog-max\)/);
   assert.doesNotMatch(globals, /\.landing-grid\s*{/);
   assert.doesNotMatch(globals, /\.app-topbar\s*{/);
