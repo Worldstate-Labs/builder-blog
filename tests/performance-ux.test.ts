@@ -267,8 +267,13 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /className="fb-panel dashed"/);
   assert.match(dashboardPage, /DashboardHomeTabs/);
   assert.match(dashboardTabs, /role="tablist"/);
+  assert.match(dashboardTabs, /className="fb-segmented-tabs home-feed-tabs"/);
+  assert.match(dashboardTabs, /className="fb-btn compact"/);
+  assert.doesNotMatch(dashboardTabs, /fb-tabs|fb-tab|fb-m-segctl|fb-m-seg/);
   assert.match(globals, /\.fb-segmented-tabs/);
   assert.match(globals, /\.fb-segmented-tabs \.fb-btn\[aria-selected="true"\]/);
+  assert.match(globals, /\.home-feed-tabs\s*{/);
+  assert.doesNotMatch(globals, /\.fb-tabs\s*{|\.fb-tab\b/);
   assert.match(dashboardTabs, /useState\(initialTab\)/);
   assert.doesNotMatch(dashboardTabs, /useSearchParams/);
   assert.match(dashboardTabs, /router\.replace/);
@@ -279,7 +284,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardTabs, /ai-digest/);
   assert.match(dashboardTabs, /Digest[\s\S]*Favorites[\s\S]*Following/);
   assert.doesNotMatch(dashboardTabs, /For You/);
-  assert.match(dashboardTabs, /\{ id: "ai-digest", label: "Digest" \}[\s\S]*\{ id: "favorites", label: "Favorites" \}[\s\S]*\{ id: "subscription", label: "Following" \}/);
+  assert.match(dashboardTabs, /id: "ai-digest"[\s\S]*label: "Digest"[\s\S]*id: "favorites"[\s\S]*label: "Favorites"[\s\S]*id: "subscription"[\s\S]*label: "Following"/);
   assert.doesNotMatch(dashboardPage, /scope="subscription"/);
   assert.doesNotMatch(dashboardPage, /scope="for-you"/);
   assert.doesNotMatch(dashboardPage, /<h3>Status<\/h3>/);

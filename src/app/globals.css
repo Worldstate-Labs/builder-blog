@@ -729,6 +729,15 @@ svg.lucide {
   min-width: 0;
 }
 
+.home-feed-tabs {
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: inline-flex;
+  padding: 0.25rem;
+  width: fit-content;
+}
+
 .page-kicker-row {
   align-items: center;
   display: flex;
@@ -4263,40 +4272,6 @@ svg.lucide {
   margin: 0;
 }
 
-/* Tabs (home, simple underline) */
-.fb-tabs {
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  gap: 1.625rem;
-  padding-top: 0.25rem;
-}
-
-.fb-tab {
-  background: transparent;
-  border: 0;
-  color: var(--muted-strong);
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 700;
-  padding: 0.875rem 0;
-  position: relative;
-  text-decoration: none;
-}
-
-.fb-tab.active {
-  color: var(--ink);
-}
-
-.fb-tab.active::after {
-  background: var(--ink);
-  bottom: -1px;
-  content: "";
-  height: 1.5px;
-  left: 0;
-  position: absolute;
-  right: 0;
-}
-
 /* Search/scope tabs with counts */
 .fb-stabs {
   align-items: center;
@@ -7821,6 +7796,14 @@ body {
   .fb-desc {
     font-size: 0.875rem;
     line-height: 1.45;
+  }
+
+  .home-feed-tabs {
+    width: 100%;
+  }
+
+  .home-feed-tabs .fb-btn {
+    flex: 1;
   }
 
   .fb-panel {

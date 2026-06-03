@@ -5,6 +5,27 @@ import { useState, type ReactNode } from "react";
 
 type DashboardTab = "ai-digest" | "favorites" | "subscription";
 
+const HOME_TABS: Array<{ id: DashboardTab; label: string; panelId: string; tabId: string }> = [
+  {
+    id: "ai-digest",
+    label: "Digest",
+    panelId: "home-panel-ai-digest",
+    tabId: "home-tab-ai-digest",
+  },
+  {
+    id: "favorites",
+    label: "Favorites",
+    panelId: "home-panel-favorites",
+    tabId: "home-tab-favorites",
+  },
+  {
+    id: "subscription",
+    label: "Following",
+    panelId: "home-panel-subscription",
+    tabId: "home-tab-subscription",
+  },
+];
+
 export function DashboardHomeTabs({
   aiDigest,
   favorites,
@@ -27,58 +48,14 @@ export function DashboardHomeTabs({
 
   return (
     <>
-      <div className="at-desktop">
-        <div className="fb-tabs" role="tablist" aria-label="Home feed">
+      <div className="fb-segmented-tabs home-feed-tabs" role="tablist" aria-label="Home feed">
+        {HOME_TABS.map((tab) => (
           <button
-            aria-controls="home-panel-ai-digest"
-            aria-selected={selectedTab === "ai-digest"}
-            className={`fb-tab${selectedTab === "ai-digest" ? " active" : ""}`}
-            data-active={selectedTab === "ai-digest" ? "true" : undefined}
-            id="home-tab-ai-digest"
-            onClick={() => selectTab("ai-digest")}
-            role="tab"
-            type="button"
-          >
-            Digest
-          </button>
-          <button
-            aria-controls="home-panel-favorites"
-            aria-selected={selectedTab === "favorites"}
-            className={`fb-tab${selectedTab === "favorites" ? " active" : ""}`}
-            data-active={selectedTab === "favorites" ? "true" : undefined}
-            id="home-tab-favorites"
-            onClick={() => selectTab("favorites")}
-            role="tab"
-            type="button"
-          >
-            Favorites
-          </button>
-          <button
-            aria-controls="home-panel-subscription"
-            aria-selected={selectedTab === "subscription"}
-            className={`fb-tab${selectedTab === "subscription" ? " active" : ""}`}
-            data-active={selectedTab === "subscription" ? "true" : undefined}
-            id="home-tab-subscription"
-            onClick={() => selectTab("subscription")}
-            role="tab"
-            type="button"
-          >
-            Following
-          </button>
-        </div>
-      </div>
-      <div className="fb-m-segctl at-mobile" role="tablist" aria-label="Home feed">
-        {(
-          [
-            { id: "ai-digest", label: "Digest" },
-            { id: "favorites", label: "Favorites" },
-            { id: "subscription", label: "Following" },
-          ] as const
-        ).map((tab) => (
-          <button
+            aria-controls={tab.panelId}
             aria-selected={selectedTab === tab.id}
-            className={`fb-m-seg${selectedTab === tab.id ? " active" : ""}`}
+            className="fb-btn compact"
             data-active={selectedTab === tab.id ? "true" : undefined}
+            id={tab.tabId}
             key={tab.id}
             onClick={() => selectTab(tab.id)}
             role="tab"
