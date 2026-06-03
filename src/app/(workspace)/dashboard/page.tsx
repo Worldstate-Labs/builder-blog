@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Terminal } from "lucide-react";
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
 import type { DigestSourceLink } from "@/components/DigestContent";
 import { DigestLogPanel } from "@/components/DigestLogPanel";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
 import { DigestPipelineVisibilityToggle } from "@/components/DigestPipelineVisibilityToggle";
+import { EmptyState } from "@/components/EmptyState";
 import { CountMeta } from "@/components/Count";
 import {
   getDigestRuns,
@@ -327,21 +327,15 @@ function AiDigestFeed({
                 sourceLinks={sourceLinks}
               />
             ) : (
-              <div className="ai-digest-empty">
-                <div className="ai-digest-empty-inner">
-                  <Terminal className="ai-digest-empty-icon" aria-hidden="true" />
-                  <div className="ai-digest-empty-copy">
-                    <h4 className="ai-digest-empty-title">
-                      No digest yet
-                    </h4>
-                    <p className="ai-digest-empty-desc">
-                      {isOwnPipeline
-                        ? "Your local helper can save a brief when followed sources have new activity."
-                        : "This imported digest has no saved briefs yet."}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <EmptyState
+                className="ai-digest-empty"
+                title="No digest yet"
+                body={
+                  isOwnPipeline
+                    ? "Your local helper can save a brief when followed sources have new activity."
+                    : "This imported digest has no saved briefs yet."
+                }
+              />
             )}
           </section>
 
