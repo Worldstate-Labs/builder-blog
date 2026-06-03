@@ -297,9 +297,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.builder-detail-action-skeleton-button\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.builder-detail-action-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.recent-post-skeleton-line--title\s*{[\s\S]*width:\s*min\(75%,\s*32rem\)/);
-  assert.match(rootLoading, /className="workspace-content-stack"/);
-  assert.match(rootLoading, /className="fb-page-head"/);
+  assert.match(rootLoading, /RouteLoading/);
+  assert.doesNotMatch(rootLoading, /bg-black\/10|className="h-|grid gap-4|stats-panel/);
   assert.doesNotMatch(rootLoading, /space-y-7/);
+  assert.match(routeLoading, /className="fb-page-head"/);
   assert.match(routeLoading, /className="workspace-content-stack"/);
   assert.match(routeLoading, /className="route-loading-title"/);
   assert.match(routeLoading, /className="route-loading-desc"/);
