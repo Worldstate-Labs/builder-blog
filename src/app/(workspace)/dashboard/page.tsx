@@ -299,20 +299,21 @@ function AiDigestFeed({
         </header>
 
         <div className="ai-digest-body">
-          {digestSummaries.length > 0 ? (
-            <DigestArchiveSelector
-              digests={digestSummaries}
-              isOwnPipeline={isOwnPipeline}
-              latestDigestId={latestDigest?.id ?? null}
-              selectedDigestId={selectedDigest?.id ?? null}
-              selectedPipelineId={selectedPipeline.id}
-            />
-          ) : null}
-
           <section className="ai-digest-section" aria-label="Selected digest">
             {selectedDigest ? (
               <DigestDetails
                 digest={serializeDigestSummary(selectedDigest)}
+                headerAction={
+                  digestSummaries.length > 0 ? (
+                    <DigestArchiveSelector
+                      digests={digestSummaries}
+                      isOwnPipeline={isOwnPipeline}
+                      latestDigestId={latestDigest?.id ?? null}
+                      selectedDigestId={selectedDigest.id}
+                      selectedPipelineId={selectedPipeline.id}
+                    />
+                  ) : null
+                }
                 isLatest={selectedDigest.id === latestDigest?.id}
                 mode="today"
                 sourceLinks={sourceLinks}
@@ -363,7 +364,7 @@ function DigestArchiveSelector({
   return (
     <details className="digest-picker">
       <summary className="digest-picker-summary">
-        <span className="digest-picker-label">Digest</span>
+        <span className="digest-picker-label">History</span>
         <DigestPickerItem digest={selectedDigest} isLatest={selectedDigest.id === latestDigestId} />
       </summary>
       <div className="digest-picker-menu" role="listbox" aria-label="Digest archive">

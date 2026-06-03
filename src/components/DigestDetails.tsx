@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { BookOpen, Loader2 } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { DigestContent, type DigestSourceLink } from "@/components/DigestContent";
@@ -25,12 +26,14 @@ type DigestLoadState = {
 export function DigestDetails({
   defaultOpen = false,
   digest,
+  headerAction,
   isLatest = false,
   mode = "archive",
   sourceLinks = [],
 }: {
   defaultOpen?: boolean;
   digest: DigestSummary;
+  headerAction?: ReactNode;
   isLatest?: boolean;
   mode?: "archive" | "today";
   sourceLinks?: DigestSourceLink[];
@@ -100,9 +103,9 @@ export function DigestDetails({
       <article className="fb-digest">
         <div className="fb-digest-head">
           {headerHeadline ? (
-            <DigestHeadlineSummary isLatest={isLatest} text={headerHeadline} />
+            <DigestHeadlineSummary headerAction={headerAction} isLatest={isLatest} text={headerHeadline} />
           ) : status === "loading" ? (
-            <DigestHeadlineSummary isLatest={isLatest} loading />
+            <DigestHeadlineSummary headerAction={headerAction} isLatest={isLatest} loading />
           ) : null}
         </div>
         <div className="fb-digest-body">
@@ -223,10 +226,12 @@ function DigestBody({
 }
 
 function DigestHeadlineSummary({
+  headerAction,
   isLatest = false,
   loading = false,
   text,
 }: {
+  headerAction?: ReactNode;
   isLatest?: boolean;
   loading?: boolean;
   text?: string;
@@ -238,8 +243,11 @@ function DigestHeadlineSummary({
       aria-label="Digest headlines"
     >
       <div className="digest-headline-top">
-        <div className="digest-headline-kicker">Headlines</div>
-        {isLatest ? <span className="digest-latest-mark">Latest</span> : null}
+        <div className="digest-headline-label-row">
+          <div className="digest-headline-kicker">Headlines</div>
+          {isLatest ? <span className="digest-latest-mark">Latest</span> : null}
+        </div>
+        {headerAction ? <div className="digest-headline-action">{headerAction}</div> : null}
       </div>
       {loading ? (
         <div className="digest-headline-loading" aria-hidden="true">

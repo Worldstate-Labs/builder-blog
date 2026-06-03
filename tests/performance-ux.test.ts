@@ -275,8 +275,10 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(dashboardPage, /select:\s*digestSummarySelect/);
   assert.doesNotMatch(dashboardPage, /digest\.content/);
   assert.match(dashboardPage, /DigestDetails/);
+  assert.match(dashboardPage, /headerAction=/);
   assert.match(digestDetails, /headlineSummary/);
   assert.match(digestDetails, /digest-headline-summary/);
+  assert.match(digestDetails, /digest-headline-action/);
   assert.match(digestDetails, /item-headline-preview/);
   assert.match(digestDetails, /digestPreviewFromContent/);
   assert.match(digestDetails, /isLatest/);

@@ -1587,21 +1587,32 @@ svg.lucide {
 }
 
 .digest-headline-summary {
-  background: color-mix(in oklch, var(--accent) 7%, var(--paper-strong));
-  border: 1px solid color-mix(in oklch, var(--accent) 20%, var(--line));
-  border-radius: 8px;
   color: var(--ink);
   display: grid;
-  gap: 0.35rem;
-  padding: 0.78rem 0.9rem 0.82rem;
+  gap: 0.48rem;
+  min-width: 0;
 }
 
 .digest-headline-top {
-  align-items: center;
+  align-items: flex-start;
   display: flex;
-  gap: 0.75rem;
+  gap: 1rem;
   justify-content: space-between;
   min-width: 0;
+}
+
+.digest-headline-label-row {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  min-height: 1.6rem;
+  min-width: 0;
+}
+
+.digest-headline-action {
+  flex: 0 1 25rem;
+  min-width: min(18rem, 100%);
 }
 
 .item-headline-preview {
@@ -1645,7 +1656,7 @@ svg.lucide {
 
 .digest-headline-text {
   color: var(--ink);
-  font-size: 0.96875rem;
+  font-size: 1rem;
   line-height: 1.62;
   margin: 0;
 }
@@ -1668,6 +1679,18 @@ svg.lucide {
 
 .digest-headline-loading span:last-child {
   max-width: 20rem;
+}
+
+@media (max-width: 720px) {
+  .digest-headline-top {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .digest-headline-action {
+    min-width: 0;
+    width: 100%;
+  }
 }
 
 .item-row-disclosure {
@@ -3964,11 +3987,12 @@ svg.lucide {
 
 .digest-picker {
   position: relative;
+  width: 100%;
 }
 
 .digest-picker-summary {
   align-items: center;
-  background: var(--paper-strong);
+  background: color-mix(in oklch, var(--paper-strong) 72%, transparent);
   border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--ink);
@@ -3977,7 +4001,7 @@ svg.lucide {
   gap: 0.8rem;
   justify-content: space-between;
   list-style: none;
-  padding: 0.72rem 0.85rem;
+  padding: 0.58rem 0.72rem;
 }
 
 .digest-picker-summary::-webkit-details-marker {
@@ -3987,7 +4011,7 @@ svg.lucide {
 .digest-picker-label {
   color: var(--muted);
   flex: 0 0 auto;
-  font-size: 0.6875rem;
+  font-size: 0.65625rem;
   font-weight: 850;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -4050,7 +4074,7 @@ svg.lucide {
 
 .digest-picker-date {
   color: var(--ink);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 760;
   line-height: 1.25;
 }
@@ -4860,7 +4884,7 @@ svg.lucide {
   border-bottom: 1px solid var(--line);
   display: grid;
   gap: 0.95rem;
-  padding: 1.125rem 1.375rem;
+  padding: 1rem 1.375rem 1.05rem;
 }
 
 .fb-digest-chip {
