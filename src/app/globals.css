@@ -52,6 +52,7 @@
   --popover-max: 18rem;
   --public-copy-max: 36rem;
   --reading-max: 58rem;
+  --search-suggest-max: 26rem;
   --settings-max: 52rem;
   --skeleton-copy-max: 24rem;
   --top-search-max: 24rem;
@@ -2408,7 +2409,7 @@ svg.lucide {
 
 .header-search .search-suggestion-dropdown {
   left: -0.95rem;
-  min-width: min(26rem, calc(100vw - 1.5rem));
+  min-width: min(var(--search-suggest-max), calc(100vw - 1.5rem));
   right: -0.95rem;
   top: calc(100% + 0.7rem);
 }
