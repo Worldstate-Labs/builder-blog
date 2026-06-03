@@ -535,7 +535,7 @@ function SearchTypeTabs({
   time: SearchTimeRange;
 }) {
   return (
-    <nav className="fb-stabs" aria-label="Result type">
+    <nav className="fb-segmented-tabs filter-tabs" aria-label="Result type">
       <TypeTab
         count={counts?.all}
         current={current}
@@ -573,7 +573,8 @@ function TypeTab({
   const isActive = current === value;
   return (
     <Link
-      className={`fb-stab${isActive ? " active" : ""}`}
+      aria-current={isActive ? "page" : undefined}
+      className="fb-btn compact"
       data-active={isActive ? "true" : undefined}
       href={href}
     >

@@ -178,10 +178,12 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
     <section className="hub-import-section">
       {showFilters ? (
         <>
-          <nav className="fb-stabs at-desktop" aria-label="Library filter">
+          <nav className="fb-segmented-tabs filter-tabs at-desktop" aria-label="Library filter">
             {visibleFilters.map((filter) => (
               <button
-                className={`fb-stab${activeFilter === filter.key ? " active" : ""}`}
+                aria-pressed={activeFilter === filter.key}
+                className="fb-btn compact"
+                data-active={activeFilter === filter.key ? "true" : undefined}
                 key={filter.key}
                 onClick={() => setActiveFilter(filter.key)}
                 type="button"
