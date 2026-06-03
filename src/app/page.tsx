@@ -41,10 +41,12 @@ export default async function Home() {
               See workflow
             </a>
           </div>
-          <div className="fb-public-metrics">
-            <MiniMetric label="Sources" value="Shared + private" />
-            <MiniMetric label="Output" value="Daily digest" />
-            <MiniMetric label="Recall" value="Searchable archive" />
+          <div className="fb-public-flow" aria-label="FollowBrief workflow">
+            {["Follow", "Brief", "Search"].map((step) => (
+              <span className="fb-public-flow-step" key={step}>
+                {step}
+              </span>
+            ))}
           </div>
         </div>
 
@@ -164,17 +166,6 @@ export default async function Home() {
         </div>
       </section>
     </main>
-  );
-}
-
-function MiniMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="fb-public-metric">
-      <div className="fb-public-metric-label">
-        {label}
-      </div>
-      <div className="fb-public-metric-value">{value}</div>
-    </div>
   );
 }
 
