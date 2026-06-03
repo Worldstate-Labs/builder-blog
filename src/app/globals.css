@@ -6060,7 +6060,9 @@ svg.lucide {
 .settings-rules {
   display: grid;
   gap: 1rem;
-  max-width: var(--workspace-max);
+  margin-inline: auto;
+  max-width: 52rem;
+  width: 100%;
 }
 
 .builder-detail-workspace {
@@ -6240,7 +6242,9 @@ svg.lucide {
 .settings-access-grid {
   display: grid;
   gap: 1.25rem;
+  margin-inline: auto;
   max-width: 52rem;
+  width: 100%;
 }
 
 .settings-rules-panel {
