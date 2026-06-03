@@ -148,27 +148,22 @@ export default async function SearchPage({
 
   return (
     <div className="page-pad search-page">
-      <PageHeader
-        className="search-hero"
-        title="Search"
-        actions={
-          <div className="search-hero-form">
-            <SearchForm
-              key={`${query}:${typeFilter}:${mode}:${sort}:${time}`}
-              query={query}
-              typeFilter={typeFilter}
-              mode={mode}
-              sort={sort}
-              time={time}
-              afterDate={formatOptionalOperatorDate(formParsedQuery.after)}
-              beforeDate={formatOptionalOperatorDate(formParsedQuery.before)}
-              suggestions={formSuggestions}
-            />
-          </div>
-        }
-      />
+      <PageHeader title="Search" />
 
       <div className="workspace-content-stack search-results-workspace">
+        <section className="search-hero-form" aria-label="Search controls">
+          <SearchForm
+            key={`${query}:${typeFilter}:${mode}:${sort}:${time}`}
+            query={query}
+            typeFilter={typeFilter}
+            mode={mode}
+            sort={sort}
+            time={time}
+            afterDate={formatOptionalOperatorDate(formParsedQuery.after)}
+            beforeDate={formatOptionalOperatorDate(formParsedQuery.before)}
+            suggestions={formSuggestions}
+          />
+        </section>
         <Suspense
           fallback={
             <SearchResultsFallback

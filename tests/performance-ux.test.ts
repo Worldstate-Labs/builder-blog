@@ -753,10 +753,12 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /SearchResultsSection/);
   assert.match(searchPage, /className="workspace-content-stack search-results-workspace"/);
   assert.match(globals, /\.search-result-skeleton/);
-  assert.match(searchPage, /<PageHeader[\s\S]*className="search-hero"[\s\S]*title="Search"/);
+  assert.match(searchPage, /<PageHeader title="Search" \/>/);
   assert.doesNotMatch(searchPage, /description="Find sources, saved posts, and digest history\."/);
+  assert.doesNotMatch(searchPage, /<PageHeader[\s\S]{0,120}actions=/);
   assert.match(searchPage, /className="search-hero-form"/);
-  assert.doesNotMatch(searchPage, /<header className="fb-page-head search-hero"/);
+  assert.match(searchPage, /<section className="search-hero-form" aria-label="Search controls">[\s\S]*<SearchForm/);
+  assert.doesNotMatch(searchPage, /className="search-hero"/);
   assert.doesNotMatch(searchPage, /fb-m-search/);
   assert.doesNotMatch(searchPage, /search-page-active/);
   assert.doesNotMatch(searchPage, /serif text-\[1\.875rem\]/);
@@ -766,8 +768,10 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(globals, /\.search-empty\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.search-empty\s*{[\s\S]*max-width:\s*var\(--empty-max\)/);
   assert.match(globals, /\.search-empty\s*{[\s\S]*width:\s*100%/);
-  assert.match(globals, /\.search-hero\s*{[\s\S]*grid-template-columns:/);
-  assert.match(globals, /\.search-hero-form \.search-form\s*{[\s\S]*margin-top:\s*0/);
+  assert.doesNotMatch(globals, /\.search-hero\s*{/);
+  assert.match(globals, /\.search-hero-form\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
+  assert.match(globals, /\.search-hero-form\s*{[\s\S]*margin:\s*0 auto/);
+  assert.match(globals, /\.search-form\s*{[\s\S]*margin:\s*0/);
   assert.match(searchForm, /className="button-dark submit-button"/);
   assert.match(searchForm, /submit-button-content/);
   assert.match(searchForm, /submit-button-pending/);
