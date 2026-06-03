@@ -2641,9 +2641,10 @@ svg.lucide {
 }
 
 .search-results-shell {
-  margin: 1.25rem auto 0;
+  margin: 0 auto;
   max-width: var(--workspace-max);
   min-width: 0;
+  width: 100%;
 }
 
 .search-meta-row {

@@ -627,6 +627,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /<Suspense/);
   assert.match(searchPage, /SearchResultsFallback/);
   assert.match(searchPage, /SearchResultsSection/);
+  assert.match(searchPage, /className="workspace-content-stack search-results-workspace"/);
   assert.match(globals, /\.search-result-skeleton/);
   assert.match(searchPage, /<PageHeader[\s\S]*className="search-hero"[\s\S]*title="Search"/);
   assert.doesNotMatch(searchPage, /description="Find sources, saved posts, and digest history\."/);
@@ -636,6 +637,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchPage, /search-page-active/);
   assert.doesNotMatch(searchPage, /serif text-\[1\.875rem\]/);
   assert.match(globals, /\.search-results-shell\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
+  assert.match(globals, /\.search-results-shell\s*{[\s\S]*margin:\s*0 auto/);
+  assert.match(globals, /\.search-results-shell\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.search-hero\s*{[\s\S]*grid-template-columns:/);
   assert.match(globals, /\.search-hero-form \.search-form\s*{[\s\S]*margin-top:\s*0/);
   assert.match(searchPage, /Search instead for/);

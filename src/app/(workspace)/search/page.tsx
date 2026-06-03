@@ -168,32 +168,34 @@ export default async function SearchPage({
         }
       />
 
-      <Suspense
-        fallback={
-          <SearchResultsFallback
-            current={typeFilter}
+      <div className="workspace-content-stack search-results-workspace">
+        <Suspense
+          fallback={
+            <SearchResultsFallback
+              current={typeFilter}
+              hasQuery={hasQuery}
+              mode={mode}
+              query={query}
+              sort={sort}
+              time={time}
+            />
+          }
+          key={`${query}:${typeFilter}:${mode}:${sort}:${time}:${page}`}
+        >
+          <SearchResultsSection
+            correctedQuery={correctedQuery}
             hasQuery={hasQuery}
             mode={mode}
+            page={page}
             query={query}
+            relatedSearches={relatedSearches}
             sort={sort}
             time={time}
+            typeFilter={typeFilter}
+            userId={session.user.id}
           />
-        }
-        key={`${query}:${typeFilter}:${mode}:${sort}:${time}:${page}`}
-      >
-        <SearchResultsSection
-          correctedQuery={correctedQuery}
-          hasQuery={hasQuery}
-          mode={mode}
-          page={page}
-          query={query}
-          relatedSearches={relatedSearches}
-          sort={sort}
-          time={time}
-          typeFilter={typeFilter}
-          userId={session.user.id}
-        />
-      </Suspense>
+        </Suspense>
+      </div>
     </div>
   );
 }
@@ -275,122 +277,140 @@ async function SearchResultsSection({
 
   return (
     <section className="search-results-shell">
-          <SearchTypeTabs
-            counts={hasQuery ? typeCounts : null}
-            current={typeFilter}
-            mode={mode}
-            query={activeQuery}
-            sort={sort}
-            time={time}
-          />
-          {hasQuery ? (
-            <>
-              <div className="search-meta-row">
-                <CountRange>
-                  About {formatCount(filteredResults.length)} result
-                  {filteredResults.length === 1 ? "" : "s"} for{" "}
-                  <span>{activeQuery}</span>
-                </CountRange>
-              </div>
-              {isShowingCorrectedResults && correctedQuery ? (
-                <div className="search-did-you-mean">
-                  Showing results for <span>{correctedQuery}</span>.{" "}
-                  <Link href={searchHref({ query, type: typeFilter, mode, sort, time })}>
-                    Search instead for {query}
-                  </Link>
-                  .
-                </div>
-              ) : correctedQuery ? (
-                <div className="search-did-you-mean">
-                  Did you mean{" "}
-                  <Link href={searchHref({ query: correctedQuery, type: typeFilter, mode, sort, time })}>
-                    {correctedQuery}
-                  </Link>
-                  ?
-                </div>
-              ) : null}
-              {activeFilters.length > 0 ? (
-                <ActiveSearchFilters filters={activeFilters} clearAllHref={clearAllSearchHref(activeQuery)} />
-              ) : null}
-              <details className="search-advanced-tools">
-                <summary>Query details</summary>
-                <SearchQueryInsights
-                  actions={recoveryActions}
-                  mode={mode}
-                  query={activeQuery}
-                  resultCount={filteredResults.length}
-                  sort={sort}
-                  time={time}
-                  typeFilter={typeFilter}
-                />
-              </details>
-              <div className="search-tools-row">
-                <CountRange>
-                  Page {formatCount(currentPage)} of {formatCount(pageCount)}
-                </CountRange>
-              </div>
-              <div className="search-results-list">
-                {visibleResults.map((result) => (
-                  <ResultCard
-                    key={`${result.type}:${result.id}`}
-                    mode={mode}
-                    query={activeQuery}
-                    result={result}
-                    sort={sort}
-                    time={time}
-                    typeFilter={typeFilter}
-                  />
-                ))}
-              </div>
-              {pageCount > 1 ? (
-                <nav className="search-pagination" aria-label="Search result pages">
-                  <PageLink
-                    disabled={currentPage === 1}
-                    href={searchHref({ query: activeQuery, type: typeFilter, mode, sort, time, page: currentPage - 1 })}
-                    label="Previous"
-                    icon="previous"
-                  />
-                  {Array.from({ length: pageCount }, (_, index) => index + 1).map((pageNumber) => (
-                    <Link
-                      className="search-page-link"
-                      data-active={pageNumber === currentPage ? "true" : undefined}
-                      href={searchHref({ query: activeQuery, type: typeFilter, mode, sort, time, page: pageNumber })}
-                      key={pageNumber}
-                    >
-                      {pageNumber}
-                    </Link>
-                  ))}
-                  <PageLink
-                    disabled={currentPage === pageCount}
-                    href={searchHref({ query: activeQuery, type: typeFilter, mode, sort, time, page: currentPage + 1 })}
-                    label="Next"
-                    icon="next"
-                  />
-                </nav>
-              ) : null}
-              {filteredResults.length === 0 ? (
-                <SearchEmptyState actions={recoveryActions}>
-                  No matches found. Try a broader phrase, fewer words, or switch back
-                  to All results.
-                </SearchEmptyState>
-              ) : null}
-              {relatedSearches.length > 0 ? (
-                <RelatedSearches query={activeQuery} searches={relatedSearches} mode={mode} sort={sort} time={time} />
-              ) : null}
-            </>
-          ) : (
-            <>
-              <SearchEmptyState>
-                Enter a query to search across your sources, saved items, and
-                digest archive.
-              </SearchEmptyState>
-              <RelatedSearches query={query} searches={defaultSuggestions} mode={mode} sort={sort} time={time} />
-              <details className="search-advanced-tools">
-                <summary>Advanced syntax</summary>
-                <AdvancedSearchTips mode={mode} sort={sort} time={time} />
-              </details>
-            </>
-          )}
+      <SearchTypeTabs
+        counts={hasQuery ? typeCounts : null}
+        current={typeFilter}
+        mode={mode}
+        query={activeQuery}
+        sort={sort}
+        time={time}
+      />
+      {hasQuery ? (
+        <>
+          <div className="search-meta-row">
+            <CountRange>
+              About {formatCount(filteredResults.length)} result
+              {filteredResults.length === 1 ? "" : "s"} for <span>{activeQuery}</span>
+            </CountRange>
+          </div>
+          {isShowingCorrectedResults && correctedQuery ? (
+            <div className="search-did-you-mean">
+              Showing results for <span>{correctedQuery}</span>.{" "}
+              <Link href={searchHref({ query, type: typeFilter, mode, sort, time })}>
+                Search instead for {query}
+              </Link>
+              .
+            </div>
+          ) : correctedQuery ? (
+            <div className="search-did-you-mean">
+              Did you mean{" "}
+              <Link href={searchHref({ query: correctedQuery, type: typeFilter, mode, sort, time })}>
+                {correctedQuery}
+              </Link>
+              ?
+            </div>
+          ) : null}
+          {activeFilters.length > 0 ? (
+            <ActiveSearchFilters filters={activeFilters} clearAllHref={clearAllSearchHref(activeQuery)} />
+          ) : null}
+          <details className="search-advanced-tools">
+            <summary>Query details</summary>
+            <SearchQueryInsights
+              actions={recoveryActions}
+              mode={mode}
+              query={activeQuery}
+              resultCount={filteredResults.length}
+              sort={sort}
+              time={time}
+              typeFilter={typeFilter}
+            />
+          </details>
+          <div className="search-tools-row">
+            <CountRange>
+              Page {formatCount(currentPage)} of {formatCount(pageCount)}
+            </CountRange>
+          </div>
+          <div className="search-results-list">
+            {visibleResults.map((result) => (
+              <ResultCard
+                key={`${result.type}:${result.id}`}
+                mode={mode}
+                query={activeQuery}
+                result={result}
+                sort={sort}
+                time={time}
+                typeFilter={typeFilter}
+              />
+            ))}
+          </div>
+          {pageCount > 1 ? (
+            <nav className="search-pagination" aria-label="Search result pages">
+              <PageLink
+                disabled={currentPage === 1}
+                href={searchHref({
+                  query: activeQuery,
+                  type: typeFilter,
+                  mode,
+                  sort,
+                  time,
+                  page: currentPage - 1,
+                })}
+                label="Previous"
+                icon="previous"
+              />
+              {Array.from({ length: pageCount }, (_, index) => index + 1).map((pageNumber) => (
+                <Link
+                  className="search-page-link"
+                  data-active={pageNumber === currentPage ? "true" : undefined}
+                  href={searchHref({
+                    query: activeQuery,
+                    type: typeFilter,
+                    mode,
+                    sort,
+                    time,
+                    page: pageNumber,
+                  })}
+                  key={pageNumber}
+                >
+                  {pageNumber}
+                </Link>
+              ))}
+              <PageLink
+                disabled={currentPage === pageCount}
+                href={searchHref({
+                  query: activeQuery,
+                  type: typeFilter,
+                  mode,
+                  sort,
+                  time,
+                  page: currentPage + 1,
+                })}
+                label="Next"
+                icon="next"
+              />
+            </nav>
+          ) : null}
+          {filteredResults.length === 0 ? (
+            <SearchEmptyState actions={recoveryActions}>
+              No matches found. Try a broader phrase, fewer words, or switch back to All results.
+            </SearchEmptyState>
+          ) : null}
+          {relatedSearches.length > 0 ? (
+            <RelatedSearches query={activeQuery} searches={relatedSearches} mode={mode} sort={sort} time={time} />
+          ) : null}
+        </>
+      ) : (
+        <>
+          <SearchEmptyState>
+            Enter a query to search across your sources, saved items, and digest archive.
+          </SearchEmptyState>
+          <RelatedSearches query={query} searches={defaultSuggestions} mode={mode} sort={sort} time={time} />
+          <details className="search-advanced-tools">
+            <summary>Advanced syntax</summary>
+            <AdvancedSearchTips mode={mode} sort={sort} time={time} />
+          </details>
+        </>
+      )}
     </section>
   );
 }
