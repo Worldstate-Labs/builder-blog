@@ -2892,6 +2892,10 @@ svg.lucide {
   min-width: 0;
 }
 
+.search-result-source-copy {
+  min-width: 0;
+}
+
 .search-result-icon {
   align-items: center;
   background: color-mix(in oklch, var(--accent) 12%, var(--paper-strong));
@@ -2989,6 +2993,13 @@ svg.lucide {
 
 .search-result-refinements > summary:hover {
   color: var(--accent);
+}
+
+.search-result-refinement-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
 }
 
 .search-result-refinement {

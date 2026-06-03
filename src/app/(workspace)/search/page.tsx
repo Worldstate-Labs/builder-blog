@@ -502,21 +502,21 @@ function ActiveSearchFilters({
   return (
     <section className="search-active-filters" aria-label="Active search filters">
       <div className="search-active-filters-heading">Search tools</div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="search-filter-chip-row">
         {filters.map((filter) => (
           <Link
             aria-label={filter.clearLabel}
-            className="fb-filter-chip"
+            className="search-filter-chip"
             href={filter.href}
             key={`${filter.label}:${filter.value}`}
           >
-            <span className="label">{filter.label}</span>
+            <span className="search-filter-label">{filter.label}</span>
             <span>{filter.value}</span>
             <X aria-hidden="true" />
           </Link>
         ))}
         <Link
-          className="ml-1 text-xs font-bold text-[var(--accent)]"
+          className="search-filter-clear"
           href={clearAllHref}
         >
           Clear all
@@ -629,7 +629,7 @@ function ResultCard({
     <article className="search-result">
       <div className="search-result-source">
         <span className="search-result-icon">{sourceName.slice(0, 1).toUpperCase()}</span>
-        <div className="min-w-0">
+        <div className="search-result-source-copy">
           <div className="search-result-source-name">{sourceName}</div>
           {displayUrl ? <div className="search-result-url">{displayUrl}</div> : null}
         </div>
@@ -658,7 +658,7 @@ function ResultCard({
       {sourceSite || typeFilter !== result.type ? (
         <details className="search-result-refinements" aria-label={`Refine search for ${result.title}`}>
           <summary>Refine</summary>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="search-result-refinement-list">
             {sourceSite ? (
               <Link
                 className="search-result-refinement"
