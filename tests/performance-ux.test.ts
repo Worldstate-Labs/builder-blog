@@ -1389,6 +1389,13 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(hubImportRoute, /redirect\(/);
   assert.match(libraryImportRemoveButton, /router\.refresh/);
   assert.match(libraryImportRemoveButton, /event\.stopPropagation/);
+  assert.match(libraryImportRemoveButton, /className="import-remove-control"/);
+  assert.match(libraryImportRemoveButton, /className="button-light button-compact button-danger import-remove-button"/);
+  assert.match(libraryImportRemoveButton, /className="import-remove-icon"/);
+  assert.match(libraryImportRemoveButton, /className="import-remove-error"/);
+  assert.doesNotMatch(libraryImportRemoveButton, /inline-flex flex-col items-end|text-xs text-\[var\(--danger\)\]|h-4 w-4|button-danger gap-2/);
+  assert.match(globals, /\.import-remove-button\s*{[\s\S]*gap:\s*0\.5rem/);
+  assert.match(globals, /\.import-remove-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(buildersPage, /LibraryImportRemoveButton/);
   assert.match(hubPage, /importCount/);
   assert.match(hubPage, /viewCount/);

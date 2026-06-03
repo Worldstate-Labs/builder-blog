@@ -42,11 +42,11 @@ export function LibraryImportRemoveButton({
   }
 
   return (
-    <div className="inline-flex flex-col items-end gap-1">
+    <div className="import-remove-control">
       <button
         aria-busy={isPending}
         aria-label={`Remove ${libraryName} from library`}
-        className="button-light button-compact button-danger gap-2"
+        className="button-light button-compact button-danger import-remove-button"
         disabled={isPending}
         onClick={(event) => {
           event.preventDefault();
@@ -55,11 +55,11 @@ export function LibraryImportRemoveButton({
         }}
         type="button"
       >
-        <Trash2 className="h-4 w-4" />
+        <Trash2 className="import-remove-icon" />
         {isPending ? "Removing" : `Remove ${builderCount}`}
       </button>
       {error ? (
-        <span className="text-xs text-[var(--danger)]" role="status">
+        <span className="import-remove-error" role="status">
           {error}
         </span>
       ) : null}

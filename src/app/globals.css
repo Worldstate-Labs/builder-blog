@@ -3224,6 +3224,28 @@ svg.lucide {
   margin-top: 0.75rem;
 }
 
+.import-remove-control {
+  align-items: flex-end;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.import-remove-button {
+  gap: 0.5rem;
+}
+
+.import-remove-icon {
+  height: 1rem;
+  width: 1rem;
+}
+
+.import-remove-error {
+  color: var(--danger);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
 .hub-section-copy {
   color: var(--muted-strong);
   font-size: 0.875rem;
