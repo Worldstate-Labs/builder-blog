@@ -682,49 +682,10 @@ svg.lucide {
   text-transform: uppercase;
 }
 
-.home-main {
+.home-workspace {
+  display: grid;
+  gap: 1.25rem;
   min-width: 0;
-}
-
-.home-tabs {
-  align-items: flex-end;
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  gap: 1.6rem;
-  min-height: 3.4rem;
-}
-
-.home-tabs button {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  color: var(--muted-strong);
-  cursor: pointer;
-  display: inline-flex;
-  font-size: 0.9rem;
-  font-weight: 750;
-  min-height: 3.4rem;
-  padding-top: 1rem;
-  position: relative;
-}
-
-.home-tabs button[data-active="true"] {
-  color: var(--ink);
-}
-
-.home-tabs button[data-active="true"]::after {
-  background: var(--ink);
-  bottom: -1px;
-  content: "";
-  height: 1px;
-  left: 0;
-  position: absolute;
-  right: 0;
-}
-
-.home-main .recommendation-feed,
-.subscription-feed {
-  margin-top: 1.5rem;
 }
 
 .page-kicker-row {

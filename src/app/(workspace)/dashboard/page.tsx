@@ -63,8 +63,16 @@ export default async function DashboardPage({
 
   return (
     <div className="page-pad">
-      <h1 className="sr-only">Home</h1>
-      <section className="grid gap-9">
+      <header className="fb-page-head">
+        <div>
+          <h1 className="fb-title">Home</h1>
+          <p className="fb-desc">
+            Read your AI Digest, saved posts, and followed-source updates.
+          </p>
+        </div>
+      </header>
+
+      <section className="home-workspace">
         <DashboardHomeTabs
           initialTab={selectedTab}
           aiDigest={aiDigest}

@@ -156,6 +156,11 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(appNav, /desktopLayout = "rail"/);
   assert.match(appNav, /fb-nav-list-bar/);
   assert.match(appNav, /fb-nav-list-rail/);
+  assert.match(dashboardPage, /className="fb-page-head"/);
+  assert.match(dashboardPage, /<h1 className="fb-title">Home<\/h1>/);
+  assert.match(dashboardPage, /Read your AI Digest, saved posts, and followed-source updates/);
+  assert.doesNotMatch(dashboardPage, /<h1 className="sr-only">Home<\/h1>/);
+  assert.match(dashboardPage, /className="home-workspace"/);
   assert.match(dashboardPage, /DashboardHomeTabs/);
   assert.match(dashboardTabs, /role="tablist"/);
   assert.match(globals, /\.fb-segmented-tabs/);
@@ -191,6 +196,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.fb-top-inner\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
   assert.match(globals, /\.fb-page-head\s*{[\s\S]*border-bottom:/);
   assert.doesNotMatch(globals, /\.home-rail/);
+  assert.doesNotMatch(globals, /\.home-main/);
+  assert.doesNotMatch(globals, /\.home-tabs/);
+  assert.match(globals, /\.home-workspace\s*{[\s\S]*min-width:\s*0/);
   assert.doesNotMatch(globals, /\.fb-rail/);
 });
 
