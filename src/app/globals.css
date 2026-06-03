@@ -45,6 +45,7 @@
 
   /* Reading measure — keeps prose at ~62–72ch. */
   --measure: 68ch;
+  --public-copy-max: 36rem;
   --reading-max: 58rem;
   --settings-max: 52rem;
   --workspace-max: 72rem;
@@ -7314,7 +7315,7 @@ svg.lucide {
   font-size: 1.125rem;
   line-height: 1.8;
   margin-top: 1.5rem;
-  max-width: 36rem;
+  max-width: var(--public-copy-max);
 }
 
 .fb-public-section-kicker-row {
@@ -7348,18 +7349,13 @@ svg.lucide {
 }
 
 .fb-public-flow {
-  display: grid;
-  gap: 0.875rem;
-  margin-top: 1.75rem;
-  max-width: 36rem;
-}
-
-.fb-public-flow {
   align-items: center;
   color: var(--muted-strong);
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
+  margin-top: 1.75rem;
+  max-width: var(--public-copy-max);
 }
 
 .fb-public-flow-step {
