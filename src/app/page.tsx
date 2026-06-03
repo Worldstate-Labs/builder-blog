@@ -16,7 +16,7 @@ export default async function Home() {
           <BrandMark />
           <span className="fb-brand-name">FollowBrief</span>
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="fb-public-nav-actions">
           <ThemeToggle />
           <Link className="fb-btn dark" href="/login">
             Sign in
@@ -49,12 +49,12 @@ export default async function Home() {
         </div>
 
         <div className="fb-hero-panel" aria-label="FollowBrief product preview">
-          <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
-            <div className="flex items-center gap-2.5">
+          <div className="fb-product-preview-head">
+            <div className="fb-product-preview-title-row">
               <BrandMark />
               <div>
-                <div className="text-sm font-bold">Today&apos;s digest</div>
-                <div className="text-xs text-[var(--muted-strong)]">
+                <div className="fb-product-preview-title">Today&apos;s digest</div>
+                <div className="fb-product-preview-kicker">
                   Preview
                 </div>
               </div>
@@ -64,7 +64,7 @@ export default async function Home() {
               Sample
             </span>
           </div>
-          <div className="grid gap-3 p-5">
+          <div className="fb-product-preview-list">
             {[
               {
                 title: "Context windows became product infrastructure.",
@@ -84,9 +84,9 @@ export default async function Home() {
             ].map((item) => (
               <article className="fb-signal" key={item.title}>
                 <span className="fb-signal-dot" />
-                <div className="min-w-0">
-                  <h2 className="text-sm font-bold leading-snug">{item.title}</h2>
-                  <p className="mt-1.5 text-xs leading-relaxed text-[var(--muted-strong)]">
+                <div className="fb-signal-copy">
+                  <h2 className="fb-signal-title">{item.title}</h2>
+                  <p className="fb-signal-desc">
                     {item.detail}
                   </p>
                 </div>
@@ -98,11 +98,11 @@ export default async function Home() {
 
       <section
         id="how-it-works"
-        className="fb-public-section border-t border-[var(--line)] py-10"
+        className="fb-public-section fb-public-workflow"
       >
-        <div className="flex items-center gap-4">
+        <div className="fb-public-section-kicker-row">
           <span className="fb-section-label">Workflow</span>
-          <span className="text-xs text-[var(--muted-strong)]">
+          <span className="fb-public-section-note">
             Built around the loop of following, briefing, and returning to sources later.
           </span>
         </div>
@@ -127,15 +127,15 @@ export default async function Home() {
               copy: "Browse today, open the items behind each brief, and search the full archive when a detail matters later.",
             },
           ].map(({ i, icon: Icon, title, copy }) => (
-            <div key={title} className="fb-panel">
-              <div className="flex items-center justify-between">
+            <div key={title} className="fb-panel fb-public-step-card">
+              <div className="fb-public-step-card-head">
                 <span className="fb-section-label">{i}</span>
-                <Icon className="h-[18px] w-[18px] text-[var(--accent)]" aria-hidden="true" />
+                <Icon className="fb-public-step-icon" aria-hidden="true" />
               </div>
               <h2 className="fb-public-card-title fb-public-card-title-spaced">
                 {title}
               </h2>
-              <p className="mt-2.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+              <p className="fb-public-card-copy">
                 {copy}
               </p>
             </div>
@@ -143,14 +143,14 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="fb-public-section grid gap-5 border-t border-[var(--line)] py-10 md:grid-cols-[0.9fr_1.1fr]">
+      <section className="fb-public-section fb-public-workspace">
         <div>
           <span className="fb-section-label">Workspace</span>
           <h2 className="fb-public-section-title fb-public-section-title-spaced">
             Calm enough for daily use. Dense enough for real recall.
           </h2>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="fb-public-feature-grid">
           <Feature
             icon={Sparkles}
             title="Digest-first home"
@@ -169,11 +169,11 @@ export default async function Home() {
 
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-[var(--line)] bg-[var(--paper-strong)] px-3 py-2.5">
-      <div className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[var(--muted-strong)]">
+    <div className="fb-public-metric">
+      <div className="fb-public-metric-label">
         {label}
       </div>
-      <div className="mt-1.5 text-[13px] font-semibold text-[var(--ink)]">{value}</div>
+      <div className="fb-public-metric-value">{value}</div>
     </div>
   );
 }
@@ -189,10 +189,10 @@ function Feature({
 }) {
   return (
     <article className="fb-signal">
-      <Icon className="mt-1 h-5 w-5 text-[var(--accent)]" aria-hidden="true" />
+      <Icon className="fb-public-feature-icon" aria-hidden="true" />
       <div>
         <h3 className="fb-public-card-title">{title}</h3>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">{copy}</p>
+        <p className="fb-public-card-copy is-compact">{copy}</p>
       </div>
     </article>
   );

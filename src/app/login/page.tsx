@@ -18,9 +18,9 @@ export default async function LoginPage({
     <main className="fb-dark-frame">
       <div className="fb-login-shell">
         <section>
-          <div className="flex items-center gap-3">
+          <div className="fb-login-brand-row">
             <BrandMark size="dark" />
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/50">
+            <p className="fb-login-brand-name">
               FollowBrief
             </p>
           </div>
@@ -39,7 +39,7 @@ export default async function LoginPage({
         </section>
 
         <section className="fb-dark-panel">
-          <div className="flex items-start justify-between gap-5">
+          <div className="fb-login-panel-head">
             <div>
               <h2 className="fb-login-panel-title">
                 Continue securely
@@ -48,8 +48,8 @@ export default async function LoginPage({
                 Use the same identity for your web archive and local reading helper.
               </p>
             </div>
-            <span className="rounded-lg bg-white/10 p-2 text-white/70">
-              <ShieldCheck className="h-[18px] w-[18px]" aria-hidden="true" />
+            <span className="fb-login-panel-icon">
+              <ShieldCheck aria-hidden="true" />
             </span>
           </div>
           {errorMessage ? (
@@ -116,8 +116,8 @@ function LoginProof({
 }) {
   return (
     <div className="fb-dark-proof">
-      <Icon className="h-4 w-4 text-white/62" aria-hidden="true" />
-      <div className="mt-2.5 text-[13px] font-bold text-white/82">{label}</div>
+      <Icon className="fb-dark-proof-icon" aria-hidden="true" />
+      <div className="fb-dark-proof-label">{label}</div>
     </div>
   );
 }
