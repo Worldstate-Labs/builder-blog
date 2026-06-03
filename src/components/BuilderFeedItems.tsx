@@ -106,7 +106,7 @@ export function BuilderFeedItems({
           </div>
         ) : null}
         {error ? (
-          <div className="p-4 text-sm text-[var(--danger)]" role="status">
+          <div className="builder-post-state builder-post-state--error" role="status">
             {error}
           </div>
         ) : null}
@@ -122,7 +122,7 @@ export function BuilderFeedItems({
           />
         ))}
         {items?.length === 0 ? (
-          <div className="p-4 text-sm text-[var(--muted-strong)]">
+          <div className="builder-post-state">
             No summarized posts have been stored for this builder yet.
           </div>
         ) : null}

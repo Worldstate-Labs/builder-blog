@@ -805,7 +805,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /Latest \{formatCompactDate\(new Date\(latestPostCreatedAt\)\)\}/);
   assert.match(builderFeedItems, /className="builder-post-loading-line"/);
   assert.match(builderFeedItems, /className="builder-post-loading-card"/);
+  assert.match(builderFeedItems, /className="builder-post-state builder-post-state--error"/);
+  assert.match(builderFeedItems, /className="builder-post-state"/);
   assert.doesNotMatch(builderFeedItems, /bg-black\/10|className="h-/);
+  assert.doesNotMatch(builderFeedItems, /className="p-4 text-sm/);
   assert.match(builderFeedItems, /timeZone:\s*"UTC"/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported libraries/);
@@ -846,6 +849,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.source-sync-skeleton-line,[\s\S]*\.source-section-skeleton-card\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
   assert.match(globals, /\.source-stat-skeleton\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.builder-post-loading-card\s*{[\s\S]*height:\s*4rem/);
+  assert.match(globals, /\.builder-post-state\s*{[\s\S]*padding:\s*1rem/);
+  assert.match(globals, /\.builder-post-state--error\s*{[\s\S]*color:\s*var\(--danger\)/);
+  assert.doesNotMatch(globals, /\.item-list\s*{/);
   assert.doesNotMatch(globals, /\.add-builder-form/);
   assert.doesNotMatch(globals, /\.add-builder-grid/);
   assert.match(personalBuilderRoute, /export async function POST/);
