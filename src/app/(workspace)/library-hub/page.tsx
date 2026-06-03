@@ -173,6 +173,7 @@ async function loadLibraryHubPageData() {
   return {
     hubLibraries,
     hubDigestPipelines,
+    digestPipelineCount: hubDigestPipelines.length,
     libraryCount: libraries.length,
   };
 }
@@ -184,7 +185,15 @@ async function LibraryHubCount({
 }) {
   const data = await dataPromise;
 
-  return <CountChip label={data.libraryCount === 1 ? "library" : "libraries"} value={data.libraryCount} />;
+  return (
+    <>
+      <CountChip label={data.libraryCount === 1 ? "library" : "libraries"} value={data.libraryCount} />
+      <CountChip
+        label={data.digestPipelineCount === 1 ? "AI Digest" : "AI Digests"}
+        value={data.digestPipelineCount}
+      />
+    </>
+  );
 }
 
 async function LibraryHubImportSection({
