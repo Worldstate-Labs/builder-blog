@@ -374,9 +374,15 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /SearchResultsFallback/);
   assert.match(searchPage, /SearchResultsSection/);
   assert.match(globals, /\.search-result-skeleton/);
-  assert.match(searchPage, /className="at-desktop fb-title"/);
+  assert.match(searchPage, /className="fb-page-head search-hero"/);
+  assert.match(searchPage, /className="fb-title"/);
+  assert.match(searchPage, /className="search-hero-form"/);
+  assert.doesNotMatch(searchPage, /fb-m-search/);
+  assert.doesNotMatch(searchPage, /search-page-active/);
   assert.doesNotMatch(searchPage, /serif text-\[1\.875rem\]/);
   assert.match(globals, /\.search-results-shell\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
+  assert.match(globals, /\.search-hero\s*{[\s\S]*grid-template-columns:/);
+  assert.match(globals, /\.search-hero-form \.search-form\s*{[\s\S]*margin-top:\s*0/);
   assert.match(searchPage, /Search instead for/);
   assert.match(searchPage, /isShowingCorrectedResults/);
   assert.match(searchPage, /Advanced search/);
@@ -480,8 +486,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchForm, /lucky/);
   assert.doesNotMatch(searchForm, /type="radio"/);
   assert.match(globals, /\.search-suggestion-dropdown/);
-  assert.doesNotMatch(globals, /\.search-page-active \.search-suggestion-row\s*\{[\s\S]*display:\s*none/);
-  assert.match(globals, /\.search-page-active \.search-heading\s*\{[\s\S]*position:\s*absolute/);
+  assert.doesNotMatch(globals, /search-page-active/);
+  assert.doesNotMatch(globals, /search-heading/);
+  assert.doesNotMatch(globals, /\.fb-m-search/);
 });
 
 test("search suggestions API exists for autocomplete-style queries", () => {

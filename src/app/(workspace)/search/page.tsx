@@ -146,85 +146,53 @@ export default async function SearchPage({
   ];
 
   return (
-    <div className={hasQuery ? "page-pad search-page search-page-active" : "page-pad search-page"}>
-        <section className="search-hero">
-          <h1 className="fb-m-title at-mobile">Search</h1>
-          <h1 className="at-desktop fb-title">
-            Search
-          </h1>
-          <p className="fb-m-sub at-mobile">Sources, posts, and digest history.</p>
-          <p className="at-desktop fb-desc">
-            Find sources, saved posts, and digest history.
-          </p>
-          <form
-            action="/search"
-            className="fb-m-search at-mobile mt-3"
-            autoComplete="off"
-            role="search"
-          >
-            <label className="sr-only" htmlFor="m-search-input">
-              Search query
-            </label>
-            <svg
-              aria-hidden="true"
-              className="h-4 w-4 text-[var(--muted)]"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-            <input
-              defaultValue={query}
-              id="m-search-input"
-              name="q"
-              placeholder="Sources, posts, digests"
-              type="search"
-            />
-          </form>
-          <div className="at-desktop">
-            <SearchForm
-              key={`${query}:${typeFilter}:${mode}:${sort}:${time}`}
-              query={query}
-              typeFilter={typeFilter}
-              mode={mode}
-              sort={sort}
-              time={time}
-              afterDate={formatOptionalOperatorDate(formParsedQuery.after)}
-              beforeDate={formatOptionalOperatorDate(formParsedQuery.before)}
-              suggestions={formSuggestions}
-            />
-          </div>
-        </section>
-
-        <Suspense
-          fallback={
-            <SearchResultsFallback
-              current={typeFilter}
-              hasQuery={hasQuery}
-              mode={mode}
-              query={query}
-              sort={sort}
-              time={time}
-            />
-          }
-          key={`${query}:${typeFilter}:${mode}:${sort}:${time}:${page}`}
-        >
-          <SearchResultsSection
-            correctedQuery={correctedQuery}
-            hasQuery={hasQuery}
-            mode={mode}
-            page={page}
+    <div className="page-pad search-page">
+      <header className="fb-page-head search-hero">
+        <div>
+          <h1 className="fb-title">Search</h1>
+          <p className="fb-desc">Find sources, saved posts, and digest history.</p>
+        </div>
+        <div className="search-hero-form">
+          <SearchForm
+            key={`${query}:${typeFilter}:${mode}:${sort}:${time}`}
             query={query}
-            relatedSearches={relatedSearches}
+            typeFilter={typeFilter}
+            mode={mode}
             sort={sort}
             time={time}
-            typeFilter={typeFilter}
-            userId={session.user.id}
+            afterDate={formatOptionalOperatorDate(formParsedQuery.after)}
+            beforeDate={formatOptionalOperatorDate(formParsedQuery.before)}
+            suggestions={formSuggestions}
           />
-        </Suspense>
+        </div>
+      </header>
+
+      <Suspense
+        fallback={
+          <SearchResultsFallback
+            current={typeFilter}
+            hasQuery={hasQuery}
+            mode={mode}
+            query={query}
+            sort={sort}
+            time={time}
+          />
+        }
+        key={`${query}:${typeFilter}:${mode}:${sort}:${time}:${page}`}
+      >
+        <SearchResultsSection
+          correctedQuery={correctedQuery}
+          hasQuery={hasQuery}
+          mode={mode}
+          page={page}
+          query={query}
+          relatedSearches={relatedSearches}
+          sort={sort}
+          time={time}
+          typeFilter={typeFilter}
+          userId={session.user.id}
+        />
+      </Suspense>
     </div>
   );
 }
