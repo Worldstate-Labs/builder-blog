@@ -105,6 +105,16 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(settingsFields, /optional\?: boolean/);
   assert.match(settingsFields, /placeholder\?: string/);
   assert.match(settingsFields, /OptionalBadge/);
+  assert.match(settingsFields, /className="settings-section-head"/);
+  assert.match(settingsFields, /className="settings-section-title-row"/);
+  assert.match(settingsFields, /className="settings-field-label"/);
+  assert.match(settingsFields, /className="settings-field-help"/);
+  assert.match(settingsFields, /className="settings-choice-list"/);
+  assert.match(settingsFields, /className="settings-footer-bar"/);
+  assert.match(settingsFields, /className="settings-save-status is-saved"/);
+  assert.doesNotMatch(settingsFields, /style=\{\{/);
+  assert.doesNotMatch(settingsFields, /className="settings-section mt-7/);
+  assert.doesNotMatch(settingsFields, /className="settings-field block text-sm/);
   assert.match(adminDigestConfig, /FooterBar/);
   assert.match(adminDigestConfig, /@\/components\/settings\/SettingsFields/);
   assert.match(adminDigestConfig, /HEADLINE_PROMPT_PLACEHOLDER/);
@@ -127,6 +137,10 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(markdownEditor, /placeholder=\{placeholder\}/);
   assert.match(globals, /\.settings-optional-badge/);
   assert.match(globals, /\.settings-optional-empty/);
+  assert.match(globals, /\.settings-section-head\s*{[\s\S]*border-bottom:\s*1px solid var\(--line\)/);
+  assert.match(globals, /\.settings-field-label\s*{[\s\S]*text-transform:\s*uppercase/);
+  assert.match(globals, /\.settings-token-add-row\s*{[\s\S]*display:\s*flex/);
+  assert.match(globals, /\.settings-footer-bar\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.fb-input::placeholder/);
   assert.match(globals, /\.settings-markdown-textarea::placeholder/);
   assert.match(userMenu, /href="\/settings" onClick=\{closeMenu\}[\s\S]*Settings/);

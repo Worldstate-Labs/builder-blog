@@ -39,48 +39,37 @@ export function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="settings-section mt-7 first:mt-0">
-      <div className="settings-section-head mb-3 flex items-baseline gap-3 border-b border-[var(--line)] pb-2">
+    <section className="settings-section">
+      <div className="settings-section-head">
         {step ? (
           <span
-            className="settings-section-step text-[11px] tracking-[0.16em]"
-            style={{ color: "var(--muted)", fontFamily: "var(--font-geist-mono)" }}
+            className="settings-section-step"
             aria-hidden="true"
           >
             {step}
           </span>
         ) : null}
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p
-              className="settings-section-title text-[11px] uppercase tracking-[0.16em]"
-              style={{ color: "var(--ink)", fontFamily: "var(--font-geist-mono)" }}
-            >
+        <div className="settings-section-copy">
+          <div className="settings-section-title-row">
+            <p className="settings-section-title">
               {title}
             </p>
             {optional ? <OptionalBadge /> : null}
           </div>
           {description ? (
-            <p className="settings-section-desc mt-0.5 text-sm" style={{ color: "var(--muted-strong)" }}>
+            <p className="settings-section-desc">
               {description}
             </p>
           ) : null}
         </div>
       </div>
-      <div className="settings-section-body grid gap-4">{children}</div>
+      <div className="settings-section-body">{children}</div>
     </section>
   );
 }
 
 export function OptionalBadge() {
-  return (
-    <span
-      className="settings-optional-badge"
-      style={{ fontFamily: "var(--font-geist-mono)" }}
-    >
-      Optional
-    </span>
-  );
+  return <span className="settings-optional-badge">Optional</span>;
 }
 
 // Shared field label, rendered as the metadata-style caption above a control.
@@ -92,16 +81,10 @@ function FieldLabelText({
   children: React.ReactNode;
 }) {
   return (
-    <span
-      className="settings-field-label mb-1 flex items-baseline gap-1.5 text-[11px] uppercase tracking-[0.12em]"
-      style={{ color: "var(--muted)" }}
-    >
+    <span className="settings-field-label">
       <span>{children}</span>
       {optional ? (
-        <span
-          className="text-[10px] normal-case tracking-normal"
-          style={{ color: "var(--muted)", fontFamily: "var(--font-geist-mono)" }}
-        >
+        <span className="settings-field-label-optional">
           optional
         </span>
       ) : null}
@@ -121,11 +104,11 @@ export function FieldShell({
   children: React.ReactNode;
 }) {
   return (
-    <label className="settings-field block text-sm">
+    <label className="settings-field">
       <FieldLabelText optional={optional}>{label}</FieldLabelText>
       {children}
       {description ? (
-        <span className="settings-field-help mt-1 block text-xs" style={{ color: "var(--muted)" }}>
+        <span className="settings-field-help">
           {description}
         </span>
       ) : null}
@@ -151,10 +134,9 @@ export function FieldText({
   return (
     <FieldShell label={label} description={description}>
       <input
-        className="fb-input w-full"
+        className={`fb-input settings-input${mono ? " mono" : ""}`}
         value={value}
         placeholder={placeholder}
-        style={mono ? { fontFamily: "var(--font-geist-mono)" } : undefined}
         onChange={(e) => onChange(e.target.value)}
       />
     </FieldShell>
@@ -175,7 +157,7 @@ export function FieldSelect({
   return (
     <FieldShell label={label}>
       <select
-        className="fb-input w-full"
+        className="fb-input settings-input"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -214,8 +196,7 @@ export function FieldNumber({
     <FieldShell label={label} optional={optional} description={description}>
       <input
         type="number"
-        className="fb-input w-full"
-        style={{ maxWidth: "9rem" }}
+        className="fb-input settings-input settings-number-input"
         value={value}
         min={min}
         max={max}
@@ -246,16 +227,10 @@ export function FieldTextarea({
   return (
     <FieldShell label={label} description={description}>
       <textarea
-        className="fb-textarea w-full"
+        className={`fb-textarea settings-textarea${mono ? " mono" : ""}`}
         rows={rows}
         value={value}
         spellCheck={!mono}
-        style={{
-          resize: "vertical",
-          ...(mono
-            ? { fontFamily: "var(--font-geist-mono)", fontSize: "0.8125rem" }
-            : {}),
-        }}
         onChange={(e) => onChange(e.target.value)}
       />
     </FieldShell>
@@ -274,17 +249,17 @@ export function Toggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+    <label className="settings-toggle">
       <input
         type="checkbox"
-        className="mt-0.5 h-4 w-4"
+        className="settings-toggle-input"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
       />
       <span>
-        <span className="block">{label}</span>
+        <span className="settings-toggle-label">{label}</span>
         {description ? (
-          <span className="mt-0.5 block text-xs" style={{ color: "var(--muted)" }}>
+          <span className="settings-toggle-desc">
             {description}
           </span>
         ) : null}
@@ -319,42 +294,32 @@ export function ChipListField({
 
   return (
     <fieldset
-      className="block text-sm"
+      className="settings-choice-field"
       aria-describedby={description ? descId : undefined}
     >
       <legend
         id={legendId}
-        className="mb-1 block text-[11px] uppercase tracking-[0.12em]"
-        style={{ color: "var(--muted)" }}
+        className="settings-field-label"
       >
         {label}
       </legend>
-      <div
-        className="rounded-[10px] border border-[var(--line)]"
-        style={{ background: "var(--paper-strong)", padding: "0.625rem" }}
-      >
-        <div className="flex flex-wrap gap-1.5">
+      <div className="settings-choice-list">
+        <div className="settings-token-list">
           {values.length === 0 ? (
-            <span className="text-xs" style={{ color: "var(--muted)" }}>
+            <span className="settings-choice-empty">
               No entries.
             </span>
           ) : (
             values.map((v) => (
               <span
                 key={v}
-                className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs"
-                style={{
-                  background: "var(--paper)",
-                  border: "1px solid var(--line)",
-                  fontFamily: "var(--font-geist-mono)",
-                }}
+                className="settings-token"
               >
                 <span>{v}</span>
                 <button
                   type="button"
                   aria-label={`Remove ${v}`}
-                  className="ml-0.5"
-                  style={{ color: "var(--muted)" }}
+                  className="settings-token-remove"
                   onClick={() => onChange(values.filter((x) => x !== v))}
                 >
                   ×
@@ -363,9 +328,9 @@ export function ChipListField({
             ))
           )}
         </div>
-        <div className="mt-2 flex gap-2">
+        <div className="settings-token-add-row">
           <input
-            className="fb-input flex-1"
+            className="fb-input settings-token-input"
             aria-labelledby={legendId}
             placeholder={placeholder ?? "Add entry, press Enter"}
             value={draft}
@@ -390,7 +355,7 @@ export function ChipListField({
         </div>
       </div>
       {description ? (
-        <span id={descId} className="mt-1 block text-xs" style={{ color: "var(--muted)" }}>
+        <span id={descId} className="settings-field-help">
           {description}
         </span>
       ) : null}
@@ -414,10 +379,7 @@ export function FooterBar({
   updatedAt: string;
 }) {
   return (
-    <div
-      className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--line)]"
-      style={{ paddingTop: "0.875rem" }}
-    >
+    <div className="settings-footer-bar">
       <button
         type="button"
         className={dirty ? "fb-btn dark" : "fb-btn light compact"}
@@ -435,10 +397,7 @@ export function FooterBar({
         Discard
       </button>
       <SaveStatus status={status} />
-      <span
-        className="ml-auto text-xs"
-        style={{ color: "var(--muted)", fontFamily: "var(--font-geist-mono)" }}
-      >
+      <span className="settings-footer-updated">
         Updated {formatUtcDateTime(updatedAt)}
       </span>
     </div>
@@ -478,7 +437,7 @@ export function SaveStatus({
 
   if (status.kind === "saving") {
     return (
-      <span className="text-sm" style={{ color: "var(--muted-strong)" }} aria-live="polite">
+      <span className="settings-save-status is-saving" aria-live="polite">
         Saving…
       </span>
     );
@@ -486,14 +445,14 @@ export function SaveStatus({
 
   if (status.kind === "saved") {
     return (
-      <span className="text-sm" style={{ color: "var(--signal)" }} aria-live="polite">
+      <span className="settings-save-status is-saved" aria-live="polite">
         {status.message ?? "Saved"}
       </span>
     );
   }
 
   return (
-    <span className="text-sm" style={{ color: "var(--danger)" }} role="alert">
+    <span className="settings-save-status is-error" role="alert">
       {status.message ?? "Save failed"}
     </span>
   );
@@ -556,37 +515,29 @@ export function OrderedChoiceField({
   }
 
   return (
-    <fieldset className="settings-choice-field block text-sm" aria-describedby={description ? descId : undefined}>
+    <fieldset className="settings-choice-field" aria-describedby={description ? descId : undefined}>
       <legend
         id={legendId}
-        className="settings-field-label mb-1 block text-[11px] uppercase tracking-[0.12em]"
-        style={{ color: "var(--muted)" }}
+        className="settings-field-label"
       >
         {label}
       </legend>
-      <div
-        className="settings-choice-list rounded-[10px] border border-[var(--line)]"
-        style={{ background: "var(--paper-strong)", padding: "0.625rem" }}
-      >
+      <div className="settings-choice-list">
         {value.length === 0 ? (
-          <span className="text-xs" style={{ color: "var(--muted)" }}>
+          <span className="settings-choice-empty">
             None selected.
           </span>
         ) : (
-          <ol className="grid gap-1.5">
+          <ol className="settings-choice-order">
             {value.map((v, i) => (
               <li
                 key={v}
-                className="settings-choice-row flex items-center gap-2 rounded-md px-2 py-1 text-sm"
-                style={{ background: "var(--paper)", border: "1px solid var(--line)" }}
+                className="settings-choice-row"
               >
-                <span
-                  className="w-4 shrink-0 text-right text-xs"
-                  style={{ color: "var(--muted)", fontFamily: "var(--font-geist-mono)" }}
-                >
+                <span className="settings-choice-index">
                   {i + 1}
                 </span>
-                <span className="flex-1 truncate" style={{ fontFamily: "var(--font-geist-mono)" }}>
+                <span className="settings-choice-label">
                   {labelFor(v)}
                 </span>
                 <button
@@ -621,7 +572,7 @@ export function OrderedChoiceField({
         )}
         {remaining.length > 0 ? (
           <select
-            className="fb-input mt-2 w-full"
+            className="fb-input settings-choice-add"
             aria-labelledby={legendId}
             value=""
             onChange={(e) => {
@@ -638,7 +589,7 @@ export function OrderedChoiceField({
         ) : null}
       </div>
       {description ? (
-        <span id={descId} className="settings-field-help mt-1 block text-xs" style={{ color: "var(--muted)" }}>
+        <span id={descId} className="settings-field-help">
           {description}
         </span>
       ) : null}
