@@ -222,7 +222,7 @@ function LibraryHubImportFallback() {
         </div>
         <div className="h-11 w-36 rounded-full bg-black/10" />
       </div>
-      <div className="fb-hub-list mt-5">
+      <div className="hub-list-stack fb-hub-list">
         {Array.from({ length: 4 }, (_, index) => (
           <div className="library-hub-card" key={index}>
             <div className="library-hub-card-header">
@@ -254,7 +254,7 @@ function DigestPipelineImportFallback() {
         </div>
         <div className="h-10 w-36 rounded-full bg-black/10" />
       </div>
-      <div className="fb-hub-list mt-5">
+      <div className="hub-list-stack fb-hub-list">
         <div className="library-hub-card h-44" />
         <div className="library-hub-card h-44" />
       </div>

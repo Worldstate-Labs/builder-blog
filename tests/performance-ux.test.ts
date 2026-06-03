@@ -590,7 +590,17 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(libraryHubPage, /className="workspace-content-stack"/);
   assert.doesNotMatch(libraryHubPage, /className="mt-6"/);
   assert.doesNotMatch(libraryHubPage, /className="mt-10"/);
+  assert.match(libraryHubPage, /className="hub-list-stack fb-hub-list"/);
+  assert.doesNotMatch(libraryHubPage, /className="fb-hub-list mt-5"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-import-section"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-form-error"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /"hub-list-region has-filters"/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-section-copy"/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-list-stack fb-hub-list"/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /<section className="mt-10"/);
+  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-list mt-5"/);
+  assert.match(source("src/app/globals.css"), /\.hub-list-region\.has-filters/);
+  assert.match(source("src/app/globals.css"), /\.hub-section-copy/);
   assert.match(searchPage, /<Suspense[\s\S]*fallback=\{[\s\S]*<SearchResultsFallback/);
 });
 
@@ -619,6 +629,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderLibraryList, /function BuilderStats/);
   assert.match(builderLibraryList, /latestPostCreatedAt=\{builder\.latestPostCreatedAt\}/);
   assert.doesNotMatch(builderLibraryList, /CountMeta/);
+  assert.doesNotMatch(builderLibraryList, /\{builder\.feedItemCount\}\s*items/);
+  assert.doesNotMatch(builderLibraryList, /No posts yet/);
+  assert.doesNotMatch(builderLibraryList, /builder-library-stats/);
   assert.doesNotMatch(builderLibraryList, /Latest \{formatCompactDate/);
   assert.match(builderFeedItems, /Latest \{formatCompactDate\(new Date\(latestPostCreatedAt\)\)\}/);
   assert.match(builderFeedItems, /timeZone:\s*"UTC"/);

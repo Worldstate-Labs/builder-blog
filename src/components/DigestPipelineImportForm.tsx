@@ -96,19 +96,19 @@ export function DigestPipelineImportForm({
       <div className="library-hub-toolbar">
         <div>
           <h2 className="fb-section-heading">Shared AI Digests</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-strong)]">
+          <p className="hub-section-copy">
             Import another user&apos;s latest digest and archive.
           </p>
         </div>
       </div>
 
       {error ? (
-        <p className="mt-3 text-xs text-[var(--danger)]" role="status">
+        <p className="hub-form-error" role="status">
           {error}
         </p>
       ) : null}
 
-      <div className="fb-hub-list mt-5">
+      <div className="hub-list-stack fb-hub-list">
         {pipelines.map((pipeline) => (
           <DigestPipelineCard
             imported={importedIds.has(pipeline.id)}

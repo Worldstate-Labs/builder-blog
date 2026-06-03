@@ -3001,6 +3001,38 @@ svg.lucide {
   min-width: 0;
 }
 
+.hub-import-section,
+.hub-list-region {
+  min-width: 0;
+}
+
+.hub-list-region.has-filters {
+  margin-top: 1.75rem;
+}
+
+.hub-list-heading {
+  margin-bottom: 0.875rem;
+}
+
+.hub-list-stack {
+  margin-top: 1.25rem;
+}
+
+.hub-form-error {
+  color: var(--danger);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  margin-top: 0.75rem;
+}
+
+.hub-section-copy {
+  color: var(--muted-strong);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  margin-top: 0.5rem;
+  max-width: 42rem;
+}
+
 .library-hub-toolbar {
   align-items: end;
   display: grid;

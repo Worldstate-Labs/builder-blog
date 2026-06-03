@@ -176,7 +176,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
   }
 
   return (
-    <section className="mt-5">
+    <section className="hub-import-section">
       {showFilters ? (
         <>
           <nav className="fb-stabs at-desktop" aria-label="Library filter">
@@ -208,13 +208,13 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
       ) : null}
 
       {error ? (
-        <p className="mt-3 text-xs text-[var(--danger)]" role="status">
+        <p className="hub-form-error" role="status">
           {error}
         </p>
       ) : null}
 
-      <section className={showFilters ? "mt-7" : "mt-0"}>
-        <div className="mb-3.5 at-desktop">
+      <section className={showFilters ? "hub-list-region has-filters" : "hub-list-region"}>
+        <div className="hub-list-heading at-desktop">
           <div className="flex items-center justify-between">
             <h2 className="fb-section-heading">Available libraries</h2>
             <CountRange>
