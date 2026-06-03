@@ -115,6 +115,7 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(globals, /\.fb-public-metric|\.fb-public-metrics/);
   assert.doesNotMatch(globals, /\.fb-public-card-grid|\.fb-public-step-card/);
   assert.match(globals, /--copy-max:\s*42rem/);
+  assert.match(globals, /--dialog-max:\s*28rem/);
   assert.match(globals, /--empty-max:\s*48rem/);
   assert.match(globals, /--public-copy-max:\s*36rem/);
   assert.match(globals, /\.fb-login-shell\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
@@ -122,7 +123,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /\.fb-public-step-body\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.equal((globals.match(/\.fb-public-flow\s*\{/g) ?? []).length, 1);
   assert.match(globals, /\.fb-login-copy\s*{[\s\S]*max-width:\s*32rem/);
-  assert.match(globals, /\.fb-dark-panel\s*{[\s\S]*max-width:\s*28rem/);
+  assert.match(globals, /\.fb-dark-panel\s*{[\s\S]*max-width:\s*var\(--dialog-max\)/);
   assert.doesNotMatch(globals, /\.landing-grid\s*{/);
   assert.doesNotMatch(globals, /\.app-topbar\s*{/);
   assert.doesNotMatch(globals, /\.page-header\s*{/);
@@ -1023,6 +1024,14 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderEditDialog, /className="builder-edit-dialog-message is-error"/);
   assert.doesNotMatch(builderEditDialog, /style=\{\{/);
   assert.doesNotMatch(builderEditDialog, /className="grid gap-/);
+  assert.match(
+    globals,
+    /\.token-picker-dialog,[\s\S]*\.builder-edit-dialog\s*{[\s\S]*max-width:\s*min\(var\(--dialog-max\),\s*92vw\)/,
+  );
+  assert.match(
+    globals,
+    /\.token-picker-dialog,[\s\S]*\.builder-edit-dialog\s*{[\s\S]*width:\s*var\(--dialog-max\)/,
+  );
   // AddBuilderForm is now embedded inside PrivateLibraryPanel rather
   // than imported directly into the builders page. Keep both ends of the
   // composition asserted so renames break this test rather than silently
@@ -1459,6 +1468,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /fetch\(`\/api\/settings\/tokens\/\$\{tokenId\}`/);
   assert.match(tokenPanel, /"New access key"/);
   assert.match(tokenPanel, /fb-dialog/);
+  assert.match(globals, /\.fb-dialog\s*{[\s\S]*max-width:\s*var\(--dialog-max\)/);
   assert.match(tokenPanel, /className="access-keys-panel fb-panel"/);
   assert.match(tokenPanel, /className="access-keys-head"/);
   assert.match(tokenPanel, /className="access-keys-list"/);

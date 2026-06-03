@@ -45,6 +45,7 @@
 
   /* Reading measure — keeps prose at ~62–72ch. */
   --copy-max: 42rem;
+  --dialog-max: 28rem;
   --empty-max: 48rem;
   --measure: 68ch;
   --public-copy-max: 36rem;
@@ -3735,7 +3736,7 @@ svg.lucide {
   border: 1px solid var(--line);
   border-radius: 14px;
   box-shadow: 0 8px 32px color-mix(in oklch, var(--ink) 12%, transparent);
-  max-width: 28rem;
+  max-width: var(--dialog-max);
   padding: 0;
   width: calc(100vw - 2rem);
 }
@@ -4710,9 +4711,9 @@ svg.lucide {
   color: var(--ink);
   margin: auto;
   max-height: 80vh;
-  max-width: min(28rem, 92vw);
+  max-width: min(var(--dialog-max), 92vw);
   padding: 0;
-  width: 28rem;
+  width: var(--dialog-max);
 }
 
 .token-picker-dialog::backdrop,
@@ -6013,7 +6014,7 @@ svg.lucide {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
-  max-width: 28rem;
+  max-width: var(--dialog-max);
   padding: 1.625rem;
 }
 
