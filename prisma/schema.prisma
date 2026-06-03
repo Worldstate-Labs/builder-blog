@@ -32,6 +32,7 @@ model User {
   digestPipelineImports   DigestPipelineImport[]
   feedPreference          UserFeedPreference?
   feedReads               FeedRead[]
+  feedFavorites           FeedFavorite[]
   digestedItems           DigestedItem[]
   recommendationSnapshots RecommendationSnapshot[]
   channelPreferences      UserChannelPreference[]
@@ -227,6 +228,7 @@ model BuilderEntity {
   updatedAt     DateTime                @updatedAt
   builders      Builder[]
   feedReads     FeedRead[]
+  feedFavorites FeedFavorite[]
   digestedItems DigestedItem[]
   channelPrefs  UserChannelPreference[]
 
@@ -373,6 +375,7 @@ model FeedItem {
   createdAt                   DateTime                     @default(now())
   builder                     Builder?                     @relation(fields: [builderId], references: [id], onDelete: SetNull)
   reads                       FeedRead[]
+  favorites                   FeedFavorite[]
   digestedItems               DigestedItem[]
   recommendationSnapshotItems RecommendationSnapshotItem[]
 
@@ -413,6 +416,27 @@ model FeedRead {
 
   @@unique([userId, entityId, kind, externalId])
   @@index([userId, readAt])
+  @@index([userId, entityId])
+  @@index([feedItemId])
+}
+
+// Per-user saved post list for the Home Favorites tab. Mirrors FeedRead's
+// canonical identity so saving one channel variant saves the post across
+// imported / personal channel variants of the same source item.
+model FeedFavorite {
+  id          String        @id @default(cuid())
+  userId      String
+  feedItemId  String?
+  entityId    String
+  kind        FeedItemKind
+  externalId  String
+  favoritedAt DateTime      @default(now())
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feedItem    FeedItem?     @relation(fields: [feedItemId], references: [id], onDelete: SetNull)
+  entity      BuilderEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, entityId, kind, externalId])
+  @@index([userId, favoritedAt])
   @@index([userId, entityId])
   @@index([feedItemId])
 }

@@ -37,6 +37,7 @@ export type PostCardPost = {
 export function PostCard({
   context,
   dataRead,
+  favoriteReadEmphasis = false,
   extraMeta,
   extraActions,
   fallbackBuilder,
@@ -50,6 +51,7 @@ export function PostCard({
 }: {
   context?: ReactNode;
   dataRead?: boolean;
+  favoriteReadEmphasis?: boolean;
   extraMeta?: ReactNode;
   extraActions?: ReactNode;
   fallbackBuilder?: FetchedPostBuilder | null;
@@ -96,6 +98,7 @@ export function PostCard({
   return (
     <article
       className={`${variant === "row" ? "builder-post-row" : "feed-card"} fetched-post-card`}
+      data-favorite-read={favoriteReadEmphasis ? "true" : undefined}
       data-read={dataRead ? "true" : undefined}
     >
       <div className="min-w-0">

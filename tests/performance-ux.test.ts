@@ -140,14 +140,15 @@ test("desktop shell uses home rail, header search, and merged home feeds", () =>
   assert.doesNotMatch(dashboardTabs, /<Link/);
   assert.match(dashboardTabs, /Digest/);
   assert.match(dashboardTabs, /ai-digest/);
-  assert.match(dashboardTabs, /Digest[\s\S]*Following/);
+  assert.match(dashboardTabs, /Digest[\s\S]*Favorites[\s\S]*Following/);
   assert.doesNotMatch(dashboardTabs, /For You/);
-  assert.match(dashboardTabs, /\{ id: "ai-digest", label: "Digest" \}[\s\S]*\{ id: "subscription", label: "Following" \}/);
+  assert.match(dashboardTabs, /\{ id: "ai-digest", label: "Digest" \}[\s\S]*\{ id: "favorites", label: "Favorites" \}[\s\S]*\{ id: "subscription", label: "Following" \}/);
   assert.doesNotMatch(dashboardPage, /scope="subscription"/);
   assert.doesNotMatch(dashboardPage, /scope="for-you"/);
   assert.match(dashboardPage, /Status/);
   assert.doesNotMatch(dashboardPage, /Recent digest/);
   assert.match(dashboardPage, /Digest archive/);
+  assert.match(dashboardPage, /FavoritePostsSection/);
   assert.match(dashboardPage, /FollowingRecommendationSection/);
   assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
   assert.match(digestDetails, /mode === "today"/);
@@ -164,6 +165,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
 
   assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
   assert.doesNotMatch(dashboardPage, /RecommendationFeed/);
+  assert.match(dashboardPage, /FavoritePostsSection/);
   assert.match(dashboardPage, /FollowingRecommendationSection/);
   assert.match(followingSection, /"use client"/);
   assert.doesNotMatch(followingSection, /scope=\$\{scope\}/);

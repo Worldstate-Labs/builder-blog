@@ -3,14 +3,16 @@
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
-type DashboardTab = "ai-digest" | "subscription";
+type DashboardTab = "ai-digest" | "favorites" | "subscription";
 
 export function DashboardHomeTabs({
   aiDigest,
+  favorites,
   initialTab,
   subscription,
 }: {
   aiDigest: ReactNode;
+  favorites: ReactNode;
   initialTab: DashboardTab;
   subscription: ReactNode;
 }) {
@@ -40,6 +42,18 @@ export function DashboardHomeTabs({
             Digest
           </button>
           <button
+            aria-controls="home-panel-favorites"
+            aria-selected={selectedTab === "favorites"}
+            className={`fb-tab${selectedTab === "favorites" ? " active" : ""}`}
+            data-active={selectedTab === "favorites" ? "true" : undefined}
+            id="home-tab-favorites"
+            onClick={() => selectTab("favorites")}
+            role="tab"
+            type="button"
+          >
+            Favorites
+          </button>
+          <button
             aria-controls="home-panel-subscription"
             aria-selected={selectedTab === "subscription"}
             className={`fb-tab${selectedTab === "subscription" ? " active" : ""}`}
@@ -57,6 +71,7 @@ export function DashboardHomeTabs({
         {(
           [
             { id: "ai-digest", label: "Digest" },
+            { id: "favorites", label: "Favorites" },
             { id: "subscription", label: "Following" },
           ] as const
         ).map((tab) => (
@@ -80,6 +95,14 @@ export function DashboardHomeTabs({
         role="tabpanel"
       >
         {selectedTab === "ai-digest" ? aiDigest : null}
+      </section>
+      <section
+        aria-labelledby="home-tab-favorites"
+        hidden={selectedTab !== "favorites"}
+        id="home-panel-favorites"
+        role="tabpanel"
+      >
+        {selectedTab === "favorites" ? favorites : null}
       </section>
       <section
         aria-labelledby="home-tab-subscription"

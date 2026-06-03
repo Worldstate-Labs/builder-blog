@@ -13,6 +13,7 @@ import {
   type DigestCronJobStatus,
   type DigestRunListItem,
 } from "@/lib/digest-runs";
+import { FavoritePostsSection } from "@/components/FavoritePostsSection";
 import { FollowingRecommendationSection } from "@/components/FollowingRecommendationSection";
 import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
@@ -71,6 +72,7 @@ export default async function DashboardPage({
           <DashboardHomeTabs
             initialTab={selectedTab}
             aiDigest={aiDigest}
+            favorites={<FavoritePostsSection />}
             subscription={
               <FollowingRecommendationSection />
             }
@@ -532,6 +534,7 @@ async function digestSourceLinksForUser(userId: string): Promise<DigestSourceLin
 }
 
 function parseTab(value: string | undefined) {
+  if (value === "favorites") return value;
   if (value === "subscription") return value;
   return "ai-digest";
 }

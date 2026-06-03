@@ -1318,6 +1318,9 @@ svg.lucide {
   color: var(--muted);
   cursor: pointer;
   display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 700;
+  gap: 0.28rem;
   padding: 0.18rem;
   transition: color 120ms ease;
 }
@@ -1332,6 +1335,28 @@ svg.lucide {
 
 .post-action-btn--active:hover {
   color: var(--accent);
+}
+
+.post-favorite-btn,
+.favorite-mark-read {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.26rem 0.62rem;
+}
+
+.post-favorite-btn.post-action-btn--active {
+  background: color-mix(in oklch, var(--accent) 10%, transparent);
+  border-color: color-mix(in oklch, var(--accent) 35%, var(--line));
+}
+
+.favorite-mark-read:not(:disabled):hover {
+  border-color: color-mix(in oklch, var(--signal, oklch(52% 0.18 150)) 40%, var(--line));
+  color: var(--signal, oklch(52% 0.18 150));
+}
+
+.favorite-mark-read:disabled {
+  cursor: default;
+  opacity: 1;
 }
 
 /* Expandable fetch-task row (Fetch log details) */
@@ -2075,9 +2100,29 @@ svg.lucide {
   opacity: 0.82;
 }
 
+.fetched-post-card[data-favorite-read="true"] {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--signal, oklch(52% 0.18 150)) 11%, transparent),
+      transparent 58%
+    ),
+    var(--paper-strong);
+  border-color: color-mix(in oklch, var(--signal, oklch(52% 0.18 150)) 40%, var(--line));
+  box-shadow: inset 4px 0 0 var(--signal, oklch(52% 0.18 150));
+  opacity: 1;
+}
+
 .fetched-post-card[data-read="true"] .item-title,
-.fetched-post-card[data-read="true"] h2 {
+.fetched-post-card[data-read="true"] h2,
+.fetched-post-card[data-read="true"] .fetched-post-title {
   color: var(--muted-strong);
+}
+
+.favorite-read-label {
+  color: var(--signal, oklch(52% 0.18 150));
+  font-size: 0.72rem;
+  font-weight: 800;
 }
 
 .read-indicator {

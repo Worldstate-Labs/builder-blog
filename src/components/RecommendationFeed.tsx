@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, RefreshCcw } from "lucide-react";
+import { CheckCircle2, Loader2, RefreshCcw, Star } from "lucide-react";
 import { PostCard } from "@/components/PostCard";
 import { markPostRead } from "@/lib/mark-read";
 
@@ -9,6 +9,7 @@ export type RecommendationFeedEntry = {
   score: number;
   reasons: string[];
   rank: number;
+  favoritedAt: string | null;
   readAt: string | null;
   item: {
     id: string;
@@ -41,8 +42,10 @@ export type RecommendationSnapshotEntry = {
 
 export function RecommendationFeed({
   initialSnapshots,
+  mode = "following",
 }: {
   initialSnapshots: RecommendationSnapshotEntry[];
+  mode?: "favorites" | "following";
 }) {
   const [snapshots, setSnapshots] = useState(initialSnapshots);
   const [loadingDirection, setLoadingDirection] = useState<"append" | "prepend" | null>(null);
@@ -50,7 +53,7 @@ export function RecommendationFeed({
   const [exhausted, setExhausted] = useState(initialSnapshots.length === 0);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  const markRead = useCallback(async (feedItemId: string) => {
+  const markRead = useCallback(async (feedItemId: string, source: "favorite" | "recommendation" = "recommendation") => {
     const fallbackReadAt = new Date().toISOString();
     setSnapshots((current) =>
       current.map((snapshot) => ({
@@ -62,7 +65,26 @@ export function RecommendationFeed({
         ),
       })),
     );
-    await markPostRead(feedItemId);
+    if (source === "favorite") {
+      await markFavoritePostRead(feedItemId);
+    } else {
+      await markPostRead(feedItemId);
+    }
+  }, []);
+
+  const toggleFavorite = useCallback(async (feedItemId: string, nextFavorite: boolean) => {
+    const fallbackFavoritedAt = nextFavorite ? new Date().toISOString() : null;
+    setSnapshots((current) =>
+      current.map((snapshot) => ({
+        ...snapshot,
+        items: snapshot.items.map((entry) =>
+          entry.item.id === feedItemId
+            ? { ...entry, favoritedAt: fallbackFavoritedAt }
+            : entry,
+        ),
+      })),
+    );
+    await setPostFavorite(feedItemId, nextFavorite);
   }, []);
 
   const requestSnapshot = useCallback(
@@ -107,18 +129,20 @@ export function RecommendationFeed({
   }, [exhausted, requestSnapshot]);
 
   return (
-    <section className="recommendation-feed mt-6">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <button
-          className="button-light button-compact gap-2"
-          disabled={loadingDirection !== null}
-          onClick={() => void requestSnapshot("prepend")}
-          type="button"
-        >
-          <RefreshCcw className="h-4 w-4" />
-          Refresh
-        </button>
-      </div>
+    <section className={`recommendation-feed mt-6${mode === "favorites" ? " favorites-feed" : ""}`}>
+      {mode === "following" ? (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <button
+            className="button-light button-compact gap-2"
+            disabled={loadingDirection !== null}
+            onClick={() => void requestSnapshot("prepend")}
+            type="button"
+          >
+            <RefreshCcw className="h-4 w-4" />
+            Refresh
+          </button>
+        </div>
+      ) : null}
       <div className="item-list">
         {snapshots.map((snapshot) => (
           <section className="recommendation-snapshot" key={snapshot.id}>
@@ -128,18 +152,24 @@ export function RecommendationFeed({
               <span>{snapshot.items.length} posts</span>
             </div>
             {snapshot.items.map((entry) => (
-              <RecommendationCard entry={entry} key={`${snapshot.id}:${entry.item.id}`} markRead={markRead} />
+              <RecommendationCard
+                entry={entry}
+                key={`${snapshot.id}:${entry.item.id}`}
+                markRead={markRead}
+                mode={mode}
+                toggleFavorite={toggleFavorite}
+              />
             ))}
           </section>
         ))}
       </div>
-      <div ref={loadMoreRef} className="mt-6 flex min-h-14 items-center justify-center">
+      <div ref={mode === "following" ? loadMoreRef : null} className="mt-6 flex min-h-14 items-center justify-center">
         {loadingDirection ? (
           <span className="status-chip">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
             Loading
           </span>
-        ) : exhausted ? (
+        ) : exhausted && mode === "following" ? (
           <span className="text-sm text-[var(--muted)]">No new unread recommendations left.</span>
         ) : null}
       </div>
@@ -150,20 +180,113 @@ export function RecommendationFeed({
 function RecommendationCard({
   entry,
   markRead,
+  mode,
+  toggleFavorite,
 }: {
   entry: RecommendationFeedEntry;
-  markRead: (feedItemId: string) => Promise<void>;
+  markRead: (feedItemId: string, source?: "favorite" | "recommendation") => Promise<void>;
+  mode: "favorites" | "following";
+  toggleFavorite: (feedItemId: string, nextFavorite: boolean) => Promise<void>;
 }) {
   const isRead = Boolean(entry.readAt);
+  const isFavorite = Boolean(entry.favoritedAt);
+  const isFavoritesTab = mode === "favorites";
 
   return (
     <PostCard
       dataRead={isRead}
-      onInteract={() => markRead(entry.item.id)}
+      extraActions={
+        isFavoritesTab ? (
+          <FavoriteReadButton
+            isRead={isRead}
+            markRead={() => markRead(entry.item.id, "favorite")}
+          />
+        ) : (
+          <FavoriteToggleButton
+            isFavorite={isFavorite}
+            toggleFavorite={() => toggleFavorite(entry.item.id, !isFavorite)}
+          />
+        )
+      }
+      extraMeta={
+        isFavoritesTab && isRead ? (
+          <>
+            <span className="post-meta-dot" aria-hidden="true">·</span>
+            <span className="favorite-read-label">Manually marked read</span>
+          </>
+        ) : null
+      }
+      favoriteReadEmphasis={isFavoritesTab && isRead}
+      onInteract={isFavoritesTab ? undefined : () => markRead(entry.item.id)}
       post={entry.item}
       reasons={entry.reasons}
     />
   );
+}
+
+function FavoriteToggleButton({
+  isFavorite,
+  toggleFavorite,
+}: {
+  isFavorite: boolean;
+  toggleFavorite: () => Promise<void>;
+}) {
+  return (
+    <button
+      aria-pressed={isFavorite}
+      className={`post-action-btn post-favorite-btn${isFavorite ? " post-action-btn--active" : ""}`}
+      onClick={() => void toggleFavorite()}
+      title={isFavorite ? "Saved to Favorites" : "Save to Favorites"}
+      type="button"
+    >
+      <Star className="h-4 w-4" />
+      <span>{isFavorite ? "Saved" : "Save"}</span>
+    </button>
+  );
+}
+
+function FavoriteReadButton({
+  isRead,
+  markRead,
+}: {
+  isRead: boolean;
+  markRead: () => Promise<void>;
+}) {
+  return (
+    <button
+      className={`post-action-btn favorite-mark-read${isRead ? " post-action-btn--active" : ""}`}
+      disabled={isRead}
+      onClick={() => void markRead()}
+      type="button"
+    >
+      <CheckCircle2 className="h-4 w-4" />
+      <span>{isRead ? "Read" : "Mark read"}</span>
+    </button>
+  );
+}
+
+async function setPostFavorite(feedItemId: string, favorite: boolean) {
+  try {
+    await fetch("/api/favorites", {
+      method: favorite ? "POST" : "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feedItemId }),
+    });
+  } catch {
+    // Best-effort optimistic UI; a reload restores the authoritative state.
+  }
+}
+
+async function markFavoritePostRead(feedItemId: string) {
+  try {
+    await fetch("/api/favorites/read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feedItemId }),
+    });
+  } catch {
+    // Best-effort optimistic UI; a reload restores the authoritative state.
+  }
 }
 
 function mergeSnapshots(snapshots: RecommendationSnapshotEntry[]) {

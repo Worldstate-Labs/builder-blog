@@ -59,7 +59,7 @@ export type RecommendationSnapshotResult = {
   id: string;
   createdAt: Date;
   reason: string;
-  items: Array<RecommendationResult & { rank: number; readAt: Date | null }>;
+  items: Array<RecommendationResult & { favoritedAt?: Date | null; rank: number; readAt: Date | null }>;
 };
 
 async function attachHubItems(
@@ -589,6 +589,11 @@ function snapshotInclude(userId: string) {
               select: { readAt: true },
               take: 1,
             },
+            favorites: {
+              where: { userId },
+              select: { favoritedAt: true },
+              take: 1,
+            },
           },
         },
       },
@@ -605,7 +610,10 @@ function formatSnapshot(snapshot: {
     rank: number;
     score: number;
     reasons: string;
-    feedItem: RecommendationCandidate & { reads?: { readAt: Date }[] };
+    feedItem: RecommendationCandidate & {
+      favorites?: { favoritedAt: Date }[];
+      reads?: { readAt: Date }[];
+    };
   }>;
 }): RecommendationSnapshotResult {
   return {
@@ -618,6 +626,7 @@ function formatSnapshot(snapshot: {
       score: item.score,
       reasons: parseReasons(item.reasons),
       readAt: item.feedItem.reads?.[0]?.readAt ?? null,
+      favoritedAt: item.feedItem.favorites?.[0]?.favoritedAt ?? null,
     })),
   };
 }

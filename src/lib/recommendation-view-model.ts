@@ -31,13 +31,18 @@ export function serializeRecommendationSnapshot(
 }
 
 function serializeRecommendation(
-  result: RecommendationResult & { rank: number; readAt: Date | null },
+  result: RecommendationResult & {
+    favoritedAt?: Date | null;
+    rank: number;
+    readAt: Date | null;
+  },
 ): RecommendationFeedEntry {
   return {
     score: result.score,
     reasons: result.reasons,
     rank: result.rank,
     readAt: result.readAt?.toISOString() ?? null,
+    favoritedAt: result.favoritedAt?.toISOString() ?? null,
     item: {
       id: result.item.id,
       title: result.item.title,
