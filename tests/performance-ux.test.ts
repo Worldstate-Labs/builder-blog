@@ -571,6 +571,16 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(workspaceAutoRefresh, /cache: "no-store"/);
   assert.match(workspaceAutoRefresh, /router\.refresh\(\)/);
   assert.match(workspaceAutoRefresh, /contentSyncStateChanged/);
+  assert.match(fetchLogPanel, /className="sync-panel-title-row"/);
+  assert.match(fetchLogPanel, /className="sync-panel-error"/);
+  assert.match(digestLogPanel, /className="sync-panel-title-row"/);
+  assert.match(digestLogPanel, /className="sync-panel-error"/);
+  assert.doesNotMatch(fetchLogPanel, /digest-updates-head[\s\S]{0,360}flex flex-wrap items-center gap-2/);
+  assert.doesNotMatch(digestLogPanel, /digest-updates-head[\s\S]{0,360}flex flex-wrap items-center gap-2/);
+  assert.doesNotMatch(fetchLogPanel, /error \? \([\s\S]{0,120}mt-3 text-\[12px\] text-\[var\(--danger\)\]/);
+  assert.doesNotMatch(digestLogPanel, /error \? \([\s\S]{0,120}mt-3 text-\[12px\] text-\[var\(--danger\)\]/);
+  assert.match(globals, /\.sync-panel-title-row\s*{[\s\S]*flex-wrap:\s*wrap/);
+  assert.match(globals, /\.sync-panel-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(workspaceAutoRefresh, /visibilitychange/);
   assert.match(workspaceAutoRefresh, /window\.addEventListener\("focus"/);
   assert.match(contentStateRoute, /Cache-Control": "no-store"/);

@@ -168,6 +168,10 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /FetchStatusToggle/);
   assert.match(panel, /FetchScheduleSummary/);
   assert.match(panel, /aria-controls="fetch-sync-details"/);
+  assert.match(panel, /className="sync-panel-title-row"/);
+  assert.match(panel, /className="sync-panel-error"/);
+  assert.doesNotMatch(panel, /digest-updates-head[\s\S]{0,360}flex flex-wrap items-center gap-2/);
+  assert.doesNotMatch(panel, /error \? \([\s\S]{0,120}mt-3 text-\[12px\] text-\[var\(--danger\)\]/);
   assert.match(panel, /Fetch schedule status graph/);
   assert.match(panel, /buildCronStatus/);
   assert.match(panel, /run\.source === "cron"/);
@@ -211,6 +215,10 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /Green saved · amber waiting · red issue/);
   assert.match(panel, /No run recorded/);
   assert.match(panel, /Open log/);
+  assert.match(panel, /className="sync-panel-title-row"/);
+  assert.match(panel, /className="sync-panel-error"/);
+  assert.doesNotMatch(panel, /digest-updates-head[\s\S]{0,360}flex flex-wrap items-center gap-2/);
+  assert.doesNotMatch(panel, /error \? \([\s\S]{0,120}mt-3 text-\[12px\] text-\[var\(--danger\)\]/);
   assert.doesNotMatch(panel, /slots\.slice\(-4\)/);
   assert.doesNotMatch(panel, /RefreshCw/);
   assert.doesNotMatch(panel, />Refresh</);

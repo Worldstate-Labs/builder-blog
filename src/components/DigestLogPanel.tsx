@@ -399,7 +399,7 @@ export function DigestLogPanel({
     <section className="fb-panel digest-updates-panel">
       <div className="digest-updates-head">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="sync-panel-title-row">
             <h2 className="fb-section-heading">Digest updates</h2>
             <DigestStatusToggle
               detailsOpen={detailsOpen}
@@ -422,7 +422,7 @@ export function DigestLogPanel({
       </div>
 
       {error ? (
-        <p className="mt-3 text-[12px] text-[var(--danger)]">{error}</p>
+        <p className="sync-panel-error">{error}</p>
       ) : null}
 
       {detailsOpen ? (

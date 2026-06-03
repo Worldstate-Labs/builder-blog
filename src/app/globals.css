@@ -4228,6 +4228,19 @@ svg.lucide {
   margin-top: 1rem;
 }
 
+.sync-panel-title-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.sync-panel-error {
+  color: var(--danger);
+  font-size: 0.75rem;
+  margin-top: 0.75rem;
+}
+
 .sync-panel-card,
 .sync-panel-empty {
   background: var(--paper-strong);
