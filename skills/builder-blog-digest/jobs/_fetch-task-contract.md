@@ -21,12 +21,10 @@ Fetch task boundary:
 - If `task.contentStatus="requires_agent"`, first obtain real primary content,
   then generate one concise single-post `summary` from
   `task.summaryInstructions.prompt`.
-- `task.summaryInstructions.prompt` is the only prompt source for the summary;
-  it already bakes in the global common rules, the per-source rules, and the
-  output language (do not assume a language — write the summary in the one that
-  prompt states). Do not read prompt files from disk, and do not fetch
-  `context.prompts`, `context.sources[*].summaryPrompt`, or
-  `context.commonSummaryRules` separately.
+- `task.summaryInstructions.prompt` is the only prompt source for fetch-task
+  summaries. It already includes the common post-summary rules, source-specific
+  rules, and output language. Do not re-compose it from `context.sources` or
+  other prompt configuration.
 
 If the fetch result contains a non-empty `fetchTasks` array, complete exactly
 the task IDs returned by the CLI. Do not add new sources, URLs, or feed items
