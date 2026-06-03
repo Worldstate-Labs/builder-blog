@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 
 export function PageHeader({
   actions,
@@ -6,7 +6,8 @@ export function PageHeader({
   className,
   description,
   title,
-}: {
+  ...headerProps
+}: Omit<HTMLAttributes<HTMLElement>, "title"> & {
   actions?: ReactNode;
   children?: ReactNode;
   className?: string;
@@ -14,7 +15,7 @@ export function PageHeader({
   title: ReactNode;
 }) {
   return (
-    <header className={["fb-page-head", className].filter(Boolean).join(" ")}>
+    <header {...headerProps} className={["fb-page-head", className].filter(Boolean).join(" ")}>
       <div>
         {children ?? (
           <>

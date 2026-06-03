@@ -314,7 +314,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(rootLoading, /RouteLoading/);
   assert.doesNotMatch(rootLoading, /bg-black\/10|className="h-|grid gap-4|stats-panel/);
   assert.doesNotMatch(rootLoading, /space-y-7/);
-  assert.match(routeLoading, /className="fb-page-head"/);
+  assert.match(routeLoading, /@\/components\/PageHeader/);
+  assert.match(routeLoading, /<PageHeader[\s\S]*aria-busy="true"[\s\S]*aria-live="polite"[\s\S]*title=\{title\}/);
+  assert.doesNotMatch(routeLoading, /className="fb-page-head"/);
   assert.match(routeLoading, /className="workspace-content-stack"/);
   assert.match(routeLoading, /className="route-loading-title"/);
   assert.match(routeLoading, /className="route-loading-desc"/);
@@ -327,6 +329,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.fb-top\s*{[\s\S]*position:\s*sticky/);
   assert.match(globals, /\.fb-top-inner\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
   assert.match(globals, /\.fb-page-head\s*{[\s\S]*border-bottom:/);
+  assert.match(pageHeader, /Omit<HTMLAttributes<HTMLElement>, "title">/);
+  assert.match(pageHeader, /<header \{\.\.\.headerProps\} className=\{\["fb-page-head", className\]/);
   assert.match(globals, /\.empty-state\s*{[\s\S]*border:\s*1px dashed var\(--line\)/);
   assert.match(globals, /\.hub-list-empty\s*{[\s\S]*grid-column:\s*1 \/ -1/);
   assert.match(globals, /\.route-loading-title\s*{[\s\S]*height:\s*1\.75rem/);
