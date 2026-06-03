@@ -1080,7 +1080,10 @@ svg.lucide {
 .route-loading-list {
   display: grid;
   gap: 0.6rem;
+  margin-inline: auto;
+  max-width: var(--reading-max);
   min-width: 0;
+  width: 100%;
 }
 
 .route-loading-row {

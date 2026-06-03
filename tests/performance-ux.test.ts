@@ -374,6 +374,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.hub-list-empty\s*{[\s\S]*grid-column:\s*1 \/ -1/);
   assert.match(globals, /\.route-loading-title\s*{[\s\S]*height:\s*1\.75rem/);
   assert.match(globals, /\.route-loading-list\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.route-loading-list\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
+  assert.match(globals, /\.route-loading-list\s*{[\s\S]*margin-inline:\s*auto/);
+  assert.match(globals, /\.route-loading-list\s*{[\s\S]*width:\s*100%/);
   assert.doesNotMatch(globals, /\.home-rail/);
   assert.doesNotMatch(globals, /\.home-main/);
   assert.doesNotMatch(globals, /\.home-tabs/);
