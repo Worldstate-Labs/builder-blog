@@ -98,14 +98,14 @@ export function PostCard({
 
   return (
     <article
-      className={`${variant === "row" ? "builder-post-row" : "feed-card"} fetched-post-card`}
+      className={`${variant === "row" ? "builder-post-row" : "feed-card"} fetched-post-card${isDetail ? " post-detail-card" : ""}`}
       data-favorite-read={favoriteReadEmphasis ? "true" : undefined}
       data-read={dataRead ? "true" : undefined}
     >
       <div className="min-w-0">
         {/* Line 1: Title */}
         {isDetail ? (
-          <h1 className="mt-4 max-w-4xl text-2xl font-semibold leading-tight md:text-3xl">
+          <h1 className="post-detail-title">
             {title}
           </h1>
         ) : (
@@ -158,7 +158,7 @@ export function PostCard({
 
         {/* Line 3: Summary / body */}
         {isDetail ? (
-          <div className="mt-8 whitespace-pre-wrap text-base leading-8 text-[var(--muted-strong)]">
+          <div className="post-detail-body">
             {post.body}
           </div>
         ) : (

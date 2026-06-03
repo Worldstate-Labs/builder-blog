@@ -108,7 +108,7 @@ export function DigestPipelineImportForm({
         </p>
       ) : null}
 
-      <div className="mt-5 grid gap-3.5 lg:grid-cols-2">
+      <div className="fb-hub-list mt-5">
         {pipelines.map((pipeline) => (
           <DigestPipelineCard
             imported={importedIds.has(pipeline.id)}
@@ -193,7 +193,7 @@ function DigestPipelineCard({
               <span className="fb-kind-pill">digest</span>
               <span className="text-[11px] text-[var(--muted)]">· Shared archive</span>
             </div>
-            <h3 className="serif mt-2 text-xl font-semibold leading-snug tracking-tight">
+            <h3 className="fb-hub-title mt-2">
               {pipeline.title}
             </h3>
           </div>

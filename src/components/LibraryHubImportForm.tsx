@@ -222,7 +222,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
             </CountRange>
           </div>
         </div>
-        <div className="grid gap-3.5 lg:grid-cols-2">
+        <div className="fb-hub-list">
           {filteredLibraries.map((library) => (
             <HubCard
               key={library.id}
@@ -315,7 +315,7 @@ function HubCard({
               <span className="fb-kind-pill">{kindBadge(library)}</span>
               <span className="text-[11px] text-[var(--muted)]">· {topicLabel(library)}</span>
             </div>
-            <h3 className="serif mt-2 text-xl font-semibold leading-snug tracking-tight">
+            <h3 className="fb-hub-title mt-2">
               {library.name}
             </h3>
           </div>
@@ -409,17 +409,10 @@ function SourceAvatar({
 }) {
   return (
     <span
-      className="inline-flex items-center justify-center"
+      className="fb-hub-source-avatar"
       style={{
-        width: 30,
-        height: 30,
         borderRadius: 999,
         background: AVATAR_COLORS[index % AVATAR_COLORS.length],
-        color: "var(--ink)",
-        fontFamily: "var(--font-display)",
-        fontWeight: 600,
-        fontSize: 13,
-        border: "2px solid var(--paper-strong)",
         ...style,
       }}
     >

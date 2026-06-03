@@ -58,7 +58,7 @@ export default async function RecommendationItemPage({
     : prisma.feedRead.create({ data: readData }));
 
   return (
-    <div className="page-pad">
+    <div className="page-pad reading-page">
       <div className="mb-6">
         <Link className="button-light button-compact gap-2" href="/dashboard">
           <ArrowLeft className="h-4 w-4" />

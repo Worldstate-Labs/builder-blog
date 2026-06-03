@@ -528,6 +528,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   const addBuilderForm = source("src/components/AddBuilderForm.tsx");
   const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
   const builderFeedItems = source("src/components/BuilderFeedItems.tsx");
+  const recommendationItemPage = source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx");
+  const postCard = source("src/components/PostCard.tsx");
+  const globals = source("src/app/globals.css");
   const personalBuilderRoute = source("src/app/api/builders/personal/route.ts");
   const feedItemsRoute = source("src/app/api/builders/[builderId]/feed-items/route.ts");
 
@@ -576,12 +579,18 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   // through PostCard.
   assert.match(builderFeedItems, /<span>Posts<\/span>/);
   assert.match(builderFeedItems, /PostCard/);
-  assert.match(source("src/components/PostCard.tsx"), /Summary/);
-  assert.match(source("src/components/PostCard.tsx"), /export function PostCard/);
-  assert.match(source("src/components/PostCard.tsx"), /See more/);
-  assert.match(source("src/components/PostCard.tsx"), /Raw content/);
-  assert.match(source("src/components/PostCard.tsx"), /View original/);
-  assert.match(source("src/components/PostCard.tsx"), /\/builder\/\$\{builder\.entityId\}/);
+  assert.match(postCard, /Summary/);
+  assert.match(postCard, /export function PostCard/);
+  assert.match(postCard, /post-detail-card/);
+  assert.match(postCard, /post-detail-title/);
+  assert.match(postCard, /post-detail-body/);
+  assert.match(postCard, /See more/);
+  assert.match(postCard, /Raw content/);
+  assert.match(postCard, /View original/);
+  assert.match(postCard, /\/builder\/\$\{builder\.entityId\}/);
+  assert.match(recommendationItemPage, /page-pad reading-page/);
+  assert.match(globals, /\.reading-page\s*{[\s\S]*width:\s*min\(100%,\s*58rem\)/);
+  assert.match(globals, /\.post-detail-card\.feed-card/);
   assert.match(feedItemsRoute, /fetchDedupedFeedForEntities/);
   assert.match(feedItemsRoute, /activePoolBuilderIds/);
   assert.match(feedItemsRoute, /NextResponse\.json/);
@@ -630,6 +639,7 @@ test("library hub exposes share and multi-import flows", () => {
   const digestPipelineImportRoute = optionalSource("src/app/api/digest-pipelines/imports/route.ts");
   const digestPipelineRemoveRoute = optionalSource("src/app/api/digest-pipelines/imports/[pipelineId]/route.ts");
   const hubPage = source("src/app/(workspace)/library-hub/page.tsx");
+  const globals = source("src/app/globals.css");
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const skillRoute = source("src/app/api/skill/builders/route.ts");
   const schema = source("prisma/schema.prisma");
@@ -711,6 +721,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /ensureDefaultCommunityLibraryImport\(session\.user\.id\)/);
   assert.match(hubPage, /LibraryHubImportForm/);
   assert.match(hubPage, /DigestPipelineImportForm/);
+  assert.match(hubPage, /fb-hub-list/);
+  assert.doesNotMatch(hubPage, /lg:grid-cols-2/);
   assert.match(hubPage, /digestPipelineShare\.findMany/);
   assert.match(hubPage, /digestPipelineImport\.findMany/);
   assert.match(hubPage, /Number\(b\.owned\) - Number\(a\.owned\)/);
@@ -723,6 +735,12 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(dashboardPage, /ownPipelineShare\?\.title/);
   assert.match(dashboardPage, /ownPipelineShare\?\.isPublic === true/);
   assert.match(hubImportForm, /"use client"/);
+  assert.match(hubImportForm, /fb-hub-list/);
+  assert.match(hubImportForm, /fb-hub-title/);
+  assert.doesNotMatch(hubImportForm, /lg:grid-cols-2/);
+  assert.doesNotMatch(hubImportForm, /serif mt-2 text-xl/);
+  assert.match(globals, /\.fb-hub-list\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(globals, /\.fb-hub-card\s*{[\s\S]*border-radius:\s*8px/);
   assert.match(hubImportForm, /fetch\("\/api\/library-hub\/imports"/);
   assert.match(hubImportForm, /isCommunity/);
   assert.match(hubImportForm, /counts\[filter\.key\]/);
@@ -754,6 +772,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /orderBy:\s*\[\{ importCount: "desc" \}, \{ viewCount: "desc" \}/);
   assert.match(hubImportForm, /libraryId/);
   assert.match(digestPipelineForm, /"use client"/);
+  assert.match(digestPipelineForm, /fb-hub-list/);
+  assert.match(digestPipelineForm, /fb-hub-title/);
+  assert.doesNotMatch(digestPipelineForm, /lg:grid-cols-2/);
   assert.match(digestPipelineForm, /Shared AI Digests/);
   assert.doesNotMatch(digestPipelineForm, /Share my digest/);
   assert.doesNotMatch(digestPipelineForm, /Remove my digest/);

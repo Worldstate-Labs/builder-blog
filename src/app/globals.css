@@ -405,6 +405,10 @@ svg.lucide {
   width: min(100%, var(--workspace-max));
 }
 
+.reading-page {
+  width: min(100%, 58rem);
+}
+
 .page-header {
   align-items: flex-start;
   display: flex;
@@ -1250,6 +1254,32 @@ svg.lucide {
 
 .fetched-post-card.feed-card {
   padding: 1.15rem;
+}
+
+.post-detail-card.feed-card {
+  background: color-mix(in oklch, var(--paper-strong) 58%, transparent);
+  border-color: color-mix(in oklch, var(--line) 84%, transparent);
+  box-shadow: none;
+  padding: clamp(1.1rem, 3vw, 1.6rem);
+}
+
+.post-detail-title {
+  color: var(--ink);
+  font-size: 1.7rem;
+  font-weight: 760;
+  letter-spacing: -0.01em;
+  line-height: 1.16;
+  margin-top: 0.45rem;
+  max-width: var(--measure);
+}
+
+.post-detail-body {
+  color: var(--muted-strong);
+  font-size: 1rem;
+  line-height: 1.8;
+  margin-top: 1.6rem;
+  max-width: var(--measure);
+  white-space: pre-wrap;
 }
 
 .fetched-post-title {
@@ -3204,7 +3234,14 @@ svg.lucide {
 .library-hub-grid {
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.fb-hub-list {
+  display: grid;
+  gap: 0.875rem;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
 }
 
 .library-hub-toolbar {
@@ -3234,10 +3271,10 @@ svg.lucide {
 }
 
 .library-hub-card {
-  background: color-mix(in oklch, var(--paper-strong) 78%, transparent);
-  border: 1px solid var(--line);
+  background: color-mix(in oklch, var(--paper-strong) 58%, transparent);
+  border: 1px solid color-mix(in oklch, var(--line) 84%, transparent);
   border-radius: 8px;
-  box-shadow: 0 8px 22px color-mix(in oklch, var(--shadow) 62%, transparent);
+  box-shadow: none;
   min-width: 0;
   padding: 1.1rem;
 }
@@ -5405,13 +5442,21 @@ svg.lucide {
 
 /* Library hub card */
 .fb-hub-card {
-  background: var(--paper-strong);
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  background: color-mix(in oklch, var(--paper-strong) 64%, transparent);
+  border: 1px solid color-mix(in oklch, var(--line) 84%, transparent);
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   gap: 0.875rem;
   padding: 1.125rem;
+}
+
+.fb-hub-title {
+  color: var(--ink);
+  font-size: 1.0625rem;
+  font-weight: 760;
+  letter-spacing: -0.005em;
+  line-height: 1.35;
 }
 
 .fb-hub-source-avatar {
@@ -5420,9 +5465,9 @@ svg.lucide {
   border-radius: 999px;
   color: var(--ink);
   display: inline-flex;
-  font-family: var(--font-display);
+  font-family: var(--font-geist-sans), sans-serif;
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 760;
   height: 1.875rem;
   justify-content: center;
   width: 1.875rem;
