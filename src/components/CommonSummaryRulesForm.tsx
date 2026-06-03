@@ -11,17 +11,15 @@ import { MarkdownEditor } from "@/components/settings/MarkdownEditor";
 type CommonSummaryRulesFormProps = {
   initialValue: string;
   updatedAt: string;
-  updatedBy: string | null;
 };
 
 export function CommonSummaryRulesForm({
   initialValue,
   updatedAt,
-  updatedBy,
 }: CommonSummaryRulesFormProps) {
   const [value, setValue] = useState(initialValue);
   const [savedValue, setSavedValue] = useState(initialValue);
-  const [savedMeta, setSavedMeta] = useState({ updatedAt, updatedBy });
+  const [savedUpdatedAt, setSavedUpdatedAt] = useState(updatedAt);
   const [status, setStatus] = useState<SaveStatusState>({ kind: "idle" });
   const [isPending, startTransition] = useTransition();
   const dirty = value !== savedValue;
@@ -44,10 +42,7 @@ export function CommonSummaryRulesForm({
         const nextValue = body.config?.commonSummaryRules ?? value;
         setSavedValue(nextValue);
         setValue(nextValue);
-        setSavedMeta({
-          updatedAt: body.config?.updatedAt ?? savedMeta.updatedAt,
-          updatedBy: body.config?.updatedBy ?? savedMeta.updatedBy,
-        });
+        setSavedUpdatedAt(body.config?.updatedAt ?? savedUpdatedAt);
         setStatus({ kind: "saved", message: "Saved" });
       } catch (error) {
         setStatus({
@@ -82,8 +77,7 @@ export function CommonSummaryRulesForm({
             setValue(savedValue);
             setStatus({ kind: "idle" });
           }}
-          updatedAt={savedMeta.updatedAt}
-          updatedBy={savedMeta.updatedBy}
+          updatedAt={savedUpdatedAt}
         />
       </div>
     </Section>

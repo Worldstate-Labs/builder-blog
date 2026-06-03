@@ -291,7 +291,6 @@ function SourceTypeCard({
           onSave={save}
           onReset={reset}
           updatedAt={config.updatedAt}
-          updatedBy={config.updatedBy}
         />
       </div>
     </details>

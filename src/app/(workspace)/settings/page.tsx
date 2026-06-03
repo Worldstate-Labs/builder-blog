@@ -62,7 +62,6 @@ async function SourceTypeConfigSection({ userId }: { userId: string }) {
             <CommonSummaryRulesForm
               initialValue={digestConfig.commonSummaryRules}
               updatedAt={digestConfig.updatedAt.toISOString()}
-              updatedBy={digestConfig.updatedBy}
             />
           </div>
           <AdminSourceTypeManager

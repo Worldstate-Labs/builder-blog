@@ -386,7 +386,6 @@ export function FooterBar({
   onSave,
   onReset,
   updatedAt,
-  updatedBy,
 }: {
   dirty: boolean;
   isPending: boolean;
@@ -394,7 +393,6 @@ export function FooterBar({
   onSave: () => void;
   onReset: () => void;
   updatedAt: string;
-  updatedBy: string | null;
 }) {
   return (
     <div
@@ -423,7 +421,6 @@ export function FooterBar({
         style={{ color: "var(--muted)", fontFamily: "var(--font-geist-mono)" }}
       >
         Updated {formatUtcDateTime(updatedAt)}
-        {updatedBy ? ` · ${updatedBy}` : ""}
       </span>
     </div>
   );
