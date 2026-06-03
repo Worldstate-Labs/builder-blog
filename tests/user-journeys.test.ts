@@ -1203,6 +1203,10 @@ test("digest generation user path exposes source-specific prompt instructions", 
   assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /YouTube section - list each video episode/);
   assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /Websites section - list each website source/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.digestIntro, /podcast or video episode/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /every post must use this exact block shape/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /\*\*<post title only>\*\*/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /source URL on the final standalone line/);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.digestIntro, /tiny gray monospace/);
   assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /do not replace or shorten the full digest/i);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.digestIntro, /final digest must be no more than 300/);
   // Translate step is language-agnostic now — it renders into context.language,
