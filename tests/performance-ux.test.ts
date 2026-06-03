@@ -634,6 +634,8 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(globals, /\.digest-headline-text\s*{[\s\S]*max-width:\s*var\(--measure\)/);
   assert.match(globals, /\.digest-headline-loading span:first-child\s*{[\s\S]*max-width:\s*var\(--skeleton-title-max\)/);
   assert.match(globals, /\.digest-headline-loading span:last-child\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);
+  assert.match(globals, /\.digest-loading-chip\s*{[\s\S]*display:\s*inline-flex/);
+  assert.match(globals, /\.digest-load-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(digestDetails, /digestPreviewFromContent/);
   assert.match(digestDetails, /isLatest/);
   assert.match(digestDetails, /showContents=\{false\}/);
@@ -679,6 +681,10 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(digestDetails, /fetch\(`\/api\/digests\/\$\{digestId\}`/);
   assert.match(digestDetails, /digest-latest-mark/);
   assert.match(digestDetails, /Loading digest/);
+  assert.match(digestDetails, /digest-loading-chip/);
+  assert.match(digestDetails, /digest-load-error/);
+  assert.doesNotMatch(digestDetails, /inline-flex items-center gap-1\.5/);
+  assert.doesNotMatch(digestDetails, /text-sm text-\[var\(--danger\)\]/);
   assert.match(digestDetails, /aria-live="polite"/);
   assert.match(digestRoute, /export async function GET/);
   assert.match(digestRoute, /content: true/);

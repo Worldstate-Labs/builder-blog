@@ -167,7 +167,7 @@ function DigestBody({
       <span
         className={
           isToday
-            ? "fb-digest-chip inline-flex items-center gap-1.5"
+            ? "fb-digest-chip digest-loading-chip"
             : "status-chip"
         }
       >
@@ -191,7 +191,7 @@ function DigestBody({
     const errorNode = <span>Could not load digest.</span>;
     if (isToday) {
       return (
-        <div className="text-sm text-[var(--danger)]" aria-live="polite">
+        <div className="digest-load-error" aria-live="polite">
           {errorNode}
         </div>
       );
@@ -199,7 +199,7 @@ function DigestBody({
 
     return (
       <div
-        className="item-details text-sm text-[var(--danger)]"
+        className="item-details digest-load-error"
         aria-live="polite"
       >
         {errorNode}
