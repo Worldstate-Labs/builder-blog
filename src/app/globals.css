@@ -49,6 +49,7 @@
   --empty-max: 48rem;
   --login-copy-max: 32rem;
   --measure: 68ch;
+  --popover-max: 18rem;
   --public-copy-max: 36rem;
   --reading-max: 58rem;
   --settings-max: 52rem;
@@ -634,7 +635,7 @@ svg.lucide {
 }
 
 .user-menu-compact .user-menu-popover {
-  width: min(18rem, calc(100vw - 2rem));
+  width: min(var(--popover-max), calc(100vw - 2rem));
 }
 
 .user-menu-popover-email {
@@ -1431,8 +1432,8 @@ svg.lucide {
   box-shadow: 0 4px 16px color-mix(in oklch, var(--ink) 10%, transparent);
   font-size: 0.72rem;
   right: 0;
-  max-width: min(18rem, calc(100vw - 2rem));
-  min-width: min(18rem, calc(100vw - 2rem));
+  max-width: min(var(--popover-max), calc(100vw - 2rem));
+  min-width: min(var(--popover-max), calc(100vw - 2rem));
   padding: 0.65rem 0.8rem;
   position: absolute;
   z-index: 50;

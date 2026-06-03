@@ -118,6 +118,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /--dialog-max:\s*28rem/);
   assert.match(globals, /--empty-max:\s*48rem/);
   assert.match(globals, /--login-copy-max:\s*32rem/);
+  assert.match(globals, /--popover-max:\s*18rem/);
   assert.match(globals, /--public-copy-max:\s*36rem/);
   assert.match(globals, /\.fb-login-shell\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
   assert.match(globals, /\.fb-public-flow\s*{[\s\S]*max-width:\s*var\(--public-copy-max\)/);
@@ -221,6 +222,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(settingsPage, /Agent login/);
   assert.match(globals, /\.user-avatar/);
   assert.match(globals, /\.user-menu-popover/);
+  assert.match(globals, /\.user-menu-compact \.user-menu-popover\s*{[\s\S]*width:\s*min\(var\(--popover-max\),\s*calc\(100vw - 2rem\)\)/);
 });
 
 test("desktop shell uses centered top navigation and merged home feeds", () => {
@@ -828,6 +830,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchForm, /lucky/);
   assert.doesNotMatch(searchForm, /type="radio"/);
   assert.match(globals, /\.search-suggestion-dropdown/);
+  assert.match(globals, /\.fb-popover\s*{[\s\S]*max-width:\s*min\(var\(--popover-max\),\s*calc\(100vw - 2rem\)\)/);
+  assert.match(globals, /\.fb-popover\s*{[\s\S]*min-width:\s*min\(var\(--popover-max\),\s*calc\(100vw - 2rem\)\)/);
   assert.doesNotMatch(globals, /search-page-active/);
   assert.doesNotMatch(globals, /search-heading/);
   assert.doesNotMatch(globals, /\.fb-m-search/);
