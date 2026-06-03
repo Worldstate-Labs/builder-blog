@@ -1587,19 +1587,13 @@ svg.lucide {
 }
 
 .digest-headline-summary {
-  background:
-    linear-gradient(
-      90deg,
-      color-mix(in oklch, var(--accent) 13%, transparent),
-      color-mix(in oklch, var(--accent) 4%, transparent)
-    );
-  border: 1px solid color-mix(in oklch, var(--accent) 18%, var(--line));
-  border-left: 3px solid var(--accent);
+  background: color-mix(in oklch, var(--accent) 7%, var(--paper-strong));
+  border: 1px solid color-mix(in oklch, var(--accent) 20%, var(--line));
   border-radius: 8px;
   color: var(--ink);
   display: grid;
   gap: 0.35rem;
-  padding: 0.7rem 0.85rem 0.75rem;
+  padding: 0.78rem 0.9rem 0.82rem;
 }
 
 .item-headline-preview {
@@ -1626,8 +1620,8 @@ svg.lucide {
 
 .digest-headline-text {
   color: var(--ink);
-  font-size: 0.9375rem;
-  line-height: 1.6;
+  font-size: 0.96875rem;
+  line-height: 1.62;
   margin: 0;
 }
 
@@ -4862,10 +4856,10 @@ svg.lucide {
   color: var(--dr-muted);
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.45rem;
   font-family: var(--font-geist-sans);
-  font-size: 0.875rem;
-  line-height: 1.7;
+  font-size: 0.9375rem;
+  line-height: 1.68;
 }
 .digest-rich.on-dark {
   --dr-ink: #fff;
@@ -4922,7 +4916,7 @@ svg.lucide {
 /* Section */
 .digest-section {
   border-top: 1px solid var(--dr-line);
-  padding-top: 1rem;
+  padding-top: 1.35rem;
 }
 .digest-section:first-of-type {
   border-top: 0;
@@ -4934,7 +4928,7 @@ svg.lucide {
   display: flex;
   gap: 0.5rem;
   list-style: none;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
 }
 .digest-section-summary::-webkit-details-marker {
   display: none;
@@ -4954,29 +4948,29 @@ svg.lucide {
 .digest-section-heading {
   color: var(--dr-ink);
   font-family: var(--font-display);
-  font-size: 1.0625rem;
-  font-weight: 600;
+  font-size: 1.3125rem;
+  font-weight: 700;
   letter-spacing: -0.01em;
   margin: 0;
 }
 .digest-section-body {
   display: flex;
   flex-direction: column;
-  gap: 1.125rem;
-  margin-top: 0.75rem;
+  gap: 1.55rem;
+  margin-top: 0.95rem;
 }
 .digest-group {
   display: flex;
   flex-direction: column;
-  gap: 1.125rem;
+  gap: 0.95rem;
 }
 .digest-group-heading {
   color: var(--dr-ink);
-  font-family: var(--font-display);
-  font-size: 0.9375rem;
-  font-weight: 700;
+  font-family: var(--font-geist-sans);
+  font-size: 1rem;
+  font-weight: 800;
   line-height: 1.25;
-  margin: 0.125rem 0 -0.25rem;
+  margin: 0;
 }
 .digest-group-source-link {
   align-items: center;
@@ -5001,13 +4995,15 @@ svg.lucide {
   color: var(--dr-accent);
 }
 .digest-source-summary {
-  border-left: 2px solid color-mix(in oklch, var(--dr-accent) 52%, var(--dr-line));
+  background: color-mix(in oklch, var(--dr-accent) 5%, var(--dr-card));
+  border: 1px solid color-mix(in oklch, var(--dr-accent) 14%, var(--dr-line));
+  border-radius: 8px;
   color: var(--dr-muted);
   display: grid;
-  font-size: 0.875rem;
+  font-size: 0.90625rem;
   gap: 0.5rem;
   line-height: 1.65;
-  padding-left: 0.875rem;
+  padding: 0.78rem 0.9rem;
 }
 .digest-source-summary p {
   margin: 0;
@@ -5028,12 +5024,42 @@ svg.lucide {
   margin: 0;
 }
 .digest-lede {
-  border-left: 2px solid color-mix(in oklch, var(--dr-accent) 60%, var(--dr-line));
+  background: color-mix(in oklch, var(--dr-accent) 5%, transparent);
+  border: 1px solid color-mix(in oklch, var(--dr-accent) 14%, var(--dr-line));
+  border-radius: 8px;
   color: var(--dr-ink);
   font-size: 0.84375rem;
   font-weight: 500;
   margin: 0;
-  padding-left: 0.75rem;
+  padding: 0.62rem 0.72rem;
+}
+
+.digest-rich .fetched-post-card.feed-card {
+  background: color-mix(in oklch, var(--paper-strong) 46%, transparent);
+  border-color: color-mix(in oklch, var(--line) 78%, transparent);
+  box-shadow: none;
+  padding: 1rem 1.05rem;
+}
+
+.digest-rich .fetched-post-title {
+  font-size: 1rem;
+  font-weight: 760;
+  line-height: 1.38;
+  margin-top: 0;
+}
+
+.digest-rich .post-meta {
+  font-size: 0.6875rem;
+  margin-top: 0.35rem;
+}
+
+.digest-rich .post-summary {
+  margin-top: 0.72rem;
+}
+
+.digest-rich .fetched-post-summary p {
+  font-size: 0.9375rem;
+  line-height: 1.72;
 }
 .digest-prose-wrap {
   position: relative;
