@@ -161,15 +161,14 @@ export default async function BuilderDetailPage({ params }: Params) {
                 ) : null}
               </div>
               <div className="fb-src-meta">
-                <span className="source-kind-meta fb-kind-pill">
-                  {entity.kind.toLowerCase()}
-                </span>
                 {headerHostLabel ? (
                   <span className="builder-detail-host source-host-meta mono truncate">
                     {headerHostLabel}
                   </span>
                 ) : null}
-                <span className="source-count-dot source-meta-dot">·</span>
+                {headerHostLabel ? (
+                  <span className="source-count-dot source-meta-dot">·</span>
+                ) : null}
                 <span
                   className={
                     headerItemCount > 0
