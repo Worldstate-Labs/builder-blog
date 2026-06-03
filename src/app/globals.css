@@ -6262,32 +6262,15 @@ svg.lucide {
 
 .fb-login-panel-head {
   align-items: flex-start;
-  display: flex;
-  gap: 1.25rem;
-  justify-content: space-between;
-}
-
-.fb-login-panel-icon {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.7);
-  display: inline-flex;
-  flex: 0 0 auto;
-  justify-content: center;
-  padding: 0.5rem;
-}
-
-.fb-login-panel-icon svg {
-  height: 1.125rem;
-  width: 1.125rem;
+  display: grid;
+  gap: 0.35rem;
 }
 
 .fb-login-panel-copy {
   color: rgba(255, 255, 255, 0.62);
   font-size: 0.78125rem;
   line-height: 1.55;
-  margin-top: 0.625rem;
+  margin-top: 0;
 }
 
 .fb-login-proof {

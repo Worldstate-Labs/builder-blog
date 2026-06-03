@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Archive, KeyRound, Search, ShieldCheck } from "lucide-react";
+import { Archive, KeyRound, Search } from "lucide-react";
 import { AuthButtons } from "@/components/AuthButtons";
 import { BrandMark } from "@/components/BrandMark";
 import { getCurrentSession } from "@/lib/auth";
@@ -42,15 +42,12 @@ export default async function LoginPage({
           <div className="fb-login-panel-head">
             <div>
               <h2 className="fb-login-panel-title">
-                Continue securely
+                Sign in
               </h2>
               <p className="fb-login-panel-copy">
-                Use the same identity for your web archive and local reading helper.
+                Use one account for your web archive and local helper.
               </p>
             </div>
-            <span className="fb-login-panel-icon">
-              <ShieldCheck aria-hidden="true" />
-            </span>
           </div>
           {errorMessage ? (
             <div
