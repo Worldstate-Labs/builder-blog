@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { CheckCircle2, Download, Sliders, Trash2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, Download, Sliders, Trash2 } from "lucide-react";
 import { CountBadge, CountMeta, CountRange, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 
@@ -335,7 +335,7 @@ function HubCard({
 
       {sourcePreview.length > 0 ? (
         <details className="fb-hub-sources">
-          <summary className="fb-hub-sources-summary">
+          <summary className="fb-hub-sources-summary" aria-label={`Show sources in ${library.name}`}>
             <div className="fb-hub-source-stack">
               {sourcePreview.map((item, index) => (
                 <SourceAvatar
@@ -359,7 +359,7 @@ function HubCard({
               ) : null}
             </div>
             <span aria-hidden="true" className="fb-hub-sources-caret">
-              Show
+              <ChevronDown />
             </span>
           </summary>
           <ul className="fb-hub-source-list">

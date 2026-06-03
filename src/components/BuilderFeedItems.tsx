@@ -93,13 +93,13 @@ export function BuilderFeedItems({
               label={items ? "loaded" : "summarized"}
               value={items ? items.length : totalCount}
             />
-            {latestPostCreatedAt ? (
-              <time className="builder-posts-latest" dateTime={latestPostCreatedAt}>
-                Latest {formatCompactDate(new Date(latestPostCreatedAt))}
-              </time>
-            ) : null}
           </span>
         </span>
+        {latestPostCreatedAt ? (
+          <time className="builder-posts-latest" dateTime={latestPostCreatedAt}>
+            Latest {formatCompactDate(new Date(latestPostCreatedAt))}
+          </time>
+        ) : null}
       </summary>
       <div className="builder-post-list">
         {isLoading ? (

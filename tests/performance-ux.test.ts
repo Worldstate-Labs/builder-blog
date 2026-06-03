@@ -1029,6 +1029,9 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /flex flex-wrap items-center gap-2|disabled:cursor-wait/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-head"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-sources-summary"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /ChevronDown/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /aria-label=\{`Show sources in \$\{library\.name\}`\}/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), />\s*Show\s*</);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-stats"/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.hub-metric/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /EmptyState/);
@@ -1060,6 +1063,9 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-line\.is-body\s*{[\s\S]*width:\s*min\(100%,\s*var\(--skeleton-copy-max\)\)/);
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-card\s*{[\s\S]*min-height:\s*11rem/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-card-head\s*{/);
+  assert.doesNotMatch(source("src/app/globals.css"), /content:\s*"Show"|content:\s*"Hide"/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-sources > summary \.fb-hub-sources-caret\s*{[\s\S]*transition:\s*transform 160ms ease/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-sources\[open\] > summary \.fb-hub-sources-caret\s*{[\s\S]*transform:\s*rotate\(180deg\)/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-card-desc\s*{[\s\S]*max-width:\s*var\(--measure\)/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*3\.5rem minmax\(0,\s*1fr\) minmax\(0,\s*auto\)/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-avatar\[data-avatar-tone="0"\]\s*{[\s\S]*oklch/);
@@ -1135,6 +1141,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
     builderFeedItems,
     /<span className="builder-posts-label">Posts<\/span>[\s\S]*className="builder-posts-meta"[\s\S]*label=\{items \? "loaded" : "summarized"\}[\s\S]*<time className="builder-posts-latest" dateTime=\{latestPostCreatedAt\}>[\s\S]*Latest \{formatCompactDate/,
   );
+  assert.match(builderFeedItems, /className="builder-posts-meta"[\s\S]*<\/span>\s*<\/span>\s*\{latestPostCreatedAt \? \(/);
   assert.match(builderFeedItems, /Latest \{formatCompactDate\(new Date\(latestPostCreatedAt\)\)\}/);
   assert.match(builderFeedItems, /className="builder-post-loading-line"/);
   assert.match(builderFeedItems, /className="builder-post-loading-card"/);
@@ -1711,11 +1718,15 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.doesNotMatch(css, /\.(?:stats-panel|stat-card|metric-card|search-stats-panel)\b/);
   assert.match(css, /\.builder-posts-latest/);
   assert.match(css, /\.builder-posts-latest\s*{[\s\S]*white-space:\s*nowrap/);
-  assert.match(css, /\.builder-posts-latest::before\s*{[\s\S]*content:\s*"·"/);
+  assert.match(css, /\.builder-posts-latest\s*{[\s\S]*margin-left:\s*auto/);
+  assert.match(css, /\.builder-posts-latest\s*{[\s\S]*order:\s*2/);
+  assert.doesNotMatch(css, /\.builder-posts-latest::before\s*{[\s\S]*content:\s*"·"/);
+  assert.match(css, /\.builder-posts > summary::after\s*{[\s\S]*order:\s*1/);
   assert.match(css, /\.builder-posts-label\s*{[\s\S]*font-weight:\s*760/);
   assert.match(css, /\.builder-posts-meta\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(css, /\.builder-posts-summary\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(css, /\.builder-posts > summary\s*{[\s\S]*display:\s*flex/);
+  assert.match(css, /\.builder-posts > summary\s*{[\s\S]*justify-content:\s*space-between/);
   assert.match(css, /\.builder-library-row-tools\s*{[\s\S]*opacity:\s*0/);
   assert.match(css, /\.library-section-meta \.count-meta\s*{[\s\S]*font-size:\s*0\.8125rem/);
   assert.doesNotMatch(css, /\.library-section-summary::after[\s\S]*content:\s*"\+"/);
