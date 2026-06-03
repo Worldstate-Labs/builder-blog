@@ -596,7 +596,7 @@ function TokenPickerDialog({
         <fieldset className="token-picker-list">
           <legend className="sr-only">Connected helpers</legend>
           {!open ? null : tokens.length === 0 ? (
-            <p className="px-3 py-6 text-center text-sm text-[var(--muted-strong)]">
+            <p className="token-picker-empty">
               No connected helpers.{" "}
               <a className="underline" href="/settings">
                 Add one in Settings

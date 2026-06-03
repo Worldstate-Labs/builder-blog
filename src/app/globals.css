@@ -5044,6 +5044,22 @@ svg.lucide {
   padding: 0.5rem 0.625rem;
 }
 
+.token-picker-empty {
+  color: var(--muted-strong);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  margin: 0;
+  padding: 1.5rem 0.75rem;
+  text-align: center;
+}
+
+.token-picker-empty a {
+  color: var(--accent);
+  font-weight: 650;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.16em;
+}
+
 .token-picker-row {
   align-items: flex-start;
   border: 1px solid transparent;
