@@ -724,8 +724,15 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /View original/);
   assert.match(postCard, /\/builder\/\$\{builder\.entityId\}/);
   assert.match(recommendationItemPage, /page-pad reading-page/);
+  assert.match(recommendationItemPage, /className="reading-page-nav"/);
+  assert.match(recommendationItemPage, /className="button-light button-compact reading-back-link"/);
+  assert.match(recommendationItemPage, /showDebugActions=\{false\}/);
+  assert.equal((recommendationItemPage.match(/Back to feed/g) ?? []).length, 1);
+  assert.doesNotMatch(recommendationItemPage, /extraActions=/);
   assert.match(globals, /\.reading-page\s*{[\s\S]*width:\s*min\(100%,\s*58rem\)/);
+  assert.match(globals, /\.reading-page-nav\s*{[\s\S]*margin-bottom:\s*1\.35rem/);
   assert.match(globals, /\.post-detail-card\.feed-card/);
+  assert.match(globals, /\.post-detail-card \.post-footer\s*{[\s\S]*border-top:/);
   assert.match(feedItemsRoute, /fetchDedupedFeedForEntities/);
   assert.match(feedItemsRoute, /activePoolBuilderIds/);
   assert.match(feedItemsRoute, /NextResponse\.json/);

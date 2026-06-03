@@ -304,6 +304,16 @@ svg.lucide {
   width: min(100%, 58rem);
 }
 
+.reading-page-nav {
+  align-items: center;
+  display: flex;
+  margin-bottom: 1.35rem;
+}
+
+.reading-back-link {
+  gap: 0.5rem;
+}
+
 .workspace-content-stack {
   display: grid;
   gap: clamp(1.25rem, 2vw, 2rem);
@@ -1140,6 +1150,12 @@ svg.lucide {
   border-color: color-mix(in oklch, var(--line) 84%, transparent);
   box-shadow: none;
   padding: clamp(1.1rem, 3vw, 1.6rem);
+}
+
+.post-detail-card .post-footer {
+  border-top: 1px solid color-mix(in oklch, var(--line) 70%, transparent);
+  margin-top: 1.65rem;
+  padding-top: 1rem;
 }
 
 .post-detail-title {

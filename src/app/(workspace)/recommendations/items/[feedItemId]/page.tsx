@@ -59,8 +59,8 @@ export default async function RecommendationItemPage({
 
   return (
     <div className="page-pad reading-page">
-      <div className="mb-6">
-        <Link className="button-light button-compact gap-2" href="/dashboard">
+      <div className="reading-page-nav">
+        <Link className="button-light button-compact reading-back-link" href="/dashboard">
           <ArrowLeft className="h-4 w-4" />
           Back to feed
         </Link>
@@ -68,12 +68,6 @@ export default async function RecommendationItemPage({
 
       <PostCard
         dataRead={true}
-        extraActions={
-          <Link className="button-light button-compact gap-2" href="/dashboard">
-            <ArrowLeft className="h-4 w-4" />
-            Back to feed
-          </Link>
-        }
         post={{
           id: item.id,
           title: item.title,
@@ -96,6 +90,7 @@ export default async function RecommendationItemPage({
               }
             : null,
         }}
+        showDebugActions={false}
         variant="detail"
       />
     </div>
