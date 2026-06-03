@@ -369,20 +369,18 @@ export function SearchForm({
             </div>
             <button
               aria-busy={isPending}
-              className="button-dark relative justify-center gap-2"
+              className="button-dark submit-button"
               disabled={isPending}
               name="search"
               type="submit"
             >
               <span
-                className={`inline-flex items-center justify-center gap-2 ${
-                  isPending ? "invisible" : ""
-                }`}
+                className={`submit-button-content${isPending ? " is-pending" : ""}`}
               >
                 Search
               </span>
               {isPending ? (
-                <span className="absolute inset-0 inline-flex items-center justify-center px-3">
+                <span className="submit-button-pending">
                   Searching...
                 </span>
               ) : null}

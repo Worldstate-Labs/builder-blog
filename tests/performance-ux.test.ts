@@ -697,6 +697,7 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
 test("search page uses a client form with pending feedback", () => {
   const searchPage = source("src/app/(workspace)/search/page.tsx");
   const searchForm = source("src/components/SearchForm.tsx");
+  const formSubmitButton = source("src/components/FormSubmitButton.tsx");
   const globals = source("src/app/globals.css");
 
   assert.match(searchPage, /@\/components\/SearchForm/);
@@ -726,6 +727,15 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(globals, /\.search-empty\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.search-hero\s*{[\s\S]*grid-template-columns:/);
   assert.match(globals, /\.search-hero-form \.search-form\s*{[\s\S]*margin-top:\s*0/);
+  assert.match(searchForm, /className="button-dark submit-button"/);
+  assert.match(searchForm, /submit-button-content/);
+  assert.match(searchForm, /submit-button-pending/);
+  assert.match(formSubmitButton, /submit-button-content/);
+  assert.match(formSubmitButton, /submit-button-pending/);
+  assert.match(globals, /\.submit-button\s*{[\s\S]*position:\s*relative/);
+  assert.match(globals, /\.submit-button-pending\s*{[\s\S]*position:\s*absolute/);
+  assert.doesNotMatch(searchForm, /absolute inset-0 inline-flex|inline-flex items-center justify-center gap-2/);
+  assert.doesNotMatch(formSubmitButton, /absolute inset-0 inline-flex|inline-flex items-center justify-center gap-2/);
   assert.match(searchPage, /Search instead for/);
   assert.match(searchPage, /isShowingCorrectedResults/);
   assert.match(searchPage, /Advanced search/);

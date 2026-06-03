@@ -493,6 +493,29 @@ svg.lucide {
   font-size: 0.8rem;
 }
 
+.submit-button {
+  justify-content: center;
+  position: relative;
+}
+
+.submit-button-content,
+.submit-button-pending {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.submit-button-content.is-pending {
+  visibility: hidden;
+}
+
+.submit-button-pending {
+  inset: 0;
+  padding-inline: 0.75rem;
+  position: absolute;
+}
+
 .auth-button {
   width: 100%;
   border: 1px solid var(--line);
