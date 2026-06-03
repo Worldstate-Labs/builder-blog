@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { PostCard } from "@/components/PostCard";
 import { getCurrentSession } from "@/lib/auth";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
@@ -59,12 +60,17 @@ export default async function RecommendationItemPage({
 
   return (
     <div className="page-pad reading-page">
-      <div className="reading-page-nav">
-        <Link className="button-light button-compact reading-back-link" href="/dashboard">
-          <ArrowLeft className="h-4 w-4" />
-          Back to feed
-        </Link>
-      </div>
+      <PageHeader
+        actions={
+          <Link className="button-light button-compact reading-back-link" href="/dashboard">
+            <ArrowLeft className="h-4 w-4" />
+            Back to feed
+          </Link>
+        }
+        className="reading-page-head"
+        description={item.builder?.name ?? item.sourceName ?? "Saved post"}
+        title="Post"
+      />
 
       <PostCard
         dataRead={true}

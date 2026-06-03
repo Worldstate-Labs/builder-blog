@@ -304,9 +304,7 @@ svg.lucide {
   width: min(100%, 58rem);
 }
 
-.reading-page-nav {
-  align-items: center;
-  display: flex;
+.reading-page-head {
   margin-bottom: 1.35rem;
 }
 
