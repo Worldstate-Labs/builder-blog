@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { RefreshCcw } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import {
   RecommendationFeed,
@@ -33,6 +34,7 @@ function FollowingRecommendationLoader() {
   const loadTimeline = useCallback(async () => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
+    setStatus("loading");
 
     try {
       const response = await fetch("/api/recommendations/timeline", {
@@ -71,7 +73,7 @@ function FollowingRecommendationLoader() {
   // A fetch failure is distinct from "ready but nothing to show": the former is
   // an error the user can retry, the latter is the normal empty state.
   if (status === "error") {
-    return <FollowingError />;
+    return <FollowingError onRetry={() => void loadTimeline()} />;
   }
   if (!timeline || timeline.snapshots.length === 0) {
     return <FollowingUnavailable />;
@@ -99,16 +101,22 @@ function FollowingUnavailable() {
   );
 }
 
-function FollowingError() {
+function FollowingError({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="feed-content-stack">
       <EmptyState
         ariaLive="assertive"
-        body="Something went wrong fetching recommendations. Use Refresh to try again."
+        body="Something went wrong fetching recommendations."
         className="feed-state-panel"
         role="alert"
         title="Couldn't load Following"
         tone="error"
+        actions={
+          <button className="fb-btn light compact" onClick={onRetry} type="button">
+            <RefreshCcw aria-hidden="true" className="h-3.5 w-3.5" />
+            Retry
+          </button>
+        }
       />
     </div>
   );

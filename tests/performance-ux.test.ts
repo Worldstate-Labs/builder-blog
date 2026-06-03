@@ -425,6 +425,13 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /<EmptyState/);
   assert.match(followingSection, /className="feed-state-panel"/);
   assert.match(followingSection, /tone="error"/);
+  assert.match(favoritesSection, /<RefreshCcw/);
+  assert.match(followingSection, /<RefreshCcw/);
+  assert.match(favoritesSection, /onRetry=\{\(\) => void loadFavorites\(\)\}/);
+  assert.match(followingSection, /onRetry=\{\(\) => void loadTimeline\(\)\}/);
+  assert.match(favoritesSection, /Retry/);
+  assert.match(followingSection, /Retry/);
+  assert.doesNotMatch(followingSection, /Use Refresh to try again/);
   assert.doesNotMatch(followingSection, /feed-state-inner|feed-state-icon|feed-state-title|feed-state-desc/);
   assert.doesNotMatch(recommendationFeed, /recommendation-feed mt-6/);
   assert.doesNotMatch(recommendationFeed, /mt-6 flex min-h-14/);

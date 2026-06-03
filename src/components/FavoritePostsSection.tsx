@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { RefreshCcw } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import {
   RecommendationFeed,
@@ -29,6 +30,7 @@ export function FavoritePostsSection() {
   const loadFavorites = useCallback(async () => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
+    setStatus("loading");
 
     try {
       const response = await fetch("/api/favorites", { cache: "no-store" });
@@ -63,7 +65,13 @@ export function FavoritePostsSection() {
   }
 
   if (status === "error") {
-    return <FavoritesMessage title="Couldn’t load Favorites" tone="error" />;
+    return (
+      <FavoritesMessage
+        title="Couldn’t load Favorites"
+        tone="error"
+        onRetry={() => void loadFavorites()}
+      />
+    );
   }
 
   if (!favorites?.snapshot || favorites.snapshot.items.length === 0) {
@@ -88,8 +96,10 @@ function FavoritesMessage({
   body,
   title,
   tone = "empty",
+  onRetry,
 }: {
   body?: string;
+  onRetry?: () => void;
   title: string;
   tone?: "empty" | "error";
 }) {
@@ -101,6 +111,14 @@ function FavoritesMessage({
         title={title}
         tone={tone}
         role={tone === "error" ? "alert" : undefined}
+        actions={
+          onRetry ? (
+            <button className="fb-btn light compact" onClick={onRetry} type="button">
+              <RefreshCcw aria-hidden="true" className="h-3.5 w-3.5" />
+              Retry
+            </button>
+          ) : undefined
+        }
       />
     </div>
   );
