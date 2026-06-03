@@ -37,6 +37,27 @@ test("app shell reuses the page session instead of fetching it again", () => {
   }
 });
 
+test("public entry pages use the centered product layout", () => {
+  const landingPage = source("src/app/page.tsx");
+  const loginPage = source("src/app/login/page.tsx");
+  const globals = source("src/app/globals.css");
+
+  assert.match(landingPage, /fb-public-nav/);
+  assert.match(landingPage, /fb-public-section fb-public-hero/);
+  assert.match(landingPage, /fb-public-title/);
+  assert.doesNotMatch(landingPage, /max-w-7xl/);
+  assert.doesNotMatch(landingPage, /serif text-5xl/);
+  assert.match(loginPage, /fb-login-shell/);
+  assert.match(loginPage, /fb-login-title/);
+  assert.doesNotMatch(loginPage, /max-w-6xl/);
+  assert.match(globals, /\.fb-public-nav,[\s\S]*\.fb-public-section\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
+  assert.match(globals, /\.fb-public-hero\s*{[\s\S]*grid-template-columns:/);
+  assert.match(globals, /\.fb-login-shell\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
+  assert.doesNotMatch(globals, /\.landing-grid\s*{/);
+  assert.doesNotMatch(globals, /\.app-topbar\s*{/);
+  assert.doesNotMatch(globals, /\.page-header\s*{/);
+});
+
 test("settings live in the clickable user avatar menu", () => {
   const appShell = source("src/components/AppShell.tsx");
   const appNav = source("src/components/AppNav.tsx");
@@ -538,6 +559,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /title=\{data\.isAdmin \? adminCommunityLibraryName : "Private library"\}[\s\S]*defaultOpen/);
   assert.doesNotMatch(builderLibraryList, /function BuilderStats/);
   assert.match(builderLibraryList, /latestPostCreatedAt=\{builder\.latestPostCreatedAt\}/);
+  assert.doesNotMatch(builderLibraryList, /CountMeta/);
+  assert.doesNotMatch(builderLibraryList, /Latest \{formatCompactDate/);
   assert.match(builderFeedItems, /Latest \{formatCompactDate\(new Date\(latestPostCreatedAt\)\)\}/);
   assert.match(builderFeedItems, /timeZone:\s*"UTC"/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
@@ -899,9 +922,10 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.row-actions/);
   assert.match(css, /\.source-summary-line/);
   assert.match(css, /\.sources-sync-section \.digest-updates-panel/);
-  assert.match(css, /\.builder-library-card-main\s*{\s*\n\s*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) minmax\(8\.25rem,\s*auto\)/);
+  assert.match(css, /\.builder-library-card-main\s*{\s*\n\s*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);
   assert.doesNotMatch(css, /\.builder-library-stats\s*{/);
   assert.match(css, /\.builder-posts-latest/);
+  assert.match(css, /\.builder-posts-latest::before\s*{[\s\S]*content:\s*"·"/);
   assert.match(css, /\.builder-posts > summary\s*{[\s\S]*display:\s*flex/);
   assert.match(css, /\.builder-library-row-tools\s*{[\s\S]*opacity:\s*0/);
   assert.doesNotMatch(css, /\.library-section-summary::after[\s\S]*content:\s*"\+"/);

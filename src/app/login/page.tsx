@@ -16,7 +16,7 @@ export default async function LoginPage({
 
   return (
     <main className="fb-dark-frame">
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-between gap-10 lg:flex-row lg:items-center lg:justify-center lg:gap-12">
+      <div className="fb-login-shell">
         <section>
           <div className="flex items-center gap-3">
             <BrandMark size="dark" />
@@ -24,7 +24,7 @@ export default async function LoginPage({
               FollowBrief
             </p>
           </div>
-          <h1 className="serif mt-7 text-4xl font-semibold leading-[1.05] tracking-tight text-white md:text-5xl lg:text-6xl">
+          <h1 className="fb-login-title">
             Sign in to your<br />briefing desk.
           </h1>
           <p className="mt-5 max-w-lg text-base leading-relaxed text-white/68 md:text-lg">
@@ -41,7 +41,7 @@ export default async function LoginPage({
         <section className="fb-dark-panel lg:max-w-md">
           <div className="flex items-start justify-between gap-5">
             <div>
-              <h2 className="serif text-[1.35rem] font-semibold leading-tight tracking-tight md:text-[1.65rem]">
+              <h2 className="fb-login-panel-title">
                 Continue securely
               </h2>
               <p className="mt-2.5 text-[12.5px] leading-relaxed text-white/62 md:text-[13px]">

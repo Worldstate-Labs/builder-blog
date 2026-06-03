@@ -195,22 +195,6 @@ svg.lucide {
   font-optical-sizing: auto;
 }
 
-.landing-grid {
-  background:
-    linear-gradient(180deg, var(--paper-strong) 0%, var(--paper) 50%, var(--rail) 100%),
-    repeating-linear-gradient(90deg, color-mix(in oklch, var(--ink) 4%, transparent) 0 1px, transparent 1px 32px);
-}
-
-.hero-panel {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background:
-    linear-gradient(145deg, color-mix(in oklch, var(--paper-strong) 86%, transparent), color-mix(in oklch, var(--rail) 55%, transparent)),
-    repeating-linear-gradient(90deg, color-mix(in oklch, var(--ink) 4%, transparent) 0 1px, transparent 1px 22px);
-  box-shadow: 0 1px 0 var(--line);
-  padding: clamp(1.5rem, 4vw, 2.4rem);
-}
-
 .brand-mark {
   align-items: center;
   background: var(--ink);
@@ -228,98 +212,9 @@ svg.lucide {
   width: 1.55rem;
 }
 
-.landing-product {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background:
-    linear-gradient(180deg, color-mix(in oklch, var(--paper-strong) 92%, transparent), color-mix(in oklch, var(--rail) 74%, transparent));
-  box-shadow: 0 1px 0 var(--line);
-  overflow: hidden;
-}
-
-.landing-product-bar {
-  align-items: center;
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  justify-content: space-between;
-  min-height: 3.4rem;
-  padding: 0.8rem 1rem;
-}
-
-.landing-product-body {
-  display: grid;
-  gap: 1rem;
-  padding: clamp(1rem, 3vw, 1.6rem);
-}
-
-.signal-row {
-  align-items: start;
-  background: color-mix(in oklch, var(--paper-strong) 78%, transparent);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  display: grid;
-  gap: 0.8rem;
-  grid-template-columns: auto minmax(0, 1fr);
-  padding: 0.95rem;
-}
-
-.signal-dot {
-  background: var(--signal);
-  border-radius: 999px;
-  box-shadow: 0 0 0 5px var(--signal-soft);
-  height: 0.58rem;
-  margin-top: 0.42rem;
-  width: 0.58rem;
-}
-
-.workflow-card {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: color-mix(in oklch, var(--paper-strong) 80%, transparent);
-  min-height: 12rem;
-  padding: 1.2rem;
-}
-
-.workflow-card-index {
-  color: var(--accent);
-  font-size: 0.78rem;
-  font-weight: 850;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
 .app-frame {
   display: flex;
   flex-direction: column;
-}
-
-.app-topbar {
-  align-items: center;
-  background: color-mix(in oklch, var(--paper) 94%, transparent);
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  gap: 1rem;
-  min-height: 3.8rem;
-  padding: 0.55rem 1rem;
-  position: sticky;
-  top: 0;
-  z-index: 50;
-}
-
-.app-topbar-left {
-  align-items: center;
-  display: flex;
-  flex: 1 1 auto;
-  gap: 1.4rem;
-  min-width: 0;
-}
-
-.app-brand {
-  align-items: center;
-  display: inline-flex;
-  flex: 0 0 auto;
-  gap: 0.75rem;
-  min-width: 0;
 }
 
 .app-body {
@@ -409,32 +304,6 @@ svg.lucide {
   width: min(100%, 58rem);
 }
 
-.page-header {
-  align-items: flex-start;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  justify-content: space-between;
-  min-width: 0;
-}
-
-.page-title {
-  color: var(--ink);
-  font-family: var(--font-sans);
-  font-size: 1.65rem;
-  font-weight: 750;
-  letter-spacing: 0;
-  line-height: 1.15;
-}
-
-.page-description {
-  color: var(--muted-strong);
-  font-size: 0.95rem;
-  line-height: 1.55;
-  margin-top: 0.35rem;
-  max-width: 42rem;
-}
-
 .page-toolbar {
   align-items: center;
   display: flex;
@@ -460,22 +329,50 @@ svg.lucide {
 }
 
 @media (max-width: 1023px) {
-  .app-topbar {
-    gap: 0.7rem;
-  }
-
-  .app-brand > div {
-    display: none;
-  }
-
   .header-search {
     flex: 1 1 auto;
   }
 }
 
 @media (max-width: 767px) {
-  .app-topbar {
-    padding-inline: 0.75rem;
+  .fb-landing-grid {
+    padding: 1rem;
+  }
+
+  .fb-public-nav {
+    gap: 1rem;
+  }
+
+  .fb-public-hero {
+    gap: 2rem;
+    grid-template-columns: 1fr;
+    padding-block: 2.5rem;
+  }
+
+  .fb-public-title {
+    font-size: 2.55rem;
+  }
+
+  .fb-public-section-title {
+    font-size: 1.55rem;
+  }
+
+  .fb-dark-frame {
+    padding: 1.25rem;
+  }
+
+  .fb-login-shell {
+    align-items: start;
+    gap: 2rem;
+    grid-template-columns: 1fr;
+  }
+
+  .fb-login-title {
+    font-size: 2.55rem;
+  }
+
+  .fb-login-panel-title {
+    font-size: 1.35rem;
   }
 
   .brand-mark,
@@ -2022,6 +1919,12 @@ svg.lucide {
 .builder-posts-latest {
   color: var(--muted);
   font-weight: 600;
+}
+
+.builder-posts-latest::before {
+  color: color-mix(in oklch, var(--muted) 70%, transparent);
+  content: "·";
+  margin-right: 0.5rem;
 }
 
 .builder-post-list {
@@ -4372,7 +4275,7 @@ svg.lucide {
 }
 
 .builder-library-card-main {
-  grid-template-columns: 2rem minmax(0, 1fr) minmax(8.25rem, auto);
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
 }
 
 .builder-library-list {
@@ -4421,7 +4324,7 @@ svg.lucide {
 
 .builder-library-actions {
   justify-self: end;
-  min-width: 8.25rem;
+  min-width: 0;
 }
 
 .builder-library-row-tools,
@@ -5521,6 +5424,39 @@ svg.lucide {
   font-optical-sizing: auto;
 }
 
+.fb-login-shell {
+  align-items: center;
+  display: grid;
+  flex: 1;
+  gap: 3rem;
+  grid-template-columns: minmax(0, 1fr) minmax(20rem, 27rem);
+  justify-content: center;
+  margin-inline: auto;
+  max-width: var(--workspace-max);
+  width: 100%;
+}
+
+.fb-login-title {
+  color: white;
+  font-family: var(--font-display);
+  font-size: 3rem;
+  font-optical-sizing: auto;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.03;
+  margin-top: 1.75rem;
+}
+
+.fb-login-panel-title {
+  color: white;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-optical-sizing: auto;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.15;
+}
+
 .fb-dark-mark {
   align-items: center;
   background: white;
@@ -6088,29 +6024,66 @@ svg.lucide {
 
 /* Hero panel (landing) — already exists but ensure ridge */
 .fb-hero-panel {
-  background:
-    linear-gradient(
-      145deg,
-      color-mix(in oklch, var(--paper-strong) 86%, transparent),
-      color-mix(in oklch, var(--rail) 55%, transparent)
-    ),
-    repeating-linear-gradient(
-      90deg,
-      color-mix(in oklch, var(--ink) 4%, transparent) 0 1px,
-      transparent 1px 22px
-    );
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  background: color-mix(in oklch, var(--paper-strong) 72%, transparent);
+  border: 1px solid color-mix(in oklch, var(--line) 84%, transparent);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .fb-landing-grid {
-  background:
-    linear-gradient(180deg, var(--paper-strong) 0%, var(--paper) 50%, var(--rail) 100%),
-    repeating-linear-gradient(
-      90deg,
-      color-mix(in oklch, var(--ink) 4%, transparent) 0 1px,
-      transparent 1px 32px
-    );
+  background: var(--paper);
+  color: var(--ink);
+  padding: var(--workspace-gutter);
+}
+
+.fb-public-nav,
+.fb-public-section {
+  margin-inline: auto;
+  max-width: var(--workspace-max);
+  width: 100%;
+}
+
+.fb-public-nav {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.fb-public-hero {
+  align-items: center;
+  display: grid;
+  gap: 3rem;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  padding-block: 4.5rem;
+}
+
+.fb-public-title {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 3.35rem;
+  font-optical-sizing: auto;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.04;
+}
+
+.fb-public-section-title {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-optical-sizing: auto;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.18;
+}
+
+.fb-public-card-title {
+  color: var(--ink);
+  font-family: var(--font-geist-sans);
+  font-size: 1.08rem;
+  font-weight: 780;
+  letter-spacing: 0;
+  line-height: 1.3;
 }
 
 /* Mark (search highlight, anywhere) */
@@ -6488,8 +6461,7 @@ body {
     line-height: 1.22;
   }
 
-  .fb-desc,
-  .page-description {
+  .fb-desc {
     font-size: 0.875rem;
     line-height: 1.45;
   }

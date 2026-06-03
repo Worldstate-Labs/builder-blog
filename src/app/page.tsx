@@ -10,11 +10,11 @@ export default async function Home() {
   if (session) redirect("/dashboard");
 
   return (
-    <main className="fb-landing-grid min-h-screen px-6 py-6 md:px-9">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between">
+    <main className="fb-landing-grid min-h-screen">
+      <nav className="fb-public-nav">
         <Link href="/" className="fb-brand">
           <BrandMark />
-          <span className="fb-brand-name serif text-xl">FollowBrief</span>
+          <span className="fb-brand-name">FollowBrief</span>
         </Link>
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -24,9 +24,9 @@ export default async function Home() {
         </div>
       </nav>
 
-      <section className="mx-auto grid max-w-7xl items-center gap-10 py-12 lg:grid-cols-[0.95fr_1.05fr] lg:py-16">
+      <section className="fb-public-section fb-public-hero">
         <div>
-          <h1 className="serif text-5xl font-semibold leading-[1.02] tracking-tight text-[var(--ink)] md:text-6xl lg:text-[3.6rem]">
+          <h1 className="fb-public-title">
             Keep up with people<br />and sources you follow.
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-8 text-[var(--muted-strong)]">
@@ -98,7 +98,7 @@ export default async function Home() {
 
       <section
         id="how-it-works"
-        className="mx-auto max-w-7xl border-t border-[var(--line)] pt-8 pb-12"
+        className="fb-public-section border-t border-[var(--line)] py-10"
       >
         <div className="flex items-center gap-4">
           <span className="fb-section-label">Workflow</span>
@@ -132,7 +132,7 @@ export default async function Home() {
                 <span className="fb-section-label">{i}</span>
                 <Icon className="h-[18px] w-[18px] text-[var(--accent)]" aria-hidden="true" />
               </div>
-              <h2 className="serif mt-3.5 text-2xl font-semibold leading-snug tracking-tight">
+              <h2 className="fb-public-card-title mt-3.5">
                 {title}
               </h2>
               <p className="mt-2.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
@@ -143,10 +143,10 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-5 border-t border-[var(--line)] py-10 md:grid-cols-[0.9fr_1.1fr]">
+      <section className="fb-public-section grid gap-5 border-t border-[var(--line)] py-10 md:grid-cols-[0.9fr_1.1fr]">
         <div>
           <span className="fb-section-label">Workspace</span>
-          <h2 className="serif mt-3 text-3xl font-semibold leading-tight tracking-tight">
+          <h2 className="fb-public-section-title mt-3">
             Calm enough for daily use. Dense enough for real recall.
           </h2>
         </div>
@@ -191,7 +191,7 @@ function Feature({
     <article className="fb-signal">
       <Icon className="mt-1 h-5 w-5 text-[var(--accent)]" aria-hidden="true" />
       <div>
-        <h3 className="serif text-xl font-semibold">{title}</h3>
+        <h3 className="fb-public-card-title">{title}</h3>
         <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">{copy}</p>
       </div>
     </article>
