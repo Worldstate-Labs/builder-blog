@@ -323,11 +323,11 @@ svg.lucide {
 
 .reading-page-toolbar {
   align-items: center;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 0.75rem;
-  justify-content: space-between;
+  grid-template-columns: auto minmax(0, 1fr);
   margin-bottom: 1.1rem;
+  min-width: 0;
 }
 
 .reading-back-link {
@@ -338,7 +338,12 @@ svg.lucide {
   color: var(--muted-strong);
   font-size: 0.8125rem;
   font-weight: 650;
+  justify-self: end;
+  max-width: min(100%, var(--copy-max));
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workspace-content-stack {
@@ -7817,6 +7822,15 @@ body {
 
   .fb-page-head {
     gap: 0.75rem;
+  }
+
+  .reading-page-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .reading-source-label {
+    justify-self: start;
+    max-width: 100%;
   }
 
   .builder-detail-identity {

@@ -1158,8 +1158,12 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.equal((recommendationItemPage.match(/Back to feed/g) ?? []).length, 1);
   assert.doesNotMatch(recommendationItemPage, /extraActions=/);
   assert.match(globals, /\.reading-page\s*{[\s\S]*width:\s*min\(100%,\s*var\(--reading-max\)\)/);
-  assert.match(globals, /\.reading-page-toolbar\s*{[\s\S]*justify-content:\s*space-between/);
+  assert.match(globals, /\.reading-page-toolbar\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.reading-page-toolbar\s*{[\s\S]*grid-template-columns:\s*auto minmax\(0,\s*1fr\)/);
   assert.match(globals, /\.reading-source-label\s*{[\s\S]*font-size:\s*0\.8125rem/);
+  assert.match(globals, /\.reading-source-label\s*{[\s\S]*max-width:\s*min\(100%,\s*var\(--copy-max\)\)/);
+  assert.match(globals, /\.reading-source-label\s*{[\s\S]*text-overflow:\s*ellipsis/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.reading-page-toolbar\s*{[\s\S]*grid-template-columns:\s*1fr/);
   assert.doesNotMatch(globals, /\.reading-page-head\s*{/);
   assert.match(globals, /\.post-detail-card\.feed-card/);
   assert.match(globals, /\.post-detail-card \.post-footer\s*{[\s\S]*border-top:/);
