@@ -2067,7 +2067,7 @@ svg.lucide {
   font-size: 0.75rem;
   font-weight: 700;
   gap: 0.45rem 0.75rem;
-  justify-content: space-between;
+  justify-content: flex-start;
   list-style: none;
   padding: 0.55rem 0 0;
 }
@@ -2103,7 +2103,8 @@ svg.lucide {
   color: var(--accent);
   flex: 0 0 auto;
   font-weight: 850;
-  order: 1;
+  margin-left: auto;
+  order: 2;
 }
 
 .builder-posts[open] > summary::after {
@@ -2112,9 +2113,7 @@ svg.lucide {
 
 .builder-posts-latest {
   color: var(--muted);
-  margin-left: auto;
   font-weight: 600;
-  order: 2;
   white-space: nowrap;
 }
 
