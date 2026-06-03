@@ -346,6 +346,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(builderDetailPage, /builder-detail-section fb-panel dashed/);
   assert.match(globals, /--workspace-max:\s*72rem/);
   assert.match(globals, /--reading-max:\s*58rem/);
+  assert.match(globals, /--skeleton-copy-max:\s*24rem/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
   assert.match(globals, /\.workspace-content-stack\s*{[\s\S]*margin-top:\s*clamp/);
@@ -389,6 +390,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.empty-state\s*{[\s\S]*border:\s*1px dashed var\(--line\)/);
   assert.match(globals, /\.hub-list-empty\s*{[\s\S]*grid-column:\s*1 \/ -1/);
   assert.match(globals, /\.route-loading-title\s*{[\s\S]*height:\s*1\.75rem/);
+  assert.match(globals, /\.route-loading-desc\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);
   assert.match(globals, /\.route-loading-list\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.route-loading-list\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
   assert.match(globals, /\.route-loading-list\s*{[\s\S]*margin-inline:\s*auto/);
@@ -924,6 +926,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/app/globals.css"), /\.hub-section-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(source("src/app/globals.css"), /\.library-hub-page-count\s*{[\s\S]*display:\s*flex/);
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-line,[\s\S]*\.library-hub-skeleton-card\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
+  assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-line\.is-body\s*{[\s\S]*width:\s*min\(100%,\s*var\(--skeleton-copy-max\)\)/);
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-card\s*{[\s\S]*min-height:\s*11rem/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-card-head\s*{/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*3\.5rem minmax\(0,\s*1fr\) minmax\(0,\s*auto\)/);
@@ -1047,6 +1050,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.add-source-form/);
   assert.match(globals, /\.add-source-callout/);
   assert.match(globals, /\.source-sync-skeleton-line,[\s\S]*\.source-section-skeleton-card\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
+  assert.match(globals, /\.source-section-skeleton-desc\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);
   assert.match(globals, /\.source-stat-skeleton\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.builder-library-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.builder-edit-dialog-body\s*{[\s\S]*padding:\s*1rem 1\.125rem/);
