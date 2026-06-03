@@ -3555,6 +3555,7 @@ svg.lucide {
 
 /* Page header */
 .fb-page-head {
+  --page-head-copy-max: var(--copy-max);
   align-items: flex-start;
   border-bottom: 1px solid color-mix(in oklch, var(--line) 78%, transparent);
   display: flex;
@@ -3563,6 +3564,11 @@ svg.lucide {
   justify-content: space-between;
   margin-bottom: 1.5rem;
   padding-bottom: 1.125rem;
+}
+
+.fb-page-head > div:first-child {
+  flex: 1 1 min(var(--page-head-copy-max), 100%);
+  min-width: 0;
 }
 
 .fb-title {
@@ -6195,9 +6201,8 @@ svg.lucide {
   content: "-";
 }
 
-.builder-detail-page-head > div:first-child {
-  flex: 1 1 min(48rem, 100%);
-  min-width: 0;
+.builder-detail-page-head {
+  --page-head-copy-max: var(--empty-max);
 }
 
 .builder-detail-page-head > :last-child {
@@ -6367,7 +6372,7 @@ svg.lucide {
   font-size: 0.875rem;
   line-height: 1.5;
   margin-top: 0.25rem;
-  max-width: 44rem;
+  max-width: var(--copy-max);
 }
 
 .settings-rules-body {
