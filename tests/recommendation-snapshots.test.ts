@@ -24,6 +24,7 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.match(feed, /mode = "following"/);
   assert.match(feed, /onInteract=\{isFavoritesTab \? undefined : \(\) => markRead\(entry\.item\.id\)\}/);
   assert.match(detailPage, /Back to feed/);
+  assert.match(detailPage, /href="\/dashboard\?tab=subscription"/);
   assert.match(detailPage, /feedRead\.create/);
   assert.match(detailPage, /item\.body/);
   assert.doesNotMatch(feed, /filter\(\(entry\) => entry\.item\.id !== feedItemId\)/);

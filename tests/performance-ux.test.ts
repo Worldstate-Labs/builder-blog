@@ -1041,6 +1041,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(recommendationItemPage, /className="reading-page-toolbar"/);
   assert.match(recommendationItemPage, /className="reading-source-label"/);
   assert.match(recommendationItemPage, /className="button-light button-compact reading-back-link"/);
+  assert.match(recommendationItemPage, /href="\/dashboard\?tab=subscription"/);
   assert.match(recommendationItemPage, /showDebugActions=\{false\}/);
   assert.equal((recommendationItemPage.match(/Back to feed/g) ?? []).length, 1);
   assert.doesNotMatch(recommendationItemPage, /extraActions=/);

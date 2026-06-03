@@ -60,7 +60,7 @@ export default async function RecommendationItemPage({
   return (
     <div className="page-pad reading-page">
       <nav aria-label="Post navigation" className="reading-page-toolbar">
-        <Link className="button-light button-compact reading-back-link" href="/dashboard">
+        <Link className="button-light button-compact reading-back-link" href="/dashboard?tab=subscription">
           <ArrowLeft className="h-4 w-4" />
           Back to feed
         </Link>
