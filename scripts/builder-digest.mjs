@@ -2905,11 +2905,26 @@ function markdownLine(value, fallback = "") {
     .trim();
 }
 
+function markdownContentLine(value) {
+  const line = String(value || "").trimEnd();
+  const heading = line.match(/^#{1,6}\s+(.+?)\s*$/);
+  if (heading) return heading[1].trim();
+  const fullBold = line.match(/^\*\*(.+?)\*\*\s*$/);
+  if (fullBold) return fullBold[1].trim();
+  const mediaLike = line.match(
+    /^\s*(原文|来源|链接|出处|视频|影片|观看|收听|音频|播客|Source|Original|Video|Watch|Listen|Audio|Link|Podcast)\s*[:：]\s*(https?:\/\/\S+?)\s*$/i,
+  );
+  if (mediaLike) return `${mediaLike[1]} - ${mediaLike[2]}`;
+  const bareUrl = line.match(/^\s*(https?:\/\/\S+?)\s*$/);
+  if (bareUrl) return `Link - ${bareUrl[1]}`;
+  return line;
+}
+
 function markdownParagraph(value) {
   return String(value || "")
     .replace(/\r\n/g, "\n")
     .split(/\n{2,}/)
-    .map((part) => part.trim())
+    .map((part) => part.split("\n").map(markdownContentLine).join("\n").trim())
     .filter(Boolean)
     .join("\n\n");
 }
@@ -2941,54 +2956,85 @@ function hostLabel(value) {
 
 function postSummaryFromAgentOutput(agentOutput) {
   const map = new Map();
-  const rows = Array.isArray(agentOutput?.postSummaries)
-    ? agentOutput.postSummaries
-    : Array.isArray(agentOutput?.posts)
-      ? agentOutput.posts
-      : [];
+  const rows = Array.isArray(agentOutput?.postSummaries) ? agentOutput.postSummaries : [];
   for (const row of rows) {
-    const summary = stringOrNull(row?.summary ?? row?.translatedSummary ?? row?.body);
+    const summary = stringOrNull(row?.summary);
     if (!summary) continue;
-    const keys = [
-      row?.feedItemId,
-      row?.id,
-      row?.itemId,
-      row?.externalId && row?.entityId && row?.kind
-        ? `${row.entityId}:${row.kind}:${row.externalId}`
-        : null,
-    ];
-    for (const key of keys) {
-      if (key) map.set(String(key), summary);
-    }
+    if (row?.feedItemId) map.set(String(row.feedItemId), summary);
   }
   return map;
+}
+
+function validateDigestAgentOutput(context, agentOutput, postSummaries) {
+  const errors = [];
+  if (!agentOutput || typeof agentOutput !== "object" || Array.isArray(agentOutput)) {
+    throw new Error("Digest agent output must be one JSON object.");
+  }
+  if (!stringOrNull(agentOutput.headlineSummary)) {
+    errors.push("headlineSummary is required and must be a non-empty string");
+  }
+
+  const items = Array.isArray(context?.items) ? context.items : [];
+  const seenItemIds = new Set();
+  for (const item of items) {
+    const id = stringOrNull(item?.id);
+    if (!id) {
+      errors.push(`context item is missing id: ${item?.title || item?.url || "unknown item"}`);
+      continue;
+    }
+    if (seenItemIds.has(id)) errors.push(`duplicate context item id: ${id}`);
+    seenItemIds.add(id);
+    if (!postSummaries.has(id)) errors.push(`postSummaries missing feedItemId: ${id}`);
+  }
+
+  if (!Array.isArray(agentOutput.postSummaries)) {
+    errors.push("postSummaries must be an array");
+  } else {
+    const outputItemIds = new Set();
+    for (const row of agentOutput.postSummaries) {
+      const feedItemId = stringOrNull(row?.feedItemId);
+      if (!feedItemId) {
+        errors.push("post summary is missing feedItemId");
+      } else {
+        if (outputItemIds.has(feedItemId)) errors.push(`duplicate post summary feedItemId: ${feedItemId}`);
+        outputItemIds.add(feedItemId);
+        if (!seenItemIds.has(feedItemId)) errors.push(`post summary has unknown feedItemId: ${feedItemId}`);
+      }
+      if (!stringOrNull(row?.summary)) {
+        errors.push(`post summary is empty for feedItemId: ${row?.feedItemId || "unknown"}`);
+      }
+    }
+  }
+  const sourceSummaries = Array.isArray(agentOutput.sourceSummaries)
+    ? agentOutput.sourceSummaries
+    : [];
+  const validEntityIds = new Set(items.map((item) => item?.entityId).filter(Boolean).map(String));
+  for (const row of sourceSummaries) {
+    const summary = stringOrNull(row?.summary);
+    if (!summary) continue;
+    const entityId = stringOrNull(row?.entityId);
+    if (!entityId) errors.push("non-empty source summary is missing entityId");
+    else if (!validEntityIds.has(entityId)) errors.push(`source summary has unknown entityId: ${entityId}`);
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Invalid digest agent output: ${errors.join("; ")}`);
+  }
 }
 
 function sourceSummaryFromAgentOutput(agentOutput) {
   const map = new Map();
   const rows = Array.isArray(agentOutput?.sourceSummaries) ? agentOutput.sourceSummaries : [];
   for (const row of rows) {
-    const summary = stringOrNull(row?.summary ?? row?.sourceSummary);
-    if (!summary) continue;
-    for (const key of [row?.entityId, row?.sourceKey, row?.source, row?.name]) {
-      if (key) map.set(String(key), summary);
-    }
+    const entityId = stringOrNull(row?.entityId);
+    const summary = stringOrNull(row?.summary);
+    if (entityId && summary) map.set(entityId, summary);
   }
   return map;
 }
 
 function postSummaryForItem(item, postSummaries) {
-  const canonicalKey =
-    item?.entityId && item?.kind && item?.externalId
-      ? `${item.entityId}:${item.kind}:${item.externalId}`
-      : null;
-  return (
-    postSummaries.get(String(item?.id || "")) ||
-    (canonicalKey ? postSummaries.get(canonicalKey) : "") ||
-    stringOrNull(item?.summary) ||
-    stringOrNull(item?.body) ||
-    ""
-  );
+  return postSummaries.get(String(item?.id || "")) || "";
 }
 
 export function renderDigestMarkdown(context, agentOutput = {}) {
@@ -3006,6 +3052,7 @@ export function renderDigestMarkdown(context, agentOutput = {}) {
   }
 
   const postSummaries = postSummaryFromAgentOutput(agentOutput);
+  validateDigestAgentOutput(context, agentOutput, postSummaries);
   const sourceSummaries = sourceSummaryFromAgentOutput(agentOutput);
   const order = digestSourceOrder(context);
   const sections = new Map();

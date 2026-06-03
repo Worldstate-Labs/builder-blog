@@ -41,6 +41,10 @@ Rules:
   summaries, section headings, or final digest structure.
 - Preserve IDs exactly: use `item.id` as `feedItemId` and `item.entityId` as
   `entityId`.
+- The render step validates this object before sync. If `headlineSummary` is
+  empty, if any `context.items[]` entry lacks a matching
+  `postSummaries[].feedItemId`, or if a non-empty source summary references an
+  unknown `entityId`, the job fails instead of syncing a partial digest.
 - Keep URLs unchanged when they appear in an existing post summary, but do not
   add new URLs to the JSON fields. The CLI will add the original source link
   from `item.url`.

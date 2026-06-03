@@ -979,3 +979,90 @@ test("failed / blocked outcomes require a reason", async () => {
   assert.equal(result.status, "ok");
   assert.equal(result.accountedOutcomes, 1);
 });
+
+test("render-digest requires agent summaries for every context item", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const context = digestRenderContext();
+
+  assert.throws(
+    () =>
+      cli.renderDigestMarkdown(context, {
+        headlineSummary: "A short headline in the selected language.",
+        sourceSummaries: [],
+        postSummaries: [],
+      }),
+    /postSummaries missing feedItemId: feed_1/,
+  );
+
+  assert.throws(
+    () =>
+      cli.renderDigestMarkdown(context, {
+        headlineSummary: "A short headline in the selected language.",
+        sourceSummaries: [{ entityId: "unknown_entity", summary: "Unknown source note." }],
+        postSummaries: [{ feedItemId: "feed_1", summary: "Valid post summary." }],
+      }),
+    /source summary has unknown entityId: unknown_entity/,
+  );
+});
+
+test("render-digest neutralizes structural markdown inside agent summary nodes", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const { parseDigest } = await import("../src/lib/digest-markdown");
+  const rendered = cli.renderDigestMarkdown(digestRenderContext(), {
+    headlineSummary: "A short headline in the selected language.",
+    sourceSummaries: [
+      {
+        entityId: "entity_1",
+        summary: "## Fake section\n\n**Fake post title**\n\nSource: https://example.com/fake",
+      },
+    ],
+    postSummaries: [
+      {
+        feedItemId: "feed_1",
+        summary: "### Fake source\n\n**Fake title**\n\nSource: https://example.com/fake",
+      },
+    ],
+  });
+
+  const doc = parseDigest(rendered.markdown);
+  assert.equal(doc.sections.length, 1);
+  assert.equal(doc.postCount, 1);
+  assert.equal(doc.sections[0].groups.length, 1);
+  assert.equal(doc.sections[0].groups[0].summary.length, 3);
+  assert.equal(doc.sections[0].groups[0].posts[0].title, "Real post title");
+  assert.doesNotMatch(rendered.markdown, /^## Fake section$/m);
+  assert.doesNotMatch(rendered.markdown, /^### Fake source$/m);
+  assert.doesNotMatch(rendered.markdown, /^\*\*Fake title\*\*$/m);
+});
+
+function digestRenderContext() {
+  return {
+    generatedAt: "2026-06-03T12:00:00.000Z",
+    language: "English",
+    digest: { order: ["blog"] },
+    subscriptionEntities: [{ id: "entity_1", name: "Example Source" }],
+    items: [
+      {
+        id: "feed_1",
+        entityId: "entity_1",
+        kind: "BLOG_POST",
+        externalId: "real-post",
+        title: "Real post title",
+        summary: "Original stored summary.",
+        body: "Original body.",
+        url: "https://example.com/real-post",
+        publishedAt: "2026-06-03T11:00:00.000Z",
+        createdAt: "2026-06-03T11:30:00.000Z",
+        sourceName: "example.com",
+        builder: {
+          id: "builder_1",
+          entityId: "entity_1",
+          name: "example.com",
+          sourceType: "blog",
+          sourceUrl: "https://example.com",
+          fetchUrl: null,
+        },
+      },
+    ],
+  };
+}

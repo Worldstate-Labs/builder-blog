@@ -23,10 +23,10 @@ export type DigestSourceLink = {
   fetchUrl?: string | null;
 };
 
-// Renders the agent's digest markdown as a multimedia, progressively-readable
-// document: real links, embedded video (lazy facade), a jump-to-section index,
-// collapsible sections, and per-post "Show more" so a long brief stays
-// scannable. `tone` adapts it to the dark "today" hero vs the paper archive.
+// Renders the CLI-produced digest markdown as a progressively-readable document:
+// source links, a jump-to-section index, collapsible sections, and the shared
+// PostCard for each post. `tone` adapts it to the dark "today" hero vs the
+// paper archive.
 export function DigestContent({
   content,
   sourceLinks = [],
