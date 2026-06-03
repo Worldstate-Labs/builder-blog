@@ -76,6 +76,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /@\/components\/settings\/SettingsFields/);
   assert.match(adminDigestConfig, /DIGEST_INTRO_PLACEHOLDER/);
   assert.match(adminDigestConfig, /Then organize content in this order/);
+  assert.match(adminDigestConfig, /YouTube section - list each video episode/);
+  assert.match(adminDigestConfig, /Websites section - list each website source/);
   assert.doesNotMatch(adminDigestConfig, /OrderedChoiceField/);
   assert.match(adminDigestConfig, /TRANSLATE_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /@\/components\/settings\/SettingsFields/);

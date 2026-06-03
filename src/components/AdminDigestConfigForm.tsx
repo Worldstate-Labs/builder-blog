@@ -26,7 +26,9 @@ const DIGEST_INTRO_PLACEHOLDER = [
   "",
   "1. X / Twitter section - list each builder with new posts",
   "2. Official Blogs section - list each blog post from AI companies or builders",
-  "3. Podcasts section - list each podcast or video episode with new content",
+  "3. YouTube section - list each video episode with new content",
+  "4. Podcasts section - list each podcast episode with new content",
+  "5. Websites section - list each website source with new content",
 ].join("\n");
 
 const TRANSLATE_PROMPT_PLACEHOLDER = [

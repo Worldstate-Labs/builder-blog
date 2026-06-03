@@ -605,8 +605,8 @@ model SourceTypeConfig {
   updatedBy          String?
 }
 
-/// Singleton (id="global") that holds digest-level prompts and the
-/// section order used by both digest-once and the assembly skill.
+/// Singleton (id="global") that holds digest-level prompts. digestOrder is
+/// retained for older clients; current assembly order lives in digestIntro.
 model DigestConfig {
   id                 String   @id @default("global")
   digestIntro        String
