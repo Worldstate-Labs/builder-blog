@@ -55,6 +55,7 @@
   --search-suggest-max: 26rem;
   --settings-max: 52rem;
   --skeleton-copy-max: 24rem;
+  --skeleton-wide-max: 34rem;
   --top-search-max: 24rem;
   --workspace-max: 72rem;
   --workspace-gutter: clamp(1rem, 3vw, 2.25rem);
@@ -2890,9 +2891,9 @@ svg.lucide {
 .search-result-skeleton::before {
   background:
     linear-gradient(color-mix(in oklch, var(--ink) 9%, transparent), color-mix(in oklch, var(--ink) 9%, transparent)) 0 0 / 12rem 1rem no-repeat,
-    linear-gradient(color-mix(in oklch, var(--ink) 13%, transparent), color-mix(in oklch, var(--ink) 13%, transparent)) 0 2.1rem / min(100%, 34rem) 1.45rem no-repeat,
+    linear-gradient(color-mix(in oklch, var(--ink) 13%, transparent), color-mix(in oklch, var(--ink) 13%, transparent)) 0 2.1rem / min(100%, var(--skeleton-wide-max)) 1.45rem no-repeat,
     linear-gradient(color-mix(in oklch, var(--ink) 8%, transparent), color-mix(in oklch, var(--ink) 8%, transparent)) 0 4.2rem / min(100%, 46rem) 1rem no-repeat,
-    linear-gradient(color-mix(in oklch, var(--ink) 8%, transparent), color-mix(in oklch, var(--ink) 8%, transparent)) 0 5.75rem / min(76%, 34rem) 1rem no-repeat;
+    linear-gradient(color-mix(in oklch, var(--ink) 8%, transparent), color-mix(in oklch, var(--ink) 8%, transparent)) 0 5.75rem / min(76%, var(--skeleton-wide-max)) 1rem no-repeat;
   border-radius: 8px;
   content: "";
   display: block;
@@ -5420,7 +5421,7 @@ svg.lucide {
 
 .library-hub-skeleton-line.is-wide {
   margin-top: 0.55rem;
-  width: min(100%, 34rem);
+  width: min(100%, var(--skeleton-wide-max));
 }
 
 .library-hub-skeleton-line.is-kicker {

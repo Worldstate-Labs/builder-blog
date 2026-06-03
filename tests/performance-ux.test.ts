@@ -354,6 +354,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /--reading-max:\s*58rem/);
   assert.match(globals, /--search-suggest-max:\s*26rem/);
   assert.match(globals, /--skeleton-copy-max:\s*24rem/);
+  assert.match(globals, /--skeleton-wide-max:\s*34rem/);
   assert.match(globals, /--top-search-max:\s*24rem/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
@@ -406,6 +407,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.route-loading-list\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
   assert.match(globals, /\.route-loading-list\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.route-loading-list\s*{[\s\S]*width:\s*100%/);
+  assert.match(globals, /\.search-result-skeleton::before\s*{[\s\S]*min\(100%,\s*var\(--skeleton-wide-max\)\)/);
+  assert.match(globals, /\.search-result-skeleton::before\s*{[\s\S]*min\(76%,\s*var\(--skeleton-wide-max\)\)/);
   assert.doesNotMatch(globals, /\.home-rail/);
   assert.doesNotMatch(globals, /\.home-main/);
   assert.doesNotMatch(globals, /\.home-tabs/);
@@ -939,6 +942,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/app/globals.css"), /\.hub-section-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(source("src/app/globals.css"), /\.library-hub-page-count\s*{[\s\S]*display:\s*flex/);
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-line,[\s\S]*\.library-hub-skeleton-card\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
+  assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-line\.is-wide\s*{[\s\S]*width:\s*min\(100%,\s*var\(--skeleton-wide-max\)\)/);
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-line\.is-body\s*{[\s\S]*width:\s*min\(100%,\s*var\(--skeleton-copy-max\)\)/);
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-card\s*{[\s\S]*min-height:\s*11rem/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-card-head\s*{/);
