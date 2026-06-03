@@ -24,10 +24,12 @@ export function RouteLoading({
           ))}
         </div>
       </div>
-      <div className="item-list mt-6">
-        {Array.from({ length: rows }, (_, index) => (
-          <div key={index} className="h-24 rounded-lg bg-black/10" />
-        ))}
+      <div className="workspace-content-stack">
+        <div className="item-list">
+          {Array.from({ length: rows }, (_, index) => (
+            <div key={index} className="h-24 rounded-lg bg-black/10" />
+          ))}
+        </div>
       </div>
     </div>
   );

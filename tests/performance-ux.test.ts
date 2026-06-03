@@ -135,6 +135,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const dashboardTabs = source("src/components/DashboardHomeTabs.tsx");
   const builderDetailPage = source("src/app/(workspace)/builder/[entityId]/page.tsx");
+  const rootLoading = source("src/app/loading.tsx");
+  const routeLoading = source("src/components/RouteLoading.tsx");
   const searchForm = source("src/components/SearchForm.tsx");
   const digestDetails = source("src/components/DigestDetails.tsx");
   const recommendationsPage = source("src/app/(workspace)/recommendations/page.tsx");
@@ -197,6 +199,11 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.page-pad\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
   assert.match(globals, /\.workspace-content-stack\s*{[\s\S]*margin-top:\s*clamp/);
+  assert.match(rootLoading, /className="workspace-content-stack"/);
+  assert.match(rootLoading, /className="fb-page-head"/);
+  assert.doesNotMatch(rootLoading, /space-y-7/);
+  assert.match(routeLoading, /className="workspace-content-stack"/);
+  assert.doesNotMatch(routeLoading, /item-list mt-6/);
   assert.match(globals, /\.fb-top\s*{[\s\S]*position:\s*sticky/);
   assert.match(globals, /\.fb-top-inner\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
   assert.match(globals, /\.fb-page-head\s*{[\s\S]*border-bottom:/);
