@@ -4669,6 +4669,10 @@ svg.lucide {
   max-height: 80vh;
 }
 
+.builder-edit-dialog-form {
+  min-width: 0;
+}
+
 .builder-edit-dialog-header {
   border-bottom: 1px solid var(--line);
   padding: 1rem 1.125rem 0.875rem;
@@ -4690,11 +4694,34 @@ svg.lucide {
   margin: 0.25rem 0 0;
 }
 
+.builder-edit-dialog-body {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1rem 1.125rem;
+}
+
+.builder-edit-dialog-field {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
 .builder-edit-dialog-field-label {
   color: var(--muted);
   font-size: 0.6875rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.builder-edit-dialog-message {
+  color: var(--muted-strong);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.builder-edit-dialog-message.is-error {
+  color: var(--danger);
 }
 
 .builder-edit-dialog-footer {

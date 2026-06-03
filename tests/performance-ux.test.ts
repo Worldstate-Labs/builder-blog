@@ -918,6 +918,7 @@ test("builders page avoids a global fetched-content query", () => {
 test("builders page exposes per-builder fetched posts ordered by time", () => {
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const addBuilderForm = source("src/components/AddBuilderForm.tsx");
+  const builderEditDialog = source("src/components/BuilderEditDialog.tsx");
   const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
   const builderFeedItems = source("src/components/BuilderFeedItems.tsx");
   const mobileSourcesSwitcher = source("src/components/MobileSourcesSwitcher.tsx");
@@ -983,6 +984,13 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /Central defaults|Central library/);
   assert.match(buildersPage, /BuilderLibraryList/);
   assert.match(builderLibraryList, /BuilderFeedItems/);
+  assert.match(builderEditDialog, /className="builder-edit-dialog-form"/);
+  assert.match(builderEditDialog, /className="builder-edit-dialog-body"/);
+  assert.match(builderEditDialog, /className="builder-edit-dialog-field"/);
+  assert.match(builderEditDialog, /className="fb-input mono"/);
+  assert.match(builderEditDialog, /className="builder-edit-dialog-message is-error"/);
+  assert.doesNotMatch(builderEditDialog, /style=\{\{/);
+  assert.doesNotMatch(builderEditDialog, /className="grid gap-/);
   // AddBuilderForm is now embedded inside PrivateLibraryPanel rather
   // than imported directly into the builders page. Keep both ends of the
   // composition asserted so renames break this test rather than silently
@@ -1015,6 +1023,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.source-sync-skeleton-line,[\s\S]*\.source-section-skeleton-card\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
   assert.match(globals, /\.source-stat-skeleton\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.builder-library-error\s*{[\s\S]*color:\s*var\(--danger\)/);
+  assert.match(globals, /\.builder-edit-dialog-body\s*{[\s\S]*padding:\s*1rem 1\.125rem/);
+  assert.match(globals, /\.builder-edit-dialog-field\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.builder-edit-dialog-message\.is-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.builder-post-loading-card\s*{[\s\S]*height:\s*4rem/);
   assert.match(globals, /\.builder-post-state\s*{[\s\S]*padding:\s*1rem/);
   assert.match(globals, /\.builder-post-state--error\s*{[\s\S]*color:\s*var\(--danger\)/);

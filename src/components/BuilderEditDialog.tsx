@@ -129,7 +129,7 @@ export function BuilderEditDialog({
       >
         <form
           method="dialog"
-          className="grid gap-0"
+          className="builder-edit-dialog-form"
           onSubmit={(e) => {
             e.preventDefault();
             save();
@@ -148,8 +148,8 @@ export function BuilderEditDialog({
             </p>
           </header>
 
-          <div className="grid gap-4" style={{ padding: "1rem 1.125rem" }}>
-            <label className="grid gap-1 text-sm">
+          <div className="builder-edit-dialog-body">
+            <label className="builder-edit-dialog-field">
               <span className="builder-edit-dialog-field-label">Source type</span>
               <select
                 className="fb-input"
@@ -164,19 +164,18 @@ export function BuilderEditDialog({
               </select>
             </label>
 
-            <label className="grid gap-1 text-sm">
+            <label className="builder-edit-dialog-field">
               <span className="builder-edit-dialog-field-label">URL or @handle</span>
               <input
-                className="fb-input"
+                className="fb-input mono"
                 value={sourceValue}
                 onChange={(e) => setSourceValue(e.target.value)}
                 placeholder="@handle or https://…"
                 required
-                style={{ fontFamily: "var(--font-geist-mono)" }}
               />
             </label>
 
-            <label className="grid gap-1 text-sm">
+            <label className="builder-edit-dialog-field">
               <span className="builder-edit-dialog-field-label">
                 Display name (optional)
               </span>
@@ -190,14 +189,14 @@ export function BuilderEditDialog({
 
             {error ? (
               <span
-                className="text-[12px] text-[var(--danger)]"
+                className="builder-edit-dialog-message is-error"
                 role="alert"
               >
                 {error}
               </span>
             ) : warning ? (
               <span
-                className="text-[12px] text-[var(--muted-strong)]"
+                className="builder-edit-dialog-message"
                 role="status"
               >
                 {warning}
