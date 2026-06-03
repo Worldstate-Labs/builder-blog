@@ -338,6 +338,16 @@ test("personal YouTube fetcher returns agent tasks instead of syncing descriptio
       limit: 1,
       agentModel: "gpt-test",
       fetchedItemKeys: new Set(),
+      sources: {
+        youtube: {
+          contentQuality: {
+            minChars: 80,
+            minContentUnits: 24,
+            minLocalDiversity: 0.25,
+            maxTimestampDensity: 0.1,
+          },
+        },
+      },
       fetcher: async (url: string) => {
         if (url === "https://www.youtube.com/@NeedsAgent") {
           return new Response('<html>{"externalId":"UCneedsagent00000000000000"}</html>');
@@ -366,7 +376,7 @@ test("personal YouTube fetcher returns agent tasks instead of syncing descriptio
   assert.equal(result.items.length, 0);
   assert.equal(result.agentTasks.length, 1);
   assert.match(result.agentTasks[0].id, /^youtube_transcription:/);
-  assert.equal(result.agentTasks[0].minimumContentQuality.minContentUnits, 12);
+  assert.equal(result.agentTasks[0].minimumContentQuality.minContentUnits, 24);
   assert.equal("reason" in result.agentTasks[0], false);
   assert.equal("quality" in result.agentTasks[0], false);
   assert.equal("sourceDetail" in result.agentTasks[0], false);

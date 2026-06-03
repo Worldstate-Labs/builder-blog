@@ -1030,12 +1030,11 @@ test("every fetchTask resolves to a terminal state; skips need per-task evidence
 
   // YouTube extraction strategy moved out of the contract into the source prompt.
   assert.doesNotMatch(contract, /silent screen recording/);
-
-  // The YouTube fetch-prompt seed script exists and is captions-first.
-  const seed = readFileSync("scripts/seed-youtube-fetch-prompt.mts", "utf8");
-  assert.match(seed, /updateSourceConfig\("youtube"/);
-  assert.match(seed, /Captions first/);
-  assert.match(seed, /per-video evidence/);
+  assert.equal(
+    existsSync("scripts/seed-youtube-fetch-prompt.mts"),
+    false,
+    "prompt updates should flow through Settings/migrations, not a reusable seed script",
+  );
 });
 
 test("server content-quality floor rejects empty / too-short crawls", () => {
@@ -1095,9 +1094,9 @@ test("digest feed user path selects not-yet-digested posts within the optional l
   assert.match(contextRoute, /publishedAfter: lookbackCutoff/);
   assert.match(contextRoute, /excludeDigestedForUserId: regenerate \? null : user\.id/);
   assert.doesNotMatch(contextRoute, /newly fetched items created after the last digest/);
-  assert.match(contextRoute, /includePrompts/);
   assert.match(contextRoute, /regenerate/);
-  assert.match(contextRoute, /prompts:/);
+  assert.doesNotMatch(contextRoute, /legacyPrompts/);
+  assert.doesNotMatch(contextRoute, /prompts:/);
   assert.match(contextRoute, /preference\?\.summaryLanguage/);
   assert.match(contextRoute, /const summaryLanguage = preference\?\.summaryLanguage\?\.trim\(\) \|\| "zh"/);
   assert.match(contextRoute, /language: summaryLanguage/);
@@ -1119,7 +1118,8 @@ test("digest feed user path selects not-yet-digested posts within the optional l
   // Each caller declares its intent so the shared context endpoint does only its
   // own work: digest prepare records a DigestRun + computes candidates; library
   // fetch does neither.
-  assert.match(cli, /api\/skill\/context\?intent=digest&includePrompts=1/);
+  assert.match(cli, /api\/skill\/context\?intent=digest/);
+  assert.doesNotMatch(cli, /includePrompts=1/);
   assert.match(cli, /api\/skill\/context\?intent=library&days=/);
   assert.match(cli, /digestedItems/);
   assert.match(cli, /builder-blog-context\.json/);

@@ -25,7 +25,6 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
-  const includePrompts = url.searchParams.get("includePrompts") === "1";
   // `regenerate` re-includes posts the user has already had digested: it nulls
   // the per-user DigestedItem gate below so already-digested posts become
   // candidates again. Without it, candidate selection is gated purely by that
@@ -145,21 +144,6 @@ export async function GET(request: Request) {
     order: digestConfig.digestOrder as string[],
     commonFetchRules: defaultDigestConfig.commonFetchRules,
     commonSummaryRules: defaultDigestConfig.commonSummaryRules,
-  };
-
-  // TODO(deprecated): `context.prompts` is the legacy shape. New callers read
-  // `context.sources[id].summaryPrompt.body` / `context.digest.*` instead; the
-  // CLI no longer uses it for summary logic (it only still passes
-  // `?includePrompts=1`). The only remaining reader is FetchLogPanel, for UI
-  // display. It also hardcodes a subset of source types (x/podcast/blog),
-  // so new sources are invisible to it. Safe to delete once FetchLogPanel reads
-  // `context.sources[id].summaryPrompt` and the CLI drops `includePrompts=1`.
-  const legacyPrompts = {
-    summarizeTweets: sourcesContext.x?.summaryPrompt.body ?? "",
-    summarizePodcast: sourcesContext.podcast?.summaryPrompt.body ?? "",
-    summarizeBlogs: sourcesContext.blog?.summaryPrompt.body ?? "",
-    digestIntro: digestContext.digestIntro,
-    translate: digestContext.translate,
   };
 
   // Optional publishedAt lookback floor (replaces the old mandatory 90-day cap).
@@ -355,6 +339,5 @@ export async function GET(request: Request) {
     commonFetchRules: defaultDigestConfig.commonFetchRules,
     commonSummaryRules: defaultDigestConfig.commonSummaryRules,
     digest: digestContext,
-    ...(includePrompts ? { prompts: legacyPrompts } : {}),
   });
 }

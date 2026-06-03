@@ -460,7 +460,7 @@ async function prepare(args = []) {
   const regenerate = args.includes("--regenerate");
   const runSource = process.env.BUILDER_BLOG_RUN_SOURCE?.trim() === "cron" ? "cron" : "manual";
   const contextUrl =
-    `${config.appUrl}/api/skill/context?intent=digest&includePrompts=1` +
+    `${config.appUrl}/api/skill/context?intent=digest` +
     (regenerate ? "&regenerate=1" : "") +
     (webSyncDisabled() ? "&dryRun=1" : `&source=${encodeURIComponent(runSource)}`) +
     (envJobRunId() ? `&jobRunId=${encodeURIComponent(envJobRunId())}` : "");
@@ -598,6 +598,7 @@ async function fetchPersonal(args) {
           limit,
           agentModel,
           fetchedItemKeys: force ? new Set() : fetchedItemKeysForBuilder(context, builder.id),
+          sources,
         });
         const { items, agentTasks: sourceAgentTasks } = normalizePersonalFetchResult(fetched);
         const builderSync = {
@@ -954,7 +955,7 @@ function buildBuilderFallbackTask(
     sourceType,
     builderSync,
     item,
-    minimumContentQuality: genericMinimumContentQuality(),
+    minimumContentQuality: minimumContentQualityForSource(sourceType, sources),
     summaryInstructions: singlePostSummaryInstructions(sourceType, sources, commonSummaryRules),
     fetchInstructions,
     fallbackReason: error?.message || String(error || "Personal fetcher failed"),
@@ -983,7 +984,7 @@ function fetchTaskFromAgentTask(
     sourceType,
     builderSync,
     item,
-    minimumContentQuality: task.minimumContentQuality ?? genericMinimumContentQuality(),
+    minimumContentQuality: task.minimumContentQuality ?? minimumContentQualityForSource(sourceType, sources),
     summaryInstructions: task.summaryInstructions ?? singlePostSummaryInstructions(sourceType, sources, commonSummaryRules),
     fetchInstructions,
     id: fetchTaskId({ builderId: task.builderId ?? builderSync.builderId, builder: task.builder ?? builderSync.name, item }),
@@ -1199,7 +1200,7 @@ function normalizeSourceType(sourceType) {
 
 async function fetchPersonalYouTubeBuilder(
   builder,
-  { cutoff, limit, agentModel, fetchedItemKeys = new Set(), fetcher = fetch },
+  { cutoff, limit, agentModel, fetchedItemKeys = new Set(), fetcher = fetch, sources = {} },
 ) {
   const sourceUrl = builder.fetchUrl || builder.sourceUrl;
   if (!sourceUrl) return { items: [], agentTasks: [] };
@@ -1217,9 +1218,10 @@ async function fetchPersonalYouTubeBuilder(
       source: transcript ? "youtube-captions" : "missing",
       title: video.title,
       description: video.description,
+      standards: youtubeMinimumContentQuality(sources),
     });
     if (!quality.ok) {
-      agentTasks.push(youtubeAgentTaskForVideo(builder, video));
+      agentTasks.push(youtubeAgentTaskForVideo(builder, video, sources));
       continue;
     }
     items.push({
@@ -1350,13 +1352,13 @@ function localDiversity(units, windowSize = 100) {
 
 /**
  * @param {string} text
- * @param {{ source?: string; title?: string; description?: string }} [options]
+ * @param {{ source?: string; title?: string; description?: string; standards?: object }} [options]
  */
-export function youtubeContentQuality(text, { source = "", title = "", description = "" } = {}) {
+export function youtubeContentQuality(text, { source = "", title = "", description = "", standards } = {}) {
   const normalized = normalizeContentText(text);
   const units = contentUnits(normalized);
   const timestampCount = countTimestamps(normalized);
-  const standards = youtubeMinimumContentQuality();
+  const qualityStandards = standards ?? youtubeMinimumContentQuality();
   const metrics = {
     chars: normalized.length,
     contentUnits: units.length,
@@ -1377,21 +1379,21 @@ export function youtubeContentQuality(text, { source = "", title = "", descripti
       ok: false,
       reason: "description_or_title_is_not_primary_content",
       metrics,
-      standards,
+      standards: qualityStandards,
     };
   }
-  const minChars = readQualityNumber(standards, "minChars", "minChars", 80);
-  const minContentUnits = readQualityNumber(standards, "minContentUnits", "minWords", 12);
+  const minChars = readQualityNumber(qualityStandards, "minChars", "minChars", 80);
+  const minContentUnits = readQualityNumber(qualityStandards, "minContentUnits", "minWords", 12);
   if (metrics.chars < minChars || metrics.contentUnits < minContentUnits) {
     return {
       ok: false,
       reason: "transcript_too_short",
       metrics,
-      standards,
+      standards: qualityStandards,
     };
   }
   const minLocalDiversity = readQualityNumber(
-    standards,
+    qualityStandards,
     "minLocalDiversity",
     "minUniqueWordRatio",
     0.25,
@@ -1401,11 +1403,11 @@ export function youtubeContentQuality(text, { source = "", title = "", descripti
       ok: false,
       reason: "transcript_too_repetitive",
       metrics,
-      standards,
+      standards: qualityStandards,
     };
   }
   const maxTimestampDensity = readQualityNumber(
-    standards,
+    qualityStandards,
     "maxTimestampDensity",
     "maxTimestampWordRatio",
     0.1,
@@ -1415,7 +1417,7 @@ export function youtubeContentQuality(text, { source = "", title = "", descripti
       ok: false,
       reason: "transcript_is_timestamp_heavy",
       metrics,
-      standards,
+      standards: qualityStandards,
     };
   }
   if (isNearDuplicate(normalized, title) || isNearDuplicate(normalized, description)) {
@@ -1423,18 +1425,26 @@ export function youtubeContentQuality(text, { source = "", title = "", descripti
       ok: false,
       reason: "transcript_duplicates_title_or_description",
       metrics,
-      standards,
+      standards: qualityStandards,
     };
   }
-  return { ok: true, reason: "ok", metrics, standards };
+  return { ok: true, reason: "ok", metrics, standards: qualityStandards };
 }
 
-function youtubeMinimumContentQuality() {
-  return normalizedMinimumContentQuality(sourceConfigFor("youtube").contentQuality);
+function minimumContentQualityForSource(sourceId, sources = {}, fallbackSourceId = "website") {
+  return normalizedMinimumContentQuality(
+    sources?.[sourceId]?.contentQuality ??
+      sourceConfigFor(sourceId)?.contentQuality ??
+      sourceConfigFor(fallbackSourceId)?.contentQuality,
+  );
 }
 
-function genericMinimumContentQuality() {
-  return normalizedMinimumContentQuality(sourceConfigFor("website").contentQuality);
+function youtubeMinimumContentQuality(sources = {}) {
+  return minimumContentQualityForSource("youtube", sources, "youtube");
+}
+
+function genericMinimumContentQuality(sources = {}, sourceId = "website") {
+  return minimumContentQualityForSource(sourceId, sources, "website");
 }
 
 export function agentTaskId(task) {
@@ -1448,7 +1458,7 @@ export function agentTaskId(task) {
     .join(":");
 }
 
-function youtubeAgentTaskForVideo(builder, video) {
+function youtubeAgentTaskForVideo(builder, video, sources = {}) {
   const item = {
     kind: "PODCAST_EPISODE",
     externalId: video.videoId || video.url,
@@ -1464,7 +1474,7 @@ function youtubeAgentTaskForVideo(builder, video) {
     builderId: builder.id,
     sourceType: "youtube",
     item,
-    minimumContentQuality: youtubeMinimumContentQuality(),
+    minimumContentQuality: youtubeMinimumContentQuality(sources),
   };
   return { ...task, id: agentTaskId(task) };
 }
@@ -1534,7 +1544,7 @@ async function fetchPersonalBlogBuilder(builder, { cutoff, limit, agentModel, fe
 
 async function fetchPersonalPodcastBuilder(
   builder,
-  { cutoff, limit, agentModel, fetchedItemKeys = new Set(), fetcher = fetch },
+  { cutoff, limit, agentModel, fetchedItemKeys = new Set(), fetcher = fetch, sources = {} },
 ) {
   const rawFeedUrl = builder.fetchUrl || builder.sourceUrl;
   if (!rawFeedUrl) return { items: [], agentTasks: [] };
@@ -1584,7 +1594,7 @@ async function fetchPersonalPodcastBuilder(
         },
       });
     } else {
-      agentTasks.push(podcastAgentTaskForEpisode(builder, item, feedUrl));
+      agentTasks.push(podcastAgentTaskForEpisode(builder, item, feedUrl, sources));
     }
   }
 
@@ -1622,7 +1632,7 @@ function podcastShowNotesAreSubstantial(body) {
   return text.length >= 200 && units.length >= 35;
 }
 
-function podcastAgentTaskForEpisode(builder, item, feedUrl) {
+function podcastAgentTaskForEpisode(builder, item, feedUrl, sources = {}) {
   const taskItem = {
     kind: "PODCAST_EPISODE",
     externalId: item.externalId,
@@ -1649,7 +1659,7 @@ function podcastAgentTaskForEpisode(builder, item, feedUrl) {
     builderId: builder.id,
     sourceType: "podcast",
     item: taskItem,
-    minimumContentQuality: genericMinimumContentQuality(),
+    minimumContentQuality: genericMinimumContentQuality(sources, "podcast"),
   };
   return { ...task, id: agentTaskId(task) };
 }
@@ -1740,7 +1750,7 @@ async function fetchPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel,
   ].slice(0, limit);
 }
 
-async function fetchPersonalXBuilder(builder, { cutoff, limit, agentModel, fetchedItemKeys = new Set() }) {
+async function fetchPersonalXBuilder(builder, { cutoff, limit, agentModel, fetchedItemKeys = new Set(), sources = {} }) {
   const bearerToken = process.env.X_BEARER_TOKEN?.trim();
   if (!bearerToken) {
     // No throw: unauthenticated x.com scraping doesn't yield usable post
@@ -1772,7 +1782,7 @@ async function fetchPersonalXBuilder(builder, { cutoff, limit, agentModel, fetch
         publishedAt: null,
         sourceName: builder.name,
       },
-      minimumContentQuality: genericMinimumContentQuality(),
+      minimumContentQuality: genericMinimumContentQuality(sources, "x"),
     };
     return {
       items: [],
@@ -2812,6 +2822,7 @@ function validateFetchTaskItem(task, candidate) {
       source,
       title: task.item?.title || "",
       description: task.item?.description || "",
+      standards: task.minimumContentQuality,
     });
     if (!quality.ok) errors.push(`youtube_content_quality:${quality.reason}`);
     return errors;
@@ -2820,6 +2831,7 @@ function validateFetchTaskItem(task, candidate) {
   const quality = genericContentQuality(candidate.item.body, {
     title: task.item?.title || "",
     description: task.item?.description || "",
+    standards: task.minimumContentQuality,
   });
   if (!quality.ok) errors.push(`content_quality:${quality.reason}`);
   return errors;
@@ -2837,23 +2849,23 @@ function validateItemSummary(summary, { title = "", body = "" } = {}) {
   return errors;
 }
 
-function genericContentQuality(text, { title = "", description = "" } = {}) {
+function genericContentQuality(text, { title = "", description = "", standards } = {}) {
   const normalized = normalizeContentText(text);
   const units = contentUnits(normalized);
-  const standards = genericMinimumContentQuality();
+  const qualityStandards = standards ?? genericMinimumContentQuality();
   const metrics = {
     chars: normalized.length,
     contentUnits: units.length,
   };
-  const minChars = readQualityNumber(standards, "minChars", "minChars", 1);
-  const minContentUnits = readQualityNumber(standards, "minContentUnits", "minWords", 1);
+  const minChars = readQualityNumber(qualityStandards, "minChars", "minChars", 1);
+  const minContentUnits = readQualityNumber(qualityStandards, "minContentUnits", "minWords", 1);
   if (metrics.chars < minChars || metrics.contentUnits < minContentUnits) {
-    return { ok: false, reason: "content_too_short", metrics, standards };
+    return { ok: false, reason: "content_too_short", metrics, standards: qualityStandards };
   }
   if (isNearDuplicate(normalized, title) || isNearDuplicate(normalized, description)) {
-    return { ok: false, reason: "content_duplicates_metadata", metrics, standards };
+    return { ok: false, reason: "content_duplicates_metadata", metrics, standards: qualityStandards };
   }
-  return { ok: true, reason: "ok", metrics, standards };
+  return { ok: true, reason: "ok", metrics, standards: qualityStandards };
 }
 
 async function sync(args) {

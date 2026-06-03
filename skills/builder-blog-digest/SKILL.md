@@ -253,13 +253,13 @@ node ~/.builder-blog/builder-digest.mjs prepare --days 1
 - `libraryBuilders`: sources in the user's pool, including central and personal sources.
 - `subscriptions`: the subset of `libraryBuilders` included in digest generation.
 - `items`: feed items only for subscribed sources.
-- `prompts.summarizeTweets`: the `summarize-tweets.md` method for X/Twitter items.
-- `prompts.summarizePodcast`: the `summarize-podcast.md` method for podcast/video items.
-- `prompts.summarizeBlogs`: the `summarize-blogs.md` method for blog items.
-- `prompts.digestIntro`: the `digest-intro.md` assembly rules.
-- `prompts.translate`: the `translate.md` Chinese translation rules.
+- `sources`: source-type rules keyed by source id (`x`, `blog`, `youtube`,
+  `podcast`, `website`, and future source types).
+- `sources[id].summaryPrompt.body`: the per-source post-summary prompt.
+- `digest.digestIntro`: the digest assembly and markdown-format rules.
+- `digest.translate`: the final translation/rendering rules for `language`.
 
-3. Produce a concise Chinese digest and a separate headline summary:
+3. Produce a concise digest in `language` and a separate headline summary:
 
 - Use only supplied `items`.
 - The only creative step is writing the digest body and headlineSummary from
@@ -269,10 +269,10 @@ node ~/.builder-blog/builder-digest.mjs prepare --days 1
 - Keep `headlineSummary` separate from the full digest body; do not shorten the
   digest body to satisfy the headline limit.
 - Group items by source type and builder/source.
-- First summarize X/Twitter, podcast/video, and blog items with their matching
-  source-specific prompt.
-- Then assemble those summaries with `prompts.digestIntro`.
-- Then apply `prompts.translate` for the final natural simplified Chinese digest.
+- First summarize each item with
+  `sources[item.builder.sourceType].summaryPrompt.body`.
+- Then assemble those summaries with `digest.digestIntro`.
+- Then apply `digest.translate` for the final natural digest in `language`.
 - Include source URLs for every claim.
 - Prioritize launches, technical insights, business moves, strong opinions, and implementation details.
 - Do not browse the web or invent missing facts.

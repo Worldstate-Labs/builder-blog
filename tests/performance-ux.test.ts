@@ -241,7 +241,8 @@ test("skill context caps personal fetched items to keep payloads bounded", () =>
   assert.match(contextRoute, /personalFetchedItemLimit/);
   assert.match(contextRoute, /take:\s*personalFetchedItemLimit/);
   assert.match(contextRoute, /personalFetchedItems/);
-  assert.match(contextRoute, /includePrompts/);
+  assert.doesNotMatch(contextRoute, /legacyPrompts/);
+  assert.doesNotMatch(contextRoute, /prompts:/);
   assert.match(contextRoute, /dryRun/);
   assert.match(contextRoute, /sourceParam/);
   // A DigestRun is recorded only for a digest prepare, never a library fetch —
