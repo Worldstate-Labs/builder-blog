@@ -223,11 +223,11 @@ export function AgentTokenPanel({
   }
 
   return (
-    <section className="fb-panel">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+    <section className="access-keys-panel fb-panel">
+      <div className="access-keys-head">
+        <div className="access-keys-copy">
           <h2 className="fb-section-heading">Access keys</h2>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+          <p className="access-keys-desc">
             Keys let your local agent securely send fetched sources and digests to your FollowBrief cloud account.
           </p>
         </div>
@@ -242,7 +242,7 @@ export function AgentTokenPanel({
         </button>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)]">
+      <div className="access-keys-list">
         {visibleTokens.map((token) => (
           <TokenRow
             key={token.id}
@@ -252,20 +252,20 @@ export function AgentTokenPanel({
           />
         ))}
         {tokens.length === 0 ? (
-          <div className="px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
+          <div className="access-keys-empty">
             No access keys yet. Add one when you connect a local agent.
           </div>
         ) : null}
         {hiddenActiveCount > 0 ? (
           <button
-            className="block w-full border-t border-[var(--line)] px-4 py-3 text-left text-[13px] font-bold text-[var(--ink)] transition hover:bg-[var(--paper)]"
+            className="access-keys-more"
             onClick={() => setShowAllTokens((current) => !current)}
             type="button"
           >
             {showAllTokens ? (
               "See less"
             ) : (
-              <span className="inline-flex items-center gap-2">
+              <span className="access-keys-more-label">
                 See more
                 <CountBadge value={hiddenActiveCount} />
               </span>
@@ -275,13 +275,13 @@ export function AgentTokenPanel({
       </div>
 
       {tokens.length > 0 && activeTokens.length === 0 ? (
-        <p className="mt-2 text-[12px] text-[var(--muted-strong)]">
+        <p className="access-keys-note">
           No active keys to show. Revoked keys are hidden from this list.
         </p>
       ) : null}
 
-      <span aria-live="polite" className="mt-2 block">
-        {status ? <span className="text-[12px] text-[var(--danger)]">{status}</span> : null}
+      <span aria-live="polite" className="access-keys-status">
+        {status ? <span className="access-keys-status is-error">{status}</span> : null}
       </span>
 
       {/* Create token dialog */}
@@ -295,15 +295,15 @@ export function AgentTokenPanel({
         }}
       >
         {createOpen ? (
-          <div className="fb-dialog-inner">
+          <div className="fb-dialog-inner settings-dialog-stack">
             <h3 className="fb-section-heading">New access key</h3>
-            <p className="mt-2 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+            <p className="settings-dialog-copy">
               Give this access key a name so you can recognize it later
               (e.g. <em>My Mac · Claude Code</em>).
             </p>
             <input
               autoComplete="off"
-              className="fb-input mt-3 w-full"
+              className="settings-dialog-input fb-input"
               disabled={isPending}
               maxLength={80}
               onChange={(e) => setTokenName(e.target.value)}
@@ -318,7 +318,7 @@ export function AgentTokenPanel({
               type="text"
               value={tokenName}
             />
-            <div className="mt-5 flex justify-end gap-2">
+            <div className="settings-dialog-actions">
               <button
                 className="fb-btn light compact"
                 onClick={closeCreateDialog}
@@ -346,9 +346,9 @@ export function AgentTokenPanel({
         onClose={closeRevokeDialog}
       >
         {revokeTarget ? (
-          <div className="fb-dialog-inner">
+          <div className="fb-dialog-inner settings-dialog-stack">
             <h3 className="fb-section-heading">Revoke access key &ldquo;{revokeTarget.name}&rdquo;?</h3>
-            <div className="mt-3 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+            <div className="settings-dialog-copy">
               {revokeTarget.lastIp || revokeTarget.lastUserAgent || revokeTarget.lastUsedAt ? (
                 <>
                   <p>
@@ -364,7 +364,7 @@ export function AgentTokenPanel({
                     ) : null}
                     .
                   </p>
-                  <p className="mt-2 text-[var(--danger)]">
+                  <p className="settings-dialog-warning">
                     After revoking it, that local helper will lose access to
                     FollowBrief and need a new access key to update again.
                   </p>
@@ -376,7 +376,7 @@ export function AgentTokenPanel({
                 </p>
               )}
             </div>
-            <div className="mt-5 flex justify-end gap-2">
+            <div className="settings-dialog-actions">
               <button
                 className="fb-btn light compact"
                 onClick={closeRevokeDialog}
@@ -426,7 +426,7 @@ function TokenRow({
         <KeyRound aria-hidden="true" className="h-3.5 w-3.5" />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="text-[13.5px] font-bold">{token.name}</div>
+        <div className="access-key-name">{token.name}</div>
         <div className="fb-src-meta">
           <span>Created {formatDate(token.createdAt)}</span>
           {token.lastUsedAt ? (

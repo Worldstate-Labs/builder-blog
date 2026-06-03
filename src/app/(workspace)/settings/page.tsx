@@ -176,16 +176,15 @@ async function AgentTokenSlot({ userId }: { userId: string }) {
 
 function AgentTokenPanelSkeleton() {
   return (
-    <section className="fb-panel" aria-busy="true" aria-live="polite">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="grid gap-2">
+    <section className="access-keys-panel fb-panel" aria-busy="true" aria-live="polite">
+      <div className="access-keys-head">
+        <div className="access-keys-skeleton-copy">
           <div className="h-5 w-32 animate-pulse rounded bg-[var(--paper-strong)]" />
           <div className="h-3 w-64 animate-pulse rounded bg-[var(--paper-strong)]" />
         </div>
         <div className="h-8 w-24 animate-pulse rounded-full bg-[var(--paper-strong)]" />
       </div>
-      <div className="mt-4 h-11 animate-pulse rounded-[10px] bg-[var(--paper-strong)]" />
-      <div className="mt-4 grid gap-2 overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] p-3">
+      <div className="access-keys-list access-keys-list--skeleton">
         <div className="h-12 animate-pulse rounded bg-[var(--paper-strong)]" />
         <div className="h-12 animate-pulse rounded bg-[var(--paper-strong)]" />
         <div className="h-12 animate-pulse rounded bg-[var(--paper-strong)]" />
