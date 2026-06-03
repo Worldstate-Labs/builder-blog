@@ -354,6 +354,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /--reading-max:\s*58rem/);
   assert.match(globals, /--search-suggest-max:\s*26rem/);
   assert.match(globals, /--skeleton-copy-max:\s*24rem/);
+  assert.match(globals, /--skeleton-long-max:\s*40rem/);
+  assert.match(globals, /--skeleton-title-max:\s*32rem/);
   assert.match(globals, /--skeleton-wide-max:\s*34rem/);
   assert.match(globals, /--top-search-max:\s*24rem/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*margin-inline:\s*auto/);
@@ -371,7 +373,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.builder-detail-action-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.builder-detail-channels\s*{[\s\S]*border-top:\s*1px solid/);
   assert.match(globals, /\.builder-detail-channels-summary::after\s*{[\s\S]*content:\s*"\+"/);
-  assert.match(globals, /\.recent-post-skeleton-line--title\s*{[\s\S]*width:\s*min\(75%,\s*32rem\)/);
+  assert.match(globals, /\.recent-post-skeleton-line--title\s*{[\s\S]*width:\s*min\(75%,\s*var\(--skeleton-title-max\)\)/);
+  assert.match(globals, /\.recent-post-skeleton-line--short\s*{[\s\S]*width:\s*min\(84%,\s*var\(--skeleton-long-max\)\)/);
   assert.match(rootLoading, /RouteLoading/);
   assert.doesNotMatch(rootLoading, /bg-black\/10|className="h-|grid gap-4|stats-panel/);
   assert.doesNotMatch(rootLoading, /space-y-7/);

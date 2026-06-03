@@ -55,6 +55,8 @@
   --search-suggest-max: 26rem;
   --settings-max: 52rem;
   --skeleton-copy-max: 24rem;
+  --skeleton-long-max: 40rem;
+  --skeleton-title-max: 32rem;
   --skeleton-wide-max: 34rem;
   --top-search-max: 24rem;
   --workspace-max: 72rem;
@@ -6300,11 +6302,11 @@ svg.lucide {
 
 .recent-post-skeleton-line--title {
   height: 1rem;
-  width: min(75%, 32rem);
+  width: min(75%, var(--skeleton-title-max));
 }
 
 .recent-post-skeleton-line--short {
-  width: min(84%, 40rem);
+  width: min(84%, var(--skeleton-long-max));
 }
 
 .builder-detail-channel-list {
