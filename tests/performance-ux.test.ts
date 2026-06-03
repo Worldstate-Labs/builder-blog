@@ -323,6 +323,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /className="builder-detail-title-row"/);
   assert.match(builderDetailPage, /className="builder-detail-host source-host-meta mono truncate"/);
   assert.match(builderDetailPage, /className="builder-detail-bio fb-desc"/);
+  assert.match(globals, /\.builder-detail-bio\s*{[\s\S]*max-width:\s*var\(--measure\)/);
   assert.match(builderDetailPage, /className="builder-detail-actions-skeleton"/);
   assert.match(builderDetailPage, /className="builder-detail-action-skeleton-button"/);
   assert.match(builderDetailActions, /className="builder-detail-action-error"/);
@@ -933,10 +934,12 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-line\.is-body\s*{[\s\S]*width:\s*min\(100%,\s*var\(--skeleton-copy-max\)\)/);
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-card\s*{[\s\S]*min-height:\s*11rem/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-card-head\s*{/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-card-desc\s*{[\s\S]*max-width:\s*var\(--measure\)/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*3\.5rem minmax\(0,\s*1fr\) minmax\(0,\s*auto\)/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-avatar\[data-avatar-tone="0"\]\s*{[\s\S]*oklch/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview\s*{/);
   assert.match(searchPage, /<Suspense[\s\S]*fallback=\{[\s\S]*<SearchResultsFallback/);
+  assert.doesNotMatch(source("src/app/globals.css"), /max-width:\s*(62ch|65ch)/);
 });
 
 test("builders page avoids a global fetched-content query", () => {

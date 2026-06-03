@@ -5691,7 +5691,7 @@ svg.lucide {
   font-size: 0.8125rem;
   line-height: 1.6;
   margin-top: 0.8rem;
-  max-width: 62ch;
+  max-width: var(--measure);
 }
 
 .fb-hub-source-avatar {
@@ -6251,7 +6251,7 @@ svg.lucide {
 
 .builder-detail-bio {
   margin-top: 0.25rem;
-  max-width: 65ch;
+  max-width: var(--measure);
 }
 
 .builder-detail-actions-skeleton {
