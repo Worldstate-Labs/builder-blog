@@ -347,6 +347,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /--workspace-max:\s*72rem/);
   assert.match(globals, /--reading-max:\s*58rem/);
   assert.match(globals, /--skeleton-copy-max:\s*24rem/);
+  assert.match(globals, /--top-search-max:\s*24rem/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
   assert.match(globals, /\.workspace-content-stack\s*{[\s\S]*margin-top:\s*clamp/);
@@ -381,6 +382,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(globals, /\.route-loading-chip/);
   assert.match(globals, /\.fb-top\s*{[\s\S]*position:\s*sticky/);
   assert.match(globals, /\.fb-top-inner\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
+  assert.match(globals, /\.header-search\s*{[\s\S]*flex:\s*0 1 var\(--top-search-max\)/);
+  assert.match(globals, /\.fb-search\s*{[\s\S]*flex:\s*0 1 var\(--top-search-max\)/);
   assert.match(globals, /\.app-frame\s*{[\s\S]*background:\s*var\(--paper\)/);
   assert.match(globals, /\.app-frame\s*{[\s\S]*color:\s*var\(--ink\)/);
   assert.match(globals, /\.app-frame\s*{[\s\S]*min-height:\s*100vh/);

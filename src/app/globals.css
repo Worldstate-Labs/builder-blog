@@ -51,6 +51,7 @@
   --reading-max: 58rem;
   --settings-max: 52rem;
   --skeleton-copy-max: 24rem;
+  --top-search-max: 24rem;
   --workspace-max: 72rem;
   --workspace-gutter: clamp(1rem, 3vw, 2.25rem);
 
@@ -248,7 +249,7 @@ svg.lucide {
   border-radius: 999px;
   color: var(--muted);
   display: flex;
-  flex: 0 1 24rem;
+  flex: 0 1 var(--top-search-max);
   gap: 0.55rem;
   min-height: 2.25rem;
   min-width: 10rem;
@@ -3429,7 +3430,7 @@ svg.lucide {
   border-radius: 999px;
   color: var(--muted);
   display: flex;
-  flex: 0 1 24rem;
+  flex: 0 1 var(--top-search-max);
   font-size: 0.8125rem;
   gap: 0.5rem;
   height: 2.125rem;
