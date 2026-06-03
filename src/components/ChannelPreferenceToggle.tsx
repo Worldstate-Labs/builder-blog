@@ -47,27 +47,23 @@ export function ChannelPreferenceToggle({
   };
 
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className="channel-preference-control">
       <button
         type="button"
         disabled={isPending}
         onClick={toggle}
         title={isPreferred ? "Clear preferred channel" : "Set as preferred channel"}
-        className="flex items-center gap-1 text-xs text-[var(--muted-strong)] hover:text-[var(--accent)] disabled:opacity-50 transition-colors"
+        className="channel-preference-button"
         aria-pressed={isPreferred}
       >
         <Star
           size={13}
-          className={
-            isPreferred
-              ? "fill-[var(--warm)] text-[var(--warm)]"
-              : "fill-none text-[var(--muted-strong)]"
-          }
+          className="channel-preference-icon"
         />
         <span>{isPreferred ? "Preferred" : "Set as preferred"}</span>
       </button>
       {error ? (
-        <div className="text-xs text-[var(--danger)]" role="status">
+        <div className="channel-preference-error" role="status">
           {error}
         </div>
       ) : null}

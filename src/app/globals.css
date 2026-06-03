@@ -6453,6 +6453,48 @@ svg.lucide {
   font-size: 0.75rem;
 }
 
+.channel-preference-control {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.channel-preference-button {
+  align-items: center;
+  color: var(--muted-strong);
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 700;
+  gap: 0.25rem;
+  transition: color 160ms ease, opacity 160ms ease;
+}
+
+.channel-preference-button:hover,
+.channel-preference-button[aria-pressed="true"] {
+  color: var(--accent);
+}
+
+.channel-preference-button:disabled {
+  opacity: 0.5;
+}
+
+.channel-preference-icon {
+  color: var(--muted-strong);
+  fill: none;
+}
+
+.channel-preference-button[aria-pressed="true"] .channel-preference-icon {
+  color: var(--warm);
+  fill: var(--warm);
+}
+
+.channel-preference-error {
+  color: var(--danger);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
 .settings-access-grid {
   display: grid;
   gap: 1.25rem;

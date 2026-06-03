@@ -232,6 +232,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   const dashboardTabs = source("src/components/DashboardHomeTabs.tsx");
   const builderDetailPage = source("src/app/(workspace)/builder/[entityId]/page.tsx");
   const builderDetailActions = source("src/components/BuilderDetailActions.tsx");
+  const channelPreferenceToggle = source("src/components/ChannelPreferenceToggle.tsx");
   const rootLoading = source("src/app/loading.tsx");
   const routeLoading = source("src/components/RouteLoading.tsx");
   const pageHeader = source("src/components/PageHeader.tsx");
@@ -340,6 +341,11 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /className="builder-detail-channels-summary"/);
   assert.match(builderDetailPage, /className="builder-detail-channel-list"/);
   assert.match(builderDetailPage, /className="builder-detail-channel-row"/);
+  assert.match(channelPreferenceToggle, /className="channel-preference-control"/);
+  assert.match(channelPreferenceToggle, /className="channel-preference-button"/);
+  assert.match(channelPreferenceToggle, /className="channel-preference-icon"/);
+  assert.match(channelPreferenceToggle, /className="channel-preference-error"/);
+  assert.doesNotMatch(channelPreferenceToggle, /flex flex-col items-end|text-xs text-\[var\(--danger\)\]|fill-\[var\(--warm\)\]|transition-colors/);
   assert.match(builderDetailPage, /EmptyState/);
   assert.match(builderDetailPage, /body="No posts summarized yet\."/);
   assert.match(builderDetailPage, /className="recent-post-list recent-post-list--skeleton"/);
@@ -378,6 +384,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.builder-detail-action-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.builder-detail-channels\s*{[\s\S]*border-top:\s*1px solid/);
   assert.match(globals, /\.builder-detail-channels-summary::after\s*{[\s\S]*content:\s*"\+"/);
+  assert.match(globals, /\.channel-preference-button\s*{[\s\S]*display:\s*inline-flex/);
+  assert.match(globals, /\.channel-preference-button\[aria-pressed="true"\] \.channel-preference-icon\s*{[\s\S]*fill:\s*var\(--warm\)/);
+  assert.match(globals, /\.channel-preference-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.recent-post-skeleton-line--title\s*{[\s\S]*width:\s*min\(75%,\s*var\(--skeleton-title-max\)\)/);
   assert.match(globals, /\.recent-post-skeleton-line--short\s*{[\s\S]*width:\s*min\(84%,\s*var\(--skeleton-long-max\)\)/);
   assert.match(rootLoading, /RouteLoading/);
