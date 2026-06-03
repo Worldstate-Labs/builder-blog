@@ -206,26 +206,28 @@ export default async function BuilderDetailPage({ params }: Params) {
         </div>
       </header>
 
-      <section className="mt-8 grid gap-6">
-        <h2 className="fb-section-title">Recent posts</h2>
-        <Suspense fallback={<RecentPostsSkeleton />}>
-          <RecentPostsSlot userId={userId} entityId={entityId} channels={channels} />
-        </Suspense>
-      </section>
+      <div className="builder-detail-workspace">
+        <section className="builder-detail-section">
+          <h2 className="fb-section-title">Recent posts</h2>
+          <Suspense fallback={<RecentPostsSkeleton />}>
+            <RecentPostsSlot userId={userId} entityId={entityId} channels={channels} />
+          </Suspense>
+        </section>
 
-      <details className="fb-panel dashed mt-10">
-        <summary className="cursor-pointer text-sm font-bold text-[var(--ink)]">
-          Available through{" "}
-          <CountMeta label={channels.length === 1 ? "library" : "libraries"} value={channels.length} />
-        </summary>
-        <Suspense fallback={null}>
-          <ChannelsListSlot
-            entityId={entityId}
-            userId={userId}
-            channels={channels}
-          />
-        </Suspense>
-      </details>
+        <details className="builder-detail-section fb-panel dashed">
+          <summary className="cursor-pointer text-sm font-bold text-[var(--ink)]">
+            Available through{" "}
+            <CountMeta label={channels.length === 1 ? "library" : "libraries"} value={channels.length} />
+          </summary>
+          <Suspense fallback={null}>
+            <ChannelsListSlot
+              entityId={entityId}
+              userId={userId}
+              channels={channels}
+            />
+          </Suspense>
+        </details>
+      </div>
     </div>
   );
 }

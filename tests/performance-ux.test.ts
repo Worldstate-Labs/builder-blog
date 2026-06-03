@@ -134,6 +134,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   const appNav = source("src/components/AppNav.tsx");
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const dashboardTabs = source("src/components/DashboardHomeTabs.tsx");
+  const builderDetailPage = source("src/app/(workspace)/builder/[entityId]/page.tsx");
   const searchForm = source("src/components/SearchForm.tsx");
   const digestDetails = source("src/components/DigestDetails.tsx");
   const recommendationsPage = source("src/app/(workspace)/recommendations/page.tsx");
@@ -189,6 +190,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
   assert.match(digestDetails, /mode === "today"/);
   assert.match(recommendationsPage, /redirect\("\/dashboard\?tab=subscription"\)/);
+  assert.match(builderDetailPage, /className="builder-detail-workspace"/);
+  assert.doesNotMatch(builderDetailPage, /mt-8 grid gap-6/);
+  assert.doesNotMatch(builderDetailPage, /fb-panel dashed mt-10/);
   assert.match(globals, /--workspace-max:\s*72rem/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
@@ -199,6 +203,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(globals, /\.home-main/);
   assert.doesNotMatch(globals, /\.home-tabs/);
   assert.match(globals, /\.home-workspace\s*{[\s\S]*min-width:\s*0/);
+  assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*margin-top:\s*clamp/);
   assert.doesNotMatch(globals, /\.fb-rail/);
 });
 
@@ -893,8 +898,12 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   // the digest prompt dialogs, persisted via the dedicated digest-max-age route.
   assert.doesNotMatch(settingsPage, /FeedPreferenceForm/);
   assert.match(settingsPage, /AgentTokenPanel/);
+  assert.match(settingsPage, /settings-workspace/);
   assert.match(settingsPage, /settings-access-grid/);
   assert.doesNotMatch(settingsPage, /lg:grid-cols-2/);
+  assert.doesNotMatch(settingsPage, /settings-access-grid mt-6/);
+  assert.doesNotMatch(settingsPage, /settings-rules mt-10/);
+  assert.match(globals, /\.settings-workspace\s*{[\s\S]*margin-top:\s*clamp/);
   assert.match(globals, /\.settings-access-grid\s*{[\s\S]*max-width:\s*52rem/);
   assert.match(globals, /\.settings-rules-head\s*{[\s\S]*border-bottom:/);
   assert.doesNotMatch(globals, /border-left:\s*[2-9]/);

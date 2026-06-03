@@ -31,15 +31,17 @@ export default async function SettingsPage() {
         </div>
       </section>
 
-      <div className="settings-access-grid mt-6 grid gap-5">
-        <Suspense fallback={<AgentTokenPanelSkeleton />}>
-          <AgentTokenSlot userId={userId} />
+      <div className="settings-workspace">
+        <div className="settings-access-grid grid gap-5">
+          <Suspense fallback={<AgentTokenPanelSkeleton />}>
+            <AgentTokenSlot userId={userId} />
+          </Suspense>
+        </div>
+
+        <Suspense fallback={<SourceTypeConfigSkeleton />}>
+          <SourceTypeConfigSection userId={userId} isAdmin={isAdmin} />
         </Suspense>
       </div>
-
-      <Suspense fallback={<SourceTypeConfigSkeleton />}>
-        <SourceTypeConfigSection userId={userId} isAdmin={isAdmin} />
-      </Suspense>
     </div>
   );
 }
@@ -62,7 +64,7 @@ async function SourceTypeConfigSection({
     contentQuality: defaultSourceConfigById.get(config.sourceId)?.contentQuality ?? config.contentQuality,
   }));
   return (
-    <section className="settings-rules mt-10 grid gap-4">
+    <section className="settings-rules grid gap-4">
       <header className="settings-rules-head">
         <p className="fb-section-label">Advanced</p>
         <h2 className="fb-section-heading mt-1">Source and digest rules</h2>
@@ -140,7 +142,7 @@ async function SourceTypeConfigSection({
 
 function SourceTypeConfigSkeleton() {
   return (
-    <section className="mt-10" aria-busy="true" aria-live="polite">
+    <section className="settings-rules" aria-busy="true" aria-live="polite">
       <div className="h-3 w-40 animate-pulse rounded bg-[var(--paper-strong)]" />
       <div className="mt-2 h-5 w-64 animate-pulse rounded bg-[var(--paper-strong)]" />
       <div className="mt-5 grid gap-3">

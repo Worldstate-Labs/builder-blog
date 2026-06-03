@@ -5395,9 +5395,25 @@ svg.lucide {
   border-color: color-mix(in oklch, var(--accent) 32%, var(--line));
 }
 
-/* Settings rules: consistent hierarchy for briefing configuration. */
+/* Settings rules: consistent hierarchy for configuration surfaces. */
+.settings-workspace {
+  display: grid;
+  gap: clamp(1.25rem, 2vw, 2rem);
+  margin-top: clamp(1.25rem, 2vw, 2rem);
+}
+
 .settings-rules {
   max-width: var(--workspace-max);
+}
+
+.builder-detail-workspace {
+  display: grid;
+  gap: clamp(1.25rem, 2vw, 2rem);
+  margin-top: clamp(1.5rem, 2.5vw, 2.25rem);
+}
+
+.builder-detail-section {
+  min-width: 0;
 }
 
 .settings-access-grid {
