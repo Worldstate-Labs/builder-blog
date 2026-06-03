@@ -196,6 +196,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /--workspace-max:\s*72rem/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
+  assert.match(globals, /\.workspace-content-stack\s*{[\s\S]*margin-top:\s*clamp/);
   assert.match(globals, /\.fb-top\s*{[\s\S]*position:\s*sticky/);
   assert.match(globals, /\.fb-top-inner\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
   assert.match(globals, /\.fb-page-head\s*{[\s\S]*border-bottom:/);
@@ -550,8 +551,15 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(buildersPage, /<Suspense fallback=\{<BuilderStatsFallback \/>/);
   assert.match(buildersPage, /<Suspense fallback=\{<BuilderSectionsFallback \/>/);
   assert.match(buildersPage, /function BuilderSectionsFallback/);
+  assert.match(buildersPage, /className="workspace-content-stack"/);
+  assert.doesNotMatch(buildersPage, /sources-sync-section mt-5/);
+  assert.doesNotMatch(buildersPage, /mt-6 grid gap-5/);
   assert.match(libraryHubPage, /<Suspense fallback=\{<LibraryHubImportFallback \/>/);
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
+  assert.match(libraryHubPage, /className="workspace-content-stack"/);
+  assert.doesNotMatch(libraryHubPage, /className="mt-6"/);
+  assert.doesNotMatch(libraryHubPage, /className="mt-10"/);
+  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /<section className="mt-10"/);
   assert.match(searchPage, /<Suspense[\s\S]*fallback=\{[\s\S]*<SearchResultsFallback/);
 });
 

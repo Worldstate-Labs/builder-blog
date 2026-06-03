@@ -304,6 +304,13 @@ svg.lucide {
   width: min(100%, 58rem);
 }
 
+.workspace-content-stack {
+  display: grid;
+  gap: clamp(1.25rem, 2vw, 2rem);
+  margin-top: clamp(1.25rem, 2vw, 2rem);
+  min-width: 0;
+}
+
 .page-toolbar {
   align-items: center;
   display: flex;

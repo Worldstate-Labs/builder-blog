@@ -65,13 +65,15 @@ export default function BuildersPage() {
         </Suspense>
       </section>
 
-      <Suspense fallback={<SyncHeaderFallback />}>
-        <SyncHeader dataPromise={dataPromise} />
-      </Suspense>
+      <div className="workspace-content-stack">
+        <Suspense fallback={<SyncHeaderFallback />}>
+          <SyncHeader dataPromise={dataPromise} />
+        </Suspense>
 
-      <Suspense fallback={<BuilderSectionsFallback />}>
-        <BuilderSections dataPromise={dataPromise} />
-      </Suspense>
+        <Suspense fallback={<BuilderSectionsFallback />}>
+          <BuilderSections dataPromise={dataPromise} />
+        </Suspense>
+      </div>
     </div>
   );
 }
@@ -84,7 +86,7 @@ async function SyncHeader({
   const data = await dataPromise;
   const showStopCron = data.libraryCronJob?.status === "active";
   return (
-    <section className="sources-sync-section mt-5">
+    <section className="sources-sync-section">
       <FetchLogPanel
         actions={
           <SkillPromptActions
@@ -108,7 +110,7 @@ async function SyncHeader({
 
 function SyncHeaderFallback() {
   return (
-    <section className="sources-sync-section mt-5" aria-live="polite" aria-busy="true">
+    <section className="sources-sync-section" aria-live="polite" aria-busy="true">
       <div className="h-10 rounded-[10px] bg-black/10" />
       <div className="h-28 rounded-[10px] bg-black/10" />
     </section>
@@ -500,7 +502,7 @@ async function BuilderSections({
   );
 
   return (
-    <section className="mt-6 grid gap-5">
+    <section className="grid gap-5">
       <MobileSourcesSwitcher
         privateLabel="Private"
         importedLabel="Imported"
@@ -523,7 +525,7 @@ function BuilderStatsFallback() {
 
 function BuilderSectionsFallback() {
   return (
-    <section className="mt-6 grid gap-5" aria-live="polite" aria-busy="true">
+    <section className="grid gap-5" aria-live="polite" aria-busy="true">
       <div className="library-section-panel">
         <div className="library-section-summary">
           <div className="min-w-0 flex-1">

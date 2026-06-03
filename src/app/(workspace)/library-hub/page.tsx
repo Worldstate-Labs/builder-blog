@@ -39,13 +39,15 @@ export default function LibraryHubPage() {
         </div>
       </section>
 
-      <Suspense fallback={<LibraryHubImportFallback />}>
-        <LibraryHubImportSection dataPromise={dataPromise} />
-      </Suspense>
+      <div className="workspace-content-stack">
+        <Suspense fallback={<LibraryHubImportFallback />}>
+          <LibraryHubImportSection dataPromise={dataPromise} />
+        </Suspense>
 
-      <Suspense fallback={<DigestPipelineImportFallback />}>
-        <DigestPipelineImportSection dataPromise={dataPromise} />
-      </Suspense>
+        <Suspense fallback={<DigestPipelineImportFallback />}>
+          <DigestPipelineImportSection dataPromise={dataPromise} />
+        </Suspense>
+      </div>
     </div>
   );
 }
@@ -209,7 +211,7 @@ async function DigestPipelineImportSection({
 
 function LibraryHubImportFallback() {
   return (
-    <section className="mt-6" aria-live="polite" aria-busy="true">
+    <section aria-live="polite" aria-busy="true">
       <div className="library-hub-toolbar">
         <div>
           <h2 className="section-heading">Available libraries</h2>
@@ -244,7 +246,7 @@ function LibraryHubImportFallback() {
 
 function DigestPipelineImportFallback() {
   return (
-    <section className="mt-10" aria-live="polite" aria-busy="true">
+    <section aria-live="polite" aria-busy="true">
       <div className="library-hub-toolbar">
         <div>
           <div className="h-5 w-40 rounded bg-black/10" />

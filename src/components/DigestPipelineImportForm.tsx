@@ -92,7 +92,7 @@ export function DigestPipelineImportForm({
   }
 
   return (
-    <section className="mt-10">
+    <section>
       <div className="library-hub-toolbar">
         <div>
           <h2 className="fb-section-heading">Shared AI Digests</h2>
