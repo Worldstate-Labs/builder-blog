@@ -45,6 +45,7 @@
 
   /* Reading measure — keeps prose at ~62–72ch. */
   --measure: 68ch;
+  --reading-max: 58rem;
   --workspace-max: 72rem;
   --workspace-gutter: clamp(1rem, 3vw, 2.25rem);
 
@@ -301,7 +302,7 @@ svg.lucide {
 }
 
 .reading-page {
-  width: min(100%, 58rem);
+  width: min(100%, var(--reading-max));
 }
 
 .reading-page-toolbar {
@@ -1004,7 +1005,7 @@ svg.lucide {
   gap: 0.75rem;
   margin-inline: auto;
   margin-top: 1.5rem;
-  max-width: 58rem;
+  max-width: var(--reading-max);
   min-width: 0;
   width: 100%;
 }
@@ -1533,7 +1534,7 @@ svg.lucide {
   font-weight: 500;
   line-height: 1.55;
   margin-top: 0.45rem;
-  max-width: 58rem;
+  max-width: var(--reading-max);
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -2645,7 +2646,7 @@ svg.lucide {
 
 .search-results-shell {
   margin: 0 auto;
-  max-width: 58rem;
+  max-width: var(--reading-max);
   min-width: 0;
   width: 100%;
 }
@@ -3831,7 +3832,7 @@ svg.lucide {
   border: 1px solid var(--line);
   border-radius: 12px;
   margin-inline: auto;
-  max-width: 58rem;
+  max-width: var(--reading-max);
   overflow: hidden;
   width: 100%;
 }
@@ -6074,7 +6075,7 @@ svg.lucide {
 .builder-detail-workspace {
   margin-inline: auto;
   margin-top: clamp(1.5rem, 2.5vw, 2.25rem);
-  max-width: 58rem;
+  max-width: var(--reading-max);
   width: 100%;
 }
 

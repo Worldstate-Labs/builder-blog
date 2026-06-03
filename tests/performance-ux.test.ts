@@ -337,10 +337,11 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(builderDetailPage, /mt-8 grid gap-6/);
   assert.doesNotMatch(builderDetailPage, /builder-detail-section fb-panel dashed/);
   assert.match(globals, /--workspace-max:\s*72rem/);
+  assert.match(globals, /--reading-max:\s*58rem/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
   assert.match(globals, /\.workspace-content-stack\s*{[\s\S]*margin-top:\s*clamp/);
-  assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*max-width:\s*58rem/);
+  assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.builder-detail-action-skeleton-button\s*{[\s\S]*border-radius:\s*999px/);
@@ -378,7 +379,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(globals, /\.home-tabs/);
   assert.doesNotMatch(globals, /\.home-workspace\s*{/);
   assert.match(globals, /\.ai-digest-stack\s*{[\s\S]*display:\s*grid/);
-  assert.match(globals, /\.ai-digest-panel\s*{[\s\S]*max-width:\s*58rem/);
+  assert.match(globals, /\.ai-digest-panel\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
   assert.match(globals, /\.ai-digest-panel\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.ai-digest-panel\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.digest-source-list\s*{[\s\S]*flex-wrap:\s*wrap/);
@@ -386,7 +387,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(globals, /\.ai-digest-empty-inner|\.ai-digest-empty-icon|\.ai-digest-empty-title|\.ai-digest-empty-desc/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.digest-source-list\s*{[\s\S]*flex-direction:\s*column/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*margin-top:\s*clamp/);
-  assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*max-width:\s*58rem/);
+  assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
   assert.match(globals, /\.builder-detail-page-head > div:first-child\s*{[\s\S]*flex:\s*1 1 min\(48rem,\s*100%\)/);
   assert.match(globals, /\.builder-detail-avatar\.fb-src-icon\s*{[\s\S]*height:\s*3\.5rem/);
   assert.match(globals, /\.builder-detail-channel-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto auto/);
@@ -448,7 +449,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.doesNotMatch(favoritesSection, /bg-black\/10|empty-panel border-dashed|flex items-start gap-3|text-lg font-semibold|mt-2 text-sm/);
   assert.doesNotMatch(followingSection, /bg-black\/10|empty-panel border-dashed|flex items-start gap-3|text-lg font-semibold|mt-2 text-sm/);
   assert.match(globals, /\.feed-content-stack\s*{[\s\S]*margin-top:\s*1\.5rem/);
-  assert.match(globals, /\.feed-content-stack\s*{[\s\S]*max-width:\s*58rem/);
+  assert.match(globals, /\.feed-content-stack\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
   assert.match(globals, /\.feed-content-stack\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.feed-content-stack\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.recommendation-feed-actions\s*{[\s\S]*justify-content:\s*space-between/);
@@ -653,7 +654,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchPage, /fb-m-search/);
   assert.doesNotMatch(searchPage, /search-page-active/);
   assert.doesNotMatch(searchPage, /serif text-\[1\.875rem\]/);
-  assert.match(globals, /\.search-results-shell\s*{[\s\S]*max-width:\s*58rem/);
+  assert.match(globals, /\.search-results-shell\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
   assert.match(globals, /\.search-results-shell\s*{[\s\S]*margin:\s*0 auto/);
   assert.match(globals, /\.search-results-shell\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.search-hero\s*{[\s\S]*grid-template-columns:/);
@@ -1057,7 +1058,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(recommendationItemPage, /showDebugActions=\{false\}/);
   assert.equal((recommendationItemPage.match(/Back to feed/g) ?? []).length, 1);
   assert.doesNotMatch(recommendationItemPage, /extraActions=/);
-  assert.match(globals, /\.reading-page\s*{[\s\S]*width:\s*min\(100%,\s*58rem\)/);
+  assert.match(globals, /\.reading-page\s*{[\s\S]*width:\s*min\(100%,\s*var\(--reading-max\)\)/);
   assert.match(globals, /\.reading-page-toolbar\s*{[\s\S]*justify-content:\s*space-between/);
   assert.match(globals, /\.reading-source-label\s*{[\s\S]*font-size:\s*0\.8125rem/);
   assert.doesNotMatch(globals, /\.reading-page-head\s*{/);
