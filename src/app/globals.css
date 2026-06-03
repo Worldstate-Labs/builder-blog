@@ -6634,10 +6634,9 @@ svg.lucide {
 .settings-rules-summary {
   align-items: center;
   cursor: pointer;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 0.75rem;
-  justify-content: space-between;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   list-style: none;
   padding: 1rem 1.125rem;
 }
@@ -6660,7 +6659,19 @@ svg.lucide {
 }
 
 .settings-rules-summary-meta {
-  flex: 0 0 auto;
+  justify-self: end;
+}
+
+.settings-rules-summary::after {
+  color: var(--accent);
+  content: "+";
+  font-size: 0.95rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.settings-rules-panel[open] .settings-rules-summary::after {
+  content: "-";
 }
 
 .settings-rules-body {
@@ -8158,6 +8169,14 @@ body {
   .settings-rules-summary,
   .settings-rules-body {
     padding-inline: 0.85rem;
+  }
+
+  .settings-rules-summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .settings-rules-summary-meta {
+    grid-column: 1 / -1;
   }
 
   .settings-config-form .settings-section {

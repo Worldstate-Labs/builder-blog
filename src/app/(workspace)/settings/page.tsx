@@ -69,7 +69,7 @@ async function SourceTypeConfigSection({
           <div className="settings-rules-summary-copy">
             <h3 className="fb-section-heading">Source update rules</h3>
             <p className="settings-rules-summary-desc">
-              How source content is fetched, filtered, and summarized into per-post summaries.
+              Fetch, filter, and write per-post summaries.
             </p>
           </div>
           <span className="settings-rules-summary-meta source-summary-line">
@@ -114,7 +114,7 @@ async function SourceTypeConfigSection({
           <div className="settings-rules-summary-copy">
             <h3 className="fb-section-heading">AI Digest rules</h3>
             <p className="settings-rules-summary-desc">
-              How digest headlines, source notes, and translated post summaries are written.
+              Write digest headlines, source notes, and translated post summaries.
             </p>
           </div>
           <span className="settings-rules-summary-meta source-summary-line">

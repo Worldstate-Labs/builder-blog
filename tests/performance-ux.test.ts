@@ -1580,6 +1580,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(settingsPage, />Advanced<\/p>/);
   assert.doesNotMatch(settingsPage, /Source and digest rules/);
   assert.doesNotMatch(settingsPage, /settings-rules-title|settings-rules-head/);
+  assert.match(settingsPage, /Fetch, filter, and write per-post summaries\./);
+  assert.match(settingsPage, /Write digest headlines, source notes, and translated post summaries\./);
+  assert.doesNotMatch(settingsPage, /How source content is fetched, filtered, and summarized/);
+  assert.doesNotMatch(settingsPage, /How digest headlines, source notes, and translated post summaries are written/);
   assert.match(settingsPage, /className="settings-rules-summary"/);
   assert.match(settingsPage, /className="settings-rules-summary-desc"/);
   assert.match(settingsPage, /CountMeta/);
@@ -1625,8 +1629,15 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(globals, /\.settings-rules-title\s*{/);
   assert.doesNotMatch(globals, /\.settings-skeleton-line--eyebrow\s*{/);
   assert.match(globals, /\.settings-rules-summary\s*{[\s\S]*cursor:\s*pointer/);
+  assert.match(globals, /\.settings-rules-summary\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.settings-rules-summary\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto auto/);
   assert.match(globals, /\.settings-rules-summary-desc/);
-  assert.match(globals, /\.settings-rules-summary-meta\s*{[\s\S]*flex:\s*0 0 auto/);
+  assert.match(globals, /\.settings-rules-summary-meta\s*{[\s\S]*justify-self:\s*end/);
+  assert.doesNotMatch(globals, /\.settings-rules-summary-meta\s*{[\s\S]*flex:\s*0 0 auto/);
+  assert.match(globals, /\.settings-rules-summary::after\s*{[\s\S]*content:\s*"\+"/);
+  assert.match(globals, /\.settings-rules-panel\[open\] \.settings-rules-summary::after\s*{[\s\S]*content:\s*"-"/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.settings-rules-summary\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.settings-rules-summary-meta\s*{[\s\S]*grid-column:\s*1 \/ -1/);
   assert.match(globals, /\.settings-rules-skeleton-list/);
   assert.match(globals, /\.settings-skeleton-line,[\s\S]*\.settings-skeleton-row\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
   assert.match(globals, /\.settings-skeleton-pill\s*{[\s\S]*border-radius:\s*999px/);
