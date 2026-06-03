@@ -611,6 +611,11 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(dashboardPage, /digestCronJob\.findUnique/);
   assert.match(dashboardPage, /getDigestRuns\(userId, 25, "cron"\)/);
   assert.match(digestPipelineVisibilityToggle, /Share to Hub/);
+  assert.match(digestPipelineVisibilityToggle, /className="hub-share-control"/);
+  assert.match(digestPipelineVisibilityToggle, /className="hub-share-button"/);
+  assert.match(digestPipelineVisibilityToggle, /className="hub-share-label"/);
+  assert.match(digestPipelineVisibilityToggle, /className="hub-share-error"/);
+  assert.doesNotMatch(digestPipelineVisibilityToggle, /text-\[12px\]|text-\[10\.5px\]|disabled:cursor-wait/);
   assert.match(digestPipelineVisibilityToggle, /fetch\("\/api\/digest-pipelines\/share"/);
   assert.match(digestPipelineVisibilityToggle, /method: nextShared \? "POST" : "DELETE"/);
   assert.match(digestPipelineVisibilityToggle, /aria-pressed=\{shared\}/);
@@ -1162,6 +1167,11 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(visibilityToggle, /"use client"/);
   assert.match(visibilityToggle, /fetch\("\/api\/library-hub\/personal-availability"/);
   assert.match(visibilityToggle, /library-visibility-toggle/);
+  assert.match(visibilityToggle, /className="hub-share-control"/);
+  assert.match(visibilityToggle, /className="hub-share-button"/);
+  assert.match(visibilityToggle, /className="hub-share-label"/);
+  assert.match(visibilityToggle, /className="hub-share-error"/);
+  assert.doesNotMatch(visibilityToggle, /text-\[12px\]|text-\[10\.5px\]|disabled:cursor-not-allowed/);
   assert.match(visibilityToggle, /aria-pressed/);
   assert.match(visibilityRoute, /export async function PATCH/);
   assert.match(visibilityRoute, /unsharePersonalLibraryFromHub/);
@@ -1236,6 +1246,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(globals, /\.fb-hub-list\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(globals, /\.fb-hub-card\s*{[\s\S]*border-radius:\s*8px/);
   assert.match(globals, /\.fb-hub-card-stats\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
+  assert.match(globals, /\.hub-share-control\s*{[\s\S]*align-items:\s*flex-end/);
+  assert.match(globals, /\.hub-share-button\s*{[\s\S]*display:\s*inline-flex/);
+  assert.match(globals, /\.hub-share-label\s*{[\s\S]*font-size:\s*0\.75rem/);
+  assert.match(globals, /\.hub-share-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(hubImportForm, /fetch\("\/api\/library-hub\/imports"/);
   assert.match(hubImportForm, /isCommunity/);
   assert.match(hubImportForm, /counts\[filter\.key\]/);

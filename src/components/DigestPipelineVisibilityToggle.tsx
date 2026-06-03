@@ -37,22 +37,22 @@ export function DigestPipelineVisibilityToggle({
   }
 
   return (
-    <div className="inline-flex flex-col items-end gap-1">
+    <div className="hub-share-control">
       <button
         aria-busy={isPending}
         aria-pressed={shared}
-        className="inline-flex items-center gap-1.5 disabled:cursor-wait disabled:opacity-60"
+        className="hub-share-button"
         disabled={isPending}
         onClick={updateVisibility}
         type="button"
       >
-        <span className="text-[12px] font-semibold text-[var(--muted-strong)]">
+        <span className="hub-share-label">
           Share to Hub
         </span>
         <span className={`fb-toggle${shared ? " on" : ""}`} aria-hidden="true" />
       </button>
       {error ? (
-        <span className="text-[10.5px] text-[var(--danger)]" role="status">
+        <span className="hub-share-error" role="status">
           {error}
         </span>
       ) : null}
