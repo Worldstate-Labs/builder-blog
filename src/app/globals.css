@@ -902,6 +902,115 @@ svg.lucide {
   color: color-mix(in oklch, var(--warm) 68%, var(--ink));
 }
 
+.count-badge {
+  background: color-mix(in oklch, var(--ink) 6%, transparent);
+  border-radius: 999px;
+  color: var(--muted-strong);
+  font-family: var(--font-geist-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  min-width: 1.35rem;
+  padding: 0.0625rem 0.4375rem;
+  text-align: center;
+}
+
+.count-chip {
+  align-items: center;
+  background: color-mix(in oklch, var(--ink) 4%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted-strong);
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 700;
+  gap: 0.34rem;
+  min-height: 1.75rem;
+  padding: 0.22rem 0.62rem;
+  white-space: nowrap;
+}
+
+.count-chip-value,
+.count-meta-value {
+  color: var(--ink);
+  font-family: var(--font-geist-mono);
+  font-weight: 800;
+}
+
+.count-meta {
+  align-items: baseline;
+  color: var(--muted-strong);
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 650;
+  gap: 0.28rem;
+  white-space: nowrap;
+}
+
+.count-range {
+  color: var(--muted-strong);
+  font-size: 0.8125rem;
+  font-weight: 650;
+}
+
+.count-metric {
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 0;
+  padding: 0.62rem 0.75rem;
+  text-align: center;
+}
+
+.count-metric-value {
+  color: var(--ink);
+  font-family: var(--font-geist-mono);
+  font-size: 1.0625rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.count-metric-label {
+  color: var(--muted);
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-top: 0.3rem;
+  text-transform: uppercase;
+}
+
+.count-metric[data-tone="ok"] {
+  background: var(--signal-soft);
+  border-color: color-mix(in oklch, var(--signal) 28%, var(--line));
+}
+
+.count-metric[data-tone="ok"] .count-metric-value {
+  color: color-mix(in oklch, var(--signal) 72%, var(--ink));
+}
+
+.count-metric[data-tone="issue"] {
+  background: var(--danger-soft);
+  border-color: color-mix(in oklch, var(--danger) 30%, var(--line));
+}
+
+.count-metric[data-tone="issue"] .count-metric-value {
+  color: color-mix(in oklch, var(--danger) 76%, var(--ink));
+}
+
+.count-metric[data-tone="waiting"] {
+  background: var(--warm-soft);
+  border-color: color-mix(in oklch, var(--warm) 30%, var(--line));
+}
+
+.count-metric[data-tone="waiting"] .count-metric-value {
+  color: color-mix(in oklch, var(--warm) 68%, var(--ink));
+}
+
+.count-summary-row {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(3, minmax(6.5rem, 1fr));
+}
+
 .action-panel,
 .empty-panel {
   border: 1px solid var(--line);
@@ -3977,15 +4086,6 @@ svg.lucide {
   right: 0;
 }
 
-.fb-stab-count {
-  background: color-mix(in oklch, var(--ink) 6%, transparent);
-  border-radius: 999px;
-  color: var(--muted-strong);
-  font-size: 0.6875rem;
-  font-weight: 700;
-  padding: 0.0625rem 0.4375rem;
-}
-
 .fb-filter-chip {
   align-items: center;
   background: color-mix(in oklch, var(--ink) 5%, transparent);
@@ -4126,14 +4226,6 @@ svg.lucide {
   justify-self: end;
   min-width: 6.75rem;
   text-align: right;
-}
-
-.builder-library-stats-primary {
-  color: var(--muted-strong);
-  font-size: 0.75rem;
-  font-weight: 750;
-  line-height: 1.2;
-  white-space: nowrap;
 }
 
 .builder-library-stats-secondary {
@@ -4866,15 +4958,6 @@ svg.lucide {
   font-weight: 600;
   letter-spacing: -0.01em;
   margin: 0;
-}
-.digest-section-count {
-  background: var(--dr-chip);
-  border: 1px solid var(--dr-line);
-  border-radius: 999px;
-  color: var(--dr-faint);
-  font-family: var(--font-geist-mono);
-  font-size: 0.625rem;
-  padding: 0.0625rem 0.4375rem;
 }
 .digest-section-body {
   display: flex;
@@ -6099,18 +6182,6 @@ mark.fb-mark-highlight {
 
 /* Polish utility classes — extracted from repeated inline styles so
    sizing/spacing for derived variants lives in one place. */
-.fb-stat--compact {
-  padding: 0.625rem 0.75rem;
-}
-
-.fb-stat--compact .fb-stat-value {
-  font-size: 1.0625rem;
-}
-
-.fb-stat--compact .fb-stat-label {
-  font-size: 0.625rem;
-}
-
 .fb-src-icon--sm {
   font-size: 0.6875rem;
   height: 1.375rem;
@@ -6328,20 +6399,6 @@ body {
 
   .stats-panel {
     gap: 0.45rem;
-  }
-
-  .fb-stat--compact {
-    min-height: 3.85rem;
-    padding: 0.625rem;
-  }
-
-  .fb-stat--compact .fb-stat-value {
-    font-size: 1.25rem;
-  }
-
-  .fb-stat--compact .fb-stat-label {
-    font-size: 0.5625rem;
-    letter-spacing: 0.06em;
   }
 
   .library-section-panel {

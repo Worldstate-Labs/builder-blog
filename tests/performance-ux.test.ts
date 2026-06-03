@@ -792,7 +792,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(builderPool, /origin: \{ not: BuilderPoolOrigin\.PERSONAL_SYNC \}/);
   // Library import preview is capped (page take: 200); show an honest "first N
   // of M" notice instead of silently truncating below the reported count.
-  assert.match(hubImportForm, /Showing the first \{library\.items\.length\} of \{library\.itemCount\}/);
+  assert.match(
+    hubImportForm,
+    /<CountRange>[\s\S]*Showing \{formatCount\(library\.items\.length\)\} of \{formatCount\(library\.itemCount\)\} sources/,
+  );
 });
 
 test("settings mutations stay local instead of refreshing the whole route", () => {

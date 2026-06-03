@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
 import { BuilderLibraryStats } from "@/components/BuilderLibraryStats";
+import { CountChip } from "@/components/Count";
 import {
   FetchLogPanel,
   type LibraryCronJobStatus,
@@ -603,7 +604,7 @@ function LibrarySection({
         </div>
         <div className="library-section-meta">
           <span className="fb-kind-pill">{badge}</span>
-          <span className="fb-kind-pill">{count} sources</span>
+          <CountChip label={count === 1 ? "source" : "sources"} value={count} />
           {action}
         </div>
       </summary>
