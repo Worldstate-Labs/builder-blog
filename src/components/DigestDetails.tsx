@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, Loader2 } from "lucide-react";
-import { DigestContent } from "@/components/DigestContent";
+import { DigestContent, type DigestSourceLink } from "@/components/DigestContent";
 import { useHydrated } from "@/components/ThemeToggle";
 
 export type DigestSummary = {
@@ -25,10 +25,12 @@ export function DigestDetails({
   defaultOpen = false,
   digest,
   mode = "archive",
+  sourceLinks = [],
 }: {
   defaultOpen?: boolean;
   digest: DigestSummary;
   mode?: "archive" | "today";
+  sourceLinks?: DigestSourceLink[];
 }) {
   const digestId = digest.id;
   const hydrated = useHydrated();
@@ -110,7 +112,7 @@ export function DigestDetails({
           ) : null}
         </div>
         <div className="fb-digest-body">
-          <DigestBody content={content} status={status} variant="today" />
+          <DigestBody content={content} sourceLinks={sourceLinks} status={status} variant="today" />
         </div>
       </article>
     );
@@ -145,7 +147,7 @@ export function DigestDetails({
             Read
           </span>
         </summary>
-        <DigestBody content={content} status={status} />
+        <DigestBody content={content} sourceLinks={sourceLinks} status={status} />
       </details>
     </article>
   );
@@ -153,10 +155,12 @@ export function DigestDetails({
 
 function DigestBody({
   content,
+  sourceLinks,
   status,
   variant = "archive",
 }: {
   content: string | null;
+  sourceLinks: DigestSourceLink[];
   status: "idle" | "loading" | "loaded" | "error";
   variant?: "today" | "archive";
 }) {
@@ -208,11 +212,11 @@ function DigestBody({
   }
 
   if (isToday) {
-    return <DigestContent content={content ?? ""} tone="paper" />;
+    return <DigestContent content={content ?? ""} sourceLinks={sourceLinks} tone="paper" />;
   }
   return (
     <div className="item-details">
-      <DigestContent content={content ?? ""} tone="paper" />
+      <DigestContent content={content ?? ""} sourceLinks={sourceLinks} tone="paper" />
     </div>
   );
 }

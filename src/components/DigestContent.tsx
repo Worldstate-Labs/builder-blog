@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ExternalLink, Play } from "lucide-react";
+import { ArrowRight, ChevronDown, ExternalLink, Play } from "lucide-react";
 import {
   parseDigest,
   type DigestDoc,
@@ -11,18 +12,31 @@ import {
   type DigestSection,
 } from "@/lib/digest-markdown";
 
+export type DigestSourceLink = {
+  aliases?: string[];
+  entityId: string;
+  href: string;
+  name: string;
+  handle?: string | null;
+  sourceUrl?: string | null;
+  fetchUrl?: string | null;
+};
+
 // Renders the agent's digest markdown as a multimedia, progressively-readable
 // document: real links, embedded video (lazy facade), a jump-to-section index,
 // collapsible sections, and per-post "Show more" so a long brief stays
 // scannable. `tone` adapts it to the dark "today" hero vs the paper archive.
 export function DigestContent({
   content,
+  sourceLinks = [],
   tone = "paper",
 }: {
   content: string;
+  sourceLinks?: DigestSourceLink[];
   tone?: "paper" | "dark";
 }) {
   const doc: DigestDoc = useMemo(() => parseDigest(content ?? ""), [content]);
+  const sourceLookup = useMemo(() => buildSourceLookup(sourceLinks), [sourceLinks]);
 
   if (!doc.hasStructure) {
     // Plain prose (e.g. a "no new updates" note) — render paragraphs cleanly.
@@ -63,7 +77,12 @@ export function DigestContent({
       ) : null}
 
       {doc.sections.map((section) => (
-        <SectionBlock key={section.id} section={section} collapsible={doc.postCount >= 4} />
+        <SectionBlock
+          key={section.id}
+          section={section}
+          collapsible={doc.postCount >= 4}
+          sourceLookup={sourceLookup}
+        />
       ))}
     </div>
   );
@@ -76,15 +95,19 @@ function wrapClass(tone: "paper" | "dark"): string {
 function SectionBlock({
   section,
   collapsible,
+  sourceLookup,
 }: {
   section: DigestSection;
   collapsible: boolean;
+  sourceLookup: Map<string, DigestSourceLink>;
 }) {
   const body = (
     <div className="digest-section-body">
       {section.groups.map((group, gi) => (
         <div key={gi} className="digest-group">
-          {group.source ? <div className="digest-group-label">{group.source}</div> : null}
+          {group.source ? (
+            <DigestGroupHeading source={group.source} sourceLink={sourceLinkForSource(group.source, sourceLookup)} />
+          ) : null}
           {group.posts.map((post) => (
             <PostBlock key={post.id} post={post} />
           ))}
@@ -212,9 +235,9 @@ function VideoEmbed({ media }: { media: DigestMedia }) {
             </span>
           </button>
         )}
-        <a className="dr-video-out" href={media.url} target="_blank" rel="noreferrer">
-          Watch on YouTube
-          <ExternalLink className="h-3 w-3" />
+        <a className="post-read-original dr-video-out" href={media.url} target="_blank" rel="noreferrer">
+          View original
+          <ExternalLink aria-hidden="true" className="post-read-original-icon" />
         </a>
       </figure>
     );
@@ -226,14 +249,91 @@ function VideoEmbed({ media }: { media: DigestMedia }) {
 }
 
 function SourceLink({ media }: { media: DigestMedia }) {
-  const label = media.label?.trim();
   return (
-    <a className="dr-source" href={media.url} target="_blank" rel="noreferrer">
-      {label ? <span className="dr-source-label">{label}</span> : null}
-      <span className="dr-source-host">{media.host}</span>
-      <ExternalLink className="dr-source-icon" aria-hidden="true" />
+    <a className="post-read-original dr-source" href={media.url} target="_blank" rel="noreferrer">
+      View original
+      <ExternalLink className="post-read-original-icon" aria-hidden="true" />
     </a>
   );
+}
+
+function DigestGroupHeading({
+  source,
+  sourceLink,
+}: {
+  source: string;
+  sourceLink?: DigestSourceLink;
+}) {
+  if (!sourceLink) {
+    return <h4 className="digest-group-heading">{source}</h4>;
+  }
+
+  return (
+    <h4 className="digest-group-heading">
+      <Link className="digest-group-source-link" href={sourceLink.href}>
+        <span>{source}</span>
+        <ArrowRight aria-hidden="true" className="digest-group-source-icon" />
+      </Link>
+    </h4>
+  );
+}
+
+function buildSourceLookup(sourceLinks: DigestSourceLink[]) {
+  const lookup = new Map<string, DigestSourceLink>();
+  for (const link of sourceLinks) {
+    for (const value of sourceLinkKeys(link)) {
+      const key = sourceKey(value);
+      if (key && !lookup.has(key)) lookup.set(key, link);
+    }
+  }
+  return lookup;
+}
+
+function sourceLinkForSource(source: string, lookup: Map<string, DigestSourceLink>) {
+  const direct = lookup.get(sourceKey(source));
+  if (direct) return direct;
+
+  const parts = source
+    .normalize("NFKC")
+    .split(/[()（）]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  for (const part of parts) {
+    const match = lookup.get(sourceKey(part));
+    if (match) return match;
+  }
+  return undefined;
+}
+
+function sourceLinkKeys(link: DigestSourceLink) {
+  const keys = [
+    link.name,
+    ...(link.aliases ?? []),
+    link.handle ?? "",
+    hostOf(link.sourceUrl ?? ""),
+    hostOf(link.fetchUrl ?? ""),
+  ].filter(Boolean);
+  return [...keys, ...keys.map((key) => key.replace(/^@/, ""))];
+}
+
+function sourceKey(value: string) {
+  const normalized = value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/^@/, "")
+    .replace(/[()（）]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized;
+}
+
+function hostOf(value: string) {
+  if (!value) return "";
+  try {
+    return new URL(value).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
 }
 
 function Inline({ nodes }: { nodes: DigestInline[] }) {

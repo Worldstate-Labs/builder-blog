@@ -556,6 +556,24 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(feedItemsRoute, /NextResponse\.json/);
 });
 
+test("digest posts use source detail headings and unified original links", () => {
+  const digestContent = source("src/components/DigestContent.tsx");
+  const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
+  const globals = source("src/app/globals.css");
+
+  assert.match(digestContent, /DigestSourceLink/);
+  assert.match(digestContent, /digest-group-source-link/);
+  assert.match(digestContent, /sourceLinkForSource/);
+  assert.match(digestContent, /post-read-original dr-video-out/);
+  assert.match(digestContent, /post-read-original dr-source/);
+  assert.match(digestContent, /View original/);
+  assert.doesNotMatch(digestContent, /Watch on YouTube/);
+  assert.match(dashboardPage, /digestSourceLinksForUser/);
+  assert.match(dashboardPage, /sourceLinks=\{sourceLinks\}/);
+  assert.match(globals, /\.digest-group-heading/);
+  assert.match(globals, /\.digest-group-source-link/);
+});
+
 test("library hub exposes share and multi-import flows", () => {
   const appShell = source("src/components/AppShell.tsx");
   const workspaceLayout = source("src/app/(workspace)/layout.tsx");

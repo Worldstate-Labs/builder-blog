@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { type ComponentType } from "react";
 import { Archive, CheckCircle2, Clock3, Sparkles, Terminal, UsersRound } from "lucide-react";
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
+import type { DigestSourceLink } from "@/components/DigestContent";
 import { DigestLogPanel } from "@/components/DigestLogPanel";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
 import { DigestPipelineVisibilityToggle } from "@/components/DigestPipelineVisibilityToggle";
@@ -143,6 +144,7 @@ async function AiDigestFeedSlot({
   const [
     latestDigest,
     digestCount,
+    digestSourceLinks,
     rawTokens,
     feedPreference,
     digestRuns,
@@ -160,6 +162,7 @@ async function AiDigestFeedSlot({
         select: digestSummarySelect,
       }),
       prisma.digest.count({ where: { userId: digestOwnerUserId, itemCount: { gt: 0 } } }),
+      digestSourceLinksForUser(digestOwnerUserId),
       isOwnPipeline
         ? prisma.agentToken.findMany({
             where: { userId, revokedAt: null },
@@ -229,6 +232,7 @@ async function AiDigestFeedSlot({
       digestRuns={digestRuns}
       digestScheduledJobRuns={digestScheduledJobRuns}
       ownPipelineShared={ownPipelineShare?.isPublic === true}
+      sourceLinks={digestSourceLinks}
       summaryLanguage={feedPreference?.summaryLanguage ?? null}
       digestMaxPostAgeDays={feedPreference?.digestMaxPostAgeDays ?? null}
       latestDigest={latestDigest}
@@ -249,6 +253,7 @@ function AiDigestFeed({
   digestRuns,
   digestScheduledJobRuns,
   ownPipelineShared,
+  sourceLinks,
   summaryLanguage,
   digestMaxPostAgeDays,
   latestDigest,
@@ -265,6 +270,7 @@ function AiDigestFeed({
   digestRuns: DigestRunListItem[];
   digestScheduledJobRuns: AgentJobRunListItem[];
   ownPipelineShared: boolean;
+  sourceLinks: DigestSourceLink[];
   summaryLanguage: string | null;
   digestMaxPostAgeDays: number | null;
   latestDigest: DigestSummaryRow | null;
@@ -331,7 +337,11 @@ function AiDigestFeed({
               </h3>
             </div>
             {latestDigest ? (
-              <DigestDetails digest={serializeDigestSummary(latestDigest)} mode="today" />
+              <DigestDetails
+                digest={serializeDigestSummary(latestDigest)}
+                mode="today"
+                sourceLinks={sourceLinks}
+              />
             ) : (
               <div className="fb-panel dashed">
                 <div className="flex items-start gap-3">
@@ -369,6 +379,7 @@ function AiDigestFeed({
                 <DigestDetails
                   digest={serializeDigestSummary(digest)}
                   key={digest.id}
+                  sourceLinks={sourceLinks}
                 />
               ))}
               {archiveDigests.length === 0 ? (
@@ -482,6 +493,42 @@ function Stat({
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+async function digestSourceLinksForUser(userId: string): Promise<DigestSourceLink[]> {
+  const subscriptions = await prisma.subscription.findMany({
+    where: { userId },
+    include: {
+      builder: {
+        include: {
+          entity: {
+            select: {
+              handle: true,
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const byEntityId = new Map<string, DigestSourceLink>();
+  for (const subscription of subscriptions) {
+    const builder = subscription.builder;
+    if (!builder?.entity || byEntityId.has(builder.entity.id)) continue;
+    byEntityId.set(builder.entity.id, {
+      aliases: [builder.name],
+      entityId: builder.entity.id,
+      fetchUrl: builder.fetchUrl,
+      handle: builder.entity.handle ?? builder.handle,
+      href: `/builder/${builder.entity.id}`,
+      name: builder.entity.name || builder.name,
+      sourceUrl: builder.sourceUrl,
+    });
+  }
+  return [...byEntityId.values()];
 }
 
 function parseTab(value: string | undefined) {
