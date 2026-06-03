@@ -652,7 +652,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /className="search-result-source-copy"/);
   assert.match(searchPage, /className="search-result-refinement-list"/);
   assert.match(searchPage, /More from this source/);
-  assert.match(searchPage, /Search tools/);
+  assert.match(searchPage, /Active filters/);
+  assert.match(searchPage, /Query details/);
+  assert.doesNotMatch(searchPage, /Search tools/);
   assert.match(searchPage, /Clear all/);
   assert.match(searchPage, /className="search-filter-chip-row"/);
   assert.match(searchPage, /className="search-filter-chip"/);

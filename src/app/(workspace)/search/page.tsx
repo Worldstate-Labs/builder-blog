@@ -315,7 +315,7 @@ async function SearchResultsSection({
                 <ActiveSearchFilters filters={activeFilters} clearAllHref={clearAllSearchHref(activeQuery)} />
               ) : null}
               <details className="search-advanced-tools">
-                <summary>Search tools</summary>
+                <summary>Query details</summary>
                 <SearchQueryInsights
                   actions={recoveryActions}
                   mode={mode}
@@ -504,7 +504,7 @@ function ActiveSearchFilters({
 }) {
   return (
     <section className="search-active-filters" aria-label="Active search filters">
-      <div className="search-active-filters-heading">Search tools</div>
+      <div className="search-active-filters-heading">Active filters</div>
       <div className="search-filter-chip-row">
         {filters.map((filter) => (
           <Link
