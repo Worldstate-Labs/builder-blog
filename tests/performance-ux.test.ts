@@ -1055,6 +1055,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const addBuilderForm = source("src/components/AddBuilderForm.tsx");
   const builderEditDialog = source("src/components/BuilderEditDialog.tsx");
+  const builderLibraryStats = source("src/components/BuilderLibraryStats.tsx");
   const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
   const builderFeedItems = source("src/components/BuilderFeedItems.tsx");
   const mobileSourcesSwitcher = source("src/components/MobileSourcesSwitcher.tsx");
@@ -1069,6 +1070,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*actions=/);
   assert.doesNotMatch(buildersPage, /Manage followed, private, and imported sources/);
   assert.match(buildersPage, /actions=\{[\s\S]*<Suspense fallback=\{<BuilderStatsFallback \/>}/);
+  assert.match(builderLibraryStats, /CountMeta/);
+  assert.doesNotMatch(builderLibraryStats, /CountMetric/);
+  assert.doesNotMatch(builderLibraryStats, /at-mobile grid|grid-cols-3/);
+  assert.match(builderLibraryStats, /className="source-summary-toolbar page-toolbar"/);
   assert.doesNotMatch(buildersPage, /<section className="fb-page-head"/);
   assert.match(buildersPage, /title=\{data\.isAdmin \? adminCommunityLibraryName : "Private library"\}[\s\S]*defaultOpen/);
   assert.doesNotMatch(builderLibraryList, /function BuilderStats/);
@@ -1176,6 +1181,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.imported-libraries-head\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(globals, /\.library-section-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(globals, /\.source-stat-skeleton\s*{[\s\S]*border-radius:\s*999px/);
+  assert.match(globals, /\.source-summary-line \.count-meta\s*{[\s\S]*font-size:\s*0\.8125rem/);
+  assert.match(globals, /\.source-summary-line \.count-meta \+ \.count-meta::before\s*{[\s\S]*content:\s*"·"/);
+  assert.match(globals, /\.source-summary-toolbar\s*{[\s\S]*margin-left:\s*auto/);
   assert.match(globals, /\.builder-library-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.builder-edit-dialog-body\s*{[\s\S]*padding:\s*1rem 1\.125rem/);
   assert.match(globals, /\.builder-edit-dialog-field\s*{[\s\S]*display:\s*grid/);

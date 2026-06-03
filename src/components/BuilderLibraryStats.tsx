@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { SubscribeAllLibraryBuildersButton } from "@/components/BuilderLibraryActions";
-import { CountMetric } from "@/components/Count";
+import { CountMeta } from "@/components/Count";
 import {
   builderLibraryStatsChanged,
   builderLibrarySubscribeAll,
@@ -83,20 +83,13 @@ export function BuilderLibraryStats({
   }
 
   return (
-    <>
-      <div className="at-desktop page-toolbar">
-        <div className="source-summary-line" aria-label="Source library counts">
-          <CountMetric label="in library" value={stats.inLibrary} />
-          <CountMetric label="followed" value={stats.subscribed} />
-          <CountMetric label="summarized" value={stats.fetchedItems} />
-        </div>
-        <SubscribeAllLibraryBuildersButton onSubscribedAll={onSubscribedAll} />
+    <div className="source-summary-toolbar page-toolbar">
+      <div className="source-summary-line" aria-label="Source library counts">
+        <CountMeta label="in library" value={stats.inLibrary} />
+        <CountMeta label="followed" value={stats.subscribed} />
+        <CountMeta label="summarized" value={stats.fetchedItems} />
       </div>
-      <div className="at-mobile grid w-full grid-cols-3 gap-2">
-        <CountMetric label="In library" value={stats.inLibrary} />
-        <CountMetric label="Followed" value={stats.subscribed} />
-        <CountMetric label="Summarized" value={stats.fetchedItems} />
-      </div>
-    </>
+      <SubscribeAllLibraryBuildersButton onSubscribedAll={onSubscribedAll} />
+    </div>
   );
 }
