@@ -16,6 +16,11 @@ import { useRef, useState } from "react";
 
 type MarkdownAction = "undo" | "heading" | "bullet" | "ordered" | "quote" | "code";
 type MarkdownMode = "edit" | "split" | "preview";
+type HistoryEntry = {
+  value: string;
+  selectionStart: number;
+  selectionEnd: number;
+};
 
 const ACTIONS: Array<{
   id: MarkdownAction;
@@ -145,10 +150,10 @@ export function MarkdownEditor({
   ariaLabel: string;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const historyRef = useRef<HistoryEntry[]>([]);
   const [mode, setMode] = useState<MarkdownMode>("edit");
 
-  function replaceSelection(next: string, selectionStart: number, selectionEnd: number) {
-    onChange(next);
+  function focusSelection(selectionStart: number, selectionEnd: number) {
     window.requestAnimationFrame(() => {
       const textarea = textareaRef.current;
       if (!textarea) return;
@@ -157,7 +162,43 @@ export function MarkdownEditor({
     });
   }
 
+  function pushHistory(entry: HistoryEntry) {
+    historyRef.current = [...historyRef.current.slice(-49), entry];
+  }
+
+  function restoreFromHistory() {
+    const previous = historyRef.current.pop();
+    if (!previous) {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      textarea.focus();
+      document.execCommand("undo");
+      return;
+    }
+    if (mode === "preview") setMode("edit");
+    onChange(previous.value);
+    focusSelection(previous.selectionStart, previous.selectionEnd);
+  }
+
+  function replaceSelection(next: string, selectionStart: number, selectionEnd: number) {
+    const textarea = textareaRef.current;
+    if (next !== value) {
+      pushHistory({
+        value,
+        selectionStart: textarea?.selectionStart ?? 0,
+        selectionEnd: textarea?.selectionEnd ?? 0,
+      });
+    }
+    onChange(next);
+    focusSelection(selectionStart, selectionEnd);
+  }
+
   function applyAction(action: MarkdownAction) {
+    if (action === "undo") {
+      restoreFromHistory();
+      return;
+    }
+
     const textarea = textareaRef.current;
     if (!textarea) {
       setMode("edit");
@@ -166,12 +207,6 @@ export function MarkdownEditor({
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selected = value.slice(start, end);
-
-    if (action === "undo") {
-      textarea.focus();
-      document.execCommand("undo");
-      return;
-    }
 
     if (action === "code") {
       const block = `\`\`\`\n${selected}\n\`\`\``;
@@ -200,6 +235,12 @@ export function MarkdownEditor({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if ((event.metaKey || event.ctrlKey) && !event.shiftKey && event.key.toLowerCase() === "z") {
+      event.preventDefault();
+      restoreFromHistory();
+      return;
+    }
+
     if (event.key !== "Tab") return;
     event.preventDefault();
     const textarea = event.currentTarget;
