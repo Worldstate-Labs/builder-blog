@@ -2495,30 +2495,33 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(srcRoute, /isAdminEmail\(session\.user\.email\)/);
   assert.match(srcRoute, /updateUserSourceConfigAndDefault/);
   assert.match(digestRoute, /isAdminEmail\(session\.user\.email\)/);
-  assert.match(digestRoute, /Common post-summary rules can only be changed by an admin/);
+  assert.match(digestRoute, /Common fetch and post-summary rules can only be changed by an admin/);
+  assert.match(digestRoute, /commonFetchRules: defaultConfig\.commonFetchRules/);
   assert.match(digestRoute, /commonSummaryRules: defaultConfig\.commonSummaryRules/);
   assert.match(digestRoute, /updateUserDigestConfigAndDefault/);
   assert.match(store, /client\(\)\.\$transaction\(/);
 
   // Settings page shows source/digest config to every user, but only admins can
-  // edit the common post-summary rules shared default.
+  // edit the common fetching and post-summary rules shared defaults.
   const settingsPage = readFileSync("src/app/(workspace)/settings/page.tsx", "utf8");
   assert.match(settingsPage, /getUserSourceConfigs\(userId\)/);
   assert.match(settingsPage, /getUserDigestConfig\(userId\)/);
   assert.match(settingsPage, /Source and digest rules/);
   assert.match(settingsPage, /Source update rules/);
   assert.match(settingsPage, /AI Digest rules/);
+  assert.match(settingsPage, /CommonFetchRulesForm/);
   assert.match(settingsPage, /CommonSummaryRulesForm/);
   assert.match(settingsPage, /isAdminEmail\(session\.user\.email\)/);
   assert.match(settingsPage, /isAdmin \?/);
 
   // Runtime reads resolve source and digest assembly rules to the requesting
-  // user's config, but common post-summary rules always come from the default
-  // template admin edits.
+  // user's config, but common fetching and post-summary rules always come from
+  // the default template admin edits.
   const contextRoute = readFileSync("src/app/api/skill/context/route.ts", "utf8");
   assert.match(contextRoute, /getUserSourceConfigs\(user\.id\)/);
   assert.match(contextRoute, /getUserDigestConfig\(user\.id\)/);
   assert.match(contextRoute, /getDigestConfig\(\)/);
+  assert.match(contextRoute, /commonFetchRules: defaultDigestConfig\.commonFetchRules/);
   assert.match(contextRoute, /commonSummaryRules: defaultDigestConfig\.commonSummaryRules/);
   const buildersRoute = readFileSync("src/app/api/skill/builders/route.ts", "utf8");
   assert.match(buildersRoute, /getUserSourceConfigs\(user\.id\)/);
@@ -2529,6 +2532,7 @@ test("content config is per-user, seeded from a system default", () => {
   const commonSummaryRulesForm = readFileSync("src/components/CommonSummaryRulesForm.tsx", "utf8");
   assert.match(srcManager, /\/api\/settings\/source-types/);
   assert.match(digestForm, /\/api\/settings\/digest-config/);
+  assert.match(commonSummaryRulesForm, /commonFetchRules/);
   assert.match(commonSummaryRulesForm, /commonSummaryRules/);
   assert.match(commonSummaryRulesForm, /\/api\/settings\/digest-config/);
   assert.doesNotMatch(digestForm, /commonSummaryRules/);
@@ -2538,6 +2542,6 @@ test("content config is per-user, seeded from a system default", () => {
     "skills/builder-blog-digest/jobs/_fetch-task-contract.md",
     "utf8",
   );
-  assert.match(contract, /your per-source fetch prompt/);
+  assert.match(contract, /common fetching rules plus your per-source fetch prompt/);
   assert.doesNotMatch(contract, /the admin's per-source fetch prompt/);
 });

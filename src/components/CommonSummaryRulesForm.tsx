@@ -17,6 +17,51 @@ export function CommonSummaryRulesForm({
   initialValue,
   updatedAt,
 }: CommonSummaryRulesFormProps) {
+  return (
+    <CommonRulesForm
+      ariaLabel="Common post-summary rules"
+      description="Applied when each fetched post is summarized before it can appear in feeds or AI Digest."
+      emptyMessage="Common summary rules can't be empty."
+      fieldName="commonSummaryRules"
+      initialValue={initialValue}
+      title="Common post-summary rules"
+      updatedAt={updatedAt}
+    />
+  );
+}
+
+export function CommonFetchRulesForm({
+  initialValue,
+  updatedAt,
+}: CommonSummaryRulesFormProps) {
+  return (
+    <CommonRulesForm
+      ariaLabel="Common fetching rules"
+      description="Applied before any source-specific fetch prompt when the agent needs to extract source content."
+      emptyMessage="Common fetching rules can't be empty."
+      fieldName="commonFetchRules"
+      initialValue={initialValue}
+      title="Common fetching rules"
+      updatedAt={updatedAt}
+    />
+  );
+}
+
+function CommonRulesForm({
+  ariaLabel,
+  description,
+  emptyMessage,
+  fieldName,
+  initialValue,
+  title,
+  updatedAt,
+}: CommonSummaryRulesFormProps & {
+  ariaLabel: string;
+  description: string;
+  emptyMessage: string;
+  fieldName: "commonFetchRules" | "commonSummaryRules";
+  title: string;
+}) {
   const [value, setValue] = useState(initialValue);
   const [savedValue, setSavedValue] = useState(initialValue);
   const [savedUpdatedAt, setSavedUpdatedAt] = useState(updatedAt);
@@ -26,7 +71,7 @@ export function CommonSummaryRulesForm({
 
   function save() {
     if (value.trim().length === 0) {
-      setStatus({ kind: "error", message: "Common summary rules can't be empty." });
+      setStatus({ kind: "error", message: emptyMessage });
       return;
     }
     setStatus({ kind: "saving" });
@@ -35,11 +80,11 @@ export function CommonSummaryRulesForm({
         const response = await fetch("/api/settings/digest-config", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ patch: { commonSummaryRules: value } }),
+          body: JSON.stringify({ patch: { [fieldName]: value } }),
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`);
-        const nextValue = body.config?.commonSummaryRules ?? value;
+        const nextValue = body.config?.[fieldName] ?? value;
         setSavedValue(nextValue);
         setValue(nextValue);
         setSavedUpdatedAt(body.config?.updatedAt ?? savedUpdatedAt);
@@ -54,13 +99,10 @@ export function CommonSummaryRulesForm({
   }
 
   return (
-    <Section
-      title="Common post-summary rules"
-      description="Applied when each fetched post is summarized before it can appear in feeds or AI Digest."
-    >
+    <Section title={title} description={description}>
       <div className="common-summary-rules-form">
         <MarkdownEditor
-          ariaLabel="Common post-summary rules"
+          ariaLabel={ariaLabel}
           height={340}
           value={value}
           onChange={(next) => {

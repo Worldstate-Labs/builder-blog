@@ -89,10 +89,9 @@ type FetchTaskLog = {
 type PromptBundle = {
   summary?: string | null;
   fetch?: string | null;
-  // When true, the fetch prompt above is the shared FollowBrief
-  // default — admin hasn't configured a custom fetch prompt for this
-  // source. UI flags this with a small "default" pill so users know
-  // editing the admin field would change it.
+  // When true, the prompt above uses the common fetching rules without a
+  // source-specific fetch prompt. UI flags this with a small "default" pill so
+  // users know the source-specific optional field is empty.
   fetchIsDefault?: boolean;
 };
 
@@ -1336,7 +1335,7 @@ function DetailsBody({ details }: { details: DetailsShape }) {
                             color: "var(--muted-strong)",
                             letterSpacing: "0.05em",
                           }}
-                          title="Admin hasn't configured a custom fetch prompt for this source — agent used the shared default."
+                          title="No source-specific fetch prompt is configured for this source; the agent used the common fetching rules."
                         >
                           default
                         </span>

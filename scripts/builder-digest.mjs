@@ -505,6 +505,7 @@ async function fetchPersonal(args) {
       config.token,
     );
     const sources = context.sources ?? {};
+    const commonFetchRules = context.commonFetchRules ?? context.digest?.commonFetchRules ?? DEFAULT_FETCH_GUIDANCE;
     const commonSummaryRules = context.commonSummaryRules ?? context.digest?.commonSummaryRules ?? "";
     const subscribedBuilderIds = new Set(
       (context.subscriptions ?? []).map((builder) => builder.id),
@@ -575,6 +576,7 @@ async function fetchPersonal(args) {
             const task = buildBuilderFallbackTask(builder, fallbackBuilderSync, {
               error: new Error("No local fetcher configured for this personal source."),
               sources,
+              commonFetchRules,
               commonSummaryRules,
             });
             fetchTasks.push(task);
@@ -604,7 +606,7 @@ async function fetchPersonal(args) {
           sourceType: source.id,
         };
         const fetchTasksFromAgentTasks = sourceAgentTasks.map((task) =>
-          fetchTaskFromAgentTask(task, builderSync, sources, commonSummaryRules),
+          fetchTaskFromAgentTask(task, builderSync, sources, commonFetchRules, commonSummaryRules),
         );
         fetchTasks.push(...fetchTasksFromAgentTasks);
         builderStat.tasksGenerated += fetchTasksFromAgentTasks.length;
@@ -618,6 +620,7 @@ async function fetchPersonal(args) {
         const task = buildBuilderFallbackTask(builder, fallbackBuilderSync, {
           error,
           sources,
+          commonFetchRules,
           commonSummaryRules,
         });
         fetchTasks.push(task);
@@ -655,6 +658,7 @@ async function fetchPersonal(args) {
     ({ slimFetchTasks, promptsBySourceType } = summarizeFetchTasksForLog(
       fetchTasks,
       sources,
+      commonFetchRules,
       commonSummaryRules,
     ));
 
@@ -731,7 +735,12 @@ export function textStats(value) {
   return { chars: s.length, words: trimmed ? trimmed.split(/\s+/).length : 0 };
 }
 
-export function summarizeFetchTasksForLog(fetchTasks, sources = {}, commonSummaryRules = "") {
+export function summarizeFetchTasksForLog(
+  fetchTasks,
+  sources = {},
+  commonFetchRules = DEFAULT_FETCH_GUIDANCE,
+  commonSummaryRules = "",
+) {
   const slimFetchTasks = fetchTasks.map((task) => {
     const ready = task?.contentStatus === "ready";
     const isUserAction =
@@ -780,7 +789,7 @@ export function summarizeFetchTasksForLog(fetchTasks, sources = {}, commonSummar
         return null;
       }
     })();
-    const fetchInstructions = singlePostFetchInstructions(sourceType, sources);
+    const fetchInstructions = singlePostFetchInstructions(sourceType, sources, commonFetchRules);
     promptsBySourceType[sourceType] = {
       summary: summaryInstructions?.prompt ?? null,
       fetch: fetchInstructions.prompt,
@@ -913,7 +922,11 @@ const FALLBACK_FEED_ITEM_KIND_BY_BUILDER_KIND = {
   WEBSITE: "OTHER",
 };
 
-function buildBuilderFallbackTask(builder, builderSync, { error, sources = {}, commonSummaryRules = "" } = {}) {
+function buildBuilderFallbackTask(
+  builder,
+  builderSync,
+  { error, sources = {}, commonFetchRules = DEFAULT_FETCH_GUIDANCE, commonSummaryRules = "" } = {},
+) {
   const kind = FALLBACK_FEED_ITEM_KIND_BY_BUILDER_KIND[builder.kind] || "OTHER";
   const handle = builder.handle ? String(builder.handle).replace(/^@/, "") : null;
   const url =
@@ -931,7 +944,7 @@ function buildBuilderFallbackTask(builder, builderSync, { error, sources = {}, c
     body: "",
   };
   const sourceType = builderSync.sourceType ?? sourceTypeIdForBuilder(builder);
-  const fetchInstructions = singlePostFetchInstructions(sourceType, sources);
+  const fetchInstructions = singlePostFetchInstructions(sourceType, sources, commonFetchRules);
   const task = {
     type: "fetch_post",
     agentWorkType: "fetch_builder_fallback",
@@ -950,10 +963,17 @@ function buildBuilderFallbackTask(builder, builderSync, { error, sources = {}, c
   return task;
 }
 
-function fetchTaskFromAgentTask(task, builderSync, sources = {}, commonSummaryRules = "") {
+function fetchTaskFromAgentTask(
+  task,
+  builderSync,
+  sources = {},
+  commonFetchRules = DEFAULT_FETCH_GUIDANCE,
+  commonSummaryRules = "",
+) {
   const item = task.item ?? {};
   const sourceType = task.sourceType ?? builderSync.sourceType;
-  const fetchInstructions = task.fetchInstructions ?? singlePostFetchInstructions(sourceType, sources);
+  const fetchInstructions =
+    task.fetchInstructions ?? singlePostFetchInstructions(sourceType, sources, commonFetchRules);
   const out = {
     type: "fetch_post",
     agentWorkType: task.type,
@@ -986,34 +1006,31 @@ export function fetchTaskId(task) {
     .join(":");
 }
 
-// Default extraction guidance the agent follows when admin hasn't
-// configured a custom fetchPromptBody for the source. Kept here so
-// the CLI is the single source of truth for "what prompt the agent
-// actually received" — both the skill markdown and the fetch log
-// point at task.fetchInstructions.prompt now, and that string is
-// always non-empty (custom-or-default).
+// Fallback extraction guidance used only when an older server does not provide
+// an admin-editable common fetch prompt in the skill context.
 export const DEFAULT_FETCH_GUIDANCE = [
   "Use `task.item.url`, `task.sourceType`, and `task.agentWorkType` to pick any",
   "extraction method available: web fetch, local CLI tools (yt-dlp, curl,",
-  "ffmpeg, headless browser, etc.), transcription APIs — anything you have.",
+  "ffmpeg, headless browser, etc.), transcription APIs - anything you have.",
   "Keep trying available methods until real primary content that meets",
   "`task.minimumContentQuality` is obtained, or no method remains.",
 ].join("\n");
 
 // Build the per-source extraction instructions the agent literally
 // follows when a fetchTask is `requires_agent`. Always returns a
-// non-null record:
-//   - admin-configured fetchPromptBody → wraps it with a thin header
-//     and marks isDefault=false. The agent must follow this prompt
-//     verbatim and may not substitute its own heuristics.
-//   - empty config → returns the shared default extraction guidance
-//     with isDefault=true. Same string the fetch log surfaces, so the
-//     "this is what the agent received" promise stays true even when
-//     no custom prompt is configured.
-export function singlePostFetchInstructions(sourceId, sources = {}) {
+// non-null record. The common fetch rules are always included; a
+// source-specific fetchPromptBody is appended when configured.
+export function singlePostFetchInstructions(
+  sourceId,
+  sources = {},
+  commonFetchRules = DEFAULT_FETCH_GUIDANCE,
+) {
   const source = sources?.[sourceId];
   const label = source?.label || sourceId;
   const body = source?.fetchPrompt?.body;
+  const common = typeof commonFetchRules === "string" && commonFetchRules.trim().length > 0
+    ? commonFetchRules
+    : DEFAULT_FETCH_GUIDANCE;
   const hasCustom = typeof body === "string" && body.trim().length > 0;
   if (hasCustom) {
     return {
@@ -1022,6 +1039,10 @@ export function singlePostFetchInstructions(sourceId, sources = {}) {
       prompt: [
         `Follow these extraction rules for one ${label} post.`,
         "",
+        "Common fetching rules:",
+        common,
+        "",
+        `Source-specific fetching rules (${label}):`,
         body,
       ].join("\n"),
     };
@@ -1030,9 +1051,10 @@ export function singlePostFetchInstructions(sourceId, sources = {}) {
     scope: "single_post",
     isDefault: true,
     prompt: [
-      `Default FollowBrief extraction for one ${label} post (you have not configured a custom fetch prompt for this source).`,
+      `Follow these extraction rules for one ${label} post.`,
       "",
-      DEFAULT_FETCH_GUIDANCE,
+      "Common fetching rules:",
+      common,
     ].join("\n"),
   };
 }

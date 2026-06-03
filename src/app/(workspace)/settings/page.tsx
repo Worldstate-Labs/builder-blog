@@ -3,7 +3,10 @@ import { Suspense } from "react";
 import { AdminDigestConfigForm } from "@/components/AdminDigestConfigForm";
 import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
 import { AgentTokenPanel } from "@/components/AgentTokenPanel";
-import { CommonSummaryRulesForm } from "@/components/CommonSummaryRulesForm";
+import {
+  CommonFetchRulesForm,
+  CommonSummaryRulesForm,
+} from "@/components/CommonSummaryRulesForm";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -67,7 +70,11 @@ async function SourceTypeConfigSection({
         </summary>
         <div className="settings-rules-body mt-4">
           {isAdmin ? (
-            <div className="settings-config-form mb-4">
+            <div className="settings-config-form mb-4 grid gap-4">
+              <CommonFetchRulesForm
+                initialValue={digestConfig.commonFetchRules}
+                updatedAt={digestConfig.updatedAt.toISOString()}
+              />
               <CommonSummaryRulesForm
                 initialValue={digestConfig.commonSummaryRules}
                 updatedAt={digestConfig.updatedAt.toISOString()}

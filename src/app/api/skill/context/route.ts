@@ -139,6 +139,7 @@ export async function GET(request: Request) {
     digestIntro: digestConfig.digestIntro,
     translate: digestConfig.translate,
     order: digestConfig.digestOrder as string[],
+    commonFetchRules: defaultDigestConfig.commonFetchRules,
     commonSummaryRules: defaultDigestConfig.commonSummaryRules,
   };
 
@@ -347,6 +348,7 @@ export async function GET(request: Request) {
     subscriptionCount: subscribedEntityIds.length,
     items,
     sources: sourcesContext,
+    commonFetchRules: defaultDigestConfig.commonFetchRules,
     commonSummaryRules: defaultDigestConfig.commonSummaryRules,
     digest: digestContext,
     ...(includePrompts ? { prompts: legacyPrompts } : {}),

@@ -47,9 +47,10 @@ How to execute each `fetchTask`:
     fetch or rewrite the source content.
   - For `requires_agent`, follow `task.fetchInstructions.prompt` as the
     authoritative extraction guide. This string is always present and is either
-    your per-source fetch prompt (when configured) or the FollowBrief
-    default extraction guidance (use task.item.url, task.sourceType,
-    task.agentWorkType, and any available method — web fetch, local CLI tools
+    the common fetching rules plus your per-source fetch prompt (when
+    configured), or just the common fetching rules for that source (use
+    task.item.url, task.sourceType, task.agentWorkType, and any available
+    method — web fetch, local CLI tools
     yt-dlp/curl/ffmpeg, transcription APIs, headless browser, anything you have
     — until real primary content meeting task.minimumContentQuality is
     obtained). Do not override the prompt with your own heuristics. Do not stop

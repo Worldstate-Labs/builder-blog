@@ -612,6 +612,7 @@ model DigestConfig {
   digestIntro        String
   translate          String
   digestOrder        Json
+  commonFetchRules   String
   commonSummaryRules String
   updatedAt          DateTime @updatedAt
   updatedBy          String?
@@ -650,6 +651,7 @@ model UserDigestConfig {
   digestIntro        String
   translate          String
   digestOrder        Json
+  commonFetchRules   String
   commonSummaryRules String
   updatedAt          DateTime @updatedAt
   updatedBy          String?

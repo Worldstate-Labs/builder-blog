@@ -639,6 +639,36 @@ test("singlePostSummaryInstructions throws when source is missing from context.s
   );
 });
 
+test("singlePostFetchInstructions prepends common fetching rules", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const sources = {
+    youtube: {
+      id: "youtube",
+      label: "YouTube",
+      fetchPrompt: { body: "Use captions first, then transcribe audio." },
+    },
+    blog: {
+      id: "blog",
+      label: "Blog",
+      fetchPrompt: { body: null },
+    },
+  };
+  const commonFetchRules = "Try available extraction methods until primary content is found.";
+
+  const youtube = cli.singlePostFetchInstructions("youtube", sources, commonFetchRules);
+  assert.equal(youtube.isDefault, false);
+  assert.match(youtube.prompt, /Common fetching rules:/);
+  assert.match(youtube.prompt, /Try available extraction methods/);
+  assert.match(youtube.prompt, /Source-specific fetching rules \(YouTube\):/);
+  assert.match(youtube.prompt, /Use captions first, then transcribe audio/);
+
+  const blog = cli.singlePostFetchInstructions("blog", sources, commonFetchRules);
+  assert.equal(blog.isDefault, true);
+  assert.match(blog.prompt, /Common fetching rules:/);
+  assert.match(blog.prompt, /Try available extraction methods/);
+  assert.doesNotMatch(blog.prompt, /Source-specific fetching rules/);
+});
+
 test("agent sync validation rejects legacy task result shapes", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
 

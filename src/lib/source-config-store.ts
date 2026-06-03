@@ -301,6 +301,7 @@ export async function getUserDigestConfig(userId: string): Promise<UserDigestCon
       digestIntro: def.digestIntro,
       translate: def.translate,
       digestOrder: def.digestOrder as object,
+      commonFetchRules: def.commonFetchRules,
       commonSummaryRules: def.commonSummaryRules,
     },
   });

@@ -42,8 +42,15 @@ export type DigestConfigShape = {
   digestIntro: string;
   translate: string;
   digestOrder: string[];
+  commonFetchRules: string;
   commonSummaryRules: string;
 };
+
+export const DEFAULT_COMMON_FETCH_RULES = [
+  "Use `task.item.url`, `task.sourceType`, and `task.agentWorkType` to pick any extraction method available: web fetch, local CLI tools (yt-dlp, curl, ffmpeg, headless browser, etc.), transcription APIs - anything you have.",
+  "",
+  "Keep trying available methods until real primary content that meets `task.minimumContentQuality` is obtained, or no method remains.",
+].join("\n");
 
 // Verbatim default text seeded into `DigestConfig.commonSummaryRules`.
 // Mirrored in `prisma/migrations/000024_common_summary_rules` so existing
@@ -100,6 +107,7 @@ export const DEFAULT_DIGEST_CONFIG: DigestConfigShape = {
   digestIntro: DEFAULT_DIGEST_PROMPTS.digestIntro,
   translate: DEFAULT_DIGEST_PROMPTS.translate,
   digestOrder: ["x", "blog", "youtube", "podcast", "website"],
+  commonFetchRules: DEFAULT_COMMON_FETCH_RULES,
   commonSummaryRules: DEFAULT_COMMON_SUMMARY_RULES,
 };
 
@@ -134,6 +142,7 @@ export async function ensureSourceConfigsSeeded(client: PrismaClient): Promise<v
         digestIntro: DEFAULT_DIGEST_CONFIG.digestIntro,
         translate: DEFAULT_DIGEST_CONFIG.translate,
         digestOrder: DEFAULT_DIGEST_CONFIG.digestOrder as object,
+        commonFetchRules: DEFAULT_DIGEST_CONFIG.commonFetchRules,
         commonSummaryRules: DEFAULT_DIGEST_CONFIG.commonSummaryRules,
       },
     ],

@@ -21,6 +21,7 @@ const DigestPatchSchema = z
   .object({
     digestIntro: z.string().min(1).max(20_000).optional(),
     translate: z.string().min(1).max(20_000).optional(),
+    commonFetchRules: z.string().min(1).max(20_000).optional(),
     commonSummaryRules: z.string().min(1).max(20_000).optional(),
     digestOrder: z
       .array(z.string().min(1))
@@ -47,7 +48,11 @@ export async function GET() {
   ]);
   const config = isAdminEmail(session.user.email)
     ? userConfig
-    : { ...userConfig, commonSummaryRules: defaultConfig.commonSummaryRules };
+    : {
+        ...userConfig,
+        commonFetchRules: defaultConfig.commonFetchRules,
+        commonSummaryRules: defaultConfig.commonSummaryRules,
+      };
   return NextResponse.json({ config });
 }
 
@@ -61,9 +66,12 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
   const isAdmin = isAdminEmail(session.user.email);
-  if (!isAdmin && parsed.data.patch.commonSummaryRules !== undefined) {
+  const writesAdminOnlyRules =
+    parsed.data.patch.commonFetchRules !== undefined ||
+    parsed.data.patch.commonSummaryRules !== undefined;
+  if (!isAdmin && writesAdminOnlyRules) {
     return NextResponse.json(
-      { error: "Common post-summary rules can only be changed by an admin." },
+      { error: "Common fetch and post-summary rules can only be changed by an admin." },
       { status: 403 },
     );
   }
