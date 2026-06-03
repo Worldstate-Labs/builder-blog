@@ -780,9 +780,10 @@ function DigestStatusPanel({
             </div>
           </div>
         ) : (
-          <div className="sync-panel-slot-empty">
-            No scheduled run has elapsed yet.
-          </div>
+          <EmptyState
+            body="No scheduled run has elapsed yet."
+            className="sync-panel-slot-empty"
+          />
         )}
       </div>
     </div>

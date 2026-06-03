@@ -465,10 +465,13 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /@\/components\/EmptyState/);
   assert.match(fetchLogPanel, /className="sync-panel-card"/);
   assert.match(fetchLogPanel, /<EmptyState[\s\S]*className="sync-panel-empty is-dashed"/);
+  assert.match(fetchLogPanel, /<EmptyState[\s\S]*className="sync-panel-slot-empty"/);
   assert.match(digestLogPanel, /className="fb-segmented-tabs sync-panel-tabs"/);
   assert.match(digestLogPanel, /@\/components\/EmptyState/);
   assert.match(digestLogPanel, /className="sync-panel-card"/);
   assert.match(digestLogPanel, /<EmptyState[\s\S]*className="sync-panel-empty is-dashed"/);
+  assert.match(digestLogPanel, /<EmptyState[\s\S]*className="sync-panel-slot-empty"/);
+  assert.match(globals, /\.sync-panel-slot-empty\s*{\s*border-radius:\s*8px;\s*padding:\s*0\.75rem;\s*}/);
   assert.doesNotMatch(fetchLogPanel, /fb-segmented-tabs mt-4 inline-flex/);
   assert.doesNotMatch(digestLogPanel, /fb-segmented-tabs mt-4 inline-flex/);
   assert.match(digestDetails, /stateKey = `\$\{digestId\}/);

@@ -4319,10 +4319,7 @@ svg.lucide {
 }
 
 .sync-panel-slot-empty {
-  border: 1px dashed var(--line);
   border-radius: 8px;
-  color: var(--muted-strong);
-  font-size: 0.875rem;
   padding: 0.75rem;
 }
 
