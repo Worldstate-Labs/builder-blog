@@ -3830,7 +3830,10 @@ svg.lucide {
   background: color-mix(in oklch, var(--paper-strong) 72%, transparent);
   border: 1px solid var(--line);
   border-radius: 12px;
+  margin-inline: auto;
+  max-width: 58rem;
   overflow: hidden;
+  width: 100%;
 }
 
 .ai-digest-stack {
