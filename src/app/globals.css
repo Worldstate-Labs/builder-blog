@@ -730,20 +730,11 @@ svg.lucide {
 }
 
 .home-feed-tabs {
-  background: var(--paper-strong);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  display: inline-flex;
-  padding: 0.25rem;
   width: fit-content;
 }
 
 .mobile-filter-tabs {
-  background: var(--paper-strong);
-  border: 1px solid var(--line);
-  border-radius: 10px;
   display: flex;
-  padding: 0.25rem;
   width: 100%;
 }
 
@@ -752,12 +743,7 @@ svg.lucide {
 }
 
 .filter-tabs {
-  background: var(--paper-strong);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  display: inline-flex;
   flex-wrap: wrap;
-  padding: 0.25rem;
   width: fit-content;
 }
 
@@ -3676,7 +3662,12 @@ svg.lucide {
 }
 
 .fb-segmented-tabs {
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: inline-flex;
   gap: 0.125rem;
+  padding: 0.25rem;
 }
 
 .fb-segmented-tabs .fb-btn {
@@ -4071,12 +4062,7 @@ svg.lucide {
 }
 
 .sync-panel-tabs {
-  background: var(--paper-strong);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  display: inline-flex;
   margin-top: 1rem;
-  padding: 0.25rem;
 }
 
 .sync-panel-card,
