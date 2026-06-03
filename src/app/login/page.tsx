@@ -31,7 +31,7 @@ export default async function LoginPage({
             Follow people and sources, collect new updates, and keep your
             digests in a searchable archive.
           </p>
-          <div className="fb-login-proof-grid">
+          <div className="fb-login-proof-rail" aria-label="Workspace capabilities">
             <LoginProof icon={Archive} label="Archive" />
             <LoginProof icon={Search} label="Search" />
             <LoginProof icon={KeyRound} label="Local helper" />
@@ -115,9 +115,9 @@ function LoginProof({
   label: string;
 }) {
   return (
-    <div className="fb-dark-proof">
-      <Icon className="fb-dark-proof-icon" aria-hidden="true" />
-      <div className="fb-dark-proof-label">{label}</div>
+    <div className="fb-login-proof">
+      <Icon className="fb-login-proof-icon" aria-hidden="true" />
+      <div className="fb-login-proof-label">{label}</div>
     </div>
   );
 }
