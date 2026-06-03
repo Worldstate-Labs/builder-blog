@@ -191,10 +191,12 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
               </button>
             ))}
           </nav>
-          <div className="fb-m-segctl at-mobile" aria-label="Library filter">
+          <div className="fb-segmented-tabs mobile-filter-tabs at-mobile" aria-label="Library filter">
             {visibleFilters.slice(0, 3).map((filter) => (
               <button
-                className={`fb-m-seg${activeFilter === filter.key ? " active" : ""}`}
+                aria-pressed={activeFilter === filter.key}
+                className="fb-btn compact"
+                data-active={activeFilter === filter.key ? "true" : undefined}
                 key={filter.key}
                 onClick={() => setActiveFilter(filter.key)}
                 type="button"

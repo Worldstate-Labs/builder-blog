@@ -738,6 +738,19 @@ svg.lucide {
   width: fit-content;
 }
 
+.mobile-filter-tabs {
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: flex;
+  padding: 0.25rem;
+  width: 100%;
+}
+
+.mobile-filter-tabs .fb-btn {
+  flex: 1;
+}
+
 .page-kicker-row {
   align-items: center;
   display: flex;
@@ -3657,31 +3670,32 @@ svg.lucide {
 }
 
 .fb-segmented-tabs .fb-btn {
-  border-color: transparent;
+  background: color-mix(in oklch, var(--paper-strong) 78%, transparent);
+  border-color: color-mix(in oklch, var(--line) 86%, transparent);
   color: var(--muted-strong);
 }
 
-.fb-segmented-tabs .fb-btn[aria-selected="true"] {
+.fb-segmented-tabs .fb-btn:hover {
+  background: var(--paper-strong);
+  border-color: color-mix(in oklch, var(--ink) 22%, transparent);
+  color: var(--ink);
+}
+
+.fb-segmented-tabs .fb-btn[aria-selected="true"],
+.fb-segmented-tabs .fb-btn[aria-pressed="true"],
+.fb-segmented-tabs .fb-btn[data-active="true"] {
   background: var(--accent);
   border-color: var(--accent);
   box-shadow: 0 8px 18px color-mix(in oklch, var(--accent) 22%, transparent);
   color: #fff;
 }
 
-.fb-segmented-tabs .fb-btn[aria-selected="true"]:hover {
+.fb-segmented-tabs .fb-btn[aria-selected="true"]:hover,
+.fb-segmented-tabs .fb-btn[aria-pressed="true"]:hover,
+.fb-segmented-tabs .fb-btn[data-active="true"]:hover {
   background: var(--accent-strong);
   border-color: var(--accent-strong);
-}
-
-.fb-segmented-tabs .fb-btn[aria-selected="false"] {
-  background: color-mix(in oklch, var(--paper-strong) 78%, transparent);
-  border-color: color-mix(in oklch, var(--line) 86%, transparent);
-}
-
-.fb-segmented-tabs .fb-btn[aria-selected="false"]:hover {
-  background: var(--paper-strong);
-  border-color: color-mix(in oklch, var(--ink) 22%, transparent);
-  color: var(--ink);
+  color: #fff;
 }
 
 .fb-btn.danger {
@@ -7582,36 +7596,6 @@ mark.fb-mark-highlight {
   font-size: 0.8125rem;
   line-height: 1.55;
   margin-top: 0.25rem;
-}
-
-.fb-m-segctl {
-  background: color-mix(in oklch, var(--ink) 5%, transparent);
-  border-radius: 10px;
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-}
-
-.fb-m-seg {
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-  color: var(--muted-strong);
-  cursor: pointer;
-  flex: 1;
-  font-size: 0.78125rem;
-  font-weight: 700;
-  padding: 0.4375rem 0;
-  text-align: center;
-  transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease;
-}
-
-.fb-m-seg.active,
-.fb-m-seg[data-active="true"],
-.fb-m-seg[aria-selected="true"] {
-  background: var(--paper-strong);
-  box-shadow: 0 1px 2px var(--shadow);
-  color: var(--ink);
 }
 
 /* Responsive visibility (overrides Tailwind hidden/lg:flex because

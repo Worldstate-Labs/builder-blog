@@ -19,10 +19,15 @@ export function MobileSourcesSwitcher({
 
   return (
     <>
-      <div className="at-mobile fb-m-segctl" role="tablist" aria-label="Sources view">
+      <div
+        className="fb-segmented-tabs mobile-filter-tabs at-mobile"
+        role="tablist"
+        aria-label="Sources view"
+      >
         <button
           aria-selected={activeTab === "private"}
-          className={`fb-m-seg${activeTab === "private" ? " active" : ""}`}
+          className="fb-btn compact"
+          data-active={activeTab === "private" ? "true" : undefined}
           onClick={() => setActiveTab("private")}
           role="tab"
           type="button"
@@ -31,7 +36,8 @@ export function MobileSourcesSwitcher({
         </button>
         <button
           aria-selected={activeTab === "imported"}
-          className={`fb-m-seg${activeTab === "imported" ? " active" : ""}`}
+          className="fb-btn compact"
+          data-active={activeTab === "imported" ? "true" : undefined}
           onClick={() => setActiveTab("imported")}
           role="tab"
           type="button"

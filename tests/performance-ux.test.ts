@@ -883,6 +883,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   const addBuilderForm = source("src/components/AddBuilderForm.tsx");
   const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
   const builderFeedItems = source("src/components/BuilderFeedItems.tsx");
+  const mobileSourcesSwitcher = source("src/components/MobileSourcesSwitcher.tsx");
   const recommendationItemPage = source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx");
   const postCard = source("src/components/PostCard.tsx");
   const globals = source("src/app/globals.css");
@@ -902,6 +903,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderLibraryList, /\{builder\.feedItemCount\}\s*items/);
   assert.doesNotMatch(builderLibraryList, /No posts yet/);
   assert.doesNotMatch(builderLibraryList, /builder-library-stats/);
+  assert.match(mobileSourcesSwitcher, /className="fb-segmented-tabs mobile-filter-tabs at-mobile"/);
+  assert.match(mobileSourcesSwitcher, /className="fb-btn compact"/);
+  assert.doesNotMatch(mobileSourcesSwitcher, /fb-m-segctl|fb-m-seg/);
   assert.match(builderLibraryList, /className="builder-library-error"/);
   assert.match(builderLibraryList, /<EmptyState body=\{emptyBody\} title=\{emptyTitle\} \/>/);
   assert.match(buildersPage, /<EmptyState body="Import shared libraries from the Hub to see them here\." \/>/);
@@ -1190,7 +1194,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /Remove/);
   assert.doesNotMatch(hubImportForm, /Import selected/);
   assert.doesNotMatch(hubImportForm, /selectedIds/);
-  assert.doesNotMatch(hubImportForm, /aria-pressed/);
+  assert.match(hubImportForm, /className="fb-segmented-tabs mobile-filter-tabs at-mobile"/);
+  assert.match(hubImportForm, /aria-pressed=\{activeFilter === filter\.key\}/);
+  assert.match(hubImportForm, /className="fb-btn compact"/);
+  assert.doesNotMatch(hubImportForm, /fb-m-segctl|fb-m-seg/);
   assert.doesNotMatch(hubImportForm, /hub-select-button/);
   assert.doesNotMatch(hubImportForm, /Deselect/);
   assert.doesNotMatch(hubImportForm, /hub-checkbox/);
