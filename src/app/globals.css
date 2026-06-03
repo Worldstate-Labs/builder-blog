@@ -1702,6 +1702,18 @@ svg.lucide {
   padding: 1rem;
 }
 
+.library-section-summary-copy {
+  min-width: 0;
+}
+
+.library-section-copy {
+  color: var(--muted-strong);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  margin-top: 0.35rem;
+  max-width: var(--copy-max);
+}
+
 .library-section-summary::-webkit-details-marker {
   display: none;
 }
@@ -1916,6 +1928,22 @@ svg.lucide {
 .imported-library-stack {
   display: grid;
   gap: 0.65rem;
+  min-width: 0;
+}
+
+.sources-section-stack,
+.imported-libraries-section {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.imported-libraries-section {
+  gap: 0.875rem;
+}
+
+.imported-libraries-head {
+  max-width: var(--copy-max);
   min-width: 0;
 }
 

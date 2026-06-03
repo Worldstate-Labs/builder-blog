@@ -453,10 +453,10 @@ async function BuilderSections({
   );
 
   const importedSection = (
-    <section className="grid gap-3">
-      <div className="at-desktop">
+    <section className="imported-libraries-section">
+      <div className="imported-libraries-head at-desktop">
         <h2 className="fb-section-heading">Imported libraries</h2>
-        <p className="mt-1 text-sm text-[var(--muted-strong)]">
+        <p className="library-section-copy">
           Sources grouped by the shared library they came from.
         </p>
       </div>
@@ -499,7 +499,7 @@ async function BuilderSections({
   );
 
   return (
-    <section className="grid gap-5">
+    <section className="sources-section-stack">
       <MobileSourcesSwitcher
         privateLabel="Private"
         importedLabel="Imported"
@@ -522,10 +522,10 @@ function BuilderStatsFallback() {
 
 function BuilderSectionsFallback() {
   return (
-    <section className="grid gap-5" aria-live="polite" aria-busy="true">
+    <section className="sources-section-stack" aria-live="polite" aria-busy="true">
       <div className="library-section-panel">
         <div className="library-section-summary">
-          <div className="min-w-0 flex-1">
+          <div className="library-section-summary-copy source-section-skeleton-copy">
             <div className="source-section-skeleton-title" />
             <div className="source-section-skeleton-desc" />
           </div>
@@ -597,9 +597,9 @@ function LibrarySection({
       open={defaultOpen}
     >
       <summary className="library-section-summary">
-        <div>
+        <div className="library-section-summary-copy">
           <h2 className="fb-section-heading">{title}</h2>
-          <p className="mt-1 text-sm text-[var(--muted-strong)]">{detail}</p>
+          <p className="library-section-copy">{detail}</p>
         </div>
         <div className="library-section-meta">
           <span className="fb-kind-pill">{badge}</span>
