@@ -28,7 +28,6 @@ export default function LibraryHubPage() {
     <div className="page-pad">
       <PageHeader
         title="Library Hub"
-        description="Import shared source libraries and AI Digest archives."
         actions={
           <div className="library-hub-page-count">
             <Suspense fallback={<span className="fb-chip" aria-busy="true">Loading</span>}>

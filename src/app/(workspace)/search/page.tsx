@@ -151,7 +151,6 @@ export default async function SearchPage({
       <PageHeader
         className="search-hero"
         title="Search"
-        description="Find sources, saved posts, and digest history."
         actions={
           <div className="search-hero-form">
             <SearchForm

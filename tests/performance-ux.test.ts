@@ -251,8 +251,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(pageHeader, /description \? <p className="fb-desc">\{description\}<\/p> : null/);
   assert.match(pageHeader, /\{actions\}/);
   assert.match(dashboardPage, /@\/components\/PageHeader/);
-  assert.match(dashboardPage, /<PageHeader[\s\S]*title="Home"[\s\S]*description="Read your AI Digest, saved posts, and followed-source updates\."/);
-  assert.match(dashboardPage, /Read your AI Digest, saved posts, and followed-source updates/);
+  assert.match(dashboardPage, /<PageHeader title="Home" \/>/);
+  assert.doesNotMatch(dashboardPage, /Read your AI Digest, saved posts, and followed-source updates/);
   assert.doesNotMatch(dashboardPage, /<header className="fb-page-head"/);
   assert.doesNotMatch(dashboardPage, /<h1 className="sr-only">Home<\/h1>/);
   assert.match(dashboardPage, /className="home-workspace"/);
@@ -619,7 +619,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /SearchResultsSection/);
   assert.match(globals, /\.search-result-skeleton/);
   assert.match(searchPage, /<PageHeader[\s\S]*className="search-hero"[\s\S]*title="Search"/);
-  assert.match(searchPage, /description="Find sources, saved posts, and digest history\."/);
+  assert.doesNotMatch(searchPage, /description="Find sources, saved posts, and digest history\."/);
   assert.match(searchPage, /className="search-hero-form"/);
   assert.doesNotMatch(searchPage, /<header className="fb-page-head search-hero"/);
   assert.doesNotMatch(searchPage, /fb-m-search/);
@@ -811,7 +811,8 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
   assert.match(libraryHubPage, /className="workspace-content-stack"/);
   assert.match(libraryHubPage, /@\/components\/PageHeader/);
-  assert.match(libraryHubPage, /<PageHeader[\s\S]*title="Library Hub"[\s\S]*description="Import shared source libraries and AI Digest archives\."/);
+  assert.match(libraryHubPage, /<PageHeader[\s\S]*title="Library Hub"[\s\S]*actions=/);
+  assert.doesNotMatch(libraryHubPage, /Import shared source libraries and AI Digest archives/);
   assert.match(libraryHubPage, /actions=\{[\s\S]*className="library-hub-page-count"/);
   assert.doesNotMatch(libraryHubPage, /<section className="fb-page-head"/);
   assert.match(libraryHubPage, /className="library-hub-page-count"/);
@@ -885,7 +886,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
   assert.match(buildersPage, /@\/components\/PageHeader/);
-  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*description="Manage followed, private, and imported sources\."/);
+  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*actions=/);
+  assert.doesNotMatch(buildersPage, /Manage followed, private, and imported sources/);
   assert.match(buildersPage, /actions=\{[\s\S]*<Suspense fallback=\{<BuilderStatsFallback \/>}/);
   assert.doesNotMatch(buildersPage, /<section className="fb-page-head"/);
   assert.match(buildersPage, /title=\{data\.isAdmin \? adminCommunityLibraryName : "Private library"\}[\s\S]*defaultOpen/);

@@ -57,7 +57,6 @@ export default function BuildersPage() {
     <div className="page-pad">
       <PageHeader
         title="Sources"
-        description="Manage followed, private, and imported sources."
         actions={
           <Suspense fallback={<BuilderStatsFallback />}>
             <BuilderStatsSlot dataPromise={dataPromise} />

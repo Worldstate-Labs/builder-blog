@@ -64,10 +64,7 @@ export default async function DashboardPage({
 
   return (
     <div className="page-pad">
-      <PageHeader
-        title="Home"
-        description="Read your AI Digest, saved posts, and followed-source updates."
-      />
+      <PageHeader title="Home" />
 
       <section className="home-workspace">
         <DashboardHomeTabs
