@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import {
   RecommendationFeed,
   type RecommendationSnapshotEntry,
@@ -88,19 +88,13 @@ function FollowingRecommendationLoader() {
 function FollowingUnavailable() {
   return (
     <div className="feed-content-stack">
-      <div className="feed-state-panel" data-tone="empty" aria-live="polite">
-        <div className="feed-state-inner">
-          <Sparkles className="feed-state-icon" aria-hidden="true" />
-          <div className="feed-state-copy">
-            <h2 className="feed-state-title">
-              Following is not ready yet
-            </h2>
-            <p className="feed-state-desc">
-              Recommendation snapshots will appear here after matching unread posts are available.
-            </p>
-          </div>
-        </div>
-      </div>
+      <EmptyState
+        ariaLive="polite"
+        body="Recommendation snapshots will appear here after matching unread posts are available."
+        className="feed-state-panel"
+        title="Following is not ready yet"
+        tone="empty"
+      />
     </div>
   );
 }
@@ -108,19 +102,14 @@ function FollowingUnavailable() {
 function FollowingError() {
   return (
     <div className="feed-content-stack">
-      <div className="feed-state-panel" data-tone="error" role="alert" aria-live="assertive">
-        <div className="feed-state-inner">
-          <Sparkles className="feed-state-icon" aria-hidden="true" />
-          <div className="feed-state-copy">
-            <h2 className="feed-state-title">
-              Couldn&rsquo;t load Following
-            </h2>
-            <p className="feed-state-desc">
-              Something went wrong fetching recommendations. Use Refresh to try again.
-            </p>
-          </div>
-        </div>
-      </div>
+      <EmptyState
+        ariaLive="assertive"
+        body="Something went wrong fetching recommendations. Use Refresh to try again."
+        className="feed-state-panel"
+        role="alert"
+        title="Couldn't load Following"
+        tone="error"
+      />
     </div>
   );
 }

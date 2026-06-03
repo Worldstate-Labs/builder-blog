@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Star } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import {
   RecommendationFeed,
   type RecommendationSnapshotEntry,
@@ -95,23 +95,13 @@ function FavoritesMessage({
 }) {
   return (
     <div className="feed-content-stack">
-      <div
+      <EmptyState
+        body={body}
         className="feed-state-panel"
-        data-tone={tone}
+        title={title}
+        tone={tone}
         role={tone === "error" ? "alert" : undefined}
-      >
-        <div className="feed-state-inner">
-          <Star className="feed-state-icon" aria-hidden="true" />
-          <div className="feed-state-copy">
-            <h2 className="feed-state-title">{title}</h2>
-            {body ? (
-              <p className="feed-state-desc">
-                {body}
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </div>
+      />
     </div>
   );
 }
