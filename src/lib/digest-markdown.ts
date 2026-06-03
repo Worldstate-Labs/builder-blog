@@ -74,6 +74,27 @@ const VIDEO_LABELS = new Set([
   "watch",
 ]);
 
+const LEGACY_SECTION_HEADINGS: Record<string, string> = {
+  "blogs": "Blog",
+  "official blogs": "Blog",
+  "podcasts": "Podcast RSS",
+  "videos": "YouTube",
+  "websites": "Website",
+  "x / twitter": "X/Twitter",
+  "x twitter": "X/Twitter",
+  "博客": "Blog",
+  "官方博客": "Blog",
+  "播客": "Podcast RSS",
+  "视频": "YouTube",
+  "网站": "Website",
+};
+
+function normalizeSectionHeading(value: string): string {
+  const heading = value.trim();
+  const key = heading.toLowerCase().replace(/\s+/g, " ");
+  return LEGACY_SECTION_HEADINGS[key] ?? heading;
+}
+
 function slug(value: string, index: number): string {
   const base = value
     .toLowerCase()
@@ -203,7 +224,8 @@ export function parseDigest(markdown: string): DigestDoc {
 
     const h2 = line.match(HEADING_2);
     if (h2) {
-      section = { id: slug(h2[1], sections.length), heading: h2[1], postCount: 0, groups: [] };
+      const heading = normalizeSectionHeading(h2[1]);
+      section = { id: slug(heading, sections.length), heading, postCount: 0, groups: [] };
       sections.push(section);
       group = null;
       post = null;

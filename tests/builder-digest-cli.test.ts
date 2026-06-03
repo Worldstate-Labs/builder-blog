@@ -1051,6 +1051,47 @@ test("render-digest uses source type labels for section headings", async () => {
   assert.doesNotMatch(rendered.markdown, /^## 官方博客$/m);
 });
 
+test("parse-digest normalizes legacy localized source headings", async () => {
+  const { parseDigest } = await import("../src/lib/digest-markdown");
+  const doc = parseDigest(`AI Digest - 6/3/2026
+
+## 官方博客
+
+### anthropic.com
+
+**Real post title**
+
+中文 summary。
+
+原文：https://example.com/real-post
+
+## 视频
+
+### Latent Space
+
+**Video title**
+
+中文 summary。
+
+视频：https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+## 播客
+
+### Podcast
+
+**Episode title**
+
+中文 summary。
+
+原文：https://example.com/episode
+`);
+
+  assert.deepEqual(
+    doc.sections.map((section) => section.heading),
+    ["Blog", "YouTube", "Podcast RSS"],
+  );
+});
+
 function digestRenderContext() {
   return {
     generatedAt: "2026-06-03T12:00:00.000Z",
