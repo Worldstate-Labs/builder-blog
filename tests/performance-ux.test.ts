@@ -255,7 +255,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /Read your AI Digest, saved posts, and followed-source updates/);
   assert.doesNotMatch(dashboardPage, /<header className="fb-page-head"/);
   assert.doesNotMatch(dashboardPage, /<h1 className="sr-only">Home<\/h1>/);
-  assert.match(dashboardPage, /className="home-workspace"/);
+  assert.match(dashboardPage, /className="workspace-content-stack home-workspace"/);
   assert.match(dashboardPage, /className="ai-digest-stack"/);
   assert.match(dashboardPage, /className="digest-source-selector"/);
   assert.match(dashboardPage, /className="digest-source-list"/);
@@ -306,7 +306,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /@\/components\/PageHeader/);
   assert.match(builderDetailPage, /<PageHeader[\s\S]*className="builder-detail-page-head"[\s\S]*title=\{entity\.name\}/);
   assert.doesNotMatch(builderDetailPage, /<header className="fb-page-head"/);
-  assert.match(builderDetailPage, /className="builder-detail-workspace"/);
+  assert.match(builderDetailPage, /className="workspace-content-stack builder-detail-workspace"/);
   assert.match(builderDetailPage, /className="builder-detail-head-stack"/);
   assert.match(builderDetailPage, /className="builder-detail-identity"/);
   assert.match(builderDetailPage, /className="builder-detail-avatar"/);
@@ -373,7 +373,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(globals, /\.home-rail/);
   assert.doesNotMatch(globals, /\.home-main/);
   assert.doesNotMatch(globals, /\.home-tabs/);
-  assert.match(globals, /\.home-workspace\s*{[\s\S]*min-width:\s*0/);
+  assert.doesNotMatch(globals, /\.home-workspace\s*{/);
   assert.match(globals, /\.ai-digest-stack\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.digest-source-list\s*{[\s\S]*flex-wrap:\s*wrap/);
   assert.match(globals, /\.ai-digest-empty\s*{[\s\S]*max-width:\s*48rem/);
@@ -912,6 +912,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderLibraryList, /latestPostCreatedAt=\{builder\.latestPostCreatedAt\}/);
   assert.doesNotMatch(builderLibraryList, /CountMeta/);
   assert.doesNotMatch(builderLibraryList, /\{builder\.feedItemCount\}\s*items/);
+  assert.doesNotMatch(builderLibraryList, /feedItemCount\}\s*items|Latest \{formatCompactDate|latest \{formatCompactDate/);
   assert.doesNotMatch(builderLibraryList, /No posts yet/);
   assert.doesNotMatch(builderLibraryList, /builder-library-stats/);
   assert.match(mobileSourcesSwitcher, /className="fb-segmented-tabs mobile-filter-tabs at-mobile"/);
@@ -1310,7 +1311,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   // the digest prompt dialogs, persisted via the dedicated digest-max-age route.
   assert.doesNotMatch(settingsPage, /FeedPreferenceForm/);
   assert.match(settingsPage, /AgentTokenPanel/);
-  assert.match(settingsPage, /settings-workspace/);
+  assert.match(settingsPage, /className="workspace-content-stack settings-workspace"/);
   assert.match(settingsPage, /settings-access-grid/);
   assert.doesNotMatch(settingsPage, /lg:grid-cols-2/);
   assert.doesNotMatch(settingsPage, /settings-access-grid grid gap-5/);
@@ -1340,7 +1341,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(settingsPage, /mt-5 grid gap-3/);
   assert.doesNotMatch(settingsPage, /settings-access-grid mt-6/);
   assert.doesNotMatch(settingsPage, /settings-rules mt-10/);
-  assert.match(globals, /\.settings-workspace\s*{[\s\S]*margin-top:\s*clamp/);
+  assert.doesNotMatch(globals, /\.settings-workspace\s*{/);
   assert.match(globals, /\.settings-access-grid\s*{[\s\S]*max-width:\s*52rem/);
   assert.match(globals, /\.settings-access-grid\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.settings-rules\s*{[\s\S]*display:\s*grid/);

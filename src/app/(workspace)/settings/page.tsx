@@ -28,7 +28,7 @@ export default async function SettingsPage() {
     <div className="page-pad">
       <PageHeader title="Settings" />
 
-      <div className="settings-workspace">
+      <div className="workspace-content-stack settings-workspace">
         <div className="settings-access-grid">
           <Suspense fallback={<AgentTokenPanelSkeleton />}>
             <AgentTokenSlot userId={userId} />

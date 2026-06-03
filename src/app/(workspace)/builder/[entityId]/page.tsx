@@ -208,7 +208,7 @@ export default async function BuilderDetailPage({ params }: Params) {
         </div>
       </PageHeader>
 
-      <div className="builder-detail-workspace">
+      <div className="workspace-content-stack builder-detail-workspace">
         <section className="builder-detail-section">
           <h2 className="fb-section-title">Recent posts</h2>
           <Suspense fallback={<RecentPostsSkeleton />}>

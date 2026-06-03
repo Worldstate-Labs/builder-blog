@@ -723,12 +723,6 @@ svg.lucide {
   text-transform: uppercase;
 }
 
-.home-workspace {
-  display: grid;
-  gap: 1.25rem;
-  min-width: 0;
-}
-
 .home-feed-tabs {
   width: fit-content;
 }
@@ -6062,12 +6056,6 @@ svg.lucide {
 }
 
 /* Settings rules: consistent hierarchy for configuration surfaces. */
-.settings-workspace {
-  display: grid;
-  gap: clamp(1.25rem, 2vw, 2rem);
-  margin-top: clamp(1.25rem, 2vw, 2rem);
-}
-
 .settings-rules {
   display: grid;
   gap: 1rem;
@@ -6075,8 +6063,6 @@ svg.lucide {
 }
 
 .builder-detail-workspace {
-  display: grid;
-  gap: clamp(1.25rem, 2vw, 2rem);
   margin-top: clamp(1.5rem, 2.5vw, 2.25rem);
 }
 

@@ -66,7 +66,7 @@ export default async function DashboardPage({
     <div className="page-pad">
       <PageHeader title="Home" />
 
-      <section className="home-workspace">
+      <section className="workspace-content-stack home-workspace">
         <DashboardHomeTabs
           initialTab={selectedTab}
           aiDigest={aiDigest}
