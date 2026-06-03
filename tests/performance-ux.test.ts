@@ -198,6 +198,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const dashboardTabs = source("src/components/DashboardHomeTabs.tsx");
   const builderDetailPage = source("src/app/(workspace)/builder/[entityId]/page.tsx");
+  const builderDetailActions = source("src/components/BuilderDetailActions.tsx");
   const rootLoading = source("src/app/loading.tsx");
   const routeLoading = source("src/components/RouteLoading.tsx");
   const searchForm = source("src/components/SearchForm.tsx");
@@ -273,6 +274,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /className="builder-detail-bio fb-desc"/);
   assert.match(builderDetailPage, /className="builder-detail-actions-skeleton"/);
   assert.match(builderDetailPage, /className="builder-detail-action-skeleton-button"/);
+  assert.match(builderDetailActions, /className="builder-detail-action-error"/);
+  assert.doesNotMatch(builderDetailActions, /text-xs text-\[var\(--danger\)\]/);
   assert.match(builderDetailPage, /className="builder-detail-channel-list"/);
   assert.match(builderDetailPage, /className="builder-detail-channel-row"/);
   assert.match(builderDetailPage, /className="recent-post-list recent-post-list--skeleton"/);
@@ -292,6 +295,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.page-pad\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
   assert.match(globals, /\.workspace-content-stack\s*{[\s\S]*margin-top:\s*clamp/);
   assert.match(globals, /\.builder-detail-action-skeleton-button\s*{[\s\S]*border-radius:\s*999px/);
+  assert.match(globals, /\.builder-detail-action-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.recent-post-skeleton-line--title\s*{[\s\S]*width:\s*min\(75%,\s*32rem\)/);
   assert.match(rootLoading, /className="workspace-content-stack"/);
   assert.match(rootLoading, /className="fb-page-head"/);

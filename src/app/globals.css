@@ -6446,6 +6446,12 @@ svg.lucide {
   width: 7rem;
 }
 
+.builder-detail-action-error {
+  color: var(--danger);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
 .recent-post-list {
   display: grid;
   gap: 1rem;

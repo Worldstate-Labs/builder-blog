@@ -64,7 +64,7 @@ export function BuilderDetailActions({
         </button>
       </div>
       {error ? (
-        <div className="text-xs text-[var(--danger)]" role="status">
+        <div className="builder-detail-action-error" role="status">
           {error}
         </div>
       ) : null}
