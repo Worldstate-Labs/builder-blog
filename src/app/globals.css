@@ -44,6 +44,8 @@
   --text-3xl: 2.25rem;
 
   /* Reading measure — keeps prose at ~62–72ch. */
+  --copy-max: 42rem;
+  --empty-max: 48rem;
   --measure: 68ch;
   --public-copy-max: 36rem;
   --reading-max: 58rem;
@@ -3035,8 +3037,11 @@ svg.lucide {
 .search-empty {
   font-size: 0.96rem;
   line-height: 1.7;
+  margin-inline: auto;
   margin-top: 1.25rem;
+  max-width: var(--empty-max);
   padding: 1.5rem;
+  width: 100%;
 }
 
 .search-empty-actions {
@@ -3123,7 +3128,7 @@ svg.lucide {
   font-size: 0.875rem;
   line-height: 1.55;
   margin-top: 0.5rem;
-  max-width: 42rem;
+  max-width: var(--copy-max);
 }
 
 .library-hub-toolbar {
@@ -3573,7 +3578,7 @@ svg.lucide {
   font-size: 0.90625rem;
   line-height: 1.55;
   margin-top: 0.375rem;
-  max-width: 42rem;
+  max-width: var(--copy-max);
 }
 
 .fb-section-label {
@@ -4031,7 +4036,9 @@ svg.lucide {
 }
 
 .ai-digest-empty {
-  max-width: 48rem;
+  margin-inline: auto;
+  max-width: var(--empty-max);
+  width: 100%;
 }
 
 .ai-digest-body > .ai-digest-section:first-child {
@@ -7021,7 +7028,7 @@ svg.lucide {
   color: var(--muted-strong);
   font-size: 0.8125rem;
   line-height: 1.55;
-  max-width: 42rem;
+  max-width: var(--copy-max);
 }
 
 .access-keys-list {
@@ -7406,7 +7413,7 @@ svg.lucide {
 .fb-public-step-body {
   display: grid;
   gap: 0.45rem;
-  max-width: 42rem;
+  max-width: var(--copy-max);
 }
 
 .fb-public-step-title-row {

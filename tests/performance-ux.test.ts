@@ -114,9 +114,12 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /\.fb-public-step-title-row\s*{[\s\S]*display:\s*flex/);
   assert.doesNotMatch(globals, /\.fb-public-metric|\.fb-public-metrics/);
   assert.doesNotMatch(globals, /\.fb-public-card-grid|\.fb-public-step-card/);
+  assert.match(globals, /--copy-max:\s*42rem/);
+  assert.match(globals, /--empty-max:\s*48rem/);
   assert.match(globals, /--public-copy-max:\s*36rem/);
   assert.match(globals, /\.fb-login-shell\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
   assert.match(globals, /\.fb-public-flow\s*{[\s\S]*max-width:\s*var\(--public-copy-max\)/);
+  assert.match(globals, /\.fb-public-step-body\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.equal((globals.match(/\.fb-public-flow\s*\{/g) ?? []).length, 1);
   assert.match(globals, /\.fb-login-copy\s*{[\s\S]*max-width:\s*32rem/);
   assert.match(globals, /\.fb-dark-panel\s*{[\s\S]*max-width:\s*28rem/);
@@ -394,7 +397,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.ai-digest-panel\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.ai-digest-panel\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.digest-source-list\s*{[\s\S]*flex-wrap:\s*wrap/);
-  assert.match(globals, /\.ai-digest-empty\s*{[\s\S]*max-width:\s*48rem/);
+  assert.match(globals, /\.ai-digest-empty\s*{[\s\S]*margin-inline:\s*auto/);
+  assert.match(globals, /\.ai-digest-empty\s*{[\s\S]*max-width:\s*var\(--empty-max\)/);
+  assert.match(globals, /\.ai-digest-empty\s*{[\s\S]*width:\s*100%/);
   assert.doesNotMatch(globals, /\.ai-digest-empty-inner|\.ai-digest-empty-icon|\.ai-digest-empty-title|\.ai-digest-empty-desc/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.digest-source-list\s*{[\s\S]*flex-direction:\s*column/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*margin-top:\s*clamp/);
@@ -673,6 +678,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(globals, /\.search-results-shell\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
   assert.match(globals, /\.search-results-shell\s*{[\s\S]*margin:\s*0 auto/);
   assert.match(globals, /\.search-results-shell\s*{[\s\S]*width:\s*100%/);
+  assert.match(globals, /\.search-empty\s*{[\s\S]*margin-inline:\s*auto/);
+  assert.match(globals, /\.search-empty\s*{[\s\S]*max-width:\s*var\(--empty-max\)/);
+  assert.match(globals, /\.search-empty\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.search-hero\s*{[\s\S]*grid-template-columns:/);
   assert.match(globals, /\.search-hero-form \.search-form\s*{[\s\S]*margin-top:\s*0/);
   assert.match(searchPage, /Search instead for/);
@@ -908,7 +916,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /<section className="mt-10"/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-list mt-5"/);
   assert.match(source("src/app/globals.css"), /\.hub-list-region\.has-filters/);
-  assert.match(source("src/app/globals.css"), /\.hub-section-copy/);
+  assert.match(source("src/app/globals.css"), /\.hub-section-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(source("src/app/globals.css"), /\.library-hub-page-count\s*{[\s\S]*display:\s*flex/);
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-line,[\s\S]*\.library-hub-skeleton-card\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-card\s*{[\s\S]*min-height:\s*11rem/);
@@ -1412,6 +1420,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.settings-rules\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.settings-rules\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.settings-config-form \.settings-section-desc\s*{[\s\S]*max-width:\s*var\(--settings-max\)/);
+  assert.match(globals, /\.access-keys-desc\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.doesNotMatch(globals, /\.settings-rules-head/);
   assert.doesNotMatch(globals, /\.settings-rules-title\s*{/);
   assert.doesNotMatch(globals, /\.settings-skeleton-line--eyebrow\s*{/);
