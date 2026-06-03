@@ -5516,6 +5516,10 @@ svg.lucide {
   padding: 0.35rem 0.45rem;
 }
 
+.settings-markdown-toolbar-spacer {
+  flex: 1 1 auto;
+}
+
 .settings-markdown-tool {
   align-items: center;
   background: transparent;
@@ -5531,10 +5535,19 @@ svg.lucide {
 }
 
 .settings-markdown-tool:hover,
-.settings-markdown-tool:focus-visible {
+.settings-markdown-tool:focus-visible,
+.settings-markdown-tool[aria-pressed="true"] {
   background: var(--paper);
   border-color: var(--line);
   color: var(--ink);
+}
+
+.settings-markdown-body {
+  display: grid;
+}
+
+.settings-markdown-body.is-split {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
 .settings-markdown-textarea {
@@ -5549,6 +5562,80 @@ svg.lucide {
   padding: 0.75rem 0.85rem;
   resize: vertical;
   width: 100%;
+}
+
+.settings-markdown-body.is-split .settings-markdown-textarea {
+  border-right: 1px solid var(--line);
+}
+
+.settings-markdown-preview {
+  background: var(--paper-strong);
+  color: var(--ink);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  overflow: auto;
+  padding: 0.85rem 1rem;
+}
+
+.settings-markdown-preview > * + * {
+  margin-top: 0.75rem;
+}
+
+.settings-markdown-preview h1,
+.settings-markdown-preview h2,
+.settings-markdown-preview h3 {
+  font-weight: 760;
+  line-height: 1.25;
+}
+
+.settings-markdown-preview h1 {
+  font-size: 1.1rem;
+}
+
+.settings-markdown-preview h2 {
+  font-size: 1rem;
+}
+
+.settings-markdown-preview h3 {
+  font-size: 0.925rem;
+}
+
+.settings-markdown-preview ul,
+.settings-markdown-preview ol {
+  padding-left: 1.25rem;
+}
+
+.settings-markdown-preview blockquote {
+  border-left: 3px solid var(--line);
+  color: var(--muted-strong);
+  padding-left: 0.75rem;
+  white-space: pre-wrap;
+}
+
+.settings-markdown-preview-code {
+  background: color-mix(in oklch, var(--paper) 78%, black 4%);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: var(--font-geist-mono);
+  font-size: 0.8125rem;
+  overflow: auto;
+  padding: 0.75rem;
+  white-space: pre;
+}
+
+.settings-markdown-preview-empty {
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .settings-markdown-body.is-split {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-markdown-body.is-split .settings-markdown-textarea {
+    border-bottom: 1px solid var(--line);
+    border-right: 0;
+  }
 }
 
 /* Pill segmented (radio-style) */
