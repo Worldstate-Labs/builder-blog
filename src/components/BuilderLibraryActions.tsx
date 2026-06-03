@@ -41,7 +41,7 @@ export function SubscribeAllLibraryBuildersButton({
   }
 
   return (
-    <div className="inline-flex flex-col items-start gap-2">
+    <div className="builder-library-bulk-action">
       <button
         aria-busy={isPending}
         className="fb-btn light compact"
@@ -53,7 +53,7 @@ export function SubscribeAllLibraryBuildersButton({
         {isPending ? "Following..." : phase === "done" ? "Following" : "Follow all"}
       </button>
       {phase === "error" ? (
-        <span className="text-xs text-[var(--danger)]" role="status">
+        <span className="builder-library-action-error" role="status">
           Could not follow all sources.
         </span>
       ) : null}
@@ -192,13 +192,13 @@ export function BuilderLibraryActions({
               onClick={handleRemoveClick}
               type="button"
             >
-              <X aria-hidden="true" className="h-3 w-3" />
+              <X aria-hidden="true" className="builder-library-remove-icon" />
             </button>
           )
         ) : null}
       </div>
       {error ? (
-        <span className="text-[11px] text-[var(--danger)]" role="status">
+        <span className="builder-library-action-error" role="status">
           {error}
         </span>
       ) : null}

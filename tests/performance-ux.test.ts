@@ -1334,6 +1334,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(builderActions, /onRemoveStateChange\?\.\(builderId, false\)/);
   assert.match(builderActions, /onSubscriptionStateChange\?\.\(builderId, nextSubscribed, previousSubscribed\)/);
   assert.match(builderActions, /fetch\("\/api\/builders\/subscriptions"/);
+  assert.match(builderActions, /className="builder-library-bulk-action"/);
+  assert.match(builderActions, /className="builder-library-action-error"/);
+  assert.match(builderActions, /className="builder-library-remove-icon"/);
+  assert.doesNotMatch(builderActions, /inline-flex flex-col items-start gap-2|text-xs text-\[var\(--danger\)\]|text-\[11px\] text-\[var\(--danger\)\]|className="h-3 w-3"/);
   assert.match(builderLibraryList, /"use client"/);
   assert.match(builderLibraryList, /removedBuilderIds/);
   assert.match(builderLibraryList, /subscribedByBuilderId/);
@@ -1400,6 +1404,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(globals, /\.hub-share-button\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.hub-share-label\s*{[\s\S]*font-size:\s*0\.75rem/);
   assert.match(globals, /\.hub-share-error\s*{[\s\S]*color:\s*var\(--danger\)/);
+  assert.match(globals, /\.builder-library-bulk-action\s*{[\s\S]*flex-direction:\s*column/);
+  assert.match(globals, /\.builder-library-action-error\s*{[\s\S]*color:\s*var\(--danger\)/);
+  assert.match(globals, /\.builder-library-remove-icon\s*{[\s\S]*height:\s*0\.75rem/);
   assert.match(hubImportForm, /fetch\("\/api\/library-hub\/imports"/);
   assert.match(hubImportForm, /isCommunity/);
   assert.match(hubImportForm, /counts\[filter\.key\]/);

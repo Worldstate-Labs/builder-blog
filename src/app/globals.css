@@ -4600,6 +4600,13 @@ svg.lucide {
   min-width: 0;
 }
 
+.builder-library-bulk-action {
+  align-items: flex-start;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .builder-library-row-tools,
 .builder-library-action-stack,
 .builder-library-follow-row {
@@ -4631,6 +4638,12 @@ svg.lucide {
   font-size: 0.875rem;
   line-height: 1.45;
   margin-top: 0.5rem;
+}
+
+.builder-library-action-error {
+  color: var(--danger);
+  font-size: 0.6875rem;
+  line-height: 1.35;
 }
 
 .builder-library-follow-toggle {
@@ -4685,6 +4698,11 @@ svg.lucide {
 .builder-library-remove-button {
   border-color: transparent;
   color: var(--muted);
+}
+
+.builder-library-remove-icon {
+  height: 0.75rem;
+  width: 0.75rem;
 }
 
 /* Two-step confirmation label that replaces the row's X button after
