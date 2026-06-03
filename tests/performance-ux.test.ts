@@ -1088,6 +1088,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderLibraryStats, /CountMetric/);
   assert.doesNotMatch(builderLibraryStats, /at-mobile grid|grid-cols-3/);
   assert.match(builderLibraryStats, /className="source-summary-toolbar page-toolbar"/);
+  assert.match(buildersPage, /CountMeta/);
+  assert.doesNotMatch(buildersPage, /CountChip/);
   assert.doesNotMatch(buildersPage, /<section className="fb-page-head"/);
   assert.match(buildersPage, /title=\{data\.isAdmin \? adminCommunityLibraryName : "Private library"\}[\s\S]*defaultOpen/);
   assert.doesNotMatch(builderLibraryList, /function BuilderStats/);
@@ -1186,6 +1188,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(addBuilderForm, /style=\{\{/);
   assert.doesNotMatch(addBuilderForm, /className="mt-1 rounded-md border/);
   assert.match(source("src/components/PrivateLibraryPanel.tsx"), /className="add-source-panel fb-panel"/);
+  assert.match(source("src/components/PrivateLibraryPanel.tsx"), /CountMeta/);
+  assert.doesNotMatch(source("src/components/PrivateLibraryPanel.tsx"), /CountChip/);
   assert.doesNotMatch(source("src/components/PrivateLibraryPanel.tsx"), /className="fb-panel mb-3"/);
   assert.match(globals, /\.add-source-form/);
   assert.match(globals, /\.add-source-callout/);
@@ -1690,6 +1694,7 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.builder-posts-summary\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(css, /\.builder-posts > summary\s*{[\s\S]*display:\s*flex/);
   assert.match(css, /\.builder-library-row-tools\s*{[\s\S]*opacity:\s*0/);
+  assert.match(css, /\.library-section-meta \.count-meta\s*{[\s\S]*font-size:\s*0\.8125rem/);
   assert.doesNotMatch(css, /\.library-section-summary::after[\s\S]*content:\s*"\+"/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*grid-template-areas:[\s\S]*"avatar info"[\s\S]*"\. actions"/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta\s*{[\s\S]*display:\s*grid/);

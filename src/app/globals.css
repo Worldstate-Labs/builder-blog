@@ -1757,6 +1757,10 @@ svg.lucide {
   justify-content: flex-end;
 }
 
+.library-section-meta .count-meta {
+  font-size: 0.8125rem;
+}
+
 .library-section-body {
   border-top: 1px solid var(--line);
   display: grid;
