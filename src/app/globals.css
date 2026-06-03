@@ -1964,12 +1964,11 @@ svg.lucide {
   align-items: center;
   color: var(--muted-strong);
   cursor: pointer;
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   font-size: 0.75rem;
   font-weight: 700;
   gap: 0.5rem;
-  grid-template-columns: auto auto auto;
-  justify-content: start;
   list-style: none;
   padding: 0.55rem 0 0;
 }
@@ -1986,6 +1985,11 @@ svg.lucide {
 
 .builder-posts[open] > summary::after {
   content: "-";
+}
+
+.builder-posts-latest {
+  color: var(--muted);
+  font-weight: 600;
 }
 
 .builder-post-list {
@@ -4323,7 +4327,7 @@ svg.lucide {
 }
 
 .builder-library-card-main {
-  grid-template-columns: 2rem minmax(0, 1fr) minmax(6.5rem, auto) minmax(8.25rem, auto);
+  grid-template-columns: 2rem minmax(0, 1fr) minmax(8.25rem, auto);
 }
 
 .builder-library-list {
@@ -4368,21 +4372,6 @@ svg.lucide {
 .builder-library-card .source-badge-mark {
   height: 0.9rem;
   width: 0.9rem;
-}
-
-.builder-library-stats {
-  color: var(--muted);
-  display: grid;
-  gap: 0.15rem;
-  justify-self: end;
-  min-width: 6.5rem;
-  text-align: right;
-}
-
-.builder-library-stats-secondary {
-  font-size: 0.6875rem;
-  line-height: 1.25;
-  white-space: nowrap;
 }
 
 .builder-library-actions {
@@ -6576,7 +6565,6 @@ body {
     column-gap: 0.65rem;
     grid-template-areas:
       "avatar info"
-      ". stats"
       ". actions";
     grid-template-columns: 2rem minmax(0, 1fr);
     row-gap: 0.5rem;
@@ -6611,16 +6599,6 @@ body {
     gap: 0.35rem;
     line-height: 1.35;
     margin-top: 0.3rem;
-  }
-
-  .builder-library-stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem 0.6rem;
-    grid-area: stats;
-    justify-self: start;
-    min-width: 0;
-    text-align: left;
   }
 
   .builder-library-card .builder-library-actions,

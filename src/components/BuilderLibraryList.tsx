@@ -6,7 +6,6 @@ import { ExternalLink } from "lucide-react";
 import { BuilderEditDialog } from "@/components/BuilderEditDialog";
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { BuilderLibraryActions } from "@/components/BuilderLibraryActions";
-import { CountMeta } from "@/components/Count";
 import { SourceBadge } from "@/components/SourceBadge";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import {
@@ -276,7 +275,6 @@ function BuilderCard({
       <div className="builder-library-card-main grid items-center gap-3.5">
         <SourceAvatar className="builder-library-avatar" source={builder} />
         <BuilderInfo builder={builder} />
-        <BuilderStats builder={builder} />
         <div className="builder-library-actions row-actions flex flex-shrink-0 items-center gap-3">
           <div className="builder-library-row-tools" aria-label="Source tools">
             {builder.sourceUrl || builder.fetchUrl ? (
@@ -317,6 +315,7 @@ function BuilderCard({
         <BuilderFeedItems
           builder={builder}
           builderId={builder.id}
+          latestPostCreatedAt={builder.latestPostCreatedAt}
           totalCount={builder.feedItemCount}
         />
       ) : null}
@@ -375,21 +374,6 @@ function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
   );
 }
 
-function BuilderStats({ builder }: { builder: BuilderLibraryListItem }) {
-  const latestPostCreatedAt = builder.latestPostCreatedAt
-    ? new Date(builder.latestPostCreatedAt)
-    : null;
-
-  return (
-    <div className="builder-library-stats" aria-label="Source summary">
-      <CountMeta label={builder.feedItemCount === 1 ? "item" : "items"} value={builder.feedItemCount} />
-      <span className="builder-library-stats-secondary">
-        {latestPostCreatedAt ? `Latest ${formatCompactDate(latestPostCreatedAt)}` : "No posts yet"}
-      </span>
-    </div>
-  );
-}
-
 function sourceSummary(value: string | null) {
   if (!value) return "No source";
   try {
@@ -402,14 +386,4 @@ function sourceSummary(value: string | null) {
   } catch {
     return value;
   }
-}
-
-function formatCompactDate(value: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-  }).format(value);
 }

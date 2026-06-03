@@ -527,9 +527,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
   assert.match(buildersPage, /title=\{data\.isAdmin \? adminCommunityLibraryName : "Private library"\}[\s\S]*defaultOpen/);
-  assert.match(builderLibraryList, /function BuilderStats/);
-  assert.match(builderLibraryList, /`Latest \$\{formatCompactDate\(latestPostCreatedAt\)\}`/);
-  assert.match(builderLibraryList, /timeZone:\s*"UTC"/);
+  assert.doesNotMatch(builderLibraryList, /function BuilderStats/);
+  assert.match(builderLibraryList, /latestPostCreatedAt=\{builder\.latestPostCreatedAt\}/);
+  assert.match(builderFeedItems, /Latest \{formatCompactDate\(new Date\(latestPostCreatedAt\)\)\}/);
+  assert.match(builderFeedItems, /timeZone:\s*"UTC"/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported libraries/);
   assert.match(buildersPage, /importedLibrarySections/);
@@ -865,17 +866,19 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.row-actions/);
   assert.match(css, /\.source-summary-line/);
   assert.match(css, /\.sources-sync-section \.digest-updates-panel/);
-  assert.match(css, /\.builder-library-card-main\s*{\s*\n\s*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) minmax\(6\.5rem,\s*auto\) minmax\(8\.25rem,\s*auto\)/);
-  assert.match(css, /\.builder-library-stats\s*{[\s\S]*justify-self:\s*end/);
+  assert.match(css, /\.builder-library-card-main\s*{\s*\n\s*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) minmax\(8\.25rem,\s*auto\)/);
+  assert.doesNotMatch(css, /\.builder-library-stats\s*{/);
+  assert.match(css, /\.builder-posts-latest/);
+  assert.match(css, /\.builder-posts > summary\s*{[\s\S]*display:\s*flex/);
   assert.match(css, /\.builder-library-row-tools\s*{[\s\S]*opacity:\s*0/);
   assert.doesNotMatch(css, /\.library-section-summary::after[\s\S]*content:\s*"\+"/);
-  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*grid-template-areas:[\s\S]*"avatar info"[\s\S]*"\. stats"[\s\S]*"\. actions"/);
+  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*grid-template-areas:[\s\S]*"avatar info"[\s\S]*"\. actions"/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta\s*{[\s\S]*display:\s*grid/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.page-pad h2\s*{[\s\S]*font-size:\s*1\.25rem/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.fb-panel\s*{[\s\S]*padding:\s*0\.95rem/);
   assert.doesNotMatch(css, /\.builder-row form,\s*\n\s*\.builder-row button\s*{\s*\n\s*width:\s*100%/);
   assert.match(builderLibraryList, /builder-library-card-main/);
-  assert.match(builderLibraryList, /BuilderStats/);
+  assert.doesNotMatch(builderLibraryList, /BuilderStats/);
   assert.match(builderLibraryList, /builder-library-row-tools/);
   assert.match(builderActions, /fb-btn/);
   assert.match(builderActions, /builder-library-follow-toggle/);

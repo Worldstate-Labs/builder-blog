@@ -30,12 +30,14 @@ type BuilderFeedItem = {
 type BuilderFeedItemsProps = {
   builder: BuilderSummary;
   builderId: string;
+  latestPostCreatedAt?: string | null;
   totalCount: number;
 };
 
 export function BuilderFeedItems({
   builder,
   builderId,
+  latestPostCreatedAt,
   totalCount,
 }: BuilderFeedItemsProps) {
   const detailsRef = useRef<HTMLDetailsElement | null>(null);
@@ -88,6 +90,11 @@ export function BuilderFeedItems({
           label={items ? "loaded" : "summarized"}
           value={items ? items.length : totalCount}
         />
+        {latestPostCreatedAt ? (
+          <span className="builder-posts-latest">
+            Latest {formatCompactDate(new Date(latestPostCreatedAt))}
+          </span>
+        ) : null}
       </summary>
       <div className="builder-post-list">
         {isLoading ? (
@@ -120,4 +127,14 @@ export function BuilderFeedItems({
       </div>
     </details>
   );
+}
+
+function formatCompactDate(value: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+  }).format(value);
 }
