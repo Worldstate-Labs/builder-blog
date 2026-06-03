@@ -6630,6 +6630,10 @@ svg.lucide {
   max-width: var(--copy-max);
 }
 
+.settings-rules-summary-meta {
+  flex: 0 0 auto;
+}
+
 .settings-rules-body {
   border-top: 1px solid color-mix(in oklch, var(--line) 80%, transparent);
   padding: 1rem 1.125rem 1.1rem;

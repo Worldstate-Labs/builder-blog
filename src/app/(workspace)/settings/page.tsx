@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { AdminDigestConfigForm } from "@/components/AdminDigestConfigForm";
 import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
 import { AgentTokenPanel } from "@/components/AgentTokenPanel";
-import { CountChip } from "@/components/Count";
+import { CountMeta } from "@/components/Count";
 import { PageHeader } from "@/components/PageHeader";
 import {
   CommonFetchRulesForm,
@@ -17,6 +17,8 @@ import {
   getUserDigestConfig,
   getUserSourceConfigs,
 } from "@/lib/source-config-store";
+
+const DIGEST_PROMPT_COUNT: number = 3;
 
 export default async function SettingsPage() {
   const session = await getCurrentSession();
@@ -70,10 +72,12 @@ async function SourceTypeConfigSection({
               How source content is fetched, filtered, and summarized into per-post summaries.
             </p>
           </div>
-          <CountChip
-            label={sourceConfigs.length === 1 ? "source type" : "source types"}
-            value={sourceConfigs.length}
-          />
+          <span className="settings-rules-summary-meta source-summary-line">
+            <CountMeta
+              label={sourceConfigs.length === 1 ? "source type" : "source types"}
+              value={sourceConfigs.length}
+            />
+          </span>
         </summary>
         <div className="settings-rules-body">
           {isAdmin ? (
@@ -113,7 +117,12 @@ async function SourceTypeConfigSection({
               How digest headlines, source notes, and translated post summaries are written.
             </p>
           </div>
-          <span className="fb-kind-pill">Digest composition</span>
+          <span className="settings-rules-summary-meta source-summary-line">
+            <CountMeta
+              label={DIGEST_PROMPT_COUNT === 1 ? "prompt" : "prompts"}
+              value={DIGEST_PROMPT_COUNT}
+            />
+          </span>
         </summary>
         <div className="settings-rules-body">
           <AdminDigestConfigForm

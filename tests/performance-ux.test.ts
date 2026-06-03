@@ -1566,6 +1566,11 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(settingsPage, /settings-rules-title|settings-rules-head/);
   assert.match(settingsPage, /className="settings-rules-summary"/);
   assert.match(settingsPage, /className="settings-rules-summary-desc"/);
+  assert.match(settingsPage, /CountMeta/);
+  assert.match(settingsPage, /className="settings-rules-summary-meta source-summary-line"/);
+  assert.match(settingsPage, /DIGEST_PROMPT_COUNT/);
+  assert.doesNotMatch(settingsPage, /CountChip/);
+  assert.doesNotMatch(settingsPage, /Digest composition/);
   assert.match(settingsPage, /className="settings-rules-body"/);
   assert.match(settingsPage, /className="settings-config-form settings-config-form--common"/);
   assert.match(settingsPage, /className="settings-rules settings-rules-skeleton"/);
@@ -1605,6 +1610,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(globals, /\.settings-skeleton-line--eyebrow\s*{/);
   assert.match(globals, /\.settings-rules-summary\s*{[\s\S]*cursor:\s*pointer/);
   assert.match(globals, /\.settings-rules-summary-desc/);
+  assert.match(globals, /\.settings-rules-summary-meta\s*{[\s\S]*flex:\s*0 0 auto/);
   assert.match(globals, /\.settings-rules-skeleton-list/);
   assert.match(globals, /\.settings-skeleton-line,[\s\S]*\.settings-skeleton-row\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
   assert.match(globals, /\.settings-skeleton-pill\s*{[\s\S]*border-radius:\s*999px/);
