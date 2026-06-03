@@ -2645,7 +2645,7 @@ svg.lucide {
 
 .search-results-shell {
   margin: 0 auto;
-  max-width: var(--workspace-max);
+  max-width: 58rem;
   min-width: 0;
   width: 100%;
 }

@@ -653,7 +653,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchPage, /fb-m-search/);
   assert.doesNotMatch(searchPage, /search-page-active/);
   assert.doesNotMatch(searchPage, /serif text-\[1\.875rem\]/);
-  assert.match(globals, /\.search-results-shell\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
+  assert.match(globals, /\.search-results-shell\s*{[\s\S]*max-width:\s*58rem/);
   assert.match(globals, /\.search-results-shell\s*{[\s\S]*margin:\s*0 auto/);
   assert.match(globals, /\.search-results-shell\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.search-hero\s*{[\s\S]*grid-template-columns:/);
