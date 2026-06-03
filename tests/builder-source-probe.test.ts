@@ -62,15 +62,6 @@ test("probe classifies blog/website responses with 404 / 410 as hard reject", ()
   assert.match(PROBE_SOURCE, /Couldn't reach the page right now/);
 });
 
-test("probe PDF path uses a Range byte probe + checks %PDF magic", () => {
-  // Cheap probe of the first 32 bytes only, not the full document.
-  assert.match(PROBE_SOURCE, /Range:\s*"bytes=0-32"/);
-  // PDF magic header is %PDF; anything else with no .pdf extension
-  // becomes a soft warning.
-  assert.match(PROBE_SOURCE, /%PDF/);
-  assert.match(PROBE_SOURCE, /URL doesn't look like a PDF/);
-});
-
 test("probe respects the 4s timeout and the standard User-Agent", () => {
   assert.match(PROBE_SOURCE, /new\s+AbortController\(\)/);
   assert.match(PROBE_SOURCE, /FETCH_TIMEOUT_MS\s*=\s*4000/);
@@ -85,8 +76,8 @@ test("probe SSRF-validates every outbound URL before fetching it", () => {
   // Count the call sites to make sure no source helper skipped it.
   const callCount = (PROBE_SOURCE.match(/validatePublicHttpUrl\(/g) ?? []).length;
   assert.ok(
-    callCount >= 5,
-    `expected at least 5 validatePublicHttpUrl call sites; saw ${callCount}`,
+    callCount >= 4,
+    `expected at least 4 validatePublicHttpUrl call sites; saw ${callCount}`,
   );
 });
 

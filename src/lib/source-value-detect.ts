@@ -18,14 +18,13 @@
  *    single video) that should be channel-level instead.
  */
 
-export type DetectedSourceId = "x" | "blog" | "youtube" | "podcast" | "pdf" | "website";
+export type DetectedSourceId = "x" | "blog" | "youtube" | "podcast" | "website";
 
 export const DETECTED_SOURCE_LABELS: Record<DetectedSourceId, string> = {
   x: "X",
   blog: "Blog",
   youtube: "YouTube",
   podcast: "Podcast",
-  pdf: "PDF",
   website: "Website",
 };
 
@@ -47,9 +46,6 @@ export function detectSourceTypeFromValue(value: string): DetectedSourceId | nul
   if (/(^|\/\/)(www\.)?ximalaya\.com\//.test(v)) return "podcast";
   if (/(^|\/\/)music\.163\.com\/[^/]*\/?#?\/?djradio/.test(v)) return "podcast";
   if (/(^|\/\/)overcast\.fm\/itunes/.test(v)) return "podcast";
-
-  if (/\.pdf(\?|#|$)/.test(v)) return "pdf";
-  if (/arxiv\.org\/(abs|pdf)\//.test(v)) return "pdf";
 
   // Substack / Medium / common blog hosts.
   if (/\.substack\.com(\/|$)/.test(v)) return "blog";

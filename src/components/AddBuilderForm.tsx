@@ -41,7 +41,6 @@ const PLACEHOLDER_BY_SOURCE_ID: Record<string, string> = {
   blog: "https://example.com/blog or https://example.com/feed.xml",
   youtube: "https://youtube.com/@deepmind",
   podcast: "https://podcasts.apple.com/…/id123 or https://feeds.example.com/show.rss",
-  pdf: "https://example.com/paper.pdf",
   website: "https://example.com",
 };
 
@@ -94,17 +93,6 @@ function deriveDisplayName(sourceType: string, sourceValue: string): string {
     if (cFmt) return cFmt[1];
     const userFmt = trimmed.match(/youtube\.com\/user\/([A-Za-z0-9_.-]+)/i);
     if (userFmt) return userFmt[1];
-    return "";
-  }
-  if (sourceType === "pdf") {
-    try {
-      const url = new URL(trimmed);
-      const filename = (url.pathname.split("/").pop() ?? "").trim();
-      const base = filename.replace(/\.pdf$/i, "").replace(/[-_]+/g, " ").trim();
-      if (base) return base;
-    } catch {
-      // fall through to empty
-    }
     return "";
   }
   // blog / website / podcast — don't guess from the URL hostname.

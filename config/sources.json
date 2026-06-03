@@ -64,20 +64,6 @@
       }
     },
     {
-      "id": "pdf",
-      "label": "PDF",
-      "builderKind": "WEBSITE",
-      "feedItemKinds": [],
-      "urlPatterns": [
-        "\\.pdf(?:\\s|$|[?#])"
-      ],
-      "agentDefaultStatus": "requires_agent",
-      "contentQuality": {
-        "minChars": 200,
-        "minContentUnits": 35
-      }
-    },
-    {
       "id": "website",
       "label": "Website",
       "builderKind": "WEBSITE",

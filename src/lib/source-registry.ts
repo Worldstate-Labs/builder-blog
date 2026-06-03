@@ -200,6 +200,7 @@ function sourceDefinitionByRules(builder: BuilderSourceInput) {
 
 function normalizeSourceType(sourceType: string | null | undefined) {
   const normalized = sourceType?.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (normalized === "pdf") return "website";
   return normalized && normalized !== "auto" ? normalized : "";
 }
 

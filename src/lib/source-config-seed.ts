@@ -99,7 +99,7 @@ export const DEFAULT_DIGEST_CONFIG: DigestConfigShape = {
   id: "global",
   digestIntro: DEFAULT_DIGEST_PROMPTS.digestIntro,
   translate: DEFAULT_DIGEST_PROMPTS.translate,
-  digestOrder: ["x", "blog", "youtube", "podcast", "pdf", "website"],
+  digestOrder: ["x", "blog", "youtube", "podcast", "website"],
   commonSummaryRules: DEFAULT_COMMON_SUMMARY_RULES,
 };
 

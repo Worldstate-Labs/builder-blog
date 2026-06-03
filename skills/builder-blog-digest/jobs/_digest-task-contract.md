@@ -14,7 +14,7 @@ JSON and use them as the required digest-writing method:
 
 - For each item, pick its summary prompt BY SOURCE TYPE, not by kind: use
   `context.sources[item.builder.sourceType].summaryPrompt.body`. This covers
-  every source type — x, blog, youtube, podcast, pdf, website — and any added
+  every source type — x, blog, youtube, podcast, website — and any added
   later.
 - Group items by source/entity within each section.
 - Use `context.digest.digestIntro` to assemble the final digest, honoring its

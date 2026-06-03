@@ -8,6 +8,7 @@ import type {
 import { prisma } from "./prisma";
 import {
   DEFAULT_DIGEST_CONFIG,
+  DEFAULT_SOURCE_CONFIGS,
   ensureSourceConfigsSeeded,
   type ContentQualityShape,
   type DigestConfigShape,
@@ -23,6 +24,7 @@ import {
 let cachedSourceConfigs: Map<string, SourceTypeConfig> | null = null;
 let cachedDigestConfig: DigestConfig | null = null;
 let seedPromise: Promise<void> | null = null;
+const ACTIVE_SOURCE_IDS = new Set(Object.keys(DEFAULT_SOURCE_CONFIGS));
 
 function client(): PrismaClient {
   return prisma;
@@ -45,7 +47,25 @@ async function ensureSeededOnce() {
 
 async function loadAllSourceConfigsFromDb(): Promise<Map<string, SourceTypeConfig>> {
   const rows = await client().sourceTypeConfig.findMany();
-  return new Map(rows.map((row) => [row.sourceId, row]));
+  return new Map(
+    rows
+      .filter((row) => ACTIVE_SOURCE_IDS.has(row.sourceId))
+      .map((row) => [row.sourceId, row]),
+  );
+}
+
+function sanitizeDigestOrder(value: unknown): string[] {
+  const order = Array.isArray(value)
+    ? value.filter((id): id is string => typeof id === "string" && ACTIVE_SOURCE_IDS.has(id))
+    : [];
+  return order.length > 0 ? order : DEFAULT_DIGEST_CONFIG.digestOrder;
+}
+
+function sanitizeDigestConfig<T extends DigestConfig | UserDigestConfig>(row: T): T {
+  return {
+    ...row,
+    digestOrder: sanitizeDigestOrder(row.digestOrder) as object,
+  };
 }
 
 export async function getAllSourceConfigs(): Promise<SourceTypeConfig[]> {
@@ -86,7 +106,7 @@ export async function getDigestConfig(): Promise<DigestConfig> {
           `ensureSeededOnce(); the config seed did not run or was deleted externally.`,
       );
     }
-    cachedDigestConfig = row;
+    cachedDigestConfig = sanitizeDigestConfig(row);
   }
   return cachedDigestConfig;
 }
@@ -144,7 +164,7 @@ export async function updateDigestConfig(
     },
   });
   invalidateDigestConfigCache();
-  return row;
+  return sanitizeDigestConfig(row);
 }
 
 export function invalidateSourceConfigsCache() {
@@ -196,16 +216,18 @@ export async function ensureUserSourceConfigs(
     getSourceConfigMap(),
     client().userSourceTypeConfig.findMany({ where: { userId } }),
   ]);
-  const have = new Set(existing.map((r) => r.sourceId));
+  const activeExisting = existing.filter((r) => ACTIVE_SOURCE_IDS.has(r.sourceId));
+  const have = new Set(activeExisting.map((r) => r.sourceId));
   const missing = [...defaults.values()].filter((d) => !have.has(d.sourceId));
   if (missing.length > 0) {
     await client().userSourceTypeConfig.createMany({
       data: missing.map((d) => ({ userId, sourceId: d.sourceId, ...sourceConfigCopyData(d) })),
       skipDuplicates: true,
     });
-    return client().userSourceTypeConfig.findMany({ where: { userId } });
+    const rows = await client().userSourceTypeConfig.findMany({ where: { userId } });
+    return rows.filter((r) => ACTIVE_SOURCE_IDS.has(r.sourceId));
   }
-  return existing;
+  return activeExisting;
 }
 
 export async function getUserSourceConfigs(
@@ -248,9 +270,9 @@ export async function resetUserSourceConfigs(userId: string): Promise<void> {
 
 export async function getUserDigestConfig(userId: string): Promise<UserDigestConfig> {
   const existing = await client().userDigestConfig.findUnique({ where: { userId } });
-  if (existing) return existing;
+  if (existing) return sanitizeDigestConfig(existing);
   const def = await getDigestConfig();
-  return client().userDigestConfig.upsert({
+  const row = await client().userDigestConfig.upsert({
     where: { userId },
     update: {},
     create: {
@@ -261,6 +283,7 @@ export async function getUserDigestConfig(userId: string): Promise<UserDigestCon
       commonSummaryRules: def.commonSummaryRules,
     },
   });
+  return sanitizeDigestConfig(row);
 }
 
 export async function updateUserDigestConfig(
@@ -269,7 +292,7 @@ export async function updateUserDigestConfig(
   actor: string | null,
 ): Promise<UserDigestConfig> {
   await getUserDigestConfig(userId);
-  return client().userDigestConfig.update({
+  const row = await client().userDigestConfig.update({
     where: { userId },
     data: {
       ...patch,
@@ -279,6 +302,7 @@ export async function updateUserDigestConfig(
       updatedBy: actor,
     },
   });
+  return sanitizeDigestConfig(row);
 }
 
 export async function resetUserDigestConfig(userId: string): Promise<void> {

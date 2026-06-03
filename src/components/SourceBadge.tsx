@@ -58,7 +58,6 @@ function sourceDisplayForType(sourceType: string | null | undefined) {
   const labels: Record<string, string> = {
     blog: "Blog",
     podcast: "Podcast RSS",
-    pdf: "PDF",
     website: "Website",
     x: "X",
     youtube: "YouTube",
@@ -83,6 +82,7 @@ function podcastPlatformLabel(builder: SourceBadgeBuilder) {
 
 function normalizeSourceType(sourceType: string | null | undefined) {
   const normalized = sourceType?.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (normalized === "pdf") return "website";
   return normalized && normalized !== "auto" ? normalized : "";
 }
 

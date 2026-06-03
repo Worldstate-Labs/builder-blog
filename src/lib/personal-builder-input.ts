@@ -81,7 +81,6 @@ export async function resolvePersonalBuilderInput(input: {
   if (sourceType === "x") return resolveX(input.displayName, value);
   if (sourceType === "youtube") return resolveYouTube(input.displayName, value);
   if (sourceType === "podcast") return resolvePodcast(input.displayName, value);
-  if (sourceType === "pdf") return resolvePdf(input.displayName, value);
   if (sourceType === "blog") return resolveBlog(input.displayName, value);
   return resolveWebsite(input.displayName, sourceType, value);
 }
@@ -231,36 +230,6 @@ async function resolvePodcast(displayName: string, value: string): Promise<Resol
   };
 }
 
-function resolvePdf(displayName: string, value: string): Resolution {
-  const initial = normalizedUrl(value);
-  if (!initial) return { ok: false, reason: "URL is malformed." };
-
-  // arxiv.org/abs/<id> auto-converts to /pdf/<id>.pdf. Pasting the abs
-  // landing page is the most common copy-paste source for papers.
-  const arxivAbsMatch = initial.match(/^(https?:\/\/(?:www\.)?arxiv\.org)\/abs\/([\w./-]+?)\/?$/i);
-  const sourceUrl = arxivAbsMatch
-    ? `${arxivAbsMatch[1]}/pdf/${arxivAbsMatch[2]}.pdf`
-    : initial;
-
-  const hasPdfExtension = /\.pdf(\?|#|$)/i.test(sourceUrl);
-  const warning = hasPdfExtension
-    ? undefined
-    : "URL doesn't end in .pdf — the agent will still try to download it.";
-
-  return {
-    ok: true,
-    value: {
-      kind: builderKindForSourceType("pdf"),
-      sourceType: "pdf",
-      name: displayName.trim() || nameFromUrl(sourceUrl),
-      handle: null,
-      sourceUrl,
-      fetchUrl: null,
-    },
-    ...(warning ? { warning } : {}),
-  };
-}
-
 function resolveBlog(displayName: string, value: string): Resolution {
   const sourceUrl = normalizedUrl(value);
   if (!sourceUrl) return { ok: false, reason: "URL is malformed." };
@@ -397,5 +366,6 @@ function nameFromUrl(value: string) {
 }
 
 function normalizeSourceType(sourceType: string) {
-  return sourceType.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const normalized = sourceType.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return normalized === "pdf" ? "website" : normalized;
 }

@@ -15,18 +15,16 @@ test("builder-enrichment module exports the dispatch entry point", () => {
   assert.match(ENRICHMENT_SOURCE, /export\s+function\s+pickFinalName/);
 });
 
-test("builder-enrichment dispatches per source type including pdf and podcast", () => {
+test("builder-enrichment dispatches supported source types", () => {
   // Each per-source branch is its own function call so the dispatch
   // table is readable and so an upstream failure can never accidentally
-  // run a different source's code path. The probe (unlike the old
-  // enrichment-only path) covers pdf + podcast for reachability checks
-  // even though no name/avatar comes back from those sources.
+  // run a different source's code path.
   assert.match(ENRICHMENT_SOURCE, /sourceType\s*===\s*"x"/);
   assert.match(ENRICHMENT_SOURCE, /sourceType\s*===\s*"youtube"/);
   assert.match(ENRICHMENT_SOURCE, /sourceType\s*===\s*"blog"/);
   assert.match(ENRICHMENT_SOURCE, /sourceType\s*===\s*"website"/);
   assert.match(ENRICHMENT_SOURCE, /sourceType\s*===\s*"podcast"/);
-  assert.match(ENRICHMENT_SOURCE, /sourceType\s*===\s*"pdf"/);
+  assert.doesNotMatch(ENRICHMENT_SOURCE, /sourceType\s*===\s*"pdf"/);
 });
 
 test("builder-enrichment podcast probe does NOT re-call iTunes (resolver owns that path)", () => {

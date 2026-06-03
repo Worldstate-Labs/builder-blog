@@ -133,7 +133,7 @@ export async function GET(request: Request) {
   // `context.sources[id].summaryPrompt.body` / `context.digest.*` instead; the
   // CLI no longer uses it for summary logic (it only still passes
   // `?includePrompts=1`). The only remaining reader is FetchLogPanel, for UI
-  // display. It also hardcodes just 3 of the 6 source types (x/podcast/blog),
+  // display. It also hardcodes a subset of source types (x/podcast/blog),
   // so new sources are invisible to it. Safe to delete once FetchLogPanel reads
   // `context.sources[id].summaryPrompt` and the CLI drops `includePrompts=1`.
   const legacyPrompts = {

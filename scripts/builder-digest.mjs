@@ -90,7 +90,6 @@ const FETCH_FN_BY_SOURCE_ID = {
   blog: fetchPersonalBlogBuilder,
   youtube: fetchPersonalYouTubeBuilder,
   podcast: fetchPersonalPodcastBuilder,
-  pdf: fetchPersonalPdfBuilder,
   website: fetchPersonalWebsiteBuilder,
 };
 
@@ -1146,7 +1145,7 @@ function sourceTypeIdForBuilder(builder) {
   const sources = loadSourcesConfig().sources;
   const urlText = `${builder.sourceUrl || ""} ${builder.fetchUrl || ""}`;
 
-  // First: URL-pattern matches scoped to the builder kind (catches youtube/pdf).
+  // First: URL-pattern matches scoped to the builder kind (catches YouTube).
   for (const source of sources) {
     if (source.builderKind !== builder.kind) continue;
     if (!Array.isArray(source.urlPatterns) || source.urlPatterns.length === 0) continue;
@@ -1162,10 +1161,6 @@ function sourceTypeIdForBuilder(builder) {
   return kindDefault?.id ?? "website";
 }
 
-function isPdfSource(builder) {
-  return sourceTypeIdForBuilder(builder) === "pdf";
-}
-
 function normalizeXHandle(value) {
   const text = String(value || "").trim();
   if (!text) return "";
@@ -1176,6 +1171,7 @@ function normalizeXHandle(value) {
 
 function normalizeSourceType(sourceType) {
   const normalized = String(sourceType || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (normalized === "pdf") return "website";
   return normalized === "auto" ? "" : normalized;
 }
 
@@ -1682,39 +1678,7 @@ export function parsePodcastFeedItems(xml, feedUrl) {
     .filter((item) => item.externalId && (item.url || item.enclosureUrl));
 }
 
-async function fetchPersonalPdfBuilder(builder) {
-  const sourceUrl = builder.fetchUrl || builder.sourceUrl;
-  if (!sourceUrl) return { items: [], agentTasks: [] };
-  return {
-    items: [],
-    agentTasks: [
-      (() => {
-        const item = {
-          kind: "BLOG_POST",
-          externalId: sourceUrl,
-          title: builder.name,
-          url: sourceUrl,
-          publishedAt: null,
-          sourceName: builder.name,
-        };
-        const task = {
-          type: "pdf_extraction",
-          builder: builder.name,
-          builderId: builder.id,
-          sourceType: "pdf",
-          item,
-          minimumContentQuality: genericMinimumContentQuality(),
-        };
-        return { ...task, id: agentTaskId(task) };
-      })(),
-    ],
-  };
-}
-
 async function fetchPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel, fetchedItemKeys = new Set() }) {
-  if (isPdfSource(builder)) {
-    return fetchPersonalPdfBuilder(builder);
-  }
   const sourceUrl = builder.fetchUrl || builder.sourceUrl;
   if (!sourceUrl) return [];
 

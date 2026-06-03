@@ -584,11 +584,11 @@ test("web app serves the agent skill and setup command", () => {
   // expanded prompt references the current context.sources/context.digest paths.
   assert.match(digestOncePrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
   assert.doesNotMatch(digestOnceExpanded, /\{\{INCLUDE/);
-  // Summary prompt is selected per SOURCE TYPE (covers all 6 + future), not per
+  // Summary prompt is selected per SOURCE TYPE (covers current + future), not per
   // the coarser item.kind which can't tell youtube from podcast, or blog from
-  // pdf/website.
+  // website.
   assert.match(digestOnceExpanded, /context\.sources\[item\.builder\.sourceType\]\.summaryPrompt\.body/);
-  assert.match(digestOnceExpanded, /x, blog, youtube, podcast, pdf, website/);
+  assert.match(digestOnceExpanded, /x, blog, youtube, podcast, website/);
   assert.doesNotMatch(digestOnceExpanded, /context\.sources\.x\.summaryPrompt\.body/);
   assert.match(digestOnceExpanded, /context\.digest\.digestIntro/);
   assert.match(digestOnceExpanded, /context\.digest\.translate/);
@@ -2412,9 +2412,9 @@ test("source registry supports future source types without new BuilderKind enum 
       sourceUrl: "https://example.com/research.pdf",
       fetchUrl: null,
     }),
-    "pdf",
+    "website",
   );
-  assert.equal(sourceDefinitionForType("pdf")?.staticLabel, "PDF");
+  assert.equal(sourceDefinitionForType("pdf")?.staticLabel, "Website");
   assert.equal(builderKindForSourceType("pdf"), BuilderKind.WEBSITE);
   assert.equal(
     sourceTypeIdForBuilder({

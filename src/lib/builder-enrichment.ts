@@ -17,7 +17,6 @@
  *   website  → same as blog
  *   podcast  → Apple Podcasts iTunes lookup is owned by resolvePodcast;
  *              non-Apple feeds are GET'd here and asserted to be XML.
- *   pdf      → Range-byte probe of the magic header.
  *
  * Every probe runs under a single 4-second AbortController, behind the
  * shared SSRF guard, and with the same FollowBriefBot User-Agent.
@@ -89,7 +88,6 @@ export async function probeAndEnrichSource(input: ProbeInput): Promise<ProbeOutc
       return await probeHtmlPage(input);
     }
     if (sourceType === "podcast") return await probePodcast(input);
-    if (sourceType === "pdf") return await probePdf(input);
     // Unknown source type → treat as a no-op probe (don't block the add).
     return { ok: true, enrichment: {} };
   } catch (error) {
@@ -471,66 +469,6 @@ async function probePodcast(input: ProbeInput): Promise<ProbeOutcome> {
       "That URL didn't return a parseable RSS feed and we couldn't find one linked from the page — paste the actual RSS feed URL.",
     enrichment: {},
   };
-}
-
-// ──────────────────────────────────────────────────────────────────
-// PDF — cheap Range probe of the first 32 bytes to peek the magic
-// header. Avoids downloading multi-megabyte PDFs at add-time.
-// ──────────────────────────────────────────────────────────────────
-
-async function probePdf(input: ProbeInput): Promise<ProbeOutcome> {
-  const pageUrl = input.sourceUrl;
-  if (!pageUrl) return { ok: true, enrichment: {} };
-  const check = validatePublicHttpUrl(pageUrl);
-  if (!check.ok) return { ok: true, enrichment: {} };
-  let response: Response;
-  try {
-    response = await fetchWithTimeout(pageUrl, {
-      headers: {
-        "User-Agent": USER_AGENT,
-        Range: "bytes=0-32",
-      },
-    });
-  } catch (error) {
-    console.warn("[builder-enrichment] pdf fetch failed", { pageUrl, error });
-    return {
-      ok: true,
-      warning: networkErrorMessage(error, "the PDF"),
-      enrichment: {},
-    };
-  }
-  if (response.status === 404 || response.status === 410) {
-    return {
-      ok: false,
-      hardError: `The PDF URL returned HTTP ${response.status}.`,
-      enrichment: {},
-    };
-  }
-  if (response.status === 403 || response.status === 429 || response.status >= 500) {
-    return {
-      ok: true,
-      warning: `Couldn't reach the PDF right now (HTTP ${response.status}); the agent will retry at sync time.`,
-      enrichment: {},
-    };
-  }
-  if (!response.ok && response.status !== 206) {
-    return {
-      ok: true,
-      warning: `Got HTTP ${response.status} from the PDF.`,
-      enrichment: {},
-    };
-  }
-  const body = await response.text().catch(() => "");
-  const looksLikePdf = body.startsWith("%PDF");
-  const urlHasPdfExt = /\.pdf(\?|#|$)/i.test(pageUrl);
-  if (!looksLikePdf && !urlHasPdfExt) {
-    return {
-      ok: true,
-      warning: "URL doesn't look like a PDF — the agent will still try at sync time.",
-      enrichment: {},
-    };
-  }
-  return { ok: true, enrichment: {} };
 }
 
 // ──────────────────────────────────────────────────────────────────

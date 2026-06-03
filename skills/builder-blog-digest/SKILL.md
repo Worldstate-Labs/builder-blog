@@ -235,8 +235,8 @@ Payload shape:
 ```
 
 `sourceType` is optional. Use it when the storage kind is generic but the
-actual source is more specific, for example `pdf`, `youtube`, or
-`custom_media`. If omitted, the web app infers the source from `kind` and URL.
+actual source is more specific, for example `youtube` or `custom_media`. If
+omitted, the web app infers the source from `kind` and URL.
 
 ### Generate Digest
 

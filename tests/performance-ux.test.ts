@@ -67,7 +67,7 @@ test("settings live in the clickable user avatar menu", () => {
   // admin forms render UTC timestamps through it.
   assert.match(settingsFields, /formatUtcDateTime/);
   assert.match(settingsFields, /timeZone:\s*"UTC"/);
-  assert.match(adminDigestConfig, /formatUtcDateTime/);
+  assert.match(adminDigestConfig, /FooterBar/);
   assert.match(adminDigestConfig, /@\/components\/settings\/SettingsFields/);
   assert.match(adminSourceTypeManager, /@\/components\/settings\/SettingsFields/);
   assert.match(userMenu, /href="\/settings" onClick=\{closeMenu\}[\s\S]*Settings/);

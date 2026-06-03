@@ -421,7 +421,7 @@ async function BuilderSections({
     <PrivateLibraryPanel
       title={data.isAdmin ? adminCommunityLibraryName : "Private library"}
       count={data.privateBuilders.length}
-      sourceOptions={data.sourceLabelOptions.filter((source) => source.id !== "pdf")}
+      sourceOptions={data.sourceLabelOptions}
       visibilityToggle={
         <LibraryVisibilityToggle
           compact
@@ -442,9 +442,7 @@ async function BuilderSections({
             subscribed: data.subscribed.has(builder.id),
           }),
         )}
-        editableSourceOptions={data.sourceLabelOptions.filter(
-          (source) => source.id !== "pdf",
-        )}
+        editableSourceOptions={data.sourceLabelOptions}
         emptyBody="Add a source, or run your local helper to import private sources."
         emptyTitle="No personal sources yet"
       />
