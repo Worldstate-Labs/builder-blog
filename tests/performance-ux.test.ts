@@ -308,6 +308,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /className="builder-detail-action-skeleton-button"/);
   assert.match(builderDetailActions, /className="builder-detail-action-error"/);
   assert.doesNotMatch(builderDetailActions, /text-xs text-\[var\(--danger\)\]/);
+  assert.match(builderDetailPage, /className="builder-detail-section builder-detail-channels"/);
+  assert.match(builderDetailPage, /className="builder-detail-channels-summary"/);
   assert.match(builderDetailPage, /className="builder-detail-channel-list"/);
   assert.match(builderDetailPage, /className="builder-detail-channel-row"/);
   assert.match(builderDetailPage, /EmptyState/);
@@ -323,13 +325,15 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(builderDetailPage, /md:grid-cols-\[1fr_auto_auto\]/);
   assert.doesNotMatch(builderDetailPage, /className="grid gap-4" aria-busy/);
   assert.doesNotMatch(builderDetailPage, /mt-8 grid gap-6/);
-  assert.doesNotMatch(builderDetailPage, /fb-panel dashed mt-10/);
+  assert.doesNotMatch(builderDetailPage, /builder-detail-section fb-panel dashed/);
   assert.match(globals, /--workspace-max:\s*72rem/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
   assert.match(globals, /\.workspace-content-stack\s*{[\s\S]*margin-top:\s*clamp/);
   assert.match(globals, /\.builder-detail-action-skeleton-button\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.builder-detail-action-error\s*{[\s\S]*color:\s*var\(--danger\)/);
+  assert.match(globals, /\.builder-detail-channels\s*{[\s\S]*border-top:\s*1px solid/);
+  assert.match(globals, /\.builder-detail-channels-summary::after\s*{[\s\S]*content:\s*"\+"/);
   assert.match(globals, /\.recent-post-skeleton-line--title\s*{[\s\S]*width:\s*min\(75%,\s*32rem\)/);
   assert.match(rootLoading, /RouteLoading/);
   assert.doesNotMatch(rootLoading, /bg-black\/10|className="h-|grid gap-4|stats-panel/);

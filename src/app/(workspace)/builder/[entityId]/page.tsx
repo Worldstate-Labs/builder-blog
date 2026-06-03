@@ -216,9 +216,9 @@ export default async function BuilderDetailPage({ params }: Params) {
           </Suspense>
         </section>
 
-        <details className="builder-detail-section fb-panel dashed">
-          <summary className="cursor-pointer text-sm font-bold text-[var(--ink)]">
-            Available through{" "}
+        <details className="builder-detail-section builder-detail-channels">
+          <summary className="builder-detail-channels-summary">
+            <span>Libraries</span>
             <CountMeta label={channels.length === 1 ? "library" : "libraries"} value={channels.length} />
           </summary>
           <Suspense fallback={null}>

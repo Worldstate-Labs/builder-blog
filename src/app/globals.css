@@ -6305,6 +6305,37 @@ svg.lucide {
   min-width: 0;
 }
 
+.builder-detail-channels {
+  border-top: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
+  padding-top: 0.85rem;
+}
+
+.builder-detail-channels-summary {
+  align-items: center;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.875rem;
+  font-weight: 760;
+  gap: 0.5rem;
+  list-style: none;
+}
+
+.builder-detail-channels-summary::-webkit-details-marker {
+  display: none;
+}
+
+.builder-detail-channels-summary::after {
+  color: var(--accent);
+  content: "+";
+  font-weight: 850;
+}
+
+.builder-detail-channels[open] .builder-detail-channels-summary::after {
+  content: "-";
+}
+
 .builder-detail-page-head > div:first-child {
   flex: 1 1 min(48rem, 100%);
   min-width: 0;
