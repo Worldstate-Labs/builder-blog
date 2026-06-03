@@ -348,6 +348,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(builderDetailPage, /<header className="fb-page-head"/);
   assert.match(builderDetailPage, /className="workspace-content-stack builder-detail-workspace"/);
   assert.match(builderDetailPage, /className="builder-detail-head-stack"/);
+  assert.match(builderDetailPage, /ChevronLeft/);
+  assert.match(builderDetailPage, /className="builder-detail-breadcrumb"/);
+  assert.doesNotMatch(builderDetailPage, /Back to Sources/);
+  assert.doesNotMatch(builderDetailPage, /className="fb-btn light compact w-fit" href="\/builders"/);
   assert.match(builderDetailPage, /className="builder-detail-identity"/);
   assert.match(builderDetailPage, /className="builder-detail-avatar"/);
   assert.match(builderDetailPage, /className="builder-detail-title-stack"/);
@@ -406,6 +410,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.builder-detail-page-head\s*{[\s\S]*--page-head-copy-max:\s*var\(--empty-max\)/);
+  assert.match(globals, /\.builder-detail-breadcrumb\s*{[\s\S]*width:\s*fit-content/);
+  assert.match(globals, /\.builder-detail-breadcrumb:hover,[\s\S]*\.builder-detail-breadcrumb:focus-visible\s*{[\s\S]*color:\s*var\(--accent\)/);
   assert.doesNotMatch(globals, /\.builder-detail-page-head > div:first-child\s*{[\s\S]*min\(48rem/);
   assert.match(globals, /\.builder-detail-action-skeleton-button\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.builder-detail-action-stack\s*{[\s\S]*display:\s*grid/);

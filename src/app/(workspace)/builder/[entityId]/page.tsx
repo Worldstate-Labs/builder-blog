@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
-import { ExternalLink } from "lucide-react";
+import { ChevronLeft, ExternalLink } from "lucide-react";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { fetchDedupedFeedForEntities, getReadEntityKeys } from "@/lib/builder-channel-resolver";
@@ -138,8 +138,9 @@ export default async function BuilderDetailPage({ params }: Params) {
         title={entity.name}
       >
         <div className="builder-detail-head-stack">
-          <Link className="fb-btn light compact w-fit" href="/builders">
-            Back to Sources
+          <Link className="builder-detail-breadcrumb" href="/builders">
+            <ChevronLeft aria-hidden="true" />
+            Sources
           </Link>
           <div className="builder-detail-identity">
             <SourceAvatar
