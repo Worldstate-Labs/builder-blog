@@ -445,6 +445,9 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.doesNotMatch(favoritesSection, /bg-black\/10|empty-panel border-dashed|flex items-start gap-3|text-lg font-semibold|mt-2 text-sm/);
   assert.doesNotMatch(followingSection, /bg-black\/10|empty-panel border-dashed|flex items-start gap-3|text-lg font-semibold|mt-2 text-sm/);
   assert.match(globals, /\.feed-content-stack\s*{[\s\S]*margin-top:\s*1\.5rem/);
+  assert.match(globals, /\.feed-content-stack\s*{[\s\S]*max-width:\s*58rem/);
+  assert.match(globals, /\.feed-content-stack\s*{[\s\S]*margin-inline:\s*auto/);
+  assert.match(globals, /\.feed-content-stack\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.recommendation-feed-actions\s*{[\s\S]*justify-content:\s*space-between/);
   assert.match(globals, /\.recommendation-snapshot-list\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.feed-end-note\s*{[\s\S]*font-size:\s*0\.875rem/);

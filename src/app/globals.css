@@ -1002,8 +1002,11 @@ svg.lucide {
 .feed-content-stack {
   display: grid;
   gap: 0.75rem;
+  margin-inline: auto;
   margin-top: 1.5rem;
+  max-width: 58rem;
   min-width: 0;
+  width: 100%;
 }
 
 .recommendation-feed-actions {
