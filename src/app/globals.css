@@ -6332,11 +6332,6 @@ svg.lucide {
   max-width: 52rem;
 }
 
-.settings-rules-head {
-  border-bottom: 1px solid color-mix(in oklch, var(--line) 78%, transparent);
-  padding-bottom: 0.875rem;
-}
-
 .settings-rules-panel {
   padding: 0;
 }
@@ -6391,11 +6386,6 @@ svg.lucide {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   background: color-mix(in oklch, var(--ink) 10%, transparent);
   border-radius: 8px;
-}
-
-.settings-skeleton-line--title {
-  height: 1.25rem;
-  width: min(16rem, 100%);
 }
 
 .settings-skeleton-line--access-title {
@@ -7875,10 +7865,6 @@ body {
   .fb-field label {
     font-size: 0.65625rem;
     letter-spacing: 0.06em;
-  }
-
-  .settings-rules-head {
-    padding-left: 0.75rem;
   }
 
   .settings-rules-summary,

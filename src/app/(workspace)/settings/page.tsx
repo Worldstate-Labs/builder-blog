@@ -62,10 +62,6 @@ async function SourceTypeConfigSection({
   }));
   return (
     <section className="settings-rules">
-      <header className="settings-rules-head">
-        <h2 className="settings-rules-title fb-section-heading">Source and digest rules</h2>
-      </header>
-
       <details className="settings-rules-panel fb-panel">
         <summary className="settings-rules-summary">
           <div className="settings-rules-summary-copy">
@@ -139,9 +135,7 @@ async function SourceTypeConfigSection({
 function SourceTypeConfigSkeleton() {
   return (
     <section className="settings-rules settings-rules-skeleton" aria-busy="true" aria-live="polite">
-      <div className="settings-skeleton-line settings-skeleton-line--title" />
       <div className="settings-rules-skeleton-list">
-        <div className="settings-skeleton-card" />
         <div className="settings-skeleton-card" />
         <div className="settings-skeleton-card" />
       </div>

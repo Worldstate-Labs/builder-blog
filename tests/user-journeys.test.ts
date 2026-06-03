@@ -2512,7 +2512,7 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(settingsPage, /getAllSourceConfigs\(\)/);
   assert.match(settingsPage, /canEditQualityGates=\{isAdmin\}/);
   assert.match(settingsPage, /getUserDigestConfig\(userId\)/);
-  assert.match(settingsPage, /Source and digest rules/);
+  assert.doesNotMatch(settingsPage, /Source and digest rules/);
   assert.match(settingsPage, /Source update rules/);
   assert.match(settingsPage, /AI Digest rules/);
   assert.match(settingsPage, /CommonFetchRulesForm/);

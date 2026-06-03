@@ -1292,7 +1292,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(settingsPage, /settings-access-grid grid gap-5/);
   assert.match(settingsPage, /className="settings-rules"/);
   assert.doesNotMatch(settingsPage, />Advanced<\/p>/);
-  assert.match(settingsPage, /className="settings-rules-title fb-section-heading"/);
+  assert.doesNotMatch(settingsPage, /Source and digest rules/);
+  assert.doesNotMatch(settingsPage, /settings-rules-title|settings-rules-head/);
   assert.match(settingsPage, /className="settings-rules-summary"/);
   assert.match(settingsPage, /className="settings-rules-summary-desc"/);
   assert.match(settingsPage, /className="settings-rules-body"/);
@@ -1300,7 +1301,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /className="settings-rules settings-rules-skeleton"/);
   assert.match(settingsPage, /className="settings-rules-skeleton-list"/);
   assert.doesNotMatch(settingsPage, /settings-skeleton-line--eyebrow/);
-  assert.match(settingsPage, /className="settings-skeleton-line settings-skeleton-line--title"/);
+  assert.doesNotMatch(settingsPage, /className="settings-skeleton-line settings-skeleton-line--title"/);
   assert.match(settingsPage, /className="settings-skeleton-card"/);
   assert.match(settingsPage, /className="settings-skeleton-line settings-skeleton-line--access-title"/);
   assert.match(settingsPage, /className="settings-skeleton-line settings-skeleton-line--access-desc"/);
@@ -1319,7 +1320,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.settings-access-grid\s*{[\s\S]*max-width:\s*52rem/);
   assert.match(globals, /\.settings-access-grid\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.settings-rules\s*{[\s\S]*display:\s*grid/);
-  assert.match(globals, /\.settings-rules-head\s*{[\s\S]*border-bottom:/);
+  assert.doesNotMatch(globals, /\.settings-rules-head/);
   assert.doesNotMatch(globals, /\.settings-rules-title\s*{/);
   assert.doesNotMatch(globals, /\.settings-skeleton-line--eyebrow\s*{/);
   assert.match(globals, /\.settings-rules-summary\s*{[\s\S]*cursor:\s*pointer/);
