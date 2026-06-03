@@ -4,6 +4,7 @@ import { AdminDigestConfigForm } from "@/components/AdminDigestConfigForm";
 import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
 import { AgentTokenPanel } from "@/components/AgentTokenPanel";
 import { CountChip } from "@/components/Count";
+import { PageHeader } from "@/components/PageHeader";
 import {
   CommonFetchRulesForm,
   CommonSummaryRulesForm,
@@ -25,11 +26,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="page-pad">
-      <section className="fb-page-head">
-        <div>
-          <h1 className="fb-title">Settings</h1>
-        </div>
-      </section>
+      <PageHeader title="Settings" />
 
       <div className="settings-workspace">
         <div className="settings-access-grid">

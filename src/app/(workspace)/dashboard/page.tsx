@@ -17,6 +17,7 @@ import { FavoritePostsSection } from "@/components/FavoritePostsSection";
 import { FollowingRecommendationSection } from "@/components/FollowingRecommendationSection";
 import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
+import { PageHeader } from "@/components/PageHeader";
 import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
 import { getAgentJobRuns, getScheduledAgentJobRuns, type AgentJobRunListItem } from "@/lib/agent-job-runs";
 import { getCurrentSession } from "@/lib/auth";
@@ -63,14 +64,10 @@ export default async function DashboardPage({
 
   return (
     <div className="page-pad">
-      <header className="fb-page-head">
-        <div>
-          <h1 className="fb-title">Home</h1>
-          <p className="fb-desc">
-            Read your AI Digest, saved posts, and followed-source updates.
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title="Home"
+        description="Read your AI Digest, saved posts, and followed-source updates."
+      />
 
       <section className="home-workspace">
         <DashboardHomeTabs

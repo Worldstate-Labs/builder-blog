@@ -6,6 +6,7 @@ import {
 } from "@/components/DigestPipelineImportForm";
 import { CountChip } from "@/components/Count";
 import { LibraryHubImportForm, type HubLibrary } from "@/components/LibraryHubImportForm";
+import { PageHeader } from "@/components/PageHeader";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
@@ -25,19 +26,17 @@ export default function LibraryHubPage() {
 
   return (
     <div className="page-pad">
-      <section className="fb-page-head">
-        <div>
-          <h1 className="fb-title">Library Hub</h1>
-          <p className="fb-desc">
-            Import shared source libraries and AI Digest archives.
-          </p>
-        </div>
-        <div className="library-hub-page-count">
-          <Suspense fallback={<span className="fb-chip" aria-busy="true">Loading</span>}>
-            <LibraryHubCount dataPromise={dataPromise} />
-          </Suspense>
-        </div>
-      </section>
+      <PageHeader
+        title="Library Hub"
+        description="Import shared source libraries and AI Digest archives."
+        actions={
+          <div className="library-hub-page-count">
+            <Suspense fallback={<span className="fb-chip" aria-busy="true">Loading</span>}>
+              <LibraryHubCount dataPromise={dataPromise} />
+            </Suspense>
+          </div>
+        }
+      />
 
       <div className="workspace-content-stack">
         <Suspense fallback={<LibraryHubImportFallback />}>

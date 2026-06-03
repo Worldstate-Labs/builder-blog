@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { CountBadge, CountRange, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/PageHeader";
 import { SearchForm, type SearchTypeFilter } from "@/components/SearchForm";
 import { getCurrentSession } from "@/lib/auth";
 import { searchUserLibrary } from "@/lib/user-search";
@@ -148,25 +149,26 @@ export default async function SearchPage({
 
   return (
     <div className="page-pad search-page">
-      <header className="fb-page-head search-hero">
-        <div>
-          <h1 className="fb-title">Search</h1>
-          <p className="fb-desc">Find sources, saved posts, and digest history.</p>
-        </div>
-        <div className="search-hero-form">
-          <SearchForm
-            key={`${query}:${typeFilter}:${mode}:${sort}:${time}`}
-            query={query}
-            typeFilter={typeFilter}
-            mode={mode}
-            sort={sort}
-            time={time}
-            afterDate={formatOptionalOperatorDate(formParsedQuery.after)}
-            beforeDate={formatOptionalOperatorDate(formParsedQuery.before)}
-            suggestions={formSuggestions}
-          />
-        </div>
-      </header>
+      <PageHeader
+        className="search-hero"
+        title="Search"
+        description="Find sources, saved posts, and digest history."
+        actions={
+          <div className="search-hero-form">
+            <SearchForm
+              key={`${query}:${typeFilter}:${mode}:${sort}:${time}`}
+              query={query}
+              typeFilter={typeFilter}
+              mode={mode}
+              sort={sort}
+              time={time}
+              afterDate={formatOptionalOperatorDate(formParsedQuery.after)}
+              beforeDate={formatOptionalOperatorDate(formParsedQuery.before)}
+              suggestions={formSuggestions}
+            />
+          </div>
+        }
+      />
 
       <Suspense
         fallback={

@@ -13,6 +13,7 @@ import {
 import { LibraryImportRemoveButton } from "@/components/LibraryImportRemoveButton";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
 import { MobileSourcesSwitcher } from "@/components/MobileSourcesSwitcher";
+import { PageHeader } from "@/components/PageHeader";
 import { PrivateLibraryPanel } from "@/components/PrivateLibraryPanel";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
@@ -54,17 +55,15 @@ export default function BuildersPage() {
 
   return (
     <div className="page-pad">
-      <section className="fb-page-head">
-        <div>
-          <h1 className="fb-title">Sources</h1>
-          <p className="fb-desc">
-            Manage followed, private, and imported sources.
-          </p>
-        </div>
-        <Suspense fallback={<BuilderStatsFallback />}>
-          <BuilderStatsSlot dataPromise={dataPromise} />
-        </Suspense>
-      </section>
+      <PageHeader
+        title="Sources"
+        description="Manage followed, private, and imported sources."
+        actions={
+          <Suspense fallback={<BuilderStatsFallback />}>
+            <BuilderStatsSlot dataPromise={dataPromise} />
+          </Suspense>
+        }
+      />
 
       <div className="workspace-content-stack">
         <Suspense fallback={<SyncHeaderFallback />}>
