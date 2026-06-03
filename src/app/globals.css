@@ -3303,30 +3303,6 @@ svg.lucide {
   margin-top: 1rem;
 }
 
-.hub-metric {
-  align-items: center;
-  background: color-mix(in oklch, var(--paper) 70%, transparent);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  color: var(--muted);
-  display: grid;
-  font-size: 0.7rem;
-  font-weight: 800;
-  gap: 0.25rem;
-  min-width: 0;
-  padding: 0.65rem;
-  text-transform: uppercase;
-}
-
-.hub-metric strong {
-  color: var(--ink);
-  font-size: 0.95rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-transform: none;
-  white-space: nowrap;
-}
-
 .hub-builder-row {
   align-items: center;
   border-top: 1px solid color-mix(in oklch, var(--line) 72%, transparent);

@@ -823,6 +823,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-head"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-sources-summary"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-stats"/);
+  assert.doesNotMatch(source("src/app/globals.css"), /\.hub-metric/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /EmptyState/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-empty"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-panel dashed col-span-full/);
