@@ -143,12 +143,12 @@ async function SourceTypeConfigSection({
 function SourceTypeConfigSkeleton() {
   return (
     <section className="settings-rules settings-rules-skeleton" aria-busy="true" aria-live="polite">
-      <div className="h-3 w-40 animate-pulse rounded bg-[var(--paper-strong)]" />
-      <div className="h-5 w-64 animate-pulse rounded bg-[var(--paper-strong)]" />
+      <div className="settings-skeleton-line settings-skeleton-line--eyebrow" />
+      <div className="settings-skeleton-line settings-skeleton-line--title" />
       <div className="settings-rules-skeleton-list">
-        <div className="h-24 animate-pulse rounded bg-[var(--paper-strong)]" />
-        <div className="h-24 animate-pulse rounded bg-[var(--paper-strong)]" />
-        <div className="h-24 animate-pulse rounded bg-[var(--paper-strong)]" />
+        <div className="settings-skeleton-card" />
+        <div className="settings-skeleton-card" />
+        <div className="settings-skeleton-card" />
       </div>
     </section>
   );
@@ -179,15 +179,15 @@ function AgentTokenPanelSkeleton() {
     <section className="access-keys-panel fb-panel" aria-busy="true" aria-live="polite">
       <div className="access-keys-head">
         <div className="access-keys-skeleton-copy">
-          <div className="h-5 w-32 animate-pulse rounded bg-[var(--paper-strong)]" />
-          <div className="h-3 w-64 animate-pulse rounded bg-[var(--paper-strong)]" />
+          <div className="settings-skeleton-line settings-skeleton-line--access-title" />
+          <div className="settings-skeleton-line settings-skeleton-line--access-desc" />
         </div>
-        <div className="h-8 w-24 animate-pulse rounded-full bg-[var(--paper-strong)]" />
+        <div className="settings-skeleton-pill" />
       </div>
       <div className="access-keys-list access-keys-list--skeleton">
-        <div className="h-12 animate-pulse rounded bg-[var(--paper-strong)]" />
-        <div className="h-12 animate-pulse rounded bg-[var(--paper-strong)]" />
-        <div className="h-12 animate-pulse rounded bg-[var(--paper-strong)]" />
+        <div className="settings-skeleton-row" />
+        <div className="settings-skeleton-row" />
+        <div className="settings-skeleton-row" />
       </div>
     </section>
   );

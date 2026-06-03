@@ -1154,6 +1154,14 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /className="settings-config-form settings-config-form--common"/);
   assert.match(settingsPage, /className="settings-rules settings-rules-skeleton"/);
   assert.match(settingsPage, /className="settings-rules-skeleton-list"/);
+  assert.match(settingsPage, /className="settings-skeleton-line settings-skeleton-line--eyebrow"/);
+  assert.match(settingsPage, /className="settings-skeleton-line settings-skeleton-line--title"/);
+  assert.match(settingsPage, /className="settings-skeleton-card"/);
+  assert.match(settingsPage, /className="settings-skeleton-line settings-skeleton-line--access-title"/);
+  assert.match(settingsPage, /className="settings-skeleton-line settings-skeleton-line--access-desc"/);
+  assert.match(settingsPage, /className="settings-skeleton-pill"/);
+  assert.match(settingsPage, /className="settings-skeleton-row"/);
+  assert.doesNotMatch(settingsPage, /animate-pulse rounded bg-\[var\(--paper-strong\)\]|className="h-/);
   assert.doesNotMatch(settingsPage, /settings-rules grid gap-4/);
   assert.doesNotMatch(settingsPage, /fb-section-heading mt-1/);
   assert.doesNotMatch(settingsPage, /settings-rules-summary flex cursor-pointer/);
@@ -1170,6 +1178,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.settings-rules-summary\s*{[\s\S]*cursor:\s*pointer/);
   assert.match(globals, /\.settings-rules-summary-desc/);
   assert.match(globals, /\.settings-rules-skeleton-list/);
+  assert.match(globals, /\.settings-skeleton-line,[\s\S]*\.settings-skeleton-row\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
+  assert.match(globals, /\.settings-skeleton-pill\s*{[\s\S]*border-radius:\s*999px/);
   assert.doesNotMatch(globals, /border-left:\s*[2-9]/);
   assert.doesNotMatch(settingsPage, /createPersonalTokenAction/);
   assert.doesNotMatch(settingsPage, /revokeTokenAction/);
