@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshCcw } from "lucide-react";
-import { EmptyState } from "@/components/EmptyState";
+import { FeedEmptyState, FeedLoadingState } from "@/components/FeedState";
 import {
   RecommendationFeed,
   type RecommendationSnapshotEntry,
@@ -59,15 +59,7 @@ function FollowingRecommendationLoader() {
   }, [loadTimeline]);
 
   if (status === "loading") {
-    return (
-      <div className="feed-content-stack">
-        <div className="feed-skeleton-list" aria-live="polite" aria-busy="true">
-          <div className="feed-skeleton-card" />
-          <div className="feed-skeleton-card" />
-          <span className="sr-only">Loading Following recommendations</span>
-        </div>
-      </div>
-    );
+    return <FeedLoadingState label="Loading Following recommendations" />;
   }
 
   // A fetch failure is distinct from "ready but nothing to show": the former is
@@ -89,35 +81,28 @@ function FollowingRecommendationLoader() {
 
 function FollowingUnavailable() {
   return (
-    <div className="feed-content-stack">
-      <EmptyState
-        ariaLive="polite"
-        body="Recommendation snapshots will appear here after matching unread posts are available."
-        className="feed-state-panel"
-        title="Following is not ready yet"
-        tone="empty"
-      />
-    </div>
+    <FeedEmptyState
+      ariaLive="polite"
+      body="Recommendation snapshots will appear here after matching unread posts are available."
+      title="Following is not ready yet"
+    />
   );
 }
 
 function FollowingError({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="feed-content-stack">
-      <EmptyState
-        ariaLive="assertive"
-        body="Something went wrong fetching recommendations."
-        className="feed-state-panel"
-        role="alert"
-        title="Couldn't load Following"
-        tone="error"
-        actions={
-          <button className="fb-btn light compact" onClick={onRetry} type="button">
-            <RefreshCcw aria-hidden="true" className="h-3.5 w-3.5" />
-            Retry
-          </button>
-        }
-      />
-    </div>
+    <FeedEmptyState
+      actions={
+        <button className="fb-btn light compact" onClick={onRetry} type="button">
+          <RefreshCcw aria-hidden="true" className="h-3.5 w-3.5" />
+          Retry
+        </button>
+      }
+      ariaLive="assertive"
+      body="Something went wrong fetching recommendations."
+      role="alert"
+      title="Couldn't load Following"
+      tone="error"
+    />
   );
 }

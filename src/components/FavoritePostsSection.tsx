@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshCcw } from "lucide-react";
-import { EmptyState } from "@/components/EmptyState";
+import { FeedEmptyState, FeedLoadingState } from "@/components/FeedState";
 import {
   RecommendationFeed,
   type RecommendationSnapshotEntry,
@@ -53,15 +53,7 @@ export function FavoritePostsSection() {
   }, [loadFavorites]);
 
   if (status === "loading") {
-    return (
-      <div className="feed-content-stack">
-        <div className="feed-skeleton-list" aria-live="polite" aria-busy="true">
-          <div className="feed-skeleton-card" />
-          <div className="feed-skeleton-card" />
-          <span className="sr-only">Loading Favorite posts</span>
-        </div>
-      </div>
-    );
+    return <FeedLoadingState label="Loading Favorite posts" />;
   }
 
   if (status === "error") {
@@ -104,22 +96,19 @@ function FavoritesMessage({
   tone?: "empty" | "error";
 }) {
   return (
-    <div className="feed-content-stack">
-      <EmptyState
-        body={body}
-        className="feed-state-panel"
-        title={title}
-        tone={tone}
-        role={tone === "error" ? "alert" : undefined}
-        actions={
-          onRetry ? (
-            <button className="fb-btn light compact" onClick={onRetry} type="button">
-              <RefreshCcw aria-hidden="true" className="h-3.5 w-3.5" />
-              Retry
-            </button>
-          ) : undefined
-        }
-      />
-    </div>
+    <FeedEmptyState
+      body={body}
+      title={title}
+      tone={tone}
+      role={tone === "error" ? "alert" : undefined}
+      actions={
+        onRetry ? (
+          <button className="fb-btn light compact" onClick={onRetry} type="button">
+            <RefreshCcw aria-hidden="true" className="h-3.5 w-3.5" />
+            Retry
+          </button>
+        ) : undefined
+      }
+    />
   );
 }
