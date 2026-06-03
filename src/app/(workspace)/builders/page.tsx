@@ -4,6 +4,7 @@ import { Suspense, type ReactNode } from "react";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
 import { BuilderLibraryStats } from "@/components/BuilderLibraryStats";
 import { CountMeta } from "@/components/Count";
+import { DigestLogPanel } from "@/components/DigestLogPanel";
 import { EmptyState } from "@/components/EmptyState";
 import {
   FetchLogPanel,
@@ -20,6 +21,7 @@ import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
 import { isAdminEmail } from "@/lib/admin";
 import { getAgentJobRuns, getScheduledAgentJobRuns } from "@/lib/agent-job-runs";
 import { getCurrentSession } from "@/lib/auth";
+import { getDigestRuns, serializeDigestCronJob } from "@/lib/digest-runs";
 import {
   adminCommunityLibraryDescription,
   adminCommunityLibraryName,
@@ -83,26 +85,46 @@ async function SyncHeader({
   dataPromise: Promise<BuildersPageData>;
 }) {
   const data = await dataPromise;
-  const showStopCron = data.libraryCronJob?.status === "active";
+  const showStopLibraryCron = data.libraryCronJob?.status === "active";
+  const showStopDigestCron = data.digestCronJob?.status === "active";
   return (
     <section className="sources-sync-section">
-      <FetchLogPanel
-        actions={
-          <SkillPromptActions
-            compactOnly
-            context="library"
-            showStop={showStopCron}
-            tokens={data.activeTokens}
-            summaryLanguage={data.summaryLanguage}
-            digestMaxPostAgeDays={data.digestMaxPostAgeDays}
-          />
-        }
-        initialCronJob={data.libraryCronJob}
-        initialCronRuns={data.cronRuns}
-        initialJobRuns={data.jobRuns}
-        initialScheduledJobRuns={data.scheduledJobRuns}
-        initialRuns={data.fetchRuns}
-      />
+      <div className="sources-sync-stack">
+        <FetchLogPanel
+          actions={
+            <SkillPromptActions
+              compactOnly
+              context="library"
+              showStop={showStopLibraryCron}
+              tokens={data.activeTokens}
+              summaryLanguage={data.summaryLanguage}
+              digestMaxPostAgeDays={data.digestMaxPostAgeDays}
+            />
+          }
+          initialCronJob={data.libraryCronJob}
+          initialCronRuns={data.cronRuns}
+          initialJobRuns={data.jobRuns}
+          initialScheduledJobRuns={data.scheduledJobRuns}
+          initialRuns={data.fetchRuns}
+        />
+        <DigestLogPanel
+          actions={
+            <SkillPromptActions
+              compactOnly
+              context="digest"
+              digestMaxPostAgeDays={data.digestMaxPostAgeDays}
+              showStop={showStopDigestCron}
+              summaryLanguage={data.summaryLanguage}
+              tokens={data.activeTokens}
+            />
+          }
+          initialCronJob={data.digestCronJob}
+          initialCronRuns={data.digestCronRuns}
+          initialJobRuns={data.digestJobRuns}
+          initialRuns={data.digestRuns}
+          initialScheduledJobRuns={data.digestScheduledJobRuns}
+        />
+      </div>
     </section>
   );
 }
@@ -134,6 +156,11 @@ async function loadBuildersPageData() {
     rawLibraryCronJob,
     jobRuns,
     scheduledJobRuns,
+    rawDigestRuns,
+    rawDigestCronRuns,
+    digestJobRuns,
+    digestScheduledJobRuns,
+    rawDigestCronJob,
     feedPreference,
   ] = await Promise.all([
     prisma.builderPoolEntry.findMany({
@@ -224,6 +251,13 @@ async function loadBuildersPageData() {
     }),
     getAgentJobRuns(session.user.id, "library-fetch", 25),
     getScheduledAgentJobRuns(session.user.id, "library-cron", 25),
+    getDigestRuns(session.user.id),
+    getDigestRuns(session.user.id, 25, "cron"),
+    getAgentJobRuns(session.user.id, "digest-build", 25),
+    getScheduledAgentJobRuns(session.user.id, "digest-cron", 25),
+    prisma.digestCronJob.findUnique({
+      where: { userId: session.user.id },
+    }),
     prisma.userFeedPreference.findUnique({
       where: { userId: session.user.id },
       select: { summaryLanguage: true, digestMaxPostAgeDays: true },
@@ -370,6 +404,11 @@ async function loadBuildersPageData() {
 
   return {
     activeTokens,
+    digestCronJob: serializeDigestCronJob(rawDigestCronJob),
+    digestCronRuns: rawDigestCronRuns,
+    digestJobRuns,
+    digestRuns: rawDigestRuns,
+    digestScheduledJobRuns,
     fetchedItems,
     cronRuns,
     fetchRuns,

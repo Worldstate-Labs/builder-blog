@@ -245,9 +245,15 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   assert.match(buildersPage, /function SyncHeaderFallback/);
   assert.match(buildersPage, /actions=\{/);
   assert.match(buildersPage, /compactOnly/);
-  assert.match(buildersPage, /showStop=\{showStopCron\}/);
+  assert.match(buildersPage, /showStop=\{showStopLibraryCron\}/);
   assert.match(buildersPage, /libraryCronJob\?\.status === "active"/);
   assert.match(buildersPage, /initialCronJob=\{data\.libraryCronJob\}/);
   assert.match(buildersPage, /initialCronRuns=\{data\.cronRuns\}/);
   assert.match(buildersPage, /initialRuns=\{data\.fetchRuns\}/);
+  assert.match(buildersPage, /<DigestLogPanel/);
+  assert.match(buildersPage, /context="digest"/);
+  assert.match(buildersPage, /showStop=\{showStopDigestCron\}/);
+  assert.match(buildersPage, /initialCronJob=\{data\.digestCronJob\}/);
+  assert.match(buildersPage, /initialCronRuns=\{data\.digestCronRuns\}/);
+  assert.match(buildersPage, /initialRuns=\{data\.digestRuns\}/);
 });

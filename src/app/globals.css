@@ -4027,8 +4027,6 @@ svg.lucide {
   background: color-mix(in oklch, var(--paper-strong) 72%, transparent);
   border: 1px solid var(--line);
   border-radius: 12px;
-  margin-inline: auto;
-  max-width: var(--reading-max);
   overflow: hidden;
   width: 100%;
 }
@@ -4036,10 +4034,12 @@ svg.lucide {
 .ai-digest-stack {
   display: grid;
   gap: 1.25rem;
+  margin-inline: auto;
+  max-width: var(--reading-max);
+  width: 100%;
 }
 
 .digest-source-selector {
-  margin-top: 1rem;
   min-width: 0;
 }
 
@@ -4273,6 +4273,11 @@ svg.lucide {
 
 .digest-updates-panel {
   overflow: hidden;
+}
+
+.sources-sync-stack {
+  display: grid;
+  gap: 1rem;
 }
 
 .sources-sync-section .digest-updates-panel {

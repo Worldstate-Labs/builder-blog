@@ -2,24 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
 import type { DigestSourceLink } from "@/components/DigestContent";
-import { DigestLogPanel } from "@/components/DigestLogPanel";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
 import { DigestPipelineVisibilityToggle } from "@/components/DigestPipelineVisibilityToggle";
 import { EmptyState } from "@/components/EmptyState";
 import { CountMeta } from "@/components/Count";
-import {
-  getDigestRuns,
-  serializeDigestCronJob,
-  type DigestCronJobStatus,
-  type DigestRunListItem,
-} from "@/lib/digest-runs";
 import { FavoritePostsSection } from "@/components/FavoritePostsSection";
 import { FollowingRecommendationSection } from "@/components/FollowingRecommendationSection";
 import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
-import { SkillPromptActions } from "@/components/SkillPromptActions";
 import { PageHeader } from "@/components/PageHeader";
-import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
-import { getAgentJobRuns, getScheduledAgentJobRuns, type AgentJobRunListItem } from "@/lib/agent-job-runs";
 import { getCurrentSession } from "@/lib/auth";
 import { displayDigestPipelineTitle } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
@@ -125,18 +115,10 @@ async function AiDigestFeedSlot({
     digestPipelineOptions.find((pipeline) => pipeline.id === pipelineId) ??
     digestPipelineOptions[0];
   const digestOwnerUserId = selectedPipeline.ownerUserId;
-  const isOwnPipeline = selectedPipeline.isOwnPipeline;
 
   const [
     digestSummaries,
     digestSourceLinks,
-    rawTokens,
-    feedPreference,
-    digestRuns,
-    digestCronRuns,
-    digestJobRuns,
-    digestScheduledJobRuns,
-    digestCronJob,
   ] = await Promise.all([
       // The digest picker lists the latest digest plus archived digests in one
       // control. Keep this as summaries only; the body is fetched on demand.
@@ -147,50 +129,8 @@ async function AiDigestFeedSlot({
         select: digestSummarySelect,
       }),
       digestSourceLinksForUser(digestOwnerUserId),
-      isOwnPipeline
-        ? prisma.agentToken.findMany({
-            where: { userId, revokedAt: null },
-            orderBy: { createdAt: "desc" },
-            select: {
-              id: true,
-              name: true,
-              createdAt: true,
-              lastUsedAt: true,
-              lastIp: true,
-              lastUserAgent: true,
-              lastHostname: true,
-              lastPlatform: true,
-              lastUser: true,
-            },
-          })
-        : Promise.resolve([]),
-      isOwnPipeline
-        ? prisma.userFeedPreference.findUnique({
-            where: { userId },
-            select: { summaryLanguage: true, digestMaxPostAgeDays: true },
-          })
-        : Promise.resolve(null),
-      isOwnPipeline ? getDigestRuns(userId) : Promise.resolve([]),
-      isOwnPipeline ? getDigestRuns(userId, 25, "cron") : Promise.resolve([]),
-      isOwnPipeline ? getAgentJobRuns(userId, "digest-build", 25) : Promise.resolve([]),
-      isOwnPipeline ? getScheduledAgentJobRuns(userId, "digest-cron", 25) : Promise.resolve([]),
-      isOwnPipeline
-        ? prisma.digestCronJob.findUnique({ where: { userId } })
-        : Promise.resolve(null),
     ]);
 
-  const activeTokens: AgentTokenListItem[] = rawTokens.map((token) => ({
-    id: token.id,
-    name: token.name,
-    createdAt: token.createdAt.toISOString(),
-    lastUsedAt: token.lastUsedAt?.toISOString() ?? null,
-    lastIp: token.lastIp ?? null,
-    lastUserAgent: token.lastUserAgent ?? null,
-    lastHostname: token.lastHostname ?? null,
-    lastPlatform: token.lastPlatform ?? null,
-    lastUser: token.lastUser ?? null,
-    revokedAt: null,
-  }));
   const latestDigest = digestSummaries[0] ?? null;
   const selectedDigest =
     digestSummaries.find((digest) => digest.id === digestId) ??
@@ -198,17 +138,9 @@ async function AiDigestFeedSlot({
 
   return (
     <AiDigestFeed
-      activeTokens={activeTokens}
       digestPipelineOptions={digestPipelineOptions}
-      digestCronJob={serializeDigestCronJob(digestCronJob)}
-      digestCronRuns={digestCronRuns}
-      digestJobRuns={digestJobRuns}
-      digestRuns={digestRuns}
-      digestScheduledJobRuns={digestScheduledJobRuns}
       ownPipelineShared={ownPipelineShare?.isPublic === true}
       sourceLinks={digestSourceLinks}
-      summaryLanguage={feedPreference?.summaryLanguage ?? null}
-      digestMaxPostAgeDays={feedPreference?.digestMaxPostAgeDays ?? null}
       digestSummaries={digestSummaries}
       latestDigest={latestDigest}
       selectedDigest={selectedDigest}
@@ -218,40 +150,23 @@ async function AiDigestFeedSlot({
 }
 
 function AiDigestFeed({
-  activeTokens,
   digestPipelineOptions,
-  digestCronJob,
-  digestCronRuns,
-  digestJobRuns,
-  digestRuns,
-  digestScheduledJobRuns,
   ownPipelineShared,
   sourceLinks,
-  summaryLanguage,
-  digestMaxPostAgeDays,
   digestSummaries,
   latestDigest,
   selectedDigest,
   selectedPipeline,
 }: {
-  activeTokens: AgentTokenListItem[];
   digestPipelineOptions: DigestPipelineOption[];
-  digestCronJob: DigestCronJobStatus | null;
-  digestCronRuns: DigestRunListItem[];
-  digestJobRuns: AgentJobRunListItem[];
-  digestRuns: DigestRunListItem[];
-  digestScheduledJobRuns: AgentJobRunListItem[];
   ownPipelineShared: boolean;
   sourceLinks: DigestSourceLink[];
-  summaryLanguage: string | null;
-  digestMaxPostAgeDays: number | null;
   digestSummaries: DigestSummaryRow[];
   latestDigest: DigestSummaryRow | null;
   selectedDigest: DigestSummaryRow | null;
   selectedPipeline: DigestPipelineOption;
 }) {
   const isOwnPipeline = selectedPipeline.isOwnPipeline;
-  const showStopDigestCron = digestCronJob?.status === "active";
 
   return (
     <section className="ai-digest-stack">
@@ -259,27 +174,6 @@ function AiDigestFeed({
         options={digestPipelineOptions}
         selectedPipelineId={selectedPipeline.id}
       />
-      {isOwnPipeline ? (
-        <section id="digest-log" className="scroll-mt-24">
-          <DigestLogPanel
-            actions={
-              <SkillPromptActions
-                compactOnly
-                context="digest"
-                digestMaxPostAgeDays={digestMaxPostAgeDays}
-                showStop={showStopDigestCron}
-                summaryLanguage={summaryLanguage}
-                tokens={activeTokens}
-              />
-            }
-            initialCronJob={digestCronJob}
-            initialCronRuns={digestCronRuns}
-            initialJobRuns={digestJobRuns}
-            initialRuns={digestRuns}
-            initialScheduledJobRuns={digestScheduledJobRuns}
-          />
-        </section>
-      ) : null}
       <section className="ai-digest-panel" aria-labelledby="ai-digest-heading">
         <header className="ai-digest-head">
           <div className="ai-digest-titleblock">

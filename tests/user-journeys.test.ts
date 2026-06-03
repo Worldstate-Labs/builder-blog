@@ -302,15 +302,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(settingsPanel, /\/api\/skill\/bootstrap/);
   assert.match(buildersPage, /<SkillPromptActions[\s\S]*context="library"/);
   assert.match(buildersPage, /compactOnly/);
-  assert.match(buildersPage, /showStop=\{showStopCron\}/);
-  assert.match(dashboardPage, /<SkillPromptActions[\s\S]*context="digest"/);
-  assert.match(dashboardPage, /compactOnly/);
-  assert.match(dashboardPage, /showStop=\{showStopDigestCron\}/);
-  // Dashboard loads + passes the account-wide summary language to the digest dialog.
-  assert.match(dashboardPage, /userFeedPreference\.findUnique/);
-  assert.match(dashboardPage, /summaryLanguage=\{feedPreference\?\.summaryLanguage \?\? null\}/);
-  assert.match(dashboardPage, /summaryLanguage=\{summaryLanguage\}/);
-  // Library page loads + passes the account-wide summary language to the dialog.
+  assert.match(buildersPage, /showStop=\{showStopLibraryCron\}/);
+  assert.match(buildersPage, /<SkillPromptActions[\s\S]*context="digest"/);
+  assert.match(buildersPage, /showStop=\{showStopDigestCron\}/);
+  assert.doesNotMatch(dashboardPage, /<SkillPromptActions/);
+  // Sources loads + passes the account-wide summary language to both helper dialogs.
+  assert.match(buildersPage, /userFeedPreference\.findUnique/);
   assert.match(buildersPage, /summaryLanguage: feedPreference\?\.summaryLanguage/);
   assert.match(buildersPage, /summaryLanguage=\{data\.summaryLanguage\}/);
   assert.doesNotMatch(skillPromptActions, /Source sync/);

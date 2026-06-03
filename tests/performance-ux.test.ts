@@ -496,8 +496,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(globals, /\.home-tabs/);
   assert.doesNotMatch(globals, /\.home-workspace\s*{/);
   assert.match(globals, /\.ai-digest-stack\s*{[\s\S]*display:\s*grid/);
-  assert.match(globals, /\.ai-digest-panel\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
-  assert.match(globals, /\.ai-digest-panel\s*{[\s\S]*margin-inline:\s*auto/);
+  assert.match(globals, /\.ai-digest-stack\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
+  assert.match(globals, /\.ai-digest-stack\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.ai-digest-panel\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.ai-digest-titleblock\s*{[\s\S]*min-width:\s*0/);
   assert.match(globals, /\.ai-digest-imported-title\s*{[\s\S]*margin-top:\s*0\.35rem/);
@@ -697,6 +697,7 @@ test("skill context caps personal fetched items to keep payloads bounded", () =>
 
 test("dashboard subscription feed owns the paginated digest archive", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
+  const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const historyPage = source("src/app/history/page.tsx");
   const digestDetails = source("src/components/DigestDetails.tsx");
   const digestRoute = source("src/app/api/digests/[digestId]/route.ts");
@@ -744,8 +745,10 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(dashboardPage, /DigestPipelineVisibilityToggle/);
   assert.match(dashboardPage, /ownPipelineShared/);
   assert.match(dashboardPage, /digestPipelineShare\.findUnique/);
-  assert.match(dashboardPage, /digestCronJob\.findUnique/);
-  assert.match(dashboardPage, /getDigestRuns\(userId, 25, "cron"\)/);
+  assert.doesNotMatch(dashboardPage, /DigestLogPanel/);
+  assert.doesNotMatch(dashboardPage, /SkillPromptActions/);
+  assert.doesNotMatch(dashboardPage, /digestCronJob\.findUnique/);
+  assert.doesNotMatch(dashboardPage, /getDigestRuns\(userId, 25, "cron"\)/);
   assert.match(digestPipelineVisibilityToggle, /Share to Hub/);
   assert.match(digestPipelineVisibilityToggle, /className="hub-share-control"/);
   assert.match(digestPipelineVisibilityToggle, /className="hub-share-button"/);
@@ -756,12 +759,19 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(digestPipelineVisibilityToggle, /method: nextShared \? "POST" : "DELETE"/);
   assert.match(digestPipelineVisibilityToggle, /aria-pressed=\{shared\}/);
   assert.match(dashboardPage, /Imported digest view/);
-  assert.match(dashboardPage, /isOwnPipeline \? \(/);
-  assert.match(dashboardPage, /isOwnPipeline[\s\S]*<SkillPromptActions/);
-  assert.match(dashboardPage, /isOwnPipeline[\s\S]*<DigestLogPanel/);
-  assert.match(dashboardPage, /initialCronJob=\{digestCronJob\}/);
-  assert.match(dashboardPage, /initialCronRuns=\{digestCronRuns\}/);
-  assert.match(dashboardPage, /showStop=\{showStopDigestCron\}/);
+  assert.match(buildersPage, /@\/components\/DigestLogPanel/);
+  assert.match(buildersPage, /@\/lib\/digest-runs/);
+  assert.match(buildersPage, /const showStopDigestCron = data\.digestCronJob\?\.status === "active"/);
+  assert.match(buildersPage, /context="digest"/);
+  assert.match(buildersPage, /<DigestLogPanel/);
+  assert.match(buildersPage, /initialCronJob=\{data\.digestCronJob\}/);
+  assert.match(buildersPage, /initialCronRuns=\{data\.digestCronRuns\}/);
+  assert.match(buildersPage, /initialRuns=\{data\.digestRuns\}/);
+  assert.match(buildersPage, /showStop=\{showStopDigestCron\}/);
+  assert.match(buildersPage, /digestCronJob\.findUnique/);
+  assert.match(buildersPage, /getDigestRuns\(session\.user\.id, 25, "cron"\)/);
+  assert.match(buildersPage, /getAgentJobRuns\(session\.user\.id, "digest-build", 25\)/);
+  assert.match(buildersPage, /getScheduledAgentJobRuns\(session\.user\.id, "digest-cron", 25\)/);
   assert.match(dashboardPage, /digestHref/);
   assert.match(dashboardPage, /aria-label="Digest archive"/);
   assert.match(historyPage, /redirect\("\/dashboard\?tab=ai-digest"\)/);
@@ -1758,6 +1768,7 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.button-compact/);
   assert.match(css, /\.row-actions/);
   assert.match(css, /\.source-summary-line/);
+  assert.match(css, /\.sources-sync-stack\s*{[\s\S]*display:\s*grid/);
   assert.match(css, /\.sources-sync-section \.digest-updates-panel/);
   assert.match(css, /\.builder-library-card-main\s*{\s*\n\s*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);
   assert.doesNotMatch(css, /\.builder-library-stats\s*{/);
