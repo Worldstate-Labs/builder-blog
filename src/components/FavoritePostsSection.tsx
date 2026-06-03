@@ -53,9 +53,9 @@ export function FavoritePostsSection() {
   if (status === "loading") {
     return (
       <div className="feed-content-stack">
-        <div className="item-list" aria-live="polite" aria-busy="true">
-          <div className="h-24 rounded-lg bg-black/10" />
-          <div className="h-24 rounded-lg bg-black/10" />
+        <div className="feed-skeleton-list" aria-live="polite" aria-busy="true">
+          <div className="feed-skeleton-card" />
+          <div className="feed-skeleton-card" />
           <span className="sr-only">Loading Favorite posts</span>
         </div>
       </div>
@@ -95,13 +95,17 @@ function FavoritesMessage({
 }) {
   return (
     <div className="feed-content-stack">
-      <div className="empty-panel border-dashed md:p-8" role={tone === "error" ? "alert" : undefined}>
-        <div className="flex items-start gap-3">
-          <Star className={`mt-1 h-5 w-5 ${tone === "error" ? "text-[var(--danger)]" : "text-[var(--accent)]"}`} />
-          <div>
-            <h2 className="text-lg font-semibold text-[var(--ink)]">{title}</h2>
+      <div
+        className="feed-state-panel"
+        data-tone={tone}
+        role={tone === "error" ? "alert" : undefined}
+      >
+        <div className="feed-state-inner">
+          <Star className="feed-state-icon" aria-hidden="true" />
+          <div className="feed-state-copy">
+            <h2 className="feed-state-title">{title}</h2>
             {body ? (
-              <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
+              <p className="feed-state-desc">
                 {body}
               </p>
             ) : null}

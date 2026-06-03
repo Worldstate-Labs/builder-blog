@@ -59,9 +59,9 @@ function FollowingRecommendationLoader() {
   if (status === "loading") {
     return (
       <div className="feed-content-stack">
-        <div className="item-list" aria-live="polite" aria-busy="true">
-          <div className="h-24 rounded-lg bg-black/10" />
-          <div className="h-24 rounded-lg bg-black/10" />
+        <div className="feed-skeleton-list" aria-live="polite" aria-busy="true">
+          <div className="feed-skeleton-card" />
+          <div className="feed-skeleton-card" />
           <span className="sr-only">Loading Following recommendations</span>
         </div>
       </div>
@@ -88,14 +88,14 @@ function FollowingRecommendationLoader() {
 function FollowingUnavailable() {
   return (
     <div className="feed-content-stack">
-      <div className="empty-panel border-dashed md:p-8" aria-live="polite">
-        <div className="flex items-start gap-3">
-          <Sparkles className="mt-1 h-5 w-5 text-[var(--accent)]" />
-          <div>
-            <h2 className="text-lg font-semibold text-[var(--ink)]">
+      <div className="feed-state-panel" data-tone="empty" aria-live="polite">
+        <div className="feed-state-inner">
+          <Sparkles className="feed-state-icon" aria-hidden="true" />
+          <div className="feed-state-copy">
+            <h2 className="feed-state-title">
               Following is not ready yet
             </h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
+            <p className="feed-state-desc">
               Recommendation snapshots will appear here after matching unread posts are available.
             </p>
           </div>
@@ -108,14 +108,14 @@ function FollowingUnavailable() {
 function FollowingError() {
   return (
     <div className="feed-content-stack">
-      <div className="empty-panel border-dashed md:p-8" role="alert" aria-live="assertive">
-        <div className="flex items-start gap-3">
-          <Sparkles className="mt-1 h-5 w-5 text-[var(--danger)]" />
-          <div>
-            <h2 className="text-lg font-semibold text-[var(--ink)]">
+      <div className="feed-state-panel" data-tone="error" role="alert" aria-live="assertive">
+        <div className="feed-state-inner">
+          <Sparkles className="feed-state-icon" aria-hidden="true" />
+          <div className="feed-state-copy">
+            <h2 className="feed-state-title">
               Couldn&rsquo;t load Following
             </h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
+            <p className="feed-state-desc">
               Something went wrong fetching recommendations. Use Refresh to try again.
             </p>
           </div>
