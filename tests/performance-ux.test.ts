@@ -459,13 +459,16 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /isRunInflight/);
   assert.match(globals, /\.sync-panel-tabs\s*{/);
   assert.match(globals, /\.sync-panel-card,[\s\S]*\.sync-panel-empty\s*{/);
+  assert.match(globals, /\.sync-panel-empty\s*{\s*padding:\s*1\.125rem;\s*}/);
   assert.match(globals, /\.sync-panel-layout\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*0\.85fr\) minmax\(0,\s*1\.15fr\)/);
   assert.match(fetchLogPanel, /className="fb-segmented-tabs sync-panel-tabs"/);
+  assert.match(fetchLogPanel, /@\/components\/EmptyState/);
   assert.match(fetchLogPanel, /className="sync-panel-card"/);
-  assert.match(fetchLogPanel, /className="sync-panel-empty is-dashed"/);
+  assert.match(fetchLogPanel, /<EmptyState[\s\S]*className="sync-panel-empty is-dashed"/);
   assert.match(digestLogPanel, /className="fb-segmented-tabs sync-panel-tabs"/);
+  assert.match(digestLogPanel, /@\/components\/EmptyState/);
   assert.match(digestLogPanel, /className="sync-panel-card"/);
-  assert.match(digestLogPanel, /className="sync-panel-empty is-dashed"/);
+  assert.match(digestLogPanel, /<EmptyState[\s\S]*className="sync-panel-empty is-dashed"/);
   assert.doesNotMatch(fetchLogPanel, /fb-segmented-tabs mt-4 inline-flex/);
   assert.doesNotMatch(digestLogPanel, /fb-segmented-tabs mt-4 inline-flex/);
   assert.match(digestDetails, /stateKey = `\$\{digestId\}/);

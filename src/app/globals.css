@@ -4232,10 +4232,7 @@ svg.lucide {
 }
 
 .sync-panel-empty {
-  color: var(--muted-strong);
-  font-size: 0.875rem;
-  padding: 1.5rem 1rem;
-  text-align: center;
+  padding: 1.125rem;
 }
 
 .sync-panel-empty.is-dashed,

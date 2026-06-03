@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { Activity, ChevronDown, ChevronRight, ChevronUp, Clock3 } from "lucide-react";
 import { CountBadge, CountMeta, CountMetric, formatCount } from "@/components/Count";
+import { EmptyState } from "@/components/EmptyState";
 import { useHydrated } from "@/components/ThemeToggle";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
@@ -767,9 +768,10 @@ function FetchStatusPanel({
   const hydrated = useHydrated();
   if (!cronJob) {
     return (
-      <div className="sync-panel-empty is-dashed">
-        No library fetch cron has reported its schedule yet.
-      </div>
+      <EmptyState
+        className="sync-panel-empty is-dashed"
+        body="No library fetch cron has reported its schedule yet."
+      />
     );
   }
 
@@ -1024,9 +1026,10 @@ function FetchRunList({
   return (
     <div className="sync-panel-run-list">
       {entries.length === 0 ? (
-        <div className="sync-panel-empty is-dashed">
-          No fetch runs yet. Runs appear after your local helper updates sources.
-        </div>
+        <EmptyState
+          className="sync-panel-empty is-dashed"
+          body="No fetch runs yet. Runs appear after your local helper updates sources."
+        />
       ) : (
         <>
           {visibleEntries.map((entry) => (

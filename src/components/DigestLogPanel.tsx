@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { Activity, ChevronDown, ChevronUp, Clock3, ExternalLink } from "lucide-react";
 import { CountBadge, CountMeta, CountMetric, formatCount } from "@/components/Count";
+import { EmptyState } from "@/components/EmptyState";
 import { useHydrated } from "@/components/ThemeToggle";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
@@ -648,9 +649,10 @@ function DigestStatusPanel({
   const hydrated = useHydrated();
   if (!cronJob) {
     return (
-      <div className="sync-panel-empty is-dashed">
-        No digest schedule has reported yet.
-      </div>
+      <EmptyState
+        className="sync-panel-empty is-dashed"
+        body="No digest schedule has reported yet."
+      />
     );
   }
 
@@ -905,10 +907,10 @@ function DigestRunList({
   return (
     <div className="sync-panel-run-list">
       {entries.length === 0 ? (
-        <div className="sync-panel-empty is-dashed">
-          No digest builds yet. After your local helper prepares a digest,
-          the source breakdown will show up here.
-        </div>
+        <EmptyState
+          className="sync-panel-empty is-dashed"
+          body="No digest builds yet. After your local helper prepares a digest, the source breakdown will show up here."
+        />
       ) : (
         <>
           {visibleEntries.map((entry) => (
