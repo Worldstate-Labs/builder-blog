@@ -1258,6 +1258,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(skillPromptActions, /className="token-picker-empty"/);
   assert.doesNotMatch(skillPromptActions, /px-3 py-6 text-center text-sm/);
   assert.match(tokenPanel, /"use client"/);
+  assert.match(tokenPanel, /@\/components\/EmptyState/);
   assert.match(tokenPanel, /fetch\("\/api\/settings\/tokens"/);
   assert.match(tokenPanel, /fetch\(`\/api\/settings\/tokens\/\$\{tokenId\}`/);
   assert.match(tokenPanel, /"New access key"/);
@@ -1266,7 +1267,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /className="access-keys-head"/);
   assert.match(tokenPanel, /className="access-keys-list"/);
   assert.match(tokenPanel, /className="access-keys-more"/);
-  assert.match(tokenPanel, /className="access-keys-empty"/);
+  assert.match(tokenPanel, /<EmptyState[\s\S]*className="access-keys-empty"/);
+  assert.match(tokenPanel, /activeTokens\.length === 0/);
+  assert.doesNotMatch(tokenPanel, /access-keys-note|No active keys to show/);
   assert.match(tokenPanel, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.match(tokenPanel, /className="settings-dialog-copy"/);
   assert.match(tokenPanel, /className="settings-dialog-actions"/);
@@ -1276,6 +1279,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /className="access-keys-list access-keys-list--skeleton"/);
   assert.doesNotMatch(settingsPage, /mt-4 h-11 animate-pulse/);
   assert.match(globals, /\.access-keys-panel/);
+  assert.match(globals, /\.access-keys-empty\s*{\s*margin:\s*0\.75rem;\s*}/);
   assert.match(globals, /\.settings-dialog-stack/);
   assert.match(digestMaxAgeRoute, /export async function PATCH/);
   assert.match(digestMaxAgeRoute, /userFeedPreference\.upsert/);

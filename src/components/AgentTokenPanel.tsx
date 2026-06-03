@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound, Plus } from "lucide-react";
 import { CountBadge } from "@/components/Count";
+import { EmptyState } from "@/components/EmptyState";
 
 export type AgentTokenListItem = {
   id: string;
@@ -251,10 +252,16 @@ export function AgentTokenPanel({
             onRevoke={() => openRevokeDialog(token)}
           />
         ))}
-        {tokens.length === 0 ? (
-          <div className="access-keys-empty">
-            No access keys yet. Add one when you connect a local agent.
-          </div>
+        {activeTokens.length === 0 ? (
+          <EmptyState
+            className="access-keys-empty"
+            title={tokens.length === 0 ? "No access keys yet" : "No active keys"}
+            body={
+              tokens.length === 0
+                ? "Add one when you connect a local agent."
+                : "Revoked keys are hidden from this list."
+            }
+          />
         ) : null}
         {hiddenActiveCount > 0 ? (
           <button
@@ -273,12 +280,6 @@ export function AgentTokenPanel({
           </button>
         ) : null}
       </div>
-
-      {tokens.length > 0 && activeTokens.length === 0 ? (
-        <p className="access-keys-note">
-          No active keys to show. Revoked keys are hidden from this list.
-        </p>
-      ) : null}
 
       <span aria-live="polite" className="access-keys-status">
         {status ? <span className="access-keys-status is-error">{status}</span> : null}
