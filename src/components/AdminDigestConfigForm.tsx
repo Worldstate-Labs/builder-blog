@@ -2,12 +2,12 @@
 
 import { useState, useTransition } from "react";
 import {
-  FieldShell,
   FooterBar,
   OrderedChoiceField,
   Section,
   type SaveStatusState,
 } from "@/components/settings/SettingsFields";
+import { MarkdownEditor } from "@/components/settings/MarkdownEditor";
 
 export type AdminDigestConfig = {
   id: string;
@@ -128,30 +128,40 @@ export function AdminDigestConfigForm({
         title="Digest prompts"
         description="Prompts that assemble and translate the final digest from existing per-post summaries."
       >
-        <FieldShell
-          label="Intro prompt"
-          description="Generates the digest's opening paragraph from the assembled summaries."
-        >
-          <textarea
-            className="fb-textarea w-full"
-            rows={14}
-            style={{ resize: "vertical", fontFamily: "var(--font-geist-mono)", fontSize: "0.8125rem" }}
+        <div className="settings-field block text-sm">
+          <span
+            className="settings-field-label mb-1 flex items-baseline gap-1.5 text-[11px] uppercase tracking-[0.12em]"
+            style={{ color: "var(--muted)" }}
+          >
+            Intro prompt
+          </span>
+          <MarkdownEditor
+            ariaLabel="Intro prompt"
+            height={420}
             value={draft.digestIntro}
-            onChange={(e) => update("digestIntro", e.target.value)}
+            onChange={(value) => update("digestIntro", value)}
           />
-        </FieldShell>
-        <FieldShell
-          label="Translate prompt"
-          description="Used when translating finished summaries into a user's preferred language."
-        >
-          <textarea
-            className="fb-textarea w-full"
-            rows={10}
-            style={{ resize: "vertical", fontFamily: "var(--font-geist-mono)", fontSize: "0.8125rem" }}
+          <span className="settings-field-help mt-1 block text-xs" style={{ color: "var(--muted)" }}>
+            Generates the digest&apos;s opening paragraph from the assembled summaries.
+          </span>
+        </div>
+        <div className="settings-field block text-sm">
+          <span
+            className="settings-field-label mb-1 flex items-baseline gap-1.5 text-[11px] uppercase tracking-[0.12em]"
+            style={{ color: "var(--muted)" }}
+          >
+            Translate prompt
+          </span>
+          <MarkdownEditor
+            ariaLabel="Translate prompt"
+            height={340}
             value={draft.translate}
-            onChange={(e) => update("translate", e.target.value)}
+            onChange={(value) => update("translate", value)}
           />
-        </FieldShell>
+          <span className="settings-field-help mt-1 block text-xs" style={{ color: "var(--muted)" }}>
+            Used when translating finished summaries into a user&apos;s preferred language.
+          </span>
+        </div>
       </Section>
 
       <FooterBar
