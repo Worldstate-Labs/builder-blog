@@ -363,7 +363,7 @@ function DigestArchiveSelector({
   return (
     <details className="digest-picker">
       <summary className="digest-picker-summary">
-        <span className="digest-picker-label">History</span>
+        <span className="sr-only">Digest history</span>
         <DigestPickerItem digest={selectedDigest} isLatest={selectedDigest.id === latestDigestId} />
       </summary>
       <div className="digest-picker-menu" role="listbox" aria-label="Digest archive">

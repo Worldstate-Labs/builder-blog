@@ -4050,15 +4050,6 @@ svg.lucide {
   display: none;
 }
 
-.digest-picker-label {
-  color: var(--muted);
-  flex: 0 0 auto;
-  font-size: 0.65625rem;
-  font-weight: 850;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .digest-picker-summary::after {
   color: var(--muted);
   content: "▾";

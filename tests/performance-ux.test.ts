@@ -564,6 +564,9 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(dashboardPage, /DigestArchiveSelector/);
   assert.match(dashboardPage, /formatDigestPickerDate/);
   assert.match(dashboardPage, /CountMeta/);
+  assert.match(dashboardPage, /Digest history/);
+  assert.doesNotMatch(dashboardPage, /digest-picker-label/);
+  assert.doesNotMatch(source("src/app/globals.css"), /\.digest-picker-label\s*{/);
   assert.match(dashboardPage, /AI Digest/);
   assert.match(dashboardPage, /DigestPipelineVisibilityToggle/);
   assert.match(dashboardPage, /ownPipelineShared/);
