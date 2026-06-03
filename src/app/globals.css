@@ -2956,6 +2956,7 @@ svg.lucide {
 }
 
 .search-result h2 {
+  max-width: var(--measure);
   margin-top: 0.55rem;
   min-width: 0;
 }
@@ -2978,6 +2979,7 @@ svg.lucide {
   font-size: 0.95rem;
   line-height: 1.65;
   margin-top: 0.35rem;
+  max-width: var(--measure);
   overflow-wrap: anywhere;
 }
 

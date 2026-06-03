@@ -760,6 +760,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchPage, /className="ml-1 text-xs font-bold text-\[var\(--accent\)\]"/);
   assert.doesNotMatch(searchPage, /className="mt-2 flex flex-wrap gap-2"/);
   assert.match(globals, /\.search-result-source-copy\s*{[\s\S]*min-width:\s*0/);
+  assert.match(globals, /\.search-result h2\s*{[\s\S]*max-width:\s*var\(--measure\)/);
+  assert.match(globals, /\.search-result-snippet\s*{[\s\S]*max-width:\s*var\(--measure\)/);
   assert.match(globals, /\.search-result-refinement-list\s*{[\s\S]*display:\s*flex/);
   assert.match(searchPage, /SearchQueryInsights/);
   assert.match(searchPage, /SearchTypeTabs/);
