@@ -45,10 +45,6 @@ async function SourceTypeConfigSection({ userId }: { userId: string }) {
       <header className="settings-rules-head">
         <p className="fb-section-label">Advanced</p>
         <h2 className="fb-section-heading mt-1">Source and digest rules</h2>
-        <p className="fb-desc mt-1 max-w-3xl">
-          Configure how source updates fetch and summarize posts, then how AI
-          Digest assembles those summaries.
-        </p>
       </header>
 
       <details className="settings-rules-panel fb-panel">
