@@ -108,7 +108,7 @@ export default async function Home() {
             Built around the loop of following, briefing, and returning to sources later.
           </span>
         </div>
-        <div className="fb-public-card-grid">
+        <ol className="fb-public-step-list">
           {[
             {
               i: "01",
@@ -129,20 +129,20 @@ export default async function Home() {
               copy: "Browse today, open the items behind each brief, and search the full archive when a detail matters later.",
             },
           ].map(({ i, icon: Icon, title, copy }) => (
-            <div key={title} className="fb-panel fb-public-step-card">
-              <div className="fb-public-step-card-head">
-                <span className="fb-section-label">{i}</span>
-                <Icon className="fb-public-step-icon" aria-hidden="true" />
+            <li key={title} className="fb-public-step-row">
+              <span className="fb-public-step-index">{i}</span>
+              <div className="fb-public-step-body">
+                <div className="fb-public-step-title-row">
+                  <Icon className="fb-public-step-icon" aria-hidden="true" />
+                  <h2 className="fb-public-card-title">{title}</h2>
+                </div>
+                <p className="fb-public-card-copy">
+                  {copy}
+                </p>
               </div>
-              <h2 className="fb-public-card-title fb-public-card-title-spaced">
-                {title}
-              </h2>
-              <p className="fb-public-card-copy">
-                {copy}
-              </p>
-            </div>
+            </li>
           ))}
-        </div>
+        </ol>
       </section>
 
       <section className="fb-public-section fb-public-workspace">

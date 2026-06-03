@@ -58,11 +58,15 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /fb-signal-desc/);
   assert.match(landingPage, /fb-public-section-kicker-row/);
   assert.match(landingPage, /fb-public-workflow/);
-  assert.match(landingPage, /fb-public-step-card-head/);
+  assert.match(landingPage, /fb-public-step-list/);
+  assert.match(landingPage, /fb-public-step-row/);
+  assert.match(landingPage, /fb-public-step-index/);
+  assert.match(landingPage, /fb-public-step-title-row/);
   assert.match(landingPage, /fb-public-card-copy/);
   assert.match(landingPage, /fb-public-workspace/);
   assert.match(landingPage, /fb-public-feature-grid/);
   assert.doesNotMatch(landingPage, /fb-public-metric/);
+  assert.doesNotMatch(landingPage, /fb-public-card-grid|fb-public-step-card/);
   assert.doesNotMatch(landingPage, /MiniMetric/);
   assert.doesNotMatch(landingPage, /max-w-7xl/);
   assert.doesNotMatch(landingPage, /mt-6 max-w-xl/);
@@ -98,7 +102,11 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /\.fb-public-copy\s*{[\s\S]*max-width:\s*36rem/);
   assert.match(globals, /\.fb-public-flow\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /\.fb-public-flow-step \+ \.fb-public-flow-step::before\s*{[\s\S]*content:\s*"\/"/);
+  assert.match(globals, /\.fb-public-step-list\s*{[\s\S]*list-style:\s*none/);
+  assert.match(globals, /\.fb-public-step-row\s*{[\s\S]*grid-template-columns:\s*2\.5rem minmax\(0,\s*1fr\)/);
+  assert.match(globals, /\.fb-public-step-title-row\s*{[\s\S]*display:\s*flex/);
   assert.doesNotMatch(globals, /\.fb-public-metric|\.fb-public-metrics/);
+  assert.doesNotMatch(globals, /\.fb-public-card-grid|\.fb-public-step-card/);
   assert.match(globals, /\.fb-login-shell\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
   assert.match(globals, /\.fb-login-copy\s*{[\s\S]*max-width:\s*32rem/);
   assert.match(globals, /\.fb-dark-panel\s*{[\s\S]*max-width:\s*28rem/);
