@@ -46,6 +46,7 @@
   /* Reading measure — keeps prose at ~62–72ch. */
   --measure: 68ch;
   --reading-max: 58rem;
+  --settings-max: 52rem;
   --workspace-max: 72rem;
   --workspace-gutter: clamp(1rem, 3vw, 2.25rem);
 
@@ -6140,7 +6141,7 @@ svg.lucide {
   display: grid;
   gap: 1rem;
   margin-inline: auto;
-  max-width: 52rem;
+  max-width: var(--settings-max);
   width: 100%;
 }
 
@@ -6325,7 +6326,7 @@ svg.lucide {
   display: grid;
   gap: 1.25rem;
   margin-inline: auto;
-  max-width: 52rem;
+  max-width: var(--settings-max);
   width: 100%;
 }
 
@@ -6543,7 +6544,7 @@ svg.lucide {
   color: var(--muted-strong) !important;
   font-size: 0.8125rem;
   line-height: 1.45;
-  max-width: 52rem;
+  max-width: var(--settings-max);
 }
 
 .settings-config-form .settings-section-body {

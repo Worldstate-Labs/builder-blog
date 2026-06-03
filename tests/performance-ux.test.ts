@@ -1399,14 +1399,16 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(settingsPage, /settings-access-grid mt-6/);
   assert.doesNotMatch(settingsPage, /settings-rules mt-10/);
   assert.doesNotMatch(globals, /\.settings-workspace\s*{/);
-  assert.match(globals, /\.settings-access-grid\s*{[\s\S]*max-width:\s*52rem/);
+  assert.match(globals, /--settings-max:\s*52rem/);
+  assert.match(globals, /\.settings-access-grid\s*{[\s\S]*max-width:\s*var\(--settings-max\)/);
   assert.match(globals, /\.settings-access-grid\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.settings-access-grid\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.settings-access-grid\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.settings-rules\s*{[\s\S]*display:\s*grid/);
-  assert.match(globals, /\.settings-rules\s*{[\s\S]*max-width:\s*52rem/);
+  assert.match(globals, /\.settings-rules\s*{[\s\S]*max-width:\s*var\(--settings-max\)/);
   assert.match(globals, /\.settings-rules\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.settings-rules\s*{[\s\S]*width:\s*100%/);
+  assert.match(globals, /\.settings-config-form \.settings-section-desc\s*{[\s\S]*max-width:\s*var\(--settings-max\)/);
   assert.doesNotMatch(globals, /\.settings-rules-head/);
   assert.doesNotMatch(globals, /\.settings-rules-title\s*{/);
   assert.doesNotMatch(globals, /\.settings-skeleton-line--eyebrow\s*{/);
