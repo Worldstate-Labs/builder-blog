@@ -163,7 +163,7 @@ export function PostCard({
           </div>
         ) : (
           <div className="fetched-post-summary post-summary">
-            <p className="whitespace-pre-wrap text-sm leading-6 text-[var(--muted-strong)]">
+            <p className="fetched-post-summary-text">
               {summaryExpanded ? summary : summaryPreview}
             </p>
             {hasMoreSummary ? (
@@ -248,7 +248,7 @@ export function PostCard({
 
         {/* Raw content collapsible region */}
         {rawExpanded ? (
-          <div className="mt-3 whitespace-pre-wrap rounded-lg border border-[var(--line)] bg-[var(--paper)] p-4 text-sm leading-7 text-[var(--muted-strong)]">
+          <div className="fetched-post-raw">
             {post.body}
           </div>
         ) : null}

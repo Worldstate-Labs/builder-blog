@@ -1336,8 +1336,23 @@ svg.lucide {
   margin-top: 0.9rem;
 }
 
+.fetched-post-summary-text {
+  color: var(--muted-strong);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  white-space: pre-wrap;
+}
+
 .fetched-post-raw {
-  margin-top: 0.9rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted-strong);
+  font-size: 0.875rem;
+  line-height: 1.75rem;
+  margin-top: 0.75rem;
+  padding: 1rem;
+  white-space: pre-wrap;
 }
 
 .fetched-post-actions {
@@ -5391,7 +5406,7 @@ svg.lucide {
   margin-top: 0.72rem;
 }
 
-.digest-rich .fetched-post-summary p {
+.digest-rich .fetched-post-summary-text {
   font-size: 0.9375rem;
   line-height: 1.72;
 }

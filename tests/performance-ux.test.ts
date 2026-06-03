@@ -874,9 +874,15 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /post-detail-card/);
   assert.match(postCard, /post-detail-title/);
   assert.match(postCard, /post-detail-body/);
+  assert.match(postCard, /className="fetched-post-summary-text"/);
+  assert.match(postCard, /className="fetched-post-raw"/);
   assert.match(postCard, /See more/);
   assert.match(postCard, /Raw content/);
   assert.match(postCard, /View original/);
+  assert.doesNotMatch(postCard, /whitespace-pre-wrap text-sm leading-6|mt-3 whitespace-pre-wrap rounded-lg/);
+  assert.match(globals, /\.fetched-post-summary-text\s*{[\s\S]*white-space:\s*pre-wrap/);
+  assert.match(globals, /\.fetched-post-raw\s*{[\s\S]*border:\s*1px solid var\(--line\)/);
+  assert.match(globals, /\.digest-rich \.fetched-post-summary-text\s*{[\s\S]*line-height:\s*1\.72/);
   assert.match(postCard, /\/builder\/\$\{builder\.entityId\}/);
   assert.match(recommendationItemPage, /page-pad reading-page/);
   assert.match(recommendationItemPage, /className="reading-page-nav"/);
