@@ -911,22 +911,6 @@ svg.lucide {
   text-transform: none;
 }
 
-.action-panel,
-.empty-panel {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: color-mix(in oklch, var(--paper-strong) 80%, transparent);
-  box-shadow: var(--elev-1);
-}
-
-.action-panel {
-  padding: 1.1rem;
-}
-
-.empty-panel {
-  padding: 1.25rem;
-}
-
 .skill-prompt-actions {
   align-items: center;
   border-block: 1px solid var(--line);
@@ -975,105 +959,6 @@ svg.lucide {
 .builder-row h3,
 .admin-panel h3 {
   font-size: 1.12rem;
-}
-
-.stats-panel {
-  display: grid;
-  gap: 0.6rem;
-  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
-}
-
-.stat-card,
-.metric-card {
-  align-items: center;
-  background: var(--paper-strong);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  display: grid;
-  min-width: 0;
-}
-
-.stat-card {
-  gap: 0.55rem;
-  grid-template-columns: auto minmax(0, 1fr);
-  min-height: 4.4rem;
-  padding: 0.85rem 0.95rem;
-}
-
-.stat-card-plain {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.stat-card-icon {
-  color: var(--accent);
-  height: 1.05rem;
-  width: 1.05rem;
-}
-
-.stat-card-value,
-.metric-card-value {
-  color: var(--ink);
-  font-size: 1.55rem;
-  font-weight: 750;
-  line-height: 1;
-}
-
-.stat-card-label,
-.metric-card-label {
-  color: var(--muted);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  line-height: 1.2;
-  margin-top: 0.28rem;
-  text-transform: uppercase;
-}
-
-.metric-card {
-  min-height: 3.9rem;
-  padding: 0.8rem 0.9rem;
-}
-
-@media (min-width: 1280px) {
-  .stats-panel {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (max-width: 767px) {
-  .stats-panel {
-    gap: 0.5rem;
-    grid-template-columns: repeat(auto-fit, minmax(6.25rem, 1fr));
-  }
-
-  .stat-card {
-    gap: 0.4rem;
-    grid-template-columns: minmax(0, 1fr);
-    min-height: 4rem;
-    padding: 0.75rem;
-  }
-
-  .stat-card-icon {
-    height: 1rem;
-    width: 1rem;
-  }
-
-  .stat-card-value,
-  .metric-card-value {
-    font-size: 1.35rem;
-  }
-
-  .stat-card-label,
-  .metric-card-label {
-    font-size: 0.62rem;
-    letter-spacing: 0.06em;
-  }
-}
-
-@media (max-width: 1023px) {
-  .search-stats-panel {
-    display: none;
-  }
 }
 
 .feed-card,
@@ -8037,10 +7922,6 @@ body {
 
   .fb-pill {
     padding: 0.4375rem 0.75rem;
-  }
-
-  .stats-panel {
-    gap: 0.45rem;
   }
 
   .library-section-panel {

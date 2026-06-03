@@ -1392,6 +1392,8 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.sources-sync-section \.digest-updates-panel/);
   assert.match(css, /\.builder-library-card-main\s*{\s*\n\s*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);
   assert.doesNotMatch(css, /\.builder-library-stats\s*{/);
+  assert.doesNotMatch(css, /\.(?:action|empty)-panel\s*{/);
+  assert.doesNotMatch(css, /\.(?:stats-panel|stat-card|metric-card|search-stats-panel)\b/);
   assert.match(css, /\.builder-posts-latest/);
   assert.match(css, /\.builder-posts-latest::before\s*{[\s\S]*content:\s*"·"/);
   assert.match(css, /\.builder-posts-summary\s*{[\s\S]*display:\s*inline-flex/);
