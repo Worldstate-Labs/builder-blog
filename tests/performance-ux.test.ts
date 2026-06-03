@@ -67,9 +67,15 @@ test("settings live in the clickable user avatar menu", () => {
   // admin forms render UTC timestamps through it.
   assert.match(settingsFields, /formatUtcDateTime/);
   assert.match(settingsFields, /timeZone:\s*"UTC"/);
+  assert.match(settingsFields, /optional\?: boolean/);
+  assert.match(settingsFields, /OptionalBadge/);
   assert.match(adminDigestConfig, /FooterBar/);
   assert.match(adminDigestConfig, /@\/components\/settings\/SettingsFields/);
   assert.match(adminSourceTypeManager, /@\/components\/settings\/SettingsFields/);
+  assert.match(adminSourceTypeManager, /<OptionalMarkdownField/);
+  assert.match(adminSourceTypeManager, /buttonLabel="Add fetch prompt"/);
+  assert.match(globals, /\.settings-optional-badge/);
+  assert.match(globals, /\.settings-optional-empty/);
   assert.match(userMenu, /href="\/settings" onClick=\{closeMenu\}[\s\S]*Settings/);
   assert.match(userMenu, /signOut\(\{ callbackUrl: "\/login" \}\)/);
   assert.match(userMenu, /closeMenu\(\);[\s\S]*signOut\(\{ callbackUrl: "\/login" \}\)[\s\S]*Sign out/);

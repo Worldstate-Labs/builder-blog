@@ -29,11 +29,13 @@ export function Section({
   step,
   title,
   description,
+  optional,
   children,
 }: {
   step?: string;
   title: string;
   description?: string;
+  optional?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -49,12 +51,15 @@ export function Section({
           </span>
         ) : null}
         <div className="min-w-0">
-          <p
-            className="settings-section-title text-[11px] uppercase tracking-[0.16em]"
-            style={{ color: "var(--ink)", fontFamily: "var(--font-geist-mono)" }}
-          >
-            {title}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p
+              className="settings-section-title text-[11px] uppercase tracking-[0.16em]"
+              style={{ color: "var(--ink)", fontFamily: "var(--font-geist-mono)" }}
+            >
+              {title}
+            </p>
+            {optional ? <OptionalBadge /> : null}
+          </div>
           {description ? (
             <p className="settings-section-desc mt-0.5 text-sm" style={{ color: "var(--muted-strong)" }}>
               {description}
@@ -64,6 +69,17 @@ export function Section({
       </div>
       <div className="settings-section-body grid gap-4">{children}</div>
     </section>
+  );
+}
+
+export function OptionalBadge() {
+  return (
+    <span
+      className="settings-optional-badge"
+      style={{ fontFamily: "var(--font-geist-mono)" }}
+    >
+      Optional
+    </span>
   );
 }
 

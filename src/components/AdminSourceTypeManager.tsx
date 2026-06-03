@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import {
   clampRatio,
@@ -103,6 +104,9 @@ function SourceTypeCard({
   const baseline = useMemo(() => toDraft(config), [config]);
   const [draft, setDraft] = useState<Draft>(baseline);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const [fetchPromptExpanded, setFetchPromptExpanded] = useState(
+    baseline.fetchPromptBody.trim().length > 0,
+  );
   const [isPending, startTransition] = useTransition();
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(baseline);
@@ -121,6 +125,7 @@ function SourceTypeCard({
 
   function reset() {
     setDraft(baseline);
+    setFetchPromptExpanded(baseline.fetchPromptBody.trim().length > 0);
     setStatus({ kind: "idle" });
   }
 
@@ -175,6 +180,7 @@ function SourceTypeCard({
           throw new Error(body?.error ?? `HTTP ${response.status}`);
         }
         onSaved(body.config);
+        if (draft.fetchPromptBody.trim() === "") setFetchPromptExpanded(false);
         setStatus({ kind: "saved", message: "Saved" });
       } catch (error) {
         setStatus({
@@ -198,11 +204,16 @@ function SourceTypeCard({
         <Section
           step="01"
           title="Fetching"
+          optional
           description="The fetch prompt the agent receives when this source needs agent extraction."
         >
-          <MarkdownEditor
+          <OptionalMarkdownField
             ariaLabel={`${config.label} fetch prompt`}
+            buttonLabel="Add fetch prompt"
+            emptyText="No extra fetch prompt for this source."
+            expanded={fetchPromptExpanded}
             height={340}
+            onExpand={() => setFetchPromptExpanded(true)}
             value={draft.fetchPromptBody}
             onChange={(v) => update("fetchPromptBody", v)}
           />
@@ -294,6 +305,48 @@ function SourceTypeCard({
         />
       </div>
     </details>
+  );
+}
+
+function OptionalMarkdownField({
+  ariaLabel,
+  buttonLabel,
+  emptyText,
+  expanded,
+  height,
+  onChange,
+  onExpand,
+  value,
+}: {
+  ariaLabel: string;
+  buttonLabel: string;
+  emptyText: string;
+  expanded: boolean;
+  height: number;
+  onChange: (value: string) => void;
+  onExpand: () => void;
+  value: string;
+}) {
+  const hasContent = value.trim().length > 0;
+  if (!expanded && !hasContent) {
+    return (
+      <div className="settings-optional-empty">
+        <span className="settings-optional-empty-text">{emptyText}</span>
+        <button className="fb-btn light compact" onClick={onExpand} type="button">
+          <Plus size={15} strokeWidth={2.2} aria-hidden="true" />
+          {buttonLabel}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <MarkdownEditor
+      ariaLabel={ariaLabel}
+      height={hasContent ? height : 180}
+      value={value}
+      onChange={onChange}
+    />
   );
 }
 
