@@ -2123,6 +2123,23 @@ svg.lucide {
   padding: 0.9rem 0.95rem;
 }
 
+.builder-post-loading-line,
+.builder-post-loading-card {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background: color-mix(in oklch, var(--ink) 10%, transparent);
+  border-radius: 8px;
+}
+
+.builder-post-loading-line {
+  height: 1rem;
+  width: 10rem;
+}
+
+.builder-post-loading-card {
+  height: 4rem;
+  margin-top: 0.75rem;
+}
+
 .row-actions {
   align-items: center;
   display: flex;
@@ -4196,6 +4213,65 @@ svg.lucide {
   margin-top: 0.25rem;
 }
 
+.source-sync-skeleton-line,
+.source-sync-skeleton-panel,
+.source-stat-skeleton,
+.source-section-skeleton-title,
+.source-section-skeleton-desc,
+.source-section-skeleton-chip,
+.source-section-skeleton-row,
+.source-section-skeleton-card {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background: color-mix(in oklch, var(--ink) 10%, transparent);
+  border-radius: 8px;
+}
+
+.source-sync-skeleton-line {
+  height: 2.5rem;
+}
+
+.source-sync-skeleton-panel {
+  height: 7rem;
+  margin-top: 0.75rem;
+}
+
+.source-stat-skeleton {
+  border-radius: 999px;
+  height: 2rem;
+  width: 6rem;
+}
+
+.source-section-skeleton-title {
+  height: 1.5rem;
+  width: 10rem;
+}
+
+.source-section-skeleton-desc {
+  height: 1rem;
+  margin-top: 0.75rem;
+  max-width: 24rem;
+  width: 100%;
+}
+
+.source-section-skeleton-chip {
+  border-radius: 999px;
+  height: 1.75rem;
+  width: 6rem;
+}
+
+.source-section-skeleton-chip--short {
+  width: 4rem;
+}
+
+.source-section-skeleton-row {
+  height: 3rem;
+}
+
+.source-section-skeleton-card {
+  height: 7rem;
+  margin-top: 0.75rem;
+}
+
 .digest-updates-head {
   align-items: flex-start;
   display: flex;
@@ -6173,6 +6249,14 @@ svg.lucide {
   gap: 0.5rem;
 }
 
+.builder-detail-action-skeleton-button {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background: color-mix(in oklch, var(--ink) 10%, transparent);
+  border-radius: 999px;
+  height: 2.25rem;
+  width: 7rem;
+}
+
 .recent-post-list {
   display: grid;
   gap: 1rem;
@@ -6181,6 +6265,26 @@ svg.lucide {
 .recent-post-skeleton-card {
   display: grid;
   gap: 0.5rem;
+}
+
+.recent-post-skeleton-line {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background: color-mix(in oklch, var(--ink) 10%, transparent);
+  border-radius: 8px;
+  height: 0.75rem;
+}
+
+.recent-post-skeleton-line--meta {
+  width: 6rem;
+}
+
+.recent-post-skeleton-line--title {
+  height: 1rem;
+  width: min(75%, 32rem);
+}
+
+.recent-post-skeleton-line--short {
+  width: min(84%, 40rem);
 }
 
 .builder-detail-channel-list {

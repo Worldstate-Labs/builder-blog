@@ -101,8 +101,8 @@ export function BuilderFeedItems({
       <div className="builder-post-list">
         {isLoading ? (
           <div className="builder-post-loading" role="status">
-            <div className="h-4 w-40 rounded bg-black/10" />
-            <div className="mt-3 h-16 rounded bg-black/10" />
+            <div className="builder-post-loading-line" />
+            <div className="builder-post-loading-card" />
           </div>
         ) : null}
         {error ? (

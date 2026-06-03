@@ -111,8 +111,8 @@ async function SyncHeader({
 function SyncHeaderFallback() {
   return (
     <section className="sources-sync-section" aria-live="polite" aria-busy="true">
-      <div className="h-10 rounded-[10px] bg-black/10" />
-      <div className="h-28 rounded-[10px] bg-black/10" />
+      <div className="source-sync-skeleton-line" />
+      <div className="source-sync-skeleton-panel" />
     </section>
   );
 }
@@ -517,7 +517,7 @@ function BuilderStatsFallback() {
   return (
     <div className="page-toolbar" aria-live="polite" aria-busy="true">
       {Array.from({ length: 3 }, (_, index) => (
-        <div key={index} className="h-8 w-24 rounded-full bg-black/10" />
+        <div key={index} className="source-stat-skeleton" />
       ))}
     </div>
   );
@@ -529,17 +529,17 @@ function BuilderSectionsFallback() {
       <div className="library-section-panel">
         <div className="library-section-summary">
           <div className="min-w-0 flex-1">
-            <div className="h-6 w-40 rounded bg-black/10" />
-            <div className="mt-3 h-4 max-w-sm rounded bg-black/10" />
+            <div className="source-section-skeleton-title" />
+            <div className="source-section-skeleton-desc" />
           </div>
           <div className="library-section-meta">
-            <div className="h-7 w-16 rounded-full bg-black/10" />
-            <div className="h-7 w-24 rounded-full bg-black/10" />
+            <div className="source-section-skeleton-chip source-section-skeleton-chip--short" />
+            <div className="source-section-skeleton-chip" />
           </div>
         </div>
         <div className="library-section-body">
-          <div className="h-12 rounded-lg bg-black/10" />
-          <div className="mt-3 h-28 rounded-lg bg-black/10" />
+          <div className="source-section-skeleton-row" />
+          <div className="source-section-skeleton-card" />
         </div>
       </div>
     </section>

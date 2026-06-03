@@ -273,7 +273,7 @@ async function BuilderDetailActionsSlot({
 function BuilderActionsSkeleton() {
   return (
     <div className="builder-detail-actions-skeleton" aria-busy="true" aria-live="polite">
-      <div className="h-9 w-28 animate-pulse rounded-full bg-black/10" />
+      <div className="builder-detail-action-skeleton-button" />
     </div>
   );
 }
@@ -402,10 +402,10 @@ function RecentPostsSkeleton() {
     <ul className="recent-post-list recent-post-list--skeleton" aria-busy="true" aria-live="polite">
       {[0, 1, 2].map((index) => (
         <li key={index} className="recent-post-skeleton-card fb-panel">
-          <div className="h-3 w-24 animate-pulse rounded bg-black/10" />
-          <div className="h-4 w-3/4 animate-pulse rounded bg-black/10" />
-          <div className="h-3 w-full animate-pulse rounded bg-black/10" />
-          <div className="h-3 w-5/6 animate-pulse rounded bg-black/10" />
+          <div className="recent-post-skeleton-line recent-post-skeleton-line--meta" />
+          <div className="recent-post-skeleton-line recent-post-skeleton-line--title" />
+          <div className="recent-post-skeleton-line" />
+          <div className="recent-post-skeleton-line recent-post-skeleton-line--short" />
         </li>
       ))}
     </ul>

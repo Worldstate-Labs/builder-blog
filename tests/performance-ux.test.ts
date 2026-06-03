@@ -267,11 +267,15 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /className="builder-detail-host source-host-meta mono truncate"/);
   assert.match(builderDetailPage, /className="builder-detail-bio fb-desc"/);
   assert.match(builderDetailPage, /className="builder-detail-actions-skeleton"/);
+  assert.match(builderDetailPage, /className="builder-detail-action-skeleton-button"/);
   assert.match(builderDetailPage, /className="builder-detail-channel-list"/);
   assert.match(builderDetailPage, /className="builder-detail-channel-row"/);
   assert.match(builderDetailPage, /className="recent-post-list recent-post-list--skeleton"/);
   assert.match(builderDetailPage, /className="recent-post-skeleton-card fb-panel"/);
+  assert.match(builderDetailPage, /className="recent-post-skeleton-line recent-post-skeleton-line--meta"/);
+  assert.match(builderDetailPage, /className="recent-post-skeleton-line recent-post-skeleton-line--title"/);
   assert.doesNotMatch(builderDetailPage, /<SourceAvatar[\s\S]*style=\{\{/);
+  assert.doesNotMatch(builderDetailPage, /bg-black\/10|className="h-|animate-pulse rounded/);
   assert.doesNotMatch(builderDetailPage, /className="grid gap-3"/);
   assert.doesNotMatch(builderDetailPage, /className="mt-3 grid gap-2"/);
   assert.doesNotMatch(builderDetailPage, /md:grid-cols-\[1fr_auto_auto\]/);
@@ -282,6 +286,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.page-pad\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
   assert.match(globals, /\.workspace-content-stack\s*{[\s\S]*margin-top:\s*clamp/);
+  assert.match(globals, /\.builder-detail-action-skeleton-button\s*{[\s\S]*border-radius:\s*999px/);
+  assert.match(globals, /\.recent-post-skeleton-line--title\s*{[\s\S]*width:\s*min\(75%,\s*32rem\)/);
   assert.match(rootLoading, /className="workspace-content-stack"/);
   assert.match(rootLoading, /className="fb-page-head"/);
   assert.doesNotMatch(rootLoading, /space-y-7/);
@@ -776,11 +782,23 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderLibraryList, /builder-library-stats/);
   assert.doesNotMatch(builderLibraryList, /builder-posts-latest/);
   assert.doesNotMatch(builderLibraryList, /Latest \{formatCompactDate/);
+  assert.match(buildersPage, /className="source-sync-skeleton-line"/);
+  assert.match(buildersPage, /className="source-sync-skeleton-panel"/);
+  assert.match(buildersPage, /className="source-stat-skeleton"/);
+  assert.match(buildersPage, /className="source-section-skeleton-title"/);
+  assert.match(buildersPage, /className="source-section-skeleton-desc"/);
+  assert.match(buildersPage, /className="source-section-skeleton-chip source-section-skeleton-chip--short"/);
+  assert.match(buildersPage, /className="source-section-skeleton-row"/);
+  assert.match(buildersPage, /className="source-section-skeleton-card"/);
+  assert.doesNotMatch(buildersPage, /bg-black\/10|className="h-/);
   assert.match(
     builderFeedItems,
     /<span>Posts<\/span>[\s\S]*label=\{items \? "loaded" : "summarized"\}[\s\S]*className="builder-posts-latest"[\s\S]*Latest \{formatCompactDate/,
   );
   assert.match(builderFeedItems, /Latest \{formatCompactDate\(new Date\(latestPostCreatedAt\)\)\}/);
+  assert.match(builderFeedItems, /className="builder-post-loading-line"/);
+  assert.match(builderFeedItems, /className="builder-post-loading-card"/);
+  assert.doesNotMatch(builderFeedItems, /bg-black\/10|className="h-/);
   assert.match(builderFeedItems, /timeZone:\s*"UTC"/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported libraries/);
@@ -818,6 +836,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(source("src/components/PrivateLibraryPanel.tsx"), /className="fb-panel mb-3"/);
   assert.match(globals, /\.add-source-form/);
   assert.match(globals, /\.add-source-callout/);
+  assert.match(globals, /\.source-sync-skeleton-line,[\s\S]*\.source-section-skeleton-card\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
+  assert.match(globals, /\.source-stat-skeleton\s*{[\s\S]*border-radius:\s*999px/);
+  assert.match(globals, /\.builder-post-loading-card\s*{[\s\S]*height:\s*4rem/);
   assert.doesNotMatch(globals, /\.add-builder-form/);
   assert.doesNotMatch(globals, /\.add-builder-grid/);
   assert.match(personalBuilderRoute, /export async function POST/);
