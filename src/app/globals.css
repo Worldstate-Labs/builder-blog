@@ -6468,10 +6468,6 @@ svg.lucide {
   padding-bottom: 0.875rem;
 }
 
-.settings-rules-title {
-  margin-top: 0.25rem;
-}
-
 .settings-rules-panel {
   padding: 0;
 }
@@ -6526,11 +6522,6 @@ svg.lucide {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   background: color-mix(in oklch, var(--ink) 10%, transparent);
   border-radius: 8px;
-}
-
-.settings-skeleton-line--eyebrow {
-  height: 0.75rem;
-  width: 10rem;
 }
 
 .settings-skeleton-line--title {
