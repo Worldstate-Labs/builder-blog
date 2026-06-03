@@ -131,19 +131,23 @@ test("BuilderLibraryEventItem carries avatarUrl alongside the existing fields", 
   );
 });
 
-test("BuilderLibraryList renders builder.avatarUrl ahead of favicon/monogram", () => {
+test("source avatar renders builder.avatarUrl ahead of favicon/monogram", () => {
   const list = readFileSync("src/components/BuilderLibraryList.tsx", "utf8");
-  assert.match(list, /builder\.avatarUrl/);
+  const avatar = readFileSync("src/components/SourceAvatar.tsx", "utf8");
+  const detailPage = readFileSync("src/app/(workspace)/builder/[entityId]/page.tsx", "utf8");
+  assert.match(list, /<SourceAvatar className="builder-library-avatar" source=\{builder\} \/>/);
+  assert.match(detailPage, /<SourceAvatar/);
+  assert.match(avatar, /source\.avatarUrl/);
   // The real-avatar branch must come before the favicon branch in
-  // BuilderAvatar so the priority chain is preserved.
-  const realIndex = list.search(/if \(realAvatarUrl/);
-  const faviconIndex = list.search(/if \(faviconUrl/);
+  // SourceAvatar so the priority chain is preserved on both list and detail.
+  const realIndex = avatar.search(/if \(realAvatarUrl/);
+  const faviconIndex = avatar.search(/if \(faviconUrl/);
   assert.ok(
     realIndex >= 0 && faviconIndex >= 0,
-    "BuilderAvatar should branch on realAvatarUrl and faviconUrl",
+    "SourceAvatar should branch on realAvatarUrl and faviconUrl",
   );
   assert.ok(
     realIndex < faviconIndex,
-    "real-avatar branch must precede favicon branch in BuilderAvatar",
+    "real-avatar branch must precede favicon branch in SourceAvatar",
   );
 });

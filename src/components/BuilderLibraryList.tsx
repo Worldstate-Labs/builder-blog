@@ -7,6 +7,7 @@ import { BuilderEditDialog } from "@/components/BuilderEditDialog";
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { BuilderLibraryActions } from "@/components/BuilderLibraryActions";
 import { SourceBadge } from "@/components/SourceBadge";
+import { SourceAvatar } from "@/components/SourceAvatar";
 import {
   builderLibraryBuilderAdded,
   builderLibraryStatsChanged,
@@ -272,7 +273,7 @@ function BuilderCard({
       }
     >
       <div className="builder-library-card-main grid items-center gap-3.5">
-        <BuilderAvatar builder={builder} />
+        <SourceAvatar className="builder-library-avatar" source={builder} />
         <BuilderInfo builder={builder} />
         <BuilderStats builder={builder} />
         <div className="builder-library-actions row-actions flex flex-shrink-0 items-center gap-3">
@@ -343,92 +344,6 @@ function clientBuilderSort(
 
 function dispatchStatsChange(detail: BuilderLibraryStatsChange) {
   window.dispatchEvent(new CustomEvent(builderLibraryStatsChanged, { detail }));
-}
-
-function avatarMonogram(builder: BuilderLibraryListItem): string {
-  // Strip a leading "@" so X handles like "@karpathy" render as "K"
-  // instead of "@", which was indistinguishable across rows.
-  const cleaned = builder.name.replace(/^@+/, "").trim();
-  const first = cleaned.charAt(0) || builder.name.charAt(0) || "?";
-  return first.toUpperCase();
-}
-
-function avatarFaviconUrl(builder: BuilderLibraryListItem): string | null {
-  // For X and YouTube every row shares the same platform host, so
-  // the favicon would be the same generic logo for every account —
-  // less informative than the account avatar or monogram. Use a real
-  // favicon only when the host varies per row.
-  if (builder.sourceType === "x" || builder.sourceType === "youtube") return null;
-  const url = builder.sourceUrl ?? builder.fetchUrl;
-  if (!url) return null;
-  try {
-    const host = new URL(url).host;
-    if (!host) return null;
-    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
-  } catch {
-    return null;
-  }
-}
-
-function BuilderAvatar({ builder }: { builder: BuilderLibraryListItem }) {
-  const monogram = avatarMonogram(builder);
-  const realAvatarUrl = builder.avatarUrl;
-  const faviconUrl = avatarFaviconUrl(builder);
-  // Priority chain: server-resolved real photo -> host favicon -> monogram.
-  const [failedUrls, setFailedUrls] = useState<ReadonlySet<string>>(() => new Set());
-  function markFailed(url: string) {
-    setFailedUrls((prev) => {
-      if (prev.has(url)) return prev;
-      const next = new Set(prev);
-      next.add(url);
-      return next;
-    });
-  }
-  if (realAvatarUrl && !failedUrls.has(realAvatarUrl)) {
-    return (
-      <span
-        className="builder-library-avatar fb-src-icon"
-        style={{ overflow: "hidden", padding: 0 }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          alt=""
-          aria-hidden="true"
-          height={36}
-          width={36}
-          key={realAvatarUrl}
-          loading="lazy"
-          onError={() => markFailed(realAvatarUrl)}
-          src={realAvatarUrl}
-          style={{ height: "100%", width: "100%", objectFit: "cover" }}
-        />
-      </span>
-    );
-  }
-  if (faviconUrl && !failedUrls.has(faviconUrl)) {
-    return (
-      <span
-        className="builder-library-avatar fb-src-icon"
-        style={{ overflow: "hidden", padding: 0 }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          alt=""
-          aria-hidden="true"
-          height={36}
-          width={36}
-          key={faviconUrl}
-          loading="lazy"
-          onError={() => markFailed(faviconUrl)}
-          src={faviconUrl}
-          style={{ height: "100%", width: "100%", objectFit: "cover" }}
-        />
-      </span>
-    );
-  }
-  return (
-    <span className="builder-library-avatar fb-src-icon">{monogram}</span>
-  );
 }
 
 function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {

@@ -10,6 +10,7 @@ import { BuilderDetailActions } from "@/components/BuilderDetailActions";
 import { ChannelPreferenceToggle } from "@/components/ChannelPreferenceToggle";
 import { RecentPostsList } from "@/components/RecentPostsList";
 import { SourceBadge } from "@/components/SourceBadge";
+import { SourceAvatar } from "@/components/SourceAvatar";
 import { prisma } from "@/lib/prisma";
 
 type Params = { params: Promise<{ entityId: string }> };
@@ -106,11 +107,6 @@ export default async function BuilderDetailPage({ params }: Params) {
       return null;
     }
   })();
-  const headerMonogram = (() => {
-    const cleaned = entity.name.replace(/^@+/, "").trim();
-    return (cleaned.charAt(0) || entity.name.charAt(0) || "?").toUpperCase();
-  })();
-
   const lastFetchedMax = channels.reduce<Date | null>((max, c) => {
     if (!c.lastFetchedAt) return max;
     if (!max || c.lastFetchedAt > max) return c.lastFetchedAt;
@@ -131,42 +127,22 @@ export default async function BuilderDetailPage({ params }: Params) {
             Back to Sources
           </Link>
           <div className="flex items-start gap-4">
-            {headerAvatarUrl ? (
-              <span
-                className="fb-src-icon"
-                style={{
-                  height: "3.5rem",
-                  width: "3.5rem",
-                  overflow: "hidden",
-                  padding: 0,
-                  flexShrink: 0,
-                }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  alt=""
-                  aria-hidden="true"
-                  src={headerAvatarUrl}
-                  style={{
-                    height: "100%",
-                    width: "100%",
-                    objectFit: "cover",
-                  }}
-                />
-              </span>
-            ) : (
-              <span
-                className="fb-src-icon"
-                style={{
-                  height: "3.5rem",
-                  width: "3.5rem",
-                  fontSize: "1.5rem",
-                  flexShrink: 0,
-                }}
-              >
-                {headerMonogram}
-              </span>
-            )}
+            <SourceAvatar
+              imageSize={56}
+              source={{
+                avatarUrl: headerAvatarUrl,
+                fetchUrl: primaryChannel?.fetchUrl ?? null,
+                name: entity.name,
+                sourceType: headerSourceType ?? "",
+                sourceUrl: primaryChannel?.sourceUrl ?? null,
+              }}
+              style={{
+                flexShrink: 0,
+                fontSize: "1.5rem",
+                height: "3.5rem",
+                width: "3.5rem",
+              }}
+            />
             <div className="grid min-w-0 gap-1.5">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="fb-title font-display">{entity.name}</h1>
