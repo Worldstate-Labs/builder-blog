@@ -1134,8 +1134,7 @@ svg.lucide {
 .feed-skeleton-card,
 .route-loading-row,
 .route-loading-title,
-.route-loading-desc,
-.route-loading-chip {
+.route-loading-desc {
   background: color-mix(in oklch, var(--ink) 10%, transparent);
   border-radius: 8px;
 }
@@ -1175,12 +1174,6 @@ svg.lucide {
   margin-top: 0.75rem;
   max-width: 24rem;
   width: 100%;
-}
-
-.route-loading-chip {
-  border-radius: 999px;
-  height: 2rem;
-  width: 6rem;
 }
 
 .route-loading-list {

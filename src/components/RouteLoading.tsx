@@ -3,24 +3,15 @@ import { PageHeader } from "@/components/PageHeader";
 export function RouteLoading({
   label,
   title,
-  stats = 3,
   rows = 4,
 }: {
   label: string;
   title: string;
-  stats?: number;
   rows?: number;
 }) {
   return (
     <div className="page-pad">
       <PageHeader
-        actions={
-          <div className="page-toolbar">
-            {Array.from({ length: stats }, (_, index) => (
-              <div key={index} className="route-loading-chip" />
-            ))}
-          </div>
-        }
         aria-busy="true"
         aria-live="polite"
         title={title}

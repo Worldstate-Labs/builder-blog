@@ -344,12 +344,13 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(routeLoading, /className="workspace-content-stack"/);
   assert.match(routeLoading, /className="route-loading-title"/);
   assert.match(routeLoading, /className="route-loading-desc"/);
-  assert.match(routeLoading, /className="route-loading-chip"/);
+  assert.doesNotMatch(routeLoading, /actions=|page-toolbar|route-loading-chip|stats/);
   assert.match(routeLoading, /className="route-loading-list"/);
   assert.match(routeLoading, /className="route-loading-row"/);
   assert.doesNotMatch(routeLoading, /item-list mt-6/);
   assert.doesNotMatch(routeLoading, /bg-black\/10/);
   assert.doesNotMatch(routeLoading, /className="h-/);
+  assert.doesNotMatch(globals, /\.route-loading-chip/);
   assert.match(globals, /\.fb-top\s*{[\s\S]*position:\s*sticky/);
   assert.match(globals, /\.fb-top-inner\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
   assert.match(globals, /\.fb-page-head\s*{[\s\S]*border-bottom:/);
