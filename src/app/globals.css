@@ -790,6 +790,12 @@ svg.lucide {
 }
 
 .home-feed-tabs {
+  margin-inline: auto;
+  width: fit-content;
+}
+
+.sources-subtabs {
+  margin-inline: auto;
   width: fit-content;
 }
 
@@ -4275,9 +4281,14 @@ svg.lucide {
   overflow: hidden;
 }
 
-.sources-sync-stack {
+.digest-source-management {
   display: grid;
-  gap: 1rem;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.digest-source-management-panel {
+  width: 100%;
 }
 
 .sources-sync-section .digest-updates-panel {
@@ -8189,7 +8200,12 @@ body {
     width: 100%;
   }
 
-  .home-feed-tabs .fb-btn {
+  .sources-subtabs {
+    width: 100%;
+  }
+
+  .home-feed-tabs .fb-btn,
+  .sources-subtabs .fb-btn {
     flex: 1;
   }
 

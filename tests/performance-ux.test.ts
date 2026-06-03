@@ -258,6 +258,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   const appShell = source("src/components/AppShell.tsx");
   const appNav = source("src/components/AppNav.tsx");
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
+  const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const dashboardTabs = source("src/components/DashboardHomeTabs.tsx");
   const builderDetailPage = source("src/app/(workspace)/builder/[entityId]/page.tsx");
   const builderDetailActions = source("src/components/BuilderDetailActions.tsx");
@@ -307,8 +308,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /<h1 className="sr-only">Home<\/h1>/);
   assert.match(dashboardPage, /className="workspace-content-stack home-workspace"/);
   assert.match(dashboardPage, /className="ai-digest-stack"/);
-  assert.match(dashboardPage, /className="ai-digest-titleblock"/);
-  assert.match(dashboardPage, /className="fb-section-heading ai-digest-imported-title"/);
+  assert.doesNotMatch(dashboardPage, /className="ai-digest-titleblock"/);
+  assert.doesNotMatch(dashboardPage, /className="fb-section-heading ai-digest-imported-title"/);
+  assert.match(buildersPage, /className="ai-digest-titleblock"/);
   assert.doesNotMatch(dashboardPage, /className="min-w-0"/);
   assert.doesNotMatch(dashboardPage, /className="fb-section-heading mt-1"/);
   assert.match(dashboardPage, /className="digest-source-selector"/);
@@ -742,8 +744,9 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.doesNotMatch(dashboardPage, /digest-picker-label/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.digest-picker-label\s*{/);
   assert.match(dashboardPage, /AI Digest/);
-  assert.match(dashboardPage, /DigestPipelineVisibilityToggle/);
-  assert.match(dashboardPage, /ownPipelineShared/);
+  assert.doesNotMatch(dashboardPage, /DigestPipelineVisibilityToggle/);
+  assert.doesNotMatch(dashboardPage, /DigestPipelineTitleEditor/);
+  assert.doesNotMatch(dashboardPage, /ownPipelineShared/);
   assert.match(dashboardPage, /digestPipelineShare\.findUnique/);
   assert.doesNotMatch(dashboardPage, /DigestLogPanel/);
   assert.doesNotMatch(dashboardPage, /SkillPromptActions/);
@@ -760,8 +763,17 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(digestPipelineVisibilityToggle, /aria-pressed=\{shared\}/);
   assert.match(dashboardPage, /Imported digest view/);
   assert.match(buildersPage, /@\/components\/DigestLogPanel/);
+  assert.match(buildersPage, /@\/components\/DigestPipelineImportForm/);
+  assert.match(buildersPage, /@\/components\/DigestPipelineTitleEditor/);
+  assert.match(buildersPage, /@\/components\/DigestPipelineVisibilityToggle/);
   assert.match(buildersPage, /@\/lib\/digest-runs/);
+  assert.match(buildersPage, /SourcesSubtabs/);
+  assert.match(buildersPage, /selectedTab === "digest"/);
+  assert.match(buildersPage, /href="\/builders\?tab=digest"/);
   assert.match(buildersPage, /const showStopDigestCron = data\.digestCronJob\?\.status === "active"/);
+  assert.match(buildersPage, /<DigestPipelineTitleEditor/);
+  assert.match(buildersPage, /<DigestPipelineVisibilityToggle initialShared=\{data\.ownPipelineShared\}/);
+  assert.match(buildersPage, /<DigestPipelineImportForm pipelines=\{data\.hubDigestPipelines\}/);
   assert.match(buildersPage, /context="digest"/);
   assert.match(buildersPage, /<DigestLogPanel/);
   assert.match(buildersPage, /initialCronJob=\{data\.digestCronJob\}/);
@@ -1389,7 +1401,6 @@ test("library hub exposes share and multi-import flows", () => {
   const digestPipelineRemoveRoute = optionalSource("src/app/api/digest-pipelines/imports/[pipelineId]/route.ts");
   const hubPage = source("src/app/(workspace)/library-hub/page.tsx");
   const globals = source("src/app/globals.css");
-  const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const skillRoute = source("src/app/api/skill/builders/route.ts");
   const schema = source("prisma/schema.prisma");
 
@@ -1489,9 +1500,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /isAdminEmail\(library\.owner\?\.email\)/);
   assert.match(hubPage, /ownerLabel\(library\.owner, isCommunityLibrary\)/);
   assert.match(hubPage, /recordLibraryHubViews\(libraries\.map/);
-  assert.match(dashboardPage, /DigestPipelineTitleEditor/);
-  assert.match(dashboardPage, /ownPipelineShare\?\.title/);
-  assert.match(dashboardPage, /ownPipelineShare\?\.isPublic === true/);
+  assert.match(buildersPage, /DigestPipelineTitleEditor/);
+  assert.match(buildersPage, /ownPipelineShare\?\.title/);
+  assert.match(buildersPage, /ownPipelineShare\?\.isPublic === true/);
   assert.match(hubImportForm, /"use client"/);
   assert.match(hubImportForm, /fb-hub-list/);
   assert.match(hubImportForm, /fb-hub-title/);
@@ -1768,7 +1779,8 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.button-compact/);
   assert.match(css, /\.row-actions/);
   assert.match(css, /\.source-summary-line/);
-  assert.match(css, /\.sources-sync-stack\s*{[\s\S]*display:\s*grid/);
+  assert.match(css, /\.sources-subtabs\s*{[\s\S]*margin-inline:\s*auto/);
+  assert.match(css, /\.digest-source-management\s*{[\s\S]*display:\s*grid/);
   assert.match(css, /\.sources-sync-section \.digest-updates-panel/);
   assert.match(css, /\.builder-library-card-main\s*{\s*\n\s*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);
   assert.doesNotMatch(css, /\.builder-library-stats\s*{/);

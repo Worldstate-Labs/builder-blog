@@ -1,10 +1,17 @@
 import { BuilderKind, BuilderPoolOrigin } from "@prisma/client";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
 import { BuilderLibraryStats } from "@/components/BuilderLibraryStats";
 import { CountMeta } from "@/components/Count";
 import { DigestLogPanel } from "@/components/DigestLogPanel";
+import {
+  DigestPipelineImportForm,
+  type HubDigestPipeline,
+} from "@/components/DigestPipelineImportForm";
+import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
+import { DigestPipelineVisibilityToggle } from "@/components/DigestPipelineVisibilityToggle";
 import { EmptyState } from "@/components/EmptyState";
 import {
   FetchLogPanel,
@@ -25,7 +32,10 @@ import { getDigestRuns, serializeDigestCronJob } from "@/lib/digest-runs";
 import {
   adminCommunityLibraryDescription,
   adminCommunityLibraryName,
+  digestPipelineTitle,
+  displayDigestPipelineTitle,
   ensureAdminCommunityLibrary,
+  recordDigestPipelineHubViews,
   sharePersonalLibraryToHub,
 } from "@/lib/library-hub";
 import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
@@ -51,9 +61,23 @@ type BuilderWithCount = {
 type LatestPostCreatedAtByBuilderId = Map<string, Date | null>;
 
 type BuildersPageData = Awaited<ReturnType<typeof loadBuildersPageData>>;
+type DigestSourcesPageData = Awaited<ReturnType<typeof loadDigestSourcesPageData>>;
+type SourcesTab = "fetch" | "digest";
 
-export default function BuildersPage() {
+type BuildersSearchParams = Promise<{
+  tab?: string | string[];
+}>;
+
+export default async function BuildersPage({
+  searchParams,
+}: {
+  searchParams: BuildersSearchParams;
+}) {
+  const params = await searchParams;
+  const selectedTab = parseSourcesTab(firstParam(params.tab));
   const dataPromise = loadBuildersPageData();
+  const digestDataPromise =
+    selectedTab === "digest" ? loadDigestSourcesPageData() : null;
 
   return (
     <div className="page-pad">
@@ -67,15 +91,54 @@ export default function BuildersPage() {
       />
 
       <div className="workspace-content-stack">
-        <Suspense fallback={<SyncHeaderFallback />}>
-          <SyncHeader dataPromise={dataPromise} />
-        </Suspense>
+        <SourcesSubtabs selectedTab={selectedTab} />
 
-        <Suspense fallback={<BuilderSectionsFallback />}>
-          <BuilderSections dataPromise={dataPromise} />
-        </Suspense>
+        {selectedTab === "fetch" ? (
+          <>
+            <Suspense fallback={<SyncHeaderFallback />}>
+              <SyncHeader dataPromise={dataPromise} />
+            </Suspense>
+
+            <Suspense fallback={<BuilderSectionsFallback />}>
+              <BuilderSections dataPromise={dataPromise} />
+            </Suspense>
+          </>
+        ) : (
+          <Suspense fallback={<DigestSourcesFallback />}>
+            <DigestSourcesSection dataPromise={digestDataPromise ?? loadDigestSourcesPageData()} />
+          </Suspense>
+        )}
       </div>
     </div>
+  );
+}
+
+function SourcesSubtabs({ selectedTab }: { selectedTab: SourcesTab }) {
+  return (
+    <nav
+      className="fb-segmented-tabs sources-subtabs"
+      aria-label="Source management"
+      role="tablist"
+    >
+      <Link
+        aria-selected={selectedTab === "fetch"}
+        className="fb-btn compact"
+        data-active={selectedTab === "fetch" ? "true" : undefined}
+        href="/builders"
+        role="tab"
+      >
+        Fetch
+      </Link>
+      <Link
+        aria-selected={selectedTab === "digest"}
+        className="fb-btn compact"
+        data-active={selectedTab === "digest" ? "true" : undefined}
+        href="/builders?tab=digest"
+        role="tab"
+      >
+        Digest
+      </Link>
+    </nav>
   );
 }
 
@@ -86,27 +149,61 @@ async function SyncHeader({
 }) {
   const data = await dataPromise;
   const showStopLibraryCron = data.libraryCronJob?.status === "active";
-  const showStopDigestCron = data.digestCronJob?.status === "active";
   return (
     <section className="sources-sync-section">
-      <div className="sources-sync-stack">
-        <FetchLogPanel
-          actions={
-            <SkillPromptActions
-              compactOnly
-              context="library"
-              showStop={showStopLibraryCron}
-              tokens={data.activeTokens}
-              summaryLanguage={data.summaryLanguage}
-              digestMaxPostAgeDays={data.digestMaxPostAgeDays}
+      <FetchLogPanel
+        actions={
+          <SkillPromptActions
+            compactOnly
+            context="library"
+            showStop={showStopLibraryCron}
+            tokens={data.activeTokens}
+            summaryLanguage={data.summaryLanguage}
+            digestMaxPostAgeDays={data.digestMaxPostAgeDays}
+          />
+        }
+        initialCronJob={data.libraryCronJob}
+        initialCronRuns={data.cronRuns}
+        initialJobRuns={data.jobRuns}
+        initialScheduledJobRuns={data.scheduledJobRuns}
+        initialRuns={data.fetchRuns}
+      />
+    </section>
+  );
+}
+
+function SyncHeaderFallback() {
+  return (
+    <section className="sources-sync-section" aria-live="polite" aria-busy="true">
+      <div className="source-sync-skeleton-line" />
+      <div className="source-sync-skeleton-panel" />
+    </section>
+  );
+}
+
+async function DigestSourcesSection({
+  dataPromise,
+}: {
+  dataPromise: Promise<DigestSourcesPageData>;
+}) {
+  const data = await dataPromise;
+  const showStopDigestCron = data.digestCronJob?.status === "active";
+
+  return (
+    <section className="digest-source-management">
+      <div className="ai-digest-panel digest-source-management-panel">
+        <header className="ai-digest-head">
+          <div className="ai-digest-titleblock">
+            <DigestPipelineTitleEditor
+              headingId="sources-digest-title"
+              initialTitle={data.ownPipelineTitle}
             />
-          }
-          initialCronJob={data.libraryCronJob}
-          initialCronRuns={data.cronRuns}
-          initialJobRuns={data.jobRuns}
-          initialScheduledJobRuns={data.scheduledJobRuns}
-          initialRuns={data.fetchRuns}
-        />
+          </div>
+          <DigestPipelineVisibilityToggle initialShared={data.ownPipelineShared} />
+        </header>
+      </div>
+
+      <section className="sources-sync-section">
         <DigestLogPanel
           actions={
             <SkillPromptActions
@@ -124,18 +221,147 @@ async function SyncHeader({
           initialRuns={data.digestRuns}
           initialScheduledJobRuns={data.digestScheduledJobRuns}
         />
-      </div>
+      </section>
+
+      <DigestPipelineImportForm pipelines={data.hubDigestPipelines} />
     </section>
   );
 }
 
-function SyncHeaderFallback() {
+function DigestSourcesFallback() {
   return (
-    <section className="sources-sync-section" aria-live="polite" aria-busy="true">
-      <div className="source-sync-skeleton-line" />
+    <section className="digest-source-management" aria-live="polite" aria-busy="true">
+      <div className="source-sync-skeleton-panel" />
       <div className="source-sync-skeleton-panel" />
     </section>
   );
+}
+
+async function loadDigestSourcesPageData() {
+  const session = await getCurrentSession();
+  if (!session?.user?.id) redirect("/login");
+
+  const [
+    rawTokens,
+    feedPreference,
+    rawDigestRuns,
+    rawDigestCronRuns,
+    digestJobRuns,
+    digestScheduledJobRuns,
+    rawDigestCronJob,
+    ownPipelineShare,
+    digestPipelineShares,
+    digestPipelineImports,
+  ] = await Promise.all([
+    prisma.agentToken.findMany({
+      where: { userId: session.user.id, revokedAt: null },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        lastUsedAt: true,
+        lastIp: true,
+        lastUserAgent: true,
+        lastHostname: true,
+        lastPlatform: true,
+        lastUser: true,
+      },
+    }),
+    prisma.userFeedPreference.findUnique({
+      where: { userId: session.user.id },
+      select: { summaryLanguage: true, digestMaxPostAgeDays: true },
+    }),
+    getDigestRuns(session.user.id),
+    getDigestRuns(session.user.id, 25, "cron"),
+    getAgentJobRuns(session.user.id, "digest-build", 25),
+    getScheduledAgentJobRuns(session.user.id, "digest-cron", 25),
+    prisma.digestCronJob.findUnique({
+      where: { userId: session.user.id },
+    }),
+    prisma.digestPipelineShare.findUnique({
+      where: { ownerUserId: session.user.id },
+      select: { title: true, isPublic: true },
+    }),
+    prisma.digestPipelineShare.findMany({
+      where: { isPublic: true },
+      include: {
+        owner: { select: { name: true, email: true } },
+        imports: {
+          where: { userId: session.user.id },
+          select: { userId: true },
+        },
+      },
+      orderBy: [{ importCount: "desc" }, { viewCount: "desc" }, { updatedAt: "desc" }],
+    }),
+    prisma.digestPipelineImport.findMany({
+      where: { userId: session.user.id },
+      select: { pipelineId: true },
+    }),
+  ]);
+
+  await recordDigestPipelineHubViews(
+    digestPipelineShares
+      .filter((pipeline) => pipeline.ownerUserId !== session.user.id)
+      .map((pipeline) => pipeline.id),
+  );
+
+  const digestCounts = await Promise.all(
+    digestPipelineShares.map(async (pipeline) => {
+      const [digestCount, latestDigest] = await Promise.all([
+        prisma.digest.count({ where: { userId: pipeline.ownerUserId, itemCount: { gt: 0 } } }),
+        prisma.digest.findFirst({
+          where: { userId: pipeline.ownerUserId, itemCount: { gt: 0 } },
+          orderBy: { createdAt: "desc" },
+          select: { createdAt: true },
+        }),
+      ]);
+      return [pipeline.id, { digestCount, latestDigestAt: latestDigest?.createdAt ?? null }] as const;
+    }),
+  );
+  const digestCountByPipelineId = new Map(digestCounts);
+  const importedDigestPipelineIds = new Set(
+    digestPipelineImports.map((item) => item.pipelineId),
+  );
+  const hubDigestPipelines: HubDigestPipeline[] = digestPipelineShares
+    .map((pipeline) => {
+      const owned = pipeline.ownerUserId === session.user.id;
+      const owner = pipeline.owner;
+      const stats = digestCountByPipelineId.get(pipeline.id);
+      return {
+        id: pipeline.id,
+        title: displayDigestPipelineTitle(pipeline.title || digestPipelineTitle(owner)),
+        description: pipeline.description,
+        ownerUserId: pipeline.ownerUserId,
+        ownerLabel: owned
+          ? "Shared by you."
+          : `Shared by ${owner.name || owner.email || "a FollowBrief user"}.`,
+        importCount: pipeline.importCount,
+        viewCount: pipeline.viewCount,
+        digestCount: stats?.digestCount ?? 0,
+        latestDigestAt: stats?.latestDigestAt?.toISOString() ?? null,
+        imported:
+          importedDigestPipelineIds.has(pipeline.id) || pipeline.imports.length > 0,
+        owned,
+      };
+    })
+    .sort((a, b) => Number(b.owned) - Number(a.owned));
+
+  return {
+    activeTokens: serializeAgentTokens(rawTokens),
+    digestCronJob: serializeDigestCronJob(rawDigestCronJob),
+    digestCronRuns: rawDigestCronRuns,
+    digestJobRuns,
+    digestRuns: rawDigestRuns,
+    digestScheduledJobRuns,
+    hubDigestPipelines,
+    ownPipelineShared: ownPipelineShare?.isPublic === true,
+    ownPipelineTitle: displayDigestPipelineTitle(
+      ownPipelineShare?.title ?? digestPipelineTitle(session.user),
+    ),
+    summaryLanguage: feedPreference?.summaryLanguage ?? null,
+    digestMaxPostAgeDays: feedPreference?.digestMaxPostAgeDays ?? null,
+  };
 }
 
 async function loadBuildersPageData() {
@@ -156,11 +382,6 @@ async function loadBuildersPageData() {
     rawLibraryCronJob,
     jobRuns,
     scheduledJobRuns,
-    rawDigestRuns,
-    rawDigestCronRuns,
-    digestJobRuns,
-    digestScheduledJobRuns,
-    rawDigestCronJob,
     feedPreference,
   ] = await Promise.all([
     prisma.builderPoolEntry.findMany({
@@ -251,13 +472,6 @@ async function loadBuildersPageData() {
     }),
     getAgentJobRuns(session.user.id, "library-fetch", 25),
     getScheduledAgentJobRuns(session.user.id, "library-cron", 25),
-    getDigestRuns(session.user.id),
-    getDigestRuns(session.user.id, 25, "cron"),
-    getAgentJobRuns(session.user.id, "digest-build", 25),
-    getScheduledAgentJobRuns(session.user.id, "digest-cron", 25),
-    prisma.digestCronJob.findUnique({
-      where: { userId: session.user.id },
-    }),
     prisma.userFeedPreference.findUnique({
       where: { userId: session.user.id },
       select: { summaryLanguage: true, digestMaxPostAgeDays: true },
@@ -333,18 +547,7 @@ async function loadBuildersPageData() {
     label: source.label,
   }));
 
-  const activeTokens: AgentTokenListItem[] = rawTokens.map((token) => ({
-    id: token.id,
-    name: token.name,
-    createdAt: token.createdAt.toISOString(),
-    lastUsedAt: token.lastUsedAt?.toISOString() ?? null,
-    lastIp: token.lastIp ?? null,
-    lastUserAgent: token.lastUserAgent ?? null,
-    lastHostname: token.lastHostname ?? null,
-    lastPlatform: token.lastPlatform ?? null,
-    lastUser: token.lastUser ?? null,
-    revokedAt: null,
-  }));
+  const activeTokens = serializeAgentTokens(rawTokens);
 
   const fetchRuns: LibraryFetchRunListItem[] = rawFetchRuns.map((run) => ({
     id: run.id,
@@ -404,11 +607,6 @@ async function loadBuildersPageData() {
 
   return {
     activeTokens,
-    digestCronJob: serializeDigestCronJob(rawDigestCronJob),
-    digestCronRuns: rawDigestCronRuns,
-    digestJobRuns,
-    digestRuns: rawDigestRuns,
-    digestScheduledJobRuns,
     fetchedItems,
     cronRuns,
     fetchRuns,
@@ -429,6 +627,33 @@ async function loadBuildersPageData() {
     summaryLanguage: feedPreference?.summaryLanguage ?? null,
     digestMaxPostAgeDays: feedPreference?.digestMaxPostAgeDays ?? null,
   };
+}
+
+function serializeAgentTokens(
+  tokens: Array<{
+    id: string;
+    name: string;
+    createdAt: Date;
+    lastUsedAt: Date | null;
+    lastIp: string | null;
+    lastUserAgent: string | null;
+    lastHostname: string | null;
+    lastPlatform: string | null;
+    lastUser: string | null;
+  }>,
+): AgentTokenListItem[] {
+  return tokens.map((token) => ({
+    id: token.id,
+    name: token.name,
+    createdAt: token.createdAt.toISOString(),
+    lastUsedAt: token.lastUsedAt?.toISOString() ?? null,
+    lastIp: token.lastIp ?? null,
+    lastUserAgent: token.lastUserAgent ?? null,
+    lastHostname: token.lastHostname ?? null,
+    lastPlatform: token.lastPlatform ?? null,
+    lastUser: token.lastUser ?? null,
+    revokedAt: null,
+  }));
 }
 
 async function BuilderStatsSlot({
@@ -664,6 +889,14 @@ function builderSort(a: BuilderWithCount, b: BuilderWithCount) {
   const tb = b.createdAt.getTime();
   if (ta !== tb) return tb - ta;
   return a.name.localeCompare(b.name);
+}
+
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function parseSourcesTab(value: string | undefined): SourcesTab {
+  return value === "digest" ? "digest" : "fetch";
 }
 
 async function latestPostCreationTimes(builderIds: string[]): Promise<LatestPostCreatedAtByBuilderId> {

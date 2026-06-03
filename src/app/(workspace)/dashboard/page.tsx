@@ -2,8 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
 import type { DigestSourceLink } from "@/components/DigestContent";
-import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
-import { DigestPipelineVisibilityToggle } from "@/components/DigestPipelineVisibilityToggle";
 import { EmptyState } from "@/components/EmptyState";
 import { CountMeta } from "@/components/Count";
 import { FavoritePostsSection } from "@/components/FavoritePostsSection";
@@ -91,7 +89,7 @@ async function AiDigestFeedSlot({
     }),
     prisma.digestPipelineShare.findUnique({
       where: { ownerUserId: userId },
-      select: { title: true, isPublic: true },
+      select: { title: true },
     }),
   ]);
   const ownPipelineTitle = displayDigestPipelineTitle(ownPipelineShare?.title ?? "AI Digest");
@@ -139,7 +137,6 @@ async function AiDigestFeedSlot({
   return (
     <AiDigestFeed
       digestPipelineOptions={digestPipelineOptions}
-      ownPipelineShared={ownPipelineShare?.isPublic === true}
       sourceLinks={digestSourceLinks}
       digestSummaries={digestSummaries}
       latestDigest={latestDigest}
@@ -151,7 +148,6 @@ async function AiDigestFeedSlot({
 
 function AiDigestFeed({
   digestPipelineOptions,
-  ownPipelineShared,
   sourceLinks,
   digestSummaries,
   latestDigest,
@@ -159,7 +155,6 @@ function AiDigestFeed({
   selectedPipeline,
 }: {
   digestPipelineOptions: DigestPipelineOption[];
-  ownPipelineShared: boolean;
   sourceLinks: DigestSourceLink[];
   digestSummaries: DigestSummaryRow[];
   latestDigest: DigestSummaryRow | null;
@@ -174,26 +169,7 @@ function AiDigestFeed({
         options={digestPipelineOptions}
         selectedPipelineId={selectedPipeline.id}
       />
-      <section className="ai-digest-panel" aria-labelledby="ai-digest-heading">
-        <header className="ai-digest-head">
-          <div className="ai-digest-titleblock">
-            {isOwnPipeline ? null : <span className="fb-section-label">AI Digest</span>}
-            {isOwnPipeline ? (
-              <DigestPipelineTitleEditor
-                headingId="ai-digest-heading"
-                initialTitle={selectedPipeline.title}
-              />
-            ) : (
-              <h2 id="ai-digest-heading" className="fb-section-heading ai-digest-imported-title">
-                {selectedPipeline.title}
-              </h2>
-            )}
-          </div>
-          {isOwnPipeline ? (
-            <DigestPipelineVisibilityToggle initialShared={ownPipelineShared} />
-          ) : null}
-        </header>
-
+      <section className="ai-digest-panel">
         <div className="ai-digest-body">
           <section className="ai-digest-section" aria-label="Selected digest">
             {selectedDigest ? (
