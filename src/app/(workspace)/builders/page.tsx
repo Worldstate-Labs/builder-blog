@@ -84,7 +84,7 @@ async function SyncHeader({
   const data = await dataPromise;
   const showStopCron = data.libraryCronJob?.status === "active";
   return (
-    <section className="mt-6 grid gap-3">
+    <section className="sources-sync-section mt-5">
       <FetchLogPanel
         actions={
           <SkillPromptActions
@@ -108,7 +108,7 @@ async function SyncHeader({
 
 function SyncHeaderFallback() {
   return (
-    <section className="mt-6 grid gap-3" aria-live="polite" aria-busy="true">
+    <section className="sources-sync-section mt-5" aria-live="polite" aria-busy="true">
       <div className="h-10 rounded-[10px] bg-black/10" />
       <div className="h-28 rounded-[10px] bg-black/10" />
     </section>

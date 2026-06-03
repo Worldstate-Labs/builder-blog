@@ -85,10 +85,10 @@ export function BuilderLibraryStats({
   return (
     <>
       <div className="at-desktop page-toolbar">
-        <div className="count-summary-row" aria-label="Source library counts">
-          <CountMetric label="In library" value={stats.inLibrary} />
-          <CountMetric label="Followed" value={stats.subscribed} />
-          <CountMetric label="Summarized" value={stats.fetchedItems} />
+        <div className="source-summary-line" aria-label="Source library counts">
+          <CountMetric label="in library" value={stats.inLibrary} />
+          <CountMetric label="followed" value={stats.subscribed} />
+          <CountMetric label="summarized" value={stats.fetchedItems} />
         </div>
         <SubscribeAllLibraryBuildersButton onSubscribedAll={onSubscribedAll} />
       </div>

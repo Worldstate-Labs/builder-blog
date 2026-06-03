@@ -228,7 +228,7 @@ export function BuilderLibraryList({
   }
 
   return (
-    <div className="builder-library-list overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)]">
+    <div className="builder-library-list">
       {visibleBuilders.map((builder, index) => (
         <BuilderCard
           builder={builder}

@@ -44,13 +44,13 @@ export function SubscribeAllLibraryBuildersButton({
     <div className="inline-flex flex-col items-start gap-2">
       <button
         aria-busy={isPending}
-        className="fb-btn dark"
+        className="fb-btn light compact"
         disabled={isPending}
         onClick={subscribeAll}
         type="button"
       >
         <Bell aria-hidden="true" />
-        {isPending ? "Following..." : phase === "done" ? "Following" : "Follow all in library"}
+        {isPending ? "Following..." : phase === "done" ? "Following" : "Follow all"}
       </button>
       {phase === "error" ? (
         <span className="text-xs text-[var(--danger)]" role="status">

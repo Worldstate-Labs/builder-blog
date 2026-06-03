@@ -863,9 +863,12 @@ test("list actions use compact controls instead of full-width mobile buttons", (
 
   assert.match(css, /\.button-compact/);
   assert.match(css, /\.row-actions/);
-  assert.match(css, /\.builder-library-card-main\s*{\s*\n\s*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) minmax\(6\.75rem,\s*auto\) auto/);
+  assert.match(css, /\.source-summary-line/);
+  assert.match(css, /\.sources-sync-section \.digest-updates-panel/);
+  assert.match(css, /\.builder-library-card-main\s*{\s*\n\s*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) minmax\(6\.5rem,\s*auto\) minmax\(8\.25rem,\s*auto\)/);
   assert.match(css, /\.builder-library-stats\s*{[\s\S]*justify-self:\s*end/);
-  assert.match(css, /\.builder-library-row-tools\s*{[\s\S]*opacity:\s*0\.62/);
+  assert.match(css, /\.builder-library-row-tools\s*{[\s\S]*opacity:\s*0/);
+  assert.doesNotMatch(css, /\.library-section-summary::after[\s\S]*content:\s*"\+"/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*grid-template-areas:[\s\S]*"avatar info"[\s\S]*"\. stats"[\s\S]*"\. actions"/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta\s*{[\s\S]*display:\s*grid/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.page-pad h2\s*{[\s\S]*font-size:\s*1\.25rem/);
