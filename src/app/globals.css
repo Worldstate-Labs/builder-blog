@@ -1258,6 +1258,14 @@ svg.lucide {
   white-space: pre-wrap;
 }
 
+.post-summary-toggle {
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 850;
+  margin-top: 0.5rem;
+  text-decoration: none;
+}
+
 .fetched-post-raw {
   background: var(--paper);
   border: 1px solid var(--line);
@@ -1504,6 +1512,7 @@ svg.lucide {
   text-decoration: none;
 }
 
+.post-summary-toggle:hover,
 .text-link:hover {
   text-decoration: underline;
 }

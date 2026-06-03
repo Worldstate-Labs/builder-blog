@@ -168,7 +168,7 @@ export function PostCard({
             </p>
             {hasMoreSummary ? (
               <button
-                className="text-link mt-2"
+                className="post-summary-toggle"
                 onClick={() => {
                   setSummaryExpanded((expanded) => !expanded);
                   noteInteraction();
