@@ -45,6 +45,7 @@ export function PostCard({
   reasons,
   showBuilderRow = true,
   showDebugActions = true,
+  showPublishedDate = true,
   variant = "card",
 }: {
   context?: ReactNode;
@@ -64,6 +65,7 @@ export function PostCard({
    */
   showBuilderRow?: boolean;
   showDebugActions?: boolean;
+  showPublishedDate?: boolean;
   variant?: "card" | "row" | "detail";
 }) {
   const [summaryExpanded, setSummaryExpanded] = useState(false);
@@ -176,11 +178,15 @@ export function PostCard({
 
         {/* Footer row: Published date (left) · Action icons (right) */}
         <div className="post-footer">
-          <span className="post-footer-published">
-            {post.publishedAt
-              ? `Published ${formatDate(post.publishedAt)}`
-              : "Published date unknown"}
-          </span>
+          {showPublishedDate ? (
+            <span className="post-footer-published">
+              {post.publishedAt
+                ? `Published ${formatDate(post.publishedAt)}`
+                : "Published date unknown"}
+            </span>
+          ) : (
+            <span />
+          )}
 
           <div className="post-actions">
             {/* Primary action: open the original source to read the full content. */}

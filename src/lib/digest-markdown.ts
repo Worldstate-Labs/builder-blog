@@ -1,6 +1,6 @@
-// Parser for the digest markdown the agent produces. The format is defined by
-// the digest task contract, so a small bespoke parser (rather than a general
-// markdown lib) lets us treat its conventions as first-class:
+// Parser for the digest markdown the local CLI produces after reading the
+// agent's structured JSON output. A small bespoke parser (rather than a general
+// markdown lib) lets us treat the digest conventions as first-class:
 //
 //   ## <section>        a source-type section (官方博客 / 播客 / Blogs / …)
 //   ### <source>        an entity within the section (anthropic.com, LatentSpacePod)
@@ -38,7 +38,7 @@ export type DigestPost = {
   media: DigestMedia[];
 };
 
-export type DigestGroup = { source: string | null; posts: DigestPost[] };
+export type DigestGroup = { source: string | null; summary: DigestInline[][]; posts: DigestPost[] };
 
 export type DigestSection = {
   id: string;
@@ -168,7 +168,7 @@ export function parseDigest(markdown: string): DigestDoc {
   };
   const ensureGroup = (): DigestGroup => {
     if (!group) {
-      group = { source: null, posts: [] };
+      group = { source: null, summary: [], posts: [] };
       ensureSection().groups.push(group);
     }
     return group;
@@ -191,15 +191,9 @@ export function parseDigest(markdown: string): DigestDoc {
         lead.push(inline);
       }
     } else {
-      // Stray prose under a section/group with no post — attach as a lead-less
-      // group note by starting an untitled post.
-      ensureGroup().posts.push({
-        id: `p${postSeq++}`,
-        title: null,
-        lede: null,
-        paragraphs: [inline],
-        media: [],
-      });
+      // Prose under a source before the first post is the optional source-level
+      // summary generated for that source.
+      ensureGroup().summary.push(inline);
     }
   };
 
@@ -218,7 +212,7 @@ export function parseDigest(markdown: string): DigestDoc {
 
     const h3 = line.match(HEADING_3);
     if (h3) {
-      group = { source: h3[1], posts: [] };
+      group = { source: h3[1], summary: [], posts: [] };
       ensureSection().groups.push(group);
       post = null;
       continue;

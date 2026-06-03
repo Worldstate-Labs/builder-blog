@@ -139,7 +139,8 @@ export async function GET(request: Request) {
   }
 
   const digestContext = {
-    digestIntro: digestConfig.digestIntro,
+    headlinePrompt: digestConfig.headlinePrompt,
+    perSourceSummaryPrompt: digestConfig.perSourceSummaryPrompt,
     translate: digestConfig.translate,
     order: digestConfig.digestOrder as string[],
     commonFetchRules: defaultDigestConfig.commonFetchRules,

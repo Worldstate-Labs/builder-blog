@@ -100,6 +100,7 @@ function usage() {
   prepare [--regenerate]
   validate-agent-sync --tasks fetch-result.json --file personal-builders.json
   sync-builders --file personal-builders.json [--agent-model gpt-5.5]
+  render-digest --context builder-blog-context.json --agent-output digest-agent-output.json --out digest.md --summary-out digest-headlines.txt
   sync --file digest.md [--summary-file digest-headlines.txt] [--title "AI Builder Digest"] [--regenerate] [--context builder-blog-context.json]
   cron-status --job library-cron|digest-cron --status active|stopped [--freq 6h] [--schedule "0 */6 * * *"]
   job-run-start --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id>
@@ -2868,6 +2869,225 @@ function genericContentQuality(text, { title = "", description = "", standards }
   return { ok: true, reason: "ok", metrics, standards: qualityStandards };
 }
 
+const DEFAULT_DIGEST_SOURCE_ORDER = ["x", "blog", "youtube", "podcast", "website"];
+
+function digestSectionLabel(sourceType, language = "zh") {
+  const lang = String(language || "").toLowerCase();
+  const zh = lang.startsWith("zh") || lang.includes("chinese") || lang.includes("中文");
+  const labels = zh
+    ? {
+        x: "X / Twitter",
+        blog: "官方博客",
+        youtube: "视频",
+        podcast: "播客",
+        website: "网站",
+      }
+    : {
+        x: "X / Twitter",
+        blog: "Official Blogs",
+        youtube: "Videos",
+        podcast: "Podcasts",
+        website: "Websites",
+      };
+  return labels[sourceType] ?? sourceType;
+}
+
+function digestSourceOrder(context) {
+  const configured = Array.isArray(context?.digest?.order) ? context.digest.order : [];
+  const order = configured.length > 0 ? configured : DEFAULT_DIGEST_SOURCE_ORDER;
+  return new Map(order.map((sourceId, index) => [sourceId, index]));
+}
+
+function markdownLine(value, fallback = "") {
+  return String(value || fallback)
+    .replace(/\r?\n/g, " ")
+    .replace(/^\s*#+\s*/, "")
+    .trim();
+}
+
+function markdownParagraph(value) {
+  return String(value || "")
+    .replace(/\r\n/g, "\n")
+    .split(/\n{2,}/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function sourceTypeForDigestItem(item) {
+  return normalizeSourceType(item?.builder?.sourceType || item?.sourceType || "") || "website";
+}
+
+function sourceIdentityForDigestItem(item, context) {
+  const sourceType = sourceTypeForDigestItem(item);
+  const host = hostLabel(item?.builder?.sourceUrl || item?.builder?.fetchUrl || item?.url || "");
+  return (
+    item?.sourceName ||
+    item?.builder?.name ||
+    context?.subscriptionEntities?.find((entity) => entity?.id === item?.entityId)?.name ||
+    host ||
+    sourceType
+  );
+}
+
+function hostLabel(value) {
+  if (!value) return "";
+  try {
+    return new URL(value).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+function postSummaryFromAgentOutput(agentOutput) {
+  const map = new Map();
+  const rows = Array.isArray(agentOutput?.postSummaries)
+    ? agentOutput.postSummaries
+    : Array.isArray(agentOutput?.posts)
+      ? agentOutput.posts
+      : [];
+  for (const row of rows) {
+    const summary = stringOrNull(row?.summary ?? row?.translatedSummary ?? row?.body);
+    if (!summary) continue;
+    const keys = [
+      row?.feedItemId,
+      row?.id,
+      row?.itemId,
+      row?.externalId && row?.entityId && row?.kind
+        ? `${row.entityId}:${row.kind}:${row.externalId}`
+        : null,
+    ];
+    for (const key of keys) {
+      if (key) map.set(String(key), summary);
+    }
+  }
+  return map;
+}
+
+function sourceSummaryFromAgentOutput(agentOutput) {
+  const map = new Map();
+  const rows = Array.isArray(agentOutput?.sourceSummaries) ? agentOutput.sourceSummaries : [];
+  for (const row of rows) {
+    const summary = stringOrNull(row?.summary ?? row?.sourceSummary);
+    if (!summary) continue;
+    for (const key of [row?.entityId, row?.sourceKey, row?.source, row?.name]) {
+      if (key) map.set(String(key), summary);
+    }
+  }
+  return map;
+}
+
+function postSummaryForItem(item, postSummaries) {
+  const canonicalKey =
+    item?.entityId && item?.kind && item?.externalId
+      ? `${item.entityId}:${item.kind}:${item.externalId}`
+      : null;
+  return (
+    postSummaries.get(String(item?.id || "")) ||
+    (canonicalKey ? postSummaries.get(canonicalKey) : "") ||
+    stringOrNull(item?.summary) ||
+    stringOrNull(item?.body) ||
+    ""
+  );
+}
+
+export function renderDigestMarkdown(context, agentOutput = {}) {
+  const items = Array.isArray(context?.items) ? context.items : [];
+  const headlineSummary = stringOrNull(agentOutput?.headlineSummary) || "";
+  const language = context?.language || "zh";
+  if (items.length === 0) {
+    return {
+      headlineSummary: headlineSummary || (String(language).toLowerCase().startsWith("zh") ? "今天没有新的订阅更新。" : "No new subscription updates today."),
+      markdown:
+        `AI Digest - ${new Date(context?.generatedAt || Date.now()).toLocaleDateString()}\n\n` +
+        (String(language).toLowerCase().startsWith("zh")
+          ? "今天没有新的订阅更新。"
+          : "No new subscription updates today."),
+    };
+  }
+
+  const postSummaries = postSummaryFromAgentOutput(agentOutput);
+  const sourceSummaries = sourceSummaryFromAgentOutput(agentOutput);
+  const order = digestSourceOrder(context);
+  const sections = new Map();
+  for (const item of items) {
+    const sourceType = sourceTypeForDigestItem(item);
+    const source = sourceIdentityForDigestItem(item, context);
+    const entityId = item?.entityId || item?.builder?.entityId || source;
+    if (!sections.has(sourceType)) sections.set(sourceType, new Map());
+    const groups = sections.get(sourceType);
+    if (!groups.has(entityId)) groups.set(entityId, { source, entityId, items: [] });
+    groups.get(entityId).items.push(item);
+  }
+
+  const sectionEntries = [...sections.entries()].sort((a, b) => {
+    const ai = order.has(a[0]) ? order.get(a[0]) : 999;
+    const bi = order.has(b[0]) ? order.get(b[0]) : 999;
+    if (ai !== bi) return ai - bi;
+    return a[0].localeCompare(b[0]);
+  });
+
+  const lines = [
+    `AI Digest - ${new Date(context?.generatedAt || Date.now()).toLocaleDateString()}`,
+    "",
+  ];
+  for (const [sourceType, groups] of sectionEntries) {
+    lines.push(`## ${digestSectionLabel(sourceType, language)}`, "");
+    const groupEntries = [...groups.values()].sort((a, b) => a.source.localeCompare(b.source));
+    for (const group of groupEntries) {
+      lines.push(`### ${markdownLine(group.source, "Unknown source")}`);
+      const groupSummary =
+        sourceSummaries.get(String(group.entityId)) ||
+        sourceSummaries.get(String(group.source)) ||
+        sourceSummaries.get(markdownLine(group.source));
+      if (groupSummary) {
+        lines.push("", markdownParagraph(groupSummary));
+      }
+      const sortedItems = [...group.items].sort((a, b) => {
+        const at = new Date(a.publishedAt || a.createdAt || 0).getTime();
+        const bt = new Date(b.publishedAt || b.createdAt || 0).getTime();
+        return bt - at;
+      });
+      for (const item of sortedItems) {
+        const title = markdownLine(item?.title || item?.sourceName || item?.builder?.name, "Untitled update");
+        const summary = markdownParagraph(postSummaryForItem(item, postSummaries));
+        lines.push("", `**${title.replace(/\*\*/g, "")}**`);
+        if (summary) lines.push(summary);
+        lines.push(`Source: ${item.url}`);
+      }
+      lines.push("");
+    }
+  }
+
+  return {
+    headlineSummary,
+    markdown: `${lines.join("\n").replace(/\n{3,}/g, "\n\n").trim()}\n`,
+  };
+}
+
+async function renderDigest(args) {
+  const contextPath = argValue(args, "--context");
+  const agentOutputPath = argValue(args, "--agent-output");
+  const outPath = argValue(args, "--out");
+  const summaryOutPath = argValue(args, "--summary-out");
+  if (!contextPath) throw new Error("Missing --context builder-blog-context.json");
+  if (!agentOutputPath) throw new Error("Missing --agent-output digest-agent-output.json");
+  if (!outPath) throw new Error("Missing --out digest.md");
+  if (!summaryOutPath) throw new Error("Missing --summary-out digest-headlines.txt");
+
+  const context = JSON.parse(await readFile(contextPath, "utf8"));
+  const agentOutput = JSON.parse(await readFile(agentOutputPath, "utf8"));
+  const rendered = renderDigestMarkdown(context, agentOutput);
+  await writeFile(outPath, rendered.markdown, "utf8");
+  await writeFile(summaryOutPath, rendered.headlineSummary || "", "utf8");
+  console.log(JSON.stringify({
+    status: "ok",
+    itemCount: Array.isArray(context.items) ? context.items.length : 0,
+    digestChars: rendered.markdown.length,
+    headlineChars: rendered.headlineSummary.length,
+  }, null, 2));
+}
+
 async function sync(args) {
   const config = await readConfig();
   requireLoggedIn(config);
@@ -3199,6 +3419,7 @@ async function main() {
   else if (command === "prepare") await prepare(args);
   else if (command === "validate-agent-sync") await validateAgentSync(args);
   else if (command === "sync-builders") await syncBuilders(args);
+  else if (command === "render-digest") await renderDigest(args);
   else if (command === "sync") await sync(args);
   else if (command === "cron-status") await cronStatus(args);
   else if (command === "job-run-start") await jobRunCommand(args, "starting");

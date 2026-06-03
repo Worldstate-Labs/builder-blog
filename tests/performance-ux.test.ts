@@ -74,10 +74,10 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(settingsFields, /OptionalBadge/);
   assert.match(adminDigestConfig, /FooterBar/);
   assert.match(adminDigestConfig, /@\/components\/settings\/SettingsFields/);
-  assert.match(adminDigestConfig, /DIGEST_INTRO_PLACEHOLDER/);
-  assert.match(adminDigestConfig, /Then organize content in this order/);
-  assert.match(adminDigestConfig, /YouTube section - list each video episode/);
-  assert.match(adminDigestConfig, /Websites section - list each website source/);
+  assert.match(adminDigestConfig, /HEADLINE_PROMPT_PLACEHOLDER/);
+  assert.match(adminDigestConfig, /PER_SOURCE_SUMMARY_PROMPT_PLACEHOLDER/);
+  assert.match(adminDigestConfig, /headlinePrompt/);
+  assert.match(adminDigestConfig, /perSourceSummaryPrompt/);
   assert.doesNotMatch(adminDigestConfig, /OrderedChoiceField/);
   assert.match(adminDigestConfig, /TRANSLATE_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /@\/components\/settings\/SettingsFields/);
@@ -564,9 +564,9 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(digestContent, /DigestSourceLink/);
   assert.match(digestContent, /digest-group-source-link/);
   assert.match(digestContent, /sourceLinkForSource/);
-  assert.match(digestContent, /post-read-original dr-video-out/);
-  assert.match(digestContent, /post-read-original dr-source/);
-  assert.match(digestContent, /View original/);
+  assert.match(digestContent, /PostCard/);
+  assert.match(digestContent, /showDebugActions=\{false\}/);
+  assert.match(digestContent, /digest-source-summary/);
   assert.doesNotMatch(digestContent, /Watch on YouTube/);
   assert.match(dashboardPage, /digestSourceLinksForUser/);
   assert.match(dashboardPage, /sourceLinks=\{sourceLinks\}/);

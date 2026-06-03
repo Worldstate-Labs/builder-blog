@@ -11,9 +11,9 @@ skill, plugin, or subagent — run the numbered steps yourself exactly as writte
 this prompt is the whole task.
 
 Agent discretion boundary: this is a scheduler setup task; the scheduled runner
-is the only component that should generate digest text. Do not change paths,
-flags, cadence, titles, output files, JSON schema, or success criteria. Only use
-agent judgment to write the digest body from the FollowBrief context items.
+is the only component that should produce structured digest summary JSON. Do not
+change paths, flags, cadence, titles, output files, JSON schema, or success
+criteria.
 
 Scheduled runtime: **{{AGENT_RUNTIME_LABEL}}** ({{AGENT_RUNTIME}}). Every step
 below uses this pinned runtime; do not fall back to a different one.

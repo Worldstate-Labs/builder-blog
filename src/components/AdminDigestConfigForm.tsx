@@ -10,7 +10,8 @@ import { MarkdownEditor } from "@/components/settings/MarkdownEditor";
 
 export type AdminDigestConfig = {
   id: string;
-  digestIntro: string;
+  headlinePrompt: string;
+  perSourceSummaryPrompt: string;
   translate: string;
   updatedAt: string;
   updatedBy: string | null;
@@ -18,24 +19,24 @@ export type AdminDigestConfig = {
 
 type Status = SaveStatusState;
 
-const DIGEST_INTRO_PLACEHOLDER = [
+const HEADLINE_PROMPT_PLACEHOLDER = [
   "Example:",
-  "Start with: AI Digest - [Date]",
-  "",
-  "Then organize content in this order:",
-  "",
-  "1. X / Twitter section - list each builder with new posts",
-  "2. Official Blogs section - list each blog post from AI companies or builders",
-  "3. YouTube section - list each video episode with new content",
-  "4. Podcasts section - list each podcast episode with new content",
-  "5. Websites section - list each website source with new content",
+  "Write a compact headlineSummary in context.language.",
+  "Use only facts from the candidate post summaries. Do not include raw URLs.",
+].join("\n");
+
+const PER_SOURCE_SUMMARY_PROMPT_PLACEHOLDER = [
+  "Example:",
+  "You receive one source and its candidate posts.",
+  "Write a short source-level summary only when multiple posts are meaningfully about the same actor or main subject.",
+  "If there is only one post or the posts are unrelated, output an empty string.",
 ].join("\n");
 
 const TRANSLATE_PROMPT_PLACEHOLDER = [
   "Example:",
-  "Translate the finished digest into context.language.",
+  "Rewrite or translate the supplied per-post summary into context.language.",
   "",
-  "Keep product names, people, companies, URLs, and common AI terms in English when professionals normally use them that way.",
+  "Do not write headlineSummary or source-level summaries. Keep product names, people, companies, URLs, and common AI terms in English when professionals normally use them that way.",
 ].join("\n");
 
 export function AdminDigestConfigForm({
@@ -45,12 +46,16 @@ export function AdminDigestConfigForm({
 }) {
   const [config, setConfig] = useState(initialConfig);
   const [draft, setDraft] = useState({
-    digestIntro: initialConfig.digestIntro,
+    headlinePrompt: initialConfig.headlinePrompt,
+    perSourceSummaryPrompt: initialConfig.perSourceSummaryPrompt,
     translate: initialConfig.translate,
   });
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [isPending, startTransition] = useTransition();
-  const dirty = draft.digestIntro !== config.digestIntro || draft.translate !== config.translate;
+  const dirty =
+    draft.headlinePrompt !== config.headlinePrompt ||
+    draft.perSourceSummaryPrompt !== config.perSourceSummaryPrompt ||
+    draft.translate !== config.translate;
 
   function update<K extends keyof typeof draft>(key: K, value: (typeof draft)[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -59,7 +64,8 @@ export function AdminDigestConfigForm({
 
   function reset() {
     setDraft({
-      digestIntro: config.digestIntro,
+      headlinePrompt: config.headlinePrompt,
+      perSourceSummaryPrompt: config.perSourceSummaryPrompt,
       translate: config.translate,
     });
     setStatus({ kind: "idle" });
@@ -67,7 +73,8 @@ export function AdminDigestConfigForm({
 
   function save() {
     const patch = {
-      digestIntro: draft.digestIntro,
+      headlinePrompt: draft.headlinePrompt,
+      perSourceSummaryPrompt: draft.perSourceSummaryPrompt,
       translate: draft.translate,
     };
     setStatus({ kind: "saving" });
@@ -84,7 +91,8 @@ export function AdminDigestConfigForm({
         }
         setConfig(body.config);
         setDraft({
-          digestIntro: body.config.digestIntro,
+          headlinePrompt: body.config.headlinePrompt,
+          perSourceSummaryPrompt: body.config.perSourceSummaryPrompt,
           translate: body.config.translate,
         });
         setStatus({ kind: "saved", message: "Saved" });
@@ -101,24 +109,42 @@ export function AdminDigestConfigForm({
     <div className="settings-config-form digest-composition-form">
       <Section
         title="Digest prompts"
-        description="Prompts that assemble and translate the final digest from existing per-post summaries."
+        description="Prompts used after posts already have per-post summaries."
       >
         <div className="settings-field block text-sm">
           <span
             className="settings-field-label mb-1 flex items-baseline gap-1.5 text-[11px] uppercase tracking-[0.12em]"
             style={{ color: "var(--muted)" }}
           >
-            Intro prompt
+            Headline prompt
           </span>
           <MarkdownEditor
-            ariaLabel="Intro prompt"
-            height={420}
-            placeholder={DIGEST_INTRO_PLACEHOLDER}
-            value={draft.digestIntro}
-            onChange={(value) => update("digestIntro", value)}
+            ariaLabel="Headline prompt"
+            height={220}
+            placeholder={HEADLINE_PROMPT_PLACEHOLDER}
+            value={draft.headlinePrompt}
+            onChange={(value) => update("headlinePrompt", value)}
           />
           <span className="settings-field-help mt-1 block text-xs" style={{ color: "var(--muted)" }}>
-            Generates the digest&apos;s opening paragraph from the assembled summaries.
+            Writes the short headline summary in the selected digest language.
+          </span>
+        </div>
+        <div className="settings-field block text-sm">
+          <span
+            className="settings-field-label mb-1 flex items-baseline gap-1.5 text-[11px] uppercase tracking-[0.12em]"
+            style={{ color: "var(--muted)" }}
+          >
+            Per-source summary prompt
+          </span>
+          <MarkdownEditor
+            ariaLabel="Per-source summary prompt"
+            height={260}
+            placeholder={PER_SOURCE_SUMMARY_PROMPT_PLACEHOLDER}
+            value={draft.perSourceSummaryPrompt}
+            onChange={(value) => update("perSourceSummaryPrompt", value)}
+          />
+          <span className="settings-field-help mt-1 block text-xs" style={{ color: "var(--muted)" }}>
+            Optionally writes one source-level note above that source&apos;s posts.
           </span>
         </div>
         <div className="settings-field block text-sm">
@@ -136,7 +162,7 @@ export function AdminDigestConfigForm({
             onChange={(value) => update("translate", value)}
           />
           <span className="settings-field-help mt-1 block text-xs" style={{ color: "var(--muted)" }}>
-            Used when translating finished summaries into a user&apos;s preferred language.
+            Only rewrites or translates existing per-post summaries.
           </span>
         </div>
       </Section>

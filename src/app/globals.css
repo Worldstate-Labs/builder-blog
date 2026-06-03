@@ -4882,6 +4882,18 @@ svg.lucide {
 .digest-group-source-link:hover .digest-group-source-icon {
   color: var(--dr-accent);
 }
+.digest-source-summary {
+  border-left: 2px solid color-mix(in oklch, var(--dr-accent) 52%, var(--dr-line));
+  color: var(--dr-muted);
+  display: grid;
+  font-size: 0.875rem;
+  gap: 0.5rem;
+  line-height: 1.65;
+  padding-left: 0.875rem;
+}
+.digest-source-summary p {
+  margin: 0;
+}
 
 /* Post */
 .digest-post {

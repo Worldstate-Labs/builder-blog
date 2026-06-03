@@ -3,10 +3,12 @@ Use the FollowBrief skill to run the scheduled subscription digest job.
 This is an unattended scheduled run. Do not ask the user questions.
 
 Run these steps exactly. If any command fails, stop and write the command, exit
-code, and stderr to the scheduled job log. Do not browse for extra context. Only use agent judgment to write the digest body and headlineSummary from the FollowBrief context items.
+code, and stderr to the scheduled job log. Do not browse for extra context. Only
+use agent judgment to write the structured summary JSON from the FollowBrief
+context items.
 
 Agent discretion boundary: this is a command-runner job except for writing the
-digest body and headlineSummary from the fetched FollowBrief context. Do not
+structured summary JSON from the fetched FollowBrief context. Do not
 change paths, flags, cadence, titles, output files, JSON schema, or success
 criteria.
 
@@ -24,16 +26,17 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" prepare
   > "$TMP_DIR/builder-blog-context.json"
 ```
 
-Write the final digest to:
+{{INCLUDE:digest-task-contract}}
 
-```text
-${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}/builder-blog-digest.md
-```
+Render the final digest files from the context and JSON:
 
-Write the headlineSummary to:
-
-```text
-${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}/builder-blog-digest-headlines.txt
+```bash
+TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}"
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" render-digest \
+  --context "$TMP_DIR/builder-blog-context.json" \
+  --agent-output "$TMP_DIR/builder-blog-digest-agent-output.json" \
+  --out "$TMP_DIR/builder-blog-digest.md" \
+  --summary-out "$TMP_DIR/builder-blog-digest-headlines.txt"
 ```
 
 Then sync it:
@@ -47,8 +50,6 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" sync \
   --context "$TMP_DIR/builder-blog-context.json" \
   --title "AI Builder Digest" ${BUILDER_BLOG_DIGEST_REGENERATE:-}
 ```
-
-{{INCLUDE:digest-task-contract}}
 
 If the run cannot complete without a missing credential or unsupported local
 capability, write the concrete reason to the scheduled job log and stop.

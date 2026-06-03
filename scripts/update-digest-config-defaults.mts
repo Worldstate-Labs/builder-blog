@@ -1,5 +1,5 @@
 // One-time update: push the corrected DigestConfig text defaults
-// (digestIntro, translate) into the database. The seeder only
+// into the database. The seeder only
 // inserts on first run and never overwrites existing rows, so this script is how
 // prompt fixes reach data that was already seeded.
 //
@@ -16,7 +16,12 @@ import { DEFAULT_DIGEST_PROMPTS } from "../src/lib/digest-prompts";
 async function main() {
   const def = await prisma.digestConfig.findUnique({
     where: { id: "global" },
-    select: { digestIntro: true, translate: true },
+    select: {
+      digestIntro: true,
+      headlinePrompt: true,
+      perSourceSummaryPrompt: true,
+      translate: true,
+    },
   });
   if (!def) {
     console.error('No default DigestConfig ("global") row found — run the config seed first.');
@@ -24,35 +29,36 @@ async function main() {
     return;
   }
 
-  if (def.digestIntro !== DEFAULT_DIGEST_PROMPTS.digestIntro) {
-    const r = await prisma.userDigestConfig.updateMany({
-      where: { digestIntro: def.digestIntro },
-      data: { digestIntro: DEFAULT_DIGEST_PROMPTS.digestIntro },
-    });
-    await prisma.digestConfig.update({
-      where: { id: "global" },
-      data: { digestIntro: DEFAULT_DIGEST_PROMPTS.digestIntro },
-    });
-    console.log(`digestIntro: default updated, ${r.count} user copies refreshed.`);
-  } else {
-    console.log("digestIntro: already up to date.");
-  }
-
-  if (def.translate !== DEFAULT_DIGEST_PROMPTS.translate) {
-    const r = await prisma.userDigestConfig.updateMany({
-      where: { translate: def.translate },
-      data: { translate: DEFAULT_DIGEST_PROMPTS.translate },
-    });
-    await prisma.digestConfig.update({
-      where: { id: "global" },
-      data: { translate: DEFAULT_DIGEST_PROMPTS.translate },
-    });
-    console.log(`translate: default updated, ${r.count} user copies refreshed.`);
-  } else {
-    console.log("translate: already up to date.");
-  }
+  await refreshField("digestIntro", def.digestIntro, DEFAULT_DIGEST_PROMPTS.digestIntro);
+  await refreshField("headlinePrompt", def.headlinePrompt, DEFAULT_DIGEST_PROMPTS.headline);
+  await refreshField(
+    "perSourceSummaryPrompt",
+    def.perSourceSummaryPrompt,
+    DEFAULT_DIGEST_PROMPTS.perSourceSummary,
+  );
+  await refreshField("translate", def.translate, DEFAULT_DIGEST_PROMPTS.translate);
 
   console.log("Done. Regenerate today's digest to see the changes.");
+}
+
+async function refreshField(
+  field: "digestIntro" | "headlinePrompt" | "perSourceSummaryPrompt" | "translate",
+  oldValue: string,
+  newValue: string,
+) {
+  if (oldValue !== newValue) {
+    const r = await prisma.userDigestConfig.updateMany({
+      where: { [field]: oldValue },
+      data: { [field]: newValue },
+    });
+    await prisma.digestConfig.update({
+      where: { id: "global" },
+      data: { [field]: newValue },
+    });
+    console.log(`${field}: default updated, ${r.count} user copies refreshed.`);
+  } else {
+    console.log(`${field}: already up to date.`);
+  }
 }
 
 main()

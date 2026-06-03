@@ -40,6 +40,8 @@ export type SourceTypeConfigShape = {
 export type DigestConfigShape = {
   id: string;
   digestIntro: string;
+  headlinePrompt: string;
+  perSourceSummaryPrompt: string;
   translate: string;
   digestOrder: string[];
   commonFetchRules: string;
@@ -105,6 +107,8 @@ export const DEFAULT_SOURCE_CONFIGS: Record<string, SourceTypeConfigShape> =
 export const DEFAULT_DIGEST_CONFIG: DigestConfigShape = {
   id: "global",
   digestIntro: DEFAULT_DIGEST_PROMPTS.digestIntro,
+  headlinePrompt: DEFAULT_DIGEST_PROMPTS.headline,
+  perSourceSummaryPrompt: DEFAULT_DIGEST_PROMPTS.perSourceSummary,
   translate: DEFAULT_DIGEST_PROMPTS.translate,
   digestOrder: ["x", "blog", "youtube", "podcast", "website"],
   commonFetchRules: DEFAULT_COMMON_FETCH_RULES,
@@ -140,6 +144,8 @@ export async function ensureSourceConfigsSeeded(client: PrismaClient): Promise<v
       {
         id: DEFAULT_DIGEST_CONFIG.id,
         digestIntro: DEFAULT_DIGEST_CONFIG.digestIntro,
+        headlinePrompt: DEFAULT_DIGEST_CONFIG.headlinePrompt,
+        perSourceSummaryPrompt: DEFAULT_DIGEST_CONFIG.perSourceSummaryPrompt,
         translate: DEFAULT_DIGEST_CONFIG.translate,
         digestOrder: DEFAULT_DIGEST_CONFIG.digestOrder as object,
         commonFetchRules: DEFAULT_DIGEST_CONFIG.commonFetchRules,

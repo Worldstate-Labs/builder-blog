@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, ChevronDown, ExternalLink, Play } from "lucide-react";
+import { useMemo } from "react";
+import { ArrowRight, ChevronDown } from "lucide-react";
+import { PostCard, type PostCardPost } from "@/components/PostCard";
 import {
   parseDigest,
   type DigestDoc,
+  type DigestGroup,
   type DigestInline,
-  type DigestMedia,
   type DigestPost,
   type DigestSection,
 } from "@/lib/digest-markdown";
@@ -108,8 +109,23 @@ function SectionBlock({
           {group.source ? (
             <DigestGroupHeading source={group.source} sourceLink={sourceLinkForSource(group.source, sourceLookup)} />
           ) : null}
+          {group.summary.length > 0 ? (
+            <div className="digest-source-summary">
+              {group.summary.map((p, i) => (
+                <p key={i}>
+                  <Inline nodes={p} />
+                </p>
+              ))}
+            </div>
+          ) : null}
           {group.posts.map((post) => (
-            <PostBlock key={post.id} post={post} />
+            <PostBlock
+              key={post.id}
+              group={group}
+              post={post}
+              section={section}
+              sourceLink={group.source ? sourceLinkForSource(group.source, sourceLookup) : undefined}
+            />
           ))}
         </div>
       ))}
@@ -137,124 +153,49 @@ function SectionBlock({
   );
 }
 
-function PostBlock({ post }: { post: DigestPost }) {
-  return (
-    <article className="digest-post">
-      {post.title ? <h4 className="digest-post-title">{post.title}</h4> : null}
-      {post.lede ? (
-        <p className="digest-lede">
-          <Inline nodes={post.lede} />
-        </p>
-      ) : null}
-      {post.paragraphs.length > 0 ? <ProseClamp paragraphs={post.paragraphs} /> : null}
-      {post.media.length > 0 ? (
-        <div className="digest-media">
-          {post.media.map((m, i) =>
-            m.kind === "video" ? (
-              <VideoEmbed key={i} media={m} />
-            ) : (
-              <SourceLink key={i} media={m} />
-            ),
-          )}
-        </div>
-      ) : null}
-    </article>
-  );
-}
+function PostBlock({
+  group,
+  post,
+  section,
+  sourceLink,
+}: {
+  group: DigestGroup;
+  post: DigestPost;
+  section: DigestSection;
+  sourceLink?: DigestSourceLink;
+}) {
+  const summary = [post.lede, ...post.paragraphs]
+    .filter((nodes): nodes is DigestInline[] => Boolean(nodes))
+    .map(inlineText)
+    .join("\n\n")
+    .trim();
+  const sourceType = sourceTypeFromSection(section.heading);
+  const url = post.media[0]?.url ?? sourceLink?.sourceUrl ?? sourceLink?.fetchUrl ?? "#";
+  const postCard: PostCardPost = {
+    id: `digest-${section.id}-${post.id}`,
+    title: post.title,
+    body: summary,
+    summary,
+    url,
+    publishedAt: null,
+    createdAt: new Date(0).toISOString(),
+    sourceName: group.source,
+    sourceType,
+    fetchTool: null,
+    builder: sourceLink
+      ? {
+          id: sourceLink.entityId,
+          entityId: sourceLink.entityId,
+          name: sourceLink.name,
+          kind: builderKindFromSourceType(sourceType),
+          sourceType,
+          sourceUrl: sourceLink.sourceUrl ?? null,
+          fetchUrl: sourceLink.fetchUrl ?? null,
+        }
+      : null,
+  };
 
-const CLAMP_LINES = 6;
-
-function ProseClamp({ paragraphs }: { paragraphs: DigestInline[][] }) {
-  const [expanded, setExpanded] = useState(false);
-  const [overflowing, setOverflowing] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || expanded) return;
-    setOverflowing(el.scrollHeight - el.clientHeight > 6);
-  }, [expanded, paragraphs]);
-
-  return (
-    <div className="digest-prose-wrap">
-      <div
-        ref={ref}
-        className={`digest-prose${expanded ? "" : " is-clamped"}`}
-        style={{ ["--dr-clamp-lines" as string]: String(CLAMP_LINES) }}
-      >
-        {paragraphs.map((p, i) => (
-          <p key={i} className={i === 0 ? "" : "digest-prose-p"}>
-            <Inline nodes={p} />
-          </p>
-        ))}
-      </div>
-      {overflowing || expanded ? (
-        <button
-          type="button"
-          className="digest-more"
-          aria-expanded={expanded}
-          onClick={() => setExpanded((v) => !v)}
-        >
-          {expanded ? "Show less" : "Show more"}
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
-function VideoEmbed({ media }: { media: DigestMedia }) {
-  const [playing, setPlaying] = useState(false);
-
-  if (media.youtubeId) {
-    return (
-      <figure className="dr-video">
-        {playing ? (
-          <iframe
-            className="dr-video-frame"
-            src={`https://www.youtube-nocookie.com/embed/${media.youtubeId}?autoplay=1&rel=0`}
-            title="Embedded video"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        ) : (
-          <button
-            type="button"
-            className="dr-video-facade"
-            onClick={() => setPlaying(true)}
-            aria-label="Play video"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              className="dr-video-thumb"
-              src={`https://i.ytimg.com/vi/${media.youtubeId}/hqdefault.jpg`}
-              alt=""
-              loading="lazy"
-            />
-            <span className="dr-play" aria-hidden="true">
-              <Play className="h-5 w-5" />
-            </span>
-          </button>
-        )}
-        <a className="post-read-original dr-video-out" href={media.url} target="_blank" rel="noreferrer">
-          View original
-          <ExternalLink aria-hidden="true" className="post-read-original-icon" />
-        </a>
-      </figure>
-    );
-  }
-
-  // Non-YouTube video (bilibili/vimeo/etc.) — a rich link-out card rather than a
-  // bare URL; safer than embedding arbitrary third-party players.
-  return <SourceLink media={media} />;
-}
-
-function SourceLink({ media }: { media: DigestMedia }) {
-  return (
-    <a className="post-read-original dr-source" href={media.url} target="_blank" rel="noreferrer">
-      View original
-      <ExternalLink className="post-read-original-icon" aria-hidden="true" />
-    </a>
-  );
+  return <PostCard post={postCard} showDebugActions={false} showPublishedDate={false} />;
 }
 
 function DigestGroupHeading({
@@ -334,6 +275,26 @@ function hostOf(value: string) {
   } catch {
     return "";
   }
+}
+
+function inlineText(nodes: DigestInline[]) {
+  return nodes.map((node) => node.value).join("").trim();
+}
+
+function sourceTypeFromSection(heading: string) {
+  const normalized = heading.toLowerCase();
+  if (normalized.includes("twitter") || normalized.includes("x /")) return "x";
+  if (normalized.includes("youtube") || normalized.includes("video") || normalized.includes("视频")) return "youtube";
+  if (normalized.includes("podcast") || normalized.includes("播客")) return "podcast";
+  if (normalized.includes("blog") || normalized.includes("博客")) return "blog";
+  return "website";
+}
+
+function builderKindFromSourceType(sourceType: string): "X" | "BLOG" | "PODCAST" | "WEBSITE" {
+  if (sourceType === "x") return "X";
+  if (sourceType === "blog") return "BLOG";
+  if (sourceType === "youtube" || sourceType === "podcast") return "PODCAST";
+  return "WEBSITE";
 }
 
 function Inline({ nodes }: { nodes: DigestInline[] }) {

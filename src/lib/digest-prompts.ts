@@ -96,97 +96,41 @@ professional who wants the key announcements and insights without reading the fu
 - Do NOT include filler like "In this blog post..." or "The author discusses..."
 - Jump straight into the substance.
 - Include the direct link to the original article.`,
-  digestIntro: `# Digest Intro Prompt
+  // Legacy field retained only for old database rows / old local clients. New
+  // digest runs do not ask the agent to assemble markdown with this prompt.
+  digestIntro: `# Legacy Digest Intro Prompt
 
-You are assembling the final FollowBrief digest from individual source summaries.
+FollowBrief now assembles the digest body programmatically. This legacy prompt is not used by current digest jobs.`,
+  headline: `# Digest Headline Prompt
 
-Also produce a separate plain-text headlineSummary for the posts included in the
-digest. Keep headlineSummary under 300 Chinese characters (or the equivalent
-compact length in the target language), make it read like a short news
-headlines paragraph, and do not include raw URLs in headlineSummary.
-headlineSummary is stored separately; do not replace or shorten the full digest
-body to satisfy this limit.
+Write only \`headlineSummary\` for the candidate posts in the supplied FollowBrief context.
 
-## Format
+Use \`context.language\`. Keep it compact: under 300 Chinese characters, or an equivalent short news-headline paragraph in the selected language. Do not include raw URLs. Use only facts already present in the candidate post summaries and metadata.`,
+  perSourceSummary: `# Per-Source Summary Prompt
 
-Start with this header, replacing [Date] with today's date:
+You are writing an optional source-level summary for exactly one source in a FollowBrief digest.
 
-AI Digest - [Date]
+Use \`context.language\`. The input contains one source and that source's candidate posts only. Write a short source-level summary only when this source has multiple candidate posts and those posts are meaningfully about the same actor, source, or main subject. If the posts are unrelated, too sparse, or there is only one candidate post, output an empty string.
 
-Then organize content in this order:
-
-1. X / Twitter section - list each builder with new posts
-2. Official Blogs section - list each blog post from AI companies or builders
-3. YouTube section - list each video episode with new content
-4. Podcasts section - list each podcast episode with new content
-5. Websites section - list each website source with new content
-
-## Output structure (Markdown - follow exactly)
-
-FollowBrief uses a small parser, so every post must use this exact block shape:
-
-\`\`\`md
-## <section name>
-### <source identity only>
-**<post title only>**
-<summary paragraph 1>
-<summary paragraph 2 if needed>
-Source: <item.url>
-\`\`\`
-
-Format rules:
-
-- Use one \`##\` heading per section, translated to the target language.
-- Use one \`###\` line per source. This line is only the source identity, such
-  as \`### claude.com\` or \`### LatentSpacePod\`.
-- Never put an article title, date, or commentary on a \`###\` line.
-- After a \`###\` source line, every post must start with one standalone bold
-  title line: \`**<post title only>**\`.
-- Put the summary paragraphs after the bold title line.
-- Put the source URL on the final standalone line for that post, using
-  \`Source: <item.url>\`. A localized label such as \`原文：<item.url>\` is also
-  acceptable when the final digest is not in English. Do not put the source URL
-  inside a summary paragraph.
-- Repeat the bold-title + summary + source-link block for each post under the
-  same source.
-
-Example (one post under one source - translate the prose to the target language):
-
-  ## Official Blogs
-  ### claude.com
-  **Claude Managed Agents: get to production 10x faster**
-  <summary paragraphs>
-  原文：https://www.claude.com/...
-
-## Rules
-
-- Only include sources that have new content.
-- Skip any source with nothing substantive.
-- Under each source, paste the individual summary you generated.
-- Use each item's url field as its original source link — every item already
-  has one. Render it on the source-link line per the Output structure above
-  (原文：<url>). Never invent or substitute a different URL.
-- Use the author's full name and role/company when known.
-- Never write X/Twitter handles with @ in the digest.
-- Only include content that came from the supplied FollowBrief context JSON.
-- NEVER make up quotes, opinions, or content you think someone might have said.
-- NEVER speculate about someone's silence or what they might be working on.
-- Keep formatting clean and scannable for a phone screen.`,
+Do not summarize every post again. Do not add facts beyond the supplied post summaries and metadata.`,
   translate: `# Translation Prompt
 
-You are rendering an AI industry digest into the target language given by
-context.language.
+You are rewriting or translating an already-written per-post summary into the
+target language given by context.language.
 
 ## Instructions
 
-- Render the full digest into natural, fluent prose in the target language. It
-  must read as if originally written in that language, not translated.
+- Render only the supplied per-post summary into natural, fluent prose in the
+  target language. It must read as if originally written in that language, not
+  translated.
+- Do not write headlineSummary.
+- Do not write source-level summaries.
+- Do not change digest structure or add section headings.
 - Keep technical terms in English where professionals in that language typically
   use them: AI, LLM, GPU, API, fine-tuning, RAG, token, prompt, agent,
   transformer, etc.
 - Keep all proper nouns in English: names of people, companies, products, and tools.
 - Keep all URLs unchanged.
-- Maintain the same structure and formatting as the source digest.
 - The tone should be professional but conversational, like a knowledgeable friend briefing you.
 - Never use em dashes.`,
 } as const;

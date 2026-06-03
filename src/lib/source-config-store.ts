@@ -299,6 +299,8 @@ export async function getUserDigestConfig(userId: string): Promise<UserDigestCon
     create: {
       userId,
       digestIntro: def.digestIntro,
+      headlinePrompt: def.headlinePrompt,
+      perSourceSummaryPrompt: def.perSourceSummaryPrompt,
       translate: def.translate,
       digestOrder: def.digestOrder as object,
       commonFetchRules: def.commonFetchRules,

@@ -112,7 +112,7 @@ async function SourceTypeConfigSection({
           <div className="settings-rules-summary-copy">
             <h3 className="fb-section-heading">AI Digest rules</h3>
             <p className="mt-1 text-sm text-[var(--muted-strong)]">
-              How finished post summaries are ordered, assembled, and translated.
+              How digest headlines, source notes, and translated post summaries are written.
             </p>
           </div>
           <span className="fb-kind-pill">Digest composition</span>
@@ -121,7 +121,8 @@ async function SourceTypeConfigSection({
           <AdminDigestConfigForm
             initialConfig={{
               id: digestConfig.userId,
-              digestIntro: digestConfig.digestIntro,
+              headlinePrompt: digestConfig.headlinePrompt,
+              perSourceSummaryPrompt: digestConfig.perSourceSummaryPrompt,
               translate: digestConfig.translate,
               updatedAt: digestConfig.updatedAt.toISOString(),
               updatedBy: digestConfig.updatedBy,

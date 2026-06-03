@@ -217,18 +217,18 @@ model Builder {
 }
 
 model BuilderEntity {
-  id           String                  @id @default(cuid())
-  canonicalKey String                  @unique
-  kind         BuilderKind
-  name         String
-  handle       String?
-  bio          String?
-  createdAt    DateTime                @default(now())
-  updatedAt    DateTime                @updatedAt
-  builders     Builder[]
-  feedReads    FeedRead[]
+  id            String                  @id @default(cuid())
+  canonicalKey  String                  @unique
+  kind          BuilderKind
+  name          String
+  handle        String?
+  bio           String?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  builders      Builder[]
+  feedReads     FeedRead[]
   digestedItems DigestedItem[]
-  channelPrefs UserChannelPreference[]
+  channelPrefs  UserChannelPreference[]
 
   @@index([kind])
   @@index([handle])
@@ -382,17 +382,17 @@ model FeedItem {
 }
 
 model UserFeedPreference {
-  userId                    String          @id
+  userId               String   @id
   /// Optional publishedAt lookback (days) for digest candidate selection.
   /// Null = no floor (consider all not-yet-digested posts). Replaces the old
   /// mandatory 90-day cap; the per-user DigestedItem marker is now what dedups.
-  digestMaxPostAgeDays      Int?
+  digestMaxPostAgeDays Int?
   /// Account-wide summary output language selected by the one-time / cron
   /// prompt. Null = use the runtime default language (zh).
-  summaryLanguage           String?
-  createdAt                 DateTime        @default(now())
-  updatedAt                 DateTime        @updatedAt
-  user                      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  summaryLanguage      String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model FeedRead {
@@ -605,17 +605,20 @@ model SourceTypeConfig {
   updatedBy          String?
 }
 
-/// Singleton (id="global") that holds digest-level prompts. digestOrder is
-/// retained for older clients; current assembly order lives in digestIntro.
+/// Singleton (id="global") that holds digest-level prompts. digestIntro and
+/// digestOrder are legacy compatibility fields; current digest assembly is
+/// deterministic and uses headlinePrompt / perSourceSummaryPrompt / translate.
 model DigestConfig {
-  id                 String   @id @default("global")
-  digestIntro        String
-  translate          String
-  digestOrder        Json
-  commonFetchRules   String
-  commonSummaryRules String
-  updatedAt          DateTime @updatedAt
-  updatedBy          String?
+  id                     String   @id @default("global")
+  digestIntro            String
+  headlinePrompt         String
+  perSourceSummaryPrompt String
+  translate              String
+  digestOrder            Json
+  commonFetchRules       String
+  commonSummaryRules     String
+  updatedAt              DateTime @updatedAt
+  updatedBy              String?
 }
 
 /// Per-user copy of a SourceTypeConfig. Materialized (full copy) from the
@@ -647,15 +650,17 @@ model UserSourceTypeConfig {
 /// Per-user copy of the DigestConfig singleton. Materialized from the
 /// DigestConfig "default" template on first touch.
 model UserDigestConfig {
-  userId             String   @id
-  digestIntro        String
-  translate          String
-  digestOrder        Json
-  commonFetchRules   String
-  commonSummaryRules String
-  updatedAt          DateTime @updatedAt
-  updatedBy          String?
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                 String   @id
+  digestIntro            String
+  headlinePrompt         String
+  perSourceSummaryPrompt String
+  translate              String
+  digestOrder            Json
+  commonFetchRules       String
+  commonSummaryRules     String
+  updatedAt              DateTime @updatedAt
+  updatedBy              String?
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum BuilderKind {

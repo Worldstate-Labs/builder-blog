@@ -572,29 +572,21 @@ test("web app serves the agent skill and setup command", () => {
     );
   }
   assert.match(digestOncePrompt, /prepare --days 1/);
-  assert.match(digestOncePrompt, /Use agent judgment only for the digest-writing step/);
+  assert.match(digestOncePrompt, /Use agent judgment only for the structured summary JSON step/);
   assert.match(digestOncePrompt, /execution\s+contract, not as user-facing documentation/);
   assert.doesNotMatch(digestOncePrompt, /Environment contract/);
-  // Per-source prompt files were replaced with DB-backed prompts surfaced
-  // through context.sources.<id>.summaryPrompt.body and context.digest.*.
-  // The digest prompt now references those context paths instead of disk
-  // markdown files.
   // Anti-drift: the digest-writing method lives in the shared partial included
-  // by both digest jobs; the raw file only carries the directive, and the
-  // expanded prompt references the current context.sources/context.digest paths.
+  // by both digest jobs. The expanded prompt references the current structured
+  // output contract, not disk prompt files or agent-authored final markdown.
   assert.match(digestOncePrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
   assert.doesNotMatch(digestOnceExpanded, /\{\{INCLUDE/);
-  // Summary prompt is selected per SOURCE TYPE (covers current + future), not per
-  // the coarser item.kind which can't tell youtube from podcast, or blog from
-  // website.
-  assert.match(digestOnceExpanded, /context\.sources\[item\.builder\.sourceType\]\.summaryPrompt\.body/);
-  assert.match(digestOnceExpanded, /x, blog, youtube, podcast, website/);
-  assert.doesNotMatch(digestOnceExpanded, /context\.sources\.x\.summaryPrompt\.body/);
-  assert.match(digestOnceExpanded, /context\.digest\.digestIntro/);
+  assert.match(digestOnceExpanded, /builder-blog-digest-agent-output\.json/);
+  assert.match(digestOnceExpanded, /context\.digest\.headlinePrompt/);
+  assert.match(digestOnceExpanded, /context\.digest\.perSourceSummaryPrompt/);
   assert.match(digestOnceExpanded, /context\.digest\.translate/);
+  assert.doesNotMatch(digestOnceExpanded, /context\.digest\.digestIntro/);
+  assert.match(digestOncePrompt, /render-digest/);
   assert.match(digestOnceExpanded, /headlineSummary/);
-  assert.match(digestOnceExpanded, /300/);
-  assert.match(digestOnceExpanded, /do not shorten the body/i);
   assert.match(digestOncePrompt, /BUILDER_BLOG_JOB_TMP_DIR/);
   assert.match(digestOncePrompt, /builder-blog-digest-headlines\.txt/);
   assert.match(digestOncePrompt, /--summary-file "\$TMP_DIR\/builder-blog-digest-headlines\.txt"/);
@@ -876,22 +868,22 @@ test("web app serves the agent skill and setup command", () => {
   ]);
   assert.match(digestCronPrompt, /prepare --days 1/);
   assert.match(digestCronPrompt, /builder-blog-digest\.md/);
-  assert.match(digestCronPrompt, /Only use agent judgment to write the digest body and headlineSummary/);
+  assert.match(digestCronPrompt, /Only\s+use agent judgment to write the structured summary JSON/);
   assert.match(digestCronPrompt, /Agent discretion boundary/);
-  assert.match(digestCronExpanded, /digest body and headlineSummary/);
+  assert.match(digestCronExpanded, /structured summary JSON/);
   assert.doesNotMatch(digestCronPrompt, /api\/skill\/bootstrap/);
   assert.match(digestCronPrompt, /runner already downloaded the latest skill files/);
-  // The recurring run now shares the once job's digest-writing method via the
-  // partial: current context.sources/context.digest fields, not the deprecated
-  // context.prompts / *.md filenames it used to restate inline.
+  // The recurring run shares the once job's structured output contract via the
+  // partial.
   assert.match(digestCronPrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
   assert.doesNotMatch(digestCronExpanded, /\{\{INCLUDE/);
-  assert.match(digestCronExpanded, /context\.sources\[item\.builder\.sourceType\]\.summaryPrompt\.body/);
-  assert.match(digestCronExpanded, /context\.digest\.digestIntro/);
+  assert.match(digestCronExpanded, /builder-blog-digest-agent-output\.json/);
+  assert.match(digestCronExpanded, /context\.digest\.headlinePrompt/);
+  assert.match(digestCronExpanded, /context\.digest\.perSourceSummaryPrompt/);
   assert.match(digestCronExpanded, /context\.digest\.translate/);
+  assert.doesNotMatch(digestCronExpanded, /context\.digest\.digestIntro/);
+  assert.match(digestCronPrompt, /render-digest/);
   assert.match(digestCronExpanded, /headlineSummary/);
-  assert.match(digestCronExpanded, /300/);
-  assert.match(digestCronExpanded, /do not shorten the body/i);
   assert.match(digestCronPrompt, /builder-blog-digest-headlines\.txt/);
   assert.match(digestCronPrompt, /--summary-file "\$TMP_DIR\/builder-blog-digest-headlines\.txt"/);
   assert.doesNotMatch(digestCronExpanded, /summarize-tweets\.md/);
@@ -1188,6 +1180,8 @@ test("digest generation user path exposes source-specific prompt instructions", 
     [
       "digestIntro",
       "fetchPodcastAudio",
+      "headline",
+      "perSourceSummary",
       "summarizeBlogs",
       "summarizePodcast",
       "summarizeTweets",
@@ -1197,22 +1191,19 @@ test("digest generation user path exposes source-specific prompt instructions", 
   assert.match(DEFAULT_DIGEST_PROMPTS.summarizePodcast, /podcast transcript/i);
   assert.match(DEFAULT_DIGEST_PROMPTS.summarizeTweets, /X\/Twitter Summary Prompt/);
   assert.match(DEFAULT_DIGEST_PROMPTS.summarizeBlogs, /Blog Post Summary Prompt/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /Digest Intro Prompt/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /headlineSummary/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /300/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /YouTube section - list each video episode/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /Websites section - list each website source/);
-  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.digestIntro, /podcast or video episode/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /every post must use this exact block shape/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /\*\*<post title only>\*\*/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /Source: <item\.url>/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /source URL on the final standalone line/);
-  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.digestIntro, /tiny gray monospace/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /do not replace or shorten the full digest/i);
-  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.digestIntro, /final digest must be no more than 300/);
-  // Translate step is language-agnostic now — it renders into context.language,
-  // not hardcoded Chinese.
-  assert.match(DEFAULT_DIGEST_PROMPTS.translate, /target language given by\s+context\.language/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /Legacy Digest Intro Prompt/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /headlineSummary/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /context\.language/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /300/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /exactly one source/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /output an empty string/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /context\.language/);
+  // Translate step is language-agnostic and only rewrites existing per-post
+  // summaries; headline/source summaries use their own prompts.
+  assert.match(DEFAULT_DIGEST_PROMPTS.translate, /target language given by context\.language/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.translate, /per-post summary/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.translate, /Do not write headlineSummary/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.translate, /Do not write source-level summaries/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.translate, /simplified Chinese|Mandarin/i);
   assert.match(DEFAULT_DIGEST_PROMPTS.fetchPodcastAudio, /Podcast Fetch Prompt/);
 });

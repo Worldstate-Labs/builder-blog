@@ -256,24 +256,22 @@ node ~/.builder-blog/builder-digest.mjs prepare --days 1
 - `sources`: source-type rules keyed by source id (`x`, `blog`, `youtube`,
   `podcast`, `website`, and future source types).
 - `sources[id].summaryPrompt.body`: the per-source post-summary prompt.
-- `digest.digestIntro`: the digest assembly and markdown-format rules.
-- `digest.translate`: the final translation/rendering rules for `language`.
+- `digest.headlinePrompt`: rules for writing `headlineSummary` in `language`.
+- `digest.perSourceSummaryPrompt`: rules for optional source-level summaries in `language`.
+- `digest.translate`: rules for rewriting/translating existing per-post summaries only.
 
-3. Produce a concise digest in `language` and a separate headline summary:
+3. Produce structured summary JSON:
 
 - Use only supplied `items`.
-- The only creative step is writing the digest body and headlineSummary from
-  those items.
-- Also write a plain-text `headlineSummary` under 300 Chinese characters (or
-  equivalent target-language length) for the posts included in the digest.
-- Keep `headlineSummary` separate from the full digest body; do not shorten the
-  digest body to satisfy the headline limit.
-- Group items by source type and builder/source.
-- First summarize each item with
-  `sources[item.builder.sourceType].summaryPrompt.body`.
-- Then assemble those summaries with `digest.digestIntro`.
-- Then apply `digest.translate` for the final natural digest in `language`.
-- Include source URLs for every claim.
+- The only creative step is writing `headlineSummary`, optional
+  `sourceSummaries`, and translated/rewritten `postSummaries`.
+- Write `headlineSummary` directly in `language` with `digest.headlinePrompt`.
+- Write each optional source summary directly in `language` with
+  `digest.perSourceSummaryPrompt`.
+- Use `digest.translate` only to rewrite or translate existing per-post
+  summaries.
+- The CLI assembles source ordering, section headings, post blocks, and source
+  URLs programmatically.
 - Prioritize launches, technical insights, business moves, strong opinions, and implementation details.
 - Do not browse the web or invent missing facts.
 

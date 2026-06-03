@@ -10,8 +10,8 @@ Execution contract:
 - Do not browse for extra context.
 - Do not change paths, flags, cadence, titles, output files, JSON schema, or
   success criteria.
-- Use agent judgment only for the digest-writing step, and only from the
-  returned FollowBrief context.
+- Use agent judgment only for the structured summary JSON step, and only from
+  the returned FollowBrief context.
 
 1. Install or refresh the skill:
 
@@ -37,7 +37,18 @@ ${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}/
 
 {{INCLUDE:digest-task-contract}}
 
-Save the final digest to:
+4. Render the final digest files from the context and JSON:
+
+```bash
+TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}"
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" render-digest \
+  --context "$TMP_DIR/builder-blog-context.json" \
+  --agent-output "$TMP_DIR/builder-blog-digest-agent-output.json" \
+  --out "$TMP_DIR/builder-blog-digest.md" \
+  --summary-out "$TMP_DIR/builder-blog-digest-headlines.txt"
+```
+
+The rendered final digest is saved to:
 
 ```text
 ${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}/builder-blog-digest.md
@@ -49,7 +60,7 @@ Save the headlineSummary to:
 ${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}/builder-blog-digest-headlines.txt
 ```
 
-4. Sync the digest:
+5. Sync the digest:
 
 ```bash
 TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}"
