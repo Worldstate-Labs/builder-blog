@@ -5,7 +5,6 @@ export default async function HistoryPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  const params = await searchParams;
-  const page = Math.max(1, Number(params.page ?? "1") || 1);
-  redirect(`/dashboard?tab=ai-digest&archivePage=${page}#digest-archive`);
+  await searchParams;
+  redirect("/dashboard?tab=ai-digest");
 }

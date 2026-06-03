@@ -6,7 +6,7 @@ import type { DigestSourceLink } from "@/components/DigestContent";
 import { DigestLogPanel } from "@/components/DigestLogPanel";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
 import { DigestPipelineVisibilityToggle } from "@/components/DigestPipelineVisibilityToggle";
-import { CountRange, formatCount } from "@/components/Count";
+import { CountMeta } from "@/components/Count";
 import {
   getDigestRuns,
   serializeDigestCronJob,
@@ -23,7 +23,7 @@ import { getCurrentSession } from "@/lib/auth";
 import { displayDigestPipelineTitle } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 
-const archivePageSize = 20;
+const digestPickerSize = 100;
 const digestSummarySelect = {
   id: true,
   title: true,
@@ -42,7 +42,7 @@ type DigestPipelineOption = {
 };
 
 type DashboardSearchParams = Promise<{
-  archivePage?: string | string[];
+  digest?: string | string[];
   pipeline?: string | string[];
   tab?: string | string[];
 }>;
@@ -57,9 +57,9 @@ export default async function DashboardPage({
   const userId = session.user.id;
   const params = await searchParams;
   const selectedTab = parseTab(firstParam(params.tab));
-  const archivePage = Math.max(1, Number(firstParam(params.archivePage) ?? "1") || 1);
+  const digestId = firstParam(params.digest);
   const pipelineId = firstParam(params.pipeline);
-  const aiDigest = await AiDigestFeedSlot({ userId, archivePage, pipelineId });
+  const aiDigest = await AiDigestFeedSlot({ userId, digestId, pipelineId });
 
   return (
     <div className="page-pad">
@@ -78,14 +78,13 @@ export default async function DashboardPage({
 
 async function AiDigestFeedSlot({
   userId,
-  archivePage,
+  digestId,
   pipelineId,
 }: {
   userId: string;
-  archivePage: number;
+  digestId?: string;
   pipelineId?: string;
 }) {
-  const archiveSkip = (archivePage - 1) * archivePageSize;
   const [importedDigestPipelines, ownPipelineShare] = await Promise.all([
     prisma.digestPipelineImport.findMany({
       where: { userId, pipeline: { isPublic: true } },
@@ -127,8 +126,7 @@ async function AiDigestFeedSlot({
   const isOwnPipeline = selectedPipeline.isOwnPipeline;
 
   const [
-    latestDigest,
-    digestCount,
+    digestSummaries,
     digestSourceLinks,
     rawTokens,
     feedPreference,
@@ -138,15 +136,14 @@ async function AiDigestFeedSlot({
     digestScheduledJobRuns,
     digestCronJob,
   ] = await Promise.all([
-      // The hero shows the user's most recent non-empty digest (any age), labeled
-      // with its own date. Not a "today" window: a brief stays featured until a
-      // newer one replaces it, instead of vanishing at the UTC day boundary.
-      prisma.digest.findFirst({
+      // The digest picker lists the latest digest plus archived digests in one
+      // control. Keep this as summaries only; the body is fetched on demand.
+      prisma.digest.findMany({
         where: { userId: digestOwnerUserId, itemCount: { gt: 0 } },
         orderBy: { createdAt: "desc" },
+        take: digestPickerSize,
         select: digestSummarySelect,
       }),
-      prisma.digest.count({ where: { userId: digestOwnerUserId, itemCount: { gt: 0 } } }),
       digestSourceLinksForUser(digestOwnerUserId),
       isOwnPipeline
         ? prisma.agentToken.findMany({
@@ -192,24 +189,14 @@ async function AiDigestFeedSlot({
     lastUser: token.lastUser ?? null,
     revokedAt: null,
   }));
-  const archiveWhere = latestDigest
-    ? { userId: digestOwnerUserId, itemCount: { gt: 0 }, NOT: { id: latestDigest.id } }
-    : { userId: digestOwnerUserId, itemCount: { gt: 0 } };
-  const archiveCount = Math.max(0, digestCount - (latestDigest ? 1 : 0));
-  const archiveDigests = await prisma.digest.findMany({
-    where: archiveWhere,
-    orderBy: { createdAt: "desc" },
-    skip: archiveSkip,
-    take: archivePageSize,
-    select: digestSummarySelect,
-  });
+  const latestDigest = digestSummaries[0] ?? null;
+  const selectedDigest =
+    digestSummaries.find((digest) => digest.id === digestId) ??
+    latestDigest;
 
   return (
     <AiDigestFeed
       activeTokens={activeTokens}
-      archiveCount={archiveCount}
-      archiveDigests={archiveDigests}
-      archivePage={archivePage}
       digestPipelineOptions={digestPipelineOptions}
       digestCronJob={serializeDigestCronJob(digestCronJob)}
       digestCronRuns={digestCronRuns}
@@ -220,7 +207,9 @@ async function AiDigestFeedSlot({
       sourceLinks={digestSourceLinks}
       summaryLanguage={feedPreference?.summaryLanguage ?? null}
       digestMaxPostAgeDays={feedPreference?.digestMaxPostAgeDays ?? null}
+      digestSummaries={digestSummaries}
       latestDigest={latestDigest}
+      selectedDigest={selectedDigest}
       selectedPipeline={selectedPipeline}
     />
   );
@@ -228,9 +217,6 @@ async function AiDigestFeedSlot({
 
 function AiDigestFeed({
   activeTokens,
-  archiveCount,
-  archiveDigests,
-  archivePage,
   digestPipelineOptions,
   digestCronJob,
   digestCronRuns,
@@ -241,13 +227,12 @@ function AiDigestFeed({
   sourceLinks,
   summaryLanguage,
   digestMaxPostAgeDays,
+  digestSummaries,
   latestDigest,
+  selectedDigest,
   selectedPipeline,
 }: {
   activeTokens: AgentTokenListItem[];
-  archiveCount: number;
-  archiveDigests: DigestSummaryRow[];
-  archivePage: number;
   digestPipelineOptions: DigestPipelineOption[];
   digestCronJob: DigestCronJobStatus | null;
   digestCronRuns: DigestRunListItem[];
@@ -258,13 +243,12 @@ function AiDigestFeed({
   sourceLinks: DigestSourceLink[];
   summaryLanguage: string | null;
   digestMaxPostAgeDays: number | null;
+  digestSummaries: DigestSummaryRow[];
   latestDigest: DigestSummaryRow | null;
+  selectedDigest: DigestSummaryRow | null;
   selectedPipeline: DigestPipelineOption;
 }) {
-  const visibleStart = archiveCount === 0 ? 0 : (archivePage - 1) * archivePageSize + 1;
-  const visibleEnd = Math.min((archivePage - 1) * archivePageSize + archiveDigests.length, archiveCount);
   const isOwnPipeline = selectedPipeline.isOwnPipeline;
-  const pipelineQuery = isOwnPipeline ? "" : `&pipeline=${selectedPipeline.id}`;
   const showStopDigestCron = digestCronJob?.status === "active";
 
   return (
@@ -315,15 +299,21 @@ function AiDigestFeed({
         </header>
 
         <div className="ai-digest-body">
-          <section className="ai-digest-section" aria-labelledby="latest-digest-heading">
-            <div className="ai-digest-section-head">
-              <h3 id="latest-digest-heading" className="fb-section-label m-0">
-                Latest digest
-              </h3>
-            </div>
-            {latestDigest ? (
+          {digestSummaries.length > 0 ? (
+            <DigestArchiveSelector
+              digests={digestSummaries}
+              isOwnPipeline={isOwnPipeline}
+              latestDigestId={latestDigest?.id ?? null}
+              selectedDigestId={selectedDigest?.id ?? null}
+              selectedPipelineId={selectedPipeline.id}
+            />
+          ) : null}
+
+          <section className="ai-digest-section" aria-label="Selected digest">
+            {selectedDigest ? (
               <DigestDetails
-                digest={serializeDigestSummary(latestDigest)}
+                digest={serializeDigestSummary(selectedDigest)}
+                isLatest={selectedDigest.id === latestDigest?.id}
                 mode="today"
                 sourceLinks={sourceLinks}
               />
@@ -349,57 +339,78 @@ function AiDigestFeed({
           {isOwnPipeline ? null : (
             <p className="sr-only">Imported digest view: read-only results.</p>
           )}
-          <section id="digest-archive" className="ai-digest-section scroll-mt-24">
-            <div className="ai-digest-section-head">
-              <h3 className="fb-section-label m-0">Archived digests</h3>
-              <CountRange>
-                Showing {formatCount(visibleStart)}-{formatCount(visibleEnd)} of {formatCount(archiveCount)}
-              </CountRange>
-            </div>
-            {/* One expandable disclosure per archived digest, on every viewport.
-                (The old mobile variant linked to #id anchors that lived only in the
-                desktop-only block, so tapping a card on mobile opened nothing.) */}
-            <div className="mt-4 grid gap-3">
-              {archiveDigests.map((digest) => (
-                <DigestDetails
-                  digest={serializeDigestSummary(digest)}
-                  key={digest.id}
-                  sourceLinks={sourceLinks}
-                />
-              ))}
-              {archiveDigests.length === 0 ? (
-                <div className="fb-panel dashed text-sm text-[var(--muted-strong)]">
-                  Non-empty digests will appear here after more updates.
-                </div>
-              ) : null}
-            </div>
-            {archiveCount > archivePageSize ? (
-              <nav className="mt-6 flex flex-wrap gap-3" aria-label="Digest archive pagination">
-                <Link
-                  aria-disabled={archivePage === 1}
-                  className={`fb-btn light compact ${
-                    archivePage === 1 ? "pointer-events-none opacity-45" : ""
-                  }`}
-                  href={`/dashboard?tab=ai-digest${pipelineQuery}&archivePage=${Math.max(1, archivePage - 1)}#digest-archive`}
-                >
-                  Newer
-                </Link>
-                <Link
-                  aria-disabled={visibleEnd >= archiveCount}
-                  className={`fb-btn light compact ${
-                    visibleEnd >= archiveCount ? "pointer-events-none opacity-45" : ""
-                  }`}
-                  href={`/dashboard?tab=ai-digest${pipelineQuery}&archivePage=${archivePage + 1}#digest-archive`}
-                >
-                  Older
-                </Link>
-              </nav>
-            ) : null}
-          </section>
         </div>
       </section>
     </section>
   );
+}
+
+function DigestArchiveSelector({
+  digests,
+  isOwnPipeline,
+  latestDigestId,
+  selectedDigestId,
+  selectedPipelineId,
+}: {
+  digests: DigestSummaryRow[];
+  isOwnPipeline: boolean;
+  latestDigestId: string | null;
+  selectedDigestId: string | null;
+  selectedPipelineId: string;
+}) {
+  const selectedDigest = digests.find((digest) => digest.id === selectedDigestId) ?? digests[0];
+
+  return (
+    <details className="digest-picker">
+      <summary className="digest-picker-summary">
+        <span className="digest-picker-label">Digest</span>
+        <DigestPickerItem digest={selectedDigest} isLatest={selectedDigest.id === latestDigestId} />
+      </summary>
+      <div className="digest-picker-menu" role="listbox" aria-label="Digest archive">
+        {digests.map((digest) => (
+          <Link
+            aria-current={digest.id === selectedDigest.id ? "true" : undefined}
+            className="digest-picker-option"
+            href={digestHref({ digestId: digest.id, isOwnPipeline, selectedPipelineId })}
+            key={digest.id}
+            role="option"
+          >
+            <DigestPickerItem digest={digest} isLatest={digest.id === latestDigestId} />
+          </Link>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function DigestPickerItem({
+  digest,
+  isLatest,
+}: {
+  digest: DigestSummaryRow;
+  isLatest: boolean;
+}) {
+  return (
+    <span className="digest-picker-item">
+      <span className="digest-picker-date">{formatDigestPickerDate(digest.createdAt)}</span>
+      <CountMeta label={digest.itemCount === 1 ? "item" : "items"} value={digest.itemCount} />
+      {isLatest ? <span className="digest-latest-mark">Latest</span> : null}
+    </span>
+  );
+}
+
+function digestHref({
+  digestId,
+  isOwnPipeline,
+  selectedPipelineId,
+}: {
+  digestId: string;
+  isOwnPipeline: boolean;
+  selectedPipelineId: string;
+}) {
+  const params = new URLSearchParams({ tab: "ai-digest", digest: digestId });
+  if (!isOwnPipeline) params.set("pipeline", selectedPipelineId);
+  return `/dashboard?${params.toString()}`;
 }
 
 function DigestPipelineSelector({
@@ -488,6 +499,16 @@ function serializeDigestSummary(digest: DigestSummaryRow) {
     title: displayDigestTitle(digest.title),
     createdAt: digest.createdAt.toISOString(),
   };
+}
+
+function formatDigestPickerDate(value: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(value);
 }
 
 function displayDigestTitle(title: string) {

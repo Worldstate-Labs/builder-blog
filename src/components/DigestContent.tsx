@@ -143,7 +143,12 @@ function SectionBlock({
   if (!collapsible || !section.heading) {
     return (
       <section id={section.id} className="digest-section scroll-mt-24">
-        {section.heading ? <h3 className="digest-section-heading">{section.heading}</h3> : null}
+        {section.heading ? (
+          <div className="digest-section-summary digest-section-summary-static">
+            <h3 className="digest-section-heading">{section.heading}</h3>
+            {showCount ? <CountBadge value={section.postCount} /> : null}
+          </div>
+        ) : null}
         {body}
       </section>
     );

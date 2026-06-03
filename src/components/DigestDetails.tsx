@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, Loader2 } from "lucide-react";
-import { CountBadge, CountMeta } from "@/components/Count";
+import { CountMeta } from "@/components/Count";
 import { DigestContent, type DigestSourceLink } from "@/components/DigestContent";
 import { useHydrated } from "@/components/ThemeToggle";
-import { parseDigest } from "@/lib/digest-markdown";
 
 export type DigestSummary = {
   id: string;
@@ -26,11 +25,13 @@ type DigestLoadState = {
 export function DigestDetails({
   defaultOpen = false,
   digest,
+  isLatest = false,
   mode = "archive",
   sourceLinks = [],
 }: {
   defaultOpen?: boolean;
   digest: DigestSummary;
+  isLatest?: boolean;
   mode?: "archive" | "today";
   sourceLinks?: DigestSourceLink[];
 }) {
@@ -51,18 +52,6 @@ export function DigestDetails({
   const currentState = digestState.key === stateKey ? digestState : initialState;
   const { content, isOpen, status } = currentState;
   const headerHeadline = resolveHeadlineSummary(digest.headlineSummary, content, status);
-  const todaySections = useMemo(() => {
-    if (mode !== "today" || !content) return [];
-    const doc = parseDigest(content);
-    if (!doc.hasStructure) return [];
-    return doc.sections
-      .filter((section) => section.heading && section.postCount > 0)
-      .map((section) => ({
-        id: section.id,
-        label: section.heading,
-        count: section.postCount,
-      }));
-  }, [content, mode]);
 
   const updateDigestState = useCallback((
     updater: (current: DigestLoadState) => Omit<DigestLoadState, "key">,
@@ -110,21 +99,10 @@ export function DigestDetails({
     return (
       <article className="fb-digest">
         <div className="fb-digest-head">
-          <div className="fb-digest-meta-row">
-            <div className="fb-digest-section-chips" aria-label="Digest source types">
-              {todaySections.map((section) => (
-                <a key={section.id} className="digest-contents-chip" href={`#${section.id}`}>
-                  <span className="truncate">{section.label}</span>
-                  <CountBadge value={section.count} />
-                </a>
-              ))}
-            </div>
-            <span className="fb-digest-chip">{formatDateTime(digest.createdAt, hydrated)}</span>
-          </div>
           {headerHeadline ? (
-            <DigestHeadlineSummary text={headerHeadline} />
+            <DigestHeadlineSummary isLatest={isLatest} text={headerHeadline} />
           ) : status === "loading" ? (
-            <DigestHeadlineSummary loading />
+            <DigestHeadlineSummary isLatest={isLatest} loading />
           ) : null}
         </div>
         <div className="fb-digest-body">
@@ -231,7 +209,7 @@ function DigestBody({
       <DigestContent
         content={content ?? ""}
         showContents={false}
-        showSectionCounts={false}
+        showSectionCounts
         sourceLinks={sourceLinks}
         tone="paper"
       />
@@ -245,9 +223,11 @@ function DigestBody({
 }
 
 function DigestHeadlineSummary({
+  isLatest = false,
   loading = false,
   text,
 }: {
+  isLatest?: boolean;
   loading?: boolean;
   text?: string;
 }) {
@@ -257,7 +237,10 @@ function DigestHeadlineSummary({
       aria-busy={loading || undefined}
       aria-label="Digest headlines"
     >
-      <div className="digest-headline-kicker">Headlines</div>
+      <div className="digest-headline-top">
+        <div className="digest-headline-kicker">Headlines</div>
+        {isLatest ? <span className="digest-latest-mark">Latest</span> : null}
+      </div>
       {loading ? (
         <div className="digest-headline-loading" aria-hidden="true">
           <span />
