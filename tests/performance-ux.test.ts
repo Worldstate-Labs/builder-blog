@@ -394,6 +394,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   const contentStateRoute = source("src/app/api/content-state/route.ts");
   const contentSyncState = source("src/lib/content-sync-state.ts");
   const contentSyncEvents = source("src/lib/content-sync-events.ts");
+  const globals = source("src/app/globals.css");
   const fetchLogPanel = source("src/components/FetchLogPanel.tsx");
   const digestLogPanel = source("src/components/DigestLogPanel.tsx");
   const digestDetails = source("src/components/DigestDetails.tsx");
@@ -435,6 +436,17 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /window\.addEventListener\(contentSyncStateChanged/);
   assert.match(digestLogPanel, /window\.addEventListener\(contentSyncStateChanged/);
   assert.match(digestLogPanel, /isRunInflight/);
+  assert.match(globals, /\.sync-panel-tabs\s*{/);
+  assert.match(globals, /\.sync-panel-card,[\s\S]*\.sync-panel-empty\s*{/);
+  assert.match(globals, /\.sync-panel-layout\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*0\.85fr\) minmax\(0,\s*1\.15fr\)/);
+  assert.match(fetchLogPanel, /className="fb-segmented-tabs sync-panel-tabs"/);
+  assert.match(fetchLogPanel, /className="sync-panel-card"/);
+  assert.match(fetchLogPanel, /className="sync-panel-empty is-dashed"/);
+  assert.match(digestLogPanel, /className="fb-segmented-tabs sync-panel-tabs"/);
+  assert.match(digestLogPanel, /className="sync-panel-card"/);
+  assert.match(digestLogPanel, /className="sync-panel-empty is-dashed"/);
+  assert.doesNotMatch(fetchLogPanel, /fb-segmented-tabs mt-4 inline-flex/);
+  assert.doesNotMatch(digestLogPanel, /fb-segmented-tabs mt-4 inline-flex/);
   assert.match(digestDetails, /stateKey = `\$\{digestId\}/);
   assert.match(agentTokenPanel, /initialTokenSignature/);
   assert.match(builderLibraryList, /builderSubscriptionSignature/);

@@ -571,7 +571,7 @@ export function FetchLogPanel({
         <div id="fetch-sync-details">
           <div
             aria-label="Fetch sync views"
-            className="fb-segmented-tabs mt-4 inline-flex rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] p-1"
+            className="fb-segmented-tabs sync-panel-tabs"
             role="tablist"
           >
             <button
@@ -767,7 +767,7 @@ function FetchStatusPanel({
   const hydrated = useHydrated();
   if (!cronJob) {
     return (
-      <div className="mt-4 rounded-[10px] border border-dashed border-[var(--line)] bg-[var(--paper-strong)] px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
+      <div className="sync-panel-empty is-dashed">
         No library fetch cron has reported its schedule yet.
       </div>
     );
@@ -775,8 +775,8 @@ function FetchStatusPanel({
 
   if (cronJob.status !== "active") {
     return (
-      <div className="mt-4 rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-4">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="sync-panel-card">
+        <div className="sync-panel-chip-row">
           <span className="fb-chip">Stopped</span>
           {cronJob.stoppedAt ? (
             <time
@@ -811,10 +811,10 @@ function FetchStatusPanel({
         : statusStyle("partial");
 
   return (
-    <div className="mt-4 rounded-[10px] border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-4">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+    <div className="sync-panel-card">
+      <div className="sync-panel-layout">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="sync-panel-chip-row">
             <span
               className="fb-chip"
               style={{
@@ -828,30 +828,30 @@ function FetchStatusPanel({
             <span className="fb-chip">{cronJob.frequencyLabel}</span>
             {cronJob.overrideFetched ? <span className="fb-chip">refreshes fetched items</span> : null}
           </div>
-          <dl className="mt-3 grid gap-2 text-[12.5px] text-[var(--muted-strong)]">
-            <div className="flex items-baseline justify-between gap-3">
+          <dl className="sync-panel-meta">
+            <div className="sync-panel-meta-row">
               <dt>Schedule enabled</dt>
-              <dd className="text-right text-[var(--ink)]">
+              <dd>
                 {hydrated ? formatRelative(cronJob.startedAt) : formatAbsolute(cronJob.startedAt)}
               </dd>
             </div>
             {nextExpectedAt ? (
-              <div className="flex items-baseline justify-between gap-3">
+              <div className="sync-panel-meta-row">
                 <dt>Next scheduled run</dt>
-                <dd className="text-right text-[var(--ink)]">
+                <dd>
                   {hydrated ? formatRelative(nextExpectedAt) : formatAbsolute(nextExpectedAt)}
                 </dd>
               </div>
             ) : null}
-            <div className="flex items-baseline justify-between gap-3">
+            <div className="sync-panel-meta-row">
               <dt>Runner</dt>
-              <dd className="truncate text-right text-[var(--ink)]">
+              <dd className="truncate">
                 {cronJob.runtime || "Local helper"}
                 {cronJob.hostname ? ` · ${cronJob.hostname.replace(/\.local$/, "")}` : ""}
               </dd>
             </div>
           </dl>
-          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+          <div className="sync-panel-metrics">
             <CountMetric label="OK" tone="ok" value={okCount} />
             <CountMetric label="Issue" tone="issue" value={problemCount} />
             <CountMetric label="Waiting" tone="waiting" value={waitingCount} />
@@ -865,13 +865,13 @@ function FetchStatusPanel({
 
         {slots.length > 0 ? (
           <div className="min-w-0">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[11.5px] text-[var(--muted-strong)]">
-              <span className="font-semibold text-[var(--ink)]">
+            <div className="sync-panel-timeline-head">
+              <span className="sync-panel-timeline-title">
                 Last {slots.length} scheduled {slots.length === 1 ? "window" : "windows"}
               </span>
               <span>Green OK · amber waiting · red issue.</span>
             </div>
-            <div className="flex items-end gap-1.5" aria-label="Fetch schedule status graph">
+            <div className="sync-panel-status-graph" aria-label="Fetch schedule status graph">
               {slots.map((slot) => (
                 <CronSlotBar
                   key={slot.expectedAt}
@@ -885,7 +885,7 @@ function FetchStatusPanel({
                 />
               ))}
             </div>
-            <div className="mt-3 grid gap-1">
+            <div className="sync-panel-slot-rows">
               {slots.slice().reverse().slice(0, 6).map((slot) => (
                 <CronSlotRow
                   key={slot.expectedAt}
@@ -897,7 +897,7 @@ function FetchStatusPanel({
             </div>
           </div>
         ) : (
-          <div className="rounded-[8px] border border-dashed border-[var(--line)] px-3 py-3 text-sm text-[var(--muted-strong)]">
+          <div className="sync-panel-slot-empty">
             No scheduled run has elapsed yet.
           </div>
         )}
@@ -1022,9 +1022,9 @@ function FetchRunList({
   const visibleEntries = expanded ? entries : entries.slice(0, VISIBLE_RUN_LIMIT);
 
   return (
-    <div className="mt-4 grid gap-2.5">
+    <div className="sync-panel-run-list">
       {entries.length === 0 ? (
-        <div className="rounded-[10px] border border-dashed border-[var(--line)] bg-[var(--paper-strong)] px-4 py-6 text-center text-sm text-[var(--muted-strong)]">
+        <div className="sync-panel-empty is-dashed">
           No fetch runs yet. Runs appear after your local helper updates sources.
         </div>
       ) : (
