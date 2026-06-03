@@ -3532,6 +3532,18 @@ svg.lucide {
   transform: translateY(-1px);
 }
 
+.fb-btn:disabled {
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+.fb-btn:disabled:hover {
+  box-shadow: none;
+  transform: none;
+}
+
 .fb-btn.dark {
   background: var(--accent);
   box-shadow: 0 8px 20px color-mix(in oklch, var(--accent) 22%, transparent);

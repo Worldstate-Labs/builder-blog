@@ -3,9 +3,8 @@
 import { useState, useTransition } from "react";
 import {
   FieldShell,
-  formatUtcDateTime,
+  FooterBar,
   OrderedChoiceField,
-  SaveStatus,
   Section,
   type SaveStatusState,
 } from "@/components/settings/SettingsFields";
@@ -20,6 +19,10 @@ export type AdminDigestConfig = {
 };
 
 type Status = SaveStatusState;
+
+function sameOrder(a: string[], b: string[]) {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
 
 export function AdminDigestConfigForm({
   initialConfig,
@@ -36,9 +39,23 @@ export function AdminDigestConfigForm({
   });
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [isPending, startTransition] = useTransition();
+  const dirty =
+    draft.digestIntro !== config.digestIntro ||
+    draft.translate !== config.translate ||
+    !sameOrder(draft.digestOrder, config.digestOrder);
 
   function update<K extends keyof typeof draft>(key: K, value: (typeof draft)[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
+    if (status.kind !== "idle") setStatus({ kind: "idle" });
+  }
+
+  function reset() {
+    setDraft({
+      digestIntro: config.digestIntro,
+      translate: config.translate,
+      digestOrder: config.digestOrder,
+    });
+    setStatus({ kind: "idle" });
   }
 
   function save() {
@@ -76,6 +93,11 @@ export function AdminDigestConfigForm({
           throw new Error(body?.error ?? `HTTP ${response.status}`);
         }
         setConfig(body.config);
+        setDraft({
+          digestIntro: body.config.digestIntro,
+          translate: body.config.translate,
+          digestOrder: body.config.digestOrder,
+        });
         setStatus({ kind: "saved", message: "Saved" });
       } catch (error) {
         setStatus({
@@ -132,29 +154,15 @@ export function AdminDigestConfigForm({
         </FieldShell>
       </Section>
 
-      <div
-        className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--line)]"
-        style={{ paddingTop: "0.875rem" }}
-      >
-        <button
-          type="button"
-          className="fb-btn"
-          disabled={isPending || status.kind === "saving"}
-          onClick={save}
-        >
-          {isPending || status.kind === "saving" ? "Saving…" : "Save digest config"}
-        </button>
-        <SaveStatus
-          status={status.kind === "saving" ? { kind: "idle" } : status}
-        />
-        <span
-          className="ml-auto text-xs"
-          style={{ color: "var(--muted)", fontFamily: "var(--font-geist-mono)" }}
-        >
-          Updated {formatUtcDateTime(config.updatedAt)}
-          {config.updatedBy ? ` · ${config.updatedBy}` : ""}
-        </span>
-      </div>
+      <FooterBar
+        dirty={dirty}
+        isPending={isPending}
+        status={status}
+        onSave={save}
+        onReset={reset}
+        updatedAt={config.updatedAt}
+        updatedBy={config.updatedBy}
+      />
     </div>
   );
 }

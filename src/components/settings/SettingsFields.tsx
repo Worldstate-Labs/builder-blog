@@ -403,7 +403,7 @@ export function FooterBar({
     >
       <button
         type="button"
-        className="fb-btn"
+        className={dirty ? "fb-btn dark" : "fb-btn light compact"}
         disabled={!dirty || isPending}
         onClick={onSave}
       >
