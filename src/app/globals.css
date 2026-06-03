@@ -1685,39 +1685,104 @@ svg.lucide {
   margin: 0.75rem;
 }
 
-.add-builder-form {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  display: grid;
-  gap: 0.85rem;
-  padding: 0.9rem;
+.add-source-panel {
+  margin-bottom: 0.75rem;
 }
 
-.add-builder-form-header {
-  align-items: center;
-  display: flex;
-  gap: 0.85rem;
-  justify-content: space-between;
+.add-source-form {
+  display: grid;
+  gap: 0.75rem;
   min-width: 0;
 }
 
-.add-builder-grid {
-  display: grid;
-  gap: 0.75rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.add-source-type-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
 }
 
-.add-builder-grid label {
+.add-source-primary-row,
+.add-source-name-row {
+  align-items: center;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+}
+
+.add-source-name-row {
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, auto);
+}
+
+.add-source-inline-note {
   color: var(--muted-strong);
-  display: grid;
-  font-size: 0.78rem;
-  font-weight: 800;
-  gap: 0.35rem;
+  font-size: 0.71875rem;
+  line-height: 1.45;
+  min-width: 0;
 }
 
-.add-builder-grid-wide {
-  grid-column: 1 / -1;
+.add-source-inline-note.is-error,
+.add-source-text-action.is-error {
+  color: var(--danger);
+}
+
+.add-source-inline-note.is-warning {
+  color: color-mix(in oklch, var(--warm) 74%, var(--ink));
+}
+
+.add-source-inline-note.is-success {
+  color: color-mix(in oklch, var(--signal) 72%, var(--ink));
+}
+
+.add-source-text-action {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 760;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.add-source-callout {
+  background: var(--warm-soft);
+  border: 1px solid color-mix(in oklch, var(--warm) 30%, var(--line));
+  border-radius: 8px;
+  color: color-mix(in oklch, var(--warm) 68%, var(--ink));
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.7rem 0.8rem;
+}
+
+.add-source-callout-copy {
+  align-items: baseline;
+  display: flex;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.add-source-callout-label {
+  color: var(--muted-strong);
+  flex: 0 0 auto;
+  font-family: var(--font-geist-mono);
+  font-size: 0.6875rem;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.add-source-callout-body {
+  font-size: 0.78125rem;
+  line-height: 1.5;
+  min-width: 0;
+}
+
+.add-source-callout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .library-visibility-control {
@@ -1984,17 +2049,8 @@ svg.lucide {
     content: none;
   }
 
-  .add-builder-form-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .add-builder-form-header .button-dark,
-  .add-builder-grid {
-    width: 100%;
-  }
-
-  .add-builder-grid {
+  .add-source-primary-row,
+  .add-source-name-row {
     grid-template-columns: 1fr;
   }
 

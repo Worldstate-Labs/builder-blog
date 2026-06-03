@@ -75,7 +75,7 @@ export function PrivateLibraryPanel({
       </summary>
       <div className="library-section-body">
         {addOpen ? (
-          <div className="fb-panel mb-3">
+          <div className="add-source-panel fb-panel">
             <AddBuilderForm sourceOptions={sourceOptions} />
           </div>
         ) : null}

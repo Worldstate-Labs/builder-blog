@@ -238,8 +238,8 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
   const { errorMessage, errorSuggestId } = splitTaggedError(error);
 
   return (
-    <form className="grid gap-2" onSubmit={addBuilder}>
-      <div role="radiogroup" aria-label="Source type" className="flex flex-wrap gap-1.5">
+    <form className="add-source-form" onSubmit={addBuilder}>
+      <div role="radiogroup" aria-label="Source type" className="add-source-type-list">
         {sourceOptions.map((source) => {
           const Icon = sourceIcons[source.id] ?? Globe;
           const selected = source.id === sourceType;
@@ -265,7 +265,7 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
           );
         })}
       </div>
-      <div className="grid items-center gap-2 sm:grid-cols-[1fr_auto]">
+      <div className="add-source-primary-row">
         <input
           aria-label="Handle or URL"
           className="fb-input"
@@ -291,20 +291,17 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
       {preview.kind !== "idle" ? (
         <div
           aria-live="polite"
-          className="text-[11.5px]"
-          style={{
-            color:
-              preview.kind === "error" ? "var(--danger)" : "var(--warm, var(--muted-strong))",
-          }}
+          className={`add-source-inline-note ${
+            preview.kind === "error" ? "is-error" : "is-warning"
+          }`}
         >
           {preview.message}
           {preview.kind === "warn" && preview.suggestId ? (
             <>
               {" "}
               <button
-                className="underline"
+                className="add-source-text-action"
                 onClick={() => preview.suggestId && applySuggestion(preview.suggestId)}
-                style={{ background: "transparent", color: "inherit" }}
                 type="button"
               >
                 Switch
@@ -313,7 +310,7 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
           ) : null}
         </div>
       ) : null}
-      <div className="flex items-center gap-2">
+      <div className="add-source-name-row">
         <input
           aria-label="Display name"
           className="fb-input flex-1"
@@ -325,17 +322,16 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
             setNameTouched(true);
           }}
         />
-        <span aria-live="polite" className="text-[11.5px]">
+        <span aria-live="polite" className="add-source-inline-note">
           {errorMessage ? (
             <>
-              <span className="text-[var(--danger)]">{errorMessage}</span>
+              <span className="add-source-inline-note is-error">{errorMessage}</span>
               {errorSuggestId ? (
                 <>
                   {" "}
                   <button
-                    className="underline"
+                    className="add-source-text-action is-error"
                     onClick={() => errorSuggestId && applySuggestion(errorSuggestId)}
-                    style={{ background: "transparent", color: "var(--danger)" }}
                     type="button"
                   >
                     Switch source type
@@ -344,7 +340,7 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
               ) : null}
             </>
           ) : status ? (
-            <span className="text-[var(--success)]">{status}</span>
+            <span className="add-source-inline-note is-success">{status}</span>
           ) : null}
         </span>
       </div>
@@ -352,28 +348,13 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
         <div
           aria-live="polite"
           role="status"
-          className="mt-1 rounded-md border px-3 py-2.5"
-          style={{
-            borderColor: "var(--warm-line, var(--line))",
-            background: "var(--warm-paper, var(--paper-strong))",
-            color: "var(--warm-strong, var(--ink))",
-          }}
+          className="add-source-callout"
         >
-          <div className="flex items-baseline gap-2">
-            <span
-              style={{
-                fontFamily: "var(--font-geist-mono)",
-                fontSize: "11px",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                color: "var(--muted-strong)",
-              }}
-            >
-              Confirm
-            </span>
-            <span className="text-[12.5px] leading-5">{pendingConfirmation.warning}</span>
+          <div className="add-source-callout-copy">
+            <span className="add-source-callout-label">Confirm</span>
+            <span className="add-source-callout-body">{pendingConfirmation.warning}</span>
           </div>
-          <div className="mt-2 flex gap-2">
+          <div className="add-source-callout-actions">
             <button
               type="button"
               className="fb-btn dark compact"
@@ -397,17 +378,12 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
         <div
           aria-live="polite"
           role="status"
-          className="mt-1 rounded-md border px-3 py-2 text-[12.5px] leading-5"
-          style={{
-            borderColor: "var(--warm-line, var(--line))",
-            background: "var(--warm-paper, var(--paper-strong))",
-            color: "var(--warm-strong, var(--ink))",
-          }}
+          className="add-source-callout"
         >
-          <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: "11px", letterSpacing: "0.08em", textTransform: "uppercase", marginRight: "0.5rem", color: "var(--muted-strong)" }}>
-            Heads up
-          </span>
-          {warning}
+          <div className="add-source-callout-copy">
+            <span className="add-source-callout-label">Heads up</span>
+            <span className="add-source-callout-body">{warning}</span>
+          </div>
         </div>
       ) : null}
     </form>
