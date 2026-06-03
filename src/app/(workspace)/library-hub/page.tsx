@@ -32,7 +32,7 @@ export default function LibraryHubPage() {
             Import shared source libraries and AI Digest archives.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="library-hub-page-count">
           <Suspense fallback={<span className="fb-chip" aria-busy="true">Loading</span>}>
             <LibraryHubCount dataPromise={dataPromise} />
           </Suspense>
@@ -215,27 +215,27 @@ function LibraryHubImportFallback() {
       <div className="library-hub-toolbar">
         <div>
           <h2 className="section-heading">Available libraries</h2>
-          <div className="mt-2 h-4 max-w-lg rounded bg-black/10" />
+          <div className="library-hub-skeleton-line is-wide" />
         </div>
         <div className="library-hub-counts">
           <span>Loading</span>
         </div>
-        <div className="h-11 w-36 rounded-full bg-black/10" />
+        <div className="library-hub-skeleton-pill" />
       </div>
       <div className="hub-list-stack fb-hub-list">
         {Array.from({ length: 4 }, (_, index) => (
           <div className="library-hub-card" key={index}>
             <div className="library-hub-card-header">
-              <div className="min-w-0 flex-1">
-                <div className="h-4 w-28 rounded bg-black/10" />
-                <div className="mt-3 h-6 w-44 rounded bg-black/10" />
-                <div className="mt-3 h-4 max-w-sm rounded bg-black/10" />
+              <div className="library-hub-skeleton-copy">
+                <div className="library-hub-skeleton-line is-kicker" />
+                <div className="library-hub-skeleton-line is-title" />
+                <div className="library-hub-skeleton-line is-body" />
               </div>
-              <div className="h-7 w-20 rounded-full bg-black/10" />
+              <div className="library-hub-skeleton-chip" />
             </div>
             <div className="library-hub-sources">
-              <div className="h-10 rounded-lg bg-black/10" />
-              <div className="h-10 rounded-lg bg-black/10" />
+              <div className="library-hub-skeleton-row" />
+              <div className="library-hub-skeleton-row" />
             </div>
           </div>
         ))}
@@ -249,14 +249,14 @@ function DigestPipelineImportFallback() {
     <section aria-live="polite" aria-busy="true">
       <div className="library-hub-toolbar">
         <div>
-          <div className="h-5 w-40 rounded bg-black/10" />
-          <div className="mt-3 h-4 w-72 rounded bg-black/10" />
+          <div className="library-hub-skeleton-line is-heading" />
+          <div className="library-hub-skeleton-line is-medium" />
         </div>
-        <div className="h-10 w-36 rounded-full bg-black/10" />
+        <div className="library-hub-skeleton-pill" />
       </div>
       <div className="hub-list-stack fb-hub-list">
-        <div className="library-hub-card h-44" />
-        <div className="library-hub-card h-44" />
+        <div className="library-hub-card library-hub-skeleton-card" />
+        <div className="library-hub-card library-hub-skeleton-card" />
       </div>
     </section>
   );

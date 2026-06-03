@@ -5209,6 +5209,87 @@ svg.lucide {
   text-decoration-color: var(--dr-accent);
 }
 
+.library-hub-page-count {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.library-hub-skeleton-copy {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.library-hub-skeleton-line,
+.library-hub-skeleton-pill,
+.library-hub-skeleton-chip,
+.library-hub-skeleton-row,
+.library-hub-skeleton-card {
+  background: color-mix(in oklch, var(--ink) 10%, transparent);
+  border-radius: 8px;
+}
+
+.library-hub-skeleton-line {
+  height: 0.875rem;
+  max-width: 100%;
+  width: 16rem;
+}
+
+.library-hub-skeleton-line + .library-hub-skeleton-line {
+  margin-top: 0.75rem;
+}
+
+.library-hub-skeleton-line.is-wide {
+  margin-top: 0.55rem;
+  width: min(100%, 34rem);
+}
+
+.library-hub-skeleton-line.is-kicker {
+  width: 7rem;
+}
+
+.library-hub-skeleton-line.is-title {
+  height: 1.35rem;
+  width: 11rem;
+}
+
+.library-hub-skeleton-line.is-body {
+  width: min(100%, 24rem);
+}
+
+.library-hub-skeleton-line.is-heading {
+  height: 1.15rem;
+  width: 10rem;
+}
+
+.library-hub-skeleton-line.is-medium {
+  width: min(100%, 18rem);
+}
+
+.library-hub-skeleton-pill {
+  border-radius: 999px;
+  height: 2.5rem;
+  width: 9rem;
+}
+
+.library-hub-skeleton-chip {
+  border-radius: 999px;
+  height: 1.75rem;
+  width: 5rem;
+}
+
+.library-hub-skeleton-row {
+  height: 2.5rem;
+}
+
+.library-hub-skeleton-row + .library-hub-skeleton-row {
+  margin-top: 0.5rem;
+}
+
+.library-hub-skeleton-card {
+  min-height: 11rem;
+}
+
 /* Media footer */
 .digest-media {
   display: flex;
