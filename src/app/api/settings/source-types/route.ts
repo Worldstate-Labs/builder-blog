@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
+import { isAdminEmail } from "@/lib/admin";
 import { formatZodError } from "@/lib/zod-error";
 import {
   getUserSourceConfigs,
   resetUserSourceConfigs,
+  updateUserSourceConfigAndDefault,
   updateUserSourceConfig,
   type SourceConfigPatch,
 } from "@/lib/source-config-store";
@@ -12,7 +14,9 @@ import { SEEDED_SOURCE_IDS } from "@/lib/source-config-seed";
 
 // Per-user endpoint (any logged-in user, no admin gate). GET lists the user's
 // own (materialized-from-default) source configs; PATCH updates one; DELETE
-// resets all of the user's source configs back to the system default.
+// resets all of the user's source configs back to the system default. When the
+// current user is an admin, PATCH also updates the system default template so
+// new users copy the admin's latest saved defaults.
 
 const ContentQualitySchema = z
   .object({
@@ -64,7 +68,10 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: `Unknown sourceId: ${sourceId}` }, { status: 400 });
   }
   try {
-    const config = await updateUserSourceConfig(
+    const update = isAdminEmail(session.user.email)
+      ? updateUserSourceConfigAndDefault
+      : updateUserSourceConfig;
+    const config = await update(
       session.user.id,
       sourceId,
       patch as SourceConfigPatch,

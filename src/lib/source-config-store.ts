@@ -124,6 +124,15 @@ export type SourceConfigPatch = Partial<{
   summaryStyle: SourceSummaryStyle;
 }>;
 
+function sourcePatchData(patch: SourceConfigPatch) {
+  return {
+    ...patch,
+    ...(patch.contentQuality !== undefined
+      ? { contentQuality: patch.contentQuality as object }
+      : {}),
+  };
+}
+
 export async function updateSourceConfig(
   sourceId: string,
   patch: SourceConfigPatch,
@@ -132,13 +141,7 @@ export async function updateSourceConfig(
   await ensureSeededOnce();
   const row = await client().sourceTypeConfig.update({
     where: { sourceId },
-    data: {
-      ...patch,
-      ...(patch.contentQuality !== undefined
-        ? { contentQuality: patch.contentQuality as object }
-        : {}),
-      updatedBy: actor,
-    },
+    data: { ...sourcePatchData(patch), updatedBy: actor },
   });
   invalidateSourceConfigsCache();
   return row;
@@ -148,6 +151,15 @@ export type DigestConfigPatch = Partial<Omit<DigestConfigShape, "id" | "digestOr
   digestOrder?: string[];
 };
 
+function digestPatchData(patch: DigestConfigPatch) {
+  return {
+    ...patch,
+    ...(patch.digestOrder !== undefined
+      ? { digestOrder: patch.digestOrder as object }
+      : {}),
+  };
+}
+
 export async function updateDigestConfig(
   patch: DigestConfigPatch,
   actor: string | null,
@@ -155,13 +167,7 @@ export async function updateDigestConfig(
   await ensureSeededOnce();
   const row = await client().digestConfig.update({
     where: { id: DEFAULT_DIGEST_CONFIG.id },
-    data: {
-      ...patch,
-      ...(patch.digestOrder !== undefined
-        ? { digestOrder: patch.digestOrder as object }
-        : {}),
-      updatedBy: actor,
-    },
+    data: { ...digestPatchData(patch), updatedBy: actor },
   });
   invalidateDigestConfigCache();
   return sanitizeDigestConfig(row);
@@ -253,14 +259,29 @@ export async function updateUserSourceConfig(
   await ensureUserSourceConfigs(userId);
   return client().userSourceTypeConfig.update({
     where: { userId_sourceId: { userId, sourceId } },
-    data: {
-      ...patch,
-      ...(patch.contentQuality !== undefined
-        ? { contentQuality: patch.contentQuality as object }
-        : {}),
-      updatedBy: actor,
-    },
+    data: { ...sourcePatchData(patch), updatedBy: actor },
   });
+}
+
+export async function updateUserSourceConfigAndDefault(
+  userId: string,
+  sourceId: string,
+  patch: SourceConfigPatch,
+  actor: string | null,
+): Promise<UserSourceTypeConfig> {
+  await ensureUserSourceConfigs(userId);
+  const [userRow] = await client().$transaction([
+    client().userSourceTypeConfig.update({
+      where: { userId_sourceId: { userId, sourceId } },
+      data: { ...sourcePatchData(patch), updatedBy: actor },
+    }),
+    client().sourceTypeConfig.update({
+      where: { sourceId },
+      data: { ...sourcePatchData(patch), updatedBy: actor },
+    }),
+  ]);
+  invalidateSourceConfigsCache();
+  return userRow;
 }
 
 // Reset: drop the user's rows so the next read re-copies the default template.
@@ -294,15 +315,29 @@ export async function updateUserDigestConfig(
   await getUserDigestConfig(userId);
   const row = await client().userDigestConfig.update({
     where: { userId },
-    data: {
-      ...patch,
-      ...(patch.digestOrder !== undefined
-        ? { digestOrder: patch.digestOrder as object }
-        : {}),
-      updatedBy: actor,
-    },
+    data: { ...digestPatchData(patch), updatedBy: actor },
   });
   return sanitizeDigestConfig(row);
+}
+
+export async function updateUserDigestConfigAndDefault(
+  userId: string,
+  patch: DigestConfigPatch,
+  actor: string | null,
+): Promise<UserDigestConfig> {
+  await getUserDigestConfig(userId);
+  const [userRow] = await client().$transaction([
+    client().userDigestConfig.update({
+      where: { userId },
+      data: { ...digestPatchData(patch), updatedBy: actor },
+    }),
+    client().digestConfig.update({
+      where: { id: DEFAULT_DIGEST_CONFIG.id },
+      data: { ...digestPatchData(patch), updatedBy: actor },
+    }),
+  ]);
+  invalidateDigestConfigCache();
+  return sanitizeDigestConfig(userRow);
 }
 
 export async function resetUserDigestConfig(userId: string): Promise<void> {

@@ -1,16 +1,20 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
+import { isAdminEmail } from "@/lib/admin";
 import { formatZodError } from "@/lib/zod-error";
 import {
   getUserDigestConfig,
   resetUserDigestConfig,
+  updateUserDigestConfigAndDefault,
   updateUserDigestConfig,
   type DigestConfigPatch,
 } from "@/lib/source-config-store";
 import { SEEDED_SOURCE_IDS } from "@/lib/source-config-seed";
 
 // Per-user endpoint (any logged-in user) for the user's DigestConfig copy.
+// Admin PATCH also updates the system default template; existing users keep
+// their own copies, while new users materialize from that default.
 
 const DigestPatchSchema = z
   .object({
@@ -50,7 +54,10 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
   try {
-    const config = await updateUserDigestConfig(
+    const update = isAdminEmail(session.user.email)
+      ? updateUserDigestConfigAndDefault
+      : updateUserDigestConfig;
+    const config = await update(
       session.user.id,
       parsed.data.patch as DigestConfigPatch,
       session.user.email ?? null,

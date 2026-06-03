@@ -2465,9 +2465,11 @@ test("content config is per-user, seeded from a system default", () => {
     "ensureUserSourceConfigs",
     "getUserSourceConfigs",
     "updateUserSourceConfig",
+    "updateUserSourceConfigAndDefault",
     "resetUserSourceConfigs",
     "getUserDigestConfig",
     "updateUserDigestConfig",
+    "updateUserDigestConfigAndDefault",
     "resetUserDigestConfig",
   ]) {
     assert.match(store, new RegExp(`export async function ${fn}\\b`));
@@ -2484,11 +2486,17 @@ test("content config is per-user, seeded from a system default", () => {
   assert.equal(existsSync("src/app/api/admin/source-types/route.ts"), false);
   assert.equal(existsSync("src/app/api/admin/digest-config/route.ts"), false);
 
-  // The settings routes are user-scoped and NOT admin-gated.
+  // The settings routes are user-scoped and NOT admin-gated. Admin PATCH
+  // additionally updates the system default template used for new users.
   const srcRoute = readFileSync("src/app/api/settings/source-types/route.ts", "utf8");
+  const digestRoute = readFileSync("src/app/api/settings/digest-config/route.ts", "utf8");
   assert.match(srcRoute, /getUserSourceConfigs\(session\.user\.id\)/);
-  assert.match(srcRoute, /updateUserSourceConfig\(/);
-  assert.doesNotMatch(srcRoute, /isAdminEmail/);
+  assert.match(srcRoute, /updateUserSourceConfig\b/);
+  assert.match(srcRoute, /isAdminEmail\(session\.user\.email\)/);
+  assert.match(srcRoute, /updateUserSourceConfigAndDefault/);
+  assert.match(digestRoute, /isAdminEmail\(session\.user\.email\)/);
+  assert.match(digestRoute, /updateUserDigestConfigAndDefault/);
+  assert.match(store, /client\(\)\.\$transaction\(/);
 
   // Settings page shows the config section to every user (no isAdmin gate) and
   // loads the requesting user's config.
