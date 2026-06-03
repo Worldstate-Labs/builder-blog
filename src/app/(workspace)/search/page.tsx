@@ -288,6 +288,11 @@ async function SearchResultsSection({
               About {formatCount(filteredResults.length)} result
               {filteredResults.length === 1 ? "" : "s"} for <span>{activeQuery}</span>
             </CountRange>
+            {pageCount > 1 ? (
+              <CountRange>
+                Page {formatCount(currentPage)} of {formatCount(pageCount)}
+              </CountRange>
+            ) : null}
           </div>
           {isShowingCorrectedResults && correctedQuery ? (
             <div className="search-did-you-mean">
@@ -309,7 +314,7 @@ async function SearchResultsSection({
           {activeFilters.length > 0 ? (
             <ActiveSearchFilters filters={activeFilters} clearAllHref={clearAllSearchHref(activeQuery)} />
           ) : null}
-          <details className="search-advanced-tools">
+          <details className="search-advanced-tools search-advanced-tools-compact">
             <summary>Query details</summary>
             <SearchQueryInsights
               actions={recoveryActions}
@@ -321,11 +326,6 @@ async function SearchResultsSection({
               typeFilter={typeFilter}
             />
           </details>
-          <div className="search-tools-row">
-            <CountRange>
-              Page {formatCount(currentPage)} of {formatCount(pageCount)}
-            </CountRange>
-          </div>
           <div className="search-results-list">
             {visibleResults.map((result) => (
               <ResultCard
@@ -406,7 +406,7 @@ async function SearchResultsSection({
             sort={sort}
             time={time}
           />
-          <details className="search-advanced-tools">
+          <details className="search-advanced-tools search-advanced-tools-compact">
             <summary>Advanced syntax</summary>
             <AdvancedSearchTips mode={mode} sort={sort} time={time} />
           </details>

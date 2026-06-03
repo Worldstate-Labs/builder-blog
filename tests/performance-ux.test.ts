@@ -834,6 +834,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /Active filters/);
   assert.match(searchPage, /Query details/);
   assert.doesNotMatch(searchPage, /Search tools/);
+  assert.doesNotMatch(searchPage, /className="search-tools-row"/);
+  assert.match(searchPage, /className="search-meta-row"[\s\S]*About \{formatCount\(filteredResults\.length\)\} result[\s\S]*Page \{formatCount\(currentPage\)\} of \{formatCount\(pageCount\)\}/);
+  assert.match(searchPage, /className="search-advanced-tools search-advanced-tools-compact"/);
   assert.match(searchPage, /Clear all/);
   assert.match(searchPage, /className="search-filter-chip-row"/);
   assert.match(searchPage, /className="search-filter-chip"/);
@@ -875,6 +878,10 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(globals, /\.search-insight-card\s*{/);
   assert.match(globals, /\.search-insight-summary\s*{/);
   assert.match(globals, /\.search-insight-grid\s*{[\s\S]*border-top:\s*1px solid/);
+  assert.match(globals, /\.search-meta-row\s*{[\s\S]*justify-content:\s*space-between/);
+  assert.match(globals, /\.search-advanced-tools > summary\s*{[\s\S]*border-radius:\s*999px/);
+  assert.match(globals, /\.search-advanced-tools-compact\[open\]\s*{[\s\S]*border-top:\s*1px solid/);
+  assert.doesNotMatch(globals, /\.search-tools-row\s*{/);
   assert.match(searchPage, /Remove text search terms/);
   assert.match(searchPage, /Remove URL search terms/);
   assert.match(searchPage, /Remove required terms/);

@@ -2739,8 +2739,14 @@ svg.lucide {
 }
 
 .search-meta-row {
+  align-items: center;
   color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
   font-size: 0.86rem;
+  font-weight: 650;
+  gap: 0.45rem 0.9rem;
+  justify-content: space-between;
   line-height: 1.6;
   margin-top: 0.95rem;
 }
@@ -2769,19 +2775,26 @@ svg.lucide {
 }
 
 .search-advanced-tools {
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 0;
+  border-radius: 0;
   margin-top: 0.85rem;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .search-advanced-tools > summary {
+  align-items: center;
+  border: 1px solid color-mix(in oklch, var(--line) 80%, transparent);
+  border-radius: 999px;
   color: var(--muted-strong);
   cursor: pointer;
+  display: inline-flex;
   font-size: 0.82rem;
   font-weight: 800;
+  gap: 0.45rem;
   list-style: none;
-  padding: 0.65rem 0.8rem;
+  min-height: 2rem;
+  padding: 0.3rem 0.65rem;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
 .search-advanced-tools > summary::-webkit-details-marker {
@@ -2791,17 +2804,30 @@ svg.lucide {
 .search-advanced-tools > summary::after {
   color: var(--accent);
   content: "+";
-  float: right;
+  font-weight: 850;
 }
 
 .search-advanced-tools[open] > summary::after {
   content: "-";
 }
 
+.search-advanced-tools > summary:hover,
+.search-advanced-tools > summary:focus-visible {
+  background: color-mix(in oklch, var(--accent) 8%, transparent);
+  border-color: color-mix(in oklch, var(--accent) 28%, var(--line));
+  color: var(--accent);
+  outline: none;
+}
+
 .search-advanced-tools .search-related {
   border-top: 1px solid var(--line);
   margin-top: 0;
   padding: 1rem;
+}
+
+.search-advanced-tools-compact[open] {
+  border-top: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
+  padding-top: 0.75rem;
 }
 
 .search-insight-summary {
@@ -2931,22 +2957,10 @@ svg.lucide {
   color: var(--accent);
 }
 
-.search-tools-row {
-  align-items: center;
-  color: var(--muted);
-  display: flex;
-  flex-wrap: wrap;
-  font-size: 0.82rem;
-  font-weight: 700;
-  gap: 0.65rem;
-  justify-content: space-between;
-  margin-top: 0.9rem;
-}
-
 .search-results-list {
   display: grid;
   gap: 1.45rem;
-  margin-top: 1.35rem;
+  margin-top: 1.1rem;
   min-width: 0;
 }
 
