@@ -48,8 +48,8 @@ export function BuilderDetailActions({
   };
 
   return (
-    <div className="grid gap-2">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="builder-detail-action-stack">
+      <div className="builder-detail-action-row">
         <button
           type="button"
           disabled={isPending}

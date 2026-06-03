@@ -6262,6 +6262,21 @@ svg.lucide {
   width: 100%;
 }
 
+.auth-button-stack {
+  display: grid;
+  gap: 0.625rem;
+}
+
+.auth-provider-icon {
+  height: 1.125rem;
+  width: 1.125rem;
+}
+
+.fb-auth-btn:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .fb-auth-btn:hover {
   background: color-mix(in srgb, white 92%, var(--charcoal));
 }
@@ -6433,6 +6448,18 @@ svg.lucide {
 .builder-detail-actions-skeleton {
   display: flex;
   gap: 0.5rem;
+}
+
+.builder-detail-action-stack {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.builder-detail-action-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .builder-detail-action-skeleton-button {

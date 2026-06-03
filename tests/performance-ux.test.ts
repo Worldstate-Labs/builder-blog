@@ -40,6 +40,7 @@ test("app shell reuses the page session instead of fetching it again", () => {
 test("public entry pages use the centered product layout", () => {
   const landingPage = source("src/app/page.tsx");
   const loginPage = source("src/app/login/page.tsx");
+  const authButtons = source("src/components/AuthButtons.tsx");
   const globals = source("src/app/globals.css");
 
   assert.match(landingPage, /fb-public-nav/);
@@ -87,6 +88,10 @@ test("public entry pages use the centered product layout", () => {
   assert.match(loginPage, /fb-login-panel-icon/);
   assert.match(loginPage, /fb-login-proof-icon/);
   assert.match(loginPage, /fb-login-proof-label/);
+  assert.match(authButtons, /className="auth-button-stack"/);
+  assert.match(authButtons, /className="auth-provider-icon"/);
+  assert.match(authButtons, /className=\{`fb-auth-btn\$\{outline \? " outline" : ""\}`\}/);
+  assert.doesNotMatch(authButtons, /grid gap-2\.5|h-\[18px\] w-\[18px\]|disabled:cursor-wait|disabled:opacity-65/);
   assert.doesNotMatch(loginPage, /fb-login-proof-grid|fb-dark-proof/);
   assert.doesNotMatch(loginPage, /max-w-6xl/);
   assert.doesNotMatch(loginPage, /lg:max-w-md/);
@@ -105,6 +110,9 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /\.fb-login-proof\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.fb-login-proof-icon\s*{/);
   assert.match(globals, /\.fb-login-proof-label\s*{/);
+  assert.match(globals, /\.auth-button-stack\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.auth-provider-icon\s*{[\s\S]*height:\s*1\.125rem/);
+  assert.match(globals, /\.fb-auth-btn:disabled\s*{[\s\S]*cursor:\s*wait/);
   assert.doesNotMatch(globals, /\.fb-login-proof-grid|\.fb-dark-proof/);
   assert.match(globals, /\.fb-public-copy\s*{[\s\S]*max-width:\s*var\(--public-copy-max\)/);
   assert.match(globals, /\.fb-public-flow\s*{[\s\S]*display:\s*flex/);
@@ -345,8 +353,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.builder-detail-bio\s*{[\s\S]*max-width:\s*var\(--measure\)/);
   assert.match(builderDetailPage, /className="builder-detail-actions-skeleton"/);
   assert.match(builderDetailPage, /className="builder-detail-action-skeleton-button"/);
+  assert.match(builderDetailActions, /className="builder-detail-action-stack"/);
+  assert.match(builderDetailActions, /className="builder-detail-action-row"/);
   assert.match(builderDetailActions, /className="builder-detail-action-error"/);
-  assert.doesNotMatch(builderDetailActions, /text-xs text-\[var\(--danger\)\]/);
+  assert.doesNotMatch(builderDetailActions, /className="grid gap-2"|flex flex-wrap items-center gap-3|text-xs text-\[var\(--danger\)\]/);
   assert.match(builderDetailPage, /className="builder-detail-section builder-detail-channels"/);
   assert.match(builderDetailPage, /className="builder-detail-channels-summary"/);
   assert.match(builderDetailPage, /className="builder-detail-channel-list"/);
@@ -391,6 +401,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.builder-detail-page-head\s*{[\s\S]*--page-head-copy-max:\s*var\(--empty-max\)/);
   assert.doesNotMatch(globals, /\.builder-detail-page-head > div:first-child\s*{[\s\S]*min\(48rem/);
   assert.match(globals, /\.builder-detail-action-skeleton-button\s*{[\s\S]*border-radius:\s*999px/);
+  assert.match(globals, /\.builder-detail-action-stack\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.builder-detail-action-row\s*{[\s\S]*flex-wrap:\s*wrap/);
   assert.match(globals, /\.builder-detail-action-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.builder-detail-channels\s*{[\s\S]*border-top:\s*1px solid/);
   assert.match(globals, /\.builder-detail-channels-summary::after\s*{[\s\S]*content:\s*"\+"/);
