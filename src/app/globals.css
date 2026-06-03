@@ -1867,6 +1867,14 @@ svg.lucide {
   display: none;
 }
 
+.builder-posts-summary {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
 .builder-posts > summary::after {
   content: "+";
   color: var(--accent);

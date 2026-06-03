@@ -941,6 +941,7 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.doesNotMatch(css, /\.builder-library-stats\s*{/);
   assert.match(css, /\.builder-posts-latest/);
   assert.match(css, /\.builder-posts-latest::before\s*{[\s\S]*content:\s*"·"/);
+  assert.match(css, /\.builder-posts-summary\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(css, /\.builder-posts > summary\s*{[\s\S]*display:\s*flex/);
   assert.match(css, /\.builder-library-row-tools\s*{[\s\S]*opacity:\s*0/);
   assert.doesNotMatch(css, /\.library-section-summary::after[\s\S]*content:\s*"\+"/);
@@ -952,6 +953,7 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(builderLibraryList, /builder-library-card-main/);
   assert.doesNotMatch(builderLibraryList, /BuilderStats/);
   assert.match(builderLibraryList, /builder-library-row-tools/);
+  assert.match(source("src/components/BuilderFeedItems.tsx"), /className="builder-posts-summary"/);
   assert.match(builderActions, /fb-btn/);
   assert.match(builderActions, /builder-library-follow-toggle/);
   assert.match(settingsPage, /AgentTokenPanel/);
