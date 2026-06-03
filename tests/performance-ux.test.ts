@@ -790,7 +790,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderLibraryList, /className="builder-library-error"/);
   assert.doesNotMatch(builderLibraryList, /mt-2 text-sm text-\[var\(--danger\)\]/);
   assert.doesNotMatch(builderLibraryList, /builder-posts-latest/);
-  assert.doesNotMatch(builderLibraryList, /Latest \{formatCompactDate/);
+  assert.doesNotMatch(builderLibraryList, /latest \{formatCompactDate/);
+  assert.doesNotMatch(builderLibraryList, /feedItemCount\}\s*items/);
   assert.match(buildersPage, /className="source-sync-skeleton-line"/);
   assert.match(buildersPage, /className="source-sync-skeleton-panel"/);
   assert.match(buildersPage, /className="source-stat-skeleton"/);
@@ -802,9 +803,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /bg-black\/10|className="h-/);
   assert.match(
     builderFeedItems,
-    /<span>Posts<\/span>[\s\S]*label=\{items \? "loaded" : "summarized"\}[\s\S]*className="builder-posts-latest"[\s\S]*Latest \{formatCompactDate/,
+    /<span>Posts<\/span>[\s\S]*label=\{items \? "loaded" : "summarized"\}[\s\S]*className="builder-posts-latest"[\s\S]*latest \{formatCompactDate/,
   );
-  assert.match(builderFeedItems, /Latest \{formatCompactDate\(new Date\(latestPostCreatedAt\)\)\}/);
+  assert.match(builderFeedItems, /latest \{formatCompactDate\(new Date\(latestPostCreatedAt\)\)\}/);
   assert.match(builderFeedItems, /className="builder-post-loading-line"/);
   assert.match(builderFeedItems, /className="builder-post-loading-card"/);
   assert.match(builderFeedItems, /className="builder-post-state builder-post-state--error"/);
