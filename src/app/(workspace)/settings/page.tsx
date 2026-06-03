@@ -10,7 +10,6 @@ import {
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { SEEDED_SOURCE_IDS } from "@/lib/source-config-seed";
 import {
   getAllSourceConfigs,
   getUserDigestConfig,
@@ -120,12 +119,10 @@ async function SourceTypeConfigSection({
         </summary>
         <div className="settings-rules-body mt-4">
           <AdminDigestConfigForm
-            knownSourceIds={SEEDED_SOURCE_IDS}
             initialConfig={{
               id: digestConfig.userId,
               digestIntro: digestConfig.digestIntro,
               translate: digestConfig.translate,
-              digestOrder: digestConfig.digestOrder as string[],
               updatedAt: digestConfig.updatedAt.toISOString(),
               updatedBy: digestConfig.updatedBy,
             }}

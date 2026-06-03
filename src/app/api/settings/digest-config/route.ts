@@ -11,7 +11,6 @@ import {
   updateUserDigestConfig,
   type DigestConfigPatch,
 } from "@/lib/source-config-store";
-import { SEEDED_SOURCE_IDS } from "@/lib/source-config-seed";
 
 // Per-user endpoint (any logged-in user) for the user's DigestConfig copy.
 // Admin PATCH also updates the system default template; existing users keep
@@ -23,15 +22,6 @@ const DigestPatchSchema = z
     translate: z.string().min(1).max(20_000).optional(),
     commonFetchRules: z.string().min(1).max(20_000).optional(),
     commonSummaryRules: z.string().min(1).max(20_000).optional(),
-    digestOrder: z
-      .array(z.string().min(1))
-      .min(1)
-      .max(32)
-      .refine(
-        (arr) => arr.every((id) => SEEDED_SOURCE_IDS.includes(id)),
-        { message: `digestOrder must only contain known source IDs (${SEEDED_SOURCE_IDS.join(", ")})` },
-      )
-      .optional(),
   })
   .strict();
 

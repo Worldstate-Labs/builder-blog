@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import {
   FooterBar,
-  OrderedChoiceField,
   Section,
   type SaveStatusState,
 } from "@/components/settings/SettingsFields";
@@ -13,7 +12,6 @@ export type AdminDigestConfig = {
   id: string;
   digestIntro: string;
   translate: string;
-  digestOrder: string[];
   updatedAt: string;
   updatedBy: string | null;
 };
@@ -24,7 +22,11 @@ const DIGEST_INTRO_PLACEHOLDER = [
   "Example:",
   "Start with: AI Digest - [Date]",
   "",
-  "Organize the digest by source type, include only sources with new content, and keep each item concise with its original source link.",
+  "Then organize content in this order:",
+  "",
+  "1. X / Twitter section - list each builder with new posts",
+  "2. Official Blogs section - list each blog post from AI companies or builders",
+  "3. Podcasts section - list each podcast or video episode with new content",
 ].join("\n");
 
 const TRANSLATE_PROMPT_PLACEHOLDER = [
@@ -34,29 +36,19 @@ const TRANSLATE_PROMPT_PLACEHOLDER = [
   "Keep product names, people, companies, URLs, and common AI terms in English when professionals normally use them that way.",
 ].join("\n");
 
-function sameOrder(a: string[], b: string[]) {
-  return a.length === b.length && a.every((value, index) => value === b[index]);
-}
-
 export function AdminDigestConfigForm({
   initialConfig,
-  knownSourceIds,
 }: {
   initialConfig: AdminDigestConfig;
-  knownSourceIds: string[];
 }) {
   const [config, setConfig] = useState(initialConfig);
   const [draft, setDraft] = useState({
     digestIntro: initialConfig.digestIntro,
     translate: initialConfig.translate,
-    digestOrder: initialConfig.digestOrder,
   });
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [isPending, startTransition] = useTransition();
-  const dirty =
-    draft.digestIntro !== config.digestIntro ||
-    draft.translate !== config.translate ||
-    !sameOrder(draft.digestOrder, config.digestOrder);
+  const dirty = draft.digestIntro !== config.digestIntro || draft.translate !== config.translate;
 
   function update<K extends keyof typeof draft>(key: K, value: (typeof draft)[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -67,32 +59,14 @@ export function AdminDigestConfigForm({
     setDraft({
       digestIntro: config.digestIntro,
       translate: config.translate,
-      digestOrder: config.digestOrder,
     });
     setStatus({ kind: "idle" });
   }
 
   function save() {
-    const digestOrder = draft.digestOrder;
-    if (digestOrder.length === 0) {
-      setStatus({
-        kind: "error",
-        message: "Add at least one source to the digest order.",
-      });
-      return;
-    }
-    const unknown = digestOrder.filter((id) => !knownSourceIds.includes(id));
-    if (unknown.length > 0) {
-      setStatus({
-        kind: "error",
-        message: `These sources aren't recognized: ${unknown.join(", ")}.`,
-      });
-      return;
-    }
     const patch = {
       digestIntro: draft.digestIntro,
       translate: draft.translate,
-      digestOrder,
     };
     setStatus({ kind: "saving" });
     startTransition(async () => {
@@ -110,7 +84,6 @@ export function AdminDigestConfigForm({
         setDraft({
           digestIntro: body.config.digestIntro,
           translate: body.config.translate,
-          digestOrder: body.config.digestOrder,
         });
         setStatus({ kind: "saved", message: "Saved" });
       } catch (error) {
@@ -124,20 +97,6 @@ export function AdminDigestConfigForm({
 
   return (
     <div className="settings-config-form digest-composition-form">
-      <Section
-        title="Digest sections & order"
-        description="Which source-summary sections appear in AI Digest, and in what order."
-      >
-        <OrderedChoiceField
-          label="Source order"
-          description="Sections appear in the digest in this order. Add known sources and reorder with the arrows."
-          value={draft.digestOrder}
-          options={knownSourceIds.map((id) => ({ value: id, label: id }))}
-          onChange={(next) => update("digestOrder", next)}
-          addLabel="Add a source…"
-        />
-      </Section>
-
       <Section
         title="Digest prompts"
         description="Prompts that assemble and translate the final digest from existing per-post summaries."

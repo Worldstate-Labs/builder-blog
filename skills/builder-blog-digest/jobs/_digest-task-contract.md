@@ -18,8 +18,7 @@ JSON and use them as the required digest-writing method:
   later.
 - Group items by source/entity within each section.
 - Use `context.digest.digestIntro` to assemble the final digest, honoring its
-  section-order, source-link, and no-fabrication rules. Respect
-  `context.digest.order` for section sequencing.
+  section-order, source-link, and no-fabrication rules.
 - Use `context.digest.translate` to produce the final natural output in
   `context.language`.
 

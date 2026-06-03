@@ -2542,6 +2542,10 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(srcManager, /canEditQualityGates/);
   assert.match(srcManager, /patch\.contentQuality = contentQuality/);
   assert.match(digestForm, /\/api\/settings\/digest-config/);
+  assert.doesNotMatch(digestForm, /OrderedChoiceField/);
+  assert.doesNotMatch(digestForm, /knownSourceIds/);
+  assert.doesNotMatch(digestForm, /digestOrder/);
+  assert.doesNotMatch(settingsPage, /knownSourceIds/);
   assert.match(commonSummaryRulesForm, /commonFetchRules/);
   assert.match(commonSummaryRulesForm, /commonSummaryRules/);
   assert.match(commonSummaryRulesForm, /\/api\/settings\/digest-config/);
@@ -2553,5 +2557,6 @@ test("content config is per-user, seeded from a system default", () => {
     "utf8",
   );
   assert.match(contract, /common fetching rules plus your per-source fetch prompt/);
+  assert.doesNotMatch(contract, /context\.digest\.order/);
   assert.doesNotMatch(contract, /the admin's per-source fetch prompt/);
 });
