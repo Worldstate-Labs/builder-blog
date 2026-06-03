@@ -1105,6 +1105,22 @@ svg.lucide {
   min-width: 0;
 }
 
+.recommendation-feed-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  min-width: 0;
+}
+
+.recommendation-snapshot-list {
+  display: grid;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
 .feed-skeleton-list {
   display: grid;
   gap: 0.75rem;
@@ -1174,6 +1190,11 @@ svg.lucide {
   display: flex;
   justify-content: center;
   min-height: 3.5rem;
+}
+
+.feed-end-note {
+  color: var(--muted);
+  font-size: 0.875rem;
 }
 
 .route-loading-title {

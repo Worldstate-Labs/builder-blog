@@ -132,7 +132,7 @@ export function RecommendationFeed({
   return (
     <section className={`feed-content-stack recommendation-feed${mode === "favorites" ? " favorites-feed" : ""}`}>
       {mode === "following" ? (
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="recommendation-feed-actions">
           <button
             className="button-light button-compact gap-2"
             disabled={loadingDirection !== null}
@@ -144,7 +144,7 @@ export function RecommendationFeed({
           </button>
         </div>
       ) : null}
-      <div className="item-list">
+      <div className="recommendation-snapshot-list">
         {snapshots.map((snapshot) => (
           <section className="recommendation-snapshot" key={snapshot.id}>
             <div className="recommendation-snapshot-header">
@@ -174,7 +174,7 @@ export function RecommendationFeed({
             Loading
           </span>
         ) : exhausted && mode === "following" ? (
-          <span className="text-sm text-[var(--muted)]">No new unread recommendations left.</span>
+          <span className="feed-end-note">No new unread recommendations left.</span>
         ) : null}
       </div>
     </section>

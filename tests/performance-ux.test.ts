@@ -341,7 +341,10 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.doesNotMatch(followingSection, /window\.addEventListener/);
   assert.match(recommendationFeed, /Refresh/);
   assert.match(recommendationFeed, /feed-content-stack recommendation-feed/);
+  assert.match(recommendationFeed, /className="recommendation-feed-actions"/);
+  assert.match(recommendationFeed, /className="recommendation-snapshot-list"/);
   assert.match(recommendationFeed, /className="feed-load-more"/);
+  assert.match(recommendationFeed, /className="feed-end-note"/);
   assert.match(favoritesSection, /feed-content-stack/);
   assert.match(followingSection, /feed-content-stack/);
   assert.match(favoritesSection, /className="feed-skeleton-list"/);
@@ -358,11 +361,15 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /className="feed-state-icon"/);
   assert.doesNotMatch(recommendationFeed, /recommendation-feed mt-6/);
   assert.doesNotMatch(recommendationFeed, /mt-6 flex min-h-14/);
+  assert.doesNotMatch(recommendationFeed, /className="item-list"|mb-5 flex flex-wrap items-center justify-between gap-3|text-sm text-\[var\(--muted\)\]/);
   assert.doesNotMatch(favoritesSection, /item-list mt-6|empty-panel mt-6/);
   assert.doesNotMatch(followingSection, /item-list mt-6|empty-panel mt-6/);
   assert.doesNotMatch(favoritesSection, /bg-black\/10|empty-panel border-dashed|flex items-start gap-3|text-lg font-semibold|mt-2 text-sm/);
   assert.doesNotMatch(followingSection, /bg-black\/10|empty-panel border-dashed|flex items-start gap-3|text-lg font-semibold|mt-2 text-sm/);
   assert.match(globals, /\.feed-content-stack\s*{[\s\S]*margin-top:\s*1\.5rem/);
+  assert.match(globals, /\.recommendation-feed-actions\s*{[\s\S]*justify-content:\s*space-between/);
+  assert.match(globals, /\.recommendation-snapshot-list\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.feed-end-note\s*{[\s\S]*font-size:\s*0\.875rem/);
   assert.match(globals, /\.feed-skeleton-card\s*{[\s\S]*min-height:\s*6rem/);
   assert.match(globals, /\.feed-state-panel\s*{[\s\S]*border:\s*1px dashed var\(--line\)/);
   assert.match(followingSection, /Loading Following recommendations/);
