@@ -675,8 +675,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /counts=\{hasQuery \? typeCounts : null\}/);
   assert.match(searchPage, /buildQueryInsightItems/);
   assert.match(searchPage, /search-insights/);
-  assert.match(searchPage, /search-insight-card/);
-  assert.match(searchPage, /Query understood/);
+  assert.doesNotMatch(searchPage, /search-insight-card/);
+  assert.match(searchPage, /search-insight-summary/);
+  assert.match(searchPage, /Query matched/);
   assert.match(searchPage, /Use best match/);
   assert.match(searchPage, /Search all result types/);
   assert.match(searchPage, /Search all time/);
@@ -688,6 +689,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /stripSearchQueryOperators/);
   assert.match(searchPage, /clearAllSearchHref/);
   assert.match(searchPage, /Remove title search terms/);
+  assert.doesNotMatch(globals, /\.search-insight-card\s*{/);
+  assert.match(globals, /\.search-insight-summary\s*{/);
+  assert.match(globals, /\.search-insight-grid\s*{[\s\S]*border-top:\s*1px solid/);
   assert.match(searchPage, /Remove text search terms/);
   assert.match(searchPage, /Remove URL search terms/);
   assert.match(searchPage, /Remove required terms/);

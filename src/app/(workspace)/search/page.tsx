@@ -7,7 +7,6 @@ import {
   ChevronRight,
   ExternalLink,
   RotateCcw,
-  SlidersHorizontal,
   X,
 } from "lucide-react";
 import { CountBadge, CountRange, formatCount } from "@/components/Count";
@@ -462,25 +461,17 @@ function SearchQueryInsights({
 
   return (
     <section className="search-insights" aria-label="Search interpretation">
-      <div className="search-insight-card">
-        <div className="search-insight-heading">
-          <SlidersHorizontal aria-hidden="true" className="h-4 w-4" />
-          <div>
-            <span>Query understood</span>
-            <strong>
-              {resultCount} result{resultCount === 1 ? "" : "s"}
-            </strong>
+      <p className="search-insight-summary">
+        Query matched {resultCount} result{resultCount === 1 ? "" : "s"}.
+      </p>
+      <dl className="search-insight-grid">
+        {items.map((item) => (
+          <div className="search-insight-item" key={`${item.label}:${item.value}`}>
+            <dt>{item.label}</dt>
+            <dd>{item.value}</dd>
           </div>
-        </div>
-        <dl className="search-insight-grid">
-          {items.map((item) => (
-            <div className="search-insight-item" key={`${item.label}:${item.value}`}>
-              <dt>{item.label}</dt>
-              <dd>{item.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
+        ))}
+      </dl>
       {actions.length > 0 ? (
         <div className="search-insight-actions" aria-label="Broaden search">
           {actions.map((action) => (
