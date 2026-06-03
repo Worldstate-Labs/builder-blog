@@ -2030,7 +2030,21 @@ svg.lucide {
   align-items: center;
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.4rem 0.55rem;
+  min-width: 0;
+}
+
+.builder-posts-label {
+  color: var(--ink);
+  font-weight: 760;
+}
+
+.builder-posts-meta {
+  align-items: center;
+  color: var(--muted);
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
   min-width: 0;
 }
 

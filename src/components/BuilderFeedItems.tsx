@@ -87,16 +87,18 @@ export function BuilderFeedItems({
     >
       <summary>
         <span className="builder-posts-summary">
-          <span>Posts</span>
-          <CountMeta
-            label={items ? "loaded" : "summarized"}
-            value={items ? items.length : totalCount}
-          />
-          {latestPostCreatedAt ? (
-            <time className="builder-posts-latest" dateTime={latestPostCreatedAt}>
-              Latest {formatCompactDate(new Date(latestPostCreatedAt))}
-            </time>
-          ) : null}
+          <span className="builder-posts-label">Posts</span>
+          <span className="builder-posts-meta">
+            <CountMeta
+              label={items ? "loaded" : "summarized"}
+              value={items ? items.length : totalCount}
+            />
+            {latestPostCreatedAt ? (
+              <time className="builder-posts-latest" dateTime={latestPostCreatedAt}>
+                Latest {formatCompactDate(new Date(latestPostCreatedAt))}
+              </time>
+            ) : null}
+          </span>
         </span>
       </summary>
       <div className="builder-post-list">

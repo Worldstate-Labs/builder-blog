@@ -1037,7 +1037,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /bg-black\/10|className="h-/);
   assert.match(
     builderFeedItems,
-    /<span>Posts<\/span>[\s\S]*label=\{items \? "loaded" : "summarized"\}[\s\S]*<time className="builder-posts-latest" dateTime=\{latestPostCreatedAt\}>[\s\S]*Latest \{formatCompactDate/,
+    /<span className="builder-posts-label">Posts<\/span>[\s\S]*className="builder-posts-meta"[\s\S]*label=\{items \? "loaded" : "summarized"\}[\s\S]*<time className="builder-posts-latest" dateTime=\{latestPostCreatedAt\}>[\s\S]*Latest \{formatCompactDate/,
   );
   assert.match(builderFeedItems, /Latest \{formatCompactDate\(new Date\(latestPostCreatedAt\)\)\}/);
   assert.match(builderFeedItems, /className="builder-post-loading-line"/);
@@ -1136,7 +1136,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /fetch\(`\/api\/builders\/\$\{builderId\}\/feed-items`/);
   // UI copy avoids "Fetched" in the row; detailed content still renders
   // through PostCard.
-  assert.match(builderFeedItems, /<span>Posts<\/span>/);
+  assert.match(builderFeedItems, /<span className="builder-posts-label">Posts<\/span>/);
   assert.match(builderFeedItems, /PostCard/);
   assert.match(postCard, /Summary/);
   assert.match(postCard, /export function PostCard/);
@@ -1576,6 +1576,8 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.builder-posts-latest/);
   assert.match(css, /\.builder-posts-latest\s*{[\s\S]*white-space:\s*nowrap/);
   assert.match(css, /\.builder-posts-latest::before\s*{[\s\S]*content:\s*"·"/);
+  assert.match(css, /\.builder-posts-label\s*{[\s\S]*font-weight:\s*760/);
+  assert.match(css, /\.builder-posts-meta\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(css, /\.builder-posts-summary\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(css, /\.builder-posts > summary\s*{[\s\S]*display:\s*flex/);
   assert.match(css, /\.builder-library-row-tools\s*{[\s\S]*opacity:\s*0/);
