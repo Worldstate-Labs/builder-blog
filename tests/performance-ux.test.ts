@@ -554,6 +554,7 @@ test("search page uses a client form with pending feedback", () => {
   const globals = source("src/app/globals.css");
 
   assert.match(searchPage, /@\/components\/SearchForm/);
+  assert.match(searchPage, /@\/components\/EmptyState/);
   assert.match(searchPage, /searchPageSize/);
   assert.match(searchPage, /relatedSearchSuggestions/);
   assert.match(searchPage, /didYouMeanSearch/);
@@ -625,7 +626,11 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /Use best match/);
   assert.match(searchPage, /Search all result types/);
   assert.match(searchPage, /Search all time/);
+  assert.match(searchPage, /function SearchEmptyState/);
+  assert.match(searchPage, /<EmptyState[\s\S]*className="search-empty"/);
+  assert.doesNotMatch(searchPage, /function EmptyState\(/);
   assert.match(searchPage, /search-empty-actions/);
+  assert.match(globals, /\.empty-state-actions\s*{[\s\S]*margin-top:\s*1rem/);
   assert.match(searchPage, /stripSearchQueryOperators/);
   assert.match(searchPage, /clearAllSearchHref/);
   assert.match(searchPage, /Remove title search terms/);

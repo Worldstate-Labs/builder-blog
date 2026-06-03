@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { CountBadge, CountRange, formatCount } from "@/components/Count";
+import { EmptyState } from "@/components/EmptyState";
 import { SearchForm, type SearchTypeFilter } from "@/components/SearchForm";
 import { getCurrentSession } from "@/lib/auth";
 import { searchUserLibrary } from "@/lib/user-search";
@@ -368,10 +369,10 @@ async function SearchResultsSection({
                 </nav>
               ) : null}
               {filteredResults.length === 0 ? (
-                <EmptyState actions={recoveryActions}>
+                <SearchEmptyState actions={recoveryActions}>
                   No matches found. Try a broader phrase, fewer words, or switch back
                   to All results.
-                </EmptyState>
+                </SearchEmptyState>
               ) : null}
               {relatedSearches.length > 0 ? (
                 <RelatedSearches query={activeQuery} searches={relatedSearches} mode={mode} sort={sort} time={time} />
@@ -379,10 +380,10 @@ async function SearchResultsSection({
             </>
           ) : (
             <>
-              <EmptyState>
+              <SearchEmptyState>
                 Enter a query to search across your sources, saved items, and
                 digest archive.
-              </EmptyState>
+              </SearchEmptyState>
               <RelatedSearches query={query} searches={defaultSuggestions} mode={mode} sort={sort} time={time} />
               <details className="search-advanced-tools">
                 <summary>Advanced syntax</summary>
@@ -429,10 +430,10 @@ function SearchResultsFallback({
           </div>
         </>
       ) : (
-        <EmptyState>
+        <SearchEmptyState>
           Enter a query to search across your sources, saved items, and digest
           archive.
-        </EmptyState>
+        </SearchEmptyState>
       )}
     </section>
   );
@@ -824,27 +825,30 @@ function HighlightText({ text, query }: { text: string; query: string }) {
   );
 }
 
-function EmptyState({
+function SearchEmptyState({
   actions = [],
   children,
 }: {
   actions?: SearchRecoveryAction[];
   children: React.ReactNode;
 }) {
-  return (
-    <div className="search-empty">
-      <div>{children}</div>
-      {actions.length > 0 ? (
-        <div className="search-empty-actions">
-          {actions.map((action) => (
-            <Link className="search-recovery-action" href={action.href} key={action.label}>
-              <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
-              {action.label}
-            </Link>
-          ))}
-        </div>
-      ) : null}
+  const actionContent = actions.length > 0 ? (
+    <div className="search-empty-actions">
+      {actions.map((action) => (
+        <Link className="search-recovery-action" href={action.href} key={action.label}>
+          <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+          {action.label}
+        </Link>
+      ))}
     </div>
+  ) : null;
+
+  return (
+    <EmptyState
+      actions={actionContent}
+      body={children}
+      className="search-empty"
+    />
   );
 }
 

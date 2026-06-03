@@ -3184,9 +3184,6 @@ svg.lucide {
 }
 
 .search-empty {
-  border: 1px dashed var(--line);
-  border-radius: 8px;
-  color: var(--muted-strong);
   font-size: 0.96rem;
   line-height: 1.7;
   margin-top: 1.25rem;
@@ -3194,7 +3191,7 @@ svg.lucide {
 }
 
 .search-empty-actions {
-  margin-top: 1rem;
+  margin-top: 0.125rem;
 }
 
 .search-pagination {
@@ -3997,6 +3994,10 @@ svg.lucide {
 
 .empty-state-title + .empty-state-body {
   margin-top: 0.375rem;
+}
+
+.empty-state-actions {
+  margin-top: 1rem;
 }
 
 .hub-list-empty {
