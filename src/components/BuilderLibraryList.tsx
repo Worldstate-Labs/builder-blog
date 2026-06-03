@@ -6,7 +6,6 @@ import { ExternalLink } from "lucide-react";
 import { BuilderEditDialog } from "@/components/BuilderEditDialog";
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { BuilderLibraryActions } from "@/components/BuilderLibraryActions";
-import { CountMeta } from "@/components/Count";
 import { SourceBadge } from "@/components/SourceBadge";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import {
@@ -382,7 +381,9 @@ function BuilderStats({ builder }: { builder: BuilderLibraryListItem }) {
 
   return (
     <div className="builder-library-stats" aria-label="Source summary">
-      <CountMeta label={builder.feedItemCount === 1 ? "item" : "items"} value={builder.feedItemCount} />
+      <span className="builder-library-stats-primary">
+        {builder.feedItemCount} {builder.feedItemCount === 1 ? "item" : "items"}
+      </span>
       <span className="builder-library-stats-secondary">
         {latestPostCreatedAt ? `Latest ${formatCompactDate(latestPostCreatedAt)}` : "No posts yet"}
       </span>

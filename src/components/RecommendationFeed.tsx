@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, RefreshCcw, Star } from "lucide-react";
-import { CountMeta } from "@/components/Count";
 import { PostCard } from "@/components/PostCard";
 import { markPostRead } from "@/lib/mark-read";
 
@@ -150,10 +149,7 @@ export function RecommendationFeed({
             <div className="recommendation-snapshot-header">
               <span>Picks</span>
               <span>{formatDate(snapshot.createdAt)}</span>
-              <CountMeta
-                label={snapshot.items.length === 1 ? "post" : "posts"}
-                value={snapshot.items.length}
-              />
+              <span>{snapshot.items.length} posts</span>
             </div>
             {snapshot.items.map((entry) => (
               <RecommendationCard

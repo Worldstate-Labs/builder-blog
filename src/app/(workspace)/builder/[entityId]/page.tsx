@@ -8,7 +8,6 @@ import { fetchDedupedFeedForEntities, getReadEntityKeys } from "@/lib/builder-ch
 import { getEntityWithChannels } from "@/lib/builder-entities";
 import { BuilderDetailActions } from "@/components/BuilderDetailActions";
 import { ChannelPreferenceToggle } from "@/components/ChannelPreferenceToggle";
-import { CountMeta } from "@/components/Count";
 import { RecentPostsList } from "@/components/RecentPostsList";
 import { SourceBadge } from "@/components/SourceBadge";
 import { SourceAvatar } from "@/components/SourceAvatar";
@@ -168,7 +167,7 @@ export default async function BuilderDetailPage({ params }: Params) {
                       : "source-count-meta source-count-meta-empty"
                   }
                 >
-                  <CountMeta label={headerItemCount === 1 ? "item" : "items"} value={headerItemCount} />
+                  {headerItemCount} items
                 </span>
                 {lastFetchedMax ? (
                   <>
@@ -215,8 +214,7 @@ export default async function BuilderDetailPage({ params }: Params) {
 
       <details className="fb-panel dashed mt-10">
         <summary className="cursor-pointer text-sm font-bold text-[var(--ink)]">
-          Available through{" "}
-          <CountMeta label={channels.length === 1 ? "library" : "libraries"} value={channels.length} />
+          Available through {channels.length} {channels.length === 1 ? "library" : "libraries"}
         </summary>
         <Suspense fallback={null}>
           <ChannelsListSlot

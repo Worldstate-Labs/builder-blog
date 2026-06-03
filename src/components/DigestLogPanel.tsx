@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { Activity, ChevronDown, ChevronUp, Clock3, ExternalLink } from "lucide-react";
-import { CountBadge, CountMeta, CountMetric, formatCount } from "@/components/Count";
 import { useHydrated } from "@/components/ThemeToggle";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
@@ -733,9 +732,9 @@ function DigestStatusPanel({
             </div>
           </dl>
           <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-            <CountMetric label="OK" tone="ok" value={okCount} />
-            <CountMetric label="Issue" tone="issue" value={problemCount} />
-            <CountMetric label="Waiting" tone="waiting" value={waitingCount} />
+            <MetricPill label="OK" value={okCount} />
+            <MetricPill label="Issue" value={problemCount} />
+            <MetricPill label="Waiting" value={waitingCount} />
           </div>
           {problemCount > 0 ? (
             <p className="mt-2 text-[12.5px] leading-relaxed" style={{ color: statusTone.color }}>
@@ -783,6 +782,15 @@ function DigestStatusPanel({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function MetricPill({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-[8px] border border-[var(--line)] bg-[var(--paper)] px-3 py-2">
+      <div className="mono text-[16px] font-bold text-[var(--ink)]">{value}</div>
+      <div className="text-[11.5px] text-[var(--muted-strong)]">{label}</div>
     </div>
   );
 }
@@ -923,14 +931,7 @@ function DigestRunList({
               onClick={() => setExpanded((value) => !value)}
               type="button"
             >
-              {expanded ? (
-                "See less"
-              ) : (
-                <span className="inline-flex items-center gap-2">
-                  See more
-                  <CountBadge value={entries.length - VISIBLE_RUN_LIMIT} />
-                </span>
-              )}
+              {expanded ? "See less" : `See more (${entries.length - VISIBLE_RUN_LIMIT})`}
             </button>
           ) : null}
         </>
@@ -1108,8 +1109,8 @@ function RunCard({ run }: { run: DigestRunListItem }) {
 
       <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-[var(--muted-strong)]">
         <span>
-          <span className="font-semibold text-[var(--ink)]">{formatCount(run.contributingSourceCount)}</span>
-          /{formatCount(run.subscriptionCount)} sources contributed
+          <span className="font-semibold text-[var(--ink)]">{run.contributingSourceCount}</span>
+          /{run.subscriptionCount} sources contributed
         </span>
         <span>Covered {windowLabel}</span>
         {run.lastDigestAt ? <span>Previous digest {formatRelative(run.lastDigestAt)}</span> : null}
@@ -1138,12 +1139,12 @@ function RunCard({ run }: { run: DigestRunListItem }) {
                   ))}
                   {contributing.length > VISIBLE_SOURCE_LIMIT ? (
                     <li className="mono text-[11px] text-[var(--muted)]">
-                      <CountMeta label="more sources with new posts" value={contributing.length - VISIBLE_SOURCE_LIMIT} />
+                      + {contributing.length - VISIBLE_SOURCE_LIMIT} more with new posts
                     </li>
                   ) : null}
                   {silentCount > 0 ? (
                     <li className="mono text-[11px] text-[var(--muted)]">
-                      <CountMeta label="without new posts in this window" value={silentCount} />
+                      {silentCount} without new posts in this window
                     </li>
                   ) : null}
                 </ul>
@@ -1198,7 +1199,7 @@ function FunnelStat({
   return (
     <span className="inline-flex items-baseline gap-1">
       <span className="mono text-[14px] font-semibold" style={{ color }}>
-        {formatCount(value)}
+        {value}
       </span>
       <span className="text-[var(--muted-strong)]">{label}</span>
     </span>
@@ -1210,7 +1211,7 @@ function SourceRow({ src, synced }: { src: DigestRunSource; synced: boolean }) {
     <li className="flex items-baseline justify-between gap-2 text-[12px]">
       <span className="min-w-0 truncate text-[var(--ink)]">{src.name}</span>
       <span className="mono shrink-0 text-[11px] text-[var(--muted-strong)]">
-        {formatCount(src.eligible)} found{synced ? ` · ${formatCount(src.included)} used` : ""}
+        {src.eligible} found{synced ? ` · ${src.included} used` : ""}
       </span>
     </li>
   );

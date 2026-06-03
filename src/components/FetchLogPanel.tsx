@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { Activity, ChevronDown, ChevronRight, ChevronUp, Clock3 } from "lucide-react";
-import { CountBadge, CountMeta, CountMetric, formatCount } from "@/components/Count";
 import { useHydrated } from "@/components/ThemeToggle";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
@@ -852,9 +851,9 @@ function FetchStatusPanel({
             </div>
           </dl>
           <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-            <CountMetric label="OK" tone="ok" value={okCount} />
-            <CountMetric label="Issue" tone="issue" value={problemCount} />
-            <CountMetric label="Waiting" tone="waiting" value={waitingCount} />
+            <MetricPill label="OK" value={okCount} />
+            <MetricPill label="Issue" value={problemCount} />
+            <MetricPill label="Waiting" value={waitingCount} />
           </div>
           {problemCount > 0 ? (
             <p className="mt-2 text-[12.5px] leading-relaxed" style={{ color: statusTone.color }}>
@@ -902,6 +901,15 @@ function FetchStatusPanel({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function MetricPill({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-[8px] border border-[var(--line)] bg-[var(--paper)] px-3 py-2">
+      <div className="mono text-[16px] font-bold text-[var(--ink)]">{value}</div>
+      <div className="text-[11.5px] text-[var(--muted-strong)]">{label}</div>
     </div>
   );
 }
@@ -1041,14 +1049,9 @@ function FetchRunList({
               onClick={() => setExpanded((value) => !value)}
               type="button"
             >
-              {expanded ? (
-                "See less"
-              ) : (
-                <span className="inline-flex items-center gap-2">
-                  See more
-                  <CountBadge value={entries.length - VISIBLE_RUN_LIMIT} />
-                </span>
-              )}
+              {expanded
+                ? "See less"
+                : `See more (${entries.length - VISIBLE_RUN_LIMIT})`}
             </button>
           ) : null}
         </>
@@ -1205,9 +1208,8 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
       </p>
 
       <div className="mono mt-2 text-[11.5px] text-[var(--muted-strong)]">
-        <CountMeta label="items read" value={run.itemsFetched} /> ·{" "}
-        <CountMeta label="checked" value={run.tasksGenerated} /> ·{" "}
-        <CountMeta label={run.userActionsCount === 1 ? "action needed" : "actions needed"} value={run.userActionsCount} /> ·{" "}
+        {run.itemsFetched} items read · {run.tasksGenerated} checked ·{" "}
+        {run.userActionsCount} action{run.userActionsCount === 1 ? "" : "s"} needed ·{" "}
         {formatDuration(run.durationMs)}
       </div>
 
@@ -1251,9 +1253,9 @@ function DetailsBody({ details }: { details: DetailsShape }) {
                 <span className="text-[var(--muted-strong)]"> · </span>
                 <span className="text-[var(--muted-strong)]">{entry.sourceType ?? "—"}</span>
                 <span className="text-[var(--muted-strong)]"> · </span>
-                <span>{formatCount(entry.itemsFetched ?? 0)} items</span>
+                <span>{entry.itemsFetched ?? 0} items</span>
                 <span className="text-[var(--muted-strong)]"> · </span>
-                <span>{formatCount(entry.tasksGenerated ?? 0)} checked</span>
+                <span>{entry.tasksGenerated ?? 0} checked</span>
                 {entry.error ? (
                   <>
                     <span className="text-[var(--muted-strong)]"> · </span>

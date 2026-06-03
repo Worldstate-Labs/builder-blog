@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Bell } from "lucide-react";
 import { SubscribeAllLibraryBuildersButton } from "@/components/BuilderLibraryActions";
-import { CountMetric } from "@/components/Count";
 import {
   builderLibraryStatsChanged,
   builderLibrarySubscribeAll,
@@ -20,6 +20,8 @@ type BuilderLibraryStatsValue = {
   inLibrary: number;
   subscribed: number;
 };
+
+const countFormatter = new Intl.NumberFormat("en-US");
 
 export function BuilderLibraryStats({
   initialFetchedItems,
@@ -85,17 +87,33 @@ export function BuilderLibraryStats({
   return (
     <>
       <div className="at-desktop page-toolbar">
-        <div className="count-summary-row" aria-label="Source library counts">
-          <CountMetric label="In library" value={stats.inLibrary} />
-          <CountMetric label="Followed" value={stats.subscribed} />
-          <CountMetric label="Summarized" value={stats.fetchedItems} />
-        </div>
+        <span className="status-chip">{stats.inLibrary} in library</span>
+        <span className="status-chip">
+          <Bell className="h-3.5 w-3.5" />
+          {stats.subscribed} followed
+        </span>
+        <span className="status-chip">{stats.fetchedItems} summarized</span>
         <SubscribeAllLibraryBuildersButton onSubscribedAll={onSubscribedAll} />
       </div>
       <div className="at-mobile grid w-full grid-cols-3 gap-2">
-        <CountMetric label="In library" value={stats.inLibrary} />
-        <CountMetric label="Followed" value={stats.subscribed} />
-        <CountMetric label="Summarized" value={stats.fetchedItems} />
+        <div className="fb-stat fb-stat--compact">
+          <div className="min-w-0">
+            <div className="fb-stat-value">{stats.inLibrary}</div>
+            <div className="fb-stat-label">In library</div>
+          </div>
+        </div>
+        <div className="fb-stat fb-stat--compact">
+          <div className="min-w-0">
+            <div className="fb-stat-value">{stats.subscribed}</div>
+            <div className="fb-stat-label">Followed</div>
+          </div>
+        </div>
+        <div className="fb-stat fb-stat--compact">
+          <div className="min-w-0">
+            <div className="fb-stat-value">{countFormatter.format(stats.fetchedItems)}</div>
+            <div className="fb-stat-label">Summarized</div>
+          </div>
+        </div>
       </div>
     </>
   );

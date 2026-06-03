@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Plus, X } from "lucide-react";
 import { AddBuilderForm } from "@/components/AddBuilderForm";
-import { CountChip } from "@/components/Count";
 import {
   builderLibraryBuilderAdded,
   type BuilderLibraryEventItem,
@@ -59,7 +58,7 @@ export function PrivateLibraryPanel({
           <h2 className="fb-section-heading">{title}</h2>
         </div>
         <div className="library-section-meta">
-          <CountChip label={count === 1 ? "source" : "sources"} value={count} />
+          <span className="fb-kind-pill">{count} sources</span>
           {visibilityToggle}
           <button
             aria-expanded={addOpen}

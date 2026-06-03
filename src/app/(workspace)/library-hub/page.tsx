@@ -4,7 +4,6 @@ import {
   DigestPipelineImportForm,
   type HubDigestPipeline,
 } from "@/components/DigestPipelineImportForm";
-import { CountChip } from "@/components/Count";
 import { LibraryHubImportForm, type HubLibrary } from "@/components/LibraryHubImportForm";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
@@ -184,7 +183,7 @@ async function LibraryHubCount({
 }) {
   const data = await dataPromise;
 
-  return <CountChip label={data.libraryCount === 1 ? "library" : "libraries"} value={data.libraryCount} />;
+  return <span className="fb-chip">{data.libraryCount} libraries</span>;
 }
 
 async function LibraryHubImportSection({

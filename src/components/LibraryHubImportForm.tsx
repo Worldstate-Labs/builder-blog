@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { CheckCircle2, Download, Sliders, Trash2 } from "lucide-react";
-import { CountBadge, CountMeta, CountRange, formatCount } from "@/components/Count";
 
 type HubLibraryBuilder = {
   id: string;
@@ -188,7 +187,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
                 type="button"
               >
                 <span>{filter.label}</span>
-                <CountBadge value={counts[filter.key]} />
+                <span className="fb-stab-count">{counts[filter.key]}</span>
               </button>
             ))}
           </nav>
@@ -217,9 +216,9 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         <div className="mb-3.5 at-desktop">
           <div className="flex items-center justify-between">
             <h2 className="fb-section-heading">Available libraries</h2>
-            <CountRange>
-              {formatCount(filteredLibraries.length)} {filteredLibraries.length === 1 ? "library" : "libraries"}
-            </CountRange>
+            <span className="text-xs text-[var(--muted)]">
+              {filteredLibraries.length} {filteredLibraries.length === 1 ? "library" : "libraries"}
+            </span>
           </div>
         </div>
         <div className="grid gap-3.5 lg:grid-cols-2">
@@ -348,10 +347,7 @@ function HubCard({
                 <span className="text-[var(--muted)]"> · {sourceKinds.join(", ")}</span>
               ) : null}
               {remainingSources > 0 ? (
-                <span className="text-[var(--muted)]">
-                  {" "}
-                  · <CountMeta label="more sources" value={remainingSources} />
-                </span>
+                <span className="text-[var(--muted)]"> · +{remainingSources} more</span>
               ) : null}
             </div>
             <span
@@ -380,9 +376,7 @@ function HubCard({
             ))}
             {library.itemCount > library.items.length ? (
               <li className="pt-1 text-[11.5px] italic leading-snug text-[var(--muted)]">
-                <CountRange>
-                  Showing {formatCount(library.items.length)} of {formatCount(library.itemCount)} sources
-                </CountRange>
+                Showing the first {library.items.length} of {library.itemCount} sources.
               </li>
             ) : null}
           </ul>
@@ -390,9 +384,22 @@ function HubCard({
       ) : null}
 
       <div className="flex flex-wrap items-center gap-4 border-t border-[var(--line)] pt-3 text-[11.5px] font-semibold text-[var(--muted)]">
-        <CountMeta label={library.itemCount === 1 ? "source" : "sources"} value={library.itemCount} />
-        <CountMeta label={library.importCount === 1 ? "import" : "imports"} value={library.importCount} />
-        <CountMeta label={library.viewCount === 1 ? "view" : "views"} value={library.viewCount} />
+        <span>
+          <span className="mr-1 font-bold text-[var(--ink)]">{library.itemCount}</span>
+          sources
+        </span>
+        <span>
+          <span className="mr-1 font-bold text-[var(--ink)]">
+            {library.importCount.toLocaleString()}
+          </span>
+          imports
+        </span>
+        <span>
+          <span className="mr-1 font-bold text-[var(--ink)]">
+            {library.viewCount.toLocaleString()}
+          </span>
+          views
+        </span>
       </div>
     </article>
   );

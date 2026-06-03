@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { ArrowRight, ChevronDown } from "lucide-react";
-import { CountBadge } from "@/components/Count";
 import { PostCard, type PostCardPost } from "@/components/PostCard";
 import {
   parseDigest,
@@ -76,7 +75,7 @@ export function DigestContent({
           {doc.sections.map((s) => (
             <a key={s.id} className="digest-contents-chip" href={`#${s.id}`}>
               <span className="truncate">{s.heading || "Updates"}</span>
-              <CountBadge value={s.postCount} />
+              <span className="digest-contents-count">{s.postCount}</span>
             </a>
           ))}
         </nav>
@@ -154,7 +153,7 @@ function SectionBlock({
       <summary className="digest-section-summary">
         <ChevronDown aria-hidden="true" className="digest-section-chevron" />
         <h3 className="digest-section-heading">{section.heading}</h3>
-        {showCount ? <CountBadge value={section.postCount} /> : null}
+        {showCount ? <span className="digest-section-count">{section.postCount}</span> : null}
       </summary>
       {body}
     </details>

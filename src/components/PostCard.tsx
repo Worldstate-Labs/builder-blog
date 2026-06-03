@@ -4,7 +4,6 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import { ExternalLink, FileText } from "lucide-react";
-import { CountMeta } from "@/components/Count";
 import { SourceBadge } from "@/components/SourceBadge";
 import { FetchMethodPopover } from "@/components/FetchMethodPopover";
 import { RecommendationReasonsPopover } from "@/components/RecommendationReasonsPopover";
@@ -136,10 +135,7 @@ export function PostCard({
             <>
               <span className="post-meta-dot" aria-hidden="true">·</span>
               <span title="Same post available via other libraries / channels">
-                <CountMeta
-                  label={post.alternateChannelCount === 1 ? "additional channel" : "additional channels"}
-                  value={post.alternateChannelCount}
-                />
+                +{post.alternateChannelCount} channel{post.alternateChannelCount === 1 ? "" : "s"}
               </span>
             </>
           ) : null}

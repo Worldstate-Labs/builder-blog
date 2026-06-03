@@ -10,7 +10,6 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { CountBadge, CountRange, formatCount } from "@/components/Count";
 import { SearchForm, type SearchTypeFilter } from "@/components/SearchForm";
 import { getCurrentSession } from "@/lib/auth";
 import { searchUserLibrary } from "@/lib/user-search";
@@ -317,11 +316,9 @@ async function SearchResultsSection({
           {hasQuery ? (
             <>
               <div className="search-meta-row">
-                <CountRange>
-                  About {formatCount(filteredResults.length)} result
-                  {filteredResults.length === 1 ? "" : "s"} for{" "}
-                  <span>{activeQuery}</span>
-                </CountRange>
+                About {filteredResults.length} result
+                {filteredResults.length === 1 ? "" : "s"} for{" "}
+                <span>{activeQuery}</span>.
               </div>
               {isShowingCorrectedResults && correctedQuery ? (
                 <div className="search-did-you-mean">
@@ -356,9 +353,9 @@ async function SearchResultsSection({
                 />
               </details>
               <div className="search-tools-row">
-                <CountRange>
-                  Page {formatCount(currentPage)} of {formatCount(pageCount)}
-                </CountRange>
+                <span>
+                  Page {currentPage} of {pageCount}
+                </span>
               </div>
               <div className="search-results-list">
                 {visibleResults.map((result) => (
@@ -617,7 +614,7 @@ function TypeTab({
       href={href}
     >
       <span>{label}</span>
-      {typeof count === "number" ? <CountBadge value={count} /> : null}
+      {typeof count === "number" ? <span className="fb-stab-count">{count}</span> : null}
     </Link>
   );
 }
