@@ -606,6 +606,7 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   const digestDetails = source("src/components/DigestDetails.tsx");
   const digestRoute = source("src/app/api/digests/[digestId]/route.ts");
   const digestPipelineVisibilityToggle = source("src/components/DigestPipelineVisibilityToggle.tsx");
+  const globals = source("src/app/globals.css");
 
   assert.match(dashboardPage, /digestPickerSize/);
   assert.match(dashboardPage, /digest\?: string \| string\[\]/);
@@ -624,6 +625,9 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(digestDetails, /digest-headline-summary/);
   assert.match(digestDetails, /digest-headline-action/);
   assert.match(digestDetails, /item-headline-preview/);
+  assert.match(globals, /\.digest-headline-text\s*{[\s\S]*max-width:\s*var\(--measure\)/);
+  assert.match(globals, /\.digest-headline-loading span:first-child\s*{[\s\S]*max-width:\s*var\(--skeleton-title-max\)/);
+  assert.match(globals, /\.digest-headline-loading span:last-child\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);
   assert.match(digestDetails, /digestPreviewFromContent/);
   assert.match(digestDetails, /isLatest/);
   assert.match(digestDetails, /showContents=\{false\}/);

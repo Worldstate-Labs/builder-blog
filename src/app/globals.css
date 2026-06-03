@@ -1590,6 +1590,7 @@ svg.lucide {
   font-size: 1rem;
   line-height: 1.62;
   margin: 0;
+  max-width: var(--measure);
 }
 
 .digest-headline-loading {
@@ -1605,11 +1606,11 @@ svg.lucide {
 }
 
 .digest-headline-loading span:first-child {
-  max-width: 30rem;
+  max-width: var(--skeleton-title-max);
 }
 
 .digest-headline-loading span:last-child {
-  max-width: 20rem;
+  max-width: var(--skeleton-copy-max);
 }
 
 @media (max-width: 720px) {
