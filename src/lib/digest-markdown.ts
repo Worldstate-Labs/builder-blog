@@ -2,7 +2,7 @@
 // agent's structured JSON output. A small bespoke parser (rather than a general
 // markdown lib) lets us treat the digest conventions as first-class:
 //
-//   ## <section>        a source-type section (官方博客 / 播客 / Blogs / …)
+//   ## <section>        a source-type section (Blog / Podcast RSS / YouTube / …)
 //   ### <source>        an entity within the section (anthropic.com, LatentSpacePod)
 //   **<title>**         a post title
 //   <paragraphs>        the summary, possibly with inline **bold** / [text](url)

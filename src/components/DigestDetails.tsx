@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, Loader2 } from "lucide-react";
+import { CountBadge, CountMeta } from "@/components/Count";
 import { DigestContent, type DigestSourceLink } from "@/components/DigestContent";
 import { useHydrated } from "@/components/ThemeToggle";
 import { parseDigest } from "@/lib/digest-markdown";
@@ -114,7 +115,7 @@ export function DigestDetails({
               {todaySections.map((section) => (
                 <a key={section.id} className="digest-contents-chip" href={`#${section.id}`}>
                   <span className="truncate">{section.label}</span>
-                  <span className="digest-contents-count">{section.count}</span>
+                  <CountBadge value={section.count} />
                 </a>
               ))}
             </div>
@@ -148,9 +149,8 @@ export function DigestDetails({
           <span className="min-w-0">
             <span className="item-kicker">
               <span>{formatDateTime(digest.createdAt, hydrated)}</span>
-              <span>
-                {digest.itemCount} items · {digest.language}
-              </span>
+              <CountMeta label={digest.itemCount === 1 ? "item" : "items"} value={digest.itemCount} />
+              <span>{digest.language}</span>
             </span>
             <span className="item-title">{digest.title}</span>
             {headerHeadline ? (

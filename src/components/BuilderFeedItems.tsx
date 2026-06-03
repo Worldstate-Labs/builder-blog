@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { CountMeta } from "@/components/Count";
 import { PostCard } from "@/components/PostCard";
 
 type BuilderSummary = {
@@ -83,9 +84,10 @@ export function BuilderFeedItems({
     >
       <summary>
         <span>Posts</span>
-        <span className="text-[var(--muted)]">
-          {items ? `${items.length} shown` : `${totalCount} saved`}
-        </span>
+        <CountMeta
+          label={items ? "loaded" : "summarized"}
+          value={items ? items.length : totalCount}
+        />
       </summary>
       <div className="builder-post-list">
         {isLoading ? (

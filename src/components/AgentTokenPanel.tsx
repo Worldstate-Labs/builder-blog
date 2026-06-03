@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound, Plus } from "lucide-react";
+import { CountBadge } from "@/components/Count";
 
 export type AgentTokenListItem = {
   id: string;
@@ -261,7 +262,14 @@ export function AgentTokenPanel({
             onClick={() => setShowAllTokens((current) => !current)}
             type="button"
           >
-            {showAllTokens ? "See less" : `See more (${hiddenActiveCount})`}
+            {showAllTokens ? (
+              "See less"
+            ) : (
+              <span className="inline-flex items-center gap-2">
+                See more
+                <CountBadge value={hiddenActiveCount} />
+              </span>
+            )}
           </button>
         ) : null}
       </div>

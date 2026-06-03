@@ -59,7 +59,7 @@ function sourceDisplayForType(sourceType: string | null | undefined) {
     blog: "Blog",
     podcast: "Podcast RSS",
     website: "Website",
-    x: "X",
+    x: "X/Twitter",
     youtube: "YouTube",
   };
   return {

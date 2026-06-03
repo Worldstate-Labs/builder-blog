@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { AdminDigestConfigForm } from "@/components/AdminDigestConfigForm";
 import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
 import { AgentTokenPanel } from "@/components/AgentTokenPanel";
+import { CountChip } from "@/components/Count";
 import {
   CommonFetchRulesForm,
   CommonSummaryRulesForm,
@@ -75,7 +76,10 @@ async function SourceTypeConfigSection({
               How source content is fetched, filtered, and summarized into per-post summaries.
             </p>
           </div>
-          <span className="fb-kind-pill">{sourceConfigs.length} source types</span>
+          <CountChip
+            label={sourceConfigs.length === 1 ? "source type" : "source types"}
+            value={sourceConfigs.length}
+          />
         </summary>
         <div className="settings-rules-body mt-4">
           {isAdmin ? (

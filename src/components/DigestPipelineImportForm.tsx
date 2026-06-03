@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { CheckCircle2, Download, Radio, Trash2 } from "lucide-react";
+import { CountMeta } from "@/components/Count";
 
 export type HubDigestPipeline = {
   id: string;
@@ -214,25 +215,18 @@ function DigestPipelineCard({
                 : "No digests yet"}
             </div>
             <div className="mt-1 text-xs">
-              {pipeline.digestCount} saved {pipeline.digestCount === 1 ? "digest" : "digests"}
+              <CountMeta
+                label={pipeline.digestCount === 1 ? "saved digest" : "saved digests"}
+                value={pipeline.digestCount}
+              />
             </div>
           </div>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-4 border-t border-[var(--line)] pt-3 text-[11.5px] font-semibold text-[var(--muted)]">
-        <span>
-          <span className="mr-1 font-bold text-[var(--ink)]">
-            {pipeline.importCount.toLocaleString()}
-          </span>
-          imports
-        </span>
-        <span>
-          <span className="mr-1 font-bold text-[var(--ink)]">
-            {pipeline.viewCount.toLocaleString()}
-          </span>
-          views
-        </span>
+        <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
+        <CountMeta label={pipeline.viewCount === 1 ? "view" : "views"} value={pipeline.viewCount} />
       </div>
     </article>
   );

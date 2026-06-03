@@ -499,7 +499,7 @@ test("ready fetch tasks carry embedded source-specific single-post prompts", asy
   const sources = {
     x: {
       id: "x",
-      label: "X",
+      label: "X/Twitter",
       summaryPrompt: {
         body: "tweet prompt body",
         style: "x_twitter",
@@ -625,7 +625,7 @@ test("ready fetch tasks carry embedded source-specific single-post prompts", asy
     assert.match(task.summaryInstructions.prompt, /Use task\.item\.body as the primary content/);
     assert.match(task.summaryInstructions.prompt, /Source-specific rules \(/);
   }
-  assert.match(tasks[0].summaryInstructions.prompt, /Source-specific rules \(X\):/);
+  assert.match(tasks[0].summaryInstructions.prompt, /Source-specific rules \(X\/Twitter\):/);
   assert.match(tasks[0].summaryInstructions.prompt, /tweet prompt body/);
   assert.match(tasks[1].summaryInstructions.prompt, /Source-specific rules \(YouTube\):/);
   assert.match(tasks[1].summaryInstructions.prompt, /podcast prompt body/);
@@ -1026,6 +1026,7 @@ test("render-digest neutralizes structural markdown inside agent summary nodes",
 
   const doc = parseDigest(rendered.markdown);
   assert.equal(doc.sections.length, 1);
+  assert.equal(doc.sections[0].heading, "Blog");
   assert.equal(doc.postCount, 1);
   assert.equal(doc.sections[0].groups.length, 1);
   assert.equal(doc.sections[0].groups[0].summary.length, 3);
@@ -1035,11 +1036,29 @@ test("render-digest neutralizes structural markdown inside agent summary nodes",
   assert.doesNotMatch(rendered.markdown, /^\*\*Fake title\*\*$/m);
 });
 
+test("render-digest uses source type labels for section headings", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const rendered = cli.renderDigestMarkdown(
+    { ...digestRenderContext(), language: "zh" },
+    {
+      headlineSummary: "中文 headline。",
+      sourceSummaries: [],
+      postSummaries: [{ feedItemId: "feed_1", summary: "中文 summary。" }],
+    },
+  );
+
+  assert.match(rendered.markdown, /^## Blog$/m);
+  assert.doesNotMatch(rendered.markdown, /^## 官方博客$/m);
+});
+
 function digestRenderContext() {
   return {
     generatedAt: "2026-06-03T12:00:00.000Z",
     language: "English",
     digest: { order: ["blog"] },
+    sources: {
+      blog: { id: "blog", label: "Blog" },
+    },
     subscriptionEntities: [{ id: "entity_1", name: "Example Source" }],
     items: [
       {

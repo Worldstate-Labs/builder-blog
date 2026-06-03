@@ -2871,23 +2871,26 @@ function genericContentQuality(text, { title = "", description = "", standards }
 
 const DEFAULT_DIGEST_SOURCE_ORDER = ["x", "blog", "youtube", "podcast", "website"];
 
-function digestSectionLabel(sourceType, language = "zh") {
+function digestSectionLabel(sourceType, context = {}) {
+  const sourceLabel = stringOrNull(context?.sources?.[sourceType]?.label);
+  if (sourceLabel) return sourceLabel;
+  const language = context?.language || "zh";
   const lang = String(language || "").toLowerCase();
   const zh = lang.startsWith("zh") || lang.includes("chinese") || lang.includes("中文");
   const labels = zh
     ? {
-        x: "X / Twitter",
-        blog: "官方博客",
-        youtube: "视频",
-        podcast: "播客",
-        website: "网站",
+        x: "X/Twitter",
+        blog: "Blog",
+        youtube: "YouTube",
+        podcast: "Podcast RSS",
+        website: "Website",
       }
     : {
-        x: "X / Twitter",
-        blog: "Official Blogs",
-        youtube: "Videos",
-        podcast: "Podcasts",
-        website: "Websites",
+        x: "X/Twitter",
+        blog: "Blog",
+        youtube: "YouTube",
+        podcast: "Podcast RSS",
+        website: "Website",
       };
   return labels[sourceType] ?? sourceType;
 }
@@ -3040,7 +3043,6 @@ function postSummaryForItem(item, postSummaries) {
 export function renderDigestMarkdown(context, agentOutput = {}) {
   const items = Array.isArray(context?.items) ? context.items : [];
   const headlineSummary = stringOrNull(agentOutput?.headlineSummary) || "";
-  const language = context?.language || "zh";
   if (items.length === 0) {
     if (!headlineSummary) {
       throw new Error("No digest items: agent output must include headlineSummary in context.language.");
@@ -3078,7 +3080,7 @@ export function renderDigestMarkdown(context, agentOutput = {}) {
     "",
   ];
   for (const [sourceType, groups] of sectionEntries) {
-    lines.push(`## ${digestSectionLabel(sourceType, language)}`, "");
+    lines.push(`## ${digestSectionLabel(sourceType, context)}`, "");
     const groupEntries = [...groups.values()].sort((a, b) => a.source.localeCompare(b.source));
     for (const group of groupEntries) {
       lines.push(`### ${markdownLine(group.source, "Unknown source")}`);

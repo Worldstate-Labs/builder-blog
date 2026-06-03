@@ -6,6 +6,7 @@ import type { DigestSourceLink } from "@/components/DigestContent";
 import { DigestLogPanel } from "@/components/DigestLogPanel";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
 import { DigestPipelineVisibilityToggle } from "@/components/DigestPipelineVisibilityToggle";
+import { CountRange, formatCount } from "@/components/Count";
 import {
   getDigestRuns,
   serializeDigestCronJob,
@@ -351,9 +352,9 @@ function AiDigestFeed({
           <section id="digest-archive" className="ai-digest-section scroll-mt-24">
             <div className="ai-digest-section-head">
               <h3 className="fb-section-label m-0">Archived digests</h3>
-              <span className="fb-chip">
-                Showing {visibleStart}-{visibleEnd} of {archiveCount}
-              </span>
+              <CountRange>
+                Showing {formatCount(visibleStart)}-{formatCount(visibleEnd)} of {formatCount(archiveCount)}
+              </CountRange>
             </div>
             {/* One expandable disclosure per archived digest, on every viewport.
                 (The old mobile variant linked to #id anchors that lived only in the
