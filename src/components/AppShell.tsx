@@ -25,15 +25,18 @@ export function AppShell({
   return (
     <div className="app-frame min-h-screen bg-[var(--paper)] text-[var(--ink)]">
       <header className="fb-top hidden lg:flex">
-        <Link href="/dashboard" className="fb-brand">
-          <BrandMark />
-          <span className="fb-brand-name">FollowBrief</span>
-        </Link>
-        <div className="hidden flex-1 min-w-0 md:block">
-          <SearchForm query="" variant="header" />
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <UserMenu compact isAdmin={isAdmin} session={session} />
+        <div className="fb-top-inner">
+          <Link href="/dashboard" className="fb-brand">
+            <BrandMark />
+            <span className="fb-brand-name">FollowBrief</span>
+          </Link>
+          <AppNav desktopLayout="bar" items={nav} mode="desktop" />
+          <div className="hidden flex-1 min-w-0 md:block">
+            <SearchForm query="" variant="header" />
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <UserMenu compact isAdmin={isAdmin} session={session} />
+          </div>
         </div>
       </header>
 
@@ -54,10 +57,7 @@ export function AppShell({
       </header>
 
       <div className="app-body">
-        <aside className="fb-side hidden lg:flex">
-          <AppNav items={nav} mode="desktop" />
-        </aside>
-        <main className="flex min-w-0 flex-1 flex-col">
+        <main className="app-main">
           {children}
           <AppNav items={nav} mode="mobile" />
         </main>

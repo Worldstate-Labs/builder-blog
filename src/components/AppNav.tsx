@@ -21,21 +21,27 @@ const icons: Record<AppNavItem["icon"], ComponentType<{ className?: string }>> =
 };
 
 export function AppNav({
+  desktopLayout = "rail",
   items,
   mobileItems,
   mode = "both",
 }: {
+  desktopLayout?: "bar" | "rail";
   items: AppNavItem[];
   mobileItems?: AppNavItem[];
   mode?: "desktop" | "mobile" | "both";
 }) {
   const pathname = usePathname();
   const mobileNavItems = mobileItems ?? items;
+  const desktopClassName =
+    desktopLayout === "bar"
+      ? "fb-nav-list fb-nav-list-bar hidden lg:flex"
+      : "fb-nav-list fb-nav-list-rail hidden lg:flex";
 
   return (
     <>
       {mode !== "mobile" ? (
-        <nav className="hidden flex-col gap-1 lg:flex" aria-label="Primary">
+        <nav className={desktopClassName} aria-label="Primary">
           {items.map((item) => {
             const Icon = icons[item.icon];
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);

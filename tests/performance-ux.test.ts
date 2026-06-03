@@ -108,7 +108,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(globals, /\.user-menu-popover/);
 });
 
-test("desktop shell uses home rail, header search, and merged home feeds", () => {
+test("desktop shell uses centered top navigation and merged home feeds", () => {
   const appShell = source("src/components/AppShell.tsx");
   const appNav = source("src/components/AppNav.tsx");
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
@@ -126,8 +126,15 @@ test("desktop shell uses home rail, header search, and merged home feeds", () =>
   assert.doesNotMatch(appNav, /recommendations/);
   assert.match(appNav, /"search"/);
   assert.match(appShell, /className="fb-top /);
+  assert.match(appShell, /className="fb-top-inner"/);
+  assert.match(appShell, /desktopLayout="bar"/);
+  assert.match(appShell, /className="app-main"/);
+  assert.doesNotMatch(appShell, /<aside/);
   assert.match(appShell, /<SearchForm query="" variant="header" \/>/);
   assert.match(searchForm, /name="q"/);
+  assert.match(appNav, /desktopLayout = "rail"/);
+  assert.match(appNav, /fb-nav-list-bar/);
+  assert.match(appNav, /fb-nav-list-rail/);
   assert.match(dashboardPage, /DashboardHomeTabs/);
   assert.match(dashboardTabs, /role="tablist"/);
   assert.match(globals, /\.fb-segmented-tabs/);
@@ -156,8 +163,11 @@ test("desktop shell uses home rail, header search, and merged home feeds", () =>
   assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
   assert.match(digestDetails, /mode === "today"/);
   assert.match(recommendationsPage, /redirect\("\/dashboard\?tab=subscription"\)/);
-  assert.match(globals, /\.home-layout/);
-  assert.match(globals, /\.home-rail/);
+  assert.match(globals, /\.page-pad\s*{[\s\S]*margin-inline:\s*auto/);
+  assert.match(globals, /\.page-pad\s*{[\s\S]*width:\s*min\(100%,\s*68rem\)/);
+  assert.match(globals, /\.fb-top-inner\s*{[\s\S]*width:\s*min\(100%,\s*68rem\)/);
+  assert.doesNotMatch(globals, /\.home-rail/);
+  assert.doesNotMatch(globals, /\.fb-rail/);
 });
 
 test("dashboard defers heavy recommendation timeline work to a client island", () => {
