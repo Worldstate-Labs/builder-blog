@@ -787,6 +787,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderLibraryList, /\{builder\.feedItemCount\}\s*items/);
   assert.doesNotMatch(builderLibraryList, /No posts yet/);
   assert.doesNotMatch(builderLibraryList, /builder-library-stats/);
+  assert.match(builderLibraryList, /className="builder-library-error"/);
+  assert.doesNotMatch(builderLibraryList, /mt-2 text-sm text-\[var\(--danger\)\]/);
   assert.doesNotMatch(builderLibraryList, /builder-posts-latest/);
   assert.doesNotMatch(builderLibraryList, /Latest \{formatCompactDate/);
   assert.match(buildersPage, /className="source-sync-skeleton-line"/);
@@ -848,6 +850,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.add-source-callout/);
   assert.match(globals, /\.source-sync-skeleton-line,[\s\S]*\.source-section-skeleton-card\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
   assert.match(globals, /\.source-stat-skeleton\s*{[\s\S]*border-radius:\s*999px/);
+  assert.match(globals, /\.builder-library-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.builder-post-loading-card\s*{[\s\S]*height:\s*4rem/);
   assert.match(globals, /\.builder-post-state\s*{[\s\S]*padding:\s*1rem/);
   assert.match(globals, /\.builder-post-state--error\s*{[\s\S]*color:\s*var\(--danger\)/);

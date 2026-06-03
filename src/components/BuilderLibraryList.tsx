@@ -307,7 +307,7 @@ function BuilderCard({
         </div>
       </div>
       {removeError ? (
-        <div className="mt-2 text-sm text-[var(--danger)]" role="status">
+        <div className="builder-library-error" role="status">
           {removeError}
         </div>
       ) : null}

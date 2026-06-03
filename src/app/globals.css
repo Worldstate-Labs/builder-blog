@@ -4625,6 +4625,13 @@ svg.lucide {
   gap: 0.35rem;
 }
 
+.builder-library-error {
+  color: var(--danger);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  margin-top: 0.5rem;
+}
+
 .builder-library-follow-toggle {
   align-items: center;
   border: 0;
