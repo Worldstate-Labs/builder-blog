@@ -130,7 +130,7 @@ export function RecommendationFeed({
   }, [exhausted, requestSnapshot]);
 
   return (
-    <section className={`recommendation-feed mt-6${mode === "favorites" ? " favorites-feed" : ""}`}>
+    <section className={`feed-content-stack recommendation-feed${mode === "favorites" ? " favorites-feed" : ""}`}>
       {mode === "following" ? (
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <button
@@ -167,7 +167,7 @@ export function RecommendationFeed({
           </section>
         ))}
       </div>
-      <div ref={mode === "following" ? loadMoreRef : null} className="mt-6 flex min-h-14 items-center justify-center">
+      <div ref={mode === "following" ? loadMoreRef : null} className="feed-load-more">
         {loadingDirection ? (
           <span className="status-chip">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />

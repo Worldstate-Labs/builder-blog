@@ -1074,6 +1074,20 @@ svg.lucide {
   min-width: 0;
 }
 
+.feed-content-stack {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  min-width: 0;
+}
+
+.feed-load-more {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 3.5rem;
+}
+
 .item-disclosure {
   min-width: 0;
 }

@@ -52,10 +52,12 @@ export function FavoritePostsSection() {
 
   if (status === "loading") {
     return (
-      <div className="item-list mt-6" aria-live="polite" aria-busy="true">
-        <div className="h-24 rounded-lg bg-black/10" />
-        <div className="h-24 rounded-lg bg-black/10" />
-        <span className="sr-only">Loading Favorite posts</span>
+      <div className="feed-content-stack">
+        <div className="item-list" aria-live="polite" aria-busy="true">
+          <div className="h-24 rounded-lg bg-black/10" />
+          <div className="h-24 rounded-lg bg-black/10" />
+          <span className="sr-only">Loading Favorite posts</span>
+        </div>
       </div>
     );
   }
@@ -92,16 +94,18 @@ function FavoritesMessage({
   tone?: "empty" | "error";
 }) {
   return (
-    <div className="empty-panel mt-6 border-dashed md:p-8" role={tone === "error" ? "alert" : undefined}>
-      <div className="flex items-start gap-3">
-        <Star className={`mt-1 h-5 w-5 ${tone === "error" ? "text-[var(--danger)]" : "text-[var(--accent)]"}`} />
-        <div>
-          <h2 className="text-lg font-semibold text-[var(--ink)]">{title}</h2>
-          {body ? (
-            <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
-              {body}
-            </p>
-          ) : null}
+    <div className="feed-content-stack">
+      <div className="empty-panel border-dashed md:p-8" role={tone === "error" ? "alert" : undefined}>
+        <div className="flex items-start gap-3">
+          <Star className={`mt-1 h-5 w-5 ${tone === "error" ? "text-[var(--danger)]" : "text-[var(--accent)]"}`} />
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--ink)]">{title}</h2>
+            {body ? (
+              <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
+                {body}
+              </p>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

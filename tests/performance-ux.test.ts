@@ -229,7 +229,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
 
 test("dashboard defers heavy recommendation timeline work to a client island", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
+  const favoritesSection = source("src/components/FavoritePostsSection.tsx");
   const followingSection = source("src/components/FollowingRecommendationSection.tsx");
+  const recommendationFeed = source("src/components/RecommendationFeed.tsx");
+  const globals = source("src/app/globals.css");
   const timelineRoute = source("src/app/api/recommendations/timeline/route.ts");
   const serializer = source("src/lib/recommendation-view-model.ts");
 
@@ -242,7 +245,16 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.doesNotMatch(followingSection, /followBriefDataChanged/);
   assert.doesNotMatch(followingSection, /contentSyncStateChanged/);
   assert.doesNotMatch(followingSection, /window\.addEventListener/);
-  assert.match(source("src/components/RecommendationFeed.tsx"), /Refresh/);
+  assert.match(recommendationFeed, /Refresh/);
+  assert.match(recommendationFeed, /feed-content-stack recommendation-feed/);
+  assert.match(recommendationFeed, /className="feed-load-more"/);
+  assert.match(favoritesSection, /feed-content-stack/);
+  assert.match(followingSection, /feed-content-stack/);
+  assert.doesNotMatch(recommendationFeed, /recommendation-feed mt-6/);
+  assert.doesNotMatch(recommendationFeed, /mt-6 flex min-h-14/);
+  assert.doesNotMatch(favoritesSection, /item-list mt-6|empty-panel mt-6/);
+  assert.doesNotMatch(followingSection, /item-list mt-6|empty-panel mt-6/);
+  assert.match(globals, /\.feed-content-stack\s*{[\s\S]*margin-top:\s*1\.5rem/);
   assert.match(followingSection, /Loading Following recommendations/);
   assert.match(followingSection, /aria-live="polite"/);
   assert.match(timelineRoute, /export async function GET/);
