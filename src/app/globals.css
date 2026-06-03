@@ -5570,6 +5570,8 @@ svg.lucide {
 }
 
 .settings-rules {
+  display: grid;
+  gap: 1rem;
   max-width: var(--workspace-max);
 }
 
@@ -5584,6 +5586,8 @@ svg.lucide {
 }
 
 .settings-access-grid {
+  display: grid;
+  gap: 1.25rem;
   max-width: 52rem;
 }
 
@@ -5592,11 +5596,21 @@ svg.lucide {
   padding-bottom: 0.875rem;
 }
 
+.settings-rules-title {
+  margin-top: 0.25rem;
+}
+
 .settings-rules-panel {
   padding: 0;
 }
 
 .settings-rules-summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
   list-style: none;
   padding: 1rem 1.125rem;
 }
@@ -5610,13 +5624,27 @@ svg.lucide {
   font-weight: 800;
 }
 
-.settings-rules-summary-copy p {
+.settings-rules-summary-desc {
+  color: var(--muted-strong);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-top: 0.25rem;
   max-width: 44rem;
 }
 
 .settings-rules-body {
   border-top: 1px solid color-mix(in oklch, var(--line) 80%, transparent);
   padding: 1rem 1.125rem 1.1rem;
+}
+
+.settings-rules-skeleton {
+  gap: 0.65rem;
+}
+
+.settings-rules-skeleton-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.65rem;
 }
 
 .settings-source-type-manager {
@@ -5653,6 +5681,10 @@ svg.lucide {
   display: grid;
   gap: 1.25rem;
   padding-top: 0.15rem;
+}
+
+.settings-config-form--common {
+  margin-bottom: 1rem;
 }
 
 .settings-config-form .settings-section {

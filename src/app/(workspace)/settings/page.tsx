@@ -32,7 +32,7 @@ export default async function SettingsPage() {
       </section>
 
       <div className="settings-workspace">
-        <div className="settings-access-grid grid gap-5">
+        <div className="settings-access-grid">
           <Suspense fallback={<AgentTokenPanelSkeleton />}>
             <AgentTokenSlot userId={userId} />
           </Suspense>
@@ -64,17 +64,17 @@ async function SourceTypeConfigSection({
     contentQuality: defaultSourceConfigById.get(config.sourceId)?.contentQuality ?? config.contentQuality,
   }));
   return (
-    <section className="settings-rules grid gap-4">
+    <section className="settings-rules">
       <header className="settings-rules-head">
         <p className="fb-section-label">Advanced</p>
-        <h2 className="fb-section-heading mt-1">Source and digest rules</h2>
+        <h2 className="settings-rules-title fb-section-heading">Source and digest rules</h2>
       </header>
 
       <details className="settings-rules-panel fb-panel">
-        <summary className="settings-rules-summary flex cursor-pointer flex-wrap items-center justify-between gap-3">
+        <summary className="settings-rules-summary">
           <div className="settings-rules-summary-copy">
             <h3 className="fb-section-heading">Source update rules</h3>
-            <p className="mt-1 text-sm text-[var(--muted-strong)]">
+            <p className="settings-rules-summary-desc">
               How source content is fetched, filtered, and summarized into per-post summaries.
             </p>
           </div>
@@ -83,9 +83,9 @@ async function SourceTypeConfigSection({
             value={sourceConfigs.length}
           />
         </summary>
-        <div className="settings-rules-body mt-4">
+        <div className="settings-rules-body">
           {isAdmin ? (
-            <div className="settings-config-form mb-4 grid gap-4">
+            <div className="settings-config-form settings-config-form--common">
               <CommonFetchRulesForm
                 initialValue={digestConfig.commonFetchRules}
                 updatedAt={digestConfig.updatedAt.toISOString()}
@@ -114,16 +114,16 @@ async function SourceTypeConfigSection({
       </details>
 
       <details className="settings-rules-panel fb-panel">
-        <summary className="settings-rules-summary flex cursor-pointer flex-wrap items-center justify-between gap-3">
+        <summary className="settings-rules-summary">
           <div className="settings-rules-summary-copy">
             <h3 className="fb-section-heading">AI Digest rules</h3>
-            <p className="mt-1 text-sm text-[var(--muted-strong)]">
+            <p className="settings-rules-summary-desc">
               How digest headlines, source notes, and translated post summaries are written.
             </p>
           </div>
           <span className="fb-kind-pill">Digest composition</span>
         </summary>
-        <div className="settings-rules-body mt-4">
+        <div className="settings-rules-body">
           <AdminDigestConfigForm
             initialConfig={{
               id: digestConfig.userId,
@@ -142,10 +142,10 @@ async function SourceTypeConfigSection({
 
 function SourceTypeConfigSkeleton() {
   return (
-    <section className="settings-rules" aria-busy="true" aria-live="polite">
+    <section className="settings-rules settings-rules-skeleton" aria-busy="true" aria-live="polite">
       <div className="h-3 w-40 animate-pulse rounded bg-[var(--paper-strong)]" />
-      <div className="mt-2 h-5 w-64 animate-pulse rounded bg-[var(--paper-strong)]" />
-      <div className="mt-5 grid gap-3">
+      <div className="h-5 w-64 animate-pulse rounded bg-[var(--paper-strong)]" />
+      <div className="settings-rules-skeleton-list">
         <div className="h-24 animate-pulse rounded bg-[var(--paper-strong)]" />
         <div className="h-24 animate-pulse rounded bg-[var(--paper-strong)]" />
         <div className="h-24 animate-pulse rounded bg-[var(--paper-strong)]" />
