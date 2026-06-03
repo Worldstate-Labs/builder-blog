@@ -6569,7 +6569,7 @@ svg.lucide {
   color: var(--muted-strong) !important;
   font-size: 0.8125rem;
   line-height: 1.45;
-  max-width: var(--settings-max);
+  max-width: var(--copy-max);
 }
 
 .settings-config-form .settings-section-body {
@@ -6630,6 +6630,7 @@ svg.lucide {
   font-size: 0.75rem;
   line-height: 1.45;
   margin-top: 0.45rem;
+  max-width: var(--copy-max);
 }
 
 .settings-optional-badge {

@@ -1467,7 +1467,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.settings-rules\s*{[\s\S]*max-width:\s*var\(--settings-max\)/);
   assert.match(globals, /\.settings-rules\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.settings-rules\s*{[\s\S]*width:\s*100%/);
-  assert.match(globals, /\.settings-config-form \.settings-section-desc\s*{[\s\S]*max-width:\s*var\(--settings-max\)/);
+  assert.match(globals, /\.settings-config-form \.settings-section-desc\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
+  assert.match(globals, /\.settings-config-form \.settings-field-help\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(globals, /\.access-keys-desc\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(globals, /\.settings-rules-summary-desc\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.doesNotMatch(globals, /\.settings-rules-head/);
