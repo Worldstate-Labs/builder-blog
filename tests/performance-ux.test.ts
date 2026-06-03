@@ -759,6 +759,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /@\/components\/EmptyState/);
   assert.match(searchPage, /@\/components\/PageHeader/);
   assert.match(searchPage, /searchPageSize/);
+  assert.match(searchPage, /emptySearchCopy = "Search sources, posts, saved items, and digests\."/);
+  assert.doesNotMatch(searchPage, /Enter a query to search across your sources/);
   assert.match(searchPage, /relatedSearchSuggestions/);
   assert.match(searchPage, /didYouMeanSearch/);
   assert.match(searchPage, /shouldUseCorrectedSearch/);
@@ -797,6 +799,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(formSubmitButton, /absolute inset-0 inline-flex|inline-flex items-center justify-center gap-2/);
   assert.match(searchPage, /Search instead for/);
   assert.match(searchPage, /isShowingCorrectedResults/);
+  assert.match(searchPage, /heading="Try searching"/);
+  assert.match(searchPage, /heading = "Related searches"/);
   assert.match(searchPage, /Advanced search/);
   assert.match(searchPage, /"model \* pricing"/);
   assert.match(searchPage, /-"pricing page"/);

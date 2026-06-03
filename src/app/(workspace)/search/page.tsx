@@ -46,6 +46,7 @@ type SearchParams = Promise<{
 }>;
 
 const searchPageSize = 10;
+const emptySearchCopy = "Search sources, posts, saved items, and digests.";
 const defaultSuggestions = [
   "model pricing",
   "open source models",
@@ -396,10 +397,15 @@ async function SearchResultsSection({
         </>
       ) : (
         <>
-          <SearchEmptyState>
-            Enter a query to search across your sources, saved items, and digest archive.
-          </SearchEmptyState>
-          <RelatedSearches query={query} searches={defaultSuggestions} mode={mode} sort={sort} time={time} />
+          <SearchEmptyState>{emptySearchCopy}</SearchEmptyState>
+          <RelatedSearches
+            heading="Try searching"
+            mode={mode}
+            query={query}
+            searches={defaultSuggestions}
+            sort={sort}
+            time={time}
+          />
           <details className="search-advanced-tools">
             <summary>Advanced syntax</summary>
             <AdvancedSearchTips mode={mode} sort={sort} time={time} />
@@ -445,10 +451,7 @@ function SearchResultsFallback({
           </div>
         </>
       ) : (
-        <SearchEmptyState>
-          Enter a query to search across your sources, saved items, and digest
-          archive.
-        </SearchEmptyState>
+        <SearchEmptyState>{emptySearchCopy}</SearchEmptyState>
       )}
     </section>
   );
@@ -731,12 +734,14 @@ function PageLink({
 }
 
 function RelatedSearches({
+  heading = "Related searches",
   mode,
   query,
   searches,
   sort,
   time,
 }: {
+  heading?: string;
   mode: SearchMode;
   query: string;
   searches: string[];
@@ -745,7 +750,7 @@ function RelatedSearches({
 }) {
   return (
     <section className="search-related" aria-label="Related searches">
-      <h2>Related searches</h2>
+      <h2>{heading}</h2>
       <div className="search-related-grid">
         {searches.map((search) => (
           <Link
