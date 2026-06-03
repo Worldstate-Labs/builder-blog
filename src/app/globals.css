@@ -4834,6 +4834,30 @@ svg.lucide {
   padding: 0.0625rem 0.375rem;
 }
 
+.skill-prompt-compact {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.skill-prompt-status {
+  margin-left: 0.5rem;
+  min-width: 0;
+}
+
+.skill-prompt-status-text {
+  color: var(--muted-strong);
+  font-size: 0.6875rem;
+  line-height: 1.35;
+}
+
+.skill-prompt-status-text.is-error {
+  color: var(--danger);
+}
+
 /* Shared modal frame used by the token picker and the per-row builder
    edit dialog. Both are centered, blur the page behind them, and pin
    their max height so the form scrolls inside the dialog. */
@@ -4864,6 +4888,10 @@ svg.lucide {
   display: grid;
   grid-template-rows: auto 1fr auto;
   max-height: 80vh;
+}
+
+.token-picker-form {
+  min-width: 0;
 }
 
 .builder-edit-dialog-form {

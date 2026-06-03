@@ -159,6 +159,16 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(agentTokenPanel, /timeZone:\s*"UTC"/);
   assert.match(fetchLogPanel, /startedAtLabel = hydrated \? formatRelative/);
   assert.match(skillPromptActions, /!\s*open \? null/);
+  assert.match(skillPromptActions, /className=\{compactOnly \? "skill-prompt-compact" : "fb-skill"\}/);
+  assert.match(skillPromptActions, /className="skill-prompt-status"/);
+  assert.match(skillPromptActions, /className="skill-prompt-status-text"/);
+  assert.match(skillPromptActions, /className="skill-prompt-status-text is-error"/);
+  assert.match(skillPromptActions, /className="token-picker-form"/);
+  assert.doesNotMatch(skillPromptActions, /flex flex-wrap items-center justify-end gap-2|className="ml-2"|text-\[11px\] text-\[var\(--danger\)\]|text-\[11px\] text-\[var\(--muted-strong\)\]/);
+  assert.doesNotMatch(skillPromptActions, /className="grid"/);
+  assert.match(globals, /\.skill-prompt-compact\s*{[\s\S]*justify-content:\s*flex-end/);
+  assert.match(globals, /\.skill-prompt-status-text\.is-error\s*{[\s\S]*color:\s*var\(--danger\)/);
+  assert.match(globals, /\.token-picker-form\s*{[\s\S]*min-width:\s*0/);
   assert.match(digestDetails, /useHydrated/);
   // Timestamp formatting now lives in the shared settings field module; both
   // admin forms render UTC timestamps through it.

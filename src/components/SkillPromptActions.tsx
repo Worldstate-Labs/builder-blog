@@ -410,7 +410,7 @@ export function SkillPromptActions({
   }
 
   return (
-    <div className={compactOnly ? "flex flex-wrap items-center justify-end gap-2" : "fb-skill"}>
+    <div className={compactOnly ? "skill-prompt-compact" : "fb-skill"}>
       {!compactOnly ? (
         <div className="fb-skill-text">
           <span className="fb-section-label mr-2">{config.title}</span>
@@ -444,10 +444,10 @@ export function SkillPromptActions({
         </button>
       ) : null}
 
-      <span aria-live="polite" className="ml-2">
+      <span aria-live="polite" className="skill-prompt-status">
         {status ? (
           status.kind === "info" ? (
-            <span className="text-[11px] text-[var(--muted-strong)]">
+            <span className="skill-prompt-status-text">
               {status.text}
               {status.text.includes("Connect a local helper") ? (
                 <>
@@ -459,7 +459,7 @@ export function SkillPromptActions({
               ) : null}
             </span>
           ) : (
-            <span className="text-[11px] text-[var(--danger)]">{status.text}</span>
+            <span className="skill-prompt-status-text is-error">{status.text}</span>
           )
         ) : null}
       </span>
@@ -579,7 +579,7 @@ function TokenPickerDialog({
     >
       <form
         method="dialog"
-        className="grid"
+        className="token-picker-form"
         onSubmit={(e) => {
           e.preventDefault();
           void confirm();
@@ -785,7 +785,7 @@ function CronConfigDialog({
     >
       <form
         method="dialog"
-        className="grid"
+        className="token-picker-form"
         onSubmit={(e) => {
           e.preventDefault();
           void confirm();
