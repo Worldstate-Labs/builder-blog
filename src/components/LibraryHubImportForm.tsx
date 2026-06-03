@@ -277,7 +277,7 @@ function HubCard({
       Your library
     </span>
   ) : imported ? (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="hub-card-action-row">
       <span className="fb-chip success">
         <CheckCircle2 aria-hidden="true" />
         {pending === "import" ? "Importing" : "Imported"}
@@ -286,7 +286,7 @@ function HubCard({
         <button
           aria-busy={pending === "remove" && isPending}
           aria-label={`Remove ${library.name} from library`}
-          className="fb-btn ghost compact disabled:cursor-wait"
+          className="fb-btn ghost compact hub-card-action-button"
           disabled={pending !== null}
           onClick={() => onRemove(library.id)}
           type="button"
@@ -300,7 +300,7 @@ function HubCard({
     <button
       aria-busy={pending === "import" && isPending}
       aria-label={`Import ${library.name}`}
-      className="fb-btn dark compact disabled:cursor-wait"
+      className="fb-btn dark compact hub-card-action-button"
       disabled={pending !== null}
       onClick={() => onImport(library.id)}
       type="button"

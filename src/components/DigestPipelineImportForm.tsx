@@ -153,7 +153,7 @@ function DigestPipelineCard({
       Your digest
     </span>
   ) : imported ? (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="hub-card-action-row">
       <span className="fb-chip success">
         <CheckCircle2 aria-hidden="true" />
         {pending === "import" ? "Importing" : "Imported"}
@@ -162,7 +162,7 @@ function DigestPipelineCard({
         <button
           aria-busy={pending === "remove" && isPending}
           aria-label={`Remove ${pipeline.title} import`}
-          className="fb-btn ghost compact disabled:cursor-wait"
+          className="fb-btn ghost compact hub-card-action-button"
           disabled={pending !== null}
           onClick={() => onRemove(pipeline.id)}
           type="button"
@@ -176,7 +176,7 @@ function DigestPipelineCard({
     <button
       aria-busy={pending === "import" && isPending}
       aria-label={`Import ${pipeline.title}`}
-      className="fb-btn dark compact disabled:cursor-wait"
+      className="fb-btn dark compact hub-card-action-button"
       disabled={pending !== null}
       onClick={() => onImport(pipeline.id)}
       type="button"

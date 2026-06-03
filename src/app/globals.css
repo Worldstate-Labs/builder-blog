@@ -5814,6 +5814,17 @@ svg.lucide {
   justify-content: flex-end;
 }
 
+.hub-card-action-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.hub-card-action-button:disabled {
+  cursor: wait;
+}
+
 .fb-hub-title {
   color: var(--ink);
   font-size: 1.0625rem;
