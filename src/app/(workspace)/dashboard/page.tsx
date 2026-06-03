@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { type ComponentType } from "react";
-import { Archive, CheckCircle2, Clock3, Sparkles, Terminal, UsersRound } from "lucide-react";
+import { Terminal } from "lucide-react";
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
 import type { DigestSourceLink } from "@/components/DigestContent";
 import { DigestLogPanel } from "@/components/DigestLogPanel";
@@ -59,35 +58,18 @@ export default async function DashboardPage({
   const selectedTab = parseTab(firstParam(params.tab));
   const archivePage = Math.max(1, Number(firstParam(params.archivePage) ?? "1") || 1);
   const pipelineId = firstParam(params.pipeline);
-  const [aiDigest, homeStats] = await Promise.all([
-    AiDigestFeedSlot({ userId, archivePage, pipelineId }),
-    HomeStatsSlot({ userId }),
-  ]);
+  const aiDigest = await AiDigestFeedSlot({ userId, archivePage, pipelineId });
 
   return (
     <div className="page-pad">
       <h1 className="sr-only">Home</h1>
-      <section className="grid gap-9 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="min-w-0">
-          <DashboardHomeTabs
-            initialTab={selectedTab}
-            aiDigest={aiDigest}
-            favorites={<FavoritePostsSection />}
-            subscription={
-              <FollowingRecommendationSection />
-            }
-          />
-        </div>
-        <aside className="fb-rail at-desktop">
-          <div>
-            <h3>Status</h3>
-            {homeStats}
-          </div>
-          <Link className="fb-btn light compact" href="/builders">
-            <UsersRound aria-hidden="true" />
-            Manage sources
-          </Link>
-        </aside>
+      <section className="grid gap-9">
+        <DashboardHomeTabs
+          initialTab={selectedTab}
+          aiDigest={aiDigest}
+          favorites={<FavoritePostsSection />}
+          subscription={<FollowingRecommendationSection />}
+        />
       </section>
     </div>
   );
@@ -450,46 +432,6 @@ function DigestPipelineSelector({
         })}
       </div>
     </section>
-  );
-}
-
-async function HomeStatsSlot({ userId }: { userId: string }) {
-  const totalDigests = await prisma.digest.count({
-    where: { userId, itemCount: { gt: 0 } },
-  });
-  // The latest digest is the hero; the rest are archive entries.
-  const hasDigest = totalDigests > 0;
-  const archiveCount = Math.max(0, totalDigests - (hasDigest ? 1 : 0));
-  return (
-    <div className="grid gap-2">
-      <Stat
-        icon={hasDigest ? CheckCircle2 : Clock3}
-        label="Digest"
-        value={hasDigest ? "Updated" : "Waiting"}
-      />
-      <Stat icon={Sparkles} label="Following" value="Active" />
-      <Stat icon={Archive} label="Saved briefs" value={archiveCount} />
-    </div>
-  );
-}
-
-function Stat({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: ComponentType<{ className?: string }>;
-  label: string;
-  value: number | string;
-}) {
-  return (
-    <div className="fb-stat">
-      <Icon className="fb-stat-icon" aria-hidden="true" />
-      <div className="min-w-0">
-        <div className="fb-stat-value">{value}</div>
-        <div className="fb-stat-label">{label}</div>
-      </div>
-    </div>
   );
 }
 

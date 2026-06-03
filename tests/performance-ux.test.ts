@@ -145,7 +145,10 @@ test("desktop shell uses home rail, header search, and merged home feeds", () =>
   assert.match(dashboardTabs, /\{ id: "ai-digest", label: "Digest" \}[\s\S]*\{ id: "favorites", label: "Favorites" \}[\s\S]*\{ id: "subscription", label: "Following" \}/);
   assert.doesNotMatch(dashboardPage, /scope="subscription"/);
   assert.doesNotMatch(dashboardPage, /scope="for-you"/);
-  assert.match(dashboardPage, /Status/);
+  assert.doesNotMatch(dashboardPage, /<h3>Status<\/h3>/);
+  assert.doesNotMatch(dashboardPage, /HomeStatsSlot/);
+  assert.doesNotMatch(dashboardPage, /fb-rail/);
+  assert.doesNotMatch(dashboardPage, /Manage sources/);
   assert.doesNotMatch(dashboardPage, /Recent digest/);
   assert.match(dashboardPage, /Digest archive/);
   assert.match(dashboardPage, /FavoritePostsSection/);
