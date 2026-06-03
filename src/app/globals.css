@@ -6340,6 +6340,15 @@ svg.lucide {
   min-width: 0;
 }
 
+.builder-detail-page-head > div:first-child {
+  flex: 1 1 min(48rem, 100%);
+  min-width: 0;
+}
+
+.builder-detail-page-head > :last-child {
+  flex-shrink: 0;
+}
+
 .builder-detail-head-stack {
   display: grid;
   gap: 0.75rem;

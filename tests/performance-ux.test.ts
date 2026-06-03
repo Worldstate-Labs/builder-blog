@@ -273,6 +273,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
   assert.match(digestDetails, /mode === "today"/);
   assert.match(recommendationsPage, /redirect\("\/dashboard\?tab=subscription"\)/);
+  assert.match(builderDetailPage, /@\/components\/PageHeader/);
+  assert.match(builderDetailPage, /<PageHeader[\s\S]*className="builder-detail-page-head"[\s\S]*title=\{entity\.name\}/);
+  assert.doesNotMatch(builderDetailPage, /<header className="fb-page-head"/);
   assert.match(builderDetailPage, /className="builder-detail-workspace"/);
   assert.match(builderDetailPage, /className="builder-detail-head-stack"/);
   assert.match(builderDetailPage, /className="builder-detail-identity"/);
@@ -338,6 +341,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(globals, /\.ai-digest-empty-inner|\.ai-digest-empty-icon|\.ai-digest-empty-title|\.ai-digest-empty-desc/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.digest-source-list\s*{[\s\S]*flex-direction:\s*column/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*margin-top:\s*clamp/);
+  assert.match(globals, /\.builder-detail-page-head > div:first-child\s*{[\s\S]*flex:\s*1 1 min\(48rem,\s*100%\)/);
   assert.match(globals, /\.builder-detail-avatar\.fb-src-icon\s*{[\s\S]*height:\s*3\.5rem/);
   assert.match(globals, /\.builder-detail-channel-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto auto/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-detail-channel-row\s*{[\s\S]*grid-template-columns:\s*1fr/);

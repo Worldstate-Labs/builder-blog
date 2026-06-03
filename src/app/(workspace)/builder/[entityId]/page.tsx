@@ -10,6 +10,7 @@ import { BuilderDetailActions } from "@/components/BuilderDetailActions";
 import { ChannelPreferenceToggle } from "@/components/ChannelPreferenceToggle";
 import { CountMeta } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/PageHeader";
 import { RecentPostsList } from "@/components/RecentPostsList";
 import { SourceBadge } from "@/components/SourceBadge";
 import { SourceAvatar } from "@/components/SourceAvatar";
@@ -123,7 +124,19 @@ export default async function BuilderDetailPage({ params }: Params) {
 
   return (
     <div className="page-pad">
-      <header className="fb-page-head">
+      <PageHeader
+        actions={
+          <Suspense fallback={<BuilderActionsSkeleton />}>
+            <BuilderDetailActionsSlot
+              entityId={entityId}
+              userId={userId}
+              channelIds={channelIds}
+            />
+          </Suspense>
+        }
+        className="builder-detail-page-head"
+        title={entity.name}
+      >
         <div className="builder-detail-head-stack">
           <Link className="fb-btn light compact w-fit" href="/builders">
             Back to Sources
@@ -192,15 +205,8 @@ export default async function BuilderDetailPage({ params }: Params) {
               ) : null}
             </div>
           </div>
-          <Suspense fallback={<BuilderActionsSkeleton />}>
-            <BuilderDetailActionsSlot
-              entityId={entityId}
-              userId={userId}
-              channelIds={channelIds}
-            />
-          </Suspense>
         </div>
-      </header>
+      </PageHeader>
 
       <div className="builder-detail-workspace">
         <section className="builder-detail-section">
