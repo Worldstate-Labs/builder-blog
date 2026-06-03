@@ -364,6 +364,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.fb-page-head\s*{[\s\S]*--page-head-copy-max:\s*var\(--copy-max\)/);
   assert.match(globals, /\.fb-page-head > div:first-child\s*{[\s\S]*flex:\s*1 1 min\(var\(--page-head-copy-max\),\s*100%\)/);
   assert.match(globals, /\.fb-page-head > div:first-child\s*{[\s\S]*min-width:\s*0/);
+  assert.match(globals, /\.fb-desc\s*{[\s\S]*max-width:\s*var\(--page-head-copy-max\)/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*width:\s*100%/);
