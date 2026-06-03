@@ -260,7 +260,7 @@ function AiDigestFeed({
   const showStopDigestCron = digestCronJob?.status === "active";
 
   return (
-    <section className="grid gap-5">
+    <section className="ai-digest-stack">
       <DigestPipelineSelector
         options={digestPipelineOptions}
         selectedPipelineId={selectedPipeline.id}
@@ -327,14 +327,14 @@ function AiDigestFeed({
                 sourceLinks={sourceLinks}
               />
             ) : (
-              <div className="fb-panel dashed">
-                <div className="flex items-start gap-3">
-                  <Terminal className="mt-1 h-5 w-5 text-[var(--accent)]" aria-hidden="true" />
-                  <div>
-                    <h4 className="serif text-lg font-semibold text-[var(--ink)]">
+              <div className="ai-digest-empty">
+                <div className="ai-digest-empty-inner">
+                  <Terminal className="ai-digest-empty-icon" aria-hidden="true" />
+                  <div className="ai-digest-empty-copy">
+                    <h4 className="ai-digest-empty-title">
                       No digest yet
                     </h4>
-                    <p className="mt-2 text-sm leading-6 text-[var(--muted-strong)]">
+                    <p className="ai-digest-empty-desc">
                       {isOwnPipeline
                         ? "Your local helper can save a brief when followed sources have new activity."
                         : "This imported digest has no saved briefs yet."}
@@ -432,8 +432,8 @@ function DigestPipelineSelector({
   if (options.length <= 1) return null;
 
   return (
-    <section aria-label="Digest source" className="mt-4">
-      <div className="flex flex-wrap items-center gap-2">
+    <section aria-label="Digest source" className="digest-source-selector">
+      <div className="digest-source-list">
         {options.map((pipeline) => {
           const active = pipeline.id === selectedPipelineId;
           const href = pipeline.isOwnPipeline
@@ -442,11 +442,11 @@ function DigestPipelineSelector({
           return (
             <Link
               aria-current={active ? "page" : undefined}
-              className={`fb-btn compact ${active ? "dark" : "light"}`}
+              className={`digest-source-pill fb-btn compact ${active ? "dark" : "light"}`}
               href={href}
               key={pipeline.id}
             >
-              <span className="truncate">{pipeline.title}</span>
+              <span className="digest-source-title">{pipeline.title}</span>
               <span className="sr-only">{pipeline.ownerLabel}</span>
             </Link>
           );

@@ -190,6 +190,14 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /Read your AI Digest, saved posts, and followed-source updates/);
   assert.doesNotMatch(dashboardPage, /<h1 className="sr-only">Home<\/h1>/);
   assert.match(dashboardPage, /className="home-workspace"/);
+  assert.match(dashboardPage, /className="ai-digest-stack"/);
+  assert.match(dashboardPage, /className="digest-source-selector"/);
+  assert.match(dashboardPage, /className="digest-source-list"/);
+  assert.match(dashboardPage, /className="ai-digest-empty"/);
+  assert.match(dashboardPage, /className="ai-digest-empty-inner"/);
+  assert.doesNotMatch(dashboardPage, /className="grid gap-5"/);
+  assert.doesNotMatch(dashboardPage, /aria-label="Digest source" className="mt-4"/);
+  assert.doesNotMatch(dashboardPage, /className="fb-panel dashed"/);
   assert.match(dashboardPage, /DashboardHomeTabs/);
   assert.match(dashboardTabs, /role="tablist"/);
   assert.match(globals, /\.fb-segmented-tabs/);
@@ -254,6 +262,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(globals, /\.home-main/);
   assert.doesNotMatch(globals, /\.home-tabs/);
   assert.match(globals, /\.home-workspace\s*{[\s\S]*min-width:\s*0/);
+  assert.match(globals, /\.ai-digest-stack\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.digest-source-list\s*{[\s\S]*flex-wrap:\s*wrap/);
+  assert.match(globals, /\.ai-digest-empty\s*{[\s\S]*border:\s*1px dashed var\(--line\)/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.digest-source-list\s*{[\s\S]*flex-direction:\s*column/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*margin-top:\s*clamp/);
   assert.match(globals, /\.builder-detail-avatar\.fb-src-icon\s*{[\s\S]*height:\s*3\.5rem/);
   assert.match(globals, /\.builder-detail-channel-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto auto/);

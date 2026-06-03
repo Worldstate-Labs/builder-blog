@@ -3807,6 +3807,34 @@ svg.lucide {
   overflow: hidden;
 }
 
+.ai-digest-stack {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.digest-source-selector {
+  margin-top: 1rem;
+  min-width: 0;
+}
+
+.digest-source-list {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.digest-source-pill {
+  max-width: min(100%, 24rem);
+}
+
+.digest-source-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ai-digest-head {
   align-items: center;
   background: color-mix(in oklch, var(--paper-strong) 86%, transparent);
@@ -3971,6 +3999,47 @@ svg.lucide {
 .ai-digest-section {
   border-top: 1px solid var(--line);
   padding-top: 1.125rem;
+}
+
+.ai-digest-empty {
+  background: color-mix(in oklch, var(--paper-strong) 50%, transparent);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.ai-digest-empty-inner {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.ai-digest-empty-icon {
+  color: var(--accent);
+  flex: 0 0 auto;
+  height: 1.25rem;
+  margin-top: 0.2rem;
+  width: 1.25rem;
+}
+
+.ai-digest-empty-copy {
+  min-width: 0;
+}
+
+.ai-digest-empty-title {
+  color: var(--ink);
+  font-family: var(--font-display), serif;
+  font-size: 1.125rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.ai-digest-empty-desc {
+  color: var(--muted-strong);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  margin-top: 0.5rem;
+  max-width: 48rem;
 }
 
 .ai-digest-body > .ai-digest-section:first-child {
@@ -7231,6 +7300,17 @@ body {
 
   .ai-digest-body {
     padding: 0.95rem;
+  }
+
+  .digest-source-list {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .digest-source-pill {
+    justify-content: center;
+    max-width: none;
+    width: 100%;
   }
 
   .digest-updates-head,
