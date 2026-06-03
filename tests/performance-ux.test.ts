@@ -295,6 +295,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /className="fb-section-heading mt-1"/);
   assert.match(dashboardPage, /className="digest-source-selector"/);
   assert.match(dashboardPage, /className="digest-source-list"/);
+  assert.match(dashboardPage, /className="digest-source-pill"/);
+  assert.doesNotMatch(dashboardPage, /digest-source-pill fb-btn compact/);
   assert.match(dashboardPage, /@\/components\/EmptyState/);
   assert.match(dashboardPage, /<EmptyState[\s\S]*className="ai-digest-empty"/);
   assert.doesNotMatch(dashboardPage, /ai-digest-empty-inner|ai-digest-empty-icon|ai-digest-empty-title|ai-digest-empty-desc/);
@@ -314,6 +316,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.fb-segmented-tabs \.fb-btn\[aria-selected="true"\]/);
   assert.match(globals, /\.home-feed-tabs\s*{/);
   assert.doesNotMatch(globals, /\.home-feed-tabs\s*{[^}]*background:|\.filter-tabs\s*{[^}]*background:|\.mobile-filter-tabs\s*{[^}]*background:|\.sync-panel-tabs\s*{[^}]*background:/);
+  assert.match(globals, /\.digest-source-pill\[aria-current="page"\]\s*{[\s\S]*background:\s*var\(--accent-soft\)/);
+  assert.match(globals, /\.digest-source-pill:hover,[\s\S]*\.digest-source-pill:focus-visible\s*{[\s\S]*background:\s*color-mix/);
   assert.doesNotMatch(globals, /\.fb-tabs\s*{|\.fb-tab\b/);
   assert.match(dashboardTabs, /useState\(initialTab\)/);
   assert.doesNotMatch(dashboardTabs, /useSearchParams/);
@@ -464,6 +468,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.ai-digest-titleblock\s*{[\s\S]*min-width:\s*0/);
   assert.match(globals, /\.ai-digest-imported-title\s*{[\s\S]*margin-top:\s*0\.35rem/);
   assert.match(globals, /\.digest-source-list\s*{[\s\S]*flex-wrap:\s*wrap/);
+  assert.match(globals, /\.digest-source-pill\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.ai-digest-empty\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.ai-digest-empty\s*{[\s\S]*max-width:\s*var\(--empty-max\)/);
   assert.match(globals, /\.ai-digest-empty\s*{[\s\S]*width:\s*100%/);

@@ -430,7 +430,7 @@ function DigestPipelineSelector({
           return (
             <Link
               aria-current={active ? "page" : undefined}
-              className={`digest-source-pill fb-btn compact ${active ? "dark" : "light"}`}
+              className="digest-source-pill"
               href={href}
               key={pipeline.id}
             >
