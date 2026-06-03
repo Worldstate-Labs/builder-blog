@@ -149,7 +149,7 @@ export default async function SearchPage({
     <div className={hasQuery ? "page-pad search-page search-page-active" : "page-pad search-page"}>
         <section className="search-hero">
           <h1 className="fb-m-title at-mobile">Search</h1>
-          <h1 className="at-desktop serif text-[1.875rem] font-semibold leading-tight tracking-tight">
+          <h1 className="at-desktop fb-title">
             Search
           </h1>
           <p className="fb-m-sub at-mobile">Sources, posts, and digest history.</p>

@@ -41,6 +41,7 @@ test("settings live in the clickable user avatar menu", () => {
   const appShell = source("src/components/AppShell.tsx");
   const appNav = source("src/components/AppNav.tsx");
   const settingsPage = source("src/app/(workspace)/settings/page.tsx");
+  const globals = source("src/app/globals.css");
   const userMenu = source("src/components/UserMenu.tsx");
   const agentTokenPanel = source("src/components/AgentTokenPanel.tsx");
   const fetchLogPanel = source("src/components/FetchLogPanel.tsx");
@@ -51,7 +52,6 @@ test("settings live in the clickable user avatar menu", () => {
   const settingsFields = source("src/components/settings/SettingsFields.tsx");
   const markdownEditor = source("src/components/settings/MarkdownEditor.tsx");
   const commonRulesForm = source("src/components/CommonSummaryRulesForm.tsx");
-  const globals = source("src/app/globals.css");
 
   assert.doesNotMatch(appShell, /label: "Agent"/);
   assert.doesNotMatch(appNav, /"key"/);
@@ -163,9 +163,12 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
   assert.match(digestDetails, /mode === "today"/);
   assert.match(recommendationsPage, /redirect\("\/dashboard\?tab=subscription"\)/);
+  assert.match(globals, /--workspace-max:\s*72rem/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*margin-inline:\s*auto/);
-  assert.match(globals, /\.page-pad\s*{[\s\S]*width:\s*min\(100%,\s*68rem\)/);
-  assert.match(globals, /\.fb-top-inner\s*{[\s\S]*width:\s*min\(100%,\s*68rem\)/);
+  assert.match(globals, /\.page-pad\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
+  assert.match(globals, /\.fb-top\s*{[\s\S]*position:\s*sticky/);
+  assert.match(globals, /\.fb-top-inner\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
+  assert.match(globals, /\.fb-page-head\s*{[\s\S]*border-bottom:/);
   assert.doesNotMatch(globals, /\.home-rail/);
   assert.doesNotMatch(globals, /\.fb-rail/);
 });
@@ -350,6 +353,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /SearchResultsFallback/);
   assert.match(searchPage, /SearchResultsSection/);
   assert.match(globals, /\.search-result-skeleton/);
+  assert.match(searchPage, /className="at-desktop fb-title"/);
+  assert.doesNotMatch(searchPage, /serif text-\[1\.875rem\]/);
+  assert.match(globals, /\.search-results-shell\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
   assert.match(searchPage, /Search instead for/);
   assert.match(searchPage, /isShowingCorrectedResults/);
   assert.match(searchPage, /Advanced search/);
@@ -822,11 +828,17 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   const digestMaxAgeRoute = source("src/app/api/settings/digest-max-age/route.ts");
   const tokensRoute = source("src/app/api/settings/tokens/route.ts");
   const tokenRoute = source("src/app/api/settings/tokens/[tokenId]/route.ts");
+  const globals = source("src/app/globals.css");
 
   // The Feed preferences module is gone; the digest max-age editor now lives in
   // the digest prompt dialogs, persisted via the dedicated digest-max-age route.
   assert.doesNotMatch(settingsPage, /FeedPreferenceForm/);
   assert.match(settingsPage, /AgentTokenPanel/);
+  assert.match(settingsPage, /settings-access-grid/);
+  assert.doesNotMatch(settingsPage, /lg:grid-cols-2/);
+  assert.match(globals, /\.settings-access-grid\s*{[\s\S]*max-width:\s*52rem/);
+  assert.match(globals, /\.settings-rules-head\s*{[\s\S]*border-bottom:/);
+  assert.doesNotMatch(globals, /border-left:\s*[2-9]/);
   assert.doesNotMatch(settingsPage, /createPersonalTokenAction/);
   assert.doesNotMatch(settingsPage, /revokeTokenAction/);
   assert.doesNotMatch(settingsPage, /updateFeedPreferenceAction/);

@@ -146,7 +146,7 @@ export default async function BuilderDetailPage({ params }: Params) {
             />
             <div className="grid min-w-0 gap-1.5">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="fb-title font-display">{entity.name}</h1>
+                <h1 className="fb-title">{entity.name}</h1>
                 {headerSourceType ? (
                   <SourceBadge sourceType={headerSourceType} />
                 ) : null}

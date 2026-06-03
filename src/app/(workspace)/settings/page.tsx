@@ -31,7 +31,7 @@ export default async function SettingsPage() {
         </div>
       </section>
 
-      <div className="mt-6 grid gap-5 lg:grid-cols-2">
+      <div className="settings-access-grid mt-6 grid gap-5">
         <Suspense fallback={<AgentTokenPanelSkeleton />}>
           <AgentTokenSlot userId={userId} />
         </Suspense>

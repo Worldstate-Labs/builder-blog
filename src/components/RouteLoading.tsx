@@ -11,7 +11,7 @@ export function RouteLoading({
 }) {
   return (
     <div className="page-pad">
-      <div className="page-header" aria-live="polite" aria-busy="true">
+      <div className="fb-page-head" aria-live="polite" aria-busy="true">
         <div>
           <p className="sr-only">{label}</p>
           <div className="h-7 w-44 rounded-lg bg-black/10" />
