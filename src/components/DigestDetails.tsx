@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, Loader2 } from "lucide-react";
 import { DigestContent, type DigestSourceLink } from "@/components/DigestContent";
 import { useHydrated } from "@/components/ThemeToggle";
+import { parseDigest } from "@/lib/digest-markdown";
 
 export type DigestSummary = {
   id: string;
@@ -49,6 +50,18 @@ export function DigestDetails({
   const currentState = digestState.key === stateKey ? digestState : initialState;
   const { content, isOpen, status } = currentState;
   const headerHeadline = resolveHeadlineSummary(digest.headlineSummary, content, status);
+  const todaySections = useMemo(() => {
+    if (mode !== "today" || !content) return [];
+    const doc = parseDigest(content);
+    if (!doc.hasStructure) return [];
+    return doc.sections
+      .filter((section) => section.heading && section.postCount > 0)
+      .map((section) => ({
+        id: section.id,
+        label: section.heading,
+        count: section.postCount,
+      }));
+  }, [content, mode]);
 
   const updateDigestState = useCallback((
     updater: (current: DigestLoadState) => Omit<DigestLoadState, "key">,
@@ -96,12 +109,14 @@ export function DigestDetails({
     return (
       <article className="fb-digest">
         <div className="fb-digest-head">
-          <div className="fb-digest-title-row">
-            <div className="min-w-0">
-              <div className="fb-digest-title">{digest.title}</div>
-              <div className="fb-digest-sub">
-                <span>{digest.itemCount} items</span>
-              </div>
+          <div className="fb-digest-meta-row">
+            <div className="fb-digest-section-chips" aria-label="Digest source types">
+              {todaySections.map((section) => (
+                <a key={section.id} className="digest-contents-chip" href={`#${section.id}`}>
+                  <span className="truncate">{section.label}</span>
+                  <span className="digest-contents-count">{section.count}</span>
+                </a>
+              ))}
             </div>
             <span className="fb-digest-chip">{formatDateTime(digest.createdAt, hydrated)}</span>
           </div>
@@ -212,7 +227,15 @@ function DigestBody({
   }
 
   if (isToday) {
-    return <DigestContent content={content ?? ""} sourceLinks={sourceLinks} tone="paper" />;
+    return (
+      <DigestContent
+        content={content ?? ""}
+        showContents={false}
+        showSectionCounts={false}
+        sourceLinks={sourceLinks}
+        tone="paper"
+      />
+    );
   }
   return (
     <div className="item-details">

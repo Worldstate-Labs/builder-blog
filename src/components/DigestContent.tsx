@@ -29,10 +29,14 @@ export type DigestSourceLink = {
 // paper archive.
 export function DigestContent({
   content,
+  showContents = true,
+  showSectionCounts = true,
   sourceLinks = [],
   tone = "paper",
 }: {
   content: string;
+  showContents?: boolean;
+  showSectionCounts?: boolean;
   sourceLinks?: DigestSourceLink[];
   tone?: "paper" | "dark";
 }) {
@@ -56,7 +60,7 @@ export function DigestContent({
     );
   }
 
-  const showContents = doc.sections.length >= 2;
+  const shouldShowContents = showContents && doc.sections.length >= 2;
 
   return (
     <div className={wrapClass(tone)}>
@@ -66,7 +70,7 @@ export function DigestContent({
         </p>
       ))}
 
-      {showContents ? (
+      {shouldShowContents ? (
         <nav className="digest-contents" aria-label="Digest sections">
           {doc.sections.map((s) => (
             <a key={s.id} className="digest-contents-chip" href={`#${s.id}`}>
@@ -82,6 +86,7 @@ export function DigestContent({
           key={section.id}
           section={section}
           collapsible={doc.postCount >= 4}
+          showCount={showSectionCounts}
           sourceLookup={sourceLookup}
         />
       ))}
@@ -96,10 +101,12 @@ function wrapClass(tone: "paper" | "dark"): string {
 function SectionBlock({
   section,
   collapsible,
+  showCount,
   sourceLookup,
 }: {
   section: DigestSection;
   collapsible: boolean;
+  showCount: boolean;
   sourceLookup: Map<string, DigestSourceLink>;
 }) {
   const body = (
@@ -146,7 +153,7 @@ function SectionBlock({
       <summary className="digest-section-summary">
         <ChevronDown aria-hidden="true" className="digest-section-chevron" />
         <h3 className="digest-section-heading">{section.heading}</h3>
-        <span className="digest-section-count">{section.postCount}</span>
+        {showCount ? <span className="digest-section-count">{section.postCount}</span> : null}
       </summary>
       {body}
     </details>
