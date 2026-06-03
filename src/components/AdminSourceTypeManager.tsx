@@ -288,6 +288,7 @@ function SourceTypeCard({
               <FieldNumber
                 label="Min chars"
                 min={0}
+                placeholder="Example: 200"
                 description="Drop items whose body has fewer characters than this."
                 value={String(draft.contentQuality.minChars)}
                 onChange={(v) => updateQuality("minChars", Math.max(0, Number(v) || 0))}
@@ -295,6 +296,7 @@ function SourceTypeCard({
               <FieldNumber
                 label="Min content units"
                 min={0}
+                placeholder="Example: 35"
                 description="Drop items with too little real text. Latin words count as units; CJK text counts by character."
                 value={String(draft.contentQuality.minContentUnits)}
                 onChange={(v) =>
@@ -306,6 +308,7 @@ function SourceTypeCard({
                 optional
                 min={0}
                 max={1}
+                placeholder="Example: 0.35"
                 step={0.01}
                 description="Average unique-unit ratio over 100-unit windows (0-1). Lower values allow more repetitive transcripts through."
                 value={
@@ -325,6 +328,7 @@ function SourceTypeCard({
                 optional
                 min={0}
                 max={1}
+                placeholder="Example: 0.08"
                 step={0.01}
                 description="Timestamp count divided by content units (0-1). Above this the body is treated as timestamp noise and dropped."
                 value={

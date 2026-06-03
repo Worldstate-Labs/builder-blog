@@ -70,6 +70,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(settingsFields, /formatUtcDateTime/);
   assert.match(settingsFields, /timeZone:\s*"UTC"/);
   assert.match(settingsFields, /optional\?: boolean/);
+  assert.match(settingsFields, /placeholder\?: string/);
   assert.match(settingsFields, /OptionalBadge/);
   assert.match(adminDigestConfig, /FooterBar/);
   assert.match(adminDigestConfig, /@\/components\/settings\/SettingsFields/);
@@ -78,6 +79,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /@\/components\/settings\/SettingsFields/);
   assert.match(adminSourceTypeManager, /FETCH_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /SUMMARY_PROMPT_PLACEHOLDER/);
+  assert.match(adminSourceTypeManager, /placeholder="Example: 200"/);
+  assert.match(adminSourceTypeManager, /placeholder="Example: 0\.35"/);
   assert.match(adminSourceTypeManager, /<OptionalMarkdownField/);
   assert.match(adminSourceTypeManager, /buttonLabel="Add fetch prompt"/);
   assert.match(adminSourceTypeManager, /canEditQualityGates \? \(/);
@@ -87,6 +90,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(markdownEditor, /placeholder=\{placeholder\}/);
   assert.match(globals, /\.settings-optional-badge/);
   assert.match(globals, /\.settings-optional-empty/);
+  assert.match(globals, /\.fb-input::placeholder/);
   assert.match(globals, /\.settings-markdown-textarea::placeholder/);
   assert.match(userMenu, /href="\/settings" onClick=\{closeMenu\}[\s\S]*Settings/);
   assert.match(userMenu, /signOut\(\{ callbackUrl: "\/login" \}\)/);

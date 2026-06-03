@@ -5336,6 +5336,11 @@ svg.lucide {
   padding: 0 0.75rem;
 }
 
+.fb-input::placeholder {
+  color: color-mix(in oklch, var(--muted) 82%, transparent);
+  opacity: 1;
+}
+
 .fb-input:focus {
   border-color: color-mix(in oklch, var(--accent) 32%, var(--line));
 }

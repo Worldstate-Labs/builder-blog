@@ -197,6 +197,7 @@ export function FieldNumber({
   max,
   step,
   optional,
+  placeholder,
   description,
 }: {
   label: string;
@@ -206,6 +207,7 @@ export function FieldNumber({
   max?: number;
   step?: number;
   optional?: boolean;
+  placeholder?: string;
   description?: string;
 }) {
   return (
@@ -217,6 +219,7 @@ export function FieldNumber({
         value={value}
         min={min}
         max={max}
+        placeholder={placeholder}
         step={step ?? 1}
         inputMode="decimal"
         onChange={(e) => onChange(e.target.value)}
