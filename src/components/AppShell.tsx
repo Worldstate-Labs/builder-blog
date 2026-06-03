@@ -24,28 +24,27 @@ export function AppShell({
 
   return (
     <div className="app-frame">
-      <header className="fb-top hidden lg:flex">
+      <header className="fb-top">
         <div className="fb-top-inner">
           <Link href="/dashboard" className="fb-brand">
             <BrandMark />
             <span className="fb-brand-name">FollowBrief</span>
           </Link>
-          <AppNav desktopLayout="bar" items={nav} mode="desktop" />
-          <div className="hidden flex-1 min-w-0 md:block">
+          <div className="fb-top-search">
             <SearchForm query="" variant="header" />
           </div>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="fb-top-user">
             <UserMenu compact isAdmin={isAdmin} session={session} />
           </div>
         </div>
       </header>
 
-      <header className="fb-m-top lg:hidden">
+      <header className="fb-m-top">
         <Link href="/dashboard" className="fb-brand">
           <BrandMark />
           <span className="fb-brand-name">FollowBrief</span>
         </Link>
-        <span className="grow" />
+        <span className="fb-m-spacer" />
         <Link
           href="/search"
           className="fb-m-icon"
@@ -57,6 +56,9 @@ export function AppShell({
       </header>
 
       <div className="app-body">
+        <aside className="fb-side-rail" aria-label="Primary navigation">
+          <AppNav desktopLayout="rail" items={nav} mode="desktop" />
+        </aside>
         <main className="app-main">
           {children}
           <AppNav items={nav} mode="mobile" />

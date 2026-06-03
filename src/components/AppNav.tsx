@@ -35,8 +35,8 @@ export function AppNav({
   const mobileNavItems = mobileItems ?? items;
   const desktopClassName =
     desktopLayout === "bar"
-      ? "fb-nav-list fb-nav-list-bar hidden lg:flex"
-      : "fb-nav-list fb-nav-list-rail hidden lg:flex";
+      ? "fb-nav-list fb-nav-list-bar"
+      : "fb-nav-list fb-nav-list-rail";
 
   return (
     <>
@@ -61,7 +61,7 @@ export function AppNav({
       ) : null}
       {mode !== "desktop" ? (
         <nav
-          className="fb-m-tabbar lg:hidden"
+          className="fb-m-tabbar"
           style={{ "--tab-count": mobileNavItems.length } as CSSProperties}
           aria-label="Primary"
         >
