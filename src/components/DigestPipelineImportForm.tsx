@@ -95,7 +95,7 @@ export function DigestPipelineImportForm({
   return (
     <section>
       <div className="library-hub-toolbar">
-        <div>
+        <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Shared AI Digests</h2>
           <p className="hub-section-copy">
             Import another user&apos;s latest digest and archive.

@@ -220,7 +220,7 @@ function LibraryHubImportFallback() {
   return (
     <section aria-live="polite" aria-busy="true">
       <div className="library-hub-toolbar">
-        <div>
+        <div className="library-hub-toolbar-copy">
           <h2 className="section-heading">Available libraries</h2>
           <div className="library-hub-skeleton-line is-wide" />
         </div>
@@ -255,7 +255,7 @@ function DigestPipelineImportFallback() {
   return (
     <section aria-live="polite" aria-busy="true">
       <div className="library-hub-toolbar">
-        <div>
+        <div className="library-hub-toolbar-copy">
           <div className="library-hub-skeleton-line is-heading" />
           <div className="library-hub-skeleton-line is-medium" />
         </div>

@@ -3124,6 +3124,13 @@ svg.lucide {
   margin-bottom: 0.875rem;
 }
 
+.hub-list-heading-row {
+  align-items: baseline;
+  display: grid;
+  gap: 0.5rem 1rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
 .hub-list-stack {
   margin-top: 1.25rem;
 }
@@ -3148,6 +3155,11 @@ svg.lucide {
   display: grid;
   gap: 1rem;
   grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.library-hub-toolbar-copy {
+  max-width: var(--copy-max);
+  min-width: 0;
 }
 
 .library-hub-counts {
@@ -3223,6 +3235,10 @@ svg.lucide {
 @media (max-width: 760px) {
   .library-hub-toolbar {
     align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .hub-list-heading-row {
     grid-template-columns: 1fr;
   }
 
