@@ -131,7 +131,7 @@ FollowBrief uses a small parser, so every post must use this exact block shape:
 **<post title only>**
 <summary paragraph 1>
 <summary paragraph 2 if needed>
-原文：<item.url>
+Source: <item.url>
 \`\`\`
 
 Format rules:
@@ -144,8 +144,9 @@ Format rules:
   title line: \`**<post title only>**\`.
 - Put the summary paragraphs after the bold title line.
 - Put the source URL on the final standalone line for that post, using
-  \`原文：<item.url>\` or a localized label. Do not put the source URL inside a
-  summary paragraph.
+  \`Source: <item.url>\`. A localized label such as \`原文：<item.url>\` is also
+  acceptable when the final digest is not in English. Do not put the source URL
+  inside a summary paragraph.
 - Repeat the bold-title + summary + source-link block for each post under the
   same source.
 
