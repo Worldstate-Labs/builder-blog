@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { PostCard } from "@/components/PostCard";
 import { getCurrentSession } from "@/lib/auth";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
@@ -60,9 +60,9 @@ export default async function RecommendationItemPage({
   return (
     <div className="page-pad reading-page">
       <nav aria-label="Post navigation" className="reading-page-toolbar">
-        <Link className="button-light button-compact reading-back-link" href="/dashboard?tab=subscription">
-          <ArrowLeft className="h-4 w-4" />
-          Back to feed
+        <Link className="reading-back-link" href="/dashboard?tab=subscription">
+          <ChevronLeft aria-hidden="true" />
+          Following
         </Link>
         <span className="reading-source-label">
           {item.builder?.name ?? item.sourceName ?? "Saved post"}
