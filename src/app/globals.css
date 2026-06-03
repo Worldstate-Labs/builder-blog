@@ -330,7 +330,7 @@ svg.lucide {
   min-width: 0;
 }
 
-.reading-back-link {
+.fb-breadcrumb-link {
   align-items: center;
   color: var(--muted);
   display: inline-flex;
@@ -341,14 +341,14 @@ svg.lucide {
   width: fit-content;
 }
 
-.reading-back-link:hover,
-.reading-back-link:focus-visible {
+.fb-breadcrumb-link:hover,
+.fb-breadcrumb-link:focus-visible {
   color: var(--accent);
   outline: none;
   text-decoration: none;
 }
 
-.reading-back-link svg {
+.fb-breadcrumb-link svg {
   height: 0.95rem;
   width: 0.95rem;
 }
@@ -6454,29 +6454,6 @@ svg.lucide {
 .builder-detail-head-stack {
   display: grid;
   gap: 0.65rem;
-}
-
-.builder-detail-breadcrumb {
-  align-items: center;
-  color: var(--muted);
-  display: inline-flex;
-  font-size: 0.8125rem;
-  font-weight: 750;
-  gap: 0.2rem;
-  line-height: 1.2;
-  width: fit-content;
-}
-
-.builder-detail-breadcrumb:hover,
-.builder-detail-breadcrumb:focus-visible {
-  color: var(--accent);
-  outline: none;
-  text-decoration: none;
-}
-
-.builder-detail-breadcrumb svg {
-  height: 0.95rem;
-  width: 0.95rem;
 }
 
 .builder-detail-identity {

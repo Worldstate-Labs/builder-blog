@@ -360,7 +360,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /className="workspace-content-stack builder-detail-workspace"/);
   assert.match(builderDetailPage, /className="builder-detail-head-stack"/);
   assert.match(builderDetailPage, /ChevronLeft/);
-  assert.match(builderDetailPage, /className="builder-detail-breadcrumb"/);
+  assert.match(builderDetailPage, /className="fb-breadcrumb-link builder-detail-breadcrumb"/);
   assert.doesNotMatch(builderDetailPage, /Back to Sources/);
   assert.doesNotMatch(builderDetailPage, /className="fb-btn light compact w-fit" href="\/builders"/);
   assert.match(builderDetailPage, /className="builder-detail-identity"/);
@@ -421,8 +421,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.builder-detail-page-head\s*{[\s\S]*--page-head-copy-max:\s*var\(--empty-max\)/);
-  assert.match(globals, /\.builder-detail-breadcrumb\s*{[\s\S]*width:\s*fit-content/);
-  assert.match(globals, /\.builder-detail-breadcrumb:hover,[\s\S]*\.builder-detail-breadcrumb:focus-visible\s*{[\s\S]*color:\s*var\(--accent\)/);
+  assert.match(globals, /\.fb-breadcrumb-link\s*{[\s\S]*width:\s*fit-content/);
+  assert.match(globals, /\.fb-breadcrumb-link:hover,[\s\S]*\.fb-breadcrumb-link:focus-visible\s*{[\s\S]*color:\s*var\(--accent\)/);
+  assert.doesNotMatch(globals, /\.builder-detail-breadcrumb\s*{/);
   assert.doesNotMatch(globals, /\.builder-detail-page-head > div:first-child\s*{[\s\S]*min\(48rem/);
   assert.match(globals, /\.builder-detail-action-skeleton-button\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.builder-detail-action-stack\s*{[\s\S]*display:\s*grid/);
@@ -1293,7 +1294,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(recommendationItemPage, /className="reading-page-toolbar"/);
   assert.match(recommendationItemPage, /className="reading-source-label"/);
   assert.match(recommendationItemPage, /ChevronLeft/);
-  assert.match(recommendationItemPage, /className="reading-back-link"/);
+  assert.match(recommendationItemPage, /className="fb-breadcrumb-link reading-back-link"/);
   assert.doesNotMatch(recommendationItemPage, /button-light button-compact reading-back-link/);
   assert.match(recommendationItemPage, /href="\/dashboard\?tab=subscription"/);
   assert.match(recommendationItemPage, /showDebugActions=\{false\}/);
@@ -1303,8 +1304,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.reading-page\s*{[\s\S]*width:\s*min\(100%,\s*var\(--reading-max\)\)/);
   assert.match(globals, /\.reading-page-toolbar\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.reading-page-toolbar\s*{[\s\S]*grid-template-columns:\s*auto minmax\(0,\s*1fr\)/);
-  assert.match(globals, /\.reading-back-link\s*{[\s\S]*width:\s*fit-content/);
-  assert.match(globals, /\.reading-back-link:hover,[\s\S]*\.reading-back-link:focus-visible\s*{[\s\S]*color:\s*var\(--accent\)/);
+  assert.match(globals, /\.fb-breadcrumb-link\s*{[\s\S]*width:\s*fit-content/);
+  assert.match(globals, /\.fb-breadcrumb-link:hover,[\s\S]*\.fb-breadcrumb-link:focus-visible\s*{[\s\S]*color:\s*var\(--accent\)/);
+  assert.doesNotMatch(globals, /\.reading-back-link\s*{/);
   assert.match(globals, /\.reading-source-label\s*{[\s\S]*font-size:\s*0\.8125rem/);
   assert.match(globals, /\.reading-source-label\s*{[\s\S]*max-width:\s*min\(100%,\s*var\(--copy-max\)\)/);
   assert.match(globals, /\.reading-source-label\s*{[\s\S]*text-overflow:\s*ellipsis/);

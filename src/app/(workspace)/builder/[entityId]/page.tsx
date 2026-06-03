@@ -138,7 +138,7 @@ export default async function BuilderDetailPage({ params }: Params) {
         title={entity.name}
       >
         <div className="builder-detail-head-stack">
-          <Link className="builder-detail-breadcrumb" href="/builders">
+          <Link className="fb-breadcrumb-link builder-detail-breadcrumb" href="/builders">
             <ChevronLeft aria-hidden="true" />
             Sources
           </Link>

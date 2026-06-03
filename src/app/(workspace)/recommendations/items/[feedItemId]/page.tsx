@@ -60,7 +60,7 @@ export default async function RecommendationItemPage({
   return (
     <div className="page-pad reading-page">
       <nav aria-label="Post navigation" className="reading-page-toolbar">
-        <Link className="reading-back-link" href="/dashboard?tab=subscription">
+        <Link className="fb-breadcrumb-link reading-back-link" href="/dashboard?tab=subscription">
           <ChevronLeft aria-hidden="true" />
           Following
         </Link>
