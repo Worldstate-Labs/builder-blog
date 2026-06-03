@@ -1978,6 +1978,7 @@ svg.lucide {
 .builder-posts-latest {
   color: var(--muted);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .builder-posts-latest::before {
