@@ -4998,12 +4998,7 @@ svg.lucide {
 }
 
 .token-picker-empty {
-  color: var(--muted-strong);
-  font-size: 0.875rem;
-  line-height: 1.55;
-  margin: 0;
-  padding: 1.5rem 0.75rem;
-  text-align: center;
+  margin: 0.5rem;
 }
 
 .token-picker-empty a {

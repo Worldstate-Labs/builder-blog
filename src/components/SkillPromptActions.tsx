@@ -6,6 +6,7 @@ import {
   describeMachine,
   type AgentTokenListItem,
 } from "@/components/AgentTokenPanel";
+import { EmptyState } from "@/components/EmptyState";
 import { SUMMARY_LANGUAGE_OPTIONS } from "@/components/settings/SettingsFields";
 
 type SkillPromptContext = "library" | "digest";
@@ -596,13 +597,18 @@ function TokenPickerDialog({
         <fieldset className="token-picker-list">
           <legend className="sr-only">Connected helpers</legend>
           {!open ? null : tokens.length === 0 ? (
-            <p className="token-picker-empty">
-              No connected helpers.{" "}
-              <a className="underline" href="/settings">
-                Add one in Settings
-              </a>
-              .
-            </p>
+            <EmptyState
+              className="token-picker-empty"
+              body={
+                <>
+                  No connected helpers.{" "}
+                  <a className="underline" href="/settings">
+                    Add one in Settings
+                  </a>
+                  .
+                </>
+              }
+            />
           ) : (
             tokens.map((token) => {
               const active = token.id === selectedTokenId;

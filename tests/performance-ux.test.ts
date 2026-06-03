@@ -1268,15 +1268,16 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.settings-rules-skeleton-list/);
   assert.match(globals, /\.settings-skeleton-line,[\s\S]*\.settings-skeleton-row\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
   assert.match(globals, /\.settings-skeleton-pill\s*{[\s\S]*border-radius:\s*999px/);
-  assert.match(globals, /\.token-picker-empty\s*{[\s\S]*text-align:\s*center/);
+  assert.match(globals, /\.token-picker-empty\s*{\s*margin:\s*0\.5rem;\s*}/);
   assert.doesNotMatch(globals, /border-left:\s*[2-9]/);
   assert.doesNotMatch(settingsPage, /createPersonalTokenAction/);
   assert.doesNotMatch(settingsPage, /revokeTokenAction/);
   assert.doesNotMatch(settingsPage, /updateFeedPreferenceAction/);
   assert.doesNotMatch(settingsPage, /FormSubmitButton/);
   assert.match(skillPromptActions, /"use client"/);
+  assert.match(skillPromptActions, /@\/components\/EmptyState/);
   assert.match(skillPromptActions, /fetch\("\/api\/settings\/digest-max-age"/);
-  assert.match(skillPromptActions, /className="token-picker-empty"/);
+  assert.match(skillPromptActions, /<EmptyState[\s\S]*className="token-picker-empty"/);
   assert.doesNotMatch(skillPromptActions, /px-3 py-6 text-center text-sm/);
   assert.match(tokenPanel, /"use client"/);
   assert.match(tokenPanel, /@\/components\/EmptyState/);
