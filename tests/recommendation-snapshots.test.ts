@@ -56,6 +56,8 @@ test("home favorites saves posts and requires manual read marking", () => {
   assert.match(postCard, /data-favorite-read/);
   assert.match(globals, /data-favorite-read="true"/);
   assert.match(globals, /favorite-read-label/);
+  assert.doesNotMatch(globals, /inset 4px 0 0/);
+  assert.doesNotMatch(globals, /linear-gradient\(\s*90deg/);
 });
 
 test("source logos are shared across recommendation and library surfaces", () => {

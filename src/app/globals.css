@@ -2356,15 +2356,8 @@ svg.lucide {
 }
 
 .fetched-post-card[data-favorite-read="true"] {
-  background:
-    linear-gradient(
-      90deg,
-      color-mix(in oklch, var(--signal, oklch(52% 0.18 150)) 11%, transparent),
-      transparent 58%
-    ),
-    var(--paper-strong);
-  border-color: color-mix(in oklch, var(--signal, oklch(52% 0.18 150)) 40%, var(--line));
-  box-shadow: inset 4px 0 0 var(--signal, oklch(52% 0.18 150));
+  background: color-mix(in oklch, var(--signal, oklch(52% 0.18 150)) 7%, var(--paper-strong));
+  border-color: color-mix(in oklch, var(--signal, oklch(52% 0.18 150)) 34%, var(--line));
   opacity: 1;
 }
 
