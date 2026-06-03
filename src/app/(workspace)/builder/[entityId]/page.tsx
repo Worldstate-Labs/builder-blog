@@ -123,12 +123,13 @@ export default async function BuilderDetailPage({ params }: Params) {
   return (
     <div className="page-pad">
       <header className="fb-page-head">
-        <div className="grid gap-3">
+        <div className="builder-detail-head-stack">
           <Link className="fb-btn light compact w-fit" href="/builders">
             Back to Sources
           </Link>
-          <div className="flex items-start gap-4">
+          <div className="builder-detail-identity">
             <SourceAvatar
+              className="builder-detail-avatar"
               imageSize={56}
               source={{
                 avatarUrl: headerAvatarUrl,
@@ -137,15 +138,9 @@ export default async function BuilderDetailPage({ params }: Params) {
                 sourceType: headerSourceType ?? "",
                 sourceUrl: primaryChannel?.sourceUrl ?? null,
               }}
-              style={{
-                flexShrink: 0,
-                fontSize: "1.5rem",
-                height: "3.5rem",
-                width: "3.5rem",
-              }}
             />
-            <div className="grid min-w-0 gap-1.5">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="builder-detail-title-stack">
+              <div className="builder-detail-title-row">
                 <h1 className="fb-title">{entity.name}</h1>
                 {headerSourceType ? (
                   <SourceBadge sourceType={headerSourceType} />
@@ -156,7 +151,7 @@ export default async function BuilderDetailPage({ params }: Params) {
                   {entity.kind.toLowerCase()}
                 </span>
                 {headerHostLabel ? (
-                  <span className="source-host-meta mono truncate max-w-[24rem]">
+                  <span className="builder-detail-host source-host-meta mono truncate">
                     {headerHostLabel}
                   </span>
                 ) : null}
@@ -192,7 +187,7 @@ export default async function BuilderDetailPage({ params }: Params) {
                 ) : null}
               </div>
               {entity.bio ? (
-                <p className="fb-desc mt-1 max-w-prose">{entity.bio}</p>
+                <p className="builder-detail-bio fb-desc">{entity.bio}</p>
               ) : null}
             </div>
           </div>
@@ -277,7 +272,7 @@ async function BuilderDetailActionsSlot({
 
 function BuilderActionsSkeleton() {
   return (
-    <div className="flex gap-2" aria-busy="true" aria-live="polite">
+    <div className="builder-detail-actions-skeleton" aria-busy="true" aria-live="polite">
       <div className="h-9 w-28 animate-pulse rounded-full bg-black/10" />
     </div>
   );
@@ -301,21 +296,21 @@ async function ChannelsListSlot({
     : null;
 
   return (
-    <ul className="mt-3 grid gap-2">
+    <ul className="builder-detail-channel-list">
       {channels.map((channel) => (
         <li
           key={channel.builderId}
-          className="grid gap-3 border-b border-[var(--line)] py-3 text-sm md:grid-cols-[1fr_auto_auto] md:items-center"
+          className="builder-detail-channel-row"
         >
           <div>
-            <div className="font-medium">
+            <div className="builder-detail-channel-name">
               {channel.libraryName}
               {channel.isAdminCommunity ? " · community" : ""}
               {channel.isOwnChannel ? " · own" : ""}
             </div>
             {channel.sourceUrl ? (
               <a
-                className="text-xs font-semibold text-[var(--accent)] hover:underline"
+                className="builder-detail-channel-link"
                 href={channel.sourceUrl}
                 rel="noreferrer"
                 target="_blank"
@@ -324,7 +319,7 @@ async function ChannelsListSlot({
               </a>
             ) : null}
           </div>
-          <div className="font-mono text-xs text-[var(--muted-strong)]">
+          <div className="builder-detail-channel-date mono">
             {channel.lastFetchedAt ? dateFormatter.format(channel.lastFetchedAt) : "—"}
           </div>
           <ChannelPreferenceToggle
@@ -404,9 +399,9 @@ async function RecentPostsSlot({
 
 function RecentPostsSkeleton() {
   return (
-    <ul className="grid gap-4" aria-busy="true" aria-live="polite">
+    <ul className="recent-post-list recent-post-list--skeleton" aria-busy="true" aria-live="polite">
       {[0, 1, 2].map((index) => (
-        <li key={index} className="fb-panel grid gap-2">
+        <li key={index} className="recent-post-skeleton-card fb-panel">
           <div className="h-3 w-24 animate-pulse rounded bg-black/10" />
           <div className="h-4 w-3/4 animate-pulse rounded bg-black/10" />
           <div className="h-3 w-full animate-pulse rounded bg-black/10" />

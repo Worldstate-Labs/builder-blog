@@ -5585,6 +5585,98 @@ svg.lucide {
   min-width: 0;
 }
 
+.builder-detail-head-stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.builder-detail-identity {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.builder-detail-avatar.fb-src-icon {
+  flex-shrink: 0;
+  font-size: 1.5rem;
+  height: 3.5rem;
+  width: 3.5rem;
+}
+
+.builder-detail-title-stack {
+  display: grid;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.builder-detail-title-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.builder-detail-host {
+  max-width: min(24rem, 100%);
+}
+
+.builder-detail-bio {
+  margin-top: 0.25rem;
+  max-width: 65ch;
+}
+
+.builder-detail-actions-skeleton {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.recent-post-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.recent-post-skeleton-card {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.builder-detail-channel-list {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.builder-detail-channel-row {
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding-block: 0.75rem;
+}
+
+.builder-detail-channel-name {
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.builder-detail-channel-link {
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.builder-detail-channel-link:hover {
+  text-decoration: underline;
+}
+
+.builder-detail-channel-date {
+  color: var(--muted-strong);
+  font-size: 0.75rem;
+}
+
 .settings-access-grid {
   display: grid;
   gap: 1.25rem;
@@ -6626,6 +6718,20 @@ body {
 
   .fb-page-head {
     gap: 0.75rem;
+  }
+
+  .builder-detail-identity {
+    gap: 0.75rem;
+  }
+
+  .builder-detail-avatar.fb-src-icon {
+    font-size: 1.125rem;
+    height: 2.75rem;
+    width: 2.75rem;
+  }
+
+  .builder-detail-channel-row {
+    grid-template-columns: 1fr;
   }
 
   .page-pad h1,

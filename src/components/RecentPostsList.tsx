@@ -20,7 +20,7 @@ export function RecentPostsList({
   const readKeySet = new Set(readKeys);
 
   return (
-    <ul className="grid gap-4">
+    <ul className="recent-post-list">
       {items.map((item) => (
         <li key={item.id}>
           <PostCard

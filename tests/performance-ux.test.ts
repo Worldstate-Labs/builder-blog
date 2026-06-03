@@ -205,6 +205,23 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(digestDetails, /mode === "today"/);
   assert.match(recommendationsPage, /redirect\("\/dashboard\?tab=subscription"\)/);
   assert.match(builderDetailPage, /className="builder-detail-workspace"/);
+  assert.match(builderDetailPage, /className="builder-detail-head-stack"/);
+  assert.match(builderDetailPage, /className="builder-detail-identity"/);
+  assert.match(builderDetailPage, /className="builder-detail-avatar"/);
+  assert.match(builderDetailPage, /className="builder-detail-title-stack"/);
+  assert.match(builderDetailPage, /className="builder-detail-title-row"/);
+  assert.match(builderDetailPage, /className="builder-detail-host source-host-meta mono truncate"/);
+  assert.match(builderDetailPage, /className="builder-detail-bio fb-desc"/);
+  assert.match(builderDetailPage, /className="builder-detail-actions-skeleton"/);
+  assert.match(builderDetailPage, /className="builder-detail-channel-list"/);
+  assert.match(builderDetailPage, /className="builder-detail-channel-row"/);
+  assert.match(builderDetailPage, /className="recent-post-list recent-post-list--skeleton"/);
+  assert.match(builderDetailPage, /className="recent-post-skeleton-card fb-panel"/);
+  assert.doesNotMatch(builderDetailPage, /<SourceAvatar[\s\S]*style=\{\{/);
+  assert.doesNotMatch(builderDetailPage, /className="grid gap-3"/);
+  assert.doesNotMatch(builderDetailPage, /className="mt-3 grid gap-2"/);
+  assert.doesNotMatch(builderDetailPage, /md:grid-cols-\[1fr_auto_auto\]/);
+  assert.doesNotMatch(builderDetailPage, /className="grid gap-4" aria-busy/);
   assert.doesNotMatch(builderDetailPage, /mt-8 grid gap-6/);
   assert.doesNotMatch(builderDetailPage, /fb-panel dashed mt-10/);
   assert.match(globals, /--workspace-max:\s*72rem/);
@@ -224,6 +241,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(globals, /\.home-tabs/);
   assert.match(globals, /\.home-workspace\s*{[\s\S]*min-width:\s*0/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*margin-top:\s*clamp/);
+  assert.match(globals, /\.builder-detail-avatar\.fb-src-icon\s*{[\s\S]*height:\s*3\.5rem/);
+  assert.match(globals, /\.builder-detail-channel-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto auto/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-detail-channel-row\s*{[\s\S]*grid-template-columns:\s*1fr/);
+  assert.match(source("src/components/RecentPostsList.tsx"), /className="recent-post-list"/);
   assert.doesNotMatch(globals, /\.fb-rail/);
 });
 
@@ -632,7 +653,12 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderLibraryList, /\{builder\.feedItemCount\}\s*items/);
   assert.doesNotMatch(builderLibraryList, /No posts yet/);
   assert.doesNotMatch(builderLibraryList, /builder-library-stats/);
+  assert.doesNotMatch(builderLibraryList, /builder-posts-latest/);
   assert.doesNotMatch(builderLibraryList, /Latest \{formatCompactDate/);
+  assert.match(
+    builderFeedItems,
+    /<span>Posts<\/span>[\s\S]*label=\{items \? "loaded" : "summarized"\}[\s\S]*className="builder-posts-latest"[\s\S]*Latest \{formatCompactDate/,
+  );
   assert.match(builderFeedItems, /Latest \{formatCompactDate\(new Date\(latestPostCreatedAt\)\)\}/);
   assert.match(builderFeedItems, /timeZone:\s*"UTC"/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
