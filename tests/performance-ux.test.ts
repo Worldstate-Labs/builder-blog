@@ -239,6 +239,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(appShell, /className="fb-top /);
   assert.match(appShell, /className="fb-top-inner"/);
   assert.match(appShell, /desktopLayout="bar"/);
+  assert.match(appShell, /className="app-frame"/);
+  assert.doesNotMatch(appShell, /min-h-screen|bg-\[var\(--paper\)\]|text-\[var\(--ink\)\]/);
   assert.match(appShell, /className="app-main"/);
   assert.doesNotMatch(appShell, /<aside/);
   assert.match(appShell, /<SearchForm query="" variant="header" \/>/);
@@ -367,6 +369,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(globals, /\.route-loading-chip/);
   assert.match(globals, /\.fb-top\s*{[\s\S]*position:\s*sticky/);
   assert.match(globals, /\.fb-top-inner\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
+  assert.match(globals, /\.app-frame\s*{[\s\S]*background:\s*var\(--paper\)/);
+  assert.match(globals, /\.app-frame\s*{[\s\S]*color:\s*var\(--ink\)/);
+  assert.match(globals, /\.app-frame\s*{[\s\S]*min-height:\s*100vh/);
   assert.match(globals, /\.fb-page-head\s*{[\s\S]*border-bottom:/);
   assert.match(pageHeader, /Omit<HTMLAttributes<HTMLElement>, "title">/);
   assert.match(pageHeader, /<header \{\.\.\.headerProps\} className=\{\["fb-page-head", className\]/);

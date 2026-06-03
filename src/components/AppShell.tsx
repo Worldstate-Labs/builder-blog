@@ -23,7 +23,7 @@ export function AppShell({
   const isAdmin = isAdminEmail(session?.user?.email);
 
   return (
-    <div className="app-frame min-h-screen bg-[var(--paper)] text-[var(--ink)]">
+    <div className="app-frame">
       <header className="fb-top hidden lg:flex">
         <div className="fb-top-inner">
           <Link href="/dashboard" className="fb-brand">

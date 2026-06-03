@@ -214,8 +214,11 @@ svg.lucide {
 }
 
 .app-frame {
+  background: var(--paper);
+  color: var(--ink);
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
 }
 
 .app-body {
