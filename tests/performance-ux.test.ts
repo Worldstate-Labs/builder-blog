@@ -141,6 +141,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(settingsFields, /className="settings-section-title-row"/);
   assert.match(settingsFields, /className="settings-field-label"/);
   assert.match(settingsFields, /className="settings-field-help"/);
+  assert.match(settingsFields, /export function FieldBlock/);
   assert.match(settingsFields, /className="settings-choice-list"/);
   assert.match(settingsFields, /className="settings-footer-bar"/);
   assert.match(settingsFields, /className="settings-save-status is-saved"/);
@@ -148,12 +149,16 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(settingsFields, /className="settings-section mt-7/);
   assert.doesNotMatch(settingsFields, /className="settings-field block text-sm/);
   assert.match(adminDigestConfig, /FooterBar/);
+  assert.match(adminDigestConfig, /FieldBlock/);
   assert.match(adminDigestConfig, /@\/components\/settings\/SettingsFields/);
   assert.match(adminDigestConfig, /HEADLINE_PROMPT_PLACEHOLDER/);
   assert.match(adminDigestConfig, /PER_SOURCE_SUMMARY_PROMPT_PLACEHOLDER/);
   assert.match(adminDigestConfig, /headlinePrompt/);
   assert.match(adminDigestConfig, /perSourceSummaryPrompt/);
+  assert.match(adminDigestConfig, /label="Per-source summary prompt"[\s\S]*optional/);
   assert.doesNotMatch(adminDigestConfig, /OrderedChoiceField/);
+  assert.doesNotMatch(adminDigestConfig, /settings-field-label mb-1/);
+  assert.doesNotMatch(adminDigestConfig, /style=\{\{/);
   assert.match(adminDigestConfig, /TRANSLATE_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /@\/components\/settings\/SettingsFields/);
   assert.match(adminSourceTypeManager, /FETCH_PROMPT_PLACEHOLDER/);

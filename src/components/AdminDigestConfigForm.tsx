@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import {
+  FieldBlock,
   FooterBar,
   Section,
   type SaveStatusState,
@@ -111,13 +112,10 @@ export function AdminDigestConfigForm({
         title="Digest prompts"
         description="Prompts used after posts already have per-post summaries."
       >
-        <div className="settings-field block text-sm">
-          <span
-            className="settings-field-label mb-1 flex items-baseline gap-1.5 text-[11px] uppercase tracking-[0.12em]"
-            style={{ color: "var(--muted)" }}
-          >
-            Headline prompt
-          </span>
+        <FieldBlock
+          label="Headline prompt"
+          description="Writes the short headline summary in the selected digest language."
+        >
           <MarkdownEditor
             ariaLabel="Headline prompt"
             height={220}
@@ -125,17 +123,12 @@ export function AdminDigestConfigForm({
             value={draft.headlinePrompt}
             onChange={(value) => update("headlinePrompt", value)}
           />
-          <span className="settings-field-help mt-1 block text-xs" style={{ color: "var(--muted)" }}>
-            Writes the short headline summary in the selected digest language.
-          </span>
-        </div>
-        <div className="settings-field block text-sm">
-          <span
-            className="settings-field-label mb-1 flex items-baseline gap-1.5 text-[11px] uppercase tracking-[0.12em]"
-            style={{ color: "var(--muted)" }}
-          >
-            Per-source summary prompt
-          </span>
+        </FieldBlock>
+        <FieldBlock
+          label="Per-source summary prompt"
+          description="Optionally writes one source-level note above that source's posts."
+          optional
+        >
           <MarkdownEditor
             ariaLabel="Per-source summary prompt"
             height={260}
@@ -143,17 +136,11 @@ export function AdminDigestConfigForm({
             value={draft.perSourceSummaryPrompt}
             onChange={(value) => update("perSourceSummaryPrompt", value)}
           />
-          <span className="settings-field-help mt-1 block text-xs" style={{ color: "var(--muted)" }}>
-            Optionally writes one source-level note above that source&apos;s posts.
-          </span>
-        </div>
-        <div className="settings-field block text-sm">
-          <span
-            className="settings-field-label mb-1 flex items-baseline gap-1.5 text-[11px] uppercase tracking-[0.12em]"
-            style={{ color: "var(--muted)" }}
-          >
-            Translate prompt
-          </span>
+        </FieldBlock>
+        <FieldBlock
+          label="Translate prompt"
+          description="Only rewrites or translates existing per-post summaries."
+        >
           <MarkdownEditor
             ariaLabel="Translate prompt"
             height={340}
@@ -161,10 +148,7 @@ export function AdminDigestConfigForm({
             value={draft.translate}
             onChange={(value) => update("translate", value)}
           />
-          <span className="settings-field-help mt-1 block text-xs" style={{ color: "var(--muted)" }}>
-            Only rewrites or translates existing per-post summaries.
-          </span>
-        </div>
+        </FieldBlock>
       </Section>
 
       <FooterBar

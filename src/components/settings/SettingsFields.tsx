@@ -116,6 +116,30 @@ export function FieldShell({
   );
 }
 
+export function FieldBlock({
+  label,
+  description,
+  optional,
+  children,
+}: {
+  label: string;
+  description?: string;
+  optional?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="settings-field">
+      <FieldLabelText optional={optional}>{label}</FieldLabelText>
+      {children}
+      {description ? (
+        <span className="settings-field-help">
+          {description}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export function FieldText({
   label,
   value,
