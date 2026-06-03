@@ -94,7 +94,7 @@ export function BuilderFeedItems({
           />
           {latestPostCreatedAt ? (
             <time className="builder-posts-latest" dateTime={latestPostCreatedAt}>
-              latest {formatCompactDate(new Date(latestPostCreatedAt))}
+              Latest {formatCompactDate(new Date(latestPostCreatedAt))}
             </time>
           ) : null}
         </span>

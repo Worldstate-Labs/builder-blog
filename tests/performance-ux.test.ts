@@ -1015,9 +1015,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /bg-black\/10|className="h-/);
   assert.match(
     builderFeedItems,
-    /<span>Posts<\/span>[\s\S]*label=\{items \? "loaded" : "summarized"\}[\s\S]*<time className="builder-posts-latest" dateTime=\{latestPostCreatedAt\}>[\s\S]*latest \{formatCompactDate/,
+    /<span>Posts<\/span>[\s\S]*label=\{items \? "loaded" : "summarized"\}[\s\S]*<time className="builder-posts-latest" dateTime=\{latestPostCreatedAt\}>[\s\S]*Latest \{formatCompactDate/,
   );
-  assert.match(builderFeedItems, /latest \{formatCompactDate\(new Date\(latestPostCreatedAt\)\)\}/);
+  assert.match(builderFeedItems, /Latest \{formatCompactDate\(new Date\(latestPostCreatedAt\)\)\}/);
   assert.match(builderFeedItems, /className="builder-post-loading-line"/);
   assert.match(builderFeedItems, /className="builder-post-loading-card"/);
   assert.match(builderFeedItems, /className="builder-post-state builder-post-state--error"/);
