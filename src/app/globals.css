@@ -5560,7 +5560,7 @@ svg.lucide {
 .library-hub-page-count {
   align-items: center;
   display: flex;
-  gap: 0.5rem;
+  min-width: 0;
 }
 
 .library-hub-skeleton-copy {

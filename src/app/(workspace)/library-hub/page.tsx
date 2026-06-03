@@ -4,7 +4,7 @@ import {
   DigestPipelineImportForm,
   type HubDigestPipeline,
 } from "@/components/DigestPipelineImportForm";
-import { CountChip } from "@/components/Count";
+import { CountMeta } from "@/components/Count";
 import { LibraryHubImportForm, type HubLibrary } from "@/components/LibraryHubImportForm";
 import { PageHeader } from "@/components/PageHeader";
 import { isAdminEmail } from "@/lib/admin";
@@ -29,8 +29,8 @@ export default function LibraryHubPage() {
       <PageHeader
         title="Library Hub"
         actions={
-          <div className="library-hub-page-count">
-            <Suspense fallback={<span className="fb-chip" aria-busy="true">Loading</span>}>
+          <div className="library-hub-page-count source-summary-toolbar page-toolbar">
+            <Suspense fallback={<span className="count-meta" aria-busy="true">Loading counts</span>}>
               <LibraryHubCount dataPromise={dataPromise} />
             </Suspense>
           </div>
@@ -186,13 +186,10 @@ async function LibraryHubCount({
   const data = await dataPromise;
 
   return (
-    <>
-      <CountChip label={data.libraryCount === 1 ? "library" : "libraries"} value={data.libraryCount} />
-      <CountChip
-        label={data.digestPipelineCount === 1 ? "AI Digest" : "AI Digests"}
-        value={data.digestPipelineCount}
-      />
-    </>
+    <span className="source-summary-line" aria-label="Library Hub counts">
+      <CountMeta label={data.libraryCount === 1 ? "library" : "libraries"} value={data.libraryCount} />
+      <CountMeta label={data.digestPipelineCount === 1 ? "AI Digest" : "AI Digests"} value={data.digestPipelineCount} />
+    </span>
   );
 }
 

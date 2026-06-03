@@ -984,11 +984,15 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(libraryHubPage, /@\/components\/PageHeader/);
   assert.match(libraryHubPage, /<PageHeader[\s\S]*title="Library Hub"[\s\S]*actions=/);
   assert.doesNotMatch(libraryHubPage, /Import shared source libraries and AI Digest archives/);
-  assert.match(libraryHubPage, /actions=\{[\s\S]*className="library-hub-page-count"/);
+  assert.match(libraryHubPage, /actions=\{[\s\S]*className="library-hub-page-count source-summary-toolbar page-toolbar"/);
+  assert.match(libraryHubPage, /className="library-hub-page-count source-summary-toolbar page-toolbar"/);
   assert.match(libraryHubPage, /digestPipelineCount:\s*hubDigestPipelines\.length/);
+  assert.match(libraryHubPage, /CountMeta/);
+  assert.doesNotMatch(libraryHubPage, /CountChip/);
+  assert.match(libraryHubPage, /className="source-summary-line" aria-label="Library Hub counts"/);
   assert.match(libraryHubPage, /label=\{data\.digestPipelineCount === 1 \? "AI Digest" : "AI Digests"\}/);
   assert.doesNotMatch(libraryHubPage, /<section className="fb-page-head"/);
-  assert.match(libraryHubPage, /className="library-hub-page-count"/);
+  assert.match(libraryHubPage, /className="library-hub-page-count source-summary-toolbar page-toolbar"/);
   assert.match(libraryHubPage, /className="library-hub-skeleton-line is-wide"/);
   assert.match(libraryHubPage, /className="library-hub-skeleton-copy"/);
   assert.match(libraryHubPage, /className="library-hub-skeleton-line is-kicker"/);
