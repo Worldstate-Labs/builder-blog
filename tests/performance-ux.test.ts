@@ -340,6 +340,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.page-pad\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.page-pad\s*{[\s\S]*width:\s*min\(100%,\s*var\(--workspace-max\)\)/);
   assert.match(globals, /\.workspace-content-stack\s*{[\s\S]*margin-top:\s*clamp/);
+  assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*max-width:\s*58rem/);
+  assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*margin-inline:\s*auto/);
+  assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.builder-detail-action-skeleton-button\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.builder-detail-action-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.builder-detail-channels\s*{[\s\S]*border-top:\s*1px solid/);
@@ -380,6 +383,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(globals, /\.ai-digest-empty-inner|\.ai-digest-empty-icon|\.ai-digest-empty-title|\.ai-digest-empty-desc/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.digest-source-list\s*{[\s\S]*flex-direction:\s*column/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*margin-top:\s*clamp/);
+  assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*max-width:\s*58rem/);
   assert.match(globals, /\.builder-detail-page-head > div:first-child\s*{[\s\S]*flex:\s*1 1 min\(48rem,\s*100%\)/);
   assert.match(globals, /\.builder-detail-avatar\.fb-src-icon\s*{[\s\S]*height:\s*3\.5rem/);
   assert.match(globals, /\.builder-detail-channel-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto auto/);

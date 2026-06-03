@@ -6066,7 +6066,10 @@ svg.lucide {
 }
 
 .builder-detail-workspace {
+  margin-inline: auto;
   margin-top: clamp(1.5rem, 2.5vw, 2.25rem);
+  max-width: 58rem;
+  width: 100%;
 }
 
 .builder-detail-section {
