@@ -2490,7 +2490,10 @@ test("content config is per-user, seeded from a system default", () => {
   // additionally updates the system default template used for new users.
   const srcRoute = readFileSync("src/app/api/settings/source-types/route.ts", "utf8");
   const digestRoute = readFileSync("src/app/api/settings/digest-config/route.ts", "utf8");
-  assert.match(srcRoute, /getUserSourceConfigs\(session\.user\.id\)/);
+  assert.match(srcRoute, /getUserSourceConfigs\(userId\)/);
+  assert.match(srcRoute, /getAllSourceConfigs\(\)/);
+  assert.match(srcRoute, /Quality gates can only be changed by an admin/);
+  assert.match(srcRoute, /contentQuality: defaultBySourceId\.get\(config\.sourceId\)\?\.contentQuality/);
   assert.match(srcRoute, /updateUserSourceConfig\b/);
   assert.match(srcRoute, /isAdminEmail\(session\.user\.email\)/);
   assert.match(srcRoute, /updateUserSourceConfigAndDefault/);
@@ -2505,6 +2508,8 @@ test("content config is per-user, seeded from a system default", () => {
   // edit the common fetching and post-summary rules shared defaults.
   const settingsPage = readFileSync("src/app/(workspace)/settings/page.tsx", "utf8");
   assert.match(settingsPage, /getUserSourceConfigs\(userId\)/);
+  assert.match(settingsPage, /getAllSourceConfigs\(\)/);
+  assert.match(settingsPage, /canEditQualityGates=\{isAdmin\}/);
   assert.match(settingsPage, /getUserDigestConfig\(userId\)/);
   assert.match(settingsPage, /Source and digest rules/);
   assert.match(settingsPage, /Source update rules/);
@@ -2519,18 +2524,23 @@ test("content config is per-user, seeded from a system default", () => {
   // the default template admin edits.
   const contextRoute = readFileSync("src/app/api/skill/context/route.ts", "utf8");
   assert.match(contextRoute, /getUserSourceConfigs\(user\.id\)/);
+  assert.match(contextRoute, /getAllSourceConfigs\(\)/);
+  assert.match(contextRoute, /contentQuality: defaultSourceConfigById\.get\(def\.id\)\?\.contentQuality/);
   assert.match(contextRoute, /getUserDigestConfig\(user\.id\)/);
   assert.match(contextRoute, /getDigestConfig\(\)/);
   assert.match(contextRoute, /commonFetchRules: defaultDigestConfig\.commonFetchRules/);
   assert.match(contextRoute, /commonSummaryRules: defaultDigestConfig\.commonSummaryRules/);
   const buildersRoute = readFileSync("src/app/api/skill/builders/route.ts", "utf8");
-  assert.match(buildersRoute, /getUserSourceConfigs\(user\.id\)/);
+  assert.match(buildersRoute, /getAllSourceConfigs\(\)/);
+  assert.doesNotMatch(buildersRoute, /getUserSourceConfigs\(user\.id\)/);
 
   // The editing components post to the per-user endpoints.
   const srcManager = readFileSync("src/components/AdminSourceTypeManager.tsx", "utf8");
   const digestForm = readFileSync("src/components/AdminDigestConfigForm.tsx", "utf8");
   const commonSummaryRulesForm = readFileSync("src/components/CommonSummaryRulesForm.tsx", "utf8");
   assert.match(srcManager, /\/api\/settings\/source-types/);
+  assert.match(srcManager, /canEditQualityGates/);
+  assert.match(srcManager, /patch\.contentQuality = contentQuality/);
   assert.match(digestForm, /\/api\/settings\/digest-config/);
   assert.match(commonSummaryRulesForm, /commonFetchRules/);
   assert.match(commonSummaryRulesForm, /commonSummaryRules/);

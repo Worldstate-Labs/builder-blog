@@ -74,6 +74,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /@\/components\/settings\/SettingsFields/);
   assert.match(adminSourceTypeManager, /<OptionalMarkdownField/);
   assert.match(adminSourceTypeManager, /buttonLabel="Add fetch prompt"/);
+  assert.match(adminSourceTypeManager, /canEditQualityGates \? \(/);
+  assert.match(settingsPage, /canEditQualityGates=\{isAdmin\}/);
   assert.match(globals, /\.settings-optional-badge/);
   assert.match(globals, /\.settings-optional-empty/);
   assert.match(userMenu, /href="\/settings" onClick=\{closeMenu\}[\s\S]*Settings/);

@@ -72,8 +72,10 @@ function toDraft(config: AdminSourceTypeConfig): Draft {
 }
 
 export function AdminSourceTypeManager({
+  canEditQualityGates,
   initialConfigs,
 }: {
+  canEditQualityGates?: boolean;
   initialConfigs: AdminSourceTypeConfig[];
 }) {
   const [configs, setConfigs] = useState(initialConfigs);
@@ -82,6 +84,7 @@ export function AdminSourceTypeManager({
       {configs.map((config) => (
         <SourceTypeCard
           key={config.sourceId}
+          canEditQualityGates={Boolean(canEditQualityGates)}
           config={config}
           onSaved={(next) =>
             setConfigs((current) =>
@@ -95,9 +98,11 @@ export function AdminSourceTypeManager({
 }
 
 function SourceTypeCard({
+  canEditQualityGates,
   config,
   onSaved,
 }: {
+  canEditQualityGates: boolean;
   config: AdminSourceTypeConfig;
   onSaved: (next: AdminSourceTypeConfig) => void;
 }) {
@@ -109,7 +114,23 @@ function SourceTypeCard({
   );
   const [isPending, startTransition] = useTransition();
 
-  const dirty = JSON.stringify(draft) !== JSON.stringify(baseline);
+  const editableDraft = useMemo(
+    () => ({
+      summaryPromptBody: draft.summaryPromptBody,
+      fetchPromptBody: draft.fetchPromptBody,
+      ...(canEditQualityGates ? { contentQuality: draft.contentQuality } : {}),
+    }),
+    [canEditQualityGates, draft],
+  );
+  const editableBaseline = useMemo(
+    () => ({
+      summaryPromptBody: baseline.summaryPromptBody,
+      fetchPromptBody: baseline.fetchPromptBody,
+      ...(canEditQualityGates ? { contentQuality: baseline.contentQuality } : {}),
+    }),
+    [baseline, canEditQualityGates],
+  );
+  const dirty = JSON.stringify(editableDraft) !== JSON.stringify(editableBaseline);
 
   function update<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -130,42 +151,47 @@ function SourceTypeCard({
   }
 
   function save() {
-    const cq = draft.contentQuality;
-    if (!Number.isInteger(cq.minChars) || cq.minChars < 0) {
-      setStatus({ kind: "error", message: "Min chars must be a non-negative integer." });
-      return;
-    }
-    if (!Number.isInteger(cq.minContentUnits) || cq.minContentUnits < 0) {
-      setStatus({ kind: "error", message: "Min content units must be a non-negative integer." });
-      return;
-    }
-    for (const [field, label] of [
-      ["minLocalDiversity", "Min local diversity"],
-      ["maxTimestampDensity", "Max timestamp density"],
-    ] as const) {
-      const ratio = cq[field];
-      if (ratio !== null && (!Number.isFinite(ratio) || ratio < 0 || ratio > 1)) {
-        setStatus({ kind: "error", message: `${label} must be between 0 and 1.` });
-        return;
-      }
-    }
-
-    const contentQuality: Record<string, unknown> = {
-      minChars: cq.minChars,
-      minContentUnits: cq.minContentUnits,
-    };
-    if (cq.minLocalDiversity !== null && Number.isFinite(cq.minLocalDiversity)) {
-      contentQuality.minLocalDiversity = cq.minLocalDiversity;
-    }
-    if (cq.maxTimestampDensity !== null && Number.isFinite(cq.maxTimestampDensity)) {
-      contentQuality.maxTimestampDensity = cq.maxTimestampDensity;
-    }
-
-    const patch = {
+    const patch: {
+      summaryPromptBody: string;
+      fetchPromptBody: string | null;
+      contentQuality?: Record<string, unknown>;
+    } = {
       summaryPromptBody: draft.summaryPromptBody,
       fetchPromptBody: draft.fetchPromptBody.trim() === "" ? null : draft.fetchPromptBody,
-      contentQuality,
     };
+    if (canEditQualityGates) {
+      const cq = draft.contentQuality;
+      if (!Number.isInteger(cq.minChars) || cq.minChars < 0) {
+        setStatus({ kind: "error", message: "Min chars must be a non-negative integer." });
+        return;
+      }
+      if (!Number.isInteger(cq.minContentUnits) || cq.minContentUnits < 0) {
+        setStatus({ kind: "error", message: "Min content units must be a non-negative integer." });
+        return;
+      }
+      for (const [field, label] of [
+        ["minLocalDiversity", "Min local diversity"],
+        ["maxTimestampDensity", "Max timestamp density"],
+      ] as const) {
+        const ratio = cq[field];
+        if (ratio !== null && (!Number.isFinite(ratio) || ratio < 0 || ratio > 1)) {
+          setStatus({ kind: "error", message: `${label} must be between 0 and 1.` });
+          return;
+        }
+      }
+
+      const contentQuality: Record<string, unknown> = {
+        minChars: cq.minChars,
+        minContentUnits: cq.minContentUnits,
+      };
+      if (cq.minLocalDiversity !== null && Number.isFinite(cq.minLocalDiversity)) {
+        contentQuality.minLocalDiversity = cq.minLocalDiversity;
+      }
+      if (cq.maxTimestampDensity !== null && Number.isFinite(cq.maxTimestampDensity)) {
+        contentQuality.maxTimestampDensity = cq.maxTimestampDensity;
+      }
+      patch.contentQuality = contentQuality;
+    }
 
     setStatus({ kind: "saving" });
     startTransition(async () => {
@@ -232,68 +258,70 @@ function SourceTypeCard({
           />
         </Section>
 
-        <Section
-          step="03"
-          title="Quality gates"
-          description="Length, diversity, and timestamp-density checks applied after extraction. Items that fail are dropped from the pipeline."
-        >
-          <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
-            <FieldNumber
-              label="Min chars"
-              min={0}
-              description="Drop items whose body has fewer characters than this."
-              value={String(draft.contentQuality.minChars)}
-              onChange={(v) => updateQuality("minChars", Math.max(0, Number(v) || 0))}
-            />
-            <FieldNumber
-              label="Min content units"
-              min={0}
-              description="Drop items with too little real text. Latin words count as units; CJK text counts by character."
-              value={String(draft.contentQuality.minContentUnits)}
-              onChange={(v) =>
-                updateQuality("minContentUnits", Math.max(0, Number(v) || 0))
-              }
-            />
-            <FieldNumber
-              label="Min local diversity"
-              optional
-              min={0}
-              max={1}
-              step={0.01}
-              description="Average unique-unit ratio over 100-unit windows (0–1). Lower values allow more repetitive transcripts through."
-              value={
-                draft.contentQuality.minLocalDiversity === null
-                  ? ""
-                  : String(draft.contentQuality.minLocalDiversity)
-              }
-              onChange={(v) =>
-                updateQuality(
-                  "minLocalDiversity",
-                  v === "" ? null : clampRatio(v),
-                )
-              }
-            />
-            <FieldNumber
-              label="Max timestamp density"
-              optional
-              min={0}
-              max={1}
-              step={0.01}
-              description="Timestamp count divided by content units (0–1). Above this the body is treated as timestamp noise and dropped."
-              value={
-                draft.contentQuality.maxTimestampDensity === null
-                  ? ""
-                  : String(draft.contentQuality.maxTimestampDensity)
-              }
-              onChange={(v) =>
-                updateQuality(
-                  "maxTimestampDensity",
-                  v === "" ? null : clampRatio(v),
-                )
-              }
-            />
-          </div>
-        </Section>
+        {canEditQualityGates ? (
+          <Section
+            step="03"
+            title="Quality gates"
+            description="Length, diversity, and timestamp-density checks applied after extraction. Items that fail are dropped from the pipeline."
+          >
+            <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+              <FieldNumber
+                label="Min chars"
+                min={0}
+                description="Drop items whose body has fewer characters than this."
+                value={String(draft.contentQuality.minChars)}
+                onChange={(v) => updateQuality("minChars", Math.max(0, Number(v) || 0))}
+              />
+              <FieldNumber
+                label="Min content units"
+                min={0}
+                description="Drop items with too little real text. Latin words count as units; CJK text counts by character."
+                value={String(draft.contentQuality.minContentUnits)}
+                onChange={(v) =>
+                  updateQuality("minContentUnits", Math.max(0, Number(v) || 0))
+                }
+              />
+              <FieldNumber
+                label="Min local diversity"
+                optional
+                min={0}
+                max={1}
+                step={0.01}
+                description="Average unique-unit ratio over 100-unit windows (0-1). Lower values allow more repetitive transcripts through."
+                value={
+                  draft.contentQuality.minLocalDiversity === null
+                    ? ""
+                    : String(draft.contentQuality.minLocalDiversity)
+                }
+                onChange={(v) =>
+                  updateQuality(
+                    "minLocalDiversity",
+                    v === "" ? null : clampRatio(v),
+                  )
+                }
+              />
+              <FieldNumber
+                label="Max timestamp density"
+                optional
+                min={0}
+                max={1}
+                step={0.01}
+                description="Timestamp count divided by content units (0-1). Above this the body is treated as timestamp noise and dropped."
+                value={
+                  draft.contentQuality.maxTimestampDensity === null
+                    ? ""
+                    : String(draft.contentQuality.maxTimestampDensity)
+                }
+                onChange={(v) =>
+                  updateQuality(
+                    "maxTimestampDensity",
+                    v === "" ? null : clampRatio(v),
+                  )
+                }
+              />
+            </div>
+          </Section>
+        ) : null}
 
         <FooterBar
           dirty={dirty}

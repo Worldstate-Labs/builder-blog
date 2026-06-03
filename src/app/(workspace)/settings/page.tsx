@@ -11,7 +11,11 @@ import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SEEDED_SOURCE_IDS } from "@/lib/source-config-seed";
-import { getUserDigestConfig, getUserSourceConfigs } from "@/lib/source-config-store";
+import {
+  getAllSourceConfigs,
+  getUserDigestConfig,
+  getUserSourceConfigs,
+} from "@/lib/source-config-store";
 
 export default async function SettingsPage() {
   const session = await getCurrentSession();
@@ -47,10 +51,16 @@ async function SourceTypeConfigSection({
   userId: string;
   isAdmin: boolean;
 }) {
-  const [sourceConfigs, digestConfig] = await Promise.all([
+  const [userSourceConfigs, defaultSourceConfigs, digestConfig] = await Promise.all([
     getUserSourceConfigs(userId),
+    getAllSourceConfigs(),
     getUserDigestConfig(userId),
   ]);
+  const defaultSourceConfigById = new Map(defaultSourceConfigs.map((c) => [c.sourceId, c]));
+  const sourceConfigs = userSourceConfigs.map((config) => ({
+    ...config,
+    contentQuality: defaultSourceConfigById.get(config.sourceId)?.contentQuality ?? config.contentQuality,
+  }));
   return (
     <section className="settings-rules mt-10 grid gap-4">
       <header className="settings-rules-head">
@@ -82,6 +92,7 @@ async function SourceTypeConfigSection({
             </div>
           ) : null}
           <AdminSourceTypeManager
+            canEditQualityGates={isAdmin}
             initialConfigs={sourceConfigs.map((c) => ({
               sourceId: c.sourceId,
               label: c.label,

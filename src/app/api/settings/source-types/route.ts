@@ -4,6 +4,7 @@ import { getCurrentSession } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin";
 import { formatZodError } from "@/lib/zod-error";
 import {
+  getAllSourceConfigs,
   getUserSourceConfigs,
   resetUserSourceConfigs,
   updateUserSourceConfigAndDefault,
@@ -50,8 +51,20 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const configs = await getUserSourceConfigs(session.user.id);
+  const configs = await getSettingsSourceConfigs(session.user.id);
   return NextResponse.json({ configs });
+}
+
+async function getSettingsSourceConfigs(userId: string) {
+  const [userConfigs, defaultConfigs] = await Promise.all([
+    getUserSourceConfigs(userId),
+    getAllSourceConfigs(),
+  ]);
+  const defaultBySourceId = new Map(defaultConfigs.map((c) => [c.sourceId, c]));
+  return userConfigs.map((config) => ({
+    ...config,
+    contentQuality: defaultBySourceId.get(config.sourceId)?.contentQuality ?? config.contentQuality,
+  }));
 }
 
 export async function PATCH(request: Request) {
@@ -67,8 +80,15 @@ export async function PATCH(request: Request) {
   if (!SEEDED_SOURCE_IDS.includes(sourceId)) {
     return NextResponse.json({ error: `Unknown sourceId: ${sourceId}` }, { status: 400 });
   }
+  const isAdmin = isAdminEmail(session.user.email);
+  if (!isAdmin && patch.contentQuality !== undefined) {
+    return NextResponse.json(
+      { error: "Quality gates can only be changed by an admin." },
+      { status: 403 },
+    );
+  }
   try {
-    const update = isAdminEmail(session.user.email)
+    const update = isAdmin
       ? updateUserSourceConfigAndDefault
       : updateUserSourceConfig;
     const config = await update(
@@ -94,6 +114,6 @@ export async function DELETE() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   await resetUserSourceConfigs(session.user.id);
-  const configs = await getUserSourceConfigs(session.user.id);
+  const configs = await getSettingsSourceConfigs(session.user.id);
   return NextResponse.json({ configs });
 }

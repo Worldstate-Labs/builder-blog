@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { addBuilderToPool } from "@/lib/builder-pool";
 import { upsertBuilder } from "@/lib/builders";
 import { checkBodyContentQuality } from "@/lib/content-quality";
-import { getUserSourceConfigs } from "@/lib/source-config-store";
+import { getAllSourceConfigs } from "@/lib/source-config-store";
 import { syncPersonalLibraryHubForUser } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
   // Per-source content-quality floors (minChars/minContentUnits) — the same standards
   // the client validate step uses. We enforce them server-side too so a post
   // with no real crawled content can't slip in when validate is bypassed.
-  const sourceConfigs = await getUserSourceConfigs(user.id);
+  const sourceConfigs = await getAllSourceConfigs();
   const standardsBySourceId = new Map(
     sourceConfigs.map((c) => [c.sourceId, c.contentQuality]),
   );

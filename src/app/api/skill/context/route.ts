@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
 import {
   getDigestConfig,
+  getAllSourceConfigs,
   getUserDigestConfig,
   getUserSourceConfigs,
 } from "@/lib/source-config-store";
@@ -57,6 +58,7 @@ export async function GET(request: Request) {
     preference,
     lastDigest,
     sourceConfigs,
+    defaultSourceConfigs,
     digestConfig,
     defaultDigestConfig,
   ] = await Promise.all([
@@ -79,9 +81,11 @@ export async function GET(request: Request) {
       select: { createdAt: true },
     }),
     getUserSourceConfigs(user.id),
+    getAllSourceConfigs(),
     getUserDigestConfig(user.id),
     getDigestConfig(),
   ]);
+  const defaultSourceConfigById = new Map(defaultSourceConfigs.map((c) => [c.sourceId, c]));
 
   // Account-wide summary language selected by the one-time or cron prompt.
   // Skill context always uses this run-level language, never a per-source
@@ -123,7 +127,7 @@ export async function GET(request: Request) {
       agentDefaultStatus: cfg.agentDefaultStatus,
       defaultFetchDays: cfg.defaultFetchDays,
       defaultFetchLimit: cfg.defaultFetchLimit,
-      contentQuality: cfg.contentQuality,
+      contentQuality: defaultSourceConfigById.get(def.id)?.contentQuality ?? cfg.contentQuality,
       summaryPrompt: {
         body: cfg.summaryPromptBody,
         style: cfg.summaryStyle,
