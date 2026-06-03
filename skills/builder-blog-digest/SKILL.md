@@ -144,11 +144,12 @@ This command:
   any available user-owned local capability instead of asking the web app to
   process the media. The agent chooses the method; the requirement is to obtain
   real primary content and sync it as the item's `body` through `sync-builders`;
-- for every newly fetched or agent-produced post, generate a concise Chinese
-  single-post `summary` using only that post's supplied body and metadata. Use
-  the same discipline as the digest prompt: include source URLs for every
-  claim, prioritize launches, technical insights, funding/business moves,
-  strong opinions, and implementation details, and never invent missing facts;
+- for every newly fetched or agent-produced post, generate a concise
+  single-post `summary` in the run's selected summary language using only that
+  post's supplied body and metadata. Use the same discipline as the digest
+  prompt: include source URLs for every claim, prioritize launches, technical
+  insights, funding/business moves, strong opinions, and implementation
+  details, and never invent missing facts;
 - if the transcript exists but is noisy, the agent may use its own model access
   to lightly clean timestamps, repeated fragments, and caption artifacts while
   preserving factual content; record this in `fetchTool`, for example
@@ -224,7 +225,7 @@ Payload shape:
           "kind": "TWEET",
           "externalId": "tweet-id",
           "body": "Tweet text",
-          "summary": "中文单篇摘要，基于该 post 正文，不添加外部事实。",
+          "summary": "Single-post summary in the selected summary language, based on this post body without adding outside facts.",
           "url": "https://x.com/example/status/tweet-id",
           "publishedAt": "2026-05-22T10:00:00.000Z"
         }

@@ -2996,13 +2996,12 @@ export function renderDigestMarkdown(context, agentOutput = {}) {
   const headlineSummary = stringOrNull(agentOutput?.headlineSummary) || "";
   const language = context?.language || "zh";
   if (items.length === 0) {
+    if (!headlineSummary) {
+      throw new Error("No digest items: agent output must include headlineSummary in context.language.");
+    }
     return {
-      headlineSummary: headlineSummary || (String(language).toLowerCase().startsWith("zh") ? "今天没有新的订阅更新。" : "No new subscription updates today."),
-      markdown:
-        `AI Digest - ${new Date(context?.generatedAt || Date.now()).toLocaleDateString()}\n\n` +
-        (String(language).toLowerCase().startsWith("zh")
-          ? "今天没有新的订阅更新。"
-          : "No new subscription updates today."),
+      headlineSummary,
+      markdown: `AI Digest - ${new Date(context?.generatedAt || Date.now()).toLocaleDateString()}\n\n${headlineSummary}`,
     };
   }
 

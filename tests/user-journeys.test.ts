@@ -1194,7 +1194,9 @@ test("digest generation user path exposes source-specific prompt instructions", 
   assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /Legacy Digest Intro Prompt/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /headlineSummary/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /context\.language/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /300/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /selected language/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /mobile digest header/);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.headline, /Chinese characters|Mandarin|simplified Chinese/i);
   assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /exactly one source/);
   assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /output an empty string/);
   assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /context\.language/);
