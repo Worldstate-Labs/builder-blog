@@ -282,7 +282,7 @@ function AiDigestFeed({
       ) : null}
       <section className="ai-digest-panel" aria-labelledby="ai-digest-heading">
         <header className="ai-digest-head">
-          <div className="min-w-0">
+          <div className="ai-digest-titleblock">
             {isOwnPipeline ? null : <span className="fb-section-label">AI Digest</span>}
             {isOwnPipeline ? (
               <DigestPipelineTitleEditor
@@ -290,7 +290,7 @@ function AiDigestFeed({
                 initialTitle={selectedPipeline.title}
               />
             ) : (
-              <h2 id="ai-digest-heading" className="fb-section-heading mt-1">
+              <h2 id="ai-digest-heading" className="fb-section-heading ai-digest-imported-title">
                 {selectedPipeline.title}
               </h2>
             )}

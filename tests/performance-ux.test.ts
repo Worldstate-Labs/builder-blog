@@ -270,6 +270,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /<h1 className="sr-only">Home<\/h1>/);
   assert.match(dashboardPage, /className="workspace-content-stack home-workspace"/);
   assert.match(dashboardPage, /className="ai-digest-stack"/);
+  assert.match(dashboardPage, /className="ai-digest-titleblock"/);
+  assert.match(dashboardPage, /className="fb-section-heading ai-digest-imported-title"/);
+  assert.doesNotMatch(dashboardPage, /className="min-w-0"/);
+  assert.doesNotMatch(dashboardPage, /className="fb-section-heading mt-1"/);
   assert.match(dashboardPage, /className="digest-source-selector"/);
   assert.match(dashboardPage, /className="digest-source-list"/);
   assert.match(dashboardPage, /@\/components\/EmptyState/);
@@ -423,6 +427,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.ai-digest-panel\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
   assert.match(globals, /\.ai-digest-panel\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.ai-digest-panel\s*{[\s\S]*width:\s*100%/);
+  assert.match(globals, /\.ai-digest-titleblock\s*{[\s\S]*min-width:\s*0/);
+  assert.match(globals, /\.ai-digest-imported-title\s*{[\s\S]*margin-top:\s*0\.35rem/);
   assert.match(globals, /\.digest-source-list\s*{[\s\S]*flex-wrap:\s*wrap/);
   assert.match(globals, /\.ai-digest-empty\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.ai-digest-empty\s*{[\s\S]*max-width:\s*var\(--empty-max\)/);

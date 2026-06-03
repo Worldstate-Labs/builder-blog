@@ -3955,6 +3955,14 @@ svg.lucide {
   padding: 1rem 1.125rem;
 }
 
+.ai-digest-titleblock {
+  min-width: 0;
+}
+
+.ai-digest-imported-title {
+  margin-top: 0.35rem;
+}
+
 .digest-title-row {
   align-items: center;
   display: flex;
