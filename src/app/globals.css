@@ -5305,12 +5305,56 @@ svg.lucide {
   padding: 1.125rem;
 }
 
+.fb-hub-card-head {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem 1rem;
+  justify-content: space-between;
+}
+
+.fb-hub-card-titleblock {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.fb-hub-card-kicker {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.fb-hub-card-topic {
+  color: var(--muted);
+  font-size: 0.6875rem;
+  line-height: 1;
+}
+
+.fb-hub-card-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
 .fb-hub-title {
   color: var(--ink);
   font-size: 1.0625rem;
   font-weight: 760;
   letter-spacing: -0.005em;
   line-height: 1.35;
+  margin-top: 0.5rem;
+}
+
+.fb-hub-card-desc {
+  color: var(--muted-strong);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  margin-top: 0.8rem;
+  max-width: 62ch;
 }
 
 .fb-hub-source-avatar {
@@ -5325,6 +5369,152 @@ svg.lucide {
   height: 1.875rem;
   justify-content: center;
   width: 1.875rem;
+}
+
+.fb-hub-source-avatar.is-stacked {
+  margin-left: -0.5rem;
+}
+
+.fb-hub-source-avatar[data-avatar-tone="0"] {
+  background: oklch(90% 0.028 78);
+}
+
+.fb-hub-source-avatar[data-avatar-tone="1"] {
+  background: oklch(90% 0.024 250);
+}
+
+.fb-hub-source-avatar[data-avatar-tone="2"] {
+  background: oklch(90% 0.026 326);
+}
+
+.fb-hub-source-avatar[data-avatar-tone="3"] {
+  background: oklch(89% 0.03 154);
+}
+
+.fb-hub-source-avatar[data-avatar-tone="4"] {
+  background: oklch(90% 0.03 58);
+}
+
+.fb-hub-sources {
+  min-width: 0;
+}
+
+.fb-hub-sources-summary {
+  align-items: center;
+  cursor: pointer;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  list-style: none;
+}
+
+.fb-hub-source-stack {
+  align-items: center;
+  display: inline-flex;
+  min-width: 0;
+}
+
+.fb-hub-source-summary-text {
+  color: var(--muted-strong);
+  font-size: 0.75rem;
+  line-height: 1.55;
+  min-width: 0;
+}
+
+.fb-hub-source-summary-text span {
+  color: var(--muted);
+}
+
+.fb-hub-source-list {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+}
+
+.fb-hub-source-row {
+  align-items: center;
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: 3.5rem minmax(0, 1fr) minmax(0, auto);
+  min-width: 0;
+}
+
+.fb-hub-source-kind {
+  justify-content: center;
+  min-width: 3.5rem;
+}
+
+.fb-hub-source-name,
+.fb-hub-source-handle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fb-hub-source-name {
+  color: var(--ink);
+  font-size: 0.78125rem;
+  line-height: 1.35;
+}
+
+.fb-hub-source-handle {
+  color: var(--muted);
+  font-size: 0.71875rem;
+}
+
+.fb-hub-source-overflow {
+  color: var(--muted);
+  font-size: 0.71875rem;
+  font-style: italic;
+  line-height: 1.35;
+  padding-top: 0.2rem;
+}
+
+.fb-hub-card-stats {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.71875rem;
+  font-weight: 650;
+  gap: 0.5rem 1rem;
+  padding-top: 0.8rem;
+}
+
+.fb-hub-digest-preview {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted-strong);
+  font-size: 0.875rem;
+  padding: 0.85rem;
+}
+
+.fb-hub-digest-preview-row {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.55rem;
+}
+
+.fb-hub-digest-preview-icon {
+  color: var(--accent);
+  height: 1rem;
+  margin-top: 0.125rem;
+  width: 1rem;
+}
+
+.fb-hub-digest-preview-title {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.fb-hub-digest-count {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
 }
 
 /* Hub card source-list expand/collapse. Suppresses the native triangle
@@ -6988,6 +7178,29 @@ body {
 
   .fb-hub-card .fb-btn {
     justify-content: center;
+  }
+
+  .fb-hub-card-head,
+  .fb-hub-card-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .fb-hub-sources-summary {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .fb-hub-sources-caret {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .fb-hub-source-row {
+    grid-template-columns: 3.5rem minmax(0, 1fr);
+  }
+
+  .fb-hub-source-handle {
+    grid-column: 2;
   }
 
   .search-hero {

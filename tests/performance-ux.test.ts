@@ -616,12 +616,24 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-import-section"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-form-error"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /"hub-list-region has-filters"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-head"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-sources-summary"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-stats"/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /AVATAR_COLORS/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /style=\{\{/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-section-copy"/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-list-stack fb-hub-list"/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-card-head"/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-digest-preview"/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-card-stats"/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /<section className="mt-10"/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-list mt-5"/);
   assert.match(source("src/app/globals.css"), /\.hub-list-region\.has-filters/);
   assert.match(source("src/app/globals.css"), /\.hub-section-copy/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-card-head\s*{/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*3\.5rem minmax\(0,\s*1fr\) minmax\(0,\s*auto\)/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-source-avatar\[data-avatar-tone="0"\]\s*{[\s\S]*oklch/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview\s*{/);
   assert.match(searchPage, /<Suspense[\s\S]*fallback=\{[\s\S]*<SearchResultsFallback/);
 });
 
@@ -879,10 +891,13 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /"use client"/);
   assert.match(hubImportForm, /fb-hub-list/);
   assert.match(hubImportForm, /fb-hub-title/);
+  assert.match(hubImportForm, /fb-hub-card-actions/);
+  assert.match(hubImportForm, /fb-hub-source-list/);
   assert.doesNotMatch(hubImportForm, /lg:grid-cols-2/);
   assert.doesNotMatch(hubImportForm, /serif mt-2 text-xl/);
   assert.match(globals, /\.fb-hub-list\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(globals, /\.fb-hub-card\s*{[\s\S]*border-radius:\s*8px/);
+  assert.match(globals, /\.fb-hub-card-stats\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(hubImportForm, /fetch\("\/api\/library-hub\/imports"/);
   assert.match(hubImportForm, /isCommunity/);
   assert.match(hubImportForm, /counts\[filter\.key\]/);

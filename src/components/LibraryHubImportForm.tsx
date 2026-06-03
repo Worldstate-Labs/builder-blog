@@ -47,8 +47,6 @@ const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "imported", label: "Imported" },
 ];
 
-const AVATAR_COLORS = ["#e6e0d3", "#dde2ec", "#e9e0e6", "#d8e3dc", "#e7dccb"];
-
 export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const [error, setError] = useState<string | null>(null);
@@ -309,21 +307,21 @@ function HubCard({
   return (
     <article className="fb-hub-card">
       <div>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-1.5">
+        <div className="fb-hub-card-head">
+          <div className="fb-hub-card-titleblock">
+            <div className="fb-hub-card-kicker">
               <span className="fb-kind-pill">{kindBadge(library)}</span>
-              <span className="text-[11px] text-[var(--muted)]">· {topicLabel(library)}</span>
+              <span className="fb-hub-card-topic">· {topicLabel(library)}</span>
             </div>
-            <h3 className="fb-hub-title mt-2">
+            <h3 className="fb-hub-title">
               {library.name}
             </h3>
           </div>
-          {action}
+          <div className="fb-hub-card-actions">{action}</div>
         </div>
 
         {library.description ? (
-          <p className="mt-3 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+          <p className="fb-hub-card-desc">
             {library.description}
           </p>
         ) : null}
@@ -331,55 +329,52 @@ function HubCard({
 
       {sourcePreview.length > 0 ? (
         <details className="fb-hub-sources">
-          <summary className="flex cursor-pointer items-center gap-3 list-none">
-            <div className="flex">
+          <summary className="fb-hub-sources-summary">
+            <div className="fb-hub-source-stack">
               {sourcePreview.map((item, index) => (
                 <SourceAvatar
+                  index={index}
                   key={item.builderId}
                   name={item.builder.name}
-                  index={index}
-                  style={index === 0 ? undefined : { marginLeft: -8 }}
+                  stacked={index > 0}
                 />
               ))}
             </div>
-            <div className="min-w-0 flex-1 text-[12px] leading-relaxed text-[var(--muted-strong)]">
+            <div className="fb-hub-source-summary-text">
               {sourceNames.join(", ")}
               {sourceKinds.length > 0 ? (
-                <span className="text-[var(--muted)]"> · {sourceKinds.join(", ")}</span>
+                <span> · {sourceKinds.join(", ")}</span>
               ) : null}
               {remainingSources > 0 ? (
-                <span className="text-[var(--muted)]">
+                <span>
                   {" "}
                   · <CountMeta label="more sources" value={remainingSources} />
                 </span>
               ) : null}
             </div>
-            <span
-              aria-hidden="true"
-              className="fb-hub-sources-caret text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]"
-            >
+            <span aria-hidden="true" className="fb-hub-sources-caret">
               Show
             </span>
           </summary>
-          <ul className="mt-3 grid gap-1.5 border-t border-[var(--line)] pt-3">
+          <ul className="fb-hub-source-list">
             {library.items.map((item) => (
               <li
                 key={item.builderId}
-                className="flex items-center gap-2 text-[12.5px] leading-snug"
+                className="fb-hub-source-row"
               >
-                <span className="fb-kind-pill" style={{ minWidth: "3.5rem", justifyContent: "center" }}>
+                <span className="fb-kind-pill fb-hub-source-kind">
                   {kindLabel(item.builder.kind)}
                 </span>
-                <span className="truncate text-[var(--ink)]">{item.builder.name}</span>
+                <span className="fb-hub-source-name">{item.builder.name}</span>
                 {item.builder.handle ? (
-                  <span className="mono truncate text-[11.5px] text-[var(--muted)]">
+                  <span className="fb-hub-source-handle mono">
                     {item.builder.handle.startsWith("@") ? item.builder.handle : `@${item.builder.handle}`}
                   </span>
                 ) : null}
               </li>
             ))}
             {library.itemCount > library.items.length ? (
-              <li className="pt-1 text-[11.5px] italic leading-snug text-[var(--muted)]">
+              <li className="fb-hub-source-overflow">
                 <CountRange>
                   Showing {formatCount(library.items.length)} of {formatCount(library.itemCount)} sources
                 </CountRange>
@@ -389,7 +384,7 @@ function HubCard({
         </details>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-4 border-t border-[var(--line)] pt-3 text-[11.5px] font-semibold text-[var(--muted)]">
+      <div className="fb-hub-card-stats">
         <CountMeta label={library.itemCount === 1 ? "source" : "sources"} value={library.itemCount} />
         <CountMeta label={library.importCount === 1 ? "import" : "imports"} value={library.importCount} />
         <CountMeta label={library.viewCount === 1 ? "view" : "views"} value={library.viewCount} />
@@ -401,20 +396,16 @@ function HubCard({
 function SourceAvatar({
   index,
   name,
-  style,
+  stacked,
 }: {
   index: number;
   name: string;
-  style?: React.CSSProperties;
+  stacked?: boolean;
 }) {
   return (
     <span
-      className="fb-hub-source-avatar"
-      style={{
-        borderRadius: 999,
-        background: AVATAR_COLORS[index % AVATAR_COLORS.length],
-        ...style,
-      }}
+      className={`fb-hub-source-avatar${stacked ? " is-stacked" : ""}`}
+      data-avatar-tone={index % 5}
     >
       {name.charAt(0).toUpperCase()}
     </span>

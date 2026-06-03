@@ -187,34 +187,34 @@ function DigestPipelineCard({
   return (
     <article className="fb-hub-card">
       <div>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-1.5">
+        <div className="fb-hub-card-head">
+          <div className="fb-hub-card-titleblock">
+            <div className="fb-hub-card-kicker">
               <span className="fb-kind-pill">digest</span>
-              <span className="text-[11px] text-[var(--muted)]">· Shared archive</span>
+              <span className="fb-hub-card-topic">· Shared archive</span>
             </div>
-            <h3 className="fb-hub-title mt-2">
+            <h3 className="fb-hub-title">
               {pipeline.title}
             </h3>
           </div>
-          {action}
+          <div className="fb-hub-card-actions">{action}</div>
         </div>
 
-        <p className="mt-3 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+        <p className="fb-hub-card-desc">
           {pipeline.description || pipeline.ownerLabel}
         </p>
       </div>
 
-      <div className="rounded-lg border border-[var(--line)] bg-[var(--paper)] p-3 text-sm text-[var(--muted-strong)]">
-        <div className="flex items-start gap-2">
-          <Radio className="mt-0.5 h-4 w-4 text-[var(--accent)]" aria-hidden="true" />
+      <div className="fb-hub-digest-preview">
+        <div className="fb-hub-digest-preview-row">
+          <Radio className="fb-hub-digest-preview-icon" aria-hidden="true" />
           <div>
-            <div className="font-semibold text-[var(--ink)]">
+            <div className="fb-hub-digest-preview-title">
               {pipeline.latestDigestAt
                 ? `Latest digest ${formatDate(pipeline.latestDigestAt)}`
                 : "No digests yet"}
             </div>
-            <div className="mt-1 text-xs">
+            <div className="fb-hub-digest-count">
               <CountMeta
                 label={pipeline.digestCount === 1 ? "saved digest" : "saved digests"}
                 value={pipeline.digestCount}
@@ -224,7 +224,7 @@ function DigestPipelineCard({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-4 border-t border-[var(--line)] pt-3 text-[11.5px] font-semibold text-[var(--muted)]">
+      <div className="fb-hub-card-stats">
         <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
         <CountMeta label={pipeline.viewCount === 1 ? "view" : "views"} value={pipeline.viewCount} />
       </div>
