@@ -4,6 +4,7 @@ import { getCurrentSession } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin";
 import { formatZodError } from "@/lib/zod-error";
 import {
+  getDigestConfig,
   getUserDigestConfig,
   resetUserDigestConfig,
   updateUserDigestConfigAndDefault,
@@ -40,7 +41,13 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const config = await getUserDigestConfig(session.user.id);
+  const [userConfig, defaultConfig] = await Promise.all([
+    getUserDigestConfig(session.user.id),
+    getDigestConfig(),
+  ]);
+  const config = isAdminEmail(session.user.email)
+    ? userConfig
+    : { ...userConfig, commonSummaryRules: defaultConfig.commonSummaryRules };
   return NextResponse.json({ config });
 }
 
@@ -53,8 +60,15 @@ export async function PATCH(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
+  const isAdmin = isAdminEmail(session.user.email);
+  if (!isAdmin && parsed.data.patch.commonSummaryRules !== undefined) {
+    return NextResponse.json(
+      { error: "Common post-summary rules can only be changed by an admin." },
+      { status: 403 },
+    );
+  }
   try {
-    const update = isAdminEmail(session.user.email)
+    const update = isAdmin
       ? updateUserDigestConfigAndDefault
       : updateUserDigestConfig;
     const config = await update(

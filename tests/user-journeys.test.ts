@@ -2495,11 +2495,13 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(srcRoute, /isAdminEmail\(session\.user\.email\)/);
   assert.match(srcRoute, /updateUserSourceConfigAndDefault/);
   assert.match(digestRoute, /isAdminEmail\(session\.user\.email\)/);
+  assert.match(digestRoute, /Common post-summary rules can only be changed by an admin/);
+  assert.match(digestRoute, /commonSummaryRules: defaultConfig\.commonSummaryRules/);
   assert.match(digestRoute, /updateUserDigestConfigAndDefault/);
   assert.match(store, /client\(\)\.\$transaction\(/);
 
-  // Settings page shows the config section to every user (no isAdmin gate) and
-  // loads the requesting user's config.
+  // Settings page shows source/digest config to every user, but only admins can
+  // edit the common post-summary rules shared default.
   const settingsPage = readFileSync("src/app/(workspace)/settings/page.tsx", "utf8");
   assert.match(settingsPage, /getUserSourceConfigs\(userId\)/);
   assert.match(settingsPage, /getUserDigestConfig\(userId\)/);
@@ -2507,12 +2509,17 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(settingsPage, /Source update rules/);
   assert.match(settingsPage, /AI Digest rules/);
   assert.match(settingsPage, /CommonSummaryRulesForm/);
-  assert.doesNotMatch(settingsPage, /isAdmin \?/);
+  assert.match(settingsPage, /isAdminEmail\(session\.user\.email\)/);
+  assert.match(settingsPage, /isAdmin \?/);
 
-  // Runtime reads resolve to the requesting user's config.
+  // Runtime reads resolve source and digest assembly rules to the requesting
+  // user's config, but common post-summary rules always come from the default
+  // template admin edits.
   const contextRoute = readFileSync("src/app/api/skill/context/route.ts", "utf8");
   assert.match(contextRoute, /getUserSourceConfigs\(user\.id\)/);
   assert.match(contextRoute, /getUserDigestConfig\(user\.id\)/);
+  assert.match(contextRoute, /getDigestConfig\(\)/);
+  assert.match(contextRoute, /commonSummaryRules: defaultDigestConfig\.commonSummaryRules/);
   const buildersRoute = readFileSync("src/app/api/skill/builders/route.ts", "utf8");
   assert.match(buildersRoute, /getUserSourceConfigs\(user\.id\)/);
 

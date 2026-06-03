@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
-import { getUserDigestConfig, getUserSourceConfigs } from "@/lib/source-config-store";
+import {
+  getDigestConfig,
+  getUserDigestConfig,
+  getUserSourceConfigs,
+} from "@/lib/source-config-store";
 import { SOURCE_DEFINITIONS } from "@/lib/source-registry";
 import { projectBuildersToEntities } from "@/lib/builder-entities";
 import { fetchDedupedFeedForEntities } from "@/lib/builder-channel-resolver";
@@ -47,7 +51,15 @@ export async function GET(request: Request) {
   const now = new Date();
 
   const poolBuilderIds = await activePoolBuilderIds(user.id);
-  const [libraryBuilders, subscriptions, preference, lastDigest, sourceConfigs, digestConfig] = await Promise.all([
+  const [
+    libraryBuilders,
+    subscriptions,
+    preference,
+    lastDigest,
+    sourceConfigs,
+    digestConfig,
+    defaultDigestConfig,
+  ] = await Promise.all([
     prisma.builder.findMany({
       where: { id: { in: poolBuilderIds } },
       include: { entity: true },
@@ -68,6 +80,7 @@ export async function GET(request: Request) {
     }),
     getUserSourceConfigs(user.id),
     getUserDigestConfig(user.id),
+    getDigestConfig(),
   ]);
 
   // Account-wide summary language selected by the one-time or cron prompt.
@@ -126,7 +139,7 @@ export async function GET(request: Request) {
     digestIntro: digestConfig.digestIntro,
     translate: digestConfig.translate,
     order: digestConfig.digestOrder as string[],
-    commonSummaryRules: digestConfig.commonSummaryRules,
+    commonSummaryRules: defaultDigestConfig.commonSummaryRules,
   };
 
   // TODO(deprecated): `context.prompts` is the legacy shape. New callers read
@@ -334,7 +347,7 @@ export async function GET(request: Request) {
     subscriptionCount: subscribedEntityIds.length,
     items,
     sources: sourcesContext,
-    commonSummaryRules: digestConfig.commonSummaryRules,
+    commonSummaryRules: defaultDigestConfig.commonSummaryRules,
     digest: digestContext,
     ...(includePrompts ? { prompts: legacyPrompts } : {}),
   });

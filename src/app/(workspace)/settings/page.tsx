@@ -4,6 +4,7 @@ import { AdminDigestConfigForm } from "@/components/AdminDigestConfigForm";
 import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
 import { AgentTokenPanel } from "@/components/AgentTokenPanel";
 import { CommonSummaryRulesForm } from "@/components/CommonSummaryRulesForm";
+import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SEEDED_SOURCE_IDS } from "@/lib/source-config-seed";
@@ -13,6 +14,7 @@ export default async function SettingsPage() {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
+  const isAdmin = isAdminEmail(session.user.email);
 
   return (
     <div className="page-pad">
@@ -29,13 +31,19 @@ export default async function SettingsPage() {
       </div>
 
       <Suspense fallback={<SourceTypeConfigSkeleton />}>
-        <SourceTypeConfigSection userId={userId} />
+        <SourceTypeConfigSection userId={userId} isAdmin={isAdmin} />
       </Suspense>
     </div>
   );
 }
 
-async function SourceTypeConfigSection({ userId }: { userId: string }) {
+async function SourceTypeConfigSection({
+  userId,
+  isAdmin,
+}: {
+  userId: string;
+  isAdmin: boolean;
+}) {
   const [sourceConfigs, digestConfig] = await Promise.all([
     getUserSourceConfigs(userId),
     getUserDigestConfig(userId),
@@ -58,12 +66,14 @@ async function SourceTypeConfigSection({ userId }: { userId: string }) {
           <span className="fb-kind-pill">{sourceConfigs.length} source types</span>
         </summary>
         <div className="settings-rules-body mt-4">
-          <div className="settings-config-form mb-4">
-            <CommonSummaryRulesForm
-              initialValue={digestConfig.commonSummaryRules}
-              updatedAt={digestConfig.updatedAt.toISOString()}
-            />
-          </div>
+          {isAdmin ? (
+            <div className="settings-config-form mb-4">
+              <CommonSummaryRulesForm
+                initialValue={digestConfig.commonSummaryRules}
+                updatedAt={digestConfig.updatedAt.toISOString()}
+              />
+            </div>
+          ) : null}
           <AdminSourceTypeManager
             initialConfigs={sourceConfigs.map((c) => ({
               sourceId: c.sourceId,
