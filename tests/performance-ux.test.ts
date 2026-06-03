@@ -49,6 +49,8 @@ test("settings live in the clickable user avatar menu", () => {
   const adminDigestConfig = source("src/components/AdminDigestConfigForm.tsx");
   const adminSourceTypeManager = source("src/components/AdminSourceTypeManager.tsx");
   const settingsFields = source("src/components/settings/SettingsFields.tsx");
+  const markdownEditor = source("src/components/settings/MarkdownEditor.tsx");
+  const commonRulesForm = source("src/components/CommonSummaryRulesForm.tsx");
   const globals = source("src/app/globals.css");
 
   assert.doesNotMatch(appShell, /label: "Agent"/);
@@ -71,13 +73,21 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(settingsFields, /OptionalBadge/);
   assert.match(adminDigestConfig, /FooterBar/);
   assert.match(adminDigestConfig, /@\/components\/settings\/SettingsFields/);
+  assert.match(adminDigestConfig, /DIGEST_INTRO_PLACEHOLDER/);
+  assert.match(adminDigestConfig, /TRANSLATE_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /@\/components\/settings\/SettingsFields/);
+  assert.match(adminSourceTypeManager, /FETCH_PROMPT_PLACEHOLDER/);
+  assert.match(adminSourceTypeManager, /SUMMARY_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /<OptionalMarkdownField/);
   assert.match(adminSourceTypeManager, /buttonLabel="Add fetch prompt"/);
   assert.match(adminSourceTypeManager, /canEditQualityGates \? \(/);
   assert.match(settingsPage, /canEditQualityGates=\{isAdmin\}/);
+  assert.match(commonRulesForm, /placeholder=\{\[/);
+  assert.match(markdownEditor, /placeholder\?: string/);
+  assert.match(markdownEditor, /placeholder=\{placeholder\}/);
   assert.match(globals, /\.settings-optional-badge/);
   assert.match(globals, /\.settings-optional-empty/);
+  assert.match(globals, /\.settings-markdown-textarea::placeholder/);
   assert.match(userMenu, /href="\/settings" onClick=\{closeMenu\}[\s\S]*Settings/);
   assert.match(userMenu, /signOut\(\{ callbackUrl: "\/login" \}\)/);
   assert.match(userMenu, /closeMenu\(\);[\s\S]*signOut\(\{ callbackUrl: "\/login" \}\)[\s\S]*Sign out/);

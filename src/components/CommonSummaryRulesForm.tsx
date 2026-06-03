@@ -24,6 +24,12 @@ export function CommonSummaryRulesForm({
       emptyMessage="Common summary rules can't be empty."
       fieldName="commonSummaryRules"
       initialValue={initialValue}
+      placeholder={[
+        "Example:",
+        "- Summarize exactly one supplied task item.",
+        "- Use task.item.body as the primary content.",
+        "- Include the direct source URL for every claim.",
+      ].join("\n")}
       title="Common post-summary rules"
       updatedAt={updatedAt}
     />
@@ -41,6 +47,12 @@ export function CommonFetchRulesForm({
       emptyMessage="Common fetching rules can't be empty."
       fieldName="commonFetchRules"
       initialValue={initialValue}
+      placeholder={[
+        "Example:",
+        "Use task.item.url, task.sourceType, and task.agentWorkType to choose the best available extraction method.",
+        "",
+        "Keep trying available methods until real primary content is obtained, or no method remains.",
+      ].join("\n")}
       title="Common fetching rules"
       updatedAt={updatedAt}
     />
@@ -53,6 +65,7 @@ function CommonRulesForm({
   emptyMessage,
   fieldName,
   initialValue,
+  placeholder,
   title,
   updatedAt,
 }: CommonSummaryRulesFormProps & {
@@ -60,6 +73,7 @@ function CommonRulesForm({
   description: string;
   emptyMessage: string;
   fieldName: "commonFetchRules" | "commonSummaryRules";
+  placeholder: string;
   title: string;
 }) {
   const [value, setValue] = useState(initialValue);
@@ -104,6 +118,7 @@ function CommonRulesForm({
         <MarkdownEditor
           ariaLabel={ariaLabel}
           height={340}
+          placeholder={placeholder}
           value={value}
           onChange={(next) => {
             setValue(next);

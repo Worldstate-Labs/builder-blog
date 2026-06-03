@@ -45,7 +45,7 @@ const MODES: Array<{
   { id: "preview", label: "Preview", icon: Eye },
 ];
 
-function renderMarkdownPreview(markdown: string) {
+function renderMarkdownPreview(markdown: string, placeholder?: string) {
   const nodes = [];
   const lines = markdown.split("\n");
   let index = 0;
@@ -135,7 +135,12 @@ function renderMarkdownPreview(markdown: string) {
     nodes.push(<p key={key++}>{paragraph.join(" ")}</p>);
   }
 
-  return nodes.length ? nodes : <p className="settings-markdown-preview-empty">Nothing to preview.</p>;
+  if (nodes.length) return nodes;
+  return (
+    <p className="settings-markdown-preview-empty">
+      {placeholder ?? "Nothing to preview."}
+    </p>
+  );
 }
 
 export function MarkdownEditor({
@@ -143,11 +148,13 @@ export function MarkdownEditor({
   onChange,
   height = 320,
   ariaLabel,
+  placeholder,
 }: {
   value: string;
   onChange: (value: string) => void;
   height?: number;
   ariaLabel: string;
+  placeholder?: string;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const historyRef = useRef<HistoryEntry[]>([]);
@@ -294,6 +301,7 @@ export function MarkdownEditor({
             className="settings-markdown-textarea"
             onChange={(event) => onChange(event.target.value)}
             onKeyDown={handleKeyDown}
+            placeholder={placeholder}
             spellCheck={false}
             style={{ minHeight: `${height}px` }}
             value={value}
@@ -305,7 +313,7 @@ export function MarkdownEditor({
             className="settings-markdown-preview"
             style={{ minHeight: `${height}px` }}
           >
-            {renderMarkdownPreview(value)}
+            {renderMarkdownPreview(value, placeholder)}
           </div>
         ) : null}
       </div>

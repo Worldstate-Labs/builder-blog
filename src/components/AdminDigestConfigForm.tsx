@@ -20,6 +20,20 @@ export type AdminDigestConfig = {
 
 type Status = SaveStatusState;
 
+const DIGEST_INTRO_PLACEHOLDER = [
+  "Example:",
+  "Start with: AI Digest - [Date]",
+  "",
+  "Organize the digest by source type, include only sources with new content, and keep each item concise with its original source link.",
+].join("\n");
+
+const TRANSLATE_PROMPT_PLACEHOLDER = [
+  "Example:",
+  "Translate the finished digest into context.language.",
+  "",
+  "Keep product names, people, companies, URLs, and common AI terms in English when professionals normally use them that way.",
+].join("\n");
+
 function sameOrder(a: string[], b: string[]) {
   return a.length === b.length && a.every((value, index) => value === b[index]);
 }
@@ -138,6 +152,7 @@ export function AdminDigestConfigForm({
           <MarkdownEditor
             ariaLabel="Intro prompt"
             height={420}
+            placeholder={DIGEST_INTRO_PLACEHOLDER}
             value={draft.digestIntro}
             onChange={(value) => update("digestIntro", value)}
           />
@@ -155,6 +170,7 @@ export function AdminDigestConfigForm({
           <MarkdownEditor
             ariaLabel="Translate prompt"
             height={340}
+            placeholder={TRANSLATE_PROMPT_PLACEHOLDER}
             value={draft.translate}
             onChange={(value) => update("translate", value)}
           />

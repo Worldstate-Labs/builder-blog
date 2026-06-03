@@ -38,6 +38,24 @@ type Draft = {
 
 type Status = SaveStatusState;
 
+const FETCH_PROMPT_PLACEHOLDER = [
+  "Example:",
+  "Use the supplied item URL to fetch the full primary content.",
+  "",
+  "- Prefer official transcripts, captions, article body text, or show notes.",
+  "- Do not use title, description, or page metadata as the item body.",
+  "- Record the extraction method in rawJson.contentSource or rawJson.transcriptSource.",
+].join("\n");
+
+const SUMMARY_PROMPT_PLACEHOLDER = [
+  "Example:",
+  "Summarize this one item for a busy AI professional.",
+  "",
+  "- Lead with the most important announcement, finding, or insight.",
+  "- Include concrete product names, numbers, benchmarks, and source links when present.",
+  "- Do not invent claims that are not in task.item.body.",
+].join("\n");
+
 function toContentQuality(raw: unknown): ContentQuality {
   const obj = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {});
   return {
@@ -240,6 +258,7 @@ function SourceTypeCard({
             expanded={fetchPromptExpanded}
             height={340}
             onExpand={() => setFetchPromptExpanded(true)}
+            placeholder={FETCH_PROMPT_PLACEHOLDER}
             value={draft.fetchPromptBody}
             onChange={(v) => update("fetchPromptBody", v)}
           />
@@ -253,6 +272,7 @@ function SourceTypeCard({
           <MarkdownEditor
             ariaLabel={`${config.label} summary prompt`}
             height={420}
+            placeholder={SUMMARY_PROMPT_PLACEHOLDER}
             value={draft.summaryPromptBody}
             onChange={(v) => update("summaryPromptBody", v)}
           />
@@ -344,6 +364,7 @@ function OptionalMarkdownField({
   height,
   onChange,
   onExpand,
+  placeholder,
   value,
 }: {
   ariaLabel: string;
@@ -353,6 +374,7 @@ function OptionalMarkdownField({
   height: number;
   onChange: (value: string) => void;
   onExpand: () => void;
+  placeholder: string;
   value: string;
 }) {
   const hasContent = value.trim().length > 0;
@@ -372,6 +394,7 @@ function OptionalMarkdownField({
     <MarkdownEditor
       ariaLabel={ariaLabel}
       height={hasContent ? height : 180}
+      placeholder={placeholder}
       value={value}
       onChange={onChange}
     />

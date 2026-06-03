@@ -5608,6 +5608,12 @@ svg.lucide {
   width: 100%;
 }
 
+.settings-markdown-textarea::placeholder {
+  color: color-mix(in oklch, var(--muted) 82%, transparent);
+  opacity: 1;
+  white-space: pre-wrap;
+}
+
 .settings-markdown-body.is-split .settings-markdown-textarea {
   border-right: 1px solid var(--line);
 }
@@ -5669,6 +5675,7 @@ svg.lucide {
 
 .settings-markdown-preview-empty {
   color: var(--muted);
+  white-space: pre-wrap;
 }
 
 @media (max-width: 760px) {
