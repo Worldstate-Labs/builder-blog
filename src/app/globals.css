@@ -6202,6 +6202,53 @@ svg.lucide {
   font-optical-sizing: auto;
 }
 
+.fb-login-nav {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-inline: auto;
+  max-width: var(--workspace-max);
+  min-width: 0;
+  width: 100%;
+}
+
+.fb-login-nav-brand {
+  align-items: center;
+  color: white;
+  display: inline-flex;
+  gap: 0.65rem;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.fb-login-nav-name {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.875rem;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.fb-login-nav-link {
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.72);
+  display: inline-flex;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  min-height: 2.25rem;
+  padding: 0 0.875rem;
+  text-decoration: none;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.fb-login-nav-link:hover,
+.fb-login-nav-link:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.32);
+  color: white;
+}
+
 .fb-login-shell {
   align-items: center;
   display: grid;
@@ -6212,20 +6259,6 @@ svg.lucide {
   margin-inline: auto;
   max-width: var(--workspace-max);
   width: 100%;
-}
-
-.fb-login-brand-row {
-  align-items: center;
-  display: flex;
-  gap: 0.75rem;
-}
-
-.fb-login-brand-name {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
 }
 
 .fb-login-title {

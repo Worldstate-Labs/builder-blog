@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Archive, KeyRound, Search } from "lucide-react";
 import { AuthButtons } from "@/components/AuthButtons";
 import { BrandMark } from "@/components/BrandMark";
@@ -16,14 +17,18 @@ export default async function LoginPage({
 
   return (
     <main className="fb-dark-frame">
+      <nav className="fb-login-nav">
+        <Link href="/" className="fb-login-nav-brand">
+          <BrandMark size="dark" />
+          <span className="fb-login-nav-name">FollowBrief</span>
+        </Link>
+        <Link className="fb-login-nav-link" href="/">
+          Home
+        </Link>
+      </nav>
+
       <div className="fb-login-shell">
         <section>
-          <div className="fb-login-brand-row">
-            <BrandMark size="dark" />
-            <p className="fb-login-brand-name">
-              FollowBrief
-            </p>
-          </div>
           <h1 className="fb-login-title">
             Sign in to your<br />briefing desk.
           </h1>

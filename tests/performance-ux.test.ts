@@ -89,8 +89,12 @@ test("public entry pages use the centered product layout", () => {
   assert.match(loginPage, /fb-login-proof-rail/);
   assert.match(loginPage, /fb-login-proof/);
   assert.match(loginPage, /fb-login-panel-copy/);
-  assert.match(loginPage, /fb-login-brand-row/);
-  assert.match(loginPage, /fb-login-brand-name/);
+  assert.match(loginPage, /fb-login-nav/);
+  assert.match(loginPage, /fb-login-nav-brand/);
+  assert.match(loginPage, /fb-login-nav-name/);
+  assert.match(loginPage, /fb-login-nav-link/);
+  assert.doesNotMatch(loginPage, /fb-login-brand-row/);
+  assert.doesNotMatch(loginPage, /fb-login-brand-name/);
   assert.match(loginPage, /fb-login-panel-head/);
   assert.match(loginPage, /Sign in/);
   assert.match(loginPage, /Use one account for your web archive and local helper\./);
@@ -114,7 +118,10 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /\.fb-product-preview-head\s*{[\s\S]*border-bottom:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.fb-public-workspace\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*0\.9fr\) minmax\(0,\s*1\.1fr\)/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-public-feature-grid\s*{[\s\S]*grid-template-columns:\s*1fr/);
-  assert.match(globals, /\.fb-login-brand-row\s*{[\s\S]*display:\s*flex/);
+  assert.match(globals, /\.fb-login-nav\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
+  assert.match(globals, /\.fb-login-nav\s*{[\s\S]*display:\s*flex/);
+  assert.match(globals, /\.fb-login-nav-brand\s*{[\s\S]*display:\s*inline-flex/);
+  assert.match(globals, /\.fb-login-nav-link\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.fb-login-panel-head\s*{[\s\S]*display:\s*grid/);
   assert.doesNotMatch(globals, /\.fb-login-panel-icon\s*{/);
   assert.match(globals, /\.fb-login-proof-rail\s*{[\s\S]*display:\s*flex/);
