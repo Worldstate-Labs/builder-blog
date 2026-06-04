@@ -475,6 +475,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /--side-rail-width:\s*5\.25rem/);
   assert.match(globals, /\.fb-top-inner\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.fb-top-inner\s*{[\s\S]*grid-template-columns:\s*minmax\(9rem,\s*1fr\) minmax\(18rem,\s*var\(--top-search-max\)\) minmax\(9rem,\s*1fr\)/);
+  assert.match(globals, /\.fb-top-inner\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
   assert.match(globals, /\.fb-top-search\s*{[\s\S]*grid-column:\s*2/);
   assert.match(globals, /\.fb-top-user\s*{[\s\S]*grid-column:\s*3/);
   assert.match(globals, /\.app-body\s*{[\s\S]*display:\s*grid/);

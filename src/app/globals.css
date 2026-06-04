@@ -3548,6 +3548,7 @@ svg.lucide {
   display: grid;
   gap: 1rem;
   grid-template-columns: minmax(9rem, 1fr) minmax(18rem, var(--top-search-max)) minmax(9rem, 1fr);
+  max-width: var(--workspace-max);
   min-width: 0;
   width: 100%;
 }
