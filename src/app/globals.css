@@ -4891,35 +4891,6 @@ svg.lucide {
   font-weight: 650;
 }
 
-/* Icon link in a library row that opens the builder's original source
-   page (X profile, YouTube channel, blog homepage). Mirrors
-   `.post-action-btn` so library and feed surfaces share the same
-   "open in new tab" affordance. */
-.builder-library-open-source {
-  align-items: center;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  color: var(--muted);
-  display: inline-flex;
-  height: 1.75rem;
-  justify-content: center;
-  transition: color 120ms ease, background-color 120ms ease;
-  width: 1.75rem;
-}
-
-.builder-library-open-source:hover,
-.builder-library-open-source:focus-visible {
-  background: var(--paper-strong);
-  border-color: var(--line);
-  color: var(--ink);
-  outline: 0;
-}
-
-.builder-library-open-source svg {
-  height: 0.9rem;
-  width: 0.9rem;
-}
-
 .builder-library-edit-button,
 .builder-library-remove-button {
   border-color: transparent;

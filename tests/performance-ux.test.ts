@@ -1336,6 +1336,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderLibraryList, /feedItemCount\}\s*items|Latest \{formatCompactDate|latest \{formatCompactDate/);
   assert.doesNotMatch(builderLibraryList, /No posts yet/);
   assert.doesNotMatch(builderLibraryList, /builder-library-stats/);
+  assert.doesNotMatch(builderLibraryList, /builder-library-open-source/);
+  assert.doesNotMatch(builderLibraryList, /Open \$\{builder\.name\} on its source site/);
+  assert.doesNotMatch(builderLibraryList, /sourceSummary/);
+  assert.doesNotMatch(builderLibraryList, /fb-src-meta|source-host-meta|source-host-meta/);
   assert.match(mobileSourcesSwitcher, /className="fb-segmented-tabs mobile-filter-tabs at-mobile"/);
   assert.match(mobileSourcesSwitcher, /className="fb-btn compact"/);
   assert.doesNotMatch(mobileSourcesSwitcher, /fb-m-segctl|fb-m-seg/);
@@ -1985,6 +1989,7 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.builder-posts-summary\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(builderPostsSummaryRule, /display:\s*flex/);
   assert.match(builderPostsSummaryRule, /justify-content:\s*flex-start/);
+  assert.doesNotMatch(css, /\.builder-library-open-source\s*{/);
   assert.match(css, /\.builder-library-row-tools\s*{[\s\S]*opacity:\s*0/);
   assert.match(css, /\.library-section-meta \.count-meta\s*{[\s\S]*font-size:\s*0\.8125rem/);
   assert.doesNotMatch(css, /\.library-section-summary::after[\s\S]*content:\s*"\+"/);

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
 import { BuilderEditDialog } from "@/components/BuilderEditDialog";
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { BuilderLibraryActions } from "@/components/BuilderLibraryActions";
@@ -272,26 +271,14 @@ function BuilderCard({
         <SourceAvatar className="builder-library-avatar" source={builder} />
         <BuilderInfo builder={builder} />
         <div className="builder-library-actions row-actions flex flex-shrink-0 items-center gap-3">
-          <div className="builder-library-row-tools" aria-label="Source tools">
-            {builder.sourceUrl || builder.fetchUrl ? (
-              <a
-                aria-label={`Open ${builder.name} on its source site`}
-                className="builder-library-open-source"
-                href={(builder.sourceUrl ?? builder.fetchUrl) as string}
-                rel="noopener noreferrer"
-                target="_blank"
-                title="Open source"
-              >
-                <ExternalLink aria-hidden="true" />
-              </a>
-            ) : null}
-            {canEdit && editableSourceOptions ? (
+          {canEdit && editableSourceOptions ? (
+            <div className="builder-library-row-tools" aria-label="Source tools">
               <BuilderEditDialog
                 builder={builder}
                 sourceOptions={editableSourceOptions}
               />
-            ) : null}
-          </div>
+            </div>
+          ) : null}
           <BuilderLibraryActions
             allowRemove={builder.allowRemove}
             builderId={builder.id}
@@ -343,9 +330,6 @@ function dispatchStatsChange(detail: BuilderLibraryStatsChange) {
 }
 
 function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
-  const sourceUrl = builder.sourceUrl ?? builder.fetchUrl;
-  const hostLabel = builder.handle ? `@${builder.handle}` : sourceSummary(sourceUrl);
-
   return (
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-2">
@@ -361,25 +345,6 @@ function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
         )}
         <SourceBadge builder={builder} />
       </div>
-      <div className="fb-src-meta">
-        {hostLabel ? (
-          <span className="source-host-meta mono truncate max-w-[18rem]">{hostLabel}</span>
-        ) : null}
-      </div>
     </div>
   );
-}
-
-function sourceSummary(value: string | null) {
-  if (!value) return "No source";
-  try {
-    const url = new URL(value);
-    const [firstPathPart] = url.pathname.split("/").filter(Boolean);
-    if (/youtube\.com$/i.test(url.hostname) && firstPathPart?.startsWith("@")) {
-      return firstPathPart;
-    }
-    return url.hostname.replace(/^www\./, "");
-  } catch {
-    return value;
-  }
 }
