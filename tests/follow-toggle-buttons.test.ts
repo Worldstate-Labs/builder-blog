@@ -16,7 +16,10 @@ test("source follow controls use one button that toggles Follow and Unfollow", (
   for (const component of [libraryActions, detailActions]) {
     assert.match(component, /aria-pressed=\{subscribed\}/);
     assert.match(component, /aria-label=\{subscribed \? "Unfollow" : "Follow"\}/);
-    assert.match(component, /subscribed \? "Unfollow" : "Follow"/);
+    assert.match(component, /subscribed \? "Following" : "Follow"/);
+    assert.match(component, /fb-follow-button/);
+    assert.doesNotMatch(component, /fb-toggle/);
+    assert.doesNotMatch(component, /builder-library-follow-toggle/);
     assert.doesNotMatch(component, /✓ Following/);
   }
 

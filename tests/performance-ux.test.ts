@@ -2002,8 +2002,8 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.doesNotMatch(builderLibraryList, /BuilderStats/);
   assert.match(builderLibraryList, /builder-library-row-tools/);
   assert.match(source("src/components/BuilderFeedItems.tsx"), /className="builder-posts-summary"/);
-  assert.match(builderActions, /fb-btn/);
-  assert.match(builderActions, /builder-library-follow-toggle/);
+  assert.match(builderActions, /fb-follow-button/);
+  assert.doesNotMatch(builderActions, /builder-library-follow-toggle/);
   assert.match(settingsPage, /AgentTokenPanel/);
   assert.match(agentTokenPanel, /fb-btn/);
 });

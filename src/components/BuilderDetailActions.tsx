@@ -8,7 +8,7 @@ type BuilderDetailActionsProps = {
 };
 
 /**
- * Follow / unfollow toggle on the entity detail page.
+ * Follow / unfollow button on the entity detail page.
  *
  * "Follow" is entity-level from the user's perspective ("follow this
  * creator"), even though Subscription rows are stored per-channel.
@@ -57,13 +57,9 @@ export function BuilderDetailActions({
           aria-pressed={subscribed}
           aria-label={subscribed ? "Unfollow" : "Follow"}
           onClick={() => follow(!subscribed)}
-          className={
-            subscribed
-              ? "fb-btn fb-btn-light fb-btn-compact"
-              : "fb-btn fb-btn-dark fb-btn-compact"
-          }
+          className={`fb-follow-button${subscribed ? " is-following" : " is-follow"}`}
         >
-          {isPending ? "Updating..." : subscribed ? "Unfollow" : "Follow"}
+          {isPending ? "Updating..." : subscribed ? "Following" : "Follow"}
         </button>
       </div>
       {error ? (

@@ -163,13 +163,12 @@ export function BuilderLibraryActions({
           aria-busy={isPending}
           aria-pressed={subscribed}
           aria-label={subscribed ? "Unfollow" : "Follow"}
-          className="builder-library-follow-toggle"
+          className={`fb-follow-button${subscribed ? " is-following" : " is-follow"}`}
           disabled={isPending}
           onClick={updateSubscription}
           type="button"
         >
-          <span>{isPending ? "Updating..." : subscribed ? "Unfollow" : "Follow"}</span>
-          <span className={`fb-toggle${subscribed ? " on" : ""}`} aria-hidden="true" />
+          {isPending ? "Updating..." : subscribed ? "Following" : "Follow"}
         </button>
         {allowRemove ? (
           confirmingRemove ? (

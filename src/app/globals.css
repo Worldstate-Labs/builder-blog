@@ -4019,6 +4019,63 @@ svg.lucide {
   background: color-mix(in oklch, var(--danger) 88%, black);
 }
 
+.fb-follow-button {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 800;
+  height: 1.875rem;
+  justify-content: center;
+  min-width: 5.75rem;
+  padding: 0 0.75rem;
+  text-decoration: none;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease,
+    box-shadow 160ms ease, transform 160ms ease;
+  white-space: nowrap;
+}
+
+.fb-follow-button:hover {
+  transform: translateY(-1px);
+}
+
+.fb-follow-button:focus-visible {
+  outline: 2px solid color-mix(in oklch, var(--accent) 48%, transparent);
+  outline-offset: 2px;
+}
+
+.fb-follow-button:disabled {
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+}
+
+.fb-follow-button.is-follow {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 8px 18px color-mix(in oklch, var(--accent) 18%, transparent);
+  color: var(--paper);
+}
+
+.fb-follow-button.is-follow:hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+.fb-follow-button.is-following {
+  background: color-mix(in oklch, var(--paper-strong) 72%, transparent);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.fb-follow-button.is-following:hover {
+  background: var(--paper-strong);
+  border-color: color-mix(in oklch, var(--ink) 22%, transparent);
+}
+
 /* Dialogs */
 .fb-dialog {
   background: var(--paper);
@@ -4870,25 +4927,6 @@ svg.lucide {
   color: var(--danger);
   font-size: 0.6875rem;
   line-height: 1.35;
-}
-
-.builder-library-follow-toggle {
-  align-items: center;
-  border: 0;
-  color: var(--muted-strong);
-  cursor: pointer;
-  display: inline-flex;
-  font-size: 0.75rem;
-  font-weight: 700;
-  gap: 0.4rem;
-  padding: 0;
-  white-space: nowrap;
-}
-
-.builder-library-follow-toggle span:first-child {
-  color: var(--muted);
-  font-size: 0.6875rem;
-  font-weight: 650;
 }
 
 .builder-library-edit-button,
