@@ -2285,6 +2285,18 @@ svg.lucide {
     grid-template-columns: 1fr;
   }
 
+  .post-footer[data-stack-actions="true"] {
+    align-items: flex-start;
+    display: grid;
+    gap: 0.55rem;
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: stretch;
+  }
+
+  .post-footer[data-stack-actions="true"] .post-actions {
+    justify-content: flex-start;
+  }
+
   .item-summary,
   .item-summary-static {
     align-items: start;

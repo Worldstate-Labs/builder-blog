@@ -49,6 +49,7 @@ export function PostCard({
   showDebugActions = true,
   showPublishedDate = true,
   showSourceBadge = true,
+  stackActionsOnMobile = false,
   variant = "card",
 }: {
   context?: ReactNode;
@@ -71,6 +72,7 @@ export function PostCard({
   showDebugActions?: boolean;
   showPublishedDate?: boolean;
   showSourceBadge?: boolean;
+  stackActionsOnMobile?: boolean;
   variant?: "card" | "row" | "detail";
 }) {
   const [summaryExpanded, setSummaryExpanded] = useState(false);
@@ -200,7 +202,10 @@ export function PostCard({
         {context}
 
         {/* Footer row: Published date (left) · Action icons (right) */}
-        <div className="post-footer">
+        <div
+          className="post-footer"
+          data-stack-actions={stackActionsOnMobile ? "true" : undefined}
+        >
           {showPublishedDate ? (
             <span className="post-footer-published">
               {post.publishedAt

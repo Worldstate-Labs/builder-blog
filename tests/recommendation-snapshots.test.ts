@@ -19,7 +19,12 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.match(feed, /initialSnapshots/);
   assert.match(feed, /PostCard/);
   assert.match(feed, /onInteract/);
+  assert.match(feed, /showAdminActions = false/);
+  assert.match(feed, /showDebugActions=\{showAdminActions\}/);
+  assert.match(feed, /reasons=\{showAdminActions \? entry\.reasons : undefined\}/);
+  assert.match(feed, /stackActionsOnMobile=\{showAdminActions\}/);
   assert.match(postCard, /data-read/);
+  assert.match(postCard, /data-stack-actions/);
   assert.match(postCard, /Raw content/);
   assert.match(feed, /mode = "following"/);
   assert.match(feed, /onInteract=\{isFavoritesTab \? undefined : \(\) => markRead\(entry\.item\.id\)\}/);

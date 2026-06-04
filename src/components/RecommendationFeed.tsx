@@ -44,9 +44,11 @@ export type RecommendationSnapshotEntry = {
 export function RecommendationFeed({
   initialSnapshots,
   mode = "following",
+  showAdminActions = false,
 }: {
   initialSnapshots: RecommendationSnapshotEntry[];
   mode?: "favorites" | "following";
+  showAdminActions?: boolean;
 }) {
   const [snapshots, setSnapshots] = useState(initialSnapshots);
   const [loadingDirection, setLoadingDirection] = useState<"append" | "prepend" | null>(null);
@@ -161,6 +163,7 @@ export function RecommendationFeed({
                 key={`${snapshot.id}:${entry.item.id}`}
                 markRead={markRead}
                 mode={mode}
+                showAdminActions={showAdminActions}
                 toggleFavorite={toggleFavorite}
               />
             ))}
@@ -185,11 +188,13 @@ function RecommendationCard({
   entry,
   markRead,
   mode,
+  showAdminActions,
   toggleFavorite,
 }: {
   entry: RecommendationFeedEntry;
   markRead: (feedItemId: string, source?: "favorite" | "recommendation") => Promise<void>;
   mode: "favorites" | "following";
+  showAdminActions: boolean;
   toggleFavorite: (feedItemId: string, nextFavorite: boolean) => Promise<void>;
 }) {
   const isRead = Boolean(entry.readAt);
@@ -223,7 +228,9 @@ function RecommendationCard({
       favoriteReadEmphasis={isFavoritesTab && isRead}
       onInteract={isFavoritesTab ? undefined : () => markRead(entry.item.id)}
       post={entry.item}
-      reasons={entry.reasons}
+      reasons={showAdminActions ? entry.reasons : undefined}
+      showDebugActions={showAdminActions}
+      stackActionsOnMobile={showAdminActions}
     />
   );
 }

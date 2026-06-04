@@ -14,11 +14,11 @@ type TimelineResponse = {
   strategy: string;
 };
 
-export function FollowingRecommendationSection() {
-  return <FollowingRecommendationLoader />;
+export function FollowingRecommendationSection({ isAdmin = false }: { isAdmin?: boolean }) {
+  return <FollowingRecommendationLoader isAdmin={isAdmin} />;
 }
 
-function FollowingRecommendationLoader() {
+function FollowingRecommendationLoader({ isAdmin }: { isAdmin: boolean }) {
   const [timeline, setTimeline] = useState<TimelineResponse | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const mountedRef = useRef(true);
@@ -75,6 +75,7 @@ function FollowingRecommendationLoader() {
     <RecommendationFeed
       key={timeline.snapshots.map((snapshot) => snapshot.id).join("|")}
       initialSnapshots={timeline.snapshots}
+      showAdminActions={isAdmin}
     />
   );
 }

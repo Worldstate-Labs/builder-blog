@@ -14,7 +14,7 @@ type FavoritesResponse = {
   strategy: string;
 };
 
-export function FavoritePostsSection() {
+export function FavoritePostsSection({ isAdmin = false }: { isAdmin?: boolean }) {
   const [favorites, setFavorites] = useState<FavoritesResponse | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const mountedRef = useRef(true);
@@ -80,6 +80,7 @@ export function FavoritePostsSection() {
       initialSnapshots={[favorites.snapshot]}
       key={favorites.snapshot.items.map((entry) => entry.item.id).join("|")}
       mode="favorites"
+      showAdminActions={isAdmin}
     />
   );
 }

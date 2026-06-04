@@ -656,14 +656,23 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
 
   assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
   assert.doesNotMatch(dashboardPage, /RecommendationFeed/);
-  assert.match(dashboardPage, /FavoritePostsSection/);
-  assert.match(dashboardPage, /FollowingRecommendationSection/);
+  assert.match(dashboardPage, /isAdminEmail\(session\.user\.email\)/);
+  assert.match(dashboardPage, /<FavoritePostsSection isAdmin=\{isAdmin\}/);
+  assert.match(dashboardPage, /<FollowingRecommendationSection isAdmin=\{isAdmin\}/);
   assert.match(followingSection, /"use client"/);
+  assert.match(followingSection, /isAdmin\?: boolean/);
+  assert.match(followingSection, /showAdminActions=\{isAdmin\}/);
   assert.doesNotMatch(followingSection, /scope=\$\{scope\}/);
   assert.doesNotMatch(followingSection, /followBriefDataChanged/);
   assert.doesNotMatch(followingSection, /contentSyncStateChanged/);
   assert.doesNotMatch(followingSection, /window\.addEventListener/);
+  assert.match(favoritesSection, /isAdmin\?: boolean/);
+  assert.match(favoritesSection, /showAdminActions=\{isAdmin\}/);
   assert.match(recommendationFeed, /Refresh/);
+  assert.match(recommendationFeed, /showAdminActions = false/);
+  assert.match(recommendationFeed, /reasons=\{showAdminActions \? entry\.reasons : undefined\}/);
+  assert.match(recommendationFeed, /showDebugActions=\{showAdminActions\}/);
+  assert.match(recommendationFeed, /stackActionsOnMobile=\{showAdminActions\}/);
   assert.match(recommendationFeed, /feed-content-stack recommendation-feed/);
   assert.match(recommendationFeed, /className="recommendation-feed-actions"/);
   assert.match(recommendationFeed, /className="recommendation-snapshot-list"/);
@@ -711,6 +720,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(globals, /\.feed-skeleton-card\s*{[\s\S]*min-height:\s*6rem/);
   assert.match(globals, /\.feed-state-panel\s*{[\s\S]*box-shadow:\s*var\(--elev-1\)/);
   assert.match(globals, /\.feed-state-panel\[data-tone="error"\]\s*{[\s\S]*border-color:/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.post-footer\[data-stack-actions="true"\]\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(globals, /\.post-footer\[data-stack-actions="true"\] \.post-actions\s*{[\s\S]*justify-content:\s*flex-start/);
   assert.doesNotMatch(globals, /\.feed-state-icon|\.feed-state-inner|\.feed-state-title|\.feed-state-desc/);
   assert.match(followingSection, /Loading Following recommendations/);
   assert.match(feedState, /aria-live="polite"/);

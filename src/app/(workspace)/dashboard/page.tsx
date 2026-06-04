@@ -7,6 +7,7 @@ import { FavoritePostsSection } from "@/components/FavoritePostsSection";
 import { FollowingRecommendationSection } from "@/components/FollowingRecommendationSection";
 import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
 import { DigestPipelineSelector } from "@/components/DigestPipelineSelector";
+import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { displayDigestPipelineTitle } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
@@ -43,6 +44,7 @@ export default async function DashboardPage({
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
+  const isAdmin = isAdminEmail(session.user.email);
   const params = await searchParams;
   const selectedTab = parseTab(firstParam(params.tab));
   const digestId = firstParam(params.digest);
@@ -57,8 +59,8 @@ export default async function DashboardPage({
         <DashboardHomeTabs
           initialTab={selectedTab}
           aiDigest={aiDigest}
-          favorites={<FavoritePostsSection />}
-          subscription={<FollowingRecommendationSection />}
+          favorites={<FavoritePostsSection isAdmin={isAdmin} />}
+          subscription={<FollowingRecommendationSection isAdmin={isAdmin} />}
         />
       </section>
     </div>
