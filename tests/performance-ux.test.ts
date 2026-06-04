@@ -470,6 +470,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(globals, /\.route-loading-chip/);
   assert.match(globals, /\.fb-top\s*{[\s\S]*position:\s*sticky/);
   assert.match(globals, /\.fb-top\s*{[\s\S]*padding:\s*0\.5rem var\(--workspace-gutter\)/);
+  assert.match(globals, /@media \(min-width:\s*1024px\)[\s\S]*\.fb-top\s*{[\s\S]*padding-left:\s*calc\(var\(--side-rail-width\) \+ var\(--workspace-gutter\)\)/);
   assert.match(globals, /\.fb-m-top\s*{[\s\S]*padding:\s*0\.5rem var\(--workspace-gutter\) 0\.625rem/);
   assert.match(globals, /--top-search-max:\s*34rem/);
   assert.match(globals, /--side-rail-width:\s*5\.25rem/);

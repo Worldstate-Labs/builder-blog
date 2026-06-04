@@ -8015,6 +8015,7 @@ mark.fb-mark-highlight {
 
   .fb-top {
     display: flex;
+    padding-left: calc(var(--side-rail-width) + var(--workspace-gutter));
   }
 
   .fb-m-top {
