@@ -5,9 +5,7 @@ import {
   DigestPipelineImportForm,
   type HubDigestPipeline,
 } from "@/components/DigestPipelineImportForm";
-import { CountMeta } from "@/components/Count";
 import { LibraryHubImportForm, type HubLibrary } from "@/components/LibraryHubImportForm";
-import { PageHeader } from "@/components/PageHeader";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
@@ -37,17 +35,6 @@ export default async function LibraryHubPage({
 
   return (
     <div className="page-pad">
-      <PageHeader
-        title="Hub"
-        actions={
-          <div className="library-hub-page-count source-summary-toolbar page-toolbar">
-            <Suspense fallback={<span className="count-meta" aria-busy="true">Loading counts</span>}>
-              <LibraryHubCount dataPromise={dataPromise} />
-            </Suspense>
-          </div>
-        }
-      />
-
       <div className="workspace-content-stack">
         <LibraryHubSubtabs selectedTab={selectedTab} />
 
@@ -217,24 +204,7 @@ async function loadLibraryHubPageData() {
   return {
     hubLibraries,
     hubDigestPipelines,
-    digestPipelineCount: hubDigestPipelines.length,
-    libraryCount: libraries.length,
   };
-}
-
-async function LibraryHubCount({
-  dataPromise,
-}: {
-  dataPromise: Promise<LibraryHubPageData>;
-}) {
-  const data = await dataPromise;
-
-  return (
-    <span className="source-summary-line" aria-label="Library Hub counts">
-      <CountMeta label={data.libraryCount === 1 ? "library" : "libraries"} value={data.libraryCount} />
-      <CountMeta label={data.digestPipelineCount === 1 ? "AI Digest" : "AI Digests"} value={data.digestPipelineCount} />
-    </span>
-  );
 }
 
 async function LibraryHubImportSection({

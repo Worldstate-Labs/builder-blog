@@ -22,7 +22,6 @@ import {
 import { LibraryImportRemoveButton } from "@/components/LibraryImportRemoveButton";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
 import { MobileSourcesSwitcher } from "@/components/MobileSourcesSwitcher";
-import { PageHeader } from "@/components/PageHeader";
 import { PrivateLibraryPanel } from "@/components/PrivateLibraryPanel";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
@@ -81,8 +80,6 @@ export default async function BuildersPage({
 
   return (
     <div className="page-pad">
-      <PageHeader title="Sources" />
-
       <div className="workspace-content-stack">
         <section className="sources-tab-surface">
           <SourcesSubtabs selectedTab={selectedTab} />

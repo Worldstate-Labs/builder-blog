@@ -87,12 +87,14 @@ test("every app route has an explicit centered layout role", () => {
   }
 
   const workspaceRoutes = [
-    ["src/app/(workspace)/builders/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title="Sources"/],
-    ["src/app/(workspace)/library-hub/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title="Hub"/],
+    ["src/app/(workspace)/builders/page.tsx", /className="page-pad"[\s\S]*<SourcesSubtabs selectedTab=\{selectedTab\}/],
+    ["src/app/(workspace)/library-hub/page.tsx", /className="page-pad"[\s\S]*<LibraryHubSubtabs selectedTab=\{selectedTab\}/],
   ] as const;
   for (const [path, pattern] of workspaceRoutes) {
     const text = source(path);
     assert.match(text, pattern, `${path} should use the broad centered workspace rail`);
+    assert.doesNotMatch(text, /@\/components\/PageHeader/);
+    assert.doesNotMatch(text, /<PageHeader/);
     assert.doesNotMatch(text, /page-pad--reading|page-pad--settings/);
   }
 
@@ -1190,18 +1192,17 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(libraryHubPage, /<Suspense fallback=\{<LibraryHubImportFallback \/>/);
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
   assert.match(libraryHubPage, /className="workspace-content-stack"/);
-  assert.match(libraryHubPage, /@\/components\/PageHeader/);
-  assert.match(libraryHubPage, /<PageHeader[\s\S]*title="Hub"[\s\S]*actions=/);
+  assert.doesNotMatch(libraryHubPage, /@\/components\/PageHeader/);
+  assert.doesNotMatch(libraryHubPage, /<PageHeader/);
+  assert.match(libraryHubPage, /<LibraryHubSubtabs selectedTab=\{selectedTab\} \/>/);
   assert.doesNotMatch(libraryHubPage, /Import shared source libraries and AI Digest archives/);
-  assert.match(libraryHubPage, /actions=\{[\s\S]*className="library-hub-page-count source-summary-toolbar page-toolbar"/);
-  assert.match(libraryHubPage, /className="library-hub-page-count source-summary-toolbar page-toolbar"/);
-  assert.match(libraryHubPage, /digestPipelineCount:\s*hubDigestPipelines\.length/);
-  assert.match(libraryHubPage, /CountMeta/);
+  assert.doesNotMatch(libraryHubPage, /library-hub-page-count/);
+  assert.doesNotMatch(libraryHubPage, /digestPipelineCount:\s*hubDigestPipelines\.length/);
+  assert.doesNotMatch(libraryHubPage, /CountMeta/);
   assert.doesNotMatch(libraryHubPage, /CountChip/);
-  assert.match(libraryHubPage, /className="source-summary-line" aria-label="Library Hub counts"/);
-  assert.match(libraryHubPage, /label=\{data\.digestPipelineCount === 1 \? "AI Digest" : "AI Digests"\}/);
+  assert.doesNotMatch(libraryHubPage, /className="source-summary-line" aria-label="Library Hub counts"/);
+  assert.doesNotMatch(libraryHubPage, /label=\{data\.digestPipelineCount === 1 \? "AI Digest" : "AI Digests"\}/);
   assert.doesNotMatch(libraryHubPage, /<section className="fb-page-head"/);
-  assert.match(libraryHubPage, /className="library-hub-page-count source-summary-toolbar page-toolbar"/);
   assert.match(libraryHubPage, /className="library-hub-skeleton-line is-wide"/);
   assert.match(libraryHubPage, /className="library-hub-skeleton-copy"/);
   assert.match(libraryHubPage, /className="library-hub-skeleton-line is-kicker"/);
@@ -1259,7 +1260,6 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/app/globals.css"), /\.hub-list-heading-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(source("src/app/globals.css"), /\.library-hub-toolbar-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(source("src/app/globals.css"), /\.hub-section-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
-  assert.match(source("src/app/globals.css"), /\.library-hub-page-count\s*{[\s\S]*display:\s*flex/);
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-line,[\s\S]*\.library-hub-skeleton-card\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-line\.is-wide\s*{[\s\S]*width:\s*min\(100%,\s*var\(--skeleton-wide-max\)\)/);
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-line\.is-body\s*{[\s\S]*width:\s*min\(100%,\s*var\(--skeleton-copy-max\)\)/);
@@ -1300,8 +1300,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   const feedItemsRoute = source("src/app/api/builders/[builderId]/feed-items/route.ts");
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
-  assert.match(buildersPage, /@\/components\/PageHeader/);
-  assert.match(buildersPage, /<PageHeader title="Sources" \/>/);
+  assert.doesNotMatch(buildersPage, /@\/components\/PageHeader/);
+  assert.doesNotMatch(buildersPage, /<PageHeader/);
+  assert.match(buildersPage, /<SourcesSubtabs selectedTab=\{selectedTab\} \/>/);
   assert.doesNotMatch(buildersPage, /Manage followed, private, and imported sources/);
   assert.match(buildersPage, /className="sources-tab-body sources-tab-body--fetch"[\s\S]*<Suspense fallback=\{<BuilderStatsFallback \/>}/);
   assert.doesNotMatch(buildersPage, /<PageHeader[^>]*actions=/);
