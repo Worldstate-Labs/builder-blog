@@ -858,9 +858,6 @@ function CronConfigDialog({
             value={pickedLanguage}
             onChange={setPickedLanguage}
           />
-          <p className="cron-field-hint">
-            Saved for future summaries.
-          </p>
 
           {context === "digest" ? (
             <>
@@ -870,8 +867,7 @@ function CronConfigDialog({
                 onChange={setPickedMaxAge}
               />
               <p className="cron-field-hint">
-                Posts published more than this many days ago are excluded. Leave
-                blank for no limit.
+                Excludes older posts. Leave blank for no limit.
               </p>
             </>
           ) : null}

@@ -346,9 +346,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /Copy one prompt to send to your Local Agent\./);
   assert.match(skillPromptActions, /Local Agent/);
   assert.match(skillPromptActions, /Already digested posts can be included again this time\./);
+  assert.match(skillPromptActions, /Excludes older posts\. Leave blank for no limit\./);
   assert.match(skillPromptActions, /\{submitting \? "…" : "Copy"\}/);
   assert.doesNotMatch(skillPromptActions, /Copy a prompt for one run or for a recurring local schedule/);
   assert.doesNotMatch(skillPromptActions, /Local helper/);
+  assert.doesNotMatch(skillPromptActions, /Saved for future summaries/);
+  assert.doesNotMatch(skillPromptActions, /Posts published more than this many days ago are excluded/);
   assert.doesNotMatch(skillPromptActions, /token-picker-grouplabel">Schedule/);
   assert.doesNotMatch(skillPromptActions, /token-picker-grouplabel">Output/);
   assert.match(skillPromptActions, /cron-field-select/);
