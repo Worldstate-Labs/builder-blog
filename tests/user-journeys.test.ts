@@ -340,16 +340,22 @@ test("web app serves the agent skill and setup command", () => {
   // One-time runs now share the schedule dialog instead of a separate button/dialog.
   assert.doesNotMatch(skillPromptActions, /<OnceConfigDialog/);
   assert.match(skillPromptActions, /continueOnceCopy/);
-  // Cron + once dialogs: compact <select> controls grouped into Schedule /
-  // Output sections, plus an account-wide summary language select persisted via
-  // /api/settings/summary-language — now shown for digest as well as library.
+  // Cron + once dialogs: compact <select> controls, plus an account-wide
+  // summary language select persisted via /api/settings/summary-language —
+  // now shown for digest as well as library.
+  assert.match(skillPromptActions, /Copy one prompt to send to your Local Agent\./);
+  assert.match(skillPromptActions, /Local Agent/);
+  assert.match(skillPromptActions, /Already digested posts can be included again this time\./);
+  assert.match(skillPromptActions, /\{submitting \? "…" : "Copy"\}/);
+  assert.doesNotMatch(skillPromptActions, /Copy a prompt for one run or for a recurring local schedule/);
+  assert.doesNotMatch(skillPromptActions, /Local helper/);
+  assert.doesNotMatch(skillPromptActions, /token-picker-grouplabel">Schedule/);
+  assert.doesNotMatch(skillPromptActions, /token-picker-grouplabel">Output/);
   assert.match(skillPromptActions, /cron-field-select/);
   assert.match(skillPromptActions, /Summary language/);
   assert.match(skillPromptActions, /SUMMARY_LANGUAGE_OPTIONS/);
   assert.match(skillPromptActions, /persistSummaryLanguage/);
   assert.match(skillPromptActions, /\/api\/settings\/summary-language/);
-  assert.match(skillPromptActions, /token-picker-grouplabel">Schedule/);
-  assert.match(skillPromptActions, /token-picker-grouplabel">Output/);
   // Account-wide summary language is wired end to end: dedicated save route,
   // schema field, and context override.
   const summaryLanguageRoute = readFileSync(

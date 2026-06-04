@@ -17,11 +17,23 @@ const RUNTIME_OPTIONS: { id: AgentRuntime; label: string; hint: string }[] = [
   {
     id: "claude",
     label: "Claude Code",
-    hint: "Use this if Claude Code is the local helper that will run the schedule.",
+    hint: "Use this if Claude Code is the Local Agent that will run it.",
   },
-  { id: "codex", label: "Codex", hint: "Use this if Codex is the local helper that will run the schedule." },
-  { id: "gemini", label: "Gemini CLI", hint: "Use this if Gemini CLI is the local helper that will run the schedule." },
-  { id: "openclaw", label: "OpenClaw", hint: "Use this if OpenClaw is the local helper that will run the schedule." },
+  {
+    id: "codex",
+    label: "Codex",
+    hint: "Use this if Codex is the Local Agent that will run it.",
+  },
+  {
+    id: "gemini",
+    label: "Gemini CLI",
+    hint: "Use this if Gemini CLI is the Local Agent that will run it.",
+  },
+  {
+    id: "openclaw",
+    label: "OpenClaw",
+    hint: "Use this if OpenClaw is the Local Agent that will run it.",
+  },
 ];
 
 // Cron cadence. `id` values match the server whitelist in the
@@ -87,9 +99,9 @@ const OVERRIDE_COPY: Record<
   digest: {
     name: "Include already digested items",
     cronHint:
-      "Allows older digest items to appear again on each run. Older digests stay saved.",
+      "Already digested posts can be included again on each run.",
     onceHint:
-      "Allows older digest items to appear again this time. Older digests stay saved.",
+      "Already digested posts can be included again this time.",
   },
 };
 
@@ -335,7 +347,7 @@ export function SkillPromptActions({
   async function continueCronCopy(cron: CronConfig) {
     const extras: CopyExtras = { cron, force: false };
     if (activeTokens.length === 0) {
-      setStatus({ kind: "info", text: "Connect a local helper in Settings first" });
+      setStatus({ kind: "info", text: "Connect a Local Agent in Settings first" });
       return;
     }
     if (activeTokens.length === 1) {
@@ -353,7 +365,7 @@ export function SkillPromptActions({
   async function continueOnceCopy(overrideFetched: boolean) {
     const extras: CopyExtras = { cron: null, force: overrideFetched };
     if (activeTokens.length === 0) {
-      setStatus({ kind: "info", text: "Connect a local helper in Settings first" });
+      setStatus({ kind: "info", text: "Connect a Local Agent in Settings first" });
       return;
     }
     if (activeTokens.length === 1) {
@@ -376,7 +388,7 @@ export function SkillPromptActions({
     setStatus(null);
 
     if (activeTokens.length === 0) {
-      setStatus({ kind: "info", text: "Connect a local helper in Settings first" });
+      setStatus({ kind: "info", text: "Connect a Local Agent in Settings first" });
       return;
     }
     // Schedule dialog handles both one-time and recurring runs. Recurring
@@ -399,7 +411,7 @@ export function SkillPromptActions({
     if (!stopJob) return;
     setStatus(null);
     if (activeTokens.length === 0) {
-      setStatus({ kind: "info", text: "Connect a local helper in Settings first" });
+      setStatus({ kind: "info", text: "Connect a Local Agent in Settings first" });
       return;
     }
     if (activeTokens.length === 1) {
@@ -414,7 +426,7 @@ export function SkillPromptActions({
       {!compactOnly ? (
         <div className="fb-skill-text">
           <span className="fb-section-label mr-2">{config.title}</span>
-          Copy a prompt for your local helper to update new {context === "digest" ? "digests" : "sources"}.
+          Copy a prompt for your Local Agent to update new {context === "digest" ? "digests" : "sources"}.
         </div>
       ) : null}
       <button
@@ -449,7 +461,7 @@ export function SkillPromptActions({
           status.kind === "info" ? (
             <span className="skill-prompt-status-text">
               {status.text}
-              {status.text.includes("Connect a local helper") ? (
+              {status.text.includes("Connect a Local Agent") ? (
                 <>
                   {" "}
                   <a className="underline" href="/settings">
@@ -587,7 +599,7 @@ function TokenPickerDialog({
       >
         <header className="token-picker-header">
           <h2 id="token-picker-title" className="token-picker-title">
-            Choose a local helper
+            Choose a Local Agent
           </h2>
           <p className="token-picker-sub">
             We&rsquo;ll create a short-lived setup code and copy the prompt.
@@ -796,12 +808,11 @@ function CronConfigDialog({
             Choose run type
           </h2>
           <p className="token-picker-sub">
-            Copy a prompt for one run or for a recurring local schedule.
+            Copy one prompt to send to your Local Agent.
           </p>
         </header>
 
         <div className="cron-config-body">
-          <p className="token-picker-grouplabel">Schedule</p>
           <div className="cron-field">
             <label htmlFor="cron-freq" className="cron-field-label">
               Frequency
@@ -823,7 +834,7 @@ function CronConfigDialog({
             <>
               <div className="cron-field">
                 <label htmlFor="cron-runtime" className="cron-field-label">
-                  Local helper
+                  Local Agent
                 </label>
                 <select
                   id="cron-runtime"
@@ -842,7 +853,6 @@ function CronConfigDialog({
             </>
           )}
 
-          <p className="token-picker-grouplabel">Output</p>
           <SummaryLanguageField
             id="cron-lang"
             value={pickedLanguage}
@@ -899,8 +909,8 @@ function CronConfigDialog({
             className="fb-btn dark compact"
             disabled={submitting}
           >
-            <CalendarClock aria-hidden="true" />
-            {submitting ? "…" : "Continue"}
+            <Copy aria-hidden="true" />
+            {submitting ? "…" : "Copy"}
           </button>
         </footer>
       </form>
