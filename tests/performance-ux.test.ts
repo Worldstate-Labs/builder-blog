@@ -1288,9 +1288,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
   assert.match(buildersPage, /@\/components\/PageHeader/);
-  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*actions=/);
+  assert.match(buildersPage, /<PageHeader title="Sources" \/>/);
   assert.doesNotMatch(buildersPage, /Manage followed, private, and imported sources/);
-  assert.match(buildersPage, /actions=\{[\s\S]*<Suspense fallback=\{<BuilderStatsFallback \/>}/);
+  assert.match(buildersPage, /className="sources-tab-body sources-tab-body--fetch"[\s\S]*<Suspense fallback=\{<BuilderStatsFallback \/>}/);
+  assert.doesNotMatch(buildersPage, /<PageHeader[^>]*actions=/);
   assert.match(builderLibraryStats, /CountMeta/);
   assert.doesNotMatch(builderLibraryStats, /CountMetric/);
   assert.doesNotMatch(builderLibraryStats, /at-mobile grid|grid-cols-3/);
@@ -1929,6 +1930,8 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.button-compact/);
   assert.match(css, /\.row-actions/);
   assert.match(css, /\.source-summary-line/);
+  assert.match(css, /\.sources-tab-surface\s*{[\s\S]*display:\s*grid/);
+  assert.match(css, /\.sources-tab-body\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(css, /\.sources-subtabs\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(css, /\.digest-source-management\s*{[\s\S]*display:\s*grid/);
   assert.match(css, /\.sources-sync-section \.digest-updates-panel/);

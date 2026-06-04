@@ -81,33 +81,34 @@ export default async function BuildersPage({
 
   return (
     <div className="page-pad">
-      <PageHeader
-        title="Sources"
-        actions={
-          <Suspense fallback={<BuilderStatsFallback />}>
-            <BuilderStatsSlot dataPromise={dataPromise} />
-          </Suspense>
-        }
-      />
+      <PageHeader title="Sources" />
 
       <div className="workspace-content-stack">
-        <SourcesSubtabs selectedTab={selectedTab} />
+        <section className="sources-tab-surface">
+          <SourcesSubtabs selectedTab={selectedTab} />
 
-        {selectedTab === "fetch" ? (
-          <>
-            <Suspense fallback={<SyncHeaderFallback />}>
-              <SyncHeader dataPromise={dataPromise} />
-            </Suspense>
+          {selectedTab === "fetch" ? (
+            <section className="sources-tab-body sources-tab-body--fetch">
+              <Suspense fallback={<BuilderStatsFallback />}>
+                <BuilderStatsSlot dataPromise={dataPromise} />
+              </Suspense>
 
-            <Suspense fallback={<BuilderSectionsFallback />}>
-              <BuilderSections dataPromise={dataPromise} />
-            </Suspense>
-          </>
-        ) : (
-          <Suspense fallback={<DigestSourcesFallback />}>
-            <DigestSourcesSection dataPromise={digestDataPromise ?? loadDigestSourcesPageData()} />
-          </Suspense>
-        )}
+              <Suspense fallback={<SyncHeaderFallback />}>
+                <SyncHeader dataPromise={dataPromise} />
+              </Suspense>
+
+              <Suspense fallback={<BuilderSectionsFallback />}>
+                <BuilderSections dataPromise={dataPromise} />
+              </Suspense>
+            </section>
+          ) : (
+            <section className="sources-tab-body sources-tab-body--digest">
+              <Suspense fallback={<DigestSourcesFallback />}>
+                <DigestSourcesSection dataPromise={digestDataPromise ?? loadDigestSourcesPageData()} />
+              </Suspense>
+            </section>
+          )}
+        </section>
       </div>
     </div>
   );

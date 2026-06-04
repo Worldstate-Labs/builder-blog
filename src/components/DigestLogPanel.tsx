@@ -585,17 +585,7 @@ function DigestScheduleSummary({
     );
   }
 
-  if (cronJob.status !== "active") {
-    return (
-      <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-        Schedule stopped
-        {cronJob.stoppedAt
-          ? ` ${hydrated ? formatRelative(cronJob.stoppedAt) : formatAbsolute(cronJob.stoppedAt)}`
-          : ""}
-        . One-time digest builds can still be copied.
-      </p>
-    );
-  }
+  if (cronJob.status !== "active") return null;
 
   const nextLabel = nextExpectedAt
     ? hydrated
