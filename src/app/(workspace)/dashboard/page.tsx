@@ -226,9 +226,9 @@ function DigestControlBar({
   return (
     <section
       aria-label="Digest selection"
-      className="grid items-start gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--paper-strong)] p-3 shadow-[var(--shadow-soft)] md:grid-cols-[minmax(0,1fr)_minmax(17rem,22rem)]"
+      className="grid items-start gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--paper-strong)] p-3 shadow-[var(--shadow-soft)] md:grid-cols-2"
     >
-      <div className="grid min-w-0 grid-rows-[auto_auto_1rem] gap-1">
+      <div className="grid min-w-0 gap-1">
         <span className="text-[0.68rem] font-[850] uppercase tracking-[0.14em] text-[var(--muted)]">
           Digest
         </span>
@@ -237,15 +237,10 @@ function DigestControlBar({
           selectedPipeline={selectedPipeline}
           selectedPipelineId={selectedPipelineId}
         />
-        <span className="min-w-0 truncate text-xs font-[650] text-[var(--muted)]">
-          {selectedPipeline.isOwnPipeline
-            ? "Your digest"
-            : `${selectedPipeline.ownerLabel} - Read-only`}
-        </span>
       </div>
-      <div className="grid min-w-0 grid-rows-[auto_auto_1rem] gap-1">
+      <div className="grid min-w-0 gap-1">
         <span className="text-[0.68rem] font-[850] uppercase tracking-[0.14em] text-[var(--muted)]">
-          Issue
+          History
         </span>
         {digestArchiveOptions.length > 0 ? (
           <div className="[&_.digest-picker-date]:text-sm [&_.digest-picker-date]:font-[800] [&_.digest-picker-summary]:min-h-10 [&_.digest-picker-summary]:bg-[var(--paper)] [&_.digest-picker-summary]:px-3 [&_.digest-picker-summary]:py-2">
@@ -262,9 +257,6 @@ function DigestControlBar({
             No saved issues
           </span>
         )}
-        <span aria-hidden="true" className="invisible text-xs font-[650]">
-          Issue
-        </span>
       </div>
     </section>
   );
