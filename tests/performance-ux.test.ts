@@ -1478,19 +1478,29 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
 test("digest posts use source detail headings and unified original links", () => {
   const digestContent = source("src/components/DigestContent.tsx");
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
+  const postCard = source("src/components/PostCard.tsx");
   const globals = source("src/app/globals.css");
 
   assert.match(digestContent, /DigestSourceLink/);
+  assert.match(digestContent, /SourceAvatar/);
+  assert.match(digestContent, /SourceBadge/);
   assert.match(digestContent, /digest-group-source-link/);
+  assert.match(digestContent, /digest-group-source-avatar/);
   assert.match(digestContent, /sourceLinkForSource/);
   assert.match(digestContent, /PostCard/);
+  assert.match(digestContent, /showBuilderRow=\{false\}/);
   assert.match(digestContent, /showDebugActions=\{false\}/);
+  assert.match(digestContent, /showSourceBadge=\{false\}/);
   assert.match(digestContent, /digest-source-summary/);
   assert.doesNotMatch(digestContent, /Watch on YouTube/);
   assert.match(dashboardPage, /digestSourceLinksForUser/);
+  assert.match(dashboardPage, /avatarUrl:\s*builder\.avatarUrl/);
+  assert.match(dashboardPage, /sourceType:\s*builder\.sourceType/);
   assert.match(dashboardPage, /sourceLinks=\{sourceLinks\}/);
+  assert.match(postCard, /showSourceBadge = true/);
   assert.match(globals, /\.digest-group-heading/);
   assert.match(globals, /\.digest-group-source-link/);
+  assert.match(globals, /\.digest-group-source-avatar\.fb-src-icon/);
 });
 
 test("library hub exposes share and multi-import flows", () => {

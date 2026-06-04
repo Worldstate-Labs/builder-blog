@@ -274,12 +274,14 @@ async function digestSourceLinksForUser(userId: string): Promise<DigestSourceLin
     if (!builder?.entity || byEntityId.has(builder.entity.id)) continue;
     byEntityId.set(builder.entity.id, {
       aliases: [builder.name],
+      avatarUrl: builder.avatarUrl,
       entityId: builder.entity.id,
       fetchUrl: builder.fetchUrl,
       handle: builder.entity.handle ?? builder.handle,
       href: `/builder/${builder.entity.id}`,
       name: builder.entity.name || builder.name,
       sourceUrl: builder.sourceUrl,
+      sourceType: builder.sourceType,
     });
   }
   return [...byEntityId.values()];

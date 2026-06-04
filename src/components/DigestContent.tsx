@@ -5,6 +5,8 @@ import { useMemo } from "react";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { CountBadge } from "@/components/Count";
 import { PostCard, type PostCardPost } from "@/components/PostCard";
+import { SourceAvatar } from "@/components/SourceAvatar";
+import { SourceBadge } from "@/components/SourceBadge";
 import {
   parseDigest,
   type DigestDoc,
@@ -16,11 +18,13 @@ import {
 
 export type DigestSourceLink = {
   aliases?: string[];
+  avatarUrl?: string | null;
   entityId: string;
   href: string;
   name: string;
   handle?: string | null;
   sourceUrl?: string | null;
+  sourceType?: string | null;
   fetchUrl?: string | null;
 };
 
@@ -145,7 +149,9 @@ function SectionBlock({
       <section id={section.id} className="digest-section scroll-mt-24">
         {section.heading ? (
           <div className="digest-section-summary digest-section-summary-static">
-            <h3 className="digest-section-heading">{section.heading}</h3>
+            <h3 className="digest-section-heading">
+              <SourceBadge sourceType={sourceTypeFromSection(section.heading)} />
+            </h3>
             {showCount ? <CountBadge value={section.postCount} /> : null}
           </div>
         ) : null}
@@ -158,7 +164,9 @@ function SectionBlock({
     <details id={section.id} className="digest-section scroll-mt-24" open>
       <summary className="digest-section-summary">
         <ChevronDown aria-hidden="true" className="digest-section-chevron" />
-        <h3 className="digest-section-heading">{section.heading}</h3>
+        <h3 className="digest-section-heading">
+          <SourceBadge sourceType={sourceTypeFromSection(section.heading)} />
+        </h3>
         {showCount ? <CountBadge value={section.postCount} /> : null}
       </summary>
       {body}
@@ -208,7 +216,15 @@ function PostBlock({
       : null,
   };
 
-  return <PostCard post={postCard} showDebugActions={false} showPublishedDate={false} />;
+  return (
+    <PostCard
+      post={postCard}
+      showBuilderRow={false}
+      showDebugActions={false}
+      showPublishedDate={false}
+      showSourceBadge={false}
+    />
+  );
 }
 
 function DigestGroupHeading({
@@ -225,6 +241,17 @@ function DigestGroupHeading({
   return (
     <h4 className="digest-group-heading">
       <Link className="digest-group-source-link" href={sourceLink.href}>
+        <SourceAvatar
+          className="digest-group-source-avatar"
+          imageSize={28}
+          source={{
+            avatarUrl: sourceLink.avatarUrl ?? null,
+            fetchUrl: sourceLink.fetchUrl ?? null,
+            name: sourceLink.name || source,
+            sourceType: sourceLink.sourceType ?? "website",
+            sourceUrl: sourceLink.sourceUrl ?? null,
+          }}
+        />
         <span>{source}</span>
         <ArrowRight aria-hidden="true" className="digest-group-source-icon" />
       </Link>

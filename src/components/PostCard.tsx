@@ -48,6 +48,7 @@ export function PostCard({
   showBuilderRow = true,
   showDebugActions = true,
   showPublishedDate = true,
+  showSourceBadge = true,
   variant = "card",
 }: {
   context?: ReactNode;
@@ -69,6 +70,7 @@ export function PostCard({
   showBuilderRow?: boolean;
   showDebugActions?: boolean;
   showPublishedDate?: boolean;
+  showSourceBadge?: boolean;
   variant?: "card" | "row" | "detail";
 }) {
   const [summaryExpanded, setSummaryExpanded] = useState(false);
@@ -95,6 +97,14 @@ export function PostCard({
     : null;
 
   const authorName = builder?.name ?? post.sourceName ?? null;
+  const hasAlternateChannels = Boolean(post.alternateChannelCount && post.alternateChannelCount > 0);
+  const showMetaRow = Boolean(
+    (showBuilderRow && authorName) ||
+      showSourceBadge ||
+      hasAlternateChannels ||
+      dataRead ||
+      extraMeta,
+  );
 
   return (
     <article
@@ -113,48 +123,54 @@ export function PostCard({
         )}
 
         {/* Line 2: Meta row */}
-        <div className="post-meta">
-          {showBuilderRow && authorName ? (
-            <>
-              {authorHref ? (
-                <Link className="post-meta-author-link" href={authorHref}>
-                  {authorName}
-                </Link>
-              ) : (
-                <span className="post-meta-author-link">{authorName}</span>
-              )}
-              <span className="post-meta-dot" aria-hidden="true">·</span>
-            </>
-          ) : null}
+        {showMetaRow ? (
+          <div className="post-meta">
+            {showBuilderRow && authorName ? (
+              <>
+                {authorHref ? (
+                  <Link className="post-meta-author-link" href={authorHref}>
+                    {authorName}
+                  </Link>
+                ) : (
+                  <span className="post-meta-author-link">{authorName}</span>
+                )}
+                {(showSourceBadge || hasAlternateChannels || dataRead || extraMeta) ? (
+                  <span className="post-meta-dot" aria-hidden="true">·</span>
+                ) : null}
+              </>
+            ) : null}
 
-          <SourceBadge
-            builder={builder}
-            sourceType={builder?.sourceType ?? post.sourceType ?? null}
-          />
+            {showSourceBadge ? (
+              <SourceBadge
+                builder={builder}
+                sourceType={builder?.sourceType ?? post.sourceType ?? null}
+              />
+            ) : null}
 
-          {post.alternateChannelCount && post.alternateChannelCount > 0 ? (
-            <>
-              <span className="post-meta-dot" aria-hidden="true">·</span>
-              <span title="Same post available via other libraries / channels">
-                <CountMeta
-                  label={post.alternateChannelCount === 1 ? "additional channel" : "additional channels"}
-                  value={post.alternateChannelCount}
-                />
-              </span>
-            </>
-          ) : null}
+            {hasAlternateChannels ? (
+              <>
+                {showSourceBadge ? <span className="post-meta-dot" aria-hidden="true">·</span> : null}
+                <span title="Same post available via other libraries / channels">
+                  <CountMeta
+                    label={post.alternateChannelCount === 1 ? "additional channel" : "additional channels"}
+                    value={post.alternateChannelCount ?? 0}
+                  />
+                </span>
+              </>
+            ) : null}
 
-          {dataRead ? (
-            <>
-              <span className="post-meta-dot" aria-hidden="true">·</span>
-              <span className="read-indicator" aria-label="Read">
-                ✓ Read
-              </span>
-            </>
-          ) : null}
+            {dataRead ? (
+              <>
+                {(showSourceBadge || hasAlternateChannels) ? <span className="post-meta-dot" aria-hidden="true">·</span> : null}
+                <span className="read-indicator" aria-label="Read">
+                  ✓ Read
+                </span>
+              </>
+            ) : null}
 
-          {extraMeta}
-        </div>
+            {extraMeta}
+          </div>
+        ) : null}
 
         {/* Line 3: Summary / body */}
         {isDetail ? (
