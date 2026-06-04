@@ -3984,8 +3984,10 @@ svg.lucide {
   border-color: transparent;
   border-radius: 0;
   color: var(--muted-strong);
-  min-height: 2.55rem;
-  padding-inline: 0.55rem;
+  font-size: 0.875rem;
+  font-weight: 760;
+  min-height: 2.75rem;
+  padding-inline: 0.75rem;
 }
 
 .workspace-top-tabs.fb-segmented-tabs .fb-btn:hover {
