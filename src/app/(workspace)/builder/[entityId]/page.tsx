@@ -123,7 +123,7 @@ export default async function BuilderDetailPage({ params }: Params) {
   const channelIds = channels.map((c) => c.builderId);
 
   return (
-    <div className="page-pad">
+    <div className="page-pad page-pad--reading builder-detail-page">
       <PageHeader
         actions={
           <Suspense fallback={<BuilderActionsSkeleton />}>

@@ -148,7 +148,7 @@ export default async function SearchPage({
   ];
 
   return (
-    <div className="page-pad search-page">
+    <div className="page-pad page-pad--reading search-page">
       <PageHeader title="Search" />
 
       <div className="workspace-content-stack search-results-workspace">

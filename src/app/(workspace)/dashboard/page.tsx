@@ -51,7 +51,7 @@ export default async function DashboardPage({
   const aiDigest = await AiDigestFeedSlot({ userId, digestId, pipelineId });
 
   return (
-    <div className="page-pad">
+    <div className="page-pad page-pad--reading home-page">
       <PageHeader title="Home" />
 
       <section className="workspace-content-stack home-workspace">

@@ -319,6 +319,14 @@ svg.lucide {
   width: min(100%, var(--workspace-max));
 }
 
+.page-pad--reading {
+  width: min(100%, var(--reading-max));
+}
+
+.page-pad--settings {
+  width: min(100%, var(--settings-max));
+}
+
 .reading-page {
   width: min(100%, var(--reading-max));
 }

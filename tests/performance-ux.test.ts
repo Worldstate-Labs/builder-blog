@@ -243,6 +243,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /signOut\(\{ callbackUrl: "\/login" \}\)/);
   assert.match(userMenu, /closeMenu\(\);[\s\S]*signOut\(\{ callbackUrl: "\/login" \}\)[\s\S]*Sign out/);
   assert.match(settingsPage, /@\/components\/PageHeader/);
+  assert.match(settingsPage, /className="page-pad page-pad--settings"/);
   assert.match(settingsPage, /<PageHeader title="Settings" \/>/);
   assert.doesNotMatch(settingsPage, /<section className="fb-page-head"/);
   assert.equal(existsSync(join(root, "src/app/(workspace)/settings/loading.tsx")), false);
@@ -302,6 +303,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(pageHeader, /description \? <p className="fb-desc">\{description\}<\/p> : null/);
   assert.match(pageHeader, /\{actions\}/);
   assert.match(dashboardPage, /@\/components\/PageHeader/);
+  assert.match(dashboardPage, /className="page-pad page-pad--reading home-page"/);
   assert.match(dashboardPage, /<PageHeader title="Home" \/>/);
   assert.doesNotMatch(dashboardPage, /Read your AI Digest, saved posts, and followed-source updates/);
   assert.doesNotMatch(dashboardPage, /<header className="fb-page-head"/);
@@ -364,6 +366,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(digestDetails, /mode === "today"/);
   assert.match(recommendationsPage, /redirect\("\/dashboard\?tab=subscription"\)/);
   assert.match(builderDetailPage, /@\/components\/PageHeader/);
+  assert.match(builderDetailPage, /className="page-pad page-pad--reading builder-detail-page"/);
   assert.match(builderDetailPage, /<PageHeader[\s\S]*className="builder-detail-page-head"[\s\S]*title=\{entity\.name\}/);
   assert.doesNotMatch(builderDetailPage, /<header className="fb-page-head"/);
   assert.match(builderDetailPage, /className="workspace-content-stack builder-detail-workspace"/);
@@ -814,6 +817,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /@\/components\/SearchForm/);
   assert.match(searchPage, /@\/components\/EmptyState/);
   assert.match(searchPage, /@\/components\/PageHeader/);
+  assert.match(searchPage, /className="page-pad page-pad--reading search-page"/);
   assert.match(searchPage, /searchPageSize/);
   assert.match(searchPage, /emptySearchCopy = "Search sources, posts, saved items, and digests\."/);
   assert.doesNotMatch(searchPage, /Enter a query to search across your sources/);
@@ -844,6 +848,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(globals, /\.search-hero-form\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
   assert.match(globals, /\.search-hero-form\s*{[\s\S]*margin:\s*0 auto/);
   assert.match(globals, /\.search-form\s*{[\s\S]*margin:\s*0/);
+  assert.match(globals, /\.page-pad--reading\s*{[\s\S]*width:\s*min\(100%, var\(--reading-max\)\)/);
+  assert.match(globals, /\.page-pad--settings\s*{[\s\S]*width:\s*min\(100%, var\(--settings-max\)\)/);
   assert.match(searchForm, /className="button-dark submit-button"/);
   assert.match(searchForm, /submit-button-content/);
   assert.match(searchForm, /submit-button-pending/);

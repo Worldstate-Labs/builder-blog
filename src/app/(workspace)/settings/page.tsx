@@ -27,7 +27,7 @@ export default async function SettingsPage() {
   const isAdmin = isAdminEmail(session.user.email);
 
   return (
-    <div className="page-pad">
+    <div className="page-pad page-pad--settings">
       <PageHeader title="Settings" />
 
       <div className="workspace-content-stack settings-workspace">
