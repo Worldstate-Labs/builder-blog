@@ -53,6 +53,9 @@ export function BuilderDetailActions({
         <button
           type="button"
           disabled={isPending}
+          aria-busy={isPending}
+          aria-pressed={subscribed}
+          aria-label={subscribed ? "Unfollow" : "Follow"}
           onClick={() => follow(!subscribed)}
           className={
             subscribed
@@ -60,7 +63,7 @@ export function BuilderDetailActions({
               : "fb-btn fb-btn-dark fb-btn-compact"
           }
         >
-          {isPending ? "..." : subscribed ? "✓ Following" : "Follow"}
+          {isPending ? "Updating..." : subscribed ? "Unfollow" : "Follow"}
         </button>
       </div>
       {error ? (

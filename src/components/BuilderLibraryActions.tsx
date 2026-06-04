@@ -168,7 +168,7 @@ export function BuilderLibraryActions({
           onClick={updateSubscription}
           type="button"
         >
-          <span>{subscribed ? "Following" : "Follow"}</span>
+          <span>{isPending ? "Updating..." : subscribed ? "Unfollow" : "Follow"}</span>
           <span className={`fb-toggle${subscribed ? " on" : ""}`} aria-hidden="true" />
         </button>
         {allowRemove ? (
