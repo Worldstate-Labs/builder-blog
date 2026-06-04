@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Plus, X } from "lucide-react";
 import { AddBuilderForm } from "@/components/AddBuilderForm";
 import { CountMeta } from "@/components/Count";
@@ -15,12 +15,18 @@ type SourceOption = {
 };
 
 export function PrivateLibraryPanel({
+  beforeBody,
+  className,
+  headingId,
   title,
   count,
   sourceOptions,
   visibilityToggle,
   children,
 }: {
+  beforeBody?: ReactNode;
+  className?: string;
+  headingId?: string;
   title: string;
   count: number;
   sourceOptions: SourceOption[];
@@ -28,7 +34,6 @@ export function PrivateLibraryPanel({
   children: ReactNode;
 }) {
   const [addOpen, setAddOpen] = useState(false);
-  const detailsRef = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
     function onBuilderAdded(event: Event) {
@@ -44,19 +49,20 @@ export function PrivateLibraryPanel({
       window.removeEventListener(builderLibraryBuilderAdded, onBuilderAdded);
   }, []);
 
-  function toggleAdd(event: React.MouseEvent<HTMLButtonElement>) {
-    // Prevent the surrounding <details> from toggling when the user clicks
-    // the in-summary Add source button.
-    event.preventDefault();
-    event.stopPropagation();
+  function toggleAdd() {
     setAddOpen((open) => !open);
   }
 
   return (
-    <details ref={detailsRef} className="library-section-panel" open>
-      <summary className="library-section-summary">
+    <section
+      aria-labelledby={headingId}
+      className={className ?? "library-section-panel"}
+    >
+      <div className="library-section-summary library-section-summary--static">
         <div>
-          <h2 className="fb-section-heading">{title}</h2>
+          <h2 id={headingId} className="fb-section-heading">
+            {title}
+          </h2>
         </div>
         <div className="library-section-meta">
           <CountMeta label={count === 1 ? "source" : "sources"} value={count} />
@@ -72,8 +78,9 @@ export function PrivateLibraryPanel({
             {addOpen ? "Close" : "Add source"}
           </button>
         </div>
-      </summary>
+      </div>
       <div className="library-section-body">
+        {beforeBody}
         {addOpen ? (
           <div className="add-source-panel fb-panel">
             <AddBuilderForm sourceOptions={sourceOptions} />
@@ -81,6 +88,6 @@ export function PrivateLibraryPanel({
         ) : null}
         {children}
       </div>
-    </details>
+    </section>
   );
 }

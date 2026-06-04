@@ -663,66 +663,61 @@ async function FetchSourcesSection({
       ? adminCommunityLibraryName
       : `${data.sessionUserName || data.sessionUserEmail || "Personal"} library`;
 
-  const privateSection = (
-    <section className="your-library-panel fb-panel" aria-labelledby="sources-library-section-title">
-      <div className="library-hub-toolbar">
-        <div className="library-hub-toolbar-copy">
-          <h2 id="sources-library-section-title" className="fb-section-heading">
-            Your library
-          </h2>
-        </div>
-      </div>
-
-      <section className="sources-sync-section">
-        <FetchLogPanel
-          actions={
-            <SkillPromptActions
-              compactOnly
-              context="library"
-              showStop={showStopLibraryCron}
-              tokens={data.activeTokens}
-              summaryLanguage={data.summaryLanguage}
-              digestMaxPostAgeDays={data.digestMaxPostAgeDays}
-            />
-          }
-          initialCronJob={data.libraryCronJob}
-          initialCronRuns={data.cronRuns}
-          initialJobRuns={data.jobRuns}
-          initialScheduledJobRuns={data.scheduledJobRuns}
-          initialRuns={data.fetchRuns}
-        />
-      </section>
-
-      <PrivateLibraryPanel
-        title={data.isAdmin ? adminCommunityLibraryName : "Private library"}
-        count={data.privateBuilders.length}
-        sourceOptions={data.sourceLabelOptions}
-        visibilityToggle={
-          <LibraryVisibilityToggle
-            compact
-            disabled={!data.isAdmin && data.privateBuilders.length === 0}
-            initialIsPublic={data.isPublicLibrary}
-            isAdminLibrary={data.isAdmin}
-            name={userLibraryName}
+  const fetchSyncSection = (
+    <section className="sources-sync-section">
+      <FetchLogPanel
+        actions={
+          <SkillPromptActions
+            compactOnly
+            context="library"
+            showStop={showStopLibraryCron}
+            tokens={data.activeTokens}
+            summaryLanguage={data.summaryLanguage}
+            digestMaxPostAgeDays={data.digestMaxPostAgeDays}
           />
         }
-      >
-        <BuilderLibraryList
-          acceptAddedBuilders
-          builders={data.privateBuilders.map((builder) =>
-            builderListItem({
-              allowRemove: true,
-              builder,
-              latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
-              subscribed: data.subscribed.has(builder.id),
-            }),
-          )}
-          editableSourceOptions={data.sourceLabelOptions}
-          emptyBody="Add a source, or run your local helper to import private sources."
-          emptyTitle="No personal sources yet"
-        />
-      </PrivateLibraryPanel>
+        initialCronJob={data.libraryCronJob}
+        initialCronRuns={data.cronRuns}
+        initialJobRuns={data.jobRuns}
+        initialScheduledJobRuns={data.scheduledJobRuns}
+        initialRuns={data.fetchRuns}
+      />
     </section>
+  );
+
+  const privateSection = (
+    <PrivateLibraryPanel
+      beforeBody={fetchSyncSection}
+      className="your-library-panel fb-panel"
+      count={data.privateBuilders.length}
+      headingId="sources-library-section-title"
+      sourceOptions={data.sourceLabelOptions}
+      title="Your library"
+      visibilityToggle={
+        <LibraryVisibilityToggle
+          compact
+          disabled={!data.isAdmin && data.privateBuilders.length === 0}
+          initialIsPublic={data.isPublicLibrary}
+          isAdminLibrary={data.isAdmin}
+          name={userLibraryName}
+        />
+      }
+    >
+      <BuilderLibraryList
+        acceptAddedBuilders
+        builders={data.privateBuilders.map((builder) =>
+          builderListItem({
+            allowRemove: true,
+            builder,
+            latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
+            subscribed: data.subscribed.has(builder.id),
+          }),
+        )}
+        editableSourceOptions={data.sourceLabelOptions}
+        emptyBody="Add a source, or run your local helper to import private sources."
+        emptyTitle="No personal sources yet"
+      />
+    </PrivateLibraryPanel>
   );
 
   const importedSection = (

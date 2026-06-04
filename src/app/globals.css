@@ -1801,6 +1801,10 @@ svg.lucide {
   padding: 1rem;
 }
 
+.library-section-summary--static {
+  cursor: default;
+}
+
 .library-section-summary-copy {
   min-width: 0;
 }
@@ -4384,8 +4388,18 @@ svg.lucide {
   gap: 1rem;
 }
 
-.your-digest-panel .library-hub-toolbar {
+.your-digest-panel .library-hub-toolbar,
+.your-library-panel > .library-section-summary {
   grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.your-library-panel > .library-section-body {
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.your-library-panel .sources-sync-section {
+  padding: 0;
 }
 
 .own-digest-card {
