@@ -5670,7 +5670,7 @@ svg.lucide {
   gap: 0.5rem;
   line-height: 1.64;
   margin-top: -0.35rem;
-  max-width: min(100%, var(--copy-max));
+  max-width: none;
   padding: 0.05rem 0 0.1rem;
   width: 100%;
 }
@@ -5707,9 +5707,9 @@ svg.lucide {
   background: color-mix(in oklch, var(--paper-strong) 46%, transparent);
   border-color: color-mix(in oklch, var(--line) 78%, transparent);
   box-shadow: none;
-  margin-left: 2.25rem;
+  margin-inline: 1.8rem;
   padding: 1rem 1.05rem;
-  width: calc(100% - 2.25rem);
+  width: calc(100% - 3.6rem);
 }
 
 .digest-rich .fetched-post-title {
@@ -5731,6 +5731,13 @@ svg.lucide {
 .digest-rich .fetched-post-summary-text {
   font-size: 0.9375rem;
   line-height: 1.72;
+}
+
+@media (max-width: 767px) {
+  .digest-rich .fetched-post-card.feed-card {
+    margin-inline: 0.75rem;
+    width: calc(100% - 1.5rem);
+  }
 }
 .digest-prose-wrap {
   position: relative;
