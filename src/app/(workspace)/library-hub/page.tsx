@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import {
@@ -20,8 +21,18 @@ import {
 import { prisma } from "@/lib/prisma";
 
 type LibraryHubPageData = Awaited<ReturnType<typeof loadLibraryHubPageData>>;
+type LibraryHubTab = "source-library" | "ai-digests";
+type LibraryHubSearchParams = Promise<{
+  tab?: string | string[];
+}>;
 
-export default function LibraryHubPage() {
+export default async function LibraryHubPage({
+  searchParams,
+}: {
+  searchParams: LibraryHubSearchParams;
+}) {
+  const params = await searchParams;
+  const selectedTab = parseHubTab(firstParam(params.tab));
   const dataPromise = loadLibraryHubPageData();
 
   return (
@@ -38,15 +49,48 @@ export default function LibraryHubPage() {
       />
 
       <div className="workspace-content-stack">
-        <Suspense fallback={<LibraryHubImportFallback />}>
-          <LibraryHubImportSection dataPromise={dataPromise} />
-        </Suspense>
+        <LibraryHubSubtabs selectedTab={selectedTab} />
 
-        <Suspense fallback={<DigestPipelineImportFallback />}>
-          <DigestPipelineImportSection dataPromise={dataPromise} />
-        </Suspense>
+        {selectedTab === "source-library" ? (
+          <Suspense fallback={<LibraryHubImportFallback />}>
+            <LibraryHubImportSection dataPromise={dataPromise} />
+          </Suspense>
+        ) : (
+          <Suspense fallback={<DigestPipelineImportFallback />}>
+            <DigestPipelineImportSection dataPromise={dataPromise} />
+          </Suspense>
+        )}
       </div>
     </div>
+  );
+}
+
+function LibraryHubSubtabs({ selectedTab }: { selectedTab: LibraryHubTab }) {
+  return (
+    <nav
+      className="fb-segmented-tabs sources-subtabs"
+      aria-label="Hub sections"
+      role="tablist"
+    >
+      <Link
+        aria-selected={selectedTab === "source-library"}
+        className="fb-btn compact"
+        data-active={selectedTab === "source-library" ? "true" : undefined}
+        href="/library-hub"
+        role="tab"
+      >
+        Source Library
+      </Link>
+      <Link
+        aria-selected={selectedTab === "ai-digests"}
+        className="fb-btn compact"
+        data-active={selectedTab === "ai-digests" ? "true" : undefined}
+        href="/library-hub?tab=ai-digests"
+        role="tab"
+      >
+        AI Digests
+      </Link>
+    </nav>
   );
 }
 
@@ -264,6 +308,15 @@ function DigestPipelineImportFallback() {
       </div>
     </section>
   );
+}
+
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function parseHubTab(value: string | undefined): LibraryHubTab {
+  if (value === "ai-digests") return value;
+  return "source-library";
 }
 
 function ownerLabel(owner: { name: string | null; email: string | null } | null, isFeatured: boolean) {
