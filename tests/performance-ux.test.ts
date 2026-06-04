@@ -1369,9 +1369,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /bg-black\/10|className="h-/);
   assert.match(
     builderFeedItems,
-    /<span className="builder-posts-label">Posts<\/span>[\s\S]*className="builder-posts-meta"[\s\S]*label=\{items \? "loaded" : "summarized"\}[\s\S]*<time className="builder-posts-latest" dateTime=\{latestPostCreatedAt\}>[\s\S]*Latest \{formatCompactDate/,
+    /className="builder-posts-count"[\s\S]*\{items \? items\.length : totalCount\} posts[\s\S]*<time className="builder-posts-latest" dateTime=\{latestPostCreatedAt\}>[\s\S]*Latest \{formatCompactDate/,
   );
-  assert.match(builderFeedItems, /className="builder-posts-meta"[\s\S]*<\/span>\s*<\/span>\s*\{latestPostCreatedAt \? \(/);
+  assert.doesNotMatch(builderFeedItems, /CountMeta|builder-posts-label|builder-posts-meta|summarized"\}/);
   assert.match(builderFeedItems, /Latest \{formatCompactDate\(new Date\(latestPostCreatedAt\)\)\}/);
   assert.match(builderFeedItems, /className="builder-post-loading-line"/);
   assert.match(builderFeedItems, /className="builder-post-loading-card"/);
@@ -1480,7 +1480,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /fetch\(`\/api\/builders\/\$\{builderId\}\/feed-items`/);
   // UI copy avoids "Fetched" in the row; detailed content still renders
   // through PostCard.
-  assert.match(builderFeedItems, /<span className="builder-posts-label">Posts<\/span>/);
+  assert.match(builderFeedItems, /className="builder-posts-count"/);
   assert.match(builderFeedItems, /PostCard/);
   assert.match(postCard, /Summary/);
   assert.match(postCard, /export function PostCard/);
@@ -1986,16 +1986,16 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.doesNotMatch(css, /\.(?:action|empty)-panel\s*{/);
   assert.doesNotMatch(css, /\.(?:stats-panel|stat-card|metric-card|search-stats-panel)\b/);
   const builderPostsSummaryRule = cssRule(css, ".builder-posts > summary");
-  const builderPostsAfterRule = cssRule(css, ".builder-posts > summary::after");
   const builderPostsLatestRule = cssRule(css, ".builder-posts-latest");
   assert.match(builderPostsLatestRule, /white-space:\s*nowrap/);
   assert.doesNotMatch(builderPostsLatestRule, /margin-left:\s*auto/);
   assert.doesNotMatch(builderPostsLatestRule, /order:\s*2/);
   assert.doesNotMatch(css, /\.builder-posts-latest::before\s*{[\s\S]*content:\s*"·"/);
-  assert.match(builderPostsAfterRule, /margin-left:\s*auto/);
-  assert.match(builderPostsAfterRule, /order:\s*2/);
-  assert.match(css, /\.builder-posts-label\s*{[\s\S]*font-weight:\s*760/);
-  assert.match(css, /\.builder-posts-meta\s*{[\s\S]*display:\s*inline-flex/);
+  assert.doesNotMatch(css, /\.builder-posts > summary::after/);
+  assert.doesNotMatch(css, /\.builder-posts-label\s*{/);
+  assert.doesNotMatch(css, /\.builder-posts-meta\s*{/);
+  assert.match(css, /\.builder-posts-count\s*{[\s\S]*border-radius:\s*999px/);
+  assert.match(css, /\.builder-posts > summary:hover \.builder-posts-count\s*{[\s\S]*color:\s*var\(--accent-strong\)/);
   assert.match(css, /\.builder-posts-summary\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(builderPostsSummaryRule, /display:\s*flex/);
   assert.match(builderPostsSummaryRule, /justify-content:\s*flex-start/);

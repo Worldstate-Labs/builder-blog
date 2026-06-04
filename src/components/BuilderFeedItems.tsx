@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CountMeta } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { PostCard } from "@/components/PostCard";
 
@@ -87,12 +86,8 @@ export function BuilderFeedItems({
     >
       <summary>
         <span className="builder-posts-summary">
-          <span className="builder-posts-label">Posts</span>
-          <span className="builder-posts-meta">
-            <CountMeta
-              label={items ? "loaded" : "summarized"}
-              value={items ? items.length : totalCount}
-            />
+          <span className="builder-posts-count">
+            {items ? items.length : totalCount} posts
           </span>
         </span>
         {latestPostCreatedAt ? (
