@@ -1502,7 +1502,9 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(globals, /\.digest-group-source-link/);
   assert.match(globals, /\.digest-group-source-avatar\.fb-src-icon/);
   assert.match(globals, /\.digest-source-summary\s*{[\s\S]*color:\s*var\(--dr-ink\)/);
-  assert.match(globals, /\.digest-source-summary\s*{[\s\S]*padding:\s*0\.05rem 0 0\.1rem 2\.25rem/);
+  assert.match(globals, /\.digest-source-summary\s*{[\s\S]*padding:\s*0\.05rem 0 0\.1rem;/);
+  assert.match(globals, /\.digest-rich \.fetched-post-card\.feed-card\s*{[\s\S]*margin-left:\s*2\.25rem/);
+  assert.match(globals, /\.digest-rich \.fetched-post-card\.feed-card\s*{[\s\S]*width:\s*calc\(100% - 2\.25rem\)/);
   assert.match(globals, /\.digest-rich \.fetched-post-title\s*{[\s\S]*font-size:\s*0\.96875rem/);
   assert.match(globals, /\.digest-rich \.post-summary\s*{[\s\S]*margin-top:\s*0\.62rem/);
 });
