@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { DigestArchivePicker, type DigestArchivePickerOption } from "@/components/DigestArchivePicker";
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
@@ -7,6 +6,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { FavoritePostsSection } from "@/components/FavoritePostsSection";
 import { FollowingRecommendationSection } from "@/components/FollowingRecommendationSection";
 import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
+import { DigestPipelineSelector } from "@/components/DigestPipelineSelector";
 import { getCurrentSession } from "@/lib/auth";
 import { displayDigestPipelineTitle } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
@@ -226,97 +226,47 @@ function DigestControlBar({
   return (
     <section
       aria-label="Digest selection"
-      className="grid gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--paper-strong)] p-3 shadow-[var(--shadow-soft)] md:grid-cols-[minmax(0,1fr)_minmax(17rem,22rem)]"
+      className="grid items-start gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--paper-strong)] p-3 shadow-[var(--shadow-soft)] md:grid-cols-[minmax(0,1fr)_minmax(17rem,22rem)]"
     >
-      <DigestPipelineSelector
-        options={options}
-        selectedPipeline={selectedPipeline}
-        selectedPipelineId={selectedPipelineId}
-      />
-      <div className="grid min-w-0 gap-1">
+      <div className="grid min-w-0 grid-rows-[auto_auto_1rem] gap-1">
+        <span className="text-[0.68rem] font-[850] uppercase tracking-[0.14em] text-[var(--muted)]">
+          Digest
+        </span>
+        <DigestPipelineSelector
+          options={options}
+          selectedPipeline={selectedPipeline}
+          selectedPipelineId={selectedPipelineId}
+        />
+        <span className="min-w-0 truncate text-xs font-[650] text-[var(--muted)]">
+          {selectedPipeline.isOwnPipeline
+            ? "Your digest"
+            : `${selectedPipeline.ownerLabel} - Read-only`}
+        </span>
+      </div>
+      <div className="grid min-w-0 grid-rows-[auto_auto_1rem] gap-1">
         <span className="text-[0.68rem] font-[850] uppercase tracking-[0.14em] text-[var(--muted)]">
           Issue
         </span>
         {digestArchiveOptions.length > 0 ? (
-          <DigestArchivePicker
-            digests={digestArchiveOptions}
-            isOwnPipeline={isOwnPipeline}
-            latestDigestId={latestDigestId}
-            selectedDigestId={selectedDigestId}
-            selectedPipelineId={selectedPipelineId}
-          />
+          <div className="[&_.digest-picker-date]:text-sm [&_.digest-picker-date]:font-[800] [&_.digest-picker-summary]:min-h-10 [&_.digest-picker-summary]:bg-[var(--paper)] [&_.digest-picker-summary]:px-3 [&_.digest-picker-summary]:py-2">
+            <DigestArchivePicker
+              digests={digestArchiveOptions}
+              isOwnPipeline={isOwnPipeline}
+              latestDigestId={latestDigestId}
+              selectedDigestId={selectedDigestId}
+              selectedPipelineId={selectedPipelineId}
+            />
+          </div>
         ) : (
           <span className="inline-flex min-h-10 items-center rounded-[8px] border border-dashed border-[var(--line)] px-3 text-sm font-[750] text-[var(--muted-strong)]">
             No saved issues
           </span>
         )}
+        <span aria-hidden="true" className="invisible text-xs font-[650]">
+          Issue
+        </span>
       </div>
     </section>
-  );
-}
-
-function DigestPipelineSelector({
-  options,
-  selectedPipeline,
-  selectedPipelineId,
-}: {
-  options: DigestPipelineOption[];
-  selectedPipeline: DigestPipelineOption;
-  selectedPipelineId: string;
-}) {
-  const ownerText = selectedPipeline.isOwnPipeline
-    ? "Your digest"
-    : `${selectedPipeline.ownerLabel} - Read-only`;
-
-  return (
-    <div className="grid min-w-0 gap-1">
-      <span className="text-[0.68rem] font-[850] uppercase tracking-[0.14em] text-[var(--muted)]">
-        Digest
-      </span>
-      {options.length > 1 ? (
-        <details className="group relative min-w-0">
-          <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-left text-sm font-[800] text-[var(--ink)] shadow-[var(--shadow-soft)] transition hover:border-[var(--accent-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
-            <span className="min-w-0 truncate">{selectedPipeline.title}</span>
-            <span aria-hidden="true" className="text-[0.7rem] text-[var(--muted)]">
-              v
-            </span>
-          </summary>
-          <div className="absolute left-0 right-0 z-20 mt-2 grid gap-1 rounded-[8px] border border-[var(--line)] bg-[var(--paper)] p-1 shadow-[var(--shadow-pop)]">
-            {options.map((pipeline) => {
-              const active = pipeline.id === selectedPipelineId;
-              const href = pipeline.isOwnPipeline
-                ? "/dashboard?tab=ai-digest"
-                : `/dashboard?tab=ai-digest&pipeline=${pipeline.id}`;
-              return (
-                <Link
-                  aria-current={active ? "page" : undefined}
-                  className={[
-                    "grid min-w-0 gap-0.5 rounded-[6px] px-3 py-2 text-sm text-[var(--ink)] no-underline transition hover:bg-[color-mix(in_oklch,var(--accent)_8%,transparent)]",
-                    active ? "bg-[var(--accent-soft)] font-[850] text-[var(--accent-strong)]" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  href={href}
-                  key={pipeline.id}
-                >
-                  <span className="min-w-0 truncate">{pipeline.title}</span>
-                  <span className="min-w-0 truncate text-xs font-[650] text-[var(--muted)]">
-                    {pipeline.isOwnPipeline ? "Your digest" : pipeline.ownerLabel}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </details>
-      ) : (
-        <div className="flex min-h-10 min-w-0 items-center rounded-[8px] border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm font-[800] text-[var(--ink)]">
-          <span className="min-w-0 truncate">{selectedPipeline.title}</span>
-        </div>
-      )}
-      <span className="min-w-0 truncate text-xs font-[650] text-[var(--muted)]">
-        {ownerText}
-      </span>
-    </div>
   );
 }
 

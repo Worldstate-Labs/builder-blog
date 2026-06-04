@@ -25,10 +25,21 @@ test("home digest keeps pipeline and issue selection in a dedicated control bar"
 });
 
 test("home digest pipeline selector resets archive selection when changing pipelines", () => {
-  const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
+  const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
 
-  assert.match(dashboardPage, /const href = pipeline\.isOwnPipeline/);
-  assert.match(dashboardPage, /\? "\/dashboard\?tab=ai-digest"/);
-  assert.match(dashboardPage, /`\/dashboard\?tab=ai-digest&pipeline=\$\{pipeline\.id\}`/);
-  assert.doesNotMatch(dashboardPage, /&digest=\$\{digest/);
+  assert.match(digestPipelineSelector, /const href = pipeline\.isOwnPipeline/);
+  assert.match(digestPipelineSelector, /\? "\/dashboard\?tab=ai-digest"/);
+  assert.match(digestPipelineSelector, /`\/dashboard\?tab=ai-digest&pipeline=\$\{pipeline\.id\}`/);
+  assert.doesNotMatch(digestPipelineSelector, /&digest=\$\{digest/);
+});
+
+test("home digest pipeline menu closes after a selection", () => {
+  const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
+
+  assert.match(digestPipelineSelector, /"use client"/);
+  assert.match(digestPipelineSelector, /const \[open, setOpen\] = useState\(false\)/);
+  assert.match(digestPipelineSelector, /document\.addEventListener\("pointerdown", handlePointerDown\)/);
+  assert.match(digestPipelineSelector, /onClick=\{\(event\) => \{/);
+  assert.match(digestPipelineSelector, /setOpen\(false\)/);
+  assert.match(digestPipelineSelector, /if \(active\) event\.preventDefault\(\)/);
 });
