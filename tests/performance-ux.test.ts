@@ -888,8 +888,8 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(buildersPage, /const showStopDigestCron = data\.digestCronJob\?\.status === "active"/);
   assert.match(buildersPage, /Your digest/);
   assert.match(buildersPage, /<OwnDigestPipelineCard/);
-  assert.match(buildersPage, /initialShared=\{data\.ownPipelineShared\}/);
   assert.match(buildersPage, /pipeline=\{data\.ownDigestPipeline\}/);
+  assert.match(buildersPage, /<DigestPipelineVisibilityToggle initialShared=\{data\.ownPipelineShared\}/);
   assert.match(buildersPage, /<DigestPipelineImportForm pipelines=\{data\.hubDigestPipelines\}/);
   assert.match(buildersPage, /context="digest"/);
   assert.match(buildersPage, /<DigestLogPanel/);
@@ -1227,7 +1227,8 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /sharedPipelines = pipelines\.filter\(\(pipeline\) => !pipeline\.owned\)/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /export function OwnDigestPipelineCard/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /<DigestPipelineTitleEditor/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /<DigestPipelineVisibilityToggle initialShared=\{initialShared\}/);
+  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /DigestPipelineVisibilityToggle/);
+  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /Shared archive/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="library-hub-toolbar-copy"/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-list-stack fb-hub-list"/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-card-head"/);
@@ -1719,6 +1720,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(digestPipelineForm, /Share my digest/);
   assert.doesNotMatch(digestPipelineForm, /Remove my digest/);
   assert.doesNotMatch(digestPipelineForm, /ownPipelineShared/);
+  assert.doesNotMatch(digestPipelineForm, /Shared archive/);
   assert.match(digestPipelineForm, /filter\(\(pipeline\) => !pipeline\.owned\)/);
   assert.doesNotMatch(digestPipelineForm, /Your digest/);
   assert.doesNotMatch(digestPipelineForm, /pipeline\.owned \? \(/);

@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { CheckCircle2, Download, Radio, Trash2 } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
-import { DigestPipelineVisibilityToggle } from "@/components/DigestPipelineVisibilityToggle";
 import { EmptyState } from "@/components/EmptyState";
 
 export type HubDigestPipeline = {
@@ -35,7 +34,12 @@ export function DigestPipelineImportForm({
 }: DigestPipelineImportFormProps) {
   const sharedPipelines = pipelines.filter((pipeline) => !pipeline.owned);
   const [importedIds, setImportedIds] = useState<Set<string>>(
-    () => new Set(sharedPipelines.filter((pipeline) => pipeline.imported).map((pipeline) => pipeline.id)),
+    () =>
+      new Set(
+        sharedPipelines
+          .filter((pipeline) => pipeline.imported)
+          .map((pipeline) => pipeline.id),
+      ),
   );
   const [pendingAction, setPendingAction] = useState<{
     pipelineId: string;
@@ -140,31 +144,18 @@ export function DigestPipelineImportForm({
   );
 }
 
-export function OwnDigestPipelineCard({
-  initialShared,
-  pipeline,
-}: {
-  initialShared: boolean;
-  pipeline: OwnDigestPipeline;
-}) {
+export function OwnDigestPipelineCard({ pipeline }: { pipeline: OwnDigestPipeline }) {
   return (
     <article className="fb-hub-card own-digest-card">
       <div>
         <div className="fb-hub-card-head">
           <div className="fb-hub-card-titleblock">
-            <div className="fb-hub-card-kicker">
-              <span className="fb-kind-pill">digest</span>
-              <span className="fb-hub-card-topic">· Shared archive</span>
-            </div>
             <DigestPipelineTitleEditor
               className="fb-hub-title"
               headingId="sources-digest-title"
               headingLevel={3}
               initialTitle={pipeline.title}
             />
-          </div>
-          <div className="fb-hub-card-actions">
-            <DigestPipelineVisibilityToggle initialShared={initialShared} />
           </div>
         </div>
       </div>
@@ -250,10 +241,6 @@ function DigestPipelineCard({
       <div>
         <div className="fb-hub-card-head">
           <div className="fb-hub-card-titleblock">
-            <div className="fb-hub-card-kicker">
-              <span className="fb-kind-pill">digest</span>
-              <span className="fb-hub-card-topic">· Shared archive</span>
-            </div>
             <h3 className="fb-hub-title">
               {pipeline.title}
             </h3>

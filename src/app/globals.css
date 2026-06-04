@@ -4194,11 +4194,6 @@ svg.lucide {
   overflow-wrap: anywhere;
 }
 
-.fb-hub-card-titleblock .digest-title-row,
-.fb-hub-card-titleblock .digest-title-edit-form {
-  margin-top: 0.5rem;
-}
-
 .digest-title-edit-button {
   flex: 0 0 auto;
   padding-inline: 0.5rem;

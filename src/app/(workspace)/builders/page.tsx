@@ -12,6 +12,7 @@ import {
   type HubDigestPipeline,
   type OwnDigestPipeline,
 } from "@/components/DigestPipelineImportForm";
+import { DigestPipelineVisibilityToggle } from "@/components/DigestPipelineVisibilityToggle";
 import { EmptyState } from "@/components/EmptyState";
 import {
   FetchLogPanel,
@@ -197,6 +198,7 @@ async function DigestSourcesSection({
               Your digest
             </h2>
           </div>
+          <DigestPipelineVisibilityToggle initialShared={data.ownPipelineShared} />
         </div>
 
         <section className="sources-sync-section">
@@ -219,10 +221,7 @@ async function DigestSourcesSection({
           />
         </section>
 
-        <OwnDigestPipelineCard
-          initialShared={data.ownPipelineShared}
-          pipeline={data.ownDigestPipeline}
-        />
+        <OwnDigestPipelineCard pipeline={data.ownDigestPipeline} />
       </section>
 
       <DigestPipelineImportForm pipelines={data.hubDigestPipelines} />
