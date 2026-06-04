@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { BuilderEditDialog } from "@/components/BuilderEditDialog";
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { BuilderLibraryActions } from "@/components/BuilderLibraryActions";
-import { CountBadge } from "@/components/Count";
+import { formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { SourceBadge } from "@/components/SourceBadge";
 import { SourceAvatar } from "@/components/SourceAvatar";
@@ -40,8 +41,10 @@ export function BuilderLibraryList({
   editableSourceOptions,
 }: BuilderLibraryListProps) {
   const [addedBuilders, setAddedBuilders] = useState<BuilderLibraryListItem[]>([]);
+  const [expandedSourceTypes, setExpandedSourceTypes] = useState<Set<string>>(() => new Set());
   const [removedBuilderIds, setRemovedBuilderIds] = useState<Set<string>>(() => new Set());
   const [removeErrors, setRemoveErrors] = useState<Record<string, string>>({});
+  const listId = useId();
   const builderSubscriptionSignature = useMemo(
     () => builders.map((builder) => `${builder.id}:${builder.subscribed}`).join("|"),
     [builders],
@@ -106,18 +109,22 @@ export function BuilderLibraryList({
     function onBuilderAdded(event: Event) {
       const builder = (event as CustomEvent<BuilderLibraryListItem>).detail;
       if (!builder?.id) return;
-      if (allBuilders.some((item) => item.id === builder.id)) return;
-      setAddedBuilders((current) => [builder, ...current]);
+      const sourceType = sourceTypeForBuilder(builder);
+      const alreadyVisible = allBuilders.some((item) => item.id === builder.id);
+      setExpandedSourceTypes((current) => {
+        if (current.has(sourceType)) return current;
+        const next = new Set(current);
+        next.add(sourceType);
+        return next;
+      });
+      if (!alreadyVisible) {
+        setAddedBuilders((current) => [builder, ...current]);
+      }
       setSubscribedByBuilderId((current) => ({ ...current, [builder.id]: builder.subscribed }));
       // Mark for scrolling on the next render cycle. The scroll
-      // effect below fires AFTER React commits the new row so
-      // document.getElementById is guaranteed to find it. When the
-      // server returned a soft warning (e.g. blog has no RSS feed),
-      // skip the scroll — AddBuilderForm renders a warm banner the
-      // user needs to see before we move focus away.
-      if (!builder.addWarning) {
-        pendingScrollIdRef.current = builder.id;
-      }
+      // effect below fires AFTER React expands the source-type section
+      // and commits the new row, so document.getElementById can find it.
+      pendingScrollIdRef.current = builder.id;
     }
 
     window.addEventListener(builderLibraryBuilderAdded, onBuilderAdded);
@@ -136,7 +143,19 @@ export function BuilderLibraryList({
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "center" });
     pendingScrollIdRef.current = null;
-  }, [allBuilders]);
+  }, [allBuilders, expandedSourceTypes]);
+
+  function toggleSourceType(sourceType: string) {
+    setExpandedSourceTypes((current) => {
+      const next = new Set(current);
+      if (next.has(sourceType)) {
+        next.delete(sourceType);
+      } else {
+        next.add(sourceType);
+      }
+      return next;
+    });
+  }
 
   const visibleBuilders = useMemo(
     () =>
@@ -194,32 +213,56 @@ export function BuilderLibraryList({
 
   return (
     <div className="builder-library-list">
-      {visibleSections.map((section) => (
-        <section
-          className="builder-library-source-section"
-          key={section.sourceType}
-        >
-          <div className="builder-library-source-section-head">
-            <h3 className="builder-library-source-section-title">
-              <SourceBadge sourceType={section.sourceType} />
+      {visibleSections.map((section) => {
+        const expanded = expandedSourceTypes.has(section.sourceType);
+        const sectionBodyId = sourceTypeSectionBodyId(listId, section.sourceType);
+        return (
+          <section
+            className="builder-library-source-section"
+            key={section.sourceType}
+          >
+            <h3 className="builder-library-source-section-head">
+              <button
+                aria-controls={sectionBodyId}
+                aria-expanded={expanded}
+                className="builder-library-source-section-toggle"
+                onClick={() => toggleSourceType(section.sourceType)}
+                type="button"
+              >
+                <span className="builder-library-source-section-title">
+                  <ChevronRight
+                    aria-hidden="true"
+                    className="builder-library-source-section-chevron"
+                  />
+                  <SourceBadge sourceType={section.sourceType} />
+                </span>
+                <span className="builder-library-source-count">
+                  {formatCount(section.builders.length)}{" "}
+                  {section.builders.length === 1 ? "source" : "sources"}
+                </span>
+              </button>
             </h3>
-            <CountBadge value={section.builders.length} />
-          </div>
-          <div className="builder-library-source-section-body">
-            {section.builders.map((builder, index) => (
-              <BuilderCard
-                builder={builder}
-                first={index === 0}
-                key={builder.id}
-                editableSourceOptions={editableSourceOptions}
-                removeError={removeErrors[builder.id]}
-                onRemoveStateChange={onRemoveStateChange}
-                onSubscriptionStateChange={onSubscriptionStateChange}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+            {expanded ? (
+              <div
+                className="builder-library-source-section-body"
+                id={sectionBodyId}
+              >
+                {section.builders.map((builder, index) => (
+                  <BuilderCard
+                    builder={builder}
+                    first={index === 0}
+                    key={builder.id}
+                    editableSourceOptions={editableSourceOptions}
+                    removeError={removeErrors[builder.id]}
+                    onRemoveStateChange={onRemoveStateChange}
+                    onSubscriptionStateChange={onSubscriptionStateChange}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </section>
+        );
+      })}
     </div>
   );
 }
@@ -341,6 +384,10 @@ function sourceTypeForBuilder(builder: BuilderLibraryListItem) {
   if (builder.kind === "BLOG") return "blog";
   if (builder.kind === "PODCAST") return "podcast";
   return "website";
+}
+
+function sourceTypeSectionBodyId(listId: string, sourceType: string) {
+  return `builder-library-source-${listId}-${sourceType.replace(/[^a-z0-9_-]/gi, "-")}`;
 }
 
 function normalizeSourceType(sourceType: string | null | undefined) {
