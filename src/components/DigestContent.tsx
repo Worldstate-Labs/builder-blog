@@ -86,7 +86,7 @@ export function DigestContent({
         <SectionBlock
           key={section.id}
           section={section}
-          collapsible={doc.postCount >= 4}
+          collapsible={false}
           showCount={showSectionCounts}
           sourceLookup={sourceLookup}
         />

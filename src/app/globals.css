@@ -1590,14 +1590,18 @@ svg.lucide {
 }
 
 .digest-headline-summary {
+  background: color-mix(in oklch, var(--paper-strong) 70%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 8px;
   color: var(--ink);
   display: grid;
-  gap: 0.48rem;
+  gap: 0.72rem;
   min-width: 0;
+  padding: 0.95rem 1rem;
 }
 
 .digest-headline-top {
-  align-items: flex-start;
+  align-items: center;
   display: flex;
   gap: 1rem;
   justify-content: space-between;
@@ -1614,7 +1618,7 @@ svg.lucide {
 }
 
 .digest-headline-action {
-  flex: 0 1 25rem;
+  flex: 0 1 22rem;
   min-width: min(18rem, 100%);
 }
 
@@ -1662,7 +1666,7 @@ svg.lucide {
   font-size: 1rem;
   line-height: 1.62;
   margin: 0;
-  max-width: var(--measure);
+  max-width: none;
 }
 
 .digest-headline-loading {
@@ -1694,6 +1698,10 @@ svg.lucide {
   .digest-headline-action {
     min-width: 0;
     width: 100%;
+  }
+
+  .digest-headline-summary {
+    padding: 0.85rem;
   }
 }
 
@@ -4045,10 +4053,10 @@ svg.lucide {
 }
 
 .ai-digest-panel {
-  background: color-mix(in oklch, var(--paper-strong) 72%, transparent);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  overflow: hidden;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
   width: 100%;
 }
 
@@ -4179,7 +4187,7 @@ svg.lucide {
 .ai-digest-body {
   display: grid;
   gap: 1.25rem;
-  padding: 1.125rem;
+  padding: 0;
 }
 
 .digest-picker {
@@ -4189,7 +4197,7 @@ svg.lucide {
 
 .digest-picker-summary {
   align-items: center;
-  background: color-mix(in oklch, var(--paper-strong) 72%, transparent);
+  background: color-mix(in oklch, var(--paper) 58%, transparent);
   border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--ink);
@@ -4234,6 +4242,7 @@ svg.lucide {
   overflow: auto;
   padding: 0.35rem;
   position: absolute;
+  min-width: min(22rem, calc(100vw - 2rem));
   right: 0;
   z-index: 20;
 }
@@ -5334,19 +5343,18 @@ svg.lucide {
    in light mode, dark surface in dark mode) so it sits inside the editorial page
    instead of reading as a black slab. */
 .fb-digest {
-  background: var(--paper-strong);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  box-shadow: 0 12px 32px var(--shadow);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
   color: var(--ink);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .fb-digest-head {
-  border-bottom: 1px solid var(--line);
   display: grid;
-  gap: 0.95rem;
-  padding: 1rem 1.375rem 1.05rem;
+  gap: 0;
+  padding: 0;
 }
 
 .fb-digest-chip {
@@ -5366,8 +5374,9 @@ svg.lucide {
 .fb-digest-body {
   display: flex;
   flex-direction: column;
-  max-width: var(--measure);
-  padding: 1.125rem 1.375rem 1.375rem;
+  max-width: none;
+  padding: 1rem 0 0;
+  width: 100%;
 }
 
 .fb-digest-item {
@@ -5433,10 +5442,12 @@ svg.lucide {
   color: var(--dr-muted);
   display: flex;
   flex-direction: column;
-  gap: 1.45rem;
+  gap: 1.1rem;
   font-family: var(--font-geist-sans);
   font-size: 0.9375rem;
   line-height: 1.68;
+  min-width: 0;
+  width: 100%;
 }
 .digest-rich.on-dark {
   --dr-ink: #fff;
@@ -5493,7 +5504,7 @@ svg.lucide {
 /* Section */
 .digest-section {
   border-top: 1px solid var(--dr-line);
-  padding-top: 1.35rem;
+  padding-top: 1.15rem;
 }
 .digest-section:first-of-type {
   border-top: 0;
@@ -5501,11 +5512,11 @@ svg.lucide {
 }
 .digest-section-summary {
   align-items: center;
-  cursor: pointer;
+  cursor: default;
   display: flex;
-  gap: 0.5rem;
+  gap: 0.45rem;
   list-style: none;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.15rem;
 }
 
 .digest-section-summary-static {
@@ -5529,7 +5540,7 @@ svg.lucide {
 .digest-section-heading {
   color: var(--dr-ink);
   font-family: var(--font-display);
-  font-size: 1.3125rem;
+  font-size: 1.15rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   margin: 0;
@@ -5537,18 +5548,22 @@ svg.lucide {
 .digest-section-body {
   display: flex;
   flex-direction: column;
-  gap: 1.55rem;
-  margin-top: 0.95rem;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  min-width: 0;
+  width: 100%;
 }
 .digest-group {
   display: flex;
   flex-direction: column;
-  gap: 0.95rem;
+  gap: 0.62rem;
+  min-width: 0;
+  width: 100%;
 }
 .digest-group-heading {
   color: var(--dr-ink);
   font-family: var(--font-geist-sans);
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: 800;
   line-height: 1.25;
   margin: 0;
@@ -5585,6 +5600,7 @@ svg.lucide {
   gap: 0.5rem;
   line-height: 1.65;
   padding: 0.78rem 0.9rem;
+  width: 100%;
 }
 .digest-source-summary p {
   margin: 0;
@@ -5620,6 +5636,7 @@ svg.lucide {
   border-color: color-mix(in oklch, var(--line) 78%, transparent);
   box-shadow: none;
   padding: 1rem 1.05rem;
+  width: 100%;
 }
 
 .digest-rich .fetched-post-title {
@@ -8270,7 +8287,7 @@ body {
   }
 
   .ai-digest-body {
-    padding: 0.95rem;
+    padding: 0;
   }
 
   .digest-source-list {
