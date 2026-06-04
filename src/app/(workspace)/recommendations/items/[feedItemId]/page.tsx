@@ -58,7 +58,7 @@ export default async function RecommendationItemPage({
     : prisma.feedRead.create({ data: readData }));
 
   return (
-    <div className="page-pad reading-page">
+    <div className="page-pad page-pad--reading reading-page">
       <nav aria-label="Post navigation" className="reading-page-toolbar">
         <Link className="fb-breadcrumb-link reading-back-link" href="/dashboard?tab=subscription">
           <ChevronLeft aria-hidden="true" />

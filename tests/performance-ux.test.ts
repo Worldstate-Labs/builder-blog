@@ -834,7 +834,7 @@ test("search page uses a client form with pending feedback", () => {
 
   assert.match(searchPage, /@\/components\/SearchForm/);
   assert.match(searchPage, /@\/components\/EmptyState/);
-  assert.match(searchPage, /@\/components\/PageHeader/);
+  assert.doesNotMatch(searchPage, /@\/components\/PageHeader/);
   assert.match(searchPage, /className="page-pad page-pad--reading search-page"/);
   assert.match(searchPage, /searchPageSize/);
   assert.match(searchPage, /emptySearchCopy = "Search sources, posts, saved items, and digests\."/);
@@ -847,7 +847,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /SearchResultsSection/);
   assert.match(searchPage, /className="workspace-content-stack search-results-workspace"/);
   assert.match(globals, /\.search-result-skeleton/);
-  assert.match(searchPage, /<PageHeader title="Search" \/>/);
+  assert.match(searchPage, /<h1 className="sr-only">Search<\/h1>/);
+  assert.doesNotMatch(searchPage, /<PageHeader title="Search" \/>/);
   assert.doesNotMatch(searchPage, /description="Find sources, saved posts, and digest history\."/);
   assert.doesNotMatch(searchPage, /<PageHeader[\s\S]{0,120}actions=/);
   assert.match(searchPage, /className="search-hero-form"/);
@@ -1350,7 +1351,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.fetched-post-raw\s*{[\s\S]*border:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.digest-rich \.fetched-post-summary-text\s*{[\s\S]*line-height:\s*1\.72/);
   assert.match(postCard, /\/builder\/\$\{builder\.entityId\}/);
-  assert.match(recommendationItemPage, /page-pad reading-page/);
+  assert.match(recommendationItemPage, /page-pad page-pad--reading reading-page/);
   assert.doesNotMatch(recommendationItemPage, /@\/components\/PageHeader/);
   assert.doesNotMatch(recommendationItemPage, /title="Post"/);
   assert.match(recommendationItemPage, /className="reading-page-toolbar"/);
