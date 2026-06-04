@@ -1,5 +1,4 @@
 import { BuilderKind, BuilderPoolOrigin } from "@prisma/client";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
@@ -24,6 +23,7 @@ import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
 import { MobileSourcesSwitcher } from "@/components/MobileSourcesSwitcher";
 import { PrivateLibraryPanel } from "@/components/PrivateLibraryPanel";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
+import { WorkspaceTopTabs, type WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
 import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
 import { isAdminEmail } from "@/lib/admin";
 import { getAgentJobRuns, getScheduledAgentJobRuns } from "@/lib/agent-job-runs";
@@ -67,6 +67,11 @@ type BuildersSearchParams = Promise<{
   tab?: string | string[];
 }>;
 
+const SOURCES_TABS: Array<WorkspaceTopTabItem<SourcesTab>> = [
+  { value: "fetch", label: "Fetch", href: "/builders" },
+  { value: "digest", label: "Digest", href: "/builders?tab=digest" },
+];
+
 export default async function BuildersPage({
   searchParams,
 }: {
@@ -82,7 +87,11 @@ export default async function BuildersPage({
     <div className="page-pad">
       <div className="workspace-content-stack">
         <section className="sources-tab-surface">
-          <SourcesSubtabs selectedTab={selectedTab} />
+          <WorkspaceTopTabs
+            ariaLabel="Source management"
+            items={SOURCES_TABS}
+            selectedValue={selectedTab}
+          />
 
           {selectedTab === "fetch" ? (
             <section className="sources-tab-body sources-tab-body--fetch">
@@ -104,35 +113,6 @@ export default async function BuildersPage({
         </section>
       </div>
     </div>
-  );
-}
-
-function SourcesSubtabs({ selectedTab }: { selectedTab: SourcesTab }) {
-  return (
-    <nav
-      className="fb-segmented-tabs sources-subtabs"
-      aria-label="Source management"
-      role="tablist"
-    >
-      <Link
-        aria-selected={selectedTab === "fetch"}
-        className="fb-btn compact"
-        data-active={selectedTab === "fetch" ? "true" : undefined}
-        href="/builders"
-        role="tab"
-      >
-        Fetch
-      </Link>
-      <Link
-        aria-selected={selectedTab === "digest"}
-        className="fb-btn compact"
-        data-active={selectedTab === "digest" ? "true" : undefined}
-        href="/builders?tab=digest"
-        role="tab"
-      >
-        Digest
-      </Link>
-    </nav>
   );
 }
 

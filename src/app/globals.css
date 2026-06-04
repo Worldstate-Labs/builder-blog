@@ -798,7 +798,7 @@ svg.lucide {
   text-transform: uppercase;
 }
 
-.home-feed-tabs-row {
+.workspace-top-tabs-row {
   border-bottom: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
   display: flex;
   justify-content: center;
@@ -806,7 +806,7 @@ svg.lucide {
   width: 100%;
 }
 
-.home-feed-tabs {
+.workspace-top-tabs {
   width: fit-content;
 }
 
@@ -821,16 +821,9 @@ svg.lucide {
 }
 
 .sources-tab-body {
-  border-top: 1px solid var(--line);
   display: grid;
   gap: 1.25rem;
   min-width: 0;
-  padding-top: 1.25rem;
-}
-
-.sources-subtabs {
-  margin-inline: auto;
-  width: fit-content;
 }
 
 .mobile-filter-tabs {
@@ -3966,7 +3959,7 @@ svg.lucide {
   color: #fff;
 }
 
-.home-feed-tabs.fb-segmented-tabs {
+.workspace-top-tabs.fb-segmented-tabs {
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -3974,7 +3967,7 @@ svg.lucide {
   padding: 0;
 }
 
-.home-feed-tabs.fb-segmented-tabs .fb-btn {
+.workspace-top-tabs.fb-segmented-tabs .fb-btn {
   background: transparent;
   border-color: transparent;
   border-radius: 0;
@@ -3983,22 +3976,22 @@ svg.lucide {
   padding-inline: 0.55rem;
 }
 
-.home-feed-tabs.fb-segmented-tabs .fb-btn:hover {
+.workspace-top-tabs.fb-segmented-tabs .fb-btn:hover {
   background: color-mix(in oklch, var(--ink) 4%, transparent);
   border-color: transparent;
   color: var(--ink);
 }
 
-.home-feed-tabs.fb-segmented-tabs .fb-btn[aria-selected="true"],
-.home-feed-tabs.fb-segmented-tabs .fb-btn[data-active="true"] {
+.workspace-top-tabs.fb-segmented-tabs .fb-btn[aria-selected="true"],
+.workspace-top-tabs.fb-segmented-tabs .fb-btn[data-active="true"] {
   background: transparent;
   border-color: transparent;
   box-shadow: inset 0 -2px 0 var(--accent);
   color: var(--accent-strong);
 }
 
-.home-feed-tabs.fb-segmented-tabs .fb-btn[aria-selected="true"]:hover,
-.home-feed-tabs.fb-segmented-tabs .fb-btn[data-active="true"]:hover {
+.workspace-top-tabs.fb-segmented-tabs .fb-btn[aria-selected="true"]:hover,
+.workspace-top-tabs.fb-segmented-tabs .fb-btn[data-active="true"]:hover {
   background: transparent;
   border-color: transparent;
   color: var(--accent-strong);
@@ -8424,16 +8417,11 @@ body {
     line-height: 1.45;
   }
 
-  .home-feed-tabs {
+  .workspace-top-tabs {
     width: 100%;
   }
 
-  .sources-subtabs {
-    width: 100%;
-  }
-
-  .home-feed-tabs .fb-btn,
-  .sources-subtabs .fb-btn {
+  .workspace-top-tabs .fb-btn {
     flex: 1;
   }
 

@@ -2,24 +2,25 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { WorkspaceTopTabs, type WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
 
 type DashboardTab = "ai-digest" | "favorites" | "subscription";
 
-const HOME_TABS: Array<{ id: DashboardTab; label: string; panelId: string; tabId: string }> = [
+const HOME_TABS: Array<WorkspaceTopTabItem<DashboardTab>> = [
   {
-    id: "ai-digest",
+    value: "ai-digest",
     label: "Digest",
     panelId: "home-panel-ai-digest",
     tabId: "home-tab-ai-digest",
   },
   {
-    id: "favorites",
+    value: "favorites",
     label: "Favorites",
     panelId: "home-panel-favorites",
     tabId: "home-tab-favorites",
   },
   {
-    id: "subscription",
+    value: "subscription",
     label: "Following",
     panelId: "home-panel-subscription",
     tabId: "home-tab-subscription",
@@ -48,25 +49,12 @@ export function DashboardHomeTabs({
 
   return (
     <>
-      <div className="home-feed-tabs-row">
-        <div className="fb-segmented-tabs home-feed-tabs" role="tablist" aria-label="Home feed">
-          {HOME_TABS.map((tab) => (
-            <button
-              aria-controls={tab.panelId}
-              aria-selected={selectedTab === tab.id}
-              className="fb-btn compact"
-              data-active={selectedTab === tab.id ? "true" : undefined}
-              id={tab.tabId}
-              key={tab.id}
-              onClick={() => selectTab(tab.id)}
-              role="tab"
-              type="button"
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <WorkspaceTopTabs
+        ariaLabel="Home feed"
+        items={HOME_TABS}
+        onSelect={selectTab}
+        selectedValue={selectedTab}
+      />
       <section
         aria-labelledby="home-tab-ai-digest"
         className="home-tab-panel"

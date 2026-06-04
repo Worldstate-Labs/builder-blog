@@ -87,8 +87,8 @@ test("every app route has an explicit centered layout role", () => {
   }
 
   const workspaceRoutes = [
-    ["src/app/(workspace)/builders/page.tsx", /className="page-pad"[\s\S]*<SourcesSubtabs selectedTab=\{selectedTab\}/],
-    ["src/app/(workspace)/library-hub/page.tsx", /className="page-pad"[\s\S]*<LibraryHubSubtabs selectedTab=\{selectedTab\}/],
+    ["src/app/(workspace)/builders/page.tsx", /className="page-pad"[\s\S]*<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/],
+    ["src/app/(workspace)/library-hub/page.tsx", /className="page-pad"[\s\S]*<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/],
   ] as const;
   for (const [path, pattern] of workspaceRoutes) {
     const text = source(path);
@@ -422,10 +422,11 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /aria-label="Digest source" className="mt-4"/);
   assert.doesNotMatch(dashboardPage, /className="fb-panel dashed"/);
   assert.match(dashboardPage, /DashboardHomeTabs/);
-  assert.match(dashboardTabs, /role="tablist"/);
-  assert.match(dashboardTabs, /className="home-feed-tabs-row"/);
-  assert.match(dashboardTabs, /className="fb-segmented-tabs home-feed-tabs"/);
-  assert.match(dashboardTabs, /className="fb-btn compact"/);
+  assert.match(dashboardTabs, /WorkspaceTopTabs/);
+  assert.match(source("src/components/WorkspaceTopTabs.tsx"), /role="tablist"/);
+  assert.match(source("src/components/WorkspaceTopTabs.tsx"), /className="workspace-top-tabs-row"/);
+  assert.match(source("src/components/WorkspaceTopTabs.tsx"), /className="fb-segmented-tabs workspace-top-tabs"/);
+  assert.match(source("src/components/WorkspaceTopTabs.tsx"), /className: "fb-btn compact"/);
   assert.doesNotMatch(dashboardTabs, /fb-tabs|fb-tab|fb-m-segctl|fb-m-seg/);
   assert.match(globals, /\.fb-segmented-tabs/);
   assert.match(globals, /\.fb-segmented-tabs\s*{[^}]*background:\s*var\(--paper-strong\)/);
@@ -433,12 +434,13 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.fb-segmented-tabs\s*{[^}]*display:\s*inline-flex/);
   assert.match(globals, /\.fb-segmented-tabs\s*{[^}]*padding:\s*0\.25rem/);
   assert.match(globals, /\.fb-segmented-tabs \.fb-btn\[aria-selected="true"\]/);
-  assert.match(globals, /\.home-feed-tabs\s*{/);
-  assert.match(globals, /\.home-feed-tabs-row\s*{[\s\S]*justify-content:\s*center/);
-  assert.match(globals, /\.home-feed-tabs-row\s*{[\s\S]*border-bottom:\s*1px solid/);
+  assert.match(globals, /\.workspace-top-tabs\s*{/);
+  assert.match(globals, /\.workspace-top-tabs-row\s*{[\s\S]*justify-content:\s*center/);
+  assert.match(globals, /\.workspace-top-tabs-row\s*{[\s\S]*border-bottom:\s*1px solid/);
   assert.match(globals, /\.home-tab-panel\s*{[\s\S]*padding-top:\s*1\.25rem/);
-  assert.match(globals, /\.home-feed-tabs\.fb-segmented-tabs\s*{[\s\S]*background:\s*transparent/);
-  assert.doesNotMatch(globals, /\.home-feed-tabs\s*{[^}]*background:|\.filter-tabs\s*{[^}]*background:|\.mobile-filter-tabs\s*{[^}]*background:|\.sync-panel-tabs\s*{[^}]*background:/);
+  assert.match(globals, /\.workspace-top-tabs\.fb-segmented-tabs\s*{[\s\S]*background:\s*transparent/);
+  assert.doesNotMatch(globals, /\.home-feed-tabs|\.sources-subtabs/);
+  assert.doesNotMatch(globals, /\.workspace-top-tabs\s*{[^}]*background:|\.filter-tabs\s*{[^}]*background:|\.mobile-filter-tabs\s*{[^}]*background:|\.sync-panel-tabs\s*{[^}]*background:/);
   assert.match(globals, /\.digest-source-pill\[aria-current="page"\]\s*{[\s\S]*background:\s*var\(--accent-soft\)/);
   assert.match(globals, /\.digest-source-pill:hover,[\s\S]*\.digest-source-pill:focus-visible\s*{[\s\S]*background:\s*color-mix/);
   assert.doesNotMatch(globals, /\.fb-tabs\s*{|\.fb-tab\b/);
@@ -452,7 +454,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardTabs, /ai-digest/);
   assert.match(dashboardTabs, /Digest[\s\S]*Favorites[\s\S]*Following/);
   assert.doesNotMatch(dashboardTabs, /For You/);
-  assert.match(dashboardTabs, /id: "ai-digest"[\s\S]*label: "Digest"[\s\S]*id: "favorites"[\s\S]*label: "Favorites"[\s\S]*id: "subscription"[\s\S]*label: "Following"/);
+  assert.match(dashboardTabs, /value: "ai-digest"[\s\S]*label: "Digest"[\s\S]*value: "favorites"[\s\S]*label: "Favorites"[\s\S]*value: "subscription"[\s\S]*label: "Following"/);
   assert.doesNotMatch(dashboardPage, /scope="subscription"/);
   assert.doesNotMatch(dashboardPage, /scope="for-you"/);
   assert.doesNotMatch(dashboardPage, /<h3>Status<\/h3>/);
@@ -893,11 +895,11 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(buildersPage, /@\/components\/DigestLogPanel/);
   assert.match(buildersPage, /@\/components\/DigestPipelineImportForm/);
   assert.match(buildersPage, /@\/lib\/digest-runs/);
-  assert.match(buildersPage, /SourcesSubtabs/);
-  assert.match(buildersPage, /aria-label="Source management"/);
-  assert.match(buildersPage, /href="\/builders"[\s\S]*Fetch/);
+  assert.match(buildersPage, /WorkspaceTopTabs/);
+  assert.match(buildersPage, /ariaLabel="Source management"/);
+  assert.match(buildersPage, /label:\s*"Fetch"[\s\S]*href:\s*"\/builders"/);
   assert.match(buildersPage, /selectedTab === "digest"/);
-  assert.match(buildersPage, /href="\/builders\?tab=digest"/);
+  assert.match(buildersPage, /label:\s*"Digest"[\s\S]*href:\s*"\/builders\?tab=digest"/);
   assert.match(buildersPage, /const showStopDigestCron = data\.digestCronJob\?\.status === "active"/);
   assert.match(buildersPage, /Your digest/);
   assert.match(buildersPage, /<OwnDigestPipelineCard/);
@@ -1194,7 +1196,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(libraryHubPage, /className="workspace-content-stack"/);
   assert.doesNotMatch(libraryHubPage, /@\/components\/PageHeader/);
   assert.doesNotMatch(libraryHubPage, /<PageHeader/);
-  assert.match(libraryHubPage, /<LibraryHubSubtabs selectedTab=\{selectedTab\} \/>/);
+  assert.match(libraryHubPage, /<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/);
   assert.doesNotMatch(libraryHubPage, /Import shared source libraries and AI Digest archives/);
   assert.doesNotMatch(libraryHubPage, /library-hub-page-count/);
   assert.doesNotMatch(libraryHubPage, /digestPipelineCount:\s*hubDigestPipelines\.length/);
@@ -1302,7 +1304,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
   assert.doesNotMatch(buildersPage, /@\/components\/PageHeader/);
   assert.doesNotMatch(buildersPage, /<PageHeader/);
-  assert.match(buildersPage, /<SourcesSubtabs selectedTab=\{selectedTab\} \/>/);
+  assert.match(buildersPage, /<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/);
   assert.doesNotMatch(buildersPage, /Manage followed, private, and imported sources/);
   assert.match(buildersPage, /className="sources-tab-body sources-tab-body--fetch"[\s\S]*<Suspense fallback=\{<BuilderStatsFallback \/>}/);
   assert.doesNotMatch(buildersPage, /<PageHeader[^>]*actions=/);
@@ -1950,8 +1952,8 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.row-actions/);
   assert.match(css, /\.source-summary-line/);
   assert.match(css, /\.sources-tab-surface\s*{[\s\S]*display:\s*grid/);
-  assert.match(css, /\.sources-tab-body\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
-  assert.match(css, /\.sources-subtabs\s*{[\s\S]*margin-inline:\s*auto/);
+  assert.doesNotMatch(cssRule(css, ".sources-tab-body"), /border-top/);
+  assert.match(css, /\.workspace-top-tabs-row\s*{[\s\S]*justify-content:\s*center/);
   assert.match(css, /\.digest-source-management\s*{[\s\S]*display:\s*grid/);
   assert.match(css, /\.sources-sync-section \.digest-updates-panel/);
   assert.match(css, /\.builder-library-card-main\s*{\s*\n\s*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);

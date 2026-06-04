@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import {
@@ -6,6 +5,7 @@ import {
   type HubDigestPipeline,
 } from "@/components/DigestPipelineImportForm";
 import { LibraryHubImportForm, type HubLibrary } from "@/components/LibraryHubImportForm";
+import { WorkspaceTopTabs, type WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
@@ -24,6 +24,11 @@ type LibraryHubSearchParams = Promise<{
   tab?: string | string[];
 }>;
 
+const LIBRARY_HUB_TABS: Array<WorkspaceTopTabItem<LibraryHubTab>> = [
+  { value: "source-library", label: "Source Library", href: "/library-hub" },
+  { value: "ai-digests", label: "AI Digests", href: "/library-hub?tab=ai-digests" },
+];
+
 export default async function LibraryHubPage({
   searchParams,
 }: {
@@ -36,7 +41,11 @@ export default async function LibraryHubPage({
   return (
     <div className="page-pad">
       <div className="workspace-content-stack">
-        <LibraryHubSubtabs selectedTab={selectedTab} />
+        <WorkspaceTopTabs
+          ariaLabel="Hub sections"
+          items={LIBRARY_HUB_TABS}
+          selectedValue={selectedTab}
+        />
 
         {selectedTab === "source-library" ? (
           <Suspense fallback={<LibraryHubImportFallback />}>
@@ -49,35 +58,6 @@ export default async function LibraryHubPage({
         )}
       </div>
     </div>
-  );
-}
-
-function LibraryHubSubtabs({ selectedTab }: { selectedTab: LibraryHubTab }) {
-  return (
-    <nav
-      className="fb-segmented-tabs sources-subtabs"
-      aria-label="Hub sections"
-      role="tablist"
-    >
-      <Link
-        aria-selected={selectedTab === "source-library"}
-        className="fb-btn compact"
-        data-active={selectedTab === "source-library" ? "true" : undefined}
-        href="/library-hub"
-        role="tab"
-      >
-        Source Library
-      </Link>
-      <Link
-        aria-selected={selectedTab === "ai-digests"}
-        className="fb-btn compact"
-        data-active={selectedTab === "ai-digests" ? "true" : undefined}
-        href="/library-hub?tab=ai-digests"
-        role="tab"
-      >
-        AI Digests
-      </Link>
-    </nav>
   );
 }
 
