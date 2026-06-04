@@ -6373,6 +6373,63 @@ svg.lucide {
   margin-top: 0.25rem;
 }
 
+.fb-hub-digest-meta {
+  border-top: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
+  display: grid;
+  gap: 0.7rem 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+}
+
+.fb-hub-digest-meta-item {
+  min-width: 0;
+}
+
+.fb-hub-digest-meta-item dt {
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 760;
+  letter-spacing: 0.055em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.fb-hub-digest-meta-item dd {
+  color: var(--ink);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  line-height: 1.35;
+  margin-top: 0.2rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fb-hub-digest-status {
+  align-items: center;
+  border: 1px solid color-mix(in oklch, var(--warm) 30%, var(--line));
+  border-radius: 999px;
+  background: var(--warm-soft);
+  color: color-mix(in oklch, var(--warm) 68%, var(--ink));
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 760;
+  min-height: 1.55rem;
+  padding: 0.15rem 0.55rem;
+}
+
+.fb-hub-digest-status.is-healthy {
+  background: var(--signal-soft);
+  border-color: color-mix(in oklch, var(--signal) 28%, var(--line));
+  color: color-mix(in oklch, var(--signal) 72%, var(--ink));
+}
+
+.fb-hub-digest-status.is-needs-attention {
+  background: var(--danger-soft);
+  border-color: color-mix(in oklch, var(--danger) 30%, var(--line));
+  color: var(--danger);
+}
+
 /* Hub card source-list expand/collapse. Suppresses the native triangle
  * so the avatar+name row reads as a normal label, with a quiet icon
  * affordance on the right that rotates by [open]. */

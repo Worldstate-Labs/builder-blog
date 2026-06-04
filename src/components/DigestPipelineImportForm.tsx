@@ -5,6 +5,7 @@ import { CheckCircle2, Download, Radio, Trash2 } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
 import { EmptyState } from "@/components/EmptyState";
+import type { DigestPipelineRuntimeMetadata } from "@/lib/digest-pipeline-metadata";
 
 export type HubDigestPipeline = {
   id: string;
@@ -18,11 +19,22 @@ export type HubDigestPipeline = {
   latestDigestAt: string | null;
   imported: boolean;
   owned: boolean;
-};
+} & DigestPipelineRuntimeMetadata;
 
 export type OwnDigestPipeline = Pick<
   HubDigestPipeline,
-  "digestCount" | "importCount" | "latestDigestAt" | "title" | "viewCount"
+  | "agentLabel"
+  | "cronJobStatus"
+  | "digestCount"
+  | "digestMaxPostAgeDays"
+  | "digestUpdateStatus"
+  | "frequencyLabel"
+  | "importCount"
+  | "latestDigestAt"
+  | "latestDigestLanguage"
+  | "summaryLanguage"
+  | "title"
+  | "viewCount"
 >;
 
 type DigestPipelineImportFormProps = {
@@ -177,6 +189,7 @@ export function OwnDigestPipelineCard({ pipeline }: { pipeline: OwnDigestPipelin
             </div>
           </div>
         </div>
+        <DigestPipelineMetaGrid pipeline={pipeline} />
       </div>
 
       <div className="fb-hub-card-stats">
@@ -270,6 +283,7 @@ function DigestPipelineCard({
             </div>
           </div>
         </div>
+        <DigestPipelineMetaGrid pipeline={pipeline} />
       </div>
 
       <div className="fb-hub-card-stats">
@@ -278,6 +292,94 @@ function DigestPipelineCard({
       </div>
     </article>
   );
+}
+
+function DigestPipelineMetaGrid({
+  pipeline,
+}: {
+  pipeline: Pick<
+    HubDigestPipeline,
+    | "agentLabel"
+    | "cronJobStatus"
+    | "digestMaxPostAgeDays"
+    | "digestUpdateStatus"
+    | "frequencyLabel"
+    | "latestDigestAt"
+    | "latestDigestLanguage"
+    | "summaryLanguage"
+  >;
+}) {
+  const status = pipeline.digestUpdateStatus;
+  return (
+    <dl className="fb-hub-digest-meta" aria-label="Digest pipeline details">
+      <DigestPipelineMetaItem
+        label="Update frequency"
+        value={pipeline.frequencyLabel ?? "Not scheduled"}
+      />
+      <DigestPipelineMetaItem
+        label="Agent"
+        value={pipeline.agentLabel ?? "No agent connected"}
+      />
+      <DigestPipelineMetaItem
+        label="Language"
+        value={formatLanguage(pipeline.summaryLanguage ?? pipeline.latestDigestLanguage ?? "zh")}
+      />
+      <DigestPipelineMetaItem
+        label="Latest digest"
+        value={pipeline.latestDigestAt ? formatDate(pipeline.latestDigestAt) : "None yet"}
+      />
+      <div className="fb-hub-digest-meta-item">
+        <dt>Cron status</dt>
+        <dd>
+          <span className={`fb-hub-digest-status is-${status.key}`}>
+            {status.label}
+          </span>
+        </dd>
+      </div>
+      {pipeline.digestMaxPostAgeDays ? (
+        <DigestPipelineMetaItem
+          label="Lookback"
+          value={`${pipeline.digestMaxPostAgeDays} days`}
+        />
+      ) : null}
+      {pipeline.cronJobStatus && pipeline.cronJobStatus !== "active" ? (
+        <DigestPipelineMetaItem
+          label="Cron job"
+          value={formatCronJobStatus(pipeline.cronJobStatus)}
+        />
+      ) : null}
+    </dl>
+  );
+}
+
+function DigestPipelineMetaItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="fb-hub-digest-meta-item">
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
+  );
+}
+
+function formatLanguage(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "zh" || normalized === "zh-cn" || normalized === "chinese") return "Chinese";
+  if (normalized === "en" || normalized === "en-us" || normalized === "english") return "English";
+  return value.toUpperCase();
+}
+
+function formatCronJobStatus(value: string) {
+  return value
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function formatDate(value: string) {

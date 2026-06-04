@@ -10,6 +10,10 @@ import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { ensureDefaultCommunityLibraryImport } from "@/lib/builder-pool";
 import {
+  emptyDigestPipelineMetadata,
+  getDigestPipelineMetadataByOwnerIds,
+} from "@/lib/digest-pipeline-metadata";
+import {
   adminCommunityLibraryName,
   digestPipelineTitle,
   displayDigestPipelineTitle,
@@ -144,25 +148,15 @@ async function loadLibraryHubPageData() {
     };
   });
 
-  const digestCounts = await Promise.all(
-    digestPipelineShares.map(async (pipeline) => {
-      const [digestCount, latestDigest] = await Promise.all([
-        prisma.digest.count({ where: { userId: pipeline.ownerUserId, itemCount: { gt: 0 } } }),
-        prisma.digest.findFirst({
-          where: { userId: pipeline.ownerUserId, itemCount: { gt: 0 } },
-          orderBy: { createdAt: "desc" },
-          select: { createdAt: true },
-        }),
-      ]);
-      return [pipeline.id, { digestCount, latestDigestAt: latestDigest?.createdAt ?? null }] as const;
-    }),
+  const digestMetadataByOwnerId = await getDigestPipelineMetadataByOwnerIds(
+    digestPipelineShares.map((pipeline) => pipeline.ownerUserId),
   );
-  const digestCountByPipelineId = new Map(digestCounts);
   const hubDigestPipelines: HubDigestPipeline[] = digestPipelineShares
     .map((pipeline) => {
       const owned = pipeline.ownerUserId === session.user.id;
       const owner = pipeline.owner;
-      const stats = digestCountByPipelineId.get(pipeline.id);
+      const metadata =
+        digestMetadataByOwnerId.get(pipeline.ownerUserId) ?? emptyDigestPipelineMetadata();
       return {
         id: pipeline.id,
         title: displayDigestPipelineTitle(pipeline.title || digestPipelineTitle(owner)),
@@ -173,8 +167,7 @@ async function loadLibraryHubPageData() {
           : `Shared by ${owner.name || owner.email || "a FollowBrief user"}.`,
         importCount: pipeline.importCount,
         viewCount: pipeline.viewCount,
-        digestCount: stats?.digestCount ?? 0,
-        latestDigestAt: stats?.latestDigestAt?.toISOString() ?? null,
+        ...metadata,
         imported:
           importedDigestPipelineIds.has(pipeline.id) || pipeline.imports.length > 0,
         owned,

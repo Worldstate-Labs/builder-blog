@@ -792,7 +792,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(contentSyncEvents, /contentSyncStateChanged/);
   assert.match(fetchLogPanel, /window\.addEventListener\(contentSyncStateChanged/);
   assert.match(digestLogPanel, /window\.addEventListener\(contentSyncStateChanged/);
-  assert.match(digestLogPanel, /isRunInflight/);
+  assert.match(digestLogPanel, /isDigestRunInflight/);
   assert.match(globals, /\.sync-panel-tabs\s*{/);
   assert.match(globals, /\.sync-panel-card,[\s\S]*\.sync-panel-empty\s*{/);
   assert.match(globals, /\.sync-panel-empty\s*{\s*padding:\s*1\.125rem;\s*}/);
@@ -917,6 +917,7 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(buildersPage, /pipeline=\{data\.ownDigestPipeline\}/);
   assert.match(buildersPage, /<DigestPipelineVisibilityToggle initialShared=\{data\.ownPipelineShared\}/);
   assert.match(buildersPage, /<DigestPipelineImportForm pipelines=\{data\.hubDigestPipelines\}/);
+  assert.match(buildersPage, /getDigestPipelineMetadataByOwnerIds/);
   assert.match(buildersPage, /context="digest"/);
   assert.match(buildersPage, /<DigestLogPanel/);
   assert.match(buildersPage, /initialCronJob=\{data\.digestCronJob\}/);
@@ -1203,6 +1204,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.doesNotMatch(buildersPage, /mt-6 grid gap-5/);
   assert.doesNotMatch(buildersPage, /className="grid gap-5"/);
   assert.match(libraryHubPage, /<Suspense fallback=\{<LibraryHubImportFallback \/>/);
+  assert.match(libraryHubPage, /getDigestPipelineMetadataByOwnerIds/);
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
   assert.match(libraryHubPage, /className="workspace-content-stack"/);
   assert.doesNotMatch(libraryHubPage, /@\/components\/PageHeader/);
@@ -1260,6 +1262,15 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-list-stack fb-hub-list"/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-card-head"/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-digest-preview"/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /function DigestPipelineMetaGrid/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Update frequency/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Agent/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Language/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Latest digest/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Cron status/);
+  assert.match(source("src/lib/digest-update-status.ts"), /export function getDigestUpdateStatus/);
+  assert.match(source("src/lib/digest-pipeline-metadata.ts"), /buildDigestCronStatus/);
+  assert.match(source("src/lib/digest-pipeline-metadata.ts"), /getDigestUpdateStatus/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-card-stats"/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-card-action-row"/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /hub-card-action-button/);

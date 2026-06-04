@@ -27,6 +27,10 @@ import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
 import { isAdminEmail } from "@/lib/admin";
 import { getAgentJobRuns, getScheduledAgentJobRuns } from "@/lib/agent-job-runs";
 import { getCurrentSession } from "@/lib/auth";
+import {
+  emptyDigestPipelineMetadata,
+  getDigestPipelineMetadataByOwnerIds,
+} from "@/lib/digest-pipeline-metadata";
 import { getDigestRuns, serializeDigestCronJob } from "@/lib/digest-runs";
 import {
   adminCommunityLibraryDescription,
@@ -242,45 +246,29 @@ async function loadDigestSourcesPageData() {
       .map((pipeline) => pipeline.id),
   );
 
-  const digestCounts = await Promise.all(
-    digestPipelineShares.map(async (pipeline) => {
-      const [digestCount, latestDigest] = await Promise.all([
-        prisma.digest.count({ where: { userId: pipeline.ownerUserId, itemCount: { gt: 0 } } }),
-        prisma.digest.findFirst({
-          where: { userId: pipeline.ownerUserId, itemCount: { gt: 0 } },
-          orderBy: { createdAt: "desc" },
-          select: { createdAt: true },
-        }),
-      ]);
-      return [pipeline.id, { digestCount, latestDigestAt: latestDigest?.createdAt ?? null }] as const;
-    }),
-  );
-  const digestCountByPipelineId = new Map(digestCounts);
   const importedDigestPipelineIds = new Set(
     digestPipelineImports.map((item) => item.pipelineId),
   );
-  const [ownDigestCount, ownLatestDigest] = await Promise.all([
-    prisma.digest.count({ where: { userId: session.user.id, itemCount: { gt: 0 } } }),
-    prisma.digest.findFirst({
-      where: { userId: session.user.id, itemCount: { gt: 0 } },
-      orderBy: { createdAt: "desc" },
-      select: { createdAt: true },
-    }),
+  const digestMetadataByOwnerId = await getDigestPipelineMetadataByOwnerIds([
+    session.user.id,
+    ...digestPipelineShares.map((pipeline) => pipeline.ownerUserId),
   ]);
+  const ownDigestMetadata =
+    digestMetadataByOwnerId.get(session.user.id) ?? emptyDigestPipelineMetadata();
   const ownDigestPipeline: OwnDigestPipeline = {
     title: displayDigestPipelineTitle(
       ownPipelineShare?.title ?? digestPipelineTitle(session.user),
     ),
     importCount: ownPipelineShare?.importCount ?? 0,
     viewCount: ownPipelineShare?.viewCount ?? 0,
-    digestCount: ownDigestCount,
-    latestDigestAt: ownLatestDigest?.createdAt.toISOString() ?? null,
+    ...ownDigestMetadata,
   };
   const hubDigestPipelines: HubDigestPipeline[] = digestPipelineShares
     .map((pipeline) => {
       const owned = pipeline.ownerUserId === session.user.id;
       const owner = pipeline.owner;
-      const stats = digestCountByPipelineId.get(pipeline.id);
+      const metadata =
+        digestMetadataByOwnerId.get(pipeline.ownerUserId) ?? emptyDigestPipelineMetadata();
       return {
         id: pipeline.id,
         title: displayDigestPipelineTitle(pipeline.title || digestPipelineTitle(owner)),
@@ -291,8 +279,7 @@ async function loadDigestSourcesPageData() {
           : `Shared by ${owner.name || owner.email || "a FollowBrief user"}.`,
         importCount: pipeline.importCount,
         viewCount: pipeline.viewCount,
-        digestCount: stats?.digestCount ?? 0,
-        latestDigestAt: stats?.latestDigestAt?.toISOString() ?? null,
+        ...metadata,
         imported:
           importedDigestPipelineIds.has(pipeline.id) || pipeline.imports.length > 0,
         owned,
