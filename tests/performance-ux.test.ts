@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
 import test from "node:test";
 
 const root = process.cwd();
@@ -11,6 +11,15 @@ function source(path: string) {
 
 function optionalSource(path: string) {
   return existsSync(join(root, path)) ? source(path) : "";
+}
+
+function appRouteFiles(dir = join(root, "src/app")): string[] {
+  return readdirSync(dir).flatMap((entry) => {
+    const fullPath = join(dir, entry);
+    if (statSync(fullPath).isDirectory()) return appRouteFiles(fullPath);
+    if (entry !== "page.tsx" && entry !== "loading.tsx") return [];
+    return relative(root, fullPath);
+  });
 }
 
 function cssRule(sourceText: string, selector: string) {
@@ -42,6 +51,82 @@ test("app shell reuses the page session instead of fetching it again", () => {
   ]) {
     assert.doesNotMatch(source(pagePath), /AppShell/);
   }
+});
+
+test("every app route has an explicit centered layout role", () => {
+  const routeFiles = appRouteFiles().sort();
+  assert.deepEqual(routeFiles, [
+    "src/app/(workspace)/builder/[entityId]/page.tsx",
+    "src/app/(workspace)/builder/x/[handle]/page.tsx",
+    "src/app/(workspace)/builders/page.tsx",
+    "src/app/(workspace)/dashboard/page.tsx",
+    "src/app/(workspace)/library-hub/page.tsx",
+    "src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx",
+    "src/app/(workspace)/recommendations/page.tsx",
+    "src/app/(workspace)/search/page.tsx",
+    "src/app/(workspace)/settings/page.tsx",
+    "src/app/history/loading.tsx",
+    "src/app/history/page.tsx",
+    "src/app/loading.tsx",
+    "src/app/login/page.tsx",
+    "src/app/page.tsx",
+  ]);
+
+  const appShell = source("src/components/AppShell.tsx");
+  const workspaceLayout = source("src/app/(workspace)/layout.tsx");
+  assert.match(workspaceLayout, /<AppShell session=\{session\}>/);
+  assert.match(appShell, /<aside className="fb-side-rail" aria-label="Primary navigation">/);
+  assert.match(appShell, /<SearchForm query="" variant="header" \/>/);
+
+  const publicRoutes = [
+    ["src/app/page.tsx", /className="fb-landing-grid min-h-screen"[\s\S]*fb-public-nav/],
+    ["src/app/login/page.tsx", /className="fb-dark-frame"[\s\S]*fb-login-nav/],
+  ] as const;
+  for (const [path, pattern] of publicRoutes) {
+    assert.match(source(path), pattern, `${path} should use the centered public shell`);
+  }
+
+  const workspaceRoutes = [
+    ["src/app/(workspace)/builders/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title="Sources"/],
+    ["src/app/(workspace)/library-hub/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title="Hub"/],
+  ] as const;
+  for (const [path, pattern] of workspaceRoutes) {
+    const text = source(path);
+    assert.match(text, pattern, `${path} should use the broad centered workspace rail`);
+    assert.doesNotMatch(text, /page-pad--reading|page-pad--settings/);
+  }
+
+  const readingRoutes = [
+    ["src/app/(workspace)/builder/[entityId]/page.tsx", /className="page-pad page-pad--reading builder-detail-page"/],
+    ["src/app/(workspace)/dashboard/page.tsx", /className="page-pad page-pad--reading home-page"[\s\S]*<h1 className="sr-only">Home<\/h1>/],
+    ["src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx", /className="page-pad page-pad--reading reading-page"/],
+    ["src/app/(workspace)/search/page.tsx", /className="page-pad page-pad--reading search-page"[\s\S]*<h1 className="sr-only">Search<\/h1>/],
+  ] as const;
+  for (const [path, pattern] of readingRoutes) {
+    assert.match(source(path), pattern, `${path} should use the centered reading rail`);
+  }
+
+  assert.match(
+    source("src/app/(workspace)/settings/page.tsx"),
+    /className="page-pad page-pad--settings"[\s\S]*<PageHeader title="Settings" \/>/,
+  );
+
+  const redirectOnlyRoutes = [
+    ["src/app/(workspace)/builder/x/[handle]/page.tsx", /redirect\(`\/builder\/\$\{entity\.id\}`\)/],
+    ["src/app/(workspace)/recommendations/page.tsx", /redirect\("\/dashboard\?tab=subscription"\)/],
+    ["src/app/history/page.tsx", /redirect\("\/dashboard\?tab=ai-digest"\)/],
+  ] as const;
+  for (const [path, pattern] of redirectOnlyRoutes) {
+    const text = source(path);
+    assert.match(text, pattern, `${path} should redirect into the canonical centered route`);
+    assert.doesNotMatch(text, /page-pad|fb-public-nav|fb-login-nav|AppShell/);
+  }
+
+  assert.match(source("src/app/loading.tsx"), /<RouteLoading label="Loading" title="Loading FollowBrief" \/>/);
+  assert.match(
+    source("src/app/history/loading.tsx"),
+    /<RouteLoading label="Archive" title="Loading digest history" rows=\{6\} \/>/,
+  );
 });
 
 test("public entry pages use the centered product layout", () => {
@@ -1082,7 +1167,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
   assert.match(libraryHubPage, /className="workspace-content-stack"/);
   assert.match(libraryHubPage, /@\/components\/PageHeader/);
-  assert.match(libraryHubPage, /<PageHeader[\s\S]*title="Library Hub"[\s\S]*actions=/);
+  assert.match(libraryHubPage, /<PageHeader[\s\S]*title="Hub"[\s\S]*actions=/);
   assert.doesNotMatch(libraryHubPage, /Import shared source libraries and AI Digest archives/);
   assert.match(libraryHubPage, /actions=\{[\s\S]*className="library-hub-page-count source-summary-toolbar page-toolbar"/);
   assert.match(libraryHubPage, /className="library-hub-page-count source-summary-toolbar page-toolbar"/);

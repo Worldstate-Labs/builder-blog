@@ -27,7 +27,7 @@ export default function LibraryHubPage() {
   return (
     <div className="page-pad">
       <PageHeader
-        title="Library Hub"
+        title="Hub"
         actions={
           <div className="library-hub-page-count source-summary-toolbar page-toolbar">
             <Suspense fallback={<span className="count-meta" aria-busy="true">Loading counts</span>}>
