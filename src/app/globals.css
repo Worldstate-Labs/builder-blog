@@ -807,6 +807,9 @@ svg.lucide {
 }
 
 .workspace-top-tabs {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
   width: fit-content;
 }
 
@@ -818,12 +821,14 @@ svg.lucide {
   display: grid;
   gap: 1rem;
   min-width: 0;
+  overflow-x: clip;
 }
 
 .sources-tab-body {
   display: grid;
   gap: 1.25rem;
   min-width: 0;
+  overflow-x: clip;
 }
 
 .mobile-filter-tabs {
@@ -4481,9 +4486,25 @@ svg.lucide {
 
 .own-digest-card {
   background: color-mix(in oklch, var(--paper-strong) 56%, transparent);
-  align-content: start;
+  border: 1px solid color-mix(in oklch, var(--line) 84%, transparent);
+  border-radius: 8px;
   display: grid;
   gap: 0.875rem;
+  min-height: 0;
+  min-width: 0;
+  padding: 1.125rem;
+}
+
+.own-digest-card-head {
+  min-width: 0;
+}
+
+.own-digest-card .fb-hub-title {
+  margin: 0;
+}
+
+.own-digest-card .fb-hub-digest-preview {
+  margin: 0;
 }
 
 .sources-sync-section .digest-updates-panel {

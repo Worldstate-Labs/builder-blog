@@ -155,18 +155,14 @@ export function DigestPipelineImportForm({
 
 export function OwnDigestPipelineCard({ pipeline }: { pipeline: OwnDigestPipeline }) {
   return (
-    <article className="fb-hub-card own-digest-card">
-      <div>
-        <div className="fb-hub-card-head">
-          <div className="fb-hub-card-titleblock">
-            <DigestPipelineTitleEditor
-              className="fb-hub-title"
-              headingId="sources-digest-title"
-              headingLevel={3}
-              initialTitle={pipeline.title}
-            />
-          </div>
-        </div>
+    <article className="own-digest-card">
+      <div className="own-digest-card-head">
+        <DigestPipelineTitleEditor
+          className="fb-hub-title"
+          headingId="sources-digest-title"
+          headingLevel={3}
+          initialTitle={pipeline.title}
+        />
       </div>
 
       <div className="fb-hub-digest-preview">

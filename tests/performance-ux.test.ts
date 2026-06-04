@@ -1256,6 +1256,8 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /sharedPipelines = pipelines\.filter\(\(pipeline\) => !pipeline\.owned\)/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /export function OwnDigestPipelineCard/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /<DigestPipelineTitleEditor/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /<article className="own-digest-card">/);
+  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-card own-digest-card"/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /DigestPipelineVisibilityToggle/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /Shared archive/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="library-hub-toolbar-copy"/);
@@ -1277,6 +1279,8 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-card-action-row"/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /hub-card-action-button/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /flex flex-wrap items-center gap-2|disabled:cursor-wait/);
+  assert.match(source("src/app/globals.css"), /\.own-digest-card\s*{[\s\S]*min-height:\s*0/);
+  assert.match(source("src/app/globals.css"), /\.sources-tab-body\s*{[\s\S]*overflow-x:\s*clip/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /EmptyState/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-list-empty"/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /fb-panel dashed col-span-full/);
