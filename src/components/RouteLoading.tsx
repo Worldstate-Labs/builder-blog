@@ -4,13 +4,18 @@ export function RouteLoading({
   label,
   title,
   rows = 4,
+  variant = "reading",
 }: {
   label: string;
   title: string;
   rows?: number;
+  variant?: "reading" | "workspace";
 }) {
+  const pageClassName =
+    variant === "reading" ? "page-pad page-pad--reading" : "page-pad";
+
   return (
-    <div className="page-pad">
+    <div className={pageClassName}>
       <PageHeader
         aria-busy="true"
         aria-live="polite"

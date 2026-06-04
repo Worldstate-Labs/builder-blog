@@ -452,6 +452,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(rootLoading, /bg-black\/10|className="h-|grid gap-4|stats-panel/);
   assert.doesNotMatch(rootLoading, /space-y-7/);
   assert.match(routeLoading, /@\/components\/PageHeader/);
+  assert.match(routeLoading, /variant = "reading"/);
+  assert.match(routeLoading, /variant\?: "reading" \| "workspace"/);
+  assert.match(routeLoading, /variant === "reading" \? "page-pad page-pad--reading" : "page-pad"/);
+  assert.match(routeLoading, /<div className=\{pageClassName\}>/);
   assert.match(routeLoading, /<PageHeader[\s\S]*aria-busy="true"[\s\S]*aria-live="polite"[\s\S]*title=\{title\}/);
   assert.doesNotMatch(routeLoading, /className="fb-page-head"/);
   assert.match(routeLoading, /className="workspace-content-stack"/);
