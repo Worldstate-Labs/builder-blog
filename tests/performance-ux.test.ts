@@ -1317,7 +1317,6 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   const builderEditDialog = source("src/components/BuilderEditDialog.tsx");
   const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
   const builderFeedItems = source("src/components/BuilderFeedItems.tsx");
-  const mobileSourcesSwitcher = source("src/components/MobileSourcesSwitcher.tsx");
   const recommendationItemPage = source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx");
   const postCard = source("src/components/PostCard.tsx");
   const globals = source("src/app/globals.css");
@@ -1336,7 +1335,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /<section className="fb-page-head"/);
   assert.match(buildersPage, /beforeBody=\{fetchSyncSection\}/);
   assert.match(buildersPage, /title="Your library"/);
-  assert.match(buildersPage, /privateLabel="Your library"/);
+  assert.match(buildersPage, /<section className="sources-section-stack">[\s\S]*\{privateSection\}[\s\S]*\{importedSection\}/);
+  assert.doesNotMatch(buildersPage, /MobileSourcesSwitcher|privateLabel="Your library"|importedLabel="Imported"/);
   assert.doesNotMatch(builderLibraryList, /function BuilderStats/);
   assert.match(builderLibraryList, /latestPostCreatedAt=\{builder\.latestPostCreatedAt\}/);
   assert.doesNotMatch(builderLibraryList, /CountMeta/);
@@ -1355,9 +1355,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderLibraryList, /<SourceBadge sourceType=\{section\.sourceType\} \/>/);
   assert.match(builderLibraryList, /<CountBadge value=\{section\.builders\.length\} \/>/);
   assert.doesNotMatch(builderLibraryList, /<SourceBadge builder=\{builder\} \/>/);
-  assert.match(mobileSourcesSwitcher, /className="fb-segmented-tabs mobile-filter-tabs at-mobile"/);
-  assert.match(mobileSourcesSwitcher, /className="fb-btn compact"/);
-  assert.doesNotMatch(mobileSourcesSwitcher, /fb-m-segctl|fb-m-seg/);
+  assert.equal(existsSync(join(root, "src/components/MobileSourcesSwitcher.tsx")), false);
   assert.match(builderLibraryList, /className="builder-library-error"/);
   assert.match(builderLibraryList, /<EmptyState body=\{emptyBody\} title=\{emptyTitle\} \/>/);
   assert.match(buildersPage, /<EmptyState body="Import shared libraries from the Hub to see them here\." \/>/);
@@ -1979,6 +1977,7 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.doesNotMatch(cssRule(css, ".sources-tab-body"), /border-top/);
   assert.match(css, /\.workspace-top-tabs-row\s*{[\s\S]*justify-content:\s*center/);
   assert.match(css, /\.digest-source-management\s*{[\s\S]*display:\s*grid/);
+  assert.doesNotMatch(css, /mobile-sources-stack|data-active-tab|data-tab="imported"/);
   assert.match(css, /\.sources-sync-section \.digest-updates-panel/);
   assert.match(css, /\.builder-library-card-main\s*{\s*\n\s*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);
   assert.doesNotMatch(css, /\.builder-library-stats\s*{/);

@@ -19,7 +19,6 @@ import {
 } from "@/components/FetchLogPanel";
 import { LibraryImportRemoveButton } from "@/components/LibraryImportRemoveButton";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
-import { MobileSourcesSwitcher } from "@/components/MobileSourcesSwitcher";
 import { PrivateLibraryPanel } from "@/components/PrivateLibraryPanel";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import { WorkspaceTopTabs, type WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
@@ -711,12 +710,8 @@ async function FetchSourcesSection({
 
   return (
     <section className="sources-section-stack">
-      <MobileSourcesSwitcher
-        privateLabel="Your library"
-        importedLabel="Imported"
-        privateSection={privateSection}
-        importedSection={importedSection}
-      />
+      {privateSection}
+      {importedSection}
     </section>
   );
 }

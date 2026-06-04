@@ -203,7 +203,7 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /role="tablist"/);
   assert.match(panel, /fb-segmented-tabs/);
   assert.match(panel, /Digest schedule status graph/);
-  assert.match(panel, /buildCronStatus/);
+  assert.match(panel, /buildDigestCronStatus/);
   assert.match(panel, /run\.source === "cron"/);
   assert.match(panel, /run\.status === "synced"/);
   assert.match(panel, /VISIBLE_RUN_LIMIT = 2/);

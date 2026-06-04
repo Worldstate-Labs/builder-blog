@@ -8436,24 +8436,6 @@ body {
   }
 }
 
-/* Mobile Sources Private/Imported switcher: only one section visible
-   below lg; both visible at lg+ (desktop behavior unchanged). */
-.mobile-sources-stack {
-  display: contents;
-}
-
-@media (max-width: 1023.99px) {
-  .mobile-sources-stack {
-    display: grid;
-    gap: 1.125rem;
-  }
-
-  .mobile-sources-stack[data-active-tab="private"] [data-tab="imported"],
-  .mobile-sources-stack[data-active-tab="imported"] [data-tab="private"] {
-    display: none !important;
-  }
-}
-
 @media (max-width: 767px) {
   .page-pad {
     padding: 0.875rem 1rem calc(7.25rem + env(safe-area-inset-bottom));
