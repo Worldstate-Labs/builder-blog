@@ -23,10 +23,7 @@ export type HubDigestPipeline = {
 
 export type OwnDigestPipeline = Pick<
   HubDigestPipeline,
-  | "agentLabel"
-  | "cronJobStatus"
   | "digestCount"
-  | "digestMaxPostAgeDays"
   | "digestUpdateStatus"
   | "frequencyLabel"
   | "importCount"
@@ -299,9 +296,6 @@ function DigestPipelineMetaGrid({
 }: {
   pipeline: Pick<
     HubDigestPipeline,
-    | "agentLabel"
-    | "cronJobStatus"
-    | "digestMaxPostAgeDays"
     | "digestUpdateStatus"
     | "frequencyLabel"
     | "latestDigestAt"
@@ -315,10 +309,6 @@ function DigestPipelineMetaGrid({
       <DigestPipelineMetaItem
         label="Update frequency"
         value={pipeline.frequencyLabel ?? "Not scheduled"}
-      />
-      <DigestPipelineMetaItem
-        label="Agent"
-        value={pipeline.agentLabel ?? "No agent connected"}
       />
       <DigestPipelineMetaItem
         label="Language"
@@ -336,18 +326,6 @@ function DigestPipelineMetaGrid({
           </span>
         </dd>
       </div>
-      {pipeline.digestMaxPostAgeDays ? (
-        <DigestPipelineMetaItem
-          label="Lookback"
-          value={`${pipeline.digestMaxPostAgeDays} days`}
-        />
-      ) : null}
-      {pipeline.cronJobStatus && pipeline.cronJobStatus !== "active" ? (
-        <DigestPipelineMetaItem
-          label="Cron job"
-          value={formatCronJobStatus(pipeline.cronJobStatus)}
-        />
-      ) : null}
     </dl>
   );
 }
@@ -372,14 +350,6 @@ function formatLanguage(value: string) {
   if (normalized === "zh" || normalized === "zh-cn" || normalized === "chinese") return "Chinese";
   if (normalized === "en" || normalized === "en-us" || normalized === "english") return "English";
   return value.toUpperCase();
-}
-
-function formatCronJobStatus(value: string) {
-  return value
-    .split(/[-_\s]+/)
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase() + part.slice(1))
-    .join(" ");
 }
 
 function formatDate(value: string) {

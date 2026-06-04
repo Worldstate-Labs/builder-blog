@@ -1264,10 +1264,12 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-digest-preview"/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /function DigestPipelineMetaGrid/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Update frequency/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Agent/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Language/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Latest digest/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Cron status/);
+  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /label="Agent"/);
+  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /label="Lookback"/);
+  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /label="Cron job"/);
   assert.match(source("src/lib/digest-update-status.ts"), /export function getDigestUpdateStatus/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /buildDigestCronStatus/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /getDigestUpdateStatus/);
