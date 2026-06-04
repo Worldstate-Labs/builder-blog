@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { DigestArchivePicker, type DigestArchivePickerOption } from "@/components/DigestArchivePicker";
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
 import type { DigestSourceLink } from "@/components/DigestContent";
 import { EmptyState } from "@/components/EmptyState";
-import { CountMeta } from "@/components/Count";
 import { FavoritePostsSection } from "@/components/FavoritePostsSection";
 import { FollowingRecommendationSection } from "@/components/FollowingRecommendationSection";
 import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
@@ -176,8 +176,8 @@ function AiDigestFeed({
                 digest={serializeDigestSummary(selectedDigest)}
                 headerAction={
                   digestSummaries.length > 0 ? (
-                    <DigestArchiveSelector
-                      digests={digestSummaries}
+                    <DigestArchivePicker
+                      digests={digestSummaries.map(serializeDigestArchiveOption)}
                       isOwnPipeline={isOwnPipeline}
                       latestDigestId={latestDigest?.id ?? null}
                       selectedDigestId={selectedDigest.id}
@@ -209,74 +209,6 @@ function AiDigestFeed({
       </section>
     </section>
   );
-}
-
-function DigestArchiveSelector({
-  digests,
-  isOwnPipeline,
-  latestDigestId,
-  selectedDigestId,
-  selectedPipelineId,
-}: {
-  digests: DigestSummaryRow[];
-  isOwnPipeline: boolean;
-  latestDigestId: string | null;
-  selectedDigestId: string | null;
-  selectedPipelineId: string;
-}) {
-  const selectedDigest = digests.find((digest) => digest.id === selectedDigestId) ?? digests[0];
-
-  return (
-    <details className="digest-picker">
-      <summary className="digest-picker-summary">
-        <span className="sr-only">Digest history</span>
-        <DigestPickerItem digest={selectedDigest} isLatest={selectedDigest.id === latestDigestId} />
-      </summary>
-      <div className="digest-picker-menu" role="listbox" aria-label="Digest archive">
-        {digests.map((digest) => (
-          <Link
-            aria-current={digest.id === selectedDigest.id ? "true" : undefined}
-            className="digest-picker-option"
-            href={digestHref({ digestId: digest.id, isOwnPipeline, selectedPipelineId })}
-            key={digest.id}
-            role="option"
-          >
-            <DigestPickerItem digest={digest} isLatest={digest.id === latestDigestId} />
-          </Link>
-        ))}
-      </div>
-    </details>
-  );
-}
-
-function DigestPickerItem({
-  digest,
-  isLatest,
-}: {
-  digest: DigestSummaryRow;
-  isLatest: boolean;
-}) {
-  return (
-    <span className="digest-picker-item">
-      <span className="digest-picker-date">{formatDigestPickerDate(digest.createdAt)}</span>
-      <CountMeta label={digest.itemCount === 1 ? "item" : "items"} value={digest.itemCount} />
-      {isLatest ? <span className="digest-latest-mark">Latest</span> : null}
-    </span>
-  );
-}
-
-function digestHref({
-  digestId,
-  isOwnPipeline,
-  selectedPipelineId,
-}: {
-  digestId: string;
-  isOwnPipeline: boolean;
-  selectedPipelineId: string;
-}) {
-  const params = new URLSearchParams({ tab: "ai-digest", digest: digestId });
-  if (!isOwnPipeline) params.set("pipeline", selectedPipelineId);
-  return `/dashboard?${params.toString()}`;
 }
 
 function DigestPipelineSelector({
@@ -367,14 +299,12 @@ function serializeDigestSummary(digest: DigestSummaryRow) {
   };
 }
 
-function formatDigestPickerDate(value: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(value);
+function serializeDigestArchiveOption(digest: DigestSummaryRow): DigestArchivePickerOption {
+  return {
+    createdAt: digest.createdAt.toISOString(),
+    id: digest.id,
+    itemCount: digest.itemCount,
+  };
 }
 
 function displayDigestTitle(title: string) {

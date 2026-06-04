@@ -361,6 +361,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   const pageHeader = source("src/components/PageHeader.tsx");
   const searchForm = source("src/components/SearchForm.tsx");
   const digestDetails = source("src/components/DigestDetails.tsx");
+  const digestArchivePicker = source("src/components/DigestArchivePicker.tsx");
   const recommendationsPage = source("src/app/(workspace)/recommendations/page.tsx");
   const globals = source("src/app/globals.css");
 
@@ -431,7 +432,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.fb-segmented-tabs \.fb-btn\[aria-selected="true"\]/);
   assert.match(globals, /\.home-feed-tabs\s*{/);
   assert.match(globals, /\.home-feed-tabs-row\s*{[\s\S]*justify-content:\s*center/);
-  assert.match(globals, /\.home-feed-tabs-row\s*{[\s\S]*margin-bottom:\s*1rem/);
+  assert.match(globals, /\.home-feed-tabs-row\s*{[\s\S]*border-bottom:\s*1px solid/);
+  assert.match(globals, /\.home-tab-panel\s*{[\s\S]*padding-top:\s*1\.25rem/);
+  assert.match(globals, /\.home-feed-tabs\.fb-segmented-tabs\s*{[\s\S]*background:\s*transparent/);
   assert.doesNotMatch(globals, /\.home-feed-tabs\s*{[^}]*background:|\.filter-tabs\s*{[^}]*background:|\.mobile-filter-tabs\s*{[^}]*background:|\.sync-panel-tabs\s*{[^}]*background:/);
   assert.match(globals, /\.digest-source-pill\[aria-current="page"\]\s*{[\s\S]*background:\s*var\(--accent-soft\)/);
   assert.match(globals, /\.digest-source-pill:hover,[\s\S]*\.digest-source-pill:focus-visible\s*{[\s\S]*background:\s*color-mix/);
@@ -454,7 +457,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /fb-rail/);
   assert.doesNotMatch(dashboardPage, /Manage sources/);
   assert.doesNotMatch(dashboardPage, /Recent digest/);
-  assert.match(dashboardPage, /Digest archive/);
+  assert.match(digestArchivePicker, /Digest archive/);
+  assert.match(digestArchivePicker, /setOpen\(false\)/);
   assert.match(dashboardPage, /FavoritePostsSection/);
   assert.match(dashboardPage, /FollowingRecommendationSection/);
   assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
@@ -803,6 +807,7 @@ test("skill context caps personal fetched items to keep payloads bounded", () =>
 
 test("dashboard subscription feed owns the paginated digest archive", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
+  const digestArchivePicker = source("src/components/DigestArchivePicker.tsx");
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const historyPage = source("src/app/history/page.tsx");
   const digestDetails = source("src/components/DigestDetails.tsx");
@@ -827,7 +832,7 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(digestDetails, /digest-headline-summary/);
   assert.match(digestDetails, /digest-headline-action/);
   assert.match(digestDetails, /item-headline-preview/);
-  assert.match(globals, /\.digest-headline-text\s*{[\s\S]*max-width:\s*var\(--measure\)/);
+  assert.match(globals, /\.digest-headline-text\s*{[\s\S]*max-width:\s*none/);
   assert.match(globals, /\.digest-headline-loading span:first-child\s*{[\s\S]*max-width:\s*var\(--skeleton-title-max\)/);
   assert.match(globals, /\.digest-headline-loading span:last-child\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);
   assert.match(globals, /\.digest-loading-chip\s*{[\s\S]*display:\s*inline-flex/);
@@ -841,10 +846,13 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(source("src/app/globals.css"), /item-headline-preview/);
   assert.match(digestRoute, /headlineSummary/);
   assert.match(dashboardPage, /DigestPipelineSelector/);
-  assert.match(dashboardPage, /DigestArchiveSelector/);
-  assert.match(dashboardPage, /formatDigestPickerDate/);
-  assert.match(dashboardPage, /CountMeta/);
-  assert.match(dashboardPage, /Digest history/);
+  assert.match(dashboardPage, /DigestArchivePicker/);
+  assert.match(dashboardPage, /serializeDigestArchiveOption/);
+  assert.match(digestArchivePicker, /formatDigestPickerDate/);
+  assert.match(digestArchivePicker, /CountMeta/);
+  assert.match(digestArchivePicker, /Digest history/);
+  assert.match(digestArchivePicker, /onClick=\{\(event\) =>/);
+  assert.match(digestArchivePicker, /if \(selected\) event\.preventDefault\(\)/);
   assert.doesNotMatch(dashboardPage, /digest-picker-label/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.digest-picker-label\s*{/);
   assert.match(dashboardPage, /AI Digest/);
@@ -890,8 +898,8 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(buildersPage, /getDigestRuns\(session\.user\.id, 25, "cron"\)/);
   assert.match(buildersPage, /getAgentJobRuns\(session\.user\.id, "digest-build", 25\)/);
   assert.match(buildersPage, /getScheduledAgentJobRuns\(session\.user\.id, "digest-cron", 25\)/);
-  assert.match(dashboardPage, /digestHref/);
-  assert.match(dashboardPage, /aria-label="Digest archive"/);
+  assert.match(digestArchivePicker, /digestHref/);
+  assert.match(digestArchivePicker, /aria-label="Digest archive"/);
   assert.match(historyPage, /redirect\("\/dashboard\?tab=ai-digest"\)/);
   assert.doesNotMatch(historyPage, /AppShell/);
   assert.match(digestDetails, /"use client"/);

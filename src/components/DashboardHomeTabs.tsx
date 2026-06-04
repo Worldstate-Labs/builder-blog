@@ -69,6 +69,7 @@ export function DashboardHomeTabs({
       </div>
       <section
         aria-labelledby="home-tab-ai-digest"
+        className="home-tab-panel"
         hidden={selectedTab !== "ai-digest"}
         id="home-panel-ai-digest"
         role="tabpanel"
@@ -77,6 +78,7 @@ export function DashboardHomeTabs({
       </section>
       <section
         aria-labelledby="home-tab-favorites"
+        className="home-tab-panel"
         hidden={selectedTab !== "favorites"}
         id="home-panel-favorites"
         role="tabpanel"
@@ -85,6 +87,7 @@ export function DashboardHomeTabs({
       </section>
       <section
         aria-labelledby="home-tab-subscription"
+        className="home-tab-panel"
         hidden={selectedTab !== "subscription"}
         id="home-panel-subscription"
         role="tabpanel"

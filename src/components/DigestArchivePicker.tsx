@@ -1,0 +1,118 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { CountMeta } from "@/components/Count";
+
+export type DigestArchivePickerOption = {
+  id: string;
+  createdAt: string;
+  itemCount: number;
+};
+
+export function DigestArchivePicker({
+  digests,
+  isOwnPipeline,
+  latestDigestId,
+  selectedDigestId,
+  selectedPipelineId,
+}: {
+  digests: DigestArchivePickerOption[];
+  isOwnPipeline: boolean;
+  latestDigestId: string | null;
+  selectedDigestId: string | null;
+  selectedPipelineId: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const pickerRef = useRef<HTMLDetailsElement>(null);
+  const selectedDigest = digests.find((digest) => digest.id === selectedDigestId) ?? digests[0];
+
+  useEffect(() => {
+    if (!open) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!pickerRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
+
+  if (!selectedDigest) return null;
+
+  return (
+    <details className="digest-picker" open={open} ref={pickerRef}>
+      <summary
+        className="digest-picker-summary"
+        onClick={(event) => {
+          event.preventDefault();
+          setOpen((current) => !current);
+        }}
+      >
+        <span className="sr-only">Digest history</span>
+        <DigestPickerItem digest={selectedDigest} isLatest={selectedDigest.id === latestDigestId} />
+      </summary>
+      <div className="digest-picker-menu" role="listbox" aria-label="Digest archive">
+        {digests.map((digest) => {
+          const selected = digest.id === selectedDigest.id;
+          return (
+            <Link
+              aria-current={selected ? "true" : undefined}
+              aria-selected={selected}
+              className="digest-picker-option"
+              href={digestHref({ digestId: digest.id, isOwnPipeline, selectedPipelineId })}
+              key={digest.id}
+              onClick={(event) => {
+                setOpen(false);
+                if (selected) event.preventDefault();
+              }}
+              role="option"
+            >
+              <DigestPickerItem digest={digest} isLatest={digest.id === latestDigestId} />
+            </Link>
+          );
+        })}
+      </div>
+    </details>
+  );
+}
+
+function DigestPickerItem({
+  digest,
+  isLatest,
+}: {
+  digest: DigestArchivePickerOption;
+  isLatest: boolean;
+}) {
+  return (
+    <span className="digest-picker-item">
+      <span className="digest-picker-date">{formatDigestPickerDate(digest.createdAt)}</span>
+      <CountMeta label={digest.itemCount === 1 ? "item" : "items"} value={digest.itemCount} />
+      {isLatest ? <span className="digest-latest-mark">Latest</span> : null}
+    </span>
+  );
+}
+
+function digestHref({
+  digestId,
+  isOwnPipeline,
+  selectedPipelineId,
+}: {
+  digestId: string;
+  isOwnPipeline: boolean;
+  selectedPipelineId: string;
+}) {
+  const params = new URLSearchParams({ tab: "ai-digest", digest: digestId });
+  if (!isOwnPipeline) params.set("pipeline", selectedPipelineId);
+  return `/dashboard?${params.toString()}`;
+}
+
+function formatDigestPickerDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
