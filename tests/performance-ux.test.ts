@@ -408,9 +408,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(buildersPage, /className="ai-digest-titleblock"/);
   assert.doesNotMatch(dashboardPage, /className="min-w-0"/);
   assert.doesNotMatch(dashboardPage, /className="fb-section-heading mt-1"/);
-  assert.match(dashboardPage, /className="digest-source-selector"/);
-  assert.match(dashboardPage, /className="digest-source-list"/);
-  assert.match(dashboardPage, /className="digest-source-pill"/);
+  assert.match(dashboardPage, /function DigestControlBar/);
+  assert.match(dashboardPage, /aria-label="Digest selection"/);
+  assert.match(dashboardPage, /<DigestPipelineSelector/);
+  assert.match(dashboardPage, /<DigestArchivePicker/);
   assert.doesNotMatch(dashboardPage, /digest-source-pill fb-btn compact/);
   assert.match(dashboardPage, /@\/components\/EmptyState/);
   assert.match(dashboardPage, /<EmptyState[\s\S]*className="ai-digest-empty"/);
@@ -827,7 +828,9 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(dashboardPage, /select:\s*digestSummarySelect/);
   assert.doesNotMatch(dashboardPage, /digest\.content/);
   assert.match(dashboardPage, /DigestDetails/);
-  assert.match(dashboardPage, /headerAction=/);
+  assert.doesNotMatch(dashboardPage, /headerAction=\{/);
+  assert.match(dashboardPage, /function DigestControlBar/);
+  assert.match(dashboardPage, /aria-label="Digest selection"/);
   assert.match(digestDetails, /headlineSummary/);
   assert.match(digestDetails, /digest-headline-summary/);
   assert.match(digestDetails, /digest-headline-action/);

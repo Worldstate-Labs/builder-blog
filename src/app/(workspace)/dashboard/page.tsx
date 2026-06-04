@@ -161,11 +161,17 @@ function AiDigestFeed({
   selectedPipeline: DigestPipelineOption;
 }) {
   const isOwnPipeline = selectedPipeline.isOwnPipeline;
+  const digestArchiveOptions = digestSummaries.map(serializeDigestArchiveOption);
 
   return (
     <section className="ai-digest-stack">
-      <DigestPipelineSelector
+      <DigestControlBar
+        digestArchiveOptions={digestArchiveOptions}
+        isOwnPipeline={isOwnPipeline}
+        latestDigestId={latestDigest?.id ?? null}
         options={digestPipelineOptions}
+        selectedDigestId={selectedDigest?.id ?? null}
+        selectedPipeline={selectedPipeline}
         selectedPipelineId={selectedPipeline.id}
       />
       <section className="ai-digest-panel">
@@ -174,17 +180,6 @@ function AiDigestFeed({
             {selectedDigest ? (
               <DigestDetails
                 digest={serializeDigestSummary(selectedDigest)}
-                headerAction={
-                  digestSummaries.length > 0 ? (
-                    <DigestArchivePicker
-                      digests={digestSummaries.map(serializeDigestArchiveOption)}
-                      isOwnPipeline={isOwnPipeline}
-                      latestDigestId={latestDigest?.id ?? null}
-                      selectedDigestId={selectedDigest.id}
-                      selectedPipelineId={selectedPipeline.id}
-                    />
-                  ) : null
-                }
                 isLatest={selectedDigest.id === latestDigest?.id}
                 mode="today"
                 sourceLinks={sourceLinks}
@@ -211,37 +206,117 @@ function AiDigestFeed({
   );
 }
 
+function DigestControlBar({
+  digestArchiveOptions,
+  isOwnPipeline,
+  latestDigestId,
+  options,
+  selectedDigestId,
+  selectedPipeline,
+  selectedPipelineId,
+}: {
+  digestArchiveOptions: DigestArchivePickerOption[];
+  isOwnPipeline: boolean;
+  latestDigestId: string | null;
+  options: DigestPipelineOption[];
+  selectedDigestId: string | null;
+  selectedPipeline: DigestPipelineOption;
+  selectedPipelineId: string;
+}) {
+  return (
+    <section
+      aria-label="Digest selection"
+      className="grid gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--paper-strong)] p-3 shadow-[var(--shadow-soft)] md:grid-cols-[minmax(0,1fr)_minmax(17rem,22rem)]"
+    >
+      <DigestPipelineSelector
+        options={options}
+        selectedPipeline={selectedPipeline}
+        selectedPipelineId={selectedPipelineId}
+      />
+      <div className="grid min-w-0 gap-1">
+        <span className="text-[0.68rem] font-[850] uppercase tracking-[0.14em] text-[var(--muted)]">
+          Issue
+        </span>
+        {digestArchiveOptions.length > 0 ? (
+          <DigestArchivePicker
+            digests={digestArchiveOptions}
+            isOwnPipeline={isOwnPipeline}
+            latestDigestId={latestDigestId}
+            selectedDigestId={selectedDigestId}
+            selectedPipelineId={selectedPipelineId}
+          />
+        ) : (
+          <span className="inline-flex min-h-10 items-center rounded-[8px] border border-dashed border-[var(--line)] px-3 text-sm font-[750] text-[var(--muted-strong)]">
+            No saved issues
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function DigestPipelineSelector({
   options,
+  selectedPipeline,
   selectedPipelineId,
 }: {
   options: DigestPipelineOption[];
+  selectedPipeline: DigestPipelineOption;
   selectedPipelineId: string;
 }) {
-  if (options.length <= 1) return null;
+  const ownerText = selectedPipeline.isOwnPipeline
+    ? "Your digest"
+    : `${selectedPipeline.ownerLabel} - Read-only`;
 
   return (
-    <section aria-label="Digest source" className="digest-source-selector">
-      <div className="digest-source-list">
-        {options.map((pipeline) => {
-          const active = pipeline.id === selectedPipelineId;
-          const href = pipeline.isOwnPipeline
-            ? "/dashboard?tab=ai-digest"
-            : `/dashboard?tab=ai-digest&pipeline=${pipeline.id}`;
-          return (
-            <Link
-              aria-current={active ? "page" : undefined}
-              className="digest-source-pill"
-              href={href}
-              key={pipeline.id}
-            >
-              <span className="digest-source-title">{pipeline.title}</span>
-              <span className="sr-only">{pipeline.ownerLabel}</span>
-            </Link>
-          );
-        })}
-      </div>
-    </section>
+    <div className="grid min-w-0 gap-1">
+      <span className="text-[0.68rem] font-[850] uppercase tracking-[0.14em] text-[var(--muted)]">
+        Digest
+      </span>
+      {options.length > 1 ? (
+        <details className="group relative min-w-0">
+          <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-left text-sm font-[800] text-[var(--ink)] shadow-[var(--shadow-soft)] transition hover:border-[var(--accent-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
+            <span className="min-w-0 truncate">{selectedPipeline.title}</span>
+            <span aria-hidden="true" className="text-[0.7rem] text-[var(--muted)]">
+              v
+            </span>
+          </summary>
+          <div className="absolute left-0 right-0 z-20 mt-2 grid gap-1 rounded-[8px] border border-[var(--line)] bg-[var(--paper)] p-1 shadow-[var(--shadow-pop)]">
+            {options.map((pipeline) => {
+              const active = pipeline.id === selectedPipelineId;
+              const href = pipeline.isOwnPipeline
+                ? "/dashboard?tab=ai-digest"
+                : `/dashboard?tab=ai-digest&pipeline=${pipeline.id}`;
+              return (
+                <Link
+                  aria-current={active ? "page" : undefined}
+                  className={[
+                    "grid min-w-0 gap-0.5 rounded-[6px] px-3 py-2 text-sm text-[var(--ink)] no-underline transition hover:bg-[color-mix(in_oklch,var(--accent)_8%,transparent)]",
+                    active ? "bg-[var(--accent-soft)] font-[850] text-[var(--accent-strong)]" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  href={href}
+                  key={pipeline.id}
+                >
+                  <span className="min-w-0 truncate">{pipeline.title}</span>
+                  <span className="min-w-0 truncate text-xs font-[650] text-[var(--muted)]">
+                    {pipeline.isOwnPipeline ? "Your digest" : pipeline.ownerLabel}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </details>
+      ) : (
+        <div className="flex min-h-10 min-w-0 items-center rounded-[8px] border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm font-[800] text-[var(--ink)]">
+          <span className="min-w-0 truncate">{selectedPipeline.title}</span>
+        </div>
+      )}
+      <span className="min-w-0 truncate text-xs font-[650] text-[var(--muted)]">
+        {ownerText}
+      </span>
+    </div>
   );
 }
 
