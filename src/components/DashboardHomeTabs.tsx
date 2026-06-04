@@ -48,22 +48,24 @@ export function DashboardHomeTabs({
 
   return (
     <>
-      <div className="fb-segmented-tabs home-feed-tabs" role="tablist" aria-label="Home feed">
-        {HOME_TABS.map((tab) => (
-          <button
-            aria-controls={tab.panelId}
-            aria-selected={selectedTab === tab.id}
-            className="fb-btn compact"
-            data-active={selectedTab === tab.id ? "true" : undefined}
-            id={tab.tabId}
-            key={tab.id}
-            onClick={() => selectTab(tab.id)}
-            role="tab"
-            type="button"
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="home-feed-tabs-row">
+        <div className="fb-segmented-tabs home-feed-tabs" role="tablist" aria-label="Home feed">
+          {HOME_TABS.map((tab) => (
+            <button
+              aria-controls={tab.panelId}
+              aria-selected={selectedTab === tab.id}
+              className="fb-btn compact"
+              data-active={selectedTab === tab.id ? "true" : undefined}
+              id={tab.tabId}
+              key={tab.id}
+              onClick={() => selectTab(tab.id)}
+              role="tab"
+              type="button"
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
       <section
         aria-labelledby="home-tab-ai-digest"

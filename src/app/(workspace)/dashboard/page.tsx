@@ -7,7 +7,6 @@ import { CountMeta } from "@/components/Count";
 import { FavoritePostsSection } from "@/components/FavoritePostsSection";
 import { FollowingRecommendationSection } from "@/components/FollowingRecommendationSection";
 import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
-import { PageHeader } from "@/components/PageHeader";
 import { getCurrentSession } from "@/lib/auth";
 import { displayDigestPipelineTitle } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
@@ -52,7 +51,7 @@ export default async function DashboardPage({
 
   return (
     <div className="page-pad page-pad--reading home-page">
-      <PageHeader title="Home" />
+      <h1 className="sr-only">Home</h1>
 
       <section className="workspace-content-stack home-workspace">
         <DashboardHomeTabs
