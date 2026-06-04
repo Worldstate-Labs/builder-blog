@@ -4481,6 +4481,9 @@ svg.lucide {
 
 .own-digest-card {
   background: color-mix(in oklch, var(--paper-strong) 56%, transparent);
+  align-content: start;
+  display: grid;
+  gap: 0.875rem;
 }
 
 .sources-sync-section .digest-updates-panel {
@@ -8532,6 +8535,51 @@ body {
 
   .digest-updates-actions > * {
     justify-content: flex-start;
+  }
+
+  .your-digest-panel {
+    gap: 0.75rem;
+  }
+
+  .your-digest-panel .library-hub-toolbar {
+    align-items: center;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .your-digest-panel .sources-sync-section {
+    order: 3;
+  }
+
+  .sources-sync-section .digest-updates-panel {
+    border-top: 1px solid color-mix(in oklch, var(--line) 80%, transparent);
+    padding: 0.75rem 0 0;
+  }
+
+  .sources-sync-section .digest-updates-head {
+    align-items: flex-start;
+    display: grid;
+    gap: 0.65rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sources-sync-section .digest-updates-actions {
+    align-items: stretch;
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .own-digest-card {
+    gap: 0.7rem;
+    padding: 0.95rem;
+  }
+
+  .own-digest-card .fb-hub-digest-preview {
+    padding: 0.75rem;
+  }
+
+  .own-digest-card .fb-hub-card-stats {
+    display: none;
   }
 
   .fb-field {
