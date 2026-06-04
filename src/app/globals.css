@@ -4378,7 +4378,8 @@ svg.lucide {
   width: 100%;
 }
 
-.your-digest-panel {
+.your-digest-panel,
+.your-library-panel {
   display: grid;
   gap: 1rem;
 }

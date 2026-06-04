@@ -1167,9 +1167,11 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   const libraryHubPage = source("src/app/(workspace)/library-hub/page.tsx");
   const searchPage = source("src/app/(workspace)/search/page.tsx");
   assert.match(buildersPage, /<Suspense fallback=\{<BuilderStatsFallback \/>/);
-  assert.match(buildersPage, /<Suspense fallback=\{<BuilderSectionsFallback \/>/);
-  assert.match(buildersPage, /function BuilderSectionsFallback/);
+  assert.match(buildersPage, /<Suspense fallback=\{<FetchSourcesFallback \/>/);
+  assert.match(buildersPage, /function FetchSourcesFallback/);
   assert.match(buildersPage, /className="sources-section-stack"/);
+  assert.match(buildersPage, /className="your-library-panel fb-panel"/);
+  assert.match(buildersPage, /Your library/);
   assert.match(buildersPage, /className="workspace-content-stack"/);
   assert.doesNotMatch(buildersPage, /sources-sync-section mt-5/);
   assert.doesNotMatch(buildersPage, /mt-6 grid gap-5/);
@@ -1299,7 +1301,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /CountMeta/);
   assert.doesNotMatch(buildersPage, /CountChip/);
   assert.doesNotMatch(buildersPage, /<section className="fb-page-head"/);
-  assert.match(buildersPage, /title=\{data\.isAdmin \? adminCommunityLibraryName : "Private library"\}[\s\S]*defaultOpen/);
+  assert.match(buildersPage, /title=\{data\.isAdmin \? adminCommunityLibraryName : "Private library"\}/);
+  assert.match(buildersPage, /privateLabel="Your library"/);
   assert.doesNotMatch(builderLibraryList, /function BuilderStats/);
   assert.match(builderLibraryList, /latestPostCreatedAt=\{builder\.latestPostCreatedAt\}/);
   assert.doesNotMatch(builderLibraryList, /CountMeta/);
@@ -1405,6 +1408,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.source-sync-skeleton-line,[\s\S]*\.source-section-skeleton-card\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
   assert.match(globals, /\.source-section-skeleton-desc\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);
   assert.match(globals, /\.sources-section-stack,[\s\S]*\.imported-libraries-section\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.your-digest-panel,[\s\S]*\.your-library-panel\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.imported-libraries-head\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(globals, /\.library-section-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(globals, /\.source-stat-skeleton\s*{[\s\S]*border-radius:\s*999px/);

@@ -239,10 +239,10 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   assert.match(buildersPage, /source: "cron"/);
   assert.match(buildersPage, /orderBy: \{ startedAt: "desc" \}/);
   assert.match(buildersPage, /take: 25/);
-  // Mounted in a Suspense slot with SkillPromptActions embedded into the panel
-  // so the fetch sync surface stays together above the source list.
-  assert.match(buildersPage, /<Suspense fallback=\{<SyncHeaderFallback \/>/);
-  assert.match(buildersPage, /function SyncHeaderFallback/);
+  // Mounted with the user's own library controls so Fetch setup stays together.
+  assert.match(buildersPage, /<Suspense fallback=\{<FetchSourcesFallback \/>/);
+  assert.match(buildersPage, /function FetchSourcesFallback/);
+  assert.match(buildersPage, /className="your-library-panel fb-panel"/);
   assert.match(buildersPage, /actions=\{/);
   assert.match(buildersPage, /compactOnly/);
   assert.match(buildersPage, /showStop=\{showStopLibraryCron\}/);

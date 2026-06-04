@@ -93,12 +93,8 @@ export default async function BuildersPage({
                 <BuilderStatsSlot dataPromise={dataPromise} />
               </Suspense>
 
-              <Suspense fallback={<SyncHeaderFallback />}>
-                <SyncHeader dataPromise={dataPromise} />
-              </Suspense>
-
-              <Suspense fallback={<BuilderSectionsFallback />}>
-                <BuilderSections dataPromise={dataPromise} />
+              <Suspense fallback={<FetchSourcesFallback />}>
+                <FetchSourcesSection dataPromise={dataPromise} />
               </Suspense>
             </section>
           ) : (
@@ -140,45 +136,6 @@ function SourcesSubtabs({ selectedTab }: { selectedTab: SourcesTab }) {
         Digest
       </Link>
     </nav>
-  );
-}
-
-async function SyncHeader({
-  dataPromise,
-}: {
-  dataPromise: Promise<BuildersPageData>;
-}) {
-  const data = await dataPromise;
-  const showStopLibraryCron = data.libraryCronJob?.status === "active";
-  return (
-    <section className="sources-sync-section">
-      <FetchLogPanel
-        actions={
-          <SkillPromptActions
-            compactOnly
-            context="library"
-            showStop={showStopLibraryCron}
-            tokens={data.activeTokens}
-            summaryLanguage={data.summaryLanguage}
-            digestMaxPostAgeDays={data.digestMaxPostAgeDays}
-          />
-        }
-        initialCronJob={data.libraryCronJob}
-        initialCronRuns={data.cronRuns}
-        initialJobRuns={data.jobRuns}
-        initialScheduledJobRuns={data.scheduledJobRuns}
-        initialRuns={data.fetchRuns}
-      />
-    </section>
-  );
-}
-
-function SyncHeaderFallback() {
-  return (
-    <section className="sources-sync-section" aria-live="polite" aria-busy="true">
-      <div className="source-sync-skeleton-line" />
-      <div className="source-sync-skeleton-panel" />
-    </section>
   );
 }
 
@@ -694,48 +651,78 @@ async function BuilderStatsSlot({
   );
 }
 
-async function BuilderSections({
+async function FetchSourcesSection({
   dataPromise,
 }: {
   dataPromise: Promise<BuildersPageData>;
 }) {
   const data = await dataPromise;
+  const showStopLibraryCron = data.libraryCronJob?.status === "active";
   const userLibraryName =
     data.isAdmin
       ? adminCommunityLibraryName
       : `${data.sessionUserName || data.sessionUserEmail || "Personal"} library`;
 
   const privateSection = (
-    <PrivateLibraryPanel
-      title={data.isAdmin ? adminCommunityLibraryName : "Private library"}
-      count={data.privateBuilders.length}
-      sourceOptions={data.sourceLabelOptions}
-      visibilityToggle={
-        <LibraryVisibilityToggle
-          compact
-          disabled={!data.isAdmin && data.privateBuilders.length === 0}
-          initialIsPublic={data.isPublicLibrary}
-          isAdminLibrary={data.isAdmin}
-          name={userLibraryName}
-        />
-      }
-    >
-      <BuilderLibraryList
-        acceptAddedBuilders
-        builders={data.privateBuilders.map((builder) =>
-          builderListItem({
-            allowRemove: true,
-            builder,
-            latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
-            subscribed: data.subscribed.has(builder.id),
-          }),
-        )}
-        editableSourceOptions={data.sourceLabelOptions}
-        emptyBody="Add a source, or run your local helper to import private sources."
-        emptyTitle="No personal sources yet"
-      />
+    <section className="your-library-panel fb-panel" aria-labelledby="sources-library-section-title">
+      <div className="library-hub-toolbar">
+        <div className="library-hub-toolbar-copy">
+          <h2 id="sources-library-section-title" className="fb-section-heading">
+            Your library
+          </h2>
+        </div>
+      </div>
 
-    </PrivateLibraryPanel>
+      <section className="sources-sync-section">
+        <FetchLogPanel
+          actions={
+            <SkillPromptActions
+              compactOnly
+              context="library"
+              showStop={showStopLibraryCron}
+              tokens={data.activeTokens}
+              summaryLanguage={data.summaryLanguage}
+              digestMaxPostAgeDays={data.digestMaxPostAgeDays}
+            />
+          }
+          initialCronJob={data.libraryCronJob}
+          initialCronRuns={data.cronRuns}
+          initialJobRuns={data.jobRuns}
+          initialScheduledJobRuns={data.scheduledJobRuns}
+          initialRuns={data.fetchRuns}
+        />
+      </section>
+
+      <PrivateLibraryPanel
+        title={data.isAdmin ? adminCommunityLibraryName : "Private library"}
+        count={data.privateBuilders.length}
+        sourceOptions={data.sourceLabelOptions}
+        visibilityToggle={
+          <LibraryVisibilityToggle
+            compact
+            disabled={!data.isAdmin && data.privateBuilders.length === 0}
+            initialIsPublic={data.isPublicLibrary}
+            isAdminLibrary={data.isAdmin}
+            name={userLibraryName}
+          />
+        }
+      >
+        <BuilderLibraryList
+          acceptAddedBuilders
+          builders={data.privateBuilders.map((builder) =>
+            builderListItem({
+              allowRemove: true,
+              builder,
+              latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
+              subscribed: data.subscribed.has(builder.id),
+            }),
+          )}
+          editableSourceOptions={data.sourceLabelOptions}
+          emptyBody="Add a source, or run your local helper to import private sources."
+          emptyTitle="No personal sources yet"
+        />
+      </PrivateLibraryPanel>
+    </section>
   );
 
   const importedSection = (
@@ -787,7 +774,7 @@ async function BuilderSections({
   return (
     <section className="sources-section-stack">
       <MobileSourcesSwitcher
-        privateLabel="Private"
+        privateLabel="Your library"
         importedLabel="Imported"
         privateSection={privateSection}
         importedSection={importedSection}
@@ -806,25 +793,29 @@ function BuilderStatsFallback() {
   );
 }
 
-function BuilderSectionsFallback() {
+function FetchSourcesFallback() {
   return (
     <section className="sources-section-stack" aria-live="polite" aria-busy="true">
-      <div className="library-section-panel">
-        <div className="library-section-summary">
-          <div className="library-section-summary-copy source-section-skeleton-copy">
-            <div className="source-section-skeleton-title" />
-            <div className="source-section-skeleton-desc" />
+      <section className="your-library-panel fb-panel">
+        <div className="source-sync-skeleton-line" />
+        <div className="source-sync-skeleton-panel" />
+        <div className="library-section-panel">
+          <div className="library-section-summary">
+            <div className="library-section-summary-copy source-section-skeleton-copy">
+              <div className="source-section-skeleton-title" />
+              <div className="source-section-skeleton-desc" />
+            </div>
+            <div className="library-section-meta">
+              <div className="source-section-skeleton-chip source-section-skeleton-chip--short" />
+              <div className="source-section-skeleton-chip" />
+            </div>
           </div>
-          <div className="library-section-meta">
-            <div className="source-section-skeleton-chip source-section-skeleton-chip--short" />
-            <div className="source-section-skeleton-chip" />
+          <div className="library-section-body">
+            <div className="source-section-skeleton-row" />
+            <div className="source-section-skeleton-card" />
           </div>
         </div>
-        <div className="library-section-body">
-          <div className="source-section-skeleton-row" />
-          <div className="source-section-skeleton-card" />
-        </div>
-      </div>
+      </section>
     </section>
   );
 }
