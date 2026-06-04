@@ -4836,6 +4836,44 @@ svg.lucide {
 
 .builder-library-list {
   background: transparent;
+  display: grid;
+  gap: 1.55rem;
+  min-width: 0;
+}
+
+.builder-library-source-section {
+  min-width: 0;
+}
+
+.builder-library-source-section + .builder-library-source-section {
+  border-top: 1px solid color-mix(in oklch, var(--line) 88%, transparent);
+  padding-top: 1.35rem;
+}
+
+.builder-library-source-section-head {
+  align-items: center;
+  border-bottom: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
+  display: flex;
+  gap: 0.45rem;
+  margin-bottom: 0.45rem;
+  padding-bottom: 0.55rem;
+}
+
+.builder-library-source-section-title {
+  align-items: center;
+  display: inline-flex;
+  margin: 0;
+}
+
+.builder-library-source-section-title .source-badge {
+  background: transparent;
+  border-color: color-mix(in oklch, var(--line) 76%, transparent);
+  color: var(--ink);
+  font-size: 0.76rem;
+  min-height: 1.85rem;
+}
+
+.builder-library-source-section-body {
   min-width: 0;
 }
 
@@ -8588,6 +8626,20 @@ body {
     background: transparent;
     border: 0;
     border-radius: 0;
+    gap: 1.15rem;
+  }
+
+  .builder-library-source-section + .builder-library-source-section {
+    padding-top: 1rem;
+  }
+
+  .builder-library-source-section-head {
+    margin-bottom: 0.25rem;
+    padding-bottom: 0.45rem;
+  }
+
+  .builder-library-source-section-title .source-badge {
+    min-height: 1.65rem;
   }
 
   .builder-library-card {

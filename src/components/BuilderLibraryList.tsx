@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BuilderEditDialog } from "@/components/BuilderEditDialog";
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { BuilderLibraryActions } from "@/components/BuilderLibraryActions";
+import { CountBadge } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { SourceBadge } from "@/components/SourceBadge";
 import { SourceAvatar } from "@/components/SourceAvatar";
@@ -172,6 +173,10 @@ export function BuilderLibraryList({
         .sort(clientBuilderSort),
     [allBuilders, removedBuilderIds, subscribedByBuilderId],
   );
+  const visibleSections = useMemo(
+    () => groupBuildersBySourceType(visibleBuilders),
+    [visibleBuilders],
+  );
 
   function onRemoveStateChange(builderId: string, removed: boolean) {
     const builder = allBuilders.find((item) => item.id === builderId);
@@ -223,16 +228,31 @@ export function BuilderLibraryList({
 
   return (
     <div className="builder-library-list">
-      {visibleBuilders.map((builder, index) => (
-        <BuilderCard
-          builder={builder}
-          first={index === 0}
-          key={builder.id}
-          editableSourceOptions={editableSourceOptions}
-          removeError={removeErrors[builder.id]}
-          onRemoveStateChange={onRemoveStateChange}
-          onSubscriptionStateChange={onSubscriptionStateChange}
-        />
+      {visibleSections.map((section) => (
+        <section
+          className="builder-library-source-section"
+          key={section.sourceType}
+        >
+          <div className="builder-library-source-section-head">
+            <h3 className="builder-library-source-section-title">
+              <SourceBadge sourceType={section.sourceType} />
+            </h3>
+            <CountBadge value={section.builders.length} />
+          </div>
+          <div className="builder-library-source-section-body">
+            {section.builders.map((builder, index) => (
+              <BuilderCard
+                builder={builder}
+                first={index === 0}
+                key={builder.id}
+                editableSourceOptions={editableSourceOptions}
+                removeError={removeErrors[builder.id]}
+                onRemoveStateChange={onRemoveStateChange}
+                onSubscriptionStateChange={onSubscriptionStateChange}
+              />
+            ))}
+          </div>
+        </section>
       ))}
     </div>
   );
@@ -308,21 +328,66 @@ function BuilderCard({
 
 /**
  * Mirror of the server-side builderSort in builders/page.tsx —
- * kind-grouped, newest-within-kind first, name as tiebreak. Keeping
+ * source-type grouped, newest-within-type first, name as tiebreak. Keeping
  * the two in sync means a row added optimistically client-side lands
- * in the same slot the server would have placed it on next refresh,
+ * in the same section the server would have placed it on next refresh,
  * so there's no visual jump.
  */
 function clientBuilderSort(
   a: BuilderLibraryListItem,
   b: BuilderLibraryListItem,
 ): number {
-  const kindCmp = a.kind.localeCompare(b.kind);
-  if (kindCmp !== 0) return kindCmp;
+  const sourceCmp =
+    sourceTypeSortRank(sourceTypeForBuilder(a)) -
+    sourceTypeSortRank(sourceTypeForBuilder(b));
+  if (sourceCmp !== 0) return sourceCmp;
   const ta = Date.parse(a.createdAt);
   const tb = Date.parse(b.createdAt);
   if (ta !== tb) return tb - ta;
   return a.name.localeCompare(b.name);
+}
+
+function groupBuildersBySourceType(builders: BuilderLibraryListItem[]) {
+  const sections = new Map<
+    string,
+    { sourceType: string; builders: BuilderLibraryListItem[] }
+  >();
+
+  for (const builder of builders) {
+    const sourceType = sourceTypeForBuilder(builder);
+    const section = sections.get(sourceType);
+    if (section) {
+      section.builders.push(builder);
+    } else {
+      sections.set(sourceType, { sourceType, builders: [builder] });
+    }
+  }
+
+  return Array.from(sections.values()).sort(
+    (a, b) => sourceTypeSortRank(a.sourceType) - sourceTypeSortRank(b.sourceType),
+  );
+}
+
+function sourceTypeForBuilder(builder: BuilderLibraryListItem) {
+  const explicit = normalizeSourceType(builder.sourceType);
+  if (explicit) return explicit;
+  if (builder.kind === "X") return "x";
+  if (builder.kind === "BLOG") return "blog";
+  if (builder.kind === "PODCAST") return "podcast";
+  return "website";
+}
+
+function normalizeSourceType(sourceType: string | null | undefined) {
+  const normalized = sourceType?.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (!normalized || normalized === "auto") return "";
+  if (normalized === "pdf") return "website";
+  return normalized;
+}
+
+function sourceTypeSortRank(sourceType: string) {
+  const order = ["blog", "youtube", "podcast", "x", "website"];
+  const index = order.indexOf(sourceType);
+  return index === -1 ? order.length : index;
 }
 
 function dispatchStatsChange(detail: BuilderLibraryStatsChange) {
@@ -343,7 +408,6 @@ function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
         ) : (
           <div className="fb-src-name truncate">{builder.name}</div>
         )}
-        <SourceBadge builder={builder} />
       </div>
     </div>
   );

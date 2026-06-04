@@ -1340,6 +1340,13 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderLibraryList, /Open \$\{builder\.name\} on its source site/);
   assert.doesNotMatch(builderLibraryList, /sourceSummary/);
   assert.doesNotMatch(builderLibraryList, /fb-src-meta|source-host-meta|source-host-meta/);
+  assert.match(builderLibraryList, /visibleSections/);
+  assert.match(builderLibraryList, /groupBuildersBySourceType/);
+  assert.match(builderLibraryList, /className="builder-library-source-section"/);
+  assert.match(builderLibraryList, /className="builder-library-source-section-head"/);
+  assert.match(builderLibraryList, /<SourceBadge sourceType=\{section\.sourceType\} \/>/);
+  assert.match(builderLibraryList, /<CountBadge value=\{section\.builders\.length\} \/>/);
+  assert.doesNotMatch(builderLibraryList, /<SourceBadge builder=\{builder\} \/>/);
   assert.match(mobileSourcesSwitcher, /className="fb-segmented-tabs mobile-filter-tabs at-mobile"/);
   assert.match(mobileSourcesSwitcher, /className="fb-btn compact"/);
   assert.doesNotMatch(mobileSourcesSwitcher, /fb-m-segctl|fb-m-seg/);
@@ -1462,6 +1469,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(personalBuilderRoute, /NextResponse\.json/);
   assert.doesNotMatch(personalBuilderRoute, /redirect\(/);
   assert.match(builderLibraryList, /SourceBadge/);
+  assert.match(globals, /\.builder-library-source-section-head\s*{[\s\S]*border-bottom:\s*1px solid/);
+  assert.match(globals, /\.builder-library-source-section-title \.source-badge\s*{[\s\S]*min-height:\s*1\.85rem/);
+  assert.match(globals, /\.builder-library-source-section \+ \.builder-library-source-section\s*{[\s\S]*border-top:\s*1px solid/);
   assert.doesNotMatch(buildersPage, /Technical details/);
   assert.doesNotMatch(buildersPage, /name="handle"/);
   assert.doesNotMatch(buildersPage, /name="sourceUrl"/);
