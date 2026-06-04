@@ -3572,7 +3572,7 @@ svg.lucide {
   border-bottom: 1px solid var(--line);
   display: flex;
   gap: 1rem;
-  justify-content: center;
+  justify-content: flex-start;
   min-height: 3.5rem;
   padding: 0.5rem var(--workspace-gutter);
   position: sticky;
@@ -3584,8 +3584,7 @@ svg.lucide {
   align-items: center;
   display: grid;
   gap: 1rem;
-  grid-template-columns: minmax(9rem, 1fr) minmax(18rem, var(--top-search-max)) minmax(9rem, 1fr);
-  max-width: var(--workspace-max);
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, var(--top-search-max)) minmax(0, 1fr);
   min-width: 0;
   width: 100%;
 }
@@ -8212,7 +8211,8 @@ mark.fb-mark-highlight {
 
   .fb-top {
     display: flex;
-    padding-left: calc(var(--side-rail-width) + var(--workspace-gutter));
+    padding-left: var(--workspace-gutter);
+    padding-right: var(--workspace-gutter);
   }
 
   .fb-m-top {
