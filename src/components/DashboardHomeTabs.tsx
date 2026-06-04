@@ -14,16 +14,16 @@ const HOME_TABS: Array<WorkspaceTopTabItem<DashboardTab>> = [
     tabId: "home-tab-ai-digest",
   },
   {
-    value: "favorites",
-    label: "Favorites",
-    panelId: "home-panel-favorites",
-    tabId: "home-tab-favorites",
-  },
-  {
     value: "subscription",
     label: "Following",
     panelId: "home-panel-subscription",
     tabId: "home-tab-subscription",
+  },
+  {
+    value: "favorites",
+    label: "Favorites",
+    panelId: "home-panel-favorites",
+    tabId: "home-tab-favorites",
   },
 ];
 
