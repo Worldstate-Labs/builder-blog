@@ -5560,8 +5560,8 @@ svg.lucide {
   display: flex;
   gap: 0.45rem;
   list-style: none;
-  margin-bottom: 0.55rem;
-  padding-bottom: 0.45rem;
+  margin-bottom: 0.7rem;
+  padding-bottom: 0.5rem;
 }
 
 .digest-section-summary-static {
@@ -5597,11 +5597,13 @@ svg.lucide {
   background: transparent;
   border-color: color-mix(in oklch, var(--dr-line) 76%, transparent);
   color: var(--dr-ink);
+  font-size: 0.76rem;
+  min-height: 1.85rem;
 }
 .digest-section-body {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.45rem;
   margin-top: 0.75rem;
   min-width: 0;
   width: 100%;
@@ -5618,7 +5620,7 @@ svg.lucide {
 .digest-group-heading {
   color: var(--dr-ink);
   font-family: var(--font-geist-sans);
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
   font-weight: 800;
   line-height: 1.25;
   margin: 0;
@@ -5661,12 +5663,15 @@ svg.lucide {
   background: transparent;
   border: 0;
   border-radius: 0;
-  color: var(--dr-muted);
+  color: var(--dr-ink);
   display: grid;
-  font-size: 0.90625rem;
+  font-size: 0.9375rem;
+  font-weight: 520;
   gap: 0.5rem;
-  line-height: 1.65;
-  padding: 0.1rem 0 0.2rem;
+  line-height: 1.64;
+  margin-top: -0.35rem;
+  max-width: min(100%, var(--copy-max));
+  padding: 0.05rem 0 0.1rem 2.25rem;
   width: 100%;
 }
 .digest-source-summary p {
@@ -5708,7 +5713,7 @@ svg.lucide {
 }
 
 .digest-rich .fetched-post-title {
-  font-size: 1rem;
+  font-size: 0.96875rem;
   font-weight: 760;
   line-height: 1.38;
   margin-top: 0;
@@ -5720,7 +5725,7 @@ svg.lucide {
 }
 
 .digest-rich .post-summary {
-  margin-top: 0.72rem;
+  margin-top: 0.62rem;
 }
 
 .digest-rich .fetched-post-summary-text {
