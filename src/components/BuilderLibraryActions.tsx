@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Bell, X } from "lucide-react";
+import { X } from "lucide-react";
 
 type BuilderLibraryActionsProps = {
   allowRemove?: boolean;
@@ -14,52 +14,6 @@ type BuilderLibraryActionsProps = {
     previousSubscribed: boolean,
   ) => void;
 };
-
-export function SubscribeAllLibraryBuildersButton({
-  onSubscribedAll,
-}: {
-  onSubscribedAll?: () => void;
-}) {
-  const [phase, setPhase] = useState<"idle" | "done" | "error">("idle");
-  const [isPending, startTransition] = useTransition();
-
-  function subscribeAll() {
-    if (isPending) return;
-    setPhase("idle");
-    startTransition(async () => {
-      try {
-        const response = await fetch("/api/builders/subscriptions", {
-          method: "POST",
-        });
-        if (!response.ok) throw new Error("Unable to follow sources");
-        onSubscribedAll?.();
-        setPhase("done");
-      } catch {
-        setPhase("error");
-      }
-    });
-  }
-
-  return (
-    <div className="builder-library-bulk-action">
-      <button
-        aria-busy={isPending}
-        className="fb-btn light compact"
-        disabled={isPending}
-        onClick={subscribeAll}
-        type="button"
-      >
-        <Bell aria-hidden="true" />
-        {isPending ? "Following..." : phase === "done" ? "Following" : "Follow all"}
-      </button>
-      {phase === "error" ? (
-        <span className="builder-library-action-error" role="status">
-          Could not follow all sources.
-        </span>
-      ) : null}
-    </div>
-  );
-}
 
 export function BuilderLibraryActions({
   allowRemove = true,

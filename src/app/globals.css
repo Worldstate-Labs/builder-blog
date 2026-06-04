@@ -1000,10 +1000,6 @@ svg.lucide {
   margin-right: 0.45rem;
 }
 
-.source-summary-toolbar {
-  margin-left: auto;
-}
-
 .skill-prompt-actions {
   align-items: center;
   border-block: 1px solid var(--line);
@@ -4635,7 +4631,6 @@ svg.lucide {
 
 .source-sync-skeleton-line,
 .source-sync-skeleton-panel,
-.source-stat-skeleton,
 .source-section-skeleton-title,
 .source-section-skeleton-desc,
 .source-section-skeleton-chip,
@@ -4653,12 +4648,6 @@ svg.lucide {
 .source-sync-skeleton-panel {
   height: 7rem;
   margin-top: 0.75rem;
-}
-
-.source-stat-skeleton {
-  border-radius: 999px;
-  height: 2rem;
-  width: 6rem;
 }
 
 .source-section-skeleton-title {
@@ -4918,13 +4907,6 @@ svg.lucide {
 .builder-library-actions {
   justify-self: end;
   min-width: 0;
-}
-
-.builder-library-bulk-action {
-  align-items: flex-start;
-  display: inline-flex;
-  flex-direction: column;
-  gap: 0.5rem;
 }
 
 .builder-library-row-tools,
@@ -8365,12 +8347,6 @@ body {
 
   .fb-page-head > * {
     min-width: 0;
-  }
-
-  .source-summary-toolbar {
-    justify-content: flex-start;
-    margin-left: 0;
-    width: 100%;
   }
 
   .fb-skill {

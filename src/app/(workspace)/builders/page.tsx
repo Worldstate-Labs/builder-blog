@@ -2,7 +2,6 @@ import { BuilderKind, BuilderPoolOrigin } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
-import { BuilderLibraryStats } from "@/components/BuilderLibraryStats";
 import { CountMeta } from "@/components/Count";
 import { DigestLogPanel } from "@/components/DigestLogPanel";
 import {
@@ -95,10 +94,6 @@ export default async function BuildersPage({
 
           {selectedTab === "fetch" ? (
             <section className="sources-tab-body sources-tab-body--fetch">
-              <Suspense fallback={<BuilderStatsFallback />}>
-                <BuilderStatsSlot dataPromise={dataPromise} />
-              </Suspense>
-
               <Suspense fallback={<FetchSourcesFallback />}>
                 <FetchSourcesSection dataPromise={dataPromise} />
               </Suspense>
@@ -612,22 +607,6 @@ function serializeAgentTokens(
   }));
 }
 
-async function BuilderStatsSlot({
-  dataPromise,
-}: {
-  dataPromise: Promise<BuildersPageData>;
-}) {
-  const data = await dataPromise;
-
-  return (
-    <BuilderLibraryStats
-      initialFetchedItems={data.fetchedItems}
-      initialInLibrary={data.poolBuilders.length}
-      initialSubscribed={data.subscribedCount}
-    />
-  );
-}
-
 async function FetchSourcesSection({
   dataPromise,
 }: {
@@ -752,16 +731,6 @@ async function FetchSourcesSection({
         importedSection={importedSection}
       />
     </section>
-  );
-}
-
-function BuilderStatsFallback() {
-  return (
-    <div className="page-toolbar" aria-live="polite" aria-busy="true">
-      {Array.from({ length: 3 }, (_, index) => (
-        <div key={index} className="source-stat-skeleton" />
-      ))}
-    </div>
   );
 }
 

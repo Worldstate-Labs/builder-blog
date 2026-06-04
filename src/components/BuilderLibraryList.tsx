@@ -11,10 +11,7 @@ import { SourceBadge } from "@/components/SourceBadge";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import {
   builderLibraryBuilderAdded,
-  builderLibraryStatsChanged,
-  builderLibrarySubscribeAll,
   type BuilderLibraryEventItem,
-  type BuilderLibraryStatsChange,
 } from "@/lib/builder-library-events";
 
 export type BuilderLibraryListItem = BuilderLibraryEventItem;
@@ -98,18 +95,6 @@ export function BuilderLibraryList({
     });
   }, [builderSubscriptionSignature, propSubscribedByBuilderId]);
 
-  useEffect(() => {
-    function onSubscribeAll() {
-      setSubscribedByBuilderId((current) => ({
-        ...current,
-        ...Object.fromEntries(allBuilders.map((builder) => [builder.id, true])),
-      }));
-    }
-
-    window.addEventListener(builderLibrarySubscribeAll, onSubscribeAll);
-    return () => window.removeEventListener(builderLibrarySubscribeAll, onSubscribeAll);
-  }, [allBuilders, setSubscribedByBuilderId]);
-
   // Track which builder id (if any) was just added but hasn't been
   // scrolled into view yet. Read by the scroll effect below after
   // React commits the new <article id> to the DOM.
@@ -133,11 +118,6 @@ export function BuilderLibraryList({
       if (!builder.addWarning) {
         pendingScrollIdRef.current = builder.id;
       }
-      dispatchStatsChange({
-        fetchedDelta: builder.feedItemCount,
-        inLibraryDelta: 1,
-        subscribedDelta: builder.subscribed ? 1 : 0,
-      });
     }
 
     window.addEventListener(builderLibraryBuilderAdded, onBuilderAdded);
@@ -179,16 +159,6 @@ export function BuilderLibraryList({
   );
 
   function onRemoveStateChange(builderId: string, removed: boolean) {
-    const builder = allBuilders.find((item) => item.id === builderId);
-    const subscribed = subscribedByBuilderId[builderId] ?? builder?.subscribed ?? false;
-    if (builder) {
-      dispatchStatsChange({
-        fetchedDelta: removed ? -builder.feedItemCount : builder.feedItemCount,
-        inLibraryDelta: removed ? -1 : 1,
-        subscribedDelta: subscribed ? (removed ? -1 : 1) : 0,
-      });
-    }
-
     setRemovedBuilderIds((current) => {
       const next = new Set(current);
       if (removed) {
@@ -212,12 +182,8 @@ export function BuilderLibraryList({
   function onSubscriptionStateChange(
     builderId: string,
     subscribed: boolean,
-    previousSubscribed: boolean,
   ) {
     setSubscribedByBuilderId((current) => ({ ...current, [builderId]: subscribed }));
-    if (subscribed !== previousSubscribed) {
-      dispatchStatsChange({ subscribedDelta: subscribed ? 1 : -1 });
-    }
   }
 
   if (visibleBuilders.length === 0) {
@@ -388,10 +354,6 @@ function sourceTypeSortRank(sourceType: string) {
   const order = ["blog", "youtube", "podcast", "x", "website"];
   const index = order.indexOf(sourceType);
   return index === -1 ? order.length : index;
-}
-
-function dispatchStatsChange(detail: BuilderLibraryStatsChange) {
-  window.dispatchEvent(new CustomEvent(builderLibraryStatsChanged, { detail }));
 }
 
 function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
