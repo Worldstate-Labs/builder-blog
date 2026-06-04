@@ -5,12 +5,16 @@ import { FormEvent, useState, useTransition } from "react";
 import { Check, Pencil, X } from "lucide-react";
 
 type DigestPipelineTitleEditorProps = {
+  className?: string;
   headingId: string;
+  headingLevel?: 2 | 3;
   initialTitle: string;
 };
 
 export function DigestPipelineTitleEditor({
+  className = "fb-section-heading",
   headingId,
+  headingLevel = 2,
   initialTitle,
 }: DigestPipelineTitleEditorProps) {
   const router = useRouter();
@@ -71,14 +75,14 @@ export function DigestPipelineTitleEditor({
   if (editing) {
     return (
       <form className="digest-title-edit-form" onSubmit={saveTitle}>
-        <label className="sr-only" htmlFor="digest-title-input">
+        <label className="sr-only" htmlFor={`${headingId}-input`}>
           Digest name
         </label>
         <input
           autoFocus
           className="digest-title-edit-input"
           disabled={isPending}
-          id="digest-title-input"
+          id={`${headingId}-input`}
           maxLength={120}
           onChange={(event) => setDraft(event.target.value)}
           value={draft}
@@ -110,11 +114,13 @@ export function DigestPipelineTitleEditor({
     );
   }
 
+  const Heading = headingLevel === 3 ? "h3" : "h2";
+
   return (
     <div className="digest-title-row">
-      <h2 id={headingId} className="fb-section-heading">
+      <Heading id={headingId} className={className}>
         {title}
-      </h2>
+      </Heading>
       <button
         aria-label="Edit digest name"
         className="fb-btn ghost compact digest-title-edit-button"

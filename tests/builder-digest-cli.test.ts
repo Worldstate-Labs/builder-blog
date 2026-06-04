@@ -376,7 +376,8 @@ test("personal YouTube fetcher returns agent tasks instead of syncing descriptio
   assert.equal(result.items.length, 0);
   assert.equal(result.agentTasks.length, 1);
   assert.match(result.agentTasks[0].id, /^youtube_transcription:/);
-  assert.equal(result.agentTasks[0].minimumContentQuality.minContentUnits, 24);
+  const minimumContentQuality = result.agentTasks[0].minimumContentQuality as { minContentUnits: number };
+  assert.equal(minimumContentQuality.minContentUnits, 24);
   assert.equal("reason" in result.agentTasks[0], false);
   assert.equal("quality" in result.agentTasks[0], false);
   assert.equal("sourceDetail" in result.agentTasks[0], false);

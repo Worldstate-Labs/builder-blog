@@ -4188,6 +4188,17 @@ svg.lucide {
   overflow-wrap: anywhere;
 }
 
+.digest-title-row .fb-hub-title {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fb-hub-card-titleblock .digest-title-row,
+.fb-hub-card-titleblock .digest-title-edit-form {
+  margin-top: 0.5rem;
+}
+
 .digest-title-edit-button {
   flex: 0 0 auto;
   padding-inline: 0.5rem;
@@ -4356,6 +4367,19 @@ svg.lucide {
 
 .digest-source-management-panel {
   width: 100%;
+}
+
+.your-digest-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.your-digest-panel .library-hub-toolbar {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.own-digest-card {
+  background: color-mix(in oklch, var(--paper-strong) 56%, transparent);
 }
 
 .sources-sync-section .digest-updates-panel {

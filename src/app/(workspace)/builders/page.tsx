@@ -8,10 +8,10 @@ import { CountMeta } from "@/components/Count";
 import { DigestLogPanel } from "@/components/DigestLogPanel";
 import {
   DigestPipelineImportForm,
+  OwnDigestPipelineCard,
   type HubDigestPipeline,
+  type OwnDigestPipeline,
 } from "@/components/DigestPipelineImportForm";
-import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
-import { DigestPipelineVisibilityToggle } from "@/components/DigestPipelineVisibilityToggle";
 import { EmptyState } from "@/components/EmptyState";
 import {
   FetchLogPanel,
@@ -59,7 +59,6 @@ type BuilderWithCount = {
 };
 
 type LatestPostCreatedAtByBuilderId = Map<string, Date | null>;
-
 type BuildersPageData = Awaited<ReturnType<typeof loadBuildersPageData>>;
 type DigestSourcesPageData = Awaited<ReturnType<typeof loadDigestSourcesPageData>>;
 type SourcesTab = "fetch" | "digest";
@@ -191,35 +190,38 @@ async function DigestSourcesSection({
 
   return (
     <section className="digest-source-management">
-      <div className="ai-digest-panel digest-source-management-panel">
-        <header className="ai-digest-head">
-          <div className="ai-digest-titleblock">
-            <DigestPipelineTitleEditor
-              headingId="sources-digest-title"
-              initialTitle={data.ownPipelineTitle}
-            />
+      <section className="your-digest-panel fb-panel" aria-labelledby="sources-digest-section-title">
+        <div className="library-hub-toolbar">
+          <div className="library-hub-toolbar-copy">
+            <h2 id="sources-digest-section-title" className="fb-section-heading">
+              Your digest
+            </h2>
           </div>
-          <DigestPipelineVisibilityToggle initialShared={data.ownPipelineShared} />
-        </header>
-      </div>
+        </div>
 
-      <section className="sources-sync-section">
-        <DigestLogPanel
-          actions={
-            <SkillPromptActions
-              compactOnly
-              context="digest"
-              digestMaxPostAgeDays={data.digestMaxPostAgeDays}
-              showStop={showStopDigestCron}
-              summaryLanguage={data.summaryLanguage}
-              tokens={data.activeTokens}
-            />
-          }
-          initialCronJob={data.digestCronJob}
-          initialCronRuns={data.digestCronRuns}
-          initialJobRuns={data.digestJobRuns}
-          initialRuns={data.digestRuns}
-          initialScheduledJobRuns={data.digestScheduledJobRuns}
+        <section className="sources-sync-section">
+          <DigestLogPanel
+            actions={
+              <SkillPromptActions
+                compactOnly
+                context="digest"
+                digestMaxPostAgeDays={data.digestMaxPostAgeDays}
+                showStop={showStopDigestCron}
+                summaryLanguage={data.summaryLanguage}
+                tokens={data.activeTokens}
+              />
+            }
+            initialCronJob={data.digestCronJob}
+            initialCronRuns={data.digestCronRuns}
+            initialJobRuns={data.digestJobRuns}
+            initialRuns={data.digestRuns}
+            initialScheduledJobRuns={data.digestScheduledJobRuns}
+          />
+        </section>
+
+        <OwnDigestPipelineCard
+          initialShared={data.ownPipelineShared}
+          pipeline={data.ownDigestPipeline}
         />
       </section>
 
@@ -281,7 +283,12 @@ async function loadDigestSourcesPageData() {
     }),
     prisma.digestPipelineShare.findUnique({
       where: { ownerUserId: session.user.id },
-      select: { title: true, isPublic: true },
+      select: {
+        importCount: true,
+        isPublic: true,
+        title: true,
+        viewCount: true,
+      },
     }),
     prisma.digestPipelineShare.findMany({
       where: { isPublic: true },
@@ -323,6 +330,23 @@ async function loadDigestSourcesPageData() {
   const importedDigestPipelineIds = new Set(
     digestPipelineImports.map((item) => item.pipelineId),
   );
+  const [ownDigestCount, ownLatestDigest] = await Promise.all([
+    prisma.digest.count({ where: { userId: session.user.id, itemCount: { gt: 0 } } }),
+    prisma.digest.findFirst({
+      where: { userId: session.user.id, itemCount: { gt: 0 } },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    }),
+  ]);
+  const ownDigestPipeline: OwnDigestPipeline = {
+    title: displayDigestPipelineTitle(
+      ownPipelineShare?.title ?? digestPipelineTitle(session.user),
+    ),
+    importCount: ownPipelineShare?.importCount ?? 0,
+    viewCount: ownPipelineShare?.viewCount ?? 0,
+    digestCount: ownDigestCount,
+    latestDigestAt: ownLatestDigest?.createdAt.toISOString() ?? null,
+  };
   const hubDigestPipelines: HubDigestPipeline[] = digestPipelineShares
     .map((pipeline) => {
       const owned = pipeline.ownerUserId === session.user.id;
@@ -355,10 +379,8 @@ async function loadDigestSourcesPageData() {
     digestRuns: rawDigestRuns,
     digestScheduledJobRuns,
     hubDigestPipelines,
+    ownDigestPipeline,
     ownPipelineShared: ownPipelineShare?.isPublic === true,
-    ownPipelineTitle: displayDigestPipelineTitle(
-      ownPipelineShare?.title ?? digestPipelineTitle(session.user),
-    ),
     summaryLanguage: feedPreference?.summaryLanguage ?? null,
     digestMaxPostAgeDays: feedPreference?.digestMaxPostAgeDays ?? null,
   };
