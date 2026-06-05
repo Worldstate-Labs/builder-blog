@@ -1844,18 +1844,23 @@ svg.lucide {
 }
 
 .library-source-list-shell {
+  background: color-mix(in oklch, var(--paper-strong) 64%, transparent);
+  border: 1px solid color-mix(in oklch, var(--line) 84%, transparent);
+  border-radius: 8px;
   display: grid;
-  gap: 0.9rem;
+  gap: 0;
   min-width: 0;
+  overflow: hidden;
 }
 
 .library-source-list-tools {
   align-items: center;
-  border-bottom: 1px solid color-mix(in oklch, var(--line) 76%, transparent);
+  background: color-mix(in oklch, var(--rail) 28%, transparent);
+  border-bottom: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
   display: flex;
   justify-content: flex-start;
   min-width: 0;
-  padding-bottom: 0.75rem;
+  padding: 0.75rem;
 }
 
 .library-add-source-toggle {
@@ -1887,7 +1892,27 @@ svg.lucide {
 }
 
 .library-source-list-shell .add-source-panel {
+  border-left: 0;
+  border-radius: 0;
+  border-right: 0;
   margin: 0;
+}
+
+.library-source-list-shell .builder-library-list {
+  gap: 0;
+}
+
+.library-source-list-shell .builder-library-source-section {
+  padding: 0.85rem 1rem;
+}
+
+.library-source-list-shell .builder-library-source-section + .builder-library-source-section {
+  padding-top: 0.85rem;
+}
+
+.library-source-list-shell .builder-library-source-section-head {
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
 
 .add-source-form {

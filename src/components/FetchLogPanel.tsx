@@ -393,6 +393,7 @@ export function FetchLogPanel({
   initialScheduledJobRuns = [],
   initialCronJob,
   actions,
+  actionsPlacement = "end",
 }: {
   initialRuns: LibraryFetchRunListItem[];
   initialCronRuns: LibraryFetchRunListItem[];
@@ -400,6 +401,7 @@ export function FetchLogPanel({
   initialScheduledJobRuns?: AgentJobRunListItem[];
   initialCronJob: LibraryCronJobStatus | null;
   actions?: ReactNode;
+  actionsPlacement?: "start" | "end";
 }) {
   const [runs, setRuns] = useState(initialRuns);
   const [cronRuns, setCronRuns] = useState(initialCronRuns);
@@ -419,6 +421,11 @@ export function FetchLogPanel({
     () => getFetchUpdateStatus(cronJob, cronStatus.slots, runs),
     [cronJob, cronStatus.slots, runs],
   );
+  const actionsNode = actions ? (
+    <div className="digest-updates-actions">
+      {actions}
+    </div>
+  ) : null;
   const hydrated = useHydrated();
 
   // Latest runs, readable inside the poll loop without re-arming the interval
@@ -541,27 +548,26 @@ export function FetchLogPanel({
   return (
     <section className="fb-panel digest-updates-panel">
       <div className="digest-updates-head">
-        <div className="min-w-0">
-          <div className="sync-panel-title-row">
-            <h2 className="fb-section-heading">Source updates</h2>
-            <FetchStatusToggle
-              detailsOpen={detailsOpen}
-              onToggle={() => setDetailsOpen((value) => !value)}
+        <div className="digest-updates-main">
+          {actionsPlacement === "start" ? actionsNode : null}
+          <div className="min-w-0">
+            <div className="sync-panel-title-row">
+              <h2 className="fb-section-heading">Schedule fetch status</h2>
+              <FetchStatusToggle
+                detailsOpen={detailsOpen}
+                onToggle={() => setDetailsOpen((value) => !value)}
+                status={updateStatus}
+              />
+            </div>
+            <FetchScheduleSummary
+              cronJob={cronJob}
+              hydrated={hydrated}
+              nextExpectedAt={cronStatus.nextExpectedAt}
               status={updateStatus}
             />
           </div>
-          <FetchScheduleSummary
-            cronJob={cronJob}
-            hydrated={hydrated}
-            nextExpectedAt={cronStatus.nextExpectedAt}
-            status={updateStatus}
-          />
         </div>
-        {actions ? (
-          <div className="digest-updates-actions">
-            {actions}
-          </div>
-        ) : null}
+        {actionsPlacement === "end" ? actionsNode : null}
       </div>
 
       {error ? (

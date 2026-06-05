@@ -1428,6 +1428,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /CountChip/);
   assert.doesNotMatch(buildersPage, /<section className="fb-page-head"/);
   assert.match(buildersPage, /beforeBody=\{fetchSyncSection\}/);
+  assert.match(buildersPage, /actionsPlacement="start"/);
   assert.match(buildersPage, /title="Your library"/);
   assert.match(buildersPage, /<section className="sources-section-stack">[\s\S]*\{privateSection\}[\s\S]*\{importedSection\}/);
   assert.doesNotMatch(buildersPage, /MobileSourcesSwitcher|privateLabel="Your library"|importedLabel="Imported"/);
@@ -1568,9 +1569,16 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(privateLibraryPanel, /className="fb-panel mb-3"/);
   assert.match(globals, /\.add-source-form/);
   assert.match(globals, /\.library-source-list-shell\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.library-source-list-shell\s*{[\s\S]*border:\s*1px solid/);
+  assert.match(globals, /\.library-source-list-shell\s*{[\s\S]*border-radius:\s*8px/);
+  assert.match(globals, /\.library-source-list-shell\s*{[\s\S]*overflow:\s*hidden/);
   assert.match(globals, /\.library-source-list-tools\s*{[\s\S]*border-bottom:/);
+  assert.match(globals, /\.library-source-list-tools\s*{[\s\S]*background:/);
+  assert.match(globals, /\.library-source-list-tools\s*{[\s\S]*padding:\s*0\.75rem/);
   assert.match(globals, /\.library-add-source-toggle\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.library-source-list-shell \.add-source-panel\s*{[\s\S]*margin:\s*0/);
+  assert.match(globals, /\.library-source-list-shell \.builder-library-list\s*{[\s\S]*gap:\s*0/);
+  assert.match(globals, /\.library-source-list-shell \.builder-library-source-section\s*{[\s\S]*padding:\s*0\.85rem 1rem/);
   assert.match(globals, /\.add-source-callout/);
   assert.match(globals, /\.source-sync-skeleton-line,[\s\S]*\.source-section-skeleton-card\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
   assert.match(globals, /\.source-section-skeleton-desc\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);

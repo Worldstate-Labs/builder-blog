@@ -604,6 +604,7 @@ async function FetchSourcesSection({
   const fetchSyncSection = (
     <section className="sources-sync-section">
       <FetchLogPanel
+        actionsPlacement="start"
         actions={
           <SkillPromptActions
             compactOnly

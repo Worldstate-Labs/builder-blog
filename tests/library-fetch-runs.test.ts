@@ -164,6 +164,10 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /Fetch status/);
   assert.match(panel, /Fetch log/);
   assert.match(panel, /Run history/);
+  assert.match(panel, /Schedule fetch status/);
+  assert.match(panel, /actionsPlacement = "end"/);
+  assert.match(panel, /actionsPlacement === "start"/);
+  assert.match(panel, /className="digest-updates-main"/);
   assert.doesNotMatch(panel, /Use Update sources to copy a Local Agent prompt/);
   assert.doesNotMatch(panel, /Schedule stopped[\s\S]{0,120}Local Agent prompt/);
   assert.match(panel, /digest-updates-panel/);
