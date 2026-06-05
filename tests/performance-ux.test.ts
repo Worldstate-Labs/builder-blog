@@ -924,9 +924,9 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   );
   assert.match(buildersPage, /<section className="sources-sync-section">[\s\S]*<DigestLogPanel/);
   assert.match(buildersPage, /<section className="your-digest-panel fb-panel"/);
-  assert.doesNotMatch(
+  assert.match(
     buildersPage,
-    /<section className="your-digest-panel fb-panel"[\s\S]*<DigestLogPanel[\s\S]*<OwnDigestPipelineCard/,
+    /<section className="your-digest-panel fb-panel"[\s\S]*<section className="sources-sync-section">[\s\S]*<DigestLogPanel[\s\S]*<OwnDigestPipelineCard/,
   );
   assert.match(buildersPage, /<OwnDigestPipelineCard/);
   assert.match(buildersPage, /pipeline=\{data\.ownDigestPipeline\}/);

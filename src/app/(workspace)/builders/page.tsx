@@ -124,26 +124,6 @@ async function DigestSourcesSection({
 
   return (
     <section className="digest-source-management">
-      <section className="sources-sync-section">
-        <DigestLogPanel
-          actions={
-            <SkillPromptActions
-              compactOnly
-              context="digest"
-              digestMaxPostAgeDays={data.digestMaxPostAgeDays}
-              showStop={showStopDigestCron}
-              summaryLanguage={data.summaryLanguage}
-              tokens={data.activeTokens}
-            />
-          }
-          initialCronJob={data.digestCronJob}
-          initialCronRuns={data.digestCronRuns}
-          initialJobRuns={data.digestJobRuns}
-          initialRuns={data.digestRuns}
-          initialScheduledJobRuns={data.digestScheduledJobRuns}
-        />
-      </section>
-
       <section className="your-digest-panel fb-panel" aria-labelledby="sources-digest-section-title">
         <div className="library-hub-toolbar">
           <div className="library-hub-toolbar-copy">
@@ -153,6 +133,26 @@ async function DigestSourcesSection({
           </div>
           <DigestPipelineVisibilityToggle initialShared={data.ownPipelineShared} />
         </div>
+
+        <section className="sources-sync-section">
+          <DigestLogPanel
+            actions={
+              <SkillPromptActions
+                compactOnly
+                context="digest"
+                digestMaxPostAgeDays={data.digestMaxPostAgeDays}
+                showStop={showStopDigestCron}
+                summaryLanguage={data.summaryLanguage}
+                tokens={data.activeTokens}
+              />
+            }
+            initialCronJob={data.digestCronJob}
+            initialCronRuns={data.digestCronRuns}
+            initialJobRuns={data.digestJobRuns}
+            initialRuns={data.digestRuns}
+            initialScheduledJobRuns={data.digestScheduledJobRuns}
+          />
+        </section>
 
         <OwnDigestPipelineCard pipeline={data.ownDigestPipeline} />
       </section>
