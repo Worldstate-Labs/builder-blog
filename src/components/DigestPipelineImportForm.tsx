@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Download, Radio, Trash2 } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
@@ -116,22 +116,8 @@ export function DigestPipelineImportForm({
     type: "import" | "remove";
   } | null>(null);
   const [removeTargetId, setRemoveTargetId] = useState<string | null>(null);
-  const removeDialogRef = useRef<HTMLDialogElement>(null);
   const [importPending, startImportTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const removeTarget = removeTargetId
-    ? pipelines.find((pipeline) => pipeline.id === removeTargetId) ?? null
-    : null;
-
-  useEffect(() => {
-    const dialog = removeDialogRef.current;
-    if (!dialog) return;
-    if (removeTarget) {
-      if (!dialog.open) dialog.showModal();
-      return;
-    }
-    if (dialog.open) dialog.close();
-  }, [removeTarget]);
 
   function importPipeline(pipelineId: string) {
     if (pendingAction) return;
@@ -231,10 +217,13 @@ export function DigestPipelineImportForm({
             imported={importedIds.has(pipeline.id)}
             isPending={importPending}
             key={pipeline.id}
+            onCancelRemove={closeRemoveDialog}
+            onConfirmRemove={confirmRemoveImported}
             onImport={importPipeline}
             onRemove={requestRemoveImported}
             pending={pendingAction?.pipelineId === pipeline.id ? pendingAction.type : null}
             pipeline={pipeline}
+            removeConfirmOpen={removeTargetId === pipeline.id}
           />
         ))}
         {visiblePipelines.length === 0 ? (
@@ -244,46 +233,6 @@ export function DigestPipelineImportForm({
           />
         ) : null}
       </div>
-
-      <dialog
-        className="fb-dialog"
-        onClick={(event) => {
-          if (event.target === removeDialogRef.current) closeRemoveDialog();
-        }}
-        onClose={closeRemoveDialog}
-        ref={removeDialogRef}
-      >
-        {removeTarget ? (
-          <div className="fb-dialog-inner settings-dialog-stack">
-            <h3 className="fb-section-heading">Remove imported digest?</h3>
-            <div className="settings-dialog-copy">
-              <p>
-                After removing <strong>{removeTarget.title}</strong>, you will
-                no longer see this digest on the Home page.
-              </p>
-              <p className="settings-dialog-warning">
-                You can import it again from the Hub later.
-              </p>
-            </div>
-            <div className="settings-dialog-actions">
-              <button
-                className="fb-btn light compact"
-                onClick={closeRemoveDialog}
-                type="button"
-              >
-                Cancel
-              </button>
-              <button
-                className="fb-btn danger compact"
-                onClick={confirmRemoveImported}
-                type="button"
-              >
-                Remove
-              </button>
-            </div>
-          </div>
-        ) : null}
-      </dialog>
     </section>
   );
 }
@@ -334,17 +283,23 @@ export function OwnDigestPipelineCard({
 function DigestPipelineCard({
   imported,
   isPending,
+  onCancelRemove,
+  onConfirmRemove,
   onImport,
   onRemove,
   pending,
   pipeline,
+  removeConfirmOpen,
 }: {
   imported: boolean;
   isPending: boolean;
+  onCancelRemove: () => void;
+  onConfirmRemove: () => void;
   onImport: (id: string) => void;
   onRemove: (id: string) => void;
   pending: "import" | "remove" | null;
   pipeline: HubDigestPipeline;
+  removeConfirmOpen: boolean;
 }) {
   const action = imported && pending !== "import" ? (
     <button
@@ -381,7 +336,43 @@ function DigestPipelineCard({
               {pipeline.title}
             </h3>
           </div>
-          <div className="fb-hub-card-actions">{action}</div>
+          <div className="fb-hub-card-actions">
+            {action}
+            {removeConfirmOpen ? (
+              <div
+                aria-label="Confirm imported digest removal"
+                className="digest-remove-popover"
+                role="dialog"
+              >
+                <h4 className="digest-remove-popover-title">
+                  Remove imported digest?
+                </h4>
+                <p>
+                  After removing <strong>{pipeline.title}</strong>, you will no
+                  longer see this digest on the Home page.
+                </p>
+                <p className="digest-remove-popover-note">
+                  You can import it again from the Hub later.
+                </p>
+                <div className="digest-remove-popover-actions">
+                  <button
+                    className="fb-btn light compact"
+                    onClick={onCancelRemove}
+                    type="button"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="fb-btn danger compact"
+                    onClick={onConfirmRemove}
+                    type="button"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <p className="fb-hub-card-desc">
