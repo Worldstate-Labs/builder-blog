@@ -6354,7 +6354,6 @@ svg.lucide {
   flex-wrap: wrap;
   gap: 0.5rem;
   justify-content: flex-end;
-  position: relative;
 }
 
 .hub-card-action-button:disabled {
@@ -6381,41 +6380,6 @@ svg.lucide {
   background: var(--danger-soft);
   border-color: color-mix(in oklch, var(--danger) 32%, var(--line));
   color: var(--danger);
-}
-
-.digest-remove-popover {
-  background: var(--paper);
-  border: 1px solid color-mix(in oklch, var(--line) 92%, transparent);
-  border-radius: 8px;
-  box-shadow: 0 10px 28px color-mix(in oklch, var(--ink) 14%, transparent);
-  color: var(--muted-strong);
-  display: grid;
-  font-size: 0.8125rem;
-  gap: 0.6rem;
-  line-height: 1.5;
-  padding: 0.85rem;
-  position: absolute;
-  right: 0;
-  top: calc(100% + 0.45rem);
-  width: min(20rem, calc(100vw - 3rem));
-  z-index: 20;
-}
-
-.digest-remove-popover-title {
-  color: var(--ink);
-  font-size: 0.875rem;
-  font-weight: 760;
-  line-height: 1.25;
-}
-
-.digest-remove-popover-note {
-  color: var(--danger);
-}
-
-.digest-remove-popover-actions {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
 }
 
 .fb-hub-title {
