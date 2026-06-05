@@ -151,6 +151,26 @@ function formatAbsolute(iso: string): string {
   }
 }
 
+function formatMetaDate(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+function formatLanguage(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "zh" || normalized === "zh-cn" || normalized === "chinese") return "Chinese";
+  if (normalized === "en" || normalized === "en-us" || normalized === "english") return "English";
+  return value.toUpperCase();
+}
+
 function formatDuration(ms: number): string {
   if (!Number.isFinite(ms) || ms <= 0) return "0s";
   if (ms < 1_000) return `${ms}ms`;
@@ -394,6 +414,7 @@ export function FetchLogPanel({
   initialCronJob,
   actions,
   actionsPlacement = "end",
+  summaryLanguage,
 }: {
   initialRuns: LibraryFetchRunListItem[];
   initialCronRuns: LibraryFetchRunListItem[];
@@ -402,6 +423,7 @@ export function FetchLogPanel({
   initialCronJob: LibraryCronJobStatus | null;
   actions?: ReactNode;
   actionsPlacement?: "start" | "end";
+  summaryLanguage?: string | null;
 }) {
   const [runs, setRuns] = useState(initialRuns);
   const [cronRuns, setCronRuns] = useState(initialCronRuns);
@@ -426,7 +448,6 @@ export function FetchLogPanel({
       {actions}
     </div>
   ) : null;
-  const hydrated = useHydrated();
 
   // Latest runs, readable inside the poll loop without re-arming the interval
   // on every refresh. Synced in an effect (not during render) so the poll loop
@@ -548,24 +569,16 @@ export function FetchLogPanel({
   return (
     <section className="fb-panel digest-updates-panel">
       <div className="digest-updates-head">
-        <div className="digest-updates-main">
+        <div className="source-fetch-overview">
           {actionsPlacement === "start" ? actionsNode : null}
-          <div className="min-w-0">
-            <div className="sync-panel-title-row">
-              <h2 className="fb-section-heading">Schedule fetch status</h2>
-              <FetchStatusToggle
-                detailsOpen={detailsOpen}
-                onToggle={() => setDetailsOpen((value) => !value)}
-                status={updateStatus}
-              />
-            </div>
-            <FetchScheduleSummary
-              cronJob={cronJob}
-              hydrated={hydrated}
-              nextExpectedAt={cronStatus.nextExpectedAt}
-              status={updateStatus}
-            />
-          </div>
+          <SourceFetchMetaGrid
+            cronJob={cronJob}
+            detailsOpen={detailsOpen}
+            latestRun={runs[0] ?? null}
+            onToggleDetails={() => setDetailsOpen((value) => !value)}
+            status={updateStatus}
+            summaryLanguage={summaryLanguage}
+          />
         </div>
         {actionsPlacement === "end" ? actionsNode : null}
       </div>
@@ -714,41 +727,61 @@ function FetchStatusToggle({
   );
 }
 
-function FetchScheduleSummary({
+function SourceFetchMetaGrid({
   cronJob,
-  hydrated,
-  nextExpectedAt,
+  detailsOpen,
+  latestRun,
+  onToggleDetails,
   status,
+  summaryLanguage,
 }: {
   cronJob: LibraryCronJobStatus | null;
-  hydrated: boolean;
-  nextExpectedAt: string | null;
+  detailsOpen: boolean;
+  latestRun: LibraryFetchRunListItem | null;
+  onToggleDetails: () => void;
   status: FetchUpdateStatus;
+  summaryLanguage?: string | null;
 }) {
-  if (!cronJob) {
-    return (
-      <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-        {status.summary}
-      </p>
-    );
-  }
-
-  if (cronJob.status !== "active") {
-    return null;
-  }
-
-  const nextLabel = nextExpectedAt
-    ? hydrated
-      ? formatRelative(nextExpectedAt)
-      : formatAbsolute(nextExpectedAt)
-    : null;
-
   return (
-    <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-      {status.summary} · {cronJob.frequencyLabel}
-      {nextLabel ? ` · next ${nextLabel}` : ""}
-      {cronJob.overrideFetched ? " · refreshes already fetched items" : ""}
-    </p>
+    <dl className="fb-hub-digest-meta source-fetch-meta" aria-label="Source update details">
+      <SourceFetchMetaItem
+        label="Update frequency"
+        value={cronJob?.frequencyLabel ?? "Not scheduled"}
+      />
+      <SourceFetchMetaItem
+        label="Language"
+        value={formatLanguage(summaryLanguage ?? "zh")}
+      />
+      <SourceFetchMetaItem
+        label="Latest fetch"
+        value={latestRun ? formatMetaDate(latestRun.startedAt) : "None yet"}
+      />
+      <div className="fb-hub-digest-meta-item source-fetch-status-item">
+        <dt>Cron status</dt>
+        <dd>
+          <FetchStatusToggle
+            detailsOpen={detailsOpen}
+            onToggle={onToggleDetails}
+            status={status}
+          />
+        </dd>
+      </div>
+    </dl>
+  );
+}
+
+function SourceFetchMetaItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="fb-hub-digest-meta-item">
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
   );
 }
 

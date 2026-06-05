@@ -621,6 +621,7 @@ async function FetchSourcesSection({
         initialJobRuns={data.jobRuns}
         initialScheduledJobRuns={data.scheduledJobRuns}
         initialRuns={data.fetchRuns}
+        summaryLanguage={data.summaryLanguage}
       />
     </section>
   );

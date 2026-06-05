@@ -4635,6 +4635,25 @@ svg.lucide {
   padding: 0;
 }
 
+.source-fetch-overview {
+  display: grid;
+  gap: 0.9rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.source-fetch-overview .digest-updates-actions {
+  justify-content: flex-start;
+}
+
+.source-fetch-meta {
+  margin-top: 0;
+}
+
+.source-fetch-status-item dd {
+  overflow: visible;
+}
+
 .sources-sync-section .digest-updates-head {
   align-items: center;
 }

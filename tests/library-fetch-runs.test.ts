@@ -164,17 +164,23 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /Fetch status/);
   assert.match(panel, /Fetch log/);
   assert.match(panel, /Run history/);
-  assert.match(panel, /Schedule fetch status/);
   assert.match(panel, /actionsPlacement = "end"/);
   assert.match(panel, /actionsPlacement === "start"/);
-  assert.match(panel, /className="digest-updates-main"/);
+  assert.match(panel, /className="source-fetch-overview"/);
   assert.doesNotMatch(panel, /Use Update sources to copy a Local Agent prompt/);
   assert.doesNotMatch(panel, /Schedule stopped[\s\S]{0,120}Local Agent prompt/);
   assert.match(panel, /digest-updates-panel/);
   assert.match(panel, /FetchStatusToggle/);
-  assert.match(panel, /FetchScheduleSummary/);
+  assert.match(panel, /SourceFetchMetaGrid/);
+  assert.match(panel, /SourceFetchMetaItem/);
+  assert.match(panel, /aria-label="Source update details"/);
+  assert.match(panel, /Update frequency/);
+  assert.match(panel, /Language/);
+  assert.match(panel, /Latest fetch/);
+  assert.match(panel, /Cron status/);
+  assert.match(panel, /formatLanguage\(summaryLanguage \?\? "zh"\)/);
+  assert.match(panel, /formatMetaDate\(latestRun\.startedAt\)/);
   assert.match(panel, /aria-controls="fetch-sync-details"/);
-  assert.match(panel, /className="sync-panel-title-row"/);
   assert.match(panel, /className="sync-panel-error"/);
   assert.doesNotMatch(panel, /digest-updates-head[\s\S]{0,360}flex flex-wrap items-center gap-2/);
   assert.doesNotMatch(panel, /error \? \([\s\S]{0,120}mt-3 text-\[12px\] text-\[var\(--danger\)\]/);
@@ -190,7 +196,7 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.doesNotMatch(panel, /slots\.slice\(-4\)/);
   // Editorial design tokens — panel chrome and chips are reused.
   assert.match(panel, /fb-panel/);
-  assert.match(panel, /fb-section-heading/);
+  assert.match(panel, /fb-hub-digest-meta-item/);
   assert.match(panel, /fb-chip/);
   // Relative time updater honors prefers-reduced-motion.
   assert.match(panel, /prefers-reduced-motion/);
@@ -258,6 +264,7 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   assert.match(buildersPage, /initialCronJob=\{data\.libraryCronJob\}/);
   assert.match(buildersPage, /initialCronRuns=\{data\.cronRuns\}/);
   assert.match(buildersPage, /initialRuns=\{data\.fetchRuns\}/);
+  assert.match(buildersPage, /summaryLanguage=\{data\.summaryLanguage\}/);
   assert.match(buildersPage, /<OwnDigestPipelineUpdatesCard/);
   assert.match(buildersPage, /context="digest"/);
   assert.match(buildersPage, /showStop=\{showStopDigestCron\}/);
