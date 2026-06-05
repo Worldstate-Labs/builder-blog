@@ -1936,6 +1936,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /imported=\{importedIds\.has\(pipeline\.id\)\}/);
   assert.match(digestPipelineForm, /aria-label=\{`Import \$\{pipeline\.title\}`\}/);
   assert.match(digestPipelineForm, /Imported/);
+  assert.match(digestPipelineForm, /window\.confirm/);
+  assert.match(digestPipelineForm, /删除后将不能在 Home page 看到这个 digest，是否确认？/);
   assert.match(digestPipelineForm, /onClick=\{\(\) => onRemove\(pipeline\.id\)\}/);
   assert.match(digestPipelineForm, /className="fb-icon-btn fb-icon-btn--xs hub-card-remove-button"/);
   assert.match(digestPipelineForm, /<Trash2 aria-hidden="true" \/>/);

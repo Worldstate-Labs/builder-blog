@@ -151,6 +151,10 @@ export function DigestPipelineImportForm({
     if (pendingAction) return;
     const pipeline = pipelines.find((item) => item.id === pipelineId);
     if (!pipeline || pipeline.owned || !importedIds.has(pipelineId)) return;
+    const confirmed = window.confirm(
+      "删除后将不能在 Home page 看到这个 digest，是否确认？",
+    );
+    if (!confirmed) return;
     setError(null);
     setPendingAction({ pipelineId, type: "remove" });
     setImportedIds((current) => {
