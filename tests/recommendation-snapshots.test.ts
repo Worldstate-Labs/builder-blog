@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { DigestContent } from "../src/components/DigestContent";
 
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
@@ -93,6 +96,38 @@ test("source logos are shared across recommendation and library surfaces", () =>
   assert.match(source("src/components/BuilderLibraryList.tsx"), /SourceBadge/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /kindLabel/);
   assert.match(source("src/components/FeedCard.tsx"), /PostCard/);
+});
+
+test("digest renderer preserves GitHub and Product Hunt source badges", () => {
+  const html = renderToStaticMarkup(
+    createElement(DigestContent, {
+      content: `AI Digest - 6/5/2026
+
+## Github Trending
+
+### owner/repo
+
+**Repo launch**
+
+Summary.
+
+Source: https://github.com/owner/repo
+
+## Product Hunt Top Products
+
+### Product Hunt Top Products
+
+**Lightfield**
+
+Summary.
+
+Source: https://www.producthunt.com/products/lightfield`,
+      sourceLinks: [],
+    }),
+  );
+
+  assert.match(html, /data-source="github_trending"/);
+  assert.match(html, /data-source="product_hunt_top_products"/);
 });
 
 test("recommendation snapshots request six posts at a time", () => {

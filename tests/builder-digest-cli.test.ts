@@ -1188,6 +1188,72 @@ test("render-digest uses source type labels for section headings", async () => {
   assert.doesNotMatch(rendered.markdown, /^## 官方博客$/m);
 });
 
+test("render-digest labels GitHub Trending and Product Hunt sections distinctly", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const context = {
+    ...digestRenderContext(),
+    digest: { order: ["github_trending", "product_hunt_top_products", "website"] },
+    sources: {
+      github_trending: { id: "github_trending", label: "Github Trending" },
+      product_hunt_top_products: {
+        id: "product_hunt_top_products",
+        label: "Product Hunt Top Products",
+      },
+      website: { id: "website", label: "Website" },
+    },
+    subscriptionEntities: [
+      { id: "entity_github", name: "Github Trending" },
+      { id: "entity_ph", name: "Product Hunt Top Products" },
+    ],
+    items: [
+      {
+        ...digestRenderContext().items[0],
+        id: "feed_github",
+        entityId: "entity_github",
+        title: "Repo launch",
+        url: "https://github.com/owner/repo",
+        sourceName: "Github Trending",
+        builder: {
+          ...digestRenderContext().items[0].builder,
+          id: "builder_github",
+          entityId: "entity_github",
+          name: "Github Trending",
+          sourceType: "github_trending",
+          sourceUrl: "https://github.com/trending?since=daily",
+        },
+      },
+      {
+        ...digestRenderContext().items[0],
+        id: "feed_ph",
+        entityId: "entity_ph",
+        title: "Product launch",
+        url: "https://www.producthunt.com/products/lightfield",
+        sourceName: "Product Hunt Top Products",
+        builder: {
+          ...digestRenderContext().items[0].builder,
+          id: "builder_ph",
+          entityId: "entity_ph",
+          name: "Product Hunt Top Products",
+          sourceType: "product_hunt_top_products",
+          sourceUrl: "https://www.producthunt.com/",
+        },
+      },
+    ],
+  };
+  const rendered = cli.renderDigestMarkdown(context, {
+    headlineSummary: "A short headline.",
+    sourceSummaries: [],
+    postSummaries: [
+      { feedItemId: "feed_github", summary: "GitHub summary." },
+      { feedItemId: "feed_ph", summary: "Product Hunt summary." },
+    ],
+  });
+
+  assert.match(rendered.markdown, /^## Github Trending$/m);
+  assert.match(rendered.markdown, /^## Product Hunt Top Products$/m);
+  assert.doesNotMatch(rendered.markdown, /^## Website$/m);
+});
+
 test("parse-digest normalizes legacy localized source headings", async () => {
   const { parseDigest } = await import("../src/lib/digest-markdown");
   const doc = parseDigest(`AI Digest - 6/3/2026

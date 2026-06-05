@@ -244,7 +244,7 @@ timeout_seconds_for_job() {
   _base=$(( _interval * 48 ))
   _min=$(( 20 * 60 ))
   case "$_job" in
-    library-cron) _max=$(( 75 * 60 )) ;;
+    library-cron) _max=$(( 120 * 60 )) ;;
     digest-cron) _max=$(( 45 * 60 )) ;;
     *) _max=$(( 45 * 60 )) ;;
   esac

@@ -323,6 +323,8 @@ function inlineText(nodes: DigestInline[]) {
 
 function sourceTypeFromSection(heading: string) {
   const normalized = heading.toLowerCase();
+  if (normalized.includes("github trending")) return "github_trending";
+  if (normalized.includes("product hunt")) return "product_hunt_top_products";
   if (normalized.includes("twitter") || normalized.includes("x /")) return "x";
   if (normalized.includes("youtube") || normalized.includes("video") || normalized.includes("视频")) return "youtube";
   if (normalized.includes("podcast") || normalized.includes("播客")) return "podcast";

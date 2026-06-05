@@ -81,7 +81,7 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /status killed/);
   assert.match(runner, /HEARTBEAT_INTERVAL_SECONDS=60/);
   assert.match(runner, /timeout_seconds_for_job/);
-  assert.match(runner, /library-cron\)[\s\S]*75 \* 60/);
+  assert.match(runner, /library-cron\)[\s\S]*120 \* 60/);
   assert.match(runner, /digest-cron\)[\s\S]*45 \* 60/);
   assert.match(runner, /20 \* 60/);
   assert.doesNotMatch(runner, /skipping duplicate cron launch/);
