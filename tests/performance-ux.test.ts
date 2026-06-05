@@ -1620,6 +1620,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.builder-library-source-section-head\s*{[\s\S]*border-bottom:\s*1px solid/);
   assert.match(globals, /\.builder-library-source-section-toggle\s*{[\s\S]*cursor:\s*pointer/);
   assert.match(globals, /\.builder-library-source-section-toggle\[aria-expanded="true"\] \.builder-library-source-section-chevron\s*{[\s\S]*rotate\(90deg\)/);
+  assert.match(globals, /\.builder-library-source-section-chevron\s*{[\s\S]*flex:\s*0 0 auto/);
   assert.match(globals, /\.builder-library-source-count\s*{[\s\S]*font-weight:\s*750/);
   assert.match(builderLibraryList, /sectionFollowedCount/);
   assert.match(builderLibraryList, /followed/);
@@ -1628,6 +1629,11 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-posts\s*{[\s\S]*margin-left:\s*0/);
   assert.match(globals, /\.builder-library-source-section-title \.source-badge\s*{[\s\S]*min-height:\s*1\.85rem/);
   assert.match(globals, /\.builder-library-source-section \+ \.builder-library-source-section\s*{[\s\S]*border-top:\s*1px solid/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-source-section-toggle\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-source-section-title\s*{[\s\S]*grid-template-columns:\s*1rem minmax\(0,\s*auto\)/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-source-section-title \.source-badge > span:last-child\s*{[\s\S]*text-overflow:\s*ellipsis/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-source-count\s*{[\s\S]*white-space:\s*normal/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.sources-sync-section \.digest-updates-main\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.doesNotMatch(buildersPage, /Technical details/);
   assert.doesNotMatch(buildersPage, /name="handle"/);
   assert.doesNotMatch(buildersPage, /name="sourceUrl"/);

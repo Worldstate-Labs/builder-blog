@@ -5056,6 +5056,7 @@ svg.lucide {
 
 .builder-library-source-section-chevron {
   color: var(--muted);
+  flex: 0 0 auto;
   height: 1rem;
   transition: transform 140ms ease;
   width: 1rem;
@@ -8891,6 +8892,21 @@ body {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .sources-sync-section .digest-updates-main {
+    display: grid;
+    gap: 0.65rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sources-sync-section .digest-updates-main > .min-w-0 {
+    justify-self: stretch;
+  }
+
+  .sources-sync-section .sync-panel-title-row {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
   .sources-sync-section .digest-updates-actions {
     align-items: stretch;
     display: grid;
@@ -9017,6 +9033,38 @@ body {
   .builder-library-source-section-head {
     margin-bottom: 0.25rem;
     padding-bottom: 0.45rem;
+  }
+
+  .builder-library-source-section-toggle {
+    display: grid;
+    gap: 0.55rem;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .builder-library-source-section-title {
+    display: grid;
+    gap: 0.35rem;
+    grid-template-columns: 1rem minmax(0, auto);
+    justify-content: start;
+    min-width: 0;
+  }
+
+  .builder-library-source-section-title .source-badge {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .builder-library-source-section-title .source-badge > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .builder-library-source-count {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    text-align: left;
+    white-space: normal;
   }
 
   .builder-library-source-section-title .source-badge {
