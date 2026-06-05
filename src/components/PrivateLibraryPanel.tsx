@@ -61,28 +61,34 @@ export function PrivateLibraryPanel({
             {title}
           </h2>
         </div>
-        <div className="library-section-meta">
-          {visibilityToggle}
-          <button
-            aria-expanded={addOpen}
-            aria-label={addOpen ? "Close add source" : "Add source"}
-            className="fb-btn dark compact"
-            onClick={toggleAdd}
-            type="button"
-          >
-            {addOpen ? <X aria-hidden="true" /> : <Plus aria-hidden="true" />}
-            {addOpen ? "Close" : "Add source"}
-          </button>
-        </div>
+        {visibilityToggle ? (
+          <div className="library-section-meta">
+            {visibilityToggle}
+          </div>
+        ) : null}
       </div>
       <div className="library-section-body">
         {beforeBody}
-        {addOpen ? (
-          <div className="add-source-panel fb-panel">
-            <AddBuilderForm sourceOptions={sourceOptions} />
+        <div className="library-source-list-shell">
+          <div className="library-source-list-tools">
+            <button
+              aria-expanded={addOpen}
+              aria-label={addOpen ? "Close add source" : "Add source"}
+              className="library-add-source-toggle"
+              onClick={toggleAdd}
+              type="button"
+            >
+              {addOpen ? <X aria-hidden="true" /> : <Plus aria-hidden="true" />}
+              <span>{addOpen ? "Close add source" : "Add source"}</span>
+            </button>
           </div>
-        ) : null}
-        {children}
+          {addOpen ? (
+            <div className="add-source-panel fb-panel">
+              <AddBuilderForm sourceOptions={sourceOptions} />
+            </div>
+          ) : null}
+          {children}
+        </div>
       </div>
     </section>
   );

@@ -208,9 +208,9 @@ function MaxAgeField({
 
 const PROMPT_CONFIG = {
   library: {
-    title: "Update sources",
+    title: "Fetch sources",
     onceLabel: "Copy one-time prompt",
-    cronLabel: "Update sources",
+    cronLabel: "Fetch sources",
     onceJob: "library-once",
     cronJob: "library-cron-setup",
     stopJob: "library-cron-stop",
@@ -711,6 +711,7 @@ function CronConfigDialog({
   const [overrideFetched, setOverrideFetched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dialogConfig = PROMPT_CONFIG[context];
   const runtimeHint =
     isOneTime ? "" : RUNTIME_OPTIONS.find((o) => o.id === pickedRuntime)?.hint ?? "";
 
@@ -807,7 +808,7 @@ function CronConfigDialog({
       >
         <header className="token-picker-header">
           <h2 id="cron-config-title" className="token-picker-title">
-            {context === "digest" ? "Build digest" : "Update sources"}
+            {dialogConfig.title}
           </h2>
           <p className="token-picker-sub">
             {context === "digest"

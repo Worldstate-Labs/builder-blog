@@ -312,7 +312,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(buildersPage, /summaryLanguage=\{data\.summaryLanguage\}/);
   assert.doesNotMatch(skillPromptActions, /Source sync/);
   assert.doesNotMatch(skillPromptActions, /Run the terminal skill/);
-  assert.match(skillPromptActions, /Update sources/);
+  assert.match(skillPromptActions, /Fetch sources/);
+  assert.doesNotMatch(skillPromptActions, /Update sources/);
   assert.match(skillPromptActions, /Build digest/);
   assert.doesNotMatch(skillPromptActions, /Run or schedule/);
   assert.doesNotMatch(skillPromptActions, /onClick=\{\(\) => copyCommand\("once"\)\}/);

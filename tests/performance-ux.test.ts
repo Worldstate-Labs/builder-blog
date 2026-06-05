@@ -1480,13 +1480,28 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(addBuilderForm, /add-source-text-action/);
   assert.doesNotMatch(addBuilderForm, /style=\{\{/);
   assert.doesNotMatch(addBuilderForm, /className="mt-1 rounded-md border/);
-  assert.match(source("src/components/PrivateLibraryPanel.tsx"), /className="add-source-panel fb-panel"/);
-  assert.match(source("src/components/PrivateLibraryPanel.tsx"), /library-section-summary--static/);
-  assert.match(source("src/components/PrivateLibraryPanel.tsx"), /\{beforeBody\}/);
-  assert.doesNotMatch(source("src/components/PrivateLibraryPanel.tsx"), /CountMeta/);
-  assert.doesNotMatch(source("src/components/PrivateLibraryPanel.tsx"), /CountChip/);
-  assert.doesNotMatch(source("src/components/PrivateLibraryPanel.tsx"), /className="fb-panel mb-3"/);
+  const privateLibraryPanel = source("src/components/PrivateLibraryPanel.tsx");
+  assert.match(privateLibraryPanel, /className="add-source-panel fb-panel"/);
+  assert.match(privateLibraryPanel, /className="library-source-list-shell"/);
+  assert.match(privateLibraryPanel, /className="library-source-list-tools"/);
+  assert.match(privateLibraryPanel, /className="library-add-source-toggle"/);
+  assert.match(privateLibraryPanel, /\{beforeBody\}[\s\S]*className="library-source-list-shell"[\s\S]*\{children\}/);
+  assert.match(privateLibraryPanel, /library-section-summary--static/);
+  assert.match(privateLibraryPanel, /\{beforeBody\}/);
+  assert.ok(
+    privateLibraryPanel.indexOf('className="library-add-source-toggle"') >
+      privateLibraryPanel.indexOf('className="library-source-list-shell"'),
+    "Add source should live inside the source list shell, not the panel header.",
+  );
+  assert.doesNotMatch(privateLibraryPanel, /className="fb-btn dark compact"/);
+  assert.doesNotMatch(privateLibraryPanel, /CountMeta/);
+  assert.doesNotMatch(privateLibraryPanel, /CountChip/);
+  assert.doesNotMatch(privateLibraryPanel, /className="fb-panel mb-3"/);
   assert.match(globals, /\.add-source-form/);
+  assert.match(globals, /\.library-source-list-shell\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.library-source-list-tools\s*{[\s\S]*border-bottom:/);
+  assert.match(globals, /\.library-add-source-toggle\s*{[\s\S]*border-radius:\s*999px/);
+  assert.match(globals, /\.library-source-list-shell \.add-source-panel\s*{[\s\S]*margin:\s*0/);
   assert.match(globals, /\.add-source-callout/);
   assert.match(globals, /\.source-sync-skeleton-line,[\s\S]*\.source-section-skeleton-card\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
   assert.match(globals, /\.source-section-skeleton-desc\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);
@@ -2059,6 +2074,7 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.builder-library-row-tools\s*{[\s\S]*opacity:\s*0/);
   assert.match(css, /\.library-section-meta \.count-meta\s*{[\s\S]*font-size:\s*0\.8125rem/);
   assert.doesNotMatch(css, /\.library-section-summary::after[\s\S]*content:\s*"\+"/);
+  assert.doesNotMatch(css, /\.library-section-meta > \.fb-btn\s*{/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*grid-template-areas:[\s\S]*"avatar info actions"/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card \.builder-library-actions,[\s\S]*\.builder-library-card \.row-actions\s*{[\s\S]*justify-content:\s*flex-end/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta\s*{[\s\S]*display:\s*grid/);
