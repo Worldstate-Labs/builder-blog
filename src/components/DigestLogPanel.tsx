@@ -359,7 +359,7 @@ function DigestScheduleSummary({
   if (!cronJob) {
     return (
       <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-        {status.summary} Build history appears after a digest prompt runs.
+        {status.summary} Use Build digest to copy a Local Agent prompt.
       </p>
     );
   }
@@ -475,7 +475,7 @@ function DigestStatusPanel({
             <div className="sync-panel-meta-row">
               <dt>Runner</dt>
               <dd className="truncate">
-                {cronJob.runtime || "Local helper"}
+                {cronJob.runtime || "Local Agent"}
                 {cronJob.hostname ? ` · ${cronJob.hostname.replace(/\.local$/, "")}` : ""}
               </dd>
             </div>
@@ -607,7 +607,7 @@ function CronSlotRow({
       <div className="flex min-w-0 items-center gap-2">
         <span className="mono truncate text-[11.5px] text-[var(--muted-strong)]">
           {slot.jobRun && !slot.run
-            ? `${jobRunStatusLabel(slot.jobRun)} · ${slot.jobRun.runtime || "Local helper"}`
+            ? `${jobRunStatusLabel(slot.jobRun)} · ${slot.jobRun.runtime || "Local Agent"}`
             : slot.run
             ? `${slot.run.includedCount ?? 0}/${slot.run.candidateCount} used`
             : "No run recorded"}
@@ -656,7 +656,7 @@ function DigestRunList({
       {entries.length === 0 ? (
         <EmptyState
           className="sync-panel-empty is-dashed"
-          body="No digest builds yet. After your local helper prepares a digest, the source breakdown will show up here."
+          body="No digest builds yet. Builds appear after your Local Agent prepares a digest."
         />
       ) : (
         <>
