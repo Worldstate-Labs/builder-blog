@@ -130,7 +130,7 @@ export function PostCard({
             {showBuilderRow && authorName ? (
               <>
                 {authorHref ? (
-                  <Link className="post-meta-author-link" href={authorHref}>
+                  <Link className="post-meta-author-link" href={authorHref} onClick={noteInteraction}>
                     {authorName}
                   </Link>
                 ) : (
@@ -216,7 +216,7 @@ export function PostCard({
             <span />
           )}
 
-          <div className="post-actions">
+          <div className="post-actions" onClickCapture={noteInteraction}>
             {/* Primary action: open the original source to read the full content. */}
             <a
               aria-label="View the original on its source site"
