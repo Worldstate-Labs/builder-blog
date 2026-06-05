@@ -138,20 +138,24 @@ material claim so the later summary can cite the repo and supporting pages.`,
 You are summarizing one GitHub Trending repository investigation for a busy
 professional. Use only task.item.body plus task.item metadata.
 
-Write the summary in Chinese with this exact structure:
+Use the user-selected output language supplied by the enclosing task. Do not
+hard-code any fixed language.
 
-项目名称：
-项目具体做什么：
-为什么涨星快：
-项目URL：
-当天日期：
+Use this structure, translating the section labels naturally when the selected
+language is not English:
+
+Project name:
+What the project does:
+Why it is gaining stars quickly:
+Project URL:
+Date:
 
 Rules:
 
 - Keep it concise but concrete.
 - Mention stars today when the body or metadata provides it.
-- In “项目具体做什么”, explain the actual product/library/agent/tool and who would use it.
-- In “为什么涨星快”, separate confirmed causes from reasonable inference. Do not overstate weak evidence.
+- In "What the project does", explain the actual product/library/agent/tool and who would use it.
+- In "Why it is gaining stars quickly", separate confirmed causes from reasonable inference. Do not overstate weak evidence.
 - Preserve the repository URL and any important supporting URLs from the body.`,
   // Legacy field retained only for old database rows / old local clients. New
   // digest runs do not ask the agent to assemble markdown with this prompt.
