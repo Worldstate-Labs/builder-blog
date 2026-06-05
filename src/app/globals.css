@@ -4173,8 +4173,15 @@ svg.lucide {
   border: 1px solid var(--line);
   border-radius: 14px;
   box-shadow: 0 8px 32px color-mix(in oklch, var(--ink) 12%, transparent);
+  left: 50%;
+  margin: 0;
+  max-height: calc(100vh - 2rem);
   max-width: var(--dialog-max);
+  overflow: auto;
   padding: 0;
+  position: fixed;
+  top: 50%;
+  transform: translate(-50%, -50%);
   width: calc(100vw - 2rem);
 }
 

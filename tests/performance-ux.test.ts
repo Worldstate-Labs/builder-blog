@@ -2107,6 +2107,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /"New access key"/);
   assert.match(tokenPanel, /fb-dialog/);
   assert.match(globals, /\.fb-dialog\s*{[\s\S]*max-width:\s*var\(--dialog-max\)/);
+  assert.match(globals, /\.fb-dialog\s*{[\s\S]*position:\s*fixed/);
+  assert.match(globals, /\.fb-dialog\s*{[\s\S]*top:\s*50%/);
+  assert.match(globals, /\.fb-dialog\s*{[\s\S]*left:\s*50%/);
+  assert.match(globals, /\.fb-dialog\s*{[\s\S]*transform:\s*translate\(-50%, -50%\)/);
   assert.match(tokenPanel, /className="access-keys-panel fb-panel"/);
   assert.match(tokenPanel, /className="access-keys-head"/);
   assert.match(tokenPanel, /className="access-keys-list"/);
