@@ -6366,19 +6366,10 @@ svg.lucide {
   cursor: pointer;
   display: grid;
   gap: 0.75rem;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   list-style: none;
 }
 
-.fb-hub-source-type-preview {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  min-width: 0;
-}
-
-.fb-hub-source-type-preview .source-badge,
 .fb-hub-source-type-heading .source-badge {
   flex: 0 0 auto;
 }

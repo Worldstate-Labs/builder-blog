@@ -1278,6 +1278,9 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceBadge/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fetched posts/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Latest fetch/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /more source types/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /sourceGroups\.length === 1 \? "source type" : "source types"/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-type-preview/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-handle/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /ChevronDown/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /aria-label=\{`Show sources in \$\{library\.name\}`\}/);
@@ -1342,6 +1345,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-type-groups\s*{/);
+  assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-source-type-preview\s*{/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-source-avatar\[data-avatar-tone="0"\]/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview\s*{/);
   assert.match(searchPage, /<Suspense[\s\S]*fallback=\{[\s\S]*<SearchResultsFallback/);

@@ -279,8 +279,6 @@ function HubCard({
   pending: "import" | "remove" | null;
 }) {
   const sourceGroups = groupedSources(library.items);
-  const sourcePreview = sourceGroups.slice(0, 4);
-  const remainingSourceTypes = Math.max(0, sourceGroups.length - sourcePreview.length);
   const fetchedPostCount = library.items.reduce(
     (sum, item) => sum + item.builder._count.feedItems,
     0,
@@ -351,28 +349,13 @@ function HubCard({
         ) : null}
       </div>
 
-      {sourcePreview.length > 0 ? (
+      {sourceGroups.length > 0 ? (
         <details className="fb-hub-sources">
           <summary className="fb-hub-sources-summary" aria-label={`Show sources in ${library.name}`}>
-            <div className="fb-hub-source-type-preview">
-              {sourcePreview.map((group) => (
-                <SourceBadge
-                  key={group.sourceType}
-                  sourceType={group.sourceType}
-                />
-              ))}
-            </div>
             <div className="fb-hub-source-summary-text">
-              <CountMeta label={sourceGroups.length === 1 ? "source type" : "source types"} value={sourceGroups.length} />
-              <span> · </span>
               <CountMeta label={library.itemCount === 1 ? "source" : "sources"} value={library.itemCount} />
               <span> · </span>
               <CountMeta label={fetchedPostCount === 1 ? "fetched post" : "fetched posts"} value={fetchedPostCount} />
-              {remainingSourceTypes > 0 ? (
-                <span>
-                  {" "}· <CountMeta label="more source types" value={remainingSourceTypes} />
-                </span>
-              ) : null}
             </div>
             <span aria-hidden="true" className="fb-hub-sources-caret">
               <ChevronDown />
