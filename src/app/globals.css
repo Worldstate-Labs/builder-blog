@@ -8795,10 +8795,9 @@ body {
     align-items: center;
     column-gap: 0.65rem;
     grid-template-areas:
-      "avatar info"
-      ". actions";
-    grid-template-columns: 2rem minmax(0, 1fr);
-    row-gap: 0.5rem;
+      "avatar info actions";
+    grid-template-columns: 2rem minmax(0, 1fr) auto;
+    row-gap: 0.45rem;
   }
 
   .builder-library-avatar {
@@ -8836,9 +8835,10 @@ body {
   .builder-library-card .row-actions {
     display: inline-flex;
     grid-area: actions;
-    justify-content: flex-start;
+    gap: 0.45rem;
+    justify-content: flex-end;
     min-width: 0;
-    width: 100%;
+    width: auto;
   }
 
   .builder-library-row-tools-placeholder {
@@ -8848,6 +8848,10 @@ body {
   .builder-library-action-stack,
   .builder-library-actions button {
     min-width: 0;
+  }
+
+  .builder-library-action-stack {
+    align-items: center;
   }
 
   .builder-posts {
