@@ -10,6 +10,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
+import { createPortal } from "react-dom";
 import { Activity, ChevronDown, ChevronUp, Clock3, ExternalLink } from "lucide-react";
 import { CountBadge, CountMeta, CountMetric, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
@@ -96,6 +97,7 @@ function runDomId(runId: string): string {
 export type DigestLogPanelProps = {
   actions?: ReactNode;
   detailsOpen?: boolean;
+  detailsRootId?: string;
   initialCronJob: DigestCronJobStatus | null;
   initialCronRuns: DigestRunListItem[];
   initialJobRuns?: AgentJobRunListItem[];
@@ -109,6 +111,7 @@ export type DigestLogPanelProps = {
 export function DigestLogPanel({
   actions,
   detailsOpen: controlledDetailsOpen,
+  detailsRootId,
   initialRuns,
   initialCronRuns,
   initialJobRuns = [],
@@ -140,6 +143,7 @@ export function DigestLogPanel({
   const runsRef = useRef(runs);
   const jobRunsRef = useRef(jobRuns);
   const hydrated = useHydrated();
+  const detailsRoot = detailsRootId && hydrated ? document.getElementById(detailsRootId) : null;
 
   const setDetailsOpen = useCallback(
     (next: SetStateAction<boolean>) => {
@@ -269,6 +273,57 @@ export function DigestLogPanel({
     };
   }, [refresh]);
 
+  const detailsPanel = detailsOpen ? (
+    <div id="digest-update-details">
+      <div
+        aria-label="Digest update views"
+        className="fb-segmented-tabs sync-panel-tabs"
+        role="tablist"
+      >
+        <button
+          aria-selected={activeTab === "status"}
+          className={`fb-btn compact ${activeTab === "status" ? "" : "light"}`}
+          onClick={() => setActiveTab("status")}
+          role="tab"
+          type="button"
+        >
+          <Activity aria-hidden="true" />
+          Schedule status
+        </button>
+        <button
+          aria-selected={activeTab === "log"}
+          className={`fb-btn compact ${activeTab === "log" ? "" : "light"}`}
+          onClick={() => setActiveTab("log")}
+          role="tab"
+          type="button"
+        >
+          <Clock3 aria-hidden="true" />
+          Build history
+        </button>
+      </div>
+
+      {activeTab === "status" ? (
+        <DigestStatusPanel
+          cronJob={cronJob}
+          nextExpectedAt={cronStatus.nextExpectedAt}
+          onOpenRun={openRun}
+          slots={cronStatus.slots}
+        />
+      ) : (
+        <DigestRunList
+          expanded={expanded}
+          jobRuns={jobRuns}
+          runs={runs}
+          setExpanded={setExpanded}
+        />
+      )}
+    </div>
+  ) : null;
+
+  const renderedDetails = detailsRoot && detailsPanel
+    ? createPortal(detailsPanel, detailsRoot)
+    : detailsPanel;
+
   return (
     <section className="fb-panel digest-updates-panel">
       <div className="digest-updates-head">
@@ -301,52 +356,7 @@ export function DigestLogPanel({
         <p className="sync-panel-error">{error}</p>
       ) : null}
 
-      {detailsOpen ? (
-        <div id="digest-update-details">
-          <div
-            aria-label="Digest update views"
-            className="fb-segmented-tabs sync-panel-tabs"
-            role="tablist"
-          >
-            <button
-              aria-selected={activeTab === "status"}
-              className={`fb-btn compact ${activeTab === "status" ? "" : "light"}`}
-              onClick={() => setActiveTab("status")}
-              role="tab"
-              type="button"
-            >
-              <Activity aria-hidden="true" />
-              Schedule status
-            </button>
-            <button
-              aria-selected={activeTab === "log"}
-              className={`fb-btn compact ${activeTab === "log" ? "" : "light"}`}
-              onClick={() => setActiveTab("log")}
-              role="tab"
-              type="button"
-            >
-              <Clock3 aria-hidden="true" />
-              Build history
-            </button>
-          </div>
-
-          {activeTab === "status" ? (
-            <DigestStatusPanel
-              cronJob={cronJob}
-              nextExpectedAt={cronStatus.nextExpectedAt}
-              onOpenRun={openRun}
-              slots={cronStatus.slots}
-            />
-          ) : (
-            <DigestRunList
-              expanded={expanded}
-              jobRuns={jobRuns}
-              runs={runs}
-              setExpanded={setExpanded}
-            />
-          )}
-        </div>
-      ) : null}
+      {renderedDetails}
     </section>
   );
 }

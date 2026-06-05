@@ -932,13 +932,16 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(buildersPage, /Your digest/);
   assert.match(buildersPage, /<section className="your-digest-section"/);
   assert.match(buildersPage, /<OwnDigestPipelineUpdatesCard/);
+  assert.match(digestUpdatesCard, /<OwnDigestPipelineCard[\s\S]*beforePreview=\{/);
   assert.match(digestUpdatesCard, /<OwnDigestPipelineCard[\s\S]*cronStatusControl=\{/);
   assert.match(digestUpdatesCard, /<DigestStatusToggle[\s\S]*status=\{updateStatus\}/);
-  assert.match(digestUpdatesCard, /<section className="sources-sync-section">[\s\S]*<DigestLogPanel/);
+  assert.match(digestUpdatesCard, /beforePreview=\{[\s\S]*<section className="sources-sync-section">[\s\S]*<DigestLogPanel/);
+  assert.match(digestUpdatesCard, /detailsRootId=\{detailsRootId\}/);
+  assert.match(digestUpdatesCard, /<div id=\{detailsRootId\} \/>/);
   assert.match(digestUpdatesCard, /showStatusToggle=\{false\}/);
   assert.match(
     source("src/components/DigestPipelineImportForm.tsx"),
-    /cronStatusControl\?: ReactNode;[\s\S]*<div className="fb-hub-digest-preview">[\s\S]*<\/div>\s*\{children\}\s*<div className="fb-hub-card-stats">/,
+    /beforePreview\?: ReactNode;[\s\S]*\{beforePreview\}\s*<div className="fb-hub-digest-preview">[\s\S]*<\/div>\s*\{children\}\s*<div className="fb-hub-card-stats">/,
   );
   assert.doesNotMatch(
     globals,

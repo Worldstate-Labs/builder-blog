@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import {
   DigestLogPanel,
   DigestStatusToggle,
@@ -29,9 +29,23 @@ export function OwnDigestPipelineUpdatesCard({
   const [updateStatus, setUpdateStatus] = useState<DigestUpdateStatus>(
     fullDigestUpdateStatus(pipeline.digestUpdateStatus),
   );
+  const detailsRootId = useId();
 
   return (
     <OwnDigestPipelineCard
+      beforePreview={
+        <section className="sources-sync-section">
+          <DigestLogPanel
+            {...logPanelProps}
+            actions={actions}
+            detailsOpen={detailsOpen}
+            detailsRootId={detailsRootId}
+            onDetailsOpenChange={setDetailsOpen}
+            onStatusChange={setUpdateStatus}
+            showStatusToggle={false}
+          />
+        </section>
+      }
       cronStatusControl={
         <DigestStatusToggle
           detailsOpen={detailsOpen}
@@ -44,16 +58,7 @@ export function OwnDigestPipelineUpdatesCard({
         digestUpdateStatus: updateStatus,
       }}
     >
-      <section className="sources-sync-section">
-        <DigestLogPanel
-          {...logPanelProps}
-          actions={actions}
-          detailsOpen={detailsOpen}
-          onDetailsOpenChange={setDetailsOpen}
-          onStatusChange={setUpdateStatus}
-          showStatusToggle={false}
-        />
-      </section>
+      <div id={detailsRootId} />
     </OwnDigestPipelineCard>
   );
 }

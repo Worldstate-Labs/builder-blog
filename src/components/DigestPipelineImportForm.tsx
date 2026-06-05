@@ -155,10 +155,12 @@ export function DigestPipelineImportForm({
 }
 
 export function OwnDigestPipelineCard({
+  beforePreview,
   children,
   cronStatusControl,
   pipeline,
 }: {
+  beforePreview?: ReactNode;
   children?: ReactNode;
   cronStatusControl?: ReactNode;
   pipeline: OwnDigestPipeline;
@@ -173,6 +175,8 @@ export function OwnDigestPipelineCard({
           initialTitle={pipeline.title}
         />
       </div>
+
+      {beforePreview}
 
       <div className="fb-hub-digest-preview">
         <div className="fb-hub-digest-preview-row">
