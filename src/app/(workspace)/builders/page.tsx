@@ -663,7 +663,7 @@ async function FetchSourcesSection({
       <div className="imported-libraries-head at-desktop">
         <h2 className="fb-section-heading">Imported libraries</h2>
         <p className="library-section-copy">
-          Sources grouped by the shared library they came from.
+          Source libraries built and shared by other users.
         </p>
       </div>
       <div className="imported-library-stack">
