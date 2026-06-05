@@ -590,10 +590,16 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(topInnerRule, /grid-template-columns:\s*var\(--side-rail-width\) minmax\(0,\s*1fr\)/);
   assert.doesNotMatch(topInnerRule, /max-width/);
   assert.match(globals, /\.fb-top-search\s*{[\s\S]*grid-column:\s*2/);
+  assert.match(globals, /\.fb-top-search\s*{[\s\S]*grid-row:\s*1/);
   assert.match(globals, /\.fb-top-search\s*{[\s\S]*justify-self:\s*center/);
   assert.match(globals, /\.fb-top-search\s*{[\s\S]*max-width:\s*var\(--top-search-max\)/);
   assert.match(globals, /\.fb-top-search\s*{[\s\S]*width:\s*min\(100%,\s*var\(--top-search-max\)\)/);
   assert.match(globals, /\.fb-top-user\s*{[\s\S]*grid-column:\s*2/);
+  assert.match(globals, /\.fb-top-user\s*{[\s\S]*grid-row:\s*1/);
+  assert.match(globals, /\.fb-top-user\s*{[\s\S]*margin-right:\s*var\(--workspace-gutter\)/);
+  assert.match(globals, /\.fb-top-user \.user-avatar\s*{[\s\S]*height:\s*1\.875rem/);
+  assert.match(globals, /\.fb-top-user \.user-avatar\s*{[\s\S]*width:\s*1\.875rem/);
+  assert.match(globals, /\.fb-brand\s*{[\s\S]*grid-row:\s*1/);
   assert.match(globals, /\.fb-brand\s*{[\s\S]*margin-left:\s*var\(--workspace-gutter\)/);
   assert.match(globals, /\.app-body\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /@media \(min-width:\s*1024px\)[\s\S]*\.app-body\s*{[\s\S]*grid-template-columns:\s*var\(--side-rail-width\) minmax\(0,\s*1fr\)/);

@@ -3645,6 +3645,7 @@ svg.lucide {
 .fb-top-search {
   display: block;
   grid-column: 2;
+  grid-row: 1;
   justify-self: center;
   max-width: var(--top-search-max);
   min-width: 0;
@@ -3657,7 +3658,15 @@ svg.lucide {
   flex-shrink: 0;
   gap: 0.5rem;
   grid-column: 2;
+  grid-row: 1;
   justify-self: end;
+  margin-right: var(--workspace-gutter);
+}
+
+.fb-top-user .user-avatar {
+  font-size: 0.8125rem;
+  height: 1.875rem;
+  width: 1.875rem;
 }
 
 .fb-brand {
@@ -3665,6 +3674,7 @@ svg.lucide {
   display: inline-flex;
   flex-shrink: 0;
   gap: 0.6rem;
+  grid-row: 1;
   justify-self: start;
   margin-left: var(--workspace-gutter);
   min-width: 0;
