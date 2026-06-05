@@ -1909,6 +1909,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /mode\?: "hub" \| "imported"/);
   assert.match(digestPipelineForm, /mode = "hub"/);
   assert.match(digestPipelineForm, /Imported Digests/);
+  assert.match(digestPipelineForm, /built and shared by other users/);
   assert.match(digestPipelineForm, /Shared AI Digests/);
   assert.doesNotMatch(digestPipelineForm, /Share my digest/);
   assert.doesNotMatch(digestPipelineForm, /Remove my digest/);
