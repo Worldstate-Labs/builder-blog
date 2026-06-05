@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useState, useTransition } from "react";
-import { CheckCircle2, Download, Radio, Trash2 } from "lucide-react";
+import { CheckCircle2, Download, Radio } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
 import { EmptyState } from "@/components/EmptyState";
@@ -225,25 +225,21 @@ function DigestPipelineCard({
   pipeline: HubDigestPipeline;
 }) {
   const action = imported ? (
-    <div className="hub-card-action-row">
-      <span className="fb-chip success">
-        <CheckCircle2 aria-hidden="true" />
-        {pending === "import" ? "Importing" : "Imported"}
-      </span>
-      {pending === "import" ? null : (
-        <button
-          aria-busy={pending === "remove" && isPending}
-          aria-label={`Remove ${pipeline.title} import`}
-          className="fb-btn ghost compact hub-card-action-button"
-          disabled={pending !== null}
-          onClick={() => onRemove(pipeline.id)}
-          type="button"
-        >
-          <Trash2 aria-hidden="true" />
-          {pending === "remove" ? "Removing" : "Remove"}
-        </button>
-      )}
-    </div>
+    <button
+      aria-busy={pending !== null && isPending}
+      aria-label={`Remove ${pipeline.title} import`}
+      className="fb-btn compact hub-card-action-button is-imported"
+      disabled={pending !== null}
+      onClick={() => onRemove(pipeline.id)}
+      type="button"
+    >
+      <CheckCircle2 aria-hidden="true" />
+      {pending === "import"
+        ? "Importing"
+        : pending === "remove"
+          ? "Removing"
+          : "Imported"}
+    </button>
   ) : (
     <button
       aria-busy={pending === "import" && isPending}

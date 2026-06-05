@@ -1283,7 +1283,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /"hub-list-region has-filters"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-heading-row"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /className="flex items-center justify-between"/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-card-action-row"/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /className="hub-card-action-row"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /hub-card-action-button/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /flex flex-wrap items-center gap-2|disabled:cursor-wait/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-head"/);
@@ -1344,7 +1344,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /buildDigestCronStatus/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /getDigestUpdateStatus/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-card-stats"/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-card-action-row"/);
+  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-card-action-row"/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /hub-card-action-button/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /flex flex-wrap items-center gap-2|disabled:cursor-wait/);
   assert.match(source("src/app/globals.css"), /\.own-digest-card\s*{[\s\S]*min-height:\s*0/);
@@ -1834,8 +1834,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(globals, /\.fb-hub-list\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(globals, /\.fb-hub-card\s*{[\s\S]*border-radius:\s*8px/);
   assert.match(globals, /\.fb-hub-card-stats\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
-  assert.match(globals, /\.hub-card-action-row\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /\.hub-card-action-button:disabled\s*{[\s\S]*cursor:\s*wait/);
+  assert.match(globals, /\.hub-card-action-button\.is-imported\s*{/);
+  assert.doesNotMatch(globals, /\.hub-card-action-row\s*{/);
   assert.match(globals, /\.hub-share-control\s*{[\s\S]*align-items:\s*flex-end/);
   assert.match(globals, /\.hub-share-button\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.hub-share-label\s*{[\s\S]*font-size:\s*0\.75rem/);
@@ -1854,7 +1855,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /Importing/);
   assert.match(hubImportForm, /Imported/);
   assert.match(hubImportForm, /method: "DELETE"/);
-  assert.match(hubImportForm, /Remove/);
+  assert.match(hubImportForm, /onClick=\{\(\) => onRemove\(library\.id\)\}/);
+  assert.doesNotMatch(hubImportForm, />\s*Remove\s*</);
+  assert.doesNotMatch(hubImportForm, /Trash2/);
   assert.doesNotMatch(hubImportForm, /Import selected/);
   assert.doesNotMatch(hubImportForm, /selectedIds/);
   assert.match(hubImportForm, /className="fb-segmented-tabs filter-tabs at-desktop"/);
@@ -1908,7 +1911,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /fetch\(`\/api\/digest-pipelines\/imports\/\$\{pipelineId\}`/);
   assert.match(digestPipelineForm, /aria-label=\{`Import \$\{pipeline\.title\}`\}/);
   assert.match(digestPipelineForm, /Imported/);
-  assert.match(digestPipelineForm, /Remove/);
+  assert.match(digestPipelineForm, /onClick=\{\(\) => onRemove\(pipeline\.id\)\}/);
+  assert.doesNotMatch(digestPipelineForm, />\s*Remove\s*</);
+  assert.doesNotMatch(digestPipelineForm, /Trash2/);
   assert.match(digestPipelineShareRoute, /shareDigestPipelineToHub/);
   assert.match(digestPipelineShareRoute, /updateDigestPipelineTitle/);
   assert.match(digestPipelineShareRoute, /export async function PATCH/);

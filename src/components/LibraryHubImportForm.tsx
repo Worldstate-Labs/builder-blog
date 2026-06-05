@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { CheckCircle2, ChevronDown, Download, Sliders, Trash2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, Download, Sliders } from "lucide-react";
 import { CountBadge, CountMeta, CountRange, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { SourceAvatar } from "@/components/SourceAvatar";
@@ -296,25 +296,21 @@ function HubCard({
       Your library
     </span>
   ) : imported ? (
-    <div className="hub-card-action-row">
-      <span className="fb-chip success">
-        <CheckCircle2 aria-hidden="true" />
-        {pending === "import" ? "Importing" : "Imported"}
-      </span>
-      {pending === "import" ? null : (
-        <button
-          aria-busy={pending === "remove" && isPending}
-          aria-label={`Remove ${library.name} from library`}
-          className="fb-btn ghost compact hub-card-action-button"
-          disabled={pending !== null}
-          onClick={() => onRemove(library.id)}
-          type="button"
-        >
-          <Trash2 aria-hidden="true" />
-          {pending === "remove" ? "Removing" : "Remove"}
-        </button>
-      )}
-    </div>
+    <button
+      aria-busy={pending !== null && isPending}
+      aria-label={`Remove ${library.name} from library`}
+      className="fb-btn compact hub-card-action-button is-imported"
+      disabled={pending !== null}
+      onClick={() => onRemove(library.id)}
+      type="button"
+    >
+      <CheckCircle2 aria-hidden="true" />
+      {pending === "import"
+        ? "Importing"
+        : pending === "remove"
+          ? "Removing"
+          : "Imported"}
+    </button>
   ) : (
     <button
       aria-busy={pending === "import" && isPending}

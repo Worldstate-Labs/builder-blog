@@ -6329,15 +6329,20 @@ svg.lucide {
   justify-content: flex-end;
 }
 
-.hub-card-action-row {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
 .hub-card-action-button:disabled {
   cursor: wait;
+}
+
+.hub-card-action-button.is-imported {
+  background: var(--signal-soft);
+  border-color: color-mix(in oklch, var(--signal) 45%, var(--line));
+  color: color-mix(in oklch, var(--signal) 70%, var(--ink));
+}
+
+.hub-card-action-button.is-imported:hover {
+  background: color-mix(in oklch, var(--signal) 18%, var(--paper));
+  border-color: color-mix(in oklch, var(--signal) 58%, var(--line));
+  color: color-mix(in oklch, var(--signal) 78%, var(--ink));
 }
 
 .fb-hub-title {
