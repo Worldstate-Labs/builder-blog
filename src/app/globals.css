@@ -6372,6 +6372,16 @@ svg.lucide {
   color: color-mix(in oklch, var(--signal) 78%, var(--ink));
 }
 
+.hub-card-remove-button {
+  color: var(--muted);
+}
+
+.hub-card-remove-button:hover {
+  background: var(--danger-soft);
+  border-color: color-mix(in oklch, var(--danger) 32%, var(--line));
+  color: var(--danger);
+}
+
 .fb-hub-title {
   color: var(--ink);
   font-size: 1.0625rem;
@@ -9064,6 +9074,22 @@ body {
   .fb-hub-card-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .digest-pipeline-card .fb-hub-card-head {
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: nowrap;
+  }
+
+  .digest-pipeline-card .fb-hub-card-titleblock {
+    flex: 1 1 auto;
+    width: auto;
+  }
+
+  .digest-pipeline-card .fb-hub-card-actions {
+    align-items: center;
+    flex-direction: row;
   }
 
   .fb-hub-card-titleblock {

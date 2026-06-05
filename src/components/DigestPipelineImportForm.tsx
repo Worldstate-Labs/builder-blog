@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useMemo, useState, useTransition } from "react";
-import { CheckCircle2, Download, Radio } from "lucide-react";
+import { Download, Radio, Trash2 } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
 import { EmptyState } from "@/components/EmptyState";
@@ -85,6 +85,9 @@ export function DigestPipelineImportForm({
   });
   const importedIds =
     importedState.key === importedSignature ? importedState.ids : propImportedIds;
+  const importedPipelines = sharedPipelines.filter((pipeline) =>
+    importedIds.has(pipeline.id),
+  );
 
   function setImportedIds(updater: (current: Set<string>) => Set<string>) {
     setImportedState((current) => {
@@ -163,9 +166,9 @@ export function DigestPipelineImportForm({
     <section>
       <div className="library-hub-toolbar">
         <div className="library-hub-toolbar-copy">
-          <h2 className="fb-section-heading">Shared AI Digests</h2>
+          <h2 className="fb-section-heading">Imported Digests</h2>
           <p className="hub-section-copy">
-            Import another user&apos;s latest digest and archive.
+            Digests imported from the Hub.
           </p>
         </div>
       </div>
@@ -177,7 +180,7 @@ export function DigestPipelineImportForm({
       ) : null}
 
       <div className="hub-list-stack fb-hub-list">
-        {sharedPipelines.map((pipeline) => (
+        {importedPipelines.map((pipeline) => (
           <DigestPipelineCard
             imported={importedIds.has(pipeline.id)}
             isPending={importPending}
@@ -188,9 +191,9 @@ export function DigestPipelineImportForm({
             pipeline={pipeline}
           />
         ))}
-        {sharedPipelines.length === 0 ? (
+        {importedPipelines.length === 0 ? (
           <EmptyState
-            body="No shared digests are available yet."
+            body="No imported digests yet."
             className="hub-list-empty"
           />
         ) : null}
@@ -257,21 +260,17 @@ function DigestPipelineCard({
   pending: "import" | "remove" | null;
   pipeline: HubDigestPipeline;
 }) {
-  const action = imported ? (
+  const action = imported && pending !== "import" ? (
     <button
       aria-busy={pending !== null && isPending}
       aria-label={`Remove ${pipeline.title} import`}
-      className="fb-btn compact hub-card-action-button is-imported"
+      className="fb-icon-btn fb-icon-btn--xs hub-card-remove-button"
       disabled={pending !== null}
       onClick={() => onRemove(pipeline.id)}
+      title={`Remove ${pipeline.title}`}
       type="button"
     >
-      <CheckCircle2 aria-hidden="true" />
-      {pending === "import"
-        ? "Importing"
-        : pending === "remove"
-          ? "Removing"
-          : "Imported"}
+      <Trash2 aria-hidden="true" />
     </button>
   ) : (
     <button
@@ -288,7 +287,7 @@ function DigestPipelineCard({
   );
 
   return (
-    <article className="fb-hub-card">
+    <article className="fb-hub-card digest-pipeline-card">
       <div>
         <div className="fb-hub-card-head">
           <div className="fb-hub-card-titleblock">
