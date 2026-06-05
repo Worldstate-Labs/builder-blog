@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import type { BuilderLibraryEventItem } from "@/lib/builder-library-events";
 
 type SourceOption = { id: string; label: string };
@@ -16,9 +16,11 @@ type SourceOption = { id: string; label: string };
  */
 export function BuilderEditDialog({
   builder,
+  onRemoveStateChange,
   sourceOptions,
 }: {
   builder: BuilderLibraryEventItem;
+  onRemoveStateChange?: (builderId: string, removed: boolean) => void;
   sourceOptions: SourceOption[];
 }) {
   const router = useRouter();
@@ -35,6 +37,7 @@ export function BuilderEditDialog({
   const [sourceValue, setSourceValue] = useState(initialSourceValue);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   // Sync the underlying <dialog>'s open state with React state.
@@ -70,6 +73,7 @@ export function BuilderEditDialog({
     setSourceValue(initialSourceValue);
     setError(null);
     setWarning(null);
+    setConfirmingRemove(false);
     setOpen(true);
   }
 
@@ -104,6 +108,32 @@ export function BuilderEditDialog({
         router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Save failed.");
+      }
+    });
+  }
+
+  function removeFromLibrary() {
+    if (isPending) return;
+    if (!confirmingRemove) {
+      setError(null);
+      setWarning(null);
+      setConfirmingRemove(true);
+      return;
+    }
+
+    onRemoveStateChange?.(builder.id, true);
+    setOpen(false);
+    setConfirmingRemove(false);
+
+    startTransition(async () => {
+      try {
+        const response = await fetch(`/api/builders/${builder.id}/library`, {
+          method: "DELETE",
+        });
+        if (!response.ok) throw new Error("Unable to remove source");
+        router.refresh();
+      } catch {
+        onRemoveStateChange?.(builder.id, false);
       }
     });
   }
@@ -205,21 +235,34 @@ export function BuilderEditDialog({
           </div>
 
           <footer className="builder-edit-dialog-footer">
-            <button
-              type="button"
-              className="fb-btn light compact"
-              disabled={isPending}
-              onClick={() => setOpen(false)}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="fb-btn dark compact"
-              disabled={isPending}
-            >
-              {isPending ? "Saving…" : "Save"}
-            </button>
+            <div className="builder-edit-dialog-danger">
+              <button
+                type="button"
+                className={`fb-btn compact builder-edit-remove-button${confirmingRemove ? " is-confirming" : ""}`}
+                disabled={isPending}
+                onClick={removeFromLibrary}
+              >
+                <Trash2 aria-hidden="true" />
+                {confirmingRemove ? "Confirm remove" : "Remove source"}
+              </button>
+            </div>
+            <div className="builder-edit-dialog-footer-actions">
+              <button
+                type="button"
+                className="fb-btn light compact"
+                disabled={isPending}
+                onClick={() => setOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="fb-btn dark compact"
+                disabled={isPending}
+              >
+                {isPending ? "Saving…" : "Save"}
+              </button>
+            </div>
           </footer>
         </form>
       </dialog>

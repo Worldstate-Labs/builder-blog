@@ -304,16 +304,15 @@ function BuilderCard({
             <div className="builder-library-row-tools" aria-label="Source tools">
               <BuilderEditDialog
                 builder={builder}
+                onRemoveStateChange={onRemoveStateChange}
                 sourceOptions={editableSourceOptions}
               />
             </div>
           ) : null}
           <BuilderLibraryActions
-            allowRemove={builder.allowRemove}
             builderId={builder.id}
             initialSubscribed={builder.subscribed}
             key={`${builder.id}:${builder.subscribed}`}
-            onRemoveStateChange={onRemoveStateChange}
             onSubscriptionStateChange={onSubscriptionStateChange}
           />
         </div>

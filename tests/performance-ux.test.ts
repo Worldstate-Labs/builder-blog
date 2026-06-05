@@ -1419,6 +1419,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderEditDialog, /className="builder-edit-dialog-form"/);
   assert.match(builderEditDialog, /className="builder-edit-dialog-body"/);
   assert.match(builderEditDialog, /className="builder-edit-dialog-field"/);
+  assert.match(builderEditDialog, /className="builder-edit-dialog-danger"/);
+  assert.match(builderEditDialog, /className="builder-edit-dialog-footer-actions"/);
   assert.match(builderEditDialog, /className="fb-input mono"/);
   assert.match(builderEditDialog, /className="builder-edit-dialog-message is-error"/);
   assert.doesNotMatch(builderEditDialog, /style=\{\{/);
@@ -1477,6 +1479,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.builder-edit-dialog-body\s*{[\s\S]*padding:\s*1rem 1\.125rem/);
   assert.match(globals, /\.builder-edit-dialog-field\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.builder-edit-dialog-message\.is-error\s*{[\s\S]*color:\s*var\(--danger\)/);
+  assert.match(globals, /\.builder-edit-dialog-footer\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /\.builder-edit-dialog-footer-actions\s*{[\s\S]*justify-content:\s*flex-end/);
   assert.match(globals, /\.builder-post-loading-card\s*{[\s\S]*height:\s*4rem/);
   assert.match(globals, /\.builder-post-state\s*{[\s\S]*padding:\s*1rem/);
   assert.match(globals, /\.builder-post-state--error\s*{[\s\S]*color:\s*var\(--danger\)/);
@@ -1493,6 +1497,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.builder-library-source-section-toggle\[aria-expanded="true"\] \.builder-library-source-section-chevron\s*{[\s\S]*rotate\(90deg\)/);
   assert.match(globals, /\.builder-library-source-count\s*{[\s\S]*font-weight:\s*750/);
   assert.match(globals, /\.builder-library-source-section-body\s*{[\s\S]*margin-left:\s*1\.35rem/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-posts\s*{[\s\S]*margin-left:\s*0/);
   assert.match(globals, /\.builder-library-source-section-title \.source-badge\s*{[\s\S]*min-height:\s*1\.85rem/);
   assert.match(globals, /\.builder-library-source-section \+ \.builder-library-source-section\s*{[\s\S]*border-top:\s*1px solid/);
   assert.doesNotMatch(buildersPage, /Technical details/);
@@ -1599,6 +1604,7 @@ test("library hub exposes share and multi-import flows", () => {
   const workspaceLayout = source("src/app/(workspace)/layout.tsx");
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const builderActions = source("src/components/BuilderLibraryActions.tsx");
+  const builderEditDialog = source("src/components/BuilderEditDialog.tsx");
   const visibilityToggle = source("src/components/LibraryVisibilityToggle.tsx");
   const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
   const builderLibraryEvents = source("src/lib/builder-library-events.ts");
@@ -1659,16 +1665,19 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(visibilityRoute, /adminCommunityLibraryName/);
   assert.doesNotMatch(visibilityRoute, /redirect\(/);
   assert.match(builderActions, /"use client"/);
-  assert.match(builderActions, /allowRemove = true/);
-  assert.match(builderActions, /allowRemove \? \(/);
   assert.match(builderActions, /fetch\(`\/api\/builders\/\$\{builderId\}\/subscription`/);
-  assert.match(builderActions, /fetch\(`\/api\/builders\/\$\{builderId\}\/library`/);
-  assert.match(builderActions, /onRemoveStateChange\?\.\(builderId, true\)/);
-  assert.match(builderActions, /onRemoveStateChange\?\.\(builderId, false\)/);
+  assert.doesNotMatch(builderActions, /fetch\(`\/api\/builders\/\$\{builderId\}\/library`/);
+  assert.doesNotMatch(builderActions, /onRemoveStateChange/);
   assert.match(builderActions, /onSubscriptionStateChange\?\.\(builderId, nextSubscribed, previousSubscribed\)/);
   assert.doesNotMatch(builderActions, /fetch\("\/api\/builders\/subscriptions"|builder-library-bulk-action|Follow all/);
   assert.match(builderActions, /className="builder-library-action-error"/);
-  assert.match(builderActions, /className="builder-library-remove-icon"/);
+  assert.doesNotMatch(builderActions, /builder-library-remove-button|builder-library-remove-icon|builder-library-remove-confirm/);
+  assert.match(builderEditDialog, /Trash2/);
+  assert.match(builderEditDialog, /className=\{`fb-btn compact builder-edit-remove-button/);
+  assert.match(builderEditDialog, /Confirm remove/);
+  assert.match(builderEditDialog, /fetch\(`\/api\/builders\/\$\{builder\.id\}\/library`/);
+  assert.match(builderEditDialog, /onRemoveStateChange\?\.\(builder\.id, true\)/);
+  assert.match(builderEditDialog, /onRemoveStateChange\?\.\(builder\.id, false\)/);
   assert.doesNotMatch(builderActions, /inline-flex flex-col items-start gap-2|text-xs text-\[var\(--danger\)\]|text-\[11px\] text-\[var\(--danger\)\]|className="h-3 w-3"/);
   assert.match(builderLibraryList, /"use client"/);
   assert.match(builderLibraryList, /removedBuilderIds/);
@@ -1677,6 +1686,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(builderLibraryList, /builderLibraryBuilderAdded/);
   assert.match(builderLibraryList, /allBuilders\s*\.\s*filter/);
   assert.match(builderLibraryList, /onRemoveStateChange/);
+  assert.match(builderLibraryList, /onRemoveStateChange=\{onRemoveStateChange\}/);
   assert.match(builderLibraryList, /onSubscriptionStateChange/);
   assert.match(builderLibraryList, /BuilderFeedItems/);
   assert.match(builderLibraryState, /builder\.aggregate/);
@@ -1732,7 +1742,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(globals, /\.hub-share-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.doesNotMatch(globals, /\.builder-library-bulk-action\s*{/);
   assert.match(globals, /\.builder-library-action-error\s*{[\s\S]*color:\s*var\(--danger\)/);
-  assert.match(globals, /\.builder-library-remove-icon\s*{[\s\S]*height:\s*0\.75rem/);
+  assert.match(globals, /\.builder-edit-remove-button\s*{[\s\S]*color:\s*var\(--danger\)/);
+  assert.doesNotMatch(globals, /\.builder-library-remove-button|\.builder-library-remove-icon|\.builder-library-remove-confirm/);
   assert.match(hubImportForm, /fetch\("\/api\/library-hub\/imports"/);
   assert.match(hubImportForm, /isCommunity/);
   assert.match(hubImportForm, /counts\[filter\.key\]/);

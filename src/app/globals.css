@@ -5013,42 +5013,9 @@ svg.lucide {
   line-height: 1.35;
 }
 
-.builder-library-edit-button,
-.builder-library-remove-button {
+.builder-library-edit-button {
   border-color: transparent;
   color: var(--muted);
-}
-
-.builder-library-remove-icon {
-  height: 0.75rem;
-  width: 0.75rem;
-}
-
-/* Two-step confirmation label that replaces the row's X button after
-   the first click — second click commits the delete, otherwise it
-   auto-reverts after 4 s. */
-.builder-library-remove-confirm {
-  background: color-mix(in oklch, var(--danger) 12%, transparent);
-  border: 1px solid color-mix(in oklch, var(--danger) 38%, var(--line));
-  border-radius: 999px;
-  color: var(--danger);
-  cursor: pointer;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  padding: 0.1875rem 0.625rem;
-  transition: background-color 120ms ease;
-}
-
-.builder-library-remove-confirm:hover,
-.builder-library-remove-confirm:focus-visible {
-  background: color-mix(in oklch, var(--danger) 20%, transparent);
-  outline: 0;
-}
-
-.builder-library-remove-confirm:disabled {
-  cursor: progress;
-  opacity: 0.7;
 }
 
 .fb-src-icon {
@@ -5302,10 +5269,41 @@ svg.lucide {
 .builder-edit-dialog-footer {
   align-items: center;
   border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0.75rem 1rem;
+}
+
+.builder-edit-dialog-footer-actions {
+  align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   justify-content: flex-end;
-  padding: 0.75rem 1rem;
+}
+
+.builder-edit-dialog-danger {
+  min-width: 0;
+}
+
+.builder-edit-remove-button {
+  background: color-mix(in oklch, var(--danger) 10%, transparent);
+  border-color: color-mix(in oklch, var(--danger) 34%, var(--line));
+  color: var(--danger);
+}
+
+.builder-edit-remove-button:hover,
+.builder-edit-remove-button:focus-visible,
+.builder-edit-remove-button.is-confirming {
+  background: color-mix(in oklch, var(--danger) 18%, transparent);
+  border-color: color-mix(in oklch, var(--danger) 48%, var(--line));
+  color: var(--danger);
+}
+
+.builder-edit-remove-button svg {
+  height: 0.95rem;
+  width: 0.95rem;
 }
 
 .token-picker-header {
@@ -8834,7 +8832,7 @@ body {
   }
 
   .builder-posts {
-    margin-left: 2.65rem;
+    margin-left: 0;
   }
 
   .fb-skill {
