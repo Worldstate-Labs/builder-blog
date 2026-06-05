@@ -705,8 +705,7 @@ async function FetchSourcesSection({
                 Browse Source Library
               </Link>
             }
-            body="Browse shared source libraries in the Hub, then import one to see its sources here."
-            title="Import sources from the Hub"
+            title="No imported source library yet."
           />
         ) : null}
       </div>
