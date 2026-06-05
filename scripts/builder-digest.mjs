@@ -1134,6 +1134,52 @@ export function personalItemKey(builderId, kind, externalId) {
   return `${builderId}:${kind}:${externalId}`;
 }
 
+function githubTrendingExternalId(repo) {
+  return `github-trending:${repo}`;
+}
+
+function productHuntTopProductExternalId(slug) {
+  return `product-hunt-top-products:${slug}`;
+}
+
+function hasFetchedGithubTrendingRepository(fetchedItemKeys, builderId, repo) {
+  return hasFetchedCanonicalOrLegacyDatedItem(fetchedItemKeys, {
+    builderId,
+    kind: "BLOG_POST",
+    canonicalExternalId: githubTrendingExternalId(repo),
+    legacyPrefix: "github-trending",
+    entityId: repo,
+  });
+}
+
+function hasFetchedProductHuntTopProduct(fetchedItemKeys, builderId, slug) {
+  return hasFetchedCanonicalOrLegacyDatedItem(fetchedItemKeys, {
+    builderId,
+    kind: "BLOG_POST",
+    canonicalExternalId: productHuntTopProductExternalId(slug),
+    legacyPrefix: "product-hunt-top-products",
+    entityId: slug,
+  });
+}
+
+function hasFetchedCanonicalOrLegacyDatedItem(
+  fetchedItemKeys,
+  { builderId, kind, canonicalExternalId, legacyPrefix, entityId },
+) {
+  if (fetchedItemKeys.has(personalItemKey(builderId, kind, canonicalExternalId))) {
+    return true;
+  }
+
+  const legacyPrefixKey = personalItemKey(builderId, kind, `${legacyPrefix}:`);
+  const legacySuffix = `:${entityId}`;
+  for (const key of fetchedItemKeys) {
+    if (key.startsWith(legacyPrefixKey) && key.endsWith(legacySuffix)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function personalFetchedItemsForContext(context) {
   return context.personalFetchedItems ?? [];
 }
@@ -1628,7 +1674,7 @@ async function fetchPersonalGithubTrendingBuilder(
   const html = await response.text();
   const dateKey = now.toISOString().slice(0, 10);
   const candidates = parseGithubTrendingCandidates(html, trendingUrl, dateKey)
-    .filter((repo) => !fetchedItemKeys.has(personalItemKey(builder.id, "BLOG_POST", repo.externalId)))
+    .filter((repo) => !hasFetchedGithubTrendingRepository(fetchedItemKeys, builder.id, repo.repo))
     .slice(0, limit);
 
   return {
@@ -1678,7 +1724,7 @@ export function parseGithubTrendingCandidates(html, trendingUrl = GITHUB_TRENDIN
       owner: repo.split("/")[0],
       name: repo.split("/")[1],
       url: absoluteUrl(`/${repo}`, trendingUrl),
-      externalId: `github-trending:${dateKey}:${repo}`,
+      externalId: githubTrendingExternalId(repo),
       title: `${repo}${starsToday > 0 ? ` - ${starsToday} stars today` : ""}`,
       description,
       language,
@@ -1713,7 +1759,7 @@ async function fetchPersonalProductHuntTopProductsBuilder(
   const html = await response.text();
   const dateKey = now.toISOString().slice(0, 10);
   const candidates = parseProductHuntTopProductCandidates(html, leaderboardUrl, dateKey)
-    .filter((product) => !fetchedItemKeys.has(personalItemKey(builder.id, "BLOG_POST", product.externalId)))
+    .filter((product) => !hasFetchedProductHuntTopProduct(fetchedItemKeys, builder.id, product.slug))
     .slice(0, limit);
 
   return {
@@ -1766,7 +1812,7 @@ export function parseProductHuntTopProductCandidates(
       name,
       rank,
       url: absoluteUrl(`/products/${slug}`, leaderboardUrl),
-      externalId: `product-hunt-top-products:${dateKey}:${slug}`,
+      externalId: productHuntTopProductExternalId(slug),
       title: `#${rank} ${name}`,
       description,
       comments,

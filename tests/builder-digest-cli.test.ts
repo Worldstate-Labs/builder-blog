@@ -86,7 +86,7 @@ test("GitHub Trending parser extracts daily repo candidates sorted by stars", as
   assert.equal(candidates[0].starsToday, 1204);
   assert.equal(candidates[0].language, "TypeScript");
   assert.equal(candidates[0].url, "https://github.com/beta-org/beta-tool");
-  assert.equal(candidates[0].externalId, "github-trending:2026-06-04:beta-org/beta-tool");
+  assert.equal(candidates[0].externalId, "github-trending:beta-org/beta-tool");
 });
 
 test("GitHub Trending fetcher emits per-repository agent tasks, not ready items", async () => {
@@ -130,6 +130,44 @@ test("GitHub Trending fetcher emits per-repository agent tasks, not ready items"
   assert.equal(result.agentTasks[0].item.rawJson.date, "2026-06-04");
 });
 
+test("GitHub Trending fetcher skips repos fetched on earlier trending days", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const builderId = "builder_github_trending";
+  const result = await cli.fetchPersonalGithubTrendingBuilderForTest(
+    {
+      id: builderId,
+      name: "Github Trending",
+      sourceType: "github_trending",
+      sourceUrl: "https://github.com/trending?since=daily",
+      fetchUrl: "https://github.com/trending?since=daily",
+    },
+    {
+      limit: 10,
+      fetchedItemKeys: new Set([
+        cli.personalItemKey(builderId, "BLOG_POST", "github-trending:2026-06-01:owner/repo"),
+        cli.personalItemKey(builderId, "BLOG_POST", "github-trending:other/thing"),
+      ]),
+      now: new Date("2026-06-04T12:00:00.000Z"),
+      fetcher: async () =>
+        new Response(`
+          <article class="Box-row">
+            <h2><a href="/owner/repo"> owner / repo </a></h2>
+            <p>Repo description</p>
+            <span>777 stars today</span>
+          </article>
+          <article class="Box-row">
+            <h2><a href="/other/thing"> other / thing </a></h2>
+            <p>Other repo description</p>
+            <span>555 stars today</span>
+          </article>
+        `),
+    },
+  );
+
+  assert.deepEqual(result.items, []);
+  assert.equal(result.agentTasks.length, 0);
+});
+
 test("Product Hunt parser extracts daily product candidates in page order", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const candidates = cli.parseProductHuntTopProductCandidates(
@@ -151,7 +189,7 @@ test("Product Hunt parser extracts daily product candidates in page order", asyn
   assert.equal(candidates[0].name, "Mailwarm 2.0");
   assert.equal(candidates[0].rank, 1);
   assert.equal(candidates[0].url, "https://www.producthunt.com/products/mailwarm");
-  assert.equal(candidates[0].externalId, "product-hunt-top-products:2026-06-04:mailwarm");
+  assert.equal(candidates[0].externalId, "product-hunt-top-products:mailwarm");
   assert.equal(candidates[0].date, "2026-06-04");
   assert.equal(candidates[1].name, "Astra Autonomous Pentest");
   assert.equal(candidates[1].rank, 2);
@@ -194,6 +232,42 @@ test("Product Hunt fetcher emits per-product agent tasks, not ready items", asyn
   assert.equal(result.agentTasks[0].item.url, "https://www.producthunt.com/products/mailwarm");
   assert.equal(result.agentTasks[0].item.rawJson.rank, 1);
   assert.equal(result.agentTasks[0].item.rawJson.date, "2026-06-04");
+});
+
+test("Product Hunt fetcher skips products fetched on earlier leaderboard days", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const builderId = "builder_product_hunt_top_products";
+  const result = await cli.fetchPersonalProductHuntTopProductsBuilderForTest(
+    {
+      id: builderId,
+      name: "Product Hunt Top Products",
+      sourceType: "product_hunt_top_products",
+      sourceUrl: "https://www.producthunt.com/",
+      fetchUrl: "https://www.producthunt.com/",
+    },
+    {
+      limit: 10,
+      fetchedItemKeys: new Set([
+        cli.personalItemKey(builderId, "BLOG_POST", "product-hunt-top-products:2026-06-01:mailwarm"),
+        cli.personalItemKey(builderId, "BLOG_POST", "product-hunt-top-products:astra-security"),
+      ]),
+      now: new Date("2026-06-04T12:00:00.000Z"),
+      fetcher: async () =>
+        new Response(`
+          <a href="/products/mailwarm">Mailwarm 2.0</a>
+          <span>Warm up your email and improve deliverability</span>
+          <span>82 comments</span>
+          <span>1,154 upvotes</span>
+          <a href="/products/astra-security">Astra Autonomous Pentest</a>
+          <span>AI pentesting agent that validates vulnerabilities</span>
+          <span>24 comments</span>
+          <span>930 upvotes</span>
+        `),
+    },
+  );
+
+  assert.deepEqual(result.items, []);
+  assert.equal(result.agentTasks.length, 0);
 });
 
 test("personal blog fetcher uses Anthropic Next data when available", async () => {
