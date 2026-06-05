@@ -1511,7 +1511,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /Imported libraries/);
   assert.match(buildersPage, /importedLibrarySections/);
   assert.match(buildersPage, /className="imported-libraries-section"/);
-  assert.match(buildersPage, /className="imported-libraries-head at-desktop"/);
+  assert.match(buildersPage, /className="imported-libraries-head"/);
+  assert.doesNotMatch(buildersPage, /className="imported-libraries-head at-desktop"/);
   assert.match(buildersPage, /className="library-section-summary-copy"/);
   assert.match(buildersPage, /className="library-section-copy"/);
   assert.doesNotMatch(buildersPage, /className="grid gap-3"/);

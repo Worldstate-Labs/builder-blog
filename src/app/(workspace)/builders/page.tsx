@@ -661,7 +661,7 @@ async function FetchSourcesSection({
 
   const importedSection = (
     <section className="imported-libraries-section">
-      <div className="imported-libraries-head at-desktop">
+      <div className="imported-libraries-head">
         <h2 className="fb-section-heading">Imported libraries</h2>
         <p className="library-section-copy">
           Source libraries built and shared by other users.
