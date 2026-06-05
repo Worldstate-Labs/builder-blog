@@ -944,6 +944,12 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(digestPipelineForm, /<DigestPipelinePreviewCard pipeline=\{pipeline\} \/>/);
   assert.match(digestPipelineForm, /<DigestPipelinePreviewCard[\s\S]*\/>\s*\{children\}\s*<div className="fb-hub-card-stats">/);
   assert.equal((digestPipelineForm.match(/className="fb-hub-digest-preview"/g) ?? []).length, 1);
+  assert.match(digestPipelineForm, /latestDigestHeadline/);
+  assert.match(digestPipelineForm, /aria-label="Latest digest headline"/);
+  assert.equal((digestPipelineForm.match(/value=\{pipeline\.digestCount\}/g) ?? []).length, 2);
+  assert.doesNotMatch(digestPipelineForm, /fb-hub-digest-count/);
+  assert.match(source("src/lib/digest-pipeline-metadata.ts"), /headlineSummary:\s*true/);
+  assert.match(source("src/lib/digest-pipeline-metadata.ts"), /resolveDigestHeadlineSummary/);
   assert.doesNotMatch(
     globals,
     /\.your-digest-section \.sources-sync-section\s*{[\s\S]*order:/,
@@ -1329,6 +1335,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(digestPipelineForm, /Language/);
   assert.match(digestPipelineForm, /Latest digest/);
   assert.match(digestPipelineForm, /Cron status/);
+  assert.match(digestPipelineForm, /className="fb-hub-digest-headline"/);
   assert.doesNotMatch(digestPipelineForm, /label="Agent"/);
   assert.doesNotMatch(digestPipelineForm, /label="Lookback"/);
   assert.doesNotMatch(digestPipelineForm, /label="Cron job"/);
@@ -1370,6 +1377,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-source-type-preview\s*{/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-source-avatar\[data-avatar-tone="0"\]/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview\s*{/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-digest-headline\s*{/);
   assert.match(searchPage, /<Suspense[\s\S]*fallback=\{[\s\S]*<SearchResultsFallback/);
   assert.doesNotMatch(source("src/app/globals.css"), /max-width:\s*(62ch|65ch)/);
 });

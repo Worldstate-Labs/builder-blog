@@ -5,12 +5,14 @@ import {
   type DigestCronRunStatusInput,
   type DigestUpdateStatus,
 } from "@/lib/digest-update-status";
+import { resolveDigestHeadlineSummary } from "@/lib/digest-headline";
 import { prisma } from "@/lib/prisma";
 import { serializeDigestCronJob } from "@/lib/digest-runs";
 
 export type DigestPipelineRuntimeMetadata = {
   digestCount: number;
   latestDigestAt: string | null;
+  latestDigestHeadline: string | null;
   latestDigestLanguage: string | null;
   summaryLanguage: string | null;
   frequencyLabel: string | null;
@@ -20,6 +22,7 @@ export type DigestPipelineRuntimeMetadata = {
 const EMPTY_METADATA: DigestPipelineRuntimeMetadata = {
   digestCount: 0,
   latestDigestAt: null,
+  latestDigestHeadline: null,
   latestDigestLanguage: null,
   summaryLanguage: null,
   frequencyLabel: null,
@@ -46,7 +49,12 @@ export async function getDigestPipelineMetadataByOwnerIds(ownerUserIds: string[]
         prisma.digest.findFirst({
           where: { userId: ownerUserId, itemCount: { gt: 0 } },
           orderBy: { createdAt: "desc" },
-          select: { createdAt: true, language: true },
+          select: {
+            content: true,
+            createdAt: true,
+            headlineSummary: true,
+            language: true,
+          },
         }),
         prisma.userFeedPreference.findUnique({
           where: { userId: ownerUserId },
@@ -89,6 +97,12 @@ export async function getDigestPipelineMetadataByOwnerIds(ownerUserIds: string[]
       const metadata: DigestPipelineRuntimeMetadata = {
         digestCount,
         latestDigestAt: latestDigest?.createdAt.toISOString() ?? null,
+        latestDigestHeadline: latestDigest
+          ? resolveDigestHeadlineSummary({
+              content: latestDigest.content,
+              headlineSummary: latestDigest.headlineSummary,
+            })
+          : null,
         latestDigestLanguage: latestDigest?.language ?? null,
         summaryLanguage: feedPreference?.summaryLanguage ?? null,
         frequencyLabel: cronJob?.frequencyLabel ?? null,

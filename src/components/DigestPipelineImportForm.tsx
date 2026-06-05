@@ -29,6 +29,7 @@ export type OwnDigestPipeline = Pick<
   | "frequencyLabel"
   | "importCount"
   | "latestDigestAt"
+  | "latestDigestHeadline"
   | "latestDigestLanguage"
   | "summaryLanguage"
   | "title"
@@ -41,6 +42,7 @@ type DigestPipelinePreviewData = Pick<
   | "digestUpdateStatus"
   | "frequencyLabel"
   | "latestDigestAt"
+  | "latestDigestHeadline"
   | "latestDigestLanguage"
   | "summaryLanguage"
 >;
@@ -196,6 +198,10 @@ export function OwnDigestPipelineCard({
       {children}
 
       <div className="fb-hub-card-stats">
+        <CountMeta
+          label={pipeline.digestCount === 1 ? "saved digest" : "saved digests"}
+          value={pipeline.digestCount}
+        />
         <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
         <CountMeta label={pipeline.viewCount === 1 ? "view" : "views"} value={pipeline.viewCount} />
       </div>
@@ -272,6 +278,10 @@ function DigestPipelineCard({
       <DigestPipelinePreviewCard pipeline={pipeline} />
 
       <div className="fb-hub-card-stats">
+        <CountMeta
+          label={pipeline.digestCount === 1 ? "saved digest" : "saved digests"}
+          value={pipeline.digestCount}
+        />
         <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
         <CountMeta label={pipeline.viewCount === 1 ? "view" : "views"} value={pipeline.viewCount} />
       </div>
@@ -296,12 +306,15 @@ export function DigestPipelinePreviewCard({
               ? `Latest digest ${formatDate(pipeline.latestDigestAt)}`
               : "No digests yet"}
           </div>
-          <div className="fb-hub-digest-count">
-            <CountMeta
-              label={pipeline.digestCount === 1 ? "saved digest" : "saved digests"}
-              value={pipeline.digestCount}
-            />
-          </div>
+          {pipeline.latestDigestHeadline ? (
+            <section
+              aria-label="Latest digest headline"
+              className="fb-hub-digest-headline"
+            >
+              <div className="fb-hub-digest-headline-kicker">Headlines</div>
+              <p>{pipeline.latestDigestHeadline}</p>
+            </section>
+          ) : null}
         </div>
       </div>
       <DigestPipelineMetaGrid cronStatusControl={cronStatusControl} pipeline={pipeline} />

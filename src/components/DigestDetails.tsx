@@ -6,6 +6,7 @@ import { BookOpen, Loader2 } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { DigestContent, type DigestSourceLink } from "@/components/DigestContent";
 import { useHydrated } from "@/components/ThemeToggle";
+import { digestPreviewFromContent } from "@/lib/digest-headline";
 
 export type DigestSummary = {
   id: string;
@@ -270,30 +271,6 @@ function resolveHeadlineSummary(
   if (stored) return stored;
   if (status !== "loaded" || !content?.trim()) return null;
   return digestPreviewFromContent(content);
-}
-
-function digestPreviewFromContent(content: string) {
-  const text = content
-    .split(/\n+/)
-    .map((line) => line.trim())
-    .filter((line) => {
-      if (!line) return false;
-      if (/^#{1,6}\s+/.test(line)) return false;
-      if (/^AI Digest\b/i.test(line)) return false;
-      if (/^(原文|source|link)[:：]/i.test(line)) return false;
-      if (/^https?:\/\//i.test(line)) return false;
-      return true;
-    })
-    .join(" ")
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/https?:\/\/\S+/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (!text) return null;
-  return text.length > 300 ? `${text.slice(0, 297).trimEnd()}...` : text;
 }
 
 function formatDateTime(value: string, hydrated: boolean) {

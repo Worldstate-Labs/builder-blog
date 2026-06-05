@@ -6553,9 +6553,26 @@ a.fb-hub-source-name:focus-visible {
   font-weight: 650;
 }
 
-.fb-hub-digest-count {
-  font-size: 0.75rem;
-  margin-top: 0.25rem;
+.fb-hub-digest-headline {
+  margin-top: 0.6rem;
+  max-width: 70rem;
+}
+
+.fb-hub-digest-headline-kicker {
+  color: var(--accent);
+  font-size: 0.6875rem;
+  font-weight: 760;
+  letter-spacing: 0.055em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.fb-hub-digest-headline p {
+  color: var(--ink);
+  font-size: 0.8125rem;
+  font-weight: 560;
+  line-height: 1.45;
+  margin: 0.25rem 0 0;
 }
 
 .fb-hub-digest-meta {
