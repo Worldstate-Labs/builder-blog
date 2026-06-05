@@ -174,8 +174,6 @@ export function OwnDigestPipelineCard({
         />
       </div>
 
-      {children}
-
       <div className="fb-hub-digest-preview">
         <div className="fb-hub-digest-preview-row">
           <Radio className="fb-hub-digest-preview-icon" aria-hidden="true" />
@@ -195,6 +193,8 @@ export function OwnDigestPipelineCard({
         </div>
         <DigestPipelineMetaGrid cronStatusControl={cronStatusControl} pipeline={pipeline} />
       </div>
+
+      {children}
 
       <div className="fb-hub-card-stats">
         <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />

@@ -938,7 +938,7 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(digestUpdatesCard, /showStatusToggle=\{false\}/);
   assert.match(
     source("src/components/DigestPipelineImportForm.tsx"),
-    /cronStatusControl\?: ReactNode;[\s\S]*<div className="own-digest-card-head">[\s\S]*<\/div>\s*\{children\}\s*<div className="fb-hub-digest-preview">/,
+    /cronStatusControl\?: ReactNode;[\s\S]*<div className="fb-hub-digest-preview">[\s\S]*<\/div>\s*\{children\}\s*<div className="fb-hub-card-stats">/,
   );
   assert.doesNotMatch(
     globals,
