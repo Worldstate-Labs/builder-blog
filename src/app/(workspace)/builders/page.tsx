@@ -1,4 +1,5 @@
 import { BuilderKind, BuilderPoolOrigin } from "@prisma/client";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
@@ -698,7 +699,15 @@ async function FetchSourcesSection({
           </LibrarySection>
         ))}
         {data.importedLibrarySections.length === 0 ? (
-          <EmptyState body="Import shared libraries from the Hub to see them here." />
+          <EmptyState
+            actions={
+              <Link className="fb-btn light compact" href="/library-hub?tab=source-library">
+                Browse Source Library
+              </Link>
+            }
+            body="Browse shared source libraries in the Hub, then import one to see its sources here."
+            title="Import sources from the Hub"
+          />
         ) : null}
       </div>
     </section>

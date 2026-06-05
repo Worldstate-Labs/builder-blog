@@ -1470,7 +1470,11 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.equal(existsSync(join(root, "src/components/MobileSourcesSwitcher.tsx")), false);
   assert.match(builderLibraryList, /className="builder-library-error"/);
   assert.match(builderLibraryList, /<EmptyState body=\{emptyBody\} title=\{emptyTitle\} \/>/);
-  assert.match(buildersPage, /<EmptyState body="Import shared libraries from the Hub to see them here\." \/>/);
+  assert.match(buildersPage, /title="Import sources from the Hub"/);
+  assert.match(buildersPage, /Browse shared source libraries in the Hub, then import one to see its sources here\./);
+  assert.match(buildersPage, /href="\/library-hub\?tab=source-library"/);
+  assert.match(buildersPage, /Browse Source Library/);
+  assert.doesNotMatch(buildersPage, /<EmptyState body="Import shared libraries from the Hub to see them here\." \/>/);
   assert.doesNotMatch(builderLibraryList, /mt-2 text-sm text-\[var\(--danger\)\]/);
   assert.doesNotMatch(builderLibraryList, /builder-posts-latest/);
   assert.doesNotMatch(builderLibraryList, /Latest \{formatCompactDate|latest \{formatCompactDate/);
