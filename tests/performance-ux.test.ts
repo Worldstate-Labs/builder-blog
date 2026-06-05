@@ -939,6 +939,7 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(digestUpdatesCard, /beforePreview=\{[\s\S]*<section className="sources-sync-section">[\s\S]*<DigestLogPanel/);
   assert.match(digestUpdatesCard, /detailsRootId=\{detailsRootId\}/);
   assert.match(digestUpdatesCard, /<div id=\{detailsRootId\} \/>/);
+  assert.match(digestUpdatesCard, /showHeading=\{false\}/);
   assert.match(digestUpdatesCard, /showStatusToggle=\{false\}/);
   assert.match(digestPipelineForm, /beforePreview\?: ReactNode;[\s\S]*\{beforePreview\}\s*<DigestPipelinePreviewCard[\s\S]*cronStatusControl=\{cronStatusControl\}/);
   assert.match(digestPipelineForm, /<DigestPipelinePreviewCard pipeline=\{pipeline\} \/>/);
@@ -1347,6 +1348,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /hub-card-action-button/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /flex flex-wrap items-center gap-2|disabled:cursor-wait/);
   assert.match(source("src/app/globals.css"), /\.own-digest-card\s*{[\s\S]*min-height:\s*0/);
+  assert.doesNotMatch(source("src/app/globals.css"), /\.own-digest-card \.fb-hub-card-stats\s*{[\s\S]*display:\s*none/);
   assert.match(source("src/app/globals.css"), /\.sources-tab-body\s*{[\s\S]*overflow-x:\s*clip/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /EmptyState/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-list-empty"/);

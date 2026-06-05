@@ -42,6 +42,7 @@ export function OwnDigestPipelineUpdatesCard({
             detailsRootId={detailsRootId}
             onDetailsOpenChange={setDetailsOpen}
             onStatusChange={setUpdateStatus}
+            showHeading={false}
             showStatusToggle={false}
           />
         </section>

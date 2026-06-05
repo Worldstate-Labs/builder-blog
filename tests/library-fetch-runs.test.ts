@@ -200,6 +200,8 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   const digestRuns = source("src/lib/digest-runs.ts");
 
   assert.match(panel, /Digest updates/);
+  assert.match(panel, /showHeading = true/);
+  assert.match(panel, /showHeading \|\| showStatusToggle/);
   assert.match(panel, /Schedule status/);
   assert.match(panel, /Build history/);
   assert.match(panel, /role="tablist"/);

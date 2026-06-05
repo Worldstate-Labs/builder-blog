@@ -105,6 +105,7 @@ export type DigestLogPanelProps = {
   initialScheduledJobRuns?: AgentJobRunListItem[];
   onDetailsOpenChange?: (open: boolean) => void;
   onStatusChange?: (status: DigestUpdateStatus) => void;
+  showHeading?: boolean;
   showStatusToggle?: boolean;
 };
 
@@ -119,6 +120,7 @@ export function DigestLogPanel({
   initialCronJob,
   onDetailsOpenChange,
   onStatusChange,
+  showHeading = true,
   showStatusToggle = true,
 }: DigestLogPanelProps) {
   const [runs, setRuns] = useState(initialRuns);
@@ -328,16 +330,20 @@ export function DigestLogPanel({
     <section className="fb-panel digest-updates-panel">
       <div className="digest-updates-head">
         <div className="min-w-0">
-          <div className="sync-panel-title-row">
-            <h2 className="fb-section-heading">Digest updates</h2>
-            {showStatusToggle ? (
-              <DigestStatusToggle
-                detailsOpen={detailsOpen}
-                onToggle={() => setDetailsOpen((value) => !value)}
-                status={updateStatus}
-              />
-            ) : null}
-          </div>
+          {showHeading || showStatusToggle ? (
+            <div className="sync-panel-title-row">
+              {showHeading ? (
+                <h2 className="fb-section-heading">Digest updates</h2>
+              ) : null}
+              {showStatusToggle ? (
+                <DigestStatusToggle
+                  detailsOpen={detailsOpen}
+                  onToggle={() => setDetailsOpen((value) => !value)}
+                  status={updateStatus}
+                />
+              ) : null}
+            </div>
+          ) : null}
           <DigestScheduleSummary
             cronJob={cronJob}
             hydrated={hydrated}
