@@ -47,6 +47,23 @@
       }
     },
     {
+      "id": "product_hunt_top_products",
+      "label": "Product Hunt Top Products",
+      "builderKind": "WEBSITE",
+      "feedItemKinds": [
+        "BLOG_POST"
+      ],
+      "urlPatterns": [
+        "producthunt\\.com/?(?:\\s|$)",
+        "producthunt\\.com/products"
+      ],
+      "agentDefaultStatus": "requires_agent",
+      "contentQuality": {
+        "minChars": 500,
+        "minContentUnits": 60
+      }
+    },
+    {
       "id": "youtube",
       "label": "YouTube",
       "builderKind": "PODCAST",

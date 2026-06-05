@@ -74,6 +74,9 @@ function summaryStyleForSourceId(sourceId: string): SourceSummaryStyle {
 
 function summaryPromptBodyForSourceId(sourceId: string): string {
   if (sourceId === "github_trending") return DEFAULT_DIGEST_PROMPTS.summarizeGithubTrendingRepo;
+  if (sourceId === "product_hunt_top_products") {
+    return DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct;
+  }
   const style = summaryStyleForSourceId(sourceId);
   if (style === "x_twitter") return DEFAULT_DIGEST_PROMPTS.summarizeTweets;
   if (style === "podcast_or_video") return DEFAULT_DIGEST_PROMPTS.summarizePodcast;
@@ -82,8 +85,19 @@ function summaryPromptBodyForSourceId(sourceId: string): string {
 
 function fetchPromptBodyForSourceId(sourceId: string): string | null {
   if (sourceId === "github_trending") return DEFAULT_DIGEST_PROMPTS.fetchGithubTrendingRepo;
+  if (sourceId === "product_hunt_top_products") {
+    return DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct;
+  }
   if (sourceId === "podcast") return DEFAULT_DIGEST_PROMPTS.fetchPodcastAudio;
   return null;
+}
+
+function defaultFetchDaysForSourceId(sourceId: string): number {
+  return sourceId === "github_trending" || sourceId === "product_hunt_top_products" ? 1 : 7;
+}
+
+function defaultFetchLimitForSourceId(sourceId: string): number {
+  return sourceId === "github_trending" || sourceId === "product_hunt_top_products" ? 5 : 3;
 }
 
 export const DEFAULT_SOURCE_CONFIGS: Record<string, SourceTypeConfigShape> =
@@ -95,8 +109,8 @@ export const DEFAULT_SOURCE_CONFIGS: Record<string, SourceTypeConfigShape> =
         agentDefaultStatus: (entry.agentDefaultStatus === "requires_agent"
           ? "requires_agent"
           : "ready") as AgentDefaultStatus,
-        defaultFetchDays: entry.id === "github_trending" ? 1 : 7,
-        defaultFetchLimit: entry.id === "github_trending" ? 5 : 3,
+        defaultFetchDays: defaultFetchDaysForSourceId(entry.id),
+        defaultFetchLimit: defaultFetchLimitForSourceId(entry.id),
         contentQuality: entry.contentQuality as ContentQualityShape,
         summaryPromptBody: summaryPromptBodyForSourceId(entry.id),
         fetchPromptBody: fetchPromptBodyForSourceId(entry.id),
@@ -112,7 +126,15 @@ export const DEFAULT_DIGEST_CONFIG: DigestConfigShape = {
   headlinePrompt: DEFAULT_DIGEST_PROMPTS.headline,
   perSourceSummaryPrompt: DEFAULT_DIGEST_PROMPTS.perSourceSummary,
   translate: DEFAULT_DIGEST_PROMPTS.translate,
-  digestOrder: ["x", "blog", "github_trending", "youtube", "podcast", "website"],
+  digestOrder: [
+    "x",
+    "blog",
+    "github_trending",
+    "product_hunt_top_products",
+    "youtube",
+    "podcast",
+    "website",
+  ],
   commonFetchRules: DEFAULT_COMMON_FETCH_RULES,
   commonSummaryRules: DEFAULT_COMMON_SUMMARY_RULES,
 };

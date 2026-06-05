@@ -49,6 +49,7 @@ const TMP_DIR = join(CONFIG_DIR, "tmp");
 const FETCH_RUN_ID_FILE = join(TMP_DIR, "library-fetch-run-id");
 const SOURCES_CONFIG_PATH = join(CONFIG_DIR, "sources.json");
 const GITHUB_TRENDING_URL = "https://github.com/trending?since=daily";
+const PRODUCT_HUNT_TOP_PRODUCTS_URL = "https://www.producthunt.com/";
 
 let _sourcesConfig = null;
 
@@ -90,6 +91,7 @@ const FETCH_FN_BY_SOURCE_ID = {
   x: fetchPersonalXBuilder,
   blog: fetchPersonalBlogBuilder,
   github_trending: fetchPersonalGithubTrendingBuilder,
+  product_hunt_top_products: fetchPersonalProductHuntTopProductsBuilder,
   youtube: fetchPersonalYouTubeBuilder,
   podcast: fetchPersonalPodcastBuilder,
   website: fetchPersonalWebsiteBuilder,
@@ -1689,6 +1691,140 @@ export function parseGithubTrendingCandidates(html, trendingUrl = GITHUB_TRENDIN
   return candidates.sort((a, b) => (b.starsToday || 0) - (a.starsToday || 0));
 }
 
+async function fetchPersonalProductHuntTopProductsBuilder(
+  builder,
+  {
+    limit,
+    agentModel,
+    fetchedItemKeys = new Set(),
+    fetcher = fetch,
+    sources = {},
+    now = new Date(),
+  },
+) {
+  const leaderboardUrl = builder.fetchUrl || builder.sourceUrl || PRODUCT_HUNT_TOP_PRODUCTS_URL;
+  const response = await fetcher(leaderboardUrl, {
+    headers: { "User-Agent": "FollowBriefSkill/1.0 (product hunt top products fetcher)" },
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch Product Hunt Top Products ${leaderboardUrl}: HTTP ${response.status}`);
+  }
+
+  const html = await response.text();
+  const dateKey = now.toISOString().slice(0, 10);
+  const candidates = parseProductHuntTopProductCandidates(html, leaderboardUrl, dateKey)
+    .filter((product) => !fetchedItemKeys.has(personalItemKey(builder.id, "BLOG_POST", product.externalId)))
+    .slice(0, limit);
+
+  return {
+    items: [],
+    agentTasks: candidates.map((product) =>
+      productHuntAgentTaskForProduct(builder, product, { sources, agentModel }),
+    ),
+  };
+}
+
+export function fetchPersonalProductHuntTopProductsBuilderForTest(builder, options) {
+  return fetchPersonalProductHuntTopProductsBuilder(builder, options);
+}
+
+export function parseProductHuntTopProductCandidates(
+  html,
+  leaderboardUrl = PRODUCT_HUNT_TOP_PRODUCTS_URL,
+  dateKey = new Date().toISOString().slice(0, 10),
+) {
+  const source = String(html || "");
+  const linkMatches = [
+    ...source.matchAll(/<a\b[^>]*href=["']\/products\/([^"'?#\s/]+)[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi),
+  ];
+  const candidates = [];
+  const seen = new Set();
+
+  for (let i = 0; i < linkMatches.length; i += 1) {
+    const match = linkMatches[i];
+    const slug = decodeHtml(match[1].trim());
+    if (!slug || seen.has(slug)) continue;
+    const name = stripHtml(match[2]);
+    if (!name) continue;
+    seen.add(slug);
+
+    const blockStart = match.index ?? 0;
+    const blockEnd = linkMatches[i + 1]?.index ?? Math.min(source.length, blockStart + 2500);
+    const block = source.slice(blockStart, blockEnd);
+    const text = stripHtml(block);
+    const comments = Number(
+      (text.match(/(\d[\d,]*)\s+comments?/i)?.[1] ?? "0").replace(/,/g, ""),
+    );
+    const upvotes = Number(
+      (text.match(/(\d[\d,]*)\s+upvotes?/i)?.[1] ?? "0").replace(/,/g, ""),
+    );
+    const description = productHuntDescriptionFromBlock(block, name);
+    const rank = candidates.length + 1;
+
+    candidates.push({
+      slug,
+      name,
+      rank,
+      url: absoluteUrl(`/products/${slug}`, leaderboardUrl),
+      externalId: `product-hunt-top-products:${dateKey}:${slug}`,
+      title: `#${rank} ${name}`,
+      description,
+      comments,
+      upvotes,
+      date: dateKey,
+      leaderboardUrl,
+    });
+  }
+
+  return candidates;
+}
+
+function productHuntDescriptionFromBlock(block, name) {
+  const spans = [
+    ...String(block || "").matchAll(/<span\b[^>]*>([\s\S]*?)<\/span>/gi),
+    ...String(block || "").matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi),
+  ]
+    .map((match) => stripHtml(match[1]))
+    .filter(Boolean)
+    .filter((text) => text !== name)
+    .filter((text) => !/^\d[\d,]*\s+(comments?|upvotes?)$/i.test(text));
+  return spans[0] || null;
+}
+
+function productHuntAgentTaskForProduct(builder, product, { sources = {}, agentModel } = {}) {
+  const item = {
+    kind: "BLOG_POST",
+    externalId: product.externalId,
+    title: product.title,
+    url: product.url,
+    publishedAt: `${product.date}T00:00:00.000Z`,
+    sourceName: builder.name,
+    description: product.description || "",
+    rawJson: {
+      source: "product-hunt-top-products",
+      builderId: builder.id,
+      builderName: builder.name,
+      productSlug: product.slug,
+      productName: product.name,
+      rank: product.rank,
+      comments: product.comments,
+      upvotes: product.upvotes,
+      date: product.date,
+      leaderboardUrl: product.leaderboardUrl,
+      fetchTool: skillFetchTool("Product Hunt top product planner", agentModel),
+    },
+  };
+  const task = {
+    type: "product_hunt_top_product_report",
+    builder: builder.name,
+    builderId: builder.id,
+    sourceType: "product_hunt_top_products",
+    item,
+    minimumContentQuality: genericMinimumContentQuality(sources, "product_hunt_top_products"),
+  };
+  return { ...task, id: agentTaskId(task) };
+}
+
 function githubTrendingAgentTaskForRepository(builder, repo, { sources = {}, agentModel } = {}) {
   const item = {
     kind: "BLOG_POST",
@@ -2990,7 +3126,15 @@ function genericContentQuality(text, { title = "", description = "", standards }
   return { ok: true, reason: "ok", metrics, standards: qualityStandards };
 }
 
-const DEFAULT_DIGEST_SOURCE_ORDER = ["x", "blog", "github_trending", "youtube", "podcast", "website"];
+const DEFAULT_DIGEST_SOURCE_ORDER = [
+  "x",
+  "blog",
+  "github_trending",
+  "product_hunt_top_products",
+  "youtube",
+  "podcast",
+  "website",
+];
 
 function digestSectionLabel(sourceType, context = {}) {
   const sourceLabel = stringOrNull(context?.sources?.[sourceType]?.label);
@@ -3003,6 +3147,7 @@ function digestSectionLabel(sourceType, context = {}) {
         x: "X/Twitter",
         blog: "Blog",
         github_trending: "Github Trending",
+        product_hunt_top_products: "Product Hunt Top Products",
         youtube: "YouTube",
         podcast: "Podcast RSS",
         website: "Website",
@@ -3011,6 +3156,7 @@ function digestSectionLabel(sourceType, context = {}) {
         x: "X/Twitter",
         blog: "Blog",
         github_trending: "Github Trending",
+        product_hunt_top_products: "Product Hunt Top Products",
         youtube: "YouTube",
         podcast: "Podcast RSS",
         website: "Website",

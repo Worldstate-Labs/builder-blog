@@ -36,6 +36,12 @@ type SourceOption = {
 
 const GITHUB_TRENDING_SOURCE_ID = "github_trending";
 const GITHUB_TRENDING_URL = "https://github.com/trending?since=daily";
+const PRODUCT_HUNT_TOP_PRODUCTS_SOURCE_ID = "product_hunt_top_products";
+const PRODUCT_HUNT_TOP_PRODUCTS_URL = "https://www.producthunt.com/";
+const FIXED_SOURCE_VALUE_BY_ID: Record<string, string> = {
+  [GITHUB_TRENDING_SOURCE_ID]: GITHUB_TRENDING_URL,
+  [PRODUCT_HUNT_TOP_PRODUCTS_SOURCE_ID]: PRODUCT_HUNT_TOP_PRODUCTS_URL,
+};
 
 // Per-source-type placeholder hint for the URL/handle field. Keys
 // mirror the sourceId values seeded from config/sources.json.
@@ -43,6 +49,7 @@ const PLACEHOLDER_BY_SOURCE_ID: Record<string, string> = {
   x: "@deepmind or https://x.com/deepmind",
   blog: "https://example.com/blog or https://example.com/feed.xml",
   github_trending: GITHUB_TRENDING_URL,
+  product_hunt_top_products: PRODUCT_HUNT_TOP_PRODUCTS_URL,
   youtube: "https://youtube.com/@deepmind",
   podcast: "https://podcasts.apple.com/…/id123 or https://feeds.example.com/show.rss",
   website: "https://example.com",
@@ -62,7 +69,7 @@ type Preview =
   | { kind: "warn"; message: string; suggestId?: DetectedSourceId };
 
 function computePreview(sourceType: string, value: string): Preview {
-  if (sourceType === GITHUB_TRENDING_SOURCE_ID) return { kind: "idle" };
+  if (FIXED_SOURCE_VALUE_BY_ID[sourceType]) return { kind: "idle" };
   const trimmed = value.trim();
   if (!trimmed) return { kind: "idle" };
 
@@ -83,6 +90,7 @@ function computePreview(sourceType: string, value: string): Preview {
 
 function deriveDisplayName(sourceType: string, sourceValue: string): string {
   if (sourceType === GITHUB_TRENDING_SOURCE_ID) return "Github Trending";
+  if (sourceType === PRODUCT_HUNT_TOP_PRODUCTS_SOURCE_ID) return "Product Hunt Top Products";
   const trimmed = sourceValue.trim();
   if (!trimmed) return "";
   if (sourceType === "x") {
@@ -135,9 +143,8 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
   // on paste, long enough to skip mid-word noise. Empty input flushes
   // immediately so clearing the field hides any stale banner.
   const [debouncedValue, setDebouncedValue] = useState(sourceValue);
-  const resolvedSourceValue =
-    sourceType === GITHUB_TRENDING_SOURCE_ID ? GITHUB_TRENDING_URL : sourceValue;
-  const sourceValueIsFixed = sourceType === GITHUB_TRENDING_SOURCE_ID;
+  const resolvedSourceValue = FIXED_SOURCE_VALUE_BY_ID[sourceType] ?? sourceValue;
+  const sourceValueIsFixed = Boolean(FIXED_SOURCE_VALUE_BY_ID[sourceType]);
 
   useEffect(() => {
     const id = window.setTimeout(

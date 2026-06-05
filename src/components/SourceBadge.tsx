@@ -59,6 +59,7 @@ function sourceDisplayForType(sourceType: string | null | undefined) {
     blog: "Blog",
     github_trending: "Github Trending",
     podcast: "Podcast RSS",
+    product_hunt_top_products: "Product Hunt Top Products",
     website: "Website",
     x: "X/Twitter",
     youtube: "YouTube",

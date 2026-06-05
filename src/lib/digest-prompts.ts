@@ -157,6 +157,71 @@ Rules:
 - In "What the project does", explain the actual product/library/agent/tool and who would use it.
 - In "Why it is gaining stars quickly", separate confirmed causes from reasonable inference. Do not overstate weak evidence.
 - Preserve the repository URL and any important supporting URLs from the body.`,
+  fetchProductHuntTopProduct: `# Product Hunt Top Product Fetch Prompt
+
+You are fetching exactly one Product Hunt top-products task for FollowBrief.
+The task item was created from https://www.producthunt.com/, and
+\`task.item.url\` is the Product Hunt product page to investigate.
+
+## Required workflow
+
+1. Open the Product Hunt product page. Extract the product name, tagline,
+   launch date/rank badge, maker notes, website link, tags, vote/comment counts
+   when visible, and substantive user comments.
+2. Use the product's official website and web search when Product Hunt comments
+   are thin or login-gated. Search the product name plus terms like launch,
+   review, demo, pricing, documentation, blog, X/Twitter, Hacker News, Reddit,
+   and Product Hunt.
+3. Explain what the product concretely does. Do not stop at the Product Hunt
+   tagline; identify the user workflow, target user, and outcome.
+4. Explain why the product appears strong today using evidence: comment
+   sentiment, maker explanations, launch traction, differentiated workflow,
+   credible external coverage, or specific product capabilities.
+5. Distinguish evidence from inference. If no useful comments or external
+   sources are available, say the assessment is based on the Product Hunt page
+   and product website rather than confirmed community discussion.
+
+## Body to return
+
+Return a substantial body, not a summary-only stub. It must include:
+
+- Product name and Product Hunt URL.
+- Today's date from task.item.rawJson.date when present.
+- Rank from task.item.rawJson.rank when present.
+- Product Hunt tagline/description when available.
+- What the product concretely does, based on Product Hunt plus the website or docs.
+- Why it appears excellent or noteworthy today, with source URLs and clear labels
+  for confirmed evidence vs inference.
+- Product website URL when available.
+
+Do not invent comment sentiment, numbers, quotes, customers, benchmarks, or
+affiliations. Include source URLs for every material claim so the later summary
+can cite Product Hunt and supporting pages.`,
+  summarizeProductHuntTopProduct: `# Product Hunt Top Product Summary Prompt
+
+You are summarizing one Product Hunt top-product investigation for a busy
+professional. Use only task.item.body plus task.item metadata.
+
+Use the user-selected output language supplied by the enclosing task. Do not
+hard-code any fixed language.
+
+Use this structure, translating the section labels naturally when the selected
+language is not English:
+
+Product name:
+What the product does:
+Why it is excellent:
+Product Hunt URL:
+Date:
+
+Rules:
+
+- Keep it concise but concrete.
+- Mention rank when the body or metadata provides it.
+- In "What the product does", explain the actual workflow and target user.
+- In "Why it is excellent", separate confirmed Product Hunt comments or web
+  evidence from reasonable inference. Do not overstate weak evidence.
+- Preserve the Product Hunt URL and any important supporting URLs from the body.`,
   // Legacy field retained only for old database rows / old local clients. New
   // digest runs do not ask the agent to assemble markdown with this prompt.
   digestIntro: `# Legacy Digest Intro Prompt

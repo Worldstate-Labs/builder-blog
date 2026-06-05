@@ -161,6 +161,21 @@ test("manual builder input derives canonical fields from one handle or URL", asy
     sourceUrl: "https://github.com/trending?since=daily",
     fetchUrl: "https://github.com/trending?since=daily",
   });
+
+  const productHuntResult = await resolvePersonalBuilderInput({
+    displayName: "",
+    sourceType: "product_hunt_top_products",
+    sourceValue: "https://example.com/ignored",
+  });
+  assert.ok(productHuntResult.ok);
+  assert.deepEqual(productHuntResult.value, {
+    kind: BuilderKind.WEBSITE,
+    sourceType: "product_hunt_top_products",
+    name: "Product Hunt Top Products",
+    handle: null,
+    sourceUrl: "https://www.producthunt.com/",
+    fetchUrl: "https://www.producthunt.com/",
+  });
 });
 
 test("personal YouTube sync cannot create a duplicate builder through handle metadata", () => {
@@ -1204,11 +1219,13 @@ test("digest generation user path exposes source-specific prompt instructions", 
       "digestIntro",
       "fetchGithubTrendingRepo",
       "fetchPodcastAudio",
+      "fetchProductHuntTopProduct",
       "headline",
       "perSourceSummary",
       "summarizeBlogs",
       "summarizeGithubTrendingRepo",
       "summarizePodcast",
+      "summarizeProductHuntTopProduct",
       "summarizeTweets",
       "translate",
     ].sort(),
@@ -1221,6 +1238,14 @@ test("digest generation user path exposes source-specific prompt instructions", 
   assert.match(DEFAULT_DIGEST_PROMPTS.summarizeGithubTrendingRepo, /user-selected output language/);
   assert.match(DEFAULT_DIGEST_PROMPTS.summarizeGithubTrendingRepo, /Project name:/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.summarizeGithubTrendingRepo, /Chinese|项目名称/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct, /Product Hunt product page/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct, /substantive user comments/);
+  assert.match(
+    DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct,
+    /user-selected output language/,
+  );
+  assert.match(DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct, /Product name:/);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct, /Chinese|项目名称/);
   assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /Legacy Digest Intro Prompt/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /headlineSummary/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /context\.language/);
@@ -2437,6 +2462,24 @@ test("source registry centralizes current source categories", () => {
     "Github Trending",
   );
   assert.equal(builderKindForSourceType("github_trending"), BuilderKind.WEBSITE);
+  assert.equal(
+    sourceDefinitionForBuilder({
+      kind: BuilderKind.WEBSITE,
+      sourceType: "product_hunt_top_products",
+      sourceUrl: "https://www.producthunt.com/",
+      fetchUrl: "https://www.producthunt.com/",
+    })?.staticLabel,
+    "Product Hunt Top Products",
+  );
+  assert.equal(
+    sourceDefinitionForBuilder({
+      kind: BuilderKind.WEBSITE,
+      sourceUrl: "https://www.producthunt.com/",
+      fetchUrl: null,
+    })?.id,
+    "product_hunt_top_products",
+  );
+  assert.equal(builderKindForSourceType("product_hunt_top_products"), BuilderKind.WEBSITE);
   assert.equal(
     builderSourceLabel({
       kind: BuilderKind.BLOG,

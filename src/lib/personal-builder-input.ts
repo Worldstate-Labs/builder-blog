@@ -48,6 +48,8 @@ export type Resolution = ResolutionSuccess | ResolutionFailure;
 
 export const GITHUB_TRENDING_SOURCE_ID = "github_trending";
 export const GITHUB_TRENDING_URL = "https://github.com/trending?since=daily";
+export const PRODUCT_HUNT_TOP_PRODUCTS_SOURCE_ID = "product_hunt_top_products";
+export const PRODUCT_HUNT_TOP_PRODUCTS_URL = "https://www.producthunt.com/";
 
 /**
  * Resolve, validate, and auto-correct the user's AddBuilderForm input.
@@ -68,6 +70,9 @@ export async function resolvePersonalBuilderInput(input: {
 
   if (sourceType === GITHUB_TRENDING_SOURCE_ID) {
     return resolveGithubTrending(input.displayName);
+  }
+  if (sourceType === PRODUCT_HUNT_TOP_PRODUCTS_SOURCE_ID) {
+    return resolveProductHuntTopProducts(input.displayName);
   }
 
   // Cross-type mismatch: user is in X mode but pasted a YouTube URL,
@@ -270,6 +275,20 @@ function resolveGithubTrending(displayName: string): Resolution {
       handle: null,
       sourceUrl: GITHUB_TRENDING_URL,
       fetchUrl: GITHUB_TRENDING_URL,
+    },
+  };
+}
+
+function resolveProductHuntTopProducts(displayName: string): Resolution {
+  return {
+    ok: true,
+    value: {
+      kind: builderKindForSourceType(PRODUCT_HUNT_TOP_PRODUCTS_SOURCE_ID),
+      sourceType: PRODUCT_HUNT_TOP_PRODUCTS_SOURCE_ID,
+      name: displayName.trim() || "Product Hunt Top Products",
+      handle: null,
+      sourceUrl: PRODUCT_HUNT_TOP_PRODUCTS_URL,
+      fetchUrl: PRODUCT_HUNT_TOP_PRODUCTS_URL,
     },
   };
 }

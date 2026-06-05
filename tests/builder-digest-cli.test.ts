@@ -130,6 +130,72 @@ test("GitHub Trending fetcher emits per-repository agent tasks, not ready items"
   assert.equal(result.agentTasks[0].item.rawJson.date, "2026-06-04");
 });
 
+test("Product Hunt parser extracts daily product candidates in page order", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const candidates = cli.parseProductHuntTopProductCandidates(
+    `
+    <a href="/products/mailwarm">Mailwarm 2.0</a>
+    <span>Warm up your email and improve deliverability</span>
+    <span>82 comments</span>
+    <span>1,154 upvotes</span>
+    <a href="/products/astra-security">Astra Autonomous Pentest</a>
+    <span>AI pentesting agent that validates vulnerabilities</span>
+    <span>24 comments</span>
+    <span>930 upvotes</span>
+    `,
+    "https://www.producthunt.com/",
+    "2026-06-04",
+  );
+
+  assert.equal(candidates.length, 2);
+  assert.equal(candidates[0].name, "Mailwarm 2.0");
+  assert.equal(candidates[0].rank, 1);
+  assert.equal(candidates[0].url, "https://www.producthunt.com/products/mailwarm");
+  assert.equal(candidates[0].externalId, "product-hunt-top-products:2026-06-04:mailwarm");
+  assert.equal(candidates[0].date, "2026-06-04");
+  assert.equal(candidates[1].name, "Astra Autonomous Pentest");
+  assert.equal(candidates[1].rank, 2);
+});
+
+test("Product Hunt fetcher emits per-product agent tasks, not ready items", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const result = await cli.fetchPersonalProductHuntTopProductsBuilderForTest(
+    {
+      id: "builder_product_hunt_top_products",
+      name: "Product Hunt Top Products",
+      sourceType: "product_hunt_top_products",
+      sourceUrl: "https://www.producthunt.com/",
+      fetchUrl: "https://www.producthunt.com/",
+    },
+    {
+      limit: 1,
+      fetchedItemKeys: new Set(),
+      now: new Date("2026-06-04T12:00:00.000Z"),
+      sources: {
+        product_hunt_top_products: {
+          contentQuality: { minChars: 500, minContentUnits: 60 },
+        },
+      },
+      fetcher: async () =>
+        new Response(`
+          <a href="/products/mailwarm">Mailwarm 2.0</a>
+          <span>Warm up your email and improve deliverability</span>
+          <span>82 comments</span>
+          <span>1,154 upvotes</span>
+        `),
+    },
+  );
+
+  assert.deepEqual(result.items, []);
+  assert.equal(result.agentTasks.length, 1);
+  assert.equal(result.agentTasks[0].type, "product_hunt_top_product_report");
+  assert.equal(result.agentTasks[0].sourceType, "product_hunt_top_products");
+  assert.equal(result.agentTasks[0].item.kind, "BLOG_POST");
+  assert.equal(result.agentTasks[0].item.url, "https://www.producthunt.com/products/mailwarm");
+  assert.equal(result.agentTasks[0].item.rawJson.rank, 1);
+  assert.equal(result.agentTasks[0].item.rawJson.date, "2026-06-04");
+});
+
 test("personal blog fetcher uses Anthropic Next data when available", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const candidates = cli.parseBlogCandidates(

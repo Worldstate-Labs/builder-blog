@@ -1,0 +1,4 @@
+interface:
+  display_name: "Product Hunt Daily Top 5"
+  short_description: "Summarize today's top Product Hunt launches"
+  default_prompt: "Use $product-hunt-daily-top5 to summarize today's top 5 Product Hunt launches with evidence."
