@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { CheckCircle2, ChevronDown, Download, Sliders, Trash2 } from "lucide-react";
 import { CountBadge, CountMeta, CountRange, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
+import { SourceAvatar } from "@/components/SourceAvatar";
 import { SourceBadge } from "@/components/SourceBadge";
 import { normalizeSourceType, sourceLabelForType } from "@/lib/source-display";
 
@@ -12,6 +13,7 @@ type HubLibraryBuilder = {
   kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";
   sourceType: string;
   name: string;
+  avatarUrl: string | null;
   handle: string | null;
   sourceUrl: string | null;
   fetchUrl: string | null;
@@ -279,6 +281,7 @@ function HubCard({
   pending: "import" | "remove" | null;
 }) {
   const sourceGroups = groupedSources(library.items);
+  const sourceSummaryItems = library.items.slice(0, 4);
   const fetchedPostCount = library.items.reduce(
     (sum, item) => sum + item.builder._count.feedItems,
     0,
@@ -352,10 +355,34 @@ function HubCard({
       {sourceGroups.length > 0 ? (
         <details className="fb-hub-sources">
           <summary className="fb-hub-sources-summary" aria-label={`Show sources in ${library.name}`}>
-            <div className="fb-hub-source-summary-text">
-              <CountMeta label={library.itemCount === 1 ? "source" : "sources"} value={library.itemCount} />
-              <span> · </span>
-              <CountMeta label={fetchedPostCount === 1 ? "fetched post" : "fetched posts"} value={fetchedPostCount} />
+            <div className="fb-hub-source-summary-strip">
+              {sourceSummaryItems.map((item, index) => {
+                const sourceType = sourceTypeForBuilder(item.builder);
+                return (
+                  <span
+                    className={`fb-hub-source-summary-item${index >= 2 ? " is-desktop-only" : ""}`}
+                    key={item.builderId}
+                  >
+                    <SourceAvatar
+                      className="fb-hub-source-summary-avatar"
+                      imageSize={28}
+                      source={{
+                        avatarUrl: item.builder.avatarUrl,
+                        fetchUrl: item.builder.fetchUrl,
+                        name: item.builder.name,
+                        sourceType,
+                        sourceUrl: item.builder.sourceUrl,
+                      }}
+                    />
+                    <span className="fb-hub-source-summary-name">
+                      {item.builder.name}
+                    </span>
+                  </span>
+                );
+              })}
+              <span className="fb-hub-source-summary-more">
+                See more
+              </span>
             </div>
             <span aria-hidden="true" className="fb-hub-sources-caret">
               <ChevronDown />

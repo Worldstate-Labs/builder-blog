@@ -1243,6 +1243,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.doesNotMatch(libraryHubPage, /@\/components\/PageHeader/);
   assert.doesNotMatch(libraryHubPage, /<PageHeader/);
   assert.match(libraryHubPage, /<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/);
+  assert.match(libraryHubPage, /avatarUrl:\s*true/);
   assert.match(libraryHubPage, /lastFetchedAt:\s*true/);
   assert.match(libraryHubPage, /lastFetchedAt:\s*item\.builder\.lastFetchedAt\?\.toISOString\(\) \?\? null/);
   assert.doesNotMatch(libraryHubPage, /Import shared source libraries and AI Digest archives/);
@@ -1280,8 +1281,14 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /groupedSources/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-type-groups/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceBadge/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceAvatar/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /sourceSummaryItems = library\.items\.slice\(0, 4\)/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-summary-strip/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-summary-name/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /See more/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fetched posts/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Latest fetch/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-summary-text/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /more source types/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /sourceGroups\.length === 1 \? "source type" : "source types"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-type-preview/);
@@ -1346,6 +1353,9 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/app/globals.css"), /\.fb-hub-sources > summary \.fb-hub-sources-caret\s*{[\s\S]*transition:\s*transform 160ms ease/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-sources\[open\] > summary \.fb-hub-sources-caret\s*{[\s\S]*transform:\s*rotate\(180deg\)/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-card-desc\s*{[\s\S]*max-width:\s*var\(--measure\)/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-source-summary-strip\s*{[\s\S]*display:\s*flex/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-source-summary-avatar\.fb-src-icon\s*{/);
+  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-source-summary-item\.is-desktop-only\s*{[\s\S]*display:\s*none/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-type-groups\s*{/);

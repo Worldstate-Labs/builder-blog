@@ -82,6 +82,7 @@ async function loadLibraryHubPageData() {
                 kind: true,
                 sourceType: true,
                 name: true,
+                avatarUrl: true,
                 handle: true,
                 sourceUrl: true,
                 fetchUrl: true,
