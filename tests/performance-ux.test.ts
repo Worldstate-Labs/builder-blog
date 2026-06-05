@@ -1310,6 +1310,8 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-line\.is-body\s*{[\s\S]*width:\s*min\(100%,\s*var\(--skeleton-copy-max\)\)/);
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-card\s*{[\s\S]*min-height:\s*11rem/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-card-head\s*{/);
+  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-titleblock\s*{[\s\S]*flex:\s*0 1 auto/);
+  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-titleblock\s*{[\s\S]*width:\s*100%/);
   assert.doesNotMatch(source("src/app/globals.css"), /content:\s*"Show"|content:\s*"Hide"/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-sources > summary \.fb-hub-sources-caret\s*{[\s\S]*transition:\s*transform 160ms ease/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-sources\[open\] > summary \.fb-hub-sources-caret\s*{[\s\S]*transform:\s*rotate\(180deg\)/);
