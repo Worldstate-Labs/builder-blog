@@ -8624,10 +8624,6 @@ body {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .your-digest-panel .sources-sync-section {
-    order: 3;
-  }
-
   .sources-sync-section .digest-updates-panel {
     border-top: 1px solid color-mix(in oklch, var(--line) 80%, transparent);
     padding: 0.75rem 0 0;

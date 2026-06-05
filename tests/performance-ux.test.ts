@@ -928,6 +928,10 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
     buildersPage,
     /<section className="your-digest-panel fb-panel"[\s\S]*<section className="sources-sync-section">[\s\S]*<DigestLogPanel[\s\S]*<OwnDigestPipelineCard/,
   );
+  assert.doesNotMatch(
+    globals,
+    /\.your-digest-panel \.sources-sync-section\s*{[\s\S]*order:/,
+  );
   assert.match(buildersPage, /<OwnDigestPipelineCard/);
   assert.match(buildersPage, /pipeline=\{data\.ownDigestPipeline\}/);
   assert.match(buildersPage, /<DigestPipelineVisibilityToggle initialShared=\{data\.ownPipelineShared\}/);
