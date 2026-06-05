@@ -35,6 +35,16 @@ export type OwnDigestPipeline = Pick<
   | "viewCount"
 >;
 
+type DigestPipelinePreviewData = Pick<
+  HubDigestPipeline,
+  | "digestCount"
+  | "digestUpdateStatus"
+  | "frequencyLabel"
+  | "latestDigestAt"
+  | "latestDigestLanguage"
+  | "summaryLanguage"
+>;
+
 type DigestPipelineImportFormProps = {
   pipelines: HubDigestPipeline[];
 };
@@ -178,25 +188,10 @@ export function OwnDigestPipelineCard({
 
       {beforePreview}
 
-      <div className="fb-hub-digest-preview">
-        <div className="fb-hub-digest-preview-row">
-          <Radio className="fb-hub-digest-preview-icon" aria-hidden="true" />
-          <div>
-            <div className="fb-hub-digest-preview-title">
-              {pipeline.latestDigestAt
-                ? `Latest digest ${formatDate(pipeline.latestDigestAt)}`
-                : "No digests yet"}
-            </div>
-            <div className="fb-hub-digest-count">
-              <CountMeta
-                label={pipeline.digestCount === 1 ? "saved digest" : "saved digests"}
-                value={pipeline.digestCount}
-              />
-            </div>
-          </div>
-        </div>
-        <DigestPipelineMetaGrid cronStatusControl={cronStatusControl} pipeline={pipeline} />
-      </div>
+      <DigestPipelinePreviewCard
+        cronStatusControl={cronStatusControl}
+        pipeline={pipeline}
+      />
 
       {children}
 
@@ -274,25 +269,7 @@ function DigestPipelineCard({
         </p>
       </div>
 
-      <div className="fb-hub-digest-preview">
-        <div className="fb-hub-digest-preview-row">
-          <Radio className="fb-hub-digest-preview-icon" aria-hidden="true" />
-          <div>
-            <div className="fb-hub-digest-preview-title">
-              {pipeline.latestDigestAt
-                ? `Latest digest ${formatDate(pipeline.latestDigestAt)}`
-                : "No digests yet"}
-            </div>
-            <div className="fb-hub-digest-count">
-              <CountMeta
-                label={pipeline.digestCount === 1 ? "saved digest" : "saved digests"}
-                value={pipeline.digestCount}
-              />
-            </div>
-          </div>
-        </div>
-        <DigestPipelineMetaGrid pipeline={pipeline} />
-      </div>
+      <DigestPipelinePreviewCard pipeline={pipeline} />
 
       <div className="fb-hub-card-stats">
         <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
@@ -302,19 +279,42 @@ function DigestPipelineCard({
   );
 }
 
+export function DigestPipelinePreviewCard({
+  cronStatusControl,
+  pipeline,
+}: {
+  cronStatusControl?: ReactNode;
+  pipeline: DigestPipelinePreviewData;
+}) {
+  return (
+    <div className="fb-hub-digest-preview">
+      <div className="fb-hub-digest-preview-row">
+        <Radio className="fb-hub-digest-preview-icon" aria-hidden="true" />
+        <div>
+          <div className="fb-hub-digest-preview-title">
+            {pipeline.latestDigestAt
+              ? `Latest digest ${formatDate(pipeline.latestDigestAt)}`
+              : "No digests yet"}
+          </div>
+          <div className="fb-hub-digest-count">
+            <CountMeta
+              label={pipeline.digestCount === 1 ? "saved digest" : "saved digests"}
+              value={pipeline.digestCount}
+            />
+          </div>
+        </div>
+      </div>
+      <DigestPipelineMetaGrid cronStatusControl={cronStatusControl} pipeline={pipeline} />
+    </div>
+  );
+}
+
 function DigestPipelineMetaGrid({
   cronStatusControl,
   pipeline,
 }: {
   cronStatusControl?: ReactNode;
-  pipeline: Pick<
-    HubDigestPipeline,
-    | "digestUpdateStatus"
-    | "frequencyLabel"
-    | "latestDigestAt"
-    | "latestDigestLanguage"
-    | "summaryLanguage"
-  >;
+  pipeline: DigestPipelinePreviewData;
 }) {
   const status = pipeline.digestUpdateStatus;
   return (

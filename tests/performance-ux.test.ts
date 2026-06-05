@@ -921,6 +921,7 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(buildersPage, /@\/components\/OwnDigestPipelineUpdatesCard/);
   assert.match(buildersPage, /@\/components\/DigestPipelineImportForm/);
   const digestUpdatesCard = source("src/components/OwnDigestPipelineUpdatesCard.tsx");
+  const digestPipelineForm = source("src/components/DigestPipelineImportForm.tsx");
   assert.match(buildersPage, /@\/lib\/digest-runs/);
   assert.match(buildersPage, /WorkspaceTopTabs/);
   assert.match(buildersPage, /ariaLabel="Source management"/);
@@ -939,10 +940,10 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(digestUpdatesCard, /detailsRootId=\{detailsRootId\}/);
   assert.match(digestUpdatesCard, /<div id=\{detailsRootId\} \/>/);
   assert.match(digestUpdatesCard, /showStatusToggle=\{false\}/);
-  assert.match(
-    source("src/components/DigestPipelineImportForm.tsx"),
-    /beforePreview\?: ReactNode;[\s\S]*\{beforePreview\}\s*<div className="fb-hub-digest-preview">[\s\S]*<\/div>\s*\{children\}\s*<div className="fb-hub-card-stats">/,
-  );
+  assert.match(digestPipelineForm, /beforePreview\?: ReactNode;[\s\S]*\{beforePreview\}\s*<DigestPipelinePreviewCard[\s\S]*cronStatusControl=\{cronStatusControl\}/);
+  assert.match(digestPipelineForm, /<DigestPipelinePreviewCard pipeline=\{pipeline\} \/>/);
+  assert.match(digestPipelineForm, /<DigestPipelinePreviewCard[\s\S]*\/>\s*\{children\}\s*<div className="fb-hub-card-stats">/);
+  assert.equal((digestPipelineForm.match(/className="fb-hub-digest-preview"/g) ?? []).length, 1);
   assert.doesNotMatch(
     globals,
     /\.your-digest-section \.sources-sync-section\s*{[\s\S]*order:/,
@@ -1225,6 +1226,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
     assert.equal(existsSync(join(root, path)), false, path);
   }
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
+  const digestPipelineForm = source("src/components/DigestPipelineImportForm.tsx");
   const libraryHubPage = source("src/app/(workspace)/library-hub/page.tsx");
   const searchPage = source("src/app/(workspace)/search/page.tsx");
   assert.doesNotMatch(buildersPage, /BuilderStatsFallback|BuilderStatsSlot|BuilderLibraryStats/);
@@ -1309,26 +1311,27 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /AVATAR_COLORS/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-avatar/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /style=\{\{/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-section-copy"/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /sharedPipelines = pipelines\.filter\(\(pipeline\) => !pipeline\.owned\)/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /export function OwnDigestPipelineCard/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /<DigestPipelineTitleEditor/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /<article className="own-digest-card">/);
-  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-card own-digest-card"/);
-  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /DigestPipelineVisibilityToggle/);
-  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /Shared archive/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="library-hub-toolbar-copy"/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-list-stack fb-hub-list"/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-card-head"/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-digest-preview"/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /function DigestPipelineMetaGrid/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Update frequency/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Language/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Latest digest/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Cron status/);
-  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /label="Agent"/);
-  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /label="Lookback"/);
-  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /label="Cron job"/);
+  assert.match(digestPipelineForm, /className="hub-section-copy"/);
+  assert.match(digestPipelineForm, /sharedPipelines = pipelines\.filter\(\(pipeline\) => !pipeline\.owned\)/);
+  assert.match(digestPipelineForm, /export function OwnDigestPipelineCard/);
+  assert.match(digestPipelineForm, /export function DigestPipelinePreviewCard/);
+  assert.match(digestPipelineForm, /<DigestPipelineTitleEditor/);
+  assert.match(digestPipelineForm, /<article className="own-digest-card">/);
+  assert.doesNotMatch(digestPipelineForm, /className="fb-hub-card own-digest-card"/);
+  assert.doesNotMatch(digestPipelineForm, /DigestPipelineVisibilityToggle/);
+  assert.doesNotMatch(digestPipelineForm, /Shared archive/);
+  assert.match(digestPipelineForm, /className="library-hub-toolbar-copy"/);
+  assert.match(digestPipelineForm, /className="hub-list-stack fb-hub-list"/);
+  assert.match(digestPipelineForm, /className="fb-hub-card-head"/);
+  assert.match(digestPipelineForm, /className="fb-hub-digest-preview"/);
+  assert.match(digestPipelineForm, /function DigestPipelineMetaGrid/);
+  assert.match(digestPipelineForm, /Update frequency/);
+  assert.match(digestPipelineForm, /Language/);
+  assert.match(digestPipelineForm, /Latest digest/);
+  assert.match(digestPipelineForm, /Cron status/);
+  assert.doesNotMatch(digestPipelineForm, /label="Agent"/);
+  assert.doesNotMatch(digestPipelineForm, /label="Lookback"/);
+  assert.doesNotMatch(digestPipelineForm, /label="Cron job"/);
   assert.match(source("src/lib/digest-update-status.ts"), /export function getDigestUpdateStatus/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /buildDigestCronStatus/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /getDigestUpdateStatus/);
