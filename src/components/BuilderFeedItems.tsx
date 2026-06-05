@@ -100,7 +100,7 @@ export function BuilderFeedItems({
                   dateTime={latestPostCreatedAt ?? undefined}
                   title={`Latest post ${latestDateLabel}`}
                 >
-                  {latestDateLabel}
+                  latest at {latestDateLabel}
                 </time>
               </>
             ) : null}
