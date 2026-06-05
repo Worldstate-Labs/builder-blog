@@ -17,6 +17,7 @@ export async function DELETE(_request: Request, { params }: Params) {
     pipelineId,
   });
 
+  revalidatePath("/builders");
   revalidatePath("/dashboard");
   revalidatePath("/library-hub");
   return NextResponse.json({ ...result, pipelineId });

@@ -1319,7 +1319,8 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-avatar/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /style=\{\{/);
   assert.match(digestPipelineForm, /className="hub-section-copy"/);
-  assert.match(digestPipelineForm, /sharedPipelines = pipelines\.filter\(\(pipeline\) => !pipeline\.owned\)/);
+  assert.match(digestPipelineForm, /sharedPipelines = useMemo\(/);
+  assert.match(digestPipelineForm, /\(\) => pipelines\.filter\(\(pipeline\) => !pipeline\.owned\)/);
   assert.match(digestPipelineForm, /export function OwnDigestPipelineCard/);
   assert.match(digestPipelineForm, /export function DigestPipelinePreviewCard/);
   assert.match(digestPipelineForm, /<DigestPipelineTitleEditor/);
@@ -1856,6 +1857,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /Imported/);
   assert.match(hubImportForm, /method: "DELETE"/);
   assert.match(hubImportForm, /onClick=\{\(\) => onRemove\(library\.id\)\}/);
+  assert.match(hubImportForm, /imported=\{importedIds\.has\(library\.id\)\}/);
+  assert.doesNotMatch(hubImportForm, /importedIds\.has\(library\.id\)\s*\|\|\s*library\.imported/);
   assert.doesNotMatch(hubImportForm, />\s*Remove\s*</);
   assert.doesNotMatch(hubImportForm, /Trash2/);
   assert.doesNotMatch(hubImportForm, /Import selected/);
@@ -1909,6 +1912,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineTitleEditor, /router\.refresh/);
   assert.match(digestPipelineForm, /fetch\("\/api\/digest-pipelines\/imports"/);
   assert.match(digestPipelineForm, /fetch\(`\/api\/digest-pipelines\/imports\/\$\{pipelineId\}`/);
+  assert.match(digestPipelineForm, /importedSignature/);
+  assert.match(digestPipelineForm, /propImportedIds/);
+  assert.match(digestPipelineForm, /imported=\{importedIds\.has\(pipeline\.id\)\}/);
   assert.match(digestPipelineForm, /aria-label=\{`Import \$\{pipeline\.title\}`\}/);
   assert.match(digestPipelineForm, /Imported/);
   assert.match(digestPipelineForm, /onClick=\{\(\) => onRemove\(pipeline\.id\)\}/);
@@ -1920,6 +1926,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineShareRoute, /unshareDigestPipelineFromHub/);
   assert.match(digestPipelineImportRoute, /importDigestPipelineFromHub/);
   assert.match(digestPipelineRemoveRoute, /removeDigestPipelineImportFromHub/);
+  assert.match(digestPipelineImportRoute, /revalidatePath\("\/builders"\)/);
+  assert.match(digestPipelineRemoveRoute, /revalidatePath\("\/builders"\)/);
   assert.match(visibilityRoute, /unsharePersonalLibraryFromHub/);
   assert.equal(existsSync(join(root, "src/app/actions.ts")), false);
   assert.match(skillRoute, /syncPersonalLibraryHubForUser/);

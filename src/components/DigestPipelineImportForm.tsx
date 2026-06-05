@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { CheckCircle2, Download, Radio } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
@@ -54,15 +54,48 @@ type DigestPipelineImportFormProps = {
 export function DigestPipelineImportForm({
   pipelines,
 }: DigestPipelineImportFormProps) {
-  const sharedPipelines = pipelines.filter((pipeline) => !pipeline.owned);
-  const [importedIds, setImportedIds] = useState<Set<string>>(
+  const sharedPipelines = useMemo(
+    () => pipelines.filter((pipeline) => !pipeline.owned),
+    [pipelines],
+  );
+  const importedSignature = useMemo(
+    () =>
+      sharedPipelines
+        .filter((pipeline) => pipeline.imported)
+        .map((pipeline) => pipeline.id)
+        .sort()
+        .join("|"),
+    [sharedPipelines],
+  );
+  const propImportedIds = useMemo(
     () =>
       new Set(
         sharedPipelines
           .filter((pipeline) => pipeline.imported)
           .map((pipeline) => pipeline.id),
       ),
+    [sharedPipelines],
   );
+  const [importedState, setImportedState] = useState<{
+    ids: Set<string>;
+    key: string;
+  }>({
+    ids: propImportedIds,
+    key: importedSignature,
+  });
+  const importedIds =
+    importedState.key === importedSignature ? importedState.ids : propImportedIds;
+
+  function setImportedIds(updater: (current: Set<string>) => Set<string>) {
+    setImportedState((current) => {
+      const currentIds =
+        current.key === importedSignature ? current.ids : propImportedIds;
+      return {
+        ids: updater(currentIds),
+        key: importedSignature,
+      };
+    });
+  }
   const [pendingAction, setPendingAction] = useState<{
     pipelineId: string;
     type: "import" | "remove";

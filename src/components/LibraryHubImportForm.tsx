@@ -247,7 +247,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
               key={library.id}
               isPending={isPending}
               library={library}
-              imported={importedIds.has(library.id) || library.imported}
+              imported={importedIds.has(library.id)}
               pending={pendingAction?.libraryId === library.id ? pendingAction.type : null}
               onImport={importLibrary}
               onRemove={removeImported}

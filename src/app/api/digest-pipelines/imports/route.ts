@@ -25,6 +25,7 @@ export async function POST(request: Request) {
     pipelineId: parsed.data.pipelineId,
   });
 
+  revalidatePath("/builders");
   revalidatePath("/dashboard");
   revalidatePath("/library-hub");
   return NextResponse.json({ ...result, pipelineId: parsed.data.pipelineId });
