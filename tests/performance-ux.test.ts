@@ -779,6 +779,10 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(digestLogPanel, /digest-updates-head[\s\S]{0,360}flex flex-wrap items-center gap-2/);
   assert.doesNotMatch(fetchLogPanel, /error \? \([\s\S]{0,120}mt-3 text-\[12px\] text-\[var\(--danger\)\]/);
   assert.doesNotMatch(digestLogPanel, /error \? \([\s\S]{0,120}mt-3 text-\[12px\] text-\[var\(--danger\)\]/);
+  assert.match(globals, /\.digest-updates-main\s*{[\s\S]*display:\s*flex/);
+  assert.match(globals, /\.digest-updates-main\s*{[\s\S]*flex-wrap:\s*wrap/);
+  assert.match(globals, /\.sources-sync-section \.digest-updates-main\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.sources-sync-section \.digest-updates-main\s*{[\s\S]*grid-template-columns:\s*auto minmax\(0,\s*1fr\)/);
   assert.match(globals, /\.sync-panel-title-row\s*{[\s\S]*flex-wrap:\s*wrap/);
   assert.match(globals, /\.sync-panel-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(workspaceAutoRefresh, /visibilitychange/);
