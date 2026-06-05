@@ -48,10 +48,12 @@ type DigestPipelinePreviewData = Pick<
 >;
 
 type DigestPipelineImportFormProps = {
+  mode?: "hub" | "imported";
   pipelines: HubDigestPipeline[];
 };
 
 export function DigestPipelineImportForm({
+  mode = "hub",
   pipelines,
 }: DigestPipelineImportFormProps) {
   const sharedPipelines = useMemo(
@@ -88,6 +90,16 @@ export function DigestPipelineImportForm({
   const importedPipelines = sharedPipelines.filter((pipeline) =>
     importedIds.has(pipeline.id),
   );
+  const visiblePipelines = mode === "imported" ? importedPipelines : sharedPipelines;
+  const title = mode === "imported" ? "Imported Digests" : "Shared AI Digests";
+  const description =
+    mode === "imported"
+      ? "Digests imported from the Hub."
+      : "Import another user's latest digest and archive.";
+  const emptyMessage =
+    mode === "imported"
+      ? "No imported digests yet."
+      : "No shared digests are available yet.";
 
   function setImportedIds(updater: (current: Set<string>) => Set<string>) {
     setImportedState((current) => {
@@ -166,9 +178,9 @@ export function DigestPipelineImportForm({
     <section>
       <div className="library-hub-toolbar">
         <div className="library-hub-toolbar-copy">
-          <h2 className="fb-section-heading">Imported Digests</h2>
+          <h2 className="fb-section-heading">{title}</h2>
           <p className="hub-section-copy">
-            Digests imported from the Hub.
+            {description}
           </p>
         </div>
       </div>
@@ -180,7 +192,7 @@ export function DigestPipelineImportForm({
       ) : null}
 
       <div className="hub-list-stack fb-hub-list">
-        {importedPipelines.map((pipeline) => (
+        {visiblePipelines.map((pipeline) => (
           <DigestPipelineCard
             imported={importedIds.has(pipeline.id)}
             isPending={importPending}
@@ -191,9 +203,9 @@ export function DigestPipelineImportForm({
             pipeline={pipeline}
           />
         ))}
-        {importedPipelines.length === 0 ? (
+        {visiblePipelines.length === 0 ? (
           <EmptyState
-            body="No imported digests yet."
+            body={emptyMessage}
             className="hub-list-empty"
           />
         ) : null}

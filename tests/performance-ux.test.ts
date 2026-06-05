@@ -958,7 +958,7 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(buildersPage, /<OwnDigestPipelineUpdatesCard/);
   assert.match(buildersPage, /pipeline=\{data\.ownDigestPipeline\}/);
   assert.match(buildersPage, /<DigestPipelineVisibilityToggle initialShared=\{data\.ownPipelineShared\}/);
-  assert.match(buildersPage, /<DigestPipelineImportForm pipelines=\{data\.hubDigestPipelines\}/);
+  assert.match(buildersPage, /<DigestPipelineImportForm mode="imported" pipelines=\{data\.hubDigestPipelines\}/);
   assert.match(buildersPage, /getDigestPipelineMetadataByOwnerIds/);
   assert.match(buildersPage, /context="digest"/);
   assert.match(digestUpdatesCard, /<DigestLogPanel/);
@@ -1906,8 +1906,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /fb-hub-list/);
   assert.match(digestPipelineForm, /fb-hub-title/);
   assert.doesNotMatch(digestPipelineForm, /lg:grid-cols-2/);
+  assert.match(digestPipelineForm, /mode\?: "hub" \| "imported"/);
+  assert.match(digestPipelineForm, /mode = "hub"/);
   assert.match(digestPipelineForm, /Imported Digests/);
-  assert.doesNotMatch(digestPipelineForm, /Shared AI Digests/);
+  assert.match(digestPipelineForm, /Shared AI Digests/);
   assert.doesNotMatch(digestPipelineForm, /Share my digest/);
   assert.doesNotMatch(digestPipelineForm, /Remove my digest/);
   assert.doesNotMatch(digestPipelineForm, /ownPipelineShared/);
@@ -1927,8 +1929,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /importedSignature/);
   assert.match(digestPipelineForm, /propImportedIds/);
   assert.match(digestPipelineForm, /importedPipelines = sharedPipelines\.filter/);
-  assert.match(digestPipelineForm, /importedPipelines\.map/);
+  assert.match(digestPipelineForm, /visiblePipelines = mode === "imported" \? importedPipelines : sharedPipelines/);
+  assert.match(digestPipelineForm, /visiblePipelines\.map/);
   assert.match(digestPipelineForm, /No imported digests yet/);
+  assert.match(digestPipelineForm, /No shared digests are available yet/);
   assert.match(digestPipelineForm, /imported=\{importedIds\.has\(pipeline\.id\)\}/);
   assert.match(digestPipelineForm, /aria-label=\{`Import \$\{pipeline\.title\}`\}/);
   assert.match(digestPipelineForm, /Imported/);

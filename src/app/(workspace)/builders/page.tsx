@@ -153,7 +153,7 @@ async function DigestSourcesSection({
         />
       </section>
 
-      <DigestPipelineImportForm pipelines={data.hubDigestPipelines} />
+      <DigestPipelineImportForm mode="imported" pipelines={data.hubDigestPipelines} />
     </section>
   );
 }
