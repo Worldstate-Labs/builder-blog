@@ -340,7 +340,7 @@ export function DigestPipelinePreviewCard({
               aria-label="Latest digest headline"
               className="fb-hub-digest-headline"
             >
-              <div className="fb-hub-digest-headline-kicker">Headlines</div>
+              <div className="fb-hub-digest-headline-kicker">Summary</div>
               <p>{pipeline.latestDigestHeadline}</p>
             </section>
           ) : null}
