@@ -1587,6 +1587,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.library-source-list-tools\s*{[\s\S]*border-bottom:/);
   assert.match(globals, /\.library-source-list-tools\s*{[\s\S]*background:/);
   assert.match(globals, /\.library-source-list-tools\s*{[\s\S]*padding:\s*0\.75rem/);
+  assert.match(globals, /\.your-library-panel > \.library-section-body\s*{[\s\S]*padding:\s*1rem 0/);
   assert.match(globals, /\.library-add-source-toggle\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.library-source-list-shell \.add-source-panel\s*{[\s\S]*margin:\s*0/);
   assert.match(globals, /\.library-source-list-shell \.builder-library-list\s*{[\s\S]*gap:\s*0/);

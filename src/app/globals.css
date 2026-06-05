@@ -4593,7 +4593,7 @@ svg.lucide {
 
 .your-library-panel > .library-section-body {
   gap: 1rem;
-  padding: 1rem;
+  padding: 1rem 0;
 }
 
 .your-library-panel .sources-sync-section {
