@@ -4919,10 +4919,16 @@ svg.lucide {
 }
 
 .builder-library-source-count {
+  align-items: center;
   color: var(--muted-strong);
+  display: inline-flex;
   flex: 0 0 auto;
   font-size: 0.8125rem;
   font-weight: 750;
+  gap: 0.45rem;
+  justify-content: flex-end;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .builder-library-source-section-body {
@@ -4970,8 +4976,13 @@ svg.lucide {
 }
 
 .builder-library-actions {
+  align-items: center;
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: 2rem minmax(7.25rem, auto);
   justify-self: end;
-  min-width: 0;
+  justify-items: end;
+  min-width: 10rem;
 }
 
 .builder-library-row-tools,
@@ -4983,13 +4994,17 @@ svg.lucide {
 
 .builder-library-row-tools {
   gap: 0.2rem;
-  opacity: 0;
-  transition: opacity 140ms ease;
 }
 
-.builder-library-card:hover .builder-library-row-tools,
-.builder-library-card:focus-within .builder-library-row-tools {
-  opacity: 1;
+.builder-library-row-tools,
+.builder-library-row-tools-placeholder {
+  justify-self: center;
+}
+
+.builder-library-row-tools-placeholder {
+  display: inline-block;
+  height: 1.75rem;
+  width: 1.75rem;
 }
 
 .builder-library-action-stack {
@@ -8816,14 +8831,15 @@ body {
 
   .builder-library-card .builder-library-actions,
   .builder-library-card .row-actions {
+    display: inline-flex;
     grid-area: actions;
     justify-content: flex-start;
     min-width: 0;
     width: 100%;
   }
 
-  .builder-library-row-tools {
-    opacity: 1;
+  .builder-library-row-tools-placeholder {
+    display: none;
   }
 
   .builder-library-action-stack,

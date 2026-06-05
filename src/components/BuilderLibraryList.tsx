@@ -215,6 +215,9 @@ export function BuilderLibraryList({
     <div className="builder-library-list">
       {visibleSections.map((section) => {
         const expanded = expandedSourceTypes.has(section.sourceType);
+        const sectionFollowedCount = section.builders.filter(
+          (builder) => builder.subscribed,
+        ).length;
         const sectionBodyId = sourceTypeSectionBodyId(listId, section.sourceType);
         return (
           <section
@@ -237,8 +240,12 @@ export function BuilderLibraryList({
                   <SourceBadge sourceType={section.sourceType} />
                 </span>
                 <span className="builder-library-source-count">
-                  {formatCount(section.builders.length)}{" "}
-                  {section.builders.length === 1 ? "source" : "sources"}
+                  <span>
+                    {formatCount(section.builders.length)}{" "}
+                    {section.builders.length === 1 ? "source" : "sources"}
+                  </span>
+                  <span aria-hidden="true">·</span>
+                  <span>{formatCount(sectionFollowedCount)} followed</span>
                 </span>
               </button>
             </h3>
@@ -308,7 +315,12 @@ function BuilderCard({
                 sourceOptions={editableSourceOptions}
               />
             </div>
-          ) : null}
+          ) : (
+            <span
+              aria-hidden="true"
+              className="builder-library-row-tools-placeholder"
+            />
+          )}
           <BuilderLibraryActions
             builderId={builder.id}
             initialSubscribed={builder.subscribed}

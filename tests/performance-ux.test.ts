@@ -1496,6 +1496,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.builder-library-source-section-toggle\s*{[\s\S]*cursor:\s*pointer/);
   assert.match(globals, /\.builder-library-source-section-toggle\[aria-expanded="true"\] \.builder-library-source-section-chevron\s*{[\s\S]*rotate\(90deg\)/);
   assert.match(globals, /\.builder-library-source-count\s*{[\s\S]*font-weight:\s*750/);
+  assert.match(builderLibraryList, /sectionFollowedCount/);
+  assert.match(builderLibraryList, /followed/);
+  assert.match(globals, /\.builder-library-source-count\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.builder-library-source-section-body\s*{[\s\S]*margin-left:\s*1\.35rem/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-posts\s*{[\s\S]*margin-left:\s*0/);
   assert.match(globals, /\.builder-library-source-section-title \.source-badge\s*{[\s\S]*min-height:\s*1\.85rem/);
@@ -1647,6 +1650,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.equal(existsSync(join(root, "src/components/BuilderLibraryAutoRefresh.tsx")), false);
   assert.equal(existsSync(join(root, "src/app/api/builders/library-state/route.ts")), false);
   assert.match(builderLibraryList, /BuilderLibraryActions/);
+  assert.match(globals, /\.builder-library-row-tools\s*{\s*gap:\s*0\.2rem;\s*}/);
+  assert.doesNotMatch(globals, /builder-library-card:hover \.builder-library-row-tools/);
+  assert.match(globals, /\.builder-library-actions\s*{[\s\S]*grid-template-columns:/);
   assert.doesNotMatch(buildersPage, /togglePersonalLibraryHubAvailabilityAction/);
   assert.doesNotMatch(buildersPage, /subscribeAllLibraryBuildersAction/);
   assert.doesNotMatch(buildersPage, /unsubscribeBuilderAction/);
