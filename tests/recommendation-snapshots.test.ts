@@ -67,6 +67,9 @@ test("home favorites saves posts and requires manual read marking", () => {
   assert.match(feed, /\/api\/favorites\/read/);
   assert.match(feed, /markedReadAt/);
   assert.match(feed, /isMarkedRead/);
+  assert.match(feed, /dataRead=\{isFavoritesTab \? false : isRead\}/);
+  assert.match(feed, />Marked read</);
+  assert.doesNotMatch(feed, /Manually marked read/);
   assert.doesNotMatch(feed, /disabled=\{isRead\}/);
   assert.match(feed, /isFavoritesTab \? undefined/);
   assert.match(postCard, /data-favorite-read/);

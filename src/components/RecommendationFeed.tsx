@@ -224,7 +224,7 @@ function RecommendationCard({
 
   return (
     <PostCard
-      dataRead={isRead}
+      dataRead={isFavoritesTab ? false : isRead}
       extraActions={
         isFavoritesTab ? (
           <FavoriteReadButton
@@ -242,7 +242,7 @@ function RecommendationCard({
         isFavoritesTab && isMarkedRead ? (
           <>
             <span className="post-meta-dot" aria-hidden="true">·</span>
-            <span className="favorite-read-label">Manually marked read</span>
+            <span className="favorite-read-label">Marked read</span>
           </>
         ) : null
       }
