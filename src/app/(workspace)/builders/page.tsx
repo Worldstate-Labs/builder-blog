@@ -70,7 +70,7 @@ type BuildersSearchParams = Promise<{
 }>;
 
 const SOURCES_TABS: Array<WorkspaceTopTabItem<SourcesTab>> = [
-  { value: "fetch", label: "Fetch", href: "/builders" },
+  { value: "fetch", label: "Sources", href: "/builders" },
   { value: "digest", label: "Digest", href: "/builders?tab=digest" },
 ];
 

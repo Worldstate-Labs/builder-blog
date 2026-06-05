@@ -908,7 +908,8 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(buildersPage, /@\/lib\/digest-runs/);
   assert.match(buildersPage, /WorkspaceTopTabs/);
   assert.match(buildersPage, /ariaLabel="Source management"/);
-  assert.match(buildersPage, /label:\s*"Fetch"[\s\S]*href:\s*"\/builders"/);
+  assert.match(buildersPage, /label:\s*"Sources"[\s\S]*href:\s*"\/builders"/);
+  assert.doesNotMatch(buildersPage, /label:\s*"Fetch"[\s\S]*href:\s*"\/builders"/);
   assert.match(buildersPage, /selectedTab === "digest"/);
   assert.match(buildersPage, /label:\s*"Digest"[\s\S]*href:\s*"\/builders\?tab=digest"/);
   assert.match(buildersPage, /const showStopDigestCron = data\.digestCronJob\?\.status === "active"/);
