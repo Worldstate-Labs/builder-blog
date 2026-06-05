@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Download, Radio, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { CountMeta } from "@/components/Count";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
 import { EmptyState } from "@/components/EmptyState";
@@ -239,6 +240,13 @@ export function DigestPipelineImportForm({
         ))}
         {visiblePipelines.length === 0 ? (
           <EmptyState
+            actions={
+              mode === "imported" ? (
+                <Link className="fb-btn light compact" href="/library-hub?tab=ai-digests">
+                  Browse Hub
+                </Link>
+              ) : null
+            }
             body={emptyMessage}
             className="hub-list-empty"
           />

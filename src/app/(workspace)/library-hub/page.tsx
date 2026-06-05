@@ -30,7 +30,7 @@ type LibraryHubSearchParams = Promise<{
 
 const LIBRARY_HUB_TABS: Array<WorkspaceTopTabItem<LibraryHubTab>> = [
   { value: "source-library", label: "Source Library", href: "/library-hub" },
-  { value: "ai-digests", label: "AI Digests", href: "/library-hub?tab=ai-digests" },
+  { value: "ai-digests", label: "Digests", href: "/library-hub?tab=ai-digests" },
 ];
 
 export default async function LibraryHubPage({
