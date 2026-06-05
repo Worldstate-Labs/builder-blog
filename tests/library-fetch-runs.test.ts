@@ -252,7 +252,7 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   assert.match(buildersPage, /initialCronJob=\{data\.libraryCronJob\}/);
   assert.match(buildersPage, /initialCronRuns=\{data\.cronRuns\}/);
   assert.match(buildersPage, /initialRuns=\{data\.fetchRuns\}/);
-  assert.match(buildersPage, /<DigestLogPanel/);
+  assert.match(buildersPage, /<OwnDigestPipelineUpdatesCard/);
   assert.match(buildersPage, /context="digest"/);
   assert.match(buildersPage, /showStop=\{showStopDigestCron\}/);
   assert.match(buildersPage, /initialCronJob=\{data\.digestCronJob\}/);

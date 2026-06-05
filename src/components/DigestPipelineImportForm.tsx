@@ -156,9 +156,11 @@ export function DigestPipelineImportForm({
 
 export function OwnDigestPipelineCard({
   children,
+  cronStatusControl,
   pipeline,
 }: {
   children?: ReactNode;
+  cronStatusControl?: ReactNode;
   pipeline: OwnDigestPipeline;
 }) {
   return (
@@ -191,7 +193,7 @@ export function OwnDigestPipelineCard({
             </div>
           </div>
         </div>
-        <DigestPipelineMetaGrid pipeline={pipeline} />
+        <DigestPipelineMetaGrid cronStatusControl={cronStatusControl} pipeline={pipeline} />
       </div>
 
       <div className="fb-hub-card-stats">
@@ -297,8 +299,10 @@ function DigestPipelineCard({
 }
 
 function DigestPipelineMetaGrid({
+  cronStatusControl,
   pipeline,
 }: {
+  cronStatusControl?: ReactNode;
   pipeline: Pick<
     HubDigestPipeline,
     | "digestUpdateStatus"
@@ -326,9 +330,11 @@ function DigestPipelineMetaGrid({
       <div className="fb-hub-digest-meta-item">
         <dt>Cron status</dt>
         <dd>
-          <span className={`fb-hub-digest-status is-${status.key}`}>
-            {status.label}
-          </span>
+          {cronStatusControl ?? (
+            <span className={`fb-hub-digest-status is-${status.key}`}>
+              {status.label}
+            </span>
+          )}
         </dd>
       </div>
     </dl>

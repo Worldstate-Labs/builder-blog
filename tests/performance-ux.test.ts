@@ -918,8 +918,9 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(digestPipelineVisibilityToggle, /method: nextShared \? "POST" : "DELETE"/);
   assert.match(digestPipelineVisibilityToggle, /aria-pressed=\{shared\}/);
   assert.match(dashboardPage, /Imported digest view/);
-  assert.match(buildersPage, /@\/components\/DigestLogPanel/);
+  assert.match(buildersPage, /@\/components\/OwnDigestPipelineUpdatesCard/);
   assert.match(buildersPage, /@\/components\/DigestPipelineImportForm/);
+  const digestUpdatesCard = source("src/components/OwnDigestPipelineUpdatesCard.tsx");
   assert.match(buildersPage, /@\/lib\/digest-runs/);
   assert.match(buildersPage, /WorkspaceTopTabs/);
   assert.match(buildersPage, /ariaLabel="Source management"/);
@@ -929,30 +930,27 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(buildersPage, /label:\s*"Digest"[\s\S]*href:\s*"\/builders\?tab=digest"/);
   assert.match(buildersPage, /const showStopDigestCron = data\.digestCronJob\?\.status === "active"/);
   assert.match(buildersPage, /Your digest/);
-  assert.ok(
-    buildersPage.indexOf("<OwnDigestPipelineCard") < buildersPage.indexOf("<DigestLogPanel"),
-    "Digest updates should render inside the digest pipeline card.",
-  );
   assert.match(buildersPage, /<section className="your-digest-section"/);
-  assert.match(
-    buildersPage,
-    /<OwnDigestPipelineCard pipeline=\{data\.ownDigestPipeline\}>[\s\S]*<section className="sources-sync-section">[\s\S]*<DigestLogPanel[\s\S]*<\/OwnDigestPipelineCard>/,
-  );
+  assert.match(buildersPage, /<OwnDigestPipelineUpdatesCard/);
+  assert.match(digestUpdatesCard, /<OwnDigestPipelineCard[\s\S]*cronStatusControl=\{/);
+  assert.match(digestUpdatesCard, /<DigestStatusToggle[\s\S]*status=\{updateStatus\}/);
+  assert.match(digestUpdatesCard, /<section className="sources-sync-section">[\s\S]*<DigestLogPanel/);
+  assert.match(digestUpdatesCard, /showStatusToggle=\{false\}/);
   assert.match(
     source("src/components/DigestPipelineImportForm.tsx"),
-    /<div className="own-digest-card-head">[\s\S]*<\/div>\s*\{children\}\s*<div className="fb-hub-digest-preview">/,
+    /cronStatusControl\?: ReactNode;[\s\S]*<div className="own-digest-card-head">[\s\S]*<\/div>\s*\{children\}\s*<div className="fb-hub-digest-preview">/,
   );
   assert.doesNotMatch(
     globals,
     /\.your-digest-section \.sources-sync-section\s*{[\s\S]*order:/,
   );
-  assert.match(buildersPage, /<OwnDigestPipelineCard/);
+  assert.match(buildersPage, /<OwnDigestPipelineUpdatesCard/);
   assert.match(buildersPage, /pipeline=\{data\.ownDigestPipeline\}/);
   assert.match(buildersPage, /<DigestPipelineVisibilityToggle initialShared=\{data\.ownPipelineShared\}/);
   assert.match(buildersPage, /<DigestPipelineImportForm pipelines=\{data\.hubDigestPipelines\}/);
   assert.match(buildersPage, /getDigestPipelineMetadataByOwnerIds/);
   assert.match(buildersPage, /context="digest"/);
-  assert.match(buildersPage, /<DigestLogPanel/);
+  assert.match(digestUpdatesCard, /<DigestLogPanel/);
   assert.match(buildersPage, /initialCronJob=\{data\.digestCronJob\}/);
   assert.match(buildersPage, /initialCronRuns=\{data\.digestCronRuns\}/);
   assert.match(buildersPage, /initialRuns=\{data\.digestRuns\}/);

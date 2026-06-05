@@ -1,6 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 import { Activity, ChevronDown, ChevronUp, Clock3, ExternalLink } from "lucide-react";
 import { CountBadge, CountMeta, CountMetric, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
@@ -84,21 +93,31 @@ function runDomId(runId: string): string {
   return `digest-run-${runId}`;
 }
 
+export type DigestLogPanelProps = {
+  actions?: ReactNode;
+  detailsOpen?: boolean;
+  initialCronJob: DigestCronJobStatus | null;
+  initialCronRuns: DigestRunListItem[];
+  initialJobRuns?: AgentJobRunListItem[];
+  initialRuns: DigestRunListItem[];
+  initialScheduledJobRuns?: AgentJobRunListItem[];
+  onDetailsOpenChange?: (open: boolean) => void;
+  onStatusChange?: (status: DigestUpdateStatus) => void;
+  showStatusToggle?: boolean;
+};
+
 export function DigestLogPanel({
+  actions,
+  detailsOpen: controlledDetailsOpen,
   initialRuns,
   initialCronRuns,
   initialJobRuns = [],
   initialScheduledJobRuns = [],
   initialCronJob,
-  actions,
-}: {
-  initialRuns: DigestRunListItem[];
-  initialCronRuns: DigestRunListItem[];
-  initialJobRuns?: AgentJobRunListItem[];
-  initialScheduledJobRuns?: AgentJobRunListItem[];
-  initialCronJob: DigestCronJobStatus | null;
-  actions?: ReactNode;
-}) {
+  onDetailsOpenChange,
+  onStatusChange,
+  showStatusToggle = true,
+}: DigestLogPanelProps) {
   const [runs, setRuns] = useState(initialRuns);
   const [cronRuns, setCronRuns] = useState(initialCronRuns);
   const [jobRuns, setJobRuns] = useState(initialJobRuns);
@@ -107,8 +126,9 @@ export function DigestLogPanel({
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const [expanded, setExpanded] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [uncontrolledDetailsOpen, setUncontrolledDetailsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"status" | "log">("status");
+  const detailsOpen = controlledDetailsOpen ?? uncontrolledDetailsOpen;
   const cronStatus = useMemo(
     () => buildDigestCronStatus(cronJob, cronRuns, scheduledJobRuns),
     [cronJob, cronRuns, scheduledJobRuns],
@@ -121,24 +141,39 @@ export function DigestLogPanel({
   const jobRunsRef = useRef(jobRuns);
   const hydrated = useHydrated();
 
+  const setDetailsOpen = useCallback(
+    (next: SetStateAction<boolean>) => {
+      const nextValue = typeof next === "function" ? next(detailsOpen) : next;
+      if (controlledDetailsOpen === undefined) setUncontrolledDetailsOpen(nextValue);
+      onDetailsOpenChange?.(nextValue);
+    },
+    [controlledDetailsOpen, detailsOpen, onDetailsOpenChange],
+  );
+
   useEffect(() => {
     runsRef.current = runs;
   }, [runs]);
   useEffect(() => {
     jobRunsRef.current = jobRuns;
   }, [jobRuns]);
+  useEffect(() => {
+    onStatusChange?.(updateStatus);
+  }, [onStatusChange, updateStatus]);
 
-  const openRun = useCallback((runId: string) => {
-    setDetailsOpen(true);
-    setExpanded(true);
-    setActiveTab("log");
-    window.setTimeout(() => {
-      document.getElementById(runDomId(runId))?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }, 0);
-  }, []);
+  const openRun = useCallback(
+    (runId: string) => {
+      setDetailsOpen(true);
+      setExpanded(true);
+      setActiveTab("log");
+      window.setTimeout(() => {
+        document.getElementById(runDomId(runId))?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 0);
+    },
+    [setDetailsOpen],
+  );
 
   const refresh = useCallback(() => {
     setError(null);
@@ -240,11 +275,13 @@ export function DigestLogPanel({
         <div className="min-w-0">
           <div className="sync-panel-title-row">
             <h2 className="fb-section-heading">Digest updates</h2>
-            <DigestStatusToggle
-              detailsOpen={detailsOpen}
-              onToggle={() => setDetailsOpen((value) => !value)}
-              status={updateStatus}
-            />
+            {showStatusToggle ? (
+              <DigestStatusToggle
+                detailsOpen={detailsOpen}
+                onToggle={() => setDetailsOpen((value) => !value)}
+                status={updateStatus}
+              />
+            ) : null}
           </div>
           <DigestScheduleSummary
             cronJob={cronJob}
@@ -314,7 +351,7 @@ export function DigestLogPanel({
   );
 }
 
-function DigestStatusToggle({
+export function DigestStatusToggle({
   detailsOpen,
   onToggle,
   status,

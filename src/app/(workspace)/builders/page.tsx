@@ -3,10 +3,8 @@ import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { BuilderLibraryList, type BuilderLibraryListItem } from "@/components/BuilderLibraryList";
 import { CountMeta } from "@/components/Count";
-import { DigestLogPanel } from "@/components/DigestLogPanel";
 import {
   DigestPipelineImportForm,
-  OwnDigestPipelineCard,
   type HubDigestPipeline,
   type OwnDigestPipeline,
 } from "@/components/DigestPipelineImportForm";
@@ -19,6 +17,7 @@ import {
 } from "@/components/FetchLogPanel";
 import { LibraryImportRemoveButton } from "@/components/LibraryImportRemoveButton";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
+import { OwnDigestPipelineUpdatesCard } from "@/components/OwnDigestPipelineUpdatesCard";
 import { PrivateLibraryPanel } from "@/components/PrivateLibraryPanel";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import { WorkspaceTopTabs, type WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
@@ -134,27 +133,24 @@ async function DigestSourcesSection({
           <DigestPipelineVisibilityToggle initialShared={data.ownPipelineShared} />
         </div>
 
-        <OwnDigestPipelineCard pipeline={data.ownDigestPipeline}>
-          <section className="sources-sync-section">
-            <DigestLogPanel
-              actions={
-                <SkillPromptActions
-                  compactOnly
-                  context="digest"
-                  digestMaxPostAgeDays={data.digestMaxPostAgeDays}
-                  showStop={showStopDigestCron}
-                  summaryLanguage={data.summaryLanguage}
-                  tokens={data.activeTokens}
-                />
-              }
-              initialCronJob={data.digestCronJob}
-              initialCronRuns={data.digestCronRuns}
-              initialJobRuns={data.digestJobRuns}
-              initialRuns={data.digestRuns}
-              initialScheduledJobRuns={data.digestScheduledJobRuns}
+        <OwnDigestPipelineUpdatesCard
+          actions={
+            <SkillPromptActions
+              compactOnly
+              context="digest"
+              digestMaxPostAgeDays={data.digestMaxPostAgeDays}
+              showStop={showStopDigestCron}
+              summaryLanguage={data.summaryLanguage}
+              tokens={data.activeTokens}
             />
-          </section>
-        </OwnDigestPipelineCard>
+          }
+          initialCronJob={data.digestCronJob}
+          initialCronRuns={data.digestCronRuns}
+          initialJobRuns={data.digestJobRuns}
+          initialRuns={data.digestRuns}
+          initialScheduledJobRuns={data.digestScheduledJobRuns}
+          pipeline={data.ownDigestPipeline}
+        />
       </section>
 
       <DigestPipelineImportForm pipelines={data.hubDigestPipelines} />
