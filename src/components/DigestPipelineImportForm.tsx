@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useState, useTransition } from "react";
 import { CheckCircle2, Download, Radio, Trash2 } from "lucide-react";
 import { CountMeta } from "@/components/Count";
@@ -153,7 +154,13 @@ export function DigestPipelineImportForm({
   );
 }
 
-export function OwnDigestPipelineCard({ pipeline }: { pipeline: OwnDigestPipeline }) {
+export function OwnDigestPipelineCard({
+  children,
+  pipeline,
+}: {
+  children?: ReactNode;
+  pipeline: OwnDigestPipeline;
+}) {
   return (
     <article className="own-digest-card">
       <div className="own-digest-card-head">
@@ -164,6 +171,8 @@ export function OwnDigestPipelineCard({ pipeline }: { pipeline: OwnDigestPipelin
           initialTitle={pipeline.title}
         />
       </div>
+
+      {children}
 
       <div className="fb-hub-digest-preview">
         <div className="fb-hub-digest-preview-row">

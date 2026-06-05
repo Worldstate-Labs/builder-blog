@@ -124,7 +124,7 @@ async function DigestSourcesSection({
 
   return (
     <section className="digest-source-management">
-      <section className="your-digest-panel fb-panel" aria-labelledby="sources-digest-section-title">
+      <section className="your-digest-section" aria-labelledby="sources-digest-section-title">
         <div className="library-hub-toolbar">
           <div className="library-hub-toolbar-copy">
             <h2 id="sources-digest-section-title" className="fb-section-heading">
@@ -134,27 +134,27 @@ async function DigestSourcesSection({
           <DigestPipelineVisibilityToggle initialShared={data.ownPipelineShared} />
         </div>
 
-        <section className="sources-sync-section">
-          <DigestLogPanel
-            actions={
-              <SkillPromptActions
-                compactOnly
-                context="digest"
-                digestMaxPostAgeDays={data.digestMaxPostAgeDays}
-                showStop={showStopDigestCron}
-                summaryLanguage={data.summaryLanguage}
-                tokens={data.activeTokens}
-              />
-            }
-            initialCronJob={data.digestCronJob}
-            initialCronRuns={data.digestCronRuns}
-            initialJobRuns={data.digestJobRuns}
-            initialRuns={data.digestRuns}
-            initialScheduledJobRuns={data.digestScheduledJobRuns}
-          />
-        </section>
-
-        <OwnDigestPipelineCard pipeline={data.ownDigestPipeline} />
+        <OwnDigestPipelineCard pipeline={data.ownDigestPipeline}>
+          <section className="sources-sync-section">
+            <DigestLogPanel
+              actions={
+                <SkillPromptActions
+                  compactOnly
+                  context="digest"
+                  digestMaxPostAgeDays={data.digestMaxPostAgeDays}
+                  showStop={showStopDigestCron}
+                  summaryLanguage={data.summaryLanguage}
+                  tokens={data.activeTokens}
+                />
+              }
+              initialCronJob={data.digestCronJob}
+              initialCronRuns={data.digestCronRuns}
+              initialJobRuns={data.digestJobRuns}
+              initialRuns={data.digestRuns}
+              initialScheduledJobRuns={data.digestScheduledJobRuns}
+            />
+          </section>
+        </OwnDigestPipelineCard>
       </section>
 
       <DigestPipelineImportForm pipelines={data.hubDigestPipelines} />

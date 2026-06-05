@@ -407,7 +407,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /className="ai-digest-stack"/);
   assert.doesNotMatch(dashboardPage, /className="ai-digest-titleblock"/);
   assert.doesNotMatch(dashboardPage, /className="fb-section-heading ai-digest-imported-title"/);
-  assert.match(buildersPage, /className="your-digest-panel fb-panel"/);
+  assert.match(buildersPage, /className="your-digest-section"/);
+  assert.doesNotMatch(buildersPage, /className="your-digest-panel fb-panel"/);
   assert.doesNotMatch(dashboardPage, /className="min-w-0"/);
   assert.doesNotMatch(dashboardPage, /className="fb-section-heading mt-1"/);
   assert.match(dashboardPage, /function DigestControlBar/);
@@ -929,18 +930,21 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(buildersPage, /const showStopDigestCron = data\.digestCronJob\?\.status === "active"/);
   assert.match(buildersPage, /Your digest/);
   assert.ok(
-    buildersPage.indexOf("<DigestLogPanel") < buildersPage.indexOf("<OwnDigestPipelineCard"),
-    "Digest updates should render above the digest pipeline card.",
+    buildersPage.indexOf("<OwnDigestPipelineCard") < buildersPage.indexOf("<DigestLogPanel"),
+    "Digest updates should render inside the digest pipeline card.",
   );
-  assert.match(buildersPage, /<section className="sources-sync-section">[\s\S]*<DigestLogPanel/);
-  assert.match(buildersPage, /<section className="your-digest-panel fb-panel"/);
+  assert.match(buildersPage, /<section className="your-digest-section"/);
   assert.match(
     buildersPage,
-    /<section className="your-digest-panel fb-panel"[\s\S]*<section className="sources-sync-section">[\s\S]*<DigestLogPanel[\s\S]*<OwnDigestPipelineCard/,
+    /<OwnDigestPipelineCard pipeline=\{data\.ownDigestPipeline\}>[\s\S]*<section className="sources-sync-section">[\s\S]*<DigestLogPanel[\s\S]*<\/OwnDigestPipelineCard>/,
+  );
+  assert.match(
+    source("src/components/DigestPipelineImportForm.tsx"),
+    /<div className="own-digest-card-head">[\s\S]*<\/div>\s*\{children\}\s*<div className="fb-hub-digest-preview">/,
   );
   assert.doesNotMatch(
     globals,
-    /\.your-digest-panel \.sources-sync-section\s*{[\s\S]*order:/,
+    /\.your-digest-section \.sources-sync-section\s*{[\s\S]*order:/,
   );
   assert.match(buildersPage, /<OwnDigestPipelineCard/);
   assert.match(buildersPage, /pipeline=\{data\.ownDigestPipeline\}/);
@@ -1531,7 +1535,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.source-sync-skeleton-line,[\s\S]*\.source-section-skeleton-card\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
   assert.match(globals, /\.source-section-skeleton-desc\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);
   assert.match(globals, /\.sources-section-stack,[\s\S]*\.imported-libraries-section\s*{[\s\S]*display:\s*grid/);
-  assert.match(globals, /\.your-digest-panel,[\s\S]*\.your-library-panel\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.your-digest-section,[\s\S]*\.your-library-panel\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.imported-libraries-head\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(globals, /\.library-section-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(globals, /\.source-summary-line \.count-meta\s*{[\s\S]*font-size:\s*0\.8125rem/);

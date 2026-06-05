@@ -4530,13 +4530,13 @@ svg.lucide {
   width: 100%;
 }
 
-.your-digest-panel,
+.your-digest-section,
 .your-library-panel {
   display: grid;
   gap: 1rem;
 }
 
-.your-digest-panel .library-hub-toolbar,
+.your-digest-section .library-hub-toolbar,
 .your-library-panel > .library-section-summary {
   grid-template-columns: minmax(0, 1fr) auto;
 }
@@ -4575,9 +4575,9 @@ svg.lucide {
 
 .sources-sync-section .digest-updates-panel {
   background: transparent;
-  border-inline: 0;
+  border: 0;
   border-radius: 0;
-  padding: 0.9rem 0;
+  padding: 0;
 }
 
 .sources-sync-section .digest-updates-head {
@@ -8666,18 +8666,17 @@ body {
     justify-content: flex-start;
   }
 
-  .your-digest-panel {
+  .your-digest-section {
     gap: 0.75rem;
   }
 
-  .your-digest-panel .library-hub-toolbar {
+  .your-digest-section .library-hub-toolbar {
     align-items: center;
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .sources-sync-section .digest-updates-panel {
-    border-top: 1px solid color-mix(in oklch, var(--line) 80%, transparent);
-    padding: 0.75rem 0 0;
+    padding: 0;
   }
 
   .sources-sync-section .digest-updates-head {
