@@ -6485,6 +6485,19 @@ svg.lucide {
   white-space: nowrap;
 }
 
+a.fb-hub-source-name {
+  text-decoration: none;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+}
+
+a.fb-hub-source-name:hover,
+a.fb-hub-source-name:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+}
+
 .fb-hub-source-row-meta {
   color: var(--muted);
   font-size: 0.71875rem;

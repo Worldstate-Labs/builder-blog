@@ -401,21 +401,35 @@ function HubCard({
                   </div>
                 </div>
                 <ul className="fb-hub-source-list">
-                  {group.items.map((item) => (
-                    <li
-                      key={item.builderId}
-                      className="fb-hub-source-row"
-                    >
-                      <span className="fb-hub-source-name">{item.builder.name}</span>
-                      <span className="fb-hub-source-row-meta">
-                        <CountMeta
-                          label={item.builder._count.feedItems === 1 ? "post" : "posts"}
-                          value={item.builder._count.feedItems}
-                        />
-                        <span> · Latest fetch {formatFetchDate(item.builder.lastFetchedAt)}</span>
-                      </span>
-                    </li>
-                  ))}
+                  {group.items.map((item) => {
+                    const sourceHref = sourceUrlForBuilder(item.builder);
+                    return (
+                      <li
+                        key={item.builderId}
+                        className="fb-hub-source-row"
+                      >
+                        {sourceHref ? (
+                          <a
+                            className="fb-hub-source-name"
+                            href={sourceHref}
+                            rel="noreferrer"
+                            target="_blank"
+                          >
+                            {item.builder.name}
+                          </a>
+                        ) : (
+                          <span className="fb-hub-source-name">{item.builder.name}</span>
+                        )}
+                        <span className="fb-hub-source-row-meta">
+                          <CountMeta
+                            label={item.builder._count.feedItems === 1 ? "post" : "posts"}
+                            value={item.builder._count.feedItems}
+                          />
+                          <span> · Latest fetch {formatFetchDate(item.builder.lastFetchedAt)}</span>
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
               </section>
             ))}
@@ -468,6 +482,10 @@ function sourceTypeForBuilder(builder: HubLibraryBuilder) {
     default:
       return "website";
   }
+}
+
+function sourceUrlForBuilder(builder: HubLibraryBuilder) {
+  return builder.sourceUrl ?? builder.fetchUrl;
 }
 
 function groupedSources(libraryItems: HubLibrary["items"]): SourceGroup[] {
