@@ -783,6 +783,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.digest-updates-main\s*{[\s\S]*flex-wrap:\s*wrap/);
   assert.match(globals, /\.sources-sync-section \.digest-updates-main\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.sources-sync-section \.digest-updates-main\s*{[\s\S]*grid-template-columns:\s*auto minmax\(0,\s*1fr\)/);
+  assert.match(globals, /\.sources-sync-section \.digest-updates-main > \.min-w-0\s*{[\s\S]*justify-self:\s*end/);
+  assert.match(globals, /\.sources-sync-section \.sync-panel-title-row\s*{[\s\S]*justify-content:\s*flex-end/);
+  assert.match(globals, /\.sources-sync-section \.sync-panel-title-row\s*{[\s\S]*flex-wrap:\s*nowrap/);
   assert.match(globals, /\.sync-panel-title-row\s*{[\s\S]*flex-wrap:\s*wrap/);
   assert.match(globals, /\.sync-panel-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(workspaceAutoRefresh, /visibilitychange/);

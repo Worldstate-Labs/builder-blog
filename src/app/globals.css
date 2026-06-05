@@ -4646,8 +4646,14 @@ svg.lucide {
   width: 100%;
 }
 
+.sources-sync-section .digest-updates-main > .min-w-0 {
+  justify-self: end;
+  min-width: 0;
+}
+
 .sources-sync-section .sync-panel-title-row {
-  justify-content: flex-start;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
 }
 
 .sources-sync-section .fb-section-heading {
