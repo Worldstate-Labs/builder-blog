@@ -3636,11 +3636,8 @@ svg.lucide {
 .fb-top-inner {
   align-items: center;
   display: grid;
-  gap: 1rem;
-  grid-template-columns:
-    minmax(var(--side-rail-content-width), 1fr)
-    minmax(18rem, var(--top-search-max))
-    minmax(var(--side-rail-content-width), 1fr);
+  gap: 0;
+  grid-template-columns: var(--side-rail-width) minmax(0, 1fr);
   min-width: 0;
   width: 100%;
 }
@@ -3648,7 +3645,10 @@ svg.lucide {
 .fb-top-search {
   display: block;
   grid-column: 2;
+  justify-self: center;
+  max-width: var(--top-search-max);
   min-width: 0;
+  width: min(100%, var(--top-search-max));
 }
 
 .fb-top-user {
@@ -3656,7 +3656,7 @@ svg.lucide {
   display: flex;
   flex-shrink: 0;
   gap: 0.5rem;
-  grid-column: 3;
+  grid-column: 2;
   justify-self: end;
 }
 
@@ -3666,6 +3666,7 @@ svg.lucide {
   flex-shrink: 0;
   gap: 0.6rem;
   justify-self: start;
+  margin-left: var(--workspace-gutter);
   min-width: 0;
   width: var(--side-rail-content-width);
 }
@@ -8431,7 +8432,7 @@ mark.fb-mark-highlight {
   }
 
   .app-main {
-    grid-column: 1 / -1;
+    grid-column: 2;
     grid-row: 1;
   }
 
@@ -8452,8 +8453,8 @@ mark.fb-mark-highlight {
 
   .fb-top {
     display: flex;
-    padding-left: var(--workspace-gutter);
-    padding-right: var(--workspace-gutter);
+    padding-left: 0;
+    padding-right: 0;
   }
 
   .fb-m-top {
