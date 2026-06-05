@@ -85,6 +85,7 @@ async function loadLibraryHubPageData() {
                 handle: true,
                 sourceUrl: true,
                 fetchUrl: true,
+                lastFetchedAt: true,
                 _count: { select: { feedItems: true } },
               },
             },
@@ -142,7 +143,13 @@ async function loadLibraryHubPageData() {
       viewCount: library.viewCount,
       itemCount: library._count.items,
       ownerLabel: ownerLabel(library.owner, isCommunityLibrary),
-      items: library.items,
+      items: library.items.map((item) => ({
+        builderId: item.builderId,
+        builder: {
+          ...item.builder,
+          lastFetchedAt: item.builder.lastFetchedAt?.toISOString() ?? null,
+        },
+      })),
       imported: importedLibraryIds.has(library.id),
       owned: library.ownerUserId === session.user.id,
     };

@@ -1239,6 +1239,8 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.doesNotMatch(libraryHubPage, /@\/components\/PageHeader/);
   assert.doesNotMatch(libraryHubPage, /<PageHeader/);
   assert.match(libraryHubPage, /<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/);
+  assert.match(libraryHubPage, /lastFetchedAt:\s*true/);
+  assert.match(libraryHubPage, /lastFetchedAt:\s*item\.builder\.lastFetchedAt\?\.toISOString\(\) \?\? null/);
   assert.doesNotMatch(libraryHubPage, /Import shared source libraries and AI Digest archives/);
   assert.doesNotMatch(libraryHubPage, /library-hub-page-count/);
   assert.doesNotMatch(libraryHubPage, /digestPipelineCount:\s*hubDigestPipelines\.length/);
@@ -1271,6 +1273,12 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /flex flex-wrap items-center gap-2|disabled:cursor-wait/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-head"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-sources-summary"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /groupedSources/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-type-groups/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceBadge/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /fetched posts/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Latest fetch/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-handle/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /ChevronDown/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /aria-label=\{`Show sources in \$\{library\.name\}`\}/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), />\s*Show\s*</);
@@ -1280,6 +1288,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-empty"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-panel dashed col-span-full/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /AVATAR_COLORS/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-avatar/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /style=\{\{/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-section-copy"/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /sharedPipelines = pipelines\.filter\(\(pipeline\) => !pipeline\.owned\)/);
@@ -1330,8 +1339,10 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/app/globals.css"), /\.fb-hub-sources > summary \.fb-hub-sources-caret\s*{[\s\S]*transition:\s*transform 160ms ease/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-sources\[open\] > summary \.fb-hub-sources-caret\s*{[\s\S]*transform:\s*rotate\(180deg\)/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-card-desc\s*{[\s\S]*max-width:\s*var\(--measure\)/);
-  assert.match(source("src/app/globals.css"), /\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*3\.5rem minmax\(0,\s*1fr\) minmax\(0,\s*auto\)/);
-  assert.match(source("src/app/globals.css"), /\.fb-hub-source-avatar\[data-avatar-tone="0"\]\s*{[\s\S]*oklch/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-source-type-groups\s*{/);
+  assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-source-avatar\[data-avatar-tone="0"\]/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview\s*{/);
   assert.match(searchPage, /<Suspense[\s\S]*fallback=\{[\s\S]*<SearchResultsFallback/);
   assert.doesNotMatch(source("src/app/globals.css"), /max-width:\s*(62ch|65ch)/);

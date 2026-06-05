@@ -4,6 +4,8 @@ import { useMemo, useState, useTransition } from "react";
 import { CheckCircle2, ChevronDown, Download, Sliders, Trash2 } from "lucide-react";
 import { CountBadge, CountMeta, CountRange, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
+import { SourceBadge } from "@/components/SourceBadge";
+import { normalizeSourceType, sourceLabelForType } from "@/lib/source-display";
 
 type HubLibraryBuilder = {
   id: string;
@@ -13,7 +15,19 @@ type HubLibraryBuilder = {
   handle: string | null;
   sourceUrl: string | null;
   fetchUrl: string | null;
+  lastFetchedAt: string | null;
   _count: { feedItems: number };
+};
+
+type SourceGroup = {
+  sourceType: string;
+  label: string;
+  items: Array<{
+    builderId: string;
+    builder: HubLibraryBuilder;
+  }>;
+  postCount: number;
+  latestFetchedAt: string | null;
 };
 
 export type HubLibrary = {
@@ -264,12 +278,16 @@ function HubCard({
   onRemove: (id: string) => void;
   pending: "import" | "remove" | null;
 }) {
-  const sourcePreview = library.items.slice(0, 4);
-  const sourceNames = library.items.slice(0, 3).map((item) => item.builder.name);
-  const sourceKinds = [
-    ...new Set(library.items.slice(0, 3).map((item) => kindLabel(item.builder.kind))),
-  ];
-  const remainingSources = Math.max(0, library.items.length - sourceNames.length);
+  const sourceGroups = groupedSources(library.items);
+  const sourcePreview = sourceGroups.slice(0, 4);
+  const remainingSourceTypes = Math.max(0, sourceGroups.length - sourcePreview.length);
+  const fetchedPostCount = library.items.reduce(
+    (sum, item) => sum + item.builder._count.feedItems,
+    0,
+  );
+  const latestFetchedAt = latestIso(
+    library.items.map((item) => item.builder.lastFetchedAt),
+  );
 
   const action = library.owned ? (
     <span className="fb-chip">
@@ -336,25 +354,23 @@ function HubCard({
       {sourcePreview.length > 0 ? (
         <details className="fb-hub-sources">
           <summary className="fb-hub-sources-summary" aria-label={`Show sources in ${library.name}`}>
-            <div className="fb-hub-source-stack">
-              {sourcePreview.map((item, index) => (
-                <SourceAvatar
-                  index={index}
-                  key={item.builderId}
-                  name={item.builder.name}
-                  stacked={index > 0}
+            <div className="fb-hub-source-type-preview">
+              {sourcePreview.map((group) => (
+                <SourceBadge
+                  key={group.sourceType}
+                  sourceType={group.sourceType}
                 />
               ))}
             </div>
             <div className="fb-hub-source-summary-text">
-              {sourceNames.join(", ")}
-              {sourceKinds.length > 0 ? (
-                <span> · {sourceKinds.join(", ")}</span>
-              ) : null}
-              {remainingSources > 0 ? (
+              <CountMeta label={sourceGroups.length === 1 ? "source type" : "source types"} value={sourceGroups.length} />
+              <span> · </span>
+              <CountMeta label={library.itemCount === 1 ? "source" : "sources"} value={library.itemCount} />
+              <span> · </span>
+              <CountMeta label={fetchedPostCount === 1 ? "fetched post" : "fetched posts"} value={fetchedPostCount} />
+              {remainingSourceTypes > 0 ? (
                 <span>
-                  {" "}
-                  · <CountMeta label="more sources" value={remainingSources} />
+                  {" "}· <CountMeta label="more source types" value={remainingSourceTypes} />
                 </span>
               ) : null}
             </div>
@@ -362,59 +378,56 @@ function HubCard({
               <ChevronDown />
             </span>
           </summary>
-          <ul className="fb-hub-source-list">
-            {library.items.map((item) => (
-              <li
-                key={item.builderId}
-                className="fb-hub-source-row"
-              >
-                <span className="fb-kind-pill fb-hub-source-kind">
-                  {kindLabel(item.builder.kind)}
-                </span>
-                <span className="fb-hub-source-name">{item.builder.name}</span>
-                {item.builder.handle ? (
-                  <span className="fb-hub-source-handle mono">
-                    {item.builder.handle.startsWith("@") ? item.builder.handle : `@${item.builder.handle}`}
-                  </span>
-                ) : null}
-              </li>
+          <div className="fb-hub-source-type-groups">
+            {sourceGroups.map((group) => (
+              <section className="fb-hub-source-type-group" key={group.sourceType}>
+                <div className="fb-hub-source-type-heading">
+                  <SourceBadge sourceType={group.sourceType} />
+                  <div className="fb-hub-source-type-meta">
+                    <CountMeta label={group.items.length === 1 ? "source" : "sources"} value={group.items.length} />
+                    <span> · </span>
+                    <CountMeta label={group.postCount === 1 ? "fetched post" : "fetched posts"} value={group.postCount} />
+                    <span> · Latest fetch {formatFetchDate(group.latestFetchedAt)}</span>
+                  </div>
+                </div>
+                <ul className="fb-hub-source-list">
+                  {group.items.map((item) => (
+                    <li
+                      key={item.builderId}
+                      className="fb-hub-source-row"
+                    >
+                      <span className="fb-hub-source-name">{item.builder.name}</span>
+                      <span className="fb-hub-source-row-meta">
+                        <CountMeta
+                          label={item.builder._count.feedItems === 1 ? "post" : "posts"}
+                          value={item.builder._count.feedItems}
+                        />
+                        <span> · Latest fetch {formatFetchDate(item.builder.lastFetchedAt)}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             ))}
             {library.itemCount > library.items.length ? (
-              <li className="fb-hub-source-overflow">
+              <div className="fb-hub-source-overflow">
                 <CountRange>
                   Showing {formatCount(library.items.length)} of {formatCount(library.itemCount)} sources
                 </CountRange>
-              </li>
+              </div>
             ) : null}
-          </ul>
+          </div>
         </details>
       ) : null}
 
       <div className="fb-hub-card-stats">
         <CountMeta label={library.itemCount === 1 ? "source" : "sources"} value={library.itemCount} />
+        <CountMeta label={fetchedPostCount === 1 ? "fetched post" : "fetched posts"} value={fetchedPostCount} />
+        <span>Latest fetch {formatFetchDate(latestFetchedAt)}</span>
         <CountMeta label={library.importCount === 1 ? "import" : "imports"} value={library.importCount} />
         <CountMeta label={library.viewCount === 1 ? "view" : "views"} value={library.viewCount} />
       </div>
     </article>
-  );
-}
-
-function SourceAvatar({
-  index,
-  name,
-  stacked,
-}: {
-  index: number;
-  name: string;
-  stacked?: boolean;
-}) {
-  return (
-    <span
-      className={`fb-hub-source-avatar${stacked ? " is-stacked" : ""}`}
-      data-avatar-tone={index % 5}
-    >
-      {name.charAt(0).toUpperCase()}
-    </span>
   );
 }
 
@@ -430,17 +443,74 @@ function topicLabel(library: HubLibrary) {
   return "Curated by user";
 }
 
-function kindLabel(kind: HubLibraryBuilder["kind"]) {
-  switch (kind) {
+function sourceTypeForBuilder(builder: HubLibraryBuilder) {
+  const explicit = normalizeSourceType(builder.sourceType);
+  if (explicit) return explicit;
+  switch (builder.kind) {
     case "X":
-      return "X";
+      return "x";
     case "BLOG":
-      return "Blog";
+      return "blog";
     case "PODCAST":
-      return "Podcast";
+      return "podcast";
     case "WEBSITE":
-      return "Website";
+      return "website";
     default:
-      return kind;
+      return "website";
   }
+}
+
+function groupedSources(libraryItems: HubLibrary["items"]): SourceGroup[] {
+  const groups = new Map<string, SourceGroup>();
+  for (const item of libraryItems) {
+    const sourceType = sourceTypeForBuilder(item.builder);
+    const existing = groups.get(sourceType);
+    if (existing) {
+      existing.items.push(item);
+      existing.postCount += item.builder._count.feedItems;
+      existing.latestFetchedAt = maxIso(existing.latestFetchedAt, item.builder.lastFetchedAt);
+    } else {
+      groups.set(sourceType, {
+        sourceType,
+        label: sourceLabelForType(sourceType),
+        items: [item],
+        postCount: item.builder._count.feedItems,
+        latestFetchedAt: item.builder.lastFetchedAt,
+      });
+    }
+  }
+  return [...groups.values()].sort((a, b) => {
+    const rank = sourceTypeRank(a.sourceType) - sourceTypeRank(b.sourceType);
+    if (rank !== 0) return rank;
+    return a.label.localeCompare(b.label);
+  });
+}
+
+function sourceTypeRank(sourceType: string) {
+  const order = ["x", "blog", "github_trending", "product_hunt_top_products", "youtube", "podcast", "website"];
+  const index = order.indexOf(sourceType);
+  return index === -1 ? order.length : index;
+}
+
+function latestIso(values: Array<string | null>) {
+  return values.reduce<string | null>((latest, value) => maxIso(latest, value), null);
+}
+
+function maxIso(a: string | null, b: string | null) {
+  if (!a) return b;
+  if (!b) return a;
+  return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
+}
+
+const fetchDateFormatter = new Intl.DateTimeFormat("en-US", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+
+function formatFetchDate(value: string | null) {
+  if (!value) return "never";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return fetchDateFormatter.format(date);
 }
