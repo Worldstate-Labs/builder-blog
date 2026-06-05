@@ -543,7 +543,7 @@ export function FetchLogPanel({
       <div className="digest-updates-head">
         <div className="min-w-0">
           <div className="sync-panel-title-row">
-            <h2 className="fb-section-heading">Fetch sync</h2>
+            <h2 className="fb-section-heading">Source updates</h2>
             <FetchStatusToggle
               detailsOpen={detailsOpen}
               onToggle={() => setDetailsOpen((value) => !value)}
@@ -571,7 +571,7 @@ export function FetchLogPanel({
       {detailsOpen ? (
         <div id="fetch-sync-details">
           <div
-            aria-label="Fetch sync views"
+            aria-label="Source update views"
             className="fb-segmented-tabs sync-panel-tabs"
             role="tablist"
           >
@@ -698,7 +698,7 @@ function FetchStatusToggle({
         borderColor: status.style.border,
         color: status.style.color,
       }}
-      title={detailsOpen ? "Hide fetch sync details" : "Show fetch sync details"}
+      title={detailsOpen ? "Hide source update details" : "Show source update details"}
       type="button"
     >
       {status.label}
@@ -722,7 +722,7 @@ function FetchScheduleSummary({
   if (!cronJob) {
     return (
       <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-        {status.summary} Fetch history appears after the local CLI runs.
+        {status.summary} Use Update sources to copy a Local Agent prompt.
       </p>
     );
   }
@@ -734,7 +734,7 @@ function FetchScheduleSummary({
         {cronJob.stoppedAt
           ? ` ${hydrated ? formatRelative(cronJob.stoppedAt) : formatAbsolute(cronJob.stoppedAt)}`
           : ""}
-        . One-time fetch runs can still be started from the local helper.
+        . Use Update sources to copy a Local Agent prompt.
       </p>
     );
   }
@@ -1029,7 +1029,7 @@ function FetchRunList({
       {entries.length === 0 ? (
         <EmptyState
           className="sync-panel-empty is-dashed"
-          body="No fetch runs yet. Runs appear after your local helper updates sources."
+          body="No source updates yet. Runs appear after your Local Agent updates sources."
         />
       ) : (
         <>
@@ -1497,9 +1497,9 @@ function describeWork(task: FetchTaskLog): WorkInfo {
       };
     case "fetch_builder_fallback":
       return {
-        label: "Local helper",
+        label: "Local Agent",
         blurb:
-          "The local helper read the primary content before summarizing it.",
+          "The Local Agent read the primary content before summarizing it.",
         fix: null,
       };
     default:
@@ -1778,7 +1778,7 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
                   ? "Fetch was blocked, so no summary was produced."
                   : sumRes.label === "Failed"
                     ? "This item failed to summarize, so it was not saved."
-                    : "The local helper hasn't summarized this item yet."}
+                    : "The Local Agent hasn't summarized this item yet."}
               </p>
             ) : null}
           </StageBlock>

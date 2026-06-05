@@ -210,7 +210,7 @@ const PROMPT_CONFIG = {
   library: {
     title: "Update sources",
     onceLabel: "Copy one-time prompt",
-    cronLabel: "Run or schedule",
+    cronLabel: "Update sources",
     onceJob: "library-once",
     cronJob: "library-cron-setup",
     stopJob: "library-cron-stop",
@@ -426,7 +426,9 @@ export function SkillPromptActions({
       {!compactOnly ? (
         <div className="fb-skill-text">
           <span className="fb-section-label mr-2">{config.title}</span>
-          Copy a prompt for your Local Agent to update new {context === "digest" ? "digests" : "sources"}.
+          {context === "digest"
+            ? "Copy a prompt for your Local Agent to build new digests."
+            : "Copy a prompt for your Local Agent to update every source."}
         </div>
       ) : null}
       <button
@@ -805,10 +807,12 @@ function CronConfigDialog({
       >
         <header className="token-picker-header">
           <h2 id="cron-config-title" className="token-picker-title">
-            Choose run type
+            {context === "digest" ? "Build digest" : "Update sources"}
           </h2>
           <p className="token-picker-sub">
-            Copy one prompt to send to your Local Agent.
+            {context === "digest"
+              ? "Copy a prompt for your Local Agent to build your AI Digest."
+              : "Copy a prompt for your Local Agent to fetch, summarize, and sync every source."}
           </p>
         </header>
 

@@ -631,7 +631,6 @@ async function FetchSourcesSection({
     <PrivateLibraryPanel
       beforeBody={fetchSyncSection}
       className="your-library-panel fb-panel"
-      count={data.privateBuilders.length}
       headingId="sources-library-section-title"
       sourceOptions={data.sourceLabelOptions}
       title="Your library"
@@ -656,7 +655,7 @@ async function FetchSourcesSection({
           }),
         )}
         editableSourceOptions={data.sourceLabelOptions}
-        emptyBody="Add a source, or run your local helper to import private sources."
+        emptyBody="Add a source, or use your Local Agent to import private sources."
         emptyTitle="No personal sources yet"
       />
     </PrivateLibraryPanel>

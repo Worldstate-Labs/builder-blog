@@ -3,7 +3,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Plus, X } from "lucide-react";
 import { AddBuilderForm } from "@/components/AddBuilderForm";
-import { CountMeta } from "@/components/Count";
 import {
   builderLibraryBuilderAdded,
   type BuilderLibraryEventItem,
@@ -19,7 +18,6 @@ export function PrivateLibraryPanel({
   className,
   headingId,
   title,
-  count,
   sourceOptions,
   visibilityToggle,
   children,
@@ -28,7 +26,6 @@ export function PrivateLibraryPanel({
   className?: string;
   headingId?: string;
   title: string;
-  count: number;
   sourceOptions: SourceOption[];
   visibilityToggle?: ReactNode;
   children: ReactNode;
@@ -65,7 +62,6 @@ export function PrivateLibraryPanel({
           </h2>
         </div>
         <div className="library-section-meta">
-          <CountMeta label={count === 1 ? "source" : "sources"} value={count} />
           {visibilityToggle}
           <button
             aria-expanded={addOpen}

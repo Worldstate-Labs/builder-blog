@@ -343,7 +343,8 @@ test("web app serves the agent skill and setup command", () => {
   // Cron + once dialogs: compact <select> controls, plus an account-wide
   // summary language select persisted via /api/settings/summary-language —
   // now shown for digest as well as library.
-  assert.match(skillPromptActions, /Copy one prompt to send to your Local Agent\./);
+  assert.match(skillPromptActions, /Copy a prompt for your Local Agent to fetch, summarize, and sync every source\./);
+  assert.match(skillPromptActions, /Copy a prompt for your Local Agent to build your AI Digest\./);
   assert.match(skillPromptActions, /Local Agent/);
   assert.match(skillPromptActions, /Already digested posts can be included again this time\./);
   assert.match(skillPromptActions, /Excludes older posts\. Leave blank for no limit\./);

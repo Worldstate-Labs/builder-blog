@@ -1461,7 +1461,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(source("src/components/PrivateLibraryPanel.tsx"), /className="add-source-panel fb-panel"/);
   assert.match(source("src/components/PrivateLibraryPanel.tsx"), /library-section-summary--static/);
   assert.match(source("src/components/PrivateLibraryPanel.tsx"), /\{beforeBody\}/);
-  assert.match(source("src/components/PrivateLibraryPanel.tsx"), /CountMeta/);
+  assert.doesNotMatch(source("src/components/PrivateLibraryPanel.tsx"), /CountMeta/);
   assert.doesNotMatch(source("src/components/PrivateLibraryPanel.tsx"), /CountChip/);
   assert.doesNotMatch(source("src/components/PrivateLibraryPanel.tsx"), /className="fb-panel mb-3"/);
   assert.match(globals, /\.add-source-form/);
