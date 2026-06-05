@@ -6618,7 +6618,8 @@ a.fb-hub-source-name:focus-visible {
 
 .fb-hub-digest-headline {
   margin-top: 0.7rem;
-  max-width: 76ch;
+  max-width: none;
+  width: 100%;
 }
 
 .fb-hub-digest-headline-kicker {

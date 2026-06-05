@@ -1338,6 +1338,8 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(digestPipelineForm, /Latest digest/);
   assert.match(digestPipelineForm, /Cron status/);
   assert.match(digestPipelineForm, /className="fb-hub-digest-headline"/);
+  assert.match(digestPipelineForm, /fb-hub-digest-headline-kicker">Headlines/);
+  assert.doesNotMatch(digestPipelineForm, /fb-hub-digest-headline-kicker">Summary/);
   assert.doesNotMatch(digestPipelineForm, /label="Agent"/);
   assert.doesNotMatch(digestPipelineForm, /label="Lookback"/);
   assert.doesNotMatch(digestPipelineForm, /label="Cron job"/);
@@ -1381,6 +1383,9 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-source-avatar\[data-avatar-tone="0"\]/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview\s*{/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-headline\s*{/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-digest-headline\s*{[\s\S]*max-width:\s*none/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-digest-headline\s*{[\s\S]*width:\s*100%/);
+  assert.doesNotMatch(source("src/app/globals.css"), /max-width:\s*76ch/);
   assert.match(searchPage, /<Suspense[\s\S]*fallback=\{[\s\S]*<SearchResultsFallback/);
   assert.doesNotMatch(source("src/app/globals.css"), /max-width:\s*(62ch|65ch)/);
 });
