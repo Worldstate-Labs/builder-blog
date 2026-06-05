@@ -7,6 +7,7 @@ import { CountBadge } from "@/components/Count";
 import { PostCard, type PostCardPost } from "@/components/PostCard";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { SourceBadge } from "@/components/SourceBadge";
+import { normalizeSourceType, sourceLabelForType } from "@/lib/source-display";
 import {
   parseDigest,
   type DigestDoc,
@@ -66,6 +67,9 @@ export function DigestContent({
   }
 
   const shouldShowContents = showContents && doc.sections.length >= 2;
+  const sectionSourceTypes = new Map(
+    doc.sections.map((section) => [section.id, sourceTypeForSection(section, sourceLookup)]),
+  );
 
   return (
     <div className={wrapClass(tone)}>
@@ -79,7 +83,9 @@ export function DigestContent({
         <nav className="digest-contents" aria-label="Digest sections">
           {doc.sections.map((s) => (
             <a key={s.id} className="digest-contents-chip" href={`#${s.id}`}>
-              <span className="truncate">{s.heading || "Updates"}</span>
+              <span className="truncate">
+                {sectionDisplayLabel(s, sourceLookup, sectionSourceTypes.get(s.id) ?? "website")}
+              </span>
               <CountBadge value={s.postCount} />
             </a>
           ))}
@@ -92,6 +98,7 @@ export function DigestContent({
           section={section}
           collapsible={false}
           showCount={showSectionCounts}
+          sourceType={sectionSourceTypes.get(section.id) ?? "website"}
           sourceLookup={sourceLookup}
         />
       ))}
@@ -107,13 +114,16 @@ function SectionBlock({
   section,
   collapsible,
   showCount,
+  sourceType,
   sourceLookup,
 }: {
   section: DigestSection;
   collapsible: boolean;
   showCount: boolean;
+  sourceType: string;
   sourceLookup: Map<string, DigestSourceLink>;
 }) {
+  const sectionSourceType = sourceType;
   const body = (
     <div className="digest-section-body">
       {section.groups.map((group, gi) => (
@@ -136,6 +146,7 @@ function SectionBlock({
               group={group}
               post={post}
               section={section}
+              sectionSourceType={sectionSourceType}
               sourceLink={group.source ? sourceLinkForSource(group.source, sourceLookup) : undefined}
             />
           ))}
@@ -150,7 +161,7 @@ function SectionBlock({
         {section.heading ? (
           <div className="digest-section-summary digest-section-summary-static">
             <h3 className="digest-section-heading">
-              <SourceBadge sourceType={sourceTypeFromSection(section.heading)} />
+              <SourceBadge sourceType={sectionSourceType} />
             </h3>
             {showCount ? <CountBadge value={section.postCount} /> : null}
           </div>
@@ -165,7 +176,7 @@ function SectionBlock({
       <summary className="digest-section-summary">
         <ChevronDown aria-hidden="true" className="digest-section-chevron" />
         <h3 className="digest-section-heading">
-          <SourceBadge sourceType={sourceTypeFromSection(section.heading)} />
+          <SourceBadge sourceType={sectionSourceType} />
         </h3>
         {showCount ? <CountBadge value={section.postCount} /> : null}
       </summary>
@@ -178,11 +189,13 @@ function PostBlock({
   group,
   post,
   section,
+  sectionSourceType,
   sourceLink,
 }: {
   group: DigestGroup;
   post: DigestPost;
   section: DigestSection;
+  sectionSourceType: string;
   sourceLink?: DigestSourceLink;
 }) {
   const summary = [post.lede, ...post.paragraphs]
@@ -190,7 +203,7 @@ function PostBlock({
     .map(inlineText)
     .join("\n\n")
     .trim();
-  const sourceType = sourceTypeFromSection(section.heading);
+  const sourceType = normalizeSourceType(sourceLink?.sourceType) || sectionSourceType;
   const url = post.media[0]?.url ?? sourceLink?.sourceUrl ?? sourceLink?.fetchUrl ?? "#";
   const postCard: PostCardPost = {
     id: `digest-${section.id}-${post.id}`,
@@ -284,6 +297,33 @@ function sourceLinkForSource(source: string, lookup: Map<string, DigestSourceLin
     if (match) return match;
   }
   return undefined;
+}
+
+function sourceTypeForSection(section: DigestSection, lookup: Map<string, DigestSourceLink>) {
+  return sourceTypeFromSourceLinksForSection(section, lookup) || sourceTypeFromSection(section.heading);
+}
+
+function sourceTypeFromSourceLinksForSection(section: DigestSection, lookup: Map<string, DigestSourceLink>) {
+  const sourceTypes = new Set<string>();
+  for (const group of section.groups) {
+    if (!group.source) continue;
+    const sourceType = normalizeSourceType(sourceLinkForSource(group.source, lookup)?.sourceType);
+    if (sourceType) sourceTypes.add(sourceType);
+  }
+
+  if (sourceTypes.size === 1) return [...sourceTypes][0];
+
+  const sectionSourceType = normalizeSourceType(sourceLinkForSource(section.heading, lookup)?.sourceType);
+  return sectionSourceType || null;
+}
+
+function sectionDisplayLabel(section: DigestSection, lookup: Map<string, DigestSourceLink>, sourceType: string) {
+  const typedSource = sourceTypeFromSourceLinksForSection(section, lookup);
+  if (typedSource) return sourceLabelForType(typedSource);
+
+  const fallbackSourceType = sourceTypeFromSection(section.heading);
+  if (fallbackSourceType !== "website") return sourceLabelForType(fallbackSourceType);
+  return section.heading || sourceLabelForType(sourceType);
 }
 
 function sourceLinkKeys(link: DigestSourceLink) {

@@ -98,14 +98,14 @@ test("source logos are shared across recommendation and library surfaces", () =>
   assert.match(source("src/components/FeedCard.tsx"), /PostCard/);
 });
 
-test("digest renderer preserves GitHub and Product Hunt source badges", () => {
+test("digest renderer uses source link metadata before section heading fallbacks", () => {
   const html = renderToStaticMarkup(
     createElement(DigestContent, {
       content: `AI Digest - 6/5/2026
 
-## Github Trending
+## Website
 
-### owner/repo
+### Github Trending
 
 **Repo launch**
 
@@ -113,7 +113,7 @@ Summary.
 
 Source: https://github.com/owner/repo
 
-## Product Hunt Top Products
+## Website
 
 ### Product Hunt Top Products
 
@@ -122,12 +122,30 @@ Source: https://github.com/owner/repo
 Summary.
 
 Source: https://www.producthunt.com/products/lightfield`,
-      sourceLinks: [],
+      sourceLinks: [
+        {
+          aliases: ["Github Trending"],
+          entityId: "entity_github",
+          href: "/builder/entity_github",
+          name: "Github Trending",
+          sourceType: "github_trending",
+          sourceUrl: "https://github.com/trending?since=daily",
+        },
+        {
+          aliases: ["Product Hunt Top Products"],
+          entityId: "entity_ph",
+          href: "/builder/entity_ph",
+          name: "Product Hunt Top Products",
+          sourceType: "product_hunt_top_products",
+          sourceUrl: "https://www.producthunt.com/",
+        },
+      ],
     }),
   );
 
   assert.match(html, /data-source="github_trending"/);
   assert.match(html, /data-source="product_hunt_top_products"/);
+  assert.doesNotMatch(html, /data-source="website"/);
 });
 
 test("recommendation snapshots request six posts at a time", () => {

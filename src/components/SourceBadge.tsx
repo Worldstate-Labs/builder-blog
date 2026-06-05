@@ -1,4 +1,5 @@
 import { Globe } from "lucide-react";
+import { normalizeSourceType, sourceDisplayForType } from "@/lib/source-display";
 import { sourceIcons } from "@/lib/source-icons";
 
 type SourceBadgeBuilder = {
@@ -53,23 +54,6 @@ function sourceDisplayForBuilder(builder: SourceBadgeBuilder) {
   return sourceDisplayForType("website");
 }
 
-function sourceDisplayForType(sourceType: string | null | undefined) {
-  const id = normalizeSourceType(sourceType) || "website";
-  const labels: Record<string, string> = {
-    blog: "Blog",
-    github_trending: "Github Trending",
-    podcast: "Podcast RSS",
-    product_hunt_top_products: "Product Hunt Top Products",
-    website: "Website",
-    x: "X/Twitter",
-    youtube: "YouTube",
-  };
-  return {
-    id,
-    label: labels[id] ?? titleCase(id),
-  };
-}
-
 function podcastPlatformLabel(builder: SourceBadgeBuilder) {
   const haystack = `${builder.sourceUrl ?? ""} ${builder.fetchUrl ?? ""}`.toLowerCase();
   if (haystack.includes("podcasts.apple.com")) return "Apple Podcasts";
@@ -80,15 +64,4 @@ function podcastPlatformLabel(builder: SourceBadgeBuilder) {
   if (haystack.includes("overcast.fm")) return "Overcast";
   if (haystack.includes("pca.st") || haystack.includes("pocketcasts.com")) return "Pocket Casts";
   return "Podcast RSS";
-}
-
-function normalizeSourceType(sourceType: string | null | undefined) {
-  const normalized = sourceType?.trim().toLowerCase().replace(/[\s-]+/g, "_");
-  if (normalized === "pdf") return "website";
-  return normalized && normalized !== "auto" ? normalized : "";
-}
-
-function titleCase(value: string) {
-  const label = value.toLowerCase().replaceAll("_", " ");
-  return label.charAt(0).toUpperCase() + label.slice(1);
 }

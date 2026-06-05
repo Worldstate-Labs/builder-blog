@@ -21,6 +21,7 @@ import {
   builderLibraryBuilderAdded,
   type BuilderLibraryEventItem,
 } from "@/lib/builder-library-events";
+import { sourceLabelForType } from "@/lib/source-display";
 import { sourceIcons } from "@/lib/source-icons";
 import {
   crossTypeWarning,
@@ -89,8 +90,8 @@ function computePreview(sourceType: string, value: string): Preview {
 }
 
 function deriveDisplayName(sourceType: string, sourceValue: string): string {
-  if (sourceType === GITHUB_TRENDING_SOURCE_ID) return "Github Trending";
-  if (sourceType === PRODUCT_HUNT_TOP_PRODUCTS_SOURCE_ID) return "Product Hunt Top Products";
+  if (sourceType === GITHUB_TRENDING_SOURCE_ID) return sourceLabelForType(sourceType);
+  if (sourceType === PRODUCT_HUNT_TOP_PRODUCTS_SOURCE_ID) return sourceLabelForType(sourceType);
   const trimmed = sourceValue.trim();
   if (!trimmed) return "";
   if (sourceType === "x") {
