@@ -52,6 +52,10 @@ export function BuilderFeedItems({
     itemState.builderId === builderId && itemState.totalCount === totalCount
       ? itemState.items
       : null;
+  const visibleCount = items ? items.length : totalCount;
+  const latestDateLabel = latestPostCreatedAt
+    ? formatPostDate(new Date(latestPostCreatedAt))
+    : null;
 
   useEffect(() => {
     if (!detailsRef.current?.open) return;
@@ -87,14 +91,21 @@ export function BuilderFeedItems({
       <summary>
         <span className="builder-posts-summary">
           <span className="builder-posts-count">
-            {items ? items.length : totalCount} posts
+            <span>{visibleCount} posts</span>
+            {latestDateLabel ? (
+              <>
+                <span aria-hidden="true" className="builder-posts-dot">·</span>
+                <time
+                  className="builder-posts-latest"
+                  dateTime={latestPostCreatedAt ?? undefined}
+                  title={`Latest post ${latestDateLabel}`}
+                >
+                  {latestDateLabel}
+                </time>
+              </>
+            ) : null}
           </span>
         </span>
-        {latestPostCreatedAt ? (
-          <time className="builder-posts-latest" dateTime={latestPostCreatedAt}>
-            Latest {formatCompactDate(new Date(latestPostCreatedAt))}
-          </time>
-        ) : null}
       </summary>
       <div className="builder-post-list">
         {isLoading ? (
@@ -130,12 +141,10 @@ export function BuilderFeedItems({
   );
 }
 
-function formatCompactDate(value: Date) {
+function formatPostDate(value: Date) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
     timeZone: "UTC",
   }).format(value);
 }

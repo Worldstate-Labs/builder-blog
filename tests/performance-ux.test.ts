@@ -1410,10 +1410,11 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /bg-black\/10|className="h-/);
   assert.match(
     builderFeedItems,
-    /className="builder-posts-count"[\s\S]*\{items \? items\.length : totalCount\} posts[\s\S]*<time className="builder-posts-latest" dateTime=\{latestPostCreatedAt\}>[\s\S]*Latest \{formatCompactDate/,
+    /className="builder-posts-count"[\s\S]*\{visibleCount\} posts[\s\S]*className="builder-posts-dot"[\s\S]*<time[\s\S]*className="builder-posts-latest"[\s\S]*\{latestDateLabel\}/,
   );
   assert.doesNotMatch(builderFeedItems, /CountMeta|builder-posts-label|builder-posts-meta|summarized"\}/);
-  assert.match(builderFeedItems, /Latest \{formatCompactDate\(new Date\(latestPostCreatedAt\)\)\}/);
+  assert.doesNotMatch(builderFeedItems, /Latest \{|formatCompactDate|hour:\s*"numeric"|minute:\s*"2-digit"/);
+  assert.match(builderFeedItems, /function formatPostDate/);
   assert.match(builderFeedItems, /className="builder-post-loading-line"/);
   assert.match(builderFeedItems, /className="builder-post-loading-card"/);
   assert.match(builderFeedItems, /className="builder-post-state builder-post-state--error"/);
@@ -2049,6 +2050,7 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.doesNotMatch(css, /\.builder-posts-label\s*{/);
   assert.doesNotMatch(css, /\.builder-posts-meta\s*{/);
   assert.match(css, /\.builder-posts-count\s*{[\s\S]*border-radius:\s*999px/);
+  assert.match(css, /\.builder-posts-count\s*{[\s\S]*gap:\s*0\.4rem/);
   assert.match(css, /\.builder-posts > summary:hover \.builder-posts-count\s*{[\s\S]*color:\s*var\(--accent-strong\)/);
   assert.match(css, /\.builder-posts-summary\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(builderPostsSummaryRule, /display:\s*flex/);
