@@ -75,29 +75,84 @@ export async function unfavoritePost(userId: string, identity: FavoritePostIdent
   });
 }
 
-export async function markFavoriteRead(userId: string, identity: FavoritePostIdentity) {
-  const data = {
-    userId,
-    feedItemId: identity.feedItemId,
-    entityId: identity.entityId,
-    kind: identity.kind,
-    externalId: identity.externalId,
-    source: "favorite",
-    readAt: new Date(),
-  };
-  const read = await prisma.feedRead.upsert({
-    where: {
-      userId_entityId_kind_externalId: {
-        userId,
-        entityId: identity.entityId,
-        kind: identity.kind,
-        externalId: identity.externalId,
+export class FavoriteMissingError extends Error {
+  constructor() {
+    super("Post is not saved");
+    this.name = "FavoriteMissingError";
+  }
+}
+
+export async function setFavoriteMarkedRead(
+  userId: string,
+  identity: FavoritePostIdentity,
+  markedRead: boolean,
+) {
+  return prisma.$transaction(async (tx) => {
+    const favorite = await tx.feedFavorite.findUnique({
+      where: {
+        userId_entityId_kind_externalId: {
+          userId,
+          entityId: identity.entityId,
+          kind: identity.kind,
+          externalId: identity.externalId,
+        },
       },
-    },
-    create: data,
-    update: data,
+      select: { id: true },
+    });
+    if (!favorite) throw new FavoriteMissingError();
+
+    if (!markedRead) {
+      await tx.feedFavorite.update({
+        where: { id: favorite.id },
+        data: { markedReadAt: null },
+      });
+
+      const read = await tx.feedRead.findUnique({
+        where: {
+          userId_entityId_kind_externalId: {
+            userId,
+            entityId: identity.entityId,
+            kind: identity.kind,
+            externalId: identity.externalId,
+          },
+        },
+        select: { readAt: true },
+      });
+      return { readAt: read?.readAt ?? null, markedReadAt: null };
+    }
+
+    const markedReadAt = new Date();
+    const readData = {
+      userId,
+      feedItemId: identity.feedItemId,
+      entityId: identity.entityId,
+      kind: identity.kind,
+      externalId: identity.externalId,
+      source: "favorite",
+      readAt: markedReadAt,
+    };
+    const read = await tx.feedRead.upsert({
+      where: {
+        userId_entityId_kind_externalId: {
+          userId,
+          entityId: identity.entityId,
+          kind: identity.kind,
+          externalId: identity.externalId,
+        },
+      },
+      create: readData,
+      update: readData,
+    });
+    await tx.feedFavorite.update({
+      where: { id: favorite.id },
+      data: {
+        feedItemId: identity.feedItemId,
+        markedReadAt,
+      },
+    });
+
+    return { readAt: read.readAt, markedReadAt };
   });
-  return read.readAt;
 }
 
 export async function getFavoriteSnapshot(userId: string): Promise<RecommendationSnapshotEntry | null> {
@@ -154,6 +209,7 @@ export async function getFavoriteSnapshot(userId: string): Promise<Recommendatio
           : null,
       },
       favoritedAt: favorite.favoritedAt.toISOString(),
+      markedReadAt: favorite.markedReadAt?.toISOString() ?? null,
       rank: index + 1,
       readAt: favorite.feedItem!.reads?.[0]?.readAt.toISOString() ?? null,
       reasons: [],

@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
-import { assertFavoritePostAccess, markFavoriteRead } from "@/lib/feed-favorites";
+import {
+  assertFavoritePostAccess,
+  FavoriteMissingError,
+  setFavoriteMarkedRead,
+} from "@/lib/feed-favorites";
 import { formatZodError } from "@/lib/zod-error";
 
 const FavoriteReadBodySchema = z.object({
   feedItemId: z.string().trim().min(1).max(64),
+  markedRead: z.boolean().optional(),
 });
 
 export async function POST(request: Request) {
@@ -24,6 +29,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  const readAt = await markFavoriteRead(session.user.id, access.identity);
-  return NextResponse.json({ status: "ok", readAt: readAt.toISOString() });
+  try {
+    const result = await setFavoriteMarkedRead(
+      session.user.id,
+      access.identity,
+      parsed.data.markedRead ?? true,
+    );
+    return NextResponse.json({
+      status: "ok",
+      readAt: result.readAt?.toISOString() ?? null,
+      markedReadAt: result.markedReadAt?.toISOString() ?? null,
+    });
+  } catch (error) {
+    if (error instanceof FavoriteMissingError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    throw error;
+  }
 }

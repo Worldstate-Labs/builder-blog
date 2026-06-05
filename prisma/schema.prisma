@@ -424,19 +424,21 @@ model FeedRead {
 // canonical identity so saving one channel variant saves the post across
 // imported / personal channel variants of the same source item.
 model FeedFavorite {
-  id          String        @id @default(cuid())
-  userId      String
-  feedItemId  String?
-  entityId    String
-  kind        FeedItemKind
-  externalId  String
-  favoritedAt DateTime      @default(now())
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  feedItem    FeedItem?     @relation(fields: [feedItemId], references: [id], onDelete: SetNull)
-  entity      BuilderEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  id           String        @id @default(cuid())
+  userId       String
+  feedItemId   String?
+  entityId     String
+  kind         FeedItemKind
+  externalId   String
+  favoritedAt  DateTime      @default(now())
+  markedReadAt DateTime?
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feedItem     FeedItem?     @relation(fields: [feedItemId], references: [id], onDelete: SetNull)
+  entity       BuilderEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
 
   @@unique([userId, entityId, kind, externalId])
   @@index([userId, favoritedAt])
+  @@index([userId, markedReadAt])
   @@index([userId, entityId])
   @@index([feedItemId])
 }

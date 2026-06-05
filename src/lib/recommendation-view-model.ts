@@ -33,6 +33,7 @@ export function serializeRecommendationSnapshot(
 function serializeRecommendation(
   result: RecommendationResult & {
     favoritedAt?: Date | null;
+    markedReadAt?: Date | null;
     rank: number;
     readAt: Date | null;
   },
@@ -43,6 +44,7 @@ function serializeRecommendation(
     rank: result.rank,
     readAt: result.readAt?.toISOString() ?? null,
     favoritedAt: result.favoritedAt?.toISOString() ?? null,
+    markedReadAt: result.markedReadAt?.toISOString() ?? null,
     item: {
       id: result.item.id,
       title: result.item.title,

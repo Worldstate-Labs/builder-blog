@@ -48,18 +48,24 @@ test("home favorites saves posts and requires manual read marking", () => {
 
   assert.match(schema, /model FeedFavorite/);
   assert.match(schema, /@@unique\(\[userId, entityId, kind, externalId\]\)/);
+  assert.match(schema, /markedReadAt\s+DateTime\?/);
   assert.match(favoriteRoute, /GET/);
   assert.match(favoriteRoute, /favoritePost/);
   assert.match(favoriteRoute, /unfavoritePost/);
-  assert.match(favoriteReadRoute, /markFavoriteRead/);
-  assert.match(favoriteReadRoute, /source: "favorite"|markFavoriteRead/);
+  assert.match(favoriteReadRoute, /markedRead/);
+  assert.match(favoriteReadRoute, /setFavoriteMarkedRead/);
+  assert.doesNotMatch(favoriteReadRoute, /markFavoriteRead/);
   assert.match(favoriteSection, /\/api\/favorites/);
   assert.match(favoriteSection, /mode="favorites"/);
   assert.match(feed, /FavoriteToggleButton/);
   assert.match(feed, /Save/);
   assert.match(feed, /FavoriteReadButton/);
   assert.match(feed, /Mark read/);
+  assert.match(feed, /Unmark read/);
   assert.match(feed, /\/api\/favorites\/read/);
+  assert.match(feed, /markedReadAt/);
+  assert.match(feed, /isMarkedRead/);
+  assert.doesNotMatch(feed, /disabled=\{isRead\}/);
   assert.match(feed, /isFavoritesTab \? undefined/);
   assert.match(postCard, /data-favorite-read/);
   assert.match(globals, /data-favorite-read="true"/);

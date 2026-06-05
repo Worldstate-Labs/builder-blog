@@ -11,6 +11,7 @@ export type RecommendationFeedEntry = {
   reasons: string[];
   rank: number;
   favoritedAt: string | null;
+  markedReadAt: string | null;
   readAt: string | null;
   item: {
     id: string;
@@ -56,7 +57,7 @@ export function RecommendationFeed({
   const [exhausted, setExhausted] = useState(initialSnapshots.length === 0);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  const markRead = useCallback(async (feedItemId: string, source: "favorite" | "recommendation" = "recommendation") => {
+  const markRead = useCallback(async (feedItemId: string) => {
     const fallbackReadAt = new Date().toISOString();
     setSnapshots((current) =>
       current.map((snapshot) => ({
@@ -68,11 +69,27 @@ export function RecommendationFeed({
         ),
       })),
     );
-    if (source === "favorite") {
-      await markFavoritePostRead(feedItemId);
-    } else {
-      await markPostRead(feedItemId);
-    }
+    await markPostRead(feedItemId);
+  }, []);
+
+  const toggleFavoriteMarkedRead = useCallback(async (feedItemId: string, nextMarkedRead: boolean) => {
+    const fallbackReadAt = new Date().toISOString();
+    const fallbackMarkedReadAt = nextMarkedRead ? fallbackReadAt : null;
+    setSnapshots((current) =>
+      current.map((snapshot) => ({
+        ...snapshot,
+        items: snapshot.items.map((entry) =>
+          entry.item.id === feedItemId
+            ? {
+                ...entry,
+                markedReadAt: fallbackMarkedReadAt,
+                readAt: nextMarkedRead ? entry.readAt ?? fallbackReadAt : entry.readAt,
+              }
+            : entry,
+        ),
+      })),
+    );
+    await setFavoritePostMarkedRead(feedItemId, nextMarkedRead);
   }, []);
 
   const toggleFavorite = useCallback(async (feedItemId: string, nextFavorite: boolean) => {
@@ -164,6 +181,7 @@ export function RecommendationFeed({
                 markRead={markRead}
                 mode={mode}
                 showAdminActions={showAdminActions}
+                toggleFavoriteMarkedRead={toggleFavoriteMarkedRead}
                 toggleFavorite={toggleFavorite}
               />
             ))}
@@ -189,16 +207,19 @@ function RecommendationCard({
   markRead,
   mode,
   showAdminActions,
+  toggleFavoriteMarkedRead,
   toggleFavorite,
 }: {
   entry: RecommendationFeedEntry;
-  markRead: (feedItemId: string, source?: "favorite" | "recommendation") => Promise<void>;
+  markRead: (feedItemId: string) => Promise<void>;
   mode: "favorites" | "following";
   showAdminActions: boolean;
+  toggleFavoriteMarkedRead: (feedItemId: string, nextMarkedRead: boolean) => Promise<void>;
   toggleFavorite: (feedItemId: string, nextFavorite: boolean) => Promise<void>;
 }) {
   const isRead = Boolean(entry.readAt);
   const isFavorite = Boolean(entry.favoritedAt);
+  const isMarkedRead = Boolean(entry.markedReadAt);
   const isFavoritesTab = mode === "favorites";
 
   return (
@@ -207,8 +228,8 @@ function RecommendationCard({
       extraActions={
         isFavoritesTab ? (
           <FavoriteReadButton
-            isRead={isRead}
-            markRead={() => markRead(entry.item.id, "favorite")}
+            isMarkedRead={isMarkedRead}
+            toggleMarkedRead={() => toggleFavoriteMarkedRead(entry.item.id, !isMarkedRead)}
           />
         ) : (
           <FavoriteToggleButton
@@ -218,14 +239,14 @@ function RecommendationCard({
         )
       }
       extraMeta={
-        isFavoritesTab && isRead ? (
+        isFavoritesTab && isMarkedRead ? (
           <>
             <span className="post-meta-dot" aria-hidden="true">·</span>
             <span className="favorite-read-label">Manually marked read</span>
           </>
         ) : null
       }
-      favoriteReadEmphasis={isFavoritesTab && isRead}
+      favoriteReadEmphasis={isFavoritesTab && isMarkedRead}
       onInteract={isFavoritesTab ? undefined : () => markRead(entry.item.id)}
       post={entry.item}
       reasons={showAdminActions ? entry.reasons : undefined}
@@ -257,21 +278,21 @@ function FavoriteToggleButton({
 }
 
 function FavoriteReadButton({
-  isRead,
-  markRead,
+  isMarkedRead,
+  toggleMarkedRead,
 }: {
-  isRead: boolean;
-  markRead: () => Promise<void>;
+  isMarkedRead: boolean;
+  toggleMarkedRead: () => Promise<void>;
 }) {
   return (
     <button
-      className={`post-action-btn favorite-mark-read${isRead ? " post-action-btn--active" : ""}`}
-      disabled={isRead}
-      onClick={() => void markRead()}
+      aria-pressed={isMarkedRead}
+      className={`post-action-btn favorite-mark-read${isMarkedRead ? " post-action-btn--active" : ""}`}
+      onClick={() => void toggleMarkedRead()}
       type="button"
     >
       <CheckCircle2 className="h-4 w-4" />
-      <span>{isRead ? "Read" : "Mark read"}</span>
+      <span>{isMarkedRead ? "Unmark read" : "Mark read"}</span>
     </button>
   );
 }
@@ -288,12 +309,12 @@ async function setPostFavorite(feedItemId: string, favorite: boolean) {
   }
 }
 
-async function markFavoritePostRead(feedItemId: string) {
+async function setFavoritePostMarkedRead(feedItemId: string, markedRead: boolean) {
   try {
     await fetch("/api/favorites/read", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ feedItemId }),
+      body: JSON.stringify({ feedItemId, markedRead }),
     });
   } catch {
     // Best-effort optimistic UI; a reload restores the authoritative state.
