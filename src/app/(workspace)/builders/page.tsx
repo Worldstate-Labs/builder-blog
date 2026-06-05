@@ -705,7 +705,7 @@ async function FetchSourcesSection({
                 Browse Source Library
               </Link>
             }
-            title="No imported source library yet."
+            body="No imported source library yet."
           />
         ) : null}
       </div>
