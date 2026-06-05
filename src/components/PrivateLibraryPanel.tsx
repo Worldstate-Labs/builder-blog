@@ -17,6 +17,7 @@ export function PrivateLibraryPanel({
   beforeBody,
   className,
   headingId,
+  hideHeader = false,
   title,
   sourceOptions,
   visibilityToggle,
@@ -25,6 +26,7 @@ export function PrivateLibraryPanel({
   beforeBody?: ReactNode;
   className?: string;
   headingId?: string;
+  hideHeader?: boolean;
   title: string;
   sourceOptions: SourceOption[];
   visibilityToggle?: ReactNode;
@@ -52,21 +54,23 @@ export function PrivateLibraryPanel({
 
   return (
     <section
-      aria-labelledby={headingId}
+      aria-labelledby={!hideHeader ? headingId : undefined}
       className={className ?? "library-section-panel"}
     >
-      <div className="library-section-summary library-section-summary--static">
-        <div>
-          <h2 id={headingId} className="fb-section-heading">
-            {title}
-          </h2>
-        </div>
-        {visibilityToggle ? (
-          <div className="library-section-meta">
-            {visibilityToggle}
+      {!hideHeader ? (
+        <div className="library-section-summary library-section-summary--static">
+          <div>
+            <h2 id={headingId} className="fb-section-heading">
+              {title}
+            </h2>
           </div>
-        ) : null}
-      </div>
+          {visibilityToggle ? (
+            <div className="library-section-meta">
+              {visibilityToggle}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       <div className="library-section-body">
         {beforeBody}
         <div className="library-source-list-shell">

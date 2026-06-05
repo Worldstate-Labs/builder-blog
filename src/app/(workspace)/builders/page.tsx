@@ -626,13 +626,13 @@ async function FetchSourcesSection({
   );
 
   const privateSection = (
-    <PrivateLibraryPanel
-      beforeBody={fetchSyncSection}
-      className="your-library-panel fb-panel"
-      headingId="sources-library-section-title"
-      sourceOptions={data.sourceLabelOptions}
-      title="Your library"
-      visibilityToggle={
+    <section className="your-library-section" aria-labelledby="sources-library-section-title">
+      <div className="library-hub-toolbar">
+        <div className="library-hub-toolbar-copy">
+          <h2 id="sources-library-section-title" className="fb-section-heading">
+            Your library
+          </h2>
+        </div>
         <LibraryVisibilityToggle
           compact
           disabled={!data.isAdmin && data.privateBuilders.length === 0}
@@ -640,23 +640,31 @@ async function FetchSourcesSection({
           isAdminLibrary={data.isAdmin}
           name={userLibraryName}
         />
-      }
-    >
-      <BuilderLibraryList
-        acceptAddedBuilders
-        builders={data.privateBuilders.map((builder) =>
-          builderListItem({
-            allowRemove: true,
-            builder,
-            latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
-            subscribed: data.subscribed.has(builder.id),
-          }),
-        )}
-        editableSourceOptions={data.sourceLabelOptions}
-        emptyBody="Add a source, or use your Local Agent to import private sources."
-        emptyTitle="No personal sources yet"
-      />
-    </PrivateLibraryPanel>
+      </div>
+
+      <PrivateLibraryPanel
+        beforeBody={fetchSyncSection}
+        className="your-library-panel fb-panel"
+        hideHeader
+        sourceOptions={data.sourceLabelOptions}
+        title="Your library"
+      >
+        <BuilderLibraryList
+          acceptAddedBuilders
+          builders={data.privateBuilders.map((builder) =>
+            builderListItem({
+              allowRemove: true,
+              builder,
+              latestPostCreatedAt: data.latestPostCreatedAtByBuilderId.get(builder.id) ?? null,
+              subscribed: data.subscribed.has(builder.id),
+            }),
+          )}
+          editableSourceOptions={data.sourceLabelOptions}
+          emptyBody="Add a source, or use your Local Agent to import private sources."
+          emptyTitle="No personal sources yet"
+        />
+      </PrivateLibraryPanel>
+    </section>
   );
 
   const importedSection = (

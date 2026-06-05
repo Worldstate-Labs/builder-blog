@@ -1598,7 +1598,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.source-sync-skeleton-line,[\s\S]*\.source-section-skeleton-card\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
   assert.match(globals, /\.source-section-skeleton-desc\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);
   assert.match(globals, /\.sources-section-stack,[\s\S]*\.imported-libraries-section\s*{[\s\S]*display:\s*grid/);
-  assert.match(globals, /\.your-digest-section,[\s\S]*\.your-library-panel\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.your-digest-section,[\s\S]*\.your-library-section\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.imported-libraries-head\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(globals, /\.library-section-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(globals, /\.source-summary-line \.count-meta\s*{[\s\S]*font-size:\s*0\.8125rem/);

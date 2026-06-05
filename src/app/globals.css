@@ -4581,13 +4581,14 @@ svg.lucide {
 }
 
 .your-digest-section,
-.your-library-panel {
+.your-library-section {
   display: grid;
   gap: 1rem;
 }
 
 .your-digest-section .library-hub-toolbar,
-.your-library-panel > .library-section-summary {
+.your-library-section .library-hub-toolbar {
+  align-items: center;
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
@@ -8872,11 +8873,13 @@ body {
     justify-content: flex-start;
   }
 
-  .your-digest-section {
+  .your-digest-section,
+  .your-library-section {
     gap: 0.75rem;
   }
 
-  .your-digest-section .library-hub-toolbar {
+  .your-digest-section .library-hub-toolbar,
+  .your-library-section .library-hub-toolbar {
     align-items: center;
     grid-template-columns: minmax(0, 1fr) auto;
   }
