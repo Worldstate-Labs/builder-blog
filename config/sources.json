@@ -31,6 +31,22 @@
       }
     },
     {
+      "id": "github_trending",
+      "label": "Github Trending",
+      "builderKind": "WEBSITE",
+      "feedItemKinds": [
+        "BLOG_POST"
+      ],
+      "urlPatterns": [
+        "github\\.com/trending"
+      ],
+      "agentDefaultStatus": "requires_agent",
+      "contentQuality": {
+        "minChars": 500,
+        "minContentUnits": 60
+      }
+    },
+    {
       "id": "youtube",
       "label": "YouTube",
       "builderKind": "PODCAST",

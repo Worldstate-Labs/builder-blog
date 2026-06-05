@@ -146,6 +146,21 @@ test("manual builder input derives canonical fields from one handle or URL", asy
     sourceUrl: "https://feeds.example.com/show.xml",
     fetchUrl: null,
   });
+
+  const githubTrendingResult = await resolvePersonalBuilderInput({
+    displayName: "",
+    sourceType: "github_trending",
+    sourceValue: "https://example.com/ignored",
+  });
+  assert.ok(githubTrendingResult.ok);
+  assert.deepEqual(githubTrendingResult.value, {
+    kind: BuilderKind.WEBSITE,
+    sourceType: "github_trending",
+    name: "Github Trending",
+    handle: null,
+    sourceUrl: "https://github.com/trending?since=daily",
+    fetchUrl: "https://github.com/trending?since=daily",
+  });
 });
 
 test("personal YouTube sync cannot create a duplicate builder through handle metadata", () => {
@@ -1187,10 +1202,12 @@ test("digest generation user path exposes source-specific prompt instructions", 
     Object.keys(DEFAULT_DIGEST_PROMPTS).sort(),
     [
       "digestIntro",
+      "fetchGithubTrendingRepo",
       "fetchPodcastAudio",
       "headline",
       "perSourceSummary",
       "summarizeBlogs",
+      "summarizeGithubTrendingRepo",
       "summarizePodcast",
       "summarizeTweets",
       "translate",
@@ -1199,6 +1216,9 @@ test("digest generation user path exposes source-specific prompt instructions", 
   assert.match(DEFAULT_DIGEST_PROMPTS.summarizePodcast, /podcast transcript/i);
   assert.match(DEFAULT_DIGEST_PROMPTS.summarizeTweets, /X\/Twitter Summary Prompt/);
   assert.match(DEFAULT_DIGEST_PROMPTS.summarizeBlogs, /Blog Post Summary Prompt/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchGithubTrendingRepo, /README/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchGithubTrendingRepo, /web search/i);
+  assert.match(DEFAULT_DIGEST_PROMPTS.summarizeGithubTrendingRepo, /项目名称/);
   assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /Legacy Digest Intro Prompt/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /headlineSummary/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /context\.language/);
@@ -2405,6 +2425,16 @@ test("source registry centralizes current source categories", () => {
     })?.id,
     "website",
   );
+  assert.equal(
+    sourceDefinitionForBuilder({
+      kind: BuilderKind.WEBSITE,
+      sourceType: "github_trending",
+      sourceUrl: "https://github.com/trending?since=daily",
+      fetchUrl: "https://github.com/trending?since=daily",
+    })?.staticLabel,
+    "Github Trending",
+  );
+  assert.equal(builderKindForSourceType("github_trending"), BuilderKind.WEBSITE);
   assert.equal(
     builderSourceLabel({
       kind: BuilderKind.BLOG,

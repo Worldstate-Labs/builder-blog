@@ -409,7 +409,7 @@ function normalizeSourceType(sourceType: string | null | undefined) {
 }
 
 function sourceTypeSortRank(sourceType: string) {
-  const order = ["blog", "youtube", "podcast", "x", "website"];
+  const order = ["blog", "github_trending", "youtube", "podcast", "x", "website"];
   const index = order.indexOf(sourceType);
   return index === -1 ? order.length : index;
 }

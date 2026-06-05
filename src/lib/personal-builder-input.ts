@@ -46,6 +46,9 @@ export type ResolutionFailure = {
 
 export type Resolution = ResolutionSuccess | ResolutionFailure;
 
+export const GITHUB_TRENDING_SOURCE_ID = "github_trending";
+export const GITHUB_TRENDING_URL = "https://github.com/trending?since=daily";
+
 /**
  * Resolve, validate, and auto-correct the user's AddBuilderForm input.
  * Async because the podcast path may call iTunes lookup to pre-resolve
@@ -61,6 +64,10 @@ export async function resolvePersonalBuilderInput(input: {
   const value = input.sourceValue.trim();
   if (!value) {
     return { ok: false, reason: "Source URL or handle is required." };
+  }
+
+  if (sourceType === GITHUB_TRENDING_SOURCE_ID) {
+    return resolveGithubTrending(input.displayName);
   }
 
   // Cross-type mismatch: user is in X mode but pasted a YouTube URL,
@@ -249,6 +256,20 @@ function resolveBlog(displayName: string, value: string): Resolution {
       handle: null,
       sourceUrl,
       fetchUrl,
+    },
+  };
+}
+
+function resolveGithubTrending(displayName: string): Resolution {
+  return {
+    ok: true,
+    value: {
+      kind: builderKindForSourceType(GITHUB_TRENDING_SOURCE_ID),
+      sourceType: GITHUB_TRENDING_SOURCE_ID,
+      name: displayName.trim() || "Github Trending",
+      handle: null,
+      sourceUrl: GITHUB_TRENDING_URL,
+      fetchUrl: GITHUB_TRENDING_URL,
     },
   };
 }

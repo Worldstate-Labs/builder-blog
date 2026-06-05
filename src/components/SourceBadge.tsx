@@ -57,6 +57,7 @@ function sourceDisplayForType(sourceType: string | null | undefined) {
   const id = normalizeSourceType(sourceType) || "website";
   const labels: Record<string, string> = {
     blog: "Blog",
+    github_trending: "Github Trending",
     podcast: "Podcast RSS",
     website: "Website",
     x: "X/Twitter",

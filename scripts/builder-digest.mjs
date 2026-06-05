@@ -48,6 +48,7 @@ const TMP_DIR = join(CONFIG_DIR, "tmp");
 // fetch-log record (the two run in the same job on the same machine).
 const FETCH_RUN_ID_FILE = join(TMP_DIR, "library-fetch-run-id");
 const SOURCES_CONFIG_PATH = join(CONFIG_DIR, "sources.json");
+const GITHUB_TRENDING_URL = "https://github.com/trending?since=daily";
 
 let _sourcesConfig = null;
 
@@ -88,6 +89,7 @@ const DEFAULT_PERSONAL_FETCH_DAYS = 30;
 const FETCH_FN_BY_SOURCE_ID = {
   x: fetchPersonalXBuilder,
   blog: fetchPersonalBlogBuilder,
+  github_trending: fetchPersonalGithubTrendingBuilder,
   youtube: fetchPersonalYouTubeBuilder,
   podcast: fetchPersonalPodcastBuilder,
   website: fetchPersonalWebsiteBuilder,
@@ -1602,6 +1604,125 @@ async function fetchPersonalPodcastBuilder(
   return { items, agentTasks };
 }
 
+async function fetchPersonalGithubTrendingBuilder(
+  builder,
+  {
+    limit,
+    agentModel,
+    fetchedItemKeys = new Set(),
+    fetcher = fetch,
+    sources = {},
+    now = new Date(),
+  },
+) {
+  const trendingUrl = builder.fetchUrl || builder.sourceUrl || GITHUB_TRENDING_URL;
+  const response = await fetcher(trendingUrl, {
+    headers: { "User-Agent": "FollowBriefSkill/1.0 (github trending fetcher)" },
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch GitHub Trending ${trendingUrl}: HTTP ${response.status}`);
+  }
+
+  const html = await response.text();
+  const dateKey = now.toISOString().slice(0, 10);
+  const candidates = parseGithubTrendingCandidates(html, trendingUrl, dateKey)
+    .filter((repo) => !fetchedItemKeys.has(personalItemKey(builder.id, "BLOG_POST", repo.externalId)))
+    .slice(0, limit);
+
+  return {
+    items: [],
+    agentTasks: candidates.map((repo) =>
+      githubTrendingAgentTaskForRepository(builder, repo, { sources, agentModel }),
+    ),
+  };
+}
+
+export function fetchPersonalGithubTrendingBuilderForTest(builder, options) {
+  return fetchPersonalGithubTrendingBuilder(builder, options);
+}
+
+export function parseGithubTrendingCandidates(html, trendingUrl = GITHUB_TRENDING_URL, dateKey = new Date().toISOString().slice(0, 10)) {
+  const articleMatches = [...String(html || "").matchAll(/<article\b[\s\S]*?<\/article>/gi)];
+  const candidates = [];
+
+  for (const match of articleMatches) {
+    const block = match[0];
+    const h2 = block.match(/<h2\b[\s\S]*?<\/h2>/i)?.[0] ?? block;
+    const href = h2.match(/href=["']\/([^/"'<>\s]+\/[^"'<>\s]+)["']/i)?.[1];
+    if (!href) continue;
+
+    const repo = href
+      .replace(/^\/+/, "")
+      .split("/")
+      .slice(0, 2)
+      .map((part) => decodeHtml(part.trim()))
+      .join("/");
+    if (!/^[^/\s]+\/[^/\s]+$/.test(repo)) continue;
+
+    const text = stripHtml(block);
+    const starsToday = Number(
+      (text.match(/(\d[\d,]*)\s+stars?\s+today/i)?.[1] ?? "0").replace(/,/g, ""),
+    );
+    const description =
+      stripHtml(block.match(/<p\b[^>]*>([\s\S]*?)<\/p>/i)?.[1] ?? "") || null;
+    const language =
+      stripHtml(
+        block.match(/itemprop=["']programmingLanguage["'][^>]*>([\s\S]*?)<\/span>/i)?.[1] ??
+          "",
+      ) || null;
+
+    candidates.push({
+      repo,
+      owner: repo.split("/")[0],
+      name: repo.split("/")[1],
+      url: absoluteUrl(`/${repo}`, trendingUrl),
+      externalId: `github-trending:${dateKey}:${repo}`,
+      title: `${repo}${starsToday > 0 ? ` - ${starsToday} stars today` : ""}`,
+      description,
+      language,
+      starsToday,
+      date: dateKey,
+      trendingUrl,
+    });
+  }
+
+  return candidates.sort((a, b) => (b.starsToday || 0) - (a.starsToday || 0));
+}
+
+function githubTrendingAgentTaskForRepository(builder, repo, { sources = {}, agentModel } = {}) {
+  const item = {
+    kind: "BLOG_POST",
+    externalId: repo.externalId,
+    title: repo.title,
+    url: repo.url,
+    publishedAt: `${repo.date}T00:00:00.000Z`,
+    sourceName: builder.name,
+    description: repo.description || "",
+    rawJson: {
+      source: "github-trending",
+      builderId: builder.id,
+      builderName: builder.name,
+      repo: repo.repo,
+      owner: repo.owner,
+      name: repo.name,
+      starsToday: repo.starsToday,
+      language: repo.language,
+      date: repo.date,
+      trendingUrl: repo.trendingUrl,
+      fetchTool: skillFetchTool("GitHub Trending repo planner", agentModel),
+    },
+  };
+  const task = {
+    type: "github_trending_repo_report",
+    builder: builder.name,
+    builderId: builder.id,
+    sourceType: "github_trending",
+    item,
+    minimumContentQuality: genericMinimumContentQuality(sources, "github_trending"),
+  };
+  return { ...task, id: agentTaskId(task) };
+}
+
 const APPLE_PODCAST_URL_RE = /podcasts\.apple\.com\/[^?\s]*\/id(\d+)/i;
 
 async function resolveApplePodcastFeedUrl(url, fetcher = fetch) {
@@ -2869,7 +2990,7 @@ function genericContentQuality(text, { title = "", description = "", standards }
   return { ok: true, reason: "ok", metrics, standards: qualityStandards };
 }
 
-const DEFAULT_DIGEST_SOURCE_ORDER = ["x", "blog", "youtube", "podcast", "website"];
+const DEFAULT_DIGEST_SOURCE_ORDER = ["x", "blog", "github_trending", "youtube", "podcast", "website"];
 
 function digestSectionLabel(sourceType, context = {}) {
   const sourceLabel = stringOrNull(context?.sources?.[sourceType]?.label);
@@ -2881,6 +3002,7 @@ function digestSectionLabel(sourceType, context = {}) {
     ? {
         x: "X/Twitter",
         blog: "Blog",
+        github_trending: "Github Trending",
         youtube: "YouTube",
         podcast: "Podcast RSS",
         website: "Website",
@@ -2888,6 +3010,7 @@ function digestSectionLabel(sourceType, context = {}) {
     : {
         x: "X/Twitter",
         blog: "Blog",
+        github_trending: "Github Trending",
         youtube: "YouTube",
         podcast: "Podcast RSS",
         website: "Website",

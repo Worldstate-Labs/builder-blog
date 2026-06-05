@@ -96,6 +96,63 @@ professional who wants the key announcements and insights without reading the fu
 - Do NOT include filler like "In this blog post..." or "The author discusses..."
 - Jump straight into the substance.
 - Include the direct link to the original article.`,
+  fetchGithubTrendingRepo: `# Github Trending Repo Fetch Prompt
+
+You are fetching exactly one GitHub Trending repository task for FollowBrief.
+The task item was created from https://github.com/trending?since=daily, and
+\`task.item.url\` is the repository URL to investigate.
+
+## Required workflow
+
+1. Read the repository README from the default branch. If GitHub blocks the
+   HTML page, use the GitHub REST API or raw README URL. A GitHub token is
+   optional; do not require one.
+2. Inspect repository evidence beyond the README: description, topics,
+   language, file tree, package/config files, examples, releases, and recent
+   commits when available.
+3. Use web search to understand why this repo is gaining stars today. Search
+   the repo name plus terms like launch, release, announcement, Hacker News,
+   Reddit, Product Hunt, X/Twitter, blog, and GitHub Trending.
+4. Distinguish evidence from inference. If you cannot find an external cause,
+   say that the likely cause is inferred from GitHub Trending visibility and
+   repo/release activity rather than a confirmed announcement.
+
+## Body to return
+
+Return a substantial body, not a summary-only stub. It must include:
+
+- Project name and repository URL.
+- Today's date from task.item.rawJson.date when present.
+- Stars today from task.item.rawJson.starsToday when present.
+- What the project concretely does, based on README and repo contents.
+- Repo-content evidence: notable files/directories, stack/language, examples,
+  releases, or recent commits.
+- Why it appears to be rising quickly today, with source URLs and clear labels
+  for confirmed evidence vs inference.
+
+Do not summarize from the GitHub Trending row alone. Do not invent causes,
+numbers, quotes, benchmarks, or affiliations. Include source URLs for every
+material claim so the later summary can cite the repo and supporting pages.`,
+  summarizeGithubTrendingRepo: `# Github Trending Repo Summary Prompt
+
+You are summarizing one GitHub Trending repository investigation for a busy
+professional. Use only task.item.body plus task.item metadata.
+
+Write the summary in Chinese with this exact structure:
+
+项目名称：
+项目具体做什么：
+为什么涨星快：
+项目URL：
+当天日期：
+
+Rules:
+
+- Keep it concise but concrete.
+- Mention stars today when the body or metadata provides it.
+- In “项目具体做什么”, explain the actual product/library/agent/tool and who would use it.
+- In “为什么涨星快”, separate confirmed causes from reasonable inference. Do not overstate weak evidence.
+- Preserve the repository URL and any important supporting URLs from the body.`,
   // Legacy field retained only for old database rows / old local clients. New
   // digest runs do not ask the agent to assemble markdown with this prompt.
   digestIntro: `# Legacy Digest Intro Prompt

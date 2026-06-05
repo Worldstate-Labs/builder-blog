@@ -18,11 +18,12 @@
  *    single video) that should be channel-level instead.
  */
 
-export type DetectedSourceId = "x" | "blog" | "youtube" | "podcast" | "website";
+export type DetectedSourceId = "x" | "blog" | "github_trending" | "youtube" | "podcast" | "website";
 
 export const DETECTED_SOURCE_LABELS: Record<DetectedSourceId, string> = {
   x: "X/Twitter",
   blog: "Blog",
+  github_trending: "Github Trending",
   youtube: "YouTube",
   podcast: "Podcast",
   website: "Website",
@@ -38,6 +39,7 @@ export function detectSourceTypeFromValue(value: string): DetectedSourceId | nul
   if (!v) return null;
 
   if (/(^|\/\/)(www\.)?(x|twitter)\.com\//.test(v)) return "x";
+  if (/(^|\/\/)github\.com\/trending(\?|\/|$)/.test(v)) return "github_trending";
   if (/(^|\/\/)(www\.)?(youtube\.com|youtu\.be)\//.test(v)) return "youtube";
 
   if (/(^|\/\/)podcasts\.apple\.com\//.test(v)) return "podcast";

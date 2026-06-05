@@ -34,11 +34,15 @@ type SourceOption = {
   label: string;
 };
 
+const GITHUB_TRENDING_SOURCE_ID = "github_trending";
+const GITHUB_TRENDING_URL = "https://github.com/trending?since=daily";
+
 // Per-source-type placeholder hint for the URL/handle field. Keys
 // mirror the sourceId values seeded from config/sources.json.
 const PLACEHOLDER_BY_SOURCE_ID: Record<string, string> = {
   x: "@deepmind or https://x.com/deepmind",
   blog: "https://example.com/blog or https://example.com/feed.xml",
+  github_trending: GITHUB_TRENDING_URL,
   youtube: "https://youtube.com/@deepmind",
   podcast: "https://podcasts.apple.com/…/id123 or https://feeds.example.com/show.rss",
   website: "https://example.com",
@@ -58,6 +62,7 @@ type Preview =
   | { kind: "warn"; message: string; suggestId?: DetectedSourceId };
 
 function computePreview(sourceType: string, value: string): Preview {
+  if (sourceType === GITHUB_TRENDING_SOURCE_ID) return { kind: "idle" };
   const trimmed = value.trim();
   if (!trimmed) return { kind: "idle" };
 
@@ -77,6 +82,7 @@ function computePreview(sourceType: string, value: string): Preview {
 }
 
 function deriveDisplayName(sourceType: string, sourceValue: string): string {
+  if (sourceType === GITHUB_TRENDING_SOURCE_ID) return "Github Trending";
   const trimmed = sourceValue.trim();
   if (!trimmed) return "";
   if (sourceType === "x") {
@@ -129,10 +135,17 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
   // on paste, long enough to skip mid-word noise. Empty input flushes
   // immediately so clearing the field hides any stale banner.
   const [debouncedValue, setDebouncedValue] = useState(sourceValue);
+  const resolvedSourceValue =
+    sourceType === GITHUB_TRENDING_SOURCE_ID ? GITHUB_TRENDING_URL : sourceValue;
+  const sourceValueIsFixed = sourceType === GITHUB_TRENDING_SOURCE_ID;
+
   useEffect(() => {
-    const id = window.setTimeout(() => setDebouncedValue(sourceValue), sourceValue ? 200 : 0);
+    const id = window.setTimeout(
+      () => setDebouncedValue(resolvedSourceValue),
+      resolvedSourceValue ? 200 : 0,
+    );
     return () => window.clearTimeout(id);
-  }, [sourceValue]);
+  }, [resolvedSourceValue]);
 
   const preview = useMemo(
     () => computePreview(sourceType, debouncedValue),
@@ -169,7 +182,7 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
           body: JSON.stringify({
             name: effectiveName.trim(),
             sourceType,
-            sourceValue,
+            sourceValue: resolvedSourceValue,
             ...(confirmedWarning ? { confirmedWarning: true } : {}),
           }),
         });
@@ -271,8 +284,11 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
           className="fb-input"
           name="sourceValue"
           placeholder={placeholderForSourceId(sourceType)}
-          value={sourceValue}
+          value={resolvedSourceValue}
+          readOnly={sourceValueIsFixed}
+          aria-readonly={sourceValueIsFixed}
           onChange={(event) => {
+            if (sourceValueIsFixed) return;
             setSourceValue(event.target.value);
             // Editing the URL invalidates a stale confirm prompt.
             setPendingConfirmation(null);

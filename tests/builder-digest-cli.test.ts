@@ -60,6 +60,76 @@ test("personal blog fetcher extracts article text", async () => {
   assert.match(article.body, /long enough/);
 });
 
+test("GitHub Trending parser extracts daily repo candidates sorted by stars", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const candidates = cli.parseGithubTrendingCandidates(
+    `
+    <article class="Box-row">
+      <h2><a href="/beta-org/beta-tool"> beta-org / beta-tool </a></h2>
+      <p>Beta repo description</p>
+      <span itemprop="programmingLanguage">TypeScript</span>
+      <span>1,204 stars today</span>
+    </article>
+    <article class="Box-row">
+      <h2><a href="/alpha/alpha-lib"> alpha / alpha-lib </a></h2>
+      <p>Alpha repo description</p>
+      <span itemprop="programmingLanguage">Python</span>
+      <span>89 stars today</span>
+    </article>
+    `,
+    "https://github.com/trending?since=daily",
+    "2026-06-04",
+  );
+
+  assert.equal(candidates.length, 2);
+  assert.equal(candidates[0].repo, "beta-org/beta-tool");
+  assert.equal(candidates[0].starsToday, 1204);
+  assert.equal(candidates[0].language, "TypeScript");
+  assert.equal(candidates[0].url, "https://github.com/beta-org/beta-tool");
+  assert.equal(candidates[0].externalId, "github-trending:2026-06-04:beta-org/beta-tool");
+});
+
+test("GitHub Trending fetcher emits per-repository agent tasks, not ready items", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const result = await cli.fetchPersonalGithubTrendingBuilderForTest(
+    {
+      id: "builder_github_trending",
+      name: "Github Trending",
+      sourceType: "github_trending",
+      sourceUrl: "https://github.com/trending?since=daily",
+      fetchUrl: "https://github.com/trending?since=daily",
+    },
+    {
+      limit: 1,
+      fetchedItemKeys: new Set(),
+      now: new Date("2026-06-04T12:00:00.000Z"),
+      sources: {
+        github_trending: {
+          contentQuality: { minChars: 500, minContentUnits: 60 },
+        },
+      },
+      fetcher: async () =>
+        new Response(`
+          <article class="Box-row">
+            <h2><a href="/owner/repo"> owner / repo </a></h2>
+            <p>Repo description</p>
+            <span itemprop="programmingLanguage">Go</span>
+            <span>777 stars today</span>
+          </article>
+        `),
+    },
+  );
+
+  assert.deepEqual(result.items, []);
+  assert.equal(result.agentTasks.length, 1);
+  assert.equal(result.agentTasks[0].type, "github_trending_repo_report");
+  assert.equal(result.agentTasks[0].sourceType, "github_trending");
+  assert.equal(result.agentTasks[0].item.kind, "BLOG_POST");
+  assert.equal(result.agentTasks[0].item.url, "https://github.com/owner/repo");
+  assert.equal(result.agentTasks[0].item.rawJson.starsToday, 777);
+  assert.equal(result.agentTasks[0].item.rawJson.date, "2026-06-04");
+});
+
 test("personal blog fetcher uses Anthropic Next data when available", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const candidates = cli.parseBlogCandidates(

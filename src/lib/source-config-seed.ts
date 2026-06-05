@@ -73,6 +73,7 @@ function summaryStyleForSourceId(sourceId: string): SourceSummaryStyle {
 }
 
 function summaryPromptBodyForSourceId(sourceId: string): string {
+  if (sourceId === "github_trending") return DEFAULT_DIGEST_PROMPTS.summarizeGithubTrendingRepo;
   const style = summaryStyleForSourceId(sourceId);
   if (style === "x_twitter") return DEFAULT_DIGEST_PROMPTS.summarizeTweets;
   if (style === "podcast_or_video") return DEFAULT_DIGEST_PROMPTS.summarizePodcast;
@@ -80,6 +81,7 @@ function summaryPromptBodyForSourceId(sourceId: string): string {
 }
 
 function fetchPromptBodyForSourceId(sourceId: string): string | null {
+  if (sourceId === "github_trending") return DEFAULT_DIGEST_PROMPTS.fetchGithubTrendingRepo;
   if (sourceId === "podcast") return DEFAULT_DIGEST_PROMPTS.fetchPodcastAudio;
   return null;
 }
@@ -93,8 +95,8 @@ export const DEFAULT_SOURCE_CONFIGS: Record<string, SourceTypeConfigShape> =
         agentDefaultStatus: (entry.agentDefaultStatus === "requires_agent"
           ? "requires_agent"
           : "ready") as AgentDefaultStatus,
-        defaultFetchDays: 7,
-        defaultFetchLimit: 3,
+        defaultFetchDays: entry.id === "github_trending" ? 1 : 7,
+        defaultFetchLimit: entry.id === "github_trending" ? 5 : 3,
         contentQuality: entry.contentQuality as ContentQualityShape,
         summaryPromptBody: summaryPromptBodyForSourceId(entry.id),
         fetchPromptBody: fetchPromptBodyForSourceId(entry.id),
@@ -110,7 +112,7 @@ export const DEFAULT_DIGEST_CONFIG: DigestConfigShape = {
   headlinePrompt: DEFAULT_DIGEST_PROMPTS.headline,
   perSourceSummaryPrompt: DEFAULT_DIGEST_PROMPTS.perSourceSummary,
   translate: DEFAULT_DIGEST_PROMPTS.translate,
-  digestOrder: ["x", "blog", "youtube", "podcast", "website"],
+  digestOrder: ["x", "blog", "github_trending", "youtube", "podcast", "website"],
   commonFetchRules: DEFAULT_COMMON_FETCH_RULES,
   commonSummaryRules: DEFAULT_COMMON_SUMMARY_RULES,
 };
