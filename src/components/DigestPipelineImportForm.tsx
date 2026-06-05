@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Download, Radio, Trash2 } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
@@ -115,8 +115,23 @@ export function DigestPipelineImportForm({
     pipelineId: string;
     type: "import" | "remove";
   } | null>(null);
+  const [removeTargetId, setRemoveTargetId] = useState<string | null>(null);
+  const removeDialogRef = useRef<HTMLDialogElement>(null);
   const [importPending, startImportTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const removeTarget = removeTargetId
+    ? pipelines.find((pipeline) => pipeline.id === removeTargetId) ?? null
+    : null;
+
+  useEffect(() => {
+    const dialog = removeDialogRef.current;
+    if (!dialog) return;
+    if (removeTarget) {
+      if (!dialog.open) dialog.showModal();
+      return;
+    }
+    if (dialog.open) dialog.close();
+  }, [removeTarget]);
 
   function importPipeline(pipelineId: string) {
     if (pendingAction) return;
@@ -147,14 +162,18 @@ export function DigestPipelineImportForm({
     });
   }
 
+  function requestRemoveImported(pipelineId: string) {
+    if (pendingAction) return;
+    const pipeline = pipelines.find((item) => item.id === pipelineId);
+    if (!pipeline || pipeline.owned || !importedIds.has(pipelineId)) return;
+    setError(null);
+    setRemoveTargetId(pipelineId);
+  }
+
   function removeImported(pipelineId: string) {
     if (pendingAction) return;
     const pipeline = pipelines.find((item) => item.id === pipelineId);
     if (!pipeline || pipeline.owned || !importedIds.has(pipelineId)) return;
-    const confirmed = window.confirm(
-      "删除后将不能在 Home page 看到这个 digest，是否确认？",
-    );
-    if (!confirmed) return;
     setError(null);
     setPendingAction({ pipelineId, type: "remove" });
     setImportedIds((current) => {
@@ -176,6 +195,17 @@ export function DigestPipelineImportForm({
         setPendingAction(null);
       }
     });
+  }
+
+  function closeRemoveDialog() {
+    setRemoveTargetId(null);
+  }
+
+  function confirmRemoveImported() {
+    if (!removeTargetId) return;
+    const pipelineId = removeTargetId;
+    setRemoveTargetId(null);
+    removeImported(pipelineId);
   }
 
   return (
@@ -202,7 +232,7 @@ export function DigestPipelineImportForm({
             isPending={importPending}
             key={pipeline.id}
             onImport={importPipeline}
-            onRemove={removeImported}
+            onRemove={requestRemoveImported}
             pending={pendingAction?.pipelineId === pipeline.id ? pendingAction.type : null}
             pipeline={pipeline}
           />
@@ -214,6 +244,46 @@ export function DigestPipelineImportForm({
           />
         ) : null}
       </div>
+
+      <dialog
+        className="fb-dialog"
+        onClick={(event) => {
+          if (event.target === removeDialogRef.current) closeRemoveDialog();
+        }}
+        onClose={closeRemoveDialog}
+        ref={removeDialogRef}
+      >
+        {removeTarget ? (
+          <div className="fb-dialog-inner settings-dialog-stack">
+            <h3 className="fb-section-heading">Remove imported digest?</h3>
+            <div className="settings-dialog-copy">
+              <p>
+                After removing <strong>{removeTarget.title}</strong>, you will
+                no longer see this digest on the Home page.
+              </p>
+              <p className="settings-dialog-warning">
+                You can import it again from the Hub later.
+              </p>
+            </div>
+            <div className="settings-dialog-actions">
+              <button
+                className="fb-btn light compact"
+                onClick={closeRemoveDialog}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="fb-btn danger compact"
+                onClick={confirmRemoveImported}
+                type="button"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </dialog>
     </section>
   );
 }
