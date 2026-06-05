@@ -1280,7 +1280,11 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-type-groups/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceBadge/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceAvatar/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /sourceSummaryItems = library\.items\.slice\(0, 4\)/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /sourceSummaryItems = selectSourceSummaryItems\(library\.items, sourceGroups, 4\)/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /function selectSourceSummaryItems/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /for \(const group of sourceGroups\)/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /for \(const item of libraryItems\)/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /sourceSummaryItems = library\.items\.slice\(0, 4\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-summary-strip/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-summary-name/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /See more/);

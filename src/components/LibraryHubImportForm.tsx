@@ -281,7 +281,7 @@ function HubCard({
   pending: "import" | "remove" | null;
 }) {
   const sourceGroups = groupedSources(library.items);
-  const sourceSummaryItems = library.items.slice(0, 4);
+  const sourceSummaryItems = selectSourceSummaryItems(library.items, sourceGroups, 4);
   const fetchedPostCount = library.items.reduce(
     (sum, item) => sum + item.builder._count.feedItems,
     0,
@@ -486,6 +486,28 @@ function sourceTypeForBuilder(builder: HubLibraryBuilder) {
 
 function sourceUrlForBuilder(builder: HubLibraryBuilder) {
   return builder.sourceUrl ?? builder.fetchUrl;
+}
+
+function selectSourceSummaryItems(
+  libraryItems: HubLibrary["items"],
+  sourceGroups: SourceGroup[],
+  limit: number,
+) {
+  const selected: HubLibrary["items"] = [];
+  const pickedBuilderIds = new Set<string>();
+  for (const group of sourceGroups) {
+    const first = group.items[0];
+    if (!first) continue;
+    selected.push(first);
+    pickedBuilderIds.add(first.builderId);
+    if (selected.length >= limit) return selected;
+  }
+  for (const item of libraryItems) {
+    if (pickedBuilderIds.has(item.builderId)) continue;
+    selected.push(item);
+    if (selected.length >= limit) return selected;
+  }
+  return selected;
 }
 
 function groupedSources(libraryItems: HubLibrary["items"]): SourceGroup[] {
