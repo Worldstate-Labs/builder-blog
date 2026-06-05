@@ -722,21 +722,13 @@ function FetchScheduleSummary({
   if (!cronJob) {
     return (
       <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-        {status.summary} Use Update sources to copy a Local Agent prompt.
+        {status.summary}
       </p>
     );
   }
 
   if (cronJob.status !== "active") {
-    return (
-      <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
-        Schedule stopped
-        {cronJob.stoppedAt
-          ? ` ${hydrated ? formatRelative(cronJob.stoppedAt) : formatAbsolute(cronJob.stoppedAt)}`
-          : ""}
-        . Use Update sources to copy a Local Agent prompt.
-      </p>
-    );
+    return null;
   }
 
   const nextLabel = nextExpectedAt
