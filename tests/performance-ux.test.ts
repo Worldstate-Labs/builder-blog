@@ -918,6 +918,16 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(buildersPage, /label:\s*"Digest"[\s\S]*href:\s*"\/builders\?tab=digest"/);
   assert.match(buildersPage, /const showStopDigestCron = data\.digestCronJob\?\.status === "active"/);
   assert.match(buildersPage, /Your digest/);
+  assert.ok(
+    buildersPage.indexOf("<DigestLogPanel") < buildersPage.indexOf("<OwnDigestPipelineCard"),
+    "Digest updates should render above the digest pipeline card.",
+  );
+  assert.match(buildersPage, /<section className="sources-sync-section">[\s\S]*<DigestLogPanel/);
+  assert.match(buildersPage, /<section className="your-digest-panel fb-panel"/);
+  assert.doesNotMatch(
+    buildersPage,
+    /<section className="your-digest-panel fb-panel"[\s\S]*<DigestLogPanel[\s\S]*<OwnDigestPipelineCard/,
+  );
   assert.match(buildersPage, /<OwnDigestPipelineCard/);
   assert.match(buildersPage, /pipeline=\{data\.ownDigestPipeline\}/);
   assert.match(buildersPage, /<DigestPipelineVisibilityToggle initialShared=\{data\.ownPipelineShared\}/);
