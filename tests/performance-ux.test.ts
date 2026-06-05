@@ -593,7 +593,11 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.fb-top-user\s*{[\s\S]*grid-column:\s*3/);
   assert.match(globals, /\.app-body\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /@media \(min-width:\s*1024px\)[\s\S]*\.app-body\s*{[\s\S]*grid-template-columns:\s*var\(--side-rail-width\) minmax\(0,\s*1fr\)/);
+  assert.match(globals, /@media \(min-width:\s*1024px\)[\s\S]*\.app-main\s*{[\s\S]*grid-column:\s*1 \/ -1/);
+  assert.match(globals, /@media \(min-width:\s*1024px\)[\s\S]*\.app-main\s*{[\s\S]*grid-row:\s*1/);
   assert.match(globals, /@media \(min-width:\s*1024px\)[\s\S]*\.fb-side-rail\s*{[\s\S]*display:\s*flex/);
+  assert.match(globals, /@media \(min-width:\s*1024px\)[\s\S]*\.fb-side-rail\s*{[\s\S]*grid-column:\s*1/);
+  assert.match(globals, /@media \(min-width:\s*1024px\)[\s\S]*\.fb-side-rail\s*{[\s\S]*grid-row:\s*1/);
   assert.match(globals, /@media \(min-width:\s*1024px\)[\s\S]*\.fb-side-rail\s*{[\s\S]*padding:\s*0\.875rem var\(--workspace-gutter\)/);
   assert.match(globals, /\.fb-nav-list-rail\s*{[\s\S]*width:\s*var\(--side-rail-content-width\)/);
   assert.match(globals, /\.fb-nav-list-rail \.fb-nav\s*{[\s\S]*flex-direction:\s*row/);

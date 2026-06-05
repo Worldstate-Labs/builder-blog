@@ -8382,7 +8382,8 @@ mark.fb-mark-highlight {
   }
 
   .app-main {
-    grid-column: 2;
+    grid-column: 1 / -1;
+    grid-row: 1;
   }
 
   .fb-side-rail {
@@ -8390,6 +8391,8 @@ mark.fb-mark-highlight {
     background: var(--paper);
     border-right: 1px solid color-mix(in oklch, var(--line) 70%, transparent);
     display: flex;
+    grid-column: 1;
+    grid-row: 1;
     height: calc(100vh - 3.5rem);
     justify-content: flex-start;
     padding: 0.875rem var(--workspace-gutter);
