@@ -353,6 +353,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /Build digest/);
   assert.doesNotMatch(skillPromptActions, /Run or schedule/);
   assert.doesNotMatch(skillPromptActions, /onClick=\{\(\) => copyCommand\("once"\)\}/);
+  assert.match(skillPromptActions, /async function copyTextToClipboard/);
+  assert.match(skillPromptActions, /document\.hasFocus\(\)/);
+  assert.match(skillPromptActions, /document\.execCommand\("copy"\)/);
+  assert.doesNotMatch(skillPromptActions, /await navigator\.clipboard\.writeText\(command\)/);
   assert.match(skillPromptActions, /Read \$\{promptUrl\} and follow the instructions/);
   assert.match(skillPromptActions, /\/api\/skill\/jobs\/\$\{job\}\/skill\.md/);
   // The single job dialog includes one-time as the first frequency option;

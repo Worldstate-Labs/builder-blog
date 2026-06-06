@@ -58,6 +58,43 @@ type SchedulePromptSelection =
 // (no runtime/cadence to pick). Either source flips ?force=1.
 type CopyExtras = { cron: CronConfig | null; force: boolean; fetchDays: number };
 
+async function copyTextToClipboard(text: string) {
+  try {
+    if (navigator.clipboard?.writeText && document.hasFocus()) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Fall back below when focus or clipboard permissions block writeText.
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "0";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+
+  const selection = document.getSelection();
+  const previousRange =
+    selection && selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null;
+
+  textarea.focus();
+  textarea.select();
+
+  try {
+    return document.execCommand("copy");
+  } finally {
+    document.body.removeChild(textarea);
+    if (selection) {
+      selection.removeAllRanges();
+      if (previousRange) selection.addRange(previousRange);
+    }
+  }
+}
+
 const FREQUENCY_CHOICES: { id: ScheduleFrequency; label: string }[] = [
   { id: "once", label: "One-time" },
   { id: "30m", label: "Every 30 minutes" },
@@ -343,15 +380,16 @@ export function SkillPromptActions({
     }
     const command = buildCommand(target, code, extras);
     try {
-      await navigator.clipboard.writeText(command);
+      const copied = await copyTextToClipboard(command);
+      if (!copied) throw new Error("Could not copy prompt");
       setCopiedTarget(target);
       window.setTimeout(() => setCopiedTarget(null), 1800);
       setStatus({ kind: "info", text: "Copied · valid for 10 minutes" });
       window.setTimeout(() => setStatus(null), 8000);
-    } catch (error) {
+    } catch {
       setStatus({
         kind: "error",
-        text: error instanceof Error ? error.message : "Could not copy prompt",
+        text: "Could not copy prompt. Keep this page focused and try again.",
       });
     }
   }

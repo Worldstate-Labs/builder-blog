@@ -309,6 +309,10 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /className="skill-prompt-status"/);
   assert.match(skillPromptActions, /className="skill-prompt-status-text"/);
   assert.match(skillPromptActions, /className="skill-prompt-status-text is-error"/);
+  assert.match(skillPromptActions, /async function copyTextToClipboard/);
+  assert.match(skillPromptActions, /document\.hasFocus\(\)/);
+  assert.match(skillPromptActions, /document\.execCommand\("copy"\)/);
+  assert.doesNotMatch(skillPromptActions, /await navigator\.clipboard\.writeText\(command\)/);
   assert.match(skillPromptActions, /className="token-picker-form"/);
   assert.doesNotMatch(skillPromptActions, /flex flex-wrap items-center justify-end gap-2|className="ml-2"|text-\[11px\] text-\[var\(--danger\)\]|text-\[11px\] text-\[var\(--muted-strong\)\]/);
   assert.doesNotMatch(skillPromptActions, /className="grid"/);
