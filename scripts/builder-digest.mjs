@@ -53,6 +53,7 @@ const PRODUCT_HUNT_TOP_PRODUCTS_URL = "https://www.producthunt.com/";
 const MAX_DIGEST_CONTENT_CHARS = 200_000;
 const MAX_DIGEST_HEADLINE_SUMMARY_CHARS = 300;
 const MAX_DIGEST_ITEMS = 5_000;
+const ORIGINAL_CONTENT_LANGUAGE_VALUE = "source";
 
 let _sourcesConfig = null;
 
@@ -1095,9 +1096,16 @@ export function singlePostSummaryInstructions(sourceId, sources = {}, commonSumm
   };
 }
 
+function isOriginalContentLanguage(value) {
+  return String(value || "").trim().toLowerCase() === ORIGINAL_CONTENT_LANGUAGE_VALUE;
+}
+
 function singlePostSummaryPrompt(source) {
+  const languageInstruction = isOriginalContentLanguage(source.language)
+    ? "Write one concise FollowBrief single-post summary in the same language as the task's final raw body. For ready tasks, use task.item.body's language. For requires_agent tasks, first fetch the primary content, then use the final body language."
+    : `Write one concise FollowBrief single-post summary in ${source.language}.`;
   return [
-    `Write one concise FollowBrief single-post summary in ${source.language}.`,
+    languageInstruction,
     "",
     source.commonSummaryRules,
     "",

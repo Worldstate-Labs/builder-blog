@@ -267,10 +267,14 @@ node ~/.builder-blog/builder-digest.mjs prepare
 - The only creative step is writing `headlineSummary`, optional
   `sourceSummaries`, and translated/rewritten `postSummaries`.
 - Write `headlineSummary` directly in `language` with `digest.headlinePrompt`.
-- Write each optional source summary directly in `language` with
-  `digest.perSourceSummaryPrompt`.
-- Use `digest.translate` only to rewrite or translate existing per-post
+  When `language` is `source`, use the dominant language of the supplied post
   summaries.
+- Write each optional source summary directly in `language` with
+  `digest.perSourceSummaryPrompt`. When `language` is `source`, use the
+  dominant language of that source group's supplied post summaries.
+- Use `digest.translate` only to rewrite or translate existing per-post
+  summaries. When `language` is `source`, keep each post in the language of its
+  existing summary.
 - The CLI assembles source ordering, section headings, post blocks, and source
   URLs programmatically.
 - Prioritize launches, technical insights, business moves, strong opinions, and implementation details.

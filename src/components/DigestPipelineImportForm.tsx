@@ -8,6 +8,7 @@ import { CountMeta } from "@/components/Count";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
 import { EmptyState } from "@/components/EmptyState";
 import type { DigestPipelineRuntimeMetadata } from "@/lib/digest-pipeline-metadata";
+import { displayLanguagePreference } from "@/lib/language-preference";
 
 export type HubDigestPipeline = {
   id: string;
@@ -498,10 +499,7 @@ function DigestPipelineMetaItem({
 }
 
 function formatLanguage(value: string) {
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "zh" || normalized === "zh-cn" || normalized === "chinese") return "Chinese";
-  if (normalized === "en" || normalized === "en-us" || normalized === "english") return "English";
-  return value.toUpperCase();
+  return displayLanguagePreference(value);
 }
 
 function formatDate(value: string) {

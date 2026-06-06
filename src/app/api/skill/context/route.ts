@@ -16,6 +16,11 @@ import {
 } from "@/lib/feed-preferences";
 import { prisma } from "@/lib/prisma";
 import { getUserFromBearer } from "@/lib/tokens";
+import {
+  displayLanguagePreference,
+  isOriginalContentLanguagePreference,
+  normalizeSummaryLanguagePreference,
+} from "@/lib/language-preference";
 
 const personalFetchedItemLimit = 5000;
 
@@ -90,7 +95,12 @@ export async function GET(request: Request) {
   // Account-wide summary language selected by the one-time or cron prompt.
   // Skill context always uses this run-level language, never a per-source
   // language override.
-  const summaryLanguage = preference?.summaryLanguage?.trim() || "zh";
+  const summaryLanguage = normalizeSummaryLanguagePreference(preference?.summaryLanguage);
+  const languageMode = isOriginalContentLanguagePreference(summaryLanguage) ? "source" : "fixed";
+  const languageInstruction =
+    languageMode === "source"
+      ? "Use the original content language. For fetch-task summaries, write each summary in the same language as that task's final raw body. For digest tasks, write each post summary in the same language as the supplied post summary; write source summaries in the dominant language of that source group's supplied post summaries; write the headline in the dominant language of all supplied post summaries. If there are no post summaries to infer from, use English."
+      : `Use ${displayLanguagePreference(summaryLanguage)}.`;
 
   // Per-source skill context: merge static fields from sources.json
   // (id, builderKind, feedItemKinds, urlPatterns) with admin-edited
@@ -314,6 +324,8 @@ export async function GET(request: Request) {
     dryRun,
     generatedAt: now.toISOString(),
     language: summaryLanguage,
+    languageMode,
+    languageInstruction,
     digestWindow: {
       until: now.toISOString(),
       // PublishedAt lookback floor. Candidate selection is gated by the per-user

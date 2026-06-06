@@ -179,6 +179,7 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /Latest fetch/);
   assert.match(panel, /Cron status/);
   assert.match(panel, /formatLanguage\(summaryLanguage \?\? "zh"\)/);
+  assert.match(panel, /displayLanguagePreference\(value\)/);
   assert.match(panel, /formatMetaDate\(latestRun\.startedAt\)/);
   assert.match(panel, /aria-controls="fetch-sync-details"/);
   assert.match(panel, /className="sync-panel-error"/);

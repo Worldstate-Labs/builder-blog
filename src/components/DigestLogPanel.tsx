@@ -34,6 +34,7 @@ import type {
   DigestRunListItem,
   DigestRunSource,
 } from "@/lib/digest-runs";
+import { displayLanguagePreference } from "@/lib/language-preference";
 
 const RELATIVE_FORMATTER =
   typeof Intl !== "undefined" && "RelativeTimeFormat" in Intl
@@ -886,7 +887,7 @@ function RunCard({ run }: { run: DigestRunListItem }) {
           {timeLabel}
         </time>
         <span className="fb-chip">{run.source === "cron" ? "Scheduled" : "One-time"}</span>
-        {run.language ? <span className="fb-chip">{run.language}</span> : null}
+        {run.language ? <span className="fb-chip">{displayLanguagePreference(run.language)}</span> : null}
         {run.regenerate ? (
           <span className="text-[11px] text-[var(--muted)]">rebuilt</span>
         ) : null}

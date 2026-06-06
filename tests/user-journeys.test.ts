@@ -397,9 +397,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /token-picker-grouplabel">Output/);
   assert.match(skillPromptActions, /cron-field-select/);
   assert.match(skillPromptActions, /Summary language/);
-  assert.match(skillPromptActions, /SUMMARY_LANGUAGE_OPTIONS/);
+  assert.match(skillPromptActions, /languageOptions\(value\)/);
   assert.match(skillPromptActions, /persistSummaryLanguage/);
   assert.match(skillPromptActions, /\/api\/settings\/summary-language/);
+  const settingsFields = readFileSync("src/components/settings/SettingsFields.tsx", "utf8");
+  assert.match(settingsFields, /ORIGINAL_CONTENT_LANGUAGE_VALUE/);
+  assert.match(settingsFields, /Use \$\{ORIGINAL_CONTENT_LANGUAGE_LABEL\.toLowerCase\(\)\}/);
   // Account-wide summary language is wired end to end: dedicated save route,
   // schema field, and context override.
   const summaryLanguageRoute = readFileSync(
@@ -1169,7 +1172,9 @@ test("digest feed user path selects not-yet-digested posts within the configured
   assert.doesNotMatch(contextRoute, /legacyPrompts/);
   assert.doesNotMatch(contextRoute, /prompts:/);
   assert.match(contextRoute, /preference\?\.summaryLanguage/);
-  assert.match(contextRoute, /const summaryLanguage = preference\?\.summaryLanguage\?\.trim\(\) \|\| "zh"/);
+  assert.match(contextRoute, /normalizeSummaryLanguagePreference\(preference\?\.summaryLanguage\)/);
+  assert.match(contextRoute, /languageMode = isOriginalContentLanguagePreference\(summaryLanguage\) \? "source" : "fixed"/);
+  assert.match(contextRoute, /languageInstruction/);
   assert.match(contextRoute, /language: summaryLanguage/);
   assert.doesNotMatch(contextRoute, /cfg\.summaryLanguage/);
   assert.doesNotMatch(contextRoute, /lengthHint: cfg\.summaryLengthHint/);

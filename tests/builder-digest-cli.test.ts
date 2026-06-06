@@ -860,6 +860,27 @@ test("singlePostSummaryInstructions throws when source is missing from context.s
   );
 });
 
+test("singlePostSummaryInstructions supports original content language mode", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const instructions = cli.singlePostSummaryInstructions("blog", {
+    blog: {
+      id: "blog",
+      label: "Blog",
+      summaryPrompt: {
+        body: "blog prompt body",
+        style: "blog_or_document",
+        language: "source",
+      },
+    },
+  });
+  assert.match(
+    instructions.prompt,
+    /summary in the same language as the task's final raw body/,
+  );
+  assert.match(instructions.prompt, /For ready tasks, use task\.item\.body's language/);
+  assert.doesNotMatch(instructions.prompt, /summary in source\./);
+});
+
 test("singlePostFetchInstructions prepends common fetching rules", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const sources = {

@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { formatZodError } from "@/lib/zod-error";
 import { prisma } from "@/lib/prisma";
 import { parseSkillDigestPayload } from "@/lib/skill-contracts";
+import {
+  displayLanguagePreference,
+  isOriginalContentLanguagePreference,
+  normalizeSummaryLanguagePreference,
+} from "@/lib/language-preference";
 import { getUserFromBearer } from "@/lib/tokens";
 
 export async function POST(request: Request) {
@@ -23,7 +28,12 @@ export async function POST(request: Request) {
     where: { userId: user.id },
     select: { summaryLanguage: true },
   });
-  const language = preference?.summaryLanguage?.trim() || parsed.data.language;
+  const languagePreference = preference?.summaryLanguage
+    ? normalizeSummaryLanguagePreference(preference.summaryLanguage)
+    : parsed.data.language;
+  const language = isOriginalContentLanguagePreference(languagePreference)
+    ? displayLanguagePreference(languagePreference)
+    : languagePreference;
 
   const now = new Date();
 

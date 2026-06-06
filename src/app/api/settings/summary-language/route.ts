@@ -2,6 +2,7 @@ import { formatZodError } from "@/lib/zod-error";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
+import { normalizeSummaryLanguagePreference } from "@/lib/language-preference";
 import { prisma } from "@/lib/prisma";
 
 // Account-wide summary output language. Dedicated endpoint (not the broader
@@ -24,7 +25,10 @@ export async function PATCH(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
-  const summaryLanguage = parsed.data.summaryLanguage.trim() || null;
+  const rawSummaryLanguage = parsed.data.summaryLanguage.trim();
+  const summaryLanguage = rawSummaryLanguage
+    ? normalizeSummaryLanguagePreference(rawSummaryLanguage)
+    : null;
 
   const preference = await prisma.userFeedPreference.upsert({
     where: { userId: session.user.id },

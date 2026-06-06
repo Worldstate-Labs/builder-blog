@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import {
+  ORIGINAL_CONTENT_LANGUAGE_LABEL,
+  ORIGINAL_CONTENT_LANGUAGE_VALUE,
+} from "@/lib/language-preference";
 
 export type SaveStatusKind = "idle" | "saving" | "saved" | "error";
 export type SaveStatusState = { kind: SaveStatusKind; message?: string };
@@ -492,9 +496,11 @@ export function SaveStatus({
 }
 
 // Account-wide summary output languages — the same list the cron / copy-prompt
-// dialog offers, kept here as the single source of truth. The stored value is
-// fed verbatim to the model, so a custom value is allowed and preserved.
+// dialog offers, kept here as the single source of truth. Fixed-language values
+// are fed into prompts; `source` is interpreted by the job context/CLI as
+// "match the raw content or existing summary language".
 export const SUMMARY_LANGUAGE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: ORIGINAL_CONTENT_LANGUAGE_VALUE, label: `Use ${ORIGINAL_CONTENT_LANGUAGE_LABEL.toLowerCase()}` },
   { value: "zh", label: "中文 (Chinese)" },
   { value: "English", label: "English" },
   { value: "日本語", label: "日本語 (Japanese)" },

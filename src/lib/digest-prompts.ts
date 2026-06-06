@@ -231,23 +231,26 @@ FollowBrief now assembles the digest body programmatically. This legacy prompt i
 
 Write only \`headlineSummary\` for the candidate posts in the supplied FollowBrief context.
 
-Use \`context.language\`. Keep it compact: one short news-headline paragraph in the selected language, suitable for a mobile digest header. Keep it to 300 characters or fewer. Do not include raw URLs. Use only facts already present in the candidate post summaries and metadata.`,
+Use \`context.language\`. If \`context.language\` is \`source\`, write in the dominant language of the supplied candidate post summaries. Keep it compact: one short news-headline paragraph in the selected language, suitable for a mobile digest header. Keep it to 300 characters or fewer. Do not include raw URLs. Use only facts already present in the candidate post summaries and metadata.`,
   perSourceSummary: `# Per-Source Summary Prompt
 
 You are writing an optional source-level summary for exactly one source in a FollowBrief digest.
 
-Use \`context.language\`. The input contains one source and that source's candidate posts only. Write a short source-level summary only when this source has multiple candidate posts and those posts are meaningfully about the same actor, source, or main subject. If the posts are unrelated, too sparse, or there is only one candidate post, output an empty string.
+Use \`context.language\`. If \`context.language\` is \`source\`, write in the dominant language of this source group's supplied post summaries. The input contains one source and that source's candidate posts only. Write a short source-level summary only when this source has multiple candidate posts and those posts are meaningfully about the same actor, source, or main subject. If the posts are unrelated, too sparse, or there is only one candidate post, output an empty string.
 
 Do not summarize every post again. Do not add facts beyond the supplied post summaries and metadata.`,
   translate: `# Translation Prompt
 
 You are rewriting, translating, and compressing an already-written per-post
-summary into the target language given by context.language.
+summary into the target language given by context.language. If context.language
+is source, keep each per-post summary in the same language as the supplied
+summary instead of translating it to a fixed language.
 
 ## Instructions
 
 - Render only the supplied per-post summary into natural, fluent prose in
-  context.language. It must read as if originally written in that language, not
+  context.language. If context.language is source, use the supplied summary's
+  own language. It must read as if originally written in that language, not
   translated.
 - Keep the output to no more than 300 Chinese characters when context.language
   is Chinese. For word-delimited languages, keep it to 300 words or fewer.

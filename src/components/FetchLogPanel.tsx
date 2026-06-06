@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { useHydrated } from "@/components/ThemeToggle";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
+import { displayLanguagePreference } from "@/lib/language-preference";
 
 export type LibraryFetchRunListItem = {
   id: string;
@@ -165,10 +166,7 @@ function formatMetaDate(iso: string): string {
 }
 
 function formatLanguage(value: string) {
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "zh" || normalized === "zh-cn" || normalized === "chinese") return "Chinese";
-  if (normalized === "en" || normalized === "en-us" || normalized === "english") return "English";
-  return value.toUpperCase();
+  return displayLanguagePreference(value);
 }
 
 function formatDuration(ms: number): string {

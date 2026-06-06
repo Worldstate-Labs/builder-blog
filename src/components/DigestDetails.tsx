@@ -7,6 +7,7 @@ import { CountMeta } from "@/components/Count";
 import { DigestContent, type DigestSourceLink } from "@/components/DigestContent";
 import { useHydrated } from "@/components/ThemeToggle";
 import { digestPreviewFromContent } from "@/lib/digest-headline";
+import { displayLanguagePreference } from "@/lib/language-preference";
 
 export type DigestSummary = {
   id: string;
@@ -142,7 +143,7 @@ export function DigestDetails({
             <span className="item-kicker">
               <span>{formatDateTime(digest.createdAt, hydrated)}</span>
               <CountMeta label={digest.itemCount === 1 ? "item" : "items"} value={digest.itemCount} />
-              <span>{digest.language}</span>
+              <span>{displayLanguagePreference(digest.language)}</span>
             </span>
             <span className="item-title">{digest.title}</span>
             {headerHeadline ? (

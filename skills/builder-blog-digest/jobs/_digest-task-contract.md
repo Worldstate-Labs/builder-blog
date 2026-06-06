@@ -27,6 +27,13 @@ JSON schema:
 
 Rules:
 
+- Language mode: normally, write digest output in `context.language`. If
+  `context.language` is `source`, use the supplied post summaries as the
+  language source: write each `postSummaries[]` entry in that item's existing
+  summary language, write each source summary in the dominant language of that
+  source group's supplied summaries, and write `headlineSummary` in the dominant
+  language of all supplied summaries. If there are no supplied summaries, use
+  English for the no-updates line.
 - `headlineSummary`: follow `context.digest.headlinePrompt`. It must be a
   non-empty string.
 - `sourceSummaries`: group candidate items by `entityId` and follow

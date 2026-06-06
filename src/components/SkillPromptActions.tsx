@@ -7,7 +7,8 @@ import {
   type AgentTokenListItem,
 } from "@/components/AgentTokenPanel";
 import { EmptyState } from "@/components/EmptyState";
-import { SUMMARY_LANGUAGE_OPTIONS } from "@/components/settings/SettingsFields";
+import { languageOptions } from "@/components/settings/SettingsFields";
+import { DEFAULT_SUMMARY_LANGUAGE } from "@/lib/language-preference";
 
 type SkillPromptContext = "library" | "digest";
 type CopyTarget = "once" | "cron" | "stop";
@@ -76,11 +77,9 @@ const DEFAULT_FREQUENCY: Record<SkillPromptContext, ScheduleFrequency> = {
   digest: "once",
 };
 
-// Account-wide summary output language. `value` is fed verbatim into the
-// summary prompt ("…summary in <value>"); the option list lives in
-// SettingsFields as the single source of truth. "zh" is the default when no
-// one-time or cron prompt has selected another language.
-const DEFAULT_SUMMARY_LANGUAGE = "zh";
+// Account-wide summary output language. The fixed-language values are fed into
+// prompts; the special "source" value means summarize in the source content's
+// own language.
 const DEFAULT_PROMPT_WINDOW_DAYS = 30;
 const MAX_PROMPT_WINDOW_DAYS = 90;
 
@@ -147,14 +146,11 @@ function SummaryLanguageField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
-        {SUMMARY_LANGUAGE_OPTIONS.map((option) => (
+        {languageOptions(value).map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>
         ))}
-        {SUMMARY_LANGUAGE_OPTIONS.every((o) => o.value !== value) ? (
-          <option value={value}>{value}</option>
-        ) : null}
       </select>
     </div>
   );
