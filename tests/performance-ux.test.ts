@@ -176,7 +176,10 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(landingPage, /className="rounded-lg border/);
   assert.match(landingPage, /GitHub Trending/);
   assert.match(landingPage, /Product Hunt/);
-  assert.match(landingPage, /sources your Local Agent can access/);
+  assert.match(landingPage, /Your Local Agent fetches updates, summarizes/);
+  assert.match(landingPage, /sources your Local Agent can fetch/);
+  assert.match(landingPage, /build a cited digest from the summaries/);
+  assert.doesNotMatch(landingPage, /Local Agent sources/);
   assert.match(landingPage, /Daily updates become one brief/);
   assert.match(landingPage, /Search and revisit/);
   assert.doesNotMatch(landingPage, /Context windows became product infrastructure/);

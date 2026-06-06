@@ -31,8 +31,8 @@ export default async function Home() {
           </h1>
           <p className="fb-public-copy">
             Follow blogs, newsletters, channels, feeds, GitHub Trending,
-            Product Hunt, and sources your Local Agent can access. FollowBrief
-            turns updates into cited AI digests and keeps them searchable.
+            and Product Hunt. Your Local Agent fetches updates, summarizes
+            posts, builds cited AI digests, and syncs them back to FollowBrief.
           </p>
           <div className="fb-public-actions">
             <Link className="fb-btn dark" href="/login">
@@ -140,13 +140,13 @@ export default async function Home() {
               i: "01",
               icon: UsersRound,
               title: "Choose sources",
-              copy: "Start from shared libraries, then add blogs, channels, feeds, GitHub Trending, Product Hunt, and Local Agent sources.",
+              copy: "Start from shared libraries, then add blogs, channels, feeds, GitHub Trending, Product Hunt, and sources your Local Agent can fetch.",
             },
             {
               i: "02",
               icon: Terminal,
               title: "Generate briefs",
-              copy: "Build a cited AI digest from followed sources and save it to your archive.",
+              copy: "Let your Local Agent fetch updates, summarize posts, and build a cited digest from the summaries.",
             },
             {
               i: "03",
