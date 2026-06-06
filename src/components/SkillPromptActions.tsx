@@ -184,7 +184,9 @@ function parseWindowDays(value: string): number | null {
   if (!trimmed) return DEFAULT_PROMPT_WINDOW_DAYS;
   const numeric = Number(trimmed);
   if (!Number.isFinite(numeric)) return null;
-  return Math.min(MAX_PROMPT_WINDOW_DAYS, Math.max(1, Math.floor(numeric)));
+  if (!Number.isInteger(numeric)) return null;
+  if (numeric < 1 || numeric > MAX_PROMPT_WINDOW_DAYS) return null;
+  return numeric;
 }
 
 function MaxAgeField({
@@ -786,7 +788,7 @@ function CronConfigDialog({
       if (context === "digest") {
         const maxAge = parseWindowDays(pickedMaxAge);
         if (maxAge === null) {
-          setError("Max post age must be a whole number of days.");
+          setError("Max post age must be a whole number from 1 to 90 days.");
           setSubmitting(false);
           return;
         }
@@ -800,7 +802,7 @@ function CronConfigDialog({
       const fetchDays =
         context === "library" ? parseWindowDays(pickedFetchDays) : DEFAULT_PROMPT_WINDOW_DAYS;
       if (fetchDays === null) {
-        setError("Fetch days must be a whole number of days.");
+        setError("Fetch days must be a whole number from 1 to 90 days.");
         setSubmitting(false);
         return;
       }

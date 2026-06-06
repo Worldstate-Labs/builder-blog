@@ -383,6 +383,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /Fetch post age \(days\)/);
   assert.match(skillPromptActions, /Defaults to 30 days\. Choose 1-90 days\./);
   assert.match(skillPromptActions, /params\.set\("days", String\(extras\.fetchDays\)\)/);
+  assert.match(skillPromptActions, /Number\.isInteger\(numeric\)/);
+  assert.match(skillPromptActions, /numeric < 1 \|\| numeric > MAX_PROMPT_WINDOW_DAYS/);
+  assert.doesNotMatch(skillPromptActions, /Math\.min\(MAX_PROMPT_WINDOW_DAYS, Math\.max\(1/);
+  assert.match(skillPromptActions, /Max post age must be a whole number from 1 to 90 days/);
+  assert.match(skillPromptActions, /Fetch days must be a whole number from 1 to 90 days/);
   assert.match(skillPromptActions, /\{submitting \? "…" : "Copy"\}/);
   assert.doesNotMatch(skillPromptActions, /Copy a prompt for one run or for a recurring local schedule/);
   assert.doesNotMatch(skillPromptActions, /Local helper/);
