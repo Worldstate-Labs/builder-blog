@@ -92,6 +92,7 @@ export default async function BuildersPage({
 
   return (
     <div className="page-pad">
+      <h1 className="sr-only">Sources</h1>
       <div className="workspace-content-stack">
         <section className="sources-tab-surface">
           <WorkspaceTopTabs

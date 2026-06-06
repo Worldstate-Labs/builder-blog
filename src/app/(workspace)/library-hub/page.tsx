@@ -47,6 +47,7 @@ export default async function LibraryHubPage({
 
   return (
     <div className="page-pad">
+      <h1 className="sr-only">Hub</h1>
       <div className="workspace-content-stack">
         <WorkspaceTopTabs
           ariaLabel="Hub sections"

@@ -87,8 +87,8 @@ test("every app route has an explicit centered layout role", () => {
   }
 
   const workspaceRoutes = [
-    ["src/app/(workspace)/builders/page.tsx", /className="page-pad"[\s\S]*<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/],
-    ["src/app/(workspace)/library-hub/page.tsx", /className="page-pad"[\s\S]*<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/],
+    ["src/app/(workspace)/builders/page.tsx", /className="page-pad"[\s\S]*<h1 className="sr-only">Sources<\/h1>[\s\S]*<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/],
+    ["src/app/(workspace)/library-hub/page.tsx", /className="page-pad"[\s\S]*<h1 className="sr-only">Hub<\/h1>[\s\S]*<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/],
   ] as const;
   for (const [path, pattern] of workspaceRoutes) {
     const text = source(path);
@@ -1372,6 +1372,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.doesNotMatch(buildersPage, /BuilderStatsFallback|BuilderStatsSlot|BuilderLibraryStats/);
   assert.match(buildersPage, /<Suspense fallback=\{<FetchSourcesFallback \/>/);
   assert.match(buildersPage, /function FetchSourcesFallback/);
+  assert.match(buildersPage, /<h1 className="sr-only">Sources<\/h1>/);
   assert.match(buildersPage, /className="sources-section-stack"/);
   assert.match(buildersPage, /className="your-library-panel fb-panel"/);
   assert.match(buildersPage, /Your library/);
@@ -1380,6 +1381,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.doesNotMatch(buildersPage, /mt-6 grid gap-5/);
   assert.doesNotMatch(buildersPage, /className="grid gap-5"/);
   assert.match(libraryHubPage, /<Suspense fallback=\{<LibraryHubImportFallback \/>/);
+  assert.match(libraryHubPage, /<h1 className="sr-only">Hub<\/h1>/);
   assert.match(libraryHubPage, /getDigestPipelineMetadataByOwnerIds/);
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
   assert.match(libraryHubPage, /className="workspace-content-stack"/);
@@ -1553,6 +1555,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
   assert.doesNotMatch(buildersPage, /@\/components\/PageHeader/);
   assert.doesNotMatch(buildersPage, /<PageHeader/);
+  assert.match(buildersPage, /<h1 className="sr-only">Sources<\/h1>/);
   assert.match(buildersPage, /<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/);
   assert.doesNotMatch(buildersPage, /Manage followed, private, and imported sources/);
   assert.doesNotMatch(buildersPage, /BuilderStatsFallback|BuilderStatsSlot|BuilderLibraryStats/);
