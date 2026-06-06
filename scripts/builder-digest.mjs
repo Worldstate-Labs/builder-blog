@@ -105,6 +105,7 @@ function usage() {
   console.log(`builder-digest commands:
   exchange --ec <code> [--app-url ${DEFAULT_APP_URL}]
   fetch-personal [--days ${DEFAULT_PERSONAL_FETCH_DAYS}] [--limit 3] [--force] [--agent-model gpt-5.5]
+  expand-discovery --tasks fetch-result.json --file discovery-result.json [--out expanded-fetch-result.json]
   prepare [--regenerate]
   validate-agent-sync --tasks fetch-result.json --file personal-builders.json
   sync-builders --file personal-builders.json [--agent-model gpt-5.5]
@@ -585,8 +586,11 @@ async function fetchPersonal(args) {
             agentModel,
           });
           if (!externalItems) {
-            const task = buildBuilderFallbackTask(builder, fallbackBuilderSync, {
+            const task = buildPersonalFetchErrorTask(builder, {
+              builderSync: fallbackBuilderSync,
               error: new Error("No local fetcher configured for this personal source."),
+              limit,
+              now: startedAt,
               sources,
               commonFetchRules,
               commonSummaryRules,
@@ -630,8 +634,11 @@ async function fetchPersonal(args) {
         const message = error instanceof Error ? error.message : String(error);
         builderStat.error = message;
         errorCount += 1;
-        const task = buildBuilderFallbackTask(builder, fallbackBuilderSync, {
+        const task = buildPersonalFetchErrorTask(builder, {
+          builderSync: fallbackBuilderSync,
           error,
+          limit,
+          now: startedAt,
           sources,
           commonFetchRules,
           commonSummaryRules,
@@ -935,6 +942,186 @@ const FALLBACK_FEED_ITEM_KIND_BY_BUILDER_KIND = {
   WEBSITE: "OTHER",
 };
 
+const PRODUCT_HUNT_CANDIDATE_DISCOVERY_PROMPT = `# Product Hunt Top Products Candidate Discovery
+
+You are discovering Product Hunt top-product candidates for FollowBrief after
+the deterministic CLI discovery failed.
+
+Use the supplied \`task.discovery.sourceUrl\`, \`task.discovery.date\`, and
+\`task.discovery.limit\`. Try available browser/search/local methods, but only
+return products you can verify as Product Hunt top products for that date or
+current leaderboard. Do not invent products from general web search.
+
+Return strict JSON only:
+
+{
+  "status": "ok",
+  "candidates": [
+    {
+      "rank": 1,
+      "productName": "Product name",
+      "productUrl": "https://www.producthunt.com/products/product-slug",
+      "tagline": "Short Product Hunt tagline when visible",
+      "date": "YYYY-MM-DD",
+      "evidenceUrls": ["https://www.producthunt.com/"]
+    }
+  ]
+}
+
+If you cannot verify concrete Product Hunt product candidates, return:
+
+{
+  "status": "blocked",
+  "reason": "product_hunt_discovery_blocked",
+  "evidence": { "blocker": "..." }
+}`;
+
+const CANDIDATE_DISCOVERY_FALLBACK_BY_SOURCE_ID = {
+  product_hunt_top_products: {
+    prompt: PRODUCT_HUNT_CANDIDATE_DISCOVERY_PROMPT,
+    candidateSchema: {
+      required: ["rank", "productName", "productUrl", "date", "evidenceUrls"],
+      urlPattern: "^https://www\\.producthunt\\.com/products/",
+    },
+    normalizeCandidate(candidate, task) {
+      const url = absoluteUrl(candidate?.productUrl, PRODUCT_HUNT_TOP_PRODUCTS_URL);
+      const slug = productHuntSlugFromUrl(url);
+      const name = String(candidate?.productName || "").trim();
+      if (!slug || !name || !url.startsWith("https://www.producthunt.com/products/")) return null;
+      const rank = Number.isFinite(Number(candidate?.rank)) && Number(candidate.rank) > 0
+        ? Number(candidate.rank)
+        : null;
+      const date =
+        normalizedDate(candidate?.date)?.slice(0, 10) ||
+        task?.discovery?.date ||
+        new Date().toISOString().slice(0, 10);
+      return {
+        slug,
+        name,
+        rank: rank || 0,
+        url,
+        externalId: productHuntTopProductExternalId(slug),
+        title: `${rank ? `#${rank} ` : ""}${name}`,
+        description: String(candidate?.tagline || "").trim() || null,
+        comments: 0,
+        upvotes: 0,
+        date,
+        leaderboardUrl: task?.discovery?.sourceUrl || PRODUCT_HUNT_TOP_PRODUCTS_URL,
+        discovery: {
+          fetchTaskId: task?.id || null,
+          evidenceUrls: Array.isArray(candidate?.evidenceUrls)
+            ? candidate.evidenceUrls.filter((url) => typeof url === "string" && url.trim())
+            : [],
+        },
+      };
+    },
+    buildAgentTask(builder, candidate, options) {
+      return productHuntAgentTaskForProduct(builder, candidate, options);
+    },
+  },
+};
+
+function buildPersonalFetchErrorTask(
+  builder,
+  {
+    builderSync,
+    error,
+    limit,
+    now = new Date(),
+    sources = {},
+    commonFetchRules = DEFAULT_FETCH_GUIDANCE,
+    commonSummaryRules = "",
+  } = {},
+) {
+  const sourceType = builderSync?.sourceType ?? sourceTypeIdForBuilder(builder);
+  const discoveryFallback = CANDIDATE_DISCOVERY_FALLBACK_BY_SOURCE_ID[sourceType];
+  if (discoveryFallback) {
+    return buildCandidateDiscoveryFallbackTask(builder, builderSync, {
+      error,
+      limit,
+      now,
+      sourceType,
+      sourceConfig: sources?.[sourceType] ?? null,
+      discoveryFallback,
+    });
+  }
+  return buildBuilderFallbackTask(builder, builderSync, {
+    error,
+    sources,
+    commonFetchRules,
+    commonSummaryRules,
+  });
+}
+
+export function buildPersonalFetchErrorTaskForTest(builder, options = {}) {
+  return buildPersonalFetchErrorTask(builder, {
+    commonFetchRules: DEFAULT_FETCH_GUIDANCE,
+    commonSummaryRules: "",
+    ...options,
+  });
+}
+
+function buildCandidateDiscoveryFallbackTask(
+  builder,
+  builderSync,
+  { error, limit, now = new Date(), sourceType, sourceConfig = null, discoveryFallback } = {},
+) {
+  const task = {
+    type: "candidate_discovery",
+    agentWorkType: "candidate_discovery_fallback",
+    contentStatus: "requires_agent",
+    builder: builder.name,
+    builderId: builder.id,
+    sourceType,
+    builderSync,
+    discovery: {
+      sourceUrl: builder.fetchUrl || builder.sourceUrl || builderSync?.fetchUrl || builderSync?.sourceUrl || "",
+      fetchUrl: builder.fetchUrl || builderSync?.fetchUrl || null,
+      limit: Number.isFinite(Number(limit)) ? Number(limit) : null,
+      date: now instanceof Date ? now.toISOString().slice(0, 10) : normalizedDate(now)?.slice(0, 10),
+      candidateSchema: discoveryFallback?.candidateSchema ?? {},
+      failureEvidence: fetchFailureEvidence(error),
+    },
+    discoveryInstructions: {
+      scope: "candidate_discovery",
+      prompt: discoveryFallback?.prompt ?? "",
+    },
+    ...(sourceConfig ? { sourceConfigSnapshot: compactSourceConfigSnapshot(sourceConfig) } : {}),
+    fallbackReason: error?.message || String(error || "Personal fetcher failed"),
+  };
+  task.id = candidateDiscoveryTaskId(task);
+  return task;
+}
+
+function compactSourceConfigSnapshot(sourceConfig) {
+  return {
+    id: sourceConfig.id,
+    label: sourceConfig.label,
+    contentQuality: sourceConfig.contentQuality,
+    summaryPrompt: sourceConfig.summaryPrompt,
+    fetchPrompt: sourceConfig.fetchPrompt,
+  };
+}
+
+function candidateDiscoveryTaskId(task) {
+  return [
+    "candidate_discovery",
+    task?.builderId || task?.builder || "builder",
+    task?.sourceType || "source",
+  ]
+    .map((part) => encodeURIComponent(String(part)))
+    .join(":");
+}
+
+function fetchFailureEvidence(error) {
+  const message = error?.message || String(error || "");
+  const status = Number(message.match(/\bHTTP\s+(\d{3})\b/i)?.[1] ?? NaN);
+  return {
+    message,
+    ...(Number.isFinite(status) ? { status } : {}),
+  };
+}
+
 function buildBuilderFallbackTask(
   builder,
   builderSync,
@@ -1154,6 +1341,16 @@ function githubTrendingExternalId(repo) {
 
 function productHuntTopProductExternalId(slug) {
   return `product-hunt-top-products:${slug}`;
+}
+
+function productHuntSlugFromUrl(url) {
+  try {
+    const parsed = new URL(url);
+    const match = parsed.pathname.match(/^\/products\/([^/?#]+)/i);
+    return match?.[1] ? decodeURIComponent(match[1]) : "";
+  } catch {
+    return "";
+  }
 }
 
 function hasFetchedGithubTrendingRepository(fetchedItemKeys, builderId, repo) {
@@ -1879,6 +2076,8 @@ function productHuntAgentTaskForProduct(builder, product, { sources = {}, agentM
       date: product.date,
       leaderboardUrl: product.leaderboardUrl,
       fetchTool: skillFetchTool("Product Hunt top product planner", agentModel),
+      ...(product.discovery?.fetchTaskId ? { discoveryFetchTaskId: product.discovery.fetchTaskId } : {}),
+      ...(product.discovery?.evidenceUrls?.length ? { discoveryEvidenceUrls: product.discovery.evidenceUrls } : {}),
     },
   };
   const task = {
@@ -1890,6 +2089,85 @@ function productHuntAgentTaskForProduct(builder, product, { sources = {}, agentM
     minimumContentQuality: genericMinimumContentQuality(sources, "product_hunt_top_products"),
   };
   return { ...task, id: agentTaskId(task) };
+}
+
+export function expandCandidateDiscoveryFetchResult(
+  fetchResult,
+  discoveryPayload,
+  {
+    sources = {},
+    commonFetchRules = DEFAULT_FETCH_GUIDANCE,
+    commonSummaryRules = "",
+    agentModel,
+  } = {},
+) {
+  const discoveryByTaskId = new Map(
+    (Array.isArray(discoveryPayload?.candidateDiscoveries)
+      ? discoveryPayload.candidateDiscoveries
+      : []
+    )
+      .filter((result) => result?.fetchTaskId)
+      .map((result) => [String(result.fetchTaskId), result]),
+  );
+  const expandedTasks = [];
+  const discoveryExpansions = [];
+
+  for (const task of extractFetchTasks(fetchResult)) {
+    if (task?.agentWorkType !== "candidate_discovery_fallback") {
+      expandedTasks.push(task);
+      continue;
+    }
+    const sourceType = task.sourceType;
+    const discoveryFallback = CANDIDATE_DISCOVERY_FALLBACK_BY_SOURCE_ID[sourceType];
+    const discoveryResult = discoveryByTaskId.get(String(task.id || candidateDiscoveryTaskId(task)));
+    if (!discoveryFallback || discoveryResult?.status !== "ok") continue;
+
+    const builderSync = task.builderSync || {};
+    const builder = {
+      id: task.builderId || builderSync.builderId,
+      kind: builderSync.kind || "WEBSITE",
+      sourceType,
+      name: task.builder || builderSync.name,
+      sourceUrl: builderSync.sourceUrl || task.discovery?.sourceUrl || null,
+      fetchUrl: builderSync.fetchUrl || task.discovery?.fetchUrl || null,
+    };
+    const taskSources = {
+      ...sources,
+      ...(task.sourceConfigSnapshot && !sources?.[sourceType]
+        ? { [sourceType]: task.sourceConfigSnapshot }
+        : {}),
+    };
+    const candidates = [];
+    for (const rawCandidate of Array.isArray(discoveryResult.candidates)
+      ? discoveryResult.candidates
+      : []) {
+      const candidate = discoveryFallback.normalizeCandidate(rawCandidate, task);
+      if (candidate) candidates.push(candidate);
+      if (task.discovery?.limit && candidates.length >= Number(task.discovery.limit)) break;
+    }
+    const fetchTasks = candidates.map((candidate) =>
+      fetchTaskFromAgentTask(
+        discoveryFallback.buildAgentTask(builder, candidate, { sources: taskSources, agentModel }),
+        builderSync,
+        taskSources,
+        commonFetchRules,
+        commonSummaryRules,
+      ),
+    );
+    expandedTasks.push(...fetchTasks);
+    discoveryExpansions.push({
+      fetchTaskId: task.id || candidateDiscoveryTaskId(task),
+      sourceType,
+      candidates: candidates.length,
+      fetchTasks: fetchTasks.length,
+    });
+  }
+
+  return {
+    ...fetchResult,
+    fetchTasks: expandedTasks,
+    discoveryExpansions,
+  };
 }
 
 function githubTrendingAgentTaskForRepository(builder, repo, { sources = {}, agentModel } = {}) {
@@ -2981,6 +3259,25 @@ async function validateAgentSync(args) {
   console.log(JSON.stringify(result, null, 2));
 }
 
+async function expandDiscovery(args) {
+  const tasksFile = argValue(args, "--tasks");
+  const payloadFile = argValue(args, "--file");
+  const outFile = argValue(args, "--out");
+  if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
+  if (!payloadFile) throw new Error("Missing --file discovery-result.json");
+
+  const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
+  const discoveryPayload = JSON.parse(await readFile(payloadFile, "utf8"));
+  const expanded = expandCandidateDiscoveryFetchResult(fetchResult, discoveryPayload, {
+    sources: fetchResult.sources ?? {},
+    commonFetchRules: fetchResult.commonFetchRules ?? DEFAULT_FETCH_GUIDANCE,
+    commonSummaryRules: fetchResult.commonSummaryRules ?? "",
+  });
+  const json = `${JSON.stringify(expanded, null, 2)}\n`;
+  if (outFile) await writeFile(outFile, json, "utf8");
+  console.log(json.trimEnd());
+}
+
 // Validate a single non-synced terminal outcome. A task that wasn't synced as
 // an item must be one of skipped / failed / blocked, each with a reason; a
 // `skipped` (no-content) decision additionally requires that task's OWN
@@ -3762,7 +4059,11 @@ async function patchFetchRunOutcomes(config, payload, serverResult = {}, planned
     const work = String(planned?.agentWorkType || "");
     // Informational user-action tasks (e.g. x_token_missing) aren't failures.
     if (work === "x_token_missing" || work.startsWith("user_action_")) {
-      taskOutcomes.push({ fetchTaskId: id, status: "action_needed" });
+      taskOutcomes.push({
+        fetchTaskId: id,
+        status: "action_needed",
+        ...(planned ? { plannedTask: fetchTaskLogPatch(planned, id) } : {}),
+      });
       continue;
     }
     const sizes = sizesByTaskId.get(id) ?? {};
@@ -3799,6 +4100,7 @@ async function patchFetchRunOutcomes(config, payload, serverResult = {}, planned
     }
     taskOutcomes.push({
       fetchTaskId: id,
+      ...(planned ? { plannedTask: fetchTaskLogPatch(planned, id) } : {}),
       ...sizes,
       status,
       ...(failureReason ? { failureReason } : {}),
@@ -3817,6 +4119,26 @@ async function patchFetchRunOutcomes(config, payload, serverResult = {}, planned
     const message = patchError instanceof Error ? patchError.message : String(patchError);
     console.error(`Failed to attach per-post info to the fetch log: ${message}`);
   }
+}
+
+function fetchTaskLogPatch(task, id) {
+  return {
+    id,
+    builder: task?.builder ?? null,
+    builderId: task?.builderId ?? null,
+    sourceType: task?.sourceType ?? null,
+    contentStatus: task?.contentStatus ?? null,
+    agentWorkType: task?.agentWorkType ?? null,
+    title: task?.item?.title ?? null,
+    url: task?.item?.url ?? null,
+    fetchTool: task?.fetchTool ?? null,
+    bodyChars: null,
+    bodyWords: null,
+    summaryChars: null,
+    summaryWords: null,
+    agentRuntime: null,
+    agentModel: null,
+  };
 }
 
 async function status() {
@@ -3879,6 +4201,7 @@ async function main() {
     process.exit(1);
   }
   else if (command === "fetch-personal") await fetchPersonal(args);
+  else if (command === "expand-discovery") await expandDiscovery(args);
   else if (command === "prepare") await prepare(args);
   else if (command === "validate-agent-sync") await validateAgentSync(args);
   else if (command === "sync-builders") await syncBuilders(args);

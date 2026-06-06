@@ -13,8 +13,34 @@
   two jobs can never drift.
 -->
 Fetch task boundary:
-- `fetchTasks` are the only work items. Each task represents one post that must
-  end as one synced item with both `body` and `summary`.
+- `fetchTasks` are the only work items. Normal `fetch_post` tasks represent one
+  post that must end as one synced item with both `body` and `summary`.
+- A task with `agentWorkType="candidate_discovery_fallback"` is a pre-post
+  discovery task, not a feed item. Complete all such tasks first by following
+  `task.discoveryInstructions.prompt` and writing a strict JSON payload to:
+
+```text
+${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}/library-discovery-result.json
+```
+
+  Shape:
+  `{ candidateDiscoveries: [{ fetchTaskId, status, candidates?, reason?, evidence? }] }`.
+  For `status="ok"`, include only verified candidates returned by the discovery
+  prompt. For blocked/failed discovery, include `reason` and concrete
+  `evidence`. Then run:
+
+```bash
+TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}"
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" expand-discovery \
+  --tasks "$TMP_DIR/library-fetch-result.json" \
+  --file "$TMP_DIR/library-discovery-result.json" \
+  --out "$TMP_DIR/library-fetch-expanded.json"
+mv "$TMP_DIR/library-fetch-expanded.json" "$TMP_DIR/library-fetch-result.json"
+```
+
+  Continue the rest of this contract against the expanded
+  `library-fetch-result.json`. Do not sync discovery tasks directly.
 - If `task.contentStatus="ready"`, the normal fetcher already produced
   `task.item.body`; do not fetch content again. Generate one concise single-post
   `summary` from `task.summaryInstructions.prompt`.
@@ -28,8 +54,8 @@ Fetch task boundary:
 
 If the fetch result contains a non-empty `fetchTasks` array, complete exactly
 the task IDs returned by the CLI. Do not add new sources, URLs, or feed items
-that were not returned by the CLI or task payload. Every produced item must
-include `summary`.
+that were not returned by the CLI, the task payload, or a CLI-expanded
+candidate discovery result. Every produced item must include `summary`.
 
 How to execute each `fetchTask`:
 - Read `task.id`; the finished item must set `rawJson.fetchTaskId` to exactly

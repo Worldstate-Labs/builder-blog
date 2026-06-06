@@ -13,6 +13,7 @@ const MAX_DETAILS_BYTES = 50_000;
 // optional so the CLI can grow the per-post record without a schema change.
 const TaskOutcomeSchema = z.object({
   fetchTaskId: z.string().min(1).max(200),
+  plannedTask: z.record(z.string(), z.unknown()).optional(),
   bodyChars: z.number().int().min(0).max(100_000_000).nullable().optional(),
   bodyWords: z.number().int().min(0).max(100_000_000).nullable().optional(),
   summaryChars: z.number().int().min(0).max(100_000_000).nullable().optional(),
@@ -73,23 +74,42 @@ export async function PATCH(request: Request, { params }: Params) {
       : {};
 
   const byTaskId = new Map(parsed.data.taskOutcomes.map((o) => [o.fetchTaskId, o]));
+  const plannedTaskById = new Map(
+    parsed.data.taskOutcomes
+      .filter((o) => o.plannedTask && typeof o.plannedTask === "object")
+      .map((o) => [o.fetchTaskId, o.plannedTask as Record<string, unknown>]),
+  );
 
   // Merge each outcome onto the planned task with the same id. Only defined
   // values overwrite, so stage-1 fetch facts are never clobbered.
   const existingTasks = Array.isArray(details.fetchTasks) ? details.fetchTasks : [];
   let matched = 0;
-  details.fetchTasks = existingTasks.map((task) => {
+  const existingIds = new Set<string>();
+  const mergedTasks = existingTasks.map((task) => {
     const t = task && typeof task === "object" ? (task as Record<string, unknown>) : {};
+    if (typeof t.id === "string") existingIds.add(t.id);
     const outcome = typeof t.id === "string" ? byTaskId.get(t.id) : undefined;
     if (!outcome) return task;
     matched += 1;
     const patch: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(outcome)) {
-      if (key === "fetchTaskId" || value === undefined) continue;
+      if (key === "fetchTaskId" || key === "plannedTask" || value === undefined) continue;
       patch[key] = value;
     }
     return { ...t, ...patch };
   });
+  details.fetchTasks = mergedTasks;
+  for (const outcome of parsed.data.taskOutcomes) {
+    if (existingIds.has(outcome.fetchTaskId)) continue;
+    const plannedTask = plannedTaskById.get(outcome.fetchTaskId);
+    if (!plannedTask) continue;
+    const patch: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(outcome)) {
+      if (key === "fetchTaskId" || key === "plannedTask" || value === undefined) continue;
+      patch[key] = value;
+    }
+    mergedTasks.push({ ...plannedTask, ...patch });
+  }
 
   // Roll the distinct models/runtimes actually used up to the run header so the
   // log line reflects reality (one model → "gpt-5-codex"; several → "a / b").

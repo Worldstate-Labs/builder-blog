@@ -909,6 +909,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronExpanded, /Use `task\.minimumContentQuality`/);
   assert.match(libraryCronExpanded, /Build one output item/);
   assert.match(libraryCronExpanded, /both `body` and `summary`/);
+  assert.match(libraryCronExpanded, /candidate_discovery_fallback/);
+  assert.match(libraryCronExpanded, /expand-discovery/);
+  assert.match(libraryCronExpanded, /library-discovery-result\.json/);
   assert.match(libraryCronExpanded, /task\.builderSync/);
   assert.match(libraryCronExpanded, /complete exactly\s+the task IDs returned by the CLI/i);
   assert.match(libraryCronExpanded, /Do not add new sources, URLs, or feed items/);
@@ -1081,10 +1084,12 @@ test("every fetchTask resolves to a terminal state; skips need per-task evidence
   assert.match(cli, /validateTaskOutcome/);
   assert.match(cli, /skipped_requires_per_task_evidence/);
   assert.match(cli, /accountedOutcomes/);
+  assert.match(cli, /plannedTask/);
 
   // Fetch-log carries per-task skip evidence.
   const fetchRunsRoute = readFileSync("src/app/api/skill/fetch-runs/[id]/route.ts", "utf8");
   assert.match(fetchRunsRoute, /evidence/);
+  assert.match(fetchRunsRoute, /plannedTask/);
 
   // Fetch-log UI renders skipped + evidence and treats skip as a clean terminal.
   const panel = readFileSync("src/components/FetchLogPanel.tsx", "utf8");

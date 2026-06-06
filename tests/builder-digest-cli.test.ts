@@ -211,6 +211,13 @@ test("Product Hunt fetcher emits per-product agent tasks, not ready items", asyn
       now: new Date("2026-06-04T12:00:00.000Z"),
       sources: {
         product_hunt_top_products: {
+          label: "Product Hunt Top Products",
+          summaryPrompt: {
+            body: "Summarize one Product Hunt product.",
+            style: "blog_or_document",
+            language: "source",
+          },
+          fetchPrompt: { body: "Investigate the Product Hunt product page." },
           contentQuality: { minChars: 500, minContentUnits: 60 },
         },
       },
@@ -232,6 +239,116 @@ test("Product Hunt fetcher emits per-product agent tasks, not ready items", asyn
   assert.equal(result.agentTasks[0].item.url, "https://www.producthunt.com/products/mailwarm");
   assert.equal(result.agentTasks[0].item.rawJson.rank, 1);
   assert.equal(result.agentTasks[0].item.rawJson.date, "2026-06-04");
+});
+
+test("Product Hunt deterministic discovery failure becomes a candidate discovery task", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const builder = {
+    id: "builder_product_hunt_top_products",
+    kind: "WEBSITE",
+    name: "Product Hunt Top Products",
+    sourceType: "product_hunt_top_products",
+    sourceUrl: "https://www.producthunt.com/",
+    fetchUrl: "https://www.producthunt.com/",
+  };
+  const task = cli.buildPersonalFetchErrorTaskForTest(builder, {
+    builderSync: {
+      builderId: builder.id,
+      kind: "WEBSITE",
+      sourceType: "product_hunt_top_products",
+      name: builder.name,
+      sourceUrl: builder.sourceUrl,
+      fetchUrl: builder.fetchUrl,
+      subscribe: true,
+    },
+    error: new Error("Failed to fetch Product Hunt Top Products https://www.producthunt.com/: HTTP 403"),
+    limit: 3,
+    now: new Date("2026-06-04T12:00:00.000Z"),
+    sources: {
+      product_hunt_top_products: {
+        contentQuality: { minChars: 500, minContentUnits: 60 },
+      },
+    },
+  });
+
+  assert.equal(task.type, "candidate_discovery");
+  assert.equal(task.agentWorkType, "candidate_discovery_fallback");
+  assert.equal(task.sourceType, "product_hunt_top_products");
+  assert.equal(task.discovery.limit, 3);
+  assert.equal(task.discovery.date, "2026-06-04");
+  assert.equal(task.discovery.failureEvidence.status, 403);
+  assert.match(task.discoveryInstructions.prompt, /Return strict JSON/);
+});
+
+test("candidate discovery results expand into Product Hunt per-product fetch tasks", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const builderSync = {
+    builderId: "builder_product_hunt_top_products",
+    kind: "WEBSITE",
+    sourceType: "product_hunt_top_products",
+    name: "Product Hunt Top Products",
+    sourceUrl: "https://www.producthunt.com/",
+    fetchUrl: "https://www.producthunt.com/",
+    subscribe: true,
+  };
+  const discoveryTask = {
+    type: "candidate_discovery",
+    id: "candidate_discovery:builder_product_hunt_top_products:product_hunt_top_products",
+    agentWorkType: "candidate_discovery_fallback",
+    contentStatus: "requires_agent",
+    builder: "Product Hunt Top Products",
+    builderId: "builder_product_hunt_top_products",
+    sourceType: "product_hunt_top_products",
+    builderSync,
+    discovery: {
+      sourceUrl: "https://www.producthunt.com/",
+      limit: 3,
+      date: "2026-06-04",
+    },
+  };
+
+  const expanded = cli.expandCandidateDiscoveryFetchResult(
+    { status: "ok", localErrors: [], fetchTasks: [discoveryTask] },
+    {
+      candidateDiscoveries: [
+        {
+          fetchTaskId: discoveryTask.id,
+          status: "ok",
+          candidates: [
+            {
+              rank: 1,
+              productName: "Mailwarm 2.0",
+              productUrl: "https://www.producthunt.com/products/mailwarm",
+              tagline: "Warm up your email and improve deliverability",
+              date: "2026-06-04",
+              evidenceUrls: ["https://www.producthunt.com/"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      sources: {
+        product_hunt_top_products: {
+          label: "Product Hunt Top Products",
+          summaryPrompt: {
+            body: "Summarize one Product Hunt product.",
+            style: "blog_or_document",
+            language: "source",
+          },
+          fetchPrompt: { body: "Investigate the Product Hunt product page." },
+          contentQuality: { minChars: 500, minContentUnits: 60 },
+        },
+      },
+    },
+  );
+
+  assert.equal(expanded.fetchTasks.length, 1);
+  assert.equal(expanded.fetchTasks[0].type, "fetch_post");
+  assert.equal(expanded.fetchTasks[0].agentWorkType, "product_hunt_top_product_report");
+  assert.equal(expanded.fetchTasks[0].item.url, "https://www.producthunt.com/products/mailwarm");
+  assert.equal(expanded.fetchTasks[0].item.rawJson.rank, 1);
+  assert.equal(expanded.fetchTasks[0].item.rawJson.discoveryFetchTaskId, discoveryTask.id);
 });
 
 test("Product Hunt fetcher skips products fetched on earlier leaderboard days", async () => {
