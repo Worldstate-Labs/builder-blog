@@ -128,17 +128,19 @@ async function persistSummaryLanguage(
 
 function SummaryLanguageField({
   id,
+  label = "Summary language",
   value,
   onChange,
 }: {
   id: string;
+  label?: string;
   value: string;
   onChange: (value: string) => void;
 }) {
   return (
     <div className="cron-field">
       <label htmlFor={id} className="cron-field-label">
-        Summary language
+        {label}
       </label>
       <select
         id={id}
@@ -401,15 +403,15 @@ export function SkillPromptActions({
   async function copyCommand(target: CopyTarget) {
     setStatus(null);
 
-    if (activeTokens.length === 0) {
-      setStatus({ kind: "info", text: "Connect a Local Agent in Settings first" });
-      return;
-    }
     // Schedule dialog handles both one-time and recurring runs. Recurring
     // selections bake runtime/cadence into the prompt URL; one-time selections
     // reuse the once prompt with the same output settings.
     if (target === "cron") {
       setCronConfigOpen(true);
+      return;
+    }
+    if (activeTokens.length === 0) {
+      setStatus({ kind: "info", text: "Connect a Local Agent in Settings first" });
       return;
     }
     if (activeTokens.length === 1) {
@@ -892,6 +894,7 @@ function CronConfigDialog({
 
           <SummaryLanguageField
             id="cron-lang"
+            label={context === "digest" ? "Digest language" : "Summary language"}
             value={pickedLanguage}
             onChange={setPickedLanguage}
           />

@@ -17,6 +17,7 @@ export function FeedEmptyState({
   actions,
   ariaLive,
   body,
+  className,
   role,
   title,
   tone = "empty",
@@ -24,6 +25,7 @@ export function FeedEmptyState({
   actions?: ReactNode;
   ariaLive?: "polite" | "assertive";
   body?: string;
+  className?: string;
   role?: "alert";
   title: string;
   tone?: "empty" | "error";
@@ -34,7 +36,7 @@ export function FeedEmptyState({
         actions={actions}
         ariaLive={ariaLive}
         body={body}
-        className="feed-state-panel"
+        className={["feed-state-panel", className].filter(Boolean).join(" ")}
         role={role}
         title={title}
         tone={tone}

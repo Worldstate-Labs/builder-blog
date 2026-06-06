@@ -1,12 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshCcw } from "lucide-react";
+import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
 import { FeedEmptyState, FeedLoadingState } from "@/components/FeedState";
 import {
   RecommendationFeed,
   type RecommendationSnapshotEntry,
 } from "@/components/RecommendationFeed";
+import { SkillPromptActions } from "@/components/SkillPromptActions";
 
 type TimelineResponse = {
   snapshots: RecommendationSnapshotEntry[];
@@ -14,11 +17,31 @@ type TimelineResponse = {
   strategy: string;
 };
 
-export function FollowingRecommendationSection({ isAdmin = false }: { isAdmin?: boolean }) {
-  return <FollowingRecommendationLoader isAdmin={isAdmin} />;
+export type FollowingSourceReadiness = {
+  activeTokens: AgentTokenListItem[];
+  digestMaxPostAgeDays: number | null;
+  fetchedPostCount: number;
+  followedSourceCount: number;
+  summaryLanguage: string | null;
+};
+
+export function FollowingRecommendationSection({
+  isAdmin = false,
+  sourceReadiness,
+}: {
+  isAdmin?: boolean;
+  sourceReadiness: FollowingSourceReadiness;
+}) {
+  return <FollowingRecommendationLoader isAdmin={isAdmin} sourceReadiness={sourceReadiness} />;
 }
 
-function FollowingRecommendationLoader({ isAdmin }: { isAdmin: boolean }) {
+function FollowingRecommendationLoader({
+  isAdmin,
+  sourceReadiness,
+}: {
+  isAdmin: boolean;
+  sourceReadiness: FollowingSourceReadiness;
+}) {
   const [timeline, setTimeline] = useState<TimelineResponse | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const mountedRef = useRef(true);
@@ -68,7 +91,7 @@ function FollowingRecommendationLoader({ isAdmin }: { isAdmin: boolean }) {
     return <FollowingError onRetry={() => void loadTimeline()} />;
   }
   if (!timeline || timeline.snapshots.length === 0) {
-    return <FollowingUnavailable />;
+    return <FollowingUnavailable sourceReadiness={sourceReadiness} />;
   }
 
   return (
@@ -80,12 +103,63 @@ function FollowingRecommendationLoader({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
-function FollowingUnavailable() {
+function FollowingUnavailable({
+  sourceReadiness,
+}: {
+  sourceReadiness: FollowingSourceReadiness;
+}) {
+  if (sourceReadiness.followedSourceCount === 0) {
+    return (
+      <FeedEmptyState
+        actions={
+          <Link className="fb-btn dark compact" href="/builders">
+            Go to Sources
+          </Link>
+        }
+        ariaLive="polite"
+        body="Follow a source from the Sources page, or add a new one to start your Following feed."
+        className="is-actionable"
+        title="No followed sources yet"
+      />
+    );
+  }
+
+  if (sourceReadiness.fetchedPostCount === 0) {
+    return (
+      <FeedEmptyState
+        actions={<FetchSourcesPrompt sourceReadiness={sourceReadiness} />}
+        ariaLive="polite"
+        body="Ask your Local Agent to fetch and summarize them, then Following recommendations can appear."
+        className="is-actionable"
+        title="No posts have been fetched for your followed sources yet"
+      />
+    );
+  }
+
   return (
     <FeedEmptyState
+      actions={<FetchSourcesPrompt sourceReadiness={sourceReadiness} />}
       ariaLive="polite"
-      body="Recommendation snapshots will appear here after matching unread posts are available."
-      title="Following is not ready yet"
+      body="Following will update after new unread posts are fetched from your followed sources."
+      className="is-actionable"
+      title="No unread recommendations yet"
+    />
+  );
+}
+
+function FetchSourcesPrompt({
+  sourceReadiness,
+}: {
+  sourceReadiness: FollowingSourceReadiness;
+}) {
+  return (
+    <SkillPromptActions
+      compactOnly
+      context="library"
+      digestMaxPostAgeDays={sourceReadiness.digestMaxPostAgeDays}
+      showStop={false}
+      summaryLanguage={sourceReadiness.summaryLanguage}
+      tokens={sourceReadiness.activeTokens}
     />
   );
 }

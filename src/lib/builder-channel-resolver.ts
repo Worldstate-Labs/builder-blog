@@ -1,6 +1,7 @@
 import type { FeedItem, FeedItemKind } from "@prisma/client";
 
 import { pickPrimaryVariant } from "@/lib/builder-entities";
+import { prioritizeSourceCoverage } from "@/lib/feed-candidate-ordering";
 import { prisma } from "@/lib/prisma";
 
 export type FeedItemWithBuilder = FeedItem & {
@@ -163,7 +164,7 @@ export async function fetchDedupedFeedForEntities(params: {
       (item) => !digested.has(contentKey(item.entityId, item.kind, item.externalId)),
     );
   }
-  if (params.limit) return deduped.slice(0, params.limit);
+  if (params.limit) return prioritizeSourceCoverage(deduped, params.limit);
   return deduped;
 }
 

@@ -1,14 +1,21 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { DigestArchivePicker, type DigestArchivePickerOption } from "@/components/DigestArchivePicker";
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
 import type { DigestSourceLink } from "@/components/DigestContent";
 import { EmptyState } from "@/components/EmptyState";
 import { FavoritePostsSection } from "@/components/FavoritePostsSection";
-import { FollowingRecommendationSection } from "@/components/FollowingRecommendationSection";
+import {
+  FollowingRecommendationSection,
+  type FollowingSourceReadiness,
+} from "@/components/FollowingRecommendationSection";
 import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
 import { DigestPipelineSelector } from "@/components/DigestPipelineSelector";
+import { SkillPromptActions } from "@/components/SkillPromptActions";
+import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
+import { digestMaxPostAgeDays } from "@/lib/feed-preferences";
 import { displayDigestPipelineTitle } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 
@@ -28,6 +35,14 @@ type DigestPipelineOption = {
   ownerLabel: string;
   ownerUserId: string;
   isOwnPipeline: boolean;
+};
+type OwnDigestReadiness = {
+  activeTokens: AgentTokenListItem[];
+  digestMaxPostAgeDays: number | null;
+  fetchedPostCount: number;
+  followedSourceCount: number;
+  summarizedPostCount: number;
+  summaryLanguage: string | null;
 };
 
 type DashboardSearchParams = Promise<{
@@ -49,7 +64,13 @@ export default async function DashboardPage({
   const selectedTab = parseTab(firstParam(params.tab));
   const digestId = firstParam(params.digest);
   const pipelineId = firstParam(params.pipeline);
-  const aiDigest = await AiDigestFeedSlot({ userId, digestId, pipelineId });
+  const sourceReadiness = await dashboardSourceReadinessForUser(userId);
+  const aiDigest = await AiDigestFeedSlot({
+    userId,
+    digestId,
+    pipelineId,
+    ownDigestReadiness: sourceReadiness,
+  });
 
   return (
     <div className="page-pad page-pad--reading home-page">
@@ -60,7 +81,12 @@ export default async function DashboardPage({
           initialTab={selectedTab}
           aiDigest={aiDigest}
           favorites={<FavoritePostsSection isAdmin={isAdmin} />}
-          subscription={<FollowingRecommendationSection isAdmin={isAdmin} />}
+          subscription={
+            <FollowingRecommendationSection
+              isAdmin={isAdmin}
+              sourceReadiness={sourceReadiness}
+            />
+          }
         />
       </section>
     </div>
@@ -71,10 +97,12 @@ async function AiDigestFeedSlot({
   userId,
   digestId,
   pipelineId,
+  ownDigestReadiness,
 }: {
   userId: string;
   digestId?: string;
   pipelineId?: string;
+  ownDigestReadiness: OwnDigestReadiness;
 }) {
   const [importedDigestPipelines, ownPipelineShare] = await Promise.all([
     prisma.digestPipelineImport.findMany({
@@ -143,6 +171,7 @@ async function AiDigestFeedSlot({
       latestDigest={latestDigest}
       selectedDigest={selectedDigest}
       selectedPipeline={selectedPipeline}
+      ownDigestReadiness={ownDigestReadiness}
     />
   );
 }
@@ -152,6 +181,7 @@ function AiDigestFeed({
   sourceLinks,
   digestSummaries,
   latestDigest,
+  ownDigestReadiness,
   selectedDigest,
   selectedPipeline,
 }: {
@@ -159,6 +189,7 @@ function AiDigestFeed({
   sourceLinks: DigestSourceLink[];
   digestSummaries: DigestSummaryRow[];
   latestDigest: DigestSummaryRow | null;
+  ownDigestReadiness: OwnDigestReadiness;
   selectedDigest: DigestSummaryRow | null;
   selectedPipeline: DigestPipelineOption;
 }) {
@@ -187,14 +218,9 @@ function AiDigestFeed({
                 sourceLinks={sourceLinks}
               />
             ) : (
-              <EmptyState
-                className="ai-digest-empty"
-                title="No digest yet"
-                body={
-                  isOwnPipeline
-                    ? "Your local helper can save a brief when followed sources have new activity."
-                    : "This imported digest has no saved briefs yet."
-                }
+              <DigestEmptyState
+                isOwnPipeline={isOwnPipeline}
+                readiness={ownDigestReadiness}
               />
             )}
           </section>
@@ -205,6 +231,83 @@ function AiDigestFeed({
         </div>
       </section>
     </section>
+  );
+}
+
+function DigestEmptyState({
+  isOwnPipeline,
+  readiness,
+}: {
+  isOwnPipeline: boolean;
+  readiness: OwnDigestReadiness;
+}) {
+  if (!isOwnPipeline) {
+    return (
+      <EmptyState
+        className="ai-digest-empty"
+        title="No digest yet"
+        body="This imported digest has no saved briefs yet."
+      />
+    );
+  }
+
+  if (readiness.followedSourceCount === 0) {
+    return (
+      <EmptyState
+        actions={
+          <Link className="fb-btn dark compact" href="/builders">
+            Go to Sources
+          </Link>
+        }
+        className="ai-digest-empty is-actionable"
+        title="No followed sources yet"
+        body="Follow a source from the Sources page, or add a new one to start building digests."
+      />
+    );
+  }
+
+  if (readiness.summarizedPostCount > 0) {
+    return (
+      <EmptyState
+        actions={
+          <SkillPromptActions
+            compactOnly
+            context="digest"
+            digestMaxPostAgeDays={readiness.digestMaxPostAgeDays}
+            showStop={false}
+            summaryLanguage={readiness.summaryLanguage}
+            tokens={readiness.activeTokens}
+          />
+        }
+        className="ai-digest-empty is-actionable"
+        title="No digest yet"
+        body="Ask your Local Agent to build a digest from the summarized posts in your followed sources."
+      />
+    );
+  }
+
+  const hasFetchedPosts = readiness.fetchedPostCount > 0;
+
+  return (
+    <EmptyState
+      actions={
+        <SkillPromptActions
+          compactOnly
+          context="library"
+          digestMaxPostAgeDays={readiness.digestMaxPostAgeDays}
+          showStop={false}
+          summaryLanguage={readiness.summaryLanguage}
+          tokens={readiness.activeTokens}
+        />
+      }
+      className="ai-digest-empty is-actionable"
+      title={hasFetchedPosts ? "No summarized posts yet" : "No fetched posts yet"}
+      body={
+        hasFetchedPosts
+          ? "Ask your Local Agent to fetch and summarize your followed sources before building a digest."
+          : "Ask your Local Agent to fetch and summarize your followed sources so there is material for a digest."
+      }
+    />
   );
 }
 
@@ -330,4 +433,84 @@ function serializeDigestArchiveOption(digest: DigestSummaryRow): DigestArchivePi
 
 function displayDigestTitle(title: string) {
   return title.replace(/^AI Builder Digest\b/, "AI Digest");
+}
+
+async function dashboardSourceReadinessForUser(
+  userId: string,
+): Promise<OwnDigestReadiness & FollowingSourceReadiness> {
+  const [
+    rawTokens,
+    feedPreference,
+    followedSourceCount,
+    fetchedPostCount,
+    summarizedPostCount,
+  ] = await Promise.all([
+    prisma.agentToken.findMany({
+      where: { userId, revokedAt: null },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        lastUsedAt: true,
+        lastIp: true,
+        lastUserAgent: true,
+        lastHostname: true,
+        lastPlatform: true,
+        lastUser: true,
+      },
+    }),
+    prisma.userFeedPreference.findUnique({
+      where: { userId },
+      select: { summaryLanguage: true, digestMaxPostAgeDays: true },
+    }),
+    prisma.subscription.count({ where: { userId } }),
+    prisma.feedItem.count({
+      where: {
+        builder: { subscriptions: { some: { userId } } },
+      },
+    }),
+    prisma.feedItem.count({
+      where: {
+        builder: { subscriptions: { some: { userId } } },
+        summary: { not: null },
+      },
+    }),
+  ]);
+
+  return {
+    activeTokens: serializeAgentTokens(rawTokens),
+    digestMaxPostAgeDays: digestMaxPostAgeDays(feedPreference),
+    fetchedPostCount,
+    followedSourceCount,
+    summarizedPostCount,
+    summaryLanguage: feedPreference?.summaryLanguage ?? null,
+  };
+}
+
+function serializeAgentTokens(
+  tokens: Array<{
+    id: string;
+    name: string;
+    createdAt: Date;
+    lastUsedAt: Date | null;
+    lastIp: string | null;
+    lastUserAgent: string | null;
+    lastHostname: string | null;
+    lastPlatform: string | null;
+    lastUser: string | null;
+  }>,
+): AgentTokenListItem[] {
+  return tokens.map((token) => ({
+    id: token.id,
+    name: token.name,
+    createdAt: token.createdAt.toISOString(),
+    lastUsedAt: token.lastUsedAt?.toISOString() ?? null,
+    lastIp: token.lastIp ?? null,
+    lastUserAgent: token.lastUserAgent ?? null,
+    lastHostname: token.lastHostname ?? null,
+    lastPlatform: token.lastPlatform ?? null,
+    lastUser: token.lastUser ?? null,
+    revokedAt: null,
+  }));
 }

@@ -222,8 +222,16 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.match(dashboardPage, /aiDigest=/);
   assert.match(dashboardPage, /FavoritePostsSection/);
   assert.match(dashboardPage, /FollowingRecommendationSection/);
+  assert.match(dashboardPage, /sourceReadiness=\{sourceReadiness\}/);
+  assert.match(dashboardPage, /dashboardSourceReadinessForUser/);
   assert.doesNotMatch(dashboardPage, /scope="for-you"/);
   assert.match(followingSection, /\/api\/recommendations\/timeline/);
+  assert.match(followingSection, /followedSourceCount/);
+  assert.match(followingSection, /fetchedPostCount/);
+  assert.match(followingSection, /No followed sources yet/);
+  assert.match(followingSection, /No posts have been fetched for your followed sources yet/);
+  assert.match(followingSection, /FetchSourcesPrompt/);
+  assert.match(followingSection, /context="library"/);
   assert.doesNotMatch(followingSection, /scope=\$\{scope\}/);
   assert.doesNotMatch(recommendations, /type RecommendationScope/);
   assert.match(recommendations, /const subscriptionBuilderIds = subscriptions\.map/);

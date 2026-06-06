@@ -1116,6 +1116,25 @@ svg.lucide {
   border-color: color-mix(in oklch, var(--danger) 34%, var(--line));
 }
 
+.feed-state-panel.is-actionable {
+  align-items: center;
+  display: grid;
+  gap: 0.4rem 1rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.feed-state-panel.is-actionable .empty-state-title,
+.feed-state-panel.is-actionable .empty-state-body {
+  grid-column: 1;
+}
+
+.feed-state-panel.is-actionable .empty-state-actions {
+  align-self: center;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  margin-top: 0;
+}
+
 .feed-load-more {
   align-items: center;
   display: flex;
@@ -4548,6 +4567,25 @@ svg.lucide {
   margin-inline: auto;
   max-width: var(--empty-max);
   width: 100%;
+}
+
+.ai-digest-empty.is-actionable {
+  align-items: center;
+  display: grid;
+  gap: 0.4rem 1rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.ai-digest-empty.is-actionable .empty-state-title,
+.ai-digest-empty.is-actionable .empty-state-body {
+  grid-column: 1;
+}
+
+.ai-digest-empty.is-actionable .empty-state-actions {
+  align-self: center;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  margin-top: 0;
 }
 
 .ai-digest-body > .ai-digest-section:first-child {
@@ -9243,6 +9281,36 @@ body {
 
   .workspace-top-tabs {
     width: 100%;
+  }
+
+  .ai-digest-empty.is-actionable {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-digest-empty.is-actionable .empty-state-title,
+  .ai-digest-empty.is-actionable .empty-state-body,
+  .ai-digest-empty.is-actionable .empty-state-actions {
+    grid-column: 1;
+  }
+
+  .ai-digest-empty.is-actionable .empty-state-actions {
+    grid-row: auto;
+    margin-top: 0.6rem;
+  }
+
+  .feed-state-panel.is-actionable {
+    grid-template-columns: 1fr;
+  }
+
+  .feed-state-panel.is-actionable .empty-state-title,
+  .feed-state-panel.is-actionable .empty-state-body,
+  .feed-state-panel.is-actionable .empty-state-actions {
+    grid-column: 1;
+  }
+
+  .feed-state-panel.is-actionable .empty-state-actions {
+    grid-row: auto;
+    margin-top: 0.6rem;
   }
 
   .workspace-top-tabs .fb-btn {

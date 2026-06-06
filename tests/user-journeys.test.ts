@@ -15,6 +15,7 @@ import {
   digestMaxAgeCutoff,
   digestMaxPostAgeDays,
 } from "../src/lib/feed-preferences";
+import { prioritizeSourceCoverage } from "../src/lib/feed-candidate-ordering";
 import { DEFAULT_SOURCE_CONFIGS } from "../src/lib/source-config-seed";
 import { checkBodyContentQuality } from "../src/lib/content-quality";
 import {
@@ -337,7 +338,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(buildersPage, /showStop=\{showStopLibraryCron\}/);
   assert.match(buildersPage, /<SkillPromptActions[\s\S]*context="digest"/);
   assert.match(buildersPage, /showStop=\{showStopDigestCron\}/);
-  assert.doesNotMatch(dashboardPage, /<SkillPromptActions/);
+  assert.match(dashboardPage, /function DigestEmptyState/);
+  assert.match(dashboardPage, /<SkillPromptActions[\s\S]*context="digest"/);
+  assert.match(dashboardPage, /<SkillPromptActions[\s\S]*context="library"/);
+  assert.match(dashboardPage, /showStop=\{false\}/);
   // Sources loads + passes the account-wide summary language to both helper dialogs.
   assert.match(buildersPage, /userFeedPreference\.findUnique/);
   assert.match(buildersPage, /summaryLanguage: feedPreference\?\.summaryLanguage/);
@@ -397,6 +401,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /token-picker-grouplabel">Output/);
   assert.match(skillPromptActions, /cron-field-select/);
   assert.match(skillPromptActions, /Summary language/);
+  assert.match(skillPromptActions, /Digest language/);
+  assert.match(skillPromptActions, /label=\{context === "digest" \? "Digest language" : "Summary language"\}/);
   assert.match(skillPromptActions, /languageOptions\(value\)/);
   assert.match(skillPromptActions, /const savedLanguage = summaryLanguage \?\? null/);
   assert.match(skillPromptActions, /const initialLanguage = savedLanguage \?\? ORIGINAL_CONTENT_LANGUAGE_VALUE/);
@@ -1204,6 +1210,26 @@ test("digest feed user path selects not-yet-digested posts within the configured
   assert.match(cli, /builder-blog-context\.json/);
   assert.doesNotMatch(cli, /postSummaryTasksForBuilders\(builders,\s*context\.prompts\)/);
   assert.doesNotMatch(cli, /withSummaryInstructions\(task,\s*context\.prompts\)/);
+});
+
+test("digest candidate limit prioritizes one post from each source before filling by recency", () => {
+  const ordered = [
+    { entityId: "source-a", externalId: "a-new" },
+    { entityId: "source-a", externalId: "a-mid" },
+    { entityId: "source-b", externalId: "b-new" },
+    { entityId: "source-a", externalId: "a-old" },
+    { entityId: "source-c", externalId: "c-new" },
+    { entityId: "source-b", externalId: "b-old" },
+  ];
+
+  assert.deepEqual(
+    prioritizeSourceCoverage(ordered, 4).map((item) => item.externalId),
+    ["a-new", "b-new", "c-new", "a-mid"],
+  );
+  assert.deepEqual(
+    prioritizeSourceCoverage(ordered, 2).map((item) => item.externalId),
+    ["a-new", "b-new"],
+  );
 });
 
 test("recommendation feed user path scores unread fetched posts from profile, subscriptions, and read log", () => {
