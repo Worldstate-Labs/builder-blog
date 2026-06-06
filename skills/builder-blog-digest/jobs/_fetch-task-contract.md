@@ -40,10 +40,8 @@ mv "$TMP_DIR/library-fetch-expanded.json" "$TMP_DIR/library-fetch-result.json"
 ```
 
   Continue this contract against the expanded `library-fetch-result.json`.
-  Expanded `fetch_post` tasks use the normal fetch/summarize rules below. If a
-  `candidate_discovery_fallback` task remains in the expanded file, discovery
-  did not produce usable candidates; copy that task's blocked/failed discovery
-  result into `taskOutcomes` and do not fetch, summarize, or sync it.
+  The CLI guarantees the expanded `fetchTasks` array contains only normal
+  post tasks; discovery tasks are not synced directly.
 
 If the fetch result contains a non-empty `fetchTasks` array, complete exactly
 the task IDs returned by the CLI. Do not add new sources, URLs, or feed items

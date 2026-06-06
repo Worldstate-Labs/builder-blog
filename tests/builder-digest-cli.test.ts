@@ -351,7 +351,7 @@ test("candidate discovery results expand into Product Hunt per-product fetch tas
   assert.equal(expanded.fetchTasks[0].item.rawJson.discoveryFetchTaskId, discoveryTask.id);
 });
 
-test("blocked candidate discovery stays accountable after expansion", async () => {
+test("blocked candidate discovery becomes an outcome, not an expanded fetch task", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const discoveryTask = {
     type: "candidate_discovery",
@@ -391,9 +391,12 @@ test("blocked candidate discovery stays accountable after expansion", async () =
     },
   );
 
-  assert.equal(expanded.fetchTasks.length, 1);
-  assert.equal(expanded.fetchTasks[0].id, discoveryTask.id);
-  assert.equal(expanded.fetchTasks[0].agentWorkType, "candidate_discovery_fallback");
+  assert.equal(expanded.fetchTasks.length, 0);
+  assert.equal(expanded.taskOutcomes.length, 1);
+  assert.equal(expanded.taskOutcomes[0].fetchTaskId, discoveryTask.id);
+  assert.equal(expanded.taskOutcomes[0].status, "blocked");
+  assert.equal(expanded.taskOutcomes[0].reason, "product_hunt_discovery_blocked");
+  assert.equal(expanded.taskOutcomes[0].plannedTask.agentWorkType, "candidate_discovery_fallback");
 });
 
 test("Product Hunt fetcher skips products fetched on earlier leaderboard days", async () => {

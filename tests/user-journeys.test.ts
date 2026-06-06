@@ -916,6 +916,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronExpanded, /candidate_discovery_fallback/);
   assert.match(libraryCronExpanded, /expand-discovery/);
   assert.match(libraryCronExpanded, /library-discovery-result\.json/);
+  assert.match(libraryCronExpanded, /CLI guarantees the expanded `fetchTasks` array contains only normal/);
   assert.match(libraryCronExpanded, /task\.builderSync/);
   assert.match(libraryCronExpanded, /complete exactly\s+the task IDs returned by the CLI/i);
   assert.match(libraryCronExpanded, /Do not add new sources, URLs, or feed items/);

@@ -2111,6 +2111,7 @@ export function expandCandidateDiscoveryFetchResult(
   );
   const expandedTasks = [];
   const discoveryExpansions = [];
+  const discoveryOutcomes = [];
 
   for (const task of extractFetchTasks(fetchResult)) {
     if (task?.agentWorkType !== "candidate_discovery_fallback") {
@@ -2119,9 +2120,12 @@ export function expandCandidateDiscoveryFetchResult(
     }
     const sourceType = task.sourceType;
     const discoveryFallback = CANDIDATE_DISCOVERY_FALLBACK_BY_SOURCE_ID[sourceType];
-    const discoveryResult = discoveryByTaskId.get(String(task.id || candidateDiscoveryTaskId(task)));
+    const discoveryTaskId = String(task.id || candidateDiscoveryTaskId(task));
+    const discoveryResult = discoveryByTaskId.get(discoveryTaskId);
     if (!discoveryFallback || discoveryResult?.status !== "ok") {
-      expandedTasks.push(task);
+      discoveryOutcomes.push(candidateDiscoveryOutcome(task, discoveryResult, {
+        fallbackReason: discoveryFallback ? "candidate_discovery_result_missing" : "candidate_discovery_unsupported",
+      }));
       continue;
     }
 
@@ -2157,13 +2161,12 @@ export function expandCandidateDiscoveryFetchResult(
         commonSummaryRules,
       ),
     );
-    if (fetchTasks.length > 0) {
-      expandedTasks.push(...fetchTasks);
-    } else {
-      expandedTasks.push(task);
-    }
+    if (fetchTasks.length > 0) expandedTasks.push(...fetchTasks);
+    else discoveryOutcomes.push(candidateDiscoveryOutcome(task, discoveryResult, {
+      fallbackReason: "candidate_discovery_no_usable_candidates",
+    }));
     discoveryExpansions.push({
-      fetchTaskId: task.id || candidateDiscoveryTaskId(task),
+      fetchTaskId: discoveryTaskId,
       sourceType,
       candidates: candidates.length,
       fetchTasks: fetchTasks.length,
@@ -2173,7 +2176,24 @@ export function expandCandidateDiscoveryFetchResult(
   return {
     ...fetchResult,
     fetchTasks: expandedTasks,
+    taskOutcomes: [
+      ...(Array.isArray(fetchResult?.taskOutcomes) ? fetchResult.taskOutcomes : []),
+      ...discoveryOutcomes,
+    ],
     discoveryExpansions,
+  };
+}
+
+function candidateDiscoveryOutcome(task, discoveryResult, { fallbackReason } = {}) {
+  const status = discoveryResult?.status === "blocked" ? "blocked" : "failed";
+  return {
+    fetchTaskId: String(task?.id || candidateDiscoveryTaskId(task)),
+    status,
+    reason: String(discoveryResult?.reason || fallbackReason || "candidate_discovery_failed"),
+    ...(discoveryResult?.evidence && typeof discoveryResult.evidence === "object"
+      ? { evidence: discoveryResult.evidence }
+      : {}),
+    plannedTask: fetchTaskLogPatch(task, String(task?.id || candidateDiscoveryTaskId(task))),
   };
 }
 
@@ -3991,13 +4011,15 @@ async function syncBuilders(args) {
   const agentDir = process.env.BUILDER_BLOG_AGENT_DIR?.trim() || CONFIG_DIR;
   const tasksFile = argValue(args, "--tasks", join(agentDir, "tmp", "library-fetch-result.json"));
   let plannedTasks = [];
+  let plannedTaskOutcomes = [];
   try {
     const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
     plannedTasks = Array.isArray(fetchResult?.fetchTasks) ? fetchResult.fetchTasks : [];
+    plannedTaskOutcomes = Array.isArray(fetchResult?.taskOutcomes) ? fetchResult.taskOutcomes : [];
   } catch {
     // No planned-tasks file (e.g. ad-hoc sync) → reconcile against payload only.
   }
-  await patchFetchRunOutcomes(config, payload, result, plannedTasks);
+  await patchFetchRunOutcomes(config, payload, result, plannedTasks, plannedTaskOutcomes);
 }
 
 // After a sync, attach per-post fetch/summary outcomes to the fetch-log record
@@ -4006,7 +4028,13 @@ async function syncBuilders(args) {
 // item persisted with a non-empty summary); the payload supplies sizes/model.
 // Every PLANNED task is classified so dropped ones surface as failures.
 // Best-effort and non-fatal: a missing run id or unreachable server just skips.
-async function patchFetchRunOutcomes(config, payload, serverResult = {}, plannedTasks = []) {
+async function patchFetchRunOutcomes(
+  config,
+  payload,
+  serverResult = {},
+  plannedTasks = [],
+  plannedTaskOutcomes = [],
+) {
   if (!config?.appUrl || !config?.token) return;
   let runId = "";
   try {
@@ -4045,7 +4073,10 @@ async function patchFetchRunOutcomes(config, payload, serverResult = {}, planned
   // Agent-reported terminal outcomes for tasks not synced as items
   // (skipped / failed / blocked, with reason + per-task evidence).
   const agentOutcomeById = new Map(
-    (Array.isArray(payload?.taskOutcomes) ? payload.taskOutcomes : [])
+    [
+      ...(Array.isArray(plannedTaskOutcomes) ? plannedTaskOutcomes : []),
+      ...(Array.isArray(payload?.taskOutcomes) ? payload.taskOutcomes : []),
+    ]
       .filter((o) => o && o.fetchTaskId)
       .map((o) => [String(o.fetchTaskId), o]),
   );
@@ -4056,26 +4087,38 @@ async function patchFetchRunOutcomes(config, payload, serverResult = {}, planned
     plannedTasks.map((t) => [String(t?.id || fetchTaskId(t)), t]),
   );
   const taskIds =
-    plannedById.size > 0
-      ? [...plannedById.keys()]
+    plannedById.size > 0 || agentOutcomeById.size > 0
+      ? [
+          ...new Set([
+            ...plannedById.keys(),
+            ...serverByTaskId.keys(),
+            ...sizesByTaskId.keys(),
+            ...agentOutcomeById.keys(),
+          ]),
+        ]
       : [...new Set([...serverByTaskId.keys(), ...sizesByTaskId.keys()])];
 
   const taskOutcomes = [];
   for (const id of taskIds) {
     const planned = plannedById.get(id);
+    const agentOutcome = agentOutcomeById.get(id);
+    const plannedTaskPatch = planned
+      ? fetchTaskLogPatch(planned, id)
+      : agentOutcome?.plannedTask && typeof agentOutcome.plannedTask === "object"
+        ? agentOutcome.plannedTask
+        : null;
     const work = String(planned?.agentWorkType || "");
     // Informational user-action tasks (e.g. x_token_missing) aren't failures.
     if (work === "x_token_missing" || work.startsWith("user_action_")) {
       taskOutcomes.push({
         fetchTaskId: id,
         status: "action_needed",
-        ...(planned ? { plannedTask: fetchTaskLogPatch(planned, id) } : {}),
+        ...(plannedTaskPatch ? { plannedTask: plannedTaskPatch } : {}),
       });
       continue;
     }
     const sizes = sizesByTaskId.get(id) ?? {};
     const server = serverByTaskId.get(id);
-    const agentOutcome = agentOutcomeById.get(id);
     let status;
     let failureReason;
     let evidence;
@@ -4107,7 +4150,7 @@ async function patchFetchRunOutcomes(config, payload, serverResult = {}, planned
     }
     taskOutcomes.push({
       fetchTaskId: id,
-      ...(planned ? { plannedTask: fetchTaskLogPatch(planned, id) } : {}),
+      ...(plannedTaskPatch ? { plannedTask: plannedTaskPatch } : {}),
       ...sizes,
       status,
       ...(failureReason ? { failureReason } : {}),
