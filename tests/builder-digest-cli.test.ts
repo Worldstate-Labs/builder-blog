@@ -1216,6 +1216,31 @@ test("render-digest requires agent summaries for every context item", async () =
   );
 });
 
+test("render-digest enforces sync payload size limits before upload", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const context = digestRenderContext();
+
+  assert.throws(
+    () =>
+      cli.renderDigestMarkdown(context, {
+        headlineSummary: "x".repeat(301),
+        sourceSummaries: [],
+        postSummaries: [{ feedItemId: "feed_1", summary: "Valid post summary." }],
+      }),
+    /headlineSummary must be 300 characters or fewer/,
+  );
+
+  assert.throws(
+    () =>
+      cli.renderDigestMarkdown(context, {
+        headlineSummary: "A short headline.",
+        sourceSummaries: [],
+        postSummaries: [{ feedItemId: "feed_1", summary: "x".repeat(201_000) }],
+      }),
+    /Rendered digest exceeds sync limit: content must be 200000 characters or fewer/,
+  );
+});
+
 test("render-digest neutralizes structural markdown inside agent summary nodes", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const { parseDigest } = await import("../src/lib/digest-markdown");

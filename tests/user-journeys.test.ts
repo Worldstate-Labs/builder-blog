@@ -620,6 +620,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(digestOnceExpanded, /\{\{INCLUDE/);
   assert.match(digestOnceExpanded, /builder-blog-digest-agent-output\.json/);
   assert.match(digestOnceExpanded, /context\.digest\.headlinePrompt/);
+  assert.match(digestOnceExpanded, /300 characters or fewer/);
+  assert.match(digestOnceExpanded, /200,000-character sync limit/);
   assert.match(digestOnceExpanded, /context\.digest\.perSourceSummaryPrompt/);
   assert.match(digestOnceExpanded, /context\.digest\.translate/);
   assert.doesNotMatch(digestOnceExpanded, /context\.digest\.digestIntro/);
@@ -1251,6 +1253,7 @@ test("digest generation user path exposes source-specific prompt instructions", 
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /context\.language/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /selected language/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /mobile digest header/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /300 characters or fewer/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.headline, /Chinese characters|Mandarin|simplified Chinese/i);
   assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /exactly one source/);
   assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /output an empty string/);

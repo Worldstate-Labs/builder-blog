@@ -28,7 +28,8 @@ JSON schema:
 Rules:
 
 - `headlineSummary`: follow `context.digest.headlinePrompt`. Write directly in
-  `context.language`. Do not use `context.digest.translate` for this field.
+  `context.language`. Keep it to 300 characters or fewer. Do not use
+  `context.digest.translate` for this field.
 - `sourceSummaries`: group the candidate items by `entityId`. For each source
   group, follow `context.digest.perSourceSummaryPrompt`. Each source-summary
   decision sees exactly one source and that source's candidate posts. Write
@@ -42,11 +43,13 @@ Rules:
 - Preserve IDs exactly: use `item.id` as `feedItemId` and `item.entityId` as
   `entityId`.
 - The render step validates this object before sync. If `headlineSummary` is
-  empty, if any `context.items[]` entry lacks a matching
+  empty or longer than 300 characters, if any `context.items[]` entry lacks a matching
   `postSummaries[].feedItemId`, or if a non-empty source summary references an
   unknown `entityId`, the job fails instead of syncing a partial digest.
 - Keep URLs unchanged when they appear in an existing post summary, but do not
   add new URLs to the JSON fields. The CLI will add the original source link
   from `item.url`.
+- Keep source and post summaries concise. The final rendered digest content must
+  stay within the 200,000-character sync limit.
 - If there are no items, output:
   `{ "headlineSummary": "<short no-updates line in context.language>", "sourceSummaries": [], "postSummaries": [] }`

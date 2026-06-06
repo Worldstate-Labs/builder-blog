@@ -50,6 +50,9 @@ const FETCH_RUN_ID_FILE = join(TMP_DIR, "library-fetch-run-id");
 const SOURCES_CONFIG_PATH = join(CONFIG_DIR, "sources.json");
 const GITHUB_TRENDING_URL = "https://github.com/trending?since=daily";
 const PRODUCT_HUNT_TOP_PRODUCTS_URL = "https://www.producthunt.com/";
+const MAX_DIGEST_CONTENT_CHARS = 200_000;
+const MAX_DIGEST_HEADLINE_SUMMARY_CHARS = 300;
+const MAX_DIGEST_ITEMS = 5_000;
 
 let _sourcesConfig = null;
 
@@ -3288,11 +3291,20 @@ function validateDigestAgentOutput(context, agentOutput, postSummaries) {
   if (!agentOutput || typeof agentOutput !== "object" || Array.isArray(agentOutput)) {
     throw new Error("Digest agent output must be one JSON object.");
   }
-  if (!stringOrNull(agentOutput.headlineSummary)) {
+  const headlineSummary = stringOrNull(agentOutput.headlineSummary);
+  if (!headlineSummary) {
     errors.push("headlineSummary is required and must be a non-empty string");
+  } else if (headlineSummary.length > MAX_DIGEST_HEADLINE_SUMMARY_CHARS) {
+    errors.push(
+      `headlineSummary must be ${MAX_DIGEST_HEADLINE_SUMMARY_CHARS} characters or fewer ` +
+        `(got ${headlineSummary.length})`,
+    );
   }
 
   const items = Array.isArray(context?.items) ? context.items : [];
+  if (items.length > MAX_DIGEST_ITEMS) {
+    errors.push(`context.items must contain ${MAX_DIGEST_ITEMS} items or fewer for digest sync (got ${items.length})`);
+  }
   const seenItemIds = new Set();
   for (const item of items) {
     const id = stringOrNull(item?.id);
@@ -3362,6 +3374,12 @@ export function renderDigestMarkdown(context, agentOutput = {}) {
     if (!headlineSummary) {
       throw new Error("No digest items: agent output must include headlineSummary in context.language.");
     }
+    if (headlineSummary.length > MAX_DIGEST_HEADLINE_SUMMARY_CHARS) {
+      throw new Error(
+        `Invalid digest agent output: headlineSummary must be ${MAX_DIGEST_HEADLINE_SUMMARY_CHARS} ` +
+          `characters or fewer (got ${headlineSummary.length})`,
+      );
+    }
     return {
       headlineSummary,
       markdown: `AI Digest - ${new Date(context?.generatedAt || Date.now()).toLocaleDateString()}\n\n${headlineSummary}`,
@@ -3422,10 +3440,22 @@ export function renderDigestMarkdown(context, agentOutput = {}) {
     }
   }
 
+  const markdown = `${lines.join("\n").replace(/\n{3,}/g, "\n\n").trim()}\n`;
+  validateRenderedDigestSyncLimits({ markdown });
+
   return {
     headlineSummary,
-    markdown: `${lines.join("\n").replace(/\n{3,}/g, "\n\n").trim()}\n`,
+    markdown,
   };
+}
+
+function validateRenderedDigestSyncLimits({ markdown }) {
+  if (markdown.length > MAX_DIGEST_CONTENT_CHARS) {
+    throw new Error(
+      `Rendered digest exceeds sync limit: content must be ${MAX_DIGEST_CONTENT_CHARS} ` +
+        `characters or fewer (got ${markdown.length})`,
+    );
+  }
 }
 
 async function renderDigest(args) {
