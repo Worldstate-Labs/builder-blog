@@ -569,7 +569,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryOnceExpanded, /fetchTasks/);
   assert.match(libraryOnceExpanded, /single-post\s+`?summary`?/);
   assert.match(libraryOnceExpanded, /summaryInstructions\.prompt/);
-  assert.match(libraryOnceExpanded, /only prompt source for normal\s+fetch-task summaries/);
+  assert.match(libraryOnceExpanded, /only prompt source for fetch-task\s+summaries/);
   assert.match(libraryOnceExpanded, /Do not re-compose it from[\s\S]*`context\.sources`/);
   assert.match(libraryOnceExpanded, /Fetch task boundary/);
   assert.match(libraryOnceExpanded, /How to execute each `fetchTask`/);
