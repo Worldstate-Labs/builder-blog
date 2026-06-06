@@ -2254,13 +2254,15 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.match(tokenPanel, /className="settings-dialog-copy"/);
   assert.match(tokenPanel, /className="settings-dialog-actions"/);
-  assert.match(tokenPanel, /className="access-key-name"/);
+  assert.match(tokenPanel, /className="access-key-device-title"/);
+  assert.match(tokenPanel, /className="access-key-device-status"/);
+  assert.match(tokenPanel, /Revoke access/);
   assert.doesNotMatch(tokenPanel, /className="mt-/);
   assert.doesNotMatch(tokenPanel, /className="[^"]* mt-/);
   assert.match(settingsPage, /className="access-keys-list access-keys-list--skeleton"/);
   assert.doesNotMatch(settingsPage, /mt-4 h-11 animate-pulse/);
   assert.match(globals, /\.access-keys-panel/);
-  assert.match(globals, /\.access-keys-empty\s*{\s*margin:\s*0\.75rem;\s*}/);
+  assert.match(globals, /\.access-keys-empty\s*{\s*margin:\s*0;\s*}/);
   assert.match(globals, /\.settings-dialog-stack/);
   assert.match(digestMaxAgeRoute, /export async function PATCH/);
   assert.match(digestMaxAgeRoute, /userFeedPreference\.upsert/);

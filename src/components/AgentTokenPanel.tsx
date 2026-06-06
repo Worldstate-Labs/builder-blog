@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { KeyRound, Plus } from "lucide-react";
+import { LaptopMinimal, Plus } from "lucide-react";
 import { CountBadge } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 
@@ -412,6 +412,27 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function formatRelativeCompact(value: string) {
+  const ms = Date.now() - Date.parse(value);
+  if (!Number.isFinite(ms) || ms < 0) {
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+    }).format(new Date(value));
+  }
+  const min = Math.floor(ms / 60_000);
+  if (min < 1) return "now";
+  if (min < 60) return `${min}m`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h`;
+  const day = Math.floor(hr / 24);
+  if (day < 30) return `${day}d`;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(value));
+}
+
 function TokenRow({
   token,
   isPending,
@@ -421,42 +442,37 @@ function TokenRow({
   isPending: boolean;
   onRevoke: () => void;
 }) {
-  const metaItems = [
-    `Created ${formatDate(token.createdAt)}`,
-    token.lastUsedAt ? `Last used ${formatDate(token.lastUsedAt)}` : null,
-    token.lastUsedAt ? describeMachine(token) : null,
-    token.lastIp ? token.lastIp : null,
-    token.revokedAt ? `Revoked ${formatDate(token.revokedAt)}` : null,
-  ].filter((item): item is string => Boolean(item));
+  const machineLabel = token.lastUsedAt ? describeMachine(token) : token.name;
+  const statusLabel = token.revokedAt
+    ? `Revoked ${formatRelativeCompact(token.revokedAt)}`
+    : token.lastUsedAt
+      ? `Last connected ${formatRelativeCompact(token.lastUsedAt)}`
+      : `Created ${formatRelativeCompact(token.createdAt)} · Not connected yet`;
+  const detailLabel =
+    token.lastUsedAt && token.name !== machineLabel ? token.name : null;
 
   return (
     <div className={`fb-token-row${token.revokedAt ? " fb-row--revoked" : ""}`}>
-      <span className="fb-src-icon fb-src-icon--md">
-        <KeyRound aria-hidden="true" className="h-3.5 w-3.5" />
+      <span className="access-key-device-icon" aria-hidden="true">
+        <LaptopMinimal className="h-4 w-4" />
       </span>
-      <div className="min-w-0 flex-1">
-        <div className="access-key-name">{token.name}</div>
-        <div className="fb-src-meta">
-          {metaItems.map((item, index) => (
-            <span
-              className={item === token.lastIp ? "mono access-key-meta-item" : "access-key-meta-item"}
-              key={`${item}:${index}`}
-            >
-              {item}
-            </span>
-          ))}
-        </div>
+      <div className="access-key-device-copy">
+        <div className="access-key-device-title">{machineLabel}</div>
+        <div className="access-key-device-status">{statusLabel}</div>
+        {detailLabel ? (
+          <div className="access-key-device-detail">{detailLabel}</div>
+        ) : null}
       </div>
       {token.revokedAt ? (
-        <span className="fb-kind-pill">inactive</span>
+        <span className="access-key-revoked-pill">Revoked</span>
       ) : (
         <button
-          className="fb-btn ghost compact"
+          className="access-key-revoke-button"
           disabled={isPending}
           onClick={onRevoke}
           type="button"
         >
-          Revoke
+          Revoke access
         </button>
       )}
     </div>
