@@ -98,7 +98,7 @@ async function AiDigestFeedSlot({
     {
       id: "own",
       title: ownPipelineTitle,
-      ownerLabel: "Your digest",
+      ownerLabel: "Own digest",
       ownerUserId: userId,
       isOwnPipeline: true,
     },

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { ArrowRight, ChevronDown } from "lucide-react";
+import { ArrowRight, ChevronDown, Star } from "lucide-react";
 import { CountBadge } from "@/components/Count";
 import { PostCard, type PostCardPost } from "@/components/PostCard";
 import { SourceAvatar } from "@/components/SourceAvatar";
@@ -29,20 +29,32 @@ export type DigestSourceLink = {
   fetchUrl?: string | null;
 };
 
+export type DigestFavoriteStateByUrl = Record<
+  string,
+  {
+    feedItemId: string;
+    favoritedAt: string | null;
+  }
+>;
+
 // Renders the CLI-produced digest markdown as a progressively-readable document:
 // source links, a jump-to-section index, collapsible sections, and the shared
 // PostCard for each post. `tone` adapts it to the dark "today" hero vs the
 // paper archive.
 export function DigestContent({
   content,
+  favoriteStateByUrl = {},
   originalSummariesByUrl = {},
+  onFavoriteToggle,
   showContents = true,
   showSectionCounts = true,
   sourceLinks = [],
   tone = "paper",
 }: {
   content: string;
+  favoriteStateByUrl?: DigestFavoriteStateByUrl;
   originalSummariesByUrl?: Record<string, string>;
+  onFavoriteToggle?: (url: string, feedItemId: string, nextFavorite: boolean) => void;
   showContents?: boolean;
   showSectionCounts?: boolean;
   sourceLinks?: DigestSourceLink[];
@@ -99,7 +111,9 @@ export function DigestContent({
           key={section.id}
           section={section}
           collapsible={false}
+          favoriteStateByUrl={favoriteStateByUrl}
           showCount={showSectionCounts}
+          onFavoriteToggle={onFavoriteToggle}
           originalSummariesByUrl={originalSummariesByUrl}
           sourceType={sectionSourceTypes.get(section.id) ?? "website"}
           sourceLookup={sourceLookup}
@@ -116,6 +130,8 @@ function wrapClass(tone: "paper" | "dark"): string {
 function SectionBlock({
   section,
   collapsible,
+  favoriteStateByUrl,
+  onFavoriteToggle,
   originalSummariesByUrl,
   showCount,
   sourceType,
@@ -123,6 +139,8 @@ function SectionBlock({
 }: {
   section: DigestSection;
   collapsible: boolean;
+  favoriteStateByUrl: DigestFavoriteStateByUrl;
+  onFavoriteToggle?: (url: string, feedItemId: string, nextFavorite: boolean) => void;
   originalSummariesByUrl: Record<string, string>;
   showCount: boolean;
   sourceType: string;
@@ -153,6 +171,8 @@ function SectionBlock({
               section={section}
               sectionSourceType={sectionSourceType}
               sourceLink={group.source ? sourceLinkForSource(group.source, sourceLookup) : undefined}
+              favoriteStateByUrl={favoriteStateByUrl}
+              onFavoriteToggle={onFavoriteToggle}
               originalSummariesByUrl={originalSummariesByUrl}
             />
           ))}
@@ -197,6 +217,8 @@ function PostBlock({
   section,
   sectionSourceType,
   sourceLink,
+  favoriteStateByUrl,
+  onFavoriteToggle,
   originalSummariesByUrl,
 }: {
   group: DigestGroup;
@@ -204,6 +226,8 @@ function PostBlock({
   section: DigestSection;
   sectionSourceType: string;
   sourceLink?: DigestSourceLink;
+  favoriteStateByUrl: DigestFavoriteStateByUrl;
+  onFavoriteToggle?: (url: string, feedItemId: string, nextFavorite: boolean) => void;
   originalSummariesByUrl: Record<string, string>;
 }) {
   const summary = [post.lede, ...post.paragraphs]
@@ -214,6 +238,7 @@ function PostBlock({
   const sourceType = normalizeSourceType(sourceLink?.sourceType) || sectionSourceType;
   const url = post.media[0]?.url ?? sourceLink?.sourceUrl ?? sourceLink?.fetchUrl ?? "#";
   const originalSummary = originalSummariesByUrl[url] ?? null;
+  const favoriteState = favoriteStateByUrl[url];
   const postCard: PostCardPost = {
     id: `digest-${section.id}-${post.id}`,
     title: post.title,
@@ -241,12 +266,43 @@ function PostBlock({
 
   return (
     <PostCard
+      extraActions={
+        favoriteState && onFavoriteToggle ? (
+          <DigestFavoriteToggleButton
+            isFavorite={Boolean(favoriteState.favoritedAt)}
+            toggleFavorite={() =>
+              onFavoriteToggle(url, favoriteState.feedItemId, !favoriteState.favoritedAt)
+            }
+          />
+        ) : undefined
+      }
       post={postCard}
       showBuilderRow={false}
       showDebugActions={false}
       showPublishedDate={false}
       showSourceBadge={false}
     />
+  );
+}
+
+function DigestFavoriteToggleButton({
+  isFavorite,
+  toggleFavorite,
+}: {
+  isFavorite: boolean;
+  toggleFavorite: () => void;
+}) {
+  return (
+    <button
+      aria-pressed={isFavorite}
+      className={`post-action-btn post-favorite-btn${isFavorite ? " post-action-btn--active" : ""}`}
+      onClick={toggleFavorite}
+      title={isFavorite ? "Saved to Favorites" : "Save to Favorites"}
+      type="button"
+    >
+      <Star className="h-4 w-4" />
+      <span>{isFavorite ? "Saved" : "Save"}</span>
+    </button>
   );
 }
 

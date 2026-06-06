@@ -46,6 +46,9 @@ test("home favorites saves posts and requires manual read marking", () => {
   const schema = source("prisma/schema.prisma");
   const favoriteRoute = source("src/app/api/favorites/route.ts");
   const favoriteReadRoute = source("src/app/api/favorites/read/route.ts");
+  const digestRoute = source("src/app/api/digests/[digestId]/route.ts");
+  const digestDetails = source("src/components/DigestDetails.tsx");
+  const digestContent = source("src/components/DigestContent.tsx");
   const favoriteSection = source("src/components/FavoritePostsSection.tsx");
   const feed = source("src/components/RecommendationFeed.tsx");
   const postCard = source("src/components/PostCard.tsx");
@@ -64,6 +67,15 @@ test("home favorites saves posts and requires manual read marking", () => {
   assert.match(favoriteSection, /mode="favorites"/);
   assert.match(feed, /FavoriteToggleButton/);
   assert.match(feed, /Save/);
+  assert.match(digestRoute, /favoriteStateByUrl/);
+  assert.match(digestRoute, /activePoolBuilderIds/);
+  assert.match(digestRoute, /feedFavorite\.findMany/);
+  assert.match(digestDetails, /favoriteStateByUrl/);
+  assert.match(digestDetails, /cleanFavoriteStateByUrl/);
+  assert.match(digestDetails, /fetch\("\/api\/favorites"/);
+  assert.match(digestContent, /DigestFavoriteToggleButton/);
+  assert.match(digestContent, /onFavoriteToggle/);
+  assert.match(digestContent, /post-favorite-btn/);
   assert.match(feed, /FavoriteReadButton/);
   assert.match(feed, /Mark read/);
   assert.match(feed, /Unmark read/);
@@ -80,6 +92,45 @@ test("home favorites saves posts and requires manual read marking", () => {
   assert.match(globals, /favorite-read-label/);
   assert.doesNotMatch(globals, /inset 4px 0 0/);
   assert.doesNotMatch(globals, /linear-gradient\(\s*90deg/);
+});
+
+test("digest posts can render a save control for their source feed item", () => {
+  const html = renderToStaticMarkup(
+    createElement(DigestContent, {
+      content: `AI Digest - 6/5/2026
+
+## Blog
+
+### anthropic.com
+
+**How we contain Claude across products**
+
+Anthropic explains containment.
+
+Source: https://anthropic.com/engineering/how-we-contain-claude`,
+      favoriteStateByUrl: {
+        "https://anthropic.com/engineering/how-we-contain-claude": {
+          feedItemId: "feed_123",
+          favoritedAt: null,
+        },
+      },
+      onFavoriteToggle: () => undefined,
+      sourceLinks: [
+        {
+          aliases: ["anthropic.com"],
+          entityId: "entity_anthropic",
+          href: "/builder/entity_anthropic",
+          name: "anthropic.com",
+          sourceType: "blog",
+          sourceUrl: "https://anthropic.com/engineering",
+        },
+      ],
+    }),
+  );
+
+  assert.match(html, /post-favorite-btn/);
+  assert.match(html, />Save</);
+  assert.match(html, /aria-pressed="false"/);
 });
 
 test("source logos are shared across recommendation and library surfaces", () => {

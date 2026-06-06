@@ -4,7 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { BookOpen, Loader2 } from "lucide-react";
 import { CountMeta } from "@/components/Count";
-import { DigestContent, type DigestSourceLink } from "@/components/DigestContent";
+import {
+  DigestContent,
+  type DigestFavoriteStateByUrl,
+  type DigestSourceLink,
+} from "@/components/DigestContent";
 import { useHydrated } from "@/components/ThemeToggle";
 import { digestPreviewFromContent } from "@/lib/digest-headline";
 import { displayLanguagePreference } from "@/lib/language-preference";
@@ -20,6 +24,7 @@ export type DigestSummary = {
 
 type DigestLoadState = {
   content: string | null;
+  favoriteStateByUrl: DigestFavoriteStateByUrl;
   isOpen: boolean;
   key: string;
   originalSummariesByUrl: Record<string, string>;
@@ -48,6 +53,7 @@ export function DigestDetails({
   const initialState: DigestLoadState = useMemo(
     () => ({
       content: null,
+      favoriteStateByUrl: {},
       isOpen: defaultOpen,
       key: stateKey,
       originalSummariesByUrl: {},
@@ -58,6 +64,7 @@ export function DigestDetails({
   const [digestState, setDigestState] = useState<DigestLoadState>(initialState);
   const currentState = digestState.key === stateKey ? digestState : initialState;
   const { content, isOpen, status } = currentState;
+  const favoriteStateByUrl = currentState.favoriteStateByUrl;
   const originalSummariesByUrl = currentState.originalSummariesByUrl;
   const headerHeadline = resolveHeadlineSummary(digest.headlineSummary, content, status);
 
@@ -80,6 +87,7 @@ export function DigestDetails({
       updateDigestState((current) => ({
         ...current,
         content: String(body.content ?? ""),
+        favoriteStateByUrl: cleanFavoriteStateByUrl(body.favoriteStateByUrl),
         originalSummariesByUrl: cleanOriginalSummaries(body.originalSummariesByUrl),
         status: "loaded",
       }));
@@ -90,6 +98,43 @@ export function DigestDetails({
       }));
     }
   }, [digestId, updateDigestState]);
+
+  const toggleFavorite = useCallback(async (url: string, feedItemId: string, nextFavorite: boolean) => {
+    const fallbackFavoritedAt = nextFavorite ? new Date().toISOString() : null;
+    updateDigestState((current) => ({
+      ...current,
+      favoriteStateByUrl: {
+        ...current.favoriteStateByUrl,
+        [url]: {
+          feedItemId,
+          favoritedAt: fallbackFavoritedAt,
+        },
+      },
+    }));
+
+    try {
+      const response = await fetch("/api/favorites", {
+        method: nextFavorite ? "POST" : "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feedItemId }),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`);
+      const favoritedAt = typeof body?.favoritedAt === "string" ? body.favoritedAt : null;
+      updateDigestState((current) => ({
+        ...current,
+        favoriteStateByUrl: {
+          ...current.favoriteStateByUrl,
+          [url]: {
+            feedItemId,
+            favoritedAt,
+          },
+        },
+      }));
+    } catch {
+      // Mirrors Following feed behavior: optimistic UI, reload restores truth.
+    }
+  }, [updateDigestState]);
 
   function loadDigest() {
     if (content || status === "loading") return;
@@ -117,6 +162,8 @@ export function DigestDetails({
         <div className="fb-digest-body">
           <DigestBody
             content={content}
+            favoriteStateByUrl={favoriteStateByUrl}
+            onFavoriteToggle={toggleFavorite}
             originalSummariesByUrl={originalSummariesByUrl}
             sourceLinks={sourceLinks}
             status={status}
@@ -157,6 +204,8 @@ export function DigestDetails({
         </summary>
         <DigestBody
           content={content}
+          favoriteStateByUrl={favoriteStateByUrl}
+          onFavoriteToggle={toggleFavorite}
           originalSummariesByUrl={originalSummariesByUrl}
           sourceLinks={sourceLinks}
           status={status}
@@ -168,12 +217,16 @@ export function DigestDetails({
 
 function DigestBody({
   content,
+  favoriteStateByUrl,
+  onFavoriteToggle,
   originalSummariesByUrl,
   sourceLinks,
   status,
   variant = "archive",
 }: {
   content: string | null;
+  favoriteStateByUrl: DigestFavoriteStateByUrl;
+  onFavoriteToggle: (url: string, feedItemId: string, nextFavorite: boolean) => void;
   originalSummariesByUrl: Record<string, string>;
   sourceLinks: DigestSourceLink[];
   status: "idle" | "loading" | "loaded" | "error";
@@ -230,6 +283,8 @@ function DigestBody({
     return (
       <DigestContent
         content={content ?? ""}
+        favoriteStateByUrl={favoriteStateByUrl}
+        onFavoriteToggle={onFavoriteToggle}
         originalSummariesByUrl={originalSummariesByUrl}
         showContents={false}
         showSectionCounts
@@ -242,6 +297,8 @@ function DigestBody({
     <div className="item-details">
       <DigestContent
         content={content ?? ""}
+        favoriteStateByUrl={favoriteStateByUrl}
+        onFavoriteToggle={onFavoriteToggle}
         originalSummariesByUrl={originalSummariesByUrl}
         sourceLinks={sourceLinks}
         tone="paper"
@@ -302,6 +359,21 @@ function cleanOriginalSummaries(value: unknown): Record<string, string> {
   const entries = Object.entries(value as Record<string, unknown>)
     .map(([url, summary]) => [url, typeof summary === "string" ? summary.trim() : ""] as const)
     .filter(([url, summary]) => url.length > 0 && summary.length > 0);
+  return Object.fromEntries(entries);
+}
+
+function cleanFavoriteStateByUrl(value: unknown): DigestFavoriteStateByUrl {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const entries = Object.entries(value as Record<string, unknown>).flatMap(([url, state]) => {
+    if (!url || !state || typeof state !== "object" || Array.isArray(state)) return [];
+    const record = state as Record<string, unknown>;
+    const feedItemId = typeof record.feedItemId === "string" ? record.feedItemId.trim() : "";
+    const favoritedAt =
+      typeof record.favoritedAt === "string" && record.favoritedAt.trim()
+        ? record.favoritedAt
+        : null;
+    return feedItemId ? [[url, { feedItemId, favoritedAt }] as const] : [];
+  });
   return Object.fromEntries(entries);
 }
 
