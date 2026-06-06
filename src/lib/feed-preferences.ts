@@ -20,7 +20,15 @@ export function digestMaxPostAgeDays(
 ): number | null {
   const raw = preference?.digestMaxPostAgeDays;
   if (raw === null || raw === undefined) return DEFAULT_DIGEST_MAX_POST_AGE_DAYS;
-  return clampWholeDays(raw, 1, MAX_DIGEST_MAX_POST_AGE_DAYS);
+  const numeric = Number(raw);
+  if (
+    !Number.isInteger(numeric) ||
+    numeric < 1 ||
+    numeric > MAX_DIGEST_MAX_POST_AGE_DAYS
+  ) {
+    return DEFAULT_DIGEST_MAX_POST_AGE_DAYS;
+  }
+  return numeric;
 }
 
 // Resolve the lookback floor into a cutoff Date.
@@ -48,17 +56,6 @@ export function digestCandidateLimitForLastRun(
     MAX_DIGEST_CANDIDATE_LIMIT,
     Math.max(MIN_DIGEST_CANDIDATE_LIMIT, elapsedDays * DIGEST_CANDIDATES_PER_ELAPSED_DAY),
   );
-}
-
-function clampWholeDays(
-  value: number | null | undefined,
-  min: number,
-  max: number,
-  fallback = min,
-) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return fallback;
-  return Math.min(max, Math.max(min, Math.floor(numeric)));
 }
 
 const dayMs = 24 * 60 * 60 * 1000;

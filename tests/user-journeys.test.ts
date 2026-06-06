@@ -1147,7 +1147,9 @@ test("digest feed user path selects not-yet-digested posts within the configured
   const defaultWindow = { digestMaxPostAgeDays: null };
   assert.equal(digestMaxPostAgeDays(defaultWindow), 30);
   assert.equal(digestMaxAgeCutoff(now, defaultWindow)?.toISOString(), "2026-04-23T12:00:00.000Z");
-  assert.equal(digestMaxPostAgeDays({ digestMaxPostAgeDays: 365 }), 90);
+  assert.equal(digestMaxPostAgeDays({ digestMaxPostAgeDays: 90 }), 90);
+  assert.equal(digestMaxPostAgeDays({ digestMaxPostAgeDays: 365 }), 30);
+  assert.equal(digestMaxPostAgeDays({ digestMaxPostAgeDays: 0 }), 30);
   assert.equal(digestCandidateLimitForLastRun(now, null), 20);
   assert.equal(digestCandidateLimitForLastRun(now, "2026-05-23T11:59:59.000Z"), 20);
   assert.equal(digestCandidateLimitForLastRun(now, "2026-05-21T23:59:59.000Z"), 40);
