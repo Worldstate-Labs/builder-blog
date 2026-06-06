@@ -44,7 +44,7 @@ export function AppNav({
         <nav className={desktopClassName} aria-label="Primary">
           {items.map((item) => {
             const Icon = icons[item.icon];
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const active = isActiveNavItem(pathname, item);
             return (
               <Link
                 className={`fb-nav${active ? " active" : ""}`}
@@ -67,7 +67,7 @@ export function AppNav({
         >
           {mobileNavItems.map((item) => {
             const Icon = icons[item.icon];
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const active = isActiveNavItem(pathname, item);
             return (
               <Link
                 className={`fb-m-tab${active ? " active" : ""}`}
@@ -84,4 +84,11 @@ export function AppNav({
       ) : null}
     </>
   );
+}
+
+function isActiveNavItem(pathname: string, item: AppNavItem) {
+  if (pathname === item.href || pathname.startsWith(`${item.href}/`)) return true;
+  if (item.href === "/dashboard") return pathname.startsWith("/recommendations/");
+  if (item.href === "/builders") return pathname.startsWith("/builder/");
+  return false;
 }

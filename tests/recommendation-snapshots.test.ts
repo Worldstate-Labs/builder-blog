@@ -36,7 +36,7 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.match(detailPage, /ChevronLeft/);
   assert.match(detailPage, /Following/);
   assert.doesNotMatch(detailPage, /Back to feed/);
-  assert.match(detailPage, /href="\/dashboard\?tab=subscription"/);
+  assert.match(detailPage, /href="\/dashboard\?tab=following"/);
   assert.match(detailPage, /feedRead\.create/);
   assert.match(detailPage, /item\.body/);
   assert.doesNotMatch(feed, /filter\(\(entry\) => entry\.item\.id !== feedItemId\)/);
@@ -203,7 +203,7 @@ test("recommendation snapshots request six posts at a time", () => {
   assert.match(source("src/lib/recommendations.ts"), /defaultRecommendationLimit = 6/);
   assert.match(source("src/app/api/recommendations/timeline/route.ts"), /itemLimit: 6/);
   assert.doesNotMatch(source("src/app/api/recommendations/timeline/route.ts"), /recommendationScope/);
-  assert.match(source("src/app/(workspace)/recommendations/page.tsx"), /redirect\("\/dashboard\?tab=subscription"\)/);
+  assert.match(source("src/app/(workspace)/recommendations/page.tsx"), /redirect\("\/dashboard\?tab=following"\)/);
   assert.match(source("src/app/api/recommendations/route.ts"), /limit"\) \?\? "6"/);
   assert.doesNotMatch(source("src/app/api/recommendations/route.ts"), /scope: recommendationScope/);
   assert.match(source("src/components/RecommendationFeed.tsx"), /limit=6/);

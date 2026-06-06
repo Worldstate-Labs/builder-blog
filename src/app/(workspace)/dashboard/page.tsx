@@ -61,7 +61,9 @@ export default async function DashboardPage({
   const userId = session.user.id;
   const isAdmin = isAdminEmail(session.user.email);
   const params = await searchParams;
-  const selectedTab = parseTab(firstParam(params.tab));
+  const requestedTab = firstParam(params.tab);
+  if (requestedTab === "subscription") redirect("/dashboard?tab=following");
+  const selectedTab = parseTab(requestedTab);
   const digestId = firstParam(params.digest);
   const pipelineId = firstParam(params.pipeline);
   const sourceReadiness = await dashboardSourceReadinessForUser(userId);
@@ -81,7 +83,7 @@ export default async function DashboardPage({
           initialTab={selectedTab}
           aiDigest={aiDigest}
           favorites={<FavoritePostsSection isAdmin={isAdmin} />}
-          subscription={
+          following={
             <FollowingRecommendationSection
               isAdmin={isAdmin}
               sourceReadiness={sourceReadiness}
@@ -411,7 +413,8 @@ async function digestSourceLinksForUser(userId: string): Promise<DigestSourceLin
 
 function parseTab(value: string | undefined) {
   if (value === "favorites") return value;
-  if (value === "subscription") return value;
+  if (value === "following") return value;
+  if (value === "subscription") return "following";
   return "ai-digest";
 }
 

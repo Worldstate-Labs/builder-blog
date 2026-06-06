@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { WorkspaceTopTabs, type WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
 
-type DashboardTab = "ai-digest" | "favorites" | "subscription";
+type DashboardTab = "ai-digest" | "favorites" | "following";
 
 const HOME_TABS: Array<WorkspaceTopTabItem<DashboardTab>> = [
   {
@@ -14,10 +14,10 @@ const HOME_TABS: Array<WorkspaceTopTabItem<DashboardTab>> = [
     tabId: "home-tab-ai-digest",
   },
   {
-    value: "subscription",
+    value: "following",
     label: "Following",
-    panelId: "home-panel-subscription",
-    tabId: "home-tab-subscription",
+    panelId: "home-panel-following",
+    tabId: "home-tab-following",
   },
   {
     value: "favorites",
@@ -30,13 +30,13 @@ const HOME_TABS: Array<WorkspaceTopTabItem<DashboardTab>> = [
 export function DashboardHomeTabs({
   aiDigest,
   favorites,
+  following,
   initialTab,
-  subscription,
 }: {
   aiDigest: ReactNode;
   favorites: ReactNode;
+  following: ReactNode;
   initialTab: DashboardTab;
-  subscription: ReactNode;
 }) {
   const router = useRouter();
   const [selectedTab, setSelectedTab] = useState(initialTab);
@@ -74,13 +74,13 @@ export function DashboardHomeTabs({
         {selectedTab === "favorites" ? favorites : null}
       </section>
       <section
-        aria-labelledby="home-tab-subscription"
+        aria-labelledby="home-tab-following"
         className="home-tab-panel"
-        hidden={selectedTab !== "subscription"}
-        id="home-panel-subscription"
+        hidden={selectedTab !== "following"}
+        id="home-panel-following"
         role="tabpanel"
       >
-        {selectedTab === "subscription" ? subscription : null}
+        {selectedTab === "following" ? following : null}
       </section>
     </>
   );

@@ -115,7 +115,7 @@ test("every app route has an explicit centered layout role", () => {
 
   const redirectOnlyRoutes = [
     ["src/app/(workspace)/builder/x/[handle]/page.tsx", /redirect\(`\/builder\/\$\{entity\.id\}`\)/],
-    ["src/app/(workspace)/recommendations/page.tsx", /redirect\("\/dashboard\?tab=subscription"\)/],
+    ["src/app/(workspace)/recommendations/page.tsx", /redirect\("\/dashboard\?tab=following"\)/],
     ["src/app/history/page.tsx", /redirect\("\/dashboard\?tab=ai-digest"\)/],
   ] as const;
   for (const [path, pattern] of redirectOnlyRoutes) {
@@ -421,7 +421,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(appShell, /label: "For You"/);
   assert.doesNotMatch(appShell, /label: "History"/);
   assert.match(appShell, /aria-label="Search"/);
-  assert.doesNotMatch(appNav, /recommendations/);
+  assert.match(appNav, /pathname\.startsWith\("\/recommendations\/"\)/);
+  assert.match(appNav, /pathname\.startsWith\("\/builder\/"\)/);
   assert.match(appNav, /"search"/);
   assert.match(appShell, /className="fb-top"/);
   assert.match(appShell, /className="fb-top-inner"/);
@@ -517,7 +518,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardTabs, /ai-digest/);
   assert.match(dashboardTabs, /Digest[\s\S]*Following[\s\S]*Favorites/);
   assert.doesNotMatch(dashboardTabs, /For You/);
-  assert.match(dashboardTabs, /value: "ai-digest"[\s\S]*label: "Digest"[\s\S]*value: "subscription"[\s\S]*label: "Following"[\s\S]*value: "favorites"[\s\S]*label: "Favorites"/);
+  assert.match(dashboardTabs, /value: "ai-digest"[\s\S]*label: "Digest"[\s\S]*value: "following"[\s\S]*label: "Following"[\s\S]*value: "favorites"[\s\S]*label: "Favorites"/);
   assert.doesNotMatch(dashboardPage, /scope="subscription"/);
   assert.doesNotMatch(dashboardPage, /scope="for-you"/);
   assert.doesNotMatch(dashboardPage, /<h3>Status<\/h3>/);
@@ -531,7 +532,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /FollowingRecommendationSection/);
   assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
   assert.match(digestDetails, /mode === "today"/);
-  assert.match(recommendationsPage, /redirect\("\/dashboard\?tab=subscription"\)/);
+  assert.match(recommendationsPage, /redirect\("\/dashboard\?tab=following"\)/);
   assert.match(builderDetailPage, /@\/components\/PageHeader/);
   assert.match(builderDetailPage, /className="page-pad page-pad--reading builder-detail-page"/);
   assert.match(builderDetailPage, /<PageHeader[\s\S]*className="builder-detail-page-head"[\s\S]*title=\{entity\.name\}/);
@@ -1770,7 +1771,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(recommendationItemPage, /ChevronLeft/);
   assert.match(recommendationItemPage, /className="fb-breadcrumb-link reading-back-link"/);
   assert.doesNotMatch(recommendationItemPage, /button-light button-compact reading-back-link/);
-  assert.match(recommendationItemPage, /href="\/dashboard\?tab=subscription"/);
+  assert.match(recommendationItemPage, /href="\/dashboard\?tab=following"/);
   assert.match(recommendationItemPage, /showDebugActions=\{false\}/);
   assert.equal((recommendationItemPage.match(/Following/g) ?? []).length, 1);
   assert.doesNotMatch(recommendationItemPage, /Back to feed/);

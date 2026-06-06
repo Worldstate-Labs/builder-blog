@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function RecommendationsPage() {
-  redirect("/dashboard?tab=subscription");
+  redirect("/dashboard?tab=following");
 }
