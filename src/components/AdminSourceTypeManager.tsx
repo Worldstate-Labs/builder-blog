@@ -237,10 +237,7 @@ function SourceTypeCard({
 
   return (
     <details className="source-type-config-card">
-      <summary
-        className="source-type-config-summary cursor-pointer select-none"
-        style={{ listStyle: "none" }}
-      >
+      <summary className="source-type-config-summary">
         <CardHeader config={config} dirty={dirty} />
       </summary>
 
@@ -416,24 +413,14 @@ function CardHeader({
   // isn't editable here, and summaryStyle has no runtime effect (it only seeds
   // the default prompt body) — so none of them belong in the header.
   return (
-    <div className="source-type-config-header flex flex-wrap items-center gap-x-3 gap-y-1">
-      <span className="source-type-config-title text-base font-medium">{config.label}</span>
+    <div className="source-type-config-header">
+      <span className="source-type-config-title">{config.label}</span>
       {dirty ? (
         <span
-          className="ml-auto inline-flex items-center gap-1.5 text-xs"
-          style={{ color: "var(--warm)" }}
+          className="source-type-config-dirty"
           aria-label="Unsaved changes"
         >
-          <span
-            aria-hidden="true"
-            style={{
-              display: "inline-block",
-              width: "0.4rem",
-              height: "0.4rem",
-              borderRadius: "999px",
-              background: "var(--warm)",
-            }}
-          />
+          <span className="source-type-config-dirty-dot" aria-hidden="true" />
           Unsaved
         </span>
       ) : null}

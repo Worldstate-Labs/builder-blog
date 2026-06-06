@@ -229,7 +229,7 @@ export function AgentTokenPanel({
         <div className="access-keys-copy">
           <h2 className="fb-section-heading">Access keys</h2>
           <p className="access-keys-desc">
-            Keys let your local agent securely send fetched sources and digests to your FollowBrief cloud account.
+            Keys let your Local Agent securely send fetched sources and digests to your FollowBrief cloud account.
           </p>
         </div>
         <button
@@ -366,7 +366,7 @@ export function AgentTokenPanel({
                     .
                   </p>
                   <p className="settings-dialog-warning">
-                    After revoking it, that local helper will lose access to
+                    After revoking it, that Local Agent will lose access to
                     FollowBrief and need a new access key to update again.
                   </p>
                 </>
@@ -421,6 +421,14 @@ function TokenRow({
   isPending: boolean;
   onRevoke: () => void;
 }) {
+  const metaItems = [
+    `Created ${formatDate(token.createdAt)}`,
+    token.lastUsedAt ? `Last used ${formatDate(token.lastUsedAt)}` : null,
+    token.lastUsedAt ? describeMachine(token) : null,
+    token.lastIp ? token.lastIp : null,
+    token.revokedAt ? `Revoked ${formatDate(token.revokedAt)}` : null,
+  ].filter((item): item is string => Boolean(item));
+
   return (
     <div className={`fb-token-row${token.revokedAt ? " fb-row--revoked" : ""}`}>
       <span className="fb-src-icon fb-src-icon--md">
@@ -429,31 +437,14 @@ function TokenRow({
       <div className="min-w-0 flex-1">
         <div className="access-key-name">{token.name}</div>
         <div className="fb-src-meta">
-          <span>Created {formatDate(token.createdAt)}</span>
-          {token.lastUsedAt ? (
-            <>
-              <span>·</span>
-              <span>Last used {formatDate(token.lastUsedAt)}</span>
-            </>
-          ) : null}
-          {token.lastUsedAt ? (
-            <>
-              <span>·</span>
-              <span>{describeMachine(token)}</span>
-            </>
-          ) : null}
-          {token.lastIp ? (
-            <>
-              <span>·</span>
-              <span className="mono">{token.lastIp}</span>
-            </>
-          ) : null}
-          {token.revokedAt ? (
-            <>
-              <span>·</span>
-              <span>Revoked {formatDate(token.revokedAt)}</span>
-            </>
-          ) : null}
+          {metaItems.map((item, index) => (
+            <span
+              className={item === token.lastIp ? "mono access-key-meta-item" : "access-key-meta-item"}
+              key={`${item}:${index}`}
+            >
+              {item}
+            </span>
+          ))}
         </div>
       </div>
       {token.revokedAt ? (

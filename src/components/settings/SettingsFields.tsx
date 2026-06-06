@@ -402,24 +402,33 @@ export function FooterBar({
   onReset: () => void;
   updatedAt: string;
 }) {
+  const showActions = dirty || isPending;
   return (
     <div className="settings-footer-bar">
-      <button
-        type="button"
-        className={dirty ? "fb-btn dark" : "fb-btn light compact"}
-        disabled={!dirty || isPending}
-        onClick={onSave}
-      >
-        {isPending ? "Saving…" : dirty ? "Save changes" : "Saved"}
-      </button>
-      <button
-        type="button"
-        className="fb-btn light compact"
-        disabled={!dirty || isPending}
-        onClick={onReset}
-      >
-        Discard
-      </button>
+      {showActions ? (
+        <>
+          <button
+            type="button"
+            className="fb-btn dark compact"
+            disabled={!dirty || isPending}
+            onClick={onSave}
+          >
+            {isPending ? "Saving…" : "Save changes"}
+          </button>
+          <button
+            type="button"
+            className="fb-btn light compact"
+            disabled={!dirty || isPending}
+            onClick={onReset}
+          >
+            Discard
+          </button>
+        </>
+      ) : status.kind !== "saved" ? (
+        <span className="settings-save-status is-saved" aria-live="polite">
+          Saved
+        </span>
+      ) : null}
       <SaveStatus status={status} />
       <span className="settings-footer-updated">
         Updated {formatUtcDateTime(updatedAt)}
