@@ -5,6 +5,7 @@ import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DigestContent } from "../src/components/DigestContent";
+import { PostCard } from "../src/components/PostCard";
 
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
@@ -135,7 +136,11 @@ Source: https://anthropic.com/engineering/how-we-contain-claude`,
 
 test("source logos are shared across recommendation and library surfaces", () => {
   assert.match(source("src/components/SourceBadge.tsx"), /data-source/);
+  assert.match(source("src/components/SourceBadge.tsx"), /suppressLabelWhen/);
+  assert.match(source("src/components/SourceBadge.tsx"), /aria-label=\{shouldShowLabel \? undefined : source\.label\}/);
+  assert.match(source("src/components/SourceBadge.tsx"), /sameDisplayLabel\(source\.label, suppressLabelWhen\)/);
   assert.match(source("src/components/PostCard.tsx"), /SourceBadge/);
+  assert.match(source("src/components/PostCard.tsx"), /suppressLabelWhen=\{authorName\}/);
   assert.match(source("src/components/PostCard.tsx"), /export function PostCard/);
   assert.match(source("src/components/FetchedPostCard.tsx"), /PostCard as FetchedPostCard/);
   assert.match(source("src/components/RecommendationFeed.tsx"), /PostCard/);
@@ -147,6 +152,38 @@ test("source logos are shared across recommendation and library surfaces", () =>
   assert.match(source("src/components/BuilderLibraryList.tsx"), /SourceBadge/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceBadge/);
   assert.match(source("src/components/FeedCard.tsx"), /PostCard/);
+});
+
+test("post card avoids duplicate source labels when builder name matches source type", () => {
+  const html = renderToStaticMarkup(
+    createElement(PostCard, {
+      post: {
+        id: "feed_product_hunt",
+        title: "#3 MAI-Image-2.5",
+        body: "Product Hunt summary.",
+        url: "https://www.producthunt.com/products/mai-image-2-5",
+        publishedAt: "2026-06-05T00:00:00.000Z",
+        createdAt: "2026-06-06T00:00:00.000Z",
+        sourceName: "Product Hunt Top Products",
+        fetchTool: null,
+        builder: {
+          id: "builder_product_hunt",
+          entityId: "entity_product_hunt",
+          name: "Product Hunt Top Products",
+          kind: "WEBSITE",
+          sourceType: "product_hunt_top_products",
+          sourceUrl: "https://www.producthunt.com/",
+          fetchUrl: "https://www.producthunt.com/",
+        },
+      },
+      showDebugActions: false,
+    }),
+  );
+
+  const visibleText = html.replace(/<[^>]*>/g, "");
+  assert.equal((visibleText.match(/Product Hunt Top Products/g) ?? []).length, 1);
+  assert.match(html, /aria-label="Product Hunt Top Products"/);
+  assert.match(html, /title="Product Hunt Top Products"/);
 });
 
 test("digest renderer uses source link metadata before section heading fallbacks", () => {

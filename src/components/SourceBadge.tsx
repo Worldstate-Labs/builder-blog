@@ -11,10 +11,12 @@ type SourceBadgeBuilder = {
 
 export function SourceBadge({
   builder,
+  suppressLabelWhen,
   sourceType,
   showLabel = true,
 }: {
   builder?: SourceBadgeBuilder | null;
+  suppressLabelWhen?: string | null;
   sourceType?: string | null;
   showLabel?: boolean;
 }) {
@@ -28,13 +30,19 @@ export function SourceBadge({
       ? { id: base.id, label: podcastPlatformLabel(builder) }
       : base;
   const Icon = sourceIcons[source.id] ?? Globe;
+  const shouldShowLabel = showLabel && !sameDisplayLabel(source.label, suppressLabelWhen);
 
   return (
-    <span className="source-badge" data-source={source.id} title={source.label}>
+    <span
+      aria-label={shouldShowLabel ? undefined : source.label}
+      className="source-badge"
+      data-source={source.id}
+      title={source.label}
+    >
       <span className="source-badge-mark" aria-hidden="true">
         <Icon className="h-3.5 w-3.5" />
       </span>
-      {showLabel ? <span>{source.label}</span> : null}
+      {shouldShowLabel ? <span>{source.label}</span> : null}
     </span>
   );
 }
@@ -64,4 +72,13 @@ function podcastPlatformLabel(builder: SourceBadgeBuilder) {
   if (haystack.includes("overcast.fm")) return "Overcast";
   if (haystack.includes("pca.st") || haystack.includes("pocketcasts.com")) return "Pocket Casts";
   return "Podcast RSS";
+}
+
+function sameDisplayLabel(a: string, b: string | null | undefined) {
+  if (!b) return false;
+  return normalizeDisplayLabel(a) === normalizeDisplayLabel(b);
+}
+
+function normalizeDisplayLabel(value: string) {
+  return value.trim().toLowerCase().replace(/[\s_/-]+/g, " ");
 }
