@@ -450,24 +450,6 @@ svg.lucide {
     font-size: 1.55rem;
   }
 
-  .fb-dark-frame {
-    padding: 1.25rem;
-  }
-
-  .fb-login-shell {
-    align-items: start;
-    gap: 2rem;
-    grid-template-columns: 1fr;
-  }
-
-  .fb-login-title {
-    font-size: 2.55rem;
-  }
-
-  .fb-login-panel-title {
-    font-size: 1.35rem;
-  }
-
   .brand-mark,
   .user-avatar {
     height: 2.15rem;
@@ -6827,12 +6809,10 @@ a.fb-hub-source-name:focus-visible {
   transform: rotate(180deg);
 }
 
-/* Dark login/device frame */
+/* Login/device frame */
 .fb-dark-frame {
-  /* Always-dark frame (white text): use the non-inverting surface token so it
-     stays dark in dark mode instead of flipping to white-on-white. */
-  background: var(--surface-ink);
-  color: white;
+  background: var(--paper);
+  color: var(--ink);
   display: flex;
   flex-direction: column;
   font-family: var(--font-geist-sans);
@@ -6857,7 +6837,7 @@ a.fb-hub-source-name:focus-visible {
 
 .fb-login-nav-brand {
   align-items: center;
-  color: white;
+  color: var(--ink);
   display: inline-flex;
   gap: 0.65rem;
   min-width: 0;
@@ -6865,17 +6845,23 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .fb-login-nav-name {
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--muted-strong);
   font-size: 0.875rem;
   font-weight: 650;
   letter-spacing: 0;
 }
 
+.fb-login-nav-actions {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
 .fb-login-nav-link {
   align-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--muted-strong);
   display: inline-flex;
   font-size: 0.8125rem;
   font-weight: 700;
@@ -6887,9 +6873,9 @@ a.fb-hub-source-name:focus-visible {
 
 .fb-login-nav-link:hover,
 .fb-login-nav-link:focus-visible {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.32);
-  color: white;
+  background: var(--paper-strong);
+  border-color: color-mix(in oklch, var(--ink) 22%, transparent);
+  color: var(--ink);
 }
 
 .fb-login-shell {
@@ -6904,8 +6890,14 @@ a.fb-hub-source-name:focus-visible {
   width: 100%;
 }
 
+.fb-login-intro {
+  max-width: var(--login-copy-max);
+  min-width: 0;
+  width: 100%;
+}
+
 .fb-login-title {
-  color: white;
+  color: var(--ink);
   font-family: var(--font-display);
   font-size: 3rem;
   font-optical-sizing: auto;
@@ -6916,7 +6908,7 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .fb-login-panel-title {
-  color: white;
+  color: var(--ink);
   font-family: var(--font-display);
   font-size: 1.45rem;
   font-optical-sizing: auto;
@@ -6926,7 +6918,7 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .fb-login-copy {
-  color: rgba(255, 255, 255, 0.68);
+  color: var(--muted-strong);
   font-size: 1rem;
   line-height: 1.65;
   margin-top: 1.25rem;
@@ -6935,7 +6927,7 @@ a.fb-hub-source-name:focus-visible {
 
 .fb-login-proof-rail {
   align-items: center;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid var(--line);
   display: flex;
   flex-wrap: wrap;
   gap: 0.875rem 1.1rem;
@@ -6945,10 +6937,10 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .fb-login-error {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--danger-soft);
+  border: 1px solid color-mix(in oklch, var(--danger) 42%, transparent);
   border-radius: 8px;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--danger);
   font-size: 0.78125rem;
   line-height: 1.55;
   margin-top: 1.25rem;
@@ -6960,7 +6952,7 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .fb-login-note {
-  color: rgba(255, 255, 255, 0.42);
+  color: var(--muted);
   font-size: 0.6875rem;
   line-height: 1.55;
   margin-top: 1rem;
@@ -6987,11 +6979,12 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .fb-dark-panel {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: color-mix(in oklch, var(--paper-strong) 74%, transparent);
+  border: 1px solid color-mix(in oklch, var(--line) 84%, transparent);
   border-radius: 10px;
   max-width: var(--dialog-max);
   padding: 1.625rem;
+  width: 100%;
 }
 
 .fb-login-panel-head {
@@ -7001,7 +6994,7 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .fb-login-panel-copy {
-  color: rgba(255, 255, 255, 0.62);
+  color: var(--muted-strong);
   font-size: 0.78125rem;
   line-height: 1.55;
   margin-top: 0;
@@ -7009,19 +7002,19 @@ a.fb-hub-source-name:focus-visible {
 
 .fb-login-proof {
   align-items: center;
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--muted-strong);
   display: inline-flex;
   gap: 0.45rem;
 }
 
 .fb-login-proof-icon {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--muted);
   height: 0.95rem;
   width: 0.95rem;
 }
 
 .fb-login-proof-label {
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--muted-strong);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -7030,10 +7023,10 @@ a.fb-hub-source-name:focus-visible {
 
 .fb-auth-btn {
   align-items: center;
-  background: white;
-  border: 0;
+  background: var(--paper-strong);
+  border: 1px solid color-mix(in oklch, var(--line) 88%, transparent);
   border-radius: 10px;
-  color: var(--charcoal);
+  color: var(--ink);
   cursor: pointer;
   display: flex;
   font-size: 0.875rem;
@@ -7061,17 +7054,78 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .fb-auth-btn:hover {
-  background: color-mix(in srgb, white 92%, var(--charcoal));
+  background: color-mix(in oklch, var(--paper-strong) 70%, var(--accent-soft));
 }
 
 .fb-auth-btn.outline {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  color: white;
+  background: transparent;
+  border: 1px solid color-mix(in oklch, var(--ink) 26%, transparent);
+  color: var(--ink);
 }
 
 .fb-auth-btn.outline:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: color-mix(in oklch, var(--rail) 58%, transparent);
+}
+
+@media (max-width: 767px) {
+  .fb-dark-frame {
+    padding: 1rem;
+  }
+
+  .fb-login-shell {
+    align-items: stretch;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding-block: 2rem 1rem;
+  }
+
+  .fb-login-intro {
+    max-width: none;
+  }
+
+  .fb-login-title {
+    font-size: clamp(2rem, 11vw, 2.45rem);
+    line-height: 1.02;
+    margin-top: 0;
+  }
+
+  .fb-login-title br {
+    display: none;
+  }
+
+  .fb-login-copy {
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    margin-top: 0.85rem;
+  }
+
+  .fb-login-proof-rail {
+    gap: 0.65rem 0.85rem;
+    margin-top: 1.25rem;
+    padding-top: 0.8rem;
+  }
+
+  .fb-login-panel-title {
+    font-size: 1.35rem;
+  }
+
+  .fb-dark-panel {
+    justify-self: stretch;
+    max-width: none;
+    padding: 1rem;
+  }
+
+  .fb-login-auth {
+    margin-top: 1rem;
+  }
+
+  .fb-auth-btn {
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    min-height: 2.75rem;
+    padding: 0.65rem 0.75rem;
+  }
 }
 
 /* Settings field */

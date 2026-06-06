@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Archive, KeyRound, Search } from "lucide-react";
 import { AuthButtons } from "@/components/AuthButtons";
 import { BrandMark } from "@/components/BrandMark";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { getCurrentSession } from "@/lib/auth";
 
 export default async function LoginPage({
@@ -19,16 +20,19 @@ export default async function LoginPage({
     <main className="fb-dark-frame">
       <nav className="fb-login-nav">
         <Link href="/" className="fb-login-nav-brand">
-          <BrandMark size="dark" />
+          <BrandMark />
           <span className="fb-login-nav-name">FollowBrief</span>
         </Link>
-        <Link className="fb-login-nav-link" href="/">
-          Home
-        </Link>
+        <div className="fb-login-nav-actions">
+          <ThemeToggle />
+          <Link className="fb-login-nav-link" href="/">
+            Home
+          </Link>
+        </div>
       </nav>
 
       <div className="fb-login-shell">
-        <section>
+        <section className="fb-login-intro">
           <h1 className="fb-login-title">
             Sign in to your<br />briefing desk.
           </h1>
