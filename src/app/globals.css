@@ -1035,17 +1035,17 @@ svg.lucide {
   scrollbar-color: color-mix(in oklch, white 26%, transparent) transparent;
 }
 
-.page-pad h1 {
+.page-pad--reading > h1:not(.sr-only) {
   font-size: 2.25rem;
   line-height: 1.12;
 }
 
-.page-pad h2 {
+.page-pad--reading > h2 {
   font-size: 1.55rem;
   line-height: 1.2;
 }
 
-.page-pad h3 {
+.page-pad--reading > h3 {
   font-size: 1.35rem;
   line-height: 1.25;
 }
@@ -2572,7 +2572,7 @@ svg.lucide {
   gap: 0.35rem;
 }
 
-.search-form .button-dark {
+.search-form .submit-button {
   min-height: 2.75rem;
   padding-left: 1.1rem;
   padding-right: 1.1rem;
@@ -3386,7 +3386,15 @@ svg.lucide {
 }
 
 .import-remove-button {
+  border-color: color-mix(in oklch, var(--danger) 28%, var(--line));
+  color: var(--danger);
   gap: 0.5rem;
+}
+
+.import-remove-button:hover {
+  background: var(--danger-soft);
+  border-color: color-mix(in oklch, var(--danger) 38%, var(--line));
+  color: var(--danger);
 }
 
 .import-remove-icon {
@@ -3534,12 +3542,12 @@ svg.lucide {
 }
 
 @media (max-width: 767px) {
-  .page-pad h1 {
+  .page-pad--reading > h1:not(.sr-only) {
     font-size: 2rem;
     line-height: 1.15;
   }
 
-  .page-pad h2 {
+  .page-pad--reading > h2 {
     font-size: 1.45rem;
     line-height: 1.2;
   }
@@ -3592,7 +3600,7 @@ svg.lucide {
     width: calc(100vw - 3.25rem);
   }
 
-  .search-form .button-dark {
+  .search-form .submit-button {
     min-height: 2.55rem;
     flex: 0 0 auto;
     min-width: 5.25rem;
@@ -6451,6 +6459,12 @@ svg.lucide {
   color: color-mix(in oklch, var(--signal) 78%, var(--ink));
 }
 
+.hub-card-imported-status {
+  background: var(--signal-soft);
+  border-color: color-mix(in oklch, var(--signal) 38%, var(--line));
+  color: color-mix(in oklch, var(--signal) 72%, var(--ink));
+}
+
 .hub-card-remove-button {
   color: var(--muted);
 }
@@ -8826,19 +8840,19 @@ body {
     grid-template-columns: 1fr;
   }
 
-  .page-pad h1,
+  .page-pad--reading > h1:not(.sr-only),
   .fb-title {
     font-size: 1.75rem;
     letter-spacing: 0;
     line-height: 1.12;
   }
 
-  .page-pad h2 {
+  .page-pad--reading > h2 {
     font-size: 1.25rem;
     line-height: 1.18;
   }
 
-  .page-pad h3 {
+  .page-pad--reading > h3 {
     font-size: 1.05rem;
     line-height: 1.22;
   }

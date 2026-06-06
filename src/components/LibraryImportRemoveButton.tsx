@@ -46,7 +46,7 @@ export function LibraryImportRemoveButton({
       <button
         aria-busy={isPending}
         aria-label={`Remove ${libraryName} from library`}
-        className="button-light button-compact button-danger import-remove-button"
+        className="fb-btn light compact import-remove-button"
         disabled={isPending}
         onClick={(event) => {
           event.preventDefault();

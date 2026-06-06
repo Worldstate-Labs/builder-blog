@@ -153,7 +153,7 @@ export function RecommendationFeed({
       {mode === "following" ? (
         <div className="recommendation-feed-actions">
           <button
-            className="button-light button-compact gap-2"
+            className="fb-btn light compact"
             disabled={loadingDirection !== null}
             onClick={() => void requestSnapshot("prepend")}
             type="button"

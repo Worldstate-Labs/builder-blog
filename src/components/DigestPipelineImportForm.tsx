@@ -92,7 +92,7 @@ export function DigestPipelineImportForm({
     importedIds.has(pipeline.id),
   );
   const visiblePipelines = mode === "imported" ? importedPipelines : sharedPipelines;
-  const title = mode === "imported" ? "Imported Digests" : "Shared AI Digests";
+  const title = mode === "imported" ? "Imported digests" : "Shared digests";
   const description =
     mode === "imported"
       ? "Digests built and shared by other users."

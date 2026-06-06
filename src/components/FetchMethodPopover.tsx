@@ -74,7 +74,7 @@ export function FetchMethodPopover({
             <>
               {parsed.runtime ? (
                 <div className="fb-popover-row">
-                  <span className="fb-popover-label">Local helper</span>
+                  <span className="fb-popover-label">Local Agent</span>
                   <span>{parsed.runtime}</span>
                 </div>
               ) : null}

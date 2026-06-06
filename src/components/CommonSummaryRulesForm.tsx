@@ -20,7 +20,7 @@ export function CommonSummaryRulesForm({
   return (
     <CommonRulesForm
       ariaLabel="Common post-summary rules"
-      description="Applied when each fetched post is summarized before it can appear in feeds or AI Digest."
+      description="Applied when each fetched post is summarized before it can appear in feeds or digests."
       emptyMessage="Common summary rules can't be empty."
       fieldName="commonSummaryRules"
       initialValue={initialValue}

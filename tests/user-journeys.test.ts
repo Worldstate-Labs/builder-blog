@@ -375,7 +375,7 @@ test("web app serves the agent skill and setup command", () => {
   // summary language select persisted via /api/settings/summary-language —
   // now shown for digest as well as library.
   assert.match(skillPromptActions, /Copy a prompt for your Local Agent to fetch, summarize, and sync every source\./);
-  assert.match(skillPromptActions, /Copy a prompt for your Local Agent to build your AI Digest\./);
+  assert.match(skillPromptActions, /Copy a prompt for your Local Agent to build your digest\./);
   assert.match(skillPromptActions, /Local Agent/);
   assert.match(skillPromptActions, /Already digested posts can be included again this time\./);
   assert.match(skillPromptActions, /Excludes older posts\. Leave blank for no limit\./);
@@ -2599,7 +2599,7 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(settingsPage, /getUserDigestConfig\(userId\)/);
   assert.doesNotMatch(settingsPage, /Source and digest rules/);
   assert.match(settingsPage, /Source update rules/);
-  assert.match(settingsPage, /AI Digest rules/);
+  assert.match(settingsPage, /Digest rules/);
   assert.match(settingsPage, /CommonFetchRulesForm/);
   assert.match(settingsPage, /CommonSummaryRulesForm/);
   assert.match(settingsPage, /isAdminEmail\(session\.user\.email\)/);

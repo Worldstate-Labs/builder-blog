@@ -102,7 +102,7 @@ test("every app route has an explicit centered layout role", () => {
     ["src/app/(workspace)/builder/[entityId]/page.tsx", /className="page-pad page-pad--reading builder-detail-page"/],
     ["src/app/(workspace)/dashboard/page.tsx", /className="page-pad page-pad--reading home-page"[\s\S]*<h1 className="sr-only">Home<\/h1>/],
     ["src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx", /className="page-pad page-pad--reading reading-page"/],
-    ["src/app/(workspace)/search/page.tsx", /className="page-pad page-pad--reading search-page"[\s\S]*<h1 className="sr-only">Search<\/h1>/],
+    ["src/app/(workspace)/search/page.tsx", /className="page-pad page-pad--reading search-page"[\s\S]*<PageHeader[\s\S]*title="Search"/],
   ] as const;
   for (const [path, pattern] of readingRoutes) {
     assert.match(source(path), pattern, `${path} should use the centered reading rail`);
@@ -184,7 +184,7 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(loginPage, /fb-login-brand-name/);
   assert.match(loginPage, /fb-login-panel-head/);
   assert.match(loginPage, /Sign in/);
-  assert.match(loginPage, /Use one account for your web archive and local helper\./);
+  assert.match(loginPage, /Use one account for your web archive and Local Agent\./);
   assert.doesNotMatch(loginPage, /Continue securely/);
   assert.doesNotMatch(loginPage, /ShieldCheck|fb-login-panel-icon/);
   assert.match(loginPage, /fb-login-proof-icon/);
@@ -1020,7 +1020,7 @@ test("search page uses a client form with pending feedback", () => {
 
   assert.match(searchPage, /@\/components\/SearchForm/);
   assert.match(searchPage, /@\/components\/EmptyState/);
-  assert.doesNotMatch(searchPage, /@\/components\/PageHeader/);
+  assert.match(searchPage, /@\/components\/PageHeader/);
   assert.match(searchPage, /className="page-pad page-pad--reading search-page"/);
   assert.match(searchPage, /searchPageSize/);
   assert.match(searchPage, /emptySearchCopy = "Search sources, posts, saved items, and digests\."/);
@@ -1033,8 +1033,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /SearchResultsSection/);
   assert.match(searchPage, /className="workspace-content-stack search-results-workspace"/);
   assert.match(globals, /\.search-result-skeleton/);
-  assert.match(searchPage, /<h1 className="sr-only">Search<\/h1>/);
-  assert.doesNotMatch(searchPage, /<PageHeader title="Search" \/>/);
+  assert.match(searchPage, /<PageHeader[\s\S]*title="Search"[\s\S]*Find sources, posts, saved items, and digests across your library\./);
   assert.doesNotMatch(searchPage, /description="Find sources, saved posts, and digest history\."/);
   assert.doesNotMatch(searchPage, /<PageHeader[\s\S]{0,120}actions=/);
   assert.match(searchPage, /className="search-hero-form"/);
@@ -1055,7 +1054,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(globals, /\.search-form\s*{[\s\S]*margin:\s*0/);
   assert.match(globals, /\.page-pad--reading\s*{[\s\S]*width:\s*min\(100%, var\(--reading-max\)\)/);
   assert.match(globals, /\.page-pad--settings\s*{[\s\S]*width:\s*min\(100%, var\(--settings-max\)\)/);
-  assert.match(searchForm, /className="button-dark submit-button"/);
+  assert.match(searchForm, /className="fb-btn dark submit-button"/);
   assert.match(searchForm, /submit-button-content/);
   assert.match(searchForm, /submit-button-pending/);
   assert.match(formSubmitButton, /submit-button-content/);
@@ -1913,8 +1912,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /onClick=\{\(\) => onRemove\(library\.id\)\}/);
   assert.match(hubImportForm, /imported=\{importedIds\.has\(library\.id\)\}/);
   assert.doesNotMatch(hubImportForm, /importedIds\.has\(library\.id\)\s*\|\|\s*library\.imported/);
-  assert.doesNotMatch(hubImportForm, />\s*Remove\s*</);
-  assert.doesNotMatch(hubImportForm, /Trash2/);
+  assert.match(hubImportForm, /hub-card-imported-status/);
+  assert.match(hubImportForm, /Trash2/);
+  assert.match(hubImportForm, /className="fb-icon-btn fb-icon-btn--xs hub-card-remove-button"/);
   assert.doesNotMatch(hubImportForm, /Import selected/);
   assert.doesNotMatch(hubImportForm, /selectedIds/);
   assert.match(hubImportForm, /className="fb-segmented-tabs filter-tabs at-desktop"/);
@@ -1934,7 +1934,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(libraryImportRemoveButton, /router\.refresh/);
   assert.match(libraryImportRemoveButton, /event\.stopPropagation/);
   assert.match(libraryImportRemoveButton, /className="import-remove-control"/);
-  assert.match(libraryImportRemoveButton, /className="button-light button-compact button-danger import-remove-button"/);
+  assert.match(libraryImportRemoveButton, /className="fb-btn light compact import-remove-button"/);
   assert.match(libraryImportRemoveButton, /className="import-remove-icon"/);
   assert.match(libraryImportRemoveButton, /className="import-remove-error"/);
   assert.doesNotMatch(libraryImportRemoveButton, /inline-flex flex-col items-end|text-xs text-\[var\(--danger\)\]|h-4 w-4|button-danger gap-2/);
@@ -1951,10 +1951,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(digestPipelineForm, /lg:grid-cols-2/);
   assert.match(digestPipelineForm, /mode\?: "hub" \| "imported"/);
   assert.match(digestPipelineForm, /mode = "hub"/);
-  assert.match(digestPipelineForm, /Imported Digests/);
+  assert.match(digestPipelineForm, /Imported digests/);
   assert.match(digestPipelineForm, /Digests built and shared by other users\./);
   assert.doesNotMatch(digestPipelineForm, /Digests imported from the Hub/);
-  assert.match(digestPipelineForm, /Shared AI Digests/);
+  assert.match(digestPipelineForm, /Shared digests/);
   assert.doesNotMatch(digestPipelineForm, /Share my digest/);
   assert.doesNotMatch(digestPipelineForm, /Remove my digest/);
   assert.doesNotMatch(digestPipelineForm, /ownPipelineShared/);
@@ -2226,7 +2226,7 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*grid-template-areas:[\s\S]*"avatar info actions"/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card \.builder-library-actions,[\s\S]*\.builder-library-card \.row-actions\s*{[\s\S]*justify-content:\s*flex-end/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta\s*{[\s\S]*display:\s*grid/);
-  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.page-pad h2\s*{[\s\S]*font-size:\s*1\.25rem/);
+  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.page-pad--reading > h2\s*{[\s\S]*font-size:\s*1\.25rem/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.fb-panel\s*{[\s\S]*padding:\s*0\.95rem/);
   assert.doesNotMatch(css, /\.builder-row form,\s*\n\s*\.builder-row button\s*{\s*\n\s*width:\s*100%/);
   assert.match(builderLibraryList, /builder-library-card-main/);

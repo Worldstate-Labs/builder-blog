@@ -39,7 +39,7 @@ export default async function LoginPage({
           <div className="fb-login-proof-rail" aria-label="Workspace capabilities">
             <LoginProof icon={Archive} label="Archive" />
             <LoginProof icon={Search} label="Search" />
-            <LoginProof icon={KeyRound} label="Local helper" />
+            <LoginProof icon={KeyRound} label="Local Agent" />
           </div>
         </section>
 
@@ -50,7 +50,7 @@ export default async function LoginPage({
                 Sign in
               </h2>
               <p className="fb-login-panel-copy">
-                Use one account for your web archive and local helper.
+                Use one account for your web archive and Local Agent.
               </p>
             </div>
           </div>

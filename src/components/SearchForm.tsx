@@ -259,7 +259,7 @@ export function SearchForm({
                   submitSuggestion(activeSuggestion, event.currentTarget.form);
                 }
               }}
-              placeholder="Search sources, feed items, or digests"
+              placeholder="Search sources, posts, saved items, or digests"
             />
             {inputValue ? (
               <button
@@ -369,7 +369,7 @@ export function SearchForm({
             </div>
             <button
               aria-busy={isPending}
-              className="button-dark submit-button"
+              className="fb-btn dark submit-button"
               disabled={isPending}
               name="search"
               type="submit"

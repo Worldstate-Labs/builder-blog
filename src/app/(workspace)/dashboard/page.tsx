@@ -93,12 +93,12 @@ async function AiDigestFeedSlot({
       select: { title: true },
     }),
   ]);
-  const ownPipelineTitle = displayDigestPipelineTitle(ownPipelineShare?.title ?? "AI Digest");
+  const ownPipelineTitle = displayDigestPipelineTitle(ownPipelineShare?.title ?? "Digest");
   const digestPipelineOptions: DigestPipelineOption[] = [
     {
       id: "own",
       title: ownPipelineTitle,
-      ownerLabel: "Your AI Digest",
+      ownerLabel: "Your digest",
       ownerUserId: userId,
       isOwnPipeline: true,
     },

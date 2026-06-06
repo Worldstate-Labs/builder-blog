@@ -879,7 +879,7 @@ function FetchStatusPanel({
             <div className="sync-panel-meta-row">
               <dt>Runner</dt>
               <dd className="truncate">
-                {cronJob.runtime || "Local helper"}
+                {cronJob.runtime || "Local Agent"}
                 {cronJob.hostname ? ` · ${cronJob.hostname.replace(/\.local$/, "")}` : ""}
               </dd>
             </div>
@@ -1011,7 +1011,7 @@ function CronSlotRow({
       <div className="flex min-w-0 items-center gap-2">
         <span className="mono truncate text-[11.5px] text-[var(--muted-strong)]">
           {slot.jobRun && !slot.run
-            ? `${jobRunStatusLabel(slot.jobRun)} · ${slot.jobRun.runtime || "Local helper"}`
+            ? `${jobRunStatusLabel(slot.jobRun)} · ${slot.jobRun.runtime || "Local Agent"}`
             : slot.run
             ? `${slot.run.itemsFetched} fetched · ${formatDuration(slot.run.durationMs)}`
             : "No run recorded"}
@@ -1181,10 +1181,10 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
   // the per-post outcomes yet. The run-level status already reads "ok" here, so
   // show a live "Syncing…" badge to make the in-between state legible.
   const inflight = isRunInflight(run);
-  // Show the local helper that ran this fetch. Model names are kept out of the
+  // Show the Local Agent that ran this fetch. Model names are kept out of the
   // run header because they are not useful for everyday readers.
   const agentLabel =
-    details.agentRuntime || (run.cliVersion ? "Local helper" : "");
+    details.agentRuntime || (run.cliVersion ? "Local Agent" : "");
   const startedAtLabel = hydrated ? formatRelative(run.startedAt) : formatAbsolute(run.startedAt);
 
   return (

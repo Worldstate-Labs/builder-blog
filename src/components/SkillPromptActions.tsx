@@ -812,7 +812,7 @@ function CronConfigDialog({
           </h2>
           <p className="token-picker-sub">
             {context === "digest"
-              ? "Copy a prompt for your Local Agent to build your AI Digest."
+              ? "Copy a prompt for your Local Agent to build your digest."
               : "Copy a prompt for your Local Agent to fetch, summarize, and sync every source."}
           </p>
         </header>

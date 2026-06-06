@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { CountBadge, CountRange, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/PageHeader";
 import { SearchForm, type SearchTypeFilter } from "@/components/SearchForm";
 import { getCurrentSession } from "@/lib/auth";
 import { searchUserLibrary } from "@/lib/user-search";
@@ -148,7 +149,10 @@ export default async function SearchPage({
 
   return (
     <div className="page-pad page-pad--reading search-page">
-      <h1 className="sr-only">Search</h1>
+      <PageHeader
+        title="Search"
+        description="Find sources, posts, saved items, and digests across your library."
+      />
 
       <div className="workspace-content-stack search-results-workspace">
         <section className="search-hero-form" aria-label="Search controls">
