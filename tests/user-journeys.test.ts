@@ -233,6 +233,8 @@ test("non-admin users default-import the admin community library and digest", ()
   assert.match(builderPool, /if \(!user \|\| isAdminEmail\(user\.email\)\)/);
   assert.match(builderPool, /userLibraryVisibility/);
   assert.match(builderPool, /isFeatured:\s*true/);
+  assert.match(builderPool, /findOrCreateDefaultCommunityLibrary/);
+  assert.match(builderPool, /adminEmails\(\)/);
   assert.match(builderPool, /BuilderPoolOrigin\.HUB_IMPORT/);
   assert.match(builderPool, /libraryImport\.create/);
   assert.match(libraryHub, /removeLibraryImportFromHub/);

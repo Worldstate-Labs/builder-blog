@@ -1,6 +1,10 @@
 import { BuilderPoolOrigin } from "@prisma/client";
-import { isAdminEmail } from "@/lib/admin";
+import { adminEmails, isAdminEmail } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
+
+const adminCommunityLibraryName = "Community Library";
+const adminCommunityLibraryDescription =
+  "Community source library curated by FollowBrief.";
 
 export async function addBuilderToPool(params: {
   userId: string;
@@ -58,12 +62,7 @@ export async function ensureDefaultCommunityLibraryImport(userId: string) {
   });
   if (!user || isAdminEmail(user.email)) return { imported: false, builderCount: 0 };
 
-  const library = await prisma.libraryHubEntry.findFirst({
-    where: { isFeatured: true },
-    include: {
-      items: { select: { builderId: true } },
-    },
-  });
+  const library = await findOrCreateDefaultCommunityLibrary();
   if (!library || library.items.length === 0) return { imported: false, builderCount: 0 };
 
   // Respect the user's per-library visibility preference (UserLibraryVisibility).
@@ -119,4 +118,65 @@ export async function ensureDefaultCommunityLibraryImport(userId: string) {
   ]);
 
   return { imported: true, builderCount: builderIds.length };
+}
+
+async function findOrCreateDefaultCommunityLibrary() {
+  const existing = await prisma.libraryHubEntry.findFirst({
+    where: { isFeatured: true },
+    include: {
+      items: { select: { builderId: true } },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+  if (existing) return existing;
+
+  const admin = await prisma.user.findFirst({
+    where: { email: { in: adminEmails() } },
+    select: { id: true },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!admin) return null;
+
+  const ownedBuilders = await prisma.builder.findMany({
+    where: { ownerUserId: admin.id },
+    select: { id: true },
+    orderBy: { name: "asc" },
+  });
+  const entry = await prisma.libraryHubEntry.upsert({
+    where: { slug: `personal-${admin.id}` },
+    update: {
+      name: adminCommunityLibraryName,
+      description: adminCommunityLibraryDescription,
+      isFeatured: true,
+    },
+    create: {
+      slug: `personal-${admin.id}`,
+      name: adminCommunityLibraryName,
+      description: adminCommunityLibraryDescription,
+      ownerUserId: admin.id,
+      isFeatured: true,
+    },
+  });
+
+  await prisma.$transaction([
+    prisma.libraryHubItem.deleteMany({ where: { hubEntryId: entry.id } }),
+    ...(ownedBuilders.length > 0
+      ? [
+          prisma.libraryHubItem.createMany({
+            data: ownedBuilders.map((builder) => ({
+              hubEntryId: entry.id,
+              builderId: builder.id,
+            })),
+            skipDuplicates: true,
+          }),
+        ]
+      : []),
+  ]);
+
+  return prisma.libraryHubEntry.findUnique({
+    where: { id: entry.id },
+    include: {
+      items: { select: { builderId: true } },
+    },
+  });
 }

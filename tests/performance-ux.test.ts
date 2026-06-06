@@ -2137,6 +2137,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(source("src/lib/library-hub.ts"), /\$\{identity\}'s AI Digest/);
   assert.doesNotMatch(source("src/lib/library-hub.ts"), /\$\{identity\}'s AI Builder Digest/);
   assert.match(builderPool, /ensureDefaultCommunityLibraryImport/);
+  assert.match(builderPool, /findOrCreateDefaultCommunityLibrary/);
+  assert.match(builderPool, /adminEmails\(\)/);
   assert.match(builderPool, /isAdminEmail\(user\.email\)/);
   assert.match(builderPool, /userLibraryVisibility/);
   assert.match(builderPool, /BuilderPoolOrigin\.HUB_IMPORT/);
