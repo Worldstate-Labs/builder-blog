@@ -1744,6 +1744,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   // through PostCard.
   assert.match(builderFeedItems, /className="builder-posts-count"/);
   assert.match(builderFeedItems, /PostCard/);
+  assert.match(builderFeedItems, /showSourceBadge=\{false\}/);
   assert.match(postCard, /Summary/);
   assert.match(postCard, /export function PostCard/);
   assert.match(postCard, /post-detail-card/);

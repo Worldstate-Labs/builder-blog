@@ -127,6 +127,7 @@ export function BuilderFeedItems({
               ...item,
               builder,
             }}
+            showSourceBadge={false}
             variant="row"
           />
         ))}
