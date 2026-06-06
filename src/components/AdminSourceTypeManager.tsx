@@ -239,6 +239,10 @@ function SourceTypeCard({
     <details className="source-type-config-card">
       <summary className="source-type-config-summary">
         <CardHeader config={config} dirty={dirty} />
+        <span className="source-type-config-toggle-icon" aria-hidden="true">
+          <span className="source-type-config-toggle-icon-closed">+</span>
+          <span className="source-type-config-toggle-icon-open">-</span>
+        </span>
       </summary>
 
       <div className="settings-config-form source-type-config-form">

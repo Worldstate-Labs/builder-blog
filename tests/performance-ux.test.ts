@@ -1086,6 +1086,9 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(buildersPage, /getScheduledAgentJobRuns\(session\.user\.id, "digest-cron", 25\)/);
   assert.match(digestArchivePicker, /digestHref/);
   assert.match(digestArchivePicker, /aria-label="Digest archive"/);
+  assert.match(digestArchivePicker, /useHydrated/);
+  assert.match(digestArchivePicker, /formatDigestPickerDate\(digest\.createdAt, hydrated\)/);
+  assert.match(digestArchivePicker, /timeZone:\s*"UTC"/);
   assert.match(historyPage, /redirect\("\/dashboard\?tab=ai-digest"\)/);
   assert.doesNotMatch(historyPage, /AppShell/);
   assert.match(digestDetails, /"use client"/);
@@ -2173,6 +2176,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   const digestMaxAgeRoute = source("src/app/api/settings/digest-max-age/route.ts");
   const tokensRoute = source("src/app/api/settings/tokens/route.ts");
   const tokenRoute = source("src/app/api/settings/tokens/[tokenId]/route.ts");
+  const adminSourceTypeManager = source("src/components/AdminSourceTypeManager.tsx");
   const globals = source("src/app/globals.css");
 
   // The Feed preferences module is gone; the digest max-age editor now lives in
@@ -2241,10 +2245,12 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.settings-rules-summary-desc/);
   assert.match(globals, /\.settings-rules-summary-meta\s*{[\s\S]*justify-self:\s*end/);
   assert.doesNotMatch(globals, /\.settings-rules-summary-meta\s*{[\s\S]*flex:\s*0 0 auto/);
-  assert.match(globals, /\.settings-rules-summary::after\s*{[\s\S]*content:\s*"\+"/);
-  assert.match(globals, /\.settings-rules-panel\[open\] \.settings-rules-summary::after\s*{[\s\S]*content:\s*"-"/);
-  assert.match(globals, /\.source-type-config-summary::after\s*{[\s\S]*content:\s*"\+"/);
-  assert.match(globals, /\.source-type-config-card\[open\] \.source-type-config-summary::after\s*{[\s\S]*content:\s*"-"/);
+  assert.match(settingsPage, /className="settings-rules-toggle-icon" aria-hidden="true"/);
+  assert.match(adminSourceTypeManager, /className="source-type-config-toggle-icon" aria-hidden="true"/);
+  assert.doesNotMatch(globals, /\.settings-rules-summary::after[\s\S]*content:\s*"\+"/);
+  assert.doesNotMatch(globals, /\.source-type-config-summary::after[\s\S]*content:\s*"\+"/);
+  assert.match(globals, /\.settings-rules-panel\[open\] \.settings-rules-toggle-icon-open/);
+  assert.match(globals, /\.source-type-config-card\[open\] \.source-type-config-toggle-icon-open/);
   assert.match(globals, /\.source-type-config-dirty\s*{[\s\S]*color:\s*var\(--warm\)/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.settings-rules-summary\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto auto/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.settings-rules-summary-meta\s*{[\s\S]*grid-column:\s*auto/);
@@ -2289,6 +2295,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /className="access-key-device-title"/);
   assert.match(tokenPanel, /className="access-key-device-status"/);
   assert.doesNotMatch(tokenPanel, /access-key-device-detail/);
+  assert.match(tokenPanel, /useHydrated/);
+  assert.match(tokenPanel, /formatRelativeCompact\(token\.lastUsedAt, hydrated\)/);
+  assert.match(tokenPanel, /if \(!hydrated\) return formatDate\(value\)/);
   assert.match(tokenPanel, /Revoke access/);
   assert.doesNotMatch(tokenPanel, /className="mt-/);
   assert.doesNotMatch(tokenPanel, /className="[^"]* mt-/);

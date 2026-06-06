@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { LaptopMinimal, Plus } from "lucide-react";
 import { CountBadge } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
+import { useHydrated } from "@/components/ThemeToggle";
 
 export type AgentTokenListItem = {
   id: string;
@@ -83,6 +84,7 @@ export function AgentTokenPanel({
   const [status, setStatus] = useState("");
   const [showAllTokens, setShowAllTokens] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const hydrated = useHydrated();
 
   // Create dialog state
   const [createOpen, setCreateOpen] = useState(false);
@@ -248,6 +250,7 @@ export function AgentTokenPanel({
           <TokenRow
             key={token.id}
             token={token}
+            hydrated={hydrated}
             isPending={isPending}
             onRevoke={() => openRevokeDialog(token)}
           />
@@ -412,7 +415,8 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function formatRelativeCompact(value: string) {
+function formatRelativeCompact(value: string, hydrated: boolean) {
+  if (!hydrated) return formatDate(value);
   const ms = Date.now() - Date.parse(value);
   if (!Number.isFinite(ms) || ms < 0) {
     return new Intl.DateTimeFormat("en-US", {
@@ -434,20 +438,22 @@ function formatRelativeCompact(value: string) {
 }
 
 function TokenRow({
+  hydrated,
   token,
   isPending,
   onRevoke,
 }: {
+  hydrated: boolean;
   token: AgentTokenListItem;
   isPending: boolean;
   onRevoke: () => void;
 }) {
   const machineLabel = token.lastUsedAt ? describeMachine(token) : token.name;
   const statusLabel = token.revokedAt
-    ? `Revoked ${formatRelativeCompact(token.revokedAt)}`
+    ? `Revoked ${formatRelativeCompact(token.revokedAt, hydrated)}`
     : token.lastUsedAt
-      ? `Last connected ${formatRelativeCompact(token.lastUsedAt)}`
-      : `Created ${formatRelativeCompact(token.createdAt)} · Not connected yet`;
+      ? `Last connected ${formatRelativeCompact(token.lastUsedAt, hydrated)}`
+      : `Created ${formatRelativeCompact(token.createdAt, hydrated)} · Not connected yet`;
 
   return (
     <div className={`fb-token-row${token.revokedAt ? " fb-row--revoked" : ""}`}>

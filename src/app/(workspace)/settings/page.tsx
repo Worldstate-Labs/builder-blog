@@ -78,6 +78,10 @@ async function SourceTypeConfigSection({
               value={sourceConfigs.length}
             />
           </span>
+          <span className="settings-rules-toggle-icon" aria-hidden="true">
+            <span className="settings-rules-toggle-icon-closed">+</span>
+            <span className="settings-rules-toggle-icon-open">-</span>
+          </span>
         </summary>
         <div className="settings-rules-body">
           {isAdmin ? (
@@ -122,6 +126,10 @@ async function SourceTypeConfigSection({
               label={DIGEST_PROMPT_COUNT === 1 ? "prompt" : "prompts"}
               value={DIGEST_PROMPT_COUNT}
             />
+          </span>
+          <span className="settings-rules-toggle-icon" aria-hidden="true">
+            <span className="settings-rules-toggle-icon-closed">+</span>
+            <span className="settings-rules-toggle-icon-open">-</span>
           </span>
         </summary>
         <div className="settings-rules-body">

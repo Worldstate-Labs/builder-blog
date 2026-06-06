@@ -7538,16 +7538,28 @@ a.fb-hub-source-name:focus-visible {
   justify-self: end;
 }
 
-.settings-rules-summary::after {
+.settings-rules-toggle-icon,
+.source-type-config-toggle-icon {
+  align-items: center;
   color: var(--accent);
-  content: "+";
+  display: inline-flex;
   font-size: 0.95rem;
   font-weight: 850;
+  justify-content: center;
   line-height: 1;
+  min-width: 1rem;
 }
 
-.settings-rules-panel[open] .settings-rules-summary::after {
-  content: "-";
+.settings-rules-toggle-icon-open,
+.settings-rules-panel[open] .settings-rules-toggle-icon-closed,
+.source-type-config-toggle-icon-open,
+.source-type-config-card[open] .source-type-config-toggle-icon-closed {
+  display: none;
+}
+
+.settings-rules-panel[open] .settings-rules-toggle-icon-open,
+.source-type-config-card[open] .source-type-config-toggle-icon-open {
+  display: inline;
 }
 
 .settings-rules-body {
@@ -7624,16 +7636,10 @@ a.fb-hub-source-name:focus-visible {
   display: none;
 }
 
-.source-type-config-summary::after {
+.source-type-config-toggle-icon {
   color: var(--muted);
-  content: "+";
   font-size: 0.9375rem;
   font-weight: 750;
-  line-height: 1;
-}
-
-.source-type-config-card[open] .source-type-config-summary::after {
-  content: "-";
 }
 
 .source-type-config-header {

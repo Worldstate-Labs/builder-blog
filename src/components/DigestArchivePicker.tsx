@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { CountMeta } from "@/components/Count";
+import { useHydrated } from "@/components/ThemeToggle";
 
 export type DigestArchivePickerOption = {
   id: string;
@@ -24,6 +25,7 @@ export function DigestArchivePicker({
   selectedPipelineId: string;
 }) {
   const [open, setOpen] = useState(false);
+  const hydrated = useHydrated();
   const pickerRef = useRef<HTMLDetailsElement>(null);
   const selectedDigest = digests.find((digest) => digest.id === selectedDigestId) ?? digests[0];
 
@@ -50,7 +52,11 @@ export function DigestArchivePicker({
         }}
       >
         <span className="sr-only">Digest history</span>
-        <DigestPickerItem digest={selectedDigest} isLatest={selectedDigest.id === latestDigestId} />
+        <DigestPickerItem
+          digest={selectedDigest}
+          hydrated={hydrated}
+          isLatest={selectedDigest.id === latestDigestId}
+        />
       </summary>
       <div className="digest-picker-menu" role="listbox" aria-label="Digest archive">
         {digests.map((digest) => {
@@ -68,7 +74,11 @@ export function DigestArchivePicker({
               }}
               role="option"
             >
-              <DigestPickerItem digest={digest} isLatest={digest.id === latestDigestId} />
+              <DigestPickerItem
+                digest={digest}
+                hydrated={hydrated}
+                isLatest={digest.id === latestDigestId}
+              />
             </Link>
           );
         })}
@@ -79,14 +89,16 @@ export function DigestArchivePicker({
 
 function DigestPickerItem({
   digest,
+  hydrated,
   isLatest,
 }: {
   digest: DigestArchivePickerOption;
+  hydrated: boolean;
   isLatest: boolean;
 }) {
   return (
     <span className="digest-picker-item">
-      <span className="digest-picker-date">{formatDigestPickerDate(digest.createdAt)}</span>
+      <span className="digest-picker-date">{formatDigestPickerDate(digest.createdAt, hydrated)}</span>
       <CountMeta label={digest.itemCount === 1 ? "item" : "items"} value={digest.itemCount} />
       {isLatest ? <span className="digest-latest-mark">Latest</span> : null}
     </span>
@@ -107,12 +119,23 @@ function digestHref({
   return `/dashboard?${params.toString()}`;
 }
 
-function formatDigestPickerDate(value: string) {
+function formatDigestPickerDate(value: string, hydrated: boolean) {
+  if (hydrated) {
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(value));
+  }
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short",
   }).format(new Date(value));
 }
