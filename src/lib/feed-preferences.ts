@@ -2,6 +2,9 @@ import { type UserFeedPreference } from "@prisma/client";
 
 export const DEFAULT_DIGEST_MAX_POST_AGE_DAYS = 30;
 export const MAX_DIGEST_MAX_POST_AGE_DAYS = 90;
+export const DIGEST_CANDIDATES_PER_ELAPSED_DAY = 20;
+export const MIN_DIGEST_CANDIDATE_LIMIT = 20;
+export const MAX_DIGEST_CANDIDATE_LIMIT = 100;
 
 export type DigestWindowPreference = Pick<
   UserFeedPreference,
@@ -28,6 +31,23 @@ export function digestMaxAgeCutoff(
   const days = digestMaxPostAgeDays(preference);
   if (days === null) return null;
   return new Date(now.getTime() - days * dayMs);
+}
+
+export function digestCandidateLimitForLastRun(
+  now: Date,
+  lastRunAt?: Date | string | null,
+): number {
+  if (!lastRunAt) return MIN_DIGEST_CANDIDATE_LIMIT;
+  const previous = typeof lastRunAt === "string" ? new Date(lastRunAt) : lastRunAt;
+  const elapsedMs = now.getTime() - previous.getTime();
+  if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) {
+    return MIN_DIGEST_CANDIDATE_LIMIT;
+  }
+  const elapsedDays = Math.ceil(elapsedMs / dayMs);
+  return Math.min(
+    MAX_DIGEST_CANDIDATE_LIMIT,
+    Math.max(MIN_DIGEST_CANDIDATE_LIMIT, elapsedDays * DIGEST_CANDIDATES_PER_ELAPSED_DAY),
+  );
 }
 
 function clampWholeDays(

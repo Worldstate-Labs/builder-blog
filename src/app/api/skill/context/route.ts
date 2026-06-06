@@ -10,6 +10,7 @@ import { SOURCE_DEFINITIONS } from "@/lib/source-registry";
 import { projectBuildersToEntities } from "@/lib/builder-entities";
 import { fetchDedupedFeedForEntities } from "@/lib/builder-channel-resolver";
 import {
+  digestCandidateLimitForLastRun,
   digestMaxAgeCutoff,
   digestMaxPostAgeDays,
 } from "@/lib/feed-preferences";
@@ -195,16 +196,19 @@ export async function GET(request: Request) {
   // Digest candidates: deduped across channels of the subscribed entities,
   // excluding posts this user has already had digested — unless `regenerate`
   // (the override toggle), which re-includes already-digested posts so the user
-  // can rebuild today's digest. Capped at 80; the cap self-drains because only
+  // can rebuild today's digest. Candidate limit scales with days since the
+  // previous successfully synced digest: 20 per elapsed day, clamped to 20-100. The cap
+  // self-drains because only
   // the returned rows get marked digested at sync, leaving the rest for later.
   // Digest-only: the subscribed-entity candidate pool. Skipped for a library
   // fetch, which never reads `items`.
+  const digestCandidateLimit = digestCandidateLimitForLastRun(now, lastDigest?.createdAt);
   const items = isDigest
     ? await fetchDedupedFeedForEntities({
         userId: user.id,
         entityIds: subscribedEntityIds,
         publishedAfter: lookbackCutoff,
-        limit: 80,
+        limit: digestCandidateLimit,
         excludeDigestedForUserId: regenerate ? null : user.id,
       })
     : [];
@@ -317,6 +321,7 @@ export async function GET(request: Request) {
       lookbackCutoff: lookbackCutoff?.toISOString() ?? null,
       maxPostAgeDays: digestMaxPostAgeDays(preference),
       lastDigestGeneratedAt: lastDigest?.createdAt.toISOString() ?? null,
+      candidateLimit: digestCandidateLimit,
       regenerate,
       selectionRule:
         "include every subscribed-entity post the user has not yet had digested within the configured lookback window; regenerate=true re-includes already-digested posts",

@@ -11,6 +11,7 @@ import {
 } from "../src/lib/builder-keys";
 import { DEFAULT_DIGEST_PROMPTS } from "../src/lib/digest-prompts";
 import {
+  digestCandidateLimitForLastRun,
   digestMaxAgeCutoff,
   digestMaxPostAgeDays,
 } from "../src/lib/feed-preferences";
@@ -1131,11 +1132,19 @@ test("digest feed user path selects not-yet-digested posts within the configured
   assert.equal(digestMaxPostAgeDays(defaultWindow), 30);
   assert.equal(digestMaxAgeCutoff(now, defaultWindow)?.toISOString(), "2026-04-23T12:00:00.000Z");
   assert.equal(digestMaxPostAgeDays({ digestMaxPostAgeDays: 365 }), 90);
+  assert.equal(digestCandidateLimitForLastRun(now, null), 20);
+  assert.equal(digestCandidateLimitForLastRun(now, "2026-05-23T11:59:59.000Z"), 20);
+  assert.equal(digestCandidateLimitForLastRun(now, "2026-05-21T23:59:59.000Z"), 40);
+  assert.equal(digestCandidateLimitForLastRun(now, "2026-05-10T12:00:00.000Z"), 100);
 
   // Candidate selection is gated by the per-user DigestedItem marker, not a
   // time window. Override (regenerate) re-includes already-digested posts.
   const contextRoute = readFileSync("src/app/api/skill/context/route.ts", "utf8");
   assert.match(contextRoute, /publishedAfter: lookbackCutoff/);
+  assert.match(contextRoute, /digestCandidateLimitForLastRun\(now, lastDigest\?\.createdAt\)/);
+  assert.match(contextRoute, /limit: digestCandidateLimit/);
+  assert.doesNotMatch(contextRoute, /limit: 80/);
+  assert.match(contextRoute, /candidateLimit: digestCandidateLimit/);
   assert.match(contextRoute, /excludeDigestedForUserId: regenerate \? null : user\.id/);
   assert.doesNotMatch(contextRoute, /newly fetched items created after the last digest/);
   assert.match(contextRoute, /regenerate/);
