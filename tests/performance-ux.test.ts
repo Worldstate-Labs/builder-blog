@@ -147,6 +147,10 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /fb-public-nav-actions/);
   assert.match(landingPage, /fb-product-preview-head/);
   assert.match(landingPage, /fb-product-preview-title-row/);
+  assert.match(landingPage, /fb-product-demo/);
+  assert.match(landingPage, /fb-demo-sources/);
+  assert.match(landingPage, /fb-demo-card/);
+  assert.match(landingPage, /fb-demo-search/);
   assert.match(landingPage, /fb-product-preview-list/);
   assert.match(landingPage, /fb-signal-copy/);
   assert.match(landingPage, /fb-signal-title/);
@@ -170,6 +174,13 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(landingPage, /className="grid gap/);
   assert.doesNotMatch(landingPage, /className="mt-/);
   assert.doesNotMatch(landingPage, /className="rounded-lg border/);
+  assert.match(landingPage, /GitHub Trending/);
+  assert.match(landingPage, /Product Hunt/);
+  assert.match(landingPage, /sources your Local Agent can access/);
+  assert.match(landingPage, /Daily updates become one brief/);
+  assert.match(landingPage, /Search and revisit/);
+  assert.doesNotMatch(landingPage, /Context windows became product infrastructure/);
+  assert.doesNotMatch(landingPage, /Private sources belong in the brief/);
   assert.match(loginPage, /fb-login-shell/);
   assert.match(loginPage, /fb-login-intro/);
   assert.match(loginPage, /fb-login-title/);
@@ -206,6 +217,9 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /\.fb-public-nav,[\s\S]*\.fb-public-section\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
   assert.match(globals, /\.fb-public-hero\s*{[\s\S]*grid-template-columns:/);
   assert.match(globals, /\.fb-product-preview-head\s*{[\s\S]*border-bottom:\s*1px solid var\(--line\)/);
+  assert.match(globals, /\.fb-product-demo\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.fb-demo-pulse\s*{[\s\S]*animation:\s*fb-demo-pulse/);
+  assert.match(globals, /@keyframes fb-demo-pulse/);
   assert.match(globals, /\.fb-public-workspace\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*0\.9fr\) minmax\(0,\s*1\.1fr\)/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-public-feature-grid\s*{[\s\S]*grid-template-columns:\s*1fr/);
   assert.match(globals, /\.fb-login-nav\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);

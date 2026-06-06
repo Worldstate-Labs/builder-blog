@@ -30,8 +30,9 @@ export default async function Home() {
             Keep up with people<br />and sources you follow.
           </h1>
           <p className="fb-public-copy">
-            Follow creators, newsletters, channels, feeds, and private sources,
-            then turn their updates into cited AI briefs and a searchable archive.
+            Follow blogs, newsletters, channels, feeds, GitHub Trending,
+            Product Hunt, and sources your Local Agent can access. FollowBrief
+            turns updates into cited AI digests and keeps them searchable.
           </p>
           <div className="fb-public-actions">
             <Link className="fb-btn dark" href="/login">
@@ -50,14 +51,14 @@ export default async function Home() {
           </div>
         </div>
 
-        <div className="fb-hero-panel" aria-label="FollowBrief product preview">
+        <div className="fb-hero-panel" aria-label="FollowBrief product demo">
           <div className="fb-product-preview-head">
             <div className="fb-product-preview-title-row">
               <BrandMark />
               <div>
-                <div className="fb-product-preview-title">Today&apos;s digest</div>
+                <div className="fb-product-preview-title">Daily brief flow</div>
                 <div className="fb-product-preview-kicker">
-                  Preview
+                  Demo
                 </div>
               </div>
             </div>
@@ -66,22 +67,47 @@ export default async function Home() {
               Sample
             </span>
           </div>
+          <div className="fb-product-demo" aria-hidden="true">
+            <div className="fb-demo-sources">
+              {["GitHub Trending", "Product Hunt", "YouTube", "Blogs"].map((source) => (
+                <span className="fb-demo-source" key={source}>
+                  {source}
+                </span>
+              ))}
+            </div>
+            <div className="fb-demo-rail">
+              <span className="fb-demo-pulse" />
+            </div>
+            <div className="fb-demo-card">
+              <div className="fb-demo-card-head">
+                <span>AI digest</span>
+                <span>cited</span>
+              </div>
+              <div className="fb-demo-line is-strong" />
+              <div className="fb-demo-line" />
+              <div className="fb-demo-line is-short" />
+            </div>
+            <div className="fb-demo-search">
+              <Search aria-hidden="true" />
+              <span>Search digest history</span>
+            </div>
+          </div>
           <div className="fb-product-preview-list">
             {[
               {
-                title: "Context windows became product infrastructure.",
+                title: "Daily updates become one brief.",
                 detail:
-                  "Launch notes, essays, podcasts, and pricing shifts grouped into one readable brief.",
+                  "New posts, videos, launches, and trending projects are grouped into a readable digest.",
               },
               {
-                title: "Private sources belong in the brief.",
+                title: "Your sources stay connected.",
                 detail:
-                  "Personal feeds can carry paid newsletters, YouTube transcripts, and private source notes.",
+                  "Start from shared libraries, then add sources that matter to your own workflow.",
               },
               {
-                title: "Search is the memory layer.",
+                title: "Search after the read.",
                 detail:
-                  "Digests, summarized items, and followed sources stay queryable after the daily read is done.",
+                  "Find past digests, summarized items, and followed sources when you need the detail later.",
               },
             ].map((item) => (
               <article className="fb-signal" key={item.title}>
@@ -114,19 +140,19 @@ export default async function Home() {
               i: "01",
               icon: UsersRound,
               title: "Choose sources",
-              copy: "Start from shared libraries, then add people, publications, and private sources your local helper can reach.",
+              copy: "Start from shared libraries, then add blogs, channels, feeds, GitHub Trending, Product Hunt, and Local Agent sources.",
             },
             {
               i: "02",
               icon: Terminal,
               title: "Generate briefs",
-              copy: "Use a local helper to summarize followed sources and save the digest.",
+              copy: "Build a cited AI digest from followed sources and save it to your archive.",
             },
             {
               i: "03",
               icon: Archive,
-              title: "Keep memory",
-              copy: "Browse today, open the items behind each brief, and search the full archive when a detail matters later.",
+              title: "Search and revisit",
+              copy: "Open the original items behind each summary and search your digest history later.",
             },
           ].map(({ i, icon: Icon, title, copy }) => (
             <li key={title} className="fb-public-step-row">
