@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 export type DigestPipelineSelectorOption = {
   id: string;
@@ -51,9 +52,7 @@ export function DigestPipelineSelector({
         }}
       >
         <span className="min-w-0 truncate">{selectedPipeline.title}</span>
-        <span aria-hidden="true" className="text-[0.7rem] text-[var(--muted)]">
-          v
-        </span>
+        <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[var(--muted)]" />
       </summary>
       <div className="absolute left-0 right-0 z-20 mt-2 grid gap-1 rounded-[8px] border border-[var(--line)] bg-[var(--paper)] p-1 shadow-[var(--shadow-pop)]">
         {options.map((pipeline) => {

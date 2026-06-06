@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { useHydrated } from "@/components/ThemeToggle";
 
@@ -57,6 +58,7 @@ export function DigestArchivePicker({
           hydrated={hydrated}
           isLatest={selectedDigest.id === latestDigestId}
         />
+        <ChevronDown aria-hidden="true" className="digest-picker-icon" />
       </summary>
       <div className="digest-picker-menu" role="listbox" aria-label="Digest archive">
         {digests.map((digest) => {

@@ -414,6 +414,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   const searchForm = source("src/components/SearchForm.tsx");
   const digestDetails = source("src/components/DigestDetails.tsx");
   const digestArchivePicker = source("src/components/DigestArchivePicker.tsx");
+  const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
   const recommendationsPage = source("src/app/(workspace)/recommendations/page.tsx");
   const globals = source("src/app/globals.css");
 
@@ -468,6 +469,11 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /aria-label="Digest selection"/);
   assert.match(dashboardPage, /<DigestPipelineSelector/);
   assert.match(dashboardPage, /<DigestArchivePicker/);
+  assert.match(digestPipelineSelector, /ChevronDown/);
+  assert.doesNotMatch(digestPipelineSelector, />\s*v\s*<\/span>/);
+  assert.match(digestArchivePicker, /ChevronDown/);
+  assert.match(digestArchivePicker, /className="digest-picker-icon"/);
+  assert.doesNotMatch(globals, /\.digest-picker-summary::after[\s\S]*content:\s*"▾"/);
   assert.doesNotMatch(dashboardPage, /digest-source-pill fb-btn compact/);
   assert.match(dashboardPage, /@\/components\/EmptyState/);
   assert.match(dashboardPage, /<EmptyState[\s\S]*className="ai-digest-empty"/);
@@ -1089,6 +1095,8 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(digestArchivePicker, /useHydrated/);
   assert.match(digestArchivePicker, /formatDigestPickerDate\(digest\.createdAt, hydrated\)/);
   assert.match(digestArchivePicker, /timeZone:\s*"UTC"/);
+  assert.match(globals, /\.digest-picker-icon\s*{/);
+  assert.match(globals, /\.digest-picker\[open\] \.digest-picker-icon\s*{[\s\S]*transform:\s*rotate\(180deg\)/);
   assert.match(historyPage, /redirect\("\/dashboard\?tab=ai-digest"\)/);
   assert.doesNotMatch(historyPage, /AppShell/);
   assert.match(digestDetails, /"use client"/);
