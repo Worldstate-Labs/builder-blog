@@ -420,6 +420,26 @@ export async function findAdminCommunityDigestPipeline() {
   });
 }
 
+async function findOrCreateAdminCommunityDigestPipeline() {
+  const existing = await findAdminCommunityDigestPipeline();
+  if (existing) return existing;
+
+  const admin = await prisma.user.findFirst({
+    where: { email: { in: adminEmails() } },
+    select: { id: true, name: true, email: true },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!admin) return null;
+
+  return shareDigestPipelineToHub({
+    userId: admin.id,
+    name: admin.name,
+    email: admin.email,
+    title: adminCommunityDigestTitle,
+    description: adminCommunityDigestDescription,
+  });
+}
+
 export async function ensureDefaultCommunityDigestImport(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -427,7 +447,7 @@ export async function ensureDefaultCommunityDigestImport(userId: string) {
   });
   if (!user || isAdminEmail(user.email)) return { imported: false };
 
-  const pipeline = await findAdminCommunityDigestPipeline();
+  const pipeline = await findOrCreateAdminCommunityDigestPipeline();
   if (!pipeline || pipeline.ownerUserId === userId) return { imported: false };
 
   const existingImport = await prisma.digestPipelineImport.findUnique({

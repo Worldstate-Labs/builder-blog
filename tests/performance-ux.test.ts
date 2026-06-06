@@ -2130,6 +2130,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(source("src/lib/library-hub.ts"), /adminCommunityDigestTitle = "Community Digest"/);
   assert.match(source("src/lib/library-hub.ts"), /ensureDefaultCommunityDigestImport/);
   assert.match(source("src/lib/library-hub.ts"), /findAdminCommunityDigestPipeline/);
+  assert.match(source("src/lib/library-hub.ts"), /findOrCreateAdminCommunityDigestPipeline/);
   assert.match(source("src/lib/library-hub.ts"), /isAdminCommunityDigestOwner/);
   assert.match(source("src/lib/library-hub.ts"), /displayDigestPipelineTitleForOwner/);
   assert.match(source("src/lib/library-hub.ts"), /digestPipelineOwnerLabel/);
