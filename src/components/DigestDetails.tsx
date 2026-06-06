@@ -21,6 +21,7 @@ type DigestLoadState = {
   content: string | null;
   isOpen: boolean;
   key: string;
+  originalSummariesByUrl: Record<string, string>;
   status: "idle" | "loading" | "loaded" | "error";
 };
 
@@ -48,6 +49,7 @@ export function DigestDetails({
       content: null,
       isOpen: defaultOpen,
       key: stateKey,
+      originalSummariesByUrl: {},
       status: initialStatus,
     }),
     [defaultOpen, initialStatus, stateKey],
@@ -55,6 +57,7 @@ export function DigestDetails({
   const [digestState, setDigestState] = useState<DigestLoadState>(initialState);
   const currentState = digestState.key === stateKey ? digestState : initialState;
   const { content, isOpen, status } = currentState;
+  const originalSummariesByUrl = currentState.originalSummariesByUrl;
   const headerHeadline = resolveHeadlineSummary(digest.headlineSummary, content, status);
 
   const updateDigestState = useCallback((
@@ -76,6 +79,7 @@ export function DigestDetails({
       updateDigestState((current) => ({
         ...current,
         content: String(body.content ?? ""),
+        originalSummariesByUrl: cleanOriginalSummaries(body.originalSummariesByUrl),
         status: "loaded",
       }));
     } catch {
@@ -110,7 +114,13 @@ export function DigestDetails({
           ) : null}
         </div>
         <div className="fb-digest-body">
-          <DigestBody content={content} sourceLinks={sourceLinks} status={status} variant="today" />
+          <DigestBody
+            content={content}
+            originalSummariesByUrl={originalSummariesByUrl}
+            sourceLinks={sourceLinks}
+            status={status}
+            variant="today"
+          />
         </div>
       </article>
     );
@@ -144,7 +154,12 @@ export function DigestDetails({
             Read
           </span>
         </summary>
-        <DigestBody content={content} sourceLinks={sourceLinks} status={status} />
+        <DigestBody
+          content={content}
+          originalSummariesByUrl={originalSummariesByUrl}
+          sourceLinks={sourceLinks}
+          status={status}
+        />
       </details>
     </article>
   );
@@ -152,11 +167,13 @@ export function DigestDetails({
 
 function DigestBody({
   content,
+  originalSummariesByUrl,
   sourceLinks,
   status,
   variant = "archive",
 }: {
   content: string | null;
+  originalSummariesByUrl: Record<string, string>;
   sourceLinks: DigestSourceLink[];
   status: "idle" | "loading" | "loaded" | "error";
   variant?: "today" | "archive";
@@ -212,6 +229,7 @@ function DigestBody({
     return (
       <DigestContent
         content={content ?? ""}
+        originalSummariesByUrl={originalSummariesByUrl}
         showContents={false}
         showSectionCounts
         sourceLinks={sourceLinks}
@@ -221,7 +239,12 @@ function DigestBody({
   }
   return (
     <div className="item-details">
-      <DigestContent content={content ?? ""} sourceLinks={sourceLinks} tone="paper" />
+      <DigestContent
+        content={content ?? ""}
+        originalSummariesByUrl={originalSummariesByUrl}
+        sourceLinks={sourceLinks}
+        tone="paper"
+      />
     </div>
   );
 }
@@ -271,6 +294,14 @@ function resolveHeadlineSummary(
   if (stored) return stored;
   if (status !== "loaded" || !content?.trim()) return null;
   return digestPreviewFromContent(content);
+}
+
+function cleanOriginalSummaries(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const entries = Object.entries(value as Record<string, unknown>)
+    .map(([url, summary]) => [url, typeof summary === "string" ? summary.trim() : ""] as const)
+    .filter(([url, summary]) => url.length > 0 && summary.length > 0);
+  return Object.fromEntries(entries);
 }
 
 function formatDateTime(value: string, hydrated: boolean) {

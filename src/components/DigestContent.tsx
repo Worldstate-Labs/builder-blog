@@ -35,12 +35,14 @@ export type DigestSourceLink = {
 // paper archive.
 export function DigestContent({
   content,
+  originalSummariesByUrl = {},
   showContents = true,
   showSectionCounts = true,
   sourceLinks = [],
   tone = "paper",
 }: {
   content: string;
+  originalSummariesByUrl?: Record<string, string>;
   showContents?: boolean;
   showSectionCounts?: boolean;
   sourceLinks?: DigestSourceLink[];
@@ -98,6 +100,7 @@ export function DigestContent({
           section={section}
           collapsible={false}
           showCount={showSectionCounts}
+          originalSummariesByUrl={originalSummariesByUrl}
           sourceType={sectionSourceTypes.get(section.id) ?? "website"}
           sourceLookup={sourceLookup}
         />
@@ -113,12 +116,14 @@ function wrapClass(tone: "paper" | "dark"): string {
 function SectionBlock({
   section,
   collapsible,
+  originalSummariesByUrl,
   showCount,
   sourceType,
   sourceLookup,
 }: {
   section: DigestSection;
   collapsible: boolean;
+  originalSummariesByUrl: Record<string, string>;
   showCount: boolean;
   sourceType: string;
   sourceLookup: Map<string, DigestSourceLink>;
@@ -148,6 +153,7 @@ function SectionBlock({
               section={section}
               sectionSourceType={sectionSourceType}
               sourceLink={group.source ? sourceLinkForSource(group.source, sourceLookup) : undefined}
+              originalSummariesByUrl={originalSummariesByUrl}
             />
           ))}
         </div>
@@ -191,12 +197,14 @@ function PostBlock({
   section,
   sectionSourceType,
   sourceLink,
+  originalSummariesByUrl,
 }: {
   group: DigestGroup;
   post: DigestPost;
   section: DigestSection;
   sectionSourceType: string;
   sourceLink?: DigestSourceLink;
+  originalSummariesByUrl: Record<string, string>;
 }) {
   const summary = [post.lede, ...post.paragraphs]
     .filter((nodes): nodes is DigestInline[] => Boolean(nodes))
@@ -205,11 +213,13 @@ function PostBlock({
     .trim();
   const sourceType = normalizeSourceType(sourceLink?.sourceType) || sectionSourceType;
   const url = post.media[0]?.url ?? sourceLink?.sourceUrl ?? sourceLink?.fetchUrl ?? "#";
+  const originalSummary = originalSummariesByUrl[url] ?? null;
   const postCard: PostCardPost = {
     id: `digest-${section.id}-${post.id}`,
     title: post.title,
     body: summary,
     summary,
+    originalSummary,
     url,
     publishedAt: null,
     createdAt: new Date(0).toISOString(),

@@ -1297,6 +1297,32 @@ svg.lucide {
   white-space: pre-wrap;
 }
 
+.fetched-post-original-summary {
+  background: color-mix(in oklch, var(--paper) 82%, var(--accent-soft));
+  border: 1px solid color-mix(in oklch, var(--line) 86%, transparent);
+  border-radius: 8px;
+  color: var(--muted-strong);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  margin-top: 0.75rem;
+  padding: 0.72rem 0.8rem;
+}
+
+.fetched-post-original-summary-label {
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+}
+
+.fetched-post-original-summary p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
 .fetched-post-actions {
   align-items: flex-start;
   display: flex;

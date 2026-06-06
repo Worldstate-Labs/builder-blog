@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
-import { ExternalLink, FileText } from "lucide-react";
+import { ExternalLink, FileText, ScrollText } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { SourceBadge } from "@/components/SourceBadge";
 import { FetchMethodPopover } from "@/components/FetchMethodPopover";
@@ -24,6 +24,7 @@ export type PostCardPost = {
   title: string | null;
   body: string;
   summary?: string | null;
+  originalSummary?: string | null;
   url: string;
   publishedAt: string | null;
   createdAt: string;
@@ -76,11 +77,13 @@ export function PostCard({
   variant?: "card" | "row" | "detail";
 }) {
   const [summaryExpanded, setSummaryExpanded] = useState(false);
+  const [originalSummaryExpanded, setOriginalSummaryExpanded] = useState(false);
   const [rawExpanded, setRawExpanded] = useState(false);
   const interactionSentRef = useRef(false);
   const builder = post.builder ?? fallbackBuilder ?? null;
   const isDetail = variant === "detail";
   const summary = normalizedText(post.summary) || normalizedText(post.body);
+  const originalSummary = normalizedText(post.originalSummary);
   const summaryPreview = previewWords(summary, 200);
   const hasMoreSummary = summaryPreview !== summary;
   const title = post.title || firstLine(post.body);
@@ -258,6 +261,22 @@ export function PostCard({
               </>
             ) : null}
 
+            {originalSummary ? (
+              <button
+                aria-label="View original summary"
+                aria-expanded={originalSummaryExpanded}
+                className={`post-action-btn${originalSummaryExpanded ? " post-action-btn--active" : ""}`}
+                onClick={() => {
+                  setOriginalSummaryExpanded((v) => !v);
+                  if (!originalSummaryExpanded) noteInteraction();
+                }}
+                title="View original summary"
+                type="button"
+              >
+                <ScrollText className="h-4 w-4" />
+              </button>
+            ) : null}
+
             {/* 4. Recommendation reasons (only when present) */}
             {reasons && reasons.length > 0 ? (
               <RecommendationReasonsPopover reasons={reasons} />
@@ -266,6 +285,14 @@ export function PostCard({
             {extraActions}
           </div>
         </div>
+
+        {/* Original fetch-time summary. Digest summaries may be translated or compressed. */}
+        {originalSummaryExpanded && originalSummary ? (
+          <div className="fetched-post-original-summary" role="region" aria-label="Original summary">
+            <div className="fetched-post-original-summary-label">Original summary</div>
+            <p>{originalSummary}</p>
+          </div>
+        ) : null}
 
         {/* Raw content collapsible region */}
         {rawExpanded ? (

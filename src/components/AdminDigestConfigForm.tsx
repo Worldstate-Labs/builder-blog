@@ -36,6 +36,7 @@ const PER_SOURCE_SUMMARY_PROMPT_PLACEHOLDER = [
 const TRANSLATE_PROMPT_PLACEHOLDER = [
   "Example:",
   "Rewrite or translate the supplied per-post summary into context.language.",
+  "Keep Chinese output under 300 Chinese characters. For word-delimited languages, keep it under 300 words. Preserve the original summary's key claims, names, numbers, URLs, and source attribution.",
   "",
   "Do not write headlineSummary or source-level summaries. Keep product names, people, companies, URLs, and common AI terms in English when professionals normally use them that way.",
 ].join("\n");
@@ -139,7 +140,7 @@ export function AdminDigestConfigForm({
         </FieldBlock>
         <FieldBlock
           label="Translate prompt"
-          description="Only rewrites or translates existing per-post summaries."
+          description="Rewrites or translates existing per-post summaries, then compresses them without dropping key points."
         >
           <MarkdownEditor
             ariaLabel="Translate prompt"

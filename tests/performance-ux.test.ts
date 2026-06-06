@@ -289,6 +289,7 @@ test("settings live in the clickable user avatar menu", () => {
   const settingsFields = source("src/components/settings/SettingsFields.tsx");
   const markdownEditor = source("src/components/settings/MarkdownEditor.tsx");
   const commonRulesForm = source("src/components/CommonSummaryRulesForm.tsx");
+  const digestPrompts = source("src/lib/digest-prompts.ts");
 
   assert.doesNotMatch(appShell, /label: "Agent"/);
   assert.doesNotMatch(appNav, /"key"/);
@@ -338,10 +339,17 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /headlinePrompt/);
   assert.match(adminDigestConfig, /perSourceSummaryPrompt/);
   assert.match(adminDigestConfig, /label="Per-source summary prompt"[\s\S]*optional/);
+  assert.match(adminDigestConfig, /under 300 Chinese characters/);
+  assert.match(adminDigestConfig, /under 300 words/);
+  assert.match(adminDigestConfig, /Preserve the original summary's key claims/);
   assert.doesNotMatch(adminDigestConfig, /OrderedChoiceField/);
   assert.doesNotMatch(adminDigestConfig, /settings-field-label mb-1/);
   assert.doesNotMatch(adminDigestConfig, /style=\{\{/);
   assert.match(adminDigestConfig, /TRANSLATE_PROMPT_PLACEHOLDER/);
+  assert.match(digestPrompts, /no more than 300 Chinese characters/);
+  assert.match(digestPrompts, /300 words or fewer/);
+  assert.match(digestPrompts, /Preserve the original[\s\S]*important points/);
+  assert.match(digestPrompts, /Compress wording, not meaning/);
   assert.match(adminSourceTypeManager, /@\/components\/settings\/SettingsFields/);
   assert.match(adminSourceTypeManager, /FETCH_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /SUMMARY_PROMPT_PLACEHOLDER/);
@@ -937,6 +945,8 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(globals, /\.digest-loading-chip\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.digest-load-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(digestDetails, /digestPreviewFromContent/);
+  assert.match(digestDetails, /originalSummariesByUrl/);
+  assert.match(digestDetails, /cleanOriginalSummaries/);
   assert.match(digestDetails, /isLatest/);
   assert.match(digestDetails, /showContents=\{false\}/);
   assert.match(source("src/app/globals.css"), /digest-picker/);
@@ -944,6 +954,10 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(source("src/app/globals.css"), /digest-section-summary-static/);
   assert.match(source("src/app/globals.css"), /item-headline-preview/);
   assert.match(digestRoute, /headlineSummary/);
+  assert.match(digestRoute, /parseDigest/);
+  assert.match(digestRoute, /originalSummariesByUrl/);
+  assert.match(digestRoute, /digestedItem\.findMany/);
+  assert.match(digestRoute, /feedItem:\s*{[\s\S]*is:\s*{/);
   assert.match(dashboardPage, /DigestPipelineSelector/);
   assert.match(dashboardPage, /DigestArchivePicker/);
   assert.match(dashboardPage, /serializeDigestArchiveOption/);
@@ -1756,6 +1770,8 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(digestContent, /digest-group-source-avatar/);
   assert.match(digestContent, /sourceLinkForSource/);
   assert.match(digestContent, /PostCard/);
+  assert.match(digestContent, /originalSummariesByUrl/);
+  assert.match(digestContent, /originalSummary/);
   assert.match(digestContent, /showBuilderRow=\{false\}/);
   assert.match(digestContent, /showDebugActions=\{false\}/);
   assert.match(digestContent, /showSourceBadge=\{false\}/);
@@ -1766,7 +1782,11 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(dashboardPage, /sourceType:\s*builder\.sourceType/);
   assert.match(dashboardPage, /sourceLinks=\{sourceLinks\}/);
   assert.match(postCard, /showSourceBadge = true/);
+  assert.match(postCard, /ScrollText/);
+  assert.match(postCard, /aria-label="View original summary"/);
+  assert.match(postCard, /fetched-post-original-summary/);
   assert.match(globals, /\.digest-group-heading/);
+  assert.match(globals, /\.fetched-post-original-summary p\s*{[\s\S]*white-space:\s*pre-wrap/);
   assert.match(globals, /\.digest-group\s*{[\s\S]*border:\s*1px solid/);
   assert.match(globals, /\.digest-group\s*{[\s\S]*border-radius:\s*10px/);
   assert.doesNotMatch(globals, /\.digest-group\s*{[\s\S]*border-left:/);

@@ -241,14 +241,20 @@ Use \`context.language\`. The input contains one source and that source's candid
 Do not summarize every post again. Do not add facts beyond the supplied post summaries and metadata.`,
   translate: `# Translation Prompt
 
-You are rewriting or translating an already-written per-post summary into the
-target language given by context.language.
+You are rewriting, translating, and compressing an already-written per-post
+summary into the target language given by context.language.
 
 ## Instructions
 
-- Render only the supplied per-post summary into natural, fluent prose in the
-  target language. It must read as if originally written in that language, not
+- Render only the supplied per-post summary into natural, fluent prose in
+  context.language. It must read as if originally written in that language, not
   translated.
+- Keep the output to no more than 300 Chinese characters when context.language
+  is Chinese. For word-delimited languages, keep it to 300 words or fewer.
+  Preserve the original per-post summary's important points, concrete facts,
+  names, numbers, URLs, and source attribution.
+- Compress wording, not meaning. Do not drop a key claim just to make the copy
+  shorter unless it is repetitive or low-signal.
 - Do not write headlineSummary.
 - Do not write source-level summaries.
 - Do not change digest structure or add section headings.
