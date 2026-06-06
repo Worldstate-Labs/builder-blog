@@ -36,8 +36,12 @@ import {
   adminCommunityLibraryDescription,
   adminCommunityLibraryName,
   digestPipelineTitle,
+  digestPipelineOwnerLabel,
   displayDigestPipelineTitle,
+  displayDigestPipelineTitleForOwner,
   ensureAdminCommunityLibrary,
+  ensureAdminCommunityDigestPipeline,
+  ensureDefaultCommunityDigestImport,
   recordDigestPipelineHubViews,
   sharePersonalLibraryToHub,
 } from "@/lib/library-hub";
@@ -172,6 +176,11 @@ function DigestSourcesFallback() {
 async function loadDigestSourcesPageData() {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
+  if (isAdminEmail(session.user.email)) {
+    await ensureAdminCommunityDigestPipeline(session.user.id, session.user.email);
+  } else {
+    await ensureDefaultCommunityDigestImport(session.user.id);
+  }
 
   const [
     rawTokens,
@@ -268,12 +277,13 @@ async function loadDigestSourcesPageData() {
         digestMetadataByOwnerId.get(pipeline.ownerUserId) ?? emptyDigestPipelineMetadata();
       return {
         id: pipeline.id,
-        title: displayDigestPipelineTitle(pipeline.title || digestPipelineTitle(owner)),
+        title: displayDigestPipelineTitleForOwner(
+          pipeline.title || digestPipelineTitle(owner),
+          owner,
+        ),
         description: pipeline.description,
         ownerUserId: pipeline.ownerUserId,
-        ownerLabel: owned
-          ? "Shared by you."
-          : `Shared by ${owner.name || owner.email || "a FollowBrief user"}.`,
+        ownerLabel: digestPipelineOwnerLabel(owner, { owned }),
         importCount: pipeline.importCount,
         viewCount: pipeline.viewCount,
         ...metadata,
@@ -304,6 +314,11 @@ async function loadBuildersPageData() {
   if (!session?.user?.id) redirect("/login");
   const isAdmin = isAdminEmail(session.user.email);
   await ensureDefaultCommunityLibraryImport(session.user.id);
+  if (isAdmin) {
+    await ensureAdminCommunityDigestPipeline(session.user.id, session.user.email);
+  } else {
+    await ensureDefaultCommunityDigestImport(session.user.id);
+  }
 
   const [
     poolEntries,
@@ -430,21 +445,27 @@ async function loadBuildersPageData() {
     )
     .map((entry) => entry.builder)
     .sort(builderSort);
-  const importedLibrarySections = importedLibraries.map((libraryImport) => ({
-    id: libraryImport.hubEntryId,
-    name: libraryImport.hubEntry.name,
-    description: libraryImport.hubEntry.description,
-    ownerName:
-      libraryImport.hubEntry.owner?.name ||
-      libraryImport.hubEntry.owner?.email ||
-      "FollowBrief",
-    builders: libraryImport.hubEntry.items
-      .flatMap((item) => {
-        const entry = activeEntryByBuilderId.get(item.builderId);
-        return entry ? [entry.builder] : [];
-      })
-      .sort(builderSort),
-  }));
+  const importedLibrarySections = importedLibraries.map((libraryImport) => {
+    const isCommunityLibrary =
+      libraryImport.hubEntry.isFeatured ||
+      isAdminEmail(libraryImport.hubEntry.owner?.email);
+    return {
+      id: libraryImport.hubEntryId,
+      name: isCommunityLibrary ? adminCommunityLibraryName : libraryImport.hubEntry.name,
+      description: libraryImport.hubEntry.description,
+      ownerName: isCommunityLibrary
+        ? "FollowBrief community"
+        : libraryImport.hubEntry.owner?.name ||
+          libraryImport.hubEntry.owner?.email ||
+          "FollowBrief",
+      builders: libraryImport.hubEntry.items
+        .flatMap((item) => {
+          const entry = activeEntryByBuilderId.get(item.builderId);
+          return entry ? [entry.builder] : [];
+        })
+        .sort(builderSort),
+    };
+  });
   const subscribedCount = poolBuilders.filter((builder) => subscribed.has(builder.id)).length;
   const fetchedItems = poolBuilders.reduce(
     (count, builder) => count + builder._count.feedItems,

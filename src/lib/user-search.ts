@@ -1,6 +1,9 @@
 import type { Prisma } from "@prisma/client";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
-import { displayDigestPipelineTitle } from "@/lib/library-hub";
+import {
+  displayDigestPipelineTitleForOwner,
+  ensureDefaultCommunityDigestImport,
+} from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 import { builderSourceLabel } from "@/lib/source-registry";
 import {
@@ -63,6 +66,7 @@ export async function searchUserLibrary({
   const hasCandidateTerms = terms.length > 0;
   const typeFilter = parsedQuery.type;
   const poolBuilderIds = await activePoolBuilderIds(userId);
+  await ensureDefaultCommunityDigestImport(userId);
   const importedDigestPipelines =
     typeFilter && typeFilter !== "digest"
       ? []
@@ -74,6 +78,7 @@ export async function searchUserLibrary({
                 id: true,
                 title: true,
                 ownerUserId: true,
+                owner: { select: { name: true, email: true } },
               },
             },
           },
@@ -166,7 +171,10 @@ export async function searchUserLibrary({
           ? `/dashboard?tab=ai-digest&pipeline=${pipeline.id}#${digest.id}`
           : `/dashboard?tab=ai-digest#${digest.id}`,
         sourceName: pipeline
-          ? `${displayDigestPipelineTitle(pipeline.title)} · ${digest.itemCount} items · ${digest.language}`
+          ? `${displayDigestPipelineTitleForOwner(
+              pipeline.title,
+              pipeline.owner,
+            )} · ${digest.itemCount} items · ${digest.language}`
           : `${digest.itemCount} items · ${digest.language}`,
         date: digest.createdAt,
       };

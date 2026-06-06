@@ -16,7 +16,12 @@ import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { digestMaxPostAgeDays } from "@/lib/feed-preferences";
-import { displayDigestPipelineTitle } from "@/lib/library-hub";
+import {
+  digestPipelineOwnerLabel,
+  displayDigestPipelineTitle,
+  displayDigestPipelineTitleForOwner,
+  ensureDefaultCommunityDigestImport,
+} from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 
 const digestPickerSize = 100;
@@ -60,6 +65,7 @@ export default async function DashboardPage({
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
   const isAdmin = isAdminEmail(session.user.email);
+  await ensureDefaultCommunityDigestImport(userId);
   const params = await searchParams;
   const requestedTab = firstParam(params.tab);
   if (requestedTab === "subscription") redirect("/dashboard?tab=following");
@@ -134,8 +140,8 @@ async function AiDigestFeedSlot({
     },
     ...importedDigestPipelines.map(({ pipeline }) => ({
       id: pipeline.id,
-      title: displayDigestPipelineTitle(pipeline.title),
-      ownerLabel: `Imported from ${pipeline.owner.name || pipeline.owner.email || "a FollowBrief user"}`,
+      title: displayDigestPipelineTitleForOwner(pipeline.title, pipeline.owner),
+      ownerLabel: digestPipelineOwnerLabel(pipeline.owner),
       ownerUserId: pipeline.ownerUserId,
       isOwnPipeline: false,
     })),

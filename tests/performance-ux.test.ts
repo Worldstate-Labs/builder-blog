@@ -550,7 +550,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /className="builder-detail-avatar"/);
   assert.match(builderDetailPage, /className="builder-detail-title-stack"/);
   assert.match(builderDetailPage, /className="builder-detail-title-row"/);
-  assert.match(builderDetailPage, /<SourceBadge sourceType=\{headerSourceType\} \/>/);
+  assert.match(builderDetailPage, /<SourceBadge[\s\S]*sourceType=\{headerSourceType\}[\s\S]*suppressLabelWhen=\{entity\.name\}/);
   assert.doesNotMatch(builderDetailPage, /source-kind-meta fb-kind-pill/);
   assert.match(builderDetailPage, /className="builder-detail-host source-host-meta mono truncate"/);
   assert.match(builderDetailPage, /headerHostLabel \? \([\s\S]*className="source-count-dot source-meta-dot"/);
@@ -1957,6 +1957,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(hubPage, /sharePersonalLibraryToHubAction/);
   assert.doesNotMatch(hubPage, /importHubLibrariesAction/);
   assert.match(hubPage, /ensureDefaultCommunityLibraryImport\(session\.user\.id\)/);
+  assert.match(hubPage, /ensureDefaultCommunityDigestImport\(session\.user\.id\)/);
   assert.match(hubPage, /LibraryHubImportForm/);
   assert.match(hubPage, /DigestPipelineImportForm/);
   assert.match(hubPage, /fb-hub-list/);
@@ -1968,10 +1969,16 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /library\.isFeatured/);
   assert.match(hubPage, /isAdminEmail\(library\.owner\?\.email\)/);
   assert.match(hubPage, /ownerLabel\(library\.owner, isCommunityLibrary\)/);
+  assert.match(hubPage, /displayDigestPipelineTitleForOwner/);
+  assert.match(hubPage, /digestPipelineOwnerLabel\(owner, \{ owned \}\)/);
   assert.match(hubPage, /recordLibraryHubViews\(libraries\.map/);
   assert.match(digestPipelineForm, /DigestPipelineTitleEditor/);
   assert.match(buildersPage, /ownPipelineShare\?\.title/);
   assert.match(buildersPage, /ownPipelineShare\?\.isPublic === true/);
+  assert.match(buildersPage, /ensureDefaultCommunityDigestImport\(session\.user\.id\)/);
+  assert.match(buildersPage, /ensureAdminCommunityDigestPipeline\(session\.user\.id, session\.user\.email\)/);
+  assert.match(buildersPage, /displayDigestPipelineTitleForOwner/);
+  assert.match(buildersPage, /digestPipelineOwnerLabel\(owner, \{ owned \}\)/);
   assert.match(hubImportForm, /"use client"/);
   assert.match(hubImportForm, /fb-hub-list/);
   assert.match(hubImportForm, /fb-hub-title/);
@@ -2120,6 +2127,12 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(source("src/lib/library-hub.ts"), /removeDigestPipelineImportFromHub/);
   assert.match(source("src/lib/library-hub.ts"), /digestPipelineTitle/);
   assert.match(source("src/lib/library-hub.ts"), /displayDigestPipelineTitle/);
+  assert.match(source("src/lib/library-hub.ts"), /adminCommunityDigestTitle = "Community Digest"/);
+  assert.match(source("src/lib/library-hub.ts"), /ensureDefaultCommunityDigestImport/);
+  assert.match(source("src/lib/library-hub.ts"), /findAdminCommunityDigestPipeline/);
+  assert.match(source("src/lib/library-hub.ts"), /isAdminCommunityDigestOwner/);
+  assert.match(source("src/lib/library-hub.ts"), /displayDigestPipelineTitleForOwner/);
+  assert.match(source("src/lib/library-hub.ts"), /digestPipelineOwnerLabel/);
   assert.match(source("src/lib/library-hub.ts"), /\$\{identity\}'s AI Digest/);
   assert.doesNotMatch(source("src/lib/library-hub.ts"), /\$\{identity\}'s AI Builder Digest/);
   assert.match(builderPool, /ensureDefaultCommunityLibraryImport/);

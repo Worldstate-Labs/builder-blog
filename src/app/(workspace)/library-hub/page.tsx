@@ -16,7 +16,10 @@ import {
 import {
   adminCommunityLibraryName,
   digestPipelineTitle,
-  displayDigestPipelineTitle,
+  digestPipelineOwnerLabel,
+  displayDigestPipelineTitleForOwner,
+  ensureAdminCommunityDigestPipeline,
+  ensureDefaultCommunityDigestImport,
   recordDigestPipelineHubViews,
   recordLibraryHubViews,
 } from "@/lib/library-hub";
@@ -69,6 +72,11 @@ async function loadLibraryHubPageData() {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
   await ensureDefaultCommunityLibraryImport(session.user.id);
+  if (isAdminEmail(session.user.email)) {
+    await ensureAdminCommunityDigestPipeline(session.user.id, session.user.email);
+  } else {
+    await ensureDefaultCommunityDigestImport(session.user.id);
+  }
 
   const [libraries, imports, digestPipelineShares, digestPipelineImports] = await Promise.all([
     prisma.libraryHubEntry.findMany({
@@ -167,12 +175,13 @@ async function loadLibraryHubPageData() {
         digestMetadataByOwnerId.get(pipeline.ownerUserId) ?? emptyDigestPipelineMetadata();
       return {
         id: pipeline.id,
-        title: displayDigestPipelineTitle(pipeline.title || digestPipelineTitle(owner)),
+        title: displayDigestPipelineTitleForOwner(
+          pipeline.title || digestPipelineTitle(owner),
+          owner,
+        ),
         description: pipeline.description,
         ownerUserId: pipeline.ownerUserId,
-        ownerLabel: owned
-          ? "Shared by you."
-          : `Shared by ${owner.name || owner.email || "a FollowBrief user"}.`,
+        ownerLabel: digestPipelineOwnerLabel(owner, { owned }),
         importCount: pipeline.importCount,
         viewCount: pipeline.viewCount,
         ...metadata,

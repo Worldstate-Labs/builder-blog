@@ -219,12 +219,14 @@ test("personal YouTube sync cannot create a duplicate builder through handle met
   );
 });
 
-test("non-admin users default-import the admin community library", () => {
+test("non-admin users default-import the admin community library and digest", () => {
   const builderPool = readFileSync("src/lib/builder-pool.ts", "utf8");
   const buildersPage = readFileSync("src/app/(workspace)/builders/page.tsx", "utf8");
+  const dashboardPage = readFileSync("src/app/(workspace)/dashboard/page.tsx", "utf8");
   const hubPage = readFileSync("src/app/(workspace)/library-hub/page.tsx", "utf8");
   const hubImportRoute = readFileSync("src/app/api/library-hub/imports/route.ts", "utf8");
   const libraryHub = readFileSync("src/lib/library-hub.ts", "utf8");
+  const userSearch = readFileSync("src/lib/user-search.ts", "utf8");
 
   assert.match(builderPool, /activePoolBuilderIds/);
   assert.match(builderPool, /ensureDefaultCommunityLibraryImport\(userId\)/);
@@ -240,7 +242,16 @@ test("non-admin users default-import the admin community library", () => {
   assert.match(libraryHub, /setLibraryHidden/);
   assert.match(hubImportRoute, /export async function DELETE/);
   assert.match(buildersPage, /ensureDefaultCommunityLibraryImport\(session\.user\.id\)/);
+  assert.match(buildersPage, /ensureDefaultCommunityDigestImport\(session\.user\.id\)/);
   assert.match(hubPage, /ensureDefaultCommunityLibraryImport\(session\.user\.id\)/);
+  assert.match(hubPage, /ensureDefaultCommunityDigestImport\(session\.user\.id\)/);
+  assert.match(dashboardPage, /ensureDefaultCommunityDigestImport\(userId\)/);
+  assert.match(userSearch, /ensureDefaultCommunityDigestImport\(userId\)/);
+  assert.match(libraryHub, /adminCommunityDigestTitle = "Community Digest"/);
+  assert.match(libraryHub, /findAdminCommunityDigestPipeline/);
+  assert.match(libraryHub, /ensureDefaultCommunityDigestImport/);
+  assert.match(libraryHub, /digestPipelineOwnerLabel/);
+  assert.match(libraryHub, /displayDigestPipelineTitleForOwner/);
 });
 
 test("personal builder removal deletes its fetched feed items instead of preserving fetch state", () => {
@@ -1392,7 +1403,8 @@ test("search user path includes imported digest pipeline digests", () => {
   assert.match(userSearch, /digestOwnerToPipeline/);
   assert.match(userSearch, /userId:\s*\{\s*in:\s*digestOwnerIds\s*\}/);
   assert.match(userSearch, /pipeline=\$\{pipeline\.id\}#\$\{digest\.id\}/);
-  assert.match(userSearch, /displayDigestPipelineTitle\(pipeline\.title\)/);
+  assert.match(userSearch, /owner:\s*\{\s*select:\s*\{\s*name:\s*true,\s*email:\s*true\s*\}\s*\}/);
+  assert.match(userSearch, /displayDigestPipelineTitleForOwner\(/);
 });
 
 test("search user path supports wildcard terms inside quoted phrases", () => {

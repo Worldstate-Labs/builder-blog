@@ -1,5 +1,5 @@
 import { BuilderPoolOrigin } from "@prisma/client";
-import { isAdminEmail } from "@/lib/admin";
+import { adminEmails, isAdminEmail } from "@/lib/admin";
 import { addBuilderToPool } from "@/lib/builder-pool";
 import {
   computeEntityReachabilityAfterRemoval,
@@ -10,6 +10,9 @@ import { prisma } from "@/lib/prisma";
 export const adminCommunityLibraryName = "Community Library";
 export const adminCommunityLibraryDescription =
   "Community source library curated by FollowBrief.";
+export const adminCommunityDigestTitle = "Community Digest";
+export const adminCommunityDigestDescription =
+  "Community AI digest curated by FollowBrief.";
 
 export function digestPipelineTitle(owner: {
   name?: string | null;
@@ -21,6 +24,27 @@ export function digestPipelineTitle(owner: {
 
 export function displayDigestPipelineTitle(title: string) {
   return title.replace(/'s AI Builder Digest$/, "'s AI Digest");
+}
+
+export function isAdminCommunityDigestOwner(owner: { email?: string | null } | null | undefined) {
+  return isAdminEmail(owner?.email);
+}
+
+export function displayDigestPipelineTitleForOwner(
+  title: string | null | undefined,
+  owner: { name?: string | null; email?: string | null } | null | undefined,
+) {
+  if (isAdminCommunityDigestOwner(owner)) return adminCommunityDigestTitle;
+  return displayDigestPipelineTitle(title || digestPipelineTitle(owner ?? {}));
+}
+
+export function digestPipelineOwnerLabel(
+  owner: { name?: string | null; email?: string | null } | null | undefined,
+  { owned = false }: { owned?: boolean } = {},
+) {
+  if (owned) return "Shared by you.";
+  if (isAdminCommunityDigestOwner(owner)) return adminCommunityDigestTitle;
+  return `Shared by ${owner?.name || owner?.email || "a FollowBrief user"}.`;
 }
 
 export function digestPipelineSlug(userId: string) {
@@ -283,27 +307,44 @@ export async function shareDigestPipelineToHub(params: {
   name?: string | null;
   email?: string | null;
 }) {
+  const isCommunityDigest = isAdminEmail(params.email);
   const existing = await prisma.digestPipelineShare.findUnique({
     where: { ownerUserId: params.userId },
     select: { title: true },
   });
-  const title = params.title?.trim() || existing?.title || digestPipelineTitle(params);
+  const title = isCommunityDigest
+    ? adminCommunityDigestTitle
+    : params.title?.trim() || existing?.title || digestPipelineTitle(params);
+  const description = isCommunityDigest
+    ? params.description?.trim() || adminCommunityDigestDescription
+    : params.description?.trim() || null;
 
   return prisma.digestPipelineShare.upsert({
     where: { ownerUserId: params.userId },
     update: {
       title,
-      description: params.description?.trim() || null,
+      description,
       isPublic: true,
     },
     create: {
       ownerUserId: params.userId,
       slug: digestPipelineSlug(params.userId),
       title,
-      description: params.description?.trim() || null,
+      description,
       isPublic: true,
     },
   });
+}
+
+export async function ensureAdminCommunityDigestPipeline(userId: string, email?: string | null) {
+  if (!isAdminEmail(email)) return { isPublic: false };
+  const pipeline = await shareDigestPipelineToHub({
+    userId,
+    email,
+    title: adminCommunityDigestTitle,
+    description: adminCommunityDigestDescription,
+  });
+  return { isPublic: pipeline.isPublic };
 }
 
 export async function unshareDigestPipelineFromHub(userId: string) {
@@ -363,6 +404,48 @@ export async function importDigestPipelineFromHub(params: {
       where: { id: pipeline.id },
       data: { importCount: { increment: 1 } },
     });
+    return { imported: true };
+  } catch {
+    return { imported: false };
+  }
+}
+
+export async function findAdminCommunityDigestPipeline() {
+  return prisma.digestPipelineShare.findFirst({
+    where: {
+      isPublic: true,
+      owner: { email: { in: adminEmails() } },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+}
+
+export async function ensureDefaultCommunityDigestImport(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  if (!user || isAdminEmail(user.email)) return { imported: false };
+
+  const pipeline = await findAdminCommunityDigestPipeline();
+  if (!pipeline || pipeline.ownerUserId === userId) return { imported: false };
+
+  const existingImport = await prisma.digestPipelineImport.findUnique({
+    where: { userId_pipelineId: { userId, pipelineId: pipeline.id } },
+    select: { userId: true },
+  });
+  if (existingImport) return { imported: false };
+
+  try {
+    await prisma.$transaction([
+      prisma.digestPipelineImport.create({
+        data: { userId, pipelineId: pipeline.id },
+      }),
+      prisma.digestPipelineShare.update({
+        where: { id: pipeline.id },
+        data: { importCount: { increment: 1 } },
+      }),
+    ]);
     return { imported: true };
   } catch {
     return { imported: false };

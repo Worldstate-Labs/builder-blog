@@ -158,7 +158,10 @@ export default async function BuilderDetailPage({ params }: Params) {
               <div className="builder-detail-title-row">
                 <h1 className="fb-title">{entity.name}</h1>
                 {headerSourceType ? (
-                  <SourceBadge sourceType={headerSourceType} />
+                  <SourceBadge
+                    sourceType={headerSourceType}
+                    suppressLabelWhen={entity.name}
+                  />
                 ) : null}
               </div>
               <div className="fb-src-meta">
