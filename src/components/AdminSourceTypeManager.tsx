@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import {
   clampRatio,
@@ -240,8 +240,7 @@ function SourceTypeCard({
       <summary className="source-type-config-summary">
         <CardHeader config={config} dirty={dirty} />
         <span className="source-type-config-toggle-icon" aria-hidden="true">
-          <span className="source-type-config-toggle-icon-closed">+</span>
-          <span className="source-type-config-toggle-icon-open">-</span>
+          <ChevronDown className="source-type-config-toggle-svg" />
         </span>
       </summary>
 

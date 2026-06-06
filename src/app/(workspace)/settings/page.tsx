@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import { Suspense } from "react";
 import { AdminDigestConfigForm } from "@/components/AdminDigestConfigForm";
 import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
@@ -79,8 +80,7 @@ async function SourceTypeConfigSection({
             />
           </span>
           <span className="settings-rules-toggle-icon" aria-hidden="true">
-            <span className="settings-rules-toggle-icon-closed">+</span>
-            <span className="settings-rules-toggle-icon-open">-</span>
+            <ChevronDown className="settings-rules-toggle-svg" />
           </span>
         </summary>
         <div className="settings-rules-body">
@@ -128,8 +128,7 @@ async function SourceTypeConfigSection({
             />
           </span>
           <span className="settings-rules-toggle-icon" aria-hidden="true">
-            <span className="settings-rules-toggle-icon-closed">+</span>
-            <span className="settings-rules-toggle-icon-open">-</span>
+            <ChevronDown className="settings-rules-toggle-svg" />
           </span>
         </summary>
         <div className="settings-rules-body">

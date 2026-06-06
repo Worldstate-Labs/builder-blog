@@ -1772,7 +1772,14 @@ svg.lucide {
 }
 
 .inline-disclosure > summary::after {
-  content: "+";
+  border-bottom: 1.8px solid currentcolor;
+  border-right: 1.8px solid currentcolor;
+  content: "";
+  height: 0.45rem;
+  margin-top: 0.15rem;
+  transform: rotate(45deg);
+  transition: transform 140ms ease;
+  width: 0.45rem;
 }
 
 .inline-disclosure[open] > summary {
@@ -1780,7 +1787,7 @@ svg.lucide {
 }
 
 .inline-disclosure[open] > summary::after {
-  content: "-";
+  transform: rotate(225deg);
 }
 
 .builder-row {
@@ -7299,13 +7306,19 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .builder-detail-channels-summary::after {
+  border-bottom: 1.8px solid currentcolor;
+  border-right: 1.8px solid currentcolor;
   color: var(--accent);
-  content: "+";
-  font-weight: 850;
+  content: "";
+  height: 0.45rem;
+  margin-top: 0.15rem;
+  transform: rotate(45deg);
+  transition: transform 140ms ease;
+  width: 0.45rem;
 }
 
 .builder-detail-channels[open] .builder-detail-channels-summary::after {
-  content: "-";
+  transform: rotate(225deg);
 }
 
 .builder-detail-page-head {
@@ -7545,23 +7558,21 @@ a.fb-hub-source-name:focus-visible {
   align-items: center;
   color: var(--accent);
   display: inline-flex;
-  font-size: 0.95rem;
-  font-weight: 850;
   justify-content: center;
   line-height: 1;
   min-width: 1rem;
 }
 
-.settings-rules-toggle-icon-open,
-.settings-rules-panel[open] .settings-rules-toggle-icon-closed,
-.source-type-config-toggle-icon-open,
-.source-type-config-card[open] .source-type-config-toggle-icon-closed {
-  display: none;
+.settings-rules-toggle-svg,
+.source-type-config-toggle-svg {
+  height: 1rem;
+  transition: transform 140ms ease;
+  width: 1rem;
 }
 
-.settings-rules-panel[open] .settings-rules-toggle-icon-open,
-.source-type-config-card[open] .source-type-config-toggle-icon-open {
-  display: inline;
+.settings-rules-panel[open] .settings-rules-toggle-svg,
+.source-type-config-card[open] .source-type-config-toggle-svg {
+  transform: rotate(180deg);
 }
 
 .settings-rules-body {
