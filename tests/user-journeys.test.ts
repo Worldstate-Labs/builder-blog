@@ -949,6 +949,17 @@ test("web app serves the agent skill and setup command", () => {
   assert.equal(skill.includes("node scripts/builder-digest.mjs"), false);
 });
 
+test("vercel migration wrapper retries Prisma advisory lock timeouts", () => {
+  const migrate = readFileSync("scripts/vercel-migrate.mjs", "utf8");
+  assert.match(migrate, /"p1002"/);
+  assert.doesNotMatch(migrate, /"P1002"/);
+  assert.match(migrate, /ADVISORY_LOCK_MARKERS/);
+  assert.match(migrate, /timed out trying to acquire a postgres advisory lock/);
+  assert.match(migrate, /select pg_advisory_lock/);
+  assert.match(migrate, /VERCEL_MIGRATE_MAX_ATTEMPTS/);
+  assert.match(migrate, /Retrying \$\{attempt \+ 1\}\/\$\{MAX_ATTEMPTS\}/);
+});
+
 test("digest sync user path defaults optional fields and rejects empty content", () => {
   const parsed = parseSkillDigestPayload({
     title: "Personal YouTube Builder Digest",

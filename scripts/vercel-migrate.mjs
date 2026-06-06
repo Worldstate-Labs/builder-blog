@@ -16,8 +16,8 @@ import { spawnSync } from "node:child_process";
 // than "a migration itself failed". Matched case-insensitively against
 // combined stdout+stderr.
 const CONNECTIVITY_MARKERS = [
-  "P1001", // Can't reach database server
-  "P1002", // Database server reached but timed out
+  "p1001", // Can't reach database server
+  "p1002", // Database server reached but timed out
   "can't reach database server",
   "planlimitreached",
   "account has restrictions",
@@ -27,22 +27,47 @@ const CONNECTIVITY_MARKERS = [
   "getaddrinfo",
 ];
 
-const result = spawnSync(
-  "npx",
-  ["prisma", "migrate", "deploy"],
-  { encoding: "utf8", shell: false },
-);
+const ADVISORY_LOCK_MARKERS = [
+  "timed out trying to acquire a postgres advisory lock",
+  "select pg_advisory_lock",
+];
 
-const stdout = result.stdout ?? "";
-const stderr = result.stderr ?? "";
-process.stdout.write(stdout);
-process.stderr.write(stderr);
+const MAX_ATTEMPTS = positiveInt(process.env.VERCEL_MIGRATE_MAX_ATTEMPTS, 6);
+const RETRY_DELAY_MS = positiveInt(process.env.VERCEL_MIGRATE_RETRY_DELAY_MS, 5000);
 
-if (result.status === 0) {
-  process.exit(0);
+let result;
+let stdout = "";
+let stderr = "";
+let haystack = "";
+
+for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+  result = spawnSync(
+    "npx",
+    ["prisma", "migrate", "deploy"],
+    { encoding: "utf8", shell: false },
+  );
+
+  stdout = result.stdout ?? "";
+  stderr = result.stderr ?? "";
+  process.stdout.write(stdout);
+  process.stderr.write(stderr);
+
+  if (result.status === 0) {
+    process.exit(0);
+  }
+
+  haystack = `${stdout}\n${stderr}`.toLowerCase();
+  const isAdvisoryLockTimeout = ADVISORY_LOCK_MARKERS.some((m) => haystack.includes(m));
+  if (!isAdvisoryLockTimeout || attempt === MAX_ATTEMPTS) break;
+
+  console.warn(
+    `\n[vercel-migrate] WARNING: Prisma migrate is waiting on another ` +
+      `migration lock. Retrying ${attempt + 1}/${MAX_ATTEMPTS} in ` +
+      `${RETRY_DELAY_MS}ms.\n`,
+  );
+  sleep(RETRY_DELAY_MS);
 }
 
-const haystack = `${stdout}\n${stderr}`.toLowerCase();
 const isConnectivity = CONNECTIVITY_MARKERS.some((m) => haystack.includes(m));
 
 if (isConnectivity) {
@@ -61,4 +86,13 @@ console.error(
     "non-connectivity reason (see output above). Failing the build so the " +
     "problem is not shipped silently.\n",
 );
-process.exit(result.status ?? 1);
+process.exit(result?.status ?? 1);
+
+function positiveInt(value, fallback) {
+  const numeric = Number(value);
+  return Number.isInteger(numeric) && numeric > 0 ? numeric : fallback;
+}
+
+function sleep(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
