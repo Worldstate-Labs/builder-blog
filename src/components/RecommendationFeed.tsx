@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, RefreshCcw, Star } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { PostCard } from "@/components/PostCard";
+import { useHydrated } from "@/components/ThemeToggle";
 import { markPostRead } from "@/lib/mark-read";
 
 export type RecommendationFeedEntry = {
@@ -52,6 +53,7 @@ export function RecommendationFeed({
   showAdminActions?: boolean;
 }) {
   const [snapshots, setSnapshots] = useState(initialSnapshots);
+  const hydrated = useHydrated();
   const [loadingDirection, setLoadingDirection] = useState<"append" | "prepend" | null>(null);
   const loadingGuard = useRef<"append" | "prepend" | null>(null);
   const [exhausted, setExhausted] = useState(initialSnapshots.length === 0);
@@ -168,7 +170,7 @@ export function RecommendationFeed({
           <section className="recommendation-snapshot" key={snapshot.id}>
             <div className="recommendation-snapshot-header">
               <span>Picks</span>
-              <span>{formatDate(snapshot.createdAt)}</span>
+              <span>{formatDate(snapshot.createdAt, hydrated)}</span>
               <CountMeta
                 label={snapshot.items.length === 1 ? "post" : "posts"}
                 value={snapshot.items.length}
@@ -330,7 +332,16 @@ function mergeSnapshots(snapshots: RecommendationSnapshotEntry[]) {
   });
 }
 
-function formatDate(value: string) {
+function formatDate(value: string, hydrated: boolean) {
   if (!value) return "";
-  return new Date(value).toLocaleString();
+  if (hydrated) return new Date(value).toLocaleString();
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZone: "UTC",
+  }).format(new Date(value));
 }

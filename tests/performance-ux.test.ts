@@ -770,6 +770,9 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(recommendationFeed, /className="recommendation-snapshot-list"/);
   assert.match(recommendationFeed, /className="feed-load-more"/);
   assert.match(recommendationFeed, /className="feed-end-note"/);
+  assert.match(recommendationFeed, /useHydrated/);
+  assert.match(recommendationFeed, /formatDate\(snapshot\.createdAt, hydrated\)/);
+  assert.match(recommendationFeed, /timeZone:\s*"UTC"/);
   assert.match(favoritesSection, /@\/components\/FeedState/);
   assert.match(followingSection, /@\/components\/FeedState/);
   assert.match(favoritesSection, /FeedLoadingState/);
@@ -876,9 +879,12 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sources-sync-section \.sync-panel-title-row\s*{[\s\S]*flex-wrap:\s*nowrap/);
   assert.match(globals, /\.source-fetch-overview\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.source-fetch-overview\s*{[\s\S]*width:\s*100%/);
+  assert.match(globals, /\.sources-sync-section \.source-fetch-overview\s*{[\s\S]*grid-template-columns:\s*auto minmax\(0,\s*1fr\)/);
   assert.match(globals, /\.source-fetch-overview \.digest-updates-actions\s*{[\s\S]*justify-content:\s*flex-start/);
+  assert.match(globals, /\.sources-sync-section \.source-fetch-overview \.digest-updates-actions\s*{[\s\S]*align-self:\s*center/);
   assert.match(globals, /\.source-fetch-meta\s*{[\s\S]*margin-top:\s*0/);
   assert.match(globals, /\.source-fetch-status-item dd\s*{[\s\S]*overflow:\s*visible/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.sources-sync-section \.source-fetch-overview\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(globals, /\.sync-panel-title-row\s*{[\s\S]*flex-wrap:\s*wrap/);
   assert.match(globals, /\.sync-panel-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(workspaceAutoRefresh, /visibilitychange/);
@@ -1537,6 +1543,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /beforeBody=\{fetchSyncSection\}/);
   assert.match(buildersPage, /actionsPlacement="start"/);
   assert.match(buildersPage, /title="Your library"/);
+  assert.match(postCard, /useHydrated/);
+  assert.match(postCard, /formatDate\(post\.publishedAt, hydrated\)/);
+  assert.match(postCard, /timeZone:\s*"UTC"/);
   assert.match(buildersPage, /<section className="sources-section-stack">[\s\S]*\{privateSection\}[\s\S]*\{importedSection\}/);
   assert.doesNotMatch(buildersPage, /MobileSourcesSwitcher|privateLabel="Your library"|importedLabel="Imported"/);
   assert.doesNotMatch(builderLibraryList, /function BuilderStats/);
@@ -2279,6 +2288,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /className="settings-dialog-actions"/);
   assert.match(tokenPanel, /className="access-key-device-title"/);
   assert.match(tokenPanel, /className="access-key-device-status"/);
+  assert.doesNotMatch(tokenPanel, /access-key-device-detail/);
   assert.match(tokenPanel, /Revoke access/);
   assert.doesNotMatch(tokenPanel, /className="mt-/);
   assert.doesNotMatch(tokenPanel, /className="[^"]* mt-/);

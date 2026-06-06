@@ -4696,8 +4696,18 @@ svg.lucide {
   width: 100%;
 }
 
+.sources-sync-section .source-fetch-overview {
+  align-items: center;
+  gap: 1rem;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
 .source-fetch-overview .digest-updates-actions {
   justify-content: flex-start;
+}
+
+.sources-sync-section .source-fetch-overview .digest-updates-actions {
+  align-self: center;
 }
 
 .source-fetch-meta {
@@ -8322,12 +8332,6 @@ a.fb-hub-source-name:focus-visible {
   line-height: 1.25;
 }
 
-.access-key-device-detail {
-  color: var(--muted);
-  font-size: 0.75rem;
-  line-height: 1.35;
-}
-
 .access-key-device-icon {
   align-items: center;
   color: var(--ink);
@@ -9431,6 +9435,10 @@ body {
     align-items: flex-start;
     display: grid;
     gap: 0.65rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sources-sync-section .source-fetch-overview {
     grid-template-columns: minmax(0, 1fr);
   }
 

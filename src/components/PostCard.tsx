@@ -8,6 +8,7 @@ import { CountMeta } from "@/components/Count";
 import { SourceBadge } from "@/components/SourceBadge";
 import { FetchMethodPopover } from "@/components/FetchMethodPopover";
 import { RecommendationReasonsPopover } from "@/components/RecommendationReasonsPopover";
+import { useHydrated } from "@/components/ThemeToggle";
 
 type FetchedPostBuilder = {
   id: string;
@@ -79,6 +80,7 @@ export function PostCard({
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [originalSummaryExpanded, setOriginalSummaryExpanded] = useState(false);
   const [rawExpanded, setRawExpanded] = useState(false);
+  const hydrated = useHydrated();
   const interactionSentRef = useRef(false);
   const builder = post.builder ?? fallbackBuilder ?? null;
   const isDetail = variant === "detail";
@@ -213,7 +215,7 @@ export function PostCard({
           {showPublishedDate ? (
             <span className="post-footer-published">
               {post.publishedAt
-                ? `Published ${formatDate(post.publishedAt)}`
+                ? `Published ${formatDate(post.publishedAt, hydrated)}`
                 : "Published date unknown"}
             </span>
           ) : (
@@ -307,8 +309,14 @@ export function PostCard({
 }
 
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString();
+function formatDate(value: string, hydrated: boolean) {
+  if (hydrated) return new Date(value).toLocaleDateString();
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(value));
 }
 
 function firstLine(body: string) {

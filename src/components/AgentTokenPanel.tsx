@@ -448,8 +448,6 @@ function TokenRow({
     : token.lastUsedAt
       ? `Last connected ${formatRelativeCompact(token.lastUsedAt)}`
       : `Created ${formatRelativeCompact(token.createdAt)} · Not connected yet`;
-  const detailLabel =
-    token.lastUsedAt && token.name !== machineLabel ? token.name : null;
 
   return (
     <div className={`fb-token-row${token.revokedAt ? " fb-row--revoked" : ""}`}>
@@ -459,9 +457,6 @@ function TokenRow({
       <div className="access-key-device-copy">
         <div className="access-key-device-title">{machineLabel}</div>
         <div className="access-key-device-status">{statusLabel}</div>
-        {detailLabel ? (
-          <div className="access-key-device-detail">{detailLabel}</div>
-        ) : null}
       </div>
       {token.revokedAt ? (
         <span className="access-key-revoked-pill">Revoked</span>
