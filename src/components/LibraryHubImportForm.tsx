@@ -304,13 +304,13 @@ function HubCard({
       <button
         aria-busy={pending === "remove" && isPending}
         aria-label={`Remove ${library.name} from library`}
-        className="fb-icon-btn fb-icon-btn--xs hub-card-remove-button"
+        className="fb-btn light compact hub-card-remove-button"
         disabled={pending !== null}
         onClick={() => onRemove(library.id)}
-        title={`Remove ${library.name}`}
         type="button"
       >
         <Trash2 aria-hidden="true" />
+        Remove
       </button>
     </>
   ) : (

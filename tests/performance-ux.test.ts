@@ -2008,7 +2008,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(hubImportForm, /importedIds\.has\(library\.id\)\s*\|\|\s*library\.imported/);
   assert.match(hubImportForm, /hub-card-imported-status/);
   assert.match(hubImportForm, /Trash2/);
-  assert.match(hubImportForm, /className="fb-icon-btn fb-icon-btn--xs hub-card-remove-button"/);
+  assert.match(hubImportForm, /className="fb-btn light compact hub-card-remove-button"/);
+  assert.match(hubImportForm, />\s*Remove\s*<\/button>/);
   assert.doesNotMatch(hubImportForm, /Import selected/);
   assert.doesNotMatch(hubImportForm, /selectedIds/);
   assert.match(hubImportForm, /className="fb-segmented-tabs filter-tabs at-desktop"/);
@@ -2086,7 +2087,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /You can import it again from the Hub later/);
   assert.match(digestPipelineForm, /confirmRemoveImported/);
   assert.match(digestPipelineForm, /onClick=\{\(\) => onRemove\(pipeline\.id\)\}/);
-  assert.match(digestPipelineForm, /className="fb-icon-btn fb-icon-btn--xs hub-card-remove-button"/);
+  assert.match(digestPipelineForm, /className="fb-chip hub-card-imported-status"/);
+  assert.match(digestPipelineForm, /className="fb-btn light compact hub-card-remove-button digest-pipeline-remove-button"/);
+  assert.match(digestPipelineForm, />\s*Remove\s*<\/button>/);
   assert.match(digestPipelineForm, /<Trash2 aria-hidden="true" \/>/);
   assert.match(digestPipelineShareRoute, /shareDigestPipelineToHub/);
   assert.match(digestPipelineShareRoute, /updateDigestPipelineTitle/);
