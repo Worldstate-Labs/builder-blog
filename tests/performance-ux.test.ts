@@ -401,6 +401,7 @@ test("settings live in the clickable user avatar menu", () => {
 test("desktop shell uses centered top navigation and merged home feeds", () => {
   const appShell = source("src/components/AppShell.tsx");
   const appNav = source("src/components/AppNav.tsx");
+  const brandMark = source("src/components/BrandMark.tsx");
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const dashboardTabs = source("src/components/DashboardHomeTabs.tsx");
@@ -417,6 +418,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   const globals = source("src/app/globals.css");
 
   assert.match(appShell, /label: "Home"/);
+  assert.match(brandMark, /<span aria-hidden="true" className=\{\`\$\{base\} \$\{className\}`\.trim\(\)\}>/);
+  assert.doesNotMatch(brandMark, /className=\{\`\$\{base\} \$\{className\} aria-hidden="true"`/);
   assert.doesNotMatch(appShell, /label: "Digest"/);
   assert.doesNotMatch(appShell, /label: "For You"/);
   assert.doesNotMatch(appShell, /label: "History"/);

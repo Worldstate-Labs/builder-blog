@@ -7,7 +7,7 @@ export function BrandMark({
 }) {
   const base = size === "dark" ? "fb-dark-mark serif" : "fb-mark serif";
   return (
-    <span className={`${base} ${className}`.trim()} aria-hidden="true">
+    <span aria-hidden="true" className={`${base} ${className}`.trim()}>
       F
     </span>
   );
