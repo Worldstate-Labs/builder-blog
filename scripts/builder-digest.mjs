@@ -2120,7 +2120,10 @@ export function expandCandidateDiscoveryFetchResult(
     const sourceType = task.sourceType;
     const discoveryFallback = CANDIDATE_DISCOVERY_FALLBACK_BY_SOURCE_ID[sourceType];
     const discoveryResult = discoveryByTaskId.get(String(task.id || candidateDiscoveryTaskId(task)));
-    if (!discoveryFallback || discoveryResult?.status !== "ok") continue;
+    if (!discoveryFallback || discoveryResult?.status !== "ok") {
+      expandedTasks.push(task);
+      continue;
+    }
 
     const builderSync = task.builderSync || {};
     const builder = {
@@ -2154,7 +2157,11 @@ export function expandCandidateDiscoveryFetchResult(
         commonSummaryRules,
       ),
     );
-    expandedTasks.push(...fetchTasks);
+    if (fetchTasks.length > 0) {
+      expandedTasks.push(...fetchTasks);
+    } else {
+      expandedTasks.push(task);
+    }
     discoveryExpansions.push({
       fetchTaskId: task.id || candidateDiscoveryTaskId(task),
       sourceType,

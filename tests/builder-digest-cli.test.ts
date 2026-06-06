@@ -351,6 +351,51 @@ test("candidate discovery results expand into Product Hunt per-product fetch tas
   assert.equal(expanded.fetchTasks[0].item.rawJson.discoveryFetchTaskId, discoveryTask.id);
 });
 
+test("blocked candidate discovery stays accountable after expansion", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const discoveryTask = {
+    type: "candidate_discovery",
+    id: "candidate_discovery:builder_product_hunt_top_products:product_hunt_top_products",
+    agentWorkType: "candidate_discovery_fallback",
+    contentStatus: "requires_agent",
+    builder: "Product Hunt Top Products",
+    builderId: "builder_product_hunt_top_products",
+    sourceType: "product_hunt_top_products",
+    builderSync: {
+      builderId: "builder_product_hunt_top_products",
+      kind: "WEBSITE",
+      sourceType: "product_hunt_top_products",
+      name: "Product Hunt Top Products",
+      sourceUrl: "https://www.producthunt.com/",
+      fetchUrl: "https://www.producthunt.com/",
+      subscribe: true,
+    },
+    discovery: {
+      sourceUrl: "https://www.producthunt.com/",
+      limit: 3,
+      date: "2026-06-04",
+    },
+  };
+
+  const expanded = cli.expandCandidateDiscoveryFetchResult(
+    { status: "ok", localErrors: [], fetchTasks: [discoveryTask] },
+    {
+      candidateDiscoveries: [
+        {
+          fetchTaskId: discoveryTask.id,
+          status: "blocked",
+          reason: "product_hunt_discovery_blocked",
+          evidence: { blocker: "Cloudflare challenge" },
+        },
+      ],
+    },
+  );
+
+  assert.equal(expanded.fetchTasks.length, 1);
+  assert.equal(expanded.fetchTasks[0].id, discoveryTask.id);
+  assert.equal(expanded.fetchTasks[0].agentWorkType, "candidate_discovery_fallback");
+});
+
 test("Product Hunt fetcher skips products fetched on earlier leaderboard days", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const builderId = "builder_product_hunt_top_products";

@@ -41,16 +41,20 @@ mv "$TMP_DIR/library-fetch-expanded.json" "$TMP_DIR/library-fetch-result.json"
 
   Continue the rest of this contract against the expanded
   `library-fetch-result.json`. Do not sync discovery tasks directly.
-- If `task.contentStatus="ready"`, the normal fetcher already produced
+- After expansion, only normal `fetch_post` tasks are fetched and summarized.
+  If a `candidate_discovery_fallback` task remains in the expanded file, the
+  discovery did not produce usable candidates; copy that task's blocked/failed
+  discovery result into `taskOutcomes` and do not fetch or summarize it.
+- For normal `fetch_post` tasks with `task.contentStatus="ready"`, the normal fetcher already produced
   `task.item.body`; do not fetch content again. Generate one concise single-post
   `summary` from `task.summaryInstructions.prompt`.
-- If `task.contentStatus="requires_agent"`, first obtain real primary content,
-  then generate one concise single-post `summary` from
-  `task.summaryInstructions.prompt`.
-- `task.summaryInstructions.prompt` is the only prompt source for fetch-task
-  summaries. It already includes the common post-summary rules, source-specific
-  rules, and output language. Do not re-compose it from `context.sources` or
-  other prompt configuration.
+- For normal `fetch_post` tasks with `task.contentStatus="requires_agent"`,
+  first obtain real primary content, then generate one concise single-post
+  `summary` from `task.summaryInstructions.prompt`.
+- `task.summaryInstructions.prompt` is the only prompt source for normal
+  fetch-task summaries. It already includes the common post-summary rules,
+  source-specific rules, and output language. Do not re-compose it from
+  `context.sources` or other prompt configuration.
 
 If the fetch result contains a non-empty `fetchTasks` array, complete exactly
 the task IDs returned by the CLI. Do not add new sources, URLs, or feed items
