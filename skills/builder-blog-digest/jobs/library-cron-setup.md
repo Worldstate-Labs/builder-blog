@@ -55,7 +55,7 @@ crontab -l 2>/dev/null | grep "BUILDER_BLOG_ACCOUNT=\"$ACCT\".*builder-agent-run
 If the result is "(none found)", continue to the next step. If it lists one or
 more existing library fetch jobs for this account, STOP: report exactly what was found, explain
 that continuing replaces this account's library fetch schedule and its pinned
-runtime/fetch settings (jobs for other accounts are left untouched), and ask
+runtime/fetch settings (including fetch days; jobs for other accounts are left untouched), and ask
 the user whether to override. Only continue past this step after the user
 explicitly confirms. If they decline, stop and change nothing.
 
@@ -69,13 +69,15 @@ cron job falls back to the discovery chain, which prompts for permissions every
 run). `fetch-force-library-cron-$ACCOUNT_SLUG` is `1` when the schedule was
 configured to override already-fetched posts and `0` otherwise; the runner
 turns `1` into the `--force` flag so the recurring fetch re-pulls posts already
-in the library.
+in the library. `fetch-days-library-cron-$ACCOUNT_SLUG` pins the selected
+lookback window for this recurring fetch.
 
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
 ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
 printf '{{AGENT_RUNTIME}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-library-cron-$ACCOUNT_SLUG"
 printf '{{FETCH_FORCE}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-force-library-cron-$ACCOUNT_SLUG"
+printf '{{FETCH_DAYS}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-days-library-cron-$ACCOUNT_SLUG"
 ```
 
 5. Verify the runtime CLI is on PATH for the scheduler. Schedulers (launchd and

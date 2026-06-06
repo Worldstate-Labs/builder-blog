@@ -22,7 +22,7 @@ Fetch the digest context and save it:
 TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}"
 mkdir -p "$TMP_DIR"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" prepare --days 1 ${BUILDER_BLOG_DIGEST_REGENERATE:-} \
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" prepare ${BUILDER_BLOG_DIGEST_REGENERATE:-} \
   > "$TMP_DIR/builder-blog-context.json"
 ```
 

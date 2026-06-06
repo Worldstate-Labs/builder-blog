@@ -47,14 +47,15 @@ type CronConfig = {
   runtime: AgentRuntime;
   freq: CronFrequency;
   overrideFetched: boolean;
+  fetchDays: number;
 };
 type SchedulePromptSelection =
-  | { target: "once"; overrideFetched: boolean }
+  | { target: "once"; overrideFetched: boolean; fetchDays: number }
   | { target: "cron"; cron: CronConfig };
 // What a copy carries beyond the exchange code. `cron` is set for the cron
 // flow (its own override lives inside it); `force` is the once flow's override
 // (no runtime/cadence to pick). Either source flips ?force=1.
-type CopyExtras = { cron: CronConfig | null; force: boolean };
+type CopyExtras = { cron: CronConfig | null; force: boolean; fetchDays: number };
 
 const FREQUENCY_CHOICES: { id: ScheduleFrequency; label: string }[] = [
   { id: "once", label: "One-time" },
@@ -80,6 +81,8 @@ const DEFAULT_FREQUENCY: Record<SkillPromptContext, ScheduleFrequency> = {
 // SettingsFields as the single source of truth. "zh" is the default when no
 // one-time or cron prompt has selected another language.
 const DEFAULT_SUMMARY_LANGUAGE = "zh";
+const DEFAULT_PROMPT_WINDOW_DAYS = 30;
+const MAX_PROMPT_WINDOW_DAYS = 90;
 
 // The override toggle reuses one URL channel (?force=1) but means different
 // things per context, so its copy is context-specific. Library: re-fetch posts
@@ -176,29 +179,39 @@ async function persistDigestMaxAge(
   }
 }
 
+function parseWindowDays(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return DEFAULT_PROMPT_WINDOW_DAYS;
+  const numeric = Number(trimmed);
+  if (!Number.isFinite(numeric)) return null;
+  return Math.min(MAX_PROMPT_WINDOW_DAYS, Math.max(1, Math.floor(numeric)));
+}
+
 function MaxAgeField({
   id,
+  label,
   value,
   onChange,
 }: {
   id: string;
+  label: string;
   value: string;
   onChange: (value: string) => void;
 }) {
   return (
     <div className="cron-field">
       <label htmlFor={id} className="cron-field-label">
-        Max post age (days)
+        {label}
       </label>
       <input
         id={id}
         className="cron-field-select"
         type="number"
         min={1}
-        max={365}
+        max={MAX_PROMPT_WINDOW_DAYS}
         step={1}
         inputMode="numeric"
-        placeholder="No limit"
+        placeholder={String(DEFAULT_PROMPT_WINDOW_DAYS)}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -310,6 +323,9 @@ export function SkillPromptActions({
     if (extras.cron?.overrideFetched || extras.force) {
       params.set("force", "1");
     }
+    if (context === "library" && (target === "once" || target === "cron")) {
+      params.set("days", String(extras.fetchDays));
+    }
     const promptUrl = `${origin}/api/skill/jobs/${job}/skill.md?${params.toString()}`;
     return `Read ${promptUrl} and follow the instructions.`;
   }
@@ -345,7 +361,7 @@ export function SkillPromptActions({
   // runtime is held in a closure-captured ref so it survives the
   // dialog round trip.
   async function continueCronCopy(cron: CronConfig) {
-    const extras: CopyExtras = { cron, force: false };
+    const extras: CopyExtras = { cron, force: false, fetchDays: cron.fetchDays };
     if (activeTokens.length === 0) {
       setStatus({ kind: "info", text: "Connect a Local Agent in Settings first" });
       return;
@@ -362,8 +378,8 @@ export function SkillPromptActions({
 
   // Once flow: after the override (+ language) choice, continue to the token picker
   // (or copy directly when there's a single token).
-  async function continueOnceCopy(overrideFetched: boolean) {
-    const extras: CopyExtras = { cron: null, force: overrideFetched };
+  async function continueOnceCopy(overrideFetched: boolean, fetchDays: number) {
+    const extras: CopyExtras = { cron: null, force: overrideFetched, fetchDays };
     if (activeTokens.length === 0) {
       setStatus({ kind: "info", text: "Connect a Local Agent in Settings first" });
       return;
@@ -378,7 +394,7 @@ export function SkillPromptActions({
 
   async function continueScheduleCopy(selection: SchedulePromptSelection) {
     if (selection.target === "once") {
-      await continueOnceCopy(selection.overrideFetched);
+      await continueOnceCopy(selection.overrideFetched, selection.fetchDays);
       return;
     }
     await continueCronCopy(selection.cron);
@@ -399,7 +415,11 @@ export function SkillPromptActions({
       return;
     }
     if (activeTokens.length === 1) {
-      await copyForToken(target, activeTokens[0].id, { cron: null, force: false });
+      await copyForToken(target, activeTokens[0].id, {
+        cron: null,
+        force: false,
+        fetchDays: DEFAULT_PROMPT_WINDOW_DAYS,
+      });
       return;
     }
     setPickerTarget(target);
@@ -415,7 +435,11 @@ export function SkillPromptActions({
       return;
     }
     if (activeTokens.length === 1) {
-      await copyForToken("stop", activeTokens[0].id, { cron: null, force: false });
+      await copyForToken("stop", activeTokens[0].id, {
+        cron: null,
+        force: false,
+        fetchDays: DEFAULT_PROMPT_WINDOW_DAYS,
+      });
       return;
     }
     setPickerTarget("stop");
@@ -500,7 +524,11 @@ export function SkillPromptActions({
         }}
         onConfirm={async (tokenId) => {
           const target = pickerTarget;
-          const extras = pendingExtrasRef.current ?? { cron: null, force: false };
+          const extras = pendingExtrasRef.current ?? {
+            cron: null,
+            force: false,
+            fetchDays: DEFAULT_PROMPT_WINDOW_DAYS,
+          };
           setPickerTarget(null);
           pendingExtrasRef.current = null;
           if (target) await copyForToken(target, tokenId, extras);
@@ -704,10 +732,11 @@ function CronConfigDialog({
   const override = OVERRIDE_COPY[context];
   const initialLanguage = summaryLanguage ?? DEFAULT_SUMMARY_LANGUAGE;
   const [pickedLanguage, setPickedLanguage] = useState(initialLanguage);
-  const initialMaxAge = digestMaxPostAgeDays;
+  const initialMaxAge = digestMaxPostAgeDays ?? DEFAULT_PROMPT_WINDOW_DAYS;
   const [pickedMaxAge, setPickedMaxAge] = useState(
-    initialMaxAge === null ? "" : String(initialMaxAge),
+    String(initialMaxAge),
   );
+  const [pickedFetchDays, setPickedFetchDays] = useState(String(DEFAULT_PROMPT_WINDOW_DAYS));
   const [overrideFetched, setOverrideFetched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -755,16 +784,12 @@ function CronConfigDialog({
         return;
       }
       if (context === "digest") {
-        const trimmed = pickedMaxAge.trim();
-        if (trimmed !== "" && !Number.isFinite(Number(trimmed))) {
+        const maxAge = parseWindowDays(pickedMaxAge);
+        if (maxAge === null) {
           setError("Max post age must be a whole number of days.");
           setSubmitting(false);
           return;
         }
-        const maxAge =
-          trimmed === ""
-            ? null
-            : Math.min(365, Math.max(1, Math.floor(Number(trimmed))));
         const savedAge = await persistDigestMaxAge(maxAge, initialMaxAge);
         if (!savedAge) {
           setError("Couldn't save max post age. Try again.");
@@ -772,8 +797,15 @@ function CronConfigDialog({
           return;
         }
       }
+      const fetchDays =
+        context === "library" ? parseWindowDays(pickedFetchDays) : DEFAULT_PROMPT_WINDOW_DAYS;
+      if (fetchDays === null) {
+        setError("Fetch days must be a whole number of days.");
+        setSubmitting(false);
+        return;
+      }
       if (pickedFreq === "once") {
-        await onConfirm({ target: "once", overrideFetched });
+        await onConfirm({ target: "once", overrideFetched, fetchDays });
       } else {
         await onConfirm({
           target: "cron",
@@ -781,6 +813,7 @@ function CronConfigDialog({
             runtime: pickedRuntime,
             freq: pickedFreq,
             overrideFetched,
+            fetchDays,
           },
         });
       }
@@ -868,14 +901,27 @@ function CronConfigDialog({
             <>
               <MaxAgeField
                 id="cron-max-age"
+                label="Max post age (days)"
                 value={pickedMaxAge}
                 onChange={setPickedMaxAge}
               />
               <p className="cron-field-hint">
-                Excludes older posts. Leave blank for no limit.
+                Excludes older posts. Defaults to 30 days. Choose 1-90 days.
               </p>
             </>
-          ) : null}
+          ) : (
+            <>
+              <MaxAgeField
+                id="cron-fetch-days"
+                label="Fetch post age (days)"
+                value={pickedFetchDays}
+                onChange={setPickedFetchDays}
+              />
+              <p className="cron-field-hint">
+                Fetches posts from this many days back. Defaults to 30 days. Choose 1-90 days.
+              </p>
+            </>
+          )}
 
           <label className="cron-check">
             <input

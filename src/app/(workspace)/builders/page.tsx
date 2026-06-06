@@ -31,6 +31,7 @@ import {
   getDigestPipelineMetadataByOwnerIds,
 } from "@/lib/digest-pipeline-metadata";
 import { getDigestRuns, serializeDigestCronJob } from "@/lib/digest-runs";
+import { digestMaxPostAgeDays } from "@/lib/feed-preferences";
 import {
   adminCommunityLibraryDescription,
   adminCommunityLibraryName,
@@ -294,7 +295,7 @@ async function loadDigestSourcesPageData() {
     ownDigestPipeline,
     ownPipelineShared: ownPipelineShare?.isPublic === true,
     summaryLanguage: feedPreference?.summaryLanguage ?? null,
-    digestMaxPostAgeDays: feedPreference?.digestMaxPostAgeDays ?? null,
+    digestMaxPostAgeDays: digestMaxPostAgeDays(feedPreference),
   };
 }
 
@@ -559,7 +560,7 @@ async function loadBuildersPageData() {
     subscribed,
     subscribedCount,
     summaryLanguage: feedPreference?.summaryLanguage ?? null,
-    digestMaxPostAgeDays: feedPreference?.digestMaxPostAgeDays ?? null,
+    digestMaxPostAgeDays: digestMaxPostAgeDays(feedPreference),
   };
 }
 

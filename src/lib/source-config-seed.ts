@@ -92,12 +92,12 @@ function fetchPromptBodyForSourceId(sourceId: string): string | null {
   return null;
 }
 
-function defaultFetchDaysForSourceId(sourceId: string): number {
-  return sourceId === "github_trending" || sourceId === "product_hunt_top_products" ? 1 : 7;
+function defaultFetchDaysForSourceId(): number {
+  return 30;
 }
 
-function defaultFetchLimitForSourceId(sourceId: string): number {
-  return sourceId === "github_trending" || sourceId === "product_hunt_top_products" ? 5 : 3;
+function defaultFetchLimitForSourceId(): number {
+  return 3;
 }
 
 export const DEFAULT_SOURCE_CONFIGS: Record<string, SourceTypeConfigShape> =
@@ -109,8 +109,8 @@ export const DEFAULT_SOURCE_CONFIGS: Record<string, SourceTypeConfigShape> =
         agentDefaultStatus: (entry.agentDefaultStatus === "requires_agent"
           ? "requires_agent"
           : "ready") as AgentDefaultStatus,
-        defaultFetchDays: defaultFetchDaysForSourceId(entry.id),
-        defaultFetchLimit: defaultFetchLimitForSourceId(entry.id),
+        defaultFetchDays: defaultFetchDaysForSourceId(),
+        defaultFetchLimit: defaultFetchLimitForSourceId(),
         contentQuality: entry.contentQuality as ContentQualityShape,
         summaryPromptBody: summaryPromptBodyForSourceId(entry.id),
         fetchPromptBody: fetchPromptBodyForSourceId(entry.id),

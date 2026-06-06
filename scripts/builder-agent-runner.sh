@@ -153,7 +153,7 @@ run_shell_library_fallback() {
   echo "Sources requiring AI, cookies, transcription, summaries, or custom tools will need BUILDER_BLOG_AGENT_COMMAND, codex, claude, openclaw, or gemini." >&2
   refresh_skill_files
   RESULT_FILE="$JOB_TMP_DIR/library-fallback-fetch-result.json"
-  node "$AGENT_DIR/builder-digest.mjs" fetch-personal --days 30 --limit 3 > "$RESULT_FILE"
+  node "$AGENT_DIR/builder-digest.mjs" fetch-personal --days "${BUILDER_BLOG_FETCH_DAYS:-30}" --limit 3 > "$RESULT_FILE"
   cat "$RESULT_FILE"
   node - "$RESULT_FILE" <<'NODE'
 const fs = require("fs");
@@ -209,6 +209,20 @@ if [ "$(read_pin fetch-force)" = "1" ]; then
   BUILDER_BLOG_FETCH_FORCE="--force"
 fi
 export BUILDER_BLOG_FETCH_FORCE
+
+# Fetch lookback window: cron-setup writes a bounded 1-90 day value. Default to
+# 30 for older schedules that have no pin yet.
+BUILDER_BLOG_FETCH_DAYS="$(read_pin fetch-days)"
+case "$BUILDER_BLOG_FETCH_DAYS" in
+  ''|*[!0-9]*)
+    BUILDER_BLOG_FETCH_DAYS="30"
+    ;;
+  *)
+    if [ "$BUILDER_BLOG_FETCH_DAYS" -lt 1 ]; then BUILDER_BLOG_FETCH_DAYS="1"; fi
+    if [ "$BUILDER_BLOG_FETCH_DAYS" -gt 90 ]; then BUILDER_BLOG_FETCH_DAYS="90"; fi
+    ;;
+esac
+export BUILDER_BLOG_FETCH_DAYS
 
 # Re-generate today's digest: digest-cron-setup writes 1 to the regenerate pin
 # when the user picked "re-generate today's digest". We expose it as

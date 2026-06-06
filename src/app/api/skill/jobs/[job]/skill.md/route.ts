@@ -88,6 +88,14 @@ export async function GET(request: Request, { params }: Params) {
   //    command, which the user pastes to the agent directly (no runner).
   const fetchForce = url.searchParams.get("force") === "1";
 
+  // Library fetch lookback window. Closed numeric range so a copied prompt can
+  // only bake a bounded day count into shell commands and cron pins.
+  const daysRaw = Number(url.searchParams.get("days") ?? "30");
+  const fetchDays =
+    Number.isFinite(daysRaw) && daysRaw >= 1
+      ? String(Math.min(90, Math.floor(daysRaw)))
+      : "30";
+
   let content = await readFile(join(process.cwd(), path), "utf8");
   // Expand {{INCLUDE:...}} directives (shared fetch-task contract) before
   // the exchange-code / runtime substitutions below.
@@ -108,6 +116,7 @@ export async function GET(request: Request, { params }: Params) {
     .replaceAll("{{LAUNCHD_SCHEDULE}}", launchdSchedules[freq] ?? launchdSchedules["6h"])
     .replaceAll("{{FETCH_FORCE}}", fetchForce ? "1" : "0")
     .replaceAll("{{FETCH_FLAG}}", fetchForce ? "--force" : "")
+    .replaceAll("{{FETCH_DAYS}}", fetchDays)
     // Digest analogue of the fetch force flag. The digest job never fetches —
     // here `force=1` means "re-generate today's digest" (re-cover the full
     // window + replace today's existing digest). Two placeholders mirror the

@@ -147,9 +147,8 @@ export async function GET(request: Request) {
     commonSummaryRules: defaultDigestConfig.commonSummaryRules,
   };
 
-  // Optional publishedAt lookback floor (replaces the old mandatory 90-day cap).
-  // Null = no floor: consider every not-yet-digested post. The per-user
-  // DigestedItem marker — not a time window — is now what prevents repeats.
+  // PublishedAt lookback floor. Unset preferences resolve to the 30-day default.
+  // The per-user DigestedItem marker — not a time window — is what prevents repeats.
   const lookbackCutoff = digestMaxAgeCutoff(now, preference);
 
   // Personal channels = builders the requesting user owns (their own fetches).
@@ -313,14 +312,14 @@ export async function GET(request: Request) {
     language: summaryLanguage,
     digestWindow: {
       until: now.toISOString(),
-      // Optional publishedAt lookback floor (null = no floor). Candidate
-      // selection is gated by the per-user digested marker, not a time window.
+      // PublishedAt lookback floor. Candidate selection is gated by the per-user
+      // digested marker inside this window.
       lookbackCutoff: lookbackCutoff?.toISOString() ?? null,
       maxPostAgeDays: digestMaxPostAgeDays(preference),
       lastDigestGeneratedAt: lastDigest?.createdAt.toISOString() ?? null,
       regenerate,
       selectionRule:
-        "include every subscribed-entity post the user has not yet had digested (within the optional lookback floor); regenerate=true re-includes already-digested posts",
+        "include every subscribed-entity post the user has not yet had digested within the configured lookback window; regenerate=true re-includes already-digested posts",
     },
     libraryBuilders: annotatedLibraryBuilders,
     personalFetchStates,

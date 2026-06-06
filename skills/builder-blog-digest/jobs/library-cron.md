@@ -24,7 +24,7 @@ step here.
 TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}"
 mkdir -p "$TMP_DIR"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" fetch-personal --days 30 --limit 3 ${BUILDER_BLOG_FETCH_FORCE:-} \
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" fetch-personal --days ${BUILDER_BLOG_FETCH_DAYS:-30} --limit 3 ${BUILDER_BLOG_FETCH_FORCE:-} \
   > "$TMP_DIR/library-fetch-result.json"
 ```
 

@@ -386,9 +386,9 @@ model FeedItem {
 
 model UserFeedPreference {
   userId               String   @id
-  /// Optional publishedAt lookback (days) for digest candidate selection.
-  /// Null = no floor (consider all not-yet-digested posts). Replaces the old
-  /// mandatory 90-day cap; the per-user DigestedItem marker is now what dedups.
+  /// PublishedAt lookback (days) for digest candidate selection.
+  /// Null = runtime default (30 days); the per-user DigestedItem marker dedups
+  /// already-covered posts inside that window.
   digestMaxPostAgeDays Int?
   /// Account-wide summary output language selected by the one-time / cron
   /// prompt. Null = use the runtime default language (zh).
@@ -529,8 +529,8 @@ model DigestRun {
   preparedAt        DateTime  @default(now())
   syncedAt          DateTime?
   // --- Window snapshot (from digestWindow at prepare time) ---
-  /// Optional publishedAt lookback floor; null = no floor (consider every
-  /// not-yet-digested post).
+  /// PublishedAt lookback floor captured when prepare ran. Null is retained for
+  /// historical runs and compatibility; current prepares default to 30 days.
   lookbackCutoff    DateTime?
   maxPostAgeDays    Int?
   lastDigestAt      DateTime?
@@ -612,7 +612,7 @@ model SourceTypeConfig {
   sourceId           String   @id
   label              String
   agentDefaultStatus String   @default("ready")
-  defaultFetchDays   Int      @default(7)
+  defaultFetchDays   Int      @default(30)
   defaultFetchLimit  Int      @default(3)
   contentQuality     Json
   summaryPromptBody  String
@@ -655,7 +655,7 @@ model UserSourceTypeConfig {
   sourceId           String
   label              String
   agentDefaultStatus String   @default("ready")
-  defaultFetchDays   Int      @default(7)
+  defaultFetchDays   Int      @default(30)
   defaultFetchLimit  Int      @default(3)
   contentQuality     Json
   summaryPromptBody  String

@@ -59,11 +59,12 @@ export async function GET(_request: Request, { params }: Params) {
   // Expand {{INCLUDE:...}} directives so the library job prompts share one
   // copy of the fetch-task contract. No-op for files without directives.
   let content = await expandSkillIncludes(raw);
-  // {{FETCH_FLAG}} is the per-copy --force toggle for library-once, normally
-  // substituted by the jobs route from ?force=. The raw file is also served
-  // here (the runner refreshes its local copy from this route), so neutralize
-  // it to empty — a runner-driven `library-once` is never the override path.
+  // {{FETCH_FLAG}} and {{FETCH_DAYS}} are per-copy library-once settings,
+  // normally substituted by the jobs route from query params. The raw file is
+  // also served here (the runner refreshes its local copy from this route), so
+  // neutralize them to the normal non-override 30-day path.
   content = content.replaceAll("{{FETCH_FLAG}}", "");
+  content = content.replaceAll("{{FETCH_DAYS}}", "30");
   return new Response(content, {
     headers: {
       "content-type": asset.contentType,

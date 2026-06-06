@@ -14,6 +14,7 @@ import {
   digestMaxAgeCutoff,
   digestMaxPostAgeDays,
 } from "../src/lib/feed-preferences";
+import { DEFAULT_SOURCE_CONFIGS } from "../src/lib/source-config-seed";
 import { checkBodyContentQuality } from "../src/lib/content-quality";
 import {
   buildRecommendationSignals,
@@ -378,7 +379,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /Copy a prompt for your Local Agent to build your digest\./);
   assert.match(skillPromptActions, /Local Agent/);
   assert.match(skillPromptActions, /Already digested posts can be included again this time\./);
-  assert.match(skillPromptActions, /Excludes older posts\. Leave blank for no limit\./);
+  assert.match(skillPromptActions, /Fetch post age \(days\)/);
+  assert.match(skillPromptActions, /Defaults to 30 days\. Choose 1-90 days\./);
+  assert.match(skillPromptActions, /params\.set\("days", String\(extras\.fetchDays\)\)/);
   assert.match(skillPromptActions, /\{submitting \? "…" : "Copy"\}/);
   assert.doesNotMatch(skillPromptActions, /Copy a prompt for one run or for a recurring local schedule/);
   assert.doesNotMatch(skillPromptActions, /Local helper/);
@@ -406,6 +409,8 @@ test("web app serves the agent skill and setup command", () => {
   // substitutes the schedule + cadence label into the cron-setup prompt.
   assert.match(skillJobRoute, /cronSchedules/);
   assert.match(skillJobRoute, /searchParams\.get\("freq"\)/);
+  assert.match(skillJobRoute, /searchParams\.get\("days"\)/);
+  assert.match(skillJobRoute, /\{\{FETCH_DAYS\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_KEY\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_SCHEDULE\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_LABEL\}\}/);
@@ -420,6 +425,8 @@ test("web app serves the agent skill and setup command", () => {
   // route neutralizes it to "" for the runner-fed copy.
   assert.match(skillJobRoute, /\{\{FETCH_FLAG\}\}/);
   assert.match(skillFileRoute, /\{\{FETCH_FLAG\}\}/);
+  assert.match(skillFileRoute, /\{\{FETCH_DAYS\}\}/);
+  assert.match(skillFileRoute, /replaceAll\("\{\{FETCH_DAYS\}\}", "30"\)/);
   // cron-setup prompts use the placeholders, not a hard-coded schedule, and
   // install via launchd on macOS / crontab on Linux.
   assert.match(libraryCronSetupPrompt, /\{\{CRON_SCHEDULE\}\}/);
@@ -532,7 +539,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronExpanded, /Action needed" notice and skip[\s\S]*to the scheduled job log/);
 
   // Contract content, asserted on the expanded once-prompt.
-  assert.match(libraryOnceExpanded, /fetch-personal --days 30 --limit 3/);
+  assert.match(libraryOnceExpanded, /fetch-personal --days \{\{FETCH_DAYS\}\} --limit 3/);
   assert.match(libraryOnceExpanded, /validate-agent-sync/);
   assert.match(libraryOnceExpanded, /sync-builders/);
   assert.match(libraryOnceExpanded, /rawJson\.agentExecutionProof/);
@@ -562,7 +569,7 @@ test("web app serves the agent skill and setup command", () => {
   // to run the command verbatim.
   assert.match(
     libraryOnceExpanded,
-    /fetch-personal --days 30 --limit 3 \{\{FETCH_FLAG\}\}/,
+    /fetch-personal --days \{\{FETCH_DAYS\}\} --limit 3 \{\{FETCH_FLAG\}\}/,
   );
   assert.match(libraryOnceExpanded, /Do not add or remove `--force`\s+yourself/);
   assert.doesNotMatch(libraryOnceExpanded, /Do not use `--force`\./);
@@ -609,7 +616,8 @@ test("web app serves the agent skill and setup command", () => {
       `next.config.ts outputFileTracingIncludes for the jobs route is missing ${file} — that job will 500 (ENOENT) on Vercel`,
     );
   }
-  assert.match(digestOncePrompt, /prepare --days 1/);
+  assert.match(digestOncePrompt, /builder-digest\.mjs" prepare \{\{DIGEST_REGENERATE_FLAG\}\}/);
+  assert.doesNotMatch(digestOncePrompt, /prepare --days/);
   assert.match(digestOncePrompt, /Use agent judgment only for the structured summary JSON step/);
   assert.match(digestOncePrompt, /execution\s+contract, not as user-facing documentation/);
   assert.doesNotMatch(digestOncePrompt, /Environment contract/);
@@ -704,11 +712,13 @@ test("web app serves the agent skill and setup command", () => {
   // URL param alone could never reach the recurring fetch.
   assert.match(libraryCronSetupPrompt, /\{\{FETCH_FORCE\}\}/);
   assert.match(libraryCronSetupPrompt, /fetch-force-library-cron-\$ACCOUNT_SLUG/);
+  assert.match(libraryCronSetupPrompt, /\{\{FETCH_DAYS\}\}/);
+  assert.match(libraryCronSetupPrompt, /fetch-days-library-cron-\$ACCOUNT_SLUG/);
   assert.match(libraryCronSetupPrompt, /\$LABEL\.log/);
   assert.match(libraryCronPrompt, /BUILDER_BLOG_JOB_TMP_DIR/);
   assert.match(
     libraryCronPrompt,
-    /fetch-personal --days 30 --limit 3 \$\{BUILDER_BLOG_FETCH_FORCE:-\}/,
+    /fetch-personal --days \$\{BUILDER_BLOG_FETCH_DAYS:-30\} --limit 3 \$\{BUILDER_BLOG_FETCH_FORCE:-\}/,
   );
   assert.match(digestCronSetupPrompt, /builder-agent-runner\.sh digest-cron/);
   // digest cron-setup pins the runtime too (parity with library) so the
@@ -867,7 +877,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skill, /failed extraction attempts are not command-contract\s+failures/);
   assert.match(skill, /~\/\.builder-blog\/builder-digest\.mjs/);
   // Cron contract = same shared fragment, asserted on the EXPANDED prompt.
-  assert.match(libraryCronExpanded, /fetch-personal --days 30 --limit 3/);
+  assert.match(libraryCronExpanded, /fetch-personal --days \$\{BUILDER_BLOG_FETCH_DAYS:-30\} --limit 3/);
   assert.match(libraryCronExpanded, /validate-agent-sync/);
   assert.match(libraryCronExpanded, /sync-builders/);
   assert.match(libraryCronExpanded, /rawJson\.fetchTaskId/);
@@ -906,7 +916,8 @@ test("web app serves the agent skill and setup command", () => {
     "validate-agent-sync",
     "sync-builders",
   ]);
-  assert.match(digestCronPrompt, /prepare --days 1/);
+  assert.match(digestCronPrompt, /builder-digest\.mjs" prepare \$\{BUILDER_BLOG_DIGEST_REGENERATE:-\}/);
+  assert.doesNotMatch(digestCronPrompt, /prepare --days/);
   assert.match(digestCronPrompt, /builder-blog-digest\.md/);
   assert.match(digestCronPrompt, /Only\s+use agent judgment to write the structured summary JSON/);
   assert.match(digestCronPrompt, /Agent discretion boundary/);
@@ -1105,7 +1116,7 @@ test("server content-quality floor rejects empty / too-short crawls", () => {
   );
 });
 
-test("digest feed user path selects not-yet-digested posts within the optional lookback", () => {
+test("digest feed user path selects not-yet-digested posts within the configured lookback", () => {
   const now = new Date("2026-05-23T12:00:00.000Z");
   // Lookback set → a publishedAt floor; 45 days before now = 2026-04-08.
   const withFloor = {
@@ -1115,10 +1126,11 @@ test("digest feed user path selects not-yet-digested posts within the optional l
   const cutoff = digestMaxAgeCutoff(now, withFloor);
   assert.equal(cutoff?.toISOString(), "2026-04-08T12:00:00.000Z");
 
-  // Lookback null (the new default) → no floor: removes the old mandatory 90-day cap.
-  const noFloor = { digestMaxPostAgeDays: null };
-  assert.equal(digestMaxPostAgeDays(noFloor), null);
-  assert.equal(digestMaxAgeCutoff(now, noFloor), null);
+  // Lookback null/absent → the 30-day default; user choices are capped at 90.
+  const defaultWindow = { digestMaxPostAgeDays: null };
+  assert.equal(digestMaxPostAgeDays(defaultWindow), 30);
+  assert.equal(digestMaxAgeCutoff(now, defaultWindow)?.toISOString(), "2026-04-23T12:00:00.000Z");
+  assert.equal(digestMaxPostAgeDays({ digestMaxPostAgeDays: 365 }), 90);
 
   // Candidate selection is gated by the per-user DigestedItem marker, not a
   // time window. Override (regenerate) re-includes already-digested posts.
@@ -2579,6 +2591,7 @@ test("content config is per-user, seeded from a system default", () => {
   // additionally updates the system default template used for new users.
   const srcRoute = readFileSync("src/app/api/settings/source-types/route.ts", "utf8");
   const digestRoute = readFileSync("src/app/api/settings/digest-config/route.ts", "utf8");
+  assert.match(srcRoute, /defaultFetchDays: z\.number\(\)\.int\(\)\.positive\(\)\.max\(90\)/);
   assert.match(srcRoute, /getUserSourceConfigs\(userId\)/);
   assert.match(srcRoute, /getAllSourceConfigs\(\)/);
   assert.match(srcRoute, /Quality gates can only be changed by an admin/);
@@ -2592,6 +2605,10 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(digestRoute, /commonSummaryRules: defaultConfig\.commonSummaryRules/);
   assert.match(digestRoute, /updateUserDigestConfigAndDefault/);
   assert.match(store, /client\(\)\.\$transaction\(/);
+  assert.equal(DEFAULT_SOURCE_CONFIGS.github_trending.defaultFetchLimit, 3);
+  assert.equal(DEFAULT_SOURCE_CONFIGS.product_hunt_top_products.defaultFetchLimit, 3);
+  assert.equal(DEFAULT_SOURCE_CONFIGS.github_trending.defaultFetchDays, 30);
+  assert.equal(DEFAULT_SOURCE_CONFIGS.product_hunt_top_products.defaultFetchDays, 30);
 
   // Settings page shows source/digest config to every user, but only admins can
   // edit the common fetching and post-summary rules shared defaults.

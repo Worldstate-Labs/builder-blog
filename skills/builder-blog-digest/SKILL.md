@@ -245,7 +245,7 @@ omitted, the web app infers the source from `kind` and URL.
 
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-node ~/.builder-blog/builder-digest.mjs prepare --days 1
+node ~/.builder-blog/builder-digest.mjs prepare
 ```
 
 2. Read the JSON. It contains:

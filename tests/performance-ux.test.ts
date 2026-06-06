@@ -2232,6 +2232,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(digestMaxAgeRoute, /export async function PATCH/);
   assert.match(digestMaxAgeRoute, /userFeedPreference\.upsert/);
   assert.match(digestMaxAgeRoute, /digestMaxPostAgeDays/);
+  assert.match(digestMaxAgeRoute, /MAX_DIGEST_MAX_POST_AGE_DAYS/);
   assert.match(digestMaxAgeRoute, /NextResponse\.json/);
   assert.doesNotMatch(digestMaxAgeRoute, /redirect\(/);
   assert.match(tokensRoute, /export async function POST/);

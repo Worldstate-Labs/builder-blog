@@ -482,7 +482,10 @@ async function fetchPersonal(args) {
   // builder-agent-runner.sh; anything else (manual terminal usage,
   // ad-hoc agent runs) is recorded as "manual".
   const runSource = process.env.BUILDER_BLOG_RUN_SOURCE?.trim() === "cron" ? "cron" : "manual";
-  const days = Math.max(1, Number(argValue(args, "--days", String(DEFAULT_PERSONAL_FETCH_DAYS))));
+  const rawDays = Number(argValue(args, "--days", String(DEFAULT_PERSONAL_FETCH_DAYS)));
+  const days = Number.isFinite(rawDays)
+    ? Math.min(90, Math.max(1, Math.floor(rawDays)))
+    : DEFAULT_PERSONAL_FETCH_DAYS;
   const limit = Math.max(1, Number(argValue(args, "--limit", "3")));
   const force = args.includes("--force");
   const agentModel = argValue(args, "--agent-model", DEFAULT_AGENT_MODEL);
