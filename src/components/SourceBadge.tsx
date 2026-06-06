@@ -30,11 +30,13 @@ export function SourceBadge({
       ? { id: base.id, label: podcastPlatformLabel(builder) }
       : base;
   const Icon = sourceIcons[source.id] ?? Globe;
-  const shouldShowLabel = showLabel && !sameDisplayLabel(source.label, suppressLabelWhen);
+  const labelSuppressedByDuplicate = showLabel && sameDisplayLabel(source.label, suppressLabelWhen);
+  const shouldShowLabel = showLabel && !labelSuppressedByDuplicate;
 
   return (
     <span
-      aria-label={shouldShowLabel ? undefined : source.label}
+      aria-hidden={labelSuppressedByDuplicate ? "true" : undefined}
+      aria-label={!shouldShowLabel && !labelSuppressedByDuplicate ? source.label : undefined}
       className="source-badge"
       data-source={source.id}
       title={source.label}

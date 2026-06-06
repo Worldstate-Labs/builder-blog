@@ -137,7 +137,8 @@ Source: https://anthropic.com/engineering/how-we-contain-claude`,
 test("source logos are shared across recommendation and library surfaces", () => {
   assert.match(source("src/components/SourceBadge.tsx"), /data-source/);
   assert.match(source("src/components/SourceBadge.tsx"), /suppressLabelWhen/);
-  assert.match(source("src/components/SourceBadge.tsx"), /aria-label=\{shouldShowLabel \? undefined : source\.label\}/);
+  assert.match(source("src/components/SourceBadge.tsx"), /labelSuppressedByDuplicate/);
+  assert.match(source("src/components/SourceBadge.tsx"), /aria-label=\{!shouldShowLabel && !labelSuppressedByDuplicate \? source\.label : undefined\}/);
   assert.match(source("src/components/SourceBadge.tsx"), /sameDisplayLabel\(source\.label, suppressLabelWhen\)/);
   assert.match(source("src/components/PostCard.tsx"), /SourceBadge/);
   assert.match(source("src/components/PostCard.tsx"), /suppressLabelWhen=\{authorName\}/);
@@ -182,7 +183,8 @@ test("post card avoids duplicate source labels when builder name matches source 
 
   const visibleText = html.replace(/<[^>]*>/g, "");
   assert.equal((visibleText.match(/Product Hunt Top Products/g) ?? []).length, 1);
-  assert.match(html, /aria-label="Product Hunt Top Products"/);
+  assert.doesNotMatch(html, /aria-label="Product Hunt Top Products"/);
+  assert.match(html, /aria-hidden="true"/);
   assert.match(html, /title="Product Hunt Top Products"/);
 });
 

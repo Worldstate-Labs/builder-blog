@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
@@ -318,7 +319,10 @@ async function SearchResultsSection({
             <ActiveSearchFilters filters={activeFilters} clearAllHref={clearAllSearchHref(activeQuery)} />
           ) : null}
           <details className="search-advanced-tools search-advanced-tools-compact">
-            <summary>Query details</summary>
+            <summary>
+              Query details
+              <ChevronDown aria-hidden="true" className="search-advanced-tools-icon" />
+            </summary>
             <SearchQueryInsights
               actions={recoveryActions}
               mode={mode}
@@ -410,7 +414,10 @@ async function SearchResultsSection({
             time={time}
           />
           <details className="search-advanced-tools search-advanced-tools-compact">
-            <summary>Advanced syntax</summary>
+            <summary>
+              Advanced syntax
+              <ChevronDown aria-hidden="true" className="search-advanced-tools-icon" />
+            </summary>
             <AdvancedSearchTips mode={mode} sort={sort} time={time} />
           </details>
         </>

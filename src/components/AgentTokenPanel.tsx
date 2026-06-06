@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LaptopMinimal, Plus } from "lucide-react";
+import { LaptopMinimal, Plus, Smartphone } from "lucide-react";
 import { CountBadge } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { useHydrated } from "@/components/ThemeToggle";
@@ -72,6 +72,11 @@ function summarizeUserAgent(ua: string | null): string {
   const parts = [os, client].filter(Boolean);
   if (parts.length > 0) return parts.join(" · ");
   return ua.slice(0, 60);
+}
+
+function isPhoneLikeToken(token: AgentTokenListItem) {
+  const haystack = `${token.lastPlatform ?? ""} ${token.lastUserAgent ?? ""}`.toLowerCase();
+  return /iphone|ipad|ios|android|mobile/.test(haystack);
 }
 
 export function AgentTokenPanel({
@@ -448,7 +453,8 @@ function TokenRow({
   isPending: boolean;
   onRevoke: () => void;
 }) {
-  const machineLabel = token.lastUsedAt ? describeMachine(token) : token.name;
+  const DeviceIcon = isPhoneLikeToken(token) ? Smartphone : LaptopMinimal;
+  const tokenLabel = token.name.trim() || describeMachine(token);
   const statusLabel = token.revokedAt
     ? `Revoked ${formatRelativeCompact(token.revokedAt, hydrated)}`
     : token.lastUsedAt
@@ -458,10 +464,10 @@ function TokenRow({
   return (
     <div className={`fb-token-row${token.revokedAt ? " fb-row--revoked" : ""}`}>
       <span className="access-key-device-icon" aria-hidden="true">
-        <LaptopMinimal className="h-4 w-4" />
+        <DeviceIcon className="h-5 w-5" />
       </span>
       <div className="access-key-device-copy">
-        <div className="access-key-device-title">{machineLabel}</div>
+        <div className="access-key-device-title">{tokenLabel}</div>
         <div className="access-key-device-status">{statusLabel}</div>
       </div>
       {token.revokedAt ? (

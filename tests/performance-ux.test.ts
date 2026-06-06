@@ -1203,6 +1203,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /More from this source/);
   assert.match(searchPage, /Active filters/);
   assert.match(searchPage, /Query details/);
+  assert.match(searchPage, /ChevronDown/);
+  assert.match(searchPage, /className="search-advanced-tools-icon"/);
   assert.doesNotMatch(searchPage, /Search tools/);
   assert.doesNotMatch(searchPage, /className="search-tools-row"/);
   assert.match(searchPage, /className="search-meta-row"[\s\S]*About \{formatCount\(filteredResults\.length\)\} result[\s\S]*Page \{formatCount\(currentPage\)\} of \{formatCount\(pageCount\)\}/);
@@ -1250,6 +1252,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(globals, /\.search-insight-grid\s*{[\s\S]*border-top:\s*1px solid/);
   assert.match(globals, /\.search-meta-row\s*{[\s\S]*justify-content:\s*space-between/);
   assert.match(globals, /\.search-advanced-tools > summary\s*{[\s\S]*border-radius:\s*999px/);
+  assert.match(globals, /\.search-advanced-tools-icon\s*{[\s\S]*transition:\s*transform/);
+  assert.match(globals, /\.search-advanced-tools\[open\] \.search-advanced-tools-icon\s*{[\s\S]*transform:\s*rotate\(180deg\)/);
+  assert.doesNotMatch(globals, /\.search-advanced-tools > summary::after[\s\S]*content:\s*"\+"/);
   assert.match(globals, /\.search-advanced-tools-compact\[open\]\s*{[\s\S]*border-top:\s*1px solid/);
   assert.doesNotMatch(globals, /\.search-tools-row\s*{/);
   assert.match(searchPage, /Remove text search terms/);
@@ -1821,6 +1826,7 @@ test("digest posts use source detail headings and unified original links", () =>
   const digestContent = source("src/components/DigestContent.tsx");
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const postCard = source("src/components/PostCard.tsx");
+  const sourceBadge = source("src/components/SourceBadge.tsx");
   const globals = source("src/app/globals.css");
 
   assert.match(digestContent, /DigestSourceLink/);
@@ -1842,6 +1848,9 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(dashboardPage, /sourceType:\s*builder\.sourceType/);
   assert.match(dashboardPage, /sourceLinks=\{sourceLinks\}/);
   assert.match(postCard, /showSourceBadge = true/);
+  assert.match(sourceBadge, /labelSuppressedByDuplicate/);
+  assert.match(sourceBadge, /aria-hidden=\{labelSuppressedByDuplicate \? "true" : undefined\}/);
+  assert.match(sourceBadge, /aria-label=\{!shouldShowLabel && !labelSuppressedByDuplicate \? source\.label : undefined\}/);
   assert.match(postCard, /ScrollText/);
   assert.match(postCard, /aria-label="View original summary"/);
   assert.match(postCard, /fetched-post-original-summary/);
