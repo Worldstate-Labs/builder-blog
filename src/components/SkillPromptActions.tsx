@@ -8,7 +8,7 @@ import {
 } from "@/components/AgentTokenPanel";
 import { EmptyState } from "@/components/EmptyState";
 import { languageOptions } from "@/components/settings/SettingsFields";
-import { DEFAULT_SUMMARY_LANGUAGE } from "@/lib/language-preference";
+import { ORIGINAL_CONTENT_LANGUAGE_VALUE } from "@/lib/language-preference";
 
 type SkillPromptContext = "library" | "digest";
 type CopyTarget = "once" | "cron" | "stop";
@@ -111,9 +111,9 @@ const OVERRIDE_COPY: Record<
 // No-op when unchanged. Returns false on failure so the caller can surface it.
 async function persistSummaryLanguage(
   picked: string,
-  initial: string,
+  initial: string | null,
 ): Promise<boolean> {
-  if (picked === initial) return true;
+  if (initial !== null && picked === initial) return true;
   try {
     const res = await fetch("/api/settings/summary-language", {
       method: "PATCH",
@@ -728,7 +728,8 @@ function CronConfigDialog({
   const [pickedFreq, setPickedFreq] = useState<ScheduleFrequency>(DEFAULT_FREQUENCY[context]);
   const isOneTime = pickedFreq === "once";
   const override = OVERRIDE_COPY[context];
-  const initialLanguage = summaryLanguage ?? DEFAULT_SUMMARY_LANGUAGE;
+  const savedLanguage = summaryLanguage ?? null;
+  const initialLanguage = savedLanguage ?? ORIGINAL_CONTENT_LANGUAGE_VALUE;
   const [pickedLanguage, setPickedLanguage] = useState(initialLanguage);
   const initialMaxAge = digestMaxPostAgeDays ?? DEFAULT_PROMPT_WINDOW_DAYS;
   const [pickedMaxAge, setPickedMaxAge] = useState(
@@ -775,7 +776,7 @@ function CronConfigDialog({
       // Summary language is account-wide, so persist it server-side (not via
       // the cron URL) — /api/skill/context reads it at every fetch. No-op when
       // unchanged.
-      const saved = await persistSummaryLanguage(pickedLanguage, initialLanguage);
+      const saved = await persistSummaryLanguage(pickedLanguage, savedLanguage);
       if (!saved) {
         setError("Couldn't save the summary language — try again.");
         setSubmitting(false);

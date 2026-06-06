@@ -1010,6 +1010,7 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(digestUpdatesCard, /<DigestStatusToggle[\s\S]*status=\{updateStatus\}/);
   assert.match(digestUpdatesCard, /beforePreview=\{[\s\S]*<section className="sources-sync-section">[\s\S]*<DigestLogPanel/);
   assert.match(digestUpdatesCard, /detailsRootId=\{detailsRootId\}/);
+  assert.match(digestUpdatesCard, /actionsPlacement="start"/);
   assert.match(digestUpdatesCard, /<div id=\{detailsRootId\} \/>/);
   assert.match(digestUpdatesCard, /showHeading=\{false\}/);
   assert.match(digestUpdatesCard, /showStatusToggle=\{false\}/);

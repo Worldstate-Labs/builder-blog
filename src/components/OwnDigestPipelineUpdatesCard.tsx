@@ -38,6 +38,7 @@ export function OwnDigestPipelineUpdatesCard({
           <DigestLogPanel
             {...logPanelProps}
             actions={actions}
+            actionsPlacement="start"
             detailsOpen={detailsOpen}
             detailsRootId={detailsRootId}
             onDetailsOpenChange={setDetailsOpen}

@@ -97,6 +97,7 @@ function runDomId(runId: string): string {
 
 export type DigestLogPanelProps = {
   actions?: ReactNode;
+  actionsPlacement?: "start" | "end";
   detailsOpen?: boolean;
   detailsRootId?: string;
   initialCronJob: DigestCronJobStatus | null;
@@ -112,6 +113,7 @@ export type DigestLogPanelProps = {
 
 export function DigestLogPanel({
   actions,
+  actionsPlacement = "end",
   detailsOpen: controlledDetailsOpen,
   detailsRootId,
   initialRuns,
@@ -326,37 +328,48 @@ export function DigestLogPanel({
   const renderedDetails = detailsRoot && detailsPanel
     ? createPortal(detailsPanel, detailsRoot)
     : detailsPanel;
+  const actionsNode = actions ? (
+    <div className="digest-updates-actions">
+      {actions}
+    </div>
+  ) : null;
+  const summaryNode = (
+    <div className="min-w-0">
+      {showHeading || showStatusToggle ? (
+        <div className="sync-panel-title-row">
+          {showHeading ? (
+            <h2 className="fb-section-heading">Digest updates</h2>
+          ) : null}
+          {showStatusToggle ? (
+            <DigestStatusToggle
+              detailsOpen={detailsOpen}
+              onToggle={() => setDetailsOpen((value) => !value)}
+              status={updateStatus}
+            />
+          ) : null}
+        </div>
+      ) : null}
+      <DigestScheduleSummary
+        cronJob={cronJob}
+        hydrated={hydrated}
+        nextExpectedAt={cronStatus.nextExpectedAt}
+        status={updateStatus}
+      />
+    </div>
+  );
 
   return (
     <section className="fb-panel digest-updates-panel">
       <div className="digest-updates-head">
-        <div className="min-w-0">
-          {showHeading || showStatusToggle ? (
-            <div className="sync-panel-title-row">
-              {showHeading ? (
-                <h2 className="fb-section-heading">Digest updates</h2>
-              ) : null}
-              {showStatusToggle ? (
-                <DigestStatusToggle
-                  detailsOpen={detailsOpen}
-                  onToggle={() => setDetailsOpen((value) => !value)}
-                  status={updateStatus}
-                />
-              ) : null}
-            </div>
-          ) : null}
-          <DigestScheduleSummary
-            cronJob={cronJob}
-            hydrated={hydrated}
-            nextExpectedAt={cronStatus.nextExpectedAt}
-            status={updateStatus}
-          />
-        </div>
-        {actions ? (
-          <div className="digest-updates-actions">
-            {actions}
+        {actionsPlacement === "start" ? (
+          <div className="digest-updates-main">
+            {actionsNode}
+            {summaryNode}
           </div>
-        ) : null}
+        ) : (
+          summaryNode
+        )}
+        {actionsPlacement === "end" ? actionsNode : null}
       </div>
 
       {error ? (

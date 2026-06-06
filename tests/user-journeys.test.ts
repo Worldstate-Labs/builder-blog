@@ -398,6 +398,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /cron-field-select/);
   assert.match(skillPromptActions, /Summary language/);
   assert.match(skillPromptActions, /languageOptions\(value\)/);
+  assert.match(skillPromptActions, /const savedLanguage = summaryLanguage \?\? null/);
+  assert.match(skillPromptActions, /const initialLanguage = savedLanguage \?\? ORIGINAL_CONTENT_LANGUAGE_VALUE/);
+  assert.match(skillPromptActions, /persistSummaryLanguage\(pickedLanguage, savedLanguage\)/);
   assert.match(skillPromptActions, /persistSummaryLanguage/);
   assert.match(skillPromptActions, /\/api\/settings\/summary-language/);
   const settingsFields = readFileSync("src/components/settings/SettingsFields.tsx", "utf8");
