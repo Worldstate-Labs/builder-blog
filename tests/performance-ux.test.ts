@@ -75,7 +75,8 @@ test("every app route has an explicit centered layout role", () => {
   const appShell = source("src/components/AppShell.tsx");
   const workspaceLayout = source("src/app/(workspace)/layout.tsx");
   assert.match(workspaceLayout, /<AppShell session=\{session\}>/);
-  assert.match(appShell, /<aside className="fb-side-rail" aria-label="Primary navigation">/);
+  assert.match(appShell, /<div className="fb-side-rail">/);
+  assert.doesNotMatch(appShell, /<aside className="fb-side-rail"|fb-side-rail" aria-label=/);
   assert.match(appShell, /<SearchForm query="" variant="header" \/>/);
 
   const publicRoutes = [
@@ -440,10 +441,12 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(appShell, /min-h-screen|bg-\[var\(--paper\)\]|text-\[var\(--ink\)\]/);
   assert.doesNotMatch(appShell, /hidden lg:flex|lg:hidden|ml-auto flex items-center gap-2|className="grow"/);
   assert.match(appShell, /className="app-main"/);
-  assert.match(appShell, /<aside className="fb-side-rail" aria-label="Primary navigation">/);
+  assert.match(appShell, /<div className="fb-side-rail">/);
+  assert.doesNotMatch(appShell, /<aside className="fb-side-rail"|fb-side-rail" aria-label=/);
   assert.match(appShell, /<SearchForm query="" variant="header" \/>/);
   assert.match(searchForm, /name="q"/);
   assert.match(appNav, /desktopLayout = "rail"/);
+  assert.match(appNav, /<nav className=\{desktopClassName\} aria-label="Primary">/);
   assert.match(appNav, /fb-nav-list-bar/);
   assert.match(appNav, /fb-nav-list-rail/);
   assert.doesNotMatch(appNav, /hidden lg:flex|lg:hidden/);

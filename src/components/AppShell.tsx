@@ -56,9 +56,9 @@ export function AppShell({
       </header>
 
       <div className="app-body">
-        <aside className="fb-side-rail" aria-label="Primary navigation">
+        <div className="fb-side-rail">
           <AppNav desktopLayout="rail" items={nav} mode="desktop" />
-        </aside>
+        </div>
         <main className="app-main">
           {children}
           <AppNav items={nav} mode="mobile" />
