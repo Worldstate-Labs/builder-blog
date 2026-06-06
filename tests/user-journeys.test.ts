@@ -620,8 +620,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(digestOnceExpanded, /\{\{INCLUDE/);
   assert.match(digestOnceExpanded, /builder-blog-digest-agent-output\.json/);
   assert.match(digestOnceExpanded, /context\.digest\.headlinePrompt/);
-  assert.match(digestOnceExpanded, /300 characters or fewer/);
-  assert.match(digestOnceExpanded, /200,000-character sync limit/);
+  assert.doesNotMatch(digestOnceExpanded, /300 characters or fewer/);
+  assert.doesNotMatch(digestOnceExpanded, /200,000-character sync limit/);
   assert.match(digestOnceExpanded, /context\.digest\.perSourceSummaryPrompt/);
   assert.match(digestOnceExpanded, /context\.digest\.translate/);
   assert.doesNotMatch(digestOnceExpanded, /context\.digest\.digestIntro/);
