@@ -1278,7 +1278,11 @@ async function fetchPersonalYouTubeBuilder(
   const agentTasks = [];
 
   for (const video of videos) {
-    const transcript = await fetchYouTubeTranscript(video.url, fetcher).catch(() => "");
+    const transcriptResult = await fetchYouTubeTranscript(video.url, fetcher, {
+      title: video.title,
+      description: video.description,
+    }).catch(() => ({ text: "" }));
+    const transcript = transcriptResult.text || "";
     const quality = youtubeContentQuality(transcript, {
       source: transcript ? "youtube-captions" : "missing",
       title: video.title,
@@ -1309,6 +1313,9 @@ async function fetchPersonalYouTubeBuilder(
         url: video.url,
         publishedAt: video.publishedAt,
         transcriptSource: "youtube-captions",
+        captionLanguageCode: transcriptResult.captionLanguageCode,
+        inferredSourceLanguage: transcriptResult.inferredSourceLanguage,
+        captionSelectionReason: transcriptResult.captionSelectionReason,
         contentQuality: quality,
       },
     });
@@ -2794,30 +2801,35 @@ function youtubeRendererMetadataText(renderer) {
     .join(" · ");
 }
 
-async function fetchYouTubeTranscript(videoUrl, fetcher = fetch) {
+async function fetchYouTubeTranscript(videoUrl, fetcher = fetch, metadata = {}) {
   const videoId = youtubeVideoId(videoUrl);
-  if (!videoId) return "";
+  if (!videoId) return { text: "" };
   const response = await fetcher(`https://www.youtube.com/watch?v=${videoId}`, {
     headers: {
       "User-Agent": "FollowBriefSkill/1.0 (personal YouTube fetcher)",
-      "Accept-Language": "en-US,en;q=0.9",
     },
   });
-  if (!response.ok) return "";
+  if (!response.ok) return { text: "" };
   const playerResponse = extractYouTubePlayerResponse(await response.text());
   const tracks = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-  if (!Array.isArray(tracks) || tracks.length === 0) return "";
-  const track = preferredCaptionTrack(tracks);
-  if (!track?.baseUrl) return "";
+  if (!Array.isArray(tracks) || tracks.length === 0) return { text: "" };
+  const selection = preferredCaptionTrack(tracks, metadata);
+  if (!selection?.track?.baseUrl) return { text: "" };
+  const track = selection.track;
   const captionResponse = await fetcher(withYouTubeCaptionFormat(track.baseUrl, "json3"), {
     headers: {
       "User-Agent": "FollowBriefSkill/1.0 (personal YouTube fetcher)",
-      "Accept-Language": "en-US,en;q=0.9",
     },
   });
-  if (!captionResponse.ok) return "";
+  if (!captionResponse.ok) return { text: "" };
   const body = await captionResponse.text();
-  return body.trim().startsWith("{") ? parseYouTubeJsonTranscript(body) : parseYouTubeXmlTranscript(body);
+  const text = body.trim().startsWith("{") ? parseYouTubeJsonTranscript(body) : parseYouTubeXmlTranscript(body);
+  return {
+    text,
+    captionLanguageCode: track.languageCode || "",
+    inferredSourceLanguage: selection.inferredSourceLanguage,
+    captionSelectionReason: selection.reason,
+  };
 }
 
 function youtubeVideoId(videoUrl) {
@@ -2872,14 +2884,61 @@ function parseJsonObjectAt(text, start) {
   return null;
 }
 
-function preferredCaptionTrack(tracks) {
+function preferredCaptionTrack(tracks, metadata = {}) {
   const typedTracks = tracks.filter((track) => track && typeof track.baseUrl === "string");
+  if (typedTracks.length === 0) return null;
+  const languages = new Set(typedTracks.map((track) => captionLanguageBase(track.languageCode)).filter(Boolean));
+  if (languages.size === 1) {
+    const language = [...languages][0];
+    return {
+      track: bestTrackForLanguage(typedTracks, language),
+      inferredSourceLanguage: language,
+      reason: "only_available_caption_language",
+    };
+  }
+
+  const metadataLanguage = inferSourceLanguageFromMetadata(metadata);
+  if (metadataLanguage && languages.has(metadataLanguage)) {
+    return {
+      track: bestTrackForLanguage(typedTracks, metadataLanguage),
+      inferredSourceLanguage: metadataLanguage,
+      reason: "metadata_language_matches_caption_track",
+    };
+  }
+
+  return null;
+}
+
+function bestTrackForLanguage(tracks, language) {
   return (
-    typedTracks.find((track) => track.languageCode?.startsWith("en") && track.kind !== "asr") ||
-    typedTracks.find((track) => track.languageCode?.startsWith("en")) ||
-    typedTracks.find((track) => track.kind !== "asr") ||
-    typedTracks[0]
+    tracks.find((track) => captionLanguageBase(track.languageCode) === language && track.kind !== "asr") ||
+    tracks.find((track) => captionLanguageBase(track.languageCode) === language) ||
+    null
   );
+}
+
+function captionLanguageBase(languageCode) {
+  const code = String(languageCode || "").trim().toLowerCase();
+  if (!code) return "";
+  if (code.startsWith("zh")) return "zh";
+  if (code.startsWith("ja")) return "ja";
+  if (code.startsWith("ko")) return "ko";
+  if (code.startsWith("en")) return "en";
+  const match = code.match(/^([a-z]{2,3})(?:[-_]|$)/);
+  return match ? match[1] : code;
+}
+
+function inferSourceLanguageFromMetadata({ title = "", description = "" } = {}) {
+  const text = `${title}\n${description}`;
+  const han = (text.match(/[\p{Script=Han}]/gu) || []).length;
+  const kana = (text.match(/[\p{Script=Hiragana}\p{Script=Katakana}]/gu) || []).length;
+  const hangul = (text.match(/[\p{Script=Hangul}]/gu) || []).length;
+  const latin = (text.match(/[A-Za-z]/g) || []).length;
+  if (han >= 20 && han >= latin * 0.2) return "zh";
+  if (kana >= 20 && kana + han >= latin * 0.2) return "ja";
+  if (hangul >= 20 && hangul >= latin * 0.2) return "ko";
+  if (latin >= 80 && han + kana + hangul <= 5) return "en";
+  return "";
 }
 
 function withYouTubeCaptionFormat(baseUrl, format) {

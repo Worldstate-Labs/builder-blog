@@ -593,6 +593,156 @@ test("personal YouTube fetcher returns agent tasks instead of syncing descriptio
   assert.equal("sourceDetail" in result.agentTasks[0], false);
 });
 
+test("personal YouTube fetcher chooses Chinese captions when metadata strongly indicates Chinese", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const zhTranscript =
+    "何小鹏 讨论 人形机器人 技术 组织 产品 战略 赌注 汽车 智能 驾驶 未来 市场 竞争 " +
+    "团队 决策 风险 机会 产业 变化 ".repeat(6);
+  const enTranscript =
+    "He Xiaopeng discusses robots and strategy in an English translation. ".repeat(8);
+
+  const result = await cli.fetchPersonalYouTubeBuilderForTest(
+    {
+      id: "builder_youtube_chinese",
+      name: "Zhang Xiaojun Podcast",
+      sourceUrl: "https://www.youtube.com/@xiaojunpodcast",
+      fetchUrl: "https://www.youtube.com/@xiaojunpodcast",
+    },
+    {
+      cutoff: null,
+      limit: 1,
+      agentModel: "gpt-test",
+      fetchedItemKeys: new Set(),
+      sources: {
+        youtube: {
+          contentQuality: {
+            minChars: 80,
+            minContentUnits: 24,
+            minLocalDiversity: 0.25,
+            maxTimestampDensity: 0.1,
+          },
+        },
+      },
+      fetcher: async (url: string) => {
+        const href = String(url);
+        if (href === "https://www.youtube.com/@xiaojunpodcast") {
+          return new Response('<html>{"externalId":"UCxiaojun0000000000000000"}</html>');
+        }
+        if (href.includes("/feeds/videos.xml")) {
+          return new Response(`
+            <feed>
+              <entry>
+                <yt:videoId>zhvideo1</yt:videoId>
+                <title>He Xiaopeng: Robot IRON's Birth</title>
+                <link rel="alternate" href="https://www.youtube.com/watch?v=zhvideo1" />
+                <published>2026-05-22T10:00:00Z</published>
+                <media:description>本集是小鹏汽车董事长兼CEO何小鹏的访谈，讨论人形机器人、AI、汽车产业和技术剧变。</media:description>
+              </entry>
+            </feed>
+          `);
+        }
+        if (href === "https://www.youtube.com/watch?v=zhvideo1") {
+          return new Response(`
+            <html><script>
+            var ytInitialPlayerResponse = ${JSON.stringify({
+              captions: {
+                playerCaptionsTracklistRenderer: {
+                  captionTracks: [
+                    { languageCode: "en-US", baseUrl: "https://captions.example/en" },
+                    { languageCode: "zh-Hans", baseUrl: "https://captions.example/zh", kind: "asr" },
+                  ],
+                },
+              },
+            })};
+            </script></html>
+          `);
+        }
+        if (href.startsWith("https://captions.example/zh")) {
+          return new Response(JSON.stringify({ events: [{ segs: [{ utf8: zhTranscript }] }] }));
+        }
+        if (href.startsWith("https://captions.example/en")) {
+          return new Response(JSON.stringify({ events: [{ segs: [{ utf8: enTranscript }] }] }));
+        }
+        return new Response("missing", { status: 404 });
+      },
+    },
+  );
+
+  assert.equal(result.agentTasks.length, 0);
+  assert.equal(result.items.length, 1);
+  assert.match(result.items[0].body, /何小鹏/);
+  assert.equal(result.items[0].rawJson.captionLanguageCode, "zh-Hans");
+  assert.equal(result.items[0].rawJson.inferredSourceLanguage, "zh");
+});
+
+test("personal YouTube fetcher falls back to agent when caption language is ambiguous", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const result = await cli.fetchPersonalYouTubeBuilderForTest(
+    {
+      id: "builder_youtube_ambiguous",
+      name: "Ambiguous YouTube",
+      sourceUrl: "https://www.youtube.com/@ambiguous",
+      fetchUrl: "https://www.youtube.com/@ambiguous",
+    },
+    {
+      cutoff: null,
+      limit: 1,
+      agentModel: "gpt-test",
+      fetchedItemKeys: new Set(),
+      sources: {
+        youtube: {
+          contentQuality: {
+            minChars: 80,
+            minContentUnits: 24,
+            minLocalDiversity: 0.25,
+            maxTimestampDensity: 0.1,
+          },
+        },
+      },
+      fetcher: async (url: string) => {
+        const href = String(url);
+        if (href === "https://www.youtube.com/@ambiguous") {
+          return new Response('<html>{"externalId":"UCambiguous0000000000000"}</html>');
+        }
+        if (href.includes("/feeds/videos.xml")) {
+          return new Response(`
+            <feed>
+              <entry>
+                <yt:videoId>ambiguous1</yt:videoId>
+                <title>AI interview highlights</title>
+                <link rel="alternate" href="https://www.youtube.com/watch?v=ambiguous1" />
+                <published>2026-05-22T10:00:00Z</published>
+                <media:description>Conversation notes and links.</media:description>
+              </entry>
+            </feed>
+          `);
+        }
+        if (href === "https://www.youtube.com/watch?v=ambiguous1") {
+          return new Response(`
+            <html><script>
+            var ytInitialPlayerResponse = ${JSON.stringify({
+              captions: {
+                playerCaptionsTracklistRenderer: {
+                  captionTracks: [
+                    { languageCode: "en-US", baseUrl: "https://captions.example/en" },
+                    { languageCode: "zh-Hans", baseUrl: "https://captions.example/zh" },
+                  ],
+                },
+              },
+            })};
+            </script></html>
+          `);
+        }
+        return new Response("missing", { status: 404 });
+      },
+    },
+  );
+
+  assert.equal(result.items.length, 0);
+  assert.equal(result.agentTasks.length, 1);
+  assert.equal(result.agentTasks[0].type, "youtube_transcription");
+});
+
 test("agent sync validation accepts fetch task YouTube transcript with execution proof", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const task = {
