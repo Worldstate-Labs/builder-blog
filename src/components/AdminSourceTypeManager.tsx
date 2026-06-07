@@ -254,7 +254,7 @@ function SourceTypeCard({
           <OptionalMarkdownField
             ariaLabel={`${config.label} fetch prompt`}
             buttonLabel="Add fetch prompt"
-            emptyText="No extra fetch prompt for this source."
+            emptyText="No source-specific fetch prompt for this source."
             expanded={fetchPromptExpanded}
             height={340}
             onExpand={() => setFetchPromptExpanded(true)}

@@ -598,6 +598,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /className="source-type-config-dirty-dot"/);
   assert.match(adminSourceTypeManager, /<OptionalMarkdownField/);
   assert.match(adminSourceTypeManager, /buttonLabel="Add fetch prompt"/);
+  assert.match(adminSourceTypeManager, /No source-specific fetch prompt for this source\./);
+  assert.doesNotMatch(adminSourceTypeManager, /No extra fetch prompt for this source\./);
   assert.match(adminSourceTypeManager, /canEditQualityGates \? \(/);
   assert.doesNotMatch(adminSourceTypeManager, /style=\{\{/);
   assert.doesNotMatch(adminSourceTypeManager, /cursor-pointer select-none|ml-auto inline-flex|text-base font-medium/);
