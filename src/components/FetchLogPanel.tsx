@@ -1641,9 +1641,9 @@ function compressionText(
 
 function FactRow({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex gap-2 text-[12px] leading-relaxed">
-      <dt className="w-24 shrink-0 text-[var(--muted)]">{label}</dt>
-      <dd className="min-w-0 flex-1 text-[var(--ink)]">{value}</dd>
+    <div className="sync-panel-task-fact-row">
+      <dt className="sync-panel-task-fact-label">{label}</dt>
+      <dd className="sync-panel-task-fact-value">{value}</dd>
     </div>
   );
 }
@@ -1661,18 +1661,18 @@ function StageBlock({
 }) {
   return (
     <div>
-      <div className="flex items-center gap-2">
-        <h4 className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted-strong)]">
+      <div className="sync-panel-task-stage-head">
+        <h4 className="sync-panel-task-stage-title">
           {title}
         </h4>
         <span
-          className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+          className="sync-panel-task-stage-outcome"
           style={{ ...toneStyle(tone), fontFamily: "var(--font-geist-mono)" }}
         >
           {outcome}
         </span>
       </div>
-      <dl className="mt-1 grid gap-0.5">{children}</dl>
+      <dl className="sync-panel-task-fact-list">{children}</dl>
     </div>
   );
 }
@@ -1695,50 +1695,50 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
 
   return (
     <li>
-      <details className="fb-task rounded-[8px] border border-[var(--line)] bg-[var(--paper-strong)]">
-        <summary className="fb-task-summary flex items-center gap-1.5 px-2.5 py-1.5 text-[12.5px] leading-snug">
+      <details className="sync-panel-task-card fb-task">
+        <summary className="sync-panel-task-summary fb-task-summary">
           <ChevronRight
             aria-hidden="true"
-            className="fb-task-chev h-3.5 w-3.5 shrink-0 text-[var(--muted)]"
+            className="sync-panel-task-chev fb-task-chev"
           />
           {task.sourceType ? (
-            <span className="mono shrink-0 text-[11px] text-[var(--muted-strong)]">
+            <span className="mono sync-panel-task-source-type">
               {task.sourceType}
             </span>
           ) : null}
           <span
-            className="shrink-0 rounded px-1.5 py-0.5 text-[10.5px] uppercase tracking-wide"
+            className="sync-panel-task-status-pill"
             style={{ ...toneStyle(pillTone), fontFamily: "var(--font-geist-mono)" }}
           >
             {ready ? "ready" : "Local Agent"}
           </span>
-          <span className="min-w-0 flex-1 truncate text-[var(--ink)]">
+          <span className="sync-panel-task-title">
             {task.title ?? task.url ?? "—"}
           </span>
           {task.builder ? (
-            <span className="shrink-0 text-[var(--muted-strong)]">· {task.builder}</span>
+            <span className="sync-panel-task-builder">· {task.builder}</span>
           ) : null}
         </summary>
 
-        <div className="grid gap-3 border-t border-[var(--line)] px-3 py-2.5">
+        <div className="sync-panel-task-body">
           <div
-            className="rounded-[6px] px-2.5 py-1.5 text-[12px] font-bold"
+            className="sync-panel-task-banner"
             style={bannerStyle}
           >
             {banner.label}
             {work.blurb ? (
-              <span className="font-normal opacity-90"> — {work.blurb}</span>
+              <span className="sync-panel-task-banner-blurb"> — {work.blurb}</span>
             ) : null}
           </div>
 
           {work.fix ? (
-            <div className="text-[12px] leading-relaxed text-[var(--muted-strong)]">
-              <span className="font-bold text-[var(--ink)]">How to fix: </span>
+            <div className="sync-panel-task-fix">
+              <span className="sync-panel-task-fix-label">How to fix: </span>
               {work.fix}
               {work.fixHref ? (
                 <>
                   {" "}
-                  <a className="text-[var(--accent)] underline" href={work.fixHref}>
+                  <a className="sync-panel-task-link" href={work.fixHref}>
                     open settings
                   </a>
                 </>
@@ -1753,7 +1753,7 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
               <FactRow
                 label="Reason"
                 value={
-                  <span className="text-[var(--danger)]">{failureReasonText(task)}</span>
+                  <span className="sync-panel-task-danger">{failureReasonText(task)}</span>
                 }
               />
             ) : null}
@@ -1761,7 +1761,7 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
               <FactRow
                 label="Skipped"
                 value={
-                  <span className="text-[var(--muted-strong)]">{failureReasonText(task)}</span>
+                  <span className="sync-panel-task-muted">{failureReasonText(task)}</span>
                 }
               />
             ) : null}
@@ -1776,7 +1776,7 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
                 label="Source"
                 value={
                   <a
-                    className="break-all text-[var(--accent)] underline"
+                    className="sync-panel-task-link is-breakable"
                     href={task.url}
                     rel="noreferrer"
                     target="_blank"
@@ -1798,12 +1798,12 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
               <FactRow
                 label="Reason"
                 value={
-                  <span className="text-[var(--danger)]">{failureReasonText(task)}</span>
+                  <span className="sync-panel-task-danger">{failureReasonText(task)}</span>
                 }
               />
             ) : null}
             {!agentLabel && !summarySize && !failureReasonText(task) ? (
-              <p className="text-[11.5px] text-[var(--muted)]">
+              <p className="sync-panel-task-note">
                 {sumRes.label === "Not reached"
                   ? "Fetch was blocked, so no summary was produced."
                   : sumRes.label === "Failed"
@@ -1813,11 +1813,11 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
             ) : null}
           </StageBlock>
 
-          <details className="rounded-[6px] border border-[var(--line)] bg-[var(--paper)]">
-            <summary className="cursor-pointer px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--muted-strong)]">
+          <details className="sync-panel-task-technical">
+            <summary className="sync-panel-task-technical-summary">
               Technical details
             </summary>
-            <pre className="mono max-h-72 overflow-auto px-2.5 pb-2.5 pt-1 text-[11px] text-[var(--muted-strong)]">
+            <pre className="mono sync-panel-task-technical-code">
               {JSON.stringify(task, null, 2)}
             </pre>
           </details>
