@@ -510,6 +510,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(adminSourceTypeManager, /style=\{\{/);
   assert.doesNotMatch(adminSourceTypeManager, /cursor-pointer select-none|ml-auto inline-flex|text-base font-medium/);
   assert.match(settingsPage, /canEditQualityGates=\{isAdmin\}/);
+  assert.match(commonRulesForm, /Following or AI Digests/);
+  assert.doesNotMatch(commonRulesForm, /feeds or digests/);
   assert.match(commonRulesForm, /placeholder=\{\[/);
   assert.match(markdownEditor, /placeholder\?: string/);
   assert.match(markdownEditor, /placeholder=\{placeholder\}/);
