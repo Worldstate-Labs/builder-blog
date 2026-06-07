@@ -378,13 +378,15 @@ export function AgentTokenPanel({
       >
         {revokeTarget ? (
           <div className="fb-dialog-inner settings-dialog-stack">
-            <h3 className="fb-section-heading">Revoke access key &ldquo;{revokeTarget.name}&rdquo;?</h3>
+            <h3 className="fb-section-heading">
+              Revoke access for {describeAccessDevice(revokeTarget)}?
+            </h3>
             <div className="settings-dialog-copy">
               {revokeTarget.lastIp || revokeTarget.lastUserAgent || revokeTarget.lastUsedAt ? (
                 <>
                   <p>
                     This access key has been used by{" "}
-                    <strong>{describeMachine(revokeTarget)}</strong>
+                    <strong>{describeAccessDevice(revokeTarget)}</strong>
                     {revokeTarget.lastIp ? (
                       <>
                         {" "}from <span className="mono">{revokeTarget.lastIp}</span>

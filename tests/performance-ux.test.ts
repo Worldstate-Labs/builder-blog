@@ -2486,6 +2486,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /iOS\$\{iosVersion \? ` \$\{iosVersion\.replaceAll\("_", "\."\)\}` : ""\} iPhone/);
   assert.match(tokenPanel, /function describeAccessDevice/);
   assert.match(tokenPanel, /const tokenLabel = describeAccessDevice\(token\)/);
+  assert.match(tokenPanel, /Revoke access for \{describeAccessDevice\(revokeTarget\)\}\?/);
+  assert.match(tokenPanel, /<strong>\{describeAccessDevice\(revokeTarget\)\}<\/strong>/);
+  assert.doesNotMatch(tokenPanel, /Revoke access key &ldquo;\{revokeTarget\.name\}&rdquo;/);
   assert.doesNotMatch(tokenPanel, /access-key-device-detail/);
   assert.doesNotMatch(tokenPanel, /className="h-6 w-6"/);
   assert.match(tokenPanel, /className=\{`access-key-card\$\{token\.revokedAt \? " fb-row--revoked" : ""\}`\}/);
