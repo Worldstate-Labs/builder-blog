@@ -9,9 +9,13 @@ export type SearchDocument = {
   type: SearchDocumentType;
   title: string;
   body: string;
+  avatarUrl?: string | null;
   externalUrl?: string | null;
+  fetchUrl?: string | null;
+  sourceUrl?: string | null;
   url?: string | null;
   sourceName?: string | null;
+  sourceType?: string | null;
   date?: Date | null;
 };
 

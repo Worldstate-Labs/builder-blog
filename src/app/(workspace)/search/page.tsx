@@ -14,6 +14,7 @@ import { CountBadge, CountRange, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { SearchForm, type SearchTypeFilter } from "@/components/SearchForm";
+import { SourceAvatar } from "@/components/SourceAvatar";
 import { getCurrentSession } from "@/lib/auth";
 import { searchUserLibrary } from "@/lib/user-search";
 import {
@@ -651,7 +652,7 @@ function ResultCard({
   return (
     <article className="search-result">
       <div className="search-result-source">
-        <span className="search-result-icon">{sourceName.slice(0, 1).toUpperCase()}</span>
+        <SearchResultSourceIcon result={result} sourceName={sourceName} />
         <div className="search-result-source-copy">
           <div className="search-result-source-name">{sourceName}</div>
           {displayUrl ? <div className="search-result-url">{displayUrl}</div> : null}
@@ -708,6 +709,36 @@ function ResultCard({
         </details>
       ) : null}
     </article>
+  );
+}
+
+function SearchResultSourceIcon({
+  result,
+  sourceName,
+}: {
+  result: SearchResult;
+  sourceName: string;
+}) {
+  if (result.type === "digest") {
+    return (
+      <span className="search-result-icon" aria-hidden="true">
+        {sourceName.slice(0, 1).toUpperCase()}
+      </span>
+    );
+  }
+
+  return (
+    <SourceAvatar
+      className="search-result-icon"
+      imageSize={32}
+      source={{
+        avatarUrl: result.avatarUrl ?? null,
+        fetchUrl: result.fetchUrl ?? null,
+        name: result.type === "builder" ? result.title : sourceName,
+        sourceType: result.sourceType ?? "",
+        sourceUrl: result.sourceUrl ?? result.externalUrl ?? null,
+      }}
+    />
   );
 }
 
