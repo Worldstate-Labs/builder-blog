@@ -134,8 +134,9 @@ export function BuilderFeedItems({
         ))}
         {items?.length === 0 ? (
           <EmptyState
-            body="No summarized posts have been stored for this source yet."
             className="builder-post-empty"
+            title="No summarized posts yet"
+            body="Fetch and summarize sources with your Local Agent, then posts from this source will appear here."
           />
         ) : null}
       </div>

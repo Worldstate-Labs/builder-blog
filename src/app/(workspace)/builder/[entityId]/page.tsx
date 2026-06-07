@@ -365,7 +365,10 @@ async function RecentPostsSlot({
 
   if (items.length === 0) {
     return (
-      <EmptyState body="No posts summarized yet." />
+      <EmptyState
+        title="No summarized posts yet"
+        body="Fetch and summarize sources from the Sources page, then posts from this source will appear here."
+      />
     );
   }
 

@@ -687,7 +687,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(channelPreferenceToggle, /className="channel-preference-error"/);
   assert.doesNotMatch(channelPreferenceToggle, /flex flex-col items-end|text-xs text-\[var\(--danger\)\]|fill-\[var\(--warm\)\]|transition-colors/);
   assert.match(builderDetailPage, /EmptyState/);
-  assert.match(builderDetailPage, /body="No posts summarized yet\."/);
+  assert.match(builderDetailPage, /title="No summarized posts yet"/);
+  assert.match(builderDetailPage, /Fetch and summarize sources from the Sources page, then posts from this source will appear here\./);
+  assert.doesNotMatch(builderDetailPage, /body="No posts summarized yet\."/);
   assert.match(builderDetailPage, /className="recent-post-list recent-post-list--skeleton"/);
   assert.match(builderDetailPage, /className="recent-post-skeleton-card fb-panel"/);
   assert.match(builderDetailPage, /className="recent-post-skeleton-line recent-post-skeleton-line--meta"/);
@@ -1858,8 +1860,11 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /className="builder-post-state builder-post-state--error"/);
   assert.match(builderFeedItems, /@\/components\/EmptyState/);
   assert.match(builderFeedItems, /<EmptyState[\s\S]*className="builder-post-empty"/);
+  assert.match(builderFeedItems, /title="No summarized posts yet"/);
+  assert.match(builderFeedItems, /Fetch and summarize sources with your Local Agent, then posts from this source will appear here\./);
   assert.match(globals, /\.builder-post-empty\s*{\s*margin:\s*0\.75rem 0\.95rem;\s*}/);
   assert.doesNotMatch(builderFeedItems, /No summarized posts have been stored for this builder yet/);
+  assert.doesNotMatch(builderFeedItems, /No summarized posts have been stored for this source yet/);
   assert.doesNotMatch(builderFeedItems, /bg-black\/10|className="h-/);
   assert.doesNotMatch(builderFeedItems, /className="p-4 text-sm/);
   assert.match(builderFeedItems, /timeZone:\s*"UTC"/);
