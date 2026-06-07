@@ -526,11 +526,12 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardTabs, /window\.history\.pushState/);
   assert.doesNotMatch(dashboardTabs, /router\.push/);
   assert.doesNotMatch(dashboardTabs, /<Link/);
-  assert.match(dashboardTabs, /Digest/);
+  assert.match(dashboardTabs, /AI Digest/);
   assert.match(dashboardTabs, /ai-digest/);
-  assert.match(dashboardTabs, /Digest[\s\S]*Following[\s\S]*Favorites/);
+  assert.match(dashboardTabs, /AI Digest[\s\S]*Following[\s\S]*Favorites/);
   assert.doesNotMatch(dashboardTabs, /For You/);
-  assert.match(dashboardTabs, /value: "ai-digest"[\s\S]*label: "Digest"[\s\S]*value: "following"[\s\S]*label: "Following"[\s\S]*value: "favorites"[\s\S]*label: "Favorites"/);
+  assert.match(dashboardTabs, /value: "ai-digest"[\s\S]*label: "AI Digest"[\s\S]*value: "following"[\s\S]*label: "Following"[\s\S]*value: "favorites"[\s\S]*label: "Favorites"/);
+  assert.match(dashboardTabs, /id="home-panel-ai-digest"[\s\S]*id="home-panel-following"[\s\S]*id="home-panel-favorites"/);
   assert.doesNotMatch(dashboardPage, /scope="subscription"/);
   assert.doesNotMatch(dashboardPage, /scope="for-you"/);
   assert.doesNotMatch(dashboardPage, /<h3>Status<\/h3>/);

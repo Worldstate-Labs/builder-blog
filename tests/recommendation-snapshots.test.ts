@@ -287,7 +287,7 @@ test("following recommendation feed uses subscribed builders only", () => {
   const followingSection = source("src/components/FollowingRecommendationSection.tsx");
   const recommendations = source("src/lib/recommendations.ts");
 
-  assert.match(tabs, /Digest/);
+  assert.match(tabs, /AI Digest/);
   assert.match(tabs, /Favorites/);
   assert.match(tabs, /Following/);
   assert.doesNotMatch(tabs, /For You/);

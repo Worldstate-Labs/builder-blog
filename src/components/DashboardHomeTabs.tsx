@@ -9,7 +9,7 @@ type DashboardTab = "ai-digest" | "favorites" | "following";
 const HOME_TABS: Array<WorkspaceTopTabItem<DashboardTab>> = [
   {
     value: "ai-digest",
-    label: "Digest",
+    label: "AI Digest",
     panelId: "home-panel-ai-digest",
     tabId: "home-tab-ai-digest",
   },
@@ -65,15 +65,6 @@ export function DashboardHomeTabs({
         {selectedTab === "ai-digest" ? aiDigest : null}
       </section>
       <section
-        aria-labelledby="home-tab-favorites"
-        className="home-tab-panel"
-        hidden={selectedTab !== "favorites"}
-        id="home-panel-favorites"
-        role="tabpanel"
-      >
-        {selectedTab === "favorites" ? favorites : null}
-      </section>
-      <section
         aria-labelledby="home-tab-following"
         className="home-tab-panel"
         hidden={selectedTab !== "following"}
@@ -81,6 +72,15 @@ export function DashboardHomeTabs({
         role="tabpanel"
       >
         {selectedTab === "following" ? following : null}
+      </section>
+      <section
+        aria-labelledby="home-tab-favorites"
+        className="home-tab-panel"
+        hidden={selectedTab !== "favorites"}
+        id="home-panel-favorites"
+        role="tabpanel"
+      >
+        {selectedTab === "favorites" ? favorites : null}
       </section>
     </>
   );
