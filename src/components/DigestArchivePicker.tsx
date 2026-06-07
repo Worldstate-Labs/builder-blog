@@ -52,7 +52,7 @@ export function DigestArchivePicker({
           setOpen((current) => !current);
         }}
       >
-        <span className="sr-only">Digest archive</span>
+        <span className="sr-only">Saved AI Digests</span>
         <DigestPickerItem
           digest={selectedDigest}
           hydrated={hydrated}
@@ -60,7 +60,7 @@ export function DigestArchivePicker({
         />
         <ChevronDown aria-hidden="true" className="digest-picker-icon" />
       </summary>
-      <div className="digest-picker-menu" role="listbox" aria-label="Digest archive">
+      <div className="digest-picker-menu" role="listbox" aria-label="Saved AI Digests">
         {digests.map((digest) => {
           const selected = digest.id === selectedDigest.id;
           return (

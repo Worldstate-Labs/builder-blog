@@ -174,7 +174,7 @@ async function AiDigestFeedSlot({
     digestSummaries,
     digestSourceLinks,
   ] = await Promise.all([
-      // The digest picker lists the latest digest plus archived digests in one
+      // The digest picker lists the latest digest plus saved digests in one
       // control. Keep this as summaries only; the body is fetched on demand.
       prisma.digest.findMany({
         where: { userId: digestOwnerUserId, itemCount: { gt: 0 } },
@@ -378,7 +378,7 @@ function DigestControlBar({
       </div>
       <div className="digest-control-field">
         <span className="digest-control-label">
-          Digest archive
+          Saved AI Digests
         </span>
         {digestArchiveOptions.length > 0 ? (
           <div className="digest-control-picker">

@@ -598,7 +598,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /fb-rail/);
   assert.doesNotMatch(dashboardPage, /Manage sources/);
   assert.doesNotMatch(dashboardPage, /Recent digest/);
-  assert.match(digestArchivePicker, /Digest archive/);
+  assert.match(digestArchivePicker, /Saved AI Digests/);
   assert.match(digestArchivePicker, /setOpen\(false\)/);
   assert.doesNotMatch(dashboardPage, /FavoritePostsSection/);
   assert.match(dashboardPage, /requestedTab === "favorites"[\s\S]*redirect\("\/dashboard"\)/);
@@ -1040,12 +1040,12 @@ test("skill context caps personal fetched items to keep payloads bounded", () =>
   assert.match(contextRoute, /dryRun/);
   assert.match(contextRoute, /sourceParam/);
   // A DigestRun is recorded only for a digest prepare, never a library fetch —
-  // gated by intent so library fetches don't pollute the digest history.
+  // gated by intent so library fetches don't appear as saved AI Digests.
   assert.match(contextRoute, /const isDigest =/);
   assert.match(contextRoute, /if \(isDigest && !dryRun\)/);
 });
 
-test("dashboard subscription feed owns the paginated digest archive", () => {
+test("dashboard digest tab owns the saved AI Digest selector", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const digestArchivePicker = source("src/components/DigestArchivePicker.tsx");
   const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
@@ -1103,7 +1103,7 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(dashboardPage, /serializeDigestArchiveOption/);
   assert.match(digestArchivePicker, /formatDigestPickerDate/);
   assert.match(digestArchivePicker, /CountMeta/);
-  assert.match(digestArchivePicker, /Digest archive/);
+  assert.match(digestArchivePicker, /Saved AI Digests/);
   assert.match(digestArchivePicker, /onClick=\{\(event\) =>/);
   assert.match(digestArchivePicker, /if \(selected\) event\.preventDefault\(\)/);
   assert.doesNotMatch(dashboardPage, /digest-picker-label/);
@@ -1182,7 +1182,7 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(buildersPage, /getAgentJobRuns\(session\.user\.id, "digest-build", 25\)/);
   assert.match(buildersPage, /getScheduledAgentJobRuns\(session\.user\.id, "digest-cron", 25\)/);
   assert.match(digestArchivePicker, /digestHref/);
-  assert.match(digestArchivePicker, /aria-label="Digest archive"/);
+  assert.match(digestArchivePicker, /aria-label="Saved AI Digests"/);
   assert.match(digestArchivePicker, /useHydrated/);
   assert.match(digestArchivePicker, /formatDigestPickerDate\(digest\.createdAt, hydrated\)/);
   assert.match(digestArchivePicker, /timeZone:\s*"UTC"/);
