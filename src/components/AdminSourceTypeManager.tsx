@@ -282,7 +282,7 @@ function SourceTypeCard({
           <Section
             step="03"
             title="Quality gates"
-            description="Length, diversity, and timestamp-density checks applied after extraction. Posts that fail are dropped from the pipeline."
+            description="Length, diversity, and timestamp-density checks applied after extraction. Posts that fail are not saved or used in Following and AI Digests."
           >
             <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
               <FieldNumber
