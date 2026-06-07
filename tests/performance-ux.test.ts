@@ -1433,7 +1433,9 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(libraryHubPage, /<h1 className="sr-only">Hub<\/h1>/);
   assert.match(libraryHubPage, /getDigestPipelineMetadataByOwnerIds/);
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
-  assert.match(libraryHubPage, /Available source libraries/);
+  assert.match(libraryHubPage, /label: "Source Libraries"/);
+  assert.match(libraryHubPage, /Source libraries built and shared by other users\./);
+  assert.doesNotMatch(libraryHubPage, /Available source libraries/);
   assert.match(libraryHubPage, /className="workspace-content-stack"/);
   assert.doesNotMatch(libraryHubPage, /@\/components\/PageHeader/);
   assert.doesNotMatch(libraryHubPage, /<PageHeader/);
@@ -1464,7 +1466,9 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(libraryHubPage, /className="hub-list-stack fb-hub-list"/);
   assert.doesNotMatch(libraryHubPage, /className="fb-hub-list mt-5"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-import-section"/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Available source libraries/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /<h2 className="fb-section-heading">Source libraries<\/h2>/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries built and shared by other users\./);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Available source libraries/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /All source libraries/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /My source libraries/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /aria-label="Source library filter"/);

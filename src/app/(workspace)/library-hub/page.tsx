@@ -32,7 +32,7 @@ type LibraryHubSearchParams = Promise<{
 }>;
 
 const LIBRARY_HUB_TABS: Array<WorkspaceTopTabItem<LibraryHubTab>> = [
-  { value: "source-library", label: "Source Library", href: "/library-hub" },
+  { value: "source-library", label: "Source Libraries", href: "/library-hub" },
   { value: "ai-digests", label: "AI Digests", href: "/library-hub?tab=ai-digests" },
 ];
 
@@ -223,7 +223,10 @@ function LibraryHubImportFallback() {
     <section aria-live="polite" aria-busy="true">
       <div className="library-hub-toolbar">
         <div className="library-hub-toolbar-copy">
-          <h2 className="section-heading">Available source libraries</h2>
+          <h2 className="section-heading">Source libraries</h2>
+          <p className="hub-section-copy">
+            Source libraries built and shared by other users.
+          </p>
           <div className="library-hub-skeleton-line is-wide" />
         </div>
         <div className="library-hub-counts">

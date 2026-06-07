@@ -235,7 +235,12 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
       <section className={showFilters ? "hub-list-region has-filters" : "hub-list-region"}>
         <div className="hub-list-heading at-desktop">
           <div className="hub-list-heading-row">
-            <h2 className="fb-section-heading">Available source libraries</h2>
+            <div>
+              <h2 className="fb-section-heading">Source libraries</h2>
+              <p className="hub-section-copy">
+                Source libraries built and shared by other users.
+              </p>
+            </div>
             <CountRange>
               {formatCount(filteredLibraries.length)}{" "}
               {filteredLibraries.length === 1 ? "source library" : "source libraries"}
