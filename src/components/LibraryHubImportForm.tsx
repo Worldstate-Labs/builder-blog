@@ -57,10 +57,10 @@ type LibraryHubImportFormProps = {
 type FilterKey = "all" | "community" | "shared" | "my" | "imported";
 
 const FILTERS: Array<{ key: FilterKey; label: string }> = [
-  { key: "all", label: "All libraries" },
+  { key: "all", label: "All source libraries" },
   { key: "community", label: "Community" },
   { key: "shared", label: "Shared by users" },
-  { key: "my", label: "My libraries" },
+  { key: "my", label: "My source libraries" },
   { key: "imported", label: "Imported" },
 ];
 
@@ -147,14 +147,14 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ libraryIds: [libraryId] }),
         });
-        if (!response.ok) throw new Error("Unable to import library");
+        if (!response.ok) throw new Error("Unable to import source library");
       } catch {
         setImportedIds((current) => {
           const next = new Set(current);
           next.delete(libraryId);
           return next;
         });
-        setError("Could not import library.");
+        setError("Could not import source library.");
       } finally {
         setPendingAction(null);
       }
@@ -180,10 +180,10 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ libraryId }),
         });
-        if (!response.ok) throw new Error("Unable to remove library import");
+        if (!response.ok) throw new Error("Unable to remove source library import");
       } catch {
         setImportedIds((current) => new Set([...current, libraryId]));
-        setError("Could not remove imported library.");
+        setError("Could not remove imported source library.");
       } finally {
         setPendingAction(null);
       }
@@ -194,7 +194,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
     <section className="hub-import-section">
       {showFilters ? (
         <>
-          <nav className="fb-segmented-tabs filter-tabs at-desktop" aria-label="Library filter">
+          <nav className="fb-segmented-tabs filter-tabs at-desktop" aria-label="Source library filter">
             {visibleFilters.map((filter) => (
               <button
                 aria-pressed={activeFilter === filter.key}
@@ -209,7 +209,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
               </button>
             ))}
           </nav>
-          <div className="fb-segmented-tabs mobile-filter-tabs at-mobile" aria-label="Library filter">
+          <div className="fb-segmented-tabs mobile-filter-tabs at-mobile" aria-label="Source library filter">
             {visibleFilters.slice(0, 3).map((filter) => (
               <button
                 aria-pressed={activeFilter === filter.key}
@@ -219,7 +219,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
                 onClick={() => setActiveFilter(filter.key)}
                 type="button"
               >
-                {filter.label.replace(" libraries", "")}
+                {filter.label.replace(" source libraries", "")}
               </button>
             ))}
           </div>
@@ -237,7 +237,8 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
           <div className="hub-list-heading-row">
             <h2 className="fb-section-heading">Available source libraries</h2>
             <CountRange>
-              {formatCount(filteredLibraries.length)} {filteredLibraries.length === 1 ? "library" : "libraries"}
+              {formatCount(filteredLibraries.length)}{" "}
+              {filteredLibraries.length === 1 ? "source library" : "source libraries"}
             </CountRange>
           </div>
         </div>
@@ -255,7 +256,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
           ))}
           {filteredLibraries.length === 0 ? (
             <EmptyState
-              body="No libraries match this filter yet."
+              body="No source libraries match this filter yet."
               className="hub-list-empty"
             />
           ) : null}
@@ -303,7 +304,7 @@ function HubCard({
       </span>
       <button
         aria-busy={pending === "remove" && isPending}
-        aria-label={`Remove ${library.name} from library`}
+        aria-label={`Remove ${library.name} from imported source libraries`}
         className="fb-btn light compact hub-card-remove-button"
         disabled={pending !== null}
         onClick={() => onRemove(library.id)}
