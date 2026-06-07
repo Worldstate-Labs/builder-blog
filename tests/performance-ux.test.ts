@@ -1660,6 +1660,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /<EmptyState[\s\S]*className="search-empty"/);
   assert.doesNotMatch(searchPage, /function EmptyState\(/);
   assert.match(searchPage, /search-empty-actions/);
+  assert.match(searchPage, /className="search-recovery-action-icon"/);
+  assert.match(searchPage, /className="search-page-link-icon"/);
+  assert.doesNotMatch(searchPage, /h-4 w-4|h-3\.5 w-3\.5/);
   assert.match(globals, /\.empty-state-actions\s*{[\s\S]*margin-top:\s*1rem/);
   assert.match(searchPage, /stripSearchQueryOperators/);
   assert.match(searchPage, /clearAllSearchHref/);
@@ -1667,6 +1670,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(globals, /\.search-insight-card\s*{/);
   assert.match(globals, /\.search-insight-summary\s*{/);
   assert.match(globals, /\.search-insight-grid\s*{[\s\S]*border-top:\s*1px solid/);
+  assert.match(globals, /\.search-recovery-action-icon,[\s\S]*\.search-page-link-icon\s*{[\s\S]*height:\s*1rem/);
   assert.match(globals, /\.search-meta-row\s*{[\s\S]*justify-content:\s*space-between/);
   assert.match(globals, /\.search-advanced-tools > summary\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.search-advanced-tools-icon\s*{[\s\S]*transition:\s*transform/);

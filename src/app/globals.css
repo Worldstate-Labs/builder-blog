@@ -3401,6 +3401,13 @@ svg.lucide {
   border-color: color-mix(in oklch, var(--accent) 34%, var(--line));
 }
 
+.search-recovery-action-icon,
+.search-page-link-icon {
+  flex-shrink: 0;
+  height: 1rem;
+  width: 1rem;
+}
+
 .search-active-filters {
   align-items: flex-start;
   display: grid;

@@ -505,7 +505,7 @@ function SearchQueryInsights({
         <div className="search-insight-actions" aria-label="Broaden search">
           {actions.map((action) => (
             <Link className="search-recovery-action" href={action.href} key={action.label}>
-              <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+              <RotateCcw aria-hidden="true" className="search-recovery-action-icon" />
               {action.label}
             </Link>
           ))}
@@ -767,7 +767,7 @@ function PageLink({
   if (disabled) {
     return (
       <span className="search-page-link search-page-link-disabled">
-        <Icon className="h-4 w-4" />
+        <Icon aria-hidden="true" className="search-page-link-icon" />
         {label}
       </span>
     );
@@ -775,7 +775,7 @@ function PageLink({
 
   return (
     <Link className="search-page-link" href={href}>
-      <Icon className="h-4 w-4" />
+      <Icon aria-hidden="true" className="search-page-link-icon" />
       {label}
     </Link>
   );
@@ -897,7 +897,7 @@ function SearchEmptyState({
     <div className="search-empty-actions">
       {actions.map((action) => (
         <Link className="search-recovery-action" href={action.href} key={action.label}>
-          <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+          <RotateCcw aria-hidden="true" className="search-recovery-action-icon" />
           {action.label}
         </Link>
       ))}
