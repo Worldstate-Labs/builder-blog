@@ -2279,6 +2279,10 @@ svg.lucide {
   grid-template-columns: minmax(0, 1fr) minmax(8rem, auto);
 }
 
+.add-source-name-input {
+  width: 100%;
+}
+
 .add-source-inline-note {
   color: var(--muted-strong);
   font-size: 0.71875rem;

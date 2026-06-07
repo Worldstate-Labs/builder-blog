@@ -337,7 +337,7 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
       <div className="add-source-name-row">
         <input
           aria-label="Display name"
-          className="fb-input flex-1"
+          className="fb-input add-source-name-input"
           name="name"
           placeholder="Display name (auto-filled from URL — edit to override)"
           value={effectiveName}
