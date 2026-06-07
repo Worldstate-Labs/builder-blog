@@ -75,8 +75,8 @@ test("favorites saves posts without reintroducing a separate saved feed", () => 
   assert.match(favoriteRoute, /unfavoritePost/);
   assert.doesNotMatch(favoriteRoute, /export async function GET/);
   assert.match(feed, /FavoriteToggleButton/);
-  assert.match(feed, /Save/);
-  assert.match(feed, /const label = isFavorite \? "Remove saved post" : "Save post"/);
+  assert.match(feed, /Add to Favorites/);
+  assert.match(feed, /const label = isFavorite \? "Remove from Favorites" : "Add to Favorites"/);
   assert.match(feed, /title=\{label\}/);
   assert.match(feed, /className="post-action-icon"/);
   assert.match(digestRoute, /favoriteStateByUrl/);

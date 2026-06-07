@@ -238,7 +238,7 @@ test("workspace not-found uses the FollowBrief shell instead of the default Next
   assert.match(notFoundPage, /href="\/search"/);
   assert.match(notFoundPage, /Home/);
   assert.match(notFoundPage, /Search/);
-  assert.match(notFoundPage, /Return Home, or search across sources, posts, saved posts, and AI Digests\./);
+  assert.match(notFoundPage, /Return Home, or search across sources, posts, Favorites, and AI Digests\./);
   assert.doesNotMatch(notFoundPage, /Return to your feeds/);
   assert.doesNotMatch(notFoundPage, /This page could not be found|404 \|/);
   assert.match(globals, /\.workspace-not-found-empty\s*{[\s\S]*border-style:\s*solid/);
@@ -295,11 +295,11 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /reading AI Digests/);
   assert.match(landingPage, /builds cited AI Digests/);
   assert.match(landingPage, />AI Digest<\/span>/);
-  assert.match(landingPage, /Find sources, posts, saved posts, and past AI Digests/);
+  assert.match(landingPage, /Find sources, posts, Favorites, and past AI Digests/);
   assert.match(landingPage, /Open the original posts behind each summary/);
-  assert.match(landingPage, /search sources, posts, saved posts, and AI Digests later/);
+  assert.match(landingPage, /search sources, posts, Favorites, and AI Digests later/);
   assert.match(landingPage, /Workspace search/);
-  assert.match(landingPage, /Sources, posts, saved posts, and AI Digests share one search surface\./);
+  assert.match(landingPage, /Sources, posts, Favorites, and AI Digests share one search surface\./);
   assert.match(landingPage, /Start from shared source libraries/);
   assert.doesNotMatch(landingPage, /Start from shared libraries/);
   assert.doesNotMatch(landingPage, /AI digests|AI digest|summarized items|original items|Search AI Digests/);
@@ -353,7 +353,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(loginPage, /Sign in to your\{" "\}/);
   assert.match(loginPage, /className="fb-login-title-break"/);
   assert.doesNotMatch(loginPage, /your<br \/>AI Digest workspace/);
-  assert.match(loginPage, /sources, posts, saved posts, and AI Digests searchable/);
+  assert.match(loginPage, /sources, posts, Favorites, and AI Digests searchable/);
   assert.doesNotMatch(loginPage, /keep your\s+AI Digests searchable/);
   assert.match(loginPage, /label="Follow"/);
   assert.match(loginPage, /label="Build AI Digest"/);
@@ -1827,7 +1827,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /@\/components\/PageHeader/);
   assert.match(searchPage, /className="page-pad page-pad--reading search-page"/);
   assert.match(searchPage, /searchPageSize/);
-  assert.match(searchPage, /emptySearchCopy = "Search sources, posts, saved posts, and AI Digests\."/);
+  assert.match(searchPage, /emptySearchCopy = "Search sources, posts, Favorites, and AI Digests\."/);
   assert.match(searchPage, /<SearchEmptyState title="Start with a search">\{emptySearchCopy\}<\/SearchEmptyState>/);
   assert.match(searchPage, /<SearchEmptyState actions=\{recoveryActions\} title="No matches found">/);
   assert.match(searchPage, /Try a broader phrase, fewer words, or switch back to All results\./);
@@ -1851,7 +1851,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchPage, /Updating results\.\.\./);
   assert.match(searchPage, /className="workspace-content-stack search-results-workspace"/);
   assert.match(globals, /\.search-result-skeleton/);
-  assert.match(searchPage, /<PageHeader[\s\S]*title="Search"[\s\S]*Find sources, posts, saved posts, and AI Digests in one place\./);
+  assert.match(searchPage, /<PageHeader[\s\S]*title="Search"[\s\S]*Find sources, posts, Favorites, and AI Digests in one place\./);
   assert.doesNotMatch(searchPage, /across your library/);
   assert.doesNotMatch(searchPage, /description="Find sources, saved posts, and digest history\."/);
   assert.doesNotMatch(searchPage, /<PageHeader[\s\S]{0,120}actions=/);
@@ -2058,8 +2058,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /spellCheck=\{false\}/);
   assert.match(searchForm, /role="listbox"/);
   assert.match(searchForm, /role="option"/);
-  assert.match(searchForm, /placeholder="Search sources, posts, saved posts, and AI Digests"/);
-  assert.doesNotMatch(searchForm, /saved items/);
+  assert.match(searchForm, /placeholder="Search sources, posts, Favorites, and AI Digests"/);
+  assert.doesNotMatch(searchForm, /saved items|saved posts/);
   assert.match(searchForm, /submitSuggestion\(activeSuggestion, event\.currentTarget\.form\)/);
   assert.match(searchForm, /role="option"[\s\S]*className="search-suggestion-item"/);
   assert.match(searchForm, /<button[\s\S]*aria-label=\{`Search for \$\{suggestion\.query\}`\}[\s\S]*className="search-suggestion-chip"/);
@@ -2714,10 +2714,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(recommendations, /from a followed source/);
   assert.doesNotMatch(recommendations, /from a subscribed builder/);
   assert.match(recommendationFeed, /aria-label=\{label\}/);
-  assert.match(recommendationFeed, /const label = isFavorite \? "Remove saved post" : "Save post"/);
+  assert.match(recommendationFeed, /const label = isFavorite \? "Remove from Favorites" : "Add to Favorites"/);
   assert.match(recommendationFeed, /<Star aria-hidden="true" className="post-action-icon"/);
   assert.match(digestContent, /aria-label=\{label\}/);
-  assert.match(digestContent, /const label = isFavorite \? "Remove saved post" : "Save post"/);
+  assert.match(digestContent, /const label = isFavorite \? "Remove from Favorites" : "Add to Favorites"/);
   assert.match(digestContent, /<Star aria-hidden="true" className="post-action-icon"/);
   assert.doesNotMatch(recommendationFeed, /title=\{isFavorite \? "Saved post" : "Save post"\}/);
   assert.doesNotMatch(digestContent, /title=\{isFavorite \? "Saved post" : "Save post"\}/);
