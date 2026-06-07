@@ -245,7 +245,10 @@ export function BuilderLibraryList({
                     {section.builders.length === 1 ? "source" : "sources"}
                   </span>
                   <span aria-hidden="true">·</span>
-                  <span>{formatCount(sectionFollowedCount)} followed</span>
+                  <span>
+                    {formatCount(sectionFollowedCount)} followed{" "}
+                    {sectionFollowedCount === 1 ? "source" : "sources"}
+                  </span>
                 </span>
               </button>
             </h3>

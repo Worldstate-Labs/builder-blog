@@ -2604,6 +2604,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderLibraryList, /flex flex-wrap items-center gap-2|truncate hover:underline/);
   assert.match(builderLibraryList, /formatCount\(section\.builders\.length\)/);
   assert.match(builderLibraryList, /\? "source" : "sources"/);
+  assert.match(builderLibraryList, /formatCount\(sectionFollowedCount\)\} followed/);
+  assert.match(builderLibraryList, /sectionFollowedCount === 1 \? "source" : "sources"/);
+  assert.doesNotMatch(builderLibraryList, /formatCount\(sectionFollowedCount\)\} followed<\/span>/);
   assert.match(builderLibraryList, /const sourceType = sourceTypeForBuilder\(builder\)/);
   assert.match(builderLibraryList, /setExpandedSourceTypes/);
   assert.match(builderLibraryList, /pendingScrollIdRef\.current = builder\.id/);
