@@ -8898,8 +8898,8 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .access-keys-list--skeleton .settings-skeleton-row {
-  border-radius: 16px;
-  height: 6.25rem;
+  border-radius: 18px;
+  height: 7.5rem;
 }
 
 .settings-source-type-manager {
@@ -9630,15 +9630,15 @@ a.fb-hub-source-name:focus-visible {
   align-items: center;
   color: var(--ink);
   display: inline-flex;
-  height: 2.25rem;
+  height: 2.75rem;
   justify-content: center;
-  width: 2.25rem;
+  width: 2.75rem;
 }
 
 .access-key-device-icon svg {
-  height: 1.45rem;
-  stroke-width: 1.75;
-  width: 1.45rem;
+  height: 1.65rem;
+  stroke-width: 1.85;
+  width: 1.65rem;
 }
 
 .access-key-revoke-button,
@@ -9655,7 +9655,7 @@ a.fb-hub-source-name:focus-visible {
   justify-content: center;
   justify-self: end;
   min-height: 2.75rem;
-  min-width: 10.5rem;
+  min-width: 10.75rem;
   padding: 0.65rem 1.15rem;
   text-align: center;
   white-space: nowrap;
@@ -9722,14 +9722,14 @@ a.fb-hub-source-name:focus-visible {
   align-items: center;
   background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 18px;
   box-shadow: none;
   display: grid;
-  gap: 1rem;
-  grid-template-columns: 2.25rem minmax(0, 1fr) auto;
-  min-height: 6.25rem;
+  gap: 1.1rem;
+  grid-template-columns: 2.75rem minmax(0, 1fr) auto;
+  min-height: 7.5rem;
   min-width: 0;
-  padding: 1.15rem 1.25rem;
+  padding: 1.35rem 1.5rem;
 }
 
 .access-key-card.fb-row--revoked {
@@ -10950,13 +10950,13 @@ body {
 
   .access-key-card {
     gap: 0.85rem;
-    grid-template-columns: 1.875rem minmax(0, 1fr) auto;
-    min-height: 6.25rem;
+    grid-template-columns: 2.125rem minmax(0, 1fr) auto;
+    min-height: 6.75rem;
     padding: 1rem 0.9rem;
   }
 
   .access-keys-list--skeleton .settings-skeleton-row {
-    height: 6.25rem;
+    height: 6.75rem;
   }
 
   .access-key-revoke-button,
@@ -10976,13 +10976,13 @@ body {
   }
 
   .access-key-device-icon {
-    height: 1.875rem;
-    width: 1.875rem;
+    height: 2.125rem;
+    width: 2.125rem;
   }
 
   .access-key-device-icon svg {
-    height: 1.25rem;
-    width: 1.25rem;
+    height: 1.35rem;
+    width: 1.35rem;
   }
 
   .fb-pill {

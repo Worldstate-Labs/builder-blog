@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LaptopMinimal, Plus, Smartphone } from "lucide-react";
+import { MonitorSmartphone, Plus, Smartphone } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { useHydrated } from "@/components/ThemeToggle";
 
@@ -496,7 +496,7 @@ function TokenRow({
   isPending: boolean;
   onRevoke: () => void;
 }) {
-  const DeviceIcon = isPhoneLikeToken(token) ? Smartphone : LaptopMinimal;
+  const DeviceIcon = isPhoneLikeToken(token) ? Smartphone : MonitorSmartphone;
   const tokenLabel = describeAccessDevice(token);
   const statusLabel = token.revokedAt
     ? `Revoked ${formatRelativeCompact(token.revokedAt, hydrated)}`
