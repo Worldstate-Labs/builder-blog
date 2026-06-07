@@ -2404,6 +2404,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /Browse AI Digests/);
   assert.doesNotMatch(digestPipelineForm, /Browse Hub/);
   assert.match(digestPipelineForm, /No shared AI Digests are available yet/);
+  assert.match(digestPipelineForm, /No AI Digests yet/);
+  assert.doesNotMatch(digestPipelineForm, /No digests yet/);
   assert.match(digestPipelineForm, /imported=\{importedIds\.has\(pipeline\.id\)\}/);
   assert.match(digestPipelineForm, /aria-label=\{`Import \$\{pipeline\.title\}`\}/);
   assert.match(digestPipelineForm, /Imported/);

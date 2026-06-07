@@ -435,7 +435,7 @@ export function DigestPipelinePreviewCard({
           <div className="fb-hub-digest-preview-title">
             {pipeline.latestDigestAt
               ? `Latest digest ${formatDate(pipeline.latestDigestAt)}`
-              : "No digests yet"}
+              : "No AI Digests yet"}
           </div>
           {pipeline.latestDigestHeadline ? (
             <section
