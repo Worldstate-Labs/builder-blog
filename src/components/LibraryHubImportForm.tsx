@@ -299,7 +299,7 @@ function HubCard({
   const action = library.owned ? (
     <span className="fb-chip">
       <Sliders aria-hidden="true" />
-      Your library
+      Your source library
     </span>
   ) : imported ? (
     <>
