@@ -3658,7 +3658,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /className="access-key-device-status"/);
   assert.match(tokenPanel, /aria-label=\{`\$\{tokenLabel\}\. \$\{statusLabel\}`\}/);
   assert.match(tokenPanel, /aria-label=\{`Revoke access for \$\{tokenLabel\}`\}/);
-  assert.match(tokenPanel, /\\b\(ios\|iphone\|ipad\)\\b/);
+  assert.match(tokenPanel, /\\b\(ios\|ipados\|iphone\|ipad\)\\b/);
+  assert.match(tokenPanel, /function prettyAppleMobileOs/);
+  assert.match(tokenPanel, /function prettyAndroidOs/);
   assert.match(tokenPanel, /if \(os && isPhoneLikeToken\(token\)\) return withPhoneDeviceName\(os, token\.lastUserAgent\)/);
   assert.match(tokenPanel, /function withPhoneDeviceName/);
   assert.match(tokenPanel, /return `\$\{os\} iPhone`/);

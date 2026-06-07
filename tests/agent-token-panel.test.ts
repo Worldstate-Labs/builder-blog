@@ -1,0 +1,34 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { describeAccessDevice, type AgentTokenListItem } from "../src/components/AgentTokenPanel";
+
+function token(overrides: Partial<AgentTokenListItem>): AgentTokenListItem {
+  return {
+    id: "token_1",
+    name: "Mobile access",
+    createdAt: "2026-06-07T00:00:00.000Z",
+    lastUsedAt: null,
+    lastIp: null,
+    lastUserAgent: null,
+    lastHostname: null,
+    lastPlatform: null,
+    lastUser: null,
+    revokedAt: null,
+    ...overrides,
+  };
+}
+
+test("access key device labels normalize mobile platform casing", () => {
+  assert.equal(
+    describeAccessDevice(token({ lastPlatform: "ios 26.6", lastUserAgent: "Mobile Safari iPhone" })),
+    "iOS 26.6 iPhone",
+  );
+  assert.equal(
+    describeAccessDevice(token({ lastPlatform: "ipadOS 26.6", lastUserAgent: "Mobile Safari iPad" })),
+    "iPadOS 26.6 iPad",
+  );
+  assert.equal(
+    describeAccessDevice(token({ lastPlatform: "android 15", lastUserAgent: "Chrome Mobile" })),
+    "Android 15",
+  );
+});

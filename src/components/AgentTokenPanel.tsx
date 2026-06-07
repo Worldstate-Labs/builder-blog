@@ -22,10 +22,10 @@ export type AgentTokenListItem = {
 function prettyOs(platformString: string | null): string {
   if (!platformString) return "";
   const lower = platformString.toLowerCase();
-  if (/\b(ios|iphone|ipad)\b/.test(lower)) return platformString.slice(0, 48);
-  if (/\bandroid\b/.test(lower)) return platformString.slice(0, 48);
+  if (/\b(ios|ipados|iphone|ipad)\b/.test(lower)) return prettyAppleMobileOs(platformString);
+  if (/\bandroid\b/.test(lower)) return prettyAndroidOs(platformString);
   if (lower.startsWith("darwin")) {
-    // "darwin 24.3.0" → "macOS 14"
+    // "darwin 24.3.0" -> "macOS 15"
     const release = lower.match(/(\d+)/)?.[0];
     const macMajor = release ? Number(release) - 9 : null;
     return macMajor && macMajor > 9 ? `macOS ${macMajor}` : "macOS";
@@ -34,6 +34,19 @@ function prettyOs(platformString: string | null): string {
   if (lower.startsWith("win")) return "Windows";
   if (lower.startsWith("freebsd")) return "FreeBSD";
   return platformString.split(/\s+/)[0]!.slice(0, 32);
+}
+
+function prettyAppleMobileOs(platformString: string): string {
+  const lower = platformString.toLowerCase();
+  const version = platformString.match(/\b(?:ios|ipados)\s+([0-9.]+)/i)?.[1];
+  const device = lower.includes("ipad") ? "iPad" : "iPhone";
+  const osName = device === "iPad" ? "iPadOS" : "iOS";
+  return `${osName}${version ? ` ${version}` : ""} ${device}`;
+}
+
+function prettyAndroidOs(platformString: string): string {
+  const version = platformString.match(/\bandroid\s+([0-9.]+)/i)?.[1];
+  return `Android${version ? ` ${version}` : ""}`;
 }
 
 /**
