@@ -98,10 +98,12 @@ export function DigestPipelineImportForm({
     mode === "imported"
       ? "AI Digests you imported from Hub."
       : "AI Digests built and shared by other users.";
+  const emptyTitle =
+    mode === "imported" ? "No imported AI Digests" : "No shared AI Digests";
   const emptyMessage =
     mode === "imported"
-      ? "No imported AI Digests yet."
-      : "No shared AI Digests are available yet.";
+      ? "Import an AI Digest from Hub to see it on Home."
+      : "Shared AI Digests will appear here once users publish them.";
 
   function setImportedIds(updater: (current: Set<string>) => Set<string>) {
     setImportedState((current) => {
@@ -250,6 +252,7 @@ export function DigestPipelineImportForm({
             }
             body={emptyMessage}
             className="hub-list-empty"
+            title={emptyTitle}
           />
         ) : null}
       </div>
@@ -435,7 +438,7 @@ export function DigestPipelinePreviewCard({
           <div className="fb-hub-digest-preview-title">
             {pipeline.latestDigestAt
               ? `Latest AI Digest ${formatDate(pipeline.latestDigestAt)}`
-              : "No AI Digests yet"}
+              : "No saved AI Digest yet"}
           </div>
           {pipeline.latestDigestHeadline ? (
             <section

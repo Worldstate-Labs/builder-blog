@@ -133,6 +133,12 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
     (filter) => filter.key === "all" || counts[filter.key] > 0,
   );
   const showFilters = libraries.length > 3 && visibleFilters.length > 1;
+  const emptyTitle =
+    activeFilter === "all" ? "No source libraries yet" : "No matching source libraries";
+  const emptyBody =
+    activeFilter === "all"
+      ? "Source libraries built and shared by other users will appear here."
+      : "Try another source library filter.";
   const removeTarget = removeTargetId
     ? libraries.find((library) => library.id === removeTargetId) ?? null
     : null;
@@ -295,8 +301,9 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
           ))}
           {filteredLibraries.length === 0 ? (
             <EmptyState
-              body="No source libraries match this filter yet."
               className="hub-list-empty"
+              body={emptyBody}
+              title={emptyTitle}
             />
           ) : null}
         </div>
