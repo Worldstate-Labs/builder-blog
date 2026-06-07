@@ -1204,6 +1204,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(globals, /\.search-empty\s*{[\s\S]*max-width:\s*var\(--empty-max\)/);
   assert.match(globals, /\.search-empty\s*{[\s\S]*width:\s*100%/);
   assert.doesNotMatch(globals, /\.search-hero\s*{/);
+  assert.doesNotMatch(globals, /\.fb-search-large/);
+  assert.doesNotMatch(globals, /\.fb-search-result/);
   assert.match(globals, /\.search-hero-form\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
   assert.match(globals, /\.search-hero-form\s*{[\s\S]*margin:\s*0 auto/);
   assert.match(globals, /\.search-form\s*{[\s\S]*margin:\s*0/);
