@@ -855,6 +855,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(recommendationFeed, /feed-content-stack recommendation-feed/);
   assert.match(recommendationFeed, /className="recommendation-feed-actions"/);
   assert.match(recommendationFeed, /className="recommendation-snapshot-list"/);
+  assert.match(recommendationFeed, /Following update/);
+  assert.doesNotMatch(recommendationFeed, />Picks</);
   assert.match(recommendationFeed, /className="feed-load-more"/);
   assert.match(recommendationFeed, /className="feed-end-note"/);
   assert.match(recommendationFeed, /No new unread posts left/);
