@@ -11183,13 +11183,17 @@ body {
   }
 
   .fb-hub-card-head {
-    align-items: stretch;
-    flex-direction: column;
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: nowrap;
   }
 
   .fb-hub-card-actions {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: center;
+    flex: 0 1 auto;
+    flex-direction: row;
+    justify-content: flex-end;
+    max-width: 52%;
   }
 
   .digest-pipeline-card .fb-hub-card-head {
@@ -11209,8 +11213,8 @@ body {
   }
 
   .fb-hub-card-titleblock {
-    flex: 0 1 auto;
-    width: 100%;
+    flex: 1 1 auto;
+    width: auto;
   }
 
   .fb-hub-sources-summary {

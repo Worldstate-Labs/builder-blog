@@ -2352,8 +2352,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-line\.is-body\s*{[\s\S]*width:\s*min\(100%,\s*var\(--skeleton-copy-max\)\)/);
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-card\s*{[\s\S]*min-height:\s*11rem/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-card-head\s*{/);
-  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-titleblock\s*{[\s\S]*flex:\s*0 1 auto/);
-  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-titleblock\s*{[\s\S]*width:\s*100%/);
+  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-titleblock\s*{[\s\S]*flex:\s*1 1 auto/);
+  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-titleblock\s*{[\s\S]*width:\s*auto/);
   assert.doesNotMatch(source("src/app/globals.css"), /content:\s*"Show"|content:\s*"Hide"/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-sources > summary \.fb-hub-sources-caret\s*{[\s\S]*transition:\s*transform 160ms ease/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-sources\[open\] > summary \.fb-hub-sources-caret\s*{[\s\S]*transform:\s*rotate\(180deg\)/);
@@ -3132,7 +3132,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /role="group"/);
   assert.match(globals, /\.mobile-filter-tabs\s*{[\s\S]*overflow-x:\s*auto/);
   assert.match(globals, /\.mobile-filter-tabs \.fb-btn\s*{[\s\S]*flex:\s*0 0 auto/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-actions\s*{[\s\S]*align-items:\s*flex-start/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-head\s*{[\s\S]*flex-direction:\s*row/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-actions\s*{[\s\S]*flex-direction:\s*row/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-actions\s*{[\s\S]*max-width:\s*52%/);
   assert.doesNotMatch(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-head,\s*\.fb-hub-card-actions\s*{[\s\S]*align-items:\s*stretch/);
   assert.match(hubImportForm, /aria-pressed=\{activeFilter === filter\.key\}/);
   assert.match(hubImportForm, /className="fb-btn compact"/);
