@@ -75,8 +75,8 @@ test("favorites saves posts without reintroducing a separate saved feed", () => 
   assert.match(favoriteRoute, /unfavoritePost/);
   assert.doesNotMatch(favoriteRoute, /export async function GET/);
   assert.match(feed, /FavoriteToggleButton/);
-  assert.match(feed, /Add to Favorites/);
-  assert.match(feed, /const label = isFavorite \? "Remove from Favorites" : "Add to Favorites"/);
+  assert.match(feed, /Save post/);
+  assert.match(feed, /const label = isFavorite \? "Remove saved post" : "Save post"/);
   assert.match(feed, /title=\{label\}/);
   assert.match(feed, /className="post-action-icon"/);
   assert.match(digestRoute, /favoriteStateByUrl/);
@@ -89,8 +89,8 @@ test("favorites saves posts without reintroducing a separate saved feed", () => 
   assert.match(digestContent, /onFavoriteToggle/);
   assert.match(digestContent, /post-favorite-btn/);
   assert.match(digestContent, /className="post-action-icon"/);
-  assert.doesNotMatch(feed, /Saved to Favorites|Save to Favorites/);
-  assert.doesNotMatch(digestContent, /Saved to Favorites|Save to Favorites/);
+  assert.doesNotMatch(feed, /Favorites|Saved to Favorites|Save to Favorites/);
+  assert.doesNotMatch(digestContent, /Favorites|Saved to Favorites|Save to Favorites/);
   assert.doesNotMatch(feed, /disabled=\{isRead\}/);
   assert.doesNotMatch(feed, /mode\?: "favorites"|FavoriteReadButton|markedReadAt|\/api\/favorites\/read/);
   assert.doesNotMatch(postCard, /data-favorite-read|favoriteReadEmphasis/);

@@ -252,7 +252,7 @@ function DigestFavoriteToggleButton({
   isFavorite: boolean;
   toggleFavorite: () => void;
 }) {
-  const label = isFavorite ? "Remove from Favorites" : "Add to Favorites";
+  const label = isFavorite ? "Remove saved post" : "Save post";
   return (
     <button
       aria-label={label}

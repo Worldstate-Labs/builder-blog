@@ -1252,7 +1252,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(recommendationFeed, /className="post-action-icon"/);
   assert.doesNotMatch(recommendationFeed, /h-4 w-4|h-3\.5 w-3\.5|animate-spin/);
   assert.doesNotMatch(followingSection, /h-4 w-4|h-3\.5 w-3\.5|animate-spin/);
-  assert.doesNotMatch(recommendationFeed, /Saved to Favorites|Save to Favorites/);
+  assert.doesNotMatch(recommendationFeed, /Favorites|Saved to Favorites|Save to Favorites/);
   assert.doesNotMatch(recommendationFeed, /mode\?: "favorites"|favorites-feed|FavoriteReadButton|\/api\/favorites\/read|markedReadAt/);
   assert.doesNotMatch(followingSection, /Use Refresh to try again/);
   assert.doesNotMatch(followingSection, /feed-state-inner|feed-state-icon|feed-state-title|feed-state-desc/);
@@ -2775,13 +2775,13 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(recommendations, /from a followed source/);
   assert.doesNotMatch(recommendations, /from a subscribed builder/);
   assert.match(recommendationFeed, /aria-label=\{label\}/);
-  assert.match(recommendationFeed, /const label = isFavorite \? "Remove from Favorites" : "Add to Favorites"/);
+  assert.match(recommendationFeed, /const label = isFavorite \? "Remove saved post" : "Save post"/);
   assert.match(recommendationFeed, /<Star aria-hidden="true" className="post-action-icon"/);
   assert.match(digestContent, /aria-label=\{label\}/);
-  assert.match(digestContent, /const label = isFavorite \? "Remove from Favorites" : "Add to Favorites"/);
+  assert.match(digestContent, /const label = isFavorite \? "Remove saved post" : "Save post"/);
   assert.match(digestContent, /<Star aria-hidden="true" className="post-action-icon"/);
-  assert.doesNotMatch(recommendationFeed, /title=\{isFavorite \? "Saved post" : "Save post"\}/);
-  assert.doesNotMatch(digestContent, /title=\{isFavorite \? "Saved post" : "Save post"\}/);
+  assert.doesNotMatch(recommendationFeed, /title=\{isFavorite \? "Saved post" : "Save post"\}|Favorites/);
+  assert.doesNotMatch(digestContent, /title=\{isFavorite \? "Saved post" : "Save post"\}|Favorites/);
   assert.doesNotMatch(recommendationFeed, /isFavoritesTab \? "Favorites" : "Following"/);
   assert.doesNotMatch(postCard, /whitespace-pre-wrap text-sm leading-6|mt-3 whitespace-pre-wrap rounded-lg|text-link mt-2/);
   assert.match(globals, /\.post-source-original\s*{[\s\S]*min-height:\s*2rem/);
