@@ -674,6 +674,7 @@ test("settings live in the clickable user avatar menu", () => {
 test("desktop shell uses centered top navigation and merged home feeds", () => {
   const appShell = source("src/components/AppShell.tsx");
   const appNav = source("src/components/AppNav.tsx");
+  const mobileSearchLink = source("src/components/MobileSearchLink.tsx");
   const brandMark = source("src/components/BrandMark.tsx");
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
@@ -701,7 +702,12 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(channelPreferenceToggle, /Could not update preference\./);
   assert.doesNotMatch(builderDetailActions, /Couldn't update/);
   assert.doesNotMatch(channelPreferenceToggle, /Couldn't update/);
-  assert.match(appShell, /aria-label="Search"/);
+  assert.match(appShell, /<MobileSearchLink \/>/);
+  assert.match(mobileSearchLink, /usePathname/);
+  assert.match(mobileSearchLink, /const active = pathname === "\/search"/);
+  assert.match(mobileSearchLink, /aria-current=\{active \? "page" : undefined\}/);
+  assert.match(mobileSearchLink, /data-active=\{active \? "true" : undefined\}/);
+  assert.match(mobileSearchLink, /aria-label="Search"/);
   assert.match(appNav, /pathname\.startsWith\("\/recommendations\/"\)/);
   assert.match(appNav, /pathname\.startsWith\("\/builder\/"\)/);
   assert.match(appNav, /icon: "home" \| "builders" \| "hub"/);
@@ -1050,6 +1056,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.fb-top-user\s*{[\s\S]*margin-right:\s*var\(--workspace-gutter\)/);
   assert.match(globals, /\.fb-top-user \.user-avatar\s*{[\s\S]*height:\s*1\.875rem/);
   assert.match(globals, /\.fb-top-user \.user-avatar\s*{[\s\S]*width:\s*1\.875rem/);
+  assert.match(globals, /\.fb-m-icon:hover,[\s\S]*\.fb-m-icon\[data-active="true"\]\s*{[\s\S]*background:\s*var\(--paper-strong\)/);
+  assert.match(globals, /\.fb-m-icon\[data-active="true"\]\s*{[\s\S]*border-color:\s*color-mix/);
   assert.match(globals, /\.fb-brand\s*{[\s\S]*grid-row:\s*1/);
   assert.match(globals, /\.fb-brand\s*{[\s\S]*margin-left:\s*var\(--workspace-gutter\)/);
   assert.match(globals, /\.app-body\s*{[\s\S]*display:\s*grid/);

@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { Session } from "next-auth";
-import { Search } from "lucide-react";
 import { AppNav, type AppNavItem } from "@/components/AppNav";
 import { BrandMark } from "@/components/BrandMark";
+import { MobileSearchLink } from "@/components/MobileSearchLink";
 import { SearchForm } from "@/components/SearchForm";
 import { UserMenu } from "@/components/UserMenu";
 import { isAdminEmail } from "@/lib/admin";
@@ -45,13 +45,7 @@ export function AppShell({
           <span className="fb-brand-name">FollowBrief</span>
         </Link>
         <span className="fb-m-spacer" />
-        <Link
-          href="/search"
-          className="fb-m-icon"
-          aria-label="Search"
-        >
-          <Search aria-hidden="true" />
-        </Link>
+        <MobileSearchLink />
         <UserMenu compact isAdmin={isAdmin} session={session} />
       </header>
 
