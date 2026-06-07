@@ -363,7 +363,7 @@ function DigestPipelineCard({
       </span>
       <button
         aria-busy={pending !== null && isPending}
-        aria-label={`Remove ${pipeline.title} from Home`}
+        aria-label={`Remove ${pipeline.title} from imported AI Digests`}
         className="fb-btn light compact hub-card-remove-button digest-pipeline-remove-button"
         disabled={pending !== null}
         onClick={() => onRemove(pipeline.id)}

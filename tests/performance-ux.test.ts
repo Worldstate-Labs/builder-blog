@@ -2611,11 +2611,11 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /onClick=\{\(\) => onRemove\(pipeline\.id\)\}/);
   assert.match(digestPipelineForm, /className="fb-chip hub-card-imported-status"/);
   assert.match(digestPipelineForm, /className="fb-btn light compact hub-card-remove-button digest-pipeline-remove-button"/);
-  assert.match(digestPipelineForm, /aria-label=\{`Remove \$\{pipeline\.title\} from Home`\}/);
+  assert.match(digestPipelineForm, /aria-label=\{`Remove \$\{pipeline\.title\} from imported AI Digests`\}/);
   assert.match(digestPipelineForm, />\s*Remove AI Digest\s*<\/button>/);
   assert.match(digestPipelineForm, /Could not import AI Digest/);
   assert.match(digestPipelineForm, /Could not remove imported AI Digest/);
-  assert.doesNotMatch(digestPipelineForm, /Remove imported digest\?|Remove digest|Could not import digest|Could not remove imported digest|no longer see this digest on the Home page/);
+  assert.doesNotMatch(digestPipelineForm, /Remove \$\{pipeline\.title\} from Home|Remove imported digest\?|Remove digest|Could not import digest|Could not remove imported digest|no longer see this digest on the Home page/);
   assert.doesNotMatch(digestPipelineForm, /Remove \$\{pipeline\.title\} import/);
   assert.match(digestPipelineForm, /<Trash2 aria-hidden="true" \/>/);
   assert.match(digestPipelineShareRoute, /shareDigestPipelineToHub/);
