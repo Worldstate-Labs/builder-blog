@@ -742,7 +742,7 @@ function TokenPickerDialog({
             disabled={!selectedTokenId || submitting || tokens.length === 0}
           >
             <Copy aria-hidden="true" />
-            {submitting ? "Copying…" : "Copy prompt"}
+            {submitting ? "Copying..." : "Copy prompt"}
           </button>
         </footer>
       </form>
@@ -1000,7 +1000,7 @@ function CronConfigDialog({
             disabled={submitting}
           >
             <Copy aria-hidden="true" />
-            {submitting ? "…" : "Copy"}
+            {submitting ? "Copying..." : "Copy"}
           </button>
         </footer>
       </form>

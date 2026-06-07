@@ -473,6 +473,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /className="skill-prompt-status"/);
   assert.match(skillPromptActions, /className="skill-prompt-status-text"/);
   assert.match(skillPromptActions, /className="skill-prompt-status-text is-error"/);
+  assert.match(skillPromptActions, /\{submitting \? "Copying\.\.\." : "Copy prompt"\}/);
+  assert.match(skillPromptActions, /\{submitting \? "Copying\.\.\." : "Copy"\}/);
+  assert.doesNotMatch(skillPromptActions, /\{submitting \? "…" : "Copy"\}/);
   assert.match(skillPromptActions, /Could not save the summary language\. Try again\./);
   assert.match(skillPromptActions, /Could not save max post age\. Try again\./);
   assert.doesNotMatch(skillPromptActions, /Couldn't save/);
