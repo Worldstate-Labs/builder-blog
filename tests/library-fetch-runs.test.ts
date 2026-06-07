@@ -217,7 +217,7 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   const route = source("src/app/api/digest-runs/route.ts");
   const digestRuns = source("src/lib/digest-runs.ts");
 
-  assert.match(panel, /Digest updates/);
+  assert.match(panel, /AI Digest updates/);
   assert.match(panel, /showHeading = true/);
   assert.match(panel, /actionsPlacement = "end"/);
   assert.match(panel, /actionsPlacement === "start"/);
@@ -226,7 +226,8 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /Build history/);
   assert.match(panel, /role="tablist"/);
   assert.match(panel, /fb-segmented-tabs/);
-  assert.match(panel, /Digest schedule status graph/);
+  assert.match(panel, /AI Digest schedule status graph/);
+  assert.doesNotMatch(panel, />Digest updates<|aria-label="Digest schedule status graph"/);
   assert.match(panel, /buildDigestCronStatus/);
   assert.match(panel, /run\.source === "cron"/);
   assert.match(panel, /run\.status === "synced"/);
