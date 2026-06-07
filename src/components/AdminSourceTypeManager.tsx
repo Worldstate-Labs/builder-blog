@@ -168,6 +168,10 @@ function SourceTypeCard({
     setStatus({ kind: "idle" });
   }
 
+  function clearSavedStatus() {
+    setStatus((current) => (current.kind === "saved" ? { kind: "idle" } : current));
+  }
+
   function save() {
     const patch: {
       summaryPromptBody: string;
@@ -353,6 +357,7 @@ function SourceTypeCard({
           status={status}
           onSave={save}
           onReset={reset}
+          onStatusAutoDismiss={clearSavedStatus}
           updatedAt={config.updatedAt}
         />
       </div>

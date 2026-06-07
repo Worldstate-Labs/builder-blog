@@ -397,6 +397,7 @@ export function FooterBar({
   status,
   onSave,
   onReset,
+  onStatusAutoDismiss,
   updatedAt,
 }: {
   dirty: boolean;
@@ -404,6 +405,7 @@ export function FooterBar({
   status: SaveStatusState;
   onSave: () => void;
   onReset: () => void;
+  onStatusAutoDismiss?: () => void;
   updatedAt: string;
 }) {
   const showActions = dirty || isPending;
@@ -433,7 +435,7 @@ export function FooterBar({
           Saved
         </span>
       ) : null}
-      <SaveStatus status={status} />
+      <SaveStatus status={status} onAutoDismiss={onStatusAutoDismiss} />
       <span className="settings-footer-updated">
         Updated {formatUtcDateTime(updatedAt)}
       </span>

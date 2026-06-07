@@ -74,6 +74,10 @@ export function AdminDigestConfigForm({
     setStatus({ kind: "idle" });
   }
 
+  function clearSavedStatus() {
+    setStatus((current) => (current.kind === "saved" ? { kind: "idle" } : current));
+  }
+
   function save() {
     const patch = {
       headlinePrompt: draft.headlinePrompt,
@@ -159,6 +163,7 @@ export function AdminDigestConfigForm({
         status={status}
         onSave={save}
         onReset={reset}
+        onStatusAutoDismiss={clearSavedStatus}
         updatedAt={config.updatedAt}
       />
     </div>

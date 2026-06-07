@@ -83,6 +83,10 @@ function CommonRulesForm({
   const [isPending, startTransition] = useTransition();
   const dirty = value !== savedValue;
 
+  function clearSavedStatus() {
+    setStatus((current) => (current.kind === "saved" ? { kind: "idle" } : current));
+  }
+
   function save() {
     if (value.trim().length === 0) {
       setStatus({ kind: "error", message: emptyMessage });
@@ -134,6 +138,7 @@ function CommonRulesForm({
             setValue(savedValue);
             setStatus({ kind: "idle" });
           }}
+          onStatusAutoDismiss={clearSavedStatus}
           updatedAt={savedUpdatedAt}
         />
       </div>

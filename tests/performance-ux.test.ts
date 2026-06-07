@@ -587,6 +587,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(settingsFields, /className="settings-choice-list"/);
   assert.match(settingsFields, /className="settings-footer-bar"/);
   assert.match(settingsFields, /className="settings-save-status is-saved"/);
+  assert.match(settingsFields, /onStatusAutoDismiss\?: \(\) => void/);
+  assert.match(settingsFields, /onAutoDismiss=\{onStatusAutoDismiss\}/);
   assert.match(settingsFields, /Could not save changes\./);
   assert.doesNotMatch(settingsFields, /Save failed/);
   assert.doesNotMatch(settingsFields, /style=\{\{/);
@@ -600,6 +602,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /AI Digest prompts/);
   assert.match(adminDigestConfig, /selected AI Digest language/);
   assert.match(adminDigestConfig, /Could not save AI Digest prompts\./);
+  assert.match(adminDigestConfig, /function clearSavedStatus\(\)/);
+  assert.match(adminDigestConfig, /onStatusAutoDismiss=\{clearSavedStatus\}/);
   assert.doesNotMatch(adminDigestConfig, /Save failed/);
   assert.doesNotMatch(adminDigestConfig, /title="Digest prompts"|selected digest language/);
   assert.match(adminDigestConfig, /headlinePrompt/);
@@ -625,6 +629,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /Drop posts whose body has fewer characters than this/);
   assert.match(adminSourceTypeManager, /Drop posts with too little real text/);
   assert.match(adminSourceTypeManager, /Could not save source type settings\./);
+  assert.match(adminSourceTypeManager, /function clearSavedStatus\(\)/);
+  assert.match(adminSourceTypeManager, /onStatusAutoDismiss=\{clearSavedStatus\}/);
   assert.doesNotMatch(adminSourceTypeManager, /Save failed/);
   assert.doesNotMatch(adminSourceTypeManager, /turned into a brief/);
   assert.doesNotMatch(adminSourceTypeManager, /How each item from this source|cron run prompt|Items that fail|dropped from the pipeline|Drop items/);
@@ -642,6 +648,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(adminSourceTypeManager, /cursor-pointer select-none|ml-auto inline-flex|text-base font-medium/);
   assert.match(settingsPage, /canEditQualityGates=\{isAdmin\}/);
   assert.match(commonRulesForm, /Following or AI Digests/);
+  assert.match(commonRulesForm, /function clearSavedStatus\(\)/);
+  assert.match(commonRulesForm, /onStatusAutoDismiss=\{clearSavedStatus\}/);
   assert.doesNotMatch(commonRulesForm, /feeds or digests/);
   assert.match(commonRulesForm, /placeholder=\{\[/);
   assert.match(markdownEditor, /placeholder\?: string/);
