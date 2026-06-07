@@ -48,14 +48,12 @@ export function DigestDetails({
   defaultOpen = false,
   digest,
   headerAction,
-  isLatest = false,
   mode = "archive",
   sourceLinks = [],
 }: {
   defaultOpen?: boolean;
   digest: DigestSummary;
   headerAction?: ReactNode;
-  isLatest?: boolean;
   mode?: "archive" | "today";
   sourceLinks?: DigestSourceLink[];
 }) {
@@ -170,12 +168,11 @@ export function DigestDetails({
             <DigestHeadlineSummary
               content={content}
               headerAction={headerAction}
-              isLatest={isLatest}
               sourceLinks={sourceLinks}
               text={headerHeadline}
             />
           ) : status === "loading" ? (
-            <DigestHeadlineSummary headerAction={headerAction} isLatest={isLatest} loading />
+            <DigestHeadlineSummary headerAction={headerAction} loading />
           ) : null}
         </div>
         <div className="fb-digest-body">
@@ -329,14 +326,12 @@ function DigestBody({
 function DigestHeadlineSummary({
   content,
   headerAction,
-  isLatest = false,
   loading = false,
   sourceLinks = [],
   text,
 }: {
   content?: string | null;
   headerAction?: ReactNode;
-  isLatest?: boolean;
   loading?: boolean;
   sourceLinks?: DigestSourceLink[];
   text?: string;
@@ -360,7 +355,6 @@ function DigestHeadlineSummary({
       <div className="digest-headline-top">
         <div className="digest-headline-label-row">
           <div className="digest-headline-kicker">Headlines</div>
-          {isLatest ? <span className="digest-latest-mark">Latest</span> : null}
         </div>
         {headerAction ? <div className="digest-headline-action">{headerAction}</div> : null}
       </div>

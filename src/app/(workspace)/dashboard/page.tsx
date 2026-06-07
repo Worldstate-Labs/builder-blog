@@ -246,7 +246,6 @@ function AiDigestFeed({
             {selectedDigest ? (
               <DigestDetails
                 digest={serializeDigestSummary(selectedDigest)}
-                isLatest={selectedDigest.id === latestDigest?.id}
                 mode="today"
                 sourceLinks={sourceLinks}
               />

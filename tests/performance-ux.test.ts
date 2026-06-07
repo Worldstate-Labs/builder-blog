@@ -1219,7 +1219,7 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.match(digestDetails, /digestPreviewFromContent/);
   assert.match(digestDetails, /originalSummariesByUrl/);
   assert.match(digestDetails, /cleanOriginalSummaries/);
-  assert.match(digestDetails, /isLatest/);
+  assert.doesNotMatch(digestDetails, /isLatest/);
   assert.match(digestDetails, /showContents=\{false\}/);
   assert.match(source("src/app/globals.css"), /digest-picker/);
   assert.match(source("src/app/globals.css"), /digest-latest-mark/);
@@ -1335,7 +1335,7 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.doesNotMatch(historyPage, /AppShell/);
   assert.match(digestDetails, /"use client"/);
   assert.match(digestDetails, /fetch\(`\/api\/digests\/\$\{digestId\}`/);
-  assert.match(digestDetails, /digest-latest-mark/);
+  assert.doesNotMatch(digestDetails, /digest-latest-mark/);
   assert.match(digestDetails, /Loading digest/);
   assert.match(digestDetails, /digest-loading-chip/);
   assert.match(digestDetails, /digest-load-error/);
