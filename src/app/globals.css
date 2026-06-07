@@ -8898,8 +8898,8 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .access-keys-list--skeleton .settings-skeleton-row {
-  border-radius: 18px;
-  height: 6.75rem;
+  border-radius: 20px;
+  height: 6.25rem;
 }
 
 .settings-source-type-manager {
