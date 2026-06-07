@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { signOut } from "next-auth/react";
 import type { Session } from "next-auth";
+import { usePathname } from "next/navigation";
 import { LogOut, Moon, Settings, ShieldCheck, Sun } from "lucide-react";
 import { setTheme, useHydrated, useTheme } from "@/components/ThemeToggle";
 
@@ -18,6 +19,7 @@ export function UserMenu({
   session?: Session | null;
 }) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
+  const pathname = usePathname();
   const theme = useTheme();
   const themeHydrated = useHydrated();
   const user = session?.user;
@@ -25,15 +27,20 @@ export function UserMenu({
   const email = user?.email || "";
   const initial = name.trim().charAt(0).toUpperCase() || "U";
 
-  function closeMenu() {
+  const closeMenu = useCallback(() => {
     if (detailsRef.current) {
       detailsRef.current.open = false;
     }
-  }
+  }, []);
 
   function toggleTheme() {
     setTheme(theme === "dark" ? "light" : "dark");
+    closeMenu();
   }
+
+  useEffect(() => {
+    closeMenu();
+  }, [closeMenu, pathname]);
 
   return (
     <details ref={detailsRef} className={`user-menu ${compact ? "user-menu-compact" : ""}`}>

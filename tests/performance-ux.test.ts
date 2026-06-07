@@ -319,6 +319,10 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(appNav, /"key"/);
   assert.match(appShell, /@\/components\/UserMenu/);
   assert.match(userMenu, /"use client"/);
+  assert.match(userMenu, /usePathname/);
+  assert.match(userMenu, /const pathname = usePathname\(\)/);
+  assert.match(userMenu, /const closeMenu = useCallback\(\(\) => \{[\s\S]*detailsRef\.current\.open = false[\s\S]*\}, \[\]\)/);
+  assert.match(userMenu, /useEffect\(\(\) => \{[\s\S]*closeMenu\(\);[\s\S]*\}, \[closeMenu, pathname\]\)/);
   assert.match(userMenu, /className="user-menu-trigger"/);
   assert.match(userMenu, /aria-label=\{email \? `Account menu for \$\{email\}` : `Account menu for \$\{name\}`\}/);
   assert.match(userMenu, /detailsRef\.current\.open = false/);
@@ -404,6 +408,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(globals, /\.fb-input::placeholder/);
   assert.match(globals, /\.settings-markdown-textarea::placeholder/);
   assert.match(userMenu, /href="\/settings" onClick=\{closeMenu\}[\s\S]*Settings/);
+  assert.match(userMenu, /function toggleTheme\(\) \{[\s\S]*setTheme\(theme === "dark" \? "light" : "dark"\);[\s\S]*closeMenu\(\);[\s\S]*\}/);
   assert.match(userMenu, /signOut\(\{ callbackUrl: "\/login" \}\)/);
   assert.match(userMenu, /closeMenu\(\);[\s\S]*signOut\(\{ callbackUrl: "\/login" \}\)[\s\S]*Sign out/);
   assert.match(settingsPage, /@\/components\/PageHeader/);
