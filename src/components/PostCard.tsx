@@ -89,6 +89,7 @@ export function PostCard({
   const summaryPreview = previewWords(summary, 200);
   const hasMoreSummary = summaryPreview !== summary;
   const title = post.title || firstLine(post.body);
+  const actionContext = compactActionContext(title);
 
   function noteInteraction() {
     if (!onInteract || interactionSentRef.current) return;
@@ -225,7 +226,7 @@ export function PostCard({
           <div className="post-actions" onClickCapture={noteInteraction}>
             {/* Primary action: open the original source to read the full content. */}
             <a
-              aria-label="View the original on its source site"
+              aria-label={actionLabel("View original source", actionContext)}
               className="post-read-original"
               href={post.url}
               onClick={noteInteraction}
@@ -241,7 +242,7 @@ export function PostCard({
               <>
                 {/* 2. Raw content toggle */}
                 <button
-                  aria-label="Raw content"
+                  aria-label={actionLabel("Raw content", actionContext)}
                   aria-expanded={rawExpanded}
                   className={`post-action-btn${rawExpanded ? " post-action-btn--active" : ""}`}
                   onClick={() => {
@@ -257,6 +258,7 @@ export function PostCard({
                 {/* 3. Fetching method popover (also surfaces summarized-at) */}
                 {post.fetchTool || post.createdAt ? (
                   <FetchMethodPopover
+                    accessibleLabel={actionLabel("Summary method", actionContext)}
                     fetchTool={post.fetchTool}
                     summarizedAt={post.createdAt}
                   />
@@ -266,7 +268,7 @@ export function PostCard({
 
             {originalSummary ? (
               <button
-                aria-label="View original summary"
+                aria-label={actionLabel("View original summary", actionContext)}
                 aria-expanded={originalSummaryExpanded}
                 className={`post-action-btn${originalSummaryExpanded ? " post-action-btn--active" : ""}`}
                 onClick={() => {
@@ -291,7 +293,11 @@ export function PostCard({
 
         {/* Original fetch-time summary. Digest summaries may be translated or compressed. */}
         {originalSummaryExpanded && originalSummary ? (
-          <div className="fetched-post-original-summary" role="region" aria-label="Original summary">
+          <div
+            className="fetched-post-original-summary"
+            role="region"
+            aria-label={actionLabel("Original summary", actionContext)}
+          >
             <div className="fetched-post-original-summary-label">Original summary</div>
             <p>{originalSummary}</p>
           </div>
@@ -299,7 +305,11 @@ export function PostCard({
 
         {/* Raw content collapsible region */}
         {rawExpanded ? (
-          <div className="fetched-post-raw">
+          <div
+            aria-label={actionLabel("Raw content", actionContext)}
+            className="fetched-post-raw"
+            role="region"
+          >
             {post.body}
           </div>
         ) : null}
@@ -321,6 +331,14 @@ function formatDate(value: string, hydrated: boolean) {
 
 function firstLine(body: string) {
   return body.split(/\r?\n/).find(Boolean)?.slice(0, 160) ?? "Untitled post";
+}
+
+function actionLabel(action: string, context: string) {
+  return context ? `${action}: ${context}` : action;
+}
+
+function compactActionContext(value: string) {
+  return value.replace(/\s+/g, " ").trim().slice(0, 96);
 }
 
 function normalizedText(value: string | null | undefined) {

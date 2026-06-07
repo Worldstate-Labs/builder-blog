@@ -33,9 +33,11 @@ export function parseFetchTool(value: string | null): ParsedFetchTool {
 }
 
 export function FetchMethodPopover({
+  accessibleLabel = "Summary method",
   fetchTool,
   summarizedAt,
 }: {
+  accessibleLabel?: string;
   fetchTool: string | null;
   summarizedAt?: string | null;
 }) {
@@ -60,7 +62,7 @@ export function FetchMethodPopover({
   return (
     <div className="fb-popover-anchor" ref={containerRef}>
       <button
-        aria-label="Summary method"
+        aria-label={accessibleLabel}
         className="post-action-btn"
         onClick={() => setOpen((v) => !v)}
         title="Summary method"

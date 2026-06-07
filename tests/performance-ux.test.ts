@@ -1862,7 +1862,14 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(sourceBadge, /aria-hidden=\{labelSuppressedByDuplicate \? "true" : undefined\}/);
   assert.match(sourceBadge, /aria-label=\{!shouldShowLabel && !labelSuppressedByDuplicate \? source\.label : undefined\}/);
   assert.match(postCard, /ScrollText/);
-  assert.match(postCard, /aria-label="View original summary"/);
+  assert.match(postCard, /actionContext = compactActionContext\(title\)/);
+  assert.match(postCard, /aria-label=\{actionLabel\("View original summary", actionContext\)\}/);
+  assert.match(postCard, /aria-label=\{actionLabel\("Raw content", actionContext\)\}/);
+  assert.match(postCard, /aria-label=\{actionLabel\("View original source", actionContext\)\}/);
+  assert.match(postCard, /accessibleLabel=\{actionLabel\("Summary method", actionContext\)\}/);
+  assert.match(postCard, /function compactActionContext/);
+  assert.doesNotMatch(postCard, /aria-label="View original summary"/);
+  assert.doesNotMatch(postCard, /aria-label="Raw content"/);
   assert.match(postCard, /fetched-post-original-summary/);
   assert.match(globals, /\.digest-group-heading/);
   assert.match(globals, /\.fetched-post-original-summary p\s*{[\s\S]*white-space:\s*pre-wrap/);

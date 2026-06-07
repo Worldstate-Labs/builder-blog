@@ -188,6 +188,33 @@ test("post card avoids duplicate source labels when builder name matches source 
   assert.match(html, /title="Product Hunt Top Products"/);
 });
 
+test("post card action controls include the post title in accessible names", () => {
+  const html = renderToStaticMarkup(
+    createElement(PostCard, {
+      post: {
+        id: "feed_contextual_actions",
+        title: "Contextual Button Labels",
+        body: "Fetched raw body.",
+        summary: "Readable summary.",
+        originalSummary: "Original agent summary.",
+        url: "https://example.com/contextual-button-labels",
+        publishedAt: "2026-06-05T00:00:00.000Z",
+        createdAt: "2026-06-06T00:00:00.000Z",
+        sourceName: "Example",
+        sourceType: "blog",
+        fetchTool: "Codex Desktop (model gpt-5.5) FollowBrief skill fetcher (HTML article)",
+      },
+    }),
+  );
+
+  assert.match(html, /aria-label="View original source: Contextual Button Labels"/);
+  assert.match(html, /aria-label="Raw content: Contextual Button Labels"/);
+  assert.match(html, /aria-label="Summary method: Contextual Button Labels"/);
+  assert.match(html, /aria-label="View original summary: Contextual Button Labels"/);
+  assert.doesNotMatch(html, /aria-label="Raw content"/);
+  assert.doesNotMatch(html, /aria-label="Summary method"/);
+});
+
 test("digest renderer uses source link metadata before section heading fallbacks", () => {
   const html = renderToStaticMarkup(
     createElement(DigestContent, {
