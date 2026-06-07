@@ -1083,6 +1083,12 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-error"/);
   assert.match(digestLogPanel, /className="sync-panel-title-row"/);
   assert.match(digestLogPanel, /className="sync-panel-error"/);
+  assert.match(digestLogPanel, /AI Digest updates/);
+  assert.match(digestLogPanel, /aria-label="AI Digest update views"/);
+  assert.match(digestLogPanel, /Show AI Digest update details/);
+  assert.match(digestLogPanel, /Hide AI Digest update details/);
+  assert.match(digestLogPanel, /aria-label="AI Digest schedule status graph"/);
+  assert.match(digestLogPanel, /scheduled AI Digest run/);
   assert.match(digestLogPanel, /includes posts already used in AI Digests/);
   assert.match(digestLogPanel, /not save an AI Digest/);
   assert.match(digestLogPanel, /Untitled AI Digest/);
@@ -1092,7 +1098,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /Used in the AI Digest/);
   assert.match(digestLogPanel, /rebuilds past posts/);
   assert.match(digestLogPanel, /all new posts/);
-  assert.doesNotMatch(digestLogPanel, /already digested items|past items|new items|not save a digest|Untitled digest|Prepared, no digest saved|Previous digest|Found, digest not saved yet|Used in the digest/);
+  assert.doesNotMatch(digestLogPanel, /aria-label="Digest update views"|>Digest updates<|Show digest update details|Hide digest update details|aria-label="Digest schedule status graph"|scheduled digest run|already digested items|past items|new items|not save a digest|Untitled digest|Prepared, no digest saved|Previous digest|Found, digest not saved yet|Used in the digest/);
   assert.doesNotMatch(fetchLogPanel, /digest-updates-head[\s\S]{0,360}flex flex-wrap items-center gap-2/);
   assert.doesNotMatch(digestLogPanel, /digest-updates-head[\s\S]{0,360}flex flex-wrap items-center gap-2/);
   assert.doesNotMatch(fetchLogPanel, /error \? \([\s\S]{0,120}mt-3 text-\[12px\] text-\[var\(--danger\)\]/);

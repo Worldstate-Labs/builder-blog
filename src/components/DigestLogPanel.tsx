@@ -281,7 +281,7 @@ export function DigestLogPanel({
   const detailsPanel = detailsOpen ? (
     <div id="digest-update-details">
       <div
-        aria-label="Digest update views"
+        aria-label="AI Digest update views"
         className="fb-segmented-tabs sync-panel-tabs"
         role="tablist"
       >
@@ -338,7 +338,7 @@ export function DigestLogPanel({
       {showHeading || showStatusToggle ? (
         <div className="sync-panel-title-row">
           {showHeading ? (
-            <h2 className="fb-section-heading">Digest updates</h2>
+            <h2 className="fb-section-heading">AI Digest updates</h2>
           ) : null}
           {showStatusToggle ? (
             <DigestStatusToggle
@@ -402,7 +402,7 @@ export function DigestStatusToggle({
         borderColor: status.style.border,
         color: status.style.color,
       }}
-      title={detailsOpen ? "Hide digest update details" : "Show digest update details"}
+      title={detailsOpen ? "Hide AI Digest update details" : "Show AI Digest update details"}
       type="button"
     >
       {status.label}
@@ -567,7 +567,7 @@ function DigestStatusPanel({
               </span>
               <span>Green saved · amber waiting · red issue.</span>
             </div>
-            <div className="sync-panel-status-graph" aria-label="Digest schedule status graph">
+            <div className="sync-panel-status-graph" aria-label="AI Digest schedule status graph">
               {slots.map((slot) => (
                 <CronSlotBar
                   key={slot.expectedAt}
@@ -626,7 +626,7 @@ function CronSlotBar({ onSelect, slot }: { onSelect: () => void; slot: DigestCro
   const label = cronSlotLabel(slot.status);
   return (
     <button
-      aria-label={`${label} scheduled digest run at ${formatAbsolute(slot.expectedAt)}`}
+      aria-label={`${label} scheduled AI Digest run at ${formatAbsolute(slot.expectedAt)}`}
       className={`block min-w-0 flex-1 cursor-pointer rounded-sm border ${height} transition hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]`}
       onClick={onSelect}
       style={{
