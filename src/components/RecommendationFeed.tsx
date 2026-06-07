@@ -287,14 +287,12 @@ function nonEmptySnapshots(snapshots: RecommendationSnapshotEntry[]) {
 
 function formatDate(value: string, hydrated: boolean) {
   if (!value) return "";
-  if (hydrated) return new Date(value).toLocaleString();
   return new Intl.DateTimeFormat("en-US", {
     year: "numeric",
-    month: "numeric",
+    month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-    second: "2-digit",
-    timeZone: "UTC",
+    ...(hydrated ? {} : { timeZone: "UTC", timeZoneName: "short" }),
   }).format(new Date(value));
 }

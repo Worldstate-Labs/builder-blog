@@ -1204,7 +1204,9 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.doesNotMatch(recommendationFeed, /No new unread recommendations left/);
   assert.match(recommendationFeed, /useHydrated/);
   assert.match(recommendationFeed, /formatDate\(snapshot\.createdAt, hydrated\)/);
+  assert.match(recommendationFeed, /month:\s*"short"/);
   assert.match(recommendationFeed, /timeZone:\s*"UTC"/);
+  assert.doesNotMatch(recommendationFeed, /toLocaleString\(\)|second:\s*"2-digit"/);
   assert.match(followingSection, /@\/components\/FeedState/);
   assert.match(followingSection, /FeedLoadingState/);
   assert.match(followingSection, /FeedEmptyState/);
@@ -1805,6 +1807,9 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.doesNotMatch(digestDetails, /h-3\.5 w-3\.5|animate-spin/);
   assert.match(digestDetails, /Could not load AI Digest\./);
   assert.match(digestDetails, /aria-label="AI Digest headlines"/);
+  assert.match(digestDetails, /formatDateTime\(digest\.createdAt, hydrated\)/);
+  assert.match(digestDetails, /month:\s*"short"/);
+  assert.doesNotMatch(digestDetails, /toLocaleString\(\)|second:\s*"2-digit"/);
   assert.match(digestDetails, /digest-loading-chip/);
   assert.match(digestDetails, /digest-load-error/);
   assert.doesNotMatch(digestDetails, /inline-flex items-center gap-1\.5/);
