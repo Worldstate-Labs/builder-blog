@@ -533,7 +533,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(agentTokenPanel, /className="access-key-device-title"/);
   assert.match(agentTokenPanel, /className="access-key-device-status"/);
   assert.match(agentTokenPanel, /Revoke access/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*16px/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*18px/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*box-shadow:\s*none/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.skill-prompt-label\s*{[\s\S]*margin-right:\s*0\.5rem/);
@@ -2680,6 +2680,7 @@ test("digest posts use source detail headings and unified original links", () =>
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const postCard = source("src/components/PostCard.tsx");
   const fetchMethodPopover = source("src/components/FetchMethodPopover.tsx");
+  const recommendationReasonsPopover = source("src/components/RecommendationReasonsPopover.tsx");
   const sourceBadge = source("src/components/SourceBadge.tsx");
   const globals = source("src/app/globals.css");
 
@@ -2702,6 +2703,16 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(dashboardPage, /sourceType:\s*builder\.sourceType/);
   assert.match(dashboardPage, /sourceLinks=\{sourceLinks\}/);
   assert.match(postCard, /showSourceBadge = true/);
+  assert.match(fetchMethodPopover, /useId/);
+  assert.match(fetchMethodPopover, /const popoverId = useId\(\)/);
+  assert.match(fetchMethodPopover, /aria-controls=\{popoverId\}/);
+  assert.match(fetchMethodPopover, /aria-expanded=\{open\}/);
+  assert.match(fetchMethodPopover, /id=\{popoverId\} role="tooltip"/);
+  assert.match(recommendationReasonsPopover, /useId/);
+  assert.match(recommendationReasonsPopover, /const popoverId = useId\(\)/);
+  assert.match(recommendationReasonsPopover, /aria-controls=\{popoverId\}/);
+  assert.match(recommendationReasonsPopover, /aria-expanded=\{open\}/);
+  assert.match(recommendationReasonsPopover, /id=\{popoverId\} role="tooltip"/);
   assert.match(sourceBadge, /labelSuppressedByDuplicate/);
   assert.match(sourceBadge, /decorative = false/);
   assert.match(sourceBadge, /aria-hidden=\{decorative \|\| labelSuppressedByDuplicate \? "true" : undefined\}/);
@@ -3371,17 +3382,17 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.access-keys-status-message\s*{[\s\S]*display:\s*block/);
   assert.match(globals, /\.access-keys-status-message\.is-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.doesNotMatch(globals, /\.access-keys-status\.is-error/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.25rem minmax\(0,\s*1fr\) auto/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*16px/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.5rem minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*18px/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*background:\s*var\(--paper\)/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*box-shadow:\s*none/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*6\.75rem/);
-  assert.match(globals, /\.access-key-device-title\s*{[\s\S]*font-size:\s*1\.25rem/);
-  assert.match(globals, /\.access-key-device-status\s*{[\s\S]*font-size:\s*1rem/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*7\.25rem/);
+  assert.match(globals, /\.access-key-device-title\s*{[\s\S]*font-size:\s*1\.35rem/);
+  assert.match(globals, /\.access-key-device-status\s*{[\s\S]*font-size:\s*1\.05rem/);
   assert.match(globals, /\.access-key-device-icon svg\s*{[\s\S]*height:\s*1\.5rem/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*justify-self:\s*end/);
-  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*2\.75rem/);
-  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-width:\s*10\.75rem/);
+  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*2\.9rem/);
+  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-width:\s*11\.5rem/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*text-align:\s*center/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*grid-template-columns:\s*1\.875rem minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*6rem/);
