@@ -310,6 +310,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
       </section>
 
       <dialog
+        aria-labelledby="hub-remove-source-library-title"
         className="fb-dialog"
         onClick={(event) => {
           if (event.target === removeDialogRef.current) closeRemoveDialog();
@@ -319,7 +320,9 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
       >
         {removeTarget ? (
           <div className="fb-dialog-inner settings-dialog-stack">
-            <h3 className="fb-section-heading">Remove imported source library?</h3>
+            <h3 className="fb-section-heading" id="hub-remove-source-library-title">
+              Remove imported source library?
+            </h3>
             <div className="settings-dialog-copy">
               <p>
                 After removing <strong>{removeTarget.name}</strong>, sources

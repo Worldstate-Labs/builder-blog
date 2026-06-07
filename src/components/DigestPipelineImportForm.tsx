@@ -258,6 +258,7 @@ export function DigestPipelineImportForm({
       </div>
 
       <dialog
+        aria-labelledby="hub-remove-ai-digest-title"
         className="fb-dialog"
         onClick={(event) => {
           if (event.target === removeDialogRef.current) closeRemoveDialog();
@@ -267,7 +268,9 @@ export function DigestPipelineImportForm({
       >
         {removeTarget ? (
           <div className="fb-dialog-inner settings-dialog-stack">
-            <h3 className="fb-section-heading">Remove imported AI Digest?</h3>
+            <h3 className="fb-section-heading" id="hub-remove-ai-digest-title">
+              Remove imported AI Digest?
+            </h3>
             <div className="settings-dialog-copy">
               <p>
                 After removing <strong>{removeTarget.title}</strong>, you will

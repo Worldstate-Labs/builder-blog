@@ -63,6 +63,7 @@ export function LibraryImportRemoveButton({
   const removeDialog = confirmingRemove && typeof document !== "undefined"
     ? createPortal(
         <dialog
+          aria-labelledby="import-remove-source-library-title"
           className="fb-dialog"
           onClick={(event) => {
             if (event.target === removeDialogRef.current) setConfirmingRemove(false);
@@ -71,7 +72,9 @@ export function LibraryImportRemoveButton({
           ref={removeDialogRef}
         >
           <div className="fb-dialog-inner settings-dialog-stack">
-            <h3 className="fb-section-heading">Remove imported source library?</h3>
+            <h3 className="fb-section-heading" id="import-remove-source-library-title">
+              Remove imported source library?
+            </h3>
             <div className="settings-dialog-copy">
               <p>
                 After removing <strong>{libraryName}</strong>, sources from this

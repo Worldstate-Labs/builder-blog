@@ -2955,6 +2955,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(hubImportForm, /aria-label=\{`Import \$\{library\.name\}`\}|\?\s*"Importing"\s*:\s*"Import"/);
   assert.match(hubImportForm, /Imported/);
   assert.match(hubImportForm, /method: "DELETE"/);
+  assert.match(hubImportForm, /aria-labelledby="hub-remove-source-library-title"/);
+  assert.match(hubImportForm, /id="hub-remove-source-library-title"/);
   assert.match(hubImportForm, /className="fb-dialog"/);
   assert.match(hubImportForm, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.match(hubImportForm, /Remove imported source library\?/);
@@ -2994,6 +2996,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(libraryImportRemoveButton, /event\.stopPropagation/);
   assert.match(libraryImportRemoveButton, /createPortal/);
   assert.match(libraryImportRemoveButton, /document\.body/);
+  assert.match(libraryImportRemoveButton, /aria-labelledby="import-remove-source-library-title"/);
+  assert.match(libraryImportRemoveButton, /id="import-remove-source-library-title"/);
   assert.match(libraryImportRemoveButton, /className="fb-dialog"/);
   assert.match(libraryImportRemoveButton, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.match(libraryImportRemoveButton, /Remove imported source library\?/);
@@ -3070,6 +3074,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(digestPipelineForm, /aria-label=\{`Import \$\{pipeline\.title\}`\}|\?\s*"Importing"\s*:\s*"Import"/);
   assert.match(digestPipelineForm, /Imported/);
   assert.doesNotMatch(digestPipelineForm, /window\.confirm/);
+  assert.match(digestPipelineForm, /aria-labelledby="hub-remove-ai-digest-title"/);
+  assert.match(digestPipelineForm, /id="hub-remove-ai-digest-title"/);
   assert.match(digestPipelineForm, /className="fb-dialog"/);
   assert.match(digestPipelineForm, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.doesNotMatch(digestPipelineForm, /className="digest-remove-popover"/);
@@ -3275,9 +3281,13 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /Access keys let trusted devices and Local Agents sync sources and AI Digests to this account\./);
   assert.doesNotMatch(tokenPanel, />\s*Local Agents that can sync sources and AI Digests to this account\.|Devices and Local Agents that can sync sources and AI Digests to this account\./);
   assert.doesNotMatch(tokenPanel, /sync sources and digests to this account/);
-  assert.match(tokenPanel, /"New access key"/);
+  assert.match(tokenPanel, />\s*New access key\s*<\/h3>/);
   assert.match(tokenPanel, /\{isPending \? "Creating" : "Create access key"\}/);
   assert.doesNotMatch(tokenPanel, /Creating\.\.\./);
+  assert.match(tokenPanel, /aria-labelledby="access-key-create-title"/);
+  assert.match(tokenPanel, /id="access-key-create-title"/);
+  assert.match(tokenPanel, /aria-labelledby="access-key-revoke-title"/);
+  assert.match(tokenPanel, /id="access-key-revoke-title"/);
   assert.match(tokenPanel, /fb-dialog/);
   assert.match(globals, /\.fb-dialog\s*{[\s\S]*max-width:\s*var\(--dialog-max\)/);
   assert.match(globals, /\.fb-dialog\s*{[\s\S]*position:\s*fixed/);

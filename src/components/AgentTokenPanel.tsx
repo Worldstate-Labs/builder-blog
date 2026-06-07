@@ -312,7 +312,7 @@ export function AgentTokenPanel({
       {/* Create token dialog */}
       <dialog
         ref={createDialogRef}
-        aria-label="New access key"
+        aria-labelledby="access-key-create-title"
         className="fb-dialog"
         onClose={() => {
           setCreateOpen(false);
@@ -321,7 +321,9 @@ export function AgentTokenPanel({
       >
         {createOpen ? (
           <div className="fb-dialog-inner settings-dialog-stack">
-            <h3 className="fb-section-heading">New access key</h3>
+            <h3 className="fb-section-heading" id="access-key-create-title">
+              New access key
+            </h3>
             <p className="settings-dialog-copy">
               Give this access key a name so you can recognize it later
               (e.g. <em>My Mac · Claude Code</em>).
@@ -367,12 +369,13 @@ export function AgentTokenPanel({
       {/* Revoke confirm dialog */}
       <dialog
         ref={revokeDialogRef}
+        aria-labelledby="access-key-revoke-title"
         className="fb-dialog"
         onClose={closeRevokeDialog}
       >
         {revokeTarget ? (
           <div className="fb-dialog-inner settings-dialog-stack">
-            <h3 className="fb-section-heading">
+            <h3 className="fb-section-heading" id="access-key-revoke-title">
               Revoke access for {describeAccessDevice(revokeTarget)}?
             </h3>
             <div className="settings-dialog-copy">
