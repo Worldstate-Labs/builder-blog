@@ -83,8 +83,8 @@ const advancedSearchExamples = [
   "allinurl:release model",
   "model pricing type:post",
   "model pricing type:source",
-  "model pricing filetype:ai-digest",
-  "model pricing -filetype:ai-digest",
+  "model pricing type:ai-digest",
+  "model pricing -type:ai-digest",
   "model pricing after:2026-01-01",
   "model pricing before:2026-12-31",
 ];
@@ -952,7 +952,7 @@ function buildSearchRecoveryActions({
   if (typeFilter !== "all") {
     actions.push({
       href: searchHref({ query, type: "all", mode, sort, time }),
-      label: "Search all result types",
+      label: "Search all content types",
     });
   }
   if (time !== "any" || parsed.after || parsed.before) {
@@ -994,7 +994,7 @@ function buildQueryInsightItems(
   const items = [
     { label: "Mode", value: searchModeLabels[mode] },
     { label: "Sort", value: searchSortLabels[sort] },
-    { label: "Type", value: typeFilter === "all" ? "All results" : resultTypeLabels[typeFilter] },
+    { label: "Content type", value: typeFilter === "all" ? "All results" : resultTypeLabels[typeFilter] },
     { label: "Time", value: dateInsightLabel(parsed, time) },
   ];
   const phraseValue = [
@@ -1098,9 +1098,9 @@ function buildActiveSearchFilters({
 
   if (typeFilter !== "all") {
     filters.push({
-      clearLabel: `Remove ${resultTypeLabels[typeFilter]} result filter`,
+      clearLabel: `Remove ${resultTypeLabels[typeFilter]} content type filter`,
       href: searchHref({ query, type: "all", mode, sort, time }),
-      label: "Type",
+      label: "Content type",
       value: resultTypeLabels[typeFilter],
     });
   }
@@ -1157,11 +1157,8 @@ function buildActiveSearchFilters({
     });
   }
   if (parsed.type) {
-    const isFiletype = parsed.typeOperator === "filetype";
     filters.push({
-      clearLabel: isFiletype
-        ? `Remove file type ${resultTypeLabels[parsed.type]}`
-        : `Remove query type ${resultTypeLabels[parsed.type]}`,
+      clearLabel: `Remove content type ${resultTypeLabels[parsed.type]}`,
       href: searchHref({
         query: stripSearchQueryOperators(query, ["type", "filetype"]),
         type: typeFilter,
@@ -1169,13 +1166,13 @@ function buildActiveSearchFilters({
         sort,
         time,
       }),
-      label: isFiletype ? "File type" : "Query type",
+      label: "Content type",
       value: resultTypeLabels[parsed.type],
     });
   }
   if (parsed.excludedTypes.length > 0) {
     filters.push({
-      clearLabel: "Remove excluded file types",
+      clearLabel: "Remove excluded content types",
       href: searchHref({
         query: stripNegativeSearchQueryOperators(query, ["type", "filetype"]),
         type: typeFilter,
@@ -1183,7 +1180,7 @@ function buildActiveSearchFilters({
         sort,
         time,
       }),
-      label: "Excludes file types",
+      label: "Excludes content types",
       value: parsed.excludedTypes.map((type) => resultTypeLabels[type]).join(", "),
     });
   }

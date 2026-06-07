@@ -1231,8 +1231,10 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /past AI Digests/);
   assert.match(searchPage, /model pricing type:post/);
   assert.match(searchPage, /model pricing type:source/);
-  assert.match(searchPage, /model pricing filetype:ai-digest/);
+  assert.match(searchPage, /model pricing type:ai-digest/);
+  assert.match(searchPage, /model pricing -type:ai-digest/);
   assert.doesNotMatch(searchPage, /model pricing type:feed/);
+  assert.doesNotMatch(searchPage, /model pricing filetype:ai-digest/);
   assert.doesNotMatch(searchPage, /AI Digest archive/);
   assert.doesNotMatch(searchPage, /Enter a query to search across your sources/);
   assert.match(searchPage, /relatedSearchSuggestions/);
@@ -1306,8 +1308,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /allinurl:release model/);
   assert.match(searchPage, /type:post/);
   assert.match(searchPage, /type:source/);
-  assert.match(searchPage, /filetype:ai-digest/);
-  assert.match(searchPage, /-filetype:ai-digest/);
+  assert.match(searchPage, /type:ai-digest/);
+  assert.match(searchPage, /-type:ai-digest/);
+  assert.doesNotMatch(searchPage, /filetype:ai-digest/);
   assert.match(searchPage, /after:2026-01-01/);
   assert.match(searchPage, /-enterprise/);
   assert.match(searchPage, /ActiveSearchFilters/);
@@ -1352,7 +1355,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /search-insight-summary/);
   assert.match(searchPage, /Query matched/);
   assert.match(searchPage, /Use best match/);
-  assert.match(searchPage, /Search all result types/);
+  assert.match(searchPage, /Search all content types/);
   assert.match(searchPage, /Search all time/);
   assert.match(searchPage, /function SearchEmptyState/);
   assert.match(searchPage, /<EmptyState[\s\S]*className="search-empty"/);
@@ -1379,8 +1382,10 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /Remove excluded title terms/);
   assert.match(searchPage, /Remove excluded sites/);
   assert.match(searchPage, /Remove excluded phrases/);
-  assert.match(searchPage, /Remove excluded file types/);
-  assert.match(searchPage, /Remove file type/);
+  assert.match(searchPage, /Remove excluded content types/);
+  assert.match(searchPage, /Remove content type/);
+  assert.match(searchPage, /Content type/);
+  assert.doesNotMatch(searchPage, /File type|Query type|Search all result types|Remove excluded file types|Remove file type/);
   assert.match(searchPage, /normalizeSearchTime/);
   assert.match(searchForm, /useTransition/);
   assert.match(searchForm, /Searching/);
