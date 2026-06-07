@@ -41,7 +41,7 @@ const LIBRARY_HUB_TABS: Array<WorkspaceTopTabItem<LibraryHubTab>> = [
   },
   {
     value: "ai-digests",
-    label: "AI Digests",
+    label: "AI Digest archives",
     href: "/library-hub?tab=ai-digests",
     panelId: "hub-panel-ai-digests",
     tabId: "hub-tab-ai-digests",
@@ -284,7 +284,7 @@ function LibraryHubImportFallback() {
 function DigestPipelineImportFallback() {
   return (
     <section aria-live="polite" aria-busy="true">
-      <span className="sr-only">Loading AI Digests</span>
+      <span className="sr-only">Loading AI Digest archives</span>
       <div className="library-hub-toolbar">
         <div className="library-hub-toolbar-copy">
           <div className="library-hub-skeleton-line is-heading" />

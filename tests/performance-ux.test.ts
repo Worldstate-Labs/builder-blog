@@ -2178,6 +2178,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(libraryHubPage, /tabId:\s*"hub-tab-source-library"/);
   assert.match(libraryHubPage, /panelId:\s*"hub-panel-ai-digests"/);
   assert.match(libraryHubPage, /tabId:\s*"hub-tab-ai-digests"/);
+  assert.match(libraryHubPage, /label:\s*"AI Digest archives"/);
+  assert.doesNotMatch(libraryHubPage, /label:\s*"AI Digests"/);
   assert.match(libraryHubPage, /const selectedTabItem = selectedHubTabItem\(selectedTab\)/);
   assert.match(libraryHubPage, /aria-labelledby=\{selectedTabItem\.tabId\}/);
   assert.match(libraryHubPage, /id=\{selectedTabItem\.panelId\}/);
@@ -2195,7 +2197,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(libraryHubPage, /label=\{data\.digestPipelineCount === 1 \? "AI Digest" : "AI Digests"\}/);
   assert.doesNotMatch(libraryHubPage, /<section className="fb-page-head"/);
   assert.match(libraryHubPage, /Loading source libraries/);
-  assert.match(libraryHubPage, /Loading AI Digests/);
+  assert.match(libraryHubPage, /Loading AI Digest archives/);
   assert.doesNotMatch(libraryHubPage, />\s*Loading\s*</);
   assert.match(libraryHubPage, /className="library-hub-skeleton-line is-wide"/);
   assert.match(libraryHubPage, /className="library-hub-skeleton-copy"/);
