@@ -38,7 +38,7 @@ function prettyOs(platformString: string | null): string {
 
 /**
  * Build a short human-readable machine label from the token's recorded
- * fields. Prefers CLI-reported identity (hostname + user + OS) and
+ * fields. Prefers CLI-reported device identity (hostname + OS) and
  * falls back to parsing the user-agent string for tokens created
  * before machine headers existed.
  */
@@ -48,10 +48,10 @@ export function describeMachine(token: AgentTokenListItem): string {
   const os = prettyOs(token.lastPlatform);
   if (os && isPhoneLikeToken(token)) return os;
   if (host || user || os) {
+    const deviceName = host ?? user;
     const parts: string[] = [];
-    if (host) parts.push(host);
-    if (user && user !== host) parts.push(user);
-    if (os) parts.push(os);
+    if (deviceName) parts.push(deviceName);
+    if (os && os !== deviceName) parts.push(os);
     return parts.join(" · ");
   }
   return summarizeUserAgent(token.lastUserAgent);

@@ -3431,6 +3431,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /function describeAccessDevice/);
   assert.match(tokenPanel, /const machineLabel = describeMachine\(token\)/);
   assert.match(tokenPanel, /if \(machineLabel !== "unknown machine"\) return machineLabel/);
+  assert.match(tokenPanel, /const deviceName = host \?\? user/);
+  assert.match(tokenPanel, /if \(deviceName\) parts\.push\(deviceName\)/);
+  assert.doesNotMatch(tokenPanel, /if \(user && user !== host\) parts\.push\(user\)/);
   assert.match(tokenPanel, /const tokenLabel = describeAccessDevice\(token\)/);
   assert.match(tokenPanel, /Revoke access for \{describeAccessDevice\(revokeTarget\)\}\?/);
   assert.match(tokenPanel, /<strong>\{describeAccessDevice\(revokeTarget\)\}<\/strong>/);
