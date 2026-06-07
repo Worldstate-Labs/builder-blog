@@ -33,7 +33,7 @@ export function RecommendationReasonsPopover({
         title="Why recommended"
         type="button"
       >
-        <Sparkles className="h-4 w-4" />
+        <Sparkles aria-hidden="true" className="post-action-popover-icon" />
       </button>
       {open && (
         <div className="fb-popover" role="tooltip">

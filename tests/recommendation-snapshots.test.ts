@@ -163,6 +163,11 @@ test("source logos are shared across recommendation and library surfaces", () =>
   assert.match(source("src/components/BuilderLibraryList.tsx"), /SourceBadge/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceBadge/);
   assert.match(source("src/components/FeedCard.tsx"), /PostCard/);
+  assert.match(source("src/components/FetchMethodPopover.tsx"), /className="post-action-popover-icon"/);
+  assert.match(source("src/components/RecommendationReasonsPopover.tsx"), /className="post-action-popover-icon"/);
+  assert.doesNotMatch(source("src/components/FetchMethodPopover.tsx"), /h-4 w-4|h-3\.5 w-3\.5/);
+  assert.doesNotMatch(source("src/components/RecommendationReasonsPopover.tsx"), /h-4 w-4|h-3\.5 w-3\.5/);
+  assert.match(source("src/app/globals.css"), /\.post-action-popover-icon\s*{[\s\S]*height:\s*1rem/);
 });
 
 test("post card suppresses duplicate source labels across meta and footer actions", () => {

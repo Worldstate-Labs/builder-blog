@@ -1657,6 +1657,11 @@ svg.lucide {
   color: var(--accent);
 }
 
+.post-action-popover-icon {
+  height: 1rem;
+  width: 1rem;
+}
+
 .post-favorite-btn {
   border: 1px solid var(--line);
   border-radius: 999px;

@@ -71,7 +71,7 @@ export function FetchMethodPopover({
         title="Summary method"
         type="button"
       >
-        <Info className="h-4 w-4" />
+        <Info aria-hidden="true" className="post-action-popover-icon" />
       </button>
       {open && (
         <div className="fb-popover" id={popoverId} role="tooltip">
