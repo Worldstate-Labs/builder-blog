@@ -829,6 +829,11 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.doesNotMatch(followingSection, /window\.addEventListener/);
   assert.match(favoritesSection, /isAdmin\?: boolean/);
   assert.match(favoritesSection, /showAdminActions=\{isAdmin\}/);
+  assert.match(favoritesSection, /Loading saved items/);
+  assert.match(favoritesSection, /Couldn’t load saved items/);
+  assert.match(favoritesSection, /No saved items yet/);
+  assert.match(favoritesSection, /Save posts from Following or AI Digest and they will appear here\./);
+  assert.doesNotMatch(favoritesSection, /Loading Favorite posts|Couldn’t load Favorites|No favorite posts yet/);
   assert.match(recommendationFeed, /Refresh/);
   assert.match(recommendationFeed, /showAdminActions = false/);
   assert.match(recommendationFeed, /reasons=\{showAdminActions \? entry\.reasons : undefined\}/);
@@ -865,6 +870,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /onRetry=\{\(\) => void loadTimeline\(\)\}/);
   assert.match(favoritesSection, /Retry/);
   assert.match(followingSection, /Retry/);
+  assert.doesNotMatch(recommendationFeed, /Saved to Favorites|Save to Favorites/);
   assert.doesNotMatch(followingSection, /Use Refresh to try again/);
   assert.doesNotMatch(followingSection, /feed-state-inner|feed-state-icon|feed-state-title|feed-state-desc/);
   assert.doesNotMatch(recommendationFeed, /recommendation-feed mt-6/);

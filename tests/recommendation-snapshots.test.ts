@@ -71,6 +71,7 @@ test("favorites saves posts and requires manual read marking", () => {
   assert.match(favoriteSection, /mode="favorites"/);
   assert.match(feed, /FavoriteToggleButton/);
   assert.match(feed, /Save/);
+  assert.match(feed, /title=\{isFavorite \? "Saved item" : "Save item"\}/);
   assert.match(digestRoute, /favoriteStateByUrl/);
   assert.match(digestRoute, /activePoolBuilderIds/);
   assert.match(digestRoute, /feedFavorite\.findMany/);
@@ -88,6 +89,8 @@ test("favorites saves posts and requires manual read marking", () => {
   assert.match(feed, /isMarkedRead/);
   assert.match(feed, /dataRead=\{isFavoritesTab \? false : isRead\}/);
   assert.match(feed, />Marked read</);
+  assert.doesNotMatch(feed, /Saved to Favorites|Save to Favorites/);
+  assert.doesNotMatch(digestContent, /Saved to Favorites|Save to Favorites/);
   assert.doesNotMatch(feed, /Manually marked read/);
   assert.doesNotMatch(feed, /disabled=\{isRead\}/);
   assert.match(feed, /isFavoritesTab \? undefined/);

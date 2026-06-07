@@ -53,13 +53,13 @@ export function FavoritePostsSection({ isAdmin = false }: { isAdmin?: boolean })
   }, [loadFavorites]);
 
   if (status === "loading") {
-    return <FeedLoadingState label="Loading Favorite posts" />;
+    return <FeedLoadingState label="Loading saved items" />;
   }
 
   if (status === "error") {
     return (
       <FavoritesMessage
-        title="Couldn’t load Favorites"
+        title="Couldn’t load saved items"
         tone="error"
         onRetry={() => void loadFavorites()}
       />
@@ -69,8 +69,8 @@ export function FavoritePostsSection({ isAdmin = false }: { isAdmin?: boolean })
   if (!favorites?.snapshot || favorites.snapshot.items.length === 0) {
     return (
       <FavoritesMessage
-        title="No favorite posts yet"
-        body="Save posts from Following and they will appear here."
+        title="No saved items yet"
+        body="Save posts from Following or AI Digest and they will appear here."
       />
     );
   }

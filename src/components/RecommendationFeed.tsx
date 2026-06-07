@@ -271,7 +271,7 @@ function FavoriteToggleButton({
       aria-pressed={isFavorite}
       className={`post-action-btn post-favorite-btn${isFavorite ? " post-action-btn--active" : ""}`}
       onClick={() => void toggleFavorite()}
-      title={isFavorite ? "Saved to Favorites" : "Save to Favorites"}
+      title={isFavorite ? "Saved item" : "Save item"}
       type="button"
     >
       <Star className="h-4 w-4" />
