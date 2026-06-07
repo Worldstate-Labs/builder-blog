@@ -569,7 +569,7 @@ function HubCard({
 
 function kindBadge(library: HubLibrary) {
   if (library.isCommunity) return "community";
-  if (library.owned) return "private";
+  if (library.owned) return "yours";
   return "shared";
 }
 
@@ -607,13 +607,13 @@ function sourceLibraryListCopy(filter: FilterKey) {
 function libraryCardDescription(library: HubLibrary) {
   const description = library.description?.trim();
   if (description) return description;
-  if (library.owned) return "Your private source library.";
+  if (library.owned) return "A source library you manage.";
   return library.ownerLabel;
 }
 
 function topicLabel(library: HubLibrary) {
   if (library.isCommunity) return "Curated";
-  if (library.owned) return "Personal";
+  if (library.owned) return "Managed by you";
   return "Shared by user";
 }
 
