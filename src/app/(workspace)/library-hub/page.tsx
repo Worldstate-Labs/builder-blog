@@ -230,7 +230,7 @@ function LibraryHubImportFallback() {
           <div className="library-hub-skeleton-line is-wide" />
         </div>
         <div className="library-hub-counts">
-          <span>Loading</span>
+          <span>Loading source libraries</span>
         </div>
         <div className="library-hub-skeleton-pill" />
       </div>
@@ -259,6 +259,7 @@ function LibraryHubImportFallback() {
 function DigestPipelineImportFallback() {
   return (
     <section aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading AI Digests</span>
       <div className="library-hub-toolbar">
         <div className="library-hub-toolbar-copy">
           <div className="library-hub-skeleton-line is-heading" />
