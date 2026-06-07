@@ -2496,6 +2496,12 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderEditDialog, /className="builder-edit-dialog-footer-actions"/);
   assert.match(builderEditDialog, /className="fb-input mono"/);
   assert.match(builderEditDialog, /className="builder-edit-dialog-message is-error"/);
+  assert.match(builderEditDialog, /const sourceFeedbackId = `edit-builder-\$\{builder\.id\}-source-feedback`/);
+  assert.match(builderEditDialog, /aria-describedby=\{error \|\| warning \? sourceFeedbackId : undefined\}/);
+  assert.match(builderEditDialog, /aria-invalid=\{error \? "true" : undefined\}/);
+  assert.match(builderEditDialog, /setSourceValue\(e\.target\.value\);[\s\S]*setError\(null\);[\s\S]*setWarning\(null\);/);
+  assert.match(builderEditDialog, /id=\{sourceFeedbackId\}[\s\S]*className="builder-edit-dialog-message is-error"/);
+  assert.match(builderEditDialog, /id=\{sourceFeedbackId\}[\s\S]*className="builder-edit-dialog-message"[\s\S]*role="status"/);
   assert.doesNotMatch(builderEditDialog, /style=\{\{/);
   assert.doesNotMatch(builderEditDialog, /className="grid gap-/);
   assert.doesNotMatch(builderEditDialog, /className="h-3 w-3"/);

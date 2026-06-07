@@ -39,6 +39,7 @@ export function BuilderEditDialog({
   const [warning, setWarning] = useState<string | null>(null);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const sourceFeedbackId = `edit-builder-${builder.id}-source-feedback`;
 
   // Sync the underlying <dialog>'s open state with React state.
   useEffect(() => {
@@ -197,9 +198,15 @@ export function BuilderEditDialog({
             <label className="builder-edit-dialog-field">
               <span className="builder-edit-dialog-field-label">Handle or URL</span>
               <input
+                aria-describedby={error || warning ? sourceFeedbackId : undefined}
+                aria-invalid={error ? "true" : undefined}
                 className="fb-input mono"
                 value={sourceValue}
-                onChange={(e) => setSourceValue(e.target.value)}
+                onChange={(e) => {
+                  setSourceValue(e.target.value);
+                  setError(null);
+                  setWarning(null);
+                }}
                 placeholder="@handle or https://…"
                 required
               />
@@ -219,6 +226,7 @@ export function BuilderEditDialog({
 
             {error ? (
               <span
+                id={sourceFeedbackId}
                 className="builder-edit-dialog-message is-error"
                 role="alert"
               >
@@ -226,6 +234,7 @@ export function BuilderEditDialog({
               </span>
             ) : warning ? (
               <span
+                id={sourceFeedbackId}
                 className="builder-edit-dialog-message"
                 role="status"
               >
