@@ -404,7 +404,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /build new digests|update every source/);
   assert.match(skillPromptActions, /Local Agent/);
   assert.match(skillPromptActions, /Already digested posts can be included again this time\./);
-  assert.match(skillPromptActions, /Fetch post age \(days\)/);
+  assert.match(skillPromptActions, /id="cron-fetch-days"[\s\S]*label="Max post age \(days\)"/);
+  assert.doesNotMatch(skillPromptActions, /Fetch post age \(days\)/);
   assert.match(skillPromptActions, /Defaults to 30 days\. Choose 1-90 days\./);
   assert.match(skillPromptActions, /params\.set\("days", String\(extras\.fetchDays\)\)/);
   assert.match(skillPromptActions, /Number\.isInteger\(numeric\)/);

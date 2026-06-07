@@ -953,7 +953,7 @@ function CronConfigDialog({
             <>
               <MaxAgeField
                 id="cron-fetch-days"
-                label="Fetch post age (days)"
+                label="Max post age (days)"
                 value={pickedFetchDays}
                 onChange={setPickedFetchDays}
               />
