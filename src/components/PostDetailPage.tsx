@@ -78,7 +78,7 @@ export async function PostDetailPage({
           className="reading-source-label"
           href={sourceHref}
         >
-          {sourceLabel}
+          Source: {sourceLabel}
         </Link>
       </nav>
 

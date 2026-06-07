@@ -2873,6 +2873,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(postDetailPage, /title="Post"/);
   assert.match(postDetailPage, /className="reading-page-toolbar"/);
   assert.match(postDetailPage, /className="reading-source-label"/);
+  assert.match(postDetailPage, /Source: \{sourceLabel\}/);
+  assert.doesNotMatch(postDetailPage, /className="reading-source-label"[\s\S]*>\s*\{sourceLabel\}\s*<\/Link>/);
   assert.match(postDetailPage, /const sourceLabel = item\.builder\?\.name \?\? item\.sourceName \?\? "Post"/);
   assert.match(postDetailPage, /const sourceHref = `\/builder\/\$\{entityId\}`/);
   assert.match(postDetailPage, /aria-label=\{`View \$\{sourceLabel\} source`\}/);
