@@ -1187,8 +1187,10 @@ function buildActiveSearchFilters({
     });
   }
   if (parsed.excludedSites.length > 0) {
+    const excludedSiteLabel =
+      parsed.excludedSites.length === 1 ? "Excluded site" : "Excluded sites";
     filters.push({
-      clearLabel: "Remove excluded sites",
+      clearLabel: `Remove ${excludedSiteLabel.toLowerCase()}`,
       href: searchHref({
         query: stripNegativeSearchQueryOperators(query, ["site"]),
         type: typeFilter,
@@ -1196,7 +1198,7 @@ function buildActiveSearchFilters({
         sort,
         time,
       }),
-      label: "Excludes sites",
+      label: excludedSiteLabel,
       value: parsed.excludedSites.join(", "),
     });
   }
@@ -1215,8 +1217,12 @@ function buildActiveSearchFilters({
     });
   }
   if (parsed.excludedTypes.length > 0) {
+    const excludedTypeLabel =
+      parsed.excludedTypes.length === 1
+        ? "Excluded result type"
+        : "Excluded result types";
     filters.push({
-      clearLabel: "Remove excluded result types",
+      clearLabel: `Remove ${excludedTypeLabel.toLowerCase()}`,
       href: searchHref({
         query: stripNegativeSearchQueryOperators(query, ["type", "filetype"]),
         type: typeFilter,
@@ -1224,7 +1230,7 @@ function buildActiveSearchFilters({
         sort,
         time,
       }),
-      label: "Excludes result types",
+      label: excludedTypeLabel,
       value: parsed.excludedTypes.map((type) => resultTypeFilterLabels[type]).join(", "),
     });
   }

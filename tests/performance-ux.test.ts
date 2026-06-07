@@ -2119,9 +2119,15 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /Remove required terms/);
   assert.match(searchPage, /Must include/);
   assert.match(searchPage, /Remove excluded title terms/);
-  assert.match(searchPage, /Remove excluded sites/);
+  assert.match(searchPage, /const excludedSiteLabel =/);
+  assert.match(searchPage, /parsed\.excludedSites\.length === 1 \? "Excluded site" : "Excluded sites"/);
+  assert.match(searchPage, /label: excludedSiteLabel/);
+  assert.doesNotMatch(searchPage, /Remove excluded sites|label:\s*"Excludes sites"/);
   assert.match(searchPage, /Remove excluded phrases/);
-  assert.match(searchPage, /Remove excluded result types/);
+  assert.match(searchPage, /const excludedTypeLabel =/);
+  assert.match(searchPage, /\? "Excluded result type"\s*: "Excluded result types"/);
+  assert.match(searchPage, /label: excludedTypeLabel/);
+  assert.doesNotMatch(searchPage, /Remove excluded result types|label:\s*"Excludes result types"/);
   assert.match(searchPage, /Remove result type/);
   assert.match(searchPage, /Result type/);
   assert.doesNotMatch(searchPage, /Search all content types|Remove excluded content types|Remove content type|Content type/);
