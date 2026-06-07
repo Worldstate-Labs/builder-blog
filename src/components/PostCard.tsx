@@ -239,7 +239,6 @@ export function PostCard({
                 }}
                 type="button"
               >
-                <span>{summaryExpanded ? "See less" : "See more"}</span>
                 <ChevronDown aria-hidden="true" className="post-summary-toggle-icon" />
               </button>
             ) : null}

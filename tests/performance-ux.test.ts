@@ -1833,12 +1833,14 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /actionLabel\(\s*summaryExpanded \? "Show less summary" : "Show more summary"/);
   assert.match(postCard, /aria-controls=\{rawRegionId\}/);
   assert.match(postCard, /id=\{rawRegionId\}/);
-  assert.match(postCard, /See more/);
+  assert.match(postCard, /ChevronDown/);
+  assert.doesNotMatch(postCard, /See more|See less/);
   assert.match(postCard, /Raw content/);
   assert.match(postCard, /View original/);
   assert.doesNotMatch(postCard, /whitespace-pre-wrap text-sm leading-6|mt-3 whitespace-pre-wrap rounded-lg|text-link mt-2/);
   assert.match(globals, /\.fetched-post-summary-text\s*{[\s\S]*white-space:\s*pre-wrap/);
-  assert.match(globals, /\.post-summary-toggle\s*{[\s\S]*margin-top:\s*0\.5rem/);
+  assert.match(globals, /\.post-summary-toggle\s*{[\s\S]*height:\s*1\.45rem/);
+  assert.match(globals, /@media \(max-width:\s*767px\)\s*{[\s\S]*--post-summary-lines:\s*5/);
   assert.match(globals, /\.fetched-post-raw\s*{[\s\S]*border:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.digest-rich \.fetched-post-summary-text\s*{[\s\S]*line-height:\s*1\.72/);
   assert.match(postCard, /\/builder\/\$\{builder\.entityId\}/);
