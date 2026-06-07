@@ -950,6 +950,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /className="builder-detail-bio fb-desc"/);
   assert.match(globals, /\.builder-detail-bio\s*{[\s\S]*max-width:\s*var\(--measure\)/);
   assert.match(builderDetailPage, /className="builder-detail-actions-skeleton"/);
+  assert.match(builderDetailPage, /<span className="sr-only">Loading source follow action<\/span>/);
   assert.match(builderDetailPage, /className="builder-detail-action-skeleton-button"/);
   assert.match(builderDetailActions, /className="builder-detail-action-stack"/);
   assert.match(builderDetailActions, /className="builder-detail-action-row"/);

@@ -298,6 +298,7 @@ async function BuilderDetailActionsSlot({
 function BuilderActionsSkeleton() {
   return (
     <div className="builder-detail-actions-skeleton" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Loading source follow action</span>
       <div className="builder-detail-action-skeleton-button" />
     </div>
   );
