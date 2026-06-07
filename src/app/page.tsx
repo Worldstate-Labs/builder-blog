@@ -56,7 +56,7 @@ export default async function Home() {
             <div className="fb-product-preview-title-row">
               <BrandMark />
               <div>
-                <div className="fb-product-preview-title">Daily brief flow</div>
+                <div className="fb-product-preview-title">Daily AI Digest flow</div>
                 <div className="fb-product-preview-kicker">
                   Demo
                 </div>
@@ -95,7 +95,7 @@ export default async function Home() {
           <div className="fb-product-preview-list">
             {[
               {
-                title: "Daily updates become one brief.",
+                title: "Daily updates become one AI Digest.",
                 detail:
                   "New posts, videos, launches, and trending projects are grouped into a readable digest.",
               },
@@ -145,7 +145,7 @@ export default async function Home() {
             {
               i: "02",
               icon: Terminal,
-              title: "Generate briefs",
+              title: "Build AI Digests",
               copy: "Let your Local Agent fetch updates, summarize posts, and build a cited digest from the summaries.",
             },
             {
@@ -182,7 +182,7 @@ export default async function Home() {
           <Feature
             icon={Sparkles}
             title="Digest-first home"
-            copy="Today stays focused on readable briefings, not raw feed noise."
+            copy="Home stays focused on readable AI Digests, not raw feed noise."
           />
           <Feature
             icon={Search}
