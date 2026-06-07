@@ -1288,7 +1288,7 @@ function DetailsBody({ details }: { details: DetailsShape }) {
                 key={entry.builderId ?? `${entry.name ?? "builder"}-${index}`}
                 className="mono text-[12px] text-[var(--ink)]"
               >
-                <span>{entry.name ?? entry.builderId ?? "unknown"}</span>
+                <span>{entry.name ?? "Unknown source"}</span>
                 <span className="text-[var(--muted-strong)]"> · </span>
                 <span className="text-[var(--muted-strong)]">{entry.sourceType ?? "—"}</span>
                 <span className="text-[var(--muted-strong)]"> · </span>
