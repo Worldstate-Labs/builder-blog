@@ -2577,6 +2577,10 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(postCard, /aria-label=\{actionLabel\(rawContentLabel, actionContext\)\}/);
   assert.match(postCard, /aria-label=\{actionLabel\("View original", actionContext\)\}/);
   assert.match(postCard, /accessibleLabel=\{actionLabel\("Summary method", actionContext\)\}/);
+  assert.match(postCard, /Same post available via other source libraries/);
+  assert.match(postCard, /additional source library/);
+  assert.match(postCard, /additional source libraries/);
+  assert.doesNotMatch(postCard, /additional channel|additional channels|libraries \/ channels/);
   assert.match(fetchMethodPopover, /useId/);
   assert.match(fetchMethodPopover, /aria-controls=\{popoverId\}/);
   assert.match(fetchMethodPopover, /aria-expanded=\{open\}/);

@@ -36,7 +36,7 @@ export type PostCardPost = {
   sourceType?: string | null;
   fetchTool: string | null;
   builder?: FetchedPostBuilder | null;
-  /** Number of additional channel variants of this canonical post — shown as "+N channels". */
+  /** Number of additional library copies of this canonical post. */
   alternateChannelCount?: number;
 };
 
@@ -208,9 +208,9 @@ export function PostCard({
             {hasAlternateChannels ? (
               <>
                 {showSourceBadge ? <span className="post-meta-dot" aria-hidden="true">·</span> : null}
-                <span title="Same post available via other libraries / channels">
+                <span title="Same post available via other source libraries">
                   <CountMeta
-                    label={post.alternateChannelCount === 1 ? "additional channel" : "additional channels"}
+                    label={post.alternateChannelCount === 1 ? "additional source library" : "additional source libraries"}
                     value={post.alternateChannelCount ?? 0}
                   />
                 </span>
