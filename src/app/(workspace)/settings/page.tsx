@@ -68,7 +68,7 @@ async function SourceTypeConfigSection({
       <details className="settings-rules-panel fb-panel">
         <summary className="settings-rules-summary">
           <div className="settings-rules-summary-copy">
-            <h3 className="fb-section-heading">Fetch sources rules</h3>
+            <h3 className="fb-section-heading">Source fetch rules</h3>
             <p className="settings-rules-summary-desc">
               Fetch, filter, and write per-post summaries.
             </p>
