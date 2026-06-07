@@ -43,8 +43,9 @@ test("primary app navigation keeps route prefetching enabled", () => {
   assert.match(appNav, /item\.href === "\/dashboard"[\s\S]*returnTo\.startsWith\("\/dashboard"\)/);
   assert.match(appNav, /item\.href === "\/builders"[\s\S]*returnTo\.startsWith\("\/builders"\)/);
   assert.match(appNav, /item\.href === "\/library-hub"[\s\S]*returnTo\.startsWith\("\/library-hub"\)/);
-  assert.match(appNav, /item\.href === "\/dashboard"[\s\S]*pathname === "\/recommendations"/);
-  assert.match(appNav, /item\.href === "\/dashboard"[\s\S]*pathname === "\/history"/);
+  assert.doesNotMatch(appNav, /pathname === "\/recommendations"/);
+  assert.doesNotMatch(appNav, /pathname\.startsWith\("\/recommendations\/"\)/);
+  assert.doesNotMatch(appNav, /pathname === "\/history"/);
   assert.match(globals, /\.fb-nav svg\s*{[\s\S]*height:\s*1rem/);
   assert.match(globals, /\.fb-m-tab svg\s*{[\s\S]*height:\s*1\.125rem/);
   assert.doesNotMatch(appNav, /className="h-4 w-4"/);
@@ -750,7 +751,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(mobileSearchLink, /aria-current=\{active \? "page" : undefined\}/);
   assert.match(mobileSearchLink, /data-active=\{active \? "true" : undefined\}/);
   assert.match(mobileSearchLink, /aria-label="Search"/);
-  assert.match(appNav, /pathname\.startsWith\("\/recommendations\/"\)/);
+  assert.match(appNav, /returnTo\.startsWith\("\/recommendations"\)/);
   assert.match(appNav, /pathname\.startsWith\("\/builder\/"\)/);
   assert.match(appNav, /icon: "home" \| "builders" \| "hub"/);
   assert.doesNotMatch(appNav, /Archive|Settings,|Search,|archive:|search:|settings:|className="h-4 w-4"/);

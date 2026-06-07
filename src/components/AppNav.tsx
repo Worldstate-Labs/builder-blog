@@ -108,13 +108,6 @@ function isActiveNavItem(pathname: string, item: AppNavItem, returnTo = "") {
     }
     if (item.href === "/library-hub" && returnTo.startsWith("/library-hub")) return true;
   }
-  if (item.href === "/dashboard") {
-    return (
-      pathname === "/recommendations" ||
-      pathname.startsWith("/recommendations/") ||
-      pathname === "/history"
-    );
-  }
   if (item.href === "/builders") return pathname.startsWith("/builder/");
   return false;
 }
