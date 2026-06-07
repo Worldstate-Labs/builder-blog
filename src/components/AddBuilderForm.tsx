@@ -309,7 +309,7 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
           type="submit"
         >
           <Plus aria-hidden="true" />
-          {isPending ? "Adding..." : "Add source"}
+          {isPending ? "Adding" : "Add source"}
         </button>
       </div>
       {preview.kind !== "idle" ? (
@@ -385,7 +385,7 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
               disabled={isPending}
               onClick={() => submitAdd(true)}
             >
-              {isPending ? "Adding..." : "Add anyway"}
+              {isPending ? "Adding" : "Add anyway"}
             </button>
             <button
               type="button"

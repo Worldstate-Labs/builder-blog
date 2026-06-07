@@ -381,7 +381,7 @@ export function SearchForm({
               </span>
               {isPending ? (
                 <span className="submit-button-pending">
-                  Searching...
+                  Searching
                 </span>
               ) : null}
             </button>

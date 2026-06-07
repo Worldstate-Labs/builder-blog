@@ -357,7 +357,7 @@ export function AgentTokenPanel({
                 onClick={submitCreate}
                 type="button"
               >
-                {isPending ? "Creating..." : "Create access key"}
+                {isPending ? "Creating" : "Create access key"}
               </button>
             </div>
           </div>

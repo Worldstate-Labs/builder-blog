@@ -78,7 +78,7 @@ export function AuthButtons({
           <Icon />
           <span>
             {pendingProvider === id
-              ? `Opening ${label}...`
+              ? `Opening ${label}`
               : `${labelPrefix} ${label}`}
           </span>
         </button>

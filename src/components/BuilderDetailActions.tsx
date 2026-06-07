@@ -61,7 +61,7 @@ export function BuilderDetailActions({
           onClick={() => follow(!subscribed)}
           className={`fb-follow-button${subscribed ? " is-following" : " is-follow"}`}
         >
-          {isPending ? "Updating..." : subscribed ? "Following" : "Follow"}
+          {isPending ? "Updating" : subscribed ? "Following" : "Follow"}
         </button>
       </div>
       {error ? (

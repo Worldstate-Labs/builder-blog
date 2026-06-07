@@ -246,6 +246,8 @@ test("public entry pages use the centered product layout", () => {
   const authButtons = source("src/components/AuthButtons.tsx");
   const globals = source("src/app/globals.css");
 
+  assert.match(authButtons, /`Opening \$\{label\}`/);
+  assert.doesNotMatch(authButtons, /Opening \$\{label\}\.\.\./);
   assert.match(landingPage, /fb-public-nav/);
   assert.match(landingPage, /fb-public-section fb-public-hero/);
   assert.match(landingPage, /fb-public-title/);
@@ -685,6 +687,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(appShell, /<aside className="fb-side-rail"|fb-side-rail" aria-label=/);
   assert.match(appShell, /<SearchForm query="" variant="header" \/>/);
   assert.match(searchForm, /name="q"/);
+  assert.match(searchForm, />\s*Searching\s*<\/span>/);
+  assert.doesNotMatch(searchForm, /Searching\.\.\./);
+  assert.match(builderDetailActions, /\{isPending \? "Updating" : subscribed \? "Following" : "Follow"\}/);
+  assert.doesNotMatch(builderDetailActions, /Updating\.\.\./);
   assert.match(appNav, /desktopLayout = "rail"/);
   assert.match(appNav, /<nav className=\{desktopClassName\} aria-label="Primary">/);
   assert.match(appNav, /fb-nav-list-bar/);
@@ -1703,6 +1709,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /submit-button-pending/);
   assert.match(formSubmitButton, /submit-button-content/);
   assert.match(formSubmitButton, /submit-button-pending/);
+  assert.match(formSubmitButton, /pendingLabel = "Working"/);
+  assert.doesNotMatch(formSubmitButton, /pendingLabel = "Working\.\.\."/);
   assert.match(globals, /\.submit-button\s*{[\s\S]*position:\s*relative/);
   assert.match(globals, /\.submit-button-pending\s*{[\s\S]*position:\s*absolute/);
   assert.doesNotMatch(searchForm, /absolute inset-0 inline-flex|inline-flex items-center justify-center gap-2/);
@@ -2348,6 +2356,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(addBuilderForm, /Display name \(auto-filled from URL; edit to override\)/);
   assert.doesNotMatch(addBuilderForm, /Display name \(auto-filled from URL — edit to override\)/);
   assert.match(addBuilderForm, /className="fb-btn dark add-source-submit"/);
+  assert.match(addBuilderForm, /\{isPending \? "Adding" : "Add source"\}/);
+  assert.match(addBuilderForm, /\{isPending \? "Adding" : "Add anyway"\}/);
+  assert.doesNotMatch(addBuilderForm, /Adding\.\.\./);
   assert.match(addBuilderForm, /className="add-source-callout"/);
   assert.match(addBuilderForm, /add-source-text-action/);
   assert.match(addBuilderForm, /Switch source type/);
@@ -2666,6 +2677,8 @@ test("library hub exposes share and multi-import flows", () => {
   const skillRoute = source("src/app/api/skill/builders/route.ts");
   const schema = source("prisma/schema.prisma");
 
+  assert.match(builderActions, /\{isPending \? "Updating" : subscribed \? "Following" : "Follow"\}/);
+  assert.doesNotMatch(builderActions, /Updating\.\.\./);
   assert.match(appShell, /library-hub/);
   assert.doesNotMatch(appShell, /UserDataAutoRefresh/);
   assert.doesNotMatch(workspaceLayout, /builderLibraryState/);
@@ -3147,6 +3160,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(tokenPanel, />\s*Local Agents that can sync sources and AI Digests to this account\.|Devices and Local Agents that can sync sources and AI Digests to this account\./);
   assert.doesNotMatch(tokenPanel, /sync sources and digests to this account/);
   assert.match(tokenPanel, /"New access key"/);
+  assert.match(tokenPanel, /\{isPending \? "Creating" : "Create access key"\}/);
+  assert.doesNotMatch(tokenPanel, /Creating\.\.\./);
   assert.match(tokenPanel, /fb-dialog/);
   assert.match(globals, /\.fb-dialog\s*{[\s\S]*max-width:\s*var\(--dialog-max\)/);
   assert.match(globals, /\.fb-dialog\s*{[\s\S]*position:\s*fixed/);

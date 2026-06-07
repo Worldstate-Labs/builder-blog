@@ -65,7 +65,7 @@ export function BuilderLibraryActions({
           onClick={updateSubscription}
           type="button"
         >
-          {isPending ? "Updating..." : subscribed ? "Following" : "Follow"}
+          {isPending ? "Updating" : subscribed ? "Following" : "Follow"}
         </button>
       </div>
       {error ? (

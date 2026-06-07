@@ -7,7 +7,7 @@ export function FormSubmitButton({
   children,
   className,
   disabled = false,
-  pendingLabel = "Working...",
+  pendingLabel = "Working",
 }: {
   children: ReactNode;
   className?: string;
