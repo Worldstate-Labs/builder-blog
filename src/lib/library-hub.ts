@@ -12,7 +12,7 @@ export const adminCommunityLibraryDescription =
   "Community source library curated by FollowBrief.";
 export const adminCommunityDigestTitle = "Community AI Digest";
 export const adminCommunityDigestDescription =
-  "Community AI digest curated by FollowBrief.";
+  "Community AI Digest curated by FollowBrief.";
 
 export function digestPipelineTitle(owner: {
   name?: string | null;
