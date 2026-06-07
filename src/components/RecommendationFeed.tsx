@@ -53,6 +53,7 @@ export function RecommendationFeed({
   const [snapshots, setSnapshots] = useState(() => nonEmptySnapshots(initialSnapshots));
   const hydrated = useHydrated();
   const [loadingDirection, setLoadingDirection] = useState<"append" | "prepend" | null>(null);
+  const [loadErrorDirection, setLoadErrorDirection] = useState<"append" | "prepend" | null>(null);
   const loadingGuard = useRef<"append" | "prepend" | null>(null);
   const [exhausted, setExhausted] = useState(initialSnapshots.length === 0);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
@@ -92,9 +93,10 @@ export function RecommendationFeed({
       if (loadingGuard.current) return;
       loadingGuard.current = direction;
       setLoadingDirection(direction);
+      setLoadErrorDirection(null);
       try {
         const response = await fetch(`/api/recommendations?direction=${direction}&limit=6`);
-        if (!response.ok) return;
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         const snapshot = data.snapshot as RecommendationSnapshotEntry | null | undefined;
         if (!snapshot || snapshot.items.length === 0) {
@@ -107,6 +109,8 @@ export function RecommendationFeed({
             : mergeSnapshots([...current, snapshot]),
         );
         setExhausted(false);
+      } catch {
+        setLoadErrorDirection(direction);
       } finally {
         loadingGuard.current = null;
         setLoadingDirection(null);
@@ -169,6 +173,17 @@ export function RecommendationFeed({
           <span className="status-chip">
             <Loader2 className="feed-loading-icon" />
             Loading posts
+          </span>
+        ) : loadErrorDirection ? (
+          <span className="feed-load-error" role="status">
+            Could not load posts.
+            <button
+              className="feed-inline-retry"
+              onClick={() => void requestSnapshot(loadErrorDirection)}
+              type="button"
+            >
+              Retry
+            </button>
           </span>
         ) : exhausted ? (
           <span className="feed-end-note">No new unread posts left.</span>

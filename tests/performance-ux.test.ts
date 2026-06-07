@@ -1165,6 +1165,13 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(recommendationFeed, /Following update/);
   assert.doesNotMatch(recommendationFeed, />Picks</);
   assert.match(recommendationFeed, /className="feed-load-more"/);
+  assert.match(recommendationFeed, /const \[loadErrorDirection, setLoadErrorDirection\] = useState<"append" \| "prepend" \| null>\(null\)/);
+  assert.match(recommendationFeed, /setLoadErrorDirection\(null\)/);
+  assert.match(recommendationFeed, /throw new Error\(`HTTP \$\{response\.status\}`\)/);
+  assert.match(recommendationFeed, /setLoadErrorDirection\(direction\)/);
+  assert.match(recommendationFeed, /className="feed-load-error" role="status"/);
+  assert.match(recommendationFeed, /Could not load posts\./);
+  assert.match(recommendationFeed, /onClick=\{\(\) => void requestSnapshot\(loadErrorDirection\)\}/);
   assert.match(recommendationFeed, /className="feed-end-note"/);
   assert.match(recommendationFeed, /No new unread posts left/);
   assert.doesNotMatch(recommendationFeed, /No new unread recommendations left/);
@@ -1206,6 +1213,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(globals, /\.feed-content-stack\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.recommendation-feed-actions\s*{[\s\S]*justify-content:\s*space-between/);
   assert.match(globals, /\.recommendation-snapshot-list\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.feed-load-error\s*{[\s\S]*color:\s*var\(--danger\)/);
+  assert.match(globals, /\.feed-inline-retry\s*{[\s\S]*color:\s*var\(--accent\)/);
   assert.match(globals, /\.feed-end-note\s*{[\s\S]*font-size:\s*0\.875rem/);
   assert.match(globals, /\.feed-action-icon,[\s\S]*\.post-action-icon\s*{[\s\S]*height:\s*0\.875rem/);
   assert.match(globals, /\.feed-loading-icon,[\s\S]*\.digest-loading-icon\s*{[\s\S]*animation:\s*status-spin/);

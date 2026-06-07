@@ -1217,6 +1217,25 @@ svg.lucide {
   min-height: 3.5rem;
 }
 
+.feed-load-error {
+  align-items: center;
+  color: var(--danger);
+  display: inline-flex;
+  flex-wrap: wrap;
+  font-size: 0.875rem;
+  gap: 0.45rem;
+  justify-content: center;
+}
+
+.feed-inline-retry {
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
 .feed-end-note {
   color: var(--muted);
   font-size: 0.875rem;
