@@ -259,7 +259,7 @@ export function SearchForm({
                   submitSuggestion(activeSuggestion, event.currentTarget.form);
                 }
               }}
-              placeholder="Search sources, posts, saved items, or digests"
+              placeholder="Search sources, posts, saved items, or AI Digests"
             />
             {inputValue ? (
               <button

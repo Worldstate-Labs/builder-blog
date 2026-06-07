@@ -47,13 +47,13 @@ type SearchParams = Promise<{
 }>;
 
 const searchPageSize = 10;
-const emptySearchCopy = "Search sources, posts, saved items, and digests.";
+const emptySearchCopy = "Search sources, posts, saved items, and AI Digests.";
 const defaultSuggestions = [
   "model pricing",
   "open source models",
   "founder essays",
   "product launch",
-  "digest archive",
+  "AI Digest archive",
   "podcast transcript",
   "research notes",
   "tool benchmarks",
@@ -90,7 +90,7 @@ const advancedSearchExamples = [
 const resultTypeLabels: Record<SearchDocumentType, string> = {
   builder: "Sources",
   feed: "Posts",
-  digest: "Digests",
+  digest: "AI Digests",
 };
 
 const searchModeLabels: Record<SearchMode, string> = {
@@ -152,7 +152,7 @@ export default async function SearchPage({
     <div className="page-pad page-pad--reading search-page">
       <PageHeader
         title="Search"
-        description="Find sources, posts, saved items, and digests across your library."
+        description="Find sources, posts, saved items, and AI Digests across your library."
       />
 
       <div className="workspace-content-stack search-results-workspace">

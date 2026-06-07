@@ -1138,7 +1138,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /@\/components\/PageHeader/);
   assert.match(searchPage, /className="page-pad page-pad--reading search-page"/);
   assert.match(searchPage, /searchPageSize/);
-  assert.match(searchPage, /emptySearchCopy = "Search sources, posts, saved items, and digests\."/);
+  assert.match(searchPage, /emptySearchCopy = "Search sources, posts, saved items, and AI Digests\."/);
   assert.doesNotMatch(searchPage, /Enter a query to search across your sources/);
   assert.match(searchPage, /relatedSearchSuggestions/);
   assert.match(searchPage, /didYouMeanSearch/);
@@ -1148,7 +1148,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /SearchResultsSection/);
   assert.match(searchPage, /className="workspace-content-stack search-results-workspace"/);
   assert.match(globals, /\.search-result-skeleton/);
-  assert.match(searchPage, /<PageHeader[\s\S]*title="Search"[\s\S]*Find sources, posts, saved items, and digests across your library\./);
+  assert.match(searchPage, /<PageHeader[\s\S]*title="Search"[\s\S]*Find sources, posts, saved items, and AI Digests across your library\./);
   assert.doesNotMatch(searchPage, /description="Find sources, saved posts, and digest history\."/);
   assert.doesNotMatch(searchPage, /<PageHeader[\s\S]{0,120}actions=/);
   assert.match(searchPage, /className="search-hero-form"/);
@@ -2354,6 +2354,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /className="settings-dialog-actions"/);
   assert.match(tokenPanel, /className="access-key-device-title"/);
   assert.match(tokenPanel, /className="access-key-device-status"/);
+  assert.match(tokenPanel, /\\b\(ios\|iphone\|ipad\)\\b/);
+  assert.match(tokenPanel, /machineLabel === "unknown machine" && tokenName/);
   assert.doesNotMatch(tokenPanel, /access-key-device-detail/);
   assert.match(tokenPanel, /useHydrated/);
   assert.match(tokenPanel, /formatRelativeCompact\(token\.lastUsedAt, hydrated\)/);

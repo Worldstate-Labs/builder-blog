@@ -32,6 +32,8 @@ function prettyOs(platformString: string | null): string {
   if (lower.startsWith("linux")) return "Linux";
   if (lower.startsWith("win")) return "Windows";
   if (lower.startsWith("freebsd")) return "FreeBSD";
+  if (/\b(ios|iphone|ipad)\b/.test(lower)) return platformString.slice(0, 48);
+  if (/\bandroid\b/.test(lower)) return platformString.slice(0, 48);
   return platformString.split(/\s+/)[0]!.slice(0, 32);
 }
 
@@ -454,7 +456,9 @@ function TokenRow({
   onRevoke: () => void;
 }) {
   const DeviceIcon = isPhoneLikeToken(token) ? Smartphone : LaptopMinimal;
-  const tokenLabel = token.name.trim() || describeMachine(token);
+  const machineLabel = describeMachine(token);
+  const tokenName = token.name.trim();
+  const tokenLabel = machineLabel === "unknown machine" && tokenName ? tokenName : machineLabel;
   const statusLabel = token.revokedAt
     ? `Revoked ${formatRelativeCompact(token.revokedAt, hydrated)}`
     : token.lastUsedAt
