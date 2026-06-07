@@ -643,18 +643,25 @@ function ResultCard({
   const displayUrl = formatDisplayUrl(originalUrl ?? result.url);
   const sourceSite = searchSiteFromUrl(originalUrl ?? result.url);
   const sourceName = result.sourceName ?? resultTypeLabels[result.type];
+  const titleContent = <HighlightText text={result.title} query={query} />;
   const title = resultHref ? (
-    <a
-      className="search-result-title"
-      href={resultHref}
-      rel={titleIsExternal ? "noreferrer" : undefined}
-      target={titleIsExternal ? "_blank" : undefined}
-    >
-      <HighlightText text={result.title} query={query} />
-    </a>
+    titleIsExternal ? (
+      <a
+        className="search-result-title"
+        href={resultHref}
+        rel="noreferrer"
+        target="_blank"
+      >
+        {titleContent}
+      </a>
+    ) : (
+      <Link className="search-result-title" href={resultHref}>
+        {titleContent}
+      </Link>
+    )
   ) : (
     <span className="search-result-title">
-      <HighlightText text={result.title} query={query} />
+      {titleContent}
     </span>
   );
 

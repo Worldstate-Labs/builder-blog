@@ -3630,5 +3630,9 @@ test("search feed results keep post detail links while preserving originals", ()
   assert.match(searchPage, /params\.set\("returnTo", returnTo\)/);
   assert.match(searchPage, /params\.set\("returnLabel", "Search"\)/);
   assert.match(searchPage, /const originalUrl = result\.externalUrl \?\? \(titleIsExternal \? result\.url : null\)/);
+  assert.match(searchPage, /titleIsExternal \? \(/);
+  assert.match(searchPage, /<Link className="search-result-title" href=\{resultHref\}>/);
+  assert.match(searchPage, /target="_blank"/);
+  assert.doesNotMatch(searchPage, /target=\{titleIsExternal \? "_blank" : undefined\}/);
   assert.match(searchPage, /className="post-source-original"/);
 });
