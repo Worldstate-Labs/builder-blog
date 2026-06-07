@@ -466,9 +466,12 @@ function TokenRow({
       : "Not connected yet";
 
   return (
-    <div className={`access-key-card${token.revokedAt ? " fb-row--revoked" : ""}`}>
+    <div
+      className={`access-key-card${token.revokedAt ? " fb-row--revoked" : ""}`}
+      aria-label={`${tokenLabel}. ${statusLabel}`}
+    >
       <span className="access-key-device-icon" aria-hidden="true">
-        <DeviceIcon className="h-5 w-5" />
+        <DeviceIcon className="h-6 w-6" />
       </span>
       <div className="access-key-device-copy">
         <div className="access-key-device-title">{tokenLabel}</div>
@@ -482,6 +485,7 @@ function TokenRow({
           disabled={isPending}
           onClick={onRevoke}
           type="button"
+          aria-label={`Revoke access for ${tokenLabel}`}
         >
           Revoke access
         </button>

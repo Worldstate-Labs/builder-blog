@@ -2399,6 +2399,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /className="settings-dialog-actions"/);
   assert.match(tokenPanel, /className="access-key-device-title"/);
   assert.match(tokenPanel, /className="access-key-device-status"/);
+  assert.match(tokenPanel, /aria-label=\{`\$\{tokenLabel\}\. \$\{statusLabel\}`\}/);
+  assert.match(tokenPanel, /aria-label=\{`Revoke access for \$\{tokenLabel\}`\}/);
   assert.match(tokenPanel, /\\b\(ios\|iphone\|ipad\)\\b/);
   assert.match(tokenPanel, /machineLabel === "unknown machine" && tokenName/);
   assert.doesNotMatch(tokenPanel, /access-key-device-detail/);
@@ -2414,8 +2416,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /className="access-keys-list access-keys-list--skeleton"/);
   assert.doesNotMatch(settingsPage, /mt-4 h-11 animate-pulse/);
   assert.match(globals, /\.access-keys-panel/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*14px/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.5rem minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*18px/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*6\.25rem/);
   assert.match(globals, /\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*border-radius:\s*14px/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.access-keys-empty\s*{\s*margin:\s*0;\s*}/);
