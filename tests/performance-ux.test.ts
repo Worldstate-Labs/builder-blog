@@ -203,8 +203,8 @@ test("every app route has an explicit centered layout role", () => {
     ["src/app/(workspace)/builder/[entityId]/loading.tsx", "Source", "Loading Source", 5],
     ["src/app/(workspace)/builder/x/[handle]/loading.tsx", "Source", "Loading Source", 5],
     ["src/app/(workspace)/dashboard/loading.tsx", "Home", "Loading Home", 6],
-    ["src/app/(workspace)/posts/[feedItemId]/loading.tsx", "Summarized post", "Loading summarized post", 4],
-    ["src/app/(workspace)/recommendations/items/[feedItemId]/loading.tsx", "Summarized post", "Loading summarized post", 4],
+    ["src/app/(workspace)/posts/[feedItemId]/loading.tsx", "Post", "Loading post", 4],
+    ["src/app/(workspace)/recommendations/items/[feedItemId]/loading.tsx", "Post", "Loading post", 4],
     ["src/app/(workspace)/history/loading.tsx", "AI Digest", "Loading AI Digest", 6],
     ["src/app/(workspace)/recommendations/loading.tsx", "Following", "Loading Following", 6],
     ["src/app/(workspace)/search/loading.tsx", "Search", "Loading Search", 5],
@@ -218,7 +218,7 @@ test("every app route has an explicit centered layout role", () => {
   }
   assert.doesNotMatch(
     `${source("src/app/(workspace)/posts/[feedItemId]/loading.tsx")}\n${source("src/app/(workspace)/recommendations/items/[feedItemId]/loading.tsx")}`,
-    /label="Post"|title="Loading Post"/,
+    /Summarized post|Loading summarized post|title="Loading Post"/,
   );
   assert.match(
     source("src/app/(workspace)/settings/loading.tsx"),
