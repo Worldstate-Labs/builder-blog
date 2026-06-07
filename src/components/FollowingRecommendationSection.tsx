@@ -174,9 +174,9 @@ function FollowingError({ onRetry }: { onRetry: () => void }) {
         </button>
       }
       ariaLive="assertive"
-      body="Something went wrong loading Following."
+      body="Check your connection, then try again."
       role="alert"
-      title="Couldn't load Following"
+      title="Could not load Following"
       tone="error"
     />
   );
