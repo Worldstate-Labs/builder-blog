@@ -294,7 +294,7 @@ function DigestEmptyState({
         }
         className="ai-digest-empty is-actionable"
         title="No followed sources yet"
-        body="Follow a source from the Sources page, or add a new one to start building digests."
+        body="Follow a source from the Sources page, or add a new one to start building AI Digests."
       />
     );
   }
@@ -337,7 +337,7 @@ function DigestEmptyState({
       title={hasFetchedPosts ? "No summarized posts yet" : "No fetched posts yet"}
       body={
         hasFetchedPosts
-          ? "Ask your Local Agent to fetch and summarize your followed sources before building a digest."
+          ? "Ask your Local Agent to fetch and summarize your followed sources before building an AI Digest."
           : "Ask your Local Agent to fetch and summarize your followed sources so there is material for an AI Digest."
       }
     />
