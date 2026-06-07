@@ -27,7 +27,8 @@ export default async function Home() {
       <section className="fb-public-section fb-public-hero">
         <div>
           <h1 className="fb-public-title">
-            Keep up with people<br />and sources you follow.
+            Keep up with people{" "}
+            <span className="fb-public-title-break">and sources you follow.</span>
           </h1>
           <p className="fb-public-copy">
             Follow blogs, newsletters, channels, feeds, GitHub Trending,

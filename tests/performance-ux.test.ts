@@ -249,6 +249,9 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /fb-public-nav/);
   assert.match(landingPage, /fb-public-section fb-public-hero/);
   assert.match(landingPage, /fb-public-title/);
+  assert.match(landingPage, /Keep up with people\{" "\}/);
+  assert.match(landingPage, /className="fb-public-title-break"/);
+  assert.doesNotMatch(landingPage, /people<br \/>and sources you follow/);
   assert.match(landingPage, /fb-public-copy/);
   assert.match(landingPage, /fb-public-actions/);
   assert.match(landingPage, /Sign in to workspace/);
@@ -374,6 +377,10 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /\.fb-product-demo\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.fb-demo-pulse\s*{[\s\S]*animation:\s*fb-demo-pulse/);
   assert.match(globals, /@keyframes fb-demo-pulse/);
+  assert.match(globals, /\.fb-public-title-break\s*{[\s\S]*display:\s*block/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-public-title-break\s*{[\s\S]*display:\s*inline/);
+  assert.match(globals, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.fb-demo-source,[\s\S]*\.fb-demo-pulse,[\s\S]*\.fb-demo-line::after\s*{[\s\S]*animation:\s*none/);
+  assert.match(globals, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.fb-demo-pulse,[\s\S]*\.fb-demo-line::after\s*{[\s\S]*transform:\s*none/);
   assert.match(globals, /\.fb-public-workspace\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*0\.9fr\) minmax\(0,\s*1\.1fr\)/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-public-feature-grid\s*{[\s\S]*grid-template-columns:\s*1fr/);
   assert.match(globals, /\.fb-login-nav\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);

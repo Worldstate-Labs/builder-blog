@@ -9957,6 +9957,19 @@ a.fb-hub-source-name:focus-visible {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .fb-demo-source,
+  .fb-demo-pulse,
+  .fb-demo-line::after {
+    animation: none;
+  }
+
+  .fb-demo-pulse,
+  .fb-demo-line::after {
+    transform: none;
+  }
+}
+
 @media (max-width: 767px) {
   .fb-product-demo,
   .fb-product-preview-list {
@@ -9981,6 +9994,10 @@ a.fb-hub-source-name:focus-visible {
   font-weight: 650;
   letter-spacing: 0;
   line-height: 1.04;
+}
+
+.fb-public-title-break {
+  display: block;
 }
 
 .fb-public-section-title {
@@ -10164,6 +10181,10 @@ a.fb-hub-source-name:focus-visible {
   .fb-public-title {
     font-size: clamp(2.25rem, 12vw, 2.85rem);
     line-height: 1.03;
+  }
+
+  .fb-public-title-break {
+    display: inline;
   }
 
   .fb-public-copy {
