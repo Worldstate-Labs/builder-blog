@@ -68,7 +68,7 @@ export async function PostDetailPage({
           {backLink.label}
         </Link>
         <span className="reading-source-label">
-          {item.builder?.name ?? item.sourceName ?? "Saved post"}
+          {item.builder?.name ?? item.sourceName ?? "Post"}
         </span>
       </nav>
 

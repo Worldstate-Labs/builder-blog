@@ -2505,6 +2505,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(postDetailPage, /title="Post"/);
   assert.match(postDetailPage, /className="reading-page-toolbar"/);
   assert.match(postDetailPage, /className="reading-source-label"/);
+  assert.match(postDetailPage, /item\.builder\?\.name \?\? item\.sourceName \?\? "Post"/);
+  assert.doesNotMatch(postDetailPage, /Saved post/);
   assert.match(postDetailPage, /ChevronLeft/);
   assert.match(postDetailPage, /className="fb-breadcrumb-link reading-back-link"/);
   assert.doesNotMatch(postDetailPage, /button-light button-compact reading-back-link/);
