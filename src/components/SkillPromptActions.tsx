@@ -713,8 +713,8 @@ function TokenPickerDialog({
                       <span aria-hidden="true">·</span>
                       <span>
                         {token.lastUsedAt
-                          ? `Last used ${formatRelative(token.lastUsedAt)}`
-                          : "Never used"}
+                          ? `Last connected ${formatRelative(token.lastUsedAt)}`
+                          : "Never connected"}
                       </span>
                     </span>
                   </span>
