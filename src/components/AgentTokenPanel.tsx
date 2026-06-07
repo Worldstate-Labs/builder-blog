@@ -58,6 +58,17 @@ export function describeMachine(token: AgentTokenListItem): string {
   return summarizeUserAgent(token.lastUserAgent);
 }
 
+function describeAccessDevice(token: AgentTokenListItem): string {
+  const os = prettyOs(token.lastPlatform);
+  if (os) return os;
+
+  const userAgentSummary = summarizeUserAgent(token.lastUserAgent);
+  if (userAgentSummary !== "unknown machine") return userAgentSummary;
+
+  const tokenName = token.name.trim();
+  return tokenName || "Unknown device";
+}
+
 function summarizeUserAgent(ua: string | null): string {
   if (!ua) return "unknown machine";
   const lower = ua.toLowerCase();
@@ -465,14 +476,12 @@ function TokenRow({
   onRevoke: () => void;
 }) {
   const DeviceIcon = isPhoneLikeToken(token) ? Smartphone : LaptopMinimal;
-  const machineLabel = describeMachine(token);
-  const tokenName = token.name.trim();
-  const tokenLabel = machineLabel === "unknown machine" && tokenName ? tokenName : machineLabel;
+  const tokenLabel = describeAccessDevice(token);
   const statusLabel = token.revokedAt
     ? `Revoked ${formatRelativeCompact(token.revokedAt, hydrated)}`
     : token.lastUsedAt
       ? `Last connected ${formatRelativeCompact(token.lastUsedAt, hydrated)}`
-      : `Created ${formatRelativeCompact(token.createdAt, hydrated)}`;
+      : "Never connected";
 
   return (
     <div

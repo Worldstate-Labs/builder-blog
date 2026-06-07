@@ -2471,14 +2471,15 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /\\b\(ios\|iphone\|ipad\)\\b/);
   assert.match(tokenPanel, /if \(os && isPhoneLikeToken\(token\)\) return os/);
   assert.match(tokenPanel, /iOS\$\{iosVersion \? ` \$\{iosVersion\.replaceAll\("_", "\."\)\}` : ""\} iPhone/);
-  assert.match(tokenPanel, /machineLabel === "unknown machine" && tokenName/);
+  assert.match(tokenPanel, /function describeAccessDevice/);
+  assert.match(tokenPanel, /const tokenLabel = describeAccessDevice\(token\)/);
   assert.doesNotMatch(tokenPanel, /access-key-device-detail/);
   assert.doesNotMatch(tokenPanel, /className="h-6 w-6"/);
   assert.match(tokenPanel, /className=\{`access-key-card\$\{token\.revokedAt \? " fb-row--revoked" : ""\}`\}/);
   assert.match(tokenPanel, /useHydrated/);
   assert.match(tokenPanel, /formatRelativeCompact\(token\.lastUsedAt, hydrated\)/);
   assert.match(tokenPanel, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);
-  assert.match(tokenPanel, /Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
+  assert.match(tokenPanel, /"Never connected"/);
   assert.match(tokenPanel, /if \(!hydrated\) return formatDate\(value\)/);
   assert.match(tokenPanel, /Revoke access/);
   assert.doesNotMatch(tokenPanel, /className="mt-/);
