@@ -780,6 +780,11 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /<DigestArchivePicker/);
   assert.match(digestPipelineSelector, /ChevronDown/);
   assert.match(digestPipelineSelector, /className="digest-pipeline-trigger"/);
+  assert.match(digestPipelineSelector, /aria-label=\{`AI Digest source: \$\{selectedLabel\}`\}/);
+  assert.match(digestPipelineSelector, /aria-label=\{`Choose AI Digest source, current: \$\{selectedLabel\}`\}/);
+  assert.match(digestPipelineSelector, /aria-label="AI Digest source choices"/);
+  assert.match(digestPipelineSelector, /function digestSourceLabel/);
+  assert.doesNotMatch(digestPipelineSelector, /aria-label="AI Digest choices"/);
   assert.match(digestPipelineSelector, /aria-expanded=\{open\}/);
   assert.match(digestPipelineSelector, /aria-controls=\{menuId\}/);
   assert.match(digestPipelineSelector, /aria-haspopup="listbox"/);

@@ -24,6 +24,7 @@ export function DigestPipelineSelector({
   const menuId = useId();
   const pickerRef = useRef<HTMLDetailsElement>(null);
   const summaryRef = useRef<HTMLElement>(null);
+  const selectedLabel = digestSourceLabel(selectedPipeline);
 
   useEffect(() => {
     if (!open) return;
@@ -38,7 +39,10 @@ export function DigestPipelineSelector({
 
   if (options.length <= 1) {
     return (
-      <div className="digest-pipeline-static">
+      <div
+        aria-label={`AI Digest source: ${selectedLabel}`}
+        className="digest-pipeline-static"
+      >
         <span className="digest-pipeline-title">{selectedPipeline.title}</span>
         <span className="digest-pipeline-meta">
           {pipelineOwnerLine(selectedPipeline)}
@@ -93,6 +97,7 @@ export function DigestPipelineSelector({
         aria-controls={menuId}
         aria-expanded={open}
         aria-haspopup="listbox"
+        aria-label={`Choose AI Digest source, current: ${selectedLabel}`}
         className="digest-pipeline-trigger"
         onClick={(event) => {
           event.preventDefault();
@@ -109,7 +114,7 @@ export function DigestPipelineSelector({
         <ChevronDown aria-hidden="true" className="digest-pipeline-icon" />
       </summary>
       <div
-        aria-label="AI Digest choices"
+        aria-label="AI Digest source choices"
         className="digest-pipeline-menu"
         id={menuId}
         role="listbox"
@@ -147,4 +152,8 @@ export function DigestPipelineSelector({
 
 function pipelineOwnerLine(pipeline: DigestPipelineSelectorOption) {
   return pipeline.isOwnPipeline ? "Your AI Digest" : pipeline.ownerLabel;
+}
+
+function digestSourceLabel(pipeline: DigestPipelineSelectorOption) {
+  return `${pipeline.title}, ${pipelineOwnerLine(pipeline)}`;
 }
