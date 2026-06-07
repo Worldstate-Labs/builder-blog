@@ -188,8 +188,8 @@ export async function searchUserLibrary({
         title: digest.title,
         body: digest.content,
         url: pipeline
-          ? `/dashboard?tab=ai-digest&pipeline=${pipeline.id}#${digest.id}`
-          : `/dashboard?tab=ai-digest#${digest.id}`,
+          ? `/dashboard?tab=ai-digest&pipeline=${pipeline.id}&digest=${digest.id}`
+          : `/dashboard?tab=ai-digest&digest=${digest.id}`,
         sourceName: pipeline
           ? `${displayDigestPipelineTitleForOwner(
               pipeline.title,

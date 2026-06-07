@@ -1420,7 +1420,9 @@ test("search user path includes imported digest pipeline digests", () => {
   assert.match(userSearch, /importedDigestPipelines/);
   assert.match(userSearch, /digestOwnerToPipeline/);
   assert.match(userSearch, /userId:\s*\{\s*in:\s*digestOwnerIds\s*\}/);
-  assert.match(userSearch, /pipeline=\$\{pipeline\.id\}#\$\{digest\.id\}/);
+  assert.match(userSearch, /pipeline=\$\{pipeline\.id\}&digest=\$\{digest\.id\}/);
+  assert.match(userSearch, /tab=ai-digest&digest=\$\{digest\.id\}/);
+  assert.doesNotMatch(userSearch, /dashboard\?tab=ai-digest[^`]*#\$\{digest\.id\}/);
   assert.match(userSearch, /owner:\s*\{\s*select:\s*\{\s*name:\s*true,\s*email:\s*true\s*\}\s*\}/);
   assert.match(userSearch, /displayDigestPipelineTitleForOwner\(/);
 });

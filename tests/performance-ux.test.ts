@@ -2175,6 +2175,9 @@ test("user library search can fetch operator-only candidate sets", () => {
   assert.doesNotMatch(userSearch, /Untitled feed item/);
   assert.match(userSearch, /digest\.itemCount === 1 \? "post" : "posts"/);
   assert.doesNotMatch(userSearch, /digest\.itemCount\} items/);
+  assert.match(userSearch, /`\/dashboard\?tab=ai-digest&pipeline=\$\{pipeline\.id\}&digest=\$\{digest\.id\}`/);
+  assert.match(userSearch, /`\/dashboard\?tab=ai-digest&digest=\$\{digest\.id\}`/);
+  assert.doesNotMatch(userSearch, /dashboard\?tab=ai-digest[^`]*#\$\{digest\.id\}/);
   assert.match(searchLib, /avatarUrl\?: string \| null/);
   assert.match(userSearch, /url: builder\.entityId \? `\/builder\/\$\{builder\.entityId\}` : `\/builders#\$\{builder\.id\}`/);
   assert.match(searchLib, /externalUrl\?: string \| null/);
