@@ -2066,8 +2066,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postDetailPage, /returnTo/);
   assert.match(postDetailPage, /isSafeInternalReturnTo/);
   assert.match(postDetailPage, /safeReturnLabel/);
-  assert.match(postDetailPage, /case "Source"/);
   assert.match(postDetailPage, /case "Sources"/);
+  assert.match(postDetailPage, /case "Source":[\s\S]*return "Sources"/);
   assert.match(postDetailPage, /case "AI Digest"/);
   assert.doesNotMatch(postDetailPage, /case "Favorites"/);
   assert.match(postDetailPage, /showDebugActions=\{false\}/);
@@ -2094,7 +2094,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(feedItemsRoute, /NextResponse\.json/);
   assert.match(builderFeedItems, /detailUrl:\s*postDetailHref\(item\.id, "\/builders", "Sources"\)/);
   assert.match(builderDetailPage, /returnHref=\{`\/builder\/\$\{entityId\}`\}/);
-  assert.match(builderDetailPage, /returnLabel="Source"/);
+  assert.match(builderDetailPage, /returnLabel="Sources"/);
+  assert.doesNotMatch(builderDetailPage, /returnLabel="Source"/);
   assert.match(recentPostsList, /detailUrl:\s*postDetailHref\(item\.id, returnHref, returnLabel\)/);
   assert.match(digestContent, /detailUrl:\s*favoriteState[\s\S]*postDetailHref\(favoriteState\.feedItemId, "\/dashboard\?tab=ai-digest", "AI Digest"\)/);
 });

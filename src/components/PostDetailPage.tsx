@@ -132,9 +132,10 @@ function safeReturnLabel(value: string) {
     case "AI Digest":
     case "Following":
     case "Search":
-    case "Source":
     case "Sources":
       return value;
+    case "Source":
+      return "Sources";
     default:
       return "Back";
   }

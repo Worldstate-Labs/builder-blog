@@ -409,7 +409,7 @@ async function RecentPostsSlot({
       items={listItems}
       readKeys={[...readKeySet]}
       returnHref={`/builder/${entityId}`}
-      returnLabel="Source"
+      returnLabel="Sources"
     />
   );
 }
