@@ -285,8 +285,11 @@ function DigestPipelineImportFallback() {
       <span className="sr-only">Loading AI Digest archives</span>
       <div className="library-hub-toolbar">
         <div className="library-hub-toolbar-copy">
-          <div className="library-hub-skeleton-line is-heading" />
-          <div className="library-hub-skeleton-line is-medium" />
+          <h2 className="fb-section-heading">AI Digest archives</h2>
+          <p className="hub-section-copy">
+            AI Digest archives built and shared by other users.
+          </p>
+          <div className="library-hub-skeleton-line is-wide" />
         </div>
         <div className="library-hub-skeleton-pill" />
       </div>
