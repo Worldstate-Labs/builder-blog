@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  FileText,
   RotateCcw,
   X,
 } from "lucide-react";
@@ -743,8 +744,8 @@ function SearchResultSourceIcon({
 }) {
   if (result.type === "digest") {
     return (
-      <span className="search-result-icon" aria-hidden="true">
-        {sourceName.slice(0, 1).toUpperCase()}
+      <span className="search-result-icon search-result-icon-digest" aria-hidden="true">
+        <FileText />
       </span>
     );
   }

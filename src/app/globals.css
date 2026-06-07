@@ -3654,6 +3654,12 @@ a.reading-source-label:focus-visible {
   width: 2rem;
 }
 
+.search-result-icon-digest svg {
+  height: 1rem;
+  stroke-width: 1.9;
+  width: 1rem;
+}
+
 .search-result-source-name,
 .search-result-url {
   overflow: hidden;
