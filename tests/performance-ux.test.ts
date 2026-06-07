@@ -1875,10 +1875,16 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchPage, /aria-label="Result type"/);
   assert.match(searchPage, /aria-label="Search recovery actions"/);
   assert.doesNotMatch(searchPage, /aria-label="Broaden search"/);
-  assert.match(searchPage, /<div className="search-meta-row" role="status">[\s\S]*Loading search results/);
+  assert.match(searchPage, /<div className="search-meta-row" role="status">[\s\S]*<span className="sr-only">Loading search results<\/span>/);
+  assert.match(searchPage, /className="search-meta-skeleton search-meta-skeleton--count"/);
+  assert.match(searchPage, /className="search-meta-skeleton search-meta-skeleton--page"/);
   assert.doesNotMatch(searchPage, /Updating results\.\.\./);
   assert.match(searchPage, /className="workspace-content-stack search-results-workspace"/);
   assert.match(globals, /\.search-result-skeleton/);
+  assert.match(globals, /\.search-meta-skeleton\s*{[\s\S]*animation:\s*pulse/);
+  assert.match(globals, /\.search-meta-skeleton\s*{[\s\S]*border-radius:\s*999px/);
+  assert.match(globals, /\.search-meta-skeleton--count\s*{[\s\S]*width:\s*min\(14rem,\s*62%\)/);
+  assert.match(globals, /\.search-meta-skeleton--page\s*{[\s\S]*width:\s*min\(8rem,\s*32%\)/);
   assert.match(searchPage, /<PageHeader[\s\S]*title="Search"[\s\S]*Find sources, posts, Favorites, and AI Digests in one place\./);
   assert.doesNotMatch(searchPage, /across your library/);
   assert.doesNotMatch(searchPage, /description="Find sources, saved posts, and digest history\."/);

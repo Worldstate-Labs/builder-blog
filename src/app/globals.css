@@ -3325,6 +3325,22 @@ svg.lucide {
   font-weight: 700;
 }
 
+.search-meta-skeleton {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background: color-mix(in oklch, var(--ink) 10%, transparent);
+  border-radius: 999px;
+  display: inline-flex;
+  height: 1rem;
+}
+
+.search-meta-skeleton--count {
+  width: min(14rem, 62%);
+}
+
+.search-meta-skeleton--page {
+  width: min(8rem, 32%);
+}
+
 .search-did-you-mean {
   color: var(--muted-strong);
   font-size: 0.92rem;

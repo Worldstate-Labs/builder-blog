@@ -457,7 +457,9 @@ function SearchResultsFallback({
       {hasQuery ? (
         <>
           <div className="search-meta-row" role="status">
-            Loading search results
+            <span className="sr-only">Loading search results</span>
+            <span aria-hidden="true" className="search-meta-skeleton search-meta-skeleton--count" />
+            <span aria-hidden="true" className="search-meta-skeleton search-meta-skeleton--page" />
           </div>
           <div className="search-results-list">
             {Array.from({ length: 4 }, (_, index) => (
