@@ -210,7 +210,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
             ))}
           </nav>
           <div className="fb-segmented-tabs mobile-filter-tabs at-mobile" aria-label="Source library filter">
-            {visibleFilters.slice(0, 3).map((filter) => (
+            {visibleFilters.map((filter) => (
               <button
                 aria-pressed={activeFilter === filter.key}
                 className="fb-btn compact"

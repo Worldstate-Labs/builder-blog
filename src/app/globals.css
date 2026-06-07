@@ -815,11 +815,18 @@ svg.lucide {
 
 .mobile-filter-tabs {
   display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
   width: 100%;
 }
 
+.mobile-filter-tabs::-webkit-scrollbar {
+  display: none;
+}
+
 .mobile-filter-tabs .fb-btn {
-  flex: 1;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .filter-tabs {

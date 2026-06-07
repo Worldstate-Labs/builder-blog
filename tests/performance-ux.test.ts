@@ -1520,6 +1520,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /My source libraries/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Your source library/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /aria-label="Source library filter"/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /visibleFilters\.slice\(0, 3\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /source library" : "source libraries"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /No source libraries match this filter yet\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Could not import source library\./);
@@ -2205,6 +2206,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(hubImportForm, /selectedIds/);
   assert.match(hubImportForm, /className="fb-segmented-tabs filter-tabs at-desktop"/);
   assert.match(hubImportForm, /className="fb-segmented-tabs mobile-filter-tabs at-mobile"/);
+  assert.match(globals, /\.mobile-filter-tabs\s*{[\s\S]*overflow-x:\s*auto/);
+  assert.match(globals, /\.mobile-filter-tabs \.fb-btn\s*{[\s\S]*flex:\s*0 0 auto/);
   assert.match(hubImportForm, /aria-pressed=\{activeFilter === filter\.key\}/);
   assert.match(hubImportForm, /className="fb-btn compact"/);
   assert.doesNotMatch(hubImportForm, /fb-stabs|fb-stab|fb-m-segctl|fb-m-seg/);
