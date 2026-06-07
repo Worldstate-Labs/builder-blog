@@ -2419,6 +2419,15 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(hubImportRoute, /redirect\(/);
   assert.match(libraryImportRemoveButton, /router\.refresh/);
   assert.match(libraryImportRemoveButton, /event\.stopPropagation/);
+  assert.match(libraryImportRemoveButton, /createPortal/);
+  assert.match(libraryImportRemoveButton, /document\.body/);
+  assert.match(libraryImportRemoveButton, /className="fb-dialog"/);
+  assert.match(libraryImportRemoveButton, /className="fb-dialog-inner settings-dialog-stack"/);
+  assert.match(libraryImportRemoveButton, /Remove imported source library\?/);
+  assert.match(libraryImportRemoveButton, /sources from this\s+library will no longer appear in your Sources page or Following\s+feed/);
+  assert.match(libraryImportRemoveButton, /You can import it again from the Hub later/);
+  assert.match(libraryImportRemoveButton, /function requestRemove/);
+  assert.match(libraryImportRemoveButton, /onClick=\{requestRemove\}/);
   assert.match(libraryImportRemoveButton, /className="import-remove-control"/);
   assert.match(libraryImportRemoveButton, /className="fb-btn light compact import-remove-button"/);
   assert.match(libraryImportRemoveButton, /className="import-remove-icon"/);
