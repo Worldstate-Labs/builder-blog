@@ -511,7 +511,10 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);
   assert.match(skillPromptActions, /"Never connected"/);
   assert.doesNotMatch(skillPromptActions, /Last used|Never used|describeMachine\(token\)|formatRelative\(token\.lastUsedAt\)|token-picker-row-name">\{token\.name\}/);
-  assert.match(skillPromptActions, /No access keys yet/);
+  assert.match(skillPromptActions, /No Local Agent access yet/);
+  assert.match(skillPromptActions, /Add one in Settings before copying Local Agent prompts\./);
+  assert.match(skillPromptActions, /Add access key/);
+  assert.doesNotMatch(skillPromptActions, /No access keys yet|Add one in Settings<\/a>/);
   assert.doesNotMatch(skillPromptActions, /No connected helpers|Connected helpers/);
   assert.doesNotMatch(skillPromptActions, /flex flex-wrap items-center justify-end gap-2|className="ml-2"|mr-2|text-\[11px\] text-\[var\(--danger\)\]|text-\[11px\] text-\[var\(--muted-strong\)\]/);
   assert.doesNotMatch(skillPromptActions, /className="grid"/);
@@ -3184,6 +3187,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(skillPromptActions, /@\/components\/EmptyState/);
   assert.match(skillPromptActions, /fetch\("\/api\/settings\/digest-max-age"/);
   assert.match(skillPromptActions, /<EmptyState[\s\S]*className="token-picker-empty"/);
+  assert.match(skillPromptActions, /title="No Local Agent access yet"/);
   assert.doesNotMatch(skillPromptActions, /px-3 py-6 text-center text-sm/);
   assert.match(tokenPanel, /"use client"/);
   assert.match(tokenPanel, /@\/components\/EmptyState/);

@@ -682,16 +682,18 @@ function TokenPickerDialog({
           <legend className="sr-only">Access keys for Local Agents</legend>
           {!open ? null : tokens.length === 0 ? (
             <EmptyState
-              className="token-picker-empty"
+              actions={
+                <a className="fb-btn light compact" href="/settings">
+                  Add access key
+                </a>
+              }
               body={
                 <>
-                  No access keys yet.{" "}
-                  <a className="underline" href="/settings">
-                    Add one in Settings
-                  </a>
-                  .
+                  Add one in Settings before copying Local Agent prompts.
                 </>
               }
+              className="token-picker-empty"
+              title="No Local Agent access yet"
             />
           ) : (
             tokens.map((token) => {
