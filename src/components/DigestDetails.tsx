@@ -216,7 +216,7 @@ export function DigestDetails({
           </span>
           <span className="item-summary-action">
             <BookOpen className="h-3.5 w-3.5" />
-            View digest
+            View AI Digest
           </span>
         </summary>
         <DigestBody
@@ -261,7 +261,7 @@ function DigestBody({
         }
       >
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        Loading digest
+        Loading AI Digest
       </span>
     );
 
@@ -277,7 +277,7 @@ function DigestBody({
   }
 
   if (status === "error") {
-    const errorNode = <span>Could not load digest.</span>;
+    const errorNode = <span>Could not load AI Digest.</span>;
     if (isToday) {
       return (
         <div className="digest-load-error" aria-live="polite">
@@ -351,7 +351,7 @@ function DigestHeadlineSummary({
     <section
       className={`digest-headline-summary${loading ? " is-loading" : ""}`}
       aria-busy={loading || undefined}
-      aria-label="Digest headlines"
+      aria-label="AI Digest headlines"
     >
       <div className="digest-headline-top">
         <div className="digest-headline-label-row">

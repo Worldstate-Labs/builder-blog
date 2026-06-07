@@ -419,7 +419,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /themeHydrated/);
   assert.match(agentTokenPanel, /timeZone:\s*"UTC"/);
   assert.match(fetchLogPanel, /startedAtLabel = hydrated \? formatRelative/);
-  assert.match(digestDetails, /View digest/);
+  assert.match(digestDetails, /View AI Digest/);
   assert.doesNotMatch(digestDetails, /BookOpen className="h-3\.5 w-3\.5" \/>[\s\S]*Read/);
   assert.match(skillPromptActions, /!\s*open \? null/);
   assert.match(skillPromptActions, /className=\{compactOnly \? "skill-prompt-compact" : "fb-skill"\}/);
@@ -1343,7 +1343,9 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.match(digestDetails, /"use client"/);
   assert.match(digestDetails, /fetch\(`\/api\/digests\/\$\{digestId\}`/);
   assert.doesNotMatch(digestDetails, /digest-latest-mark/);
-  assert.match(digestDetails, /Loading digest/);
+  assert.match(digestDetails, /Loading AI Digest/);
+  assert.match(digestDetails, /Could not load AI Digest\./);
+  assert.match(digestDetails, /aria-label="AI Digest headlines"/);
   assert.match(digestDetails, /digest-loading-chip/);
   assert.match(digestDetails, /digest-load-error/);
   assert.doesNotMatch(digestDetails, /inline-flex items-center gap-1\.5/);
