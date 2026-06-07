@@ -157,7 +157,7 @@ function SectionBlock({
   );
 
   return (
-    <section id={section.id} className="digest-section scroll-mt-24">
+    <section id={section.id} className="digest-section">
       {body}
     </section>
   );

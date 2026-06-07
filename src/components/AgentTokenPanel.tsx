@@ -262,7 +262,7 @@ export function AgentTokenPanel({
     <section className="access-keys-panel">
       <div className="access-keys-head">
         <div className="access-keys-copy">
-          <h2 className="fb-section-heading">Local Agent access</h2>
+          <h2 className="fb-section-heading">Access keys</h2>
           <p className="access-keys-desc">
             Devices and Local Agents that can sync sources and AI Digests to this account.
           </p>
@@ -278,7 +278,7 @@ export function AgentTokenPanel({
         </button>
       </div>
 
-      <div className="access-keys-list" role="list" aria-label="Local Agent access">
+      <div className="access-keys-list" role="list" aria-label="Access keys for Local Agents">
         {activeTokens.map((token) => (
           <TokenRow
             key={token.id}

@@ -7161,7 +7161,7 @@ a.builder-library-name:hover {
   color: var(--dr-muted);
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
+  gap: 1.45rem;
   font-family: var(--font-geist-sans);
   font-size: 0.9375rem;
   line-height: 1.68;
@@ -7222,10 +7222,8 @@ a.builder-library-name:hover {
 
 /* Section */
 .digest-section {
-  padding-top: 1.35rem;
-}
-.digest-section:first-of-type {
   padding-top: 0;
+  scroll-margin-top: 6rem;
 }
 .digest-section-summary {
   align-items: center;
@@ -7278,7 +7276,7 @@ a.builder-library-name:hover {
   display: flex;
   flex-direction: column;
   gap: 1.45rem;
-  margin-top: 0.75rem;
+  margin-top: 0;
   min-width: 0;
   width: 100%;
 }
@@ -9496,10 +9494,10 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-device-title {
   color: var(--ink);
-  font-size: 1.375rem;
-  font-weight: 540;
+  font-size: 1.25rem;
+  font-weight: 520;
   letter-spacing: 0;
-  line-height: 1.1;
+  line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
@@ -9511,8 +9509,8 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-device-status {
   color: var(--muted-strong);
-  font-size: 1.0625rem;
-  line-height: 1.25;
+  font-size: 1rem;
+  line-height: 1.3;
 }
 
 .access-key-device-icon {
@@ -9534,7 +9532,7 @@ a.fb-hub-source-name:focus-visible {
 .access-key-revoked-pill {
   align-items: center;
   align-self: center;
-  background: color-mix(in oklch, var(--ink) 4%, var(--paper-strong));
+  background: color-mix(in oklch, var(--ink) 5%, var(--paper));
   border: 0;
   border-radius: 999px;
   color: var(--ink);
@@ -9543,9 +9541,9 @@ a.fb-hub-source-name:focus-visible {
   font-weight: 520;
   justify-content: center;
   justify-self: end;
-  min-height: 2.75rem;
+  min-height: 2.625rem;
   min-width: 8.5rem;
-  padding: 0.55rem 1.15rem;
+  padding: 0.5rem 1.15rem;
   text-align: center;
   white-space: nowrap;
 }
@@ -9556,7 +9554,7 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .access-key-revoke-button:hover {
-  background: color-mix(in oklch, var(--ink) 7%, var(--paper-strong));
+  background: color-mix(in oklch, var(--ink) 8%, var(--paper));
 }
 
 .access-key-revoke-button:disabled {
@@ -9605,14 +9603,14 @@ a.fb-hub-source-name:focus-visible {
   align-items: center;
   background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: 0 1px 2px color-mix(in oklch, var(--ink) 4%, transparent);
+  border-radius: 14px;
+  box-shadow: none;
   display: grid;
-  gap: 1rem;
+  gap: 1.05rem;
   grid-template-columns: 2.5rem minmax(0, 1fr) auto;
-  min-height: 5.75rem;
+  min-height: 6.35rem;
   min-width: 0;
-  padding: 1.1rem 1.2rem;
+  padding: 1.25rem 1.3rem;
 }
 
 .access-key-card.fb-row--revoked {
