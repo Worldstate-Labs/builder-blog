@@ -2766,6 +2766,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /name="fetchUrl"/);
   assert.match(builderFeedItems, /"use client"/);
   assert.match(builderFeedItems, /fetch\(`\/api\/builders\/\$\{builderId\}\/feed-items`/);
+  assert.match(builderFeedItems, /entityId: string \| null/);
+  assert.match(builderFeedItems, /const returnHref = builder\.entityId \? `\/builder\/\$\{builder\.entityId\}` : "\/builders"/);
+  assert.match(builderFeedItems, /detailUrl: postDetailHref\(item\.id, returnHref, "Sources"\)/);
+  assert.doesNotMatch(builderFeedItems, /detailUrl: postDetailHref\(item\.id, "\/builders", "Sources"\)/);
   // UI copy avoids "Fetched" in the row; detailed content still renders
   // through PostCard.
   assert.match(builderFeedItems, /className="builder-posts-count"/);
@@ -2875,7 +2879,6 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(feedItemsRoute, /fetchDedupedFeedForEntities/);
   assert.match(feedItemsRoute, /activePoolBuilderIds/);
   assert.match(feedItemsRoute, /NextResponse\.json/);
-  assert.match(builderFeedItems, /detailUrl:\s*postDetailHref\(item\.id, "\/builders", "Sources"\)/);
   assert.match(builderDetailPage, /returnHref=\{`\/builder\/\$\{entityId\}`\}/);
   assert.match(builderDetailPage, /returnLabel="Sources"/);
   assert.doesNotMatch(builderDetailPage, /returnLabel="Source"/);

@@ -6,6 +6,7 @@ import { PostCard } from "@/components/PostCard";
 
 type BuilderSummary = {
   id: string;
+  entityId: string | null;
   name: string;
   kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";
   sourceType: string;
@@ -56,6 +57,7 @@ export function BuilderFeedItems({
   const latestDateLabel = latestPostCreatedAt
     ? formatPostDate(new Date(latestPostCreatedAt))
     : null;
+  const returnHref = builder.entityId ? `/builder/${builder.entityId}` : "/builders";
 
   useEffect(() => {
     if (!detailsRef.current?.open) return;
@@ -126,7 +128,7 @@ export function BuilderFeedItems({
             post={{
               ...item,
               builder,
-              detailUrl: postDetailHref(item.id, "/builders", "Sources"),
+              detailUrl: postDetailHref(item.id, returnHref, "Sources"),
             }}
             showSourceBadge={false}
             variant="row"
