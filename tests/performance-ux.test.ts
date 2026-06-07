@@ -414,6 +414,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /themeHydrated/);
   assert.match(agentTokenPanel, /timeZone:\s*"UTC"/);
   assert.match(fetchLogPanel, /startedAtLabel = hydrated \? formatRelative/);
+  assert.match(digestDetails, /View digest/);
+  assert.doesNotMatch(digestDetails, /BookOpen className="h-3\.5 w-3\.5" \/>[\s\S]*Read/);
   assert.match(skillPromptActions, /!\s*open \? null/);
   assert.match(skillPromptActions, /className=\{compactOnly \? "skill-prompt-compact" : "fb-skill"\}/);
   assert.match(skillPromptActions, /className="skill-prompt-status"/);

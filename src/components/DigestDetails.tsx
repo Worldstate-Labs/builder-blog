@@ -207,7 +207,7 @@ export function DigestDetails({
           </span>
           <span className="item-summary-action">
             <BookOpen className="h-3.5 w-3.5" />
-            Read
+            View digest
           </span>
         </summary>
         <DigestBody
