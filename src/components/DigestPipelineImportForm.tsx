@@ -93,15 +93,15 @@ export function DigestPipelineImportForm({
     importedIds.has(pipeline.id),
   );
   const visiblePipelines = mode === "imported" ? importedPipelines : sharedPipelines;
-  const title = mode === "imported" ? "Imported digests" : "Shared digests";
+  const title = mode === "imported" ? "Imported AI Digests" : "Shared AI Digests";
   const description =
     mode === "imported"
-      ? "Digests built and shared by other users."
-      : "Import another user's latest digest and archive.";
+      ? "AI Digest archives built and shared by other users."
+      : "Import another user's latest AI Digest and archive.";
   const emptyMessage =
     mode === "imported"
-      ? "No imported digests yet."
-      : "No shared digests are available yet.";
+      ? "No imported AI Digests yet."
+      : "No shared AI Digests are available yet.";
 
   function setImportedIds(updater: (current: Set<string>) => Set<string>) {
     setImportedState((current) => {

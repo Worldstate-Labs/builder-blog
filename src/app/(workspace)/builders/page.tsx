@@ -76,7 +76,7 @@ type BuildersSearchParams = Promise<{
 
 const SOURCES_TABS: Array<WorkspaceTopTabItem<SourcesTab>> = [
   { value: "fetch", label: "Sources", href: "/builders" },
-  { value: "digest", label: "Digest", href: "/builders?tab=digest" },
+  { value: "digest", label: "AI Digest", href: "/builders?tab=digest" },
 ];
 
 export default async function BuildersPage({
@@ -96,7 +96,7 @@ export default async function BuildersPage({
       <div className="workspace-content-stack">
         <section className="sources-tab-surface">
           <WorkspaceTopTabs
-            ariaLabel="Source management"
+            ariaLabel="Sources and AI Digest"
             items={SOURCES_TABS}
             selectedValue={selectedTab}
           />
@@ -134,7 +134,7 @@ async function DigestSourcesSection({
         <div className="library-hub-toolbar">
           <div className="library-hub-toolbar-copy">
             <h2 id="sources-digest-section-title" className="fb-section-heading">
-              Your digest
+              Your AI Digest
             </h2>
           </div>
           <DigestPipelineVisibilityToggle initialShared={data.ownPipelineShared} />
