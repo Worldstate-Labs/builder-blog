@@ -200,6 +200,7 @@ export function PostCard({
             {showSourceBadge ? (
               <SourceBadge
                 builder={builder}
+                suppressLabelWhen={authorName}
                 sourceType={builder?.sourceType ?? post.sourceType ?? null}
               />
             ) : null}
@@ -296,7 +297,6 @@ export function PostCard({
             >
               <SourceBadge
                 builder={builder}
-                suppressLabelWhen={authorName}
                 sourceType={builder?.sourceType ?? post.sourceType ?? null}
               />
             </a>
