@@ -152,7 +152,7 @@ test("workspace not-found uses the FollowBrief shell instead of the default Next
   assert.match(notFoundPage, /href="\/search"/);
   assert.match(notFoundPage, /Home/);
   assert.match(notFoundPage, /Search/);
-  assert.match(notFoundPage, /Return Home, or search across sources, posts, saved items, and AI Digests\./);
+  assert.match(notFoundPage, /Return Home, or search across sources, posts, saved posts, and AI Digests\./);
   assert.doesNotMatch(notFoundPage, /Return to your feeds/);
   assert.doesNotMatch(notFoundPage, /This page could not be found|404 \|/);
   assert.match(globals, /\.workspace-not-found-empty\s*{[\s\S]*border-style:\s*solid/);
@@ -196,7 +196,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /Search AI Digests/);
   assert.match(landingPage, /search past AI Digests later/);
   assert.match(landingPage, /Workspace search/);
-  assert.match(landingPage, /Sources, posts, saved items, and AI Digests share one search surface\./);
+  assert.match(landingPage, /Sources, posts, saved posts, and AI Digests share one search surface\./);
   assert.doesNotMatch(landingPage, /Library search/);
   assert.doesNotMatch(landingPage, /fb-public-metric/);
   assert.doesNotMatch(landingPage, /fb-public-card-grid|fb-public-step-card/);
@@ -1212,7 +1212,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /@\/components\/PageHeader/);
   assert.match(searchPage, /className="page-pad page-pad--reading search-page"/);
   assert.match(searchPage, /searchPageSize/);
-  assert.match(searchPage, /emptySearchCopy = "Search sources, posts, saved items, and AI Digests\."/);
+  assert.match(searchPage, /emptySearchCopy = "Search sources, posts, saved posts, and AI Digests\."/);
   assert.match(searchPage, /past AI Digests/);
   assert.match(searchPage, /model pricing type:post/);
   assert.match(searchPage, /model pricing type:source/);
@@ -1228,7 +1228,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /SearchResultsSection/);
   assert.match(searchPage, /className="workspace-content-stack search-results-workspace"/);
   assert.match(globals, /\.search-result-skeleton/);
-  assert.match(searchPage, /<PageHeader[\s\S]*title="Search"[\s\S]*Find sources, posts, saved items, and AI Digests in one place\./);
+  assert.match(searchPage, /<PageHeader[\s\S]*title="Search"[\s\S]*Find sources, posts, saved posts, and AI Digests in one place\./);
   assert.doesNotMatch(searchPage, /across your library/);
   assert.doesNotMatch(searchPage, /description="Find sources, saved posts, and digest history\."/);
   assert.doesNotMatch(searchPage, /<PageHeader[\s\S]{0,120}actions=/);
@@ -1407,6 +1407,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /spellCheck=\{false\}/);
   assert.match(searchForm, /role="listbox"/);
   assert.match(searchForm, /role="option"/);
+  assert.match(searchForm, /placeholder="Search sources, posts, saved posts, or AI Digests"/);
+  assert.doesNotMatch(searchForm, /saved items/);
   assert.match(searchForm, /submitSuggestion\(activeSuggestion, event\.currentTarget\.form\)/);
   assert.match(searchForm, /className="search-suggestion-chip"[\s\S]*submitSuggestion\(suggestion, inputRef\.current\?\.form \?\? null\)[\s\S]*type="button"/);
   assert.doesNotMatch(searchForm, /name="suggestion"/);

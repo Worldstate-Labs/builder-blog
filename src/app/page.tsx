@@ -187,7 +187,7 @@ export default async function Home() {
           <Feature
             icon={Search}
             title="Workspace search"
-            copy="Sources, posts, saved items, and AI Digests share one search surface."
+            copy="Sources, posts, saved posts, and AI Digests share one search surface."
           />
         </div>
       </section>
