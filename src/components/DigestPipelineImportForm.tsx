@@ -405,7 +405,11 @@ function DigestPipelineCard({
               {pipeline.title}
             </h3>
           </div>
-          <div className="fb-hub-card-actions">
+          <div
+            aria-label={`AI Digest archive actions for ${pipeline.title}`}
+            className="fb-hub-card-actions"
+            role="group"
+          >
             {action}
           </div>
         </div>

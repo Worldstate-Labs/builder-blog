@@ -440,7 +440,13 @@ function HubCard({
               {library.name}
             </h3>
           </div>
-          <div className="fb-hub-card-actions">{action}</div>
+          <div
+            aria-label={`Source library actions for ${library.name}`}
+            className="fb-hub-card-actions"
+            role="group"
+          >
+            {action}
+          </div>
         </div>
 
         <p className="fb-hub-card-desc">

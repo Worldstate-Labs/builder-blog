@@ -3128,6 +3128,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /counts\[filter\.key\]/);
   assert.match(hubImportForm, /function importLibrary\(libraryId: string\)/);
   assert.match(hubImportForm, /JSON\.stringify\(\{ libraryIds: \[libraryId\] \}\)/);
+  assert.match(hubImportForm, /aria-label=\{`Source library actions for \$\{library\.name\}`\}/);
+  assert.match(hubImportForm, /className="fb-hub-card-actions"[\s\S]*role="group"/);
   assert.match(hubImportForm, /aria-label=\{`Import source library \$\{library\.name\}`\}/);
   assert.match(hubImportForm, /: "Import source library"/);
   assert.match(hubImportForm, /Importing source library/);
@@ -3251,6 +3253,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(digestPipelineForm, /No AI Digests yet/);
   assert.doesNotMatch(digestPipelineForm, /No digests yet/);
   assert.match(digestPipelineForm, /imported=\{importedIds\.has\(pipeline\.id\)\}/);
+  assert.match(digestPipelineForm, /aria-label=\{`AI Digest archive actions for \$\{pipeline\.title\}`\}/);
+  assert.match(digestPipelineForm, /className="fb-hub-card-actions"[\s\S]*role="group"/);
   assert.match(digestPipelineForm, /aria-label=\{`Import AI Digest archive \$\{pipeline\.title\}`\}/);
   assert.match(digestPipelineForm, /: "Import AI Digest archive"/);
   assert.match(digestPipelineForm, /Importing AI Digest archive/);
