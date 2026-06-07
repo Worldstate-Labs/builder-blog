@@ -702,7 +702,7 @@ function TokenPickerDialog({
               const tokenLabel = describeAccessDevice(token);
               const statusLabel = token.lastUsedAt
                 ? `Last connected ${formatRelativeCompact(token.lastUsedAt, hydrated)}`
-                : `Created ${formatRelativeCompact(token.createdAt, hydrated)}`;
+                : "Never connected";
               return (
                 <label
                   key={token.id}

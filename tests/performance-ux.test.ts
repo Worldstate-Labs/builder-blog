@@ -556,8 +556,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /const tokenLabel = describeAccessDevice\(token\)/);
   assert.match(skillPromptActions, /aria-label=\{`\$\{tokenLabel\}\. \$\{statusLabel\}`\}/);
   assert.match(skillPromptActions, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);
-  assert.match(skillPromptActions, /Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
-  assert.doesNotMatch(skillPromptActions, /Last used|Never used|describeMachine\(token\)|formatRelative\(token\.lastUsedAt\)|token-picker-row-name">\{token\.name\}/);
+  assert.match(skillPromptActions, /Never connected/);
+  assert.doesNotMatch(skillPromptActions, /Last used|Never used|Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}|describeMachine\(token\)|formatRelative\(token\.lastUsedAt\)|token-picker-row-name">\{token\.name\}/);
   assert.match(skillPromptActions, /No Local Agent access yet/);
   assert.match(skillPromptActions, /Add one in Settings before copying Local Agent prompts\./);
   assert.match(skillPromptActions, /<Link className="underline" href="\/settings">[\s\S]*Go to Settings/);
@@ -574,7 +574,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(agentTokenPanel, /<li[\s\S]*className=\{`access-key-card/);
   assert.doesNotMatch(agentTokenPanel, /role="listitem"/);
   assert.match(agentTokenPanel, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);
-  assert.match(agentTokenPanel, /Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
+  assert.match(agentTokenPanel, /Never connected/);
+  assert.doesNotMatch(agentTokenPanel, /Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
   assert.match(agentTokenPanel, /className=\{`access-key-card/);
   assert.match(agentTokenPanel, /className="access-key-device-icon"/);
   assert.match(agentTokenPanel, /className="access-key-device-title"/);
@@ -3702,10 +3703,11 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /useHydrated/);
   assert.match(tokenPanel, /formatRelativeCompact\(token\.lastUsedAt, hydrated\)/);
   assert.match(tokenPanel, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);
-  assert.match(tokenPanel, /Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
+  assert.match(tokenPanel, /Never connected/);
+  assert.doesNotMatch(tokenPanel, /Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
   assert.match(tokenPanel, /<time className="access-key-device-status" dateTime=\{statusDateTime\}>/);
   assert.match(tokenPanel, /const statusDateTime = token\.revokedAt \?\? token\.lastUsedAt \?\? token\.createdAt/);
-  assert.doesNotMatch(tokenPanel, /:\s*"Not connected yet"/);
+  assert.doesNotMatch(tokenPanel, /:\s*"Not connected yet"|Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
   assert.match(tokenPanel, /if \(!hydrated\) return formatDate\(value\)/);
   assert.match(tokenPanel, /<ul className="access-keys-list" aria-label="Access keys for Local Agents">/);
   assert.match(tokenPanel, /Could not create access\./);

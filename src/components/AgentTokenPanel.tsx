@@ -515,7 +515,7 @@ function TokenRow({
     ? `Revoked ${formatRelativeCompact(token.revokedAt, hydrated)}`
     : token.lastUsedAt
       ? `Last connected ${formatRelativeCompact(token.lastUsedAt, hydrated)}`
-      : `Created ${formatRelativeCompact(token.createdAt, hydrated)}`;
+      : "Never connected";
   const statusDateTime = token.revokedAt ?? token.lastUsedAt ?? token.createdAt;
 
   return (
