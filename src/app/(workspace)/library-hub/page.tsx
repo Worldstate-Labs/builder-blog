@@ -246,6 +246,7 @@ async function DigestPipelineImportSection({
 function LibraryHubImportFallback() {
   return (
     <section aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading source libraries</span>
       <div className="library-hub-toolbar">
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Source libraries</h2>
@@ -253,9 +254,6 @@ function LibraryHubImportFallback() {
             Source libraries built and shared by other users.
           </p>
           <div className="library-hub-skeleton-line is-wide" />
-        </div>
-        <div className="library-hub-counts">
-          <span>Loading source libraries</span>
         </div>
         <div className="library-hub-skeleton-pill" />
       </div>
