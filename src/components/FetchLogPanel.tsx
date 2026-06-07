@@ -1135,11 +1135,8 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
   const style = jobRunStatusStyle(jobRun);
   const startedAtLabel = hydrated ? formatRelative(jobRun.startedAt) : formatAbsolute(jobRun.startedAt);
   return (
-    <article
-      className="rounded-[10px] border bg-[var(--paper-strong)] px-3.5 py-3"
-      style={{ borderColor: "var(--line)" }}
-    >
-      <header className="flex flex-wrap items-center gap-2">
+    <article className="sync-panel-run-card">
+      <header className="sync-panel-run-card-head">
         <span
           className="fb-chip"
           style={{
@@ -1151,7 +1148,7 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
           {jobRunStatusLabel(jobRun)}
         </span>
         <time
-          className="text-[12.5px] text-[var(--muted-strong)]"
+          className="sync-panel-run-card-time"
           dateTime={jobRun.startedAt}
           title={formatAbsolute(jobRun.startedAt)}
         >
@@ -1159,16 +1156,16 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
         </time>
         <span className="fb-chip">{jobRunLabel(jobRun)}</span>
         {jobRun.runtime ? (
-          <span className="text-[11.5px] text-[var(--muted-strong)]">
+          <span className="sync-panel-run-card-runtime">
             {jobRun.runtime}
             {jobRun.hostname ? ` · ${jobRun.hostname.replace(/\.local$/, "")}` : ""}
           </span>
         ) : null}
       </header>
-      <p className="mt-2 text-[13.5px] leading-relaxed text-[var(--ink)]">
+      <p className="sync-panel-run-card-summary">
         {jobRun.summary || "Runtime job did not create a fetch log entry."}
       </p>
-      <div className="mono mt-2 text-[11.5px] text-[var(--muted-strong)]">
+      <div className="mono sync-panel-run-card-stage">
         {jobRun.stage || "runtime"} · {jobRun.finishedAt ? "finished" : "active"}
       </div>
     </article>
@@ -1192,11 +1189,10 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
 
   return (
     <article
-      className="rounded-[10px] border bg-[var(--paper-strong)] px-3.5 py-3"
+      className="sync-panel-run-card"
       id={runDomId(run.id)}
-      style={{ borderColor: "var(--line)" }}
     >
-      <header className="flex flex-wrap items-center gap-2">
+      <header className="sync-panel-run-card-head">
         <span
           className="fb-chip"
           style={{
@@ -1218,13 +1214,13 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
           >
             <span
               aria-hidden="true"
-              className="h-1.5 w-1.5 rounded-full bg-current motion-safe:animate-pulse"
+              className="sync-panel-run-card-live-dot"
             />
             Updating…
           </span>
         ) : null}
         <time
-          className="text-[12.5px] text-[var(--muted-strong)]"
+          className="sync-panel-run-card-time"
           dateTime={run.startedAt}
           title={formatAbsolute(run.startedAt)}
         >
@@ -1232,17 +1228,17 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
         </time>
         <span className="fb-chip">{run.source === "cron" ? "Scheduled" : "One-time"}</span>
         {agentLabel ? (
-          <span className="text-[11.5px] text-[var(--muted-strong)]">
+          <span className="sync-panel-run-card-runtime">
             {agentLabel}
           </span>
         ) : null}
       </header>
 
-      <p className="mt-2 text-[13.5px] leading-relaxed text-[var(--ink)]">
+      <p className="sync-panel-run-card-summary">
         {run.summary}
       </p>
 
-      <div className="mono mt-2 text-[11.5px] text-[var(--muted-strong)]">
+      <div className="mono sync-panel-run-card-meta">
         <CountMeta
           label={run.itemsFetched === 1 ? "post read" : "posts read"}
           value={run.itemsFetched}
@@ -1252,11 +1248,11 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
         {formatDuration(run.durationMs)}
       </div>
 
-      <details className="mt-2 rounded-[8px] border border-[var(--line)] bg-[var(--paper)]">
-        <summary className="cursor-pointer px-3 py-2 text-[12.5px] font-bold text-[var(--ink)]">
+      <details className="sync-panel-run-card-details">
+        <summary className="sync-panel-run-card-details-summary">
           Show details
         </summary>
-        <div className="border-t border-[var(--line)] px-3 py-3">
+        <div className="sync-panel-run-card-details-body">
           <DetailsBody details={details} />
         </div>
       </details>
@@ -1276,33 +1272,27 @@ function DetailsBody({ details }: { details: DetailsShape }) {
   const promptEntries = Object.entries(prompts);
 
   return (
-    <div className="grid gap-3">
+    <div className="sync-panel-run-card-details-stack">
       {perBuilder.length > 0 ? (
         <div>
-          <h3 className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted-strong)]">
+          <h3 className="sync-panel-run-card-detail-heading">
             Sources
           </h3>
-          <ul className="mt-1.5 grid gap-1">
+          <ul className="sync-panel-run-card-source-list">
             {perBuilder.map((entry, index) => (
               <li
                 key={entry.builderId ?? `${entry.name ?? "builder"}-${index}`}
-                className="mono text-[12px] text-[var(--ink)]"
+                className="sync-panel-fetch-source-row"
               >
-                <span>{entry.name ?? "Unknown source"}</span>
-                <span className="text-[var(--muted-strong)]"> · </span>
-                <span className="text-[var(--muted-strong)]">{entry.sourceType ?? "—"}</span>
-                <span className="text-[var(--muted-strong)]"> · </span>
-                <span>
+                <span className="sync-panel-fetch-source-name">{entry.name ?? "Unknown source"}</span>
+                <span className="mono sync-panel-fetch-source-meta">
+                  {entry.sourceType ?? "—"} ·{" "}
                   {formatCount(entry.itemsFetched ?? 0)}{" "}
-                  {(entry.itemsFetched ?? 0) === 1 ? "post" : "posts"}
+                  {(entry.itemsFetched ?? 0) === 1 ? "post" : "posts"} ·{" "}
+                  {formatCount(entry.tasksGenerated ?? 0)} posts checked
                 </span>
-                <span className="text-[var(--muted-strong)]"> · </span>
-                <span>{formatCount(entry.tasksGenerated ?? 0)} posts checked</span>
                 {entry.error ? (
-                  <>
-                    <span className="text-[var(--muted-strong)]"> · </span>
-                    <span style={{ color: "var(--danger)" }}>{entry.error}</span>
-                  </>
+                  <span className="sync-panel-fetch-source-error">{entry.error}</span>
                 ) : null}
               </li>
             ))}
@@ -1312,10 +1302,10 @@ function DetailsBody({ details }: { details: DetailsShape }) {
 
       {fetchTasks.length > 0 ? (
         <div>
-          <h3 className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted-strong)]">
+          <h3 className="sync-panel-run-card-detail-heading">
             Posts checked ({fetchTasks.length})
           </h3>
-          <ul className="mt-1.5 grid gap-1">
+          <ul className="sync-panel-run-card-candidate-list">
             {fetchTasks.map((task, index) => (
               <TaskRow
                 key={task.id ?? `${task.builderId ?? "task"}-${index}`}
