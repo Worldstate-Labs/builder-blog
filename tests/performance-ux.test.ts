@@ -1116,14 +1116,17 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(pageHeader, /<header \{\.\.\.headerProps\} className=\{\["fb-page-head", className\]/);
   assert.match(globals, /\.empty-state\s*{[\s\S]*border:\s*1px dashed var\(--line\)/);
   assert.match(globals, /\.hub-list-empty\s*{[\s\S]*grid-column:\s*1 \/ -1/);
+  assert.match(globals, /\.feed-skeleton-card,[\s\S]*\.route-loading-desc\s*{[\s\S]*animation:\s*pulse 2s/);
   assert.match(globals, /\.route-loading-title\s*{[\s\S]*height:\s*1\.75rem/);
   assert.match(globals, /\.route-loading-desc\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);
   assert.match(globals, /\.route-loading-list\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.route-loading-list\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
   assert.match(globals, /\.route-loading-list\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.route-loading-list\s*{[\s\S]*width:\s*100%/);
+  assert.match(globals, /\.search-result-skeleton::before\s*{[\s\S]*animation:\s*pulse 2s/);
   assert.match(globals, /\.search-result-skeleton::before\s*{[\s\S]*min\(100%,\s*var\(--skeleton-wide-max\)\)/);
   assert.match(globals, /\.search-result-skeleton::before\s*{[\s\S]*min\(76%,\s*var\(--skeleton-wide-max\)\)/);
+  assert.match(globals, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.search-result-skeleton::before\s*{[\s\S]*animation:\s*none/);
   assert.doesNotMatch(globals, /\.home-rail/);
   assert.doesNotMatch(globals, /\.home-main/);
   assert.doesNotMatch(globals, /\.home-tabs/);
@@ -2232,7 +2235,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(libraryHubPage, /label=\{data\.digestPipelineCount === 1 \? "AI Digest" : "AI Digests"\}/);
   assert.doesNotMatch(libraryHubPage, /<section className="fb-page-head"/);
   assert.match(libraryHubPage, /<span className="sr-only">Loading source libraries<\/span>/);
-  assert.match(libraryHubPage, /Loading AI Digest archives/);
+  assert.match(libraryHubPage, /<span className="sr-only">Loading AI Digest archives<\/span>/);
   assert.doesNotMatch(libraryHubPage, /<span>Loading source libraries<\/span>/);
   assert.doesNotMatch(libraryHubPage, /className="library-hub-counts"[\s\S]*Loading source libraries/);
   assert.doesNotMatch(libraryHubPage, />\s*Loading\s*</);

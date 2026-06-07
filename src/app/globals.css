@@ -1179,6 +1179,7 @@ svg.lucide {
 .route-loading-row,
 .route-loading-title,
 .route-loading-desc {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   background: color-mix(in oklch, var(--ink) 10%, transparent);
   border-radius: 8px;
 }
@@ -3566,6 +3567,7 @@ svg.lucide {
 }
 
 .search-result-skeleton::before {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   background:
     linear-gradient(color-mix(in oklch, var(--ink) 9%, transparent), color-mix(in oklch, var(--ink) 9%, transparent)) 0 0 / 12rem 1rem no-repeat,
     linear-gradient(color-mix(in oklch, var(--ink) 13%, transparent), color-mix(in oklch, var(--ink) 13%, transparent)) 0 2.1rem / min(100%, var(--skeleton-wide-max)) 1.45rem no-repeat,
@@ -3575,6 +3577,17 @@ svg.lucide {
   content: "";
   display: block;
   height: 6.8rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-skeleton-card,
+  .route-loading-row,
+  .route-loading-title,
+  .route-loading-desc,
+  .search-meta-skeleton,
+  .search-result-skeleton::before {
+    animation: none;
+  }
 }
 
 .search-result {
