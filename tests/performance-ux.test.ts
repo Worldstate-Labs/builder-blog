@@ -34,6 +34,12 @@ test("primary app navigation keeps route prefetching enabled", () => {
   const globals = source("src/app/globals.css");
 
   assert.equal(appNav.includes("prefetch={false}"), false);
+  assert.match(appNav, /useSearchParams/);
+  assert.match(appNav, /const returnTo = pathname\.startsWith\("\/posts\/"\)/);
+  assert.match(appNav, /isActiveNavItem\(pathname, item, returnTo\)/);
+  assert.match(appNav, /item\.href === "\/dashboard"[\s\S]*returnTo\.startsWith\("\/dashboard"\)/);
+  assert.match(appNav, /item\.href === "\/builders"[\s\S]*returnTo\.startsWith\("\/builders"\)/);
+  assert.match(appNav, /item\.href === "\/library-hub"[\s\S]*returnTo\.startsWith\("\/library-hub"\)/);
   assert.match(globals, /\.fb-nav svg\s*{[\s\S]*height:\s*1rem/);
   assert.match(globals, /\.fb-m-tab svg\s*{[\s\S]*height:\s*1\.125rem/);
   assert.doesNotMatch(appNav, /className="h-4 w-4"/);

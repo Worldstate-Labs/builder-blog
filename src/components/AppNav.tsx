@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { ComponentType, CSSProperties } from "react";
 import { Home, LibraryBig, UsersRound } from "lucide-react";
 
@@ -29,6 +29,10 @@ export function AppNav({
   mode?: "desktop" | "mobile" | "both";
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const returnTo = pathname.startsWith("/posts/")
+    ? searchParams.get("returnTo") ?? ""
+    : "";
   const mobileNavItems = mobileItems ?? items;
   const desktopClassName =
     desktopLayout === "bar"
@@ -41,7 +45,7 @@ export function AppNav({
         <nav className={desktopClassName} aria-label="Primary">
           {items.map((item) => {
             const Icon = icons[item.icon];
-            const active = isActiveNavItem(pathname, item);
+            const active = isActiveNavItem(pathname, item, returnTo);
             return (
               <Link
                 className={`fb-nav${active ? " active" : ""}`}
@@ -64,7 +68,7 @@ export function AppNav({
         >
           {mobileNavItems.map((item) => {
             const Icon = icons[item.icon];
-            const active = isActiveNavItem(pathname, item);
+            const active = isActiveNavItem(pathname, item, returnTo);
             return (
               <Link
                 className={`fb-m-tab${active ? " active" : ""}`}
@@ -83,8 +87,23 @@ export function AppNav({
   );
 }
 
-function isActiveNavItem(pathname: string, item: AppNavItem) {
+function isActiveNavItem(pathname: string, item: AppNavItem, returnTo = "") {
   if (pathname === item.href || pathname.startsWith(`${item.href}/`)) return true;
+  if (pathname.startsWith("/posts/")) {
+    if (
+      item.href === "/dashboard" &&
+      (returnTo.startsWith("/dashboard") || returnTo.startsWith("/recommendations"))
+    ) {
+      return true;
+    }
+    if (
+      item.href === "/builders" &&
+      (returnTo.startsWith("/builders") || returnTo.startsWith("/builder/"))
+    ) {
+      return true;
+    }
+    if (item.href === "/library-hub" && returnTo.startsWith("/library-hub")) return true;
+  }
   if (item.href === "/dashboard") return pathname.startsWith("/recommendations/");
   if (item.href === "/builders") return pathname.startsWith("/builder/");
   return false;
