@@ -387,12 +387,13 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /params\.set\("freq"/);
   assert.match(skillPromptActions, /Frequency/);
   // The override toggle adds ?force=1; its copy is context-specific (library
-  // re-fetches already-saved posts, digest re-includes posts already used in
+  // re-fetches posts already in the source library, digest re-includes posts already used in
   // AI Digests additively — the digest job never fetches and never deletes past
   // AI Digests).
   // Both cron + once dialogs expose it for both contexts, defaulting off.
   assert.match(skillPromptActions, /OVERRIDE_COPY/);
-  assert.match(skillPromptActions, /Refresh posts already saved/);
+  assert.match(skillPromptActions, /Refresh posts already in library/);
+  assert.doesNotMatch(skillPromptActions, /Refresh posts already saved/);
   assert.match(skillPromptActions, /Include posts already used in AI Digests/);
   assert.doesNotMatch(skillPromptActions, /Include already digested posts/);
   assert.match(skillPromptActions, /overrideFetched/);

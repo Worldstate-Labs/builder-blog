@@ -132,7 +132,7 @@ const OVERRIDE_COPY: Record<
   { name: string; cronHint: string; onceHint: string }
 > = {
   library: {
-    name: "Refresh posts already saved",
+    name: "Refresh posts already in library",
     cronHint:
       "Refreshes posts already in your library on every run. Leave off for normal updates.",
     onceHint:

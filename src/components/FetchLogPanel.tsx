@@ -862,7 +862,7 @@ function FetchStatusPanel({
               {problemCount > 0 ? "Needs attention" : okCount > 0 ? "Healthy" : "Waiting"}
             </span>
             <span className="fb-chip">{cronJob.frequencyLabel}</span>
-            {cronJob.overrideFetched ? <span className="fb-chip">refreshes saved posts</span> : null}
+            {cronJob.overrideFetched ? <span className="fb-chip">refreshes library posts</span> : null}
           </div>
           <dl className="sync-panel-meta">
             <div className="sync-panel-meta-row">
