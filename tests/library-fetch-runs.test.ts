@@ -169,6 +169,10 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /className="source-fetch-overview"/);
   assert.doesNotMatch(panel, /Use Update sources to copy a Local Agent prompt/);
   assert.doesNotMatch(panel, /Schedule stopped[\s\S]{0,120}Local Agent prompt/);
+  assert.match(panel, /Needs Local Agent/);
+  assert.match(panel, /\{ready \? "ready" : "Local Agent"\}/);
+  assert.match(panel, /<FactRow label="Local Agent"/);
+  assert.doesNotMatch(panel, /Read by helper|<FactRow label="Helper"|\{ready \? "ready" : "helper"\}/);
   assert.match(panel, /digest-updates-panel/);
   assert.match(panel, /FetchStatusToggle/);
   assert.match(panel, /SourceFetchMetaGrid/);

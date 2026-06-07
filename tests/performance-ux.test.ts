@@ -1748,6 +1748,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   const postCard = source("src/components/PostCard.tsx");
   const globals = source("src/app/globals.css");
   const personalBuilderRoute = source("src/app/api/builders/personal/route.ts");
+  const personalBuilderUpdateRoute = source("src/app/api/builders/[builderId]/personal/route.ts");
   const feedItemsRoute = source("src/app/api/builders/[builderId]/feed-items/route.ts");
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
@@ -1803,6 +1804,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderLibraryList, /className="builder-library-error"/);
   assert.match(builderLibraryList, /<EmptyState body=\{emptyBody\} title=\{emptyTitle\} \/>/);
   assert.match(buildersPage, /emptyBody="Add a source, then use your Local Agent to fetch and summarize it\."/);
+  assert.match(personalBuilderRoute, /your Local Agent can retry later/);
+  assert.doesNotMatch(personalBuilderRoute, /local helper can retry later/);
+  assert.match(personalBuilderUpdateRoute, /your Local Agent can retry later/);
+  assert.doesNotMatch(personalBuilderUpdateRoute, /local helper can retry later/);
   assert.doesNotMatch(buildersPage, /import private sources/);
   assert.match(buildersPage, /body="Import source libraries shared by other users from Hub\."/);
   assert.doesNotMatch(buildersPage, /No imported source libraries yet\./);

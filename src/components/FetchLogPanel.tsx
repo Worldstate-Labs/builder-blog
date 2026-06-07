@@ -1570,7 +1570,7 @@ function fetchOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
   if (typeof task.bodyChars === "number" && task.bodyChars > 0)
     return { label: "Fetched", tone: "ok" };
   if (task.contentStatus === "ready") return { label: "Fetched", tone: "ok" };
-  return { label: "Read by helper", tone: "idle" };
+  return { label: "Needs Local Agent", tone: "idle" };
 }
 
 // Human-readable labels for the server/CLI failure reasons.
@@ -1720,7 +1720,7 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
             className="shrink-0 rounded px-1.5 py-0.5 text-[10.5px] uppercase tracking-wide"
             style={{ ...toneStyle(pillTone), fontFamily: "var(--font-geist-mono)" }}
           >
-            {ready ? "ready" : "helper"}
+            {ready ? "ready" : "Local Agent"}
           </span>
           <span className="min-w-0 flex-1 truncate text-[var(--ink)]">
             {task.title ?? task.url ?? "—"}
@@ -1800,7 +1800,7 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
 
           <StageBlock title="② Summarize" tone={sumRes.tone} outcome={sumRes.label}>
             {agentLabel ? (
-              <FactRow label="Helper" value={<span>{agentLabel}</span>} />
+              <FactRow label="Local Agent" value={<span>{agentLabel}</span>} />
             ) : null}
             {summarySize ? <FactRow label="Summary size" value={summarySize} /> : null}
             {compression ? <FactRow label="Compression" value={compression} /> : null}
