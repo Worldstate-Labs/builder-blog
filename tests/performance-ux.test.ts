@@ -57,6 +57,11 @@ test("app shell reuses the page session instead of fetching it again", () => {
   assert.match(rootLayout, /className=\{`\$\{geistSans\.variable\} \$\{geistMono\.variable\} \$\{newsreader\.variable\} fb-root`\}/);
   assert.match(rootLayout, /<body className="fb-root-body">/);
   assert.doesNotMatch(rootLayout, /h-full antialiased|min-h-full flex flex-col/);
+  assert.match(globals, /--selection-background:\s*var\(--accent\)/);
+  assert.match(globals, /--selection-foreground:\s*var\(--paper-strong\)/);
+  assert.match(globals, /::selection\s*{[\s\S]*background:\s*var\(--selection-background\)/);
+  assert.match(globals, /::selection\s*{[\s\S]*color:\s*var\(--selection-foreground\)/);
+  assert.doesNotMatch(cssRule(globals, "::selection"), /white|#fff/);
   assert.match(globals, /\.fb-root\s*{[\s\S]*height:\s*100%/);
   assert.match(globals, /\.fb-root\s*{[\s\S]*-webkit-font-smoothing:\s*antialiased/);
   assert.match(globals, /\.fb-root-body\s*{[\s\S]*display:\s*flex/);

@@ -28,6 +28,8 @@
   --shadow: color-mix(in oklch, var(--ink) 9%, transparent);
   --background: var(--paper);
   --foreground: var(--ink);
+  --selection-background: var(--accent);
+  --selection-foreground: var(--paper-strong);
 
   /* Quiet one-step-off-paper fill. Was referenced (.user-menu-item:hover,
      .library-visibility-toggle) but never defined — aliasing --rail keeps a
@@ -196,8 +198,8 @@ body {
 }
 
 ::selection {
-  background: var(--accent);
-  color: white;
+  background: var(--selection-background);
+  color: var(--selection-foreground);
 }
 
 a {
