@@ -2081,6 +2081,11 @@ svg.lucide {
   gap: 0.375rem;
 }
 
+.source-pick svg {
+  height: 0.875rem;
+  width: 0.875rem;
+}
+
 .add-source-primary-row,
 .add-source-name-row {
   align-items: center;
@@ -2088,6 +2093,10 @@ svg.lucide {
   gap: 0.5rem;
   grid-template-columns: minmax(0, 1fr) auto;
   min-width: 0;
+}
+
+.add-source-submit {
+  justify-content: center;
 }
 
 .add-source-name-row {
@@ -2492,6 +2501,10 @@ svg.lucide {
   .add-source-primary-row,
   .add-source-name-row {
     grid-template-columns: 1fr;
+  }
+
+  .add-source-submit {
+    width: 100%;
   }
 
   .row-actions {

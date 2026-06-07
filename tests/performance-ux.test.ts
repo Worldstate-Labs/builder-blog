@@ -1775,10 +1775,12 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(addBuilderForm, /className="add-source-type-list"/);
   assert.match(addBuilderForm, /className="add-source-primary-row"/);
   assert.match(addBuilderForm, /className="add-source-name-row"/);
+  assert.match(addBuilderForm, /className="fb-btn dark add-source-submit"/);
   assert.match(addBuilderForm, /className="add-source-callout"/);
   assert.match(addBuilderForm, /add-source-text-action/);
   assert.doesNotMatch(addBuilderForm, /style=\{\{/);
   assert.doesNotMatch(addBuilderForm, /className="mt-1 rounded-md border/);
+  assert.doesNotMatch(addBuilderForm, /h-3\.5 w-3\.5|w-full justify-center|sm:w-auto/);
   const privateLibraryPanel = source("src/components/PrivateLibraryPanel.tsx");
   assert.match(privateLibraryPanel, /className="add-source-panel fb-panel"/);
   assert.match(privateLibraryPanel, /className="library-source-list-shell"/);
@@ -1809,6 +1811,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.library-source-list-shell \.add-source-panel\s*{[\s\S]*margin:\s*0/);
   assert.match(globals, /\.library-source-list-shell \.builder-library-list\s*{[\s\S]*gap:\s*0/);
   assert.match(globals, /\.library-source-list-shell \.builder-library-source-section\s*{[\s\S]*padding:\s*0\.85rem 1rem/);
+  assert.match(globals, /\.source-pick svg\s*{[\s\S]*height:\s*0\.875rem/);
+  assert.match(globals, /\.add-source-submit\s*{[\s\S]*justify-content:\s*center/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.add-source-submit\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.add-source-callout/);
   assert.match(globals, /\.source-sync-skeleton-line,[\s\S]*\.source-section-skeleton-card\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
   assert.match(globals, /\.source-section-skeleton-desc\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);

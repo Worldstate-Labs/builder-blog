@@ -280,7 +280,7 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
               className="source-pick"
               data-selected={selected ? "true" : undefined}
             >
-              <Icon className="h-3.5 w-3.5" />
+              <Icon aria-hidden="true" />
               <span>{source.label}</span>
             </button>
           );
@@ -304,7 +304,7 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
           required
         />
         <button
-          className="fb-btn dark w-full justify-center sm:w-auto"
+          className="fb-btn dark add-source-submit"
           disabled={isPending || Boolean(pendingConfirmation)}
           type="submit"
         >
