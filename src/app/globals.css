@@ -8853,7 +8853,7 @@ a.fb-hub-source-name:focus-visible {
 
 .access-keys-list--skeleton .settings-skeleton-row {
   border-radius: 18px;
-  height: 7.25rem;
+  height: 6.5rem;
 }
 
 .settings-source-type-manager {
@@ -9558,7 +9558,7 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-device-title {
   color: var(--ink);
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 500;
   letter-spacing: 0;
   line-height: 1.25;
@@ -9573,7 +9573,7 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-device-status {
   color: var(--muted-strong);
-  font-size: 1.05rem;
+  font-size: 1rem;
   line-height: 1.3;
 }
 
@@ -9581,15 +9581,15 @@ a.fb-hub-source-name:focus-visible {
   align-items: center;
   color: var(--ink);
   display: inline-flex;
-  height: 2.5rem;
+  height: 2.25rem;
   justify-content: center;
-  width: 2.5rem;
+  width: 2.25rem;
 }
 
 .access-key-device-icon svg {
-  height: 1.5rem;
+  height: 1.45rem;
   stroke-width: 1.75;
-  width: 1.5rem;
+  width: 1.45rem;
 }
 
 .access-key-revoke-button,
@@ -9605,9 +9605,9 @@ a.fb-hub-source-name:focus-visible {
   font-weight: 520;
   justify-content: center;
   justify-self: end;
-  min-height: 2.9rem;
-  min-width: 11.5rem;
-  padding: 0.625rem 1.125rem;
+  min-height: 2.5rem;
+  min-width: 10.25rem;
+  padding: 0.55rem 1.05rem;
   text-align: center;
   white-space: nowrap;
 }
@@ -9670,11 +9670,11 @@ a.fb-hub-source-name:focus-visible {
   border-radius: 18px;
   box-shadow: none;
   display: grid;
-  gap: 1.15rem;
-  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
-  min-height: 7.25rem;
+  gap: 1rem;
+  grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+  min-height: 6.5rem;
   min-width: 0;
-  padding: 1.35rem 1.55rem;
+  padding: 1.15rem 1.3rem;
 }
 
 .access-key-card.fb-row--revoked {

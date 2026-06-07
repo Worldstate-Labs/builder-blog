@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   useTransition,
+  type KeyboardEvent,
   type ReactNode,
   type SetStateAction,
 } from "react";
@@ -145,6 +146,30 @@ export function DigestLogPanel({
     () => getDigestUpdateStatus(cronJob, cronStatus.slots, runs),
     [cronJob, cronStatus.slots, runs],
   );
+  function handleTabKeyDown(event: KeyboardEvent<HTMLElement>) {
+    const tabs = ["status", "log"] as const;
+    const navigableKeys = new Set(["ArrowLeft", "ArrowRight", "Home", "End"]);
+    if (!navigableKeys.has(event.key)) return;
+
+    const tabElements = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]'));
+    if (tabElements.length === 0) return;
+
+    event.preventDefault();
+    const selectedIndex = Math.max(0, tabs.findIndex((tab) => tab === activeTab));
+    const focusedIndex = tabElements.findIndex((tab) => tab === document.activeElement);
+    const currentIndex = focusedIndex >= 0 ? focusedIndex : selectedIndex;
+    const nextIndex =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? tabElements.length - 1
+          : event.key === "ArrowRight"
+            ? (currentIndex + 1) % tabElements.length
+            : (currentIndex - 1 + tabElements.length) % tabElements.length;
+
+    tabElements[nextIndex]?.focus();
+    setActiveTab(tabs[nextIndex]!);
+  }
   const runsRef = useRef(runs);
   const jobRunsRef = useRef(jobRuns);
   const hydrated = useHydrated();
@@ -283,6 +308,7 @@ export function DigestLogPanel({
       <div
         aria-label="AI Digest update views"
         className="fb-segmented-tabs sync-panel-tabs"
+        onKeyDown={handleTabKeyDown}
         role="tablist"
       >
         <button
@@ -292,6 +318,7 @@ export function DigestLogPanel({
           id="digest-update-tab-status"
           onClick={() => setActiveTab("status")}
           role="tab"
+          tabIndex={activeTab === "status" ? 0 : -1}
           type="button"
         >
           <Activity aria-hidden="true" />
@@ -304,6 +331,7 @@ export function DigestLogPanel({
           id="digest-update-tab-log"
           onClick={() => setActiveTab("log")}
           role="tab"
+          tabIndex={activeTab === "log" ? 0 : -1}
           type="button"
         >
           <Clock3 aria-hidden="true" />

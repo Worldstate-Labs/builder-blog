@@ -1,6 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { Activity, ChevronDown, ChevronRight, ChevronUp, Clock3 } from "lucide-react";
 import { CountBadge, CountMeta, CountMetric, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
@@ -448,6 +457,30 @@ export function FetchLogPanel({
       {actions}
     </div>
   ) : null;
+  function handleTabKeyDown(event: KeyboardEvent<HTMLElement>) {
+    const tabs = ["status", "log"] as const;
+    const navigableKeys = new Set(["ArrowLeft", "ArrowRight", "Home", "End"]);
+    if (!navigableKeys.has(event.key)) return;
+
+    const tabElements = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]'));
+    if (tabElements.length === 0) return;
+
+    event.preventDefault();
+    const selectedIndex = Math.max(0, tabs.findIndex((tab) => tab === activeTab));
+    const focusedIndex = tabElements.findIndex((tab) => tab === document.activeElement);
+    const currentIndex = focusedIndex >= 0 ? focusedIndex : selectedIndex;
+    const nextIndex =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? tabElements.length - 1
+          : event.key === "ArrowRight"
+            ? (currentIndex + 1) % tabElements.length
+            : (currentIndex - 1 + tabElements.length) % tabElements.length;
+
+    tabElements[nextIndex]?.focus();
+    setActiveTab(tabs[nextIndex]!);
+  }
 
   // Latest runs, readable inside the poll loop without re-arming the interval
   // on every refresh. Synced in an effect (not during render) so the poll loop
@@ -593,6 +626,7 @@ export function FetchLogPanel({
           <div
             aria-label="Fetch sources views"
             className="fb-segmented-tabs sync-panel-tabs"
+            onKeyDown={handleTabKeyDown}
             role="tablist"
           >
             <button
@@ -602,6 +636,7 @@ export function FetchLogPanel({
               id="fetch-sync-tab-status"
               onClick={() => setActiveTab("status")}
               role="tab"
+              tabIndex={activeTab === "status" ? 0 : -1}
               type="button"
             >
               <Activity aria-hidden="true" />
@@ -614,6 +649,7 @@ export function FetchLogPanel({
               id="fetch-sync-tab-log"
               onClick={() => setActiveTab("log")}
               role="tab"
+              tabIndex={activeTab === "log" ? 0 : -1}
               type="button"
             >
               <Clock3 aria-hidden="true" />

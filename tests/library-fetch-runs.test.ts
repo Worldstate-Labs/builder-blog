@@ -160,6 +160,10 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.doesNotMatch(panel, />Refresh</);
   assert.match(panel, /VISIBLE_RUN_LIMIT = 2/);
   assert.match(panel, /role="tablist"/);
+  assert.match(panel, /onKeyDown=\{handleTabKeyDown\}/);
+  assert.match(panel, /"ArrowLeft", "ArrowRight", "Home", "End"/);
+  assert.match(panel, /tabIndex=\{activeTab === "status" \? 0 : -1\}/);
+  assert.match(panel, /tabIndex=\{activeTab === "log" \? 0 : -1\}/);
   assert.match(panel, /fb-segmented-tabs/);
   assert.match(panel, /id="fetch-sync-tab-status"/);
   assert.match(panel, /aria-controls="fetch-sync-panel-status"/);
@@ -302,6 +306,10 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /Build log/);
   assert.match(panel, /AI Digest build history/);
   assert.match(panel, /role="tablist"/);
+  assert.match(panel, /onKeyDown=\{handleTabKeyDown\}/);
+  assert.match(panel, /"ArrowLeft", "ArrowRight", "Home", "End"/);
+  assert.match(panel, /tabIndex=\{activeTab === "status" \? 0 : -1\}/);
+  assert.match(panel, /tabIndex=\{activeTab === "log" \? 0 : -1\}/);
   assert.match(panel, /fb-segmented-tabs/);
   assert.match(panel, /id="digest-update-tab-status"/);
   assert.match(panel, /aria-controls="digest-update-panel-status"/);
