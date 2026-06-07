@@ -489,8 +489,8 @@ export function SkillPromptActions({
         <div className="fb-skill-text">
           <span className="fb-section-label mr-2">{config.title}</span>
           {context === "digest"
-            ? "Copy a prompt for your Local Agent to build new digests."
-            : "Copy a prompt for your Local Agent to update every source."}
+            ? "Copy a prompt for your Local Agent to build your digest."
+            : "Copy a prompt for your Local Agent to fetch, summarize, and sync every source."}
         </div>
       ) : null}
       <button

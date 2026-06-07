@@ -1515,7 +1515,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(libraryHubPage, /<h1 className="sr-only">Hub<\/h1>/);
   assert.match(libraryHubPage, /getDigestPipelineMetadataByOwnerIds/);
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
-  assert.match(libraryHubPage, /label: "Source Libraries"/);
+  assert.match(libraryHubPage, /label: "Source libraries"/);
   assert.match(libraryHubPage, /Source libraries built and shared by other users\./);
   assert.doesNotMatch(libraryHubPage, /Available source libraries/);
   assert.match(libraryHubPage, /className="workspace-content-stack"/);

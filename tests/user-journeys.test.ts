@@ -400,6 +400,7 @@ test("web app serves the agent skill and setup command", () => {
   // now shown for digest as well as library.
   assert.match(skillPromptActions, /Copy a prompt for your Local Agent to fetch, summarize, and sync every source\./);
   assert.match(skillPromptActions, /Copy a prompt for your Local Agent to build your digest\./);
+  assert.doesNotMatch(skillPromptActions, /build new digests|update every source/);
   assert.match(skillPromptActions, /Local Agent/);
   assert.match(skillPromptActions, /Already digested posts can be included again this time\./);
   assert.match(skillPromptActions, /Fetch post age \(days\)/);
