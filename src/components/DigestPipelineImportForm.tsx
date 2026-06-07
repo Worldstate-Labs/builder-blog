@@ -330,7 +330,7 @@ export function OwnDigestPipelineCard({
 
       <div className="fb-hub-card-stats">
         <CountMeta
-          label={pipeline.digestCount === 1 ? "saved digest" : "saved digests"}
+          label={pipeline.digestCount === 1 ? "saved AI Digest" : "saved AI Digests"}
           value={pipeline.digestCount}
         />
         <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
@@ -410,7 +410,7 @@ function DigestPipelineCard({
 
       <div className="fb-hub-card-stats">
         <CountMeta
-          label={pipeline.digestCount === 1 ? "saved digest" : "saved digests"}
+          label={pipeline.digestCount === 1 ? "saved AI Digest" : "saved AI Digests"}
           value={pipeline.digestCount}
         />
         <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
@@ -434,12 +434,12 @@ export function DigestPipelinePreviewCard({
         <div>
           <div className="fb-hub-digest-preview-title">
             {pipeline.latestDigestAt
-              ? `Latest digest ${formatDate(pipeline.latestDigestAt)}`
+              ? `Latest AI Digest ${formatDate(pipeline.latestDigestAt)}`
               : "No AI Digests yet"}
           </div>
           {pipeline.latestDigestHeadline ? (
             <section
-              aria-label="Latest digest headline"
+              aria-label="Latest AI Digest headline"
               className="fb-hub-digest-headline"
             >
               <div className="fb-hub-digest-headline-kicker">Headlines</div>
@@ -472,7 +472,7 @@ function DigestPipelineMetaGrid({
         value={formatLanguage(pipeline.summaryLanguage ?? pipeline.latestDigestLanguage ?? "zh")}
       />
       <DigestPipelineMetaItem
-        label="Latest digest"
+        label="Latest AI Digest"
         value={pipeline.latestDigestAt ? formatDate(pipeline.latestDigestAt) : "None yet"}
       />
       <div className="fb-hub-digest-meta-item">

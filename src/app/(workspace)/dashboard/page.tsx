@@ -174,7 +174,7 @@ async function AiDigestFeedSlot({
     digestSummaries,
     digestSourceLinks,
   ] = await Promise.all([
-      // The digest picker lists the latest digest plus saved digests in one
+      // The digest picker lists the latest AI Digest plus saved AI Digests in one
       // control. Keep this as summaries only; the body is fetched on demand.
       prisma.digest.findMany({
         where: { userId: digestOwnerUserId, itemCount: { gt: 0 } },
@@ -279,7 +279,7 @@ function DigestEmptyState({
       <EmptyState
         className="ai-digest-empty"
         title="No AI Digest yet"
-        body="This imported AI Digest has no saved digest yet."
+        body="This imported AI Digest has no saved AI Digest yet."
       />
     );
   }

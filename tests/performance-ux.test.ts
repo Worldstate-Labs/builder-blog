@@ -566,7 +566,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /fetchedPostCount/);
   assert.match(dashboardPage, /No followed sources yet/);
   assert.match(dashboardPage, /No AI Digest yet/);
-  assert.match(dashboardPage, /This imported AI Digest has no saved digest yet/);
+  assert.match(dashboardPage, /This imported AI Digest has no saved AI Digest yet/);
   assert.doesNotMatch(dashboardPage, /saved briefs/);
   assert.match(dashboardPage, /No summarized posts yet/);
   assert.match(dashboardPage, /No fetched posts yet/);
@@ -1192,8 +1192,10 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.match(digestPipelineForm, /<DigestPipelinePreviewCard[\s\S]*\/>\s*\{children\}\s*<div className="fb-hub-card-stats">/);
   assert.equal((digestPipelineForm.match(/className="fb-hub-digest-preview"/g) ?? []).length, 1);
   assert.match(digestPipelineForm, /latestDigestHeadline/);
-  assert.match(digestPipelineForm, /aria-label="Latest digest headline"/);
+  assert.match(digestPipelineForm, /aria-label="Latest AI Digest headline"/);
   assert.equal((digestPipelineForm.match(/value=\{pipeline\.digestCount\}/g) ?? []).length, 2);
+  assert.match(digestPipelineForm, /saved AI Digest/);
+  assert.doesNotMatch(digestPipelineForm, /saved digest/);
   assert.doesNotMatch(digestPipelineForm, /fb-hub-digest-count/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /headlineSummary:\s*true/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /resolveDigestHeadlineSummary/);
@@ -1661,7 +1663,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(digestPipelineForm, /function DigestPipelineMetaGrid/);
   assert.match(digestPipelineForm, /Update frequency/);
   assert.match(digestPipelineForm, /Language/);
-  assert.match(digestPipelineForm, /Latest digest/);
+  assert.match(digestPipelineForm, /Latest AI Digest/);
   assert.match(digestPipelineForm, /Cron status/);
   assert.match(digestPipelineForm, /className="fb-hub-digest-headline"/);
   assert.match(digestPipelineForm, /fb-hub-digest-headline-kicker">Headlines/);
