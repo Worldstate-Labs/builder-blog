@@ -552,7 +552,10 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /Access keys for Local Agents/);
   assert.match(skillPromptActions, /describeAccessDevice/);
   assert.match(skillPromptActions, /formatRelativeCompact/);
+  assert.match(skillPromptActions, /sortAccessTokensByRecentConnection/);
   assert.match(skillPromptActions, /useHydrated/);
+  assert.match(skillPromptActions, /const activeTokens = useMemo\([\s\S]*sortAccessTokensByRecentConnection\(tokens\.filter/);
+  assert.match(skillPromptActions, /return sortAccessTokensByRecentConnection\(tokens\)\[0\]\?\.id \?\? ""/);
   assert.match(skillPromptActions, /const tokenLabel = describeAccessDevice\(token\)/);
   assert.match(skillPromptActions, /aria-label=\{`\$\{tokenLabel\}\. \$\{statusLabel\}`\}/);
   assert.match(skillPromptActions, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);

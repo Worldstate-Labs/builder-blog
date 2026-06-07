@@ -6,6 +6,7 @@ import { CalendarClock, Check, CircleStop, Copy } from "lucide-react";
 import {
   describeAccessDevice,
   formatRelativeCompact,
+  sortAccessTokensByRecentConnection,
   type AgentTokenListItem,
 } from "@/components/AgentTokenPanel";
 import { EmptyState } from "@/components/EmptyState";
@@ -312,7 +313,10 @@ export function SkillPromptActions({
   showStop?: boolean;
 }) {
   const config = PROMPT_CONFIG[context];
-  const activeTokens = tokens.filter((t) => !t.revokedAt);
+  const activeTokens = useMemo(
+    () => sortAccessTokensByRecentConnection(tokens.filter((token) => !token.revokedAt)),
+    [tokens],
+  );
   // The `in` narrow keeps this typed against the per-context literal config
   // shapes if a future context omits stop support.
   const stopJob = "stopJob" in config ? config.stopJob : undefined;
@@ -602,12 +606,7 @@ function TokenPickerDialog({
   // the dialog with a new token list doesn't need an effect to reset state.
   const defaultTokenId = useMemo(() => {
     if (tokens.length === 0) return "";
-    const sorted = [...tokens].sort((a, b) => {
-      const at = a.lastUsedAt ? Date.parse(a.lastUsedAt) : 0;
-      const bt = b.lastUsedAt ? Date.parse(b.lastUsedAt) : 0;
-      return bt - at;
-    });
-    return sorted[0]?.id ?? "";
+    return sortAccessTokensByRecentConnection(tokens)[0]?.id ?? "";
   }, [tokens]);
 
   const selectedTokenId =
