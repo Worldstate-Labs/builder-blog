@@ -38,6 +38,8 @@ export async function PostDetailPage({
 
   if (!item.builder?.entityId) notFound();
   const entityId = item.builder.entityId;
+  const sourceLabel = item.builder?.name ?? item.sourceName ?? "Post";
+  const sourceHref = `/builder/${entityId}`;
   const existing = await prisma.feedRead.findFirst({
     where: {
       userId: session.user.id,
@@ -71,9 +73,13 @@ export async function PostDetailPage({
           <ChevronLeft aria-hidden="true" />
           {backLink.label}
         </Link>
-        <span className="reading-source-label">
-          {item.builder?.name ?? item.sourceName ?? "Post"}
-        </span>
+        <Link
+          aria-label={`View ${sourceLabel} source`}
+          className="reading-source-label"
+          href={sourceHref}
+        >
+          {sourceLabel}
+        </Link>
       </nav>
 
       <PostCard

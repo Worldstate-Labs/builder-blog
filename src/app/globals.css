@@ -406,6 +406,17 @@ svg.lucide {
   white-space: nowrap;
 }
 
+a.reading-source-label {
+  text-decoration: none;
+}
+
+a.reading-source-label:hover,
+a.reading-source-label:focus-visible {
+  color: var(--accent);
+  outline: none;
+  text-decoration: none;
+}
+
 .workspace-content-stack {
   display: grid;
   gap: clamp(1.25rem, 2vw, 2rem);
