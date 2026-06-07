@@ -313,11 +313,11 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /reading AI Digests/);
   assert.match(landingPage, /builds cited AI Digests/);
   assert.match(landingPage, />AI Digest<\/span>/);
-  assert.match(landingPage, /Find sources, posts you've saved, and past AI Digests/);
+  assert.match(landingPage, /Find sources, posts you've saved, and AI Digest archives/);
   assert.match(landingPage, /Open the original posts behind each summary/);
-  assert.match(landingPage, /search sources, posts, saved posts, and AI Digests later/);
+  assert.match(landingPage, /search sources, posts, saved posts, and AI Digest archives later/);
   assert.match(landingPage, /Workspace search/);
-  assert.match(landingPage, /Sources, posts, saved posts, and AI Digests share one search surface\./);
+  assert.match(landingPage, /Sources, posts, saved posts, and AI Digest archives share one search surface\./);
   assert.doesNotMatch(landingPage, /sources, posts, Favorites, and AI Digests|Sources, posts, Favorites, and AI Digests/);
   assert.match(landingPage, /Start from shared source libraries/);
   assert.doesNotMatch(landingPage, /Start from shared libraries/);
@@ -1895,7 +1895,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /@\/components\/PageHeader/);
   assert.match(searchPage, /className="page-pad page-pad--reading search-page"/);
   assert.match(searchPage, /searchPageSize/);
-  assert.match(searchPage, /emptySearchCopy = "Search sources, posts, saved posts, and AI Digests\."/);
+  assert.match(searchPage, /emptySearchCopy = "Search sources, posts, saved posts, and AI Digest archives\."/);
   assert.match(searchPage, /<SearchEmptyState title="Start with a search">\{emptySearchCopy\}<\/SearchEmptyState>/);
   assert.match(searchPage, /<SearchEmptyState actions=\{recoveryActions\} title="No matches found">/);
   assert.match(searchPage, /searchNoMatchesCopy/);
@@ -1904,7 +1904,11 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /Try a broader phrase or fewer words\./);
   assert.doesNotMatch(searchPage, /No matches found\. Try a broader phrase/);
   assert.doesNotMatch(searchPage, /switch back to All results/);
-  assert.match(searchPage, /past AI Digests/);
+  assert.match(searchPage, /AI Digest archives/);
+  assert.match(searchPage, /resultTypeFilterLabels/);
+  assert.match(searchPage, /resultTypeItemLabels/);
+  assert.match(searchPage, /digest:\s*"AI Digest archives"/);
+  assert.match(searchPage, /digest:\s*"AI Digest archive"/);
   assert.match(searchPage, /model pricing type:post/);
   assert.match(searchPage, /model pricing type:source/);
   assert.match(searchPage, /model pricing type:ai-digest/);
@@ -1913,7 +1917,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /searchDocumentTypeParamValue/);
   assert.doesNotMatch(searchPage, /params\.set\("type", type\)/);
   assert.doesNotMatch(searchPage, /model pricing filetype:ai-digest/);
-  assert.doesNotMatch(searchPage, /AI Digest archive/);
+  assert.doesNotMatch(searchPage, /past AI Digests/);
   assert.doesNotMatch(searchPage, /Enter a query to search across your sources/);
   assert.match(searchPage, /relatedSearchSuggestions/);
   assert.match(searchPage, /didYouMeanSearch/);
@@ -2156,7 +2160,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /spellCheck=\{false\}/);
   assert.match(searchForm, /role="listbox"/);
   assert.match(searchForm, /role="option"/);
-  assert.match(searchForm, /placeholder="Search sources, posts, saved posts, and AI Digests"/);
+  assert.match(searchForm, /placeholder="Search sources, posts, saved posts, and AI Digest archives"/);
   assert.doesNotMatch(searchForm, /saved items|Favorites/);
   assert.match(searchForm, /submitSuggestion\(activeSuggestion, event\.currentTarget\.form\)/);
   assert.match(searchForm, /role="option"[\s\S]*className="search-suggestion-item"/);
@@ -2194,8 +2198,9 @@ test("search suggestions API exists for autocomplete-style queries", () => {
   assert.match(suggestRoute, /return "Result"/);
   assert.doesNotMatch(suggestRoute, /Library item/);
   assert.match(suggestRoute, /claude code/);
-  assert.match(suggestRoute, /past AI Digests/);
-  assert.doesNotMatch(suggestRoute, /AI Digest archive/);
+  assert.match(suggestRoute, /AI Digest archives/);
+  assert.match(suggestRoute, /AI Digest archive/);
+  assert.doesNotMatch(suggestRoute, /past AI Digests/);
   assert.match(suggestRoute, /NextResponse/);
 });
 

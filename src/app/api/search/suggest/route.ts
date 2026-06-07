@@ -10,7 +10,7 @@ const defaultSuggestions = [
   "agent memory",
   "embedding search",
   "product launch",
-  "past AI Digests",
+  "AI Digest archives",
   "podcast transcript",
 ];
 
@@ -121,7 +121,7 @@ function titlePrefixCompletions(query: string, title: string) {
 function resultTypeDetail(type: string) {
   if (type === "builder") return "Source";
   if (type === "feed") return "Post";
-  if (type === "digest") return "AI Digest";
+  if (type === "digest") return "AI Digest archive";
   return "Result";
 }
 

@@ -50,13 +50,13 @@ type SearchParams = Promise<{
 }>;
 
 const searchPageSize = 10;
-const emptySearchCopy = "Search sources, posts, saved posts, and AI Digests.";
+const emptySearchCopy = "Search sources, posts, saved posts, and AI Digest archives.";
 const defaultSuggestions = [
   "model pricing",
   "open source models",
   "founder essays",
   "product launch",
-  "past AI Digests",
+  "AI Digest archives",
   "podcast transcript",
   "research notes",
   "tool benchmarks",
@@ -91,10 +91,16 @@ const advancedSearchExamples = [
   "model pricing before:2026-12-31",
 ];
 
-const resultTypeLabels: Record<SearchDocumentType, string> = {
+const resultTypeFilterLabels: Record<SearchDocumentType, string> = {
   builder: "Sources",
   feed: "Posts",
-  digest: "AI Digests",
+  digest: "AI Digest archives",
+};
+
+const resultTypeItemLabels: Record<SearchDocumentType, string> = {
+  builder: "Source",
+  feed: "Post",
+  digest: "AI Digest archive",
 };
 
 const searchModeLabels: Record<SearchMode, string> = {
@@ -586,7 +592,7 @@ function SearchTypeTabs({
           current={current}
           href={searchHref({ query, type, mode, sort, time })}
           key={type}
-          label={resultTypeLabels[type]}
+          label={resultTypeFilterLabels[type]}
           value={type}
         />
       ))}
@@ -646,7 +652,7 @@ function ResultCard({
     : null;
   const displayUrl = formatDisplayUrl(originalUrl ?? result.url);
   const sourceSite = searchSiteFromUrl(originalUrl ?? result.url);
-  const sourceName = result.sourceName ?? resultTypeLabels[result.type];
+  const sourceName = result.sourceName ?? resultTypeItemLabels[result.type];
   const titleContent = <HighlightText text={result.title} query={query} />;
   const title = resultHref ? (
     titleIsExternal ? (
@@ -683,7 +689,7 @@ function ResultCard({
         <HighlightText text={result.snippet} query={query} />
       </p>
       <div className="search-result-meta">
-        <span>{resultTypeLabels[result.type]}</span>
+        <span>{resultTypeItemLabels[result.type]}</span>
         {result.date ? <span>{formatDistanceToNow(result.date, { addSuffix: true })}</span> : null}
         {originalUrl ? (
           <a
@@ -725,7 +731,7 @@ function ResultCard({
                 className="search-result-refinement"
                 href={searchHref({ query, type: result.type, mode, sort, time })}
               >
-                Only {resultTypeLabels[result.type]}
+                Only {resultTypeFilterLabels[result.type]}
               </Link>
             ) : null}
           </div>
@@ -1032,7 +1038,7 @@ function buildQueryInsightItems(
   const items = [
     { label: "Mode", value: searchModeLabels[mode] },
     { label: "Sort", value: searchSortLabels[sort] },
-    { label: "Result type", value: typeFilter === "all" ? "All results" : resultTypeLabels[typeFilter] },
+    { label: "Result type", value: typeFilter === "all" ? "All results" : resultTypeFilterLabels[typeFilter] },
     { label: "Time", value: dateInsightLabel(parsed, time) },
   ];
   const phraseValue = [
@@ -1136,10 +1142,10 @@ function buildActiveSearchFilters({
 
   if (typeFilter !== "all") {
     filters.push({
-      clearLabel: `Remove ${resultTypeLabels[typeFilter]} result type filter`,
+      clearLabel: `Remove ${resultTypeFilterLabels[typeFilter]} result type filter`,
       href: searchHref({ query, type: "all", mode, sort, time }),
       label: "Result type",
-      value: resultTypeLabels[typeFilter],
+      value: resultTypeFilterLabels[typeFilter],
     });
   }
   if (mode !== "hybrid") {
@@ -1196,7 +1202,7 @@ function buildActiveSearchFilters({
   }
   if (parsed.type) {
     filters.push({
-      clearLabel: `Remove result type ${resultTypeLabels[parsed.type]}`,
+      clearLabel: `Remove result type ${resultTypeFilterLabels[parsed.type]}`,
       href: searchHref({
         query: stripSearchQueryOperators(query, ["type", "filetype"]),
         type: typeFilter,
@@ -1205,7 +1211,7 @@ function buildActiveSearchFilters({
         time,
       }),
       label: "Result type",
-      value: resultTypeLabels[parsed.type],
+      value: resultTypeFilterLabels[parsed.type],
     });
   }
   if (parsed.excludedTypes.length > 0) {
@@ -1219,7 +1225,7 @@ function buildActiveSearchFilters({
         time,
       }),
       label: "Excludes result types",
-      value: parsed.excludedTypes.map((type) => resultTypeLabels[type]).join(", "),
+      value: parsed.excludedTypes.map((type) => resultTypeFilterLabels[type]).join(", "),
     });
   }
   if (parsed.titleTerms.length > 0) {
