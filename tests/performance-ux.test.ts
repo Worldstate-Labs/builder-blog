@@ -2564,6 +2564,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /beforeBody=\{fetchSyncSection\}/);
   assert.match(buildersPage, /actionsPlacement="start"/);
   assert.match(buildersPage, /title="Your source library"/);
+  assert.match(buildersPage, /emptyTitle="No sources in your library yet"/);
+  assert.doesNotMatch(buildersPage, /No personal sources yet/);
   assert.match(buildersPage, /name:\s*data\.sessionUserName/);
   assert.match(buildersPage, /email:\s*data\.sessionUserEmail/);
   assert.match(postCard, /useHydrated/);

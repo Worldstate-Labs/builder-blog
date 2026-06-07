@@ -713,7 +713,7 @@ async function FetchSourcesSection({
           )}
           editableSourceOptions={data.sourceLabelOptions}
           emptyBody="Add a source, then use your Local Agent to fetch and summarize it."
-          emptyTitle="No personal sources yet"
+          emptyTitle="No sources in your library yet"
         />
       </PrivateLibraryPanel>
     </section>
