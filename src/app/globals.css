@@ -4778,7 +4778,8 @@ svg.lucide {
   text-transform: uppercase;
 }
 
-.digest-control-picker .digest-picker-summary {
+.digest-control-picker .digest-picker-summary,
+.digest-control-picker .digest-picker-static {
   background: var(--paper);
   min-height: 2.5rem;
   padding: 0.5rem 0.75rem;
@@ -5097,6 +5098,15 @@ svg.lucide {
   justify-content: space-between;
   list-style: none;
   padding: 0.58rem 0.72rem;
+}
+
+.digest-picker-static {
+  align-items: center;
+  background: color-mix(in oklch, var(--paper) 58%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  display: flex;
 }
 
 .digest-picker-summary::-webkit-details-marker {

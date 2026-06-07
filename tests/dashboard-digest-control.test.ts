@@ -11,6 +11,7 @@ function source(path: string) {
 
 test("home digest keeps pipeline and saved digest selection in a dedicated control bar", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
+  const digestArchivePicker = source("src/components/DigestArchivePicker.tsx");
   const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
   const globals = source("src/app/globals.css");
 
@@ -47,7 +48,10 @@ test("home digest keeps pipeline and saved digest selection in a dedicated contr
   assert.match(digestPipelineSelector, /focusOption\(event\.key === "ArrowDown" \? "next" : "previous"\)/);
   assert.match(digestPipelineSelector, /summaryRef\.current\?\.focus\(\)/);
   assert.match(digestPipelineSelector, /data-active=\{active \? "true" : undefined\}/);
+  assert.match(digestArchivePicker, /digests\.length <= 1[\s\S]*className="digest-picker-static"/);
+  assert.match(digestArchivePicker, /aria-label="Saved AI Digests"/);
   assert.match(globals, /\.digest-pipeline-trigger\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /\.digest-control-picker \.digest-picker-summary,[\s\S]*\.digest-control-picker \.digest-picker-static\s*{[\s\S]*min-height:\s*2\.5rem/);
   assert.match(globals, /\.digest-pipeline-option\[data-active="true"\]/);
   assert.doesNotMatch(dashboardPage, /rounded-\[8px\]|md:grid-cols-2|\[&_\.digest-picker/);
   assert.doesNotMatch(digestPipelineSelector, /rounded-\[|grid-cols-\[|text-\[var|font-\[|shadow-\[|min-h-10|px-3|py-2|h-3\.5|w-3\.5/);

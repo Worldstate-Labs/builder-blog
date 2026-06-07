@@ -1590,7 +1590,7 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.doesNotMatch(dashboardPage, /headerAction=\{/);
   assert.match(dashboardPage, /function DigestControlBar/);
   assert.match(dashboardPage, /aria-label="AI Digest selection"/);
-  assert.match(globals, /\.digest-control-picker \.digest-picker-summary\s*{[\s\S]*min-height:\s*2\.5rem/);
+  assert.match(globals, /\.digest-control-picker \.digest-picker-summary,[\s\S]*\.digest-control-picker \.digest-picker-static\s*{[\s\S]*min-height:\s*2\.5rem/);
   assert.match(globals, /\.digest-control-empty\s*{[\s\S]*border:\s*1px dashed var\(--line\)/);
   assert.match(digestDetails, /headlineSummary/);
   assert.match(digestDetails, /digest-headline-summary/);
@@ -1646,6 +1646,8 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.doesNotMatch(digestArchivePicker, /digest\.itemCount === 1 \? "item" : "items"/);
   assert.doesNotMatch(digestDetails, /digest\.itemCount === 1 \? "item" : "items"/);
   assert.match(digestArchivePicker, /Saved AI Digests/);
+  assert.match(digestArchivePicker, /digests\.length <= 1[\s\S]*className="digest-picker-static"/);
+  assert.match(digestArchivePicker, /className="digest-picker-static" aria-label="Saved AI Digests"/);
   assert.match(digestArchivePicker, /onClick=\{\(event\) =>/);
   assert.match(digestArchivePicker, /if \(selected\) event\.preventDefault\(\)/);
   assert.doesNotMatch(dashboardPage, /digest-picker-label/);
@@ -1750,6 +1752,8 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.match(digestArchivePicker, /formatDigestPickerDate\(digest\.createdAt, hydrated\)/);
   assert.match(digestArchivePicker, /timeZone:\s*"UTC"/);
   assert.match(globals, /\.digest-picker-icon\s*{/);
+  assert.match(globals, /\.digest-control-picker \.digest-picker-summary,[\s\S]*\.digest-control-picker \.digest-picker-static\s*{[\s\S]*min-height:\s*2\.5rem/);
+  assert.match(globals, /\.digest-picker-static\s*{[\s\S]*border:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.digest-picker\[open\] \.digest-picker-icon\s*{[\s\S]*transform:\s*rotate\(180deg\)/);
   assert.match(historyPage, /redirect\("\/dashboard\?tab=ai-digest"\)/);
   assert.doesNotMatch(historyPage, /AppShell/);

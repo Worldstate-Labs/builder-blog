@@ -45,6 +45,18 @@ export function DigestArchivePicker({
 
   if (!selectedDigest) return null;
 
+  if (digests.length <= 1) {
+    return (
+      <div className="digest-picker-static" aria-label="Saved AI Digests">
+        <DigestPickerItem
+          digest={selectedDigest}
+          hydrated={hydrated}
+          isLatest={selectedDigest.id === latestDigestId}
+        />
+      </div>
+    );
+  }
+
   function focusOption(direction: "selected" | "next" | "previous") {
     const options = Array.from(
       pickerRef.current?.querySelectorAll<HTMLAnchorElement>(".digest-picker-option") ?? [],
