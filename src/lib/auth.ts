@@ -2,6 +2,7 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { cache } from "react";
 import { getServerSession } from "next-auth";
 import type { NextAuthOptions } from "next-auth";
+import AppleProvider from "next-auth/providers/apple";
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
@@ -26,6 +27,14 @@ export const authOptions: NextAuthOptions = {
       // in again instead of being silently bounced with
       // OAuthAccountNotLinked. GitHub keeps it off — its email field
       // is user-claimed and would be unsafe.
+      allowDangerousEmailAccountLinking: true,
+    }),
+    AppleProvider({
+      clientId: process.env.APPLE_ID ?? "",
+      clientSecret: process.env.APPLE_SECRET ?? "",
+      // Apple ID tokens only contain Apple-verified emails. If the user
+      // chooses Hide My Email, Apple returns a relay address that is still
+      // verified and unique to the Apple account.
       allowDangerousEmailAccountLinking: true,
     }),
   ],

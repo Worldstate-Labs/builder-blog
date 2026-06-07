@@ -3,7 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 
-type Provider = "google" | "github";
+type Provider = "google" | "github" | "apple";
 
 function GoogleIcon() {
   return (
@@ -36,9 +36,18 @@ function GithubIcon() {
   );
 }
 
+function AppleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="auth-provider-icon" aria-hidden="true">
+      <path d="M16.7 12.73c-.02-2.07 1.69-3.06 1.77-3.11-0.97-1.41-2.47-1.61-2.99-1.63-1.27-.13-2.47.74-3.12.74-.64 0-1.63-.72-2.68-.7-1.38.02-2.65.8-3.36 2.03-1.43 2.49-.37 6.17 1.03 8.19.68.98 1.49 2.09 2.56 2.05 1.03-.04 1.42-.66 2.66-.66s1.6.66 2.69.64c1.11-.02 1.82-1 2.5-1.99.78-1.14 1.1-2.25 1.12-2.31-.02-.01-2.16-.83-2.18-3.25zM14.64 6.66c.57-.69.96-1.65.85-2.61-.82.03-1.81.55-2.4 1.24-.53.61-.99 1.59-.87 2.53.91.07 1.85-.46 2.42-1.16z" />
+    </svg>
+  );
+}
+
 const providers: Array<{ id: Provider; label: string; Icon: () => React.ReactElement; outline: boolean }> = [
   { id: "google", label: "Google", Icon: GoogleIcon, outline: false },
   { id: "github", label: "GitHub", Icon: GithubIcon, outline: true },
+  { id: "apple", label: "Apple", Icon: AppleIcon, outline: true },
 ];
 
 export function AuthButtons({
