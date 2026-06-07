@@ -60,7 +60,10 @@ export function describeMachine(token: AgentTokenListItem): string {
 
 function describeAccessDevice(token: AgentTokenListItem): string {
   const os = prettyOs(token.lastPlatform);
-  if (os) return os;
+  if (os && isPhoneLikeToken(token)) return os;
+
+  const machineLabel = describeMachine(token);
+  if (machineLabel !== "unknown machine") return machineLabel;
 
   const userAgentSummary = summarizeUserAgent(token.lastUserAgent);
   if (userAgentSummary !== "unknown machine") return userAgentSummary;
