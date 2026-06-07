@@ -110,6 +110,8 @@ test("every app route has an explicit centered layout role", () => {
     "src/app/(workspace)/builders/page.tsx",
     "src/app/(workspace)/dashboard/loading.tsx",
     "src/app/(workspace)/dashboard/page.tsx",
+    "src/app/(workspace)/history/loading.tsx",
+    "src/app/(workspace)/history/page.tsx",
     "src/app/(workspace)/library-hub/loading.tsx",
     "src/app/(workspace)/library-hub/page.tsx",
     "src/app/(workspace)/posts/[feedItemId]/loading.tsx",
@@ -122,8 +124,6 @@ test("every app route has an explicit centered layout role", () => {
     "src/app/(workspace)/search/page.tsx",
     "src/app/(workspace)/settings/loading.tsx",
     "src/app/(workspace)/settings/page.tsx",
-    "src/app/history/loading.tsx",
-    "src/app/history/page.tsx",
     "src/app/loading.tsx",
     "src/app/login/page.tsx",
     "src/app/page.tsx",
@@ -175,7 +175,7 @@ test("every app route has an explicit centered layout role", () => {
     ["src/app/(workspace)/builder/x/[handle]/page.tsx", /redirect\(`\/builder\/\$\{entity\.id\}`\)/],
     ["src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx", /redirect\(`\/posts\/\$\{feedItemId\}\$\{suffix\}`\)/],
     ["src/app/(workspace)/recommendations/page.tsx", /redirect\("\/dashboard\?tab=following"\)/],
-    ["src/app/history/page.tsx", /redirect\("\/dashboard\?tab=ai-digest"\)/],
+    ["src/app/(workspace)/history/page.tsx", /redirect\("\/dashboard\?tab=ai-digest"\)/],
   ] as const;
   for (const [path, pattern] of redirectOnlyRoutes) {
     const text = source(path);
@@ -201,6 +201,7 @@ test("every app route has an explicit centered layout role", () => {
     ["src/app/(workspace)/dashboard/loading.tsx", "Home", "Loading Home", 6],
     ["src/app/(workspace)/posts/[feedItemId]/loading.tsx", "Post", "Loading Post", 4],
     ["src/app/(workspace)/recommendations/items/[feedItemId]/loading.tsx", "Post", "Loading Post", 4],
+    ["src/app/(workspace)/history/loading.tsx", "AI Digest", "Loading AI Digest", 6],
     ["src/app/(workspace)/recommendations/loading.tsx", "Following", "Loading Following", 6],
     ["src/app/(workspace)/search/loading.tsx", "Search", "Loading Search", 5],
   ] as const;
@@ -215,10 +216,8 @@ test("every app route has an explicit centered layout role", () => {
     source("src/app/(workspace)/settings/loading.tsx"),
     /<RouteLoading[\s\S]*label="Settings"[\s\S]*title="Loading Settings"[\s\S]*rows=\{5\}[\s\S]*variant="workspace"/,
   );
-  assert.match(
-    source("src/app/history/loading.tsx"),
-    /<RouteLoading label="AI Digest" title="Loading AI Digest" rows=\{6\} \/>/,
-  );
+  assert.equal(existsSync(join(root, "src/app/history/page.tsx")), false);
+  assert.equal(existsSync(join(root, "src/app/history/loading.tsx")), false);
 });
 
 test("workspace not-found uses the FollowBrief shell instead of the default Next 404", () => {
@@ -1579,7 +1578,7 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   const digestArchivePicker = source("src/components/DigestArchivePicker.tsx");
   const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
-  const historyPage = source("src/app/history/page.tsx");
+  const historyPage = source("src/app/(workspace)/history/page.tsx");
   const digestDetails = source("src/components/DigestDetails.tsx");
   const digestRoute = source("src/app/api/digests/[digestId]/route.ts");
   const digestPipelineVisibilityToggle = source("src/components/DigestPipelineVisibilityToggle.tsx");
@@ -2109,7 +2108,7 @@ test("user library search can fetch operator-only candidate sets", () => {
 });
 
 test("primary tabs keep local loading fallbacks alongside route loaders", () => {
-  assert.equal(existsSync(join(root, "src/app/history/loading.tsx")), true);
+  assert.equal(existsSync(join(root, "src/app/(workspace)/history/loading.tsx")), true);
   for (const path of [
     "src/app/(workspace)/builders/loading.tsx",
     "src/app/(workspace)/library-hub/loading.tsx",
