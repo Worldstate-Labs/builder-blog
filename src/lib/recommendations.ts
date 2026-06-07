@@ -63,7 +63,6 @@ export type RecommendationSnapshotResult = {
   items: Array<
     RecommendationResult & {
       favoritedAt?: Date | null;
-      markedReadAt?: Date | null;
       rank: number;
       readAt: Date | null;
     }
@@ -604,7 +603,7 @@ function snapshotInclude(userId: string) {
             },
             favorites: {
               where: { userId },
-              select: { favoritedAt: true, markedReadAt: true },
+              select: { favoritedAt: true },
               take: 1,
             },
           },
@@ -624,7 +623,7 @@ function formatSnapshot(snapshot: {
     score: number;
     reasons: string;
     feedItem: RecommendationCandidate & {
-      favorites?: { favoritedAt: Date; markedReadAt: Date | null }[];
+      favorites?: { favoritedAt: Date }[];
       reads?: { readAt: Date }[];
     };
   }>;
@@ -640,7 +639,6 @@ function formatSnapshot(snapshot: {
       reasons: parseReasons(item.reasons),
       readAt: item.feedItem.reads?.[0]?.readAt ?? null,
       favoritedAt: item.feedItem.favorites?.[0]?.favoritedAt ?? null,
-      markedReadAt: item.feedItem.favorites?.[0]?.markedReadAt ?? null,
     })),
   };
 }

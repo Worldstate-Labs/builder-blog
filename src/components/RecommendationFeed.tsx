@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircle2, Loader2, RefreshCcw, Star } from "lucide-react";
+import { Loader2, RefreshCcw, Star } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { PostCard } from "@/components/PostCard";
 import { useHydrated } from "@/components/ThemeToggle";
@@ -12,7 +12,6 @@ export type RecommendationFeedEntry = {
   reasons: string[];
   rank: number;
   favoritedAt: string | null;
-  markedReadAt: string | null;
   readAt: string | null;
   item: {
     id: string;
@@ -46,11 +45,9 @@ export type RecommendationSnapshotEntry = {
 
 export function RecommendationFeed({
   initialSnapshots,
-  mode = "following",
   showAdminActions = false,
 }: {
   initialSnapshots: RecommendationSnapshotEntry[];
-  mode?: "favorites" | "following";
   showAdminActions?: boolean;
 }) {
   const [snapshots, setSnapshots] = useState(initialSnapshots);
@@ -73,26 +70,6 @@ export function RecommendationFeed({
       })),
     );
     await markPostRead(feedItemId);
-  }, []);
-
-  const toggleFavoriteMarkedRead = useCallback(async (feedItemId: string, nextMarkedRead: boolean) => {
-    const fallbackReadAt = new Date().toISOString();
-    const fallbackMarkedReadAt = nextMarkedRead ? fallbackReadAt : null;
-    setSnapshots((current) =>
-      current.map((snapshot) => ({
-        ...snapshot,
-        items: snapshot.items.map((entry) =>
-          entry.item.id === feedItemId
-            ? {
-                ...entry,
-                markedReadAt: fallbackMarkedReadAt,
-                readAt: nextMarkedRead ? entry.readAt ?? fallbackReadAt : entry.readAt,
-              }
-            : entry,
-        ),
-      })),
-    );
-    await setFavoritePostMarkedRead(feedItemId, nextMarkedRead);
   }, []);
 
   const toggleFavorite = useCallback(async (feedItemId: string, nextFavorite: boolean) => {
@@ -152,20 +129,18 @@ export function RecommendationFeed({
   }, [exhausted, requestSnapshot]);
 
   return (
-    <section className={`feed-content-stack recommendation-feed${mode === "favorites" ? " favorites-feed" : ""}`}>
-      {mode === "following" ? (
-        <div className="recommendation-feed-actions">
-          <button
-            className="fb-btn light compact"
-            disabled={loadingDirection !== null}
-            onClick={() => void requestSnapshot("prepend")}
-            type="button"
-          >
-            <RefreshCcw className="h-4 w-4" />
-            Refresh
-          </button>
-        </div>
-      ) : null}
+    <section className="feed-content-stack recommendation-feed">
+      <div className="recommendation-feed-actions">
+        <button
+          className="fb-btn light compact"
+          disabled={loadingDirection !== null}
+          onClick={() => void requestSnapshot("prepend")}
+          type="button"
+        >
+          <RefreshCcw className="h-4 w-4" />
+          Refresh
+        </button>
+      </div>
       <div className="recommendation-snapshot-list">
         {snapshots.map((snapshot) => (
           <section className="recommendation-snapshot" key={snapshot.id}>
@@ -182,22 +157,20 @@ export function RecommendationFeed({
                 entry={entry}
                 key={`${snapshot.id}:${entry.item.id}`}
                 markRead={markRead}
-                mode={mode}
                 showAdminActions={showAdminActions}
-                toggleFavoriteMarkedRead={toggleFavoriteMarkedRead}
                 toggleFavorite={toggleFavorite}
               />
             ))}
           </section>
         ))}
       </div>
-      <div ref={mode === "following" ? loadMoreRef : null} className="feed-load-more">
+      <div ref={loadMoreRef} className="feed-load-more">
         {loadingDirection ? (
           <span className="status-chip">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
             Loading
           </span>
-        ) : exhausted && mode === "following" ? (
+        ) : exhausted ? (
           <span className="feed-end-note">No new unread posts left.</span>
         ) : null}
       </div>
@@ -208,55 +181,33 @@ export function RecommendationFeed({
 function RecommendationCard({
   entry,
   markRead,
-  mode,
   showAdminActions,
-  toggleFavoriteMarkedRead,
   toggleFavorite,
 }: {
   entry: RecommendationFeedEntry;
   markRead: (feedItemId: string) => Promise<void>;
-  mode: "favorites" | "following";
   showAdminActions: boolean;
-  toggleFavoriteMarkedRead: (feedItemId: string, nextMarkedRead: boolean) => Promise<void>;
   toggleFavorite: (feedItemId: string, nextFavorite: boolean) => Promise<void>;
 }) {
   const isRead = Boolean(entry.readAt);
   const isFavorite = Boolean(entry.favoritedAt);
-  const isMarkedRead = Boolean(entry.markedReadAt);
-  const isFavoritesTab = mode === "favorites";
 
   return (
     <PostCard
-      dataRead={isFavoritesTab ? false : isRead}
+      dataRead={isRead}
       extraActions={
-        isFavoritesTab ? (
-          <FavoriteReadButton
-            isMarkedRead={isMarkedRead}
-            toggleMarkedRead={() => toggleFavoriteMarkedRead(entry.item.id, !isMarkedRead)}
-          />
-        ) : (
-          <FavoriteToggleButton
-            isFavorite={isFavorite}
-            toggleFavorite={() => toggleFavorite(entry.item.id, !isFavorite)}
-          />
-        )
+        <FavoriteToggleButton
+          isFavorite={isFavorite}
+          toggleFavorite={() => toggleFavorite(entry.item.id, !isFavorite)}
+        />
       }
-      extraMeta={
-        isFavoritesTab && isMarkedRead ? (
-          <>
-            <span className="post-meta-dot" aria-hidden="true">·</span>
-            <span className="favorite-read-label">Marked read</span>
-          </>
-        ) : null
-      }
-      favoriteReadEmphasis={isFavoritesTab && isMarkedRead}
-      onInteract={isFavoritesTab ? undefined : () => markRead(entry.item.id)}
+      onInteract={() => markRead(entry.item.id)}
       post={{
         ...entry.item,
         detailUrl: postDetailHref(
           entry.item.id,
-          isFavoritesTab ? "/dashboard?tab=favorites" : "/dashboard?tab=following",
-          isFavoritesTab ? "Favorites" : "Following",
+          "/dashboard?tab=following",
+          "Following",
         ),
       }}
       reasons={showAdminActions ? entry.reasons : undefined}
@@ -292,44 +243,12 @@ function FavoriteToggleButton({
   );
 }
 
-function FavoriteReadButton({
-  isMarkedRead,
-  toggleMarkedRead,
-}: {
-  isMarkedRead: boolean;
-  toggleMarkedRead: () => Promise<void>;
-}) {
-  return (
-    <button
-      aria-pressed={isMarkedRead}
-      className={`post-action-btn favorite-mark-read${isMarkedRead ? " post-action-btn--active" : ""}`}
-      onClick={() => void toggleMarkedRead()}
-      type="button"
-    >
-      <CheckCircle2 className="h-4 w-4" />
-      <span>{isMarkedRead ? "Unmark read" : "Mark read"}</span>
-    </button>
-  );
-}
-
 async function setPostFavorite(feedItemId: string, favorite: boolean) {
   try {
     await fetch("/api/favorites", {
       method: favorite ? "POST" : "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ feedItemId }),
-    });
-  } catch {
-    // Best-effort optimistic UI; a reload restores the authoritative state.
-  }
-}
-
-async function setFavoritePostMarkedRead(feedItemId: string, markedRead: boolean) {
-  try {
-    await fetch("/api/favorites/read", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ feedItemId, markedRead }),
     });
   } catch {
     // Best-effort optimistic UI; a reload restores the authoritative state.

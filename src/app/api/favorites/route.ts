@@ -4,7 +4,6 @@ import { getCurrentSession } from "@/lib/auth";
 import {
   assertFavoritePostAccess,
   favoritePost,
-  getFavoriteSnapshot,
   unfavoritePost,
 } from "@/lib/feed-favorites";
 import { formatZodError } from "@/lib/zod-error";
@@ -12,20 +11,6 @@ import { formatZodError } from "@/lib/zod-error";
 const FavoriteBodySchema = z.object({
   feedItemId: z.string().trim().min(1).max(64),
 });
-
-export async function GET() {
-  const session = await getCurrentSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const snapshot = await getFavoriteSnapshot(session.user.id);
-  return NextResponse.json({
-    snapshot,
-    count: snapshot?.items.length ?? 0,
-    strategy: "favorite-feed-v1",
-  });
-}
 
 export async function POST(request: Request) {
   const session = await getCurrentSession();

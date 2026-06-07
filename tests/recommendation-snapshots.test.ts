@@ -31,8 +31,8 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.match(postCard, /data-read/);
   assert.match(postCard, /data-stack-actions/);
   assert.match(postCard, /Raw content/);
-  assert.match(feed, /mode = "following"/);
-  assert.match(feed, /onInteract=\{isFavoritesTab \? undefined : \(\) => markRead\(entry\.item\.id\)\}/);
+  assert.doesNotMatch(feed, /mode = "following"|isFavoritesTab/);
+  assert.match(feed, /onInteract=\{\(\) => markRead\(entry\.item\.id\)\}/);
   assert.match(postCard, /SourceAvatar/);
   assert.match(postCard, /className="post-meta-author"/);
   assert.match(postCard, /className="post-meta-avatar"/);
@@ -53,29 +53,21 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.doesNotMatch(feed, /filter\(\(entry\) => entry\.item\.id !== feedItemId\)/);
 });
 
-test("favorites saves posts and requires manual read marking", () => {
+test("favorites saves posts without reintroducing a separate saved feed", () => {
   const schema = source("prisma/schema.prisma");
   const favoriteRoute = source("src/app/api/favorites/route.ts");
-  const favoriteReadRoute = source("src/app/api/favorites/read/route.ts");
   const digestRoute = source("src/app/api/digests/[digestId]/route.ts");
   const digestDetails = source("src/components/DigestDetails.tsx");
   const digestContent = source("src/components/DigestContent.tsx");
-  const favoriteSection = source("src/components/FavoritePostsSection.tsx");
   const feed = source("src/components/RecommendationFeed.tsx");
   const postCard = source("src/components/PostCard.tsx");
   const globals = source("src/app/globals.css");
 
   assert.match(schema, /model FeedFavorite/);
   assert.match(schema, /@@unique\(\[userId, entityId, kind, externalId\]\)/);
-  assert.match(schema, /markedReadAt\s+DateTime\?/);
-  assert.match(favoriteRoute, /GET/);
   assert.match(favoriteRoute, /favoritePost/);
   assert.match(favoriteRoute, /unfavoritePost/);
-  assert.match(favoriteReadRoute, /markedRead/);
-  assert.match(favoriteReadRoute, /setFavoriteMarkedRead/);
-  assert.doesNotMatch(favoriteReadRoute, /markFavoriteRead/);
-  assert.match(favoriteSection, /\/api\/favorites/);
-  assert.match(favoriteSection, /mode="favorites"/);
+  assert.doesNotMatch(favoriteRoute, /export async function GET/);
   assert.match(feed, /FavoriteToggleButton/);
   assert.match(feed, /Save/);
   assert.match(feed, /title=\{isFavorite \? "Saved item" : "Save item"\}/);
@@ -88,22 +80,12 @@ test("favorites saves posts and requires manual read marking", () => {
   assert.match(digestContent, /DigestFavoriteToggleButton/);
   assert.match(digestContent, /onFavoriteToggle/);
   assert.match(digestContent, /post-favorite-btn/);
-  assert.match(feed, /FavoriteReadButton/);
-  assert.match(feed, /Mark read/);
-  assert.match(feed, /Unmark read/);
-  assert.match(feed, /\/api\/favorites\/read/);
-  assert.match(feed, /markedReadAt/);
-  assert.match(feed, /isMarkedRead/);
-  assert.match(feed, /dataRead=\{isFavoritesTab \? false : isRead\}/);
-  assert.match(feed, />Marked read</);
   assert.doesNotMatch(feed, /Saved to Favorites|Save to Favorites/);
   assert.doesNotMatch(digestContent, /Saved to Favorites|Save to Favorites/);
-  assert.doesNotMatch(feed, /Manually marked read/);
   assert.doesNotMatch(feed, /disabled=\{isRead\}/);
-  assert.match(feed, /isFavoritesTab \? undefined/);
-  assert.match(postCard, /data-favorite-read/);
-  assert.match(globals, /data-favorite-read="true"/);
-  assert.match(globals, /favorite-read-label/);
+  assert.doesNotMatch(feed, /mode\?: "favorites"|FavoriteReadButton|markedReadAt|\/api\/favorites\/read/);
+  assert.doesNotMatch(postCard, /data-favorite-read|favoriteReadEmphasis/);
+  assert.doesNotMatch(globals, /data-favorite-read="true"|favorite-read-label|favorite-mark-read/);
   assert.doesNotMatch(globals, /inset 4px 0 0/);
   assert.doesNotMatch(globals, /linear-gradient\(\s*90deg/);
 });
