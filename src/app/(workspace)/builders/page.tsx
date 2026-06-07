@@ -191,6 +191,7 @@ async function DigestSourcesSection({
 function DigestSourcesFallback() {
   return (
     <section className="digest-source-management" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading AI Digest settings</span>
       <div className="source-sync-skeleton-panel" />
       <div className="source-sync-skeleton-panel" />
     </section>
@@ -779,6 +780,7 @@ async function FetchSourcesSection({
 function FetchSourcesFallback() {
   return (
     <section className="sources-section-stack" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading Sources</span>
       <section className="your-library-panel fb-panel">
         <div className="source-sync-skeleton-line" />
         <div className="source-sync-skeleton-panel" />
