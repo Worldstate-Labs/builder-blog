@@ -19,6 +19,7 @@ export function UserMenu({
   session?: Session | null;
 }) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
+  const summaryRef = useRef<HTMLElement>(null);
   const pathname = usePathname();
   const theme = useTheme();
   const themeHydrated = useHydrated();
@@ -27,9 +28,12 @@ export function UserMenu({
   const email = user?.email || "";
   const initial = name.trim().charAt(0).toUpperCase() || "U";
 
-  const closeMenu = useCallback(() => {
+  const closeMenu = useCallback((options?: { restoreFocus?: boolean }) => {
     if (detailsRef.current) {
       detailsRef.current.open = false;
+    }
+    if (options?.restoreFocus) {
+      summaryRef.current?.focus();
     }
   }, []);
 
@@ -42,11 +46,33 @@ export function UserMenu({
     closeMenu();
   }, [closeMenu, pathname]);
 
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (!detailsRef.current?.open) return;
+      if (detailsRef.current.contains(event.target as Node)) return;
+      closeMenu();
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape" || !detailsRef.current?.open) return;
+      event.preventDefault();
+      closeMenu({ restoreFocus: true });
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeMenu]);
+
   return (
     <details ref={detailsRef} className={`user-menu ${compact ? "user-menu-compact" : ""}`}>
       <summary
         aria-label={email ? `Account menu for ${email}` : `Account menu for ${name}`}
         className="user-menu-trigger"
+        ref={summaryRef}
       >
         {user?.image ? (
           <Image
@@ -84,7 +110,7 @@ export function UserMenu({
             Admin
           </span>
         ) : null}
-        <Link className="user-menu-item" href="/settings" onClick={closeMenu}>
+        <Link className="user-menu-item" href="/settings" onClick={() => closeMenu()}>
           <Settings className="user-menu-icon" />
           Settings
         </Link>
