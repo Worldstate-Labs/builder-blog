@@ -9665,6 +9665,12 @@ a.fb-hub-source-name:focus-visible {
   width: 100%;
 }
 
+.settings-dialog-error {
+  color: var(--danger);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
 .settings-dialog-warning {
   color: var(--danger);
   margin-top: 0.5rem;

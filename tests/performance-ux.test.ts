@@ -3395,6 +3395,13 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(tokenPanel, /Creating\.\.\./);
   assert.match(tokenPanel, /aria-labelledby="access-key-create-title"/);
   assert.match(tokenPanel, /id="access-key-create-title"/);
+  assert.match(tokenPanel, /const \[createError, setCreateError\] = useState\(""\)/);
+  assert.match(tokenPanel, /setCreateError\("Name this access key first\."\)/);
+  assert.match(tokenPanel, /aria-describedby=\{createError \? "access-key-create-error" : undefined\}/);
+  assert.match(tokenPanel, /aria-invalid=\{createError \? "true" : undefined\}/);
+  assert.match(tokenPanel, /className="settings-dialog-error"[\s\S]*id="access-key-create-error"[\s\S]*role="alert"/);
+  assert.match(tokenPanel, /setCreateError\(error instanceof Error \? error\.message : "Could not create access\."\)/);
+  assert.doesNotMatch(tokenPanel, /setStatus\(error instanceof Error \? error\.message : "Could not create access\."\)/);
   assert.match(tokenPanel, /aria-labelledby="access-key-revoke-title"/);
   assert.match(tokenPanel, /id="access-key-revoke-title"/);
   assert.match(tokenPanel, /fb-dialog/);
@@ -3469,6 +3476,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.access-keys-panel/);
   assert.match(globals, /\.access-keys-status-message\s*{[\s\S]*display:\s*block/);
   assert.match(globals, /\.access-keys-status-message\.is-error\s*{[\s\S]*color:\s*var\(--danger\)/);
+  assert.match(globals, /\.settings-dialog-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.doesNotMatch(globals, /\.access-keys-status\.is-error/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*16px/);

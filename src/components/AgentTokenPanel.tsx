@@ -123,6 +123,7 @@ export function AgentTokenPanel({
 
   // Create dialog state
   const [createOpen, setCreateOpen] = useState(false);
+  const [createError, setCreateError] = useState("");
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const createInputRef = useRef<HTMLInputElement>(null);
 
@@ -181,6 +182,7 @@ export function AgentTokenPanel({
 
   function openCreateDialog() {
     setStatus("");
+    setCreateError("");
     setCreateOpen(true);
     createDialogRef.current?.showModal();
     // Focus the input after the dialog has rendered.
@@ -191,15 +193,18 @@ export function AgentTokenPanel({
     createDialogRef.current?.close();
     setCreateOpen(false);
     setTokenName("");
+    setCreateError("");
   }
 
   function submitCreate() {
     const name = tokenName.trim();
     if (!name) {
-      setStatus("Name this access key first.");
+      setCreateError("Name this access key first.");
+      createInputRef.current?.focus();
       return;
     }
     setStatus("");
+    setCreateError("");
     startTransition(async () => {
       try {
         const response = await fetch("/api/settings/tokens", {
@@ -218,7 +223,8 @@ export function AgentTokenPanel({
         // copy-prompt picker on those pages renders a stale list.
         router.refresh();
       } catch (error) {
-        setStatus(error instanceof Error ? error.message : "Could not create access.");
+        setCreateError(error instanceof Error ? error.message : "Could not create access.");
+        createInputRef.current?.focus();
       }
     });
   }
@@ -318,6 +324,7 @@ export function AgentTokenPanel({
         onClose={() => {
           setCreateOpen(false);
           setTokenName("");
+          setCreateError("");
         }}
       >
         {createOpen ? (
@@ -330,11 +337,16 @@ export function AgentTokenPanel({
               (e.g. <em>My Mac · Claude Code</em>).
             </p>
             <input
+              aria-describedby={createError ? "access-key-create-error" : undefined}
+              aria-invalid={createError ? "true" : undefined}
               autoComplete="off"
               className="settings-dialog-input fb-input"
               disabled={isPending}
               maxLength={80}
-              onChange={(e) => setTokenName(e.target.value)}
+              onChange={(e) => {
+                setTokenName(e.target.value);
+                setCreateError("");
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -346,6 +358,15 @@ export function AgentTokenPanel({
               type="text"
               value={tokenName}
             />
+            {createError ? (
+              <span
+                className="settings-dialog-error"
+                id="access-key-create-error"
+                role="alert"
+              >
+                {createError}
+              </span>
+            ) : null}
             <div className="settings-dialog-actions">
               <button
                 className="fb-btn light compact"
