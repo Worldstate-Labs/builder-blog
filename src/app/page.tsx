@@ -102,7 +102,7 @@ export default async function Home() {
               {
                 title: "Your sources stay connected.",
                 detail:
-                  "Start from shared libraries, then add sources that matter to your own workflow.",
+                  "Start from shared source libraries, then add sources that matter to your own workflow.",
               },
               {
                 title: "Search after the read.",
@@ -140,7 +140,7 @@ export default async function Home() {
               i: "01",
               icon: UsersRound,
               title: "Choose sources",
-              copy: "Start from shared libraries, then add blogs, channels, feeds, GitHub Trending, Product Hunt, and sources your Local Agent can fetch.",
+              copy: "Start from shared source libraries, then add blogs, channels, feeds, GitHub Trending, Product Hunt, and sources your Local Agent can fetch.",
             },
             {
               i: "02",

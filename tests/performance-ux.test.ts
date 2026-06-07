@@ -288,6 +288,8 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /search sources, posts, saved posts, and AI Digests later/);
   assert.match(landingPage, /Workspace search/);
   assert.match(landingPage, /Sources, posts, saved posts, and AI Digests share one search surface\./);
+  assert.match(landingPage, /Start from shared source libraries/);
+  assert.doesNotMatch(landingPage, /Start from shared libraries/);
   assert.doesNotMatch(landingPage, /AI digests|AI digest|summarized items|original items|Search AI Digests/);
   assert.doesNotMatch(landingPage, /Library search/);
   assert.doesNotMatch(landingPage, /fb-public-metric/);
