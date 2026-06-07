@@ -172,11 +172,11 @@ export function RecommendationFeed({
         {loadingDirection ? (
           <span className="status-chip">
             <Loader2 className="feed-loading-icon" />
-            Loading posts
+            Loading Following posts
           </span>
         ) : loadErrorDirection ? (
           <span className="feed-load-error" role="status">
-            Could not load posts.
+            Could not load Following posts.
             <button
               className="feed-inline-retry"
               onClick={() => void requestSnapshot(loadErrorDirection)}
@@ -186,7 +186,7 @@ export function RecommendationFeed({
             </button>
           </span>
         ) : exhausted ? (
-          <span className="feed-end-note">No new unread posts left.</span>
+          <span className="feed-end-note">No unread Following posts left.</span>
         ) : null}
       </div>
     </section>

@@ -1265,11 +1265,11 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(recommendationFeed, /throw new Error\(`HTTP \$\{response\.status\}`\)/);
   assert.match(recommendationFeed, /setLoadErrorDirection\(direction\)/);
   assert.match(recommendationFeed, /className="feed-load-error" role="status"/);
-  assert.match(recommendationFeed, /Could not load posts\./);
+  assert.match(recommendationFeed, /Could not load Following posts\./);
   assert.match(recommendationFeed, /onClick=\{\(\) => void requestSnapshot\(loadErrorDirection\)\}/);
   assert.match(recommendationFeed, /className="feed-end-note"/);
-  assert.match(recommendationFeed, /No new unread posts left/);
-  assert.doesNotMatch(recommendationFeed, /No new unread recommendations left/);
+  assert.match(recommendationFeed, /No unread Following posts left/);
+  assert.doesNotMatch(recommendationFeed, /Could not load posts\.|No new unread posts left|No new unread recommendations left/);
   assert.match(recommendationFeed, /useHydrated/);
   assert.match(recommendationFeed, /formatDate\(snapshot\.createdAt, hydrated\)/);
   assert.match(recommendationFeed, /month:\s*"short"/);

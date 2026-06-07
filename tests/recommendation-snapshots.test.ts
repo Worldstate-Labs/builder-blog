@@ -324,8 +324,8 @@ test("recommendation snapshots request six posts at a time", () => {
   assert.doesNotMatch(source("src/app/api/recommendations/route.ts"), /scope: recommendationScope/);
   const feed = source("src/components/RecommendationFeed.tsx");
   assert.match(feed, /limit=6/);
-  assert.match(feed, /Loading posts/);
-  assert.doesNotMatch(feed, />\s*Loading\s*</);
+  assert.match(feed, /Loading Following posts/);
+  assert.doesNotMatch(feed, />\s*Loading\s*<|Loading posts/);
 });
 
 test("following recommendation feed uses subscribed builders only", () => {
