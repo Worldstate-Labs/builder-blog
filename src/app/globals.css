@@ -4531,6 +4531,120 @@ svg.lucide {
   padding: 0 0.75rem;
 }
 
+.digest-pipeline-selector {
+  min-width: 0;
+  position: relative;
+}
+
+.digest-pipeline-trigger,
+.digest-pipeline-static {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  min-height: 2.5rem;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.digest-pipeline-static {
+  display: grid;
+  gap: 0.125rem;
+}
+
+.digest-pipeline-trigger {
+  align-items: center;
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  list-style: none;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.digest-pipeline-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.digest-pipeline-trigger:hover {
+  border-color: var(--accent-soft);
+}
+
+.digest-pipeline-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.digest-pipeline-copy,
+.digest-pipeline-option {
+  display: grid;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.digest-pipeline-title,
+.digest-pipeline-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.digest-pipeline-title {
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+
+.digest-pipeline-meta {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.digest-pipeline-icon {
+  color: var(--muted);
+  height: 0.875rem;
+  width: 0.875rem;
+}
+
+.digest-pipeline-menu {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow-pop);
+  display: grid;
+  gap: 0.25rem;
+  left: 0;
+  margin-top: 0.5rem;
+  padding: 0.25rem;
+  position: absolute;
+  right: 0;
+  z-index: 20;
+}
+
+.digest-pipeline-option {
+  border-radius: 6px;
+  color: var(--ink);
+  padding: 0.5rem 0.75rem;
+  text-decoration: none;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.digest-pipeline-option:hover {
+  background: color-mix(in oklch, var(--accent) 8%, transparent);
+}
+
+.digest-pipeline-option[data-active="true"] {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.digest-pipeline-option[data-active="true"] .digest-pipeline-title {
+  font-weight: 850;
+}
+
 .digest-source-selector {
   min-width: 0;
 }

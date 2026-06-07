@@ -11,6 +11,7 @@ function source(path: string) {
 
 test("home digest keeps pipeline and archive selection in a dedicated control bar", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
+  const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
   const globals = source("src/app/globals.css");
 
   assert.match(dashboardPage, /function DigestControlBar/);
@@ -27,7 +28,16 @@ test("home digest keeps pipeline and archive selection in a dedicated control ba
   assert.doesNotMatch(dashboardPage, /Your digest/);
   assert.match(dashboardPage, /No saved AI Digests/);
   assert.match(globals, /\.digest-control-bar\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(digestPipelineSelector, /className="digest-pipeline-selector"/);
+  assert.match(digestPipelineSelector, /className="digest-pipeline-trigger"/);
+  assert.match(digestPipelineSelector, /className="digest-pipeline-static"/);
+  assert.match(digestPipelineSelector, /className="digest-pipeline-menu"/);
+  assert.match(digestPipelineSelector, /className="digest-pipeline-option"/);
+  assert.match(digestPipelineSelector, /data-active=\{active \? "true" : undefined\}/);
+  assert.match(globals, /\.digest-pipeline-trigger\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /\.digest-pipeline-option\[data-active="true"\]/);
   assert.doesNotMatch(dashboardPage, /rounded-\[8px\]|md:grid-cols-2|\[&_\.digest-picker/);
+  assert.doesNotMatch(digestPipelineSelector, /rounded-\[|grid-cols-\[|text-\[var|font-\[|shadow-\[|min-h-10|px-3|py-2|h-3\.5|w-3\.5/);
   assert.match(dashboardPage, /selectedDigestId=\{selectedDigest\?\.id \?\? null\}/);
   assert.doesNotMatch(dashboardPage, /headerAction=\{/);
 });

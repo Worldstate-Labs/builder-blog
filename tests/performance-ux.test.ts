@@ -514,6 +514,12 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /<DigestPipelineSelector/);
   assert.match(dashboardPage, /<DigestArchivePicker/);
   assert.match(digestPipelineSelector, /ChevronDown/);
+  assert.match(digestPipelineSelector, /className="digest-pipeline-trigger"/);
+  assert.match(digestPipelineSelector, /className="digest-pipeline-option"/);
+  assert.match(digestPipelineSelector, /data-active=\{active \? "true" : undefined\}/);
+  assert.match(globals, /\.digest-pipeline-trigger:focus-visible\s*{[\s\S]*outline:\s*2px solid var\(--accent\)/);
+  assert.match(globals, /\.digest-pipeline-menu\s*{[\s\S]*box-shadow:\s*var\(--shadow-pop\)/);
+  assert.doesNotMatch(digestPipelineSelector, /rounded-\[|grid-cols-\[|text-\[var|font-\[|shadow-\[|min-h-10|px-3|py-2|h-3\.5|w-3\.5/);
   assert.doesNotMatch(digestPipelineSelector, />\s*v\s*<\/span>/);
   assert.match(digestArchivePicker, /ChevronDown/);
   assert.match(digestArchivePicker, /className="digest-picker-icon"/);
