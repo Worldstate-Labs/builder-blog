@@ -2063,6 +2063,14 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /className="post-raw-content-action"/);
   assert.match(recommendationFeed, /detailUrl:\s*postDetailHref/);
   assert.match(recommendationFeed, /"Following"/);
+  assert.match(recommendationFeed, /aria-label=\{label\}/);
+  assert.match(recommendationFeed, /const label = isFavorite \? "Remove saved post" : "Save post"/);
+  assert.match(recommendationFeed, /<Star aria-hidden="true"/);
+  assert.match(digestContent, /aria-label=\{label\}/);
+  assert.match(digestContent, /const label = isFavorite \? "Remove saved post" : "Save post"/);
+  assert.match(digestContent, /<Star aria-hidden="true"/);
+  assert.doesNotMatch(recommendationFeed, /title=\{isFavorite \? "Saved post" : "Save post"\}/);
+  assert.doesNotMatch(digestContent, /title=\{isFavorite \? "Saved post" : "Save post"\}/);
   assert.doesNotMatch(recommendationFeed, /isFavoritesTab \? "Favorites" : "Following"/);
   assert.doesNotMatch(postCard, /whitespace-pre-wrap text-sm leading-6|mt-3 whitespace-pre-wrap rounded-lg|text-link mt-2/);
   assert.match(globals, /\.post-source-original\s*{[\s\S]*min-height:\s*2rem/);

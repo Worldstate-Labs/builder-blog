@@ -230,15 +230,17 @@ function FavoriteToggleButton({
   isFavorite: boolean;
   toggleFavorite: () => Promise<void>;
 }) {
+  const label = isFavorite ? "Remove saved post" : "Save post";
   return (
     <button
+      aria-label={label}
       aria-pressed={isFavorite}
       className={`post-action-btn post-favorite-btn${isFavorite ? " post-action-btn--active" : ""}`}
       onClick={() => void toggleFavorite()}
-      title={isFavorite ? "Saved post" : "Save post"}
+      title={label}
       type="button"
     >
-      <Star className="h-4 w-4" />
+      <Star aria-hidden="true" className="h-4 w-4" />
     </button>
   );
 }
