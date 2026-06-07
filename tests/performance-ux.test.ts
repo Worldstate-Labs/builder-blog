@@ -485,10 +485,14 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /@\/components\/settings\/SettingsFields/);
   assert.match(adminSourceTypeManager, /FETCH_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /SUMMARY_PROMPT_PLACEHOLDER/);
-  assert.match(adminSourceTypeManager, /How each item from this source is written as a per-post summary/);
+  assert.match(adminSourceTypeManager, /How each post from this source is written as a per-post summary/);
+  assert.match(adminSourceTypeManager, /Posts that fail are dropped from the pipeline/);
+  assert.match(adminSourceTypeManager, /Drop posts whose body has fewer characters than this/);
+  assert.match(adminSourceTypeManager, /Drop posts with too little real text/);
   assert.match(adminSourceTypeManager, /Could not save source type settings\./);
   assert.doesNotMatch(adminSourceTypeManager, /Save failed/);
   assert.doesNotMatch(adminSourceTypeManager, /turned into a brief/);
+  assert.doesNotMatch(adminSourceTypeManager, /How each item from this source|Items that fail|Drop items/);
   assert.match(adminSourceTypeManager, /placeholder="Example: 200"/);
   assert.match(adminSourceTypeManager, /placeholder="Example: 0\.35"/);
   assert.match(adminSourceTypeManager, /className="source-type-config-summary"/);

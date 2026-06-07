@@ -267,7 +267,7 @@ function SourceTypeCard({
         <Section
           step="02"
           title="Summarization"
-          description="How each item from this source is written as a per-post summary. Output language comes from the one-time or cron run prompt."
+          description="How each post from this source is written as a per-post summary. Output language comes from the one-time or cron run prompt."
         >
           <MarkdownEditor
             ariaLabel={`${config.label} summary prompt`}
@@ -282,14 +282,14 @@ function SourceTypeCard({
           <Section
             step="03"
             title="Quality gates"
-            description="Length, diversity, and timestamp-density checks applied after extraction. Items that fail are dropped from the pipeline."
+            description="Length, diversity, and timestamp-density checks applied after extraction. Posts that fail are dropped from the pipeline."
           >
             <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
               <FieldNumber
                 label="Min chars"
                 min={0}
                 placeholder="Example: 200"
-                description="Drop items whose body has fewer characters than this."
+                description="Drop posts whose body has fewer characters than this."
                 value={String(draft.contentQuality.minChars)}
                 onChange={(v) => updateQuality("minChars", Math.max(0, Number(v) || 0))}
               />
@@ -297,7 +297,7 @@ function SourceTypeCard({
                 label="Min content units"
                 min={0}
                 placeholder="Example: 35"
-                description="Drop items with too little real text. Latin words count as units; CJK text counts by character."
+                description="Drop posts with too little real text. Latin words count as units; CJK text counts by character."
                 value={String(draft.contentQuality.minContentUnits)}
                 onChange={(v) =>
                   updateQuality("minContentUnits", Math.max(0, Number(v) || 0))
