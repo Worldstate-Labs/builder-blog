@@ -63,7 +63,7 @@ export default async function LibraryHubPage({
       <h1 className="sr-only">Hub</h1>
       <div className="workspace-content-stack">
         <WorkspaceTopTabs
-          ariaLabel="Hub sections"
+          ariaLabel="Hub tabs"
           items={LIBRARY_HUB_TABS}
           selectedValue={selectedTab}
         />

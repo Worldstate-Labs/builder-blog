@@ -15,7 +15,8 @@ test("hub page exposes Source libraries and AI Digest archives as subtabs", () =
 
   assert.match(hubPage, /type LibraryHubTab = "source-library" \| "ai-digests"/);
   assert.match(hubPage, /WorkspaceTopTabs/);
-  assert.match(hubPage, /ariaLabel="Hub sections"/);
+  assert.match(hubPage, /ariaLabel="Hub tabs"/);
+  assert.doesNotMatch(hubPage, /ariaLabel="Hub sections"/);
   assert.match(topTabs, /role="tablist"/);
   assert.match(hubPage, /label:\s*"Source libraries"/);
   assert.match(hubPage, /label:\s*"AI Digest archives"/);

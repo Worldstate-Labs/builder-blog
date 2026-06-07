@@ -897,8 +897,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /className="fb-panel dashed"/);
   assert.match(dashboardPage, /DashboardHomeTabs/);
   assert.match(dashboardTabs, /WorkspaceTopTabs/);
-  assert.match(dashboardTabs, /ariaLabel="Home sections"/);
-  assert.doesNotMatch(dashboardTabs, /ariaLabel="Home feed"/);
+  assert.match(dashboardTabs, /ariaLabel="Home feed tabs"/);
+  assert.doesNotMatch(dashboardTabs, /ariaLabel="Home sections"|ariaLabel="Home feed"/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /role="tablist"/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /onKeyDown=\{handleTabKeyDown\}/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /"ArrowLeft", "ArrowRight", "Home", "End"/);
@@ -2294,6 +2294,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(libraryHubPage, /@\/components\/PageHeader/);
   assert.doesNotMatch(libraryHubPage, /<PageHeader/);
   assert.match(libraryHubPage, /<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/);
+  assert.match(libraryHubPage, /ariaLabel="Hub tabs"/);
+  assert.doesNotMatch(libraryHubPage, /ariaLabel="Hub sections"/);
   assert.match(libraryHubPage, /panelId:\s*"hub-panel-source-library"/);
   assert.match(libraryHubPage, /tabId:\s*"hub-tab-source-library"/);
   assert.match(libraryHubPage, /panelId:\s*"hub-panel-ai-digests"/);
