@@ -3367,6 +3367,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /className="settings-rules-body"/);
   assert.match(settingsPage, /className="settings-config-form settings-config-form--common"/);
   assert.match(settingsPage, /className="settings-rules settings-rules-skeleton"/);
+  assert.match(settingsPage, /<span className="sr-only">Loading Settings rules<\/span>/);
   assert.match(settingsPage, /className="settings-rules-skeleton-list"/);
   assert.doesNotMatch(settingsPage, /settings-skeleton-line--eyebrow/);
   assert.doesNotMatch(settingsPage, /className="settings-skeleton-line settings-skeleton-line--title"/);
@@ -3375,6 +3376,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /className="settings-skeleton-line settings-skeleton-line--access-desc"/);
   assert.match(settingsPage, /className="settings-skeleton-pill"/);
   assert.match(settingsPage, /className="settings-skeleton-row"/);
+  assert.match(settingsPage, /<span className="sr-only">Loading Local Agent access<\/span>/);
   assert.doesNotMatch(settingsPage, /animate-pulse rounded bg-\[var\(--paper-strong\)\]|className="h-/);
   assert.doesNotMatch(settingsPage, /settings-rules grid gap-4/);
   assert.doesNotMatch(settingsPage, /fb-section-heading mt-1/);

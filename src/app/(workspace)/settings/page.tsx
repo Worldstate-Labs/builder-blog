@@ -151,6 +151,7 @@ async function SourceTypeConfigSection({
 function SourceTypeConfigSkeleton() {
   return (
     <section className="settings-rules settings-rules-skeleton" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Loading Settings rules</span>
       <div className="settings-rules-skeleton-list">
         <div className="settings-skeleton-card" />
         <div className="settings-skeleton-card" />
@@ -182,6 +183,7 @@ async function AgentTokenSlot({ userId }: { userId: string }) {
 function AgentTokenPanelSkeleton() {
   return (
     <section className="access-keys-panel" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Loading Local Agent access</span>
       <div className="access-keys-head">
         <div className="access-keys-skeleton-copy">
           <div className="settings-skeleton-line settings-skeleton-line--access-title" />
