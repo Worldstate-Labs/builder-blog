@@ -2294,6 +2294,11 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-import-section"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /<h2 className="fb-section-heading">Source libraries<\/h2>/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries built and shared by other users\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /sourceLibraryListCopy\(activeFilter\)/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /function sourceLibraryListCopy\(filter: FilterKey\)/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Curated source libraries maintained by FollowBrief\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries you publish or manage\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries you imported into Sources\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Available source libraries/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /All source libraries/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /shortLabel:\s*"All libraries"/);
@@ -2309,7 +2314,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /No source libraries yet/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /No matching source libraries/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries built and shared by other users will appear here\./);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Try another source library filter\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /No shared source libraries match this filter\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Imported source libraries will appear here\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Could not import source library\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Could not remove source library import\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Import source library \$\{library\.name\}/);

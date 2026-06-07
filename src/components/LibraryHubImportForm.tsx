@@ -133,12 +133,13 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
     (filter) => filter.key === "all" || counts[filter.key] > 0,
   );
   const showFilters = libraries.length > 3 && visibleFilters.length > 1;
+  const listCopy = sourceLibraryListCopy(activeFilter);
   const emptyTitle =
     activeFilter === "all" ? "No source libraries yet" : "No matching source libraries";
   const emptyBody =
     activeFilter === "all"
       ? "Source libraries built and shared by other users will appear here."
-      : "Try another source library filter.";
+      : listCopy.emptyBody;
   const removeTarget = removeTargetId
     ? libraries.find((library) => library.id === removeTargetId) ?? null
     : null;
@@ -286,7 +287,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
             <div>
               <h2 className="fb-section-heading">Source libraries</h2>
               <p className="hub-section-copy">
-                Source libraries built and shared by other users.
+                {listCopy.description}
               </p>
             </div>
             <CountRange>
@@ -561,6 +562,37 @@ function kindBadge(library: HubLibrary) {
   if (library.isCommunity) return "community";
   if (library.owned) return "private";
   return "shared";
+}
+
+function sourceLibraryListCopy(filter: FilterKey) {
+  switch (filter) {
+    case "community":
+      return {
+        description: "Curated source libraries maintained by FollowBrief.",
+        emptyBody: "No community source libraries match this filter.",
+      };
+    case "my":
+      return {
+        description: "Source libraries you publish or manage.",
+        emptyBody: "Your source libraries will appear here once you share them.",
+      };
+    case "imported":
+      return {
+        description: "Source libraries you imported into Sources.",
+        emptyBody: "Imported source libraries will appear here.",
+      };
+    case "shared":
+      return {
+        description: "Source libraries built and shared by other users.",
+        emptyBody: "No shared source libraries match this filter.",
+      };
+    case "all":
+    default:
+      return {
+        description: "Source libraries built and shared by other users.",
+        emptyBody: "Try another source library filter.",
+      };
+  }
 }
 
 function libraryCardDescription(library: HubLibrary) {
