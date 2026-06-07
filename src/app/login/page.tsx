@@ -43,7 +43,7 @@ export default async function LoginPage({
           <div className="fb-login-proof-rail" aria-label="Workspace capabilities">
             <LoginProof icon={UsersRound} label="Follow" />
             <LoginProof icon={Sparkles} label="Build AI Digest" />
-            <LoginProof icon={Search} label="Search" />
+            <LoginProof icon={Search} label="Search workspace" />
           </div>
         </section>
 
