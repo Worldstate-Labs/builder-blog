@@ -490,7 +490,7 @@ export function SkillPromptActions({
     <div className={compactOnly ? "skill-prompt-compact" : "fb-skill"}>
       {!compactOnly ? (
         <div className="fb-skill-text">
-          <span className="fb-section-label mr-2">{config.title}</span>
+          <span className="fb-section-label skill-prompt-label">{config.title}</span>
           {context === "digest"
             ? "Copy a prompt for your Local Agent to build your AI Digest."
             : "Copy a prompt for your Local Agent to fetch, summarize, and sync every source."}

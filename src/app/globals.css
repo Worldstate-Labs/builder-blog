@@ -6601,6 +6601,10 @@ a.builder-library-name:hover {
   padding: 0.0625rem 0.375rem;
 }
 
+.skill-prompt-label {
+  margin-right: 0.5rem;
+}
+
 .skill-prompt-compact {
   align-items: center;
   display: flex;

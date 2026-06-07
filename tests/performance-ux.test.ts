@@ -432,6 +432,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(globals, /\.item-summary-action-icon\s*{[\s\S]*height:\s*0\.875rem/);
   assert.match(skillPromptActions, /!\s*open \? null/);
   assert.match(skillPromptActions, /className=\{compactOnly \? "skill-prompt-compact" : "fb-skill"\}/);
+  assert.match(skillPromptActions, /className="fb-section-label skill-prompt-label"/);
   assert.match(skillPromptActions, /className="skill-prompt-status"/);
   assert.match(skillPromptActions, /className="skill-prompt-status-text"/);
   assert.match(skillPromptActions, /className="skill-prompt-status-text is-error"/);
@@ -451,8 +452,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(skillPromptActions, /Last used|Never used|describeMachine\(token\)|formatRelative\(token\.lastUsedAt\)|token-picker-row-name">\{token\.name\}/);
   assert.match(skillPromptActions, /No access keys yet/);
   assert.doesNotMatch(skillPromptActions, /No connected helpers|Connected helpers/);
-  assert.doesNotMatch(skillPromptActions, /flex flex-wrap items-center justify-end gap-2|className="ml-2"|text-\[11px\] text-\[var\(--danger\)\]|text-\[11px\] text-\[var\(--muted-strong\)\]/);
+  assert.doesNotMatch(skillPromptActions, /flex flex-wrap items-center justify-end gap-2|className="ml-2"|mr-2|text-\[11px\] text-\[var\(--danger\)\]|text-\[11px\] text-\[var\(--muted-strong\)\]/);
   assert.doesNotMatch(skillPromptActions, /className="grid"/);
+  assert.match(globals, /\.skill-prompt-label\s*{[\s\S]*margin-right:\s*0\.5rem/);
   assert.match(globals, /\.skill-prompt-compact\s*{[\s\S]*justify-content:\s*flex-end/);
   assert.match(globals, /\.skill-prompt-status-text\.is-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.token-picker-form\s*{[\s\S]*min-width:\s*0/);
