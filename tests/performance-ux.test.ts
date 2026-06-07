@@ -1167,7 +1167,10 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.match(digestPipelineVisibilityToggle, /fetch\("\/api\/digest-pipelines\/share"/);
   assert.match(digestPipelineVisibilityToggle, /method: nextShared \? "POST" : "DELETE"/);
   assert.match(digestPipelineVisibilityToggle, /aria-pressed=\{shared\}/);
-  assert.match(dashboardPage, /Imported digest view/);
+  assert.match(dashboardPage, /displayDigestPipelineTitle\(ownPipelineShare\?\.title \?\? "AI Digest"\)/);
+  assert.match(dashboardPage, /ownerLabel: "Your AI Digest"/);
+  assert.match(dashboardPage, /Imported AI Digest view/);
+  assert.doesNotMatch(dashboardPage, /ownPipelineShare\?\.title \?\? "Digest"|Imported digest view|Own digest/);
   assert.match(buildersPage, /@\/components\/OwnDigestPipelineUpdatesCard/);
   assert.match(buildersPage, /@\/components\/DigestPipelineImportForm/);
   const digestUpdatesCard = source("src/components/OwnDigestPipelineUpdatesCard.tsx");

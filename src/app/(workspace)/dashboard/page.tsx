@@ -146,13 +146,13 @@ async function AiDigestFeedSlot({
       .filter((row) => row._count._all > 0)
       .map((row) => row.userId),
   );
-  const ownPipelineTitle = displayDigestPipelineTitle(ownPipelineShare?.title ?? "Digest");
+  const ownPipelineTitle = displayDigestPipelineTitle(ownPipelineShare?.title ?? "AI Digest");
   const digestPipelineOptions: DigestPipelineOption[] = [
     {
       hasContent: hasDigestContentByOwnerId.has(userId),
       id: "own",
       title: ownPipelineTitle,
-      ownerLabel: "Own digest",
+      ownerLabel: "Your AI Digest",
       ownerUserId: userId,
       isOwnPipeline: true,
     },
@@ -259,7 +259,7 @@ function AiDigestFeed({
           </section>
 
           {isOwnPipeline ? null : (
-            <p className="sr-only">Imported digest view: read-only results.</p>
+            <p className="sr-only">Imported AI Digest view: read-only results.</p>
           )}
         </div>
       </section>
