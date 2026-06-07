@@ -5,6 +5,7 @@ import { isAdminEmail } from "@/lib/admin";
 import {
   adminCommunityLibraryDescription,
   adminCommunityLibraryName,
+  personalSourceLibraryName,
   sharePersonalLibraryToHub,
   unsharePersonalLibraryFromHub,
 } from "@/lib/library-hub";
@@ -20,7 +21,7 @@ export async function PATCH(request: Request) {
   const isAdmin = isAdminEmail(session.user.email);
   const name =
     (isAdmin ? adminCommunityLibraryName : String(payload?.name ?? "").trim()) ||
-    `${session.user.name || session.user.email || "Personal"} library`;
+    personalSourceLibraryName(session.user);
 
   if (!isPublic) {
     await unsharePersonalLibraryFromHub(session.user.id);

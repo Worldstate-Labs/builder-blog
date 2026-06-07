@@ -2278,6 +2278,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(buildersPage, /className="sources-section-stack"/);
   assert.match(buildersPage, /className="your-library-panel fb-panel"/);
   assert.match(buildersPage, /Your source library/);
+  assert.match(buildersPage, /personalSourceLibraryName/);
   assert.match(buildersPage, /className="workspace-content-stack"/);
   assert.doesNotMatch(buildersPage, /sources-sync-section mt-5/);
   assert.doesNotMatch(buildersPage, /mt-6 grid gap-5/);
@@ -2560,7 +2561,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /beforeBody=\{fetchSyncSection\}/);
   assert.match(buildersPage, /actionsPlacement="start"/);
   assert.match(buildersPage, /title="Your source library"/);
-  assert.match(buildersPage, /\$\{data\.sessionUserName \|\| data\.sessionUserEmail \|\| "Personal"\} source library/);
+  assert.match(buildersPage, /name:\s*data\.sessionUserName/);
+  assert.match(buildersPage, /email:\s*data\.sessionUserEmail/);
   assert.match(postCard, /useHydrated/);
   assert.match(postCard, /formatDate\(post\.publishedAt, hydrated\)/);
   assert.match(postCard, /timeZone:\s*"UTC"/);
@@ -3206,6 +3208,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /Number\(b\.owned\) - Number\(a\.owned\)/);
   assert.match(hubPage, /adminCommunityLibraryName/);
   assert.match(source("src/lib/library-hub.ts"), /adminCommunityLibraryName = "Community source library"/);
+  assert.match(source("src/lib/library-hub.ts"), /function personalSourceLibraryName/);
+  assert.match(source("src/lib/library-hub.ts"), /\$\{owner\.name \|\| owner\.email \|\| "Personal"\} source library/);
+  assert.match(source("src/lib/library-hub.ts"), /name:\s*sharedLibrary\.name \|\| personalSourceLibraryName\(params\)/);
+  assert.doesNotMatch(source("src/lib/library-hub.ts"), /\$\{params\.name \|\| params\.email \|\| "Personal"\} library/);
   assert.match(source("src/lib/builder-pool.ts"), /adminCommunityLibraryName = "Community source library"/);
   assert.match(hubPage, /if \(isFeatured\) return "Community source library"/);
   assert.doesNotMatch(source("src/lib/library-hub.ts"), /adminCommunityLibraryName = "Community Library"/);
@@ -3213,6 +3219,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(hubPage, /if \(isFeatured\) return "Community Library"/);
   assert.match(hubPage, /library\.isFeatured/);
   assert.match(hubPage, /isAdminEmail\(library\.owner\?\.email\)/);
+  assert.match(visibilityRoute, /personalSourceLibraryName\(session\.user\)/);
+  assert.doesNotMatch(visibilityRoute, /\$\{session\.user\.name \|\| session\.user\.email \|\| "Personal"\} library/);
   assert.match(hubPage, /ownerLabel\(library\.owner, isCommunityLibrary\)/);
   assert.match(hubPage, /displayDigestPipelineTitleForOwner/);
   assert.match(hubPage, /digestPipelineOwnerLabel\(owner, \{ owned \}\)/);

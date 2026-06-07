@@ -14,6 +14,13 @@ export const adminCommunityDigestTitle = "Community AI Digest";
 export const adminCommunityDigestDescription =
   "Community AI Digest curated by FollowBrief.";
 
+export function personalSourceLibraryName(owner: {
+  name?: string | null;
+  email?: string | null;
+}) {
+  return `${owner.name || owner.email || "Personal"} source library`;
+}
+
 export function digestPipelineTitle(owner: {
   name?: string | null;
   email?: string | null;
@@ -144,7 +151,7 @@ export async function syncPersonalLibraryHubForUser(params: {
 
   const result = await sharePersonalLibraryToHub({
     userId: params.userId,
-    name: sharedLibrary.name || `${params.name || params.email || "Personal"} library`,
+    name: sharedLibrary.name || personalSourceLibraryName(params),
     description: sharedLibrary.description,
     email: params.email,
   });

@@ -42,6 +42,7 @@ import {
   ensureAdminCommunityLibrary,
   ensureAdminCommunityDigestPipeline,
   ensureDefaultCommunityDigestImport,
+  personalSourceLibraryName,
   recordDigestPipelineHubViews,
   sharePersonalLibraryToHub,
 } from "@/lib/library-hub";
@@ -647,7 +648,10 @@ async function FetchSourcesSection({
   const userLibraryName =
     data.isAdmin
       ? adminCommunityLibraryName
-      : `${data.sessionUserName || data.sessionUserEmail || "Personal"} source library`;
+      : personalSourceLibraryName({
+          name: data.sessionUserName,
+          email: data.sessionUserEmail,
+        });
 
   const fetchSyncSection = (
     <section className="sources-sync-section">
