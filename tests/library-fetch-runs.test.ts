@@ -254,8 +254,18 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /className="sync-panel-run-card-title"/);
   assert.match(panel, /className="sync-panel-run-card-funnel"/);
   assert.match(panel, /className="sync-panel-run-card-details"/);
+  assert.match(panel, /className="sync-panel-run-card-detail-heading"/);
+  assert.match(panel, /className="sync-panel-run-card-source-list"/);
+  assert.match(panel, /className="sync-panel-run-card-candidate-list"/);
+  assert.match(panel, /className="sync-panel-source-row"/);
+  assert.match(panel, /className="sync-panel-candidate-row"/);
+  assert.match(panel, /className="mono sync-panel-candidate-outcome"/);
+  assert.match(panel, /sync-panel-candidate-title/);
   assert.doesNotMatch(panel, /className="rounded-\[10px\] border bg-\[var\(--paper-strong\)\] px-3\.5 py-3"[\s\S]*Runtime job did not create an AI Digest build record/);
   assert.doesNotMatch(panel, /className="rounded-\[10px\] border bg-\[var\(--paper-strong\)\] px-3\.5 py-3"[\s\S]*Previous AI Digest/);
+  assert.doesNotMatch(panel, /className="flex items-baseline justify-between gap-2 text-\[12px\]"/);
+  assert.doesNotMatch(panel, /className="flex items-start gap-2 text-\[12\.5px\] leading-snug"/);
+  assert.doesNotMatch(panel, /className="mono mt-\[1px\] w-\[2\.6em\] shrink-0 text-\[10px\]/);
   assert.doesNotMatch(panel, /digest-updates-head[\s\S]{0,360}flex flex-wrap items-center gap-2/);
   assert.doesNotMatch(panel, /error \? \([\s\S]{0,120}mt-3 text-\[12px\] text-\[var\(--danger\)\]/);
   assert.doesNotMatch(panel, /slots\.slice\(-4\)/);

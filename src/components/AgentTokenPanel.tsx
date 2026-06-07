@@ -73,8 +73,8 @@ export function describeAccessDevice(token: AgentTokenListItem): string {
 
 function withPhoneDeviceName(os: string, ua: string | null): string {
   const lower = `${os} ${ua ?? ""}`.toLowerCase();
-  if (lower.includes("iphone") && !/\biphone\b/i.test(os)) return `${os} iPhone`;
   if (lower.includes("ipad") && !/\bipad\b/i.test(os)) return `${os} iPad`;
+  if ((lower.includes("iphone") || /\bios\b/i.test(os)) && !/\biphone\b/i.test(os)) return `${os} iPhone`;
   return os;
 }
 

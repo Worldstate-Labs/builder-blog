@@ -939,20 +939,20 @@ function RunCard({ run }: { run: DigestRunListItem }) {
           <div className="sync-panel-run-card-details-body">
             {contributing.length > 0 || silentCount > 0 ? (
               <section aria-label="Source coverage">
-                <div className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                <div className="sync-panel-run-card-detail-heading">
                   Sources
                 </div>
-                <ul className="grid gap-1">
+                <ul className="sync-panel-run-card-source-list">
                   {contributing.slice(0, VISIBLE_SOURCE_LIMIT).map((src) => (
                     <SourceRow key={src.entityId} src={src} synced={run.status === "synced"} />
                   ))}
                   {contributing.length > VISIBLE_SOURCE_LIMIT ? (
-                    <li className="mono text-[11px] text-[var(--muted)]">
+                    <li className="mono sync-panel-run-card-detail-note">
                       <CountMeta label="more sources with new posts" value={contributing.length - VISIBLE_SOURCE_LIMIT} />
                     </li>
                   ) : null}
                   {silentCount > 0 ? (
-                    <li className="mono text-[11px] text-[var(--muted)]">
+                    <li className="mono sync-panel-run-card-detail-note">
                       <CountMeta label="without new posts in this window" value={silentCount} />
                     </li>
                   ) : null}
@@ -961,10 +961,10 @@ function RunCard({ run }: { run: DigestRunListItem }) {
             ) : null}
             {run.candidates.length > 0 ? (
               <section aria-label="Found posts">
-                <div className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                <div className="sync-panel-run-card-detail-heading">
                   Found posts
                 </div>
-                <ul className="grid gap-1.5">
+                <ul className="sync-panel-run-card-candidate-list">
                   {run.candidates.map((item, index) => (
                     <CandidateRow
                       key={`${item.url ?? item.title ?? "item"}-${index}`}
@@ -1017,9 +1017,9 @@ function FunnelStat({
 
 function SourceRow({ src, synced }: { src: DigestRunSource; synced: boolean }) {
   return (
-    <li className="flex items-baseline justify-between gap-2 text-[12px]">
-      <span className="min-w-0 truncate text-[var(--ink)]">{src.name}</span>
-      <span className="mono shrink-0 text-[11px] text-[var(--muted-strong)]">
+    <li className="sync-panel-source-row">
+      <span className="sync-panel-source-row-name">{src.name}</span>
+      <span className="mono sync-panel-source-row-count">
         {formatCount(src.eligible)} found{synced ? ` · ${formatCount(src.included)} used` : ""}
       </span>
     </li>
@@ -1042,27 +1042,27 @@ function CandidateRow({ item, synced }: { item: DigestRunCandidate; synced: bool
       ? "Used in the AI Digest"
       : "Found but skipped";
   return (
-    <li className="flex items-start gap-2 text-[12.5px] leading-snug">
+    <li className="sync-panel-candidate-row">
       <span
-        className="mono mt-[1px] w-[2.6em] shrink-0 text-[10px] font-semibold uppercase tracking-wide"
+        className="mono sync-panel-candidate-outcome"
         style={{ color: outcomeColor }}
         title={outcomeTitle}
       >
         {outcome}
       </span>
-      <span className="mono mt-[1px] shrink-0 text-[10.5px] text-[var(--muted)]">
+      <span className="mono sync-panel-candidate-kind">
         {sourceTag(item.kind)}
       </span>
-      <span className="min-w-0 flex-1">
-        <span className={item.included ? "text-[var(--ink)]" : "text-[var(--muted-strong)]"}>
+      <span className="sync-panel-candidate-copy">
+        <span className={item.included ? "sync-panel-candidate-title" : "sync-panel-candidate-title is-muted"}>
           {item.title ?? item.url ?? "—"}
         </span>
-        {item.source ? <span className="text-[var(--muted)]"> · {item.source}</span> : null}
+        {item.source ? <span className="sync-panel-candidate-source"> · {item.source}</span> : null}
       </span>
       {item.url ? (
         <a
           aria-label="View the original on its source site"
-          className="shrink-0 text-[var(--accent)]"
+          className="sync-panel-candidate-link"
           href={item.url}
           rel="noreferrer"
           target="_blank"
