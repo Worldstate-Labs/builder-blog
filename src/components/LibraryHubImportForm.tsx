@@ -336,7 +336,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
                 onClick={confirmRemoveImported}
                 type="button"
               >
-                Remove
+                Remove source library
               </button>
             </div>
           </div>

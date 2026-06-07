@@ -2812,6 +2812,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /Remove imported source library\?/);
   assert.match(hubImportForm, /sources\s+from this library will no longer appear in your Sources page or\s+Following\./);
   assert.match(hubImportForm, /You can import it again from the Hub later/);
+  assert.match(hubImportForm, />\s*Remove source library\s*<\/button>/);
   assert.match(hubImportForm, /requestRemoveImported/);
   assert.match(hubImportForm, /confirmRemoveImported/);
   assert.match(hubImportForm, /onClick=\{\(\) => onRemove\(library\.id\)\}/);
@@ -2849,6 +2850,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(libraryImportRemoveButton, /Could not remove imported source library\./);
   assert.match(libraryImportRemoveButton, /sources from this\s+library will no longer appear in your Sources page or Following\./);
   assert.match(libraryImportRemoveButton, /You can import it again from the Hub later/);
+  assert.match(libraryImportRemoveButton, />\s*Remove source library\s*<\/button>/);
   assert.match(libraryImportRemoveButton, /function requestRemove/);
   assert.match(libraryImportRemoveButton, /onClick=\{requestRemove\}/);
   assert.match(libraryImportRemoveButton, /className="import-remove-control"/);
@@ -2921,6 +2923,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /Remove imported AI Digest\?/);
   assert.match(digestPipelineForm, /you will\s+no longer see this AI Digest on the Home page/);
   assert.match(digestPipelineForm, /You can import it again from the Hub later/);
+  assert.match(digestPipelineForm, />\s*Remove AI Digest\s*<\/button>/);
   assert.match(digestPipelineForm, /confirmRemoveImported/);
   assert.match(digestPipelineForm, /onClick=\{\(\) => onRemove\(pipeline\.id\)\}/);
   assert.match(digestPipelineForm, /className="fb-chip hub-card-imported-status"/);

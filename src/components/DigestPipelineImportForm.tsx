@@ -287,7 +287,7 @@ export function DigestPipelineImportForm({
                 onClick={confirmRemoveImported}
                 type="button"
               >
-                Remove
+                Remove AI Digest
               </button>
             </div>
           </div>

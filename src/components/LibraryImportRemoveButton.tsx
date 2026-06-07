@@ -94,7 +94,7 @@ export function LibraryImportRemoveButton({
                 onClick={removeImport}
                 type="button"
               >
-                Remove
+                Remove source library
               </button>
             </div>
           </div>
