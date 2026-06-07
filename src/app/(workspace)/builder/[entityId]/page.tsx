@@ -178,7 +178,7 @@ export default async function BuilderDetailPage({ params }: Params) {
               </div>
               <div className="fb-src-meta">
                 {headerHostLabel ? (
-                  <span className="builder-detail-host source-host-meta mono truncate">
+                  <span className="builder-detail-host source-host-meta mono">
                     {headerHostLabel}
                   </span>
                 ) : null}

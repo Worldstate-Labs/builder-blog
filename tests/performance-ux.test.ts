@@ -792,7 +792,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /className="builder-detail-title-row"/);
   assert.match(builderDetailPage, /<SourceBadge[\s\S]*sourceType=\{headerSourceType\}[\s\S]*suppressLabelWhen=\{entity\.name\}/);
   assert.doesNotMatch(builderDetailPage, /source-kind-meta fb-kind-pill/);
-  assert.match(builderDetailPage, /className="builder-detail-host source-host-meta mono truncate"/);
+  assert.match(builderDetailPage, /className="builder-detail-host source-host-meta mono"/);
+  assert.doesNotMatch(builderDetailPage, /className="builder-detail-host source-host-meta mono truncate"/);
   assert.match(builderDetailPage, /headerHostLabel \? \([\s\S]*className="source-count-dot source-meta-dot"/);
   assert.match(builderDetailPage, /<CountMeta label=\{headerItemCount === 1 \? "post" : "posts"\} value=\{headerItemCount\} \/>/);
   assert.doesNotMatch(builderDetailPage, /headerItemCount === 1 \? "item" : "items"/);
@@ -864,6 +865,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.builder-detail-page-head\s*{[\s\S]*--page-head-copy-max:\s*var\(--empty-max\)/);
+  assert.match(globals, /\.builder-detail-host\s*{[\s\S]*overflow:\s*hidden/);
+  assert.match(globals, /\.builder-detail-host\s*{[\s\S]*text-overflow:\s*ellipsis/);
   assert.match(globals, /\.fb-breadcrumb-link\s*{[\s\S]*width:\s*fit-content/);
   assert.match(globals, /\.fb-breadcrumb-link:hover,[\s\S]*\.fb-breadcrumb-link:focus-visible\s*{[\s\S]*color:\s*var\(--accent\)/);
   assert.doesNotMatch(globals, /\.builder-detail-breadcrumb\s*{/);

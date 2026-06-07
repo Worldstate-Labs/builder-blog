@@ -8532,6 +8532,9 @@ a.fb-hub-source-name:focus-visible {
 
 .builder-detail-host {
   max-width: min(24rem, 100%);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .builder-detail-bio {
