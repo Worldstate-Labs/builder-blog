@@ -173,8 +173,8 @@ export function BuilderEditDialog({
               Edit source
             </h2>
             <p className="builder-edit-dialog-sub">
-              Same three fields as when you added this source. Changes save
-              immediately.
+              Update the source type, URL or handle, and display name. Save
+              applies the changes to your library.
             </p>
           </header>
 
