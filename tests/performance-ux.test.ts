@@ -1849,7 +1849,8 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(buildersPage, /getAgentJobRuns\(session\.user\.id, "digest-build", 25\)/);
   assert.match(buildersPage, /getScheduledAgentJobRuns\(session\.user\.id, "digest-cron", 25\)/);
   assert.match(digestArchivePicker, /digestHref/);
-  assert.match(digestArchivePicker, /aria-label="AI Digest archive"/);
+  assert.match(digestArchivePicker, /className="digest-picker-static" aria-label="AI Digest archive"/);
+  assert.match(digestArchivePicker, /role="listbox" aria-label="AI Digest archives"/);
   assert.match(digestArchivePicker, /role="listbox"/);
   assert.match(digestArchivePicker, /role="option"/);
   assert.match(digestArchivePicker, /aria-selected=\{selected\}/);

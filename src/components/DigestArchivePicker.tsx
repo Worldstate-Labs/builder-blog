@@ -114,7 +114,7 @@ export function DigestArchivePicker({
         />
         <ChevronDown aria-hidden="true" className="digest-picker-icon" />
       </summary>
-      <div className="digest-picker-menu" id={menuId} role="listbox" aria-label="AI Digest archive">
+      <div className="digest-picker-menu" id={menuId} role="listbox" aria-label="AI Digest archives">
         {digests.map((digest) => {
           const selected = digest.id === selectedDigest.id;
           return (

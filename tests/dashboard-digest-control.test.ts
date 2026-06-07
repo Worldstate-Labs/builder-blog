@@ -51,8 +51,9 @@ test("home digest keeps pipeline and archive selection in a dedicated control ba
   assert.match(digestPipelineSelector, /summaryRef\.current\?\.focus\(\)/);
   assert.match(digestPipelineSelector, /data-active=\{active \? "true" : undefined\}/);
   assert.match(digestArchivePicker, /digests\.length <= 1[\s\S]*className="digest-picker-static"/);
-  assert.match(digestArchivePicker, /aria-label="AI Digest archive"/);
+  assert.match(digestArchivePicker, /className="digest-picker-static" aria-label="AI Digest archive"/);
   assert.match(digestArchivePicker, /aria-label="Choose AI Digest archive"/);
+  assert.match(digestArchivePicker, /role="listbox" aria-label="AI Digest archives"/);
   assert.match(globals, /\.digest-pipeline-trigger\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /\.digest-control-picker \.digest-picker-summary,[\s\S]*\.digest-control-picker \.digest-picker-static\s*{[\s\S]*min-height:\s*2\.5rem/);
   assert.match(globals, /\.digest-pipeline-option\[data-active="true"\]/);
