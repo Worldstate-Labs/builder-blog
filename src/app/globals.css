@@ -5717,6 +5717,121 @@ svg.lucide {
   padding: 0.25rem 0.625rem 0.625rem;
 }
 
+.sync-panel-detail-note {
+  color: var(--muted);
+  font-size: 0.71875rem;
+  margin-top: 0.25rem;
+}
+
+.sync-panel-detail-card-list,
+.sync-panel-detail-action-list,
+.sync-panel-detail-error-list {
+  display: grid;
+}
+
+.sync-panel-detail-card-list {
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.sync-panel-detail-action-list {
+  gap: 0.375rem;
+}
+
+.sync-panel-detail-error-list {
+  gap: 0.25rem;
+}
+
+.sync-panel-detail-card {
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sync-panel-detail-card-summary {
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.5rem 0.75rem;
+}
+
+.sync-panel-detail-card-summary.is-danger {
+  color: var(--danger);
+}
+
+.sync-panel-detail-card-body {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.sync-panel-detail-kicker,
+.sync-panel-detail-kicker-row {
+  font-size: 0.65625rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sync-panel-detail-kicker-row {
+  align-items: center;
+  display: flex;
+  gap: 0.375rem;
+}
+
+.sync-panel-detail-default-pill {
+  border-radius: 2px;
+  font-size: 0.59375rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 1px 0.25rem;
+  text-transform: uppercase;
+}
+
+.sync-panel-detail-code,
+.sync-panel-detail-json {
+  color: var(--muted-strong);
+  font-size: 0.71875rem;
+  overflow: auto;
+}
+
+.sync-panel-detail-code {
+  margin-top: 0.25rem;
+  max-height: 18rem;
+  white-space: pre-wrap;
+}
+
+.sync-panel-detail-json {
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+
+.sync-panel-detail-action-row {
+  font-size: 0.78125rem;
+}
+
+.sync-panel-detail-action-builder {
+  color: var(--ink);
+}
+
+.sync-panel-detail-action-message {
+  color: var(--muted-strong);
+}
+
+.sync-panel-detail-link {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.sync-panel-detail-error-row {
+  font-size: 0.75rem;
+}
+
+.sync-panel-detail-empty {
+  color: var(--muted-strong);
+  font-size: 0.78125rem;
+}
+
 .sync-panel-slot-empty {
   border-radius: 8px;
   padding: 0.75rem;

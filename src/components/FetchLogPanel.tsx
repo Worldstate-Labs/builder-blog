@@ -1318,35 +1318,35 @@ function DetailsBody({ details }: { details: DetailsShape }) {
 
       {promptEntries.length > 0 ? (
         <div>
-          <h3 className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted-strong)]">
+          <h3 className="sync-panel-run-card-detail-heading">
             Helper instructions
           </h3>
-          <p className="mt-1 text-[11.5px] text-[var(--muted)]">
+          <p className="sync-panel-detail-note">
             The instructions used to read and summarize each source type on
             this update.
           </p>
-          <div className="mt-2 grid gap-2">
+          <div className="sync-panel-detail-card-list">
             {promptEntries.map(([sourceType, bundle]) => (
               <details
                 key={sourceType}
-                className="rounded-[8px] border border-[var(--line)] bg-[var(--paper-strong)]"
+                className="sync-panel-detail-card"
               >
                 <summary
-                  className="cursor-pointer px-3 py-2 text-[12px] font-bold text-[var(--ink)]"
+                  className="sync-panel-detail-card-summary"
                   style={{ fontFamily: "var(--font-geist-mono)" }}
                 >
                   {sourceType}
                 </summary>
-                <div className="grid gap-2 border-t border-[var(--line)] px-3 py-2">
+                <div className="sync-panel-detail-card-body">
                   <div>
                     <p
-                      className="text-[10.5px] uppercase tracking-wide"
+                      className="sync-panel-detail-kicker"
                       style={{ color: "var(--muted)" }}
                     >
                       Summary instructions
                     </p>
                     <pre
-                      className="mono mt-1 max-h-72 overflow-auto whitespace-pre-wrap text-[11.5px]"
+                      className="mono sync-panel-detail-code"
                       style={{ color: "var(--muted-strong)" }}
                     >
                       {bundle.summary ?? "(none)"}
@@ -1354,13 +1354,13 @@ function DetailsBody({ details }: { details: DetailsShape }) {
                   </div>
                   <div>
                     <p
-                      className="flex items-center gap-1.5 text-[10.5px] uppercase tracking-wide"
+                      className="sync-panel-detail-kicker-row"
                       style={{ color: "var(--muted)" }}
                     >
                       <span>Fetch instructions</span>
                       {bundle.fetchIsDefault ? (
                         <span
-                          className="rounded-sm px-1 py-[1px] text-[9.5px] font-bold uppercase"
+                          className="sync-panel-detail-default-pill"
                           style={{
                             background: "var(--paper)",
                             border: "1px solid var(--line)",
@@ -1374,7 +1374,7 @@ function DetailsBody({ details }: { details: DetailsShape }) {
                       ) : null}
                     </p>
                     <pre
-                      className="mono mt-1 max-h-72 overflow-auto whitespace-pre-wrap text-[11.5px]"
+                      className="mono sync-panel-detail-code"
                       style={{ color: "var(--muted-strong)" }}
                     >
                       {bundle.fetch ?? "(none)"}
@@ -1389,22 +1389,22 @@ function DetailsBody({ details }: { details: DetailsShape }) {
 
       {userActions.length > 0 ? (
         <div>
-          <h3 className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted-strong)]">
+          <h3 className="sync-panel-run-card-detail-heading">
             Actions needed
           </h3>
-          <ul className="mt-1.5 grid gap-1.5">
+          <ul className="sync-panel-detail-action-list">
             {userActions.map((action, index) => (
-              <li key={`${action.kind ?? "action"}-${index}`} className="text-[12.5px]">
+              <li key={`${action.kind ?? "action"}-${index}`} className="sync-panel-detail-action-row">
                 <span className="fb-chip mr-2">{action.kind ?? "action"}</span>
-                <span className="text-[var(--ink)]">{action.builder ?? ""}</span>
+                <span className="sync-panel-detail-action-builder">{action.builder ?? ""}</span>
                 {action.message ? (
-                  <span className="text-[var(--muted-strong)]"> — {action.message}</span>
+                  <span className="sync-panel-detail-action-message"> — {action.message}</span>
                 ) : null}
                 {action.helpUrl ? (
                   <>
                     {" "}
                     <a
-                      className="text-[var(--accent)] underline"
+                      className="sync-panel-detail-link"
                       href={action.helpUrl}
                       rel="noreferrer"
                       target="_blank"
@@ -1421,14 +1421,14 @@ function DetailsBody({ details }: { details: DetailsShape }) {
 
       {localErrors.length > 0 ? (
         <div>
-          <h3 className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted-strong)]">
+          <h3 className="sync-panel-run-card-detail-heading">
             Local errors
           </h3>
-          <ul className="mt-1.5 grid gap-1">
+          <ul className="sync-panel-detail-error-list">
             {localErrors.map((message, index) => (
               <li
                 key={`${message.slice(0, 32)}-${index}`}
-                className="mono text-[12px]"
+                className="mono sync-panel-detail-error-row"
                 style={{ color: "var(--danger)" }}
               >
                 {message}
@@ -1439,25 +1439,25 @@ function DetailsBody({ details }: { details: DetailsShape }) {
       ) : null}
 
       {details.cliFlags ? (
-        <details className="rounded-[8px] border border-[var(--line)] bg-[var(--paper-strong)]">
-          <summary className="cursor-pointer px-3 py-2 text-[12px] font-bold text-[var(--ink)]">
+        <details className="sync-panel-detail-card">
+          <summary className="sync-panel-detail-card-summary">
             CLI flags
           </summary>
-          <pre className="mono overflow-auto px-3 pb-3 pt-2 text-[11.5px] text-[var(--muted-strong)]">
+          <pre className="mono sync-panel-detail-json">
             {JSON.stringify(details.cliFlags, null, 2)}
           </pre>
         </details>
       ) : null}
 
       {details.error ? (
-        <details className="rounded-[8px] border border-[var(--line)] bg-[var(--paper-strong)]">
+        <details className="sync-panel-detail-card">
           <summary
-            className="cursor-pointer px-3 py-2 text-[12px] font-bold"
+            className="sync-panel-detail-card-summary is-danger"
             style={{ color: "var(--danger)" }}
           >
             Error stack
           </summary>
-          <pre className="mono overflow-auto px-3 pb-3 pt-2 text-[11.5px] text-[var(--muted-strong)]">
+          <pre className="mono sync-panel-detail-json">
             {details.error.stack ?? details.error.message ?? ""}
           </pre>
         </details>
@@ -1470,7 +1470,7 @@ function DetailsBody({ details }: { details: DetailsShape }) {
       promptEntries.length === 0 &&
       !details.cliFlags &&
       !details.error ? (
-        <p className="text-[12.5px] text-[var(--muted-strong)]">No structured details.</p>
+        <p className="sync-panel-detail-empty">No structured details.</p>
       ) : null}
     </div>
   );
