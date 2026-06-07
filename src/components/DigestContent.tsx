@@ -2,12 +2,10 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { ArrowRight, ChevronDown, Star } from "lucide-react";
-import { CountBadge } from "@/components/Count";
+import { ArrowRight, Star } from "lucide-react";
 import { PostCard, type PostCardPost } from "@/components/PostCard";
 import { SourceAvatar } from "@/components/SourceAvatar";
-import { SourceBadge } from "@/components/SourceBadge";
-import { normalizeSourceType, sourceLabelForType } from "@/lib/source-display";
+import { normalizeSourceType } from "@/lib/source-display";
 import {
   parseDigest,
   type DigestDoc,
@@ -38,16 +36,13 @@ export type DigestFavoriteStateByUrl = Record<
 >;
 
 // Renders the CLI-produced digest markdown as a progressively-readable document:
-// source links, a jump-to-section index, collapsible sections, and the shared
-// PostCard for each post. `tone` adapts it to the dark "today" hero vs the
-// paper archive.
+// source links, source-grouped sections, and the shared PostCard for each post.
+// `tone` adapts it to the dark "today" hero vs the paper archive.
 export function DigestContent({
   content,
   favoriteStateByUrl = {},
   originalSummariesByUrl = {},
   onFavoriteToggle,
-  showContents = true,
-  showSectionCounts = true,
   sourceLinks = [],
   tone = "paper",
 }: {
@@ -80,7 +75,6 @@ export function DigestContent({
     );
   }
 
-  const shouldShowContents = showContents && doc.sections.length >= 2;
   const sectionSourceTypes = new Map(
     doc.sections.map((section) => [section.id, sourceTypeForSection(section, sourceLookup)]),
   );
@@ -93,26 +87,11 @@ export function DigestContent({
         </p>
       ))}
 
-      {shouldShowContents ? (
-        <nav className="digest-contents" aria-label="Digest sections">
-          {doc.sections.map((s) => (
-            <a key={s.id} className="digest-contents-chip" href={`#${s.id}`}>
-              <span className="truncate">
-                {sectionDisplayLabel(s, sourceLookup, sectionSourceTypes.get(s.id) ?? "website")}
-              </span>
-              <CountBadge value={s.postCount} />
-            </a>
-          ))}
-        </nav>
-      ) : null}
-
       {doc.sections.map((section) => (
         <SectionBlock
           key={section.id}
           section={section}
-          collapsible={false}
           favoriteStateByUrl={favoriteStateByUrl}
-          showCount={showSectionCounts}
           onFavoriteToggle={onFavoriteToggle}
           originalSummariesByUrl={originalSummariesByUrl}
           sourceType={sectionSourceTypes.get(section.id) ?? "website"}
@@ -129,20 +108,16 @@ function wrapClass(tone: "paper" | "dark"): string {
 
 function SectionBlock({
   section,
-  collapsible,
   favoriteStateByUrl,
   onFavoriteToggle,
   originalSummariesByUrl,
-  showCount,
   sourceType,
   sourceLookup,
 }: {
   section: DigestSection;
-  collapsible: boolean;
   favoriteStateByUrl: DigestFavoriteStateByUrl;
   onFavoriteToggle?: (url: string, feedItemId: string, nextFavorite: boolean) => void;
   originalSummariesByUrl: Record<string, string>;
-  showCount: boolean;
   sourceType: string;
   sourceLookup: Map<string, DigestSourceLink>;
 }) {
@@ -181,33 +156,10 @@ function SectionBlock({
     </div>
   );
 
-  if (!collapsible || !section.heading) {
-    return (
-      <section id={section.id} className="digest-section scroll-mt-24">
-        {section.heading ? (
-          <div className="digest-section-summary digest-section-summary-static">
-            <h3 className="digest-section-heading">
-              <SourceBadge sourceType={sectionSourceType} />
-            </h3>
-            {showCount ? <CountBadge value={section.postCount} /> : null}
-          </div>
-        ) : null}
-        {body}
-      </section>
-    );
-  }
-
   return (
-    <details id={section.id} className="digest-section scroll-mt-24" open>
-      <summary className="digest-section-summary">
-        <ChevronDown aria-hidden="true" className="digest-section-chevron" />
-        <h3 className="digest-section-heading">
-          <SourceBadge sourceType={sectionSourceType} />
-        </h3>
-        {showCount ? <CountBadge value={section.postCount} /> : null}
-      </summary>
+    <section id={section.id} className="digest-section scroll-mt-24">
       {body}
-    </details>
+    </section>
   );
 }
 
@@ -389,15 +341,6 @@ function sourceTypeFromSourceLinksForSection(section: DigestSection, lookup: Map
 
   const sectionSourceType = normalizeSourceType(sourceLinkForSource(section.heading, lookup)?.sourceType);
   return sectionSourceType || null;
-}
-
-function sectionDisplayLabel(section: DigestSection, lookup: Map<string, DigestSourceLink>, sourceType: string) {
-  const typedSource = sourceTypeFromSourceLinksForSection(section, lookup);
-  if (typedSource) return sourceLabelForType(typedSource);
-
-  const fallbackSourceType = sourceTypeFromSection(section.heading);
-  if (fallbackSourceType !== "website") return sourceLabelForType(fallbackSourceType);
-  return section.heading || sourceLabelForType(sourceType);
 }
 
 function sourceLinkKeys(link: DigestSourceLink) {

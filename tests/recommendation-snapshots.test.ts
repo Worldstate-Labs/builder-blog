@@ -27,6 +27,7 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.match(feed, /showAdminActions = false/);
   assert.match(feed, /showDebugActions=\{showAdminActions\}/);
   assert.match(feed, /reasons=\{showAdminActions \? entry\.reasons : undefined\}/);
+  assert.match(feed, /showSourceBadge=\{false\}/);
   assert.match(feed, /stackActionsOnMobile=\{showAdminActions\}/);
   assert.match(postCard, /data-read/);
   assert.match(postCard, /data-stack-actions/);
