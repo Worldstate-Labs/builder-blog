@@ -146,6 +146,11 @@ export function PostCard({
     ? originalSummary || summary
     : post.body;
   const rawContentLabel = rawContentMode === "raw_summary" ? "Source summary" : "Raw content";
+  const detailSummary = normalizedText(post.summary);
+  const detailRawContent = normalizedText(post.body);
+  const showDetailSummary = Boolean(
+    isDetail && detailSummary && detailSummary !== detailRawContent,
+  );
   const canReadRawContent = !isDetail && showRawContent && Boolean(rawContent);
   const showReadIndicator = Boolean(dataRead && !isDetail);
   const showMetaRow = Boolean(
@@ -233,9 +238,20 @@ export function PostCard({
 
         {/* Line 3: Summary / body */}
         {isDetail ? (
-          <div className="post-detail-body">
-            {post.body}
-          </div>
+          <>
+            {showDetailSummary ? (
+              <section className="post-detail-summary" aria-label="Summary">
+                <h2 className="post-detail-section-label">Summary</h2>
+                <p>{detailSummary}</p>
+              </section>
+            ) : null}
+            <section className="post-detail-raw" aria-label="Raw content">
+              <h2 className="post-detail-section-label">Raw content</h2>
+              <div className="post-detail-body">
+                {post.body}
+              </div>
+            </section>
+          </>
         ) : (
           <div
             className={`fetched-post-summary post-summary${hasMoreSummary ? " post-summary--expandable" : ""}${summaryExpanded ? " post-summary--expanded" : ""}`}

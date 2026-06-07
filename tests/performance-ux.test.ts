@@ -2861,7 +2861,14 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /export function PostCard/);
   assert.match(postCard, /post-detail-card/);
   assert.match(postCard, /post-detail-title/);
+  assert.match(postCard, /post-detail-summary/);
+  assert.match(postCard, /post-detail-raw/);
+  assert.match(postCard, /post-detail-section-label/);
   assert.match(postCard, /post-detail-body/);
+  assert.match(postCard, /const detailSummary = normalizedText\(post\.summary\)/);
+  assert.match(postCard, /const showDetailSummary = Boolean/);
+  assert.match(postDetailPage, /summary: item\.summary/);
+  assert.doesNotMatch(postDetailPage, /summary: null/);
   assert.match(postCard, /className="fetched-post-summary-text"/);
   assert.match(postCard, /className="post-summary-toggle"/);
   assert.match(postCard, /className="fetched-post-raw"/);
@@ -2904,6 +2911,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(postCard, /whitespace-pre-wrap text-sm leading-6|mt-3 whitespace-pre-wrap rounded-lg|text-link mt-2/);
   assert.match(globals, /\.post-source-original\s*{[\s\S]*min-height:\s*2rem/);
   assert.match(globals, /\.post-source-original \.source-badge\s*{[\s\S]*min-height:\s*0/);
+  assert.match(globals, /\.post-detail-summary\s*{[\s\S]*line-height:\s*1\.72/);
+  assert.match(globals, /\.post-detail-raw\s*{[\s\S]*border-top:\s*1px solid/);
+  assert.match(globals, /\.post-detail-section-label\s*{[\s\S]*text-transform:\s*uppercase/);
   assert.match(globals, /\.post-favorite-btn\s*{[\s\S]*min-width:\s*2rem/);
   assert.match(globals, /\.post-raw-content-action\s*{[\s\S]*color:\s*var\(--accent\)/);
   assert.match(globals, /\.post-read-action\s*{[\s\S]*padding:\s*0\.26rem 0\.72rem/);
@@ -3053,7 +3063,7 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(fetchMethodPopover, /id=\{popoverId\}/);
   assert.match(postCard, /function compactActionContext/);
   assert.doesNotMatch(postCard, /aria-label="View original summary"/);
-  assert.doesNotMatch(postCard, /aria-label="Raw content"/);
+  assert.doesNotMatch(postCard, /<button[\s\S]{0,320}aria-label="Raw content"/);
   assert.match(postCard, /rawContentModeForSourceType\(builder\?\.sourceType \?\? post\.sourceType\)/);
   assert.match(postCard, /rawContentModesBySourceType/);
   assert.match(globals, /\.digest-group-heading/);

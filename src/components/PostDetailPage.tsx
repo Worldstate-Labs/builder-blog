@@ -88,7 +88,7 @@ export async function PostDetailPage({
           id: item.id,
           title: item.title,
           body: item.body,
-          summary: null,
+          summary: item.summary,
           url: item.url,
           publishedAt: item.publishedAt?.toISOString() ?? null,
           createdAt: item.createdAt.toISOString(),

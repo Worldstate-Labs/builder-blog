@@ -1357,11 +1357,45 @@ a.reading-source-label:focus-visible {
   max-width: var(--measure);
 }
 
+.post-detail-summary,
+.post-detail-raw {
+  max-width: var(--measure);
+}
+
+.post-detail-summary {
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.72;
+  margin-top: 1.45rem;
+}
+
+.post-detail-summary p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.post-detail-raw {
+  border-top: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
+  margin-top: 1.35rem;
+  padding-top: 1rem;
+}
+
+.post-detail-section-label {
+  color: var(--muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.6875rem;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  margin-bottom: 0.55rem;
+  text-transform: uppercase;
+}
+
 .post-detail-body {
   color: var(--muted-strong);
   font-size: 1rem;
   line-height: 1.8;
-  margin-top: 1.6rem;
+  margin-top: 0;
   max-width: var(--measure);
   white-space: pre-wrap;
 }
