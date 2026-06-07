@@ -1561,6 +1561,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Could not import source library\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Could not remove imported source library\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Remove \$\{library\.name\} from imported source libraries/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), />\s*Remove source library\s*<\/button>/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-form-error"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /"hub-list-region has-filters"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-heading-row"/);
@@ -2270,7 +2271,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /hub-card-imported-status/);
   assert.match(hubImportForm, /Trash2/);
   assert.match(hubImportForm, /className="fb-btn light compact hub-card-remove-button"/);
-  assert.match(hubImportForm, />\s*Remove\s*<\/button>/);
+  assert.match(hubImportForm, />\s*Remove source library\s*<\/button>/);
   assert.doesNotMatch(hubImportForm, /Import selected/);
   assert.doesNotMatch(hubImportForm, /selectedIds/);
   assert.match(hubImportForm, /className="fb-segmented-tabs filter-tabs at-desktop"/);
@@ -2313,7 +2314,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /mode = "hub"/);
   assert.match(digestPipelineForm, /Imported AI Digests/);
   assert.match(digestPipelineForm, /AI Digests built and shared by other users\./);
-  assert.match(digestPipelineForm, /Import another user's latest and past AI Digests\./);
+  assert.match(digestPipelineForm, /AI Digests you imported from Hub\./);
   assert.doesNotMatch(digestPipelineForm, /Digests imported from the Hub/);
   assert.doesNotMatch(digestPipelineForm, /AI Digest archives built|latest AI Digest and archive/);
   assert.match(digestPipelineForm, /Shared AI Digests/);

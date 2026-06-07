@@ -96,8 +96,8 @@ export function DigestPipelineImportForm({
   const title = mode === "imported" ? "Imported AI Digests" : "Shared AI Digests";
   const description =
     mode === "imported"
-      ? "AI Digests built and shared by other users."
-      : "Import another user's latest and past AI Digests.";
+      ? "AI Digests you imported from Hub."
+      : "AI Digests built and shared by other users.";
   const emptyMessage =
     mode === "imported"
       ? "No imported AI Digests yet."

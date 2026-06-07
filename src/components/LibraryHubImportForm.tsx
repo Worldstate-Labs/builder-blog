@@ -316,7 +316,7 @@ function HubCard({
         type="button"
       >
         <Trash2 aria-hidden="true" />
-        Remove
+        Remove source library
       </button>
     </>
   ) : (
