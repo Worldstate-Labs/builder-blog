@@ -1160,7 +1160,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /Latest fetch/);
   assert.match(fetchLogPanel, /Schedule status/);
   assert.match(fetchLogPanel, /No source update schedule has reported yet/);
-  assert.match(fetchLogPanel, /posts read/);
+  assert.match(fetchLogPanel, /posts fetched/);
+  assert.doesNotMatch(fetchLogPanel, /posts read|post read/);
   assert.match(fetchLogPanel, /label="posts checked"/);
   assert.match(fetchLogPanel, /formatCount\(entry\.tasksGenerated \?\? 0\)} posts checked/);
   assert.match(fetchLogPanel, /Posts checked/);

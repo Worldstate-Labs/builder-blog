@@ -1244,7 +1244,7 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
 
       <div className="mono sync-panel-run-card-meta">
         <CountMeta
-          label={run.itemsFetched === 1 ? "post read" : "posts read"}
+          label={run.itemsFetched === 1 ? "post fetched" : "posts fetched"}
           value={run.itemsFetched}
         /> ·{" "}
         <CountMeta label="posts checked" value={run.tasksGenerated} /> ·{" "}
