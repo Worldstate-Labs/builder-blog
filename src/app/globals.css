@@ -740,8 +740,13 @@ svg.lucide {
 }
 
 .user-menu-item:hover,
-.user-menu-item:focus-visible {
+.user-menu-item:focus-visible,
+.user-menu-item[data-active="true"] {
   background: var(--soft);
+}
+
+.user-menu-item[data-active="true"] {
+  color: var(--accent-strong);
 }
 
 .user-menu-item:active {

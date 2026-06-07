@@ -647,7 +647,10 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(globals, /\.settings-footer-bar\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.fb-input::placeholder/);
   assert.match(globals, /\.settings-markdown-textarea::placeholder/);
-  assert.match(userMenu, /href="\/settings" onClick=\{\(\) => closeMenu\(\)\}[\s\S]*Settings/);
+  assert.match(userMenu, /const settingsActive = pathname === "\/settings"/);
+  assert.match(userMenu, /aria-current=\{settingsActive \? "page" : undefined\}/);
+  assert.match(userMenu, /data-active=\{settingsActive \? "true" : undefined\}/);
+  assert.match(userMenu, /href="\/settings"[\s\S]*onClick=\{\(\) => closeMenu\(\)\}[\s\S]*Settings/);
   assert.match(userMenu, /function toggleTheme\(\) \{[\s\S]*setTheme\(theme === "dark" \? "light" : "dark"\);[\s\S]*closeMenu\(\);[\s\S]*\}/);
   assert.match(userMenu, /signOut\(\{ callbackUrl: "\/login" \}\)/);
   assert.match(userMenu, /closeMenu\(\);[\s\S]*signOut\(\{ callbackUrl: "\/login" \}\)[\s\S]*Sign out/);
@@ -667,6 +670,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(globals, /\.user-menu-popover/);
   assert.match(globals, /\.user-menu-item\s*{[\s\S]*text-align:\s*left/);
   assert.match(globals, /\.user-menu-item\s*{[\s\S]*width:\s*100%/);
+  assert.match(globals, /\.user-menu-item:hover,[\s\S]*\.user-menu-item:focus-visible,[\s\S]*\.user-menu-item\[data-active="true"\]\s*{[\s\S]*background:\s*var\(--soft\)/);
+  assert.match(globals, /\.user-menu-item\[data-active="true"\]\s*{[\s\S]*color:\s*var\(--accent-strong\)/);
   assert.match(globals, /\.user-menu-icon\s*{[\s\S]*height:\s*1rem/);
   assert.match(globals, /\.user-menu-compact \.user-menu-popover\s*{[\s\S]*width:\s*min\(var\(--popover-max\),\s*calc\(100vw - 2rem\)\)/);
 });

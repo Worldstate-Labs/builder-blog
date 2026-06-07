@@ -27,6 +27,7 @@ export function UserMenu({
   const name = user?.name || user?.email?.split("@")[0] || "User";
   const email = user?.email || "";
   const initial = name.trim().charAt(0).toUpperCase() || "U";
+  const settingsActive = pathname === "/settings";
 
   const closeMenu = useCallback((options?: { restoreFocus?: boolean }) => {
     if (detailsRef.current) {
@@ -110,7 +111,13 @@ export function UserMenu({
             Admin
           </span>
         ) : null}
-        <Link className="user-menu-item" href="/settings" onClick={() => closeMenu()}>
+        <Link
+          aria-current={settingsActive ? "page" : undefined}
+          className="user-menu-item"
+          data-active={settingsActive ? "true" : undefined}
+          href="/settings"
+          onClick={() => closeMenu()}
+        >
           <Settings className="user-menu-icon" />
           Settings
         </Link>
