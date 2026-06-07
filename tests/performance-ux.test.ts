@@ -1569,7 +1569,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /spellCheck=\{false\}/);
   assert.match(searchForm, /role="listbox"/);
   assert.match(searchForm, /role="option"/);
-  assert.match(searchForm, /placeholder="Search sources, posts, saved posts, or AI Digests"/);
+  assert.match(searchForm, /placeholder="Search sources, posts, saved posts, and AI Digests"/);
   assert.doesNotMatch(searchForm, /saved items/);
   assert.match(searchForm, /submitSuggestion\(activeSuggestion, event\.currentTarget\.form\)/);
   assert.match(searchForm, /className="search-suggestion-chip"[\s\S]*submitSuggestion\(suggestion, inputRef\.current\?\.form \?\? null\)[\s\S]*type="button"/);
