@@ -101,7 +101,7 @@ function DigestPickerItem({
   return (
     <span className="digest-picker-item">
       <span className="digest-picker-date">{formatDigestPickerDate(digest.createdAt, hydrated)}</span>
-      <CountMeta label={digest.itemCount === 1 ? "item" : "items"} value={digest.itemCount} />
+      <CountMeta label={digest.itemCount === 1 ? "post" : "posts"} value={digest.itemCount} />
       {isLatest ? <span className="digest-latest-mark">Latest</span> : null}
     </span>
   );

@@ -32,7 +32,7 @@ export default async function Home() {
           <p className="fb-public-copy">
             Follow blogs, newsletters, channels, feeds, GitHub Trending,
             and Product Hunt. Your Local Agent fetches updates, summarizes
-            posts, builds cited AI digests, and syncs them back to FollowBrief.
+            posts, builds cited AI Digests, and syncs them back to FollowBrief.
           </p>
           <div className="fb-public-actions">
             <Link className="fb-btn dark" href="/login">
@@ -80,7 +80,7 @@ export default async function Home() {
             </div>
             <div className="fb-demo-card">
               <div className="fb-demo-card-head">
-                <span>AI digest</span>
+                <span>AI Digest</span>
                 <span>cited</span>
               </div>
               <div className="fb-demo-line is-strong" />
@@ -107,7 +107,7 @@ export default async function Home() {
               {
                 title: "Search after the read.",
                 detail:
-                  "Find past digests, summarized items, and followed sources when you need the detail later.",
+                  "Find past AI Digests, summarized posts, and followed sources when you need the detail later.",
               },
             ].map((item) => (
               <article className="fb-signal" key={item.title}>
@@ -152,7 +152,7 @@ export default async function Home() {
               i: "03",
               icon: Search,
               title: "Search and revisit",
-              copy: "Open the original items behind each summary and search past AI Digests later.",
+              copy: "Open the original posts behind each summary and search past AI Digests later.",
             },
           ].map(({ i, icon: Icon, title, copy }) => (
             <li key={title} className="fb-public-step-row">

@@ -194,9 +194,14 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /fb-public-workspace/);
   assert.match(landingPage, /fb-public-feature-grid/);
   assert.match(landingPage, /Search AI Digests/);
+  assert.match(landingPage, /builds cited AI Digests/);
+  assert.match(landingPage, />AI Digest<\/span>/);
+  assert.match(landingPage, /summarized posts/);
+  assert.match(landingPage, /Open the original posts behind each summary/);
   assert.match(landingPage, /search past AI Digests later/);
   assert.match(landingPage, /Workspace search/);
   assert.match(landingPage, /Sources, posts, saved posts, and AI Digests share one search surface\./);
+  assert.doesNotMatch(landingPage, /AI digests|AI digest|summarized items|original items/);
   assert.doesNotMatch(landingPage, /Library search/);
   assert.doesNotMatch(landingPage, /fb-public-metric/);
   assert.doesNotMatch(landingPage, /fb-public-card-grid|fb-public-step-card/);
@@ -1099,6 +1104,10 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.match(dashboardPage, /serializeDigestArchiveOption/);
   assert.match(digestArchivePicker, /formatDigestPickerDate/);
   assert.match(digestArchivePicker, /CountMeta/);
+  assert.match(digestArchivePicker, /digest\.itemCount === 1 \? "post" : "posts"/);
+  assert.match(digestDetails, /digest\.itemCount === 1 \? "post" : "posts"/);
+  assert.doesNotMatch(digestArchivePicker, /digest\.itemCount === 1 \? "item" : "items"/);
+  assert.doesNotMatch(digestDetails, /digest\.itemCount === 1 \? "item" : "items"/);
   assert.match(digestArchivePicker, /Saved AI Digests/);
   assert.match(digestArchivePicker, /onClick=\{\(event\) =>/);
   assert.match(digestArchivePicker, /if \(selected\) event\.preventDefault\(\)/);

@@ -189,7 +189,7 @@ export function DigestDetails({
           <span className="min-w-0">
             <span className="item-kicker">
               <span>{formatDateTime(digest.createdAt, hydrated)}</span>
-              <CountMeta label={digest.itemCount === 1 ? "item" : "items"} value={digest.itemCount} />
+              <CountMeta label={digest.itemCount === 1 ? "post" : "posts"} value={digest.itemCount} />
               <span>{displayLanguagePreference(digest.language)}</span>
             </span>
             <span className="item-title">{digest.title}</span>
