@@ -1477,7 +1477,9 @@ function DetailsBody({ details }: { details: DetailsShape }) {
       promptEntries.length === 0 &&
       !details.cliFlags &&
       !details.error ? (
-        <p className="sync-panel-detail-empty">No structured details.</p>
+        <p className="sync-panel-detail-empty">
+          No Fetch sources details were recorded for this run.
+        </p>
       ) : null}
     </div>
   );

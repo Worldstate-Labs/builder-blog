@@ -1267,6 +1267,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="mono sync-panel-detail-error-row"/);
   assert.match(fetchLogPanel, /className="mono sync-panel-detail-json"/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-empty"/);
+  assert.match(fetchLogPanel, /No Fetch sources details were recorded for this run\./);
+  assert.doesNotMatch(fetchLogPanel, /No structured details\./);
   assert.match(digestLogPanel, /className="sync-panel-title-row"/);
   assert.match(digestLogPanel, /className="sync-panel-column"/);
   assert.match(digestLogPanel, /className="sync-panel-error"/);
