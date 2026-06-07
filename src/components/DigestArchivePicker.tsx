@@ -47,7 +47,7 @@ export function DigestArchivePicker({
 
   if (digests.length <= 1) {
     return (
-      <div className="digest-picker-static" aria-label="Saved AI Digests">
+      <div className="digest-picker-static" aria-label="AI Digest archive">
         <DigestPickerItem
           digest={selectedDigest}
           hydrated={hydrated}
@@ -105,7 +105,7 @@ export function DigestArchivePicker({
         }}
         ref={summaryRef}
       >
-        <span className="sr-only">Saved AI Digests</span>
+        <span className="sr-only">AI Digest archive</span>
         <DigestPickerItem
           digest={selectedDigest}
           hydrated={hydrated}
@@ -113,7 +113,7 @@ export function DigestArchivePicker({
         />
         <ChevronDown aria-hidden="true" className="digest-picker-icon" />
       </summary>
-      <div className="digest-picker-menu" id={menuId} role="listbox" aria-label="Saved AI Digests">
+      <div className="digest-picker-menu" id={menuId} role="listbox" aria-label="AI Digest archive">
         {digests.map((digest) => {
           const selected = digest.id === selectedDigest.id;
           return (

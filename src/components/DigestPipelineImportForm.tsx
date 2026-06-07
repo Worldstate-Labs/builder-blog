@@ -336,7 +336,7 @@ export function OwnDigestPipelineCard({
 
       <div className="fb-hub-card-stats">
         <CountMeta
-          label={pipeline.digestCount === 1 ? "saved AI Digest" : "saved AI Digests"}
+          label={pipeline.digestCount === 1 ? "archived AI Digest" : "archived AI Digests"}
           value={pipeline.digestCount}
         />
         <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
@@ -416,7 +416,7 @@ function DigestPipelineCard({
 
       <div className="fb-hub-card-stats">
         <CountMeta
-          label={pipeline.digestCount === 1 ? "saved AI Digest" : "saved AI Digests"}
+          label={pipeline.digestCount === 1 ? "archived AI Digest" : "archived AI Digests"}
           value={pipeline.digestCount}
         />
         <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
@@ -441,7 +441,7 @@ export function DigestPipelinePreviewCard({
           <div className="fb-hub-digest-preview-title">
             {pipeline.latestDigestAt
               ? `Latest AI Digest ${formatDate(pipeline.latestDigestAt)}`
-              : "No saved AI Digest yet"}
+              : "No archived AI Digest yet"}
           </div>
           {pipeline.latestDigestHeadline ? (
             <section

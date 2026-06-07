@@ -9,7 +9,7 @@ function source(path: string) {
   return readFileSync(join(root, path), "utf8");
 }
 
-test("home digest keeps pipeline and saved digest selection in a dedicated control bar", () => {
+test("home digest keeps pipeline and archive selection in a dedicated control bar", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const digestArchivePicker = source("src/components/DigestArchivePicker.tsx");
   const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
@@ -25,9 +25,9 @@ test("home digest keeps pipeline and saved digest selection in a dedicated contr
   assert.match(dashboardPage, /<DigestPipelineSelector/);
   assert.match(dashboardPage, /<DigestArchivePicker/);
   assert.match(dashboardPage, /AI Digest/);
-  assert.match(dashboardPage, /Saved AI Digests/);
+  assert.match(dashboardPage, /AI Digest archive/);
   assert.doesNotMatch(dashboardPage, /Your digest/);
-  assert.match(dashboardPage, /No saved AI Digests/);
+  assert.match(dashboardPage, /No archived AI Digests/);
   assert.match(globals, /\.digest-control-bar\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(digestPipelineSelector, /className="digest-pipeline-selector"/);
   assert.match(digestPipelineSelector, /className="digest-pipeline-trigger"/);
@@ -49,7 +49,7 @@ test("home digest keeps pipeline and saved digest selection in a dedicated contr
   assert.match(digestPipelineSelector, /summaryRef\.current\?\.focus\(\)/);
   assert.match(digestPipelineSelector, /data-active=\{active \? "true" : undefined\}/);
   assert.match(digestArchivePicker, /digests\.length <= 1[\s\S]*className="digest-picker-static"/);
-  assert.match(digestArchivePicker, /aria-label="Saved AI Digests"/);
+  assert.match(digestArchivePicker, /aria-label="AI Digest archive"/);
   assert.match(globals, /\.digest-pipeline-trigger\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /\.digest-control-picker \.digest-picker-summary,[\s\S]*\.digest-control-picker \.digest-picker-static\s*{[\s\S]*min-height:\s*2\.5rem/);
   assert.match(globals, /\.digest-pipeline-option\[data-active="true"\]/);

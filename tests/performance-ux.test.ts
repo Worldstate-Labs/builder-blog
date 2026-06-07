@@ -829,8 +829,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /fetchedPostCount/);
   assert.match(dashboardPage, /No followed sources yet/);
   assert.match(dashboardPage, /No AI Digest yet/);
-  assert.match(dashboardPage, /No saved AI Digests yet/);
-  assert.match(dashboardPage, /The owner has not shared a saved AI Digest yet/);
+  assert.match(dashboardPage, /No archived AI Digests yet/);
+  assert.match(dashboardPage, /The owner has not shared an archived AI Digest yet/);
   assert.doesNotMatch(dashboardPage, /saved briefs/);
   assert.match(dashboardPage, /start building AI Digests/);
   assert.match(dashboardPage, /No summarized posts yet/);
@@ -838,7 +838,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /Ask your Local Agent to build an AI Digest from the summarized posts/);
   assert.match(dashboardPage, /before building an AI Digest/);
   assert.match(dashboardPage, /Ask your Local Agent to fetch and summarize your followed sources/);
-  assert.doesNotMatch(dashboardPage, /No digest yet|This imported digest|This imported AI Digest has no saved AI Digest yet|build a digest from|material for a digest|start building digests|before building a digest/);
+  assert.doesNotMatch(dashboardPage, /No digest yet|This imported digest|This imported AI Digest has no archived AI Digest yet|build a digest from|material for a digest|start building digests|before building a digest/);
   assert.match(dashboardPage, /href="\/builders"/);
   assert.match(dashboardPage, /<SkillPromptActions[\s\S]*context="digest"/);
   assert.match(dashboardPage, /<SkillPromptActions[\s\S]*context="library"/);
@@ -901,7 +901,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /fb-rail/);
   assert.doesNotMatch(dashboardPage, /Manage sources/);
   assert.doesNotMatch(dashboardPage, /Recent digest/);
-  assert.match(digestArchivePicker, /Saved AI Digests/);
+  assert.match(digestArchivePicker, /AI Digest archive/);
   assert.match(digestArchivePicker, /setOpen\(false\)/);
   assert.doesNotMatch(dashboardPage, /FavoritePostsSection/);
   assert.match(dashboardPage, /requestedTab === "favorites"[\s\S]*redirect\("\/dashboard"\)/);
@@ -1597,12 +1597,12 @@ test("skill context caps personal fetched items to keep payloads bounded", () =>
   assert.match(contextRoute, /dryRun/);
   assert.match(contextRoute, /sourceParam/);
   // A DigestRun is recorded only for a digest prepare, never a library fetch —
-  // gated by intent so library fetches don't appear as saved AI Digests.
+  // gated by intent so library fetches don't appear as archived AI Digests.
   assert.match(contextRoute, /const isDigest =/);
   assert.match(contextRoute, /if \(isDigest && !dryRun\)/);
 });
 
-test("dashboard digest tab owns the saved AI Digest selector", () => {
+test("dashboard digest tab owns the AI Digest archive selector", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const digestArchivePicker = source("src/components/DigestArchivePicker.tsx");
   const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
@@ -1683,9 +1683,9 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.match(digestDetails, /digest\.itemCount === 1 \? "post" : "posts"/);
   assert.doesNotMatch(digestArchivePicker, /digest\.itemCount === 1 \? "item" : "items"/);
   assert.doesNotMatch(digestDetails, /digest\.itemCount === 1 \? "item" : "items"/);
-  assert.match(digestArchivePicker, /Saved AI Digests/);
+  assert.match(digestArchivePicker, /AI Digest archive/);
   assert.match(digestArchivePicker, /digests\.length <= 1[\s\S]*className="digest-picker-static"/);
-  assert.match(digestArchivePicker, /className="digest-picker-static" aria-label="Saved AI Digests"/);
+  assert.match(digestArchivePicker, /className="digest-picker-static" aria-label="AI Digest archive"/);
   assert.match(digestArchivePicker, /onClick=\{\(event\) =>/);
   assert.match(digestArchivePicker, /if \(selected\) event\.preventDefault\(\)/);
   assert.doesNotMatch(dashboardPage, /digest-picker-label/);
@@ -1756,8 +1756,8 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.match(digestPipelineForm, /latestDigestHeadline/);
   assert.match(digestPipelineForm, /aria-label="Latest AI Digest headline"/);
   assert.equal((digestPipelineForm.match(/value=\{pipeline\.digestCount\}/g) ?? []).length, 2);
-  assert.match(digestPipelineForm, /saved AI Digest/);
-  assert.doesNotMatch(digestPipelineForm, /saved digest/);
+  assert.match(digestPipelineForm, /archived AI Digest/);
+  assert.doesNotMatch(digestPipelineForm, /saved AI Digest|saved digest/);
   assert.doesNotMatch(digestPipelineForm, /fb-hub-digest-count/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /headlineSummary:\s*true/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /resolveDigestHeadlineSummary/);
@@ -1781,7 +1781,7 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.match(buildersPage, /getAgentJobRuns\(session\.user\.id, "digest-build", 25\)/);
   assert.match(buildersPage, /getScheduledAgentJobRuns\(session\.user\.id, "digest-cron", 25\)/);
   assert.match(digestArchivePicker, /digestHref/);
-  assert.match(digestArchivePicker, /aria-label="Saved AI Digests"/);
+  assert.match(digestArchivePicker, /aria-label="AI Digest archive"/);
   assert.match(digestArchivePicker, /role="listbox"/);
   assert.match(digestArchivePicker, /role="option"/);
   assert.match(digestArchivePicker, /aria-selected=\{selected\}/);
@@ -3217,7 +3217,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(digestPipelineForm, /Browse Hub/);
   assert.match(digestPipelineForm, /No shared AI Digests/);
   assert.match(digestPipelineForm, /Shared AI Digests will appear here once users publish them\./);
-  assert.match(digestPipelineForm, /No saved AI Digest yet/);
+  assert.match(digestPipelineForm, /No archived AI Digest yet/);
   assert.doesNotMatch(digestPipelineForm, /No AI Digests yet/);
   assert.doesNotMatch(digestPipelineForm, /No digests yet/);
   assert.match(digestPipelineForm, /imported=\{importedIds\.has\(pipeline\.id\)\}/);

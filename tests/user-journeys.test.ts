@@ -1468,7 +1468,7 @@ test("search user path semantic mode finds related language without a literal ph
         id: "feed_1",
         type: "feed",
         title: "Archive retrieval",
-        body: "Vector recall over fetched posts and saved digest history.",
+        body: "Vector recall over fetched posts and the AI Digest archive.",
       },
       {
         id: "builder_1",
