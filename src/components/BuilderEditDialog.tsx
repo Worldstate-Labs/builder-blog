@@ -147,7 +147,7 @@ export function BuilderEditDialog({
         title="Edit source"
         type="button"
       >
-        <Pencil aria-hidden="true" className="h-3 w-3" />
+        <Pencil aria-hidden="true" />
       </button>
       <dialog
         ref={dialogRef}

@@ -849,7 +849,7 @@ function FetchStatusPanel({
   return (
     <div className="sync-panel-card">
       <div className="sync-panel-layout">
-        <div className="min-w-0">
+        <div className="sync-panel-column">
           <div className="sync-panel-chip-row">
             <span
               className="fb-chip"
@@ -881,7 +881,7 @@ function FetchStatusPanel({
             ) : null}
             <div className="sync-panel-meta-row">
               <dt>Runner</dt>
-              <dd className="truncate">
+              <dd className="sync-panel-truncate">
                 {cronJob.runtime || "Local Agent"}
                 {cronJob.hostname ? ` · ${cronJob.hostname.replace(/\.local$/, "")}` : ""}
               </dd>
@@ -900,7 +900,7 @@ function FetchStatusPanel({
         </div>
 
         {slots.length > 0 ? (
-          <div className="min-w-0">
+          <div className="sync-panel-column">
             <div className="sync-panel-timeline-head">
               <span className="sync-panel-timeline-title">
                 Last {slots.length} scheduled {slots.length === 1 ? "window" : "windows"}
@@ -1399,7 +1399,7 @@ function DetailsBody({ details }: { details: DetailsShape }) {
           <ul className="sync-panel-detail-action-list">
             {userActions.map((action, index) => (
               <li key={`${action.kind ?? "action"}-${index}`} className="sync-panel-detail-action-row">
-                <span className="fb-chip mr-2">{action.kind ?? "action"}</span>
+                <span className="fb-chip sync-panel-detail-action-chip">{action.kind ?? "action"}</span>
                 <span className="sync-panel-detail-action-builder">{action.builder ?? ""}</span>
                 {action.message ? (
                   <span className="sync-panel-detail-action-message"> — {action.message}</span>

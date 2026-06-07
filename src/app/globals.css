@@ -6065,6 +6065,10 @@ svg.lucide {
   font-size: 0.78125rem;
 }
 
+.sync-panel-detail-action-chip {
+  margin-right: 0.5rem;
+}
+
 .sync-panel-detail-action-builder {
   color: var(--ink);
 }
@@ -10394,6 +10398,11 @@ mark.fb-mark-highlight {
 .fb-icon-btn--xs {
   height: 1.75rem;
   width: 1.75rem;
+}
+
+.fb-icon-btn--xs svg {
+  height: 0.75rem;
+  width: 0.75rem;
 }
 
 .fb-list-divider > * + * {

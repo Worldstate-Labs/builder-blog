@@ -335,7 +335,7 @@ export function DigestLogPanel({
     </div>
   ) : null;
   const summaryNode = (
-    <div className="min-w-0">
+    <div className="sync-panel-column">
       {showHeading || showStatusToggle ? (
         <div className="sync-panel-title-row">
           {showHeading ? (

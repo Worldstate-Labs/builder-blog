@@ -1205,12 +1205,14 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="mono sync-panel-detail-code"/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-action-list"/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-action-row"/);
+  assert.match(fetchLogPanel, /className="fb-chip sync-panel-detail-action-chip"/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-link"/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-error-list"/);
   assert.match(fetchLogPanel, /className="mono sync-panel-detail-error-row"/);
   assert.match(fetchLogPanel, /className="mono sync-panel-detail-json"/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-empty"/);
   assert.match(digestLogPanel, /className="sync-panel-title-row"/);
+  assert.match(digestLogPanel, /className="sync-panel-column"/);
   assert.match(digestLogPanel, /className="sync-panel-error"/);
   assert.match(digestLogPanel, /AI Digest updates/);
   assert.match(digestLogPanel, /aria-label="AI Digest update views"/);
@@ -1261,7 +1263,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(fetchLogPanel, /className="mono truncate text-\[11\.5px\] text-\[var\(--muted-strong\)\]"/);
   assert.doesNotMatch(fetchLogPanel, /className="inline-flex items-center gap-2"/);
   assert.doesNotMatch(fetchLogPanel, /className="fb-chip inline-flex items-center gap-1\.5"/);
+  assert.doesNotMatch(fetchLogPanel, /className="min-w-0"|className="truncate"|fb-chip mr-2/);
   assert.doesNotMatch(digestLogPanel, /className="inline-flex items-center gap-2"/);
+  assert.doesNotMatch(digestLogPanel, /className="min-w-0"/);
   assert.doesNotMatch(fetchLogPanel, /className="flex gap-2 text-\[12px\] leading-relaxed"/);
   assert.doesNotMatch(fetchLogPanel, /className="rounded-\[6px\] px-2\.5 py-1\.5 text-\[12px\] font-bold"/);
   assert.doesNotMatch(fetchLogPanel, /className="mt-2 grid gap-2"/);
@@ -1336,6 +1340,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sync-panel-run-card-details-body\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.sync-panel-run-card-detail-heading\s*{[\s\S]*text-transform:\s*uppercase/);
   assert.match(globals, /\.sync-panel-run-card-details-stack\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.sync-panel-detail-action-chip\s*{[\s\S]*margin-right:\s*0\.5rem/);
   assert.match(globals, /\.sync-panel-source-row\s*{[\s\S]*justify-content:\s*space-between/);
   assert.match(globals, /\.sync-panel-fetch-source-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /\.sync-panel-fetch-source-error\s*{[\s\S]*grid-column:\s*1 \/ -1/);
@@ -2239,6 +2244,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderEditDialog, /className="builder-edit-dialog-message is-error"/);
   assert.doesNotMatch(builderEditDialog, /style=\{\{/);
   assert.doesNotMatch(builderEditDialog, /className="grid gap-/);
+  assert.doesNotMatch(builderEditDialog, /className="h-3 w-3"/);
+  assert.match(globals, /\.fb-icon-btn--xs svg\s*{[\s\S]*height:\s*0\.75rem/);
   assert.match(
     globals,
     /\.token-picker-dialog,[\s\S]*\.builder-edit-dialog\s*{[\s\S]*max-width:\s*min\(var\(--dialog-max\),\s*92vw\)/,
