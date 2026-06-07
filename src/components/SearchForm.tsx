@@ -282,19 +282,19 @@ export function SearchForm({
                 {visibleSuggestions.map((suggestion, index) => (
                   <div
                     aria-selected={index === activeSuggestionIndex}
+                    onClick={() => {
+                      submitSuggestion(suggestion, inputRef.current?.form ?? null);
+                    }}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                    }}
                     data-active={index === activeSuggestionIndex ? "true" : undefined}
                     id={`${suggestionIdPrefix}-${index}`}
                     key={`${suggestion.kind}:${suggestion.query}`}
                     role="option"
                     className="search-suggestion-item"
                   >
-                    <button
-                      className="search-suggestion-chip"
-                      onClick={() => {
-                        submitSuggestion(suggestion, inputRef.current?.form ?? null);
-                      }}
-                      type="button"
-                    >
+                    <span className="search-suggestion-chip">
                       {suggestion.kind === "recent" ? (
                         <Clock aria-hidden="true" className="search-suggestion-icon" />
                       ) : suggestion.kind === "entity" || suggestion.kind === "result" ? (
@@ -310,14 +310,19 @@ export function SearchForm({
                           <span className="search-suggestion-detail">{suggestion.detail}</span>
                         ) : null}
                       </span>
-                    </button>
+                    </span>
                     {recentSuggestionKeys.has(normalizeSuggestionKey(suggestion.query)) ? (
                       <button
                         aria-label={`Remove recent search ${suggestion.query}`}
                         className="search-suggestion-remove"
                         onClick={(event) => {
                           event.preventDefault();
+                          event.stopPropagation();
                           removeRecentSearch(suggestion.query);
+                        }}
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
                         }}
                         type="button"
                       >
