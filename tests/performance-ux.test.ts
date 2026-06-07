@@ -3344,6 +3344,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(digestPipelineForm, /Digests imported from the Hub/);
   assert.doesNotMatch(digestPipelineForm, /latest AI Digest and archive/);
   assert.match(digestPipelineForm, /Shared AI Digest archives/);
+  assert.match(digestPipelineForm, /function digestPipelineCardDescription/);
+  assert.match(digestPipelineForm, /pipeline\.description\?\.trim\(\)/);
+  assert.match(digestPipelineForm, /Shared by \$\{pipeline\.ownerLabel\}\./);
+  assert.doesNotMatch(digestPipelineForm, /\{pipeline\.description \|\| pipeline\.ownerLabel\}/);
   assert.match(source("src/lib/library-hub.ts"), /adminCommunityDigestTitle = "Community AI Digest"/);
   assert.doesNotMatch(source("src/lib/library-hub.ts"), /adminCommunityDigestTitle = "Community Digest"/);
   assert.doesNotMatch(digestPipelineForm, /Share my digest/);
@@ -3379,7 +3383,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /Browse AI Digest archives/);
   assert.doesNotMatch(digestPipelineForm, /Browse Hub/);
   assert.match(digestPipelineForm, /No shared AI Digest archives/);
-  assert.match(digestPipelineForm, /Shared AI Digest archives will appear here once users publish them\./);
+  assert.match(digestPipelineForm, /Shared AI Digest archives will appear here once users share them to Hub\./);
   assert.match(digestPipelineForm, /No archived AI Digest yet/);
   assert.doesNotMatch(digestPipelineForm, /No AI Digests yet/);
   assert.doesNotMatch(digestPipelineForm, /No digests yet/);

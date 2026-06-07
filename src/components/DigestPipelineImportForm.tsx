@@ -106,7 +106,7 @@ export function DigestPipelineImportForm({
   const emptyMessage =
     mode === "imported"
       ? "Import an AI Digest archive from Hub to see it on Home."
-      : "Shared AI Digest archives will appear here once users publish them.";
+      : "Shared AI Digest archives will appear here once users share them to Hub.";
 
   function setImportedIds(updater: (current: Set<string>) => Set<string>) {
     setImportedState((current) => {
@@ -415,7 +415,7 @@ function DigestPipelineCard({
         </div>
 
         <p className="fb-hub-card-desc">
-          {pipeline.description || pipeline.ownerLabel}
+          {digestPipelineCardDescription(pipeline)}
         </p>
       </div>
 
@@ -431,6 +431,12 @@ function DigestPipelineCard({
       </div>
     </article>
   );
+}
+
+function digestPipelineCardDescription(pipeline: HubDigestPipeline) {
+  const description = pipeline.description?.trim();
+  if (description) return description;
+  return `Shared by ${pipeline.ownerLabel}.`;
 }
 
 export function DigestPipelinePreviewCard({
