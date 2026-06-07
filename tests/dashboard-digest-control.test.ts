@@ -38,7 +38,8 @@ test("home digest pipeline selector labels the selected pipeline owner", () => {
   const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
 
   assert.match(digestPipelineSelector, /function pipelineOwnerLine/);
-  assert.match(digestPipelineSelector, /pipeline\.isOwnPipeline \? "Your digest" : pipeline\.ownerLabel/);
+  assert.match(digestPipelineSelector, /pipeline\.isOwnPipeline \? "Your AI Digest" : pipeline\.ownerLabel/);
+  assert.doesNotMatch(digestPipelineSelector, /Your digest/);
   assert.match(digestPipelineSelector, /options\.length <= 1[\s\S]*pipelineOwnerLine\(selectedPipeline\)/);
   assert.match(digestPipelineSelector, /<summary[\s\S]*pipelineOwnerLine\(selectedPipeline\)/);
   assert.match(digestPipelineSelector, /pipelineOwnerLine\(pipeline\)/);

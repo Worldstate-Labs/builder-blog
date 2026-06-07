@@ -97,5 +97,5 @@ export function DigestPipelineSelector({
 }
 
 function pipelineOwnerLine(pipeline: DigestPipelineSelectorOption) {
-  return pipeline.isOwnPipeline ? "Your digest" : pipeline.ownerLabel;
+  return pipeline.isOwnPipeline ? "Your AI Digest" : pipeline.ownerLabel;
 }
