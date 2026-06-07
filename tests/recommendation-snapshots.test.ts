@@ -153,7 +153,7 @@ test("source logos are shared across recommendation and library surfaces", () =>
   assert.match(source("src/components/FeedCard.tsx"), /PostCard/);
 });
 
-test("post card suppresses duplicate source labels in meta while the footer keeps the platform label", () => {
+test("post card suppresses duplicate source labels across meta and footer actions", () => {
   const html = renderToStaticMarkup(
     createElement(PostCard, {
       post: {
@@ -180,14 +180,14 @@ test("post card suppresses duplicate source labels in meta while the footer keep
   );
 
   const visibleText = html.replace(/<[^>]*>/g, "");
-  assert.equal((visibleText.match(/Product Hunt Top Products/g) ?? []).length, 2);
+  assert.equal((visibleText.match(/Product Hunt Top Products/g) ?? []).length, 1);
   assert.doesNotMatch(html, /aria-label="Product Hunt Top Products"/);
   assert.match(html, /aria-hidden="true"/);
   assert.match(html, /title="Product Hunt Top Products"/);
   assert.match(html, /class="post-source-original"/);
   assert.match(
     html,
-    /class="post-source-original"[\s\S]*<span class="source-badge" data-source="product_hunt_top_products" title="Product Hunt Top Products">/,
+    /class="post-source-original"[\s\S]*<span aria-hidden="true" class="source-badge" data-source="product_hunt_top_products" title="Product Hunt Top Products">/,
   );
 });
 
