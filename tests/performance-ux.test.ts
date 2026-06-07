@@ -855,6 +855,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /className="fb-panel dashed"/);
   assert.match(dashboardPage, /DashboardHomeTabs/);
   assert.match(dashboardTabs, /WorkspaceTopTabs/);
+  assert.match(dashboardTabs, /ariaLabel="Home sections"/);
+  assert.doesNotMatch(dashboardTabs, /ariaLabel="Home feed"/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /role="tablist"/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /onKeyDown=\{handleTabKeyDown\}/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /"ArrowLeft", "ArrowRight", "Home", "End"/);

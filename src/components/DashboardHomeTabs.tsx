@@ -32,7 +32,7 @@ export function DashboardHomeTabs({
   return (
     <>
       <WorkspaceTopTabs
-        ariaLabel="Home feed"
+        ariaLabel="Home sections"
         items={HOME_TABS}
         selectedValue={initialTab}
       />
