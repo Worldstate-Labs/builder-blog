@@ -1862,8 +1862,12 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /emptySearchCopy = "Search sources, posts, saved posts, and AI Digests\."/);
   assert.match(searchPage, /<SearchEmptyState title="Start with a search">\{emptySearchCopy\}<\/SearchEmptyState>/);
   assert.match(searchPage, /<SearchEmptyState actions=\{recoveryActions\} title="No matches found">/);
-  assert.match(searchPage, /Try a broader phrase, fewer words, or switch back to All results\./);
+  assert.match(searchPage, /searchNoMatchesCopy/);
+  assert.match(searchPage, /search all result types/);
+  assert.match(searchPage, /remove active filters/);
+  assert.match(searchPage, /Try a broader phrase or fewer words\./);
   assert.doesNotMatch(searchPage, /No matches found\. Try a broader phrase/);
+  assert.doesNotMatch(searchPage, /switch back to All results/);
   assert.match(searchPage, /past AI Digests/);
   assert.match(searchPage, /model pricing type:post/);
   assert.match(searchPage, /model pricing type:source/);

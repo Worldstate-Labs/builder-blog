@@ -398,7 +398,7 @@ async function SearchResultsSection({
           ) : null}
           {filteredResults.length === 0 ? (
             <SearchEmptyState actions={recoveryActions} title="No matches found">
-              Try a broader phrase, fewer words, or switch back to All results.
+              {searchNoMatchesCopy({ activeFilterCount: activeFilters.length, time, typeFilter })}
             </SearchEmptyState>
           ) : null}
           {relatedSearches.length > 0 ? (
@@ -929,6 +929,24 @@ function SearchEmptyState({
       title={title}
     />
   );
+}
+
+function searchNoMatchesCopy({
+  activeFilterCount,
+  time,
+  typeFilter,
+}: {
+  activeFilterCount: number;
+  time: SearchTimeRange;
+  typeFilter: SearchTypeFilter;
+}) {
+  if (typeFilter !== "all") {
+    return "Try a broader phrase, fewer words, or search all result types.";
+  }
+  if (time !== "any" || activeFilterCount > 0) {
+    return "Try a broader phrase, fewer words, or remove active filters.";
+  }
+  return "Try a broader phrase or fewer words.";
 }
 
 function countResultTypes(results: SearchResult[]) {
