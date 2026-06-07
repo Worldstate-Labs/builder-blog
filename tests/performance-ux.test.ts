@@ -1221,7 +1221,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /initialSnapshots=\{visibleSnapshots\}/);
   assert.match(followingSection, /function snapshotHasPosts/);
   assert.match(followingSection, /No followed sources yet/);
-  assert.match(followingSection, /start Following/);
+  assert.match(followingSection, /start seeing Following posts/);
+  assert.doesNotMatch(followingSection, /start Following/);
   assert.match(followingSection, /No fetched posts yet/);
   assert.match(followingSection, /No unread posts yet/);
   assert.match(followingSection, /Ask your Local Agent to fetch and summarize your followed sources/);
