@@ -1862,6 +1862,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /SearchResultsSection/);
   assert.match(searchPage, /aria-label="Search result type filter"/);
   assert.doesNotMatch(searchPage, /aria-label="Result type"/);
+  assert.match(searchPage, /aria-label="Search recovery actions"/);
+  assert.doesNotMatch(searchPage, /aria-label="Broaden search"/);
   assert.match(searchPage, /<div className="search-meta-row" role="status">[\s\S]*Loading search results/);
   assert.doesNotMatch(searchPage, /Updating results\.\.\./);
   assert.match(searchPage, /className="workspace-content-stack search-results-workspace"/);
