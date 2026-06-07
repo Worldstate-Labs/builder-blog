@@ -234,7 +234,11 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
     <section className="hub-import-section">
       {showFilters ? (
         <>
-          <nav className="fb-segmented-tabs filter-tabs at-desktop" aria-label="Source library filter">
+          <div
+            aria-label="Source library filter"
+            className="fb-segmented-tabs filter-tabs at-desktop"
+            role="group"
+          >
             {visibleFilters.map((filter) => (
               <button
                 aria-pressed={activeFilter === filter.key}
@@ -248,8 +252,12 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
                 <CountBadge value={counts[filter.key]} />
               </button>
             ))}
-          </nav>
-          <div className="fb-segmented-tabs mobile-filter-tabs at-mobile" aria-label="Source library filter">
+          </div>
+          <div
+            aria-label="Source library filter"
+            className="fb-segmented-tabs mobile-filter-tabs at-mobile"
+            role="group"
+          >
             {visibleFilters.map((filter) => (
               <button
                 aria-pressed={activeFilter === filter.key}
