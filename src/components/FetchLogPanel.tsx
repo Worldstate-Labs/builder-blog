@@ -596,8 +596,10 @@ export function FetchLogPanel({
             role="tablist"
           >
             <button
+              aria-controls="fetch-sync-panel-status"
               aria-selected={activeTab === "status"}
               className={`fb-btn compact ${activeTab === "status" ? "" : "light"}`}
+              id="fetch-sync-tab-status"
               onClick={() => setActiveTab("status")}
               role="tab"
               type="button"
@@ -606,8 +608,10 @@ export function FetchLogPanel({
               Fetch status
             </button>
             <button
+              aria-controls="fetch-sync-panel-log"
               aria-selected={activeTab === "log"}
               className={`fb-btn compact ${activeTab === "log" ? "" : "light"}`}
+              id="fetch-sync-tab-log"
               onClick={() => setActiveTab("log")}
               role="tab"
               type="button"
@@ -618,21 +622,36 @@ export function FetchLogPanel({
             </button>
           </div>
 
-          {activeTab === "status" ? (
-            <FetchStatusPanel
-              cronJob={cronJob}
-              nextExpectedAt={cronStatus.nextExpectedAt}
-              onOpenRun={openRun}
-              slots={cronStatus.slots}
-            />
-          ) : (
-            <FetchRunList
-              expanded={expanded}
-              jobRuns={jobRuns}
-              runs={runs}
-              setExpanded={setExpanded}
-            />
-          )}
+          <section
+            aria-labelledby="fetch-sync-tab-status"
+            hidden={activeTab !== "status"}
+            id="fetch-sync-panel-status"
+            role="tabpanel"
+          >
+            {activeTab === "status" ? (
+              <FetchStatusPanel
+                cronJob={cronJob}
+                nextExpectedAt={cronStatus.nextExpectedAt}
+                onOpenRun={openRun}
+                slots={cronStatus.slots}
+              />
+            ) : null}
+          </section>
+          <section
+            aria-labelledby="fetch-sync-tab-log"
+            hidden={activeTab !== "log"}
+            id="fetch-sync-panel-log"
+            role="tabpanel"
+          >
+            {activeTab === "log" ? (
+              <FetchRunList
+                expanded={expanded}
+                jobRuns={jobRuns}
+                runs={runs}
+                setExpanded={setExpanded}
+              />
+            ) : null}
+          </section>
         </div>
       ) : null}
     </section>

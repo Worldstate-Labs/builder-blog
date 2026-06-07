@@ -286,8 +286,10 @@ export function DigestLogPanel({
         role="tablist"
       >
         <button
+          aria-controls="digest-update-panel-status"
           aria-selected={activeTab === "status"}
           className={`fb-btn compact ${activeTab === "status" ? "" : "light"}`}
+          id="digest-update-tab-status"
           onClick={() => setActiveTab("status")}
           role="tab"
           type="button"
@@ -296,8 +298,10 @@ export function DigestLogPanel({
           Schedule status
         </button>
         <button
+          aria-controls="digest-update-panel-log"
           aria-selected={activeTab === "log"}
           className={`fb-btn compact ${activeTab === "log" ? "" : "light"}`}
+          id="digest-update-tab-log"
           onClick={() => setActiveTab("log")}
           role="tab"
           type="button"
@@ -308,21 +312,36 @@ export function DigestLogPanel({
         </button>
       </div>
 
-      {activeTab === "status" ? (
-        <DigestStatusPanel
-          cronJob={cronJob}
-          nextExpectedAt={cronStatus.nextExpectedAt}
-          onOpenRun={openRun}
-          slots={cronStatus.slots}
-        />
-      ) : (
-        <DigestRunList
-          expanded={expanded}
-          jobRuns={jobRuns}
-          runs={runs}
-          setExpanded={setExpanded}
-        />
-      )}
+      <section
+        aria-labelledby="digest-update-tab-status"
+        hidden={activeTab !== "status"}
+        id="digest-update-panel-status"
+        role="tabpanel"
+      >
+        {activeTab === "status" ? (
+          <DigestStatusPanel
+            cronJob={cronJob}
+            nextExpectedAt={cronStatus.nextExpectedAt}
+            onOpenRun={openRun}
+            slots={cronStatus.slots}
+          />
+        ) : null}
+      </section>
+      <section
+        aria-labelledby="digest-update-tab-log"
+        hidden={activeTab !== "log"}
+        id="digest-update-panel-log"
+        role="tabpanel"
+      >
+        {activeTab === "log" ? (
+          <DigestRunList
+            expanded={expanded}
+            jobRuns={jobRuns}
+            runs={runs}
+            setExpanded={setExpanded}
+          />
+        ) : null}
+      </section>
     </div>
   ) : null;
 
