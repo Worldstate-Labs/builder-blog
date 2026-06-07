@@ -150,14 +150,14 @@ export function DigestPipelineImportForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pipelineId }),
         });
-        if (!response.ok) throw new Error("Unable to import digest");
+        if (!response.ok) throw new Error("Unable to import AI Digest");
       } catch {
         setImportedIds((current) => {
           const next = new Set(current);
           next.delete(pipelineId);
           return next;
         });
-        setError("Could not import digest.");
+        setError("Could not import AI Digest.");
       } finally {
         setPendingAction(null);
       }
@@ -189,10 +189,10 @@ export function DigestPipelineImportForm({
         const response = await fetch(`/api/digest-pipelines/imports/${pipelineId}`, {
           method: "DELETE",
         });
-        if (!response.ok) throw new Error("Unable to remove digest import");
+        if (!response.ok) throw new Error("Unable to remove AI Digest import");
       } catch {
         setImportedIds((current) => new Set([...current, pipelineId]));
-        setError("Could not remove imported digest.");
+        setError("Could not remove imported AI Digest.");
       } finally {
         setPendingAction(null);
       }
@@ -264,11 +264,11 @@ export function DigestPipelineImportForm({
       >
         {removeTarget ? (
           <div className="fb-dialog-inner settings-dialog-stack">
-            <h3 className="fb-section-heading">Remove imported digest?</h3>
+            <h3 className="fb-section-heading">Remove imported AI Digest?</h3>
             <div className="settings-dialog-copy">
               <p>
                 After removing <strong>{removeTarget.title}</strong>, you will
-                no longer see this digest on the Home page.
+                no longer see this AI Digest on the Home page.
               </p>
               <p className="settings-dialog-warning">
                 You can import it again from the Hub later.
@@ -370,7 +370,7 @@ function DigestPipelineCard({
         type="button"
       >
         <Trash2 aria-hidden="true" />
-        Remove digest
+        Remove AI Digest
       </button>
     </>
   ) : (
