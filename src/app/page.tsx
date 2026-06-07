@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Archive, Radio, Search, Sparkles, Terminal, UsersRound } from "lucide-react";
+import { Radio, Search, Sparkles, Terminal, UsersRound } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { getCurrentSession } from "@/lib/auth";
@@ -89,7 +89,7 @@ export default async function Home() {
             </div>
             <div className="fb-demo-search">
               <Search aria-hidden="true" />
-              <span>Search digest history</span>
+              <span>Search AI Digests</span>
             </div>
           </div>
           <div className="fb-product-preview-list">
@@ -150,9 +150,9 @@ export default async function Home() {
             },
             {
               i: "03",
-              icon: Archive,
+              icon: Search,
               title: "Search and revisit",
-              copy: "Open the original items behind each summary and search your digest history later.",
+              copy: "Open the original items behind each summary and search past AI Digests later.",
             },
           ].map(({ i, icon: Icon, title, copy }) => (
             <li key={title} className="fb-public-step-row">
@@ -187,7 +187,7 @@ export default async function Home() {
           <Feature
             icon={Search}
             title="Library search"
-            copy="Sources, saved items, and digest history share one search surface."
+            copy="Sources, saved items, and AI Digests share one search surface."
           />
         </div>
       </section>

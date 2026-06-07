@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Archive, KeyRound, Search } from "lucide-react";
+import { KeyRound, Search, Sparkles } from "lucide-react";
 import { AuthButtons } from "@/components/AuthButtons";
 import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -38,10 +38,10 @@ export default async function LoginPage({
           </h1>
           <p className="fb-login-copy">
             Follow people and sources, collect new updates, and keep your
-            digests in a searchable archive.
+            AI Digests searchable.
           </p>
           <div className="fb-login-proof-rail" aria-label="Workspace capabilities">
-            <LoginProof icon={Archive} label="Archive" />
+            <LoginProof icon={Sparkles} label="AI Digest" />
             <LoginProof icon={Search} label="Search" />
             <LoginProof icon={KeyRound} label="Local Agent" />
           </div>
@@ -54,7 +54,7 @@ export default async function LoginPage({
                 Sign in
               </h2>
               <p className="fb-login-panel-copy">
-                Use one account for your web archive and Local Agent.
+                Use one account for your AI Digest archive and Local Agent.
               </p>
             </div>
           </div>
@@ -117,7 +117,7 @@ function LoginProof({
   icon: Icon,
   label,
 }: {
-  icon: typeof Archive;
+  icon: typeof Sparkles;
   label: string;
 }) {
   return (

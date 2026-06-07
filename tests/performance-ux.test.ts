@@ -185,8 +185,12 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /fb-public-card-copy/);
   assert.match(landingPage, /fb-public-workspace/);
   assert.match(landingPage, /fb-public-feature-grid/);
+  assert.match(landingPage, /Search AI Digests/);
+  assert.match(landingPage, /search past AI Digests later/);
+  assert.match(landingPage, /Sources, saved items, and AI Digests share one search surface\./);
   assert.doesNotMatch(landingPage, /fb-public-metric/);
   assert.doesNotMatch(landingPage, /fb-public-card-grid|fb-public-step-card/);
+  assert.doesNotMatch(landingPage, /Archive|digest history|Search digest history/);
   assert.doesNotMatch(landingPage, /MiniMetric/);
   assert.doesNotMatch(landingPage, /max-w-7xl/);
   assert.doesNotMatch(landingPage, /mt-6 max-w-xl/);
@@ -222,7 +226,9 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(loginPage, /fb-login-brand-name/);
   assert.match(loginPage, /fb-login-panel-head/);
   assert.match(loginPage, /Sign in/);
-  assert.match(loginPage, /Use one account for your web archive and Local Agent\./);
+  assert.match(loginPage, /AI Digest/);
+  assert.match(loginPage, /Use one account for your AI Digest archive and Local Agent\./);
+  assert.doesNotMatch(loginPage, /Archive|web archive|searchable archive/);
   assert.doesNotMatch(loginPage, /Continue securely/);
   assert.doesNotMatch(loginPage, /ShieldCheck|fb-login-panel-icon/);
   assert.match(loginPage, /fb-login-proof-icon/);
