@@ -44,9 +44,9 @@ export function digestPipelineOwnerLabel(
   owner: { name?: string | null; email?: string | null } | null | undefined,
   { owned = false }: { owned?: boolean } = {},
 ) {
-  if (owned) return "Shared by you.";
-  if (isAdminCommunityDigestOwner(owner)) return adminCommunityDigestTitle;
-  return `Shared by ${owner?.name || owner?.email || "a FollowBrief user"}.`;
+  if (owned) return "you";
+  if (isAdminCommunityDigestOwner(owner)) return "FollowBrief";
+  return owner?.name || owner?.email || "a FollowBrief user";
 }
 
 export function digestPipelineSlug(userId: string) {

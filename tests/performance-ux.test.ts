@@ -3362,6 +3362,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /function digestPipelineCardDescription/);
   assert.match(digestPipelineForm, /pipeline\.description\?\.trim\(\)/);
   assert.match(digestPipelineForm, /Shared by \$\{pipeline\.ownerLabel\}\./);
+  assert.doesNotMatch(digestPipelineForm, /Shared by Shared by/);
   assert.doesNotMatch(digestPipelineForm, /\{pipeline\.description \|\| pipeline\.ownerLabel\}/);
   assert.match(source("src/lib/library-hub.ts"), /adminCommunityDigestTitle = "Community AI Digest"/);
   assert.doesNotMatch(source("src/lib/library-hub.ts"), /adminCommunityDigestTitle = "Community Digest"/);
@@ -3468,6 +3469,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(source("src/lib/library-hub.ts"), /isAdminCommunityDigestOwner/);
   assert.match(source("src/lib/library-hub.ts"), /displayDigestPipelineTitleForOwner/);
   assert.match(source("src/lib/library-hub.ts"), /digestPipelineOwnerLabel/);
+  assert.match(source("src/lib/library-hub.ts"), /if \(owned\) return "you"/);
+  assert.match(source("src/lib/library-hub.ts"), /if \(isAdminCommunityDigestOwner\(owner\)\) return "FollowBrief"/);
+  assert.doesNotMatch(source("src/lib/library-hub.ts"), /if \(owned\) return "Shared by you\."/);
+  assert.doesNotMatch(source("src/lib/library-hub.ts"), /return `Shared by \$\{owner\?\.name/);
   assert.match(source("src/lib/library-hub.ts"), /\$\{identity\}'s AI Digest/);
   assert.match(source("src/lib/library-hub.ts"), /replace\(\/AI Builder Digest\/g, "AI Digest"\)/);
   assert.match(source("src/lib/library-hub.ts"), /replace\(\/Builder Digest\/g, "AI Digest"\)/);
