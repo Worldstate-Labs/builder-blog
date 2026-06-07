@@ -212,10 +212,10 @@ export function SearchForm({
       }}
     >
       <div className={isHeader ? "header-search-row" : "search-form-row"}>
-        <label className={isHeader ? "header-search-label" : "search-query-label min-w-0"}>
+        <label className={isHeader ? "header-search-label" : "search-query-label"}>
           <span className="sr-only">Search query</span>
           <span className={isHeader ? "header-search-input-wrap search-input-wrap" : "search-input-wrap"}>
-            <Search className={isHeader ? "h-4 w-4 text-[var(--muted)]" : "search-input-icon"} />
+            <Search className="search-input-icon" />
             <input
               autoCapitalize="off"
               autoComplete="off"
@@ -268,7 +268,7 @@ export function SearchForm({
                 onClick={clearQuery}
                 type="button"
               >
-                <X aria-hidden="true" className="h-4 w-4" />
+                <X aria-hidden="true" className="search-action-icon" />
               </button>
             ) : null}
             {shouldShowSuggestions ? (
@@ -296,13 +296,13 @@ export function SearchForm({
                       type="button"
                     >
                       {suggestion.kind === "recent" ? (
-                        <Clock aria-hidden="true" className="h-4 w-4" />
+                        <Clock aria-hidden="true" className="search-suggestion-icon" />
                       ) : suggestion.kind === "entity" || suggestion.kind === "result" ? (
                         <span className="search-suggestion-avatar" aria-hidden="true">
                           {suggestion.label.slice(0, 1).toUpperCase()}
                         </span>
                       ) : (
-                        <Search aria-hidden="true" className="h-4 w-4" />
+                        <Search aria-hidden="true" className="search-suggestion-icon" />
                       )}
                       <span className="search-suggestion-copy">
                         <span className="search-suggestion-title">{suggestion.label}</span>
@@ -321,7 +321,7 @@ export function SearchForm({
                         }}
                         type="button"
                       >
-                        <X aria-hidden="true" className="h-3.5 w-3.5" />
+                        <X aria-hidden="true" className="search-action-icon" />
                       </button>
                     ) : null}
                   </div>

@@ -2905,6 +2905,7 @@ svg.lucide {
 
 .search-query-label {
   flex: 999 1 30rem;
+  min-width: 0;
 }
 
 .search-input-icon {
@@ -2914,6 +2915,14 @@ svg.lucide {
   pointer-events: none;
   position: absolute;
   width: 1.15rem;
+}
+
+.header-search .search-input-icon {
+  flex-shrink: 0;
+  height: 1rem;
+  left: auto;
+  position: static;
+  width: 1rem;
 }
 
 .search-input {
@@ -2979,6 +2988,13 @@ svg.lucide {
   background: color-mix(in oklch, var(--ink) 7%, transparent);
   color: var(--ink);
   outline: none;
+}
+
+.search-action-icon,
+.search-suggestion-icon {
+  flex-shrink: 0;
+  height: 1rem;
+  width: 1rem;
 }
 
 .search-mode-select {
@@ -3119,9 +3135,8 @@ svg.lucide {
   width: 100%;
 }
 
-.search-suggestion-chip > svg {
+.search-suggestion-icon {
   color: color-mix(in oklch, var(--muted) 84%, transparent);
-  flex: 0 0 auto;
 }
 
 .search-suggestion-copy {

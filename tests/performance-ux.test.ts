@@ -1689,6 +1689,10 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /Match style/);
   assert.match(searchForm, /variant\?: "page" \| "header"/);
   assert.match(searchForm, /header-search-suggestion/);
+  assert.match(searchForm, /className="search-input-icon"/);
+  assert.match(searchForm, /className="search-action-icon"/);
+  assert.match(searchForm, /className="search-suggestion-icon"/);
+  assert.doesNotMatch(searchForm, /h-4 w-4|h-3\.5 w-3\.5|text-\[var\(--muted\)\]|search-query-label min-w-0/);
   assert.match(searchForm, /\/api\/search\/suggest/);
   assert.match(searchForm, /Time range/);
   assert.match(searchForm, /Sort by/);
@@ -1731,6 +1735,11 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchForm, /lucky/);
   assert.doesNotMatch(searchForm, /type="radio"/);
   assert.match(globals, /\.search-suggestion-dropdown/);
+  assert.match(globals, /\.search-query-label\s*{[\s\S]*min-width:\s*0/);
+  assert.match(globals, /\.header-search \.search-input-icon\s*{[\s\S]*position:\s*static/);
+  assert.match(globals, /\.search-action-icon,[\s\S]*\.search-suggestion-icon\s*{[\s\S]*height:\s*1rem/);
+  assert.match(globals, /\.search-suggestion-icon\s*{[\s\S]*color:\s*color-mix/);
+  assert.doesNotMatch(globals, /\.search-suggestion-chip > svg/);
   assert.match(globals, /\.fb-popover\s*{[\s\S]*max-width:\s*min\(var\(--popover-max\),\s*calc\(100vw - 2rem\)\)/);
   assert.match(globals, /\.fb-popover\s*{[\s\S]*min-width:\s*min\(var\(--popover-max\),\s*calc\(100vw - 2rem\)\)/);
   assert.doesNotMatch(globals, /search-page-active/);
