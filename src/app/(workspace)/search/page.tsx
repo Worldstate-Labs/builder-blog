@@ -673,14 +673,15 @@ function ResultCard({
         {result.date ? <span>{formatDistanceToNow(result.date, { addSuffix: true })}</span> : null}
         {originalUrl ? (
           <a
-            aria-label={`Open ${result.title} on its source site`}
+            aria-label={`View original: ${result.title}`}
             className="post-source-original"
             href={originalUrl}
             rel="noreferrer"
             target="_blank"
-            title="Open original source"
+            title="View original"
           >
-            <SourceBadge sourceType={result.sourceType ?? result.type} />
+            <SourceBadge decorative showLabel={false} sourceType={result.sourceType ?? result.type} />
+            <span>View original</span>
           </a>
         ) : null}
       </div>

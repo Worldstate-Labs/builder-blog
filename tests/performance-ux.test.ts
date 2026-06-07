@@ -1483,7 +1483,10 @@ test("user library search can fetch operator-only candidate sets", () => {
   assert.match(searchLib, /documentSiteMatches\(document, parsedQuery\.site\)/);
   assert.match(searchPage, /const originalUrl = result\.externalUrl \?\? \(titleIsExternal \? result\.url : null\)/);
   assert.match(searchPage, /className="post-source-original"/);
-  assert.match(searchPage, /<SourceBadge sourceType=\{result\.sourceType \?\? result\.type\} \/>/);
+  assert.match(searchPage, /aria-label=\{`View original: \$\{result\.title\}`\}/);
+  assert.match(searchPage, /title="View original"/);
+  assert.match(searchPage, /<SourceBadge decorative showLabel=\{false\} sourceType=\{result\.sourceType \?\? result\.type\} \/>/);
+  assert.doesNotMatch(searchPage, /Open original source/);
   assert.doesNotMatch(searchPage, /className="search-result-open"/);
 });
 
