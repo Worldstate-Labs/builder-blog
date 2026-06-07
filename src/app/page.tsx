@@ -186,7 +186,7 @@ export default async function Home() {
           />
           <Feature
             icon={Search}
-            title="Library search"
+            title="Workspace search"
             copy="Sources, posts, saved items, and AI Digests share one search surface."
           />
         </div>
