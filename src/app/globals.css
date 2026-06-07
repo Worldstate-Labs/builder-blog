@@ -6291,14 +6291,36 @@ svg.lucide {
   padding: 0.08rem 0.45rem 0.08rem 0.24rem;
 }
 
-.builder-library-card .fb-src-name {
-  font-size: 0.9375rem;
-  font-weight: 760;
-}
-
 .builder-library-card .source-badge-mark {
   height: 0.9rem;
   width: 0.9rem;
+}
+
+.builder-library-info {
+  min-width: 0;
+}
+
+.builder-library-info-head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.builder-library-name {
+  color: var(--ink);
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 760;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+a.builder-library-name:hover {
+  text-decoration: underline;
 }
 
 .builder-library-actions {
@@ -10764,11 +10786,11 @@ body {
     grid-area: avatar;
   }
 
-  .builder-library-card-main > .min-w-0 {
+  .builder-library-info {
     grid-area: info;
   }
 
-  .builder-library-card .fb-src-name {
+  .builder-library-name {
     font-size: 0.95rem;
     white-space: normal;
   }

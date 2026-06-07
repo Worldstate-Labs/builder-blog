@@ -418,17 +418,17 @@ function sourceTypeSortRank(sourceType: string) {
 
 function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
   return (
-    <div className="min-w-0">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="builder-library-info">
+      <div className="builder-library-info-head">
         {builder.entityId ? (
           <Link
             href={`/builder/${builder.entityId}`}
-            className="fb-src-name truncate hover:underline"
+            className="builder-library-name"
           >
             {builder.name}
           </Link>
         ) : (
-          <div className="fb-src-name truncate">{builder.name}</div>
+          <div className="builder-library-name">{builder.name}</div>
         )}
       </div>
     </div>
