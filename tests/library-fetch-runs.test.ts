@@ -181,7 +181,8 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /Update frequency/);
   assert.match(panel, /Language/);
   assert.match(panel, /Latest fetch/);
-  assert.match(panel, /Cron status/);
+  assert.match(panel, /Schedule status/);
+  assert.doesNotMatch(panel, /Cron status/);
   assert.match(panel, /formatLanguage\(summaryLanguage \?\? "zh"\)/);
   assert.match(panel, /displayLanguagePreference\(value\)/);
   assert.match(panel, /formatMetaDate\(latestRun\.startedAt, hydrated\)/);
