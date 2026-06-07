@@ -2733,6 +2733,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /detailUrl\?: string \| null/);
   assert.match(postCard, /className="post-source-original"/);
   assert.match(postCard, /className="post-raw-content-action"/);
+  assert.match(postCard, /aria-label=\{actionLabel\("Post actions", actionContext\)\}/);
+  assert.match(postCard, /className="post-actions"[\s\S]*role="group"/);
   assert.match(recommendationFeed, /detailUrl:\s*postDetailHref/);
   assert.match(recommendationFeed, /"Following"/);
   assert.match(recommendations, /from a followed source/);

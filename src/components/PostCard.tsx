@@ -284,7 +284,12 @@ export function PostCard({
             <span />
           )}
 
-          <div className="post-actions" onClickCapture={noteInteraction}>
+          <div
+            aria-label={actionLabel("Post actions", actionContext)}
+            className="post-actions"
+            onClickCapture={noteInteraction}
+            role="group"
+          >
             {/* External platform action: keep the platform icon, but use one stable label. */}
             <a
               aria-label={actionLabel("View original", actionContext)}
