@@ -2342,7 +2342,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.fb-dialog\s*{[\s\S]*top:\s*50%/);
   assert.match(globals, /\.fb-dialog\s*{[\s\S]*left:\s*50%/);
   assert.match(globals, /\.fb-dialog\s*{[\s\S]*transform:\s*translate\(-50%, -50%\)/);
-  assert.match(tokenPanel, /className="access-keys-panel fb-panel"/);
+  assert.match(tokenPanel, /className="access-keys-panel"/);
+  assert.doesNotMatch(tokenPanel, /className="access-keys-panel fb-panel"/);
   assert.match(tokenPanel, /className="access-keys-head"/);
   assert.match(tokenPanel, /className="access-keys-list"/);
   assert.match(tokenPanel, /className="access-keys-more"/);
@@ -2357,6 +2358,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /\\b\(ios\|iphone\|ipad\)\\b/);
   assert.match(tokenPanel, /machineLabel === "unknown machine" && tokenName/);
   assert.doesNotMatch(tokenPanel, /access-key-device-detail/);
+  assert.match(tokenPanel, /className=\{`access-key-card\$\{token\.revokedAt \? " fb-row--revoked" : ""\}`\}/);
   assert.match(tokenPanel, /useHydrated/);
   assert.match(tokenPanel, /formatRelativeCompact\(token\.lastUsedAt, hydrated\)/);
   assert.match(tokenPanel, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);
@@ -2368,8 +2370,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /className="access-keys-list access-keys-list--skeleton"/);
   assert.doesNotMatch(settingsPage, /mt-4 h-11 animate-pulse/);
   assert.match(globals, /\.access-keys-panel/);
-  assert.match(globals, /\.fb-token-row\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);
-  assert.match(globals, /\.fb-token-row\s*{[\s\S]*border-radius:\s*12px/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*14px/);
+  assert.match(globals, /\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*border-radius:\s*14px/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.access-keys-empty\s*{\s*margin:\s*0;\s*}/);
   assert.match(globals, /\.settings-dialog-stack/);

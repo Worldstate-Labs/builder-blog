@@ -233,7 +233,7 @@ export function AgentTokenPanel({
   }
 
   return (
-    <section className="access-keys-panel fb-panel">
+    <section className="access-keys-panel">
       <div className="access-keys-head">
         <div className="access-keys-copy">
           <h2 className="fb-section-heading">Access keys</h2>
@@ -466,7 +466,7 @@ function TokenRow({
       : "Not connected yet";
 
   return (
-    <div className={`fb-token-row${token.revokedAt ? " fb-row--revoked" : ""}`}>
+    <div className={`access-key-card${token.revokedAt ? " fb-row--revoked" : ""}`}>
       <span className="access-key-device-icon" aria-hidden="true">
         <DeviceIcon className="h-5 w-5" />
       </span>

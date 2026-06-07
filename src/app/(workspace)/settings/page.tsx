@@ -181,7 +181,7 @@ async function AgentTokenSlot({ userId }: { userId: string }) {
 
 function AgentTokenPanelSkeleton() {
   return (
-    <section className="access-keys-panel fb-panel" aria-busy="true" aria-live="polite">
+    <section className="access-keys-panel" aria-busy="true" aria-live="polite">
       <div className="access-keys-head">
         <div className="access-keys-skeleton-copy">
           <div className="settings-skeleton-line settings-skeleton-line--access-title" />

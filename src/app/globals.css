@@ -7623,6 +7623,11 @@ a.fb-hub-source-name:focus-visible {
   height: 3rem;
 }
 
+.access-keys-list--skeleton .settings-skeleton-row {
+  border-radius: 14px;
+  height: 4.875rem;
+}
+
 .settings-source-type-manager {
   gap: 0.75rem;
 }
@@ -8252,7 +8257,7 @@ a.fb-hub-source-name:focus-visible {
 /* Access keys settings panel */
 .access-keys-panel {
   display: grid;
-  gap: 0.85rem;
+  gap: 1rem;
 }
 
 .access-keys-head {
@@ -8285,7 +8290,6 @@ a.fb-hub-source-name:focus-visible {
 .access-keys-list--skeleton {
   display: grid;
   gap: 0.5rem;
-  padding: 0.75rem;
 }
 
 .access-keys-empty {
@@ -8428,12 +8432,12 @@ a.fb-hub-source-name:focus-visible {
   margin-top: 0.45rem;
 }
 
-/* Token row */
-.fb-token-row {
+/* Access key device card */
+.access-key-card {
   align-items: center;
   background: var(--paper);
   border: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
-  border-radius: 12px;
+  border-radius: 14px;
   display: grid;
   gap: 1rem 1.15rem;
   grid-template-columns: 2rem minmax(0, 1fr) auto;
@@ -8441,7 +8445,7 @@ a.fb-hub-source-name:focus-visible {
   padding: 1.3rem 1.25rem;
 }
 
-.fb-token-row.fb-row--revoked {
+.access-key-card.fb-row--revoked {
   opacity: 0.72;
 }
 
@@ -9617,7 +9621,7 @@ body {
     line-height: 1.4;
   }
 
-  .fb-token-row {
+  .access-key-card {
     align-items: start;
     gap: 0.8rem 0.75rem;
     grid-template-columns: auto minmax(0, 1fr);
