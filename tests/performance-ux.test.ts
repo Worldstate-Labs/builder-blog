@@ -1198,7 +1198,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /aria-label="Fetch sources views"/);
   assert.match(fetchLogPanel, /aria-label="Fetch sources details"/);
   assert.doesNotMatch(fetchLogPanel, /aria-label="Source update views"|aria-label="Source update details"/);
-  assert.match(fetchLogPanel, /Update frequency/);
+  assert.match(fetchLogPanel, /Fetch frequency/);
+  assert.doesNotMatch(fetchLogPanel, /Update frequency/);
   assert.match(fetchLogPanel, /Language/);
   assert.match(fetchLogPanel, /Latest fetch/);
   assert.match(fetchLogPanel, /Schedule status/);
@@ -2096,10 +2097,11 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(digestPipelineForm, /className="fb-hub-digest-preview"/);
   assert.match(digestPipelineForm, /function DigestPipelineMetaGrid/);
   assert.match(digestPipelineForm, /aria-label="AI Digest details"/);
-  assert.match(digestPipelineForm, /Update frequency/);
+  assert.match(digestPipelineForm, /Build frequency/);
   assert.match(digestPipelineForm, /Language/);
   assert.match(digestPipelineForm, /Latest AI Digest/);
   assert.match(digestPipelineForm, /Schedule status/);
+  assert.doesNotMatch(digestPipelineForm, /Update frequency/);
   assert.match(digestPipelineForm, /className="fb-hub-digest-headline"/);
   assert.match(digestPipelineForm, /fb-hub-digest-headline-kicker">Headlines/);
   assert.doesNotMatch(digestPipelineForm, /fb-hub-digest-headline-kicker">Summary/);

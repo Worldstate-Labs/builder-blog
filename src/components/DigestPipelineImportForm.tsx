@@ -464,7 +464,7 @@ function DigestPipelineMetaGrid({
   return (
     <dl className="fb-hub-digest-meta" aria-label="AI Digest details">
       <DigestPipelineMetaItem
-        label="Update frequency"
+        label="Build frequency"
         value={pipeline.frequencyLabel ?? "Not scheduled"}
       />
       <DigestPipelineMetaItem

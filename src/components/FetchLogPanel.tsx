@@ -748,7 +748,7 @@ function SourceFetchMetaGrid({
   return (
     <dl className="fb-hub-digest-meta source-fetch-meta" aria-label="Fetch sources details">
       <SourceFetchMetaItem
-        label="Update frequency"
+        label="Fetch frequency"
         value={cronJob?.frequencyLabel ?? "Not scheduled"}
       />
       <SourceFetchMetaItem
