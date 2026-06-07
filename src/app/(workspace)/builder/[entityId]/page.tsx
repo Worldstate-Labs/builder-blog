@@ -41,8 +41,8 @@ type ChannelInfo = {
 };
 
 function channelLibraryLabel(channel: Pick<ChannelInfo, "isAdminCommunity" | "isOwnChannel">) {
-  if (channel.isOwnChannel) return "Your library";
-  if (channel.isAdminCommunity) return "Community library";
+  if (channel.isOwnChannel) return "Your source library";
+  if (channel.isAdminCommunity) return "Community source library";
   return null;
 }
 
@@ -69,7 +69,7 @@ export default async function BuilderDetailPage({ params }: Params) {
     const libraryName =
       channel.hubItems[0]?.hubEntry.name ??
       (isAdmin
-        ? "Community library"
+        ? "Community source library"
         : channel.owner?.name ?? channel.owner?.email ?? "Unknown");
     return {
       builderId: channel.id,
