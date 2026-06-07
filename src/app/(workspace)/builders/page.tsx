@@ -860,7 +860,7 @@ function LibrarySection({
     >
       <summary className="library-section-summary">
         <div className="library-section-summary-copy">
-          <h2 className="fb-section-heading">{title}</h2>
+          <h3 className="fb-section-heading">{title}</h3>
           <p className="library-section-copy">{detail}</p>
         </div>
         <div className="library-section-meta">
