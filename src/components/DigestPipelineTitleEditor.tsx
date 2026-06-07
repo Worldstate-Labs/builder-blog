@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useState, useTransition } from "react";
+import { type FormEvent, type KeyboardEvent, useState, useTransition } from "react";
 import { Check, Pencil, X } from "lucide-react";
 
 type DigestPipelineTitleEditorProps = {
@@ -23,6 +23,8 @@ export function DigestPipelineTitleEditor({
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const inputId = `${headingId}-input`;
+  const errorId = `${headingId}-error`;
 
   function startEditing() {
     setDraft(title);
@@ -72,19 +74,28 @@ export function DigestPipelineTitleEditor({
     });
   }
 
+  function handleInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    cancelEditing();
+  }
+
   if (editing) {
     return (
       <form className="digest-title-edit-form" onSubmit={saveTitle}>
-        <label className="sr-only" htmlFor={`${headingId}-input`}>
+        <label className="sr-only" htmlFor={inputId}>
           AI Digest name
         </label>
         <input
+          aria-describedby={error ? errorId : undefined}
+          aria-invalid={error ? "true" : undefined}
           autoFocus
           className="digest-title-edit-input"
           disabled={isPending}
-          id={`${headingId}-input`}
+          id={inputId}
           maxLength={120}
           onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={handleInputKeyDown}
           value={draft}
         />
         <button
@@ -112,7 +123,7 @@ export function DigestPipelineTitleEditor({
           </span>
         </button>
         {error ? (
-          <span className="digest-title-edit-error" role="status">
+          <span className="digest-title-edit-error" id={errorId} role="status">
             {error}
           </span>
         ) : null}

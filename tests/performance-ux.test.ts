@@ -2986,6 +2986,12 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineTitleEditor, /AI Digest name/);
   assert.match(digestPipelineTitleEditor, /Save AI Digest name/);
   assert.match(digestPipelineTitleEditor, /Edit AI Digest name/);
+  assert.match(digestPipelineTitleEditor, /function handleInputKeyDown\(event: KeyboardEvent<HTMLInputElement>\)/);
+  assert.match(digestPipelineTitleEditor, /event\.key !== "Escape"/);
+  assert.match(digestPipelineTitleEditor, /cancelEditing\(\)/);
+  assert.match(digestPipelineTitleEditor, /aria-describedby=\{error \? errorId : undefined\}/);
+  assert.match(digestPipelineTitleEditor, /aria-invalid=\{error \? "true" : undefined\}/);
+  assert.match(digestPipelineTitleEditor, /id=\{errorId\} role="status"/);
   assert.match(digestPipelineTitleEditor, /className="fb-btn dark compact digest-title-icon-button"/);
   assert.match(digestPipelineTitleEditor, /className="fb-btn ghost compact digest-title-icon-button"/);
   assert.match(digestPipelineTitleEditor, /className="fb-btn ghost compact digest-title-edit-button digest-title-icon-button"/);
