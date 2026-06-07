@@ -150,6 +150,8 @@ test("workspace not-found uses the FollowBrief shell instead of the default Next
   assert.match(notFoundPage, /href="\/search"/);
   assert.match(notFoundPage, /Home/);
   assert.match(notFoundPage, /Search/);
+  assert.match(notFoundPage, /Return Home, or search across sources, posts, saved items, and AI Digests\./);
+  assert.doesNotMatch(notFoundPage, /Return to your feeds/);
   assert.doesNotMatch(notFoundPage, /This page could not be found|404 \|/);
   assert.match(globals, /\.workspace-not-found-empty\s*{[\s\S]*border-style:\s*solid/);
   assert.match(globals, /\.workspace-not-found-actions\s*{[\s\S]*display:\s*flex/);

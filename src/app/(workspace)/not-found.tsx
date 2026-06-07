@@ -26,7 +26,7 @@ export default function WorkspaceNotFound() {
           }
           className="workspace-not-found-empty"
           title="Nothing to open here"
-          body="Return to your feeds, or search across sources, posts, saved items, and AI Digests."
+          body="Return Home, or search across sources, posts, saved items, and AI Digests."
         />
       </div>
     </div>
