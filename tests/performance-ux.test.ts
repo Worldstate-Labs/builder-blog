@@ -1920,7 +1920,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /body="Import source libraries shared by other users from Hub\."/);
   assert.doesNotMatch(buildersPage, /No imported source libraries yet\./);
   assert.match(buildersPage, /href="\/library-hub\?tab=source-library"/);
-  assert.match(buildersPage, /Browse source libraries/);
+  assert.match(buildersPage, /Import from Hub/);
+  assert.doesNotMatch(buildersPage, /Browse source libraries/);
   assert.doesNotMatch(buildersPage, /Browse Hub/);
   assert.doesNotMatch(buildersPage, /Browse Source Library/);
   assert.doesNotMatch(buildersPage, /Browse shared source libraries in the Hub, then import one to see its sources here\./);

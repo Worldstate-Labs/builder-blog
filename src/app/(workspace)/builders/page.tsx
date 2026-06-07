@@ -733,7 +733,7 @@ async function FetchSourcesSection({
           <EmptyState
             actions={
               <Link className="fb-btn light compact" href="/library-hub?tab=source-library">
-                Browse source libraries
+                Import from Hub
               </Link>
             }
             body="Import source libraries shared by other users from Hub."
