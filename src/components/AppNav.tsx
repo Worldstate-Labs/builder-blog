@@ -48,6 +48,7 @@ export function AppNav({
             const active = isActiveNavItem(pathname, item, returnTo);
             return (
               <Link
+                aria-current={active ? "page" : undefined}
                 className={`fb-nav${active ? " active" : ""}`}
                 data-active={active ? "true" : undefined}
                 href={item.href}
@@ -71,6 +72,7 @@ export function AppNav({
             const active = isActiveNavItem(pathname, item, returnTo);
             return (
               <Link
+                aria-current={active ? "page" : undefined}
                 className={`fb-m-tab${active ? " active" : ""}`}
                 data-active={active ? "true" : undefined}
                 href={item.href}
