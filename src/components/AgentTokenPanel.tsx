@@ -47,6 +47,7 @@ export function describeMachine(token: AgentTokenListItem): string {
   const host = token.lastHostname?.replace(/\.local$/, "") ?? null;
   const user = token.lastUser ?? null;
   const os = prettyOs(token.lastPlatform);
+  if (os && isPhoneLikeToken(token)) return os;
   if (host || user || os) {
     const parts: string[] = [];
     if (host) parts.push(host);
@@ -471,7 +472,7 @@ function TokenRow({
       aria-label={`${tokenLabel}. ${statusLabel}`}
     >
       <span className="access-key-device-icon" aria-hidden="true">
-        <DeviceIcon className="h-6 w-6" />
+        <DeviceIcon />
       </span>
       <div className="access-key-device-copy">
         <div className="access-key-device-title">{tokenLabel}</div>

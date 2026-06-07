@@ -4482,6 +4482,55 @@ svg.lucide {
   width: 100%;
 }
 
+.digest-control-bar {
+  align-items: start;
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 0.75rem;
+}
+
+.digest-control-field {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.digest-control-label {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.digest-control-picker .digest-picker-summary {
+  background: var(--paper);
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.digest-control-picker .digest-picker-date {
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+
+.digest-control-empty {
+  align-items: center;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--muted-strong);
+  display: inline-flex;
+  font-size: 0.875rem;
+  font-weight: 750;
+  min-height: 2.5rem;
+  padding: 0 0.75rem;
+}
+
 .digest-source-selector {
   min-width: 0;
 }
@@ -8380,7 +8429,7 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-device-title {
   color: var(--ink);
-  font-size: clamp(1.25rem, 2vw, 1.45rem);
+  font-size: clamp(1.2rem, 1.9vw, 1.45rem);
   font-weight: 560;
   letter-spacing: 0;
   line-height: 1.12;
@@ -8394,7 +8443,7 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-device-status {
   color: var(--muted-strong);
-  font-size: clamp(1rem, 1.8vw, 1.12rem);
+  font-size: clamp(0.98rem, 1.6vw, 1.12rem);
   line-height: 1.2;
 }
 
@@ -8407,6 +8456,12 @@ a.fb-hub-source-name:focus-visible {
   width: 2.5rem;
 }
 
+.access-key-device-icon svg {
+  height: 1.75rem;
+  stroke-width: 1.75;
+  width: 1.75rem;
+}
+
 .access-key-revoke-button,
 .access-key-revoked-pill {
   align-items: center;
@@ -8416,11 +8471,11 @@ a.fb-hub-source-name:focus-visible {
   border-radius: 999px;
   color: var(--ink);
   display: inline-flex;
-  font-size: 1.05rem;
+  font-size: clamp(1rem, 1.7vw, 1.16rem);
   font-weight: 520;
   justify-content: center;
-  min-height: 2.55rem;
-  padding: 0.55rem 1.2rem;
+  min-height: 2.75rem;
+  padding: 0.6rem 1.25rem;
   white-space: nowrap;
 }
 
@@ -8479,13 +8534,13 @@ a.fb-hub-source-name:focus-visible {
   align-items: center;
   background: var(--paper);
   border: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
-  border-radius: 18px;
+  border-radius: 16px;
   display: grid;
-  gap: 1rem 1.25rem;
+  gap: 1rem 1.15rem;
   grid-template-columns: 2.5rem minmax(0, 1fr) auto;
-  min-height: 6.25rem;
+  min-height: 6.5rem;
   min-width: 0;
-  padding: 1.45rem 1.5rem;
+  padding: 1.35rem 1.5rem;
 }
 
 .access-key-card.fb-row--revoked {
@@ -9459,6 +9514,10 @@ body {
 
   .ai-digest-body {
     padding: 0;
+  }
+
+  .digest-control-bar {
+    grid-template-columns: 1fr;
   }
 
   .digest-source-list {

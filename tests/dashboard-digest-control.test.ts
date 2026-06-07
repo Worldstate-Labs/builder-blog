@@ -11,16 +11,23 @@ function source(path: string) {
 
 test("home digest keeps pipeline and archive selection in a dedicated control bar", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
+  const globals = source("src/app/globals.css");
 
   assert.match(dashboardPage, /function DigestControlBar/);
   assert.match(dashboardPage, /aria-label="AI Digest selection"/);
+  assert.match(dashboardPage, /className="digest-control-bar"/);
+  assert.match(dashboardPage, /className="digest-control-field"/);
+  assert.match(dashboardPage, /className="digest-control-label"/);
+  assert.match(dashboardPage, /className="digest-control-picker"/);
+  assert.match(dashboardPage, /className="digest-control-empty"/);
   assert.match(dashboardPage, /<DigestPipelineSelector/);
   assert.match(dashboardPage, /<DigestArchivePicker/);
   assert.match(dashboardPage, /AI Digest/);
   assert.match(dashboardPage, /Digest archive/);
   assert.doesNotMatch(dashboardPage, /Your digest/);
   assert.match(dashboardPage, /No saved AI Digests/);
-  assert.match(dashboardPage, /md:grid-cols-2/);
+  assert.match(globals, /\.digest-control-bar\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.doesNotMatch(dashboardPage, /rounded-\[8px\]|md:grid-cols-2|\[&_\.digest-picker/);
   assert.match(dashboardPage, /selectedDigestId=\{selectedDigest\?\.id \?\? null\}/);
   assert.doesNotMatch(dashboardPage, /headerAction=\{/);
 });

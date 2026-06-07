@@ -364,10 +364,10 @@ function DigestControlBar({
   return (
     <section
       aria-label="AI Digest selection"
-      className="grid items-start gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--paper-strong)] p-3 shadow-[var(--shadow-soft)] md:grid-cols-2"
+      className="digest-control-bar"
     >
-      <div className="grid min-w-0 gap-1">
-        <span className="text-[0.68rem] font-[850] uppercase tracking-[0.14em] text-[var(--muted)]">
+      <div className="digest-control-field">
+        <span className="digest-control-label">
           AI Digest
         </span>
         <DigestPipelineSelector
@@ -376,12 +376,12 @@ function DigestControlBar({
           selectedPipelineId={selectedPipelineId}
         />
       </div>
-      <div className="grid min-w-0 gap-1">
-        <span className="text-[0.68rem] font-[850] uppercase tracking-[0.14em] text-[var(--muted)]">
+      <div className="digest-control-field">
+        <span className="digest-control-label">
           Digest archive
         </span>
         {digestArchiveOptions.length > 0 ? (
-          <div className="[&_.digest-picker-date]:text-sm [&_.digest-picker-date]:font-[800] [&_.digest-picker-summary]:min-h-10 [&_.digest-picker-summary]:bg-[var(--paper)] [&_.digest-picker-summary]:px-3 [&_.digest-picker-summary]:py-2">
+          <div className="digest-control-picker">
             <DigestArchivePicker
               digests={digestArchiveOptions}
               isOwnPipeline={isOwnPipeline}
@@ -391,7 +391,7 @@ function DigestControlBar({
             />
           </div>
         ) : (
-          <span className="inline-flex min-h-10 items-center rounded-[8px] border border-dashed border-[var(--line)] px-3 text-sm font-[750] text-[var(--muted-strong)]">
+          <span className="digest-control-empty">
             No saved AI Digests
           </span>
         )}

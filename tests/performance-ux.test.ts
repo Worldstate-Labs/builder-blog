@@ -503,6 +503,14 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /className="fb-section-heading mt-1"/);
   assert.match(dashboardPage, /function DigestControlBar/);
   assert.match(dashboardPage, /aria-label="AI Digest selection"/);
+  assert.match(dashboardPage, /className="digest-control-bar"/);
+  assert.match(dashboardPage, /className="digest-control-field"/);
+  assert.match(dashboardPage, /className="digest-control-label"/);
+  assert.match(dashboardPage, /className="digest-control-picker"/);
+  assert.match(dashboardPage, /className="digest-control-empty"/);
+  assert.match(globals, /\.digest-control-bar\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.digest-control-bar\s*{[\s\S]*grid-template-columns:\s*1fr/);
+  assert.doesNotMatch(dashboardPage, /rounded-\[8px\]|text-\[0\.68rem\]|\[&_\.digest-picker|md:grid-cols-2/);
   assert.match(dashboardPage, /<DigestPipelineSelector/);
   assert.match(dashboardPage, /<DigestArchivePicker/);
   assert.match(digestPipelineSelector, /ChevronDown/);
@@ -1033,6 +1041,8 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.doesNotMatch(dashboardPage, /headerAction=\{/);
   assert.match(dashboardPage, /function DigestControlBar/);
   assert.match(dashboardPage, /aria-label="AI Digest selection"/);
+  assert.match(globals, /\.digest-control-picker \.digest-picker-summary\s*{[\s\S]*min-height:\s*2\.5rem/);
+  assert.match(globals, /\.digest-control-empty\s*{[\s\S]*border:\s*1px dashed var\(--line\)/);
   assert.match(digestDetails, /headlineSummary/);
   assert.match(digestDetails, /digest-headline-summary/);
   assert.match(digestDetails, /digest-headline-action/);
@@ -2425,8 +2435,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /aria-label=\{`\$\{tokenLabel\}\. \$\{statusLabel\}`\}/);
   assert.match(tokenPanel, /aria-label=\{`Revoke access for \$\{tokenLabel\}`\}/);
   assert.match(tokenPanel, /\\b\(ios\|iphone\|ipad\)\\b/);
+  assert.match(tokenPanel, /if \(os && isPhoneLikeToken\(token\)\) return os/);
   assert.match(tokenPanel, /machineLabel === "unknown machine" && tokenName/);
   assert.doesNotMatch(tokenPanel, /access-key-device-detail/);
+  assert.doesNotMatch(tokenPanel, /className="h-6 w-6"/);
   assert.match(tokenPanel, /className=\{`access-key-card\$\{token\.revokedAt \? " fb-row--revoked" : ""\}`\}/);
   assert.match(tokenPanel, /useHydrated/);
   assert.match(tokenPanel, /formatRelativeCompact\(token\.lastUsedAt, hydrated\)/);
@@ -2440,8 +2452,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(settingsPage, /mt-4 h-11 animate-pulse/);
   assert.match(globals, /\.access-keys-panel/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.5rem minmax\(0,\s*1fr\) auto/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*18px/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*6\.25rem/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*16px/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*6\.5rem/);
+  assert.match(globals, /\.access-key-device-icon svg\s*{[\s\S]*height:\s*1\.75rem/);
+  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*2\.75rem/);
   assert.match(globals, /\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*border-radius:\s*14px/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.access-keys-empty\s*{\s*margin:\s*0;\s*}/);
