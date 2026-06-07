@@ -415,6 +415,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /const closeMenu = useCallback\(\(\) => \{[\s\S]*detailsRef\.current\.open = false[\s\S]*\}, \[\]\)/);
   assert.match(userMenu, /useEffect\(\(\) => \{[\s\S]*closeMenu\(\);[\s\S]*\}, \[closeMenu, pathname\]\)/);
   assert.match(userMenu, /className="user-menu-trigger"/);
+  assert.match(userMenu, /className="user-menu-icon"/);
+  assert.doesNotMatch(userMenu, /h-4 w-4|w-full text-left/);
   assert.match(userMenu, /aria-label=\{email \? `Account menu for \$\{email\}` : `Account menu for \$\{name\}`\}/);
   assert.match(userMenu, /detailsRef\.current\.open = false/);
   assert.match(userMenu, /themeHydrated/);
@@ -553,6 +555,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(settingsPage, /Agent login/);
   assert.match(globals, /\.user-avatar/);
   assert.match(globals, /\.user-menu-popover/);
+  assert.match(globals, /\.user-menu-item\s*{[\s\S]*text-align:\s*left/);
+  assert.match(globals, /\.user-menu-item\s*{[\s\S]*width:\s*100%/);
+  assert.match(globals, /\.user-menu-icon\s*{[\s\S]*height:\s*1rem/);
   assert.match(globals, /\.user-menu-compact \.user-menu-popover\s*{[\s\S]*width:\s*min\(var\(--popover-max\),\s*calc\(100vw - 2rem\)\)/);
 });
 

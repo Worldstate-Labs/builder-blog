@@ -688,6 +688,8 @@ svg.lucide {
 
 .user-menu-item {
   align-items: center;
+  background: transparent;
+  border: 0;
   border-radius: 8px;
   color: var(--ink);
   display: flex;
@@ -696,7 +698,15 @@ svg.lucide {
   font-weight: var(--fw-bold);
   min-height: 2.6rem;
   padding: var(--space-2);
+  text-align: left;
   transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+  width: 100%;
+}
+
+.user-menu-icon {
+  flex-shrink: 0;
+  height: 1rem;
+  width: 1rem;
 }
 
 .user-menu-item:hover,

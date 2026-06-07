@@ -80,29 +80,29 @@ export function UserMenu({
         ) : null}
         {isAdmin ? (
           <span className="user-menu-item user-menu-item-static">
-            <ShieldCheck className="h-4 w-4" />
+            <ShieldCheck className="user-menu-icon" />
             Admin
           </span>
         ) : null}
         <Link className="user-menu-item" href="/settings" onClick={closeMenu}>
-          <Settings className="h-4 w-4" />
+          <Settings className="user-menu-icon" />
           Settings
         </Link>
         <button
-          className="user-menu-item w-full text-left"
+          className="user-menu-item"
           onClick={toggleTheme}
           type="button"
         >
           {themeHydrated && theme === "dark" ? (
-            <Sun className="h-4 w-4" aria-hidden="true" />
+            <Sun className="user-menu-icon" aria-hidden="true" />
           ) : (
-            <Moon className="h-4 w-4" aria-hidden="true" />
+            <Moon className="user-menu-icon" aria-hidden="true" />
           )}
           {themeHydrated && theme === "dark" ? "Light mode" : "Dark mode"}
         </button>
         <div className="user-menu-separator" />
         <button
-          className="user-menu-item w-full text-left"
+          className="user-menu-item"
           onClick={() => {
             closeMenu();
             // POST directly via next-auth so we skip NextAuth's GET
@@ -111,7 +111,7 @@ export function UserMenu({
           }}
           type="button"
         >
-          <LogOut className="h-4 w-4" />
+          <LogOut className="user-menu-icon" />
           Sign out
         </button>
       </div>
