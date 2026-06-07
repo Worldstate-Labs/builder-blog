@@ -553,10 +553,12 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /summarizedPostCount/);
   assert.match(dashboardPage, /fetchedPostCount/);
   assert.match(dashboardPage, /No followed sources yet/);
+  assert.match(dashboardPage, /No AI Digest yet/);
   assert.match(dashboardPage, /No summarized posts yet/);
   assert.match(dashboardPage, /No fetched posts yet/);
-  assert.match(dashboardPage, /Ask your Local Agent to build a digest from the summarized posts/);
+  assert.match(dashboardPage, /Ask your Local Agent to build an AI Digest from the summarized posts/);
   assert.match(dashboardPage, /Ask your Local Agent to fetch and summarize your followed sources/);
+  assert.doesNotMatch(dashboardPage, /No digest yet|This imported digest|build a digest from|material for a digest/);
   assert.match(dashboardPage, /href="\/builders"/);
   assert.match(dashboardPage, /<SkillPromptActions[\s\S]*context="digest"/);
   assert.match(dashboardPage, /<SkillPromptActions[\s\S]*context="library"/);
@@ -1536,7 +1538,12 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(libraryHubPage, /className="library-hub-skeleton-line is-title"/);
   assert.match(libraryHubPage, /className="library-hub-skeleton-line is-body"/);
   assert.match(libraryHubPage, /className="library-hub-skeleton-pill"/);
-  assert.match(libraryHubPage, /className="library-hub-card library-hub-skeleton-card"/);
+  assert.match(libraryHubPage, /<h2 className="fb-section-heading">Source libraries<\/h2>/);
+  assert.match(libraryHubPage, /className="fb-hub-card" key=\{index\}/);
+  assert.match(libraryHubPage, /className="fb-hub-card library-hub-skeleton-card"/);
+  assert.doesNotMatch(libraryHubPage, /className="section-heading">Source libraries/);
+  assert.doesNotMatch(libraryHubPage, /className="library-hub-card" key=\{index\}/);
+  assert.doesNotMatch(libraryHubPage, /className="library-hub-card library-hub-skeleton-card"/);
   assert.doesNotMatch(libraryHubPage, /className="mt-6"/);
   assert.doesNotMatch(libraryHubPage, /className="mt-10"/);
   assert.doesNotMatch(libraryHubPage, /bg-black\/10/);

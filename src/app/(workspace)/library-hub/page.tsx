@@ -223,7 +223,7 @@ function LibraryHubImportFallback() {
     <section aria-live="polite" aria-busy="true">
       <div className="library-hub-toolbar">
         <div className="library-hub-toolbar-copy">
-          <h2 className="section-heading">Source libraries</h2>
+          <h2 className="fb-section-heading">Source libraries</h2>
           <p className="hub-section-copy">
             Source libraries built and shared by other users.
           </p>
@@ -236,8 +236,8 @@ function LibraryHubImportFallback() {
       </div>
       <div className="hub-list-stack fb-hub-list">
         {Array.from({ length: 4 }, (_, index) => (
-          <div className="library-hub-card" key={index}>
-            <div className="library-hub-card-header">
+          <div className="fb-hub-card" key={index}>
+            <div className="fb-hub-card-head">
               <div className="library-hub-skeleton-copy">
                 <div className="library-hub-skeleton-line is-kicker" />
                 <div className="library-hub-skeleton-line is-title" />
@@ -245,7 +245,7 @@ function LibraryHubImportFallback() {
               </div>
               <div className="library-hub-skeleton-chip" />
             </div>
-            <div className="library-hub-sources">
+            <div className="library-hub-skeleton-sources">
               <div className="library-hub-skeleton-row" />
               <div className="library-hub-skeleton-row" />
             </div>
@@ -267,8 +267,8 @@ function DigestPipelineImportFallback() {
         <div className="library-hub-skeleton-pill" />
       </div>
       <div className="hub-list-stack fb-hub-list">
-        <div className="library-hub-card library-hub-skeleton-card" />
-        <div className="library-hub-card library-hub-skeleton-card" />
+        <div className="fb-hub-card library-hub-skeleton-card" />
+        <div className="fb-hub-card library-hub-skeleton-card" />
       </div>
     </section>
   );

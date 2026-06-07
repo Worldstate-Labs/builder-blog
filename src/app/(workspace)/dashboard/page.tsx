@@ -278,8 +278,8 @@ function DigestEmptyState({
     return (
       <EmptyState
         className="ai-digest-empty"
-        title="No digest yet"
-        body="This imported digest has no saved briefs yet."
+        title="No AI Digest yet"
+        body="This imported AI Digest has no saved briefs yet."
       />
     );
   }
@@ -313,8 +313,8 @@ function DigestEmptyState({
           />
         }
         className="ai-digest-empty is-actionable"
-        title="No digest yet"
-        body="Ask your Local Agent to build a digest from the summarized posts in your followed sources."
+        title="No AI Digest yet"
+        body="Ask your Local Agent to build an AI Digest from the summarized posts in your followed sources."
       />
     );
   }
@@ -338,7 +338,7 @@ function DigestEmptyState({
       body={
         hasFetchedPosts
           ? "Ask your Local Agent to fetch and summarize your followed sources before building a digest."
-          : "Ask your Local Agent to fetch and summarize your followed sources so there is material for a digest."
+          : "Ask your Local Agent to fetch and summarize your followed sources so there is material for an AI Digest."
       }
     />
   );

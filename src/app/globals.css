@@ -3633,6 +3633,11 @@ svg.lucide {
   margin-top: 1rem;
 }
 
+.library-hub-skeleton-sources {
+  display: grid;
+  gap: 0.65rem;
+}
+
 .hub-builder-row {
   align-items: center;
   border-top: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
