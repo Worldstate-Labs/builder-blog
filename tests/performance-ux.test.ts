@@ -2769,7 +2769,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(postCard, /dataRead \? \(\s*<>\s*\{\(showSourceBadge \|\| hasAlternateChannels\)/);
   assert.match(postCard, /detailUrl\?: string \| null/);
   assert.match(postCard, /className="post-source-original"/);
-  assert.match(postCard, /className="post-raw-content-action"/);
+  assert.match(postCard, /post-raw-content-action/);
+  assert.match(postCard, /aria-label=\{actionLabel\("Read", actionContext\)\}/);
+  assert.match(postCard, /className="post-raw-content-action post-read-action"/);
+  assert.match(postCard, />\s*Read\s*<\/span>/);
   assert.match(postCard, /aria-label=\{actionLabel\("Post actions", actionContext\)\}/);
   assert.match(postCard, /className="post-actions"[\s\S]*role="group"/);
   assert.match(recommendationFeed, /detailUrl:\s*postDetailHref/);
@@ -2790,6 +2793,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.post-source-original \.source-badge\s*{[\s\S]*min-height:\s*0/);
   assert.match(globals, /\.post-favorite-btn\s*{[\s\S]*min-width:\s*2rem/);
   assert.match(globals, /\.post-raw-content-action\s*{[\s\S]*color:\s*var\(--accent\)/);
+  assert.match(globals, /\.post-read-action\s*{[\s\S]*padding:\s*0\.26rem 0\.72rem/);
   assert.match(globals, /\.fetched-post-summary-text\s*{[\s\S]*white-space:\s*pre-wrap/);
   assert.match(globals, /--post-summary-collapsed-height:\s*calc\(var\(--post-summary-lines\) \* var\(--post-summary-line-height\)\)/);
   assert.match(globals, /\.post-summary:not\(\.post-summary--expanded\) \.fetched-post-summary-text\s*{/);

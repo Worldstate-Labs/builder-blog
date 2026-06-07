@@ -1676,6 +1676,10 @@ svg.lucide {
   transition: transform 140ms ease;
 }
 
+.post-read-action {
+  padding: 0.26rem 0.72rem;
+}
+
 .post-raw-content-action:hover .post-raw-content-action-icon {
   transform: translate(1px, -1px);
 }

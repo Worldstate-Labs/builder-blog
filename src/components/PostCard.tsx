@@ -312,13 +312,14 @@ export function PostCard({
 
             {canReadRawContent && post.detailUrl ? (
               <Link
-                aria-label={actionLabel(rawContentLabel, actionContext)}
-                className="post-raw-content-action"
+                aria-label={actionLabel("Read", actionContext)}
+                className="post-raw-content-action post-read-action"
                 href={post.detailUrl}
                 onClick={noteInteraction}
-                title={rawContentLabel}
+                title="Read"
               >
                 <BookOpen aria-hidden="true" className="post-raw-content-action-icon" />
+                <span>Read</span>
               </Link>
             ) : canReadRawContent ? (
               <button
