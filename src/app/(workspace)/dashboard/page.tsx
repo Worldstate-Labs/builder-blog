@@ -277,8 +277,8 @@ function DigestEmptyState({
     return (
       <EmptyState
         className="ai-digest-empty"
-        title="No archived AI Digests yet"
-        body="The owner has not shared an archived AI Digest yet."
+        title="No AI Digest archives yet"
+        body="The owner has not shared any AI Digest archives yet."
       />
     );
   }
@@ -391,7 +391,7 @@ function DigestControlBar({
           </div>
         ) : (
           <span className="digest-control-empty">
-            No archived AI Digests
+            No AI Digest archives
           </span>
         )}
       </div>

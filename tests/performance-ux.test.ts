@@ -829,8 +829,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /fetchedPostCount/);
   assert.match(dashboardPage, /No followed sources yet/);
   assert.match(dashboardPage, /No AI Digest yet/);
-  assert.match(dashboardPage, /No archived AI Digests yet/);
-  assert.match(dashboardPage, /The owner has not shared an archived AI Digest yet/);
+  assert.match(dashboardPage, /No AI Digest archives yet/);
+  assert.match(dashboardPage, /The owner has not shared any AI Digest archives yet/);
+  assert.match(dashboardPage, /No AI Digest archives/);
   assert.doesNotMatch(dashboardPage, /saved briefs/);
   assert.match(dashboardPage, /start building AI Digests/);
   assert.match(dashboardPage, /No summarized posts yet/);
@@ -838,7 +839,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /Ask your Local Agent to build an AI Digest from the summarized posts/);
   assert.match(dashboardPage, /before building an AI Digest/);
   assert.match(dashboardPage, /Ask your Local Agent to fetch and summarize your followed sources/);
-  assert.doesNotMatch(dashboardPage, /No digest yet|This imported digest|This imported AI Digest has no archived AI Digest yet|build a digest from|material for a digest|start building digests|before building a digest/);
+  assert.doesNotMatch(dashboardPage, /No digest yet|No archived AI Digests|This imported digest|This imported AI Digest has no archived AI Digest yet|build a digest from|material for a digest|start building digests|before building a digest/);
   assert.match(dashboardPage, /href="\/builders"/);
   assert.match(dashboardPage, /<SkillPromptActions[\s\S]*context="digest"/);
   assert.match(dashboardPage, /<SkillPromptActions[\s\S]*context="library"/);
