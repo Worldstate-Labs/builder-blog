@@ -86,6 +86,7 @@ test("favorites saves posts without reintroducing a separate saved feed", () => 
   assert.match(digestContent, /DigestFavoriteToggleButton/);
   assert.match(digestContent, /onFavoriteToggle/);
   assert.match(digestContent, /post-favorite-btn/);
+  assert.match(digestContent, /className="post-action-icon"/);
   assert.doesNotMatch(feed, /Saved to Favorites|Save to Favorites/);
   assert.doesNotMatch(digestContent, /Saved to Favorites|Save to Favorites/);
   assert.doesNotMatch(feed, /disabled=\{isRead\}/);

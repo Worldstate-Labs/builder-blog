@@ -1041,8 +1041,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(globals, /\.recommendation-snapshot-list\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.feed-end-note\s*{[\s\S]*font-size:\s*0\.875rem/);
   assert.match(globals, /\.feed-action-icon,[\s\S]*\.post-action-icon\s*{[\s\S]*height:\s*0\.875rem/);
-  assert.match(globals, /\.feed-loading-icon\s*{[\s\S]*animation:\s*feed-spin/);
-  assert.match(globals, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.feed-loading-icon\s*{[\s\S]*animation:\s*none/);
+  assert.match(globals, /\.feed-loading-icon,[\s\S]*\.digest-loading-icon\s*{[\s\S]*animation:\s*status-spin/);
+  assert.match(globals, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.feed-loading-icon,[\s\S]*\.digest-loading-icon\s*{[\s\S]*animation:\s*none/);
   assert.match(globals, /\.feed-skeleton-card\s*{[\s\S]*min-height:\s*6rem/);
   assert.match(globals, /\.feed-state-panel\s*{[\s\S]*box-shadow:\s*var\(--elev-1\)/);
   assert.match(globals, /\.feed-state-panel\.is-actionable\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
@@ -1493,6 +1493,8 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.match(digestDetails, /fetch\(`\/api\/digests\/\$\{digestId\}`/);
   assert.doesNotMatch(digestDetails, /digest-latest-mark/);
   assert.match(digestDetails, /Loading AI Digest/);
+  assert.match(digestDetails, /className="digest-loading-icon"/);
+  assert.doesNotMatch(digestDetails, /h-3\.5 w-3\.5|animate-spin/);
   assert.match(digestDetails, /Could not load AI Digest\./);
   assert.match(digestDetails, /aria-label="AI Digest headlines"/);
   assert.match(digestDetails, /digest-loading-chip/);
@@ -2304,7 +2306,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(recommendationFeed, /<Star aria-hidden="true" className="post-action-icon"/);
   assert.match(digestContent, /aria-label=\{label\}/);
   assert.match(digestContent, /const label = isFavorite \? "Remove saved post" : "Save post"/);
-  assert.match(digestContent, /<Star aria-hidden="true"/);
+  assert.match(digestContent, /<Star aria-hidden="true" className="post-action-icon"/);
   assert.doesNotMatch(recommendationFeed, /title=\{isFavorite \? "Saved post" : "Save post"\}/);
   assert.doesNotMatch(digestContent, /title=\{isFavorite \? "Saved post" : "Save post"\}/);
   assert.doesNotMatch(recommendationFeed, /isFavoritesTab \? "Favorites" : "Following"/);

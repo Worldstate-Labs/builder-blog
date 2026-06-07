@@ -262,7 +262,7 @@ function DigestFavoriteToggleButton({
       title={label}
       type="button"
     >
-      <Star aria-hidden="true" className="h-4 w-4" />
+      <Star aria-hidden="true" className="post-action-icon" />
     </button>
   );
 }

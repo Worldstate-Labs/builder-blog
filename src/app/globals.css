@@ -861,21 +861,23 @@ svg.lucide {
   width: 0.875rem;
 }
 
-.feed-loading-icon {
-  animation: feed-spin 0.8s linear infinite;
+.feed-loading-icon,
+.digest-loading-icon {
+  animation: status-spin 0.8s linear infinite;
   flex-shrink: 0;
   height: 0.875rem;
   width: 0.875rem;
 }
 
-@keyframes feed-spin {
+@keyframes status-spin {
   to {
     transform: rotate(360deg);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .feed-loading-icon {
+  .feed-loading-icon,
+  .digest-loading-icon {
     animation: none;
   }
 }
