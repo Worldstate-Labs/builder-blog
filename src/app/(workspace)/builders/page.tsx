@@ -75,8 +75,20 @@ type BuildersSearchParams = Promise<{
 }>;
 
 const SOURCES_TABS: Array<WorkspaceTopTabItem<SourcesTab>> = [
-  { value: "fetch", label: "Sources", href: "/builders" },
-  { value: "digest", label: "AI Digest", href: "/builders?tab=digest" },
+  {
+    value: "fetch",
+    label: "Sources",
+    href: "/builders",
+    panelId: "sources-panel-fetch",
+    tabId: "sources-tab-fetch",
+  },
+  {
+    value: "digest",
+    label: "AI Digest",
+    href: "/builders?tab=digest",
+    panelId: "sources-panel-digest",
+    tabId: "sources-tab-digest",
+  },
 ];
 
 export default async function BuildersPage({
@@ -86,6 +98,7 @@ export default async function BuildersPage({
 }) {
   const params = await searchParams;
   const selectedTab = parseSourcesTab(firstParam(params.tab));
+  const selectedTabItem = selectedSourcesTabItem(selectedTab);
   const dataPromise = loadBuildersPageData();
   const digestDataPromise =
     selectedTab === "digest" ? loadDigestSourcesPageData() : null;
@@ -102,13 +115,23 @@ export default async function BuildersPage({
           />
 
           {selectedTab === "fetch" ? (
-            <section className="sources-tab-body sources-tab-body--fetch">
+            <section
+              aria-labelledby={selectedTabItem.tabId}
+              className="sources-tab-body sources-tab-body--fetch"
+              id={selectedTabItem.panelId}
+              role="tabpanel"
+            >
               <Suspense fallback={<FetchSourcesFallback />}>
                 <FetchSourcesSection dataPromise={dataPromise} />
               </Suspense>
             </section>
           ) : (
-            <section className="sources-tab-body sources-tab-body--digest">
+            <section
+              aria-labelledby={selectedTabItem.tabId}
+              className="sources-tab-body sources-tab-body--digest"
+              id={selectedTabItem.panelId}
+              role="tabpanel"
+            >
               <Suspense fallback={<DigestSourcesFallback />}>
                 <DigestSourcesSection dataPromise={digestDataPromise ?? loadDigestSourcesPageData()} />
               </Suspense>
@@ -870,6 +893,10 @@ function firstParam(value: string | string[] | undefined) {
 
 function parseSourcesTab(value: string | undefined): SourcesTab {
   return value === "digest" ? "digest" : "fetch";
+}
+
+function selectedSourcesTabItem(value: SourcesTab) {
+  return SOURCES_TABS.find((tab) => tab.value === value) ?? SOURCES_TABS[0];
 }
 
 async function latestPostCreationTimes(builderIds: string[]): Promise<LatestPostCreatedAtByBuilderId> {

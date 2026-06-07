@@ -22,8 +22,17 @@ test("hub page exposes Source libraries and AI Digests as subtabs", () => {
   assert.doesNotMatch(hubPage, /label:\s*"Digests"/);
   assert.match(hubPage, /label:\s*"Source libraries"[\s\S]*href:\s*"\/library-hub"/);
   assert.match(hubPage, /label:\s*"AI Digests"[\s\S]*href:\s*"\/library-hub\?tab=ai-digests"/);
+  assert.match(hubPage, /panelId:\s*"hub-panel-source-library"/);
+  assert.match(hubPage, /tabId:\s*"hub-tab-source-library"/);
+  assert.match(hubPage, /panelId:\s*"hub-panel-ai-digests"/);
+  assert.match(hubPage, /tabId:\s*"hub-tab-ai-digests"/);
+  assert.match(hubPage, /const selectedTabItem = selectedHubTabItem\(selectedTab\)/);
+  assert.match(hubPage, /aria-labelledby=\{selectedTabItem\.tabId\}/);
+  assert.match(hubPage, /id=\{selectedTabItem\.panelId\}/);
+  assert.match(hubPage, /role="tabpanel"/);
   assert.match(hubPage, /selectedValue=\{selectedTab\}/);
   assert.match(hubPage, /parseHubTab/);
+  assert.match(hubPage, /function selectedHubTabItem/);
   assert.match(hubPage, /value === "ai-digests" \|\| value === "digests"/);
   assert.match(hubPage, /return "ai-digests"/);
 });

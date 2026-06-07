@@ -32,8 +32,20 @@ type LibraryHubSearchParams = Promise<{
 }>;
 
 const LIBRARY_HUB_TABS: Array<WorkspaceTopTabItem<LibraryHubTab>> = [
-  { value: "source-library", label: "Source libraries", href: "/library-hub" },
-  { value: "ai-digests", label: "AI Digests", href: "/library-hub?tab=ai-digests" },
+  {
+    value: "source-library",
+    label: "Source libraries",
+    href: "/library-hub",
+    panelId: "hub-panel-source-library",
+    tabId: "hub-tab-source-library",
+  },
+  {
+    value: "ai-digests",
+    label: "AI Digests",
+    href: "/library-hub?tab=ai-digests",
+    panelId: "hub-panel-ai-digests",
+    tabId: "hub-tab-ai-digests",
+  },
 ];
 
 export default async function LibraryHubPage({
@@ -43,6 +55,7 @@ export default async function LibraryHubPage({
 }) {
   const params = await searchParams;
   const selectedTab = parseHubTab(firstParam(params.tab));
+  const selectedTabItem = selectedHubTabItem(selectedTab);
   const dataPromise = loadLibraryHubPageData();
 
   return (
@@ -56,13 +69,25 @@ export default async function LibraryHubPage({
         />
 
         {selectedTab === "source-library" ? (
-          <Suspense fallback={<LibraryHubImportFallback />}>
-            <LibraryHubImportSection dataPromise={dataPromise} />
-          </Suspense>
+          <section
+            aria-labelledby={selectedTabItem.tabId}
+            id={selectedTabItem.panelId}
+            role="tabpanel"
+          >
+            <Suspense fallback={<LibraryHubImportFallback />}>
+              <LibraryHubImportSection dataPromise={dataPromise} />
+            </Suspense>
+          </section>
         ) : (
-          <Suspense fallback={<DigestPipelineImportFallback />}>
-            <DigestPipelineImportSection dataPromise={dataPromise} />
-          </Suspense>
+          <section
+            aria-labelledby={selectedTabItem.tabId}
+            id={selectedTabItem.panelId}
+            role="tabpanel"
+          >
+            <Suspense fallback={<DigestPipelineImportFallback />}>
+              <DigestPipelineImportSection dataPromise={dataPromise} />
+            </Suspense>
+          </section>
         )}
       </div>
     </div>
@@ -282,6 +307,10 @@ function firstParam(value: string | string[] | undefined) {
 function parseHubTab(value: string | undefined): LibraryHubTab {
   if (value === "ai-digests" || value === "digests") return "ai-digests";
   return "source-library";
+}
+
+function selectedHubTabItem(value: LibraryHubTab) {
+  return LIBRARY_HUB_TABS.find((tab) => tab.value === value) ?? LIBRARY_HUB_TABS[0];
 }
 
 function ownerLabel(owner: { name: string | null; email: string | null } | null, isFeatured: boolean) {
