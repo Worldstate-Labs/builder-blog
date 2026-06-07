@@ -336,6 +336,9 @@ test("public entry pages use the centered product layout", () => {
   assert.match(loginPage, /fb-login-panel-head/);
   assert.match(loginPage, /Sign in/);
   assert.match(loginPage, /AI Digest workspace/);
+  assert.match(loginPage, /Sign in to your\{" "\}/);
+  assert.match(loginPage, /className="fb-login-title-break"/);
+  assert.doesNotMatch(loginPage, /your<br \/>AI Digest workspace/);
   assert.match(loginPage, /sources, posts, saved posts, and AI Digests searchable/);
   assert.doesNotMatch(loginPage, /keep your\s+AI Digests searchable/);
   assert.match(loginPage, /label="Follow"/);
@@ -395,7 +398,9 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /\.fb-auth-btn:disabled\s*{[\s\S]*cursor:\s*wait/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-login-shell\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-login-shell\s*{[\s\S]*flex-direction:\s*column/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-login-title br\s*{[\s\S]*display:\s*none/);
+  assert.match(globals, /\.fb-login-title-break\s*{[\s\S]*display:\s*block/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-login-title-break\s*{[\s\S]*display:\s*inline/);
+  assert.doesNotMatch(globals, /\.fb-login-title br\s*{/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-dark-panel\s*{[\s\S]*max-width:\s*none/);
   assert.doesNotMatch(globals, /\.fb-login-proof-grid|\.fb-dark-proof/);
   assert.match(globals, /\.fb-public-copy\s*{[\s\S]*max-width:\s*var\(--public-copy-max\)/);

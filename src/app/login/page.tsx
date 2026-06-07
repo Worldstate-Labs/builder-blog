@@ -34,7 +34,8 @@ export default async function LoginPage({
       <div className="fb-login-shell">
         <section className="fb-login-intro">
           <h1 className="fb-login-title">
-            Sign in to your<br />AI Digest workspace.
+            Sign in to your{" "}
+            <span className="fb-login-title-break">AI Digest workspace.</span>
           </h1>
           <p className="fb-login-copy">
             Follow people and sources, collect new updates, and keep your

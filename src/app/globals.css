@@ -8158,6 +8158,10 @@ a.fb-hub-source-name:focus-visible {
   margin-top: 1.75rem;
 }
 
+.fb-login-title-break {
+  display: block;
+}
+
 .fb-login-panel-title {
   color: var(--ink);
   font-family: var(--font-display);
@@ -8341,8 +8345,8 @@ a.fb-hub-source-name:focus-visible {
     margin-top: 0;
   }
 
-  .fb-login-title br {
-    display: none;
+  .fb-login-title-break {
+    display: inline;
   }
 
   .fb-login-copy {
