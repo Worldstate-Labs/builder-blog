@@ -182,7 +182,7 @@ export default async function Home() {
         <div className="fb-public-feature-grid">
           <Feature
             icon={Newspaper}
-            title="Digest-first home"
+            title="AI Digest home"
             copy="Home stays focused on readable AI Digests, not raw feed noise."
           />
           <Feature

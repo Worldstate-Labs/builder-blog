@@ -147,11 +147,12 @@ export function PostCard({
     : post.body;
   const rawContentLabel = rawContentMode === "raw_summary" ? "Source summary" : "Raw content";
   const canReadRawContent = !isDetail && showRawContent && Boolean(rawContent);
+  const showReadIndicator = Boolean(dataRead && !isDetail);
   const showMetaRow = Boolean(
     (showBuilderRow && authorName) ||
       showSourceBadge ||
       hasAlternateChannels ||
-      dataRead ||
+      showReadIndicator ||
       extraMeta,
   );
 
@@ -191,7 +192,7 @@ export function PostCard({
                     <span className="post-meta-author-link">{authorName}</span>
                   )}
                 </span>
-                {(showSourceBadge || hasAlternateChannels || dataRead || extraMeta) ? (
+                {(showSourceBadge || hasAlternateChannels || showReadIndicator || extraMeta) ? (
                   <span className="post-meta-dot" aria-hidden="true">·</span>
                 ) : null}
               </>
@@ -217,7 +218,7 @@ export function PostCard({
               </>
             ) : null}
 
-            {dataRead ? (
+            {showReadIndicator ? (
               <>
                 {(showSourceBadge || hasAlternateChannels) ? <span className="post-meta-dot" aria-hidden="true">·</span> : null}
                 <span className="read-indicator" aria-label="Read">

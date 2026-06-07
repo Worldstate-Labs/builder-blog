@@ -327,7 +327,9 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /Daily updates become one AI Digest/);
   assert.match(landingPage, /readable AI Digest/);
   assert.match(landingPage, /Build AI Digests/);
+  assert.match(landingPage, /AI Digest home/);
   assert.match(landingPage, /Home stays focused on readable AI Digests/);
+  assert.doesNotMatch(landingPage, /Digest-first home/);
   assert.doesNotMatch(landingPage, /Daily brief flow|Generate briefs|readable digest|readable briefings|following, briefing/);
   assert.match(landingPage, /Search and revisit/);
   assert.doesNotMatch(landingPage, /Context windows became product infrastructure/);
@@ -2750,6 +2752,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(postCard, /See more|See less/);
   assert.match(postCard, /Raw content/);
   assert.match(postCard, /showRawContent = true/);
+  assert.match(postCard, /const showReadIndicator = Boolean\(dataRead && !isDetail\)/);
+  assert.match(postCard, /showReadIndicator \?/);
+  assert.doesNotMatch(postCard, /dataRead \? \(\s*<>\s*\{\(showSourceBadge \|\| hasAlternateChannels\)/);
   assert.match(postCard, /detailUrl\?: string \| null/);
   assert.match(postCard, /className="post-source-original"/);
   assert.match(postCard, /className="post-raw-content-action"/);
