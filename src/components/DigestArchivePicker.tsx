@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { useHydrated } from "@/components/ThemeToggle";
@@ -29,6 +29,7 @@ export function DigestArchivePicker({
   const hydrated = useHydrated();
   const menuId = useId();
   const pickerRef = useRef<HTMLDetailsElement>(null);
+  const summaryRef = useRef<HTMLElement>(null);
   const selectedDigest = digests.find((digest) => digest.id === selectedDigestId) ?? digests[0];
 
   useEffect(() => {
@@ -44,8 +45,15 @@ export function DigestArchivePicker({
 
   if (!selectedDigest) return null;
 
+  function handlePickerKeyDown(event: KeyboardEvent<HTMLDetailsElement>) {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    setOpen(false);
+    summaryRef.current?.focus();
+  }
+
   return (
-    <details className="digest-picker" open={open} ref={pickerRef}>
+    <details className="digest-picker" onKeyDown={handlePickerKeyDown} open={open} ref={pickerRef}>
       <summary
         aria-controls={menuId}
         aria-expanded={open}
@@ -55,6 +63,7 @@ export function DigestArchivePicker({
           event.preventDefault();
           setOpen((current) => !current);
         }}
+        ref={summaryRef}
       >
         <span className="sr-only">Saved AI Digests</span>
         <DigestPickerItem
@@ -69,7 +78,7 @@ export function DigestArchivePicker({
           const selected = digest.id === selectedDigest.id;
           return (
             <Link
-              aria-current={selected ? "true" : undefined}
+              aria-current={selected ? "page" : undefined}
               aria-selected={selected}
               className="digest-picker-option"
               href={digestHref({ digestId: digest.id, isOwnPipeline, selectedPipelineId })}

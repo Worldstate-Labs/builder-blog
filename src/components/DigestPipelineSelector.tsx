@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 export type DigestPipelineSelectorOption = {
@@ -23,6 +23,7 @@ export function DigestPipelineSelector({
   const [open, setOpen] = useState(false);
   const menuId = useId();
   const pickerRef = useRef<HTMLDetailsElement>(null);
+  const summaryRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -46,8 +47,20 @@ export function DigestPipelineSelector({
     );
   }
 
+  function handlePickerKeyDown(event: KeyboardEvent<HTMLDetailsElement>) {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    setOpen(false);
+    summaryRef.current?.focus();
+  }
+
   return (
-    <details className="digest-pipeline-selector" open={open} ref={pickerRef}>
+    <details
+      className="digest-pipeline-selector"
+      onKeyDown={handlePickerKeyDown}
+      open={open}
+      ref={pickerRef}
+    >
       <summary
         aria-controls={menuId}
         aria-expanded={open}
@@ -57,6 +70,7 @@ export function DigestPipelineSelector({
           event.preventDefault();
           setOpen((current) => !current);
         }}
+        ref={summaryRef}
       >
         <span className="digest-pipeline-copy">
           <span className="digest-pipeline-title">{selectedPipeline.title}</span>

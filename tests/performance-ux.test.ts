@@ -747,6 +747,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(digestPipelineSelector, /role="listbox"/);
   assert.match(digestPipelineSelector, /role="option"/);
   assert.match(digestPipelineSelector, /aria-selected=\{active\}/);
+  assert.match(digestPipelineSelector, /onKeyDown=\{handlePickerKeyDown\}/);
+  assert.match(digestPipelineSelector, /event\.key !== "Escape"/);
+  assert.match(digestPipelineSelector, /summaryRef\.current\?\.focus\(\)/);
   assert.match(digestPipelineSelector, /className="digest-pipeline-option"/);
   assert.match(digestPipelineSelector, /data-active=\{active \? "true" : undefined\}/);
   assert.match(globals, /\.digest-pipeline-trigger:focus-visible\s*{[\s\S]*outline:\s*2px solid var\(--accent\)/);
@@ -758,6 +761,11 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(digestArchivePicker, /aria-expanded=\{open\}/);
   assert.match(digestArchivePicker, /aria-controls=\{menuId\}/);
   assert.match(digestArchivePicker, /aria-haspopup="listbox"/);
+  assert.match(digestArchivePicker, /onKeyDown=\{handlePickerKeyDown\}/);
+  assert.match(digestArchivePicker, /event\.key !== "Escape"/);
+  assert.match(digestArchivePicker, /summaryRef\.current\?\.focus\(\)/);
+  assert.match(digestArchivePicker, /aria-current=\{selected \? "page" : undefined\}/);
+  assert.doesNotMatch(digestArchivePicker, /aria-current=\{selected \? "true" : undefined\}/);
   assert.doesNotMatch(globals, /\.digest-picker-summary::after[\s\S]*content:\s*"▾"/);
   assert.doesNotMatch(dashboardPage, /digest-source-pill fb-btn compact/);
   assert.match(dashboardPage, /@\/components\/EmptyState/);
@@ -1694,6 +1702,7 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.match(digestArchivePicker, /role="listbox"/);
   assert.match(digestArchivePicker, /role="option"/);
   assert.match(digestArchivePicker, /aria-selected=\{selected\}/);
+  assert.match(digestArchivePicker, /aria-current=\{selected \? "page" : undefined\}/);
   assert.match(digestArchivePicker, /useHydrated/);
   assert.match(digestArchivePicker, /formatDigestPickerDate\(digest\.createdAt, hydrated\)/);
   assert.match(digestArchivePicker, /timeZone:\s*"UTC"/);
