@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Radio, Search, Sparkles, Terminal, UsersRound } from "lucide-react";
+import { Newspaper, Radio, Search, Terminal, UsersRound } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { getCurrentSession } from "@/lib/auth";
@@ -181,7 +181,7 @@ export default async function Home() {
         </div>
         <div className="fb-public-feature-grid">
           <Feature
-            icon={Sparkles}
+            icon={Newspaper}
             title="Digest-first home"
             copy="Home stays focused on readable AI Digests, not raw feed noise."
           />
@@ -201,7 +201,7 @@ function Feature({
   title,
   copy,
 }: {
-  icon: typeof Sparkles;
+  icon: typeof Newspaper;
   title: string;
   copy: string;
 }) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { ListChecks } from "lucide-react";
 
 export function RecommendationReasonsPopover({
   reasons,
@@ -36,7 +36,7 @@ export function RecommendationReasonsPopover({
         title="Why recommended"
         type="button"
       >
-        <Sparkles aria-hidden="true" className="post-action-popover-icon" />
+        <ListChecks aria-hidden="true" className="post-action-popover-icon" />
       </button>
       {open && (
         <div className="fb-popover" id={popoverId} role="tooltip">

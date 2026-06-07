@@ -314,6 +314,8 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(landingPage, /className="grid gap/);
   assert.doesNotMatch(landingPage, /className="mt-/);
   assert.doesNotMatch(landingPage, /className="rounded-lg border/);
+  assert.match(landingPage, /Newspaper/);
+  assert.doesNotMatch(landingPage, /Sparkles/);
   assert.match(landingPage, /GitHub Trending/);
   assert.match(landingPage, /Product Hunt/);
   assert.match(landingPage, /Your Local Agent fetches updates, summarizes/);
@@ -366,6 +368,8 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(loginPage, /AI Digest archive/);
   assert.doesNotMatch(loginPage, /Continue securely/);
   assert.doesNotMatch(loginPage, /ShieldCheck|fb-login-panel-icon/);
+  assert.match(loginPage, /BookOpenCheck/);
+  assert.doesNotMatch(loginPage, /Sparkles/);
   assert.match(loginPage, /fb-login-proof-icon/);
   assert.match(loginPage, /fb-login-proof-label/);
   assert.match(authButtons, /className="auth-button-stack"/);
@@ -2751,6 +2755,8 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(recommendationReasonsPopover, /aria-controls=\{popoverId\}/);
   assert.match(recommendationReasonsPopover, /aria-expanded=\{open\}/);
   assert.match(recommendationReasonsPopover, /id=\{popoverId\} role="tooltip"/);
+  assert.match(recommendationReasonsPopover, /ListChecks/);
+  assert.doesNotMatch(recommendationReasonsPopover, /Sparkles/);
   assert.match(sourceBadge, /labelSuppressedByDuplicate/);
   assert.match(sourceBadge, /decorative = false/);
   assert.match(sourceBadge, /aria-hidden=\{decorative \|\| labelSuppressedByDuplicate \? "true" : undefined\}/);
