@@ -36,8 +36,11 @@ export function DigestPipelineSelector({
 
   if (options.length <= 1) {
     return (
-      <div className="flex min-h-10 min-w-0 items-center rounded-[8px] border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm font-[800] text-[var(--ink)]">
-        <span className="min-w-0 truncate">{selectedPipeline.title}</span>
+      <div className="grid min-h-10 min-w-0 gap-0.5 rounded-[8px] border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-sm text-[var(--ink)]">
+        <span className="min-w-0 truncate font-[800]">{selectedPipeline.title}</span>
+        <span className="min-w-0 truncate text-xs font-[650] text-[var(--muted)]">
+          {pipelineOwnerLine(selectedPipeline)}
+        </span>
       </div>
     );
   }
@@ -45,13 +48,18 @@ export function DigestPipelineSelector({
   return (
     <details className="group relative min-w-0" open={open} ref={pickerRef}>
       <summary
-        className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-left text-sm font-[800] text-[var(--ink)] shadow-[var(--shadow-soft)] transition hover:border-[var(--accent-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+        className="grid min-h-10 cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-left text-sm text-[var(--ink)] shadow-[var(--shadow-soft)] transition hover:border-[var(--accent-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
         onClick={(event) => {
           event.preventDefault();
           setOpen((current) => !current);
         }}
       >
-        <span className="min-w-0 truncate">{selectedPipeline.title}</span>
+        <span className="grid min-w-0 gap-0.5">
+          <span className="min-w-0 truncate font-[800]">{selectedPipeline.title}</span>
+          <span className="min-w-0 truncate text-xs font-[650] text-[var(--muted)]">
+            {pipelineOwnerLine(selectedPipeline)}
+          </span>
+        </span>
         <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[var(--muted)]" />
       </summary>
       <div className="absolute left-0 right-0 z-20 mt-2 grid gap-1 rounded-[8px] border border-[var(--line)] bg-[var(--paper)] p-1 shadow-[var(--shadow-pop)]">
@@ -78,7 +86,7 @@ export function DigestPipelineSelector({
             >
               <span className="min-w-0 truncate">{pipeline.title}</span>
               <span className="min-w-0 truncate text-xs font-[650] text-[var(--muted)]">
-                {pipeline.isOwnPipeline ? "Your digest" : pipeline.ownerLabel}
+                {pipelineOwnerLine(pipeline)}
               </span>
             </Link>
           );
@@ -86,4 +94,8 @@ export function DigestPipelineSelector({
       </div>
     </details>
   );
+}
+
+function pipelineOwnerLine(pipeline: DigestPipelineSelectorOption) {
+  return pipeline.isOwnPipeline ? "Your digest" : pipeline.ownerLabel;
 }

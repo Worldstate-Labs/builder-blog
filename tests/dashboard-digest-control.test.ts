@@ -34,6 +34,16 @@ test("home digest pipeline selector resets archive selection when changing pipel
   assert.doesNotMatch(digestPipelineSelector, /&digest=\$\{digest/);
 });
 
+test("home digest pipeline selector labels the selected pipeline owner", () => {
+  const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
+
+  assert.match(digestPipelineSelector, /function pipelineOwnerLine/);
+  assert.match(digestPipelineSelector, /pipeline\.isOwnPipeline \? "Your digest" : pipeline\.ownerLabel/);
+  assert.match(digestPipelineSelector, /options\.length <= 1[\s\S]*pipelineOwnerLine\(selectedPipeline\)/);
+  assert.match(digestPipelineSelector, /<summary[\s\S]*pipelineOwnerLine\(selectedPipeline\)/);
+  assert.match(digestPipelineSelector, /pipelineOwnerLine\(pipeline\)/);
+});
+
 test("home digest pipeline menu closes after a selection", () => {
   const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
 
@@ -43,4 +53,18 @@ test("home digest pipeline menu closes after a selection", () => {
   assert.match(digestPipelineSelector, /onClick=\{\(event\) => \{/);
   assert.match(digestPipelineSelector, /setOpen\(false\)/);
   assert.match(digestPipelineSelector, /if \(active\) event\.preventDefault\(\)/);
+});
+
+test("home digest prioritizes pipelines with content before ownership", () => {
+  const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
+
+  assert.match(dashboardPage, /digest\.groupBy\(\{/);
+  assert.match(dashboardPage, /itemCount:\s*\{\s*gt:\s*0\s*\}/);
+  assert.match(dashboardPage, /hasDigestContentByOwnerId/);
+  assert.match(dashboardPage, /hasContent:\s*hasDigestContentByOwnerId\.has\(userId\)/);
+  assert.match(dashboardPage, /hasContent:\s*hasDigestContentByOwnerId\.has\(pipeline\.ownerUserId\)/);
+  assert.match(dashboardPage, /\.sort\(compareDigestPipelinePriority\)/);
+  assert.match(dashboardPage, /if \(a\.hasContent !== b\.hasContent\) return a\.hasContent \? -1 : 1/);
+  assert.match(dashboardPage, /if \(a\.isOwnPipeline !== b\.isOwnPipeline\) return a\.isOwnPipeline \? -1 : 1/);
+  assert.match(dashboardPage, /digestPipelineOptions\.find\(\(pipeline\) => pipeline\.id === pipelineId\)/);
 });

@@ -969,6 +969,7 @@ test("skill context caps personal fetched items to keep payloads bounded", () =>
 test("dashboard subscription feed owns the paginated digest archive", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const digestArchivePicker = source("src/components/DigestArchivePicker.tsx");
+  const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const historyPage = source("src/app/history/page.tsx");
   const digestDetails = source("src/components/DigestDetails.tsx");
@@ -1015,6 +1016,8 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(digestRoute, /digestedItem\.findMany/);
   assert.match(digestRoute, /feedItem:\s*{[\s\S]*is:\s*{/);
   assert.match(dashboardPage, /DigestPipelineSelector/);
+  assert.match(digestPipelineSelector, /pipelineOwnerLine\(selectedPipeline\)/);
+  assert.match(digestPipelineSelector, /pipelineOwnerLine\(pipeline\)/);
   assert.match(dashboardPage, /DigestArchivePicker/);
   assert.match(dashboardPage, /serializeDigestArchiveOption/);
   assert.match(digestArchivePicker, /formatDigestPickerDate/);

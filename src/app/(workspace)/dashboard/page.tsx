@@ -35,6 +35,7 @@ const digestSummarySelect = {
 };
 type DigestSummaryRow = Omit<DigestSummary, "createdAt"> & { createdAt: Date };
 type DigestPipelineOption = {
+  hasContent: boolean;
   id: string;
   title: string;
   ownerLabel: string;
@@ -129,9 +130,27 @@ async function AiDigestFeedSlot({
       select: { title: true },
     }),
   ]);
+  const digestOwnerIds = [
+    userId,
+    ...importedDigestPipelines.map(({ pipeline }) => pipeline.ownerUserId),
+  ];
+  const digestCounts = await prisma.digest.groupBy({
+    by: ["userId"],
+    where: {
+      userId: { in: digestOwnerIds },
+      itemCount: { gt: 0 },
+    },
+    _count: { _all: true },
+  });
+  const hasDigestContentByOwnerId = new Set(
+    digestCounts
+      .filter((row) => row._count._all > 0)
+      .map((row) => row.userId),
+  );
   const ownPipelineTitle = displayDigestPipelineTitle(ownPipelineShare?.title ?? "Digest");
   const digestPipelineOptions: DigestPipelineOption[] = [
     {
+      hasContent: hasDigestContentByOwnerId.has(userId),
       id: "own",
       title: ownPipelineTitle,
       ownerLabel: "Own digest",
@@ -139,13 +158,14 @@ async function AiDigestFeedSlot({
       isOwnPipeline: true,
     },
     ...importedDigestPipelines.map(({ pipeline }) => ({
+      hasContent: hasDigestContentByOwnerId.has(pipeline.ownerUserId),
       id: pipeline.id,
       title: displayDigestPipelineTitleForOwner(pipeline.title, pipeline.owner),
       ownerLabel: digestPipelineOwnerLabel(pipeline.owner),
       ownerUserId: pipeline.ownerUserId,
       isOwnPipeline: false,
     })),
-  ];
+  ].sort(compareDigestPipelinePriority);
   const selectedPipeline =
     digestPipelineOptions.find((pipeline) => pipeline.id === pipelineId) ??
     digestPipelineOptions[0];
@@ -182,6 +202,12 @@ async function AiDigestFeedSlot({
       ownDigestReadiness={ownDigestReadiness}
     />
   );
+}
+
+function compareDigestPipelinePriority(a: DigestPipelineOption, b: DigestPipelineOption) {
+  if (a.hasContent !== b.hasContent) return a.hasContent ? -1 : 1;
+  if (a.isOwnPipeline !== b.isOwnPipeline) return a.isOwnPipeline ? -1 : 1;
+  return 0;
 }
 
 function AiDigestFeed({
