@@ -1059,11 +1059,13 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /Latest fetch/);
   assert.match(fetchLogPanel, /Cron status/);
   assert.match(fetchLogPanel, /posts read/);
+  assert.match(fetchLogPanel, /label="posts checked"/);
+  assert.match(fetchLogPanel, /\} posts checked<\/span>/);
   assert.match(fetchLogPanel, /Posts checked/);
   assert.match(fetchLogPanel, /Unknown source/);
   assert.doesNotMatch(fetchLogPanel, /entry\.name \?\? entry\.builderId \?\? "unknown"/);
   assert.match(fetchLogPanel, /refreshes fetched posts/);
-  assert.doesNotMatch(fetchLogPanel, /items read|Items checked|refreshes fetched items/);
+  assert.doesNotMatch(fetchLogPanel, /items read|Items checked|refreshes fetched items|label="checked"|\} checked<\/span>/);
   assert.match(fetchLogPanel, /formatMetaDate\(latestRun\.startedAt, hydrated\)/);
   assert.match(fetchLogPanel, /function formatMetaDate\(iso: string, hydrated: boolean\)/);
   assert.match(fetchLogPanel, /if \(!hydrated\) return formatAbsolute\(iso\)/);

@@ -1247,7 +1247,7 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
           label={run.itemsFetched === 1 ? "post read" : "posts read"}
           value={run.itemsFetched}
         /> ·{" "}
-        <CountMeta label="checked" value={run.tasksGenerated} /> ·{" "}
+        <CountMeta label="posts checked" value={run.tasksGenerated} /> ·{" "}
         <CountMeta label={run.userActionsCount === 1 ? "action needed" : "actions needed"} value={run.userActionsCount} /> ·{" "}
         {formatDuration(run.durationMs)}
       </div>
@@ -1297,7 +1297,7 @@ function DetailsBody({ details }: { details: DetailsShape }) {
                   {(entry.itemsFetched ?? 0) === 1 ? "post" : "posts"}
                 </span>
                 <span className="text-[var(--muted-strong)]"> · </span>
-                <span>{formatCount(entry.tasksGenerated ?? 0)} checked</span>
+                <span>{formatCount(entry.tasksGenerated ?? 0)} posts checked</span>
                 {entry.error ? (
                   <>
                     <span className="text-[var(--muted-strong)]"> · </span>
