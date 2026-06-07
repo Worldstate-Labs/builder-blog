@@ -877,6 +877,9 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /isAdmin\?: boolean/);
   assert.match(followingSection, /sourceReadiness: FollowingSourceReadiness/);
   assert.match(followingSection, /showAdminActions=\{isAdmin\}/);
+  assert.match(followingSection, /const visibleSnapshots = timeline\?\.snapshots\.filter\(snapshotHasPosts\) \?\? \[\]/);
+  assert.match(followingSection, /initialSnapshots=\{visibleSnapshots\}/);
+  assert.match(followingSection, /function snapshotHasPosts/);
   assert.match(followingSection, /No followed sources yet/);
   assert.match(followingSection, /No posts have been fetched for your followed sources yet/);
   assert.match(followingSection, /No unread posts yet/);
@@ -902,6 +905,9 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(recommendationFeed, /feed-content-stack recommendation-feed/);
   assert.match(recommendationFeed, /className="recommendation-feed-actions"/);
   assert.match(recommendationFeed, /className="recommendation-snapshot-list"/);
+  assert.match(recommendationFeed, /useState\(\(\) => nonEmptySnapshots\(initialSnapshots\)\)/);
+  assert.match(recommendationFeed, /return nonEmptySnapshots\(snapshots\)\.filter/);
+  assert.match(recommendationFeed, /function nonEmptySnapshots/);
   assert.match(recommendationFeed, /Following update/);
   assert.doesNotMatch(recommendationFeed, />Picks</);
   assert.match(recommendationFeed, /className="feed-load-more"/);

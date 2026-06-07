@@ -50,7 +50,7 @@ export function RecommendationFeed({
   initialSnapshots: RecommendationSnapshotEntry[];
   showAdminActions?: boolean;
 }) {
-  const [snapshots, setSnapshots] = useState(initialSnapshots);
+  const [snapshots, setSnapshots] = useState(() => nonEmptySnapshots(initialSnapshots));
   const hydrated = useHydrated();
   const [loadingDirection, setLoadingDirection] = useState<"append" | "prepend" | null>(null);
   const loadingGuard = useRef<"append" | "prepend" | null>(null);
@@ -257,11 +257,15 @@ async function setPostFavorite(feedItemId: string, favorite: boolean) {
 
 function mergeSnapshots(snapshots: RecommendationSnapshotEntry[]) {
   const seen = new Set<string>();
-  return snapshots.filter((snapshot) => {
+  return nonEmptySnapshots(snapshots).filter((snapshot) => {
     if (seen.has(snapshot.id)) return false;
     seen.add(snapshot.id);
     return true;
   });
+}
+
+function nonEmptySnapshots(snapshots: RecommendationSnapshotEntry[]) {
+  return snapshots.filter((snapshot) => snapshot.items.length > 0);
 }
 
 function formatDate(value: string, hydrated: boolean) {

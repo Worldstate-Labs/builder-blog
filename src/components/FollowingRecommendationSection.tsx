@@ -90,17 +90,22 @@ function FollowingRecommendationLoader({
   if (status === "error") {
     return <FollowingError onRetry={() => void loadTimeline()} />;
   }
-  if (!timeline || timeline.snapshots.length === 0) {
+  const visibleSnapshots = timeline?.snapshots.filter(snapshotHasPosts) ?? [];
+  if (visibleSnapshots.length === 0) {
     return <FollowingUnavailable sourceReadiness={sourceReadiness} />;
   }
 
   return (
     <RecommendationFeed
-      key={timeline.snapshots.map((snapshot) => snapshot.id).join("|")}
-      initialSnapshots={timeline.snapshots}
+      key={visibleSnapshots.map((snapshot) => snapshot.id).join("|")}
+      initialSnapshots={visibleSnapshots}
       showAdminActions={isAdmin}
     />
   );
+}
+
+function snapshotHasPosts(snapshot: RecommendationSnapshotEntry) {
+  return snapshot.items.length > 0;
 }
 
 function FollowingUnavailable({

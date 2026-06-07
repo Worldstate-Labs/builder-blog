@@ -22,6 +22,8 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.match(schema, /model RecommendationSnapshotItem/);
   assert.match(apiRoute, /readAt: read\.readAt\.toISOString\(\)/);
   assert.match(feed, /initialSnapshots/);
+  assert.match(feed, /nonEmptySnapshots\(initialSnapshots\)/);
+  assert.match(feed, /nonEmptySnapshots\(snapshots\)\.filter/);
   assert.match(feed, /PostCard/);
   assert.match(feed, /onInteract/);
   assert.match(feed, /showAdminActions = false/);
