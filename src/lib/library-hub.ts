@@ -23,7 +23,9 @@ export function digestPipelineTitle(owner: {
 }
 
 export function displayDigestPipelineTitle(title: string) {
-  return title.replace(/'s AI Builder Digest$/, "'s AI Digest");
+  return title
+    .replace(/AI Builder Digest/g, "AI Digest")
+    .replace(/Builder Digest/g, "AI Digest");
 }
 
 export function isAdminCommunityDigestOwner(owner: { email?: string | null } | null | undefined) {

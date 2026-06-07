@@ -1777,6 +1777,7 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.doesNotMatch(digestPipelineVisibilityToggle, /Unable to update digest pipeline sharing/);
   assert.match(digestPipelineVisibilityToggle, /aria-pressed=\{shared\}/);
   assert.match(dashboardPage, /displayDigestPipelineTitle\(ownPipelineShare\?\.title \?\? "AI Digest"\)/);
+  assert.match(dashboardPage, /function displayDigestTitle\(title: string\)[\s\S]*return displayDigestPipelineTitle\(title\)/);
   assert.match(dashboardPage, /ownerLabel: "Your AI Digest"/);
   assert.match(dashboardPage, /Imported AI Digest view/);
   assert.doesNotMatch(dashboardPage, /ownPipelineShare\?\.title \?\? "Digest"|Imported digest view|Own digest/);
@@ -3457,6 +3458,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(source("src/lib/library-hub.ts"), /displayDigestPipelineTitleForOwner/);
   assert.match(source("src/lib/library-hub.ts"), /digestPipelineOwnerLabel/);
   assert.match(source("src/lib/library-hub.ts"), /\$\{identity\}'s AI Digest/);
+  assert.match(source("src/lib/library-hub.ts"), /replace\(\/AI Builder Digest\/g, "AI Digest"\)/);
+  assert.match(source("src/lib/library-hub.ts"), /replace\(\/Builder Digest\/g, "AI Digest"\)/);
   assert.doesNotMatch(source("src/lib/library-hub.ts"), /\$\{identity\}'s AI Builder Digest/);
   assert.match(builderPool, /ensureDefaultCommunityLibraryImport/);
   assert.match(builderPool, /findOrCreateDefaultCommunityLibrary/);

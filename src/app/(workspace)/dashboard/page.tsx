@@ -464,7 +464,7 @@ function serializeDigestArchiveOption(digest: DigestSummaryRow): DigestArchivePi
 }
 
 function displayDigestTitle(title: string) {
-  return title.replace(/^AI Builder Digest\b/, "AI Digest");
+  return displayDigestPipelineTitle(title);
 }
 
 async function dashboardSourceReadinessForUser(
