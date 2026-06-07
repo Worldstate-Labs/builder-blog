@@ -1696,6 +1696,13 @@ test("search user path parses filetype as a google-style type operator", () => {
   assert.equal(parsed.typeOperator, "filetype");
 });
 
+test("search type operators accept the same source and post words shown in the UI", () => {
+  assert.equal(parseSearchQuery("agent memory type:source").type, "builder");
+  assert.equal(parseSearchQuery("agent memory type:posts").type, "feed");
+  assert.equal(parseSearchQuery("agent memory filetype:ai-digest").type, "digest");
+  assert.deepEqual(parseSearchQuery("agent memory -type:sources").excludedTypes, ["builder"]);
+});
+
 test("search user path applies operator filters and newest sorting", () => {
   const oldDate = new Date("2026-01-10T00:00:00.000Z");
   const newDate = new Date("2026-01-20T00:00:00.000Z");

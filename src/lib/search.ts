@@ -910,8 +910,15 @@ function addTerm(terms: Map<string, number>, term: string, weight: number) {
 }
 
 function normalizeTypeOperatorValue(value: string): SearchDocumentType | null {
-  const singular = value.endsWith("s") ? value.slice(0, -1) : value;
-  if (singular === "builder" || singular === "feed" || singular === "digest") return singular;
+  const singular = value
+    .trim()
+    .toLowerCase()
+    .replace(/^ai[-_\s]?/, "")
+    .replace(/[-_\s]+/g, "-")
+    .replace(/s$/, "");
+  if (singular === "builder" || singular === "source") return "builder";
+  if (singular === "feed" || singular === "post" || singular === "item") return "feed";
+  if (singular === "digest" || singular === "brief") return "digest";
   return null;
 }
 

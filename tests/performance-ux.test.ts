@@ -1213,6 +1213,10 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /searchPageSize/);
   assert.match(searchPage, /emptySearchCopy = "Search sources, posts, saved items, and AI Digests\."/);
   assert.match(searchPage, /past AI Digests/);
+  assert.match(searchPage, /model pricing type:post/);
+  assert.match(searchPage, /model pricing type:source/);
+  assert.match(searchPage, /model pricing filetype:ai-digest/);
+  assert.doesNotMatch(searchPage, /model pricing type:feed/);
   assert.doesNotMatch(searchPage, /AI Digest archive/);
   assert.doesNotMatch(searchPage, /Enter a query to search across your sources/);
   assert.match(searchPage, /relatedSearchSuggestions/);
@@ -1279,9 +1283,10 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /allintext:model pricing/);
   assert.match(searchPage, /inurl:release/);
   assert.match(searchPage, /allinurl:release model/);
-  assert.match(searchPage, /type:feed/);
-  assert.match(searchPage, /filetype:digest/);
-  assert.match(searchPage, /-filetype:digest/);
+  assert.match(searchPage, /type:post/);
+  assert.match(searchPage, /type:source/);
+  assert.match(searchPage, /filetype:ai-digest/);
+  assert.match(searchPage, /-filetype:ai-digest/);
   assert.match(searchPage, /after:2026-01-01/);
   assert.match(searchPage, /-enterprise/);
   assert.match(searchPage, /ActiveSearchFilters/);

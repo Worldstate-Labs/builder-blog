@@ -80,9 +80,10 @@ const advancedSearchExamples = [
   "allintext:model pricing",
   "model pricing inurl:release",
   "allinurl:release model",
-  "model pricing type:feed",
-  "model pricing filetype:digest",
-  "model pricing -filetype:digest",
+  "model pricing type:post",
+  "model pricing type:source",
+  "model pricing filetype:ai-digest",
+  "model pricing -filetype:ai-digest",
   "model pricing after:2026-01-01",
   "model pricing before:2026-12-31",
 ];
@@ -994,7 +995,16 @@ function dateInsightLabel(parsed: ReturnType<typeof parseSearchQuery>, time: Sea
 }
 
 function normalizeTypeFilter(value: string): SearchTypeFilter {
-  if (value === "builder" || value === "feed" || value === "digest") return value;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "builder" || normalized === "source" || normalized === "sources") {
+    return "builder";
+  }
+  if (normalized === "feed" || normalized === "post" || normalized === "posts") {
+    return "feed";
+  }
+  if (normalized === "digest" || normalized === "digests" || normalized === "ai-digest") {
+    return "digest";
+  }
   return "all";
 }
 
