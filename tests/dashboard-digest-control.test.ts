@@ -32,7 +32,14 @@ test("home digest keeps pipeline and saved digest selection in a dedicated contr
   assert.match(digestPipelineSelector, /className="digest-pipeline-trigger"/);
   assert.match(digestPipelineSelector, /className="digest-pipeline-static"/);
   assert.match(digestPipelineSelector, /className="digest-pipeline-menu"/);
+  assert.match(digestPipelineSelector, /aria-expanded=\{open\}/);
+  assert.match(digestPipelineSelector, /aria-controls=\{menuId\}/);
+  assert.match(digestPipelineSelector, /aria-haspopup="listbox"/);
+  assert.match(digestPipelineSelector, /role="listbox"/);
+  assert.match(digestPipelineSelector, /aria-label="AI Digest choices"/);
   assert.match(digestPipelineSelector, /className="digest-pipeline-option"/);
+  assert.match(digestPipelineSelector, /role="option"/);
+  assert.match(digestPipelineSelector, /aria-selected=\{active\}/);
   assert.match(digestPipelineSelector, /data-active=\{active \? "true" : undefined\}/);
   assert.match(globals, /\.digest-pipeline-trigger\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /\.digest-pipeline-option\[data-active="true"\]/);

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 export type DigestPipelineSelectorOption = {
@@ -21,6 +21,7 @@ export function DigestPipelineSelector({
   selectedPipelineId: string;
 }) {
   const [open, setOpen] = useState(false);
+  const menuId = useId();
   const pickerRef = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
@@ -48,6 +49,9 @@ export function DigestPipelineSelector({
   return (
     <details className="digest-pipeline-selector" open={open} ref={pickerRef}>
       <summary
+        aria-controls={menuId}
+        aria-expanded={open}
+        aria-haspopup="listbox"
         className="digest-pipeline-trigger"
         onClick={(event) => {
           event.preventDefault();
@@ -62,7 +66,12 @@ export function DigestPipelineSelector({
         </span>
         <ChevronDown aria-hidden="true" className="digest-pipeline-icon" />
       </summary>
-      <div className="digest-pipeline-menu">
+      <div
+        aria-label="AI Digest choices"
+        className="digest-pipeline-menu"
+        id={menuId}
+        role="listbox"
+      >
         {options.map((pipeline) => {
           const active = pipeline.id === selectedPipelineId;
           const href = pipeline.isOwnPipeline
@@ -71,6 +80,7 @@ export function DigestPipelineSelector({
           return (
             <Link
               aria-current={active ? "page" : undefined}
+              aria-selected={active}
               className="digest-pipeline-option"
               data-active={active ? "true" : undefined}
               href={href}
@@ -79,6 +89,7 @@ export function DigestPipelineSelector({
                 setOpen(false);
                 if (active) event.preventDefault();
               }}
+              role="option"
             >
               <span className="digest-pipeline-title">{pipeline.title}</span>
               <span className="digest-pipeline-meta">

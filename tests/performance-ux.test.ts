@@ -738,6 +738,12 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /<DigestArchivePicker/);
   assert.match(digestPipelineSelector, /ChevronDown/);
   assert.match(digestPipelineSelector, /className="digest-pipeline-trigger"/);
+  assert.match(digestPipelineSelector, /aria-expanded=\{open\}/);
+  assert.match(digestPipelineSelector, /aria-controls=\{menuId\}/);
+  assert.match(digestPipelineSelector, /aria-haspopup="listbox"/);
+  assert.match(digestPipelineSelector, /role="listbox"/);
+  assert.match(digestPipelineSelector, /role="option"/);
+  assert.match(digestPipelineSelector, /aria-selected=\{active\}/);
   assert.match(digestPipelineSelector, /className="digest-pipeline-option"/);
   assert.match(digestPipelineSelector, /data-active=\{active \? "true" : undefined\}/);
   assert.match(globals, /\.digest-pipeline-trigger:focus-visible\s*{[\s\S]*outline:\s*2px solid var\(--accent\)/);
@@ -746,6 +752,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(digestPipelineSelector, />\s*v\s*<\/span>/);
   assert.match(digestArchivePicker, /ChevronDown/);
   assert.match(digestArchivePicker, /className="digest-picker-icon"/);
+  assert.match(digestArchivePicker, /aria-expanded=\{open\}/);
+  assert.match(digestArchivePicker, /aria-controls=\{menuId\}/);
+  assert.match(digestArchivePicker, /aria-haspopup="listbox"/);
   assert.doesNotMatch(globals, /\.digest-picker-summary::after[\s\S]*content:\s*"▾"/);
   assert.doesNotMatch(dashboardPage, /digest-source-pill fb-btn compact/);
   assert.match(dashboardPage, /@\/components\/EmptyState/);
@@ -1676,6 +1685,9 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.match(buildersPage, /getScheduledAgentJobRuns\(session\.user\.id, "digest-cron", 25\)/);
   assert.match(digestArchivePicker, /digestHref/);
   assert.match(digestArchivePicker, /aria-label="Saved AI Digests"/);
+  assert.match(digestArchivePicker, /role="listbox"/);
+  assert.match(digestArchivePicker, /role="option"/);
+  assert.match(digestArchivePicker, /aria-selected=\{selected\}/);
   assert.match(digestArchivePicker, /useHydrated/);
   assert.match(digestArchivePicker, /formatDigestPickerDate\(digest\.createdAt, hydrated\)/);
   assert.match(digestArchivePicker, /timeZone:\s*"UTC"/);

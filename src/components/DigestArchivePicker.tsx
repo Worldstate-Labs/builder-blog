@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { useHydrated } from "@/components/ThemeToggle";
@@ -27,6 +27,7 @@ export function DigestArchivePicker({
 }) {
   const [open, setOpen] = useState(false);
   const hydrated = useHydrated();
+  const menuId = useId();
   const pickerRef = useRef<HTMLDetailsElement>(null);
   const selectedDigest = digests.find((digest) => digest.id === selectedDigestId) ?? digests[0];
 
@@ -46,6 +47,9 @@ export function DigestArchivePicker({
   return (
     <details className="digest-picker" open={open} ref={pickerRef}>
       <summary
+        aria-controls={menuId}
+        aria-expanded={open}
+        aria-haspopup="listbox"
         className="digest-picker-summary"
         onClick={(event) => {
           event.preventDefault();
@@ -60,7 +64,7 @@ export function DigestArchivePicker({
         />
         <ChevronDown aria-hidden="true" className="digest-picker-icon" />
       </summary>
-      <div className="digest-picker-menu" role="listbox" aria-label="Saved AI Digests">
+      <div className="digest-picker-menu" id={menuId} role="listbox" aria-label="Saved AI Digests">
         {digests.map((digest) => {
           const selected = digest.id === selectedDigest.id;
           return (
