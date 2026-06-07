@@ -187,7 +187,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /fb-public-feature-grid/);
   assert.match(landingPage, /Search AI Digests/);
   assert.match(landingPage, /search past AI Digests later/);
-  assert.match(landingPage, /Sources, saved items, and AI Digests share one search surface\./);
+  assert.match(landingPage, /Sources, posts, saved items, and AI Digests share one search surface\./);
   assert.doesNotMatch(landingPage, /fb-public-metric/);
   assert.doesNotMatch(landingPage, /fb-public-card-grid|fb-public-step-card/);
   assert.doesNotMatch(landingPage, /Archive|digest history|Search digest history/);
@@ -1185,7 +1185,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /SearchResultsSection/);
   assert.match(searchPage, /className="workspace-content-stack search-results-workspace"/);
   assert.match(globals, /\.search-result-skeleton/);
-  assert.match(searchPage, /<PageHeader[\s\S]*title="Search"[\s\S]*Find sources, posts, saved items, and AI Digests across your library\./);
+  assert.match(searchPage, /<PageHeader[\s\S]*title="Search"[\s\S]*Find sources, posts, saved items, and AI Digests in one place\./);
+  assert.doesNotMatch(searchPage, /across your library/);
   assert.doesNotMatch(searchPage, /description="Find sources, saved posts, and digest history\."/);
   assert.doesNotMatch(searchPage, /<PageHeader[\s\S]{0,120}actions=/);
   assert.match(searchPage, /className="search-hero-form"/);

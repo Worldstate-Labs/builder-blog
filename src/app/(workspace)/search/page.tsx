@@ -152,7 +152,7 @@ export default async function SearchPage({
     <div className="page-pad page-pad--reading search-page">
       <PageHeader
         title="Search"
-        description="Find sources, posts, saved items, and AI Digests across your library."
+        description="Find sources, posts, saved items, and AI Digests in one place."
       />
 
       <div className="workspace-content-stack search-results-workspace">
