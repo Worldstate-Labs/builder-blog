@@ -31,6 +31,18 @@ function authLogValue(value: unknown): unknown {
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: { strategy: "database" },
+  cookies: {
+    pkceCodeVerifier: {
+      name: "__Secure-next-auth.pkce.code_verifier",
+      options: {
+        httpOnly: true,
+        sameSite: "none",
+        path: "/",
+        secure: true,
+        maxAge: 60 * 15,
+      },
+    },
+  },
   providers: [
     GitHubProvider({
       clientId: process.env.GITHUB_ID ?? "",

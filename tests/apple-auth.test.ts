@@ -15,6 +15,8 @@ test("Apple sign-in is wired through NextAuth and the login UI", () => {
   assert.match(auth, /process\.env\.APPLE_ID/);
   assert.match(auth, /process\.env\.APPLE_SECRET/);
   assert.match(auth, /allowDangerousEmailAccountLinking:\s*true/);
+  assert.match(auth, /pkceCodeVerifier/);
+  assert.match(auth, /sameSite:\s*"none"/);
   assert.match(authButtons, /type Provider = "google" \| "github" \| "apple"/);
   assert.match(authButtons, /function AppleIcon/);
   assert.match(authButtons, /label: "Apple"/);
