@@ -493,7 +493,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(skillPromptActions, /No connected helpers|Connected helpers/);
   assert.doesNotMatch(skillPromptActions, /flex flex-wrap items-center justify-end gap-2|className="ml-2"|mr-2|text-\[11px\] text-\[var\(--danger\)\]|text-\[11px\] text-\[var\(--muted-strong\)\]/);
   assert.doesNotMatch(skillPromptActions, /className="grid"/);
-  assert.match(agentTokenPanel, /<h2 className="fb-section-heading">Access keys<\/h2>/);
+  assert.match(agentTokenPanel, /<h2 className="fb-section-heading">Local Agent access<\/h2>/);
+  assert.doesNotMatch(agentTokenPanel, /<h2 className="fb-section-heading">Access keys<\/h2>/);
   assert.match(agentTokenPanel, /aria-label="Access keys for Local Agents"/);
   assert.match(agentTokenPanel, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);
   assert.match(agentTokenPanel, /className=\{`access-key-card/);
@@ -3087,9 +3088,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /@\/components\/EmptyState/);
   assert.match(tokenPanel, /fetch\("\/api\/settings\/tokens"/);
   assert.match(tokenPanel, /fetch\(`\/api\/settings\/tokens\/\$\{tokenId\}`/);
-  assert.match(tokenPanel, /Local Agent access/);
-  assert.match(tokenPanel, /Devices and Local Agents that can sync sources and AI Digests to this account\./);
-  assert.doesNotMatch(tokenPanel, />\s*Local Agents that can sync sources and AI Digests to this account\./);
+  assert.match(tokenPanel, /<h2 className="fb-section-heading">Local Agent access<\/h2>/);
+  assert.match(tokenPanel, /Access keys let trusted devices and Local Agents sync sources and AI Digests to this account\./);
+  assert.doesNotMatch(tokenPanel, />\s*Local Agents that can sync sources and AI Digests to this account\.|Devices and Local Agents that can sync sources and AI Digests to this account\./);
   assert.doesNotMatch(tokenPanel, /sync sources and digests to this account/);
   assert.match(tokenPanel, /"New access key"/);
   assert.match(tokenPanel, /fb-dialog/);
