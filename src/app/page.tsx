@@ -43,7 +43,7 @@ export default async function Home() {
             </a>
           </div>
           <div className="fb-public-flow" aria-label="FollowBrief workflow">
-            {["Follow", "Build AI Digest", "Search"].map((step) => (
+            {["Follow", "Build AI Digest", "Search workspace"].map((step) => (
               <span className="fb-public-flow-step" key={step}>
                 {step}
               </span>

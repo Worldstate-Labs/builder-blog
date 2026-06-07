@@ -223,6 +223,8 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(landingPage, /Open workspace/);
   assert.match(landingPage, /fb-public-flow/);
   assert.match(landingPage, /fb-public-flow-step/);
+  assert.match(landingPage, /\["Follow", "Build AI Digest", "Search workspace"\]/);
+  assert.doesNotMatch(landingPage, /\["Follow", "Build AI Digest", "Search"\]/);
   assert.match(landingPage, /Build AI Digest/);
   assert.doesNotMatch(landingPage, /"Brief"/);
   assert.match(landingPage, /fb-public-nav-actions/);
