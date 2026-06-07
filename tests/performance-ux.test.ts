@@ -960,8 +960,11 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(builderDetailPage, /className="fb-btn light compact w-fit" href="\/builders"/);
   assert.match(builderDetailPage, /className="builder-detail-identity"/);
   assert.match(builderDetailPage, /className="builder-detail-avatar"/);
-  assert.match(builderDetailPage, /: "Not fetched"/);
+  assert.match(builderDetailPage, /`\s*latest at \$\{dateFormatter\.format\(channel\.lastFetchedAt\)\}\s*`/);
+  assert.match(builderDetailPage, /: "not fetched yet"/);
+  assert.doesNotMatch(builderDetailPage, /: "Not fetched"/);
   assert.doesNotMatch(builderDetailPage, /lastFetchedAt \? dateFormatter\.format\(channel\.lastFetchedAt\) : "—"/);
+  assert.doesNotMatch(builderDetailPage, /lastFetchedAt \? dateFormatter\.format\(channel\.lastFetchedAt\) : "Not fetched"/);
   assert.match(builderDetailPage, /className="builder-detail-title-stack"/);
   assert.match(builderDetailPage, /className="builder-detail-title-row"/);
   assert.match(builderDetailPage, /<SourceBadge[\s\S]*sourceType=\{headerSourceType\}[\s\S]*suppressLabelWhen=\{entity\.name\}/);
