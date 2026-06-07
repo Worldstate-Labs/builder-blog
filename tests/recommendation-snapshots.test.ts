@@ -185,6 +185,10 @@ test("post card suppresses duplicate source labels in meta while the footer keep
   assert.match(html, /aria-hidden="true"/);
   assert.match(html, /title="Product Hunt Top Products"/);
   assert.match(html, /class="post-source-original"/);
+  assert.match(
+    html,
+    /class="post-source-original"[\s\S]*<span class="source-badge" data-source="product_hunt_top_products" title="Product Hunt Top Products">/,
+  );
 });
 
 test("post card action controls include the post title in accessible names", () => {
