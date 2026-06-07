@@ -675,13 +675,13 @@ function TokenPickerDialog({
         </header>
 
         <fieldset className="token-picker-list">
-          <legend className="sr-only">Connected helpers</legend>
+          <legend className="sr-only">Access keys for Local Agents</legend>
           {!open ? null : tokens.length === 0 ? (
             <EmptyState
               className="token-picker-empty"
               body={
                 <>
-                  No connected helpers.{" "}
+                  No access keys yet.{" "}
                   <a className="underline" href="/settings">
                     Add one in Settings
                   </a>
