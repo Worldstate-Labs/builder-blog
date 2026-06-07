@@ -2070,8 +2070,10 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(dashboardPage, /sourceLinks=\{sourceLinks\}/);
   assert.match(postCard, /showSourceBadge = true/);
   assert.match(sourceBadge, /labelSuppressedByDuplicate/);
-  assert.match(sourceBadge, /aria-hidden=\{labelSuppressedByDuplicate \? "true" : undefined\}/);
-  assert.match(sourceBadge, /aria-label=\{!shouldShowLabel && !labelSuppressedByDuplicate \? source\.label : undefined\}/);
+  assert.match(sourceBadge, /decorative = false/);
+  assert.match(sourceBadge, /aria-hidden=\{decorative \|\| labelSuppressedByDuplicate \? "true" : undefined\}/);
+  assert.match(sourceBadge, /aria-label=\{!decorative && !shouldShowLabel && !labelSuppressedByDuplicate \? source\.label : undefined\}/);
+  assert.match(postCard, /decorative[\s\S]*showLabel=\{false\}/);
   assert.doesNotMatch(postCard, /ScrollText/);
   assert.match(postCard, /actionContext = compactActionContext\(title\)/);
   assert.doesNotMatch(postCard, /originalSummaryRegionId|View original summary/);
@@ -2557,6 +2559,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(tokenPanel, /className="access-keys-panel fb-panel"/);
   assert.match(tokenPanel, /className="access-keys-head"/);
   assert.match(tokenPanel, /className="access-keys-list"/);
+  assert.match(tokenPanel, /aria-live="polite" className="access-keys-status"/);
+  assert.match(tokenPanel, /className="access-keys-status-message is-error" role="alert"/);
+  assert.doesNotMatch(tokenPanel, /className="access-keys-status is-error"/);
   assert.match(tokenPanel, /activeTokens\.map\(\(token\) =>/);
   assert.doesNotMatch(tokenPanel, /visibleTokens|hiddenActiveCount|showAllTokens|access-keys-more/);
   assert.doesNotMatch(tokenPanel, /@\/components\/Count/);
@@ -2594,6 +2599,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /className="access-keys-list access-keys-list--skeleton"/);
   assert.doesNotMatch(settingsPage, /mt-4 h-11 animate-pulse/);
   assert.match(globals, /\.access-keys-panel/);
+  assert.match(globals, /\.access-keys-status-message\s*{[\s\S]*display:\s*block/);
+  assert.match(globals, /\.access-keys-status-message\.is-error\s*{[\s\S]*color:\s*var\(--danger\)/);
+  assert.doesNotMatch(globals, /\.access-keys-status\.is-error/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.5rem minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*18px/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*6\.75rem/);

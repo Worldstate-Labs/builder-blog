@@ -136,7 +136,8 @@ test("source logos are shared across recommendation and library surfaces", () =>
   assert.match(source("src/components/SourceBadge.tsx"), /data-source/);
   assert.match(source("src/components/SourceBadge.tsx"), /suppressLabelWhen/);
   assert.match(source("src/components/SourceBadge.tsx"), /labelSuppressedByDuplicate/);
-  assert.match(source("src/components/SourceBadge.tsx"), /aria-label=\{!shouldShowLabel && !labelSuppressedByDuplicate \? source\.label : undefined\}/);
+  assert.match(source("src/components/SourceBadge.tsx"), /decorative = false/);
+  assert.match(source("src/components/SourceBadge.tsx"), /aria-label=\{!decorative && !shouldShowLabel && !labelSuppressedByDuplicate \? source\.label : undefined\}/);
   assert.match(source("src/components/SourceBadge.tsx"), /sameDisplayLabel\(source\.label, suppressLabelWhen\)/);
   assert.match(source("src/components/PostCard.tsx"), /SourceBadge/);
   assert.match(source("src/components/PostCard.tsx"), /SourceAvatar/);
@@ -188,8 +189,9 @@ test("post card suppresses duplicate source labels across meta and footer action
   assert.match(html, /class="post-source-original"/);
   assert.match(
     html,
-    /class="post-source-original"[\s\S]*<span aria-label="Product Hunt Top Products" class="source-badge" data-source="product_hunt_top_products" title="Product Hunt Top Products">/,
+    /class="post-source-original"[\s\S]*<span aria-hidden="true" class="source-badge" data-source="product_hunt_top_products" title="Product Hunt Top Products">/,
   );
+  assert.doesNotMatch(html, /class="post-source-original"[\s\S]*aria-label="Product Hunt Top Products"/);
   assert.match(html, />View original</);
 });
 

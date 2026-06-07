@@ -297,6 +297,7 @@ export function PostCard({
             >
               <SourceBadge
                 builder={builder}
+                decorative
                 sourceType={builder?.sourceType ?? post.sourceType ?? null}
                 showLabel={false}
               />

@@ -294,9 +294,13 @@ export function AgentTokenPanel({
         ) : null}
       </div>
 
-      <span aria-live="polite" className="access-keys-status">
-        {status ? <span className="access-keys-status is-error">{status}</span> : null}
-      </span>
+      <div aria-live="polite" className="access-keys-status">
+        {status ? (
+          <span className="access-keys-status-message is-error" role="alert">
+            {status}
+          </span>
+        ) : null}
+      </div>
 
       {/* Create token dialog */}
       <dialog
