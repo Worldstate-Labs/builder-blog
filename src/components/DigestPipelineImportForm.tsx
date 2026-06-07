@@ -236,7 +236,7 @@ export function DigestPipelineImportForm({
         {visiblePipelines.map((pipeline) => (
           <DigestPipelineCard
             imported={importedIds.has(pipeline.id)}
-            isPending={importPending}
+            isPending={importPending || pendingAction !== null}
             key={pipeline.id}
             onImport={importPipeline}
             onRemove={requestRemoveImported}
@@ -374,7 +374,7 @@ function DigestPipelineCard({
         aria-busy={pending !== null && isPending}
         aria-label={`Remove ${pipeline.title} AI Digest archive import`}
         className="fb-btn light compact hub-card-remove-button digest-pipeline-remove-button"
-        disabled={pending !== null}
+        disabled={isPending || pending !== null}
         onClick={() => onRemove(pipeline.id)}
         type="button"
       >
@@ -387,7 +387,7 @@ function DigestPipelineCard({
       aria-busy={pending === "import" && isPending}
       aria-label={`Import AI Digest archive ${pipeline.title}`}
       className="fb-btn dark compact hub-card-action-button"
-      disabled={pending !== null}
+      disabled={isPending || pending !== null}
       onClick={() => onImport(pipeline.id)}
       type="button"
     >

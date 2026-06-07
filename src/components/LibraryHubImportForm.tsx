@@ -299,7 +299,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
           {filteredLibraries.map((library) => (
             <HubCard
               key={library.id}
-              isPending={isPending}
+              isPending={isPending || pendingAction !== null}
               library={library}
               imported={importedIds.has(library.id)}
               pending={pendingAction?.libraryId === library.id ? pendingAction.type : null}
@@ -405,7 +405,7 @@ function HubCard({
         aria-busy={pending === "remove" && isPending}
         aria-label={`Remove ${library.name} source library import`}
         className="fb-btn light compact hub-card-remove-button"
-        disabled={pending !== null}
+        disabled={isPending || pending !== null}
         onClick={() => onRemove(library.id)}
         type="button"
       >
@@ -418,7 +418,7 @@ function HubCard({
       aria-busy={pending === "import" && isPending}
       aria-label={`Import source library ${library.name}`}
       className="fb-btn dark compact hub-card-action-button"
-      disabled={pending !== null}
+      disabled={isPending || pending !== null}
       onClick={() => onImport(library.id)}
       type="button"
     >

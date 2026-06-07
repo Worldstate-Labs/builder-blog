@@ -3175,6 +3175,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /counts\[filter\.key\]/);
   assert.match(hubImportForm, /function importLibrary\(libraryId: string\)/);
   assert.match(hubImportForm, /JSON\.stringify\(\{ libraryIds: \[libraryId\] \}\)/);
+  assert.match(hubImportForm, /isPending=\{isPending \|\| pendingAction !== null\}/);
+  assert.match(hubImportForm, /disabled=\{isPending \|\| pending !== null\}/);
   assert.match(hubImportForm, /aria-label=\{`Source library actions for \$\{library\.name\}`\}/);
   assert.match(hubImportForm, /className="fb-hub-card-actions"[\s\S]*role="group"/);
   assert.match(hubImportForm, /aria-label=\{`Import source library \$\{library\.name\}`\}/);
@@ -3289,6 +3291,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /importedPipelines = sharedPipelines\.filter/);
   assert.match(digestPipelineForm, /visiblePipelines = mode === "imported" \? importedPipelines : sharedPipelines/);
   assert.match(digestPipelineForm, /visiblePipelines\.map/);
+  assert.match(digestPipelineForm, /isPending=\{importPending \|\| pendingAction !== null\}/);
+  assert.match(digestPipelineForm, /disabled=\{isPending \|\| pending !== null\}/);
   assert.match(digestPipelineForm, /No imported AI Digest archives/);
   assert.match(digestPipelineForm, /Import an AI Digest archive from Hub to see it on Home\./);
   assert.match(digestPipelineForm, /href="\/library-hub\?tab=ai-digests"/);
