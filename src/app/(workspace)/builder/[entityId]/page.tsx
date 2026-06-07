@@ -410,7 +410,7 @@ async function RecentPostsSlot({
               id: item.builder.id,
               entityId: item.builder.entityId,
               name: item.builder.name,
-              kind: item.builder.sourceType as "X" | "BLOG" | "PODCAST" | "WEBSITE",
+              kind: item.builder.kind,
               sourceType: item.builder.sourceType,
               sourceUrl: item.builder.sourceUrl,
               fetchUrl: item.builder.fetchUrl,

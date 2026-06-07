@@ -11,6 +11,7 @@ export type FeedItemWithBuilder = FeedItem & {
     ownerUserId: string | null;
     lastFetchedAt: Date | null;
     name: string;
+    kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";
     handle: string | null;
     sourceType: string;
     sourceUrl: string | null;
@@ -141,6 +142,7 @@ export async function fetchDedupedFeedForEntities(params: {
           ownerUserId: true,
           lastFetchedAt: true,
           name: true,
+          kind: true,
           handle: true,
           sourceType: true,
           sourceUrl: true,

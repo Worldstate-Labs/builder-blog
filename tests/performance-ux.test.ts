@@ -2966,6 +2966,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(feedItemsRoute, /fetchDedupedFeedForEntities/);
   assert.match(feedItemsRoute, /activePoolBuilderIds/);
   assert.match(feedItemsRoute, /NextResponse\.json/);
+  assert.match(source("src/lib/builder-channel-resolver.ts"), /kind:\s*true/);
+  assert.match(builderDetailPage, /kind:\s*item\.builder\.kind/);
+  assert.doesNotMatch(builderDetailPage, /kind:\s*item\.builder\.sourceType as/);
   assert.match(builderDetailPage, /returnHref=\{`\/builder\/\$\{entityId\}`\}/);
   assert.match(builderDetailPage, /returnLabel="Sources"/);
   assert.doesNotMatch(builderDetailPage, /returnLabel="Source"/);
