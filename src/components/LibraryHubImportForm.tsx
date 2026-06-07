@@ -56,12 +56,12 @@ type LibraryHubImportFormProps = {
 
 type FilterKey = "all" | "community" | "shared" | "my" | "imported";
 
-const FILTERS: Array<{ key: FilterKey; label: string }> = [
-  { key: "all", label: "All source libraries" },
-  { key: "community", label: "Community" },
-  { key: "shared", label: "Shared by users" },
-  { key: "my", label: "My source libraries" },
-  { key: "imported", label: "Imported" },
+const FILTERS: Array<{ key: FilterKey; label: string; shortLabel: string }> = [
+  { key: "all", label: "All source libraries", shortLabel: "All sources" },
+  { key: "community", label: "Community", shortLabel: "Community" },
+  { key: "shared", label: "Shared by users", shortLabel: "Shared" },
+  { key: "my", label: "My source libraries", shortLabel: "My sources" },
+  { key: "imported", label: "Imported", shortLabel: "Imported" },
 ];
 
 export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
@@ -219,7 +219,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
                 onClick={() => setActiveFilter(filter.key)}
                 type="button"
               >
-                {filter.label.replace(" source libraries", "")}
+                {filter.shortLabel}
               </button>
             ))}
           </div>
