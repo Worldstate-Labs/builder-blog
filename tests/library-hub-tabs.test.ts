@@ -24,4 +24,6 @@ test("hub page exposes Source Library and AI Digests as subtabs", () => {
   assert.match(hubPage, /label:\s*"AI Digests"[\s\S]*href:\s*"\/library-hub\?tab=ai-digests"/);
   assert.match(hubPage, /selectedValue=\{selectedTab\}/);
   assert.match(hubPage, /parseHubTab/);
+  assert.match(hubPage, /value === "ai-digests" \|\| value === "digests"/);
+  assert.match(hubPage, /return "ai-digests"/);
 });

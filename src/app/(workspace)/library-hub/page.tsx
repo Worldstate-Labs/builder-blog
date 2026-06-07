@@ -276,7 +276,7 @@ function firstParam(value: string | string[] | undefined) {
 }
 
 function parseHubTab(value: string | undefined): LibraryHubTab {
-  if (value === "ai-digests") return value;
+  if (value === "ai-digests" || value === "digests") return "ai-digests";
   return "source-library";
 }
 
