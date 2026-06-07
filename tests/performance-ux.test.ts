@@ -2381,6 +2381,13 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /Importing/);
   assert.match(hubImportForm, /Imported/);
   assert.match(hubImportForm, /method: "DELETE"/);
+  assert.match(hubImportForm, /className="fb-dialog"/);
+  assert.match(hubImportForm, /className="fb-dialog-inner settings-dialog-stack"/);
+  assert.match(hubImportForm, /Remove imported source library\?/);
+  assert.match(hubImportForm, /sources\s+from this library will no longer appear in your Sources page or\s+Following feed/);
+  assert.match(hubImportForm, /You can import it again from the Hub later/);
+  assert.match(hubImportForm, /requestRemoveImported/);
+  assert.match(hubImportForm, /confirmRemoveImported/);
   assert.match(hubImportForm, /onClick=\{\(\) => onRemove\(library\.id\)\}/);
   assert.match(hubImportForm, /imported=\{importedIds\.has\(library\.id\)\}/);
   assert.doesNotMatch(hubImportForm, /importedIds\.has\(library\.id\)\s*\|\|\s*library\.imported/);

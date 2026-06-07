@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { CheckCircle2, ChevronDown, Download, Sliders, Trash2 } from "lucide-react";
 import { CountBadge, CountMeta, CountRange, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
@@ -71,6 +71,8 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
     libraryId: string;
     type: "import" | "remove";
   } | null>(null);
+  const [removeTargetId, setRemoveTargetId] = useState<string | null>(null);
+  const removeDialogRef = useRef<HTMLDialogElement>(null);
   const [isPending, startTransition] = useTransition();
   const importedSignature = useMemo(
     () =>
@@ -131,6 +133,19 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
     (filter) => filter.key === "all" || counts[filter.key] > 0,
   );
   const showFilters = libraries.length > 3 && visibleFilters.length > 1;
+  const removeTarget = removeTargetId
+    ? libraries.find((library) => library.id === removeTargetId) ?? null
+    : null;
+
+  useEffect(() => {
+    const dialog = removeDialogRef.current;
+    if (!dialog) return;
+    if (removeTarget) {
+      if (!dialog.open) dialog.showModal();
+      return;
+    }
+    if (dialog.open) dialog.close();
+  }, [removeTarget]);
 
   function importLibrary(libraryId: string) {
     if (pendingAction) return;
@@ -161,6 +176,14 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
     });
   }
 
+  function requestRemoveImported(libraryId: string) {
+    if (pendingAction) return;
+    const library = libraries.find((item) => item.id === libraryId);
+    if (!library || library.owned || !importedIds.has(libraryId)) return;
+    setError(null);
+    setRemoveTargetId(libraryId);
+  }
+
   function removeImported(libraryId: string) {
     if (pendingAction) return;
     const library = libraries.find((item) => item.id === libraryId);
@@ -188,6 +211,17 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         setPendingAction(null);
       }
     });
+  }
+
+  function closeRemoveDialog() {
+    setRemoveTargetId(null);
+  }
+
+  function confirmRemoveImported() {
+    if (!removeTargetId) return;
+    const libraryId = removeTargetId;
+    setRemoveTargetId(null);
+    removeImported(libraryId);
   }
 
   return (
@@ -256,7 +290,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
               imported={importedIds.has(library.id)}
               pending={pendingAction?.libraryId === library.id ? pendingAction.type : null}
               onImport={importLibrary}
-              onRemove={removeImported}
+              onRemove={requestRemoveImported}
             />
           ))}
           {filteredLibraries.length === 0 ? (
@@ -267,6 +301,47 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
           ) : null}
         </div>
       </section>
+
+      <dialog
+        className="fb-dialog"
+        onClick={(event) => {
+          if (event.target === removeDialogRef.current) closeRemoveDialog();
+        }}
+        onClose={closeRemoveDialog}
+        ref={removeDialogRef}
+      >
+        {removeTarget ? (
+          <div className="fb-dialog-inner settings-dialog-stack">
+            <h3 className="fb-section-heading">Remove imported source library?</h3>
+            <div className="settings-dialog-copy">
+              <p>
+                After removing <strong>{removeTarget.name}</strong>, sources
+                from this library will no longer appear in your Sources page or
+                Following feed.
+              </p>
+              <p className="settings-dialog-warning">
+                You can import it again from the Hub later.
+              </p>
+            </div>
+            <div className="settings-dialog-actions">
+              <button
+                className="fb-btn light compact"
+                onClick={closeRemoveDialog}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="fb-btn danger compact"
+                onClick={confirmRemoveImported}
+                type="button"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </dialog>
     </section>
   );
 }
