@@ -1339,9 +1339,9 @@ svg.lucide {
 
 .post-summary-toggle {
   align-items: center;
-  background: color-mix(in oklch, var(--paper-strong) 94%, transparent);
-  border: 1px solid color-mix(in oklch, var(--accent) 26%, var(--line));
-  border-radius: 999px;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
   bottom: 0.2rem;
   color: var(--accent);
   cursor: pointer;
@@ -1349,11 +1349,20 @@ svg.lucide {
   font-size: 0.78rem;
   font-weight: 850;
   gap: 0.22rem;
-  padding: 0.18rem 0.55rem 0.18rem 0.62rem;
+  padding: 0.1rem 0.15rem;
   position: absolute;
   right: 0.1rem;
   text-decoration: none;
   z-index: 1;
+}
+
+.post-summary-toggle:hover {
+  text-decoration: underline;
+}
+
+.post-summary-toggle:focus-visible {
+  outline: 2px solid color-mix(in oklch, var(--accent) 50%, transparent);
+  outline-offset: 2px;
 }
 
 .post-summary--expanded .post-summary-toggle {
@@ -1375,6 +1384,12 @@ svg.lucide {
 @media (prefers-reduced-motion: reduce) {
   .post-summary-toggle-icon {
     transition: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .fetched-post-summary {
+    --post-summary-lines: 5;
   }
 }
 
