@@ -2,7 +2,7 @@ import { BuilderPoolOrigin } from "@prisma/client";
 import { adminEmails, isAdminEmail } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 
-const adminCommunityLibraryName = "Community Library";
+const adminCommunityLibraryName = "Community source library";
 const adminCommunityLibraryDescription =
   "Community source library curated by FollowBrief.";
 

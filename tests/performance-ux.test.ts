@@ -2256,6 +2256,12 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /digestPipelineImport\.findMany/);
   assert.match(hubPage, /Number\(b\.owned\) - Number\(a\.owned\)/);
   assert.match(hubPage, /adminCommunityLibraryName/);
+  assert.match(source("src/lib/library-hub.ts"), /adminCommunityLibraryName = "Community source library"/);
+  assert.match(source("src/lib/builder-pool.ts"), /adminCommunityLibraryName = "Community source library"/);
+  assert.match(hubPage, /if \(isFeatured\) return "Community source library"/);
+  assert.doesNotMatch(source("src/lib/library-hub.ts"), /adminCommunityLibraryName = "Community Library"/);
+  assert.doesNotMatch(source("src/lib/builder-pool.ts"), /adminCommunityLibraryName = "Community Library"/);
+  assert.doesNotMatch(hubPage, /if \(isFeatured\) return "Community Library"/);
   assert.match(hubPage, /library\.isFeatured/);
   assert.match(hubPage, /isAdminEmail\(library\.owner\?\.email\)/);
   assert.match(hubPage, /ownerLabel\(library\.owner, isCommunityLibrary\)/);

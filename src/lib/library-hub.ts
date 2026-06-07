@@ -7,7 +7,7 @@ import {
 } from "@/lib/builder-entities";
 import { prisma } from "@/lib/prisma";
 
-export const adminCommunityLibraryName = "Community Library";
+export const adminCommunityLibraryName = "Community source library";
 export const adminCommunityLibraryDescription =
   "Community source library curated by FollowBrief.";
 export const adminCommunityDigestTitle = "Community Digest";

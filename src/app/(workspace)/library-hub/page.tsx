@@ -285,7 +285,7 @@ function parseHubTab(value: string | undefined): LibraryHubTab {
 }
 
 function ownerLabel(owner: { name: string | null; email: string | null } | null, isFeatured: boolean) {
-  if (isFeatured) return "Community Library";
+  if (isFeatured) return "Community source library";
   if (!owner) return "Curated by FollowBrief.";
   return `Shared by ${owner.name || owner.email || "a FollowBrief user"}.`;
 }
