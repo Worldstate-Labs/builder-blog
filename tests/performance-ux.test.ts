@@ -2315,6 +2315,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(libraryHubPage, /className="hub-list-stack fb-hub-list"/);
   assert.doesNotMatch(libraryHubPage, /className="fb-hub-list mt-5"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-import-section"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="library-hub-toolbar"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="library-hub-toolbar-copy"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /<h2 className="fb-section-heading">Source libraries<\/h2>/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries built and shared by other users\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /sourceLibraryListCopy\(activeFilter\)/);
@@ -2350,6 +2352,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-form-error"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /"hub-list-region has-filters"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-heading-row"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-eyebrow">Current view<\/p>/);
+  assert.match(source("src/app/globals.css"), /\.hub-list-eyebrow\s*{[\s\S]*text-transform:\s*uppercase/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Library filter|No libraries match this filter yet|\bYour library\b|label\.replace/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /className="flex items-center justify-between"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /className="hub-card-action-row"/);

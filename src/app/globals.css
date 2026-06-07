@@ -3867,6 +3867,15 @@ a.reading-source-label:focus-visible {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
+.hub-list-eyebrow {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
 .hub-list-stack {
   margin-top: 1.25rem;
 }

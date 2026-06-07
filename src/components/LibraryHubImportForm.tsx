@@ -233,6 +233,15 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
 
   return (
     <section className="hub-import-section">
+      <div className="library-hub-toolbar">
+        <div className="library-hub-toolbar-copy">
+          <h2 className="fb-section-heading">Source libraries</h2>
+          <p className="hub-section-copy">
+            Source libraries built and shared by other users.
+          </p>
+        </div>
+      </div>
+
       {showFilters ? (
         <>
           <div
@@ -285,7 +294,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         <div className="hub-list-heading at-desktop">
           <div className="hub-list-heading-row">
             <div>
-              <h2 className="fb-section-heading">Source libraries</h2>
+              <p className="hub-list-eyebrow">Current view</p>
               <p className="hub-section-copy">
                 {listCopy.description}
               </p>
