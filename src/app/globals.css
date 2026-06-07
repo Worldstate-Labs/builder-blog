@@ -8840,8 +8840,8 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .access-keys-list--skeleton .settings-skeleton-row {
-  border-radius: 16px;
-  height: 6.75rem;
+  border-radius: 18px;
+  height: 7.25rem;
 }
 
 .settings-source-type-manager {
@@ -10880,6 +10880,10 @@ body {
     grid-template-columns: 1.875rem minmax(0, 1fr) auto;
     min-height: 6rem;
     padding: 1rem 0.9rem;
+  }
+
+  .access-keys-list--skeleton .settings-skeleton-row {
+    height: 6rem;
   }
 
   .access-key-revoke-button,

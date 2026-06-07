@@ -3398,8 +3398,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*6rem/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-width:\s*7\.5rem/);
   assert.doesNotMatch(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*grid-column:\s*1 \/ -1/);
-  assert.match(globals, /\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*border-radius:\s*16px/);
-  assert.match(globals, /\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*height:\s*6\.75rem/);
+  assert.match(globals, /\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*border-radius:\s*18px/);
+  assert.match(globals, /\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*height:\s*7\.25rem/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*height:\s*6rem/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.access-keys-empty\s*{\s*margin:\s*0;\s*}/);
   assert.match(globals, /\.settings-dialog-stack/);
