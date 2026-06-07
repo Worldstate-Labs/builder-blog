@@ -2750,11 +2750,17 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(fetchMethodPopover, /aria-controls=\{popoverId\}/);
   assert.match(fetchMethodPopover, /aria-expanded=\{open\}/);
   assert.match(fetchMethodPopover, /id=\{popoverId\} role="tooltip"/);
+  assert.match(fetchMethodPopover, /event\.key === "Escape"/);
+  assert.match(fetchMethodPopover, /document\.addEventListener\("keydown", handleKeyDown\)/);
+  assert.match(fetchMethodPopover, /document\.removeEventListener\("keydown", handleKeyDown\)/);
   assert.match(recommendationReasonsPopover, /useId/);
   assert.match(recommendationReasonsPopover, /const popoverId = useId\(\)/);
   assert.match(recommendationReasonsPopover, /aria-controls=\{popoverId\}/);
   assert.match(recommendationReasonsPopover, /aria-expanded=\{open\}/);
   assert.match(recommendationReasonsPopover, /id=\{popoverId\} role="tooltip"/);
+  assert.match(recommendationReasonsPopover, /event\.key === "Escape"/);
+  assert.match(recommendationReasonsPopover, /document\.addEventListener\("keydown", handleKeyDown\)/);
+  assert.match(recommendationReasonsPopover, /document\.removeEventListener\("keydown", handleKeyDown\)/);
   assert.match(recommendationReasonsPopover, /ListChecks/);
   assert.doesNotMatch(recommendationReasonsPopover, /Sparkles/);
   assert.match(sourceBadge, /labelSuppressedByDuplicate/);
