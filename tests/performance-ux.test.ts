@@ -932,6 +932,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /headerHostLabel \? \([\s\S]*className="source-count-dot source-meta-dot"/);
   assert.match(builderDetailPage, /<CountMeta label=\{headerItemCount === 1 \? "post" : "posts"\} value=\{headerItemCount\} \/>/);
   assert.doesNotMatch(builderDetailPage, /headerItemCount === 1 \? "item" : "items"/);
+  assert.match(builderDetailPage, /latest at \{dateFormatter\.format\(lastFetchedMax\)\}/);
+  assert.doesNotMatch(builderDetailPage, /Last summarized/);
   assert.match(builderDetailPage, /aria-label=\{`View \$\{entity\.name\} source site`\}/);
   assert.match(builderDetailPage, /aria-label=\{`View \$\{channel\.libraryName\} source site`\}/);
   assert.match(builderDetailPage, /title="View source site"/);

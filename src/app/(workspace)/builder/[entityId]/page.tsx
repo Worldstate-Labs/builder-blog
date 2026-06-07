@@ -198,7 +198,7 @@ export default async function BuilderDetailPage({ params }: Params) {
                   <>
                     <span className="source-latest-dot source-meta-dot">·</span>
                     <span className="source-latest-meta">
-                      Last summarized {dateFormatter.format(lastFetchedMax)}
+                      latest at {dateFormatter.format(lastFetchedMax)}
                     </span>
                   </>
                 ) : null}
