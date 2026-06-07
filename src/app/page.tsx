@@ -131,7 +131,7 @@ export default async function Home() {
         <div className="fb-public-section-kicker-row">
           <span className="fb-section-label">Workflow</span>
           <span className="fb-public-section-note">
-            Built around the loop of following, briefing, and returning to sources later.
+            Built around the loop of following, reading AI Digests, and returning to sources later.
           </span>
         </div>
         <ol className="fb-public-step-list">

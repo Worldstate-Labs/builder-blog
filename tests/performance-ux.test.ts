@@ -163,6 +163,7 @@ test("workspace not-found uses the FollowBrief shell instead of the default Next
 test("public entry pages use the centered product layout", () => {
   const landingPage = source("src/app/page.tsx");
   const loginPage = source("src/app/login/page.tsx");
+  const rootLayout = source("src/app/layout.tsx");
   const authButtons = source("src/components/AuthButtons.tsx");
   const globals = source("src/app/globals.css");
 
@@ -194,6 +195,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /fb-public-workspace/);
   assert.match(landingPage, /fb-public-feature-grid/);
   assert.match(landingPage, /Search AI Digests/);
+  assert.match(landingPage, /reading AI Digests/);
   assert.match(landingPage, /builds cited AI Digests/);
   assert.match(landingPage, />AI Digest<\/span>/);
   assert.match(landingPage, /summarized posts/);
@@ -224,7 +226,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /Daily updates become one AI Digest/);
   assert.match(landingPage, /Build AI Digests/);
   assert.match(landingPage, /Home stays focused on readable AI Digests/);
-  assert.doesNotMatch(landingPage, /Daily brief flow|Generate briefs|readable briefings/);
+  assert.doesNotMatch(landingPage, /Daily brief flow|Generate briefs|readable briefings|following, briefing/);
   assert.match(landingPage, /Search and revisit/);
   assert.doesNotMatch(landingPage, /Context windows became product infrastructure/);
   assert.doesNotMatch(landingPage, /Private sources belong in the brief/);
@@ -245,8 +247,12 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(loginPage, /fb-login-brand-name/);
   assert.match(loginPage, /fb-login-panel-head/);
   assert.match(loginPage, /Sign in/);
+  assert.match(loginPage, /AI Digest workspace/);
   assert.match(loginPage, /AI Digest/);
   assert.match(loginPage, /Use one account for your AI Digests and Local Agent\./);
+  assert.match(rootLayout, /AI Digests from people and sources you follow\./);
+  assert.doesNotMatch(rootLayout, /AI briefings/);
+  assert.doesNotMatch(loginPage, /briefing desk/);
   assert.doesNotMatch(loginPage, /Archive|web archive|searchable archive/);
   assert.doesNotMatch(loginPage, /AI Digest archive/);
   assert.doesNotMatch(loginPage, /Continue securely/);
