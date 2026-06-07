@@ -854,6 +854,32 @@ svg.lucide {
   padding: 0.34rem 0.7rem;
 }
 
+.feed-action-icon,
+.post-action-icon {
+  flex-shrink: 0;
+  height: 0.875rem;
+  width: 0.875rem;
+}
+
+.feed-loading-icon {
+  animation: feed-spin 0.8s linear infinite;
+  flex-shrink: 0;
+  height: 0.875rem;
+  width: 0.875rem;
+}
+
+@keyframes feed-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-loading-icon {
+    animation: none;
+  }
+}
+
 .status-chip-success {
   background: var(--signal-soft);
   border-color: color-mix(in oklch, var(--signal) 28%, var(--line));

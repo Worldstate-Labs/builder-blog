@@ -1016,8 +1016,14 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(feedState, /className=\{\["feed-state-panel", className\]\.filter\(Boolean\)\.join\(" "\)\}/);
   assert.match(followingSection, /tone="error"/);
   assert.match(followingSection, /<RefreshCcw/);
+  assert.match(followingSection, /className="feed-action-icon"/);
   assert.match(followingSection, /onRetry=\{\(\) => void loadTimeline\(\)\}/);
   assert.match(followingSection, /Retry/);
+  assert.match(recommendationFeed, /className="feed-action-icon"/);
+  assert.match(recommendationFeed, /className="feed-loading-icon"/);
+  assert.match(recommendationFeed, /className="post-action-icon"/);
+  assert.doesNotMatch(recommendationFeed, /h-4 w-4|h-3\.5 w-3\.5|animate-spin/);
+  assert.doesNotMatch(followingSection, /h-4 w-4|h-3\.5 w-3\.5|animate-spin/);
   assert.doesNotMatch(recommendationFeed, /Saved to Favorites|Save to Favorites/);
   assert.doesNotMatch(recommendationFeed, /mode\?: "favorites"|favorites-feed|FavoriteReadButton|\/api\/favorites\/read|markedReadAt/);
   assert.doesNotMatch(followingSection, /Use Refresh to try again/);
@@ -1034,6 +1040,9 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(globals, /\.recommendation-feed-actions\s*{[\s\S]*justify-content:\s*space-between/);
   assert.match(globals, /\.recommendation-snapshot-list\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.feed-end-note\s*{[\s\S]*font-size:\s*0\.875rem/);
+  assert.match(globals, /\.feed-action-icon,[\s\S]*\.post-action-icon\s*{[\s\S]*height:\s*0\.875rem/);
+  assert.match(globals, /\.feed-loading-icon\s*{[\s\S]*animation:\s*feed-spin/);
+  assert.match(globals, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.feed-loading-icon\s*{[\s\S]*animation:\s*none/);
   assert.match(globals, /\.feed-skeleton-card\s*{[\s\S]*min-height:\s*6rem/);
   assert.match(globals, /\.feed-state-panel\s*{[\s\S]*box-shadow:\s*var\(--elev-1\)/);
   assert.match(globals, /\.feed-state-panel\.is-actionable\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
@@ -2292,7 +2301,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(recommendationFeed, /"Following"/);
   assert.match(recommendationFeed, /aria-label=\{label\}/);
   assert.match(recommendationFeed, /const label = isFavorite \? "Remove saved post" : "Save post"/);
-  assert.match(recommendationFeed, /<Star aria-hidden="true"/);
+  assert.match(recommendationFeed, /<Star aria-hidden="true" className="post-action-icon"/);
   assert.match(digestContent, /aria-label=\{label\}/);
   assert.match(digestContent, /const label = isFavorite \? "Remove saved post" : "Save post"/);
   assert.match(digestContent, /<Star aria-hidden="true"/);

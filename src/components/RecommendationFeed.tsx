@@ -137,7 +137,7 @@ export function RecommendationFeed({
           onClick={() => void requestSnapshot("prepend")}
           type="button"
         >
-          <RefreshCcw className="h-4 w-4" />
+          <RefreshCcw className="feed-action-icon" />
           Refresh
         </button>
       </div>
@@ -167,7 +167,7 @@ export function RecommendationFeed({
       <div ref={loadMoreRef} className="feed-load-more">
         {loadingDirection ? (
           <span className="status-chip">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <Loader2 className="feed-loading-icon" />
             Loading posts
           </span>
         ) : exhausted ? (
@@ -240,7 +240,7 @@ function FavoriteToggleButton({
       title={label}
       type="button"
     >
-      <Star aria-hidden="true" className="h-4 w-4" />
+      <Star aria-hidden="true" className="post-action-icon" />
     </button>
   );
 }

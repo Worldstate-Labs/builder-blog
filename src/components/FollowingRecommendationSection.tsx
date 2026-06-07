@@ -174,7 +174,7 @@ function FollowingError({ onRetry }: { onRetry: () => void }) {
     <FeedEmptyState
       actions={
         <button className="fb-btn light compact" onClick={onRetry} type="button">
-          <RefreshCcw aria-hidden="true" className="h-3.5 w-3.5" />
+          <RefreshCcw aria-hidden="true" className="feed-action-icon" />
           Retry
         </button>
       }
