@@ -1,142 +1,22 @@
-import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
-import { PostCard } from "@/components/PostCard";
-import { getCurrentSession } from "@/lib/auth";
-import { activePoolBuilderIds } from "@/lib/builder-pool";
-import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
 
-export default async function RecommendationItemPage({
+export default async function LegacyRecommendationItemPage({
   params,
   searchParams,
 }: {
   params: Promise<{ feedItemId: string }>;
-  searchParams: Promise<{ returnLabel?: string | string[]; returnTo?: string | string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const session = await getCurrentSession();
-  if (!session?.user?.id) redirect("/login");
-
-  const backLink = resolvePostBackLink(await searchParams);
   const { feedItemId } = await params;
-  const item = await prisma.feedItem.findUnique({
-    where: { id: feedItemId },
-    include: { builder: true },
-  });
-  if (!item || !item.builderId) notFound();
-
-  const [poolBuilderIds, hubItems] = await Promise.all([
-    activePoolBuilderIds(session.user.id),
-    prisma.libraryHubItem.findMany({
-      where: { builderId: item.builderId },
-      select: { builderId: true },
-      take: 1,
-    }),
-  ]);
-  const canRead =
-    poolBuilderIds.includes(item.builderId) || hubItems.some((hubItem) => hubItem.builderId === item.builderId);
-  if (!canRead) notFound();
-
-  if (!item.builder?.entityId) notFound();
-  const entityId = item.builder.entityId;
-  const existing = await prisma.feedRead.findFirst({
-    where: {
-      userId: session.user.id,
-      entityId,
-      kind: item.kind,
-      externalId: item.externalId,
-    },
-    select: { id: true },
-  });
-  const readData = {
-    userId: session.user.id,
-    feedItemId: item.id,
-    entityId,
-    kind: item.kind,
-    externalId: item.externalId,
-    source: "recommendation-detail",
-    readAt: new Date(),
-  };
-  await (existing
-    ? prisma.feedRead.update({ where: { id: existing.id }, data: readData })
-    : prisma.feedRead.create({ data: readData }));
-
-  return (
-    <div className="page-pad page-pad--reading reading-page">
-      <nav aria-label="Post navigation" className="reading-page-toolbar">
-        <Link className="fb-breadcrumb-link reading-back-link" href={backLink.href}>
-          <ChevronLeft aria-hidden="true" />
-          {backLink.label}
-        </Link>
-        <span className="reading-source-label">
-          {item.builder?.name ?? item.sourceName ?? "Saved post"}
-        </span>
-      </nav>
-
-      <PostCard
-        dataRead={true}
-        post={{
-          id: item.id,
-          title: item.title,
-          body: item.body,
-          summary: null,
-          url: item.url,
-          publishedAt: item.publishedAt?.toISOString() ?? null,
-          createdAt: item.createdAt.toISOString(),
-          sourceName: item.sourceName,
-          fetchTool: item.fetchTool,
-          builder: item.builder
-            ? {
-                id: item.builder.id,
-                entityId: item.builder.entityId,
-                avatarUrl: item.builder.avatarUrl,
-                name: item.builder.name,
-                kind: item.builder.kind,
-                sourceType: item.builder.sourceType,
-                sourceUrl: item.builder.sourceUrl,
-                fetchUrl: item.builder.fetchUrl,
-              }
-            : null,
-        }}
-        showDebugActions={false}
-        variant="detail"
-      />
-    </div>
-  );
-}
-
-function resolvePostBackLink(params: {
-  returnLabel?: string | string[];
-  returnTo?: string | string[];
-}) {
-  const returnTo = firstParam(params.returnTo);
-  if (isSafeInternalReturnTo(returnTo)) {
-    return {
-      href: returnTo,
-      label: safeReturnLabel(firstParam(params.returnLabel)),
-    };
+  const query = new URLSearchParams();
+  const resolvedSearchParams = await searchParams;
+  for (const [key, value] of Object.entries(resolvedSearchParams)) {
+    if (Array.isArray(value)) {
+      for (const entry of value) query.append(key, entry);
+    } else if (value) {
+      query.set(key, value);
+    }
   }
-
-  return { href: "/dashboard?tab=following", label: "Following" };
-}
-
-function firstParam(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
-}
-
-function isSafeInternalReturnTo(value: string) {
-  return value.startsWith("/") && !value.startsWith("//") && !value.startsWith("/api/");
-}
-
-function safeReturnLabel(value: string) {
-  switch (value) {
-    case "AI Digest":
-    case "Favorites":
-    case "Following":
-    case "Search":
-    case "Source":
-    case "Sources":
-      return value;
-    default:
-      return "Back";
-  }
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  redirect(`/posts/${feedItemId}${suffix}`);
 }

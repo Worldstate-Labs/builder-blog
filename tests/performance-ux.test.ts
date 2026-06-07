@@ -65,6 +65,7 @@ test("every app route has an explicit centered layout role", () => {
     "src/app/(workspace)/builders/page.tsx",
     "src/app/(workspace)/dashboard/page.tsx",
     "src/app/(workspace)/library-hub/page.tsx",
+    "src/app/(workspace)/posts/[feedItemId]/page.tsx",
     "src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx",
     "src/app/(workspace)/recommendations/page.tsx",
     "src/app/(workspace)/search/page.tsx",
@@ -106,7 +107,7 @@ test("every app route has an explicit centered layout role", () => {
   const readingRoutes = [
     ["src/app/(workspace)/builder/[entityId]/page.tsx", /className="page-pad page-pad--reading builder-detail-page"/],
     ["src/app/(workspace)/dashboard/page.tsx", /className="page-pad page-pad--reading home-page"[\s\S]*<h1 className="sr-only">Home<\/h1>/],
-    ["src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx", /className="page-pad page-pad--reading reading-page"/],
+    ["src/components/PostDetailPage.tsx", /className="page-pad page-pad--reading reading-page"/],
     ["src/app/(workspace)/search/page.tsx", /className="page-pad page-pad--reading search-page"[\s\S]*<PageHeader[\s\S]*title="Search"/],
   ] as const;
   for (const [path, pattern] of readingRoutes) {
@@ -120,6 +121,7 @@ test("every app route has an explicit centered layout role", () => {
 
   const redirectOnlyRoutes = [
     ["src/app/(workspace)/builder/x/[handle]/page.tsx", /redirect\(`\/builder\/\$\{entity\.id\}`\)/],
+    ["src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx", /redirect\(`\/posts\/\$\{feedItemId\}\$\{suffix\}`\)/],
     ["src/app/(workspace)/recommendations/page.tsx", /redirect\("\/dashboard\?tab=following"\)/],
     ["src/app/history/page.tsx", /redirect\("\/dashboard\?tab=ai-digest"\)/],
   ] as const;
@@ -1685,7 +1687,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   const digestContent = source("src/components/DigestContent.tsx");
   const recentPostsList = source("src/components/RecentPostsList.tsx");
   const recommendationFeed = source("src/components/RecommendationFeed.tsx");
-  const recommendationItemPage = source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx");
+  const postDetailPage = source("src/components/PostDetailPage.tsx");
+  const legacyRecommendationItemPage = source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx");
   const postCard = source("src/components/PostCard.tsx");
   const globals = source("src/app/globals.css");
   const personalBuilderRoute = source("src/app/api/builders/personal/route.ts");
@@ -1972,28 +1975,29 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.fetched-post-raw\s*{[\s\S]*border:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.digest-rich \.fetched-post-summary-text\s*{[\s\S]*line-height:\s*1\.72/);
   assert.match(postCard, /\/builder\/\$\{builder\.entityId\}/);
-  assert.match(recommendationItemPage, /page-pad page-pad--reading reading-page/);
-  assert.doesNotMatch(recommendationItemPage, /@\/components\/PageHeader/);
-  assert.doesNotMatch(recommendationItemPage, /title="Post"/);
-  assert.match(recommendationItemPage, /className="reading-page-toolbar"/);
-  assert.match(recommendationItemPage, /className="reading-source-label"/);
-  assert.match(recommendationItemPage, /ChevronLeft/);
-  assert.match(recommendationItemPage, /className="fb-breadcrumb-link reading-back-link"/);
-  assert.doesNotMatch(recommendationItemPage, /button-light button-compact reading-back-link/);
-  assert.match(recommendationItemPage, /href=\{backLink\.href\}/);
-  assert.match(recommendationItemPage, /href:\s*"\/dashboard\?tab=following"/);
-  assert.match(recommendationItemPage, /returnLabel/);
-  assert.match(recommendationItemPage, /returnTo/);
-  assert.match(recommendationItemPage, /isSafeInternalReturnTo/);
-  assert.match(recommendationItemPage, /safeReturnLabel/);
-  assert.match(recommendationItemPage, /case "Source"/);
-  assert.match(recommendationItemPage, /case "Sources"/);
-  assert.match(recommendationItemPage, /case "AI Digest"/);
-  assert.match(recommendationItemPage, /showDebugActions=\{false\}/);
-  assert.match(recommendationItemPage, /avatarUrl:\s*item\.builder\.avatarUrl/);
-  assert.match(recommendationItemPage, /return \{ href: "\/dashboard\?tab=following", label: "Following" \}/);
-  assert.doesNotMatch(recommendationItemPage, /Back to feed/);
-  assert.doesNotMatch(recommendationItemPage, /extraActions=/);
+  assert.match(postDetailPage, /page-pad page-pad--reading reading-page/);
+  assert.doesNotMatch(postDetailPage, /@\/components\/PageHeader/);
+  assert.doesNotMatch(postDetailPage, /title="Post"/);
+  assert.match(postDetailPage, /className="reading-page-toolbar"/);
+  assert.match(postDetailPage, /className="reading-source-label"/);
+  assert.match(postDetailPage, /ChevronLeft/);
+  assert.match(postDetailPage, /className="fb-breadcrumb-link reading-back-link"/);
+  assert.doesNotMatch(postDetailPage, /button-light button-compact reading-back-link/);
+  assert.match(postDetailPage, /href=\{backLink\.href\}/);
+  assert.match(postDetailPage, /href:\s*"\/dashboard\?tab=following"/);
+  assert.match(postDetailPage, /returnLabel/);
+  assert.match(postDetailPage, /returnTo/);
+  assert.match(postDetailPage, /isSafeInternalReturnTo/);
+  assert.match(postDetailPage, /safeReturnLabel/);
+  assert.match(postDetailPage, /case "Source"/);
+  assert.match(postDetailPage, /case "Sources"/);
+  assert.match(postDetailPage, /case "AI Digest"/);
+  assert.match(postDetailPage, /showDebugActions=\{false\}/);
+  assert.match(postDetailPage, /avatarUrl:\s*item\.builder\.avatarUrl/);
+  assert.match(postDetailPage, /return \{ href: "\/dashboard\?tab=following", label: "Following" \}/);
+  assert.doesNotMatch(postDetailPage, /Back to feed/);
+  assert.doesNotMatch(postDetailPage, /extraActions=/);
+  assert.match(legacyRecommendationItemPage, /redirect\(`\/posts\/\$\{feedItemId\}\$\{suffix\}`\)/);
   assert.match(globals, /\.reading-page\s*{[\s\S]*width:\s*min\(100%,\s*var\(--reading-max\)\)/);
   assert.match(globals, /\.reading-page-toolbar\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.reading-page-toolbar\s*{[\s\S]*grid-template-columns:\s*auto minmax\(0,\s*1fr\)/);
@@ -2660,7 +2664,7 @@ test("search feed results keep post detail links while preserving originals", ()
   const searchPage = source("src/app/(workspace)/search/page.tsx");
 
   assert.match(userSearch, /externalUrl:\s*item\.url/);
-  assert.match(userSearch, /url:\s*`\/recommendations\/items\/\$\{item\.id\}`/);
+  assert.match(userSearch, /url:\s*`\/posts\/\$\{item\.id\}`/);
   assert.match(searchPage, /withSearchReturnTarget/);
   assert.match(searchPage, /params\.set\("returnTo", returnTo\)/);
   assert.match(searchPage, /params\.set\("returnLabel", "Search"\)/);

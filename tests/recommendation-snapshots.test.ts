@@ -15,7 +15,8 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   const apiRoute = source("src/app/api/recommendations/route.ts");
   const feed = source("src/components/RecommendationFeed.tsx");
   const postCard = source("src/components/PostCard.tsx");
-  const detailPage = source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx");
+  const postDetailPage = source("src/components/PostDetailPage.tsx");
+  const legacyDetailPage = source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx");
 
   assert.match(schema, /model RecommendationSnapshot/);
   assert.match(schema, /model RecommendationSnapshotItem/);
@@ -37,17 +38,18 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.match(postCard, /className="post-meta-avatar"/);
   assert.match(postCard, /post-meta-author-link[\s\S]*onClick=\{noteInteraction\}/);
   assert.match(postCard, /className="post-actions"[\s\S]*onClickCapture=\{noteInteraction\}/);
-  assert.match(detailPage, /ChevronLeft/);
-  assert.match(detailPage, /Following/);
-  assert.doesNotMatch(detailPage, /Back to feed/);
-  assert.match(detailPage, /href=\{backLink\.href\}/);
-  assert.match(detailPage, /href:\s*"\/dashboard\?tab=following"/);
-  assert.match(detailPage, /returnLabel/);
-  assert.match(detailPage, /returnTo/);
-  assert.match(detailPage, /isSafeInternalReturnTo/);
-  assert.match(detailPage, /feedRead\.create/);
-  assert.match(detailPage, /avatarUrl:\s*item\.builder\.avatarUrl/);
-  assert.match(detailPage, /item\.body/);
+  assert.match(postDetailPage, /ChevronLeft/);
+  assert.match(postDetailPage, /Following/);
+  assert.doesNotMatch(postDetailPage, /Back to feed/);
+  assert.match(postDetailPage, /href=\{backLink\.href\}/);
+  assert.match(postDetailPage, /href:\s*"\/dashboard\?tab=following"/);
+  assert.match(postDetailPage, /returnLabel/);
+  assert.match(postDetailPage, /returnTo/);
+  assert.match(postDetailPage, /isSafeInternalReturnTo/);
+  assert.match(postDetailPage, /feedRead\.create/);
+  assert.match(postDetailPage, /avatarUrl:\s*item\.builder\.avatarUrl/);
+  assert.match(postDetailPage, /item\.body/);
+  assert.match(legacyDetailPage, /redirect\(`\/posts\/\$\{feedItemId\}\$\{suffix\}`\)/);
   assert.doesNotMatch(feed, /filter\(\(entry\) => entry\.item\.id !== feedItemId\)/);
 });
 

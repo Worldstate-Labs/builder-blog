@@ -1072,7 +1072,7 @@ function searchHref({
 }
 
 function withSearchReturnTarget(href: string, returnTo: string) {
-  if (!href.startsWith("/recommendations/items/")) return href;
+  if (!href.startsWith("/posts/")) return href;
   const [pathname, existingQuery = ""] = href.split("?");
   const params = new URLSearchParams(existingQuery);
   params.set("returnTo", returnTo);

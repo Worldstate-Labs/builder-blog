@@ -171,7 +171,7 @@ export async function searchUserLibrary({
       title: item.title ?? item.builder?.name ?? item.sourceName ?? "Untitled feed item",
       body: [item.body, item.sourceName ?? "", item.url].join(" "),
       externalUrl: item.url,
-      url: `/recommendations/items/${item.id}`,
+      url: `/posts/${item.id}`,
       avatarUrl: item.builder?.avatarUrl ?? null,
       fetchUrl: item.builder?.fetchUrl ?? null,
       sourceName: item.builder?.name ?? item.sourceName,

@@ -290,7 +290,7 @@ function PostBlock({
 
 function postDetailHref(feedItemId: string, returnTo: string, returnLabel: string) {
   const params = new URLSearchParams({ returnLabel, returnTo });
-  return `/recommendations/items/${feedItemId}?${params.toString()}`;
+  return `/posts/${feedItemId}?${params.toString()}`;
 }
 
 function DigestFavoriteToggleButton({
