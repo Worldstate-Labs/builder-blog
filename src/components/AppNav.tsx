@@ -38,11 +38,13 @@ export function AppNav({
     desktopLayout === "bar"
       ? "fb-nav-list fb-nav-list-bar"
       : "fb-nav-list fb-nav-list-rail";
+  const desktopAriaLabel =
+    desktopLayout === "bar" ? "Primary" : "Desktop primary";
 
   return (
     <>
       {mode !== "mobile" ? (
-        <nav className={desktopClassName} aria-label="Primary">
+        <nav className={desktopClassName} aria-label={desktopAriaLabel}>
           {items.map((item) => {
             const Icon = icons[item.icon];
             const active = isActiveNavItem(pathname, item, returnTo);
@@ -65,7 +67,7 @@ export function AppNav({
         <nav
           className="fb-m-tabbar"
           style={{ "--tab-count": mobileNavItems.length } as CSSProperties}
-          aria-label="Primary"
+          aria-label="Mobile primary"
         >
           {mobileNavItems.map((item) => {
             const Icon = icons[item.icon];

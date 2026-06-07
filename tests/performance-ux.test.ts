@@ -744,7 +744,11 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailActions, /\{isPending \? "Updating" : subscribed \? "Following" : "Follow"\}/);
   assert.doesNotMatch(builderDetailActions, /Updating\.\.\./);
   assert.match(appNav, /desktopLayout = "rail"/);
-  assert.match(appNav, /<nav className=\{desktopClassName\} aria-label="Primary">/);
+  assert.match(appNav, /const desktopAriaLabel =/);
+  assert.match(appNav, /desktopLayout === "bar" \? "Primary" : "Desktop primary"/);
+  assert.match(appNav, /<nav className=\{desktopClassName\} aria-label=\{desktopAriaLabel\}>/);
+  assert.match(appNav, /aria-label="Mobile primary"/);
+  assert.doesNotMatch(appNav, /className="fb-m-tabbar"[\s\S]*aria-label="Primary"/);
   assert.match(appNav, /fb-nav-list-bar/);
   assert.match(appNav, /fb-nav-list-rail/);
   assert.doesNotMatch(appNav, /hidden lg:flex|lg:hidden/);
