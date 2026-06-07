@@ -151,7 +151,7 @@ export function DigestPipelineSelector({
 }
 
 function pipelineOwnerLine(pipeline: DigestPipelineSelectorOption) {
-  return pipeline.isOwnPipeline ? "Your AI Digest" : pipeline.ownerLabel;
+  return pipeline.isOwnPipeline ? "Your AI Digest" : `Shared by ${pipeline.ownerLabel}`;
 }
 
 function digestSourceLabel(pipeline: DigestPipelineSelectorOption) {
