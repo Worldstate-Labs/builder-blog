@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { WorkspaceTopTabs, type WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
 
-type DashboardTab = "ai-digest" | "favorites" | "following";
+type DashboardTab = "ai-digest" | "following";
 
 const HOME_TABS: Array<WorkspaceTopTabItem<DashboardTab>> = [
   {
@@ -19,22 +19,14 @@ const HOME_TABS: Array<WorkspaceTopTabItem<DashboardTab>> = [
     panelId: "home-panel-following",
     tabId: "home-tab-following",
   },
-  {
-    value: "favorites",
-    label: "Favorites",
-    panelId: "home-panel-favorites",
-    tabId: "home-tab-favorites",
-  },
 ];
 
 export function DashboardHomeTabs({
   aiDigest,
-  favorites,
   following,
   initialTab,
 }: {
   aiDigest: ReactNode;
-  favorites: ReactNode;
   following: ReactNode;
   initialTab: DashboardTab;
 }) {
@@ -72,15 +64,6 @@ export function DashboardHomeTabs({
         role="tabpanel"
       >
         {selectedTab === "following" ? following : null}
-      </section>
-      <section
-        aria-labelledby="home-tab-favorites"
-        className="home-tab-panel"
-        hidden={selectedTab !== "favorites"}
-        id="home-panel-favorites"
-        role="tabpanel"
-      >
-        {selectedTab === "favorites" ? favorites : null}
       </section>
     </>
   );

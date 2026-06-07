@@ -43,7 +43,7 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.doesNotMatch(feed, /filter\(\(entry\) => entry\.item\.id !== feedItemId\)/);
 });
 
-test("home favorites saves posts and requires manual read marking", () => {
+test("favorites saves posts and requires manual read marking", () => {
   const schema = source("prisma/schema.prisma");
   const favoriteRoute = source("src/app/api/favorites/route.ts");
   const favoriteReadRoute = source("src/app/api/favorites/read/route.ts");
@@ -292,11 +292,12 @@ test("following recommendation feed uses subscribed builders only", () => {
   const recommendations = source("src/lib/recommendations.ts");
 
   assert.match(tabs, /AI Digest/);
-  assert.match(tabs, /Favorites/);
   assert.match(tabs, /Following/);
   assert.doesNotMatch(tabs, /For You/);
+  assert.doesNotMatch(tabs, /Favorites/);
   assert.match(dashboardPage, /aiDigest=/);
-  assert.match(dashboardPage, /FavoritePostsSection/);
+  assert.doesNotMatch(dashboardPage, /FavoritePostsSection/);
+  assert.match(dashboardPage, /requestedTab === "favorites"[\s\S]*redirect\("\/dashboard"\)/);
   assert.match(dashboardPage, /FollowingRecommendationSection/);
   assert.match(dashboardPage, /sourceReadiness=\{sourceReadiness\}/);
   assert.match(dashboardPage, /dashboardSourceReadinessForUser/);

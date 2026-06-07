@@ -553,10 +553,11 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardTabs, /<Link/);
   assert.match(dashboardTabs, /AI Digest/);
   assert.match(dashboardTabs, /ai-digest/);
-  assert.match(dashboardTabs, /AI Digest[\s\S]*Following[\s\S]*Favorites/);
+  assert.match(dashboardTabs, /AI Digest[\s\S]*Following/);
   assert.doesNotMatch(dashboardTabs, /For You/);
-  assert.match(dashboardTabs, /value: "ai-digest"[\s\S]*label: "AI Digest"[\s\S]*value: "following"[\s\S]*label: "Following"[\s\S]*value: "favorites"[\s\S]*label: "Favorites"/);
-  assert.match(dashboardTabs, /id="home-panel-ai-digest"[\s\S]*id="home-panel-following"[\s\S]*id="home-panel-favorites"/);
+  assert.doesNotMatch(dashboardTabs, /Favorites|favorites|home-panel-favorites|home-tab-favorites/);
+  assert.match(dashboardTabs, /value: "ai-digest"[\s\S]*label: "AI Digest"[\s\S]*value: "following"[\s\S]*label: "Following"/);
+  assert.match(dashboardTabs, /id="home-panel-ai-digest"[\s\S]*id="home-panel-following"/);
   assert.doesNotMatch(dashboardPage, /scope="subscription"/);
   assert.doesNotMatch(dashboardPage, /scope="for-you"/);
   assert.doesNotMatch(dashboardPage, /<h3>Status<\/h3>/);
@@ -566,7 +567,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /Recent digest/);
   assert.match(digestArchivePicker, /Digest archive/);
   assert.match(digestArchivePicker, /setOpen\(false\)/);
-  assert.match(dashboardPage, /FavoritePostsSection/);
+  assert.doesNotMatch(dashboardPage, /FavoritePostsSection/);
+  assert.match(dashboardPage, /requestedTab === "favorites"[\s\S]*redirect\("\/dashboard"\)/);
   assert.match(dashboardPage, /FollowingRecommendationSection/);
   assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
   assert.match(digestDetails, /mode === "today"/);
@@ -779,7 +781,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
   assert.doesNotMatch(dashboardPage, /RecommendationFeed/);
   assert.match(dashboardPage, /isAdminEmail\(session\.user\.email\)/);
-  assert.match(dashboardPage, /<FavoritePostsSection isAdmin=\{isAdmin\}/);
+  assert.doesNotMatch(dashboardPage, /<FavoritePostsSection/);
   assert.match(dashboardPage, /<FollowingRecommendationSection[\s\S]*isAdmin=\{isAdmin\}[\s\S]*sourceReadiness=\{sourceReadiness\}/);
   assert.match(dashboardPage, /dashboardSourceReadinessForUser/);
   assert.match(followingSection, /"use client"/);
@@ -1840,7 +1842,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(postCard, /whitespace-pre-wrap text-sm leading-6|mt-3 whitespace-pre-wrap rounded-lg|text-link mt-2/);
   assert.match(globals, /\.fetched-post-summary-text\s*{[\s\S]*white-space:\s*pre-wrap/);
   assert.match(globals, /\.post-summary-toggle\s*{[\s\S]*height:\s*1\.45rem/);
-  assert.match(globals, /@media \(max-width:\s*767px\)\s*{[\s\S]*--post-summary-lines:\s*5/);
+  assert.match(globals, /@media \(max-width:\s*767px\)\s*{[\s\S]*--post-summary-lines:\s*6/);
   assert.match(globals, /\.fetched-post-raw\s*{[\s\S]*border:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.digest-rich \.fetched-post-summary-text\s*{[\s\S]*line-height:\s*1\.72/);
   assert.match(postCard, /\/builder\/\$\{builder\.entityId\}/);
