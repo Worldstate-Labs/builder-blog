@@ -2756,6 +2756,12 @@ svg.lucide {
   width: 1.22rem;
 }
 
+.source-badge-icon {
+  flex-shrink: 0;
+  height: 0.875rem;
+  width: 0.875rem;
+}
+
 .source-badge[data-source="x"] .source-badge-mark {
   /* X's mark is a white glyph on a fixed black badge (brand). Use the non-
      inverting surface token so dark mode doesn't flip it to white-on-white. */

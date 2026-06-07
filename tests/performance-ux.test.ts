@@ -2405,6 +2405,9 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(sourceBadge, /decorative = false/);
   assert.match(sourceBadge, /aria-hidden=\{decorative \|\| labelSuppressedByDuplicate \? "true" : undefined\}/);
   assert.match(sourceBadge, /aria-label=\{!decorative && !shouldShowLabel && !labelSuppressedByDuplicate \? source\.label : undefined\}/);
+  assert.match(sourceBadge, /className="source-badge-icon"/);
+  assert.doesNotMatch(sourceBadge, /h-3\.5 w-3\.5|h-4 w-4/);
+  assert.match(globals, /\.source-badge-icon\s*{[\s\S]*height:\s*0\.875rem/);
   assert.match(postCard, /decorative[\s\S]*showLabel=\{false\}/);
   assert.doesNotMatch(postCard, /ScrollText/);
   assert.match(postCard, /actionContext = compactActionContext\(title\)/);

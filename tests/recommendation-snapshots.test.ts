@@ -139,6 +139,8 @@ Source: https://anthropic.com/engineering/how-we-contain-claude`,
 
 test("source logos are shared across recommendation and library surfaces", () => {
   assert.match(source("src/components/SourceBadge.tsx"), /data-source/);
+  assert.match(source("src/components/SourceBadge.tsx"), /className="source-badge-icon"/);
+  assert.doesNotMatch(source("src/components/SourceBadge.tsx"), /h-3\.5 w-3\.5|h-4 w-4/);
   assert.match(source("src/components/SourceBadge.tsx"), /suppressLabelWhen/);
   assert.match(source("src/components/SourceBadge.tsx"), /labelSuppressedByDuplicate/);
   assert.match(source("src/components/SourceBadge.tsx"), /decorative = false/);

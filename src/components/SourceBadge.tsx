@@ -45,7 +45,7 @@ export function SourceBadge({
       title={source.label}
     >
       <span className="source-badge-mark" aria-hidden="true">
-        <Icon className="h-3.5 w-3.5" />
+        <Icon className="source-badge-icon" />
       </span>
       {shouldShowLabel ? <span>{source.label}</span> : null}
     </span>
