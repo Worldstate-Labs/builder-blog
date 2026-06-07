@@ -652,7 +652,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /className="builder-detail-section builder-detail-channels"/);
   assert.match(builderDetailPage, /className="builder-detail-channels-summary"/);
   assert.match(builderDetailPage, /Source libraries/);
-  assert.match(builderDetailPage, /channels\.length === 1 \? "source library" : "source libraries"/);
+  assert.match(builderDetailPage, /channels\.length === 1 \? "library" : "libraries"/);
+  assert.doesNotMatch(builderDetailPage, /channels\.length === 1 \? "source library" : "source libraries"/);
   assert.match(builderDetailPage, /className="builder-detail-channel-list"/);
   assert.match(builderDetailPage, /className="builder-detail-channel-row"/);
   assert.match(channelPreferenceToggle, /className="channel-preference-control"/);
