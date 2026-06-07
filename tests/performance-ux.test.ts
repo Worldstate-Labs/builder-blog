@@ -1779,6 +1779,11 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(globals, /\.submit-button-pending\s*{[\s\S]*position:\s*absolute/);
   assert.doesNotMatch(searchForm, /absolute inset-0 inline-flex|inline-flex items-center justify-center gap-2/);
   assert.doesNotMatch(formSubmitButton, /absolute inset-0 inline-flex|inline-flex items-center justify-center gap-2/);
+  assert.match(searchForm, /role="option"[\s\S]*className="search-suggestion-item"[\s\S]*<button[\s\S]*className="search-suggestion-chip"/);
+  assert.match(searchForm, /aria-label=\{`Search for \$\{suggestion\.query\}`\}/);
+  assert.match(searchForm, /className="search-suggestion-remove"/);
+  assert.doesNotMatch(searchForm, /role="option"[\s\S]{0,220}onClick=\{\(\) => \{[\s\S]{0,220}submitSuggestion\(suggestion/);
+  assert.match(globals, /\.search-suggestion-chip\s*{[\s\S]*cursor:\s*pointer/);
   assert.match(searchPage, /Search instead for/);
   assert.match(searchPage, /isShowingCorrectedResults/);
   assert.match(searchPage, /heading="Try searching"/);
@@ -1937,10 +1942,10 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchForm, /saved items/);
   assert.match(searchForm, /submitSuggestion\(activeSuggestion, event\.currentTarget\.form\)/);
   assert.match(searchForm, /role="option"[\s\S]*className="search-suggestion-item"/);
-  assert.match(searchForm, /onClick=\{\(\) => \{[\s\S]*submitSuggestion\(suggestion, inputRef\.current\?\.form \?\? null\)/);
-  assert.match(searchForm, /onMouseDown=\{\(event\) => \{[\s\S]*event\.preventDefault\(\)/);
-  assert.match(searchForm, /<span className="search-suggestion-chip">/);
-  assert.doesNotMatch(searchForm, /className="search-suggestion-chip"[\s\S]{0,240}type="button"/);
+  assert.match(searchForm, /<button[\s\S]*aria-label=\{`Search for \$\{suggestion\.query\}`\}[\s\S]*className="search-suggestion-chip"/);
+  assert.match(searchForm, /className="search-suggestion-chip"[\s\S]*submitSuggestion\(suggestion, inputRef\.current\?\.form \?\? null\)/);
+  assert.match(searchForm, /className="search-suggestion-chip"[\s\S]*onMouseDown=\{\(event\) => \{[\s\S]*event\.preventDefault\(\)/);
+  assert.doesNotMatch(searchForm, /<span className="search-suggestion-chip">/);
   assert.match(searchForm, /event\.stopPropagation\(\);[\s\S]*removeRecentSearch\(suggestion\.query\)/);
   assert.doesNotMatch(searchForm, /name="suggestion"/);
   assert.doesNotMatch(searchForm, /Lucky/);
@@ -1950,7 +1955,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(globals, /\.search-query-label\s*{[\s\S]*min-width:\s*0/);
   assert.match(globals, /\.header-search \.search-input-icon\s*{[\s\S]*position:\s*static/);
   assert.match(globals, /\.search-action-icon,[\s\S]*\.search-suggestion-icon\s*{[\s\S]*height:\s*1rem/);
-  assert.match(globals, /\.search-suggestion-item\s*{[\s\S]*cursor:\s*pointer/);
+  assert.match(cssRule(globals, ".search-suggestion-chip"), /cursor:\s*pointer/);
+  assert.doesNotMatch(cssRule(globals, ".search-suggestion-item"), /cursor:\s*pointer/);
   assert.match(globals, /\.search-suggestion-icon\s*{[\s\S]*color:\s*color-mix/);
   assert.doesNotMatch(globals, /\.search-suggestion-chip > svg/);
   assert.match(globals, /\.fb-popover\s*{[\s\S]*max-width:\s*min\(var\(--popover-max\),\s*calc\(100vw - 2rem\)\)/);

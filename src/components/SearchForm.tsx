@@ -282,19 +282,23 @@ export function SearchForm({
                 {visibleSuggestions.map((suggestion, index) => (
                   <div
                     aria-selected={index === activeSuggestionIndex}
-                    onClick={() => {
-                      submitSuggestion(suggestion, inputRef.current?.form ?? null);
-                    }}
-                    onMouseDown={(event) => {
-                      event.preventDefault();
-                    }}
                     data-active={index === activeSuggestionIndex ? "true" : undefined}
                     id={`${suggestionIdPrefix}-${index}`}
                     key={`${suggestion.kind}:${suggestion.query}`}
                     role="option"
                     className="search-suggestion-item"
                   >
-                    <span className="search-suggestion-chip">
+                    <button
+                      aria-label={`Search for ${suggestion.query}`}
+                      className="search-suggestion-chip"
+                      onClick={() => {
+                        submitSuggestion(suggestion, inputRef.current?.form ?? null);
+                      }}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                      }}
+                      type="button"
+                    >
                       {suggestion.kind === "recent" ? (
                         <Clock aria-hidden="true" className="search-suggestion-icon" />
                       ) : suggestion.kind === "entity" || suggestion.kind === "result" ? (
@@ -310,7 +314,7 @@ export function SearchForm({
                           <span className="search-suggestion-detail">{suggestion.detail}</span>
                         ) : null}
                       </span>
-                    </span>
+                    </button>
                     {recentSuggestionKeys.has(normalizeSuggestionKey(suggestion.query)) ? (
                       <button
                         aria-label={`Remove recent search ${suggestion.query}`}
