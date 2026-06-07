@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Clock, Search, X } from "lucide-react";
 import {
   normalizeRecentSearches,
+  searchDocumentTypeParamValue,
   type SearchDocumentType,
   type SearchMode,
   type SearchSort,
@@ -136,7 +137,7 @@ export function SearchForm({
       params.set("q", queryWithDateRange);
     }
     if (typeFilter !== "all") {
-      params.set("type", typeFilter);
+      params.set("type", searchDocumentTypeParamValue(typeFilter));
     }
     if (nextMode !== "hybrid") {
       params.set("mode", nextMode);

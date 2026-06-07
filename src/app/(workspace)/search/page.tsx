@@ -24,6 +24,7 @@ import {
   normalizeSearchTime,
   parseSearchQuery,
   relatedSearchSuggestions,
+  searchDocumentTypeParamValue,
   searchHighlightTerms,
   searchSiteFromUrl,
   shouldUseCorrectedSearch,
@@ -1098,7 +1099,7 @@ function searchHref({
 }) {
   const params = new URLSearchParams();
   if (query.trim()) params.set("q", query.trim());
-  if (type !== "all") params.set("type", type);
+  if (type !== "all") params.set("type", searchDocumentTypeParamValue(type));
   if (mode !== "hybrid") params.set("mode", mode);
   if (sort !== "relevance") params.set("sort", sort);
   if (time !== "any") params.set("time", time);

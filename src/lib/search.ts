@@ -4,6 +4,12 @@ export type SearchTimeRange = "any" | "day" | "week" | "month" | "year";
 
 export type SearchDocumentType = "builder" | "feed" | "digest";
 
+export function searchDocumentTypeParamValue(type: SearchDocumentType): string {
+  if (type === "builder") return "source";
+  if (type === "feed") return "post";
+  return "ai-digest";
+}
+
 export type SearchDocument = {
   id: string;
   type: SearchDocumentType;

@@ -36,6 +36,7 @@ import {
   parseSearchQuery,
   relatedSearchSuggestions,
   rankSearchDocuments,
+  searchDocumentTypeParamValue,
   searchSiteFromUrl,
   searchHighlightTerms,
   shouldUseCorrectedSearch,
@@ -1718,6 +1719,9 @@ test("search type operators accept the same source and post words shown in the U
   assert.equal(parseSearchQuery("agent memory type:posts").type, "feed");
   assert.equal(parseSearchQuery("agent memory filetype:ai-digest").type, "digest");
   assert.deepEqual(parseSearchQuery("agent memory -type:sources").excludedTypes, ["builder"]);
+  assert.equal(searchDocumentTypeParamValue("builder"), "source");
+  assert.equal(searchDocumentTypeParamValue("feed"), "post");
+  assert.equal(searchDocumentTypeParamValue("digest"), "ai-digest");
 });
 
 test("search user path applies operator filters and newest sorting", () => {

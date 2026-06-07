@@ -1889,6 +1889,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /model pricing type:ai-digest/);
   assert.match(searchPage, /model pricing -type:ai-digest/);
   assert.doesNotMatch(searchPage, /model pricing type:feed/);
+  assert.match(searchPage, /searchDocumentTypeParamValue/);
+  assert.doesNotMatch(searchPage, /params\.set\("type", type\)/);
   assert.doesNotMatch(searchPage, /model pricing filetype:ai-digest/);
   assert.doesNotMatch(searchPage, /AI Digest archive/);
   assert.doesNotMatch(searchPage, /Enter a query to search across your sources/);
@@ -2098,6 +2100,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /Sort by/);
   assert.match(searchForm, /Custom date range/);
   assert.match(searchForm, /withDateSearchOperators/);
+  assert.match(searchForm, /searchDocumentTypeParamValue/);
+  assert.match(searchForm, /params\.set\("type", searchDocumentTypeParamValue\(typeFilter\)\)/);
+  assert.doesNotMatch(searchForm, /params\.set\("type", typeFilter\)/);
   assert.match(searchForm, /name="after"/);
   assert.match(searchForm, /name="before"/);
   assert.match(searchForm, /useRef<HTMLInputElement>/);
