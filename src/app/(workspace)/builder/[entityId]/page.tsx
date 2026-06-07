@@ -236,7 +236,7 @@ export default async function BuilderDetailPage({ params }: Params) {
             <span>Source libraries</span>
             <CountMeta label={channels.length === 1 ? "library" : "libraries"} value={channels.length} />
           </summary>
-          <Suspense fallback={null}>
+          <Suspense fallback={<ChannelsListSkeleton />}>
             <ChannelsListSlot
               entityId={entityId}
               userId={userId}
@@ -432,6 +432,7 @@ async function RecentPostsSlot({
 function RecentPostsSkeleton() {
   return (
     <ul className="recent-post-list recent-post-list--skeleton" aria-busy="true" aria-live="polite">
+      <li className="sr-only">Loading recent posts</li>
       {[0, 1, 2].map((index) => (
         <li key={index} className="recent-post-skeleton-card fb-panel">
           <div className="recent-post-skeleton-line recent-post-skeleton-line--meta" />
@@ -441,5 +442,23 @@ function RecentPostsSkeleton() {
         </li>
       ))}
     </ul>
+  );
+}
+
+function ChannelsListSkeleton() {
+  return (
+    <div className="builder-detail-channel-list" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Loading source libraries</span>
+      {[0, 1].map((index) => (
+        <div key={index} className="builder-detail-channel-row">
+          <div>
+            <div className="recent-post-skeleton-line recent-post-skeleton-line--meta" />
+            <div className="recent-post-skeleton-line recent-post-skeleton-line--short" />
+          </div>
+          <div className="recent-post-skeleton-line recent-post-skeleton-line--meta" />
+          <div className="builder-detail-action-skeleton-button" />
+        </div>
+      ))}
+    </div>
   );
 }

@@ -9607,7 +9607,7 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-device-title {
   color: var(--ink);
-  font-size: 1.25rem;
+  font-size: 1.3125rem;
   font-weight: 500;
   letter-spacing: 0;
   line-height: 1.25;
@@ -9622,7 +9622,7 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-device-status {
   color: var(--muted-strong);
-  font-size: 1rem;
+  font-size: 1.0625rem;
   line-height: 1.3;
 }
 
@@ -9630,15 +9630,15 @@ a.fb-hub-source-name:focus-visible {
   align-items: center;
   color: var(--ink);
   display: inline-flex;
-  height: 2.75rem;
+  height: 2.5rem;
   justify-content: center;
-  width: 2.75rem;
+  width: 2.5rem;
 }
 
 .access-key-device-icon svg {
-  height: 1.65rem;
+  height: 1.55rem;
   stroke-width: 1.85;
-  width: 1.65rem;
+  width: 1.55rem;
 }
 
 .access-key-revoke-button,
@@ -9722,14 +9722,14 @@ a.fb-hub-source-name:focus-visible {
   align-items: center;
   background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 20px;
   box-shadow: none;
   display: grid;
-  gap: 1rem;
-  grid-template-columns: 2.75rem minmax(0, 1fr) auto;
-  min-height: 6.75rem;
+  gap: 0.95rem;
+  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+  min-height: 6.25rem;
   min-width: 0;
-  padding: 1.2rem 1.45rem;
+  padding: 1.2rem 1.35rem;
 }
 
 .access-key-card.fb-row--revoked {
