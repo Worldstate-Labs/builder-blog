@@ -1288,7 +1288,7 @@ svg.lucide {
 .fetched-post-summary {
   margin-top: 0.9rem;
   position: relative;
-  --post-summary-lines: 4;
+  --post-summary-lines: 6;
   --post-summary-line-height: 1.5rem;
 }
 
@@ -1391,7 +1391,7 @@ svg.lucide {
 
 @media (max-width: 767px) {
   .fetched-post-summary {
-    --post-summary-lines: 5;
+    --post-summary-lines: 6;
   }
 }
 

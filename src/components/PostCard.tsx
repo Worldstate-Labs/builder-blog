@@ -392,6 +392,6 @@ function summaryNeedsExpansion(value: string) {
   const text = value.trim();
   if (!text) return false;
   const visibleLineCount = text.split(/\r?\n/).filter((line) => line.trim()).length;
-  if (visibleLineCount > 4) return true;
-  return Array.from(text).length > 260;
+  if (visibleLineCount > 6) return true;
+  return Array.from(text).length > 390;
 }
