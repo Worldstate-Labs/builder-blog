@@ -243,7 +243,8 @@ test("workspace not-found uses the FollowBrief shell instead of the default Next
   assert.match(notFoundPage, /href="\/search"/);
   assert.match(notFoundPage, /Home/);
   assert.match(notFoundPage, /Search/);
-  assert.match(notFoundPage, /Return Home, or search across sources, posts, saved posts, and AI Digests\./);
+  assert.match(notFoundPage, /Return Home, or search across sources, posts, saved posts, and AI Digest archives\./);
+  assert.doesNotMatch(notFoundPage, /search across sources, posts, saved posts, and AI Digests\./);
   assert.doesNotMatch(notFoundPage, /sources, posts, Favorites, and AI Digests/);
   assert.doesNotMatch(notFoundPage, /Return to your feeds/);
   assert.doesNotMatch(notFoundPage, /This page could not be found|404 \|/);
@@ -375,7 +376,8 @@ test("public entry pages use the centered product layout", () => {
   assert.match(loginPage, /Sign in to your\{" "\}/);
   assert.match(loginPage, /className="fb-login-title-break"/);
   assert.doesNotMatch(loginPage, /your<br \/>AI Digest workspace/);
-  assert.match(loginPage, /sources, posts, saved posts, and AI Digests searchable/);
+  assert.match(loginPage, /sources, posts, saved posts, and AI Digest archives searchable/);
+  assert.doesNotMatch(loginPage, /sources, posts, saved posts, and AI Digests searchable/);
   assert.doesNotMatch(loginPage, /sources, posts, Favorites, and AI Digests searchable/);
   assert.doesNotMatch(loginPage, /keep your\s+AI Digests searchable/);
   assert.match(loginPage, /label="Follow"/);
@@ -389,7 +391,6 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(rootLayout, /AI briefings/);
   assert.doesNotMatch(loginPage, /briefing desk/);
   assert.doesNotMatch(loginPage, /Archive|web archive|searchable archive/);
-  assert.doesNotMatch(loginPage, /AI Digest archive/);
   assert.doesNotMatch(loginPage, /Continue securely/);
   assert.doesNotMatch(loginPage, /ShieldCheck|fb-login-panel-icon/);
   assert.match(loginPage, /BookOpenCheck/);
