@@ -1720,6 +1720,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.equal(existsSync(join(root, "src/components/MobileSourcesSwitcher.tsx")), false);
   assert.match(builderLibraryList, /className="builder-library-error"/);
   assert.match(builderLibraryList, /<EmptyState body=\{emptyBody\} title=\{emptyTitle\} \/>/);
+  assert.match(buildersPage, /emptyBody="Add a source, then use your Local Agent to fetch and summarize it\."/);
+  assert.doesNotMatch(buildersPage, /import private sources/);
   assert.match(buildersPage, /body="No imported source libraries yet\."/);
   assert.doesNotMatch(buildersPage, /title="No imported source libraries yet\."/);
   assert.match(buildersPage, /href="\/library-hub\?tab=source-library"/);
