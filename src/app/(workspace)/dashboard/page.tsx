@@ -364,12 +364,12 @@ function DigestControlBar({
 }) {
   return (
     <section
-      aria-label="Digest selection"
+      aria-label="AI Digest selection"
       className="grid items-start gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--paper-strong)] p-3 shadow-[var(--shadow-soft)] md:grid-cols-2"
     >
       <div className="grid min-w-0 gap-1">
         <span className="text-[0.68rem] font-[850] uppercase tracking-[0.14em] text-[var(--muted)]">
-          Digest
+          AI Digest
         </span>
         <DigestPipelineSelector
           options={options}

@@ -13,10 +13,10 @@ test("home digest keeps pipeline and history selection in a dedicated control ba
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
 
   assert.match(dashboardPage, /function DigestControlBar/);
-  assert.match(dashboardPage, /aria-label="Digest selection"/);
+  assert.match(dashboardPage, /aria-label="AI Digest selection"/);
   assert.match(dashboardPage, /<DigestPipelineSelector/);
   assert.match(dashboardPage, /<DigestArchivePicker/);
-  assert.match(dashboardPage, /Digest/);
+  assert.match(dashboardPage, /AI Digest/);
   assert.match(dashboardPage, /History/);
   assert.doesNotMatch(dashboardPage, /Your digest/);
   assert.match(dashboardPage, /No saved issues/);

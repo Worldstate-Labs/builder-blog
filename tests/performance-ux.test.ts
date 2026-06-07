@@ -469,7 +469,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /className="min-w-0"/);
   assert.doesNotMatch(dashboardPage, /className="fb-section-heading mt-1"/);
   assert.match(dashboardPage, /function DigestControlBar/);
-  assert.match(dashboardPage, /aria-label="Digest selection"/);
+  assert.match(dashboardPage, /aria-label="AI Digest selection"/);
   assert.match(dashboardPage, /<DigestPipelineSelector/);
   assert.match(dashboardPage, /<DigestArchivePicker/);
   assert.match(digestPipelineSelector, /ChevronDown/);
@@ -992,7 +992,7 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(dashboardPage, /DigestDetails/);
   assert.doesNotMatch(dashboardPage, /headerAction=\{/);
   assert.match(dashboardPage, /function DigestControlBar/);
-  assert.match(dashboardPage, /aria-label="Digest selection"/);
+  assert.match(dashboardPage, /aria-label="AI Digest selection"/);
   assert.match(digestDetails, /headlineSummary/);
   assert.match(digestDetails, /digest-headline-summary/);
   assert.match(digestDetails, /digest-headline-action/);
