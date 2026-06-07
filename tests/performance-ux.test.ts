@@ -180,6 +180,8 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /fb-public-actions/);
   assert.match(landingPage, /fb-public-flow/);
   assert.match(landingPage, /fb-public-flow-step/);
+  assert.match(landingPage, /Build AI Digest/);
+  assert.doesNotMatch(landingPage, /"Brief"/);
   assert.match(landingPage, /fb-public-nav-actions/);
   assert.match(landingPage, /fb-product-preview-head/);
   assert.match(landingPage, /fb-product-preview-title-row/);
@@ -226,7 +228,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /Product Hunt/);
   assert.match(landingPage, /Your Local Agent fetches updates, summarizes/);
   assert.match(landingPage, /sources your Local Agent can fetch/);
-  assert.match(landingPage, /build a cited digest from the summaries/);
+  assert.match(landingPage, /build a cited AI Digest from the summaries/);
   assert.doesNotMatch(landingPage, /Local Agent sources/);
   assert.match(landingPage, /Daily AI Digest flow/);
   assert.match(landingPage, /Daily updates become one AI Digest/);

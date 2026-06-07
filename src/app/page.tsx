@@ -43,7 +43,7 @@ export default async function Home() {
             </a>
           </div>
           <div className="fb-public-flow" aria-label="FollowBrief workflow">
-            {["Follow", "Brief", "Search"].map((step) => (
+            {["Follow", "Build AI Digest", "Search"].map((step) => (
               <span className="fb-public-flow-step" key={step}>
                 {step}
               </span>
@@ -146,7 +146,7 @@ export default async function Home() {
               i: "02",
               icon: Terminal,
               title: "Build AI Digests",
-              copy: "Let your Local Agent fetch updates, summarize posts, and build a cited digest from the summaries.",
+              copy: "Let your Local Agent fetch updates, summarize posts, and build a cited AI Digest from the summaries.",
             },
             {
               i: "03",
