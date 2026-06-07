@@ -1832,6 +1832,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /SearchResultSourceIcon/);
   assert.match(searchPage, /<SourceAvatar[\s\S]*className="search-result-icon"[\s\S]*imageSize=\{32\}/);
   assert.match(searchPage, /sourceUrl: result\.sourceUrl \?\? result\.externalUrl \?\? null/);
+  assert.match(searchPage, /aria-current=\{pageNumber === currentPage \? "page" : undefined\}/);
+  assert.match(searchPage, /<span aria-disabled="true" className="search-page-link search-page-link-disabled">/);
   assert.doesNotMatch(searchPage, /sourceName\.slice\(0,\s*1\)\.toUpperCase\(\)<\/span>/);
   assert.doesNotMatch(searchPage, /className="search-hero"/);
   assert.doesNotMatch(searchPage, /fb-m-search/);

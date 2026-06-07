@@ -365,6 +365,7 @@ async function SearchResultsSection({
               />
               {Array.from({ length: pageCount }, (_, index) => index + 1).map((pageNumber) => (
                 <Link
+                  aria-current={pageNumber === currentPage ? "page" : undefined}
                   className="search-page-link"
                   data-active={pageNumber === currentPage ? "true" : undefined}
                   href={searchHref({
@@ -771,7 +772,7 @@ function PageLink({
   const Icon = icon === "previous" ? ChevronLeft : ChevronRight;
   if (disabled) {
     return (
-      <span className="search-page-link search-page-link-disabled">
+      <span aria-disabled="true" className="search-page-link search-page-link-disabled">
         <Icon aria-hidden="true" className="search-page-link-icon" />
         {label}
       </span>
