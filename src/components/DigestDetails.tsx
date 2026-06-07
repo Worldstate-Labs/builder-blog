@@ -161,18 +161,19 @@ export function DigestDetails({
   }, [defaultOpen, fetchDigest, mode]);
 
   if (mode === "today") {
+    const headlineIsLoading = status === "loading" && !content;
     return (
       <article className="fb-digest">
         <div className="fb-digest-head">
-          {headerHeadline ? (
+          {headlineIsLoading ? (
+            <DigestHeadlineSummary headerAction={headerAction} loading />
+          ) : headerHeadline ? (
             <DigestHeadlineSummary
               content={content}
               headerAction={headerAction}
               sourceLinks={sourceLinks}
               text={headerHeadline}
             />
-          ) : status === "loading" ? (
-            <DigestHeadlineSummary headerAction={headerAction} loading />
           ) : null}
         </div>
         <div className="fb-digest-body">

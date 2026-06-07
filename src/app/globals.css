@@ -6400,11 +6400,9 @@ svg.lucide {
 
 /* Section */
 .digest-section {
-  border-top: 1px solid color-mix(in oklch, var(--dr-line) 88%, transparent);
   padding-top: 1.35rem;
 }
 .digest-section:first-of-type {
-  border-top: 0;
   padding-top: 0;
 }
 .digest-section-summary {

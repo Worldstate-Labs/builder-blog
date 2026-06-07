@@ -1209,6 +1209,8 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.match(digestDetails, /headlineSourceOrderFromDigestContent/);
   assert.match(digestDetails, /headlineSourceOrderFromSourceLinks/);
   assert.match(digestDetails, /DEFAULT_HEADLINE_SOURCE_TYPE_ORDER = \[/);
+  assert.match(digestDetails, /headlineIsLoading = status === "loading" && !content/);
+  assert.match(digestDetails, /headlineIsLoading \? \(/);
   assert.match(digestDetails, /<SourceAvatar/);
   assert.match(digestDetails, /digest-headline-list/);
   assert.match(globals, /\.digest-headline-text\s*{[\s\S]*max-width:\s*none/);
@@ -2261,6 +2263,7 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(postCard, /rawContentModeForSourceType\(builder\?\.sourceType \?\? post\.sourceType\)/);
   assert.match(postCard, /rawContentModesBySourceType/);
   assert.match(globals, /\.digest-group-heading/);
+  assert.doesNotMatch(cssRule(globals, ".digest-section"), /border-top/);
   assert.doesNotMatch(globals, /fetched-post-original-summary/);
   assert.match(globals, /\.digest-group\s*{[\s\S]*border:\s*1px solid/);
   assert.match(globals, /\.digest-group\s*{[\s\S]*border-radius:\s*10px/);
