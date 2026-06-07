@@ -261,7 +261,7 @@ export function AgentTokenPanel({
         <div className="access-keys-copy">
           <h2 className="fb-section-heading">Access keys</h2>
           <p className="access-keys-desc">
-            Keys let your Local Agent securely send fetched sources and digests to your FollowBrief cloud account.
+            Local Agents that can sync sources and digests to this account.
           </p>
         </div>
         <button

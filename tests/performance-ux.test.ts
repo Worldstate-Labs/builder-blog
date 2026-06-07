@@ -2565,11 +2565,11 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /className="access-keys-list access-keys-list--skeleton"/);
   assert.doesNotMatch(settingsPage, /mt-4 h-11 animate-pulse/);
   assert.match(globals, /\.access-keys-panel/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.25rem minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.5rem minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*14px/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*5\.5rem/);
-  assert.match(globals, /\.access-key-device-icon svg\s*{[\s\S]*height:\s*1\.5rem/);
-  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*2\.35rem/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*6rem/);
+  assert.match(globals, /\.access-key-device-icon svg\s*{[\s\S]*height:\s*1\.625rem/);
+  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*2\.5rem/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*4\.75rem/);
   assert.doesNotMatch(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*grid-column:\s*1 \/ -1/);
