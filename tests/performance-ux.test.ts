@@ -288,6 +288,10 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /fb-public-nav-actions/);
   assert.match(landingPage, /fb-product-preview-head/);
   assert.match(landingPage, /fb-product-preview-title-row/);
+  assert.match(landingPage, />\s*Preview\s*<\/div>/);
+  assert.match(landingPage, /aria-label="Preview data"/);
+  assert.match(landingPage, />\s*Live loop\s*<\/span>/);
+  assert.doesNotMatch(landingPage, />\s*Demo\s*<\/div>|>\s*Sample\s*<\/span>/);
   assert.match(landingPage, /fb-product-demo/);
   assert.match(landingPage, /fb-demo-sources/);
   assert.match(landingPage, /fb-demo-card/);

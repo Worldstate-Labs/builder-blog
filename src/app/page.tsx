@@ -59,13 +59,13 @@ export default async function Home() {
               <div>
                 <div className="fb-product-preview-title">Daily AI Digest flow</div>
                 <div className="fb-product-preview-kicker">
-                  Demo
+                  Preview
                 </div>
               </div>
             </div>
-            <span className="fb-chip success">
+            <span className="fb-chip success" aria-label="Preview data">
               <Radio aria-hidden="true" />
-              Sample
+              Live loop
             </span>
           </div>
           <div className="fb-product-demo" aria-hidden="true">
