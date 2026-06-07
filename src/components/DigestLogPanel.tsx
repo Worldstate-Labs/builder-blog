@@ -823,7 +823,7 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
         ) : null}
       </header>
       <p className="mt-2 text-[13.5px] leading-relaxed text-[var(--ink)]">
-        {jobRun.summary || "Runtime job did not create a digest build record."}
+        {jobRun.summary || "Runtime job did not create an AI Digest build record."}
       </p>
       <div className="mono mt-2 text-[11.5px] text-[var(--muted-strong)]">
         {jobRun.stage || "runtime"} · {jobRun.finishedAt ? "finished" : "active"}

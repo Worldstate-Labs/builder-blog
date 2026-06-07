@@ -1298,6 +1298,8 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.doesNotMatch(digestPipelineVisibilityToggle, /text-\[12px\]|text-\[10\.5px\]|disabled:cursor-wait/);
   assert.match(digestPipelineVisibilityToggle, /fetch\("\/api\/digest-pipelines\/share"/);
   assert.match(digestPipelineVisibilityToggle, /method: nextShared \? "POST" : "DELETE"/);
+  assert.match(digestPipelineVisibilityToggle, /Unable to update AI Digest sharing/);
+  assert.doesNotMatch(digestPipelineVisibilityToggle, /Unable to update digest pipeline sharing/);
   assert.match(digestPipelineVisibilityToggle, /aria-pressed=\{shared\}/);
   assert.match(dashboardPage, /displayDigestPipelineTitle\(ownPipelineShare\?\.title \?\? "AI Digest"\)/);
   assert.match(dashboardPage, /ownerLabel: "Your AI Digest"/);

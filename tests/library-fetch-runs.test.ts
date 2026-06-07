@@ -243,7 +243,8 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /No AI Digest schedule has reported yet/);
   assert.match(panel, /No AI Digest builds yet/);
   assert.match(panel, /prepares an AI Digest/);
-  assert.doesNotMatch(panel, /No digest schedule has reported yet|No digest builds yet|prepares a digest/);
+  assert.match(panel, /Runtime job did not create an AI Digest build record/);
+  assert.doesNotMatch(panel, /No digest schedule has reported yet|No digest builds yet|prepares a digest|digest build record/);
   assert.match(panel, /Open log/);
   assert.match(panel, /className="sync-panel-title-row"/);
   assert.match(panel, /className="sync-panel-error"/);

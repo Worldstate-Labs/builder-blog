@@ -28,7 +28,7 @@ export function DigestPipelineVisibilityToggle({
           body: nextShared ? JSON.stringify({}) : undefined,
         });
 
-        if (!response.ok) throw new Error("Unable to update digest pipeline sharing");
+        if (!response.ok) throw new Error("Unable to update AI Digest sharing");
       } catch {
         setShared(!nextShared);
         setError("Could not update hub sharing.");
