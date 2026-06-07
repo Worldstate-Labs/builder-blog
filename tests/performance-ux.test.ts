@@ -1671,6 +1671,10 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /className="page-pad page-pad--reading search-page"/);
   assert.match(searchPage, /searchPageSize/);
   assert.match(searchPage, /emptySearchCopy = "Search sources, posts, saved posts, and AI Digests\."/);
+  assert.match(searchPage, /<SearchEmptyState title="Start with a search">\{emptySearchCopy\}<\/SearchEmptyState>/);
+  assert.match(searchPage, /<SearchEmptyState actions=\{recoveryActions\} title="No matches found">/);
+  assert.match(searchPage, /Try a broader phrase, fewer words, or switch back to All results\./);
+  assert.doesNotMatch(searchPage, /No matches found\. Try a broader phrase/);
   assert.match(searchPage, /past AI Digests/);
   assert.match(searchPage, /model pricing type:post/);
   assert.match(searchPage, /model pricing type:source/);
@@ -1806,6 +1810,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /Search all time/);
   assert.match(searchPage, /function SearchEmptyState/);
   assert.match(searchPage, /<EmptyState[\s\S]*className="search-empty"/);
+  assert.match(searchPage, /title=\{title\}/);
   assert.doesNotMatch(searchPage, /function EmptyState\(/);
   assert.match(searchPage, /search-empty-actions/);
   assert.match(searchPage, /className="search-recovery-action-icon"/);

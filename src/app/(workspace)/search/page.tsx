@@ -396,8 +396,8 @@ async function SearchResultsSection({
             </nav>
           ) : null}
           {filteredResults.length === 0 ? (
-            <SearchEmptyState actions={recoveryActions}>
-              No matches found. Try a broader phrase, fewer words, or switch back to All results.
+            <SearchEmptyState actions={recoveryActions} title="No matches found">
+              Try a broader phrase, fewer words, or switch back to All results.
             </SearchEmptyState>
           ) : null}
           {relatedSearches.length > 0 ? (
@@ -406,7 +406,7 @@ async function SearchResultsSection({
         </>
       ) : (
         <>
-          <SearchEmptyState>{emptySearchCopy}</SearchEmptyState>
+          <SearchEmptyState title="Start with a search">{emptySearchCopy}</SearchEmptyState>
           <RelatedSearches
             heading="Try searching"
             mode={mode}
@@ -465,7 +465,7 @@ function SearchResultsFallback({
           </div>
         </>
       ) : (
-        <SearchEmptyState>{emptySearchCopy}</SearchEmptyState>
+        <SearchEmptyState title="Start with a search">{emptySearchCopy}</SearchEmptyState>
       )}
     </section>
   );
@@ -891,9 +891,11 @@ function HighlightText({ text, query }: { text: string; query: string }) {
 function SearchEmptyState({
   actions = [],
   children,
+  title,
 }: {
   actions?: SearchRecoveryAction[];
   children: React.ReactNode;
+  title: string;
 }) {
   const actionContent = actions.length > 0 ? (
     <div className="search-empty-actions">
@@ -911,6 +913,7 @@ function SearchEmptyState({
       actions={actionContent}
       body={children}
       className="search-empty"
+      title={title}
     />
   );
 }
