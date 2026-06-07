@@ -4325,6 +4325,16 @@ svg.lucide {
   min-width: 0;
 }
 
+.fb-page-head-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
 .fb-title {
   color: var(--ink);
   font-size: 1.875rem;
@@ -10515,6 +10525,10 @@ body {
 
   .fb-page-head > * {
     min-width: 0;
+  }
+
+  .fb-page-head-actions {
+    justify-content: flex-start;
   }
 
   .fb-skill {

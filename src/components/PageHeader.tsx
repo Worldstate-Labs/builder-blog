@@ -24,7 +24,7 @@ export function PageHeader({
           </>
         )}
       </div>
-      {actions}
+      {actions ? <div className="fb-page-head-actions">{actions}</div> : null}
     </header>
   );
 }

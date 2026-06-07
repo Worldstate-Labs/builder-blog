@@ -712,7 +712,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(pageHeader, /className=\{\["fb-page-head", className\]\.filter\(Boolean\)\.join\(" "\)\}/);
   assert.match(pageHeader, /<h1 className="fb-title">\{title\}<\/h1>/);
   assert.match(pageHeader, /description \? <p className="fb-desc">\{description\}<\/p> : null/);
-  assert.match(pageHeader, /\{actions\}/);
+  assert.match(pageHeader, /actions \? <div className="fb-page-head-actions">\{actions\}<\/div> : null/);
   assert.match(dashboardPage, /className="page-pad page-pad--reading home-page"/);
   assert.match(dashboardPage, /<h1 className="sr-only">Home<\/h1>/);
   assert.doesNotMatch(dashboardPage, /@\/components\/PageHeader/);
@@ -929,6 +929,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.fb-page-head\s*{[\s\S]*--page-head-copy-max:\s*var\(--copy-max\)/);
   assert.match(globals, /\.fb-page-head > div:first-child\s*{[\s\S]*flex:\s*1 1 min\(var\(--page-head-copy-max\),\s*100%\)/);
   assert.match(globals, /\.fb-page-head > div:first-child\s*{[\s\S]*min-width:\s*0/);
+  assert.match(globals, /\.fb-page-head-actions\s*{[\s\S]*display:\s*flex/);
+  assert.match(globals, /\.fb-page-head-actions\s*{[\s\S]*justify-content:\s*flex-end/);
+  assert.match(globals, /@media \(max-width:\s*1023\.99px\)[\s\S]*\.fb-page-head-actions\s*{[\s\S]*justify-content:\s*flex-start/);
   assert.match(globals, /\.fb-desc\s*{[\s\S]*max-width:\s*var\(--page-head-copy-max\)/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*margin-inline:\s*auto/);
