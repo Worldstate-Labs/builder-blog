@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarClock, Check, CircleStop, Copy } from "lucide-react";
 import {
-  describeMachine,
+  describeAccessDevice,
+  formatRelativeCompact,
   type AgentTokenListItem,
 } from "@/components/AgentTokenPanel";
 import { EmptyState } from "@/components/EmptyState";
 import { languageOptions } from "@/components/settings/SettingsFields";
+import { useHydrated } from "@/components/ThemeToggle";
 import { ORIGINAL_CONTENT_LANGUAGE_VALUE } from "@/lib/language-preference";
 
 type SkillPromptContext = "library" | "digest";
@@ -593,6 +595,7 @@ function TokenPickerDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [pickedTokenId, setPickedTokenId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  const hydrated = useHydrated();
 
   // Default = most-recently-used token. Computed; not stored, so opening
   // the dialog with a new token list doesn't need an effect to reset state.
@@ -693,11 +696,16 @@ function TokenPickerDialog({
           ) : (
             tokens.map((token) => {
               const active = token.id === selectedTokenId;
+              const tokenLabel = describeAccessDevice(token);
+              const statusLabel = token.lastUsedAt
+                ? `Last connected ${formatRelativeCompact(token.lastUsedAt, hydrated)}`
+                : "Never connected";
               return (
                 <label
                   key={token.id}
                   className={`token-picker-row${active ? " is-active" : ""}`}
                   data-target={target ?? undefined}
+                  aria-label={`${tokenLabel}. ${statusLabel}`}
                 >
                   <input
                     type="radio"
@@ -708,15 +716,9 @@ function TokenPickerDialog({
                     className="token-picker-radio"
                   />
                   <span className="token-picker-row-body">
-                    <span className="token-picker-row-name">{token.name}</span>
+                    <span className="token-picker-row-name">{tokenLabel}</span>
                     <span className="token-picker-row-meta">
-                      <span>{describeMachine(token)}</span>
-                      <span aria-hidden="true">·</span>
-                      <span>
-                        {token.lastUsedAt
-                          ? `Last connected ${formatRelative(token.lastUsedAt)}`
-                          : "Never connected"}
-                      </span>
+                      <span>{statusLabel}</span>
                     </span>
                   </span>
                 </label>
@@ -1004,19 +1006,4 @@ function CronConfigDialog({
       </form>
     </dialog>
   );
-}
-
-function formatRelative(iso: string): string {
-  const ms = Date.now() - Date.parse(iso);
-  if (!Number.isFinite(ms) || ms < 0) {
-    return new Date(iso).toLocaleDateString();
-  }
-  const min = Math.floor(ms / 60_000);
-  if (min < 1) return "just now";
-  if (min < 60) return `${min} min ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr} hr ago`;
-  const day = Math.floor(hr / 24);
-  if (day < 30) return `${day} day${day === 1 ? "" : "s"} ago`;
-  return new Date(iso).toLocaleDateString();
 }

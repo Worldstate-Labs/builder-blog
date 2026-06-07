@@ -57,7 +57,7 @@ export function describeMachine(token: AgentTokenListItem): string {
   return summarizeUserAgent(token.lastUserAgent);
 }
 
-function describeAccessDevice(token: AgentTokenListItem): string {
+export function describeAccessDevice(token: AgentTokenListItem): string {
   const os = prettyOs(token.lastPlatform);
   if (os && isPhoneLikeToken(token)) return withPhoneDeviceName(os, token.lastUserAgent);
 
@@ -438,7 +438,7 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function formatRelativeCompact(value: string, hydrated: boolean) {
+export function formatRelativeCompact(value: string, hydrated: boolean) {
   if (!hydrated) return formatDate(value);
   const ms = Date.now() - Date.parse(value);
   if (!Number.isFinite(ms) || ms < 0) {
