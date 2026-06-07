@@ -1204,7 +1204,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /Latest fetch/);
   assert.match(fetchLogPanel, /Schedule status/);
   assert.match(fetchLogPanel, /No Fetch sources schedule has reported yet/);
+  assert.match(fetchLogPanel, /title="No Fetch sources schedule"/);
   assert.match(fetchLogPanel, /No Fetch sources runs yet\. Runs appear after your Local Agent fetches sources\./);
+  assert.match(fetchLogPanel, /title="No Fetch sources runs"/);
   assert.match(fetchLogPanel, /Add X access in Settings, then run Fetch sources again\./);
   assert.doesNotMatch(fetchLogPanel, /No source update schedule has reported yet|No source updates yet|update sources again|source update details/);
   assert.match(fetchLogPanel, /posts fetched/);
@@ -1423,11 +1425,18 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-card"/);
   assert.match(fetchLogPanel, /<EmptyState[\s\S]*className="sync-panel-empty is-dashed"/);
   assert.match(fetchLogPanel, /<EmptyState[\s\S]*className="sync-panel-slot-empty"/);
+  assert.match(fetchLogPanel, /title="No elapsed schedule runs"/);
+  assert.match(fetchLogPanel, /body="The first scheduled run has not reached its expected time yet\."/);
   assert.match(digestLogPanel, /className="fb-segmented-tabs sync-panel-tabs"/);
   assert.match(digestLogPanel, /@\/components\/EmptyState/);
   assert.match(digestLogPanel, /className="sync-panel-card"/);
   assert.match(digestLogPanel, /<EmptyState[\s\S]*className="sync-panel-empty is-dashed"/);
   assert.match(digestLogPanel, /<EmptyState[\s\S]*className="sync-panel-slot-empty"/);
+  assert.match(digestLogPanel, /title="No AI Digest schedule"/);
+  assert.match(digestLogPanel, /title="No AI Digest builds"/);
+  assert.match(digestLogPanel, /title="No elapsed schedule runs"/);
+  assert.match(digestLogPanel, /body="The first scheduled run has not reached its expected time yet\."/);
+  assert.doesNotMatch(`${fetchLogPanel}\n${digestLogPanel}`, /body="No scheduled run has elapsed yet\."/);
   assert.match(globals, /\.sync-panel-slot-empty\s*{\s*border-radius:\s*8px;\s*padding:\s*0\.75rem;\s*}/);
   assert.doesNotMatch(fetchLogPanel, /fb-segmented-tabs mt-4 inline-flex/);
   assert.doesNotMatch(digestLogPanel, /fb-segmented-tabs mt-4 inline-flex/);

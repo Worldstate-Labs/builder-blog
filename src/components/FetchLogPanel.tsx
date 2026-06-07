@@ -804,6 +804,7 @@ function FetchStatusPanel({
     return (
       <EmptyState
         className="sync-panel-empty is-dashed"
+        title="No Fetch sources schedule"
         body="No Fetch sources schedule has reported yet."
       />
     );
@@ -934,8 +935,9 @@ function FetchStatusPanel({
           </div>
         ) : (
           <EmptyState
-            body="No scheduled run has elapsed yet."
             className="sync-panel-slot-empty"
+            title="No elapsed schedule runs"
+            body="The first scheduled run has not reached its expected time yet."
           />
         )}
       </div>
@@ -1067,6 +1069,7 @@ function FetchRunList({
       {entries.length === 0 ? (
         <EmptyState
           className="sync-panel-empty is-dashed"
+          title="No Fetch sources runs"
           body="No Fetch sources runs yet. Runs appear after your Local Agent fetches sources."
         />
       ) : (

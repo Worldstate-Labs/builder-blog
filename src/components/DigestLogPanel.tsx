@@ -465,6 +465,7 @@ function DigestStatusPanel({
     return (
       <EmptyState
         className="sync-panel-empty is-dashed"
+        title="No AI Digest schedule"
         body="No AI Digest schedule has reported yet."
       />
     );
@@ -595,8 +596,9 @@ function DigestStatusPanel({
           </div>
         ) : (
           <EmptyState
-            body="No scheduled run has elapsed yet."
             className="sync-panel-slot-empty"
+            title="No elapsed schedule runs"
+            body="The first scheduled run has not reached its expected time yet."
           />
         )}
       </div>
@@ -728,6 +730,7 @@ function DigestRunList({
       {entries.length === 0 ? (
         <EmptyState
           className="sync-panel-empty is-dashed"
+          title="No AI Digest builds"
           body="No AI Digest builds yet. Builds appear after your Local Agent prepares an AI Digest."
         />
       ) : (
