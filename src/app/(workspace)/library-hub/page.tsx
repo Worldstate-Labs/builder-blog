@@ -223,7 +223,7 @@ function LibraryHubImportFallback() {
     <section aria-live="polite" aria-busy="true">
       <div className="library-hub-toolbar">
         <div className="library-hub-toolbar-copy">
-          <h2 className="section-heading">Available libraries</h2>
+          <h2 className="section-heading">Available source libraries</h2>
           <div className="library-hub-skeleton-line is-wide" />
         </div>
         <div className="library-hub-counts">

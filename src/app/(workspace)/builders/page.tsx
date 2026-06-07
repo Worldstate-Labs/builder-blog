@@ -694,7 +694,7 @@ async function FetchSourcesSection({
   const importedSection = (
     <section className="imported-libraries-section">
       <div className="imported-libraries-head">
-        <h2 className="fb-section-heading">Imported libraries</h2>
+        <h2 className="fb-section-heading">Imported source libraries</h2>
         <p className="library-section-copy">
           Source libraries built and shared by other users.
         </p>
@@ -737,7 +737,7 @@ async function FetchSourcesSection({
                 Browse Hub
               </Link>
             }
-            body="No imported source library yet."
+            body="No imported source libraries yet."
           />
         ) : null}
       </div>

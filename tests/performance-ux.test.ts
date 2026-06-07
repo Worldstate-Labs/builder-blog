@@ -1428,6 +1428,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(libraryHubPage, /<h1 className="sr-only">Hub<\/h1>/);
   assert.match(libraryHubPage, /getDigestPipelineMetadataByOwnerIds/);
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
+  assert.match(libraryHubPage, /Available source libraries/);
   assert.match(libraryHubPage, /className="workspace-content-stack"/);
   assert.doesNotMatch(libraryHubPage, /@\/components\/PageHeader/);
   assert.doesNotMatch(libraryHubPage, /<PageHeader/);
@@ -1458,6 +1459,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(libraryHubPage, /className="hub-list-stack fb-hub-list"/);
   assert.doesNotMatch(libraryHubPage, /className="fb-hub-list mt-5"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-import-section"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Available source libraries/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-form-error"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /"hub-list-region has-filters"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-heading-row"/);
@@ -1646,8 +1648,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.equal(existsSync(join(root, "src/components/MobileSourcesSwitcher.tsx")), false);
   assert.match(builderLibraryList, /className="builder-library-error"/);
   assert.match(builderLibraryList, /<EmptyState body=\{emptyBody\} title=\{emptyTitle\} \/>/);
-  assert.match(buildersPage, /body="No imported source library yet\."/);
-  assert.doesNotMatch(buildersPage, /title="No imported source library yet\."/);
+  assert.match(buildersPage, /body="No imported source libraries yet\."/);
+  assert.doesNotMatch(buildersPage, /title="No imported source libraries yet\."/);
   assert.match(buildersPage, /href="\/library-hub\?tab=source-library"/);
   assert.match(buildersPage, /Browse Hub/);
   assert.doesNotMatch(buildersPage, /Browse Source Library/);
@@ -1685,7 +1687,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderFeedItems, /className="p-4 text-sm/);
   assert.match(builderFeedItems, /timeZone:\s*"UTC"/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
-  assert.match(buildersPage, /Imported libraries/);
+  assert.match(buildersPage, /Imported source libraries/);
   assert.match(buildersPage, /importedLibrarySections/);
   assert.match(buildersPage, /className="imported-libraries-section"/);
   assert.match(buildersPage, /className="imported-libraries-head"/);
