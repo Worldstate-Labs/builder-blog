@@ -2288,6 +2288,13 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /digestPipelineOwnerLabel\(owner, \{ owned \}\)/);
   assert.match(hubPage, /recordLibraryHubViews\(libraries\.map/);
   assert.match(digestPipelineForm, /DigestPipelineTitleEditor/);
+  assert.match(digestPipelineTitleEditor, /AI Digest name/);
+  assert.match(digestPipelineTitleEditor, /Save AI Digest name/);
+  assert.match(digestPipelineTitleEditor, /Edit AI Digest name/);
+  assert.doesNotMatch(
+    digestPipelineTitleEditor,
+    /"Digest name cannot be empty\."|"Save digest name"|"Edit digest name"|"Unable to rename digest"|"Could not rename digest\."/,
+  );
   assert.match(buildersPage, /ownPipelineShare\?\.title/);
   assert.match(buildersPage, /ownPipelineShare\?\.isPublic === true/);
   assert.match(buildersPage, /ensureDefaultCommunityDigestImport\(session\.user\.id\)/);

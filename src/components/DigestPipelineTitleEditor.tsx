@@ -42,7 +42,7 @@ export function DigestPipelineTitleEditor({
 
     const nextTitle = draft.trim();
     if (!nextTitle) {
-      setError("Digest name cannot be empty.");
+      setError("AI Digest name cannot be empty.");
       return;
     }
     if (nextTitle === title) {
@@ -60,14 +60,14 @@ export function DigestPipelineTitleEditor({
           body: JSON.stringify({ title: nextTitle }),
         });
 
-        if (!response.ok) throw new Error("Unable to rename digest");
+        if (!response.ok) throw new Error("Unable to rename AI Digest");
 
         setTitle(nextTitle);
         setDraft(nextTitle);
         setEditing(false);
         router.refresh();
       } catch {
-        setError("Could not rename digest.");
+        setError("Could not rename AI Digest.");
       }
     });
   }
@@ -76,7 +76,7 @@ export function DigestPipelineTitleEditor({
     return (
       <form className="digest-title-edit-form" onSubmit={saveTitle}>
         <label className="sr-only" htmlFor={`${headingId}-input`}>
-          Digest name
+          AI Digest name
         </label>
         <input
           autoFocus
@@ -89,7 +89,7 @@ export function DigestPipelineTitleEditor({
         />
         <button
           aria-busy={isPending}
-          aria-label="Save digest name"
+          aria-label="Save AI Digest name"
           className="fb-btn dark compact"
           disabled={isPending}
           type="submit"
@@ -97,7 +97,7 @@ export function DigestPipelineTitleEditor({
           <Check aria-hidden="true" />
         </button>
         <button
-          aria-label="Cancel digest name edit"
+          aria-label="Cancel AI Digest name edit"
           className="fb-btn ghost compact"
           disabled={isPending}
           onClick={cancelEditing}
@@ -122,7 +122,7 @@ export function DigestPipelineTitleEditor({
         {title}
       </Heading>
       <button
-        aria-label="Edit digest name"
+        aria-label="Edit AI Digest name"
         className="fb-btn ghost compact digest-title-edit-button"
         onClick={startEditing}
         type="button"
