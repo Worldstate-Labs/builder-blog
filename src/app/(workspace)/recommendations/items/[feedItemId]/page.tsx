@@ -8,12 +8,15 @@ import { prisma } from "@/lib/prisma";
 
 export default async function RecommendationItemPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ feedItemId: string }>;
+  searchParams: Promise<{ returnLabel?: string | string[]; returnTo?: string | string[] }>;
 }) {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
 
+  const backLink = resolvePostBackLink(await searchParams);
   const { feedItemId } = await params;
   const item = await prisma.feedItem.findUnique({
     where: { id: feedItemId },
@@ -60,9 +63,9 @@ export default async function RecommendationItemPage({
   return (
     <div className="page-pad page-pad--reading reading-page">
       <nav aria-label="Post navigation" className="reading-page-toolbar">
-        <Link className="fb-breadcrumb-link reading-back-link" href="/dashboard?tab=following">
+        <Link className="fb-breadcrumb-link reading-back-link" href={backLink.href}>
           <ChevronLeft aria-hidden="true" />
-          Following
+          {backLink.label}
         </Link>
         <span className="reading-source-label">
           {item.builder?.name ?? item.sourceName ?? "Saved post"}
@@ -99,4 +102,27 @@ export default async function RecommendationItemPage({
       />
     </div>
   );
+}
+
+function resolvePostBackLink(params: {
+  returnLabel?: string | string[];
+  returnTo?: string | string[];
+}) {
+  const returnTo = firstParam(params.returnTo);
+  if (isSafeInternalReturnTo(returnTo)) {
+    return {
+      href: returnTo,
+      label: firstParam(params.returnLabel) === "Search" ? "Search" : "Back",
+    };
+  }
+
+  return { href: "/dashboard?tab=following", label: "Following" };
+}
+
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function isSafeInternalReturnTo(value: string) {
+  return value.startsWith("/") && !value.startsWith("//") && !value.startsWith("/api/");
 }

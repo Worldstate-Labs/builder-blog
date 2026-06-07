@@ -1967,7 +1967,11 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(recommendationItemPage, /ChevronLeft/);
   assert.match(recommendationItemPage, /className="fb-breadcrumb-link reading-back-link"/);
   assert.doesNotMatch(recommendationItemPage, /button-light button-compact reading-back-link/);
-  assert.match(recommendationItemPage, /href="\/dashboard\?tab=following"/);
+  assert.match(recommendationItemPage, /href=\{backLink\.href\}/);
+  assert.match(recommendationItemPage, /href:\s*"\/dashboard\?tab=following"/);
+  assert.match(recommendationItemPage, /returnLabel/);
+  assert.match(recommendationItemPage, /returnTo/);
+  assert.match(recommendationItemPage, /isSafeInternalReturnTo/);
   assert.match(recommendationItemPage, /showDebugActions=\{false\}/);
   assert.match(recommendationItemPage, /avatarUrl:\s*item\.builder\.avatarUrl/);
   assert.equal((recommendationItemPage.match(/Following/g) ?? []).length, 1);
@@ -2635,6 +2639,9 @@ test("search feed results keep post detail links while preserving originals", ()
 
   assert.match(userSearch, /externalUrl:\s*item\.url/);
   assert.match(userSearch, /url:\s*`\/recommendations\/items\/\$\{item\.id\}`/);
+  assert.match(searchPage, /withSearchReturnTarget/);
+  assert.match(searchPage, /params\.set\("returnTo", returnTo\)/);
+  assert.match(searchPage, /params\.set\("returnLabel", "Search"\)/);
   assert.match(searchPage, /const originalUrl = result\.externalUrl \?\? \(titleIsExternal \? result\.url : null\)/);
   assert.match(searchPage, /View original/);
 });

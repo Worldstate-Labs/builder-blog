@@ -631,13 +631,19 @@ function ResultCard({
 }) {
   const titleIsExternal = isExternalUrl(result.url);
   const originalUrl = result.externalUrl ?? (titleIsExternal ? result.url : null);
+  const resultHref = result.url
+    ? withSearchReturnTarget(
+        result.url,
+        searchHref({ query, type: typeFilter, mode, sort, time }),
+      )
+    : null;
   const displayUrl = formatDisplayUrl(originalUrl ?? result.url);
   const sourceSite = searchSiteFromUrl(originalUrl ?? result.url);
   const sourceName = result.sourceName ?? resultTypeLabels[result.type];
-  const title = result.url ? (
+  const title = resultHref ? (
     <a
       className="search-result-title"
-      href={result.url}
+      href={resultHref}
       rel={titleIsExternal ? "noreferrer" : undefined}
       target={titleIsExternal ? "_blank" : undefined}
     >
@@ -1063,6 +1069,15 @@ function searchHref({
   if (page && page > 1) params.set("page", String(page));
   const queryString = params.toString();
   return queryString ? `/search?${queryString}` : "/search";
+}
+
+function withSearchReturnTarget(href: string, returnTo: string) {
+  if (!href.startsWith("/recommendations/items/")) return href;
+  const [pathname, existingQuery = ""] = href.split("?");
+  const params = new URLSearchParams(existingQuery);
+  params.set("returnTo", returnTo);
+  params.set("returnLabel", "Search");
+  return `${pathname}?${params.toString()}`;
 }
 
 function buildActiveSearchFilters({
