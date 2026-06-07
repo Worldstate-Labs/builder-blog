@@ -110,7 +110,7 @@ export default async function BuildersPage({
       <div className="workspace-content-stack">
         <section className="sources-tab-surface">
           <WorkspaceTopTabs
-            ariaLabel="Sources and AI Digest"
+            ariaLabel="Sources and AI Digest tabs"
             items={SOURCES_TABS}
             selectedValue={selectedTab}
           />
