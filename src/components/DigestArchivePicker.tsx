@@ -98,6 +98,7 @@ export function DigestArchivePicker({
         aria-controls={menuId}
         aria-expanded={open}
         aria-haspopup="listbox"
+        aria-label="Choose AI Digest archive"
         className="digest-picker-summary"
         onClick={(event) => {
           event.preventDefault();
