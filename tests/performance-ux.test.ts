@@ -777,6 +777,12 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /DashboardHomeTabs/);
   assert.match(dashboardTabs, /WorkspaceTopTabs/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /role="tablist"/);
+  assert.match(source("src/components/WorkspaceTopTabs.tsx"), /onKeyDown=\{handleTabKeyDown\}/);
+  assert.match(source("src/components/WorkspaceTopTabs.tsx"), /"ArrowLeft", "ArrowRight", "Home", "End"/);
+  assert.match(source("src/components/WorkspaceTopTabs.tsx"), /tabIndex:\s*selected \? 0 : -1/);
+  assert.match(source("src/components/WorkspaceTopTabs.tsx"), /querySelectorAll<HTMLElement>\('\[role="tab"\]'\)/);
+  assert.match(source("src/components/WorkspaceTopTabs.tsx"), /tabs\[nextIndex\]\?\.focus\(\)/);
+  assert.match(source("src/components/WorkspaceTopTabs.tsx"), /if \(onSelect\) \{[\s\S]*onSelect\(items\[nextIndex\]!\.value\)/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /className="workspace-top-tabs-row"/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /className="fb-segmented-tabs workspace-top-tabs"/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /className: "fb-btn compact"/);
