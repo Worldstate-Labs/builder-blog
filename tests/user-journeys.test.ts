@@ -2606,6 +2606,18 @@ test("GitHub Trending brand backfill covers persisted display names", () => {
   assert.match(migration, /SET "sourceName" = 'GitHub Trending'/);
 });
 
+test("GitHub Trending brand backfill covers historical digest text", () => {
+  const migration = readFileSync(
+    "prisma/migrations/000061_github_trending_digest_content/migration.sql",
+    "utf8",
+  );
+
+  assert.match(migration, /UPDATE "Digest"[\s\S]*"content" = replace\("content", 'Github Trending', 'GitHub Trending'\)/);
+  assert.match(migration, /"headlineSummary"[\s\S]*replace\("headlineSummary", 'Github Trending', 'GitHub Trending'\)/);
+  assert.match(migration, /UPDATE "DigestRun"[\s\S]*"candidates" = replace\("candidates"::text, 'Github Trending', 'GitHub Trending'\)::jsonb/);
+  assert.match(migration, /"subscriptions" = replace\("subscriptions"::text, 'Github Trending', 'GitHub Trending'\)::jsonb/);
+});
+
 test("source registry supports future source types without new BuilderKind enum values", () => {
   assert.equal(
     sourceTypeIdForBuilder({
