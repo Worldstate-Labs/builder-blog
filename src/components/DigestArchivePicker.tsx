@@ -52,7 +52,7 @@ export function DigestArchivePicker({
           setOpen((current) => !current);
         }}
       >
-        <span className="sr-only">Digest history</span>
+        <span className="sr-only">Digest archive</span>
         <DigestPickerItem
           digest={selectedDigest}
           hydrated={hydrated}

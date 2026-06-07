@@ -9,7 +9,7 @@ function source(path: string) {
   return readFileSync(join(root, path), "utf8");
 }
 
-test("home digest keeps pipeline and history selection in a dedicated control bar", () => {
+test("home digest keeps pipeline and archive selection in a dedicated control bar", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
 
   assert.match(dashboardPage, /function DigestControlBar/);
@@ -17,9 +17,9 @@ test("home digest keeps pipeline and history selection in a dedicated control ba
   assert.match(dashboardPage, /<DigestPipelineSelector/);
   assert.match(dashboardPage, /<DigestArchivePicker/);
   assert.match(dashboardPage, /AI Digest/);
-  assert.match(dashboardPage, /History/);
+  assert.match(dashboardPage, /Digest archive/);
   assert.doesNotMatch(dashboardPage, /Your digest/);
-  assert.match(dashboardPage, /No saved issues/);
+  assert.match(dashboardPage, /No saved AI Digests/);
   assert.match(dashboardPage, /md:grid-cols-2/);
   assert.match(dashboardPage, /selectedDigestId=\{selectedDigest\?\.id \?\? null\}/);
   assert.doesNotMatch(dashboardPage, /headerAction=\{/);

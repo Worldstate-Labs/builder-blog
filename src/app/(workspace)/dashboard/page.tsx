@@ -378,7 +378,7 @@ function DigestControlBar({
       </div>
       <div className="grid min-w-0 gap-1">
         <span className="text-[0.68rem] font-[850] uppercase tracking-[0.14em] text-[var(--muted)]">
-          History
+          Digest archive
         </span>
         {digestArchiveOptions.length > 0 ? (
           <div className="[&_.digest-picker-date]:text-sm [&_.digest-picker-date]:font-[800] [&_.digest-picker-summary]:min-h-10 [&_.digest-picker-summary]:bg-[var(--paper)] [&_.digest-picker-summary]:px-3 [&_.digest-picker-summary]:py-2">
@@ -392,7 +392,7 @@ function DigestControlBar({
           </div>
         ) : (
           <span className="inline-flex min-h-10 items-center rounded-[8px] border border-dashed border-[var(--line)] px-3 text-sm font-[750] text-[var(--muted-strong)]">
-            No saved issues
+            No saved AI Digests
           </span>
         )}
       </div>

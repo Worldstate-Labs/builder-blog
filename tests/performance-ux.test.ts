@@ -1060,7 +1060,7 @@ test("dashboard subscription feed owns the paginated digest archive", () => {
   assert.match(dashboardPage, /serializeDigestArchiveOption/);
   assert.match(digestArchivePicker, /formatDigestPickerDate/);
   assert.match(digestArchivePicker, /CountMeta/);
-  assert.match(digestArchivePicker, /Digest history/);
+  assert.match(digestArchivePicker, /Digest archive/);
   assert.match(digestArchivePicker, /onClick=\{\(event\) =>/);
   assert.match(digestArchivePicker, /if \(selected\) event\.preventDefault\(\)/);
   assert.doesNotMatch(dashboardPage, /digest-picker-label/);
