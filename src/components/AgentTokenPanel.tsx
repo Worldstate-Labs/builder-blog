@@ -278,28 +278,29 @@ export function AgentTokenPanel({
         </button>
       </div>
 
-      <div className="access-keys-list" role="list" aria-label="Access keys for Local Agents">
-        {activeTokens.map((token) => (
-          <TokenRow
-            key={token.id}
-            token={token}
-            hydrated={hydrated}
-            isPending={isPending}
-            onRevoke={() => openRevokeDialog(token)}
-          />
-        ))}
-        {activeTokens.length === 0 ? (
-          <EmptyState
-            className="access-keys-empty"
-            title={tokens.length === 0 ? "No Local Agent access yet" : "No active access"}
-            body={
-              tokens.length === 0
-                ? "Add one when you connect a Local Agent."
-                : "Revoked access is hidden from this list."
-            }
-          />
-        ) : null}
-      </div>
+      {activeTokens.length > 0 ? (
+        <ul className="access-keys-list" aria-label="Access keys for Local Agents">
+          {activeTokens.map((token) => (
+            <TokenRow
+              key={token.id}
+              token={token}
+              hydrated={hydrated}
+              isPending={isPending}
+              onRevoke={() => openRevokeDialog(token)}
+            />
+          ))}
+        </ul>
+      ) : (
+        <EmptyState
+          className="access-keys-empty"
+          title={tokens.length === 0 ? "No Local Agent access yet" : "No active access"}
+          body={
+            tokens.length === 0
+              ? "Add one when you connect a Local Agent."
+              : "Revoked access is hidden from this list."
+          }
+        />
+      )}
 
       <div aria-live="polite" className="access-keys-status">
         {status ? (
@@ -484,10 +485,9 @@ function TokenRow({
   const statusDateTime = token.revokedAt ?? token.lastUsedAt;
 
   return (
-    <div
+    <li
       className={`access-key-card${token.revokedAt ? " fb-row--revoked" : ""}`}
       aria-label={`${tokenLabel}. ${statusLabel}`}
-      role="listitem"
     >
       <span className="access-key-device-icon" aria-hidden="true">
         <DeviceIcon />
@@ -515,6 +515,6 @@ function TokenRow({
           Revoke access
         </button>
       )}
-    </div>
+    </li>
   );
 }
