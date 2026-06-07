@@ -443,7 +443,7 @@ function DigestScheduleSummary({
     <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
       {status.summary} · {cronJob.frequencyLabel}
       {nextLabel ? ` · next ${nextLabel}` : ""}
-      {cronJob.regenerateDigest ? " · includes already digested posts" : ""}
+      {cronJob.regenerateDigest ? " · includes posts already used in AI Digests" : ""}
     </p>
   );
 }
@@ -495,10 +495,10 @@ function DigestStatusPanel({
   const waitingCount = slots.filter((slot) => slot.status === "waiting").length;
   const problemDetail =
     missedCount > 0 && failedCount > 0
-      ? `${missedCount} scheduled ${missedCount === 1 ? "window has" : "windows have"} no recorded run; ${failedCount} recorded ${failedCount === 1 ? "run did" : "runs did"} not save a digest.`
+      ? `${missedCount} scheduled ${missedCount === 1 ? "window has" : "windows have"} no recorded run; ${failedCount} recorded ${failedCount === 1 ? "run did" : "runs did"} not save an AI Digest.`
       : missedCount > 0
         ? `${missedCount} scheduled ${missedCount === 1 ? "window has" : "windows have"} no recorded run in ${missedCount === 1 ? "its" : "their"} expected time range.`
-        : `${failedCount} recorded ${failedCount === 1 ? "run did" : "runs did"} not save a digest.`;
+        : `${failedCount} recorded ${failedCount === 1 ? "run did" : "runs did"} not save an AI Digest.`;
   const statusTone =
     problemCount > 0
       ? statusStyle("failed")
@@ -873,7 +873,7 @@ function RunCard({ run }: { run: DigestRunListItem }) {
     : "all new posts";
 
   const title =
-    run.digestTitle ?? (run.status === "synced" ? "Untitled digest" : "Prepared, no digest saved");
+    run.digestTitle ?? (run.status === "synced" ? "Untitled AI Digest" : "Prepared, no AI Digest saved");
 
   const contributing = run.sources.filter((s) => s.eligible > 0);
   const silentCount = run.subscriptionCount - contributing.length;
@@ -928,7 +928,7 @@ function RunCard({ run }: { run: DigestRunListItem }) {
           /{formatCount(run.subscriptionCount)} sources contributed
         </span>
         <span>Covered {windowLabel}</span>
-        {run.lastDigestAt ? <span>Previous digest {formatRelative(run.lastDigestAt)}</span> : null}
+        {run.lastDigestAt ? <span>Previous AI Digest {formatRelative(run.lastDigestAt)}</span> : null}
       </div>
 
       {run.candidateCount === 0 ? (
@@ -1043,9 +1043,9 @@ function CandidateRow({ item, synced }: { item: DigestRunCandidate; synced: bool
       ? "color-mix(in oklch, var(--signal) 70%, var(--ink))"
       : "var(--muted)";
   const outcomeTitle = !synced
-    ? "Found, digest not saved yet"
+    ? "Found, AI Digest not saved yet"
     : item.included
-      ? "Used in the digest"
+      ? "Used in the AI Digest"
       : "Found but skipped";
   return (
     <li className="flex items-start gap-2 text-[12.5px] leading-snug">

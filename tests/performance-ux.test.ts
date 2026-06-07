@@ -1083,10 +1083,16 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-error"/);
   assert.match(digestLogPanel, /className="sync-panel-title-row"/);
   assert.match(digestLogPanel, /className="sync-panel-error"/);
-  assert.match(digestLogPanel, /includes already digested posts/);
+  assert.match(digestLogPanel, /includes posts already used in AI Digests/);
+  assert.match(digestLogPanel, /not save an AI Digest/);
+  assert.match(digestLogPanel, /Untitled AI Digest/);
+  assert.match(digestLogPanel, /Prepared, no AI Digest saved/);
+  assert.match(digestLogPanel, /Previous AI Digest/);
+  assert.match(digestLogPanel, /Found, AI Digest not saved yet/);
+  assert.match(digestLogPanel, /Used in the AI Digest/);
   assert.match(digestLogPanel, /rebuilds past posts/);
   assert.match(digestLogPanel, /all new posts/);
-  assert.doesNotMatch(digestLogPanel, /already digested items|past items|new items/);
+  assert.doesNotMatch(digestLogPanel, /already digested items|past items|new items|not save a digest|Untitled digest|Prepared, no digest saved|Previous digest|Found, digest not saved yet|Used in the digest/);
   assert.doesNotMatch(fetchLogPanel, /digest-updates-head[\s\S]{0,360}flex flex-wrap items-center gap-2/);
   assert.doesNotMatch(digestLogPanel, /digest-updates-head[\s\S]{0,360}flex flex-wrap items-center gap-2/);
   assert.doesNotMatch(fetchLogPanel, /error \? \([\s\S]{0,120}mt-3 text-\[12px\] text-\[var\(--danger\)\]/);
