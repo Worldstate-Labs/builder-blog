@@ -1071,6 +1071,10 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-error"/);
   assert.match(digestLogPanel, /className="sync-panel-title-row"/);
   assert.match(digestLogPanel, /className="sync-panel-error"/);
+  assert.match(digestLogPanel, /includes already digested posts/);
+  assert.match(digestLogPanel, /rebuilds past posts/);
+  assert.match(digestLogPanel, /all new posts/);
+  assert.doesNotMatch(digestLogPanel, /already digested items|past items|new items/);
   assert.doesNotMatch(fetchLogPanel, /digest-updates-head[\s\S]{0,360}flex flex-wrap items-center gap-2/);
   assert.doesNotMatch(digestLogPanel, /digest-updates-head[\s\S]{0,360}flex flex-wrap items-center gap-2/);
   assert.doesNotMatch(fetchLogPanel, /error \? \([\s\S]{0,120}mt-3 text-\[12px\] text-\[var\(--danger\)\]/);

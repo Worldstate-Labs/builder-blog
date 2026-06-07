@@ -443,7 +443,7 @@ function DigestScheduleSummary({
     <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
       {status.summary} · {cronJob.frequencyLabel}
       {nextLabel ? ` · next ${nextLabel}` : ""}
-      {cronJob.regenerateDigest ? " · includes already digested items" : ""}
+      {cronJob.regenerateDigest ? " · includes already digested posts" : ""}
     </p>
   );
 }
@@ -522,7 +522,7 @@ function DigestStatusPanel({
               {problemCount > 0 ? "Needs attention" : okCount > 0 ? "Healthy" : "Waiting"}
             </span>
             <span className="fb-chip">{cronJob.frequencyLabel}</span>
-            {cronJob.regenerateDigest ? <span className="fb-chip">rebuilds past items</span> : null}
+            {cronJob.regenerateDigest ? <span className="fb-chip">rebuilds past posts</span> : null}
           </div>
           <dl className="sync-panel-meta">
             <div className="sync-panel-meta-row">
@@ -870,7 +870,7 @@ function RunCard({ run }: { run: DigestRunListItem }) {
 
   const windowLabel = run.lookbackCutoff
     ? `${formatDay(run.lookbackCutoff)} → ${formatDay(run.preparedAt)}`
-    : "all new items";
+    : "all new posts";
 
   const title =
     run.digestTitle ?? (run.status === "synced" ? "Untitled digest" : "Prepared, no digest saved");
