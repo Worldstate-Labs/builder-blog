@@ -22,8 +22,8 @@ type Status = SaveStatusState;
 
 const HEADLINE_PROMPT_PLACEHOLDER = [
   "Example:",
-  "Write a compact headlineSummary in context.language.",
-  "Keep it to 300 characters or fewer.",
+  "Write headlineSummary in context.language as one line per source.",
+  "Use '- Source name: one sentence summary' and keep each source summary to 50 characters or 50 words.",
   "Use only facts from the candidate post summaries. Do not include raw URLs.",
 ].join("\n");
 

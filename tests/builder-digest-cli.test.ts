@@ -1559,11 +1559,11 @@ test("render-digest enforces sync payload size limits before upload", async () =
   assert.throws(
     () =>
       cli.renderDigestMarkdown(context, {
-        headlineSummary: "x".repeat(301),
+        headlineSummary: "x".repeat(1201),
         sourceSummaries: [],
         postSummaries: [{ feedItemId: "feed_1", summary: "Valid post summary." }],
       }),
-    /headlineSummary must be 300 characters or fewer/,
+    /headlineSummary must be 1200 characters or fewer/,
   );
 
   assert.throws(

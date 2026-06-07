@@ -51,7 +51,7 @@ const SOURCES_CONFIG_PATH = join(CONFIG_DIR, "sources.json");
 const GITHUB_TRENDING_URL = "https://github.com/trending?since=daily";
 const PRODUCT_HUNT_TOP_PRODUCTS_URL = "https://www.producthunt.com/";
 const MAX_DIGEST_CONTENT_CHARS = 200_000;
-const MAX_DIGEST_HEADLINE_SUMMARY_CHARS = 300;
+const MAX_DIGEST_HEADLINE_SUMMARY_CHARS = 1200;
 const MAX_DIGEST_ITEMS = 5_000;
 const ORIGINAL_CONTENT_LANGUAGE_VALUE = "source";
 

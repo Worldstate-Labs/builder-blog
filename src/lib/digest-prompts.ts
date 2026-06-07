@@ -231,7 +231,19 @@ FollowBrief now assembles the digest body programmatically. This legacy prompt i
 
 Write only \`headlineSummary\` for the candidate posts in the supplied FollowBrief context.
 
-Use \`context.language\`. If \`context.language\` is \`source\`, write in the dominant language of the supplied candidate post summaries. Keep it compact: one short news-headline paragraph in the selected language, suitable for a mobile digest header. Keep it to 300 characters or fewer. Do not include raw URLs. Use only facts already present in the candidate post summaries and metadata.`,
+Use \`context.language\`. If \`context.language\` is \`source\`, write in the dominant language of the supplied candidate post summaries.
+
+Write one line per source, even when that source has multiple candidate posts. Use this exact line format:
+
+- Source name: one sentence summary
+
+Rules:
+
+- Include every source that has candidate posts.
+- Keep each source summary to 50 characters or fewer for Chinese/Japanese/Korean output, or 50 words or fewer for word-delimited languages.
+- Summarize all candidate posts from that source together instead of listing each post.
+- Use only facts already present in the candidate post summaries and metadata.
+- Do not include raw URLs.`,
   perSourceSummary: `# Per-Source Summary Prompt
 
 You are writing an optional source-level summary for exactly one source in a FollowBrief digest.

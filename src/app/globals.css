@@ -1840,6 +1840,106 @@ svg.lucide {
   max-width: none;
 }
 
+.digest-headline-list-wrap {
+  min-width: 0;
+  position: relative;
+}
+
+.digest-headline-list {
+  display: grid;
+  gap: 0.52rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.digest-headline-item {
+  align-items: start;
+  display: grid;
+  gap: 0.62rem;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  min-width: 0;
+}
+
+.digest-headline-avatar.fb-src-icon {
+  height: 1.75rem;
+  margin-top: 0.06rem;
+  width: 1.75rem;
+}
+
+.digest-headline-item-text {
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 570;
+  line-height: 1.48;
+  margin: 0;
+  min-width: 0;
+}
+
+.digest-headline-list-wrap.is-expandable:not(.is-expanded) {
+  padding-bottom: 0.35rem;
+}
+
+.digest-headline-list-wrap.is-expandable:not(.is-expanded)::after {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--paper-strong) 0%, transparent) 0%,
+    color-mix(in oklch, var(--paper-strong) 78%, transparent) 46%,
+    color-mix(in oklch, var(--paper-strong) 98%, transparent) 100%
+  );
+  border-radius: 0 0 8px 8px;
+  bottom: 0;
+  content: "";
+  height: 2.2rem;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+}
+
+.digest-headline-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  bottom: 0;
+  color: color-mix(in oklch, var(--muted) 78%, var(--accent));
+  cursor: pointer;
+  display: inline-flex;
+  height: 1.45rem;
+  justify-content: center;
+  padding: 0;
+  position: absolute;
+  right: 0;
+  width: 1.45rem;
+  z-index: 1;
+}
+
+.digest-headline-toggle:hover {
+  color: var(--accent);
+}
+
+.digest-headline-toggle:focus-visible {
+  outline: 2px solid color-mix(in oklch, var(--accent) 50%, transparent);
+  outline-offset: 2px;
+}
+
+.digest-headline-toggle-icon {
+  height: 1rem;
+  transform: translateY(0.5px);
+  transition: transform 140ms ease;
+  width: 1rem;
+}
+
+.digest-headline-list-wrap.is-expanded .digest-headline-toggle {
+  margin-top: 0.3rem;
+  position: static;
+}
+
+.digest-headline-list-wrap.is-expanded .digest-headline-toggle-icon {
+  transform: rotate(180deg);
+}
+
 .digest-headline-loading {
   display: grid;
   gap: 0.42rem;
@@ -1873,6 +1973,11 @@ svg.lucide {
 
   .digest-headline-summary {
     padding: 0.85rem;
+  }
+
+  .digest-headline-item-text {
+    font-size: 0.9rem;
+    line-height: 1.5;
   }
 }
 

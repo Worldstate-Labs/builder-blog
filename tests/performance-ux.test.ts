@@ -1087,7 +1087,16 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.match(digestDetails, /digest-headline-summary/);
   assert.match(digestDetails, /digest-headline-action/);
   assert.match(digestDetails, /item-headline-preview/);
+  assert.match(digestDetails, /MAX_HEADLINE_SOURCE_ITEMS = 5/);
+  assert.match(digestDetails, /parseHeadlineSourceSummaries/);
+  assert.match(digestDetails, /<SourceAvatar/);
+  assert.match(digestDetails, /digest-headline-list/);
   assert.match(globals, /\.digest-headline-text\s*{[\s\S]*max-width:\s*none/);
+  assert.match(globals, /\.digest-headline-list\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.digest-headline-item\s*{[\s\S]*grid-template-columns:\s*1\.75rem minmax\(0, 1fr\)/);
+  assert.match(globals, /\.digest-headline-avatar\.fb-src-icon\s*{/);
+  assert.match(globals, /\.digest-headline-list-wrap\.is-expandable:not\(\.is-expanded\)::after\s*{/);
+  assert.match(globals, /\.digest-headline-toggle\s*{/);
   assert.match(globals, /\.digest-headline-loading span:first-child\s*{[\s\S]*max-width:\s*var\(--skeleton-title-max\)/);
   assert.match(globals, /\.digest-headline-loading span:last-child\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);
   assert.match(globals, /\.digest-loading-chip\s*{[\s\S]*display:\s*inline-flex/);

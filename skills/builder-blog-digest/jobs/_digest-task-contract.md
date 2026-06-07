@@ -35,7 +35,9 @@ Rules:
   language of all supplied summaries. If there are no supplied summaries, use
   English for the no-updates line.
 - `headlineSummary`: follow `context.digest.headlinePrompt`. It must be a
-  non-empty string.
+  non-empty string. Current default prompt expects one line per source in the
+  form `- Source name: one sentence summary`, with each source summarized once
+  even when it has multiple posts.
 - `sourceSummaries`: group candidate items by `entityId` and follow
   `context.digest.perSourceSummaryPrompt` for each source group. Use an empty
   string or omit a source when the prompt says no source-level summary is needed.

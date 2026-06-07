@@ -260,7 +260,8 @@ node ~/.builder-blog/builder-digest.mjs prepare
 - `sources`: source-type rules keyed by source id (`x`, `blog`, `youtube`,
   `podcast`, `website`, and future source types).
 - `sources[id].summaryPrompt.body`: the per-source post-summary prompt.
-- `digest.headlinePrompt`: rules for writing `headlineSummary` in `language`.
+- `digest.headlinePrompt`: rules for writing `headlineSummary` in `language`;
+  current defaults ask for one line per source.
 - `digest.perSourceSummaryPrompt`: rules for optional source-level summaries in `language`.
 - `digest.translate`: rules for rewriting/translating existing per-post summaries only.
 
@@ -270,8 +271,8 @@ node ~/.builder-blog/builder-digest.mjs prepare
 - The only creative step is writing `headlineSummary`, optional
   `sourceSummaries`, and translated/rewritten `postSummaries`.
 - Write `headlineSummary` directly in `language` with `digest.headlinePrompt`.
-  When `language` is `source`, use the dominant language of the supplied post
-  summaries.
+  Current defaults ask for one line per source. When `language` is `source`, use
+  the dominant language of the supplied post summaries.
 - Write each optional source summary directly in `language` with
   `digest.perSourceSummaryPrompt`. When `language` is `source`, use the
   dominant language of that source group's supplied post summaries.

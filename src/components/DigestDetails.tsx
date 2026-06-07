@@ -2,16 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { BookOpen, Loader2 } from "lucide-react";
+import { BookOpen, ChevronDown, Loader2 } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import {
   DigestContent,
   type DigestFavoriteStateByUrl,
   type DigestSourceLink,
 } from "@/components/DigestContent";
+import { SourceAvatar } from "@/components/SourceAvatar";
 import { useHydrated } from "@/components/ThemeToggle";
 import { digestPreviewFromContent } from "@/lib/digest-headline";
 import { displayLanguagePreference } from "@/lib/language-preference";
+
+const MAX_HEADLINE_SOURCE_ITEMS = 5;
 
 export type DigestSummary = {
   id: string;
@@ -154,7 +157,12 @@ export function DigestDetails({
       <article className="fb-digest">
         <div className="fb-digest-head">
           {headerHeadline ? (
-            <DigestHeadlineSummary headerAction={headerAction} isLatest={isLatest} text={headerHeadline} />
+            <DigestHeadlineSummary
+              headerAction={headerAction}
+              isLatest={isLatest}
+              sourceLinks={sourceLinks}
+              text={headerHeadline}
+            />
           ) : status === "loading" ? (
             <DigestHeadlineSummary headerAction={headerAction} isLatest={isLatest} loading />
           ) : null}
@@ -311,13 +319,25 @@ function DigestHeadlineSummary({
   headerAction,
   isLatest = false,
   loading = false,
+  sourceLinks = [],
   text,
 }: {
   headerAction?: ReactNode;
   isLatest?: boolean;
   loading?: boolean;
+  sourceLinks?: DigestSourceLink[];
   text?: string;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const headlineItems = useMemo(
+    () => parseHeadlineSourceSummaries(text, sourceLinks),
+    [sourceLinks, text],
+  );
+  const canExpand = headlineItems.length > MAX_HEADLINE_SOURCE_ITEMS;
+  const visibleHeadlineItems = expanded
+    ? headlineItems
+    : headlineItems.slice(0, MAX_HEADLINE_SOURCE_ITEMS);
+
   return (
     <section
       className={`digest-headline-summary${loading ? " is-loading" : ""}`}
@@ -336,11 +356,134 @@ function DigestHeadlineSummary({
           <span />
           <span />
         </div>
+      ) : headlineItems.length > 0 ? (
+        <div
+          className={`digest-headline-list-wrap${canExpand ? " is-expandable" : ""}${expanded ? " is-expanded" : ""}`}
+        >
+          <ul className="digest-headline-list">
+            {visibleHeadlineItems.map((item) => (
+              <li className="digest-headline-item" key={item.key}>
+                <SourceAvatar
+                  className="digest-headline-avatar"
+                  imageSize={28}
+                  source={{
+                    avatarUrl: item.sourceLink?.avatarUrl ?? null,
+                    fetchUrl: item.sourceLink?.fetchUrl ?? null,
+                    name: item.sourceName,
+                    sourceType: item.sourceLink?.sourceType ?? "website",
+                    sourceUrl: item.sourceLink?.sourceUrl ?? null,
+                  }}
+                />
+                <p className="digest-headline-item-text">{item.summary}</p>
+              </li>
+            ))}
+          </ul>
+          {canExpand ? (
+            <button
+              aria-expanded={expanded}
+              aria-label={expanded ? "Show fewer headline sources" : "Show all headline sources"}
+              className="digest-headline-toggle"
+              onClick={() => setExpanded((current) => !current)}
+              type="button"
+            >
+              <ChevronDown aria-hidden="true" className="digest-headline-toggle-icon" />
+            </button>
+          ) : null}
+        </div>
       ) : (
         <p className="digest-headline-text">{text}</p>
       )}
     </section>
   );
+}
+
+type DigestHeadlineSourceItem = {
+  key: string;
+  sourceLink?: DigestSourceLink;
+  sourceName: string;
+  summary: string;
+};
+
+function parseHeadlineSourceSummaries(
+  text: string | undefined,
+  sourceLinks: DigestSourceLink[],
+): DigestHeadlineSourceItem[] {
+  const trimmed = text?.trim();
+  if (!trimmed) return [];
+
+  const lookup = buildHeadlineSourceLookup(sourceLinks);
+  const items: DigestHeadlineSourceItem[] = [];
+  for (const rawLine of trimmed.split(/\r?\n/)) {
+    const listMarkerMatch = rawLine.match(/^\s*(?:[-*•]|\d+[.)])\s*/);
+    const line = rawLine.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim();
+    if (!line) continue;
+
+    const separatorIndex = headlineSeparatorIndex(line);
+    if (separatorIndex <= 0) continue;
+
+    const rawSourceName = line.slice(0, separatorIndex).trim().replace(/^["“]|["”]$/g, "");
+    const summary = line.slice(separatorIndex + 1).trim();
+    if (!rawSourceName || !summary) continue;
+
+    const sourceLink = lookup.get(headlineSourceKey(rawSourceName));
+    if (!listMarkerMatch && !sourceLink) continue;
+    items.push({
+      key: `${headlineSourceKey(rawSourceName)}:${items.length}`,
+      sourceLink,
+      sourceName: sourceLink?.name ?? rawSourceName,
+      summary,
+    });
+  }
+  return items;
+}
+
+function headlineSeparatorIndex(line: string) {
+  const zhIndex = line.indexOf("：");
+  const asciiIndex = line.indexOf(":");
+  if (zhIndex === -1) return asciiIndex;
+  if (asciiIndex === -1) return zhIndex;
+  return Math.min(zhIndex, asciiIndex);
+}
+
+function buildHeadlineSourceLookup(sourceLinks: DigestSourceLink[]) {
+  const lookup = new Map<string, DigestSourceLink>();
+  for (const link of sourceLinks) {
+    for (const value of headlineSourceLinkKeys(link)) {
+      const key = headlineSourceKey(value);
+      if (key && !lookup.has(key)) lookup.set(key, link);
+    }
+  }
+  return lookup;
+}
+
+function headlineSourceLinkKeys(link: DigestSourceLink) {
+  const keys = [
+    link.name,
+    ...(link.aliases ?? []),
+    link.handle ?? "",
+    headlineHostOf(link.sourceUrl ?? ""),
+    headlineHostOf(link.fetchUrl ?? ""),
+  ].filter(Boolean);
+  return [...keys, ...keys.map((key) => key.replace(/^@/, ""))];
+}
+
+function headlineSourceKey(value: string) {
+  return value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/^@/, "")
+    .replace(/[()（）]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function headlineHostOf(value: string) {
+  if (!value) return "";
+  try {
+    return new URL(value).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
 }
 
 function resolveHeadlineSummary(

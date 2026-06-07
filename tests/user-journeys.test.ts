@@ -1040,7 +1040,7 @@ test("digest sync user path defaults optional fields and rejects empty content",
   const tooLongHeadlineSummary = parseSkillDigestPayload({
     title: "Digest",
     content: "Body",
-    headlineSummary: "x".repeat(301),
+    headlineSummary: "x".repeat(1201),
   });
   assert.equal(tooLongHeadlineSummary.success, false);
 
@@ -1350,9 +1350,9 @@ test("digest generation user path exposes source-specific prompt instructions", 
   assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /Legacy Digest Intro Prompt/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /headlineSummary/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /context\.language/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /selected language/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /mobile digest header/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /300 characters or fewer/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /one line per source/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /Source name: one sentence summary/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /50 characters or fewer/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.headline, /Chinese characters|Mandarin|simplified Chinese/i);
   assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /exactly one source/);
   assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /output an empty string/);
