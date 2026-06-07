@@ -218,7 +218,7 @@ export function AgentTokenPanel({
         // copy-prompt picker on those pages renders a stale list.
         router.refresh();
       } catch (error) {
-        setStatus(error instanceof Error ? error.message : "Could not create access key");
+        setStatus(error instanceof Error ? error.message : "Could not create access.");
       }
     });
   }
@@ -253,7 +253,7 @@ export function AgentTokenPanel({
         router.refresh();
       } catch (error) {
         setTokens(previousTokens);
-        setStatus(error instanceof Error ? error.message : "Could not revoke access key");
+        setStatus(error instanceof Error ? error.message : "Could not revoke access.");
       }
     });
   }
@@ -262,9 +262,9 @@ export function AgentTokenPanel({
     <section className="access-keys-panel">
       <div className="access-keys-head">
         <div className="access-keys-copy">
-          <h2 className="fb-section-heading">Access keys</h2>
+          <h2 className="fb-section-heading">Local Agent access</h2>
           <p className="access-keys-desc">
-            Local Agents that can sync sources and AI Digests to this account.
+            Devices and Local Agents that can sync sources and AI Digests to this account.
           </p>
         </div>
         <button
@@ -278,7 +278,7 @@ export function AgentTokenPanel({
         </button>
       </div>
 
-      <div className="access-keys-list" role="list" aria-label="Access keys">
+      <div className="access-keys-list" role="list" aria-label="Local Agent access">
         {activeTokens.map((token) => (
           <TokenRow
             key={token.id}
@@ -291,11 +291,11 @@ export function AgentTokenPanel({
         {activeTokens.length === 0 ? (
           <EmptyState
             className="access-keys-empty"
-            title={tokens.length === 0 ? "No access keys yet" : "No active keys"}
+            title={tokens.length === 0 ? "No Local Agent access yet" : "No active access"}
             body={
               tokens.length === 0
                 ? "Add one when you connect a Local Agent."
-                : "Revoked keys are hidden from this list."
+                : "Revoked access is hidden from this list."
             }
           />
         ) : null}
@@ -379,7 +379,7 @@ export function AgentTokenPanel({
               {revokeTarget.lastIp || revokeTarget.lastUserAgent || revokeTarget.lastUsedAt ? (
                 <>
                   <p>
-                    This access key has been used by{" "}
+                    This access has been used by{" "}
                     <strong>{describeAccessDevice(revokeTarget)}</strong>
                     {revokeTarget.lastIp ? (
                       <>
@@ -398,7 +398,7 @@ export function AgentTokenPanel({
                 </>
               ) : (
                 <p>
-                  This access key has never been used. Revoking it now is safe.
+                  This access has never been used. Revoking it now is safe.
                   No machine will lose access.
                 </p>
               )}
