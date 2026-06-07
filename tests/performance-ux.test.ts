@@ -985,6 +985,12 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(channelPreferenceToggle, /className="channel-preference-button"/);
   assert.match(channelPreferenceToggle, /className="channel-preference-icon"/);
   assert.match(channelPreferenceToggle, /className="channel-preference-error"/);
+  assert.match(channelPreferenceToggle, /channelPreferenceChanged = "followbrief:channel-preference-changed"/);
+  assert.match(channelPreferenceToggle, /window\.addEventListener\(channelPreferenceChanged/);
+  assert.match(channelPreferenceToggle, /window\.dispatchEvent/);
+  assert.match(channelPreferenceToggle, /preferredBuilderId: next \? builderId : null/);
+  assert.match(channelPreferenceToggle, /setIsPreferred\(customEvent\.detail\.preferredBuilderId === builderId\)/);
+  assert.match(channelPreferenceToggle, /aria-busy=\{isPending\}/);
   assert.doesNotMatch(channelPreferenceToggle, /flex flex-col items-end|text-xs text-\[var\(--danger\)\]|fill-\[var\(--warm\)\]|transition-colors/);
   assert.match(builderDetailPage, /EmptyState/);
   assert.match(builderDetailPage, /title="No summarized posts yet"/);
