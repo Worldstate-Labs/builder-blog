@@ -2628,3 +2628,13 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(settingsPage, /AgentTokenPanel/);
   assert.match(agentTokenPanel, /fb-btn/);
 });
+
+test("search feed results keep post detail links while preserving originals", () => {
+  const userSearch = source("src/lib/user-search.ts");
+  const searchPage = source("src/app/(workspace)/search/page.tsx");
+
+  assert.match(userSearch, /externalUrl:\s*item\.url/);
+  assert.match(userSearch, /url:\s*`\/recommendations\/items\/\$\{item\.id\}`/);
+  assert.match(searchPage, /const originalUrl = result\.externalUrl \?\? \(titleIsExternal \? result\.url : null\)/);
+  assert.match(searchPage, /View original/);
+});
