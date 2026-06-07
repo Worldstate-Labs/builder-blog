@@ -75,7 +75,7 @@ type BuildersSearchParams = Promise<{
 }>;
 
 const SOURCES_TABS: Array<WorkspaceTopTabItem<SourcesTab>> = [
-  { value: "fetch", label: "Sources", href: "/builders" },
+  { value: "fetch", label: "Source Library", href: "/builders" },
   { value: "digest", label: "AI Digest", href: "/builders?tab=digest" },
 ];
 
@@ -96,7 +96,7 @@ export default async function BuildersPage({
       <div className="workspace-content-stack">
         <section className="sources-tab-surface">
           <WorkspaceTopTabs
-            ariaLabel="Sources and AI Digest"
+            ariaLabel="Source Library and AI Digest"
             items={SOURCES_TABS}
             selectedValue={selectedTab}
           />

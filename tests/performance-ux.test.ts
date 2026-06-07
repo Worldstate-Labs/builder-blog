@@ -1534,8 +1534,9 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   const digestPipelineForm = source("src/components/DigestPipelineImportForm.tsx");
   assert.match(buildersPage, /@\/lib\/digest-runs/);
   assert.match(buildersPage, /WorkspaceTopTabs/);
-  assert.match(buildersPage, /ariaLabel="Sources and AI Digest"/);
-  assert.match(buildersPage, /label:\s*"Sources"[\s\S]*href:\s*"\/builders"/);
+  assert.match(buildersPage, /ariaLabel="Source Library and AI Digest"/);
+  assert.match(buildersPage, /label:\s*"Source Library"[\s\S]*href:\s*"\/builders"/);
+  assert.doesNotMatch(buildersPage, /label:\s*"Sources"[\s\S]*href:\s*"\/builders"/);
   assert.doesNotMatch(buildersPage, /label:\s*"Fetch"[\s\S]*href:\s*"\/builders"/);
   assert.match(buildersPage, /selectedTab === "digest"/);
   assert.match(buildersPage, /label:\s*"AI Digest"[\s\S]*href:\s*"\/builders\?tab=digest"/);
