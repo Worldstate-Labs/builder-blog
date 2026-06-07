@@ -2592,6 +2592,20 @@ test("source registry centralizes current source categories", () => {
   );
 });
 
+test("GitHub Trending brand backfill covers persisted display names", () => {
+  const migration = readFileSync(
+    "prisma/migrations/000060_github_trending_persisted_names/migration.sql",
+    "utf8",
+  );
+
+  assert.match(migration, /UPDATE "Builder"[\s\S]*"sourceType" = 'github_trending'[\s\S]*"name" = 'Github Trending'/);
+  assert.match(migration, /UPDATE "BuilderEntity"[\s\S]*"canonicalKey" IN \(/);
+  assert.match(migration, /FROM "Builder"[\s\S]*"sourceType" = 'github_trending'/);
+  assert.match(migration, /UPDATE "FeedItem"[\s\S]*"sourceName" = 'Github Trending'/);
+  assert.match(migration, /SET "name" = 'GitHub Trending'/);
+  assert.match(migration, /SET "sourceName" = 'GitHub Trending'/);
+});
+
 test("source registry supports future source types without new BuilderKind enum values", () => {
   assert.equal(
     sourceTypeIdForBuilder({
