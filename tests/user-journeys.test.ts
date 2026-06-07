@@ -1353,6 +1353,7 @@ test("digest generation user path exposes source-specific prompt instructions", 
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /context\.language/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /one line per source/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /Source name: one sentence summary/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /same source order/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /50 characters or fewer/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.headline, /Chinese characters|Mandarin|simplified Chinese/i);
   assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /exactly one source/);

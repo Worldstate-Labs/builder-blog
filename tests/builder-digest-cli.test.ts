@@ -1689,6 +1689,99 @@ test("render-digest labels GitHub Trending and Product Hunt sections distinctly"
   assert.doesNotMatch(rendered.markdown, /^## Website$/m);
 });
 
+test("render-digest applies default source order to digest sections and headlines", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const base = digestRenderContext().items[0];
+  const item = (id, entityId, sourceName, sourceType, title) => ({
+    ...base,
+    id,
+    entityId,
+    title,
+    sourceName,
+    builder: {
+      ...base.builder,
+      id: `builder_${id}`,
+      entityId,
+      name: sourceName,
+      sourceType,
+    },
+  });
+  const context = {
+    ...digestRenderContext(),
+    digest: {},
+    sources: {
+      podcast: { id: "podcast", label: "Podcast RSS" },
+      youtube: { id: "youtube", label: "YouTube" },
+      blog: { id: "blog", label: "Blog" },
+      x: { id: "x", label: "X/Twitter" },
+      github_trending: { id: "github_trending", label: "GitHub Trending" },
+      product_hunt_top_products: {
+        id: "product_hunt_top_products",
+        label: "Product Hunt Top Products",
+      },
+      website: { id: "website", label: "Website" },
+    },
+    subscriptionEntities: [
+      { id: "entity_podcast_z", name: "Zeta Podcast" },
+      { id: "entity_podcast_a", name: "Alpha Podcast" },
+      { id: "entity_youtube", name: "Video Source" },
+      { id: "entity_blog", name: "Blog Source" },
+      { id: "entity_x", name: "X Source" },
+      { id: "entity_github", name: "GitHub Trending" },
+      { id: "entity_ph", name: "Product Hunt Top Products" },
+      { id: "entity_site", name: "Website Source" },
+    ],
+    items: [
+      item("feed_site", "entity_site", "Website Source", "website", "Website update"),
+      item("feed_ph", "entity_ph", "Product Hunt Top Products", "product_hunt_top_products", "Product update"),
+      item("feed_github", "entity_github", "GitHub Trending", "github_trending", "Repo update"),
+      item("feed_x", "entity_x", "X Source", "x", "X update"),
+      item("feed_blog", "entity_blog", "Blog Source", "blog", "Blog update"),
+      item("feed_youtube", "entity_youtube", "Video Source", "youtube", "Video update"),
+      item("feed_podcast_z", "entity_podcast_z", "Zeta Podcast", "podcast", "Zeta episode"),
+      item("feed_podcast_a", "entity_podcast_a", "Alpha Podcast", "podcast", "Alpha episode"),
+    ],
+  };
+  const rendered = cli.renderDigestMarkdown(context, {
+    headlineSummary: [
+      "- Website Source: website headline",
+      "- Product Hunt Top Products: product headline",
+      "- GitHub Trending: github headline",
+      "- X Source: x headline",
+      "- Blog Source: blog headline",
+      "- Video Source: youtube headline",
+      "- Zeta Podcast: zeta headline",
+      "- Alpha Podcast: alpha headline",
+    ].join("\n"),
+    sourceSummaries: [],
+    postSummaries: context.items.map((candidate) => ({
+      feedItemId: candidate.id,
+      summary: `${candidate.sourceName} summary.`,
+    })),
+  });
+
+  const headings = [...rendered.markdown.matchAll(/^## (.+)$/gm)].map((match) => match[1]);
+  assert.deepEqual(headings, [
+    "Podcast RSS",
+    "YouTube",
+    "Blog",
+    "X/Twitter",
+    "GitHub Trending",
+    "Product Hunt Top Products",
+    "Website",
+  ]);
+  assert.deepEqual(rendered.headlineSummary.split("\n"), [
+    "- Alpha Podcast: alpha headline",
+    "- Zeta Podcast: zeta headline",
+    "- Video Source: youtube headline",
+    "- Blog Source: blog headline",
+    "- X Source: x headline",
+    "- GitHub Trending: github headline",
+    "- Product Hunt Top Products: product headline",
+    "- Website Source: website headline",
+  ]);
+});
+
 test("parse-digest normalizes legacy localized source headings", async () => {
   const { parseDigest } = await import("../src/lib/digest-markdown");
   const doc = parseDigest(`AI Digest - 6/3/2026

@@ -240,6 +240,7 @@ Write one line per source, even when that source has multiple candidate posts. U
 Rules:
 
 - Include every source that has candidate posts.
+- Use the same source order as the digest: follow \`context.digest.order\` when provided; otherwise use Podcast RSS, YouTube, Blog, X/Twitter, GitHub Trending, Product Hunt Top Products, then Website. Within each source type, order sources by source name.
 - Keep each source summary to 50 characters or fewer for Chinese/Japanese/Korean output, or 50 words or fewer for word-delimited languages.
 - Summarize all candidate posts from that source together instead of listing each post.
 - Use only facts already present in the candidate post summaries and metadata.

@@ -3570,12 +3570,12 @@ function genericContentQuality(text, { title = "", description = "", standards }
 }
 
 const DEFAULT_DIGEST_SOURCE_ORDER = [
-  "x",
+  "podcast",
+  "youtube",
   "blog",
+  "x",
   "github_trending",
   "product_hunt_top_products",
-  "youtube",
-  "podcast",
   "website",
 ];
 
@@ -3761,28 +3761,36 @@ function postSummaryForItem(item, postSummaries) {
   return postSummaries.get(String(item?.id || "")) || "";
 }
 
-export function renderDigestMarkdown(context, agentOutput = {}) {
-  const items = Array.isArray(context?.items) ? context.items : [];
-  const headlineSummary = stringOrNull(agentOutput?.headlineSummary) || "";
-  if (items.length === 0) {
-    if (!headlineSummary) {
-      throw new Error("No digest items: agent output must include headlineSummary in context.language.");
-    }
-    if (headlineSummary.length > MAX_DIGEST_HEADLINE_SUMMARY_CHARS) {
-      throw new Error(
-        `Invalid digest agent output: headlineSummary must be ${MAX_DIGEST_HEADLINE_SUMMARY_CHARS} ` +
-          `characters or fewer (got ${headlineSummary.length})`,
-      );
-    }
-    return {
-      headlineSummary,
-      markdown: `AI Digest - ${new Date(context?.generatedAt || Date.now()).toLocaleDateString()}\n\n${headlineSummary}`,
-    };
-  }
+function headlineLineSeparatorIndex(line) {
+  const zhIndex = line.indexOf("：");
+  const asciiIndex = line.indexOf(":");
+  if (zhIndex === -1) return asciiIndex;
+  if (asciiIndex === -1) return zhIndex;
+  return Math.min(zhIndex, asciiIndex);
+}
 
-  const postSummaries = postSummaryFromAgentOutput(agentOutput);
-  validateDigestAgentOutput(context, agentOutput, postSummaries);
-  const sourceSummaries = sourceSummaryFromAgentOutput(agentOutput);
+function headlineSourceKey(value) {
+  return String(value || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/^@/, "")
+    .replace(/[()（）]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function headlineSourceKeysForGroup(group) {
+  const keys = [
+    group.source,
+    markdownLine(group.source),
+    group.entityId,
+  ].filter(Boolean);
+  return [...keys, ...keys.map((key) => String(key).replace(/^@/, ""))]
+    .map(headlineSourceKey)
+    .filter(Boolean);
+}
+
+function orderedDigestGroups(items, context) {
   const order = digestSourceOrder(context);
   const sections = new Map();
   for (const item of items) {
@@ -3802,13 +3810,83 @@ export function renderDigestMarkdown(context, agentOutput = {}) {
     return a[0].localeCompare(b[0]);
   });
 
+  return sectionEntries.flatMap(([, groups]) =>
+    [...groups.values()].sort((a, b) => a.source.localeCompare(b.source)),
+  );
+}
+
+function orderHeadlineSummaryByDigestSources(headlineSummary, items, context) {
+  const trimmed = stringOrNull(headlineSummary);
+  if (!trimmed || !Array.isArray(items) || items.length === 0) return trimmed || "";
+
+  const sourceOrder = new Map();
+  orderedDigestGroups(items, context).forEach((group, index) => {
+    for (const key of headlineSourceKeysForGroup(group)) {
+      if (!sourceOrder.has(key)) sourceOrder.set(key, index);
+    }
+  });
+  if (sourceOrder.size === 0) return trimmed;
+
+  const rows = trimmed.split(/\r?\n/).map((rawLine, index) => {
+    const line = rawLine.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim();
+    const separatorIndex = headlineLineSeparatorIndex(line);
+    const sourceName = separatorIndex > 0 ? line.slice(0, separatorIndex).trim().replace(/^["“]|["”]$/g, "") : "";
+    const orderIndex = sourceOrder.get(headlineSourceKey(sourceName));
+    return { rawLine, index, orderIndex };
+  });
+
+  return rows
+    .sort((a, b) => {
+      const ai = a.orderIndex ?? Number.POSITIVE_INFINITY;
+      const bi = b.orderIndex ?? Number.POSITIVE_INFINITY;
+      if (ai !== bi) return ai - bi;
+      return a.index - b.index;
+    })
+    .map((row) => row.rawLine)
+    .join("\n")
+    .trim();
+}
+
+export function renderDigestMarkdown(context, agentOutput = {}) {
+  const items = Array.isArray(context?.items) ? context.items : [];
+  const headlineSummary = orderHeadlineSummaryByDigestSources(
+    agentOutput?.headlineSummary,
+    items,
+    context,
+  );
+  if (items.length === 0) {
+    if (!headlineSummary) {
+      throw new Error("No digest items: agent output must include headlineSummary in context.language.");
+    }
+    if (headlineSummary.length > MAX_DIGEST_HEADLINE_SUMMARY_CHARS) {
+      throw new Error(
+        `Invalid digest agent output: headlineSummary must be ${MAX_DIGEST_HEADLINE_SUMMARY_CHARS} ` +
+          `characters or fewer (got ${headlineSummary.length})`,
+      );
+    }
+    return {
+      headlineSummary,
+      markdown: `AI Digest - ${new Date(context?.generatedAt || Date.now()).toLocaleDateString()}\n\n${headlineSummary}`,
+    };
+  }
+
+  const postSummaries = postSummaryFromAgentOutput(agentOutput);
+  validateDigestAgentOutput(context, agentOutput, postSummaries);
+  const sourceSummaries = sourceSummaryFromAgentOutput(agentOutput);
+  const sectionGroups = new Map();
+  for (const group of orderedDigestGroups(items, context)) {
+    const sourceType = sourceTypeForDigestItem(group.items[0]);
+    const groups = sectionGroups.get(sourceType) ?? [];
+    groups.push(group);
+    sectionGroups.set(sourceType, groups);
+  }
+
   const lines = [
     `AI Digest - ${new Date(context?.generatedAt || Date.now()).toLocaleDateString()}`,
     "",
   ];
-  for (const [sourceType, groups] of sectionEntries) {
+  for (const [sourceType, groupEntries] of sectionGroups.entries()) {
     lines.push(`## ${digestSectionLabel(sourceType, context)}`, "");
-    const groupEntries = [...groups.values()].sort((a, b) => a.source.localeCompare(b.source));
     for (const group of groupEntries) {
       lines.push(`### ${markdownLine(group.source, "Unknown source")}`);
       const groupSummary =
