@@ -1665,6 +1665,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /<Suspense/);
   assert.match(searchPage, /SearchResultsFallback/);
   assert.match(searchPage, /SearchResultsSection/);
+  assert.match(searchPage, /<div className="search-meta-row" role="status">[\s\S]*Loading search results/);
+  assert.doesNotMatch(searchPage, /Updating results\.\.\./);
   assert.match(searchPage, /className="workspace-content-stack search-results-workspace"/);
   assert.match(globals, /\.search-result-skeleton/);
   assert.match(searchPage, /<PageHeader[\s\S]*title="Search"[\s\S]*Find sources, posts, saved posts, and AI Digests in one place\./);
