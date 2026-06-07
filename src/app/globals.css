@@ -1736,6 +1736,16 @@ svg.lucide {
   white-space: nowrap;
 }
 
+.item-summary-copy {
+  min-width: 0;
+}
+
+.item-summary-action-icon {
+  flex-shrink: 0;
+  height: 0.875rem;
+  width: 0.875rem;
+}
+
 .item-disclosure[open] > .item-summary .item-summary-action {
   background: var(--accent-soft);
   color: var(--accent);

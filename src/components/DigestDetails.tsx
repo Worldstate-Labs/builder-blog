@@ -203,7 +203,7 @@ export function DigestDetails({
         }}
       >
         <summary className="item-summary">
-          <span className="min-w-0">
+          <span className="item-summary-copy">
             <span className="item-kicker">
               <span>{formatDateTime(digest.createdAt, hydrated)}</span>
               <CountMeta label={digest.itemCount === 1 ? "post" : "posts"} value={digest.itemCount} />
@@ -215,7 +215,7 @@ export function DigestDetails({
             ) : null}
           </span>
           <span className="item-summary-action">
-            <BookOpen className="h-3.5 w-3.5" />
+            <BookOpen className="item-summary-action-icon" />
             View AI Digest
           </span>
         </summary>

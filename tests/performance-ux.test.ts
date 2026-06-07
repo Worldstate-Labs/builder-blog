@@ -421,7 +421,13 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(agentTokenPanel, /timeZone:\s*"UTC"/);
   assert.match(fetchLogPanel, /startedAtLabel = hydrated \? formatRelative/);
   assert.match(digestDetails, /View AI Digest/);
+  assert.match(digestDetails, /className="item-summary-copy"/);
+  assert.match(digestDetails, /className="item-summary-action-icon"/);
   assert.doesNotMatch(digestDetails, /BookOpen className="h-3\.5 w-3\.5" \/>[\s\S]*Read/);
+  assert.doesNotMatch(digestDetails, /className="min-w-0"/);
+  assert.doesNotMatch(digestDetails, /BookOpen className="h-3\.5 w-3\.5"/);
+  assert.match(globals, /\.item-summary-copy\s*{[\s\S]*min-width:\s*0/);
+  assert.match(globals, /\.item-summary-action-icon\s*{[\s\S]*height:\s*0\.875rem/);
   assert.match(skillPromptActions, /!\s*open \? null/);
   assert.match(skillPromptActions, /className=\{compactOnly \? "skill-prompt-compact" : "fb-skill"\}/);
   assert.match(skillPromptActions, /className="skill-prompt-status"/);
@@ -1331,6 +1337,10 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.match(digestDetails, /digest-headline-summary/);
   assert.match(digestDetails, /digest-headline-action/);
   assert.match(digestDetails, /item-headline-preview/);
+  assert.match(digestDetails, /className="item-summary-copy"/);
+  assert.match(digestDetails, /className="item-summary-action-icon"/);
+  assert.doesNotMatch(digestDetails, /className="min-w-0"/);
+  assert.doesNotMatch(digestDetails, /BookOpen className="h-3\.5 w-3\.5"/);
   assert.match(digestDetails, /MAX_HEADLINE_SOURCE_ITEMS = 5/);
   assert.match(digestDetails, /parseHeadlineSourceSummaries/);
   assert.match(digestDetails, /parseDigest/);
