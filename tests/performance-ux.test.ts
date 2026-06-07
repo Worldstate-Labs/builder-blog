@@ -2295,7 +2295,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /onClick=\{\(\) => onRemove\(pipeline\.id\)\}/);
   assert.match(digestPipelineForm, /className="fb-chip hub-card-imported-status"/);
   assert.match(digestPipelineForm, /className="fb-btn light compact hub-card-remove-button digest-pipeline-remove-button"/);
-  assert.match(digestPipelineForm, />\s*Remove\s*<\/button>/);
+  assert.match(digestPipelineForm, /aria-label=\{`Remove \$\{pipeline\.title\} from Home`\}/);
+  assert.match(digestPipelineForm, />\s*Remove digest\s*<\/button>/);
+  assert.doesNotMatch(digestPipelineForm, /Remove \$\{pipeline\.title\} import/);
   assert.match(digestPipelineForm, /<Trash2 aria-hidden="true" \/>/);
   assert.match(digestPipelineShareRoute, /shareDigestPipelineToHub/);
   assert.match(digestPipelineShareRoute, /updateDigestPipelineTitle/);
