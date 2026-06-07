@@ -1771,10 +1771,11 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderLibraryList, /<EmptyState body=\{emptyBody\} title=\{emptyTitle\} \/>/);
   assert.match(buildersPage, /emptyBody="Add a source, then use your Local Agent to fetch and summarize it\."/);
   assert.doesNotMatch(buildersPage, /import private sources/);
-  assert.match(buildersPage, /body="No imported source libraries yet\."/);
-  assert.doesNotMatch(buildersPage, /title="No imported source libraries yet\."/);
+  assert.match(buildersPage, /body="Import source libraries shared by other users from Hub\."/);
+  assert.doesNotMatch(buildersPage, /No imported source libraries yet\./);
   assert.match(buildersPage, /href="\/library-hub\?tab=source-library"/);
-  assert.match(buildersPage, /Browse Hub/);
+  assert.match(buildersPage, /Browse source libraries/);
+  assert.doesNotMatch(buildersPage, /Browse Hub/);
   assert.doesNotMatch(buildersPage, /Browse Source Library/);
   assert.doesNotMatch(buildersPage, /Browse shared source libraries in the Hub, then import one to see its sources here\./);
   assert.doesNotMatch(buildersPage, /<EmptyState body="Import shared libraries from the Hub to see them here\." \/>/);
@@ -2356,7 +2357,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /visiblePipelines\.map/);
   assert.match(digestPipelineForm, /No imported AI Digests yet/);
   assert.match(digestPipelineForm, /href="\/library-hub\?tab=ai-digests"/);
-  assert.match(digestPipelineForm, /Browse Hub/);
+  assert.match(digestPipelineForm, /Browse AI Digests/);
+  assert.doesNotMatch(digestPipelineForm, /Browse Hub/);
   assert.match(digestPipelineForm, /No shared AI Digests are available yet/);
   assert.match(digestPipelineForm, /imported=\{importedIds\.has\(pipeline\.id\)\}/);
   assert.match(digestPipelineForm, /aria-label=\{`Import \$\{pipeline\.title\}`\}/);

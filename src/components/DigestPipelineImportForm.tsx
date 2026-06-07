@@ -244,7 +244,7 @@ export function DigestPipelineImportForm({
             actions={
               mode === "imported" ? (
                 <Link className="fb-btn light compact" href="/library-hub?tab=ai-digests">
-                  Browse Hub
+                  Browse AI Digests
                 </Link>
               ) : null
             }
