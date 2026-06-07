@@ -1596,6 +1596,11 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /hub-card-action-button/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /flex flex-wrap items-center gap-2|disabled:cursor-wait/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-head"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /function libraryCardDescription/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /library\.description\?\.trim\(\)/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Your private source library\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /return library\.ownerLabel/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /\{libraryCardDescription\(library\)\}/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-sources-summary"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /groupedSources/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-type-groups/);

@@ -349,11 +349,9 @@ function HubCard({
           <div className="fb-hub-card-actions">{action}</div>
         </div>
 
-        {library.description ? (
-          <p className="fb-hub-card-desc">
-            {library.description}
-          </p>
-        ) : null}
+        <p className="fb-hub-card-desc">
+          {libraryCardDescription(library)}
+        </p>
       </div>
 
       {sourceGroups.length > 0 ? (
@@ -463,6 +461,13 @@ function kindBadge(library: HubLibrary) {
   if (library.isCommunity) return "community";
   if (library.owned) return "private";
   return "shared";
+}
+
+function libraryCardDescription(library: HubLibrary) {
+  const description = library.description?.trim();
+  if (description) return description;
+  if (library.owned) return "Your private source library.";
+  return library.ownerLabel;
 }
 
 function topicLabel(library: HubLibrary) {
