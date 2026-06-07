@@ -17,6 +17,7 @@
      never invert to a light surface in dark mode. */
   --surface-ink: oklch(0.145 0.024 248);
   --surface-ink-accent: oklch(0.42 0.17 255);
+  --surface-paper: oklch(0.997 0.003 238);
   --signal: oklch(0.66 0.15 162);
   --signal-soft: oklch(0.93 0.044 162);
   --warm: oklch(0.68 0.12 68);
@@ -30,6 +31,11 @@
   --foreground: var(--ink);
   --selection-background: var(--accent);
   --selection-foreground: var(--paper-strong);
+  --on-accent: var(--paper-strong);
+  --on-danger: var(--paper-strong);
+  --on-ink: var(--paper-strong);
+  --on-muted-strong: var(--paper-strong);
+  --on-warm: var(--ink);
 
   /* Quiet one-step-off-paper fill. Was referenced (.user-menu-item:hover,
      .library-visibility-toggle) but never defined — aliasing --rail keeps a
@@ -110,6 +116,11 @@
     --danger-soft: oklch(0.32 0.07 24);
     --line: color-mix(in oklch, var(--ink) 18%, transparent);
     --shadow: color-mix(in oklch, black 55%, transparent);
+    --on-accent: var(--surface-ink);
+    --on-danger: var(--surface-ink);
+    --on-ink: var(--paper);
+    --on-muted-strong: var(--surface-ink);
+    --on-warm: var(--surface-ink);
   }
 }
 
@@ -132,6 +143,11 @@
   --danger-soft: oklch(0.32 0.07 24);
   --line: color-mix(in oklch, var(--ink) 18%, transparent);
   --shadow: color-mix(in oklch, black 55%, transparent);
+  --on-accent: var(--surface-ink);
+  --on-danger: var(--surface-ink);
+  --on-ink: var(--paper);
+  --on-muted-strong: var(--surface-ink);
+  --on-warm: var(--surface-ink);
 }
 
 .theme-toggle {
@@ -498,7 +514,7 @@ svg.lucide {
 
 .button-dark {
   background: var(--accent);
-  color: white;
+  color: var(--on-accent);
   box-shadow: 0 10px 24px color-mix(in oklch, var(--accent) 22%, transparent);
 }
 
@@ -2786,7 +2802,7 @@ svg.lucide {
   align-items: center;
   background: var(--ink);
   border-radius: 999px;
-  color: white;
+  color: var(--on-ink);
   display: inline-flex;
   height: 1.22rem;
   justify-content: center;
@@ -2803,25 +2819,29 @@ svg.lucide {
   /* X's mark is a white glyph on a fixed black badge (brand). Use the non-
      inverting surface token so dark mode doesn't flip it to white-on-white. */
   background: var(--surface-ink);
+  color: var(--surface-paper);
 }
 
 .source-badge[data-source="youtube"] .source-badge-mark {
   background: var(--danger);
+  color: var(--on-danger);
 }
 
 .source-badge[data-source="blog"] .source-badge-mark,
 .source-badge[data-source="github_trending"] .source-badge-mark,
 .source-badge[data-source="podcast"] .source-badge-mark {
   background: var(--accent);
+  color: var(--on-accent);
 }
 
 .source-badge[data-source="product_hunt_top_products"] .source-badge-mark {
   background: var(--warm);
-  color: var(--ink);
+  color: var(--on-warm);
 }
 
 .source-badge[data-source="website"] .source-badge-mark {
   background: var(--muted-strong);
+  color: var(--on-muted-strong);
 }
 
 /* Segmented icon+label picker used in AddBuilderForm. Each pill is
@@ -3686,7 +3706,7 @@ svg.lucide {
 .search-page-link[data-active="true"] {
   background: var(--accent);
   border-color: var(--accent);
-  color: white;
+  color: var(--on-accent);
 }
 
 .search-page-link-disabled {
@@ -4373,7 +4393,7 @@ svg.lucide {
 .fb-btn.dark {
   background: var(--accent);
   box-shadow: 0 8px 20px color-mix(in oklch, var(--accent) 22%, transparent);
-  color: white;
+  color: var(--on-accent);
 }
 
 .fb-btn.dark:hover {
@@ -4440,7 +4460,7 @@ svg.lucide {
   background: var(--accent);
   border-color: var(--accent);
   box-shadow: 0 8px 18px color-mix(in oklch, var(--accent) 22%, transparent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .fb-segmented-tabs .fb-btn[aria-selected="true"]:hover,
@@ -4448,7 +4468,7 @@ svg.lucide {
 .fb-segmented-tabs .fb-btn[data-active="true"]:hover {
   background: var(--accent-strong);
   border-color: var(--accent-strong);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .workspace-top-tabs.fb-segmented-tabs {
@@ -4494,7 +4514,7 @@ svg.lucide {
 .fb-btn.danger {
   background: var(--danger);
   border-color: transparent;
-  color: #fff;
+  color: var(--on-danger);
 }
 
 .fb-btn.danger:hover {
