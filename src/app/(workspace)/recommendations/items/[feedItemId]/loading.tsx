@@ -3,8 +3,8 @@ import { RouteLoading } from "@/components/RouteLoading";
 export default function LegacyRecommendationItemLoading() {
   return (
     <RouteLoading
-      label="Post"
-      title="Loading Post"
+      label="Summarized post"
+      title="Loading summarized post"
       rows={4}
     />
   );
