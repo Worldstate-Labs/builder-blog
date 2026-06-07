@@ -181,7 +181,7 @@ export default async function BuilderDetailPage({ params }: Params) {
                       : "source-count-meta source-count-meta-empty"
                   }
                 >
-                  <CountMeta label={headerItemCount === 1 ? "item" : "items"} value={headerItemCount} />
+                  <CountMeta label={headerItemCount === 1 ? "post" : "posts"} value={headerItemCount} />
                 </span>
                 {lastFetchedMax ? (
                   <>
@@ -243,7 +243,7 @@ export default async function BuilderDetailPage({ params }: Params) {
  * across all its channels. Two FeedItems collapse into one when they
  * share (kind, externalId) — that's the same dedup key used by
  * fetchDedupedFeedForEntities for the post list below the header,
- * so the header's "N items" matches what the user actually sees.
+ * so the header's "N posts" matches what the user actually sees.
  */
 async function countDedupedItemsForEntity(entityId: string): Promise<number> {
   const distinct = await prisma.feedItem.findMany({

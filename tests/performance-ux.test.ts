@@ -629,6 +629,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(builderDetailPage, /source-kind-meta fb-kind-pill/);
   assert.match(builderDetailPage, /className="builder-detail-host source-host-meta mono truncate"/);
   assert.match(builderDetailPage, /headerHostLabel \? \([\s\S]*className="source-count-dot source-meta-dot"/);
+  assert.match(builderDetailPage, /<CountMeta label=\{headerItemCount === 1 \? "post" : "posts"\} value=\{headerItemCount\} \/>/);
+  assert.doesNotMatch(builderDetailPage, /headerItemCount === 1 \? "item" : "items"/);
   assert.match(builderDetailPage, /className="builder-detail-bio fb-desc"/);
   assert.match(globals, /\.builder-detail-bio\s*{[\s\S]*max-width:\s*var\(--measure\)/);
   assert.match(builderDetailPage, /className="builder-detail-actions-skeleton"/);
