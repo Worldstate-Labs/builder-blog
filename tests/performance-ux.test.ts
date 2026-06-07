@@ -66,14 +66,20 @@ test("app shell reuses the page session instead of fetching it again", () => {
 test("every app route has an explicit centered layout role", () => {
   const routeFiles = appRouteFiles().sort();
   assert.deepEqual(routeFiles, [
+    "src/app/(workspace)/builder/[entityId]/loading.tsx",
     "src/app/(workspace)/builder/[entityId]/page.tsx",
     "src/app/(workspace)/builder/x/[handle]/page.tsx",
+    "src/app/(workspace)/builders/loading.tsx",
     "src/app/(workspace)/builders/page.tsx",
+    "src/app/(workspace)/dashboard/loading.tsx",
     "src/app/(workspace)/dashboard/page.tsx",
+    "src/app/(workspace)/library-hub/loading.tsx",
     "src/app/(workspace)/library-hub/page.tsx",
+    "src/app/(workspace)/posts/[feedItemId]/loading.tsx",
     "src/app/(workspace)/posts/[feedItemId]/page.tsx",
     "src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx",
     "src/app/(workspace)/recommendations/page.tsx",
+    "src/app/(workspace)/search/loading.tsx",
     "src/app/(workspace)/search/page.tsx",
     "src/app/(workspace)/settings/loading.tsx",
     "src/app/(workspace)/settings/page.tsx",
@@ -139,6 +145,30 @@ test("every app route has an explicit centered layout role", () => {
   }
 
   assert.match(source("src/app/loading.tsx"), /<RouteLoading label="Loading" title="Loading FollowBrief" \/>/);
+  const workspaceLoadingRoutes = [
+    ["src/app/(workspace)/builders/loading.tsx", "Sources", "Loading Sources", 6],
+    ["src/app/(workspace)/library-hub/loading.tsx", "Hub", "Loading Hub", 5],
+    ["src/app/(workspace)/settings/loading.tsx", "Settings", "Loading Settings", 5],
+  ] as const;
+  for (const [path, label, title, rows] of workspaceLoadingRoutes) {
+    assert.match(
+      source(path),
+      new RegExp(`<RouteLoading[\\s\\S]*label="${label}"[\\s\\S]*title="${title}"[\\s\\S]*rows=\\{${rows}\\}[\\s\\S]*variant="workspace"`),
+    );
+  }
+  const readingLoadingRoutes = [
+    ["src/app/(workspace)/builder/[entityId]/loading.tsx", "Source", "Loading Source", 5],
+    ["src/app/(workspace)/dashboard/loading.tsx", "Home", "Loading Home", 6],
+    ["src/app/(workspace)/posts/[feedItemId]/loading.tsx", "Post", "Loading Post", 4],
+    ["src/app/(workspace)/search/loading.tsx", "Search", "Loading Search", 5],
+  ] as const;
+  for (const [path, label, title, rows] of readingLoadingRoutes) {
+    assert.match(
+      source(path),
+      new RegExp(`<RouteLoading[\\s\\S]*label="${label}"[\\s\\S]*title="${title}"[\\s\\S]*rows=\\{${rows}\\}`),
+    );
+    assert.doesNotMatch(source(path), /variant="workspace"/);
+  }
   assert.match(
     source("src/app/(workspace)/settings/loading.tsx"),
     /<RouteLoading[\s\S]*label="Settings"[\s\S]*title="Loading Settings"[\s\S]*rows=\{5\}[\s\S]*variant="workspace"/,
@@ -1561,14 +1591,15 @@ test("user library search can fetch operator-only candidate sets", () => {
   assert.doesNotMatch(searchPage, /className="search-result-open"/);
 });
 
-test("primary tabs use local loading fallbacks instead of full-route loaders", () => {
+test("primary tabs keep local loading fallbacks alongside route loaders", () => {
   assert.equal(existsSync(join(root, "src/app/history/loading.tsx")), true);
   for (const path of [
     "src/app/(workspace)/builders/loading.tsx",
     "src/app/(workspace)/library-hub/loading.tsx",
     "src/app/(workspace)/search/loading.tsx",
   ]) {
-    assert.equal(existsSync(join(root, path)), false, path);
+    assert.equal(existsSync(join(root, path)), true, path);
+    assert.match(source(path), /RouteLoading/);
   }
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const digestPipelineForm = source("src/components/DigestPipelineImportForm.tsx");
