@@ -75,6 +75,7 @@ test("every app route has an explicit centered layout role", () => {
     "src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx",
     "src/app/(workspace)/recommendations/page.tsx",
     "src/app/(workspace)/search/page.tsx",
+    "src/app/(workspace)/settings/loading.tsx",
     "src/app/(workspace)/settings/page.tsx",
     "src/app/history/loading.tsx",
     "src/app/history/page.tsx",
@@ -138,6 +139,10 @@ test("every app route has an explicit centered layout role", () => {
   }
 
   assert.match(source("src/app/loading.tsx"), /<RouteLoading label="Loading" title="Loading FollowBrief" \/>/);
+  assert.match(
+    source("src/app/(workspace)/settings/loading.tsx"),
+    /<RouteLoading[\s\S]*label="Settings"[\s\S]*title="Loading Settings"[\s\S]*rows=\{5\}[\s\S]*variant="workspace"/,
+  );
   assert.match(
     source("src/app/history/loading.tsx"),
     /<RouteLoading label="AI Digest" title="Loading AI Digest" rows=\{6\} \/>/,
@@ -476,7 +481,11 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(settingsPage, /className="page-pad page-pad--settings"/);
   assert.match(settingsPage, /<PageHeader title="Settings" \/>/);
   assert.doesNotMatch(settingsPage, /<section className="fb-page-head"/);
-  assert.equal(existsSync(join(root, "src/app/(workspace)/settings/loading.tsx")), false);
+  assert.equal(existsSync(join(root, "src/app/(workspace)/settings/loading.tsx")), true);
+  assert.match(
+    source("src/app/(workspace)/settings/loading.tsx"),
+    /<RouteLoading[\s\S]*label="Settings"[\s\S]*title="Loading Settings"/,
+  );
   assert.doesNotMatch(settingsPage, /ActiveTokenChip/);
   assert.match(settingsPage, /<Suspense fallback=\{<AgentTokenPanelSkeleton \/>/);
   assert.doesNotMatch(settingsPage, /Agent login/);
