@@ -384,12 +384,14 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /params\.set\("freq"/);
   assert.match(skillPromptActions, /Frequency/);
   // The override toggle adds ?force=1; its copy is context-specific (library
-  // re-fetches already-saved posts, digest re-includes already-digested posts
-  // additively — the digest job never fetches and never deletes past digests).
+  // re-fetches already-saved posts, digest re-includes posts already used in
+  // AI Digests additively — the digest job never fetches and never deletes past
+  // AI Digests).
   // Both cron + once dialogs expose it for both contexts, defaulting off.
   assert.match(skillPromptActions, /OVERRIDE_COPY/);
   assert.match(skillPromptActions, /Refresh posts already saved/);
-  assert.match(skillPromptActions, /Include already digested posts/);
+  assert.match(skillPromptActions, /Include posts already used in AI Digests/);
+  assert.doesNotMatch(skillPromptActions, /Include already digested posts/);
   assert.match(skillPromptActions, /overrideFetched/);
   assert.match(skillPromptActions, /params\.set\("force", "1"\)/);
   // One-time runs now share the schedule dialog instead of a separate button/dialog.
@@ -403,7 +405,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /build your digest\./);
   assert.doesNotMatch(skillPromptActions, /build new digests|update every source/);
   assert.match(skillPromptActions, /Local Agent/);
-  assert.match(skillPromptActions, /Already digested posts can be included again this time\./);
+  assert.match(skillPromptActions, /Posts already used in AI Digests can be included again this time\./);
+  assert.doesNotMatch(skillPromptActions, /Already digested posts can be included again this time\./);
   assert.match(skillPromptActions, /id="cron-fetch-days"[\s\S]*label="Max post age \(days\)"/);
   assert.doesNotMatch(skillPromptActions, /Fetch post age \(days\)/);
   assert.match(skillPromptActions, /Defaults to 30 days\. Choose 1-90 days\./);
@@ -1196,7 +1199,7 @@ test("digest feed user path selects not-yet-digested posts within the configured
   assert.equal(digestCandidateLimitForLastRun(now, "2026-05-10T12:00:00.000Z"), 100);
 
   // Candidate selection is gated by the per-user DigestedItem marker, not a
-  // time window. Override (regenerate) re-includes already-digested posts.
+  // time window. Override (regenerate) re-includes posts already used in AI Digests.
   const contextRoute = readFileSync("src/app/api/skill/context/route.ts", "utf8");
   assert.match(contextRoute, /publishedAfter: lookbackCutoff/);
   assert.match(contextRoute, /digestCandidateLimitForLastRun\(now, lastDigest\?\.createdAt\)/);

@@ -122,8 +122,9 @@ const MAX_PROMPT_WINDOW_DAYS = 90;
 
 // The override toggle reuses one URL channel (?force=1) but means different
 // things per context, so its copy is context-specific. Library: re-fetch posts
-// already in the library. Digest: re-include already-digested posts (additive —
-// adds a new digest that re-covers those posts, never deletes or replaces past ones).
+// already in the library. Digest: re-include posts already used in AI Digests
+// (additive — adds a new AI Digest that re-covers those posts, never deletes or
+// replaces past ones).
 const OVERRIDE_COPY: Record<
   SkillPromptContext,
   { name: string; cronHint: string; onceHint: string }
@@ -136,11 +137,11 @@ const OVERRIDE_COPY: Record<
       "Refreshes posts already in your library this time only.",
   },
   digest: {
-    name: "Include already digested posts",
+    name: "Include posts already used in AI Digests",
     cronHint:
-      "Already digested posts can be included again on each run.",
+      "Posts already used in AI Digests can be included again on each run.",
     onceHint:
-      "Already digested posts can be included again this time.",
+      "Posts already used in AI Digests can be included again this time.",
   },
 };
 
