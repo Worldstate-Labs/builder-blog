@@ -67,6 +67,7 @@ test("app shell reuses the page session instead of fetching it again", () => {
   assert.match(globals, /--on-ink:\s*var\(--paper-strong\)/);
   assert.match(globals, /--on-warm:\s*var\(--ink\)/);
   assert.match(globals, /--surface-paper:\s*oklch/);
+  assert.doesNotMatch(globals, /#(?:000|fff)\b/i);
   assert.match(globals, /@media \(prefers-color-scheme:\s*dark\)[\s\S]*--on-accent:\s*var\(--surface-ink\)/);
   assert.match(globals, /@media \(prefers-color-scheme:\s*dark\)[\s\S]*--on-warm:\s*var\(--surface-ink\)/);
   assert.match(globals, /:root\[data-theme="dark"\][\s\S]*--on-accent:\s*var\(--surface-ink\)/);
