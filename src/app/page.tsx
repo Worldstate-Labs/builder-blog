@@ -89,7 +89,7 @@ export default async function Home() {
             </div>
             <div className="fb-demo-search">
               <Search aria-hidden="true" />
-              <span>Search AI Digests</span>
+              <span>Search workspace</span>
             </div>
           </div>
           <div className="fb-product-preview-list">
@@ -107,7 +107,7 @@ export default async function Home() {
               {
                 title: "Search after the read.",
                 detail:
-                  "Find past AI Digests, summarized posts, and followed sources when you need the detail later.",
+                  "Find sources, posts, saved posts, and past AI Digests when you need the detail later.",
               },
             ].map((item) => (
               <article className="fb-signal" key={item.title}>
@@ -152,7 +152,7 @@ export default async function Home() {
               i: "03",
               icon: Search,
               title: "Search and revisit",
-              copy: "Open the original posts behind each summary and search past AI Digests later.",
+              copy: "Open the original posts behind each summary and search sources, posts, saved posts, and AI Digests later.",
             },
           ].map(({ i, icon: Icon, title, copy }) => (
             <li key={title} className="fb-public-step-row">
