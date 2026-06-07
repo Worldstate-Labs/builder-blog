@@ -799,7 +799,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /No followed sources yet/);
   assert.match(followingSection, /No posts have been fetched for your followed sources yet/);
   assert.match(followingSection, /No unread recommendations yet/);
-  assert.match(followingSection, /Ask your Local Agent to fetch and summarize them/);
+  assert.match(followingSection, /Ask your Local Agent to fetch and summarize your followed sources/);
+  assert.doesNotMatch(followingSection, /fetch and summarize them/);
   assert.match(followingSection, /<SkillPromptActions[\s\S]*context="library"/);
   assert.match(followingSection, /showStop=\{false\}/);
   assert.match(followingSection, /href="\/builders"/);

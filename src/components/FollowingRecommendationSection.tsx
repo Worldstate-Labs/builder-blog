@@ -129,7 +129,7 @@ function FollowingUnavailable({
       <FeedEmptyState
         actions={<FetchSourcesPrompt sourceReadiness={sourceReadiness} />}
         ariaLive="polite"
-        body="Ask your Local Agent to fetch and summarize them, then Following recommendations can appear."
+        body="Ask your Local Agent to fetch and summarize your followed sources, then Following recommendations can appear."
         className="is-actionable"
         title="No posts have been fetched for your followed sources yet"
       />
