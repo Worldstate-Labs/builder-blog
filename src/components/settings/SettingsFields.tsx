@@ -490,7 +490,7 @@ export function SaveStatus({
 
   return (
     <span className="settings-save-status is-error" role="alert">
-      {status.message ?? "Save failed"}
+      {status.message ?? "Could not save changes."}
     </span>
   );
 }

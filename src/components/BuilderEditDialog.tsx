@@ -107,7 +107,7 @@ export function BuilderEditDialog({
         // name, sourceType, sourceUrl, etc.
         router.refresh();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Save failed.");
+        setError(err instanceof Error ? err.message : "Could not save source.");
       }
     });
   }

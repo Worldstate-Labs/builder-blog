@@ -102,7 +102,7 @@ export function AdminDigestConfigForm({
       } catch (error) {
         setStatus({
           kind: "error",
-          message: error instanceof Error ? error.message : "Save failed",
+          message: error instanceof Error ? error.message : "Could not save AI Digest prompts.",
         });
       }
     });

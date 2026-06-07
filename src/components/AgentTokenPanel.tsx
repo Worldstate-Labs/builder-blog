@@ -59,7 +59,7 @@ export function describeMachine(token: AgentTokenListItem): string {
 
 function describeAccessDevice(token: AgentTokenListItem): string {
   const os = prettyOs(token.lastPlatform);
-  if (os && isPhoneLikeToken(token)) return os;
+  if (os && isPhoneLikeToken(token)) return withPhoneDeviceName(os, token.lastUserAgent);
 
   const machineLabel = describeMachine(token);
   if (machineLabel !== "unknown machine") return machineLabel;
@@ -69,6 +69,13 @@ function describeAccessDevice(token: AgentTokenListItem): string {
 
   const tokenName = token.name.trim();
   return tokenName || "Unknown device";
+}
+
+function withPhoneDeviceName(os: string, ua: string | null): string {
+  const lower = `${os} ${ua ?? ""}`.toLowerCase();
+  if (lower.includes("iphone") && !/\biphone\b/i.test(os)) return `${os} iPhone`;
+  if (lower.includes("ipad") && !/\bipad\b/i.test(os)) return `${os} iPad`;
+  return os;
 }
 
 function summarizeUserAgent(ua: string | null): string {

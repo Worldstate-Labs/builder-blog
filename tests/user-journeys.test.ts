@@ -2774,12 +2774,16 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(digestForm, /\/api\/settings\/digest-config/);
   assert.match(digestForm, /AI Digest prompts/);
   assert.match(digestForm, /selected AI Digest language/);
+  assert.match(digestForm, /Could not save AI Digest prompts\./);
   assert.doesNotMatch(digestForm, /title="Digest prompts"|selected digest language/);
+  assert.doesNotMatch(digestForm, /Save failed/);
   assert.doesNotMatch(digestForm, /OrderedChoiceField/);
   assert.doesNotMatch(digestForm, /knownSourceIds/);
   assert.doesNotMatch(digestForm, /digestOrder/);
   assert.doesNotMatch(settingsPage, /knownSourceIds/);
   assert.match(commonSummaryRulesForm, /commonFetchRules/);
+  assert.match(commonSummaryRulesForm, /Could not save \$\{title\.toLowerCase\(\)\}\./);
+  assert.doesNotMatch(commonSummaryRulesForm, /Save failed/);
   assert.match(commonSummaryRulesForm, /commonSummaryRules/);
   assert.match(commonSummaryRulesForm, /\/api\/settings\/digest-config/);
   assert.doesNotMatch(digestForm, /commonSummaryRules/);

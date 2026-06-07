@@ -404,6 +404,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(settingsFields, /className="settings-choice-list"/);
   assert.match(settingsFields, /className="settings-footer-bar"/);
   assert.match(settingsFields, /className="settings-save-status is-saved"/);
+  assert.match(settingsFields, /Could not save changes\./);
+  assert.doesNotMatch(settingsFields, /Save failed/);
   assert.doesNotMatch(settingsFields, /style=\{\{/);
   assert.doesNotMatch(settingsFields, /className="settings-section mt-7/);
   assert.doesNotMatch(settingsFields, /className="settings-field block text-sm/);
@@ -414,6 +416,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /PER_SOURCE_SUMMARY_PROMPT_PLACEHOLDER/);
   assert.match(adminDigestConfig, /AI Digest prompts/);
   assert.match(adminDigestConfig, /selected AI Digest language/);
+  assert.match(adminDigestConfig, /Could not save AI Digest prompts\./);
+  assert.doesNotMatch(adminDigestConfig, /Save failed/);
   assert.doesNotMatch(adminDigestConfig, /title="Digest prompts"|selected digest language/);
   assert.match(adminDigestConfig, /headlinePrompt/);
   assert.match(adminDigestConfig, /perSourceSummaryPrompt/);
@@ -433,6 +437,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /FETCH_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /SUMMARY_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /How each item from this source is written as a per-post summary/);
+  assert.match(adminSourceTypeManager, /Could not save source type settings\./);
+  assert.doesNotMatch(adminSourceTypeManager, /Save failed/);
   assert.doesNotMatch(adminSourceTypeManager, /turned into a brief/);
   assert.match(adminSourceTypeManager, /placeholder="Example: 200"/);
   assert.match(adminSourceTypeManager, /placeholder="Example: 0\.35"/);
@@ -1858,6 +1864,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderFeedItems, /Latest \{|formatCompactDate|hour:\s*"numeric"|minute:\s*"2-digit"/);
   assert.match(builderFeedItems, /function formatPostDate/);
   assert.match(builderFeedItems, /className="builder-post-loading-line"/);
+  assert.match(builderEditDialog, /Could not save source\./);
+  assert.doesNotMatch(builderEditDialog, /Save failed\./);
   assert.match(builderFeedItems, /className="builder-post-loading-card"/);
   assert.match(builderFeedItems, /className="builder-post-state builder-post-state--error"/);
   assert.match(builderFeedItems, /@\/components\/EmptyState/);
@@ -2668,7 +2676,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /aria-label=\{`\$\{tokenLabel\}\. \$\{statusLabel\}`\}/);
   assert.match(tokenPanel, /aria-label=\{`Revoke access for \$\{tokenLabel\}`\}/);
   assert.match(tokenPanel, /\\b\(ios\|iphone\|ipad\)\\b/);
-  assert.match(tokenPanel, /if \(os && isPhoneLikeToken\(token\)\) return os/);
+  assert.match(tokenPanel, /if \(os && isPhoneLikeToken\(token\)\) return withPhoneDeviceName\(os, token\.lastUserAgent\)/);
+  assert.match(tokenPanel, /function withPhoneDeviceName/);
+  assert.match(tokenPanel, /return `\$\{os\} iPhone`/);
   assert.match(tokenPanel, /iOS\$\{iosVersion \? ` \$\{iosVersion\.replaceAll\("_", "\."\)\}` : ""\} iPhone/);
   assert.match(tokenPanel, /function describeAccessDevice/);
   assert.match(tokenPanel, /const machineLabel = describeMachine\(token\)/);
@@ -2699,14 +2709,14 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*16px/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*background:\s*var\(--paper-strong\)/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*5\.75rem/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*4\.75rem/);
   assert.match(globals, /\.access-key-device-icon svg\s*{[\s\S]*height:\s*1\.5rem/);
-  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*2\.5rem/);
+  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*2\.25rem/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*5rem/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*4\.5rem/);
   assert.doesNotMatch(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*grid-column:\s*1 \/ -1/);
   assert.match(globals, /\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*border-radius:\s*16px/);
-  assert.match(globals, /\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*height:\s*5\.75rem/);
+  assert.match(globals, /\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*height:\s*4\.75rem/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.access-keys-empty\s*{\s*margin:\s*0;\s*}/);
   assert.match(globals, /\.settings-dialog-stack/);
