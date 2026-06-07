@@ -2248,9 +2248,13 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(visibilityToggle, /"use client"/);
   assert.match(visibilityToggle, /fetch\("\/api\/library-hub\/personal-availability"/);
   assert.match(visibilityToggle, /library-visibility-toggle/);
+  assert.match(visibilityToggle, /useId/);
   assert.match(visibilityToggle, /className="hub-share-control"/);
   assert.match(visibilityToggle, /className="hub-share-button"/);
+  assert.match(visibilityToggle, /aria-describedby=\{disabled \? disabledReasonId : undefined\}/);
   assert.match(visibilityToggle, /className="hub-share-label"/);
+  assert.match(visibilityToggle, /className="hub-share-disabled"/);
+  assert.match(visibilityToggle, /Add a source to share\./);
   assert.match(visibilityToggle, /className="hub-share-error"/);
   assert.match(visibilityToggle, /Shared on Hub/);
   assert.match(visibilityToggle, /Community source library on Hub/);
@@ -2361,6 +2365,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(globals, /\.hub-share-control\s*{[\s\S]*align-items:\s*flex-end/);
   assert.match(globals, /\.hub-share-button\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.hub-share-label\s*{[\s\S]*font-size:\s*0\.75rem/);
+  assert.match(globals, /\.hub-share-disabled\s*{[\s\S]*color:\s*var\(--muted\)/);
   assert.match(globals, /\.hub-share-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.doesNotMatch(globals, /\.builder-library-bulk-action\s*{/);
   assert.match(globals, /\.builder-library-action-error\s*{[\s\S]*color:\s*var\(--danger\)/);

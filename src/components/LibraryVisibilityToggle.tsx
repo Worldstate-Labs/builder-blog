@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 
 type LibraryVisibilityToggleProps = {
   compact?: boolean;
@@ -17,6 +17,7 @@ export function LibraryVisibilityToggle({
   isAdminLibrary = false,
   name,
 }: LibraryVisibilityToggleProps) {
+  const disabledReasonId = useId();
   const [isPublic, setIsPublic] = useState(initialIsPublic);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -53,6 +54,7 @@ export function LibraryVisibilityToggle({
     return (
       <div className="hub-share-control">
         <button
+          aria-describedby={disabled ? disabledReasonId : undefined}
           aria-busy={isPending}
           aria-pressed={isPublic}
           className="hub-share-button"
@@ -68,6 +70,11 @@ export function LibraryVisibilityToggle({
         {error ? (
           <span className="hub-share-error" role="status">
             {error}
+          </span>
+        ) : null}
+        {disabled ? (
+          <span className="hub-share-disabled" id={disabledReasonId}>
+            Add a source to share.
           </span>
         ) : null}
       </div>

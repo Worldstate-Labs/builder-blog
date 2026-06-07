@@ -5798,10 +5798,18 @@ svg.lucide {
   font-weight: 650;
 }
 
+.hub-share-disabled,
 .hub-share-error {
-  color: var(--danger);
   font-size: 0.65625rem;
   line-height: 1.35;
+}
+
+.hub-share-disabled {
+  color: var(--muted);
+}
+
+.hub-share-error {
+  color: var(--danger);
 }
 
 /* Skill prompt row */
