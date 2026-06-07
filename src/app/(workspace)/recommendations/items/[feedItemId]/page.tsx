@@ -85,6 +85,7 @@ export default async function RecommendationItemPage({
             ? {
                 id: item.builder.id,
                 entityId: item.builder.entityId,
+                avatarUrl: item.builder.avatarUrl,
                 name: item.builder.name,
                 kind: item.builder.kind,
                 sourceType: item.builder.sourceType,

@@ -42,6 +42,7 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.doesNotMatch(detailPage, /Back to feed/);
   assert.match(detailPage, /href="\/dashboard\?tab=following"/);
   assert.match(detailPage, /feedRead\.create/);
+  assert.match(detailPage, /avatarUrl:\s*item\.builder\.avatarUrl/);
   assert.match(detailPage, /item\.body/);
   assert.doesNotMatch(feed, /filter\(\(entry\) => entry\.item\.id !== feedItemId\)/);
 });

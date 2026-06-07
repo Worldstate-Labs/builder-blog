@@ -1969,6 +1969,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(recommendationItemPage, /button-light button-compact reading-back-link/);
   assert.match(recommendationItemPage, /href="\/dashboard\?tab=following"/);
   assert.match(recommendationItemPage, /showDebugActions=\{false\}/);
+  assert.match(recommendationItemPage, /avatarUrl:\s*item\.builder\.avatarUrl/);
   assert.equal((recommendationItemPage.match(/Following/g) ?? []).length, 1);
   assert.doesNotMatch(recommendationItemPage, /Back to feed/);
   assert.doesNotMatch(recommendationItemPage, /extraActions=/);
