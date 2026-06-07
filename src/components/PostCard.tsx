@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useId, useRef, useState } from "react";
-import { ExternalLink, FileText, ScrollText } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { ChevronDown, ExternalLink, FileText, ScrollText } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { SourceBadge } from "@/components/SourceBadge";
 import { FetchMethodPopover } from "@/components/FetchMethodPopover";
@@ -78,16 +78,17 @@ export function PostCard({
   variant?: "card" | "row" | "detail";
 }) {
   const [summaryExpanded, setSummaryExpanded] = useState(false);
+  const [summaryCanExpand, setSummaryCanExpand] = useState(false);
   const [originalSummaryExpanded, setOriginalSummaryExpanded] = useState(false);
   const [rawExpanded, setRawExpanded] = useState(false);
   const hydrated = useHydrated();
   const interactionSentRef = useRef(false);
+  const summaryTextRef = useRef<HTMLParagraphElement | null>(null);
   const builder = post.builder ?? fallbackBuilder ?? null;
   const isDetail = variant === "detail";
   const summary = normalizedText(post.summary) || normalizedText(post.body);
   const originalSummary = normalizedText(post.originalSummary);
-  const summaryPreview = previewWords(summary, 200);
-  const hasMoreSummary = summaryPreview !== summary;
+  const hasLikelyLongSummary = summaryNeedsExpansion(summary);
   const title = post.title || firstLine(post.body);
   const actionContext = compactActionContext(title);
   const summaryIdBase = useId();
@@ -96,6 +97,26 @@ export function PostCard({
   const summaryTextId = `${summaryIdBase}-summary`;
   const rawRegionId = `${rawIdBase}-raw-content`;
   const originalSummaryRegionId = `${originalSummaryIdBase}-original-summary`;
+  const hasMoreSummary = summaryCanExpand || hasLikelyLongSummary;
+
+  useEffect(() => {
+    if (isDetail) return;
+    const node = summaryTextRef.current;
+    if (!node) return;
+
+    const updateOverflow = () => {
+      if (summaryExpanded) return;
+      const hasRenderedOverflow = node.scrollHeight > node.clientHeight + 1;
+      setSummaryCanExpand(hasRenderedOverflow);
+    };
+
+    updateOverflow();
+    if (typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(updateOverflow);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasLikelyLongSummary, isDetail, summary, summaryExpanded]);
 
   function noteInteraction() {
     if (!onInteract || interactionSentRef.current) return;
@@ -193,9 +214,15 @@ export function PostCard({
             {post.body}
           </div>
         ) : (
-          <div className="fetched-post-summary post-summary">
-            <p className="fetched-post-summary-text" id={summaryTextId}>
-              {summaryExpanded ? summary : summaryPreview}
+          <div
+            className={`fetched-post-summary post-summary${hasMoreSummary ? " post-summary--expandable" : ""}${summaryExpanded ? " post-summary--expanded" : ""}`}
+          >
+            <p
+              className="fetched-post-summary-text"
+              id={summaryTextId}
+              ref={summaryTextRef}
+            >
+              {summary}
             </p>
             {hasMoreSummary ? (
               <button
@@ -212,7 +239,8 @@ export function PostCard({
                 }}
                 type="button"
               >
-                {summaryExpanded ? "See less" : "See more"}
+                <span>{summaryExpanded ? "See less" : "See more"}</span>
+                <ChevronDown aria-hidden="true" className="post-summary-toggle-icon" />
               </button>
             ) : null}
           </div>
@@ -361,8 +389,10 @@ function normalizedText(value: string | null | undefined) {
   return value?.trim() ?? "";
 }
 
-function previewWords(value: string, maxWords: number) {
-  const words = value.trim().split(/\s+/).filter(Boolean);
-  if (words.length <= maxWords) return value;
-  return `${words.slice(0, maxWords).join(" ")}...`;
+function summaryNeedsExpansion(value: string) {
+  const text = value.trim();
+  if (!text) return false;
+  const visibleLineCount = text.split(/\r?\n/).filter((line) => line.trim()).length;
+  if (visibleLineCount > 4) return true;
+  return Array.from(text).length > 260;
 }

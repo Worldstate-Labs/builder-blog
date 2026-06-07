@@ -214,6 +214,8 @@ test("post card action controls include the post title in accessible names", () 
   assert.match(html, /aria-label="Summary method: Contextual Button Labels"/);
   assert.match(html, /aria-label="View original summary: Contextual Button Labels"/);
   assert.match(html, /aria-controls="[^"]+-summary"/);
+  assert.match(html, /post-summary--expandable/);
+  assert.match(html, /post-summary-toggle-icon/);
   assert.match(html, /aria-controls="[^"]+-raw-content"/);
   assert.match(html, /aria-controls="[^"]+-original-summary"/);
   assert.match(html, /aria-expanded="false"/);
