@@ -36,7 +36,7 @@ export default async function Home() {
           </p>
           <div className="fb-public-actions">
             <Link className="fb-btn dark" href="/login">
-              Open workspace
+              Sign in to workspace
             </Link>
             <a className="fb-btn light" href="#how-it-works">
               See workflow
