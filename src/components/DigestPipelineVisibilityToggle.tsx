@@ -36,9 +36,15 @@ export function DigestPipelineVisibilityToggle({
     });
   }
 
+  const label = shared ? "Shared on Hub" : "Share to Hub";
+  const actionLabel = shared
+    ? "Stop sharing AI Digest archive on Hub"
+    : "Share AI Digest archive to Hub";
+
   return (
     <div className="hub-share-control">
       <button
+        aria-label={actionLabel}
         aria-busy={isPending}
         aria-pressed={shared}
         className="hub-share-button"
@@ -47,7 +53,7 @@ export function DigestPipelineVisibilityToggle({
         type="button"
       >
         <span className="hub-share-label">
-          Share to Hub
+          {label}
         </span>
         <span className={`fb-toggle${shared ? " on" : ""}`} aria-hidden="true" />
       </button>

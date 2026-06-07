@@ -51,9 +51,19 @@ export function LibraryVisibilityToggle({
   }
 
   if (compact) {
+    const compactLabel = isPublic
+      ? isAdminLibrary
+        ? "Community on Hub"
+        : "Shared on Hub"
+      : "Share to Hub";
+    const actionLabel = isPublic
+      ? "Stop sharing source library on Hub"
+      : "Share source library to Hub";
+
     return (
       <div className="hub-share-control">
         <button
+          aria-label={actionLabel}
           aria-describedby={disabled ? disabledReasonId : undefined}
           aria-busy={isPending}
           aria-pressed={isPublic}
@@ -63,7 +73,7 @@ export function LibraryVisibilityToggle({
           type="button"
         >
           <span className="hub-share-label">
-            Share to Hub
+            {compactLabel}
           </span>
           <span className={`fb-toggle${isPublic ? " on" : ""}`} aria-hidden="true" />
         </button>

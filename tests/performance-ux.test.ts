@@ -3077,8 +3077,12 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(visibilityToggle, /useId/);
   assert.match(visibilityToggle, /className="hub-share-control"/);
   assert.match(visibilityToggle, /className="hub-share-button"/);
+  assert.match(visibilityToggle, /aria-label=\{actionLabel\}/);
   assert.match(visibilityToggle, /aria-describedby=\{disabled \? disabledReasonId : undefined\}/);
   assert.match(visibilityToggle, /className="hub-share-label"/);
+  assert.match(visibilityToggle, /const compactLabel = isPublic/);
+  assert.match(visibilityToggle, /Stop sharing source library on Hub/);
+  assert.match(visibilityToggle, /Share source library to Hub/);
   assert.match(visibilityToggle, /className="hub-share-disabled"/);
   assert.match(visibilityToggle, /Add a source to share\./);
   assert.match(visibilityToggle, /className="hub-share-error"/);
@@ -3323,6 +3327,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(digestPipelineForm, /Your digest/);
   assert.doesNotMatch(digestPipelineForm, /pipeline\.owned \? \(/);
   assert.match(digestPipelineVisibilityToggle, /Share to Hub/);
+  assert.match(digestPipelineVisibilityToggle, /Shared on Hub/);
+  assert.match(digestPipelineVisibilityToggle, /aria-label=\{actionLabel\}/);
+  assert.match(digestPipelineVisibilityToggle, /Stop sharing AI Digest archive on Hub/);
+  assert.match(digestPipelineVisibilityToggle, /Share AI Digest archive to Hub/);
   assert.match(digestPipelineVisibilityToggle, /fetch\("\/api\/digest-pipelines\/share"/);
   assert.match(digestPipelineTitleEditor, /"use client"/);
   assert.match(digestPipelineTitleEditor, /Pencil/);
