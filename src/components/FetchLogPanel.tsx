@@ -816,7 +816,7 @@ function FetchStatusPanel({
           <span className="fb-chip">Stopped</span>
           {cronJob.stoppedAt ? (
             <time
-              className="text-[12.5px] text-[var(--muted-strong)]"
+              className="sync-panel-stopped-time"
               dateTime={cronJob.stoppedAt}
               title={formatAbsolute(cronJob.stoppedAt)}
             >
@@ -893,7 +893,7 @@ function FetchStatusPanel({
             <CountMetric label="Waiting" tone="waiting" value={waitingCount} />
           </div>
           {problemCount > 0 ? (
-            <p className="mt-2 text-[12.5px] leading-relaxed" style={{ color: statusTone.color }}>
+            <p className="sync-panel-status-note" style={{ color: statusTone.color }}>
               {problemDetail}
             </p>
           ) : null}
@@ -961,13 +961,17 @@ function cronSlotLabel(status: CronSlotStatus): string {
 
 function CronSlotBar({ onSelect, slot }: { onSelect: () => void; slot: CronSlot }) {
   const style = cronSlotStyle(slot.status);
-  const height =
-    slot.status === "ok" ? "h-12" : slot.status === "waiting" || slot.status === "running" ? "h-8" : "h-10";
+  const heightClass =
+    slot.status === "ok"
+      ? "is-tall"
+      : slot.status === "waiting" || slot.status === "running"
+        ? "is-short"
+        : "is-medium";
   const label = cronSlotLabel(slot.status);
   return (
     <button
       aria-label={`${label} scheduled fetch run at ${formatAbsolute(slot.expectedAt)}`}
-      className={`block min-w-0 flex-1 cursor-pointer rounded-sm border ${height} transition hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]`}
+      className={`sync-panel-slot-bar ${heightClass}`}
       onClick={onSelect}
       style={{
         background: style.background,
@@ -993,10 +997,10 @@ function CronSlotRow({
   const label = cronSlotLabel(slot.status);
   return (
     <div
-      className="flex flex-wrap items-center justify-between gap-2 rounded-[7px] px-1 py-1 text-[12.5px] target:bg-[var(--accent-soft)]"
+      className="sync-panel-slot-row"
       id={slotDomId(slot)}
     >
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="sync-panel-slot-row-main">
         <span
           className="fb-chip"
           style={{ background: style.background, borderColor: style.border, color: style.color }}
@@ -1004,15 +1008,15 @@ function CronSlotRow({
           {label}
         </span>
         <time
-          className="text-[var(--ink)]"
+          className="sync-panel-slot-row-time"
           dateTime={slot.expectedAt}
           title={formatAbsolute(slot.expectedAt)}
         >
           {hydrated ? formatRelative(slot.expectedAt) : formatAbsolute(slot.expectedAt)}
         </time>
       </div>
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="mono truncate text-[11.5px] text-[var(--muted-strong)]">
+      <div className="sync-panel-slot-row-side">
+        <span className="mono sync-panel-slot-row-note">
           {slot.jobRun && !slot.run
             ? `${jobRunStatusLabel(slot.jobRun)} · ${slot.jobRun.runtime || "Local Agent"}`
             : slot.run
@@ -1082,7 +1086,7 @@ function FetchRunList({
               {expanded ? (
                 "See less"
               ) : (
-                <span className="inline-flex items-center gap-2">
+                <span className="sync-panel-see-more-label">
                   See more
                   <CountBadge value={entries.length - VISIBLE_RUN_LIMIT} />
                 </span>
@@ -1205,7 +1209,7 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
         </span>
         {inflight ? (
           <span
-            className="fb-chip inline-flex items-center gap-1.5"
+            className="fb-chip sync-panel-live-chip"
             style={{
               background: "var(--warm-soft)",
               color: "color-mix(in oklch, var(--warm) 68%, var(--ink))",

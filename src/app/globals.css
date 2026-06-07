@@ -5376,6 +5376,11 @@ svg.lucide {
   font-weight: 650;
 }
 
+.sync-panel-stopped-time {
+  color: var(--muted-strong);
+  font-size: 0.78125rem;
+}
+
 .sync-panel-status-graph {
   align-items: end;
   display: flex;
@@ -5499,6 +5504,20 @@ svg.lucide {
   border-radius: 999px;
   height: 0.375rem;
   width: 0.375rem;
+}
+
+.sync-panel-live-chip,
+.sync-panel-see-more-label {
+  align-items: center;
+  display: inline-flex;
+}
+
+.sync-panel-live-chip {
+  gap: 0.375rem;
+}
+
+.sync-panel-see-more-label {
+  gap: 0.5rem;
 }
 
 @keyframes sync-panel-live-dot-pulse {

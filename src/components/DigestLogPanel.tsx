@@ -747,7 +747,7 @@ function DigestRunList({
               {expanded ? (
                 "See less"
               ) : (
-                <span className="inline-flex items-center gap-2">
+                <span className="sync-panel-see-more-label">
                   See more
                   <CountBadge value={entries.length - VISIBLE_RUN_LIMIT} />
                 </span>
