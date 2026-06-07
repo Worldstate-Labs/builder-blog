@@ -7,6 +7,7 @@ const defaultTimelineSnapshotLimit = 3;
 type RecommendationBuilder = {
   id: string;
   entityId: string | null;
+  avatarUrl: string | null;
   name: string;
   handle: string | null;
   kind: BuilderKind;
@@ -204,6 +205,7 @@ export async function createRecommendationSnapshot({
           select: {
             id: true,
             entityId: true,
+            avatarUrl: true,
             name: true,
             handle: true,
             kind: true,
@@ -238,6 +240,7 @@ export async function createRecommendationSnapshot({
               select: {
                 id: true,
                 entityId: true,
+                avatarUrl: true,
                 name: true,
                 handle: true,
                 kind: true,
@@ -282,6 +285,7 @@ export async function createRecommendationSnapshot({
         select: {
           id: true,
           entityId: true,
+          avatarUrl: true,
           name: true,
           handle: true,
           kind: true,
@@ -426,6 +430,7 @@ async function buildAndSaveSnapshot({
     builder: {
       id: string;
       entityId: string | null;
+      avatarUrl: string | null;
       name: string;
       handle: string | null;
       kind: BuilderKind;
@@ -452,6 +457,7 @@ async function buildAndSaveSnapshot({
       builder: {
         id: string;
         entityId: string | null;
+        avatarUrl: string | null;
         name: string;
         handle: string | null;
         kind: BuilderKind;

@@ -200,6 +200,7 @@ export async function getFavoriteSnapshot(userId: string): Promise<Recommendatio
           ? {
               id: favorite.feedItem!.builder.id,
               entityId: favorite.feedItem!.builder.entityId,
+              avatarUrl: favorite.feedItem!.builder.avatarUrl,
               name: favorite.feedItem!.builder.name,
               sourceType: favorite.feedItem!.builder.sourceType,
               kind: favorite.feedItem!.builder.kind,

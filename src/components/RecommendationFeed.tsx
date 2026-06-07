@@ -27,6 +27,7 @@ export type RecommendationFeedEntry = {
     builder: {
       id: string;
       entityId: string | null;
+      avatarUrl: string | null;
       name: string;
       sourceType: string;
       kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";

@@ -32,6 +32,9 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.match(postCard, /Raw content/);
   assert.match(feed, /mode = "following"/);
   assert.match(feed, /onInteract=\{isFavoritesTab \? undefined : \(\) => markRead\(entry\.item\.id\)\}/);
+  assert.match(postCard, /SourceAvatar/);
+  assert.match(postCard, /className="post-meta-author"/);
+  assert.match(postCard, /className="post-meta-avatar"/);
   assert.match(postCard, /post-meta-author-link[\s\S]*onClick=\{noteInteraction\}/);
   assert.match(postCard, /className="post-actions"[\s\S]*onClickCapture=\{noteInteraction\}/);
   assert.match(detailPage, /ChevronLeft/);
@@ -141,6 +144,7 @@ test("source logos are shared across recommendation and library surfaces", () =>
   assert.match(source("src/components/SourceBadge.tsx"), /aria-label=\{!shouldShowLabel && !labelSuppressedByDuplicate \? source\.label : undefined\}/);
   assert.match(source("src/components/SourceBadge.tsx"), /sameDisplayLabel\(source\.label, suppressLabelWhen\)/);
   assert.match(source("src/components/PostCard.tsx"), /SourceBadge/);
+  assert.match(source("src/components/PostCard.tsx"), /SourceAvatar/);
   assert.match(source("src/components/PostCard.tsx"), /suppressLabelWhen=\{authorName\}/);
   assert.match(source("src/components/PostCard.tsx"), /export function PostCard/);
   assert.match(source("src/components/FetchedPostCard.tsx"), /PostCard as FetchedPostCard/);

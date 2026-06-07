@@ -59,6 +59,7 @@ function serializeRecommendation(
         ? {
             id: result.item.builder.id,
             entityId: result.item.builder.entityId,
+            avatarUrl: result.item.builder.avatarUrl,
             name: result.item.builder.name,
             sourceType: result.item.builder.sourceType,
             kind: result.item.builder.kind,

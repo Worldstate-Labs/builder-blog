@@ -6,6 +6,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ChevronDown, ExternalLink, FileText, ScrollText } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { SourceBadge } from "@/components/SourceBadge";
+import { SourceAvatar } from "@/components/SourceAvatar";
 import { FetchMethodPopover } from "@/components/FetchMethodPopover";
 import { RecommendationReasonsPopover } from "@/components/RecommendationReasonsPopover";
 import { useHydrated } from "@/components/ThemeToggle";
@@ -13,6 +14,7 @@ import { useHydrated } from "@/components/ThemeToggle";
 type FetchedPostBuilder = {
   id: string;
   entityId?: string | null;
+  avatarUrl?: string | null;
   name: string;
   kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";
   sourceType: string;
@@ -131,6 +133,15 @@ export function PostCard({
     : null;
 
   const authorName = builder?.name ?? post.sourceName ?? null;
+  const authorAvatarSource = authorName
+    ? {
+        avatarUrl: builder?.avatarUrl ?? null,
+        fetchUrl: builder?.fetchUrl ?? null,
+        name: authorName,
+        sourceType: builder?.sourceType ?? post.sourceType ?? "website",
+        sourceUrl: builder?.sourceUrl ?? post.url ?? null,
+      }
+    : null;
   const hasAlternateChannels = Boolean(post.alternateChannelCount && post.alternateChannelCount > 0);
   const showMetaRow = Boolean(
     (showBuilderRow && authorName) ||
@@ -161,13 +172,22 @@ export function PostCard({
           <div className="post-meta">
             {showBuilderRow && authorName ? (
               <>
-                {authorHref ? (
-                  <Link className="post-meta-author-link" href={authorHref} onClick={noteInteraction}>
-                    {authorName}
-                  </Link>
-                ) : (
-                  <span className="post-meta-author-link">{authorName}</span>
-                )}
+                <span className="post-meta-author">
+                  {authorAvatarSource ? (
+                    <SourceAvatar
+                      className="post-meta-avatar"
+                      imageSize={24}
+                      source={authorAvatarSource}
+                    />
+                  ) : null}
+                  {authorHref ? (
+                    <Link className="post-meta-author-link" href={authorHref} onClick={noteInteraction}>
+                      {authorName}
+                    </Link>
+                  ) : (
+                    <span className="post-meta-author-link">{authorName}</span>
+                  )}
+                </span>
                 {(showSourceBadge || hasAlternateChannels || dataRead || extraMeta) ? (
                   <span className="post-meta-dot" aria-hidden="true">·</span>
                 ) : null}

@@ -1441,7 +1441,6 @@ svg.lucide {
   justify-content: flex-end;
 }
 
-/* New layout classes */
 .post-meta {
   align-items: center;
   color: var(--muted);
@@ -1449,10 +1448,27 @@ svg.lucide {
   flex-wrap: wrap;
   font-size: 0.72rem;
   font-weight: 800;
-  gap: 0.3rem 0.5rem;
+  gap: 0.32rem 0.48rem;
   letter-spacing: 0.06em;
-  margin-top: 0.45rem;
+  margin-top: 0.58rem;
   text-transform: uppercase;
+}
+
+.post-meta-author {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.post-meta-avatar.fb-src-icon {
+  border-radius: 999px;
+  flex: 0 0 auto;
+  font-family: var(--font-geist-sans);
+  font-size: 0.6875rem;
+  font-weight: 850;
+  height: 1.5rem;
+  width: 1.5rem;
 }
 
 .post-meta-dot {
@@ -1470,11 +1486,24 @@ svg.lucide {
 .post-meta-author-link {
   color: var(--accent);
   font-weight: 800;
+  overflow-wrap: anywhere;
   text-decoration: none;
 }
 
 .post-meta-author-link:hover {
   text-decoration: underline;
+}
+
+.post-meta .source-badge {
+  background: transparent;
+  font-size: 0.6875rem;
+  min-height: 1.52rem;
+  padding: 0.12rem 0.5rem 0.12rem 0.18rem;
+}
+
+.post-meta .source-badge-mark {
+  height: 1.12rem;
+  width: 1.12rem;
 }
 
 .post-summary {
