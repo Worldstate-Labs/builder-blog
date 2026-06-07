@@ -270,9 +270,9 @@ const PROMPT_CONFIG = {
     stopLabel: "Copy stop prompt",
   },
   digest: {
-    title: "Build digest",
+    title: "Build AI Digest",
     onceLabel: "Copy one-time prompt",
-    cronLabel: "Build digest",
+    cronLabel: "Build AI Digest",
     onceJob: "digest-once",
     cronJob: "digest-cron-setup",
     stopJob: "digest-cron-stop",

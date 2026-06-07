@@ -1244,6 +1244,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /rebuilds past posts/);
   assert.match(digestLogPanel, /all new posts/);
   assert.match(digestLogPanel, /className="sync-panel-schedule-summary"/);
+  assert.match(digestLogPanel, /Use Build AI Digest to copy a Local Agent prompt\./);
+  assert.doesNotMatch(digestLogPanel, /Use Build digest to copy a Local Agent prompt\./);
   assert.match(digestLogPanel, /className="sync-panel-column"/);
   assert.match(digestLogPanel, /className="sync-panel-truncate"/);
   assert.match(digestLogPanel, /className="sync-panel-status-note"/);

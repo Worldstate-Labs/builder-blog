@@ -366,7 +366,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /Run the terminal skill/);
   assert.match(skillPromptActions, /Fetch sources/);
   assert.doesNotMatch(skillPromptActions, /Update sources/);
-  assert.match(skillPromptActions, /Build digest/);
+  assert.match(skillPromptActions, /Build AI Digest/);
+  assert.doesNotMatch(skillPromptActions, /Build digest/);
   assert.doesNotMatch(skillPromptActions, /Run or schedule/);
   assert.doesNotMatch(skillPromptActions, /onClick=\{\(\) => copyCommand\("once"\)\}/);
   assert.match(skillPromptActions, /async function copyTextToClipboard/);

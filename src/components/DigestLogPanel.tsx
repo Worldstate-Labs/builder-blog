@@ -427,7 +427,7 @@ function DigestScheduleSummary({
   if (!cronJob) {
     return (
       <p className="sync-panel-schedule-summary">
-        {status.summary} Use Build digest to copy a Local Agent prompt.
+        {status.summary} Use Build AI Digest to copy a Local Agent prompt.
       </p>
     );
   }
