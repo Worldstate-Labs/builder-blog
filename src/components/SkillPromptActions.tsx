@@ -489,7 +489,7 @@ export function SkillPromptActions({
         <div className="fb-skill-text">
           <span className="fb-section-label mr-2">{config.title}</span>
           {context === "digest"
-            ? "Copy a prompt for your Local Agent to build your digest."
+            ? "Copy a prompt for your Local Agent to build your AI Digest."
             : "Copy a prompt for your Local Agent to fetch, summarize, and sync every source."}
         </div>
       ) : null}
@@ -884,7 +884,7 @@ function CronConfigDialog({
           </h2>
           <p className="token-picker-sub">
             {context === "digest"
-              ? "Copy a prompt for your Local Agent to build your digest."
+              ? "Copy a prompt for your Local Agent to build your AI Digest."
               : "Copy a prompt for your Local Agent to fetch, summarize, and sync every source."}
           </p>
         </header>
@@ -932,7 +932,7 @@ function CronConfigDialog({
 
           <SummaryLanguageField
             id="cron-lang"
-            label={context === "digest" ? "Digest language" : "Summary language"}
+            label={context === "digest" ? "AI Digest language" : "Summary language"}
             value={pickedLanguage}
             onChange={setPickedLanguage}
           />

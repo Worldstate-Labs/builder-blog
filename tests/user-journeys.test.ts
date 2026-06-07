@@ -399,7 +399,8 @@ test("web app serves the agent skill and setup command", () => {
   // summary language select persisted via /api/settings/summary-language —
   // now shown for digest as well as library.
   assert.match(skillPromptActions, /Copy a prompt for your Local Agent to fetch, summarize, and sync every source\./);
-  assert.match(skillPromptActions, /Copy a prompt for your Local Agent to build your digest\./);
+  assert.match(skillPromptActions, /Copy a prompt for your Local Agent to build your AI Digest\./);
+  assert.doesNotMatch(skillPromptActions, /build your digest\./);
   assert.doesNotMatch(skillPromptActions, /build new digests|update every source/);
   assert.match(skillPromptActions, /Local Agent/);
   assert.match(skillPromptActions, /Already digested posts can be included again this time\./);
@@ -421,8 +422,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /token-picker-grouplabel">Output/);
   assert.match(skillPromptActions, /cron-field-select/);
   assert.match(skillPromptActions, /Summary language/);
-  assert.match(skillPromptActions, /Digest language/);
-  assert.match(skillPromptActions, /label=\{context === "digest" \? "Digest language" : "Summary language"\}/);
+  assert.match(skillPromptActions, /AI Digest language/);
+  assert.match(skillPromptActions, /label=\{context === "digest" \? "AI Digest language" : "Summary language"\}/);
   assert.match(skillPromptActions, /languageOptions\(value\)/);
   assert.match(skillPromptActions, /const savedLanguage = summaryLanguage \?\? null/);
   assert.match(skillPromptActions, /const initialLanguage = savedLanguage \?\? ORIGINAL_CONTENT_LANGUAGE_VALUE/);
