@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ExternalLink,
   RotateCcw,
   X,
 } from "lucide-react";
@@ -15,6 +14,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { SearchForm, type SearchTypeFilter } from "@/components/SearchForm";
 import { SourceAvatar } from "@/components/SourceAvatar";
+import { SourceBadge } from "@/components/SourceBadge";
 import { getCurrentSession } from "@/lib/auth";
 import { searchUserLibrary } from "@/lib/user-search";
 import {
@@ -673,15 +673,14 @@ function ResultCard({
         {result.date ? <span>{formatDistanceToNow(result.date, { addSuffix: true })}</span> : null}
         {originalUrl ? (
           <a
-            aria-label={`View ${result.title} on its source site`}
-            className="post-read-original"
+            aria-label={`Open ${result.title} on its source site`}
+            className="post-source-original"
             href={originalUrl}
             rel="noreferrer"
             target="_blank"
-            title="View original"
+            title="Open original source"
           >
-            View original
-            <ExternalLink aria-hidden="true" className="post-read-original-icon" />
+            <SourceBadge sourceType={result.sourceType ?? result.type} />
           </a>
         ) : null}
       </div>

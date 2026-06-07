@@ -31,6 +31,7 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.match(postCard, /data-read/);
   assert.match(postCard, /data-stack-actions/);
   assert.match(postCard, /Raw content/);
+  assert.match(postCard, /showRawContent = true/);
   assert.doesNotMatch(feed, /mode = "following"|isFavoritesTab/);
   assert.match(feed, /onInteract=\{\(\) => markRead\(entry\.item\.id\)\}/);
   assert.match(postCard, /SourceAvatar/);
@@ -138,20 +139,21 @@ test("source logos are shared across recommendation and library surfaces", () =>
   assert.match(source("src/components/PostCard.tsx"), /SourceBadge/);
   assert.match(source("src/components/PostCard.tsx"), /SourceAvatar/);
   assert.match(source("src/components/PostCard.tsx"), /suppressLabelWhen=\{authorName\}/);
+  assert.match(source("src/components/PostCard.tsx"), /const canReadRawContent = !isDetail && showRawContent && Boolean\(rawContent\)/);
   assert.match(source("src/components/PostCard.tsx"), /export function PostCard/);
   assert.match(source("src/components/FetchedPostCard.tsx"), /PostCard as FetchedPostCard/);
   assert.match(source("src/components/RecommendationFeed.tsx"), /PostCard/);
   assert.match(source("src/components/RecentPostsList.tsx"), /PostCard/);
   assert.doesNotMatch(source("src/components/RecentPostsList.tsx"), /variant="row"/);
   assert.doesNotMatch(source("src/components/RecentPostsList.tsx"), /showBuilderRow=\{false\}/);
-  assert.doesNotMatch(source("src/components/RecentPostsList.tsx"), /showDebugActions=\{false\}/);
+  assert.match(source("src/components/PostCard.tsx"), /showDebugActions = false/);
   assert.match(source("src/components/BuilderFeedItems.tsx"), /PostCard/);
   assert.match(source("src/components/BuilderLibraryList.tsx"), /SourceBadge/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceBadge/);
   assert.match(source("src/components/FeedCard.tsx"), /PostCard/);
 });
 
-test("post card avoids duplicate source labels when builder name matches source type", () => {
+test("post card suppresses duplicate source labels in meta while the footer keeps the platform label", () => {
   const html = renderToStaticMarkup(
     createElement(PostCard, {
       post: {
@@ -178,10 +180,11 @@ test("post card avoids duplicate source labels when builder name matches source 
   );
 
   const visibleText = html.replace(/<[^>]*>/g, "");
-  assert.equal((visibleText.match(/Product Hunt Top Products/g) ?? []).length, 1);
+  assert.equal((visibleText.match(/Product Hunt Top Products/g) ?? []).length, 2);
   assert.doesNotMatch(html, /aria-label="Product Hunt Top Products"/);
   assert.match(html, /aria-hidden="true"/);
   assert.match(html, /title="Product Hunt Top Products"/);
+  assert.match(html, /class="post-source-original"/);
 });
 
 test("post card action controls include the post title in accessible names", () => {
@@ -204,20 +207,39 @@ test("post card action controls include the post title in accessible names", () 
     }),
   );
 
-  assert.match(html, /aria-label="View original source: Contextual Button Labels"/);
+  assert.match(html, /aria-label="Open original source: Contextual Button Labels"/);
   assert.match(html, /aria-label="Raw content: Contextual Button Labels"/);
-  assert.match(html, /aria-label="Summary method: Contextual Button Labels"/);
-  assert.match(html, /aria-label="View original summary: Contextual Button Labels"/);
+  assert.doesNotMatch(html, /aria-label="Summary method: Contextual Button Labels"/);
+  assert.doesNotMatch(html, /aria-label="View original summary: Contextual Button Labels"/);
   assert.doesNotMatch(html, /aria-label="Show more summary: Contextual Button Labels"/);
   assert.doesNotMatch(html, /post-summary--expandable/);
   assert.doesNotMatch(html, /post-summary-toggle-icon/);
   assert.doesNotMatch(html, />See more</);
   assert.doesNotMatch(html, />See less</);
   assert.match(html, /aria-controls="[^"]+-raw-content"/);
-  assert.match(html, /aria-controls="[^"]+-original-summary"/);
   assert.match(html, /aria-expanded="false"/);
   assert.doesNotMatch(html, /aria-label="Raw content"/);
   assert.doesNotMatch(html, /aria-label="Summary method"/);
+
+  const adminHtml = renderToStaticMarkup(
+    createElement(PostCard, {
+      post: {
+        id: "feed_contextual_admin_actions",
+        title: "Contextual Button Labels",
+        body: "Fetched raw body.",
+        url: "https://example.com/contextual-button-labels",
+        publishedAt: "2026-06-05T00:00:00.000Z",
+        createdAt: "2026-06-06T00:00:00.000Z",
+        sourceName: "Example",
+        sourceType: "blog",
+        fetchTool: "Codex Desktop (model gpt-5.5) FollowBrief skill fetcher (HTML article)",
+      },
+      reasons: ["Matches followed source"],
+      showDebugActions: true,
+    }),
+  );
+  assert.match(adminHtml, /aria-label="Summary method: Contextual Button Labels"/);
+  assert.match(adminHtml, /aria-label="Why recommended"/);
 });
 
 test("digest renderer uses source link metadata before section heading fallbacks", () => {

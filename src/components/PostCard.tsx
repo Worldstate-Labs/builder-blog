@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
-import { BookOpen, ChevronDown, ExternalLink, FileText, ScrollText } from "lucide-react";
+import { BookOpen, ChevronDown } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { SourceBadge } from "@/components/SourceBadge";
 import { SourceAvatar } from "@/components/SourceAvatar";
@@ -50,8 +50,9 @@ export function PostCard({
   post,
   reasons,
   showBuilderRow = true,
-  showDebugActions = true,
+  showDebugActions = false,
   showPublishedDate = true,
+  showRawContent = true,
   showSourceBadge = true,
   stackActionsOnMobile = false,
   variant = "card",
@@ -74,13 +75,13 @@ export function PostCard({
   showBuilderRow?: boolean;
   showDebugActions?: boolean;
   showPublishedDate?: boolean;
+  showRawContent?: boolean;
   showSourceBadge?: boolean;
   stackActionsOnMobile?: boolean;
   variant?: "card" | "row" | "detail";
 }) {
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [summaryCanExpand, setSummaryCanExpand] = useState(false);
-  const [originalSummaryExpanded, setOriginalSummaryExpanded] = useState(false);
   const [rawExpanded, setRawExpanded] = useState(false);
   const hydrated = useHydrated();
   const interactionSentRef = useRef(false);
@@ -93,10 +94,8 @@ export function PostCard({
   const actionContext = compactActionContext(title);
   const summaryIdBase = useId();
   const rawIdBase = useId();
-  const originalSummaryIdBase = useId();
   const summaryTextId = `${summaryIdBase}-summary`;
   const rawRegionId = `${rawIdBase}-raw-content`;
-  const originalSummaryRegionId = `${originalSummaryIdBase}-original-summary`;
   const hasMoreSummary = summaryCanExpand;
 
   useEffect(() => {
@@ -142,6 +141,12 @@ export function PostCard({
       }
     : null;
   const hasAlternateChannels = Boolean(post.alternateChannelCount && post.alternateChannelCount > 0);
+  const rawContentMode = rawContentModeForSourceType(builder?.sourceType ?? post.sourceType);
+  const rawContent = rawContentMode === "raw_summary"
+    ? originalSummary || summary
+    : post.body;
+  const rawContentLabel = rawContentMode === "raw_summary" ? "Source summary" : "Raw content";
+  const canReadRawContent = !isDetail && showRawContent && Boolean(rawContent);
   const showMetaRow = Boolean(
     (showBuilderRow && authorName) ||
       showSourceBadge ||
@@ -195,7 +200,6 @@ export function PostCard({
             {showSourceBadge ? (
               <SourceBadge
                 builder={builder}
-                suppressLabelWhen={authorName}
                 sourceType={builder?.sourceType ?? post.sourceType ?? null}
               />
             ) : null}
@@ -280,110 +284,77 @@ export function PostCard({
           )}
 
           <div className="post-actions" onClickCapture={noteInteraction}>
-            {post.detailUrl ? (
-              <Link
-                aria-label={actionLabel("Read in FollowBrief", actionContext)}
-                className="post-read-detail"
-                href={post.detailUrl}
-                onClick={noteInteraction}
-                title="Read in FollowBrief"
-              >
-                Read
-                <BookOpen aria-hidden="true" className="post-read-detail-icon" />
-              </Link>
-            ) : null}
-
-            {/* External source action: keep original content one deliberate click away. */}
+            {/* External platform action: the visible label is the source type. */}
             <a
-              aria-label={actionLabel("View original source", actionContext)}
-              className="post-read-original"
+              aria-label={actionLabel("Open original source", actionContext)}
+              className="post-source-original"
               href={post.url}
               onClick={noteInteraction}
               rel="noreferrer"
               target="_blank"
-              title="View the original on its source site"
+              title="Open the original post on its source platform"
             >
-              View original
-              <ExternalLink aria-hidden="true" className="post-read-original-icon" />
+              <SourceBadge
+                builder={builder}
+                suppressLabelWhen={authorName}
+                sourceType={builder?.sourceType ?? post.sourceType ?? null}
+              />
             </a>
 
-            {showDebugActions ? (
-              <>
-                {/* 2. Raw content toggle */}
-                <button
-                  aria-controls={rawRegionId}
-                  aria-label={actionLabel("Raw content", actionContext)}
-                  aria-expanded={rawExpanded}
-                  className={`post-action-btn${rawExpanded ? " post-action-btn--active" : ""}`}
-                  onClick={() => {
-                    setRawExpanded((v) => !v);
-                    if (!rawExpanded) noteInteraction();
-                  }}
-                  title="Raw content"
-                  type="button"
-                >
-                  <FileText className="h-4 w-4" />
-                </button>
-
-                {/* 3. Fetching method popover (also surfaces summarized-at) */}
-                {post.fetchTool || post.createdAt ? (
-                  <FetchMethodPopover
-                    accessibleLabel={actionLabel("Summary method", actionContext)}
-                    fetchTool={post.fetchTool}
-                    summarizedAt={post.createdAt}
-                  />
-                ) : null}
-              </>
-            ) : null}
-
-            {originalSummary ? (
+            {canReadRawContent && post.detailUrl ? (
+              <Link
+                aria-label={actionLabel(rawContentLabel, actionContext)}
+                className="post-raw-content-action"
+                href={post.detailUrl}
+                onClick={noteInteraction}
+                title={rawContentLabel}
+              >
+                Read
+                <BookOpen aria-hidden="true" className="post-raw-content-action-icon" />
+              </Link>
+            ) : canReadRawContent ? (
               <button
-                aria-controls={originalSummaryRegionId}
-                aria-label={actionLabel("View original summary", actionContext)}
-                aria-expanded={originalSummaryExpanded}
-                className={`post-action-btn${originalSummaryExpanded ? " post-action-btn--active" : ""}`}
+                aria-controls={rawRegionId}
+                aria-label={actionLabel(rawContentLabel, actionContext)}
+                aria-expanded={rawExpanded}
+                className={`post-raw-content-action${rawExpanded ? " post-raw-content-action--active" : ""}`}
                 onClick={() => {
-                  setOriginalSummaryExpanded((v) => !v);
-                  if (!originalSummaryExpanded) noteInteraction();
+                  setRawExpanded((v) => !v);
+                  if (!rawExpanded) noteInteraction();
                 }}
-                title="View original summary"
+                title={rawContentLabel}
                 type="button"
               >
-                <ScrollText className="h-4 w-4" />
+                Read
+                <BookOpen aria-hidden="true" className="post-raw-content-action-icon" />
               </button>
             ) : null}
 
-            {/* 4. Recommendation reasons (only when present) */}
-            {reasons && reasons.length > 0 ? (
-              <RecommendationReasonsPopover reasons={reasons} />
+            {extraActions}
+
+            {showDebugActions && (post.fetchTool || post.createdAt) ? (
+              <FetchMethodPopover
+                accessibleLabel={actionLabel("Summary method", actionContext)}
+                fetchTool={post.fetchTool}
+                summarizedAt={post.createdAt}
+              />
             ) : null}
 
-            {extraActions}
+            {showDebugActions && reasons && reasons.length > 0 ? (
+              <RecommendationReasonsPopover reasons={reasons} />
+            ) : null}
           </div>
         </div>
 
-        {/* Original fetch-time summary. Digest summaries may be translated or compressed. */}
-        {originalSummaryExpanded && originalSummary ? (
-          <div
-            className="fetched-post-original-summary"
-            id={originalSummaryRegionId}
-            role="region"
-            aria-label={actionLabel("Original summary", actionContext)}
-          >
-            <div className="fetched-post-original-summary-label">Original summary</div>
-            <p>{originalSummary}</p>
-          </div>
-        ) : null}
-
         {/* Raw content collapsible region */}
-        {rawExpanded ? (
+        {rawExpanded && rawContent ? (
           <div
-            aria-label={actionLabel("Raw content", actionContext)}
+            aria-label={actionLabel(rawContentLabel, actionContext)}
             className="fetched-post-raw"
             id={rawRegionId}
             role="region"
           >
-            {post.body}
+            {rawContent}
           </div>
         ) : null}
       </div>
@@ -416,4 +387,12 @@ function compactActionContext(value: string) {
 
 function normalizedText(value: string | null | undefined) {
   return value?.trim() ?? "";
+}
+
+const rawContentModesBySourceType: Partial<Record<string, "raw_content" | "raw_summary">> = {};
+
+function rawContentModeForSourceType(sourceType: string | null | undefined): "raw_content" | "raw_summary" {
+  const key = sourceType?.trim().toLowerCase();
+  if (!key) return "raw_content";
+  return rawContentModesBySourceType[key] ?? "raw_content";
 }
