@@ -1847,6 +1847,11 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /View original/);
   assert.doesNotMatch(postCard, /whitespace-pre-wrap text-sm leading-6|mt-3 whitespace-pre-wrap rounded-lg|text-link mt-2/);
   assert.match(globals, /\.fetched-post-summary-text\s*{[\s\S]*white-space:\s*pre-wrap/);
+  assert.match(globals, /--post-summary-collapsed-height:\s*calc\(var\(--post-summary-lines\) \* var\(--post-summary-line-height\)\)/);
+  assert.match(globals, /\.post-summary:not\(\.post-summary--expanded\) \.fetched-post-summary-text\s*{/);
+  assert.match(globals, /\.post-summary:not\(\.post-summary--expanded\) \.fetched-post-summary-text\s*{[\s\S]*height:\s*var\(--post-summary-collapsed-height\)/);
+  assert.doesNotMatch(globals, /\.post-summary:not\(\.post-summary--expanded\) \.fetched-post-summary-text\s*{[^}]*-webkit-line-clamp/);
+  assert.doesNotMatch(postCard, /summaryNeedsExpansion|hasLikelyLongSummary|Array\.from\(text\)\.length/);
   assert.match(globals, /\.post-summary-toggle\s*{[\s\S]*height:\s*1\.45rem/);
   assert.match(globals, /@media \(max-width:\s*767px\)\s*{[\s\S]*--post-summary-lines:\s*6/);
   assert.match(globals, /\.fetched-post-raw\s*{[\s\S]*border:\s*1px solid var\(--line\)/);

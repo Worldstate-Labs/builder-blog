@@ -88,7 +88,6 @@ export function PostCard({
   const isDetail = variant === "detail";
   const summary = normalizedText(post.summary) || normalizedText(post.body);
   const originalSummary = normalizedText(post.originalSummary);
-  const hasLikelyLongSummary = summaryNeedsExpansion(summary);
   const title = post.title || firstLine(post.body);
   const actionContext = compactActionContext(title);
   const summaryIdBase = useId();
@@ -97,7 +96,7 @@ export function PostCard({
   const summaryTextId = `${summaryIdBase}-summary`;
   const rawRegionId = `${rawIdBase}-raw-content`;
   const originalSummaryRegionId = `${originalSummaryIdBase}-original-summary`;
-  const hasMoreSummary = summaryCanExpand || hasLikelyLongSummary;
+  const hasMoreSummary = summaryCanExpand;
 
   useEffect(() => {
     if (isDetail) return;
@@ -116,7 +115,7 @@ export function PostCard({
     const observer = new ResizeObserver(updateOverflow);
     observer.observe(node);
     return () => observer.disconnect();
-  }, [hasLikelyLongSummary, isDetail, summary, summaryExpanded]);
+  }, [isDetail, summary, summaryExpanded]);
 
   function noteInteraction() {
     if (!onInteract || interactionSentRef.current) return;
@@ -386,12 +385,4 @@ function compactActionContext(value: string) {
 
 function normalizedText(value: string | null | undefined) {
   return value?.trim() ?? "";
-}
-
-function summaryNeedsExpansion(value: string) {
-  const text = value.trim();
-  if (!text) return false;
-  const visibleLineCount = text.split(/\r?\n/).filter((line) => line.trim()).length;
-  if (visibleLineCount > 6) return true;
-  return Array.from(text).length > 390;
 }

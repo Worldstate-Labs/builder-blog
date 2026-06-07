@@ -1290,6 +1290,7 @@ svg.lucide {
   position: relative;
   --post-summary-lines: 6;
   --post-summary-line-height: 1.5rem;
+  --post-summary-collapsed-height: calc(var(--post-summary-lines) * var(--post-summary-line-height));
 }
 
 .fetched-post-summary-text {
@@ -1297,7 +1298,7 @@ svg.lucide {
   font-size: 0.875rem;
   line-height: var(--post-summary-line-height);
   margin: 0;
-  min-height: calc(var(--post-summary-lines) * var(--post-summary-line-height));
+  min-height: var(--post-summary-collapsed-height);
   white-space: pre-wrap;
 }
 
@@ -1305,12 +1306,11 @@ svg.lucide {
   cursor: default;
 }
 
-.post-summary--expandable:not(.post-summary--expanded) .fetched-post-summary-text {
-  display: -webkit-box;
-  max-height: calc(var(--post-summary-lines) * var(--post-summary-line-height));
+.post-summary:not(.post-summary--expanded) .fetched-post-summary-text {
+  display: block;
+  height: var(--post-summary-collapsed-height);
+  max-height: var(--post-summary-collapsed-height);
   overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: var(--post-summary-lines);
 }
 
 .post-summary--expandable:not(.post-summary--expanded)::after {
