@@ -5,13 +5,11 @@ import { useState, useTransition } from "react";
 import { Trash2 } from "lucide-react";
 
 type LibraryImportRemoveButtonProps = {
-  builderCount: number;
   libraryId: string;
   libraryName: string;
 };
 
 export function LibraryImportRemoveButton({
-  builderCount,
   libraryId,
   libraryName,
 }: LibraryImportRemoveButtonProps) {
@@ -56,7 +54,7 @@ export function LibraryImportRemoveButton({
         type="button"
       >
         <Trash2 className="import-remove-icon" />
-        {isPending ? "Removing" : `Remove ${builderCount}`}
+        {isPending ? "Removing" : "Remove library"}
       </button>
       {error ? (
         <span className="import-remove-error" role="status">

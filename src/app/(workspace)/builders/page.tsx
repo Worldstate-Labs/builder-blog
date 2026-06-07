@@ -711,7 +711,6 @@ async function FetchSourcesSection({
             indented
             action={
               <LibraryImportRemoveButton
-                builderCount={library.builders.length}
                 libraryId={library.id}
                 libraryName={library.name}
               />
