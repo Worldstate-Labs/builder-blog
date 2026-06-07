@@ -591,7 +591,7 @@ export function FetchLogPanel({
       {detailsOpen ? (
         <div id="fetch-sync-details">
           <div
-            aria-label="Source update views"
+            aria-label="Fetch sources views"
             className="fb-segmented-tabs sync-panel-tabs"
             role="tablist"
           >
@@ -649,7 +649,7 @@ function getFetchUpdateStatus(
     return {
       key: "syncing",
       label: "Syncing",
-      summary: "A fetch run is still updating post outcomes.",
+      summary: "A Fetch sources run is still writing post outcomes.",
       style: statusStyle("partial"),
     };
   }
@@ -657,7 +657,7 @@ function getFetchUpdateStatus(
     return {
       key: "not-connected",
       label: "Not connected",
-      summary: "No local fetch schedule has reported yet.",
+      summary: "No Fetch sources schedule has reported yet.",
       style: statusStyle("partial"),
     };
   }
@@ -665,7 +665,7 @@ function getFetchUpdateStatus(
     return {
       key: "stopped",
       label: "Stopped",
-      summary: "The recurring fetch schedule is stopped.",
+      summary: "The recurring Fetch sources schedule is stopped.",
       style: statusStyle("partial"),
     };
   }
@@ -718,7 +718,7 @@ function FetchStatusToggle({
         borderColor: status.style.border,
         color: status.style.color,
       }}
-      title={detailsOpen ? "Hide source update details" : "Show source update details"}
+      title={detailsOpen ? "Hide Fetch sources details" : "Show Fetch sources details"}
       type="button"
     >
       {status.label}
@@ -746,7 +746,7 @@ function SourceFetchMetaGrid({
   hydrated: boolean;
 }) {
   return (
-    <dl className="fb-hub-digest-meta source-fetch-meta" aria-label="Source update details">
+    <dl className="fb-hub-digest-meta source-fetch-meta" aria-label="Fetch sources details">
       <SourceFetchMetaItem
         label="Update frequency"
         value={cronJob?.frequencyLabel ?? "Not scheduled"}
@@ -804,7 +804,7 @@ function FetchStatusPanel({
     return (
       <EmptyState
         className="sync-panel-empty is-dashed"
-        body="No source update schedule has reported yet."
+        body="No Fetch sources schedule has reported yet."
       />
     );
   }
@@ -1067,7 +1067,7 @@ function FetchRunList({
       {entries.length === 0 ? (
         <EmptyState
           className="sync-panel-empty is-dashed"
-          body="No source updates yet. Runs appear after your Local Agent updates sources."
+          body="No Fetch sources runs yet. Runs appear after your Local Agent fetches sources."
         />
       ) : (
         <>
@@ -1519,7 +1519,7 @@ function describeWork(task: FetchTaskLog): WorkInfo {
         label: "Needs X access",
         blurb:
           "This X source needs personal access before its posts can be read.",
-        fix: "Add X access in Settings, then update sources again.",
+        fix: "Add X access in Settings, then run Fetch sources again.",
         fixHref: "/settings",
       };
     case "youtube_transcription":

@@ -1195,12 +1195,17 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-see-more-label"/);
   assert.match(fetchLogPanel, /className="fb-chip sync-panel-live-chip"/);
   assert.match(digestLogPanel, /className="sync-panel-see-more-label"/);
-  assert.match(fetchLogPanel, /aria-label="Source update details"/);
+  assert.match(fetchLogPanel, /aria-label="Fetch sources views"/);
+  assert.match(fetchLogPanel, /aria-label="Fetch sources details"/);
+  assert.doesNotMatch(fetchLogPanel, /aria-label="Source update views"|aria-label="Source update details"/);
   assert.match(fetchLogPanel, /Update frequency/);
   assert.match(fetchLogPanel, /Language/);
   assert.match(fetchLogPanel, /Latest fetch/);
   assert.match(fetchLogPanel, /Schedule status/);
-  assert.match(fetchLogPanel, /No source update schedule has reported yet/);
+  assert.match(fetchLogPanel, /No Fetch sources schedule has reported yet/);
+  assert.match(fetchLogPanel, /No Fetch sources runs yet\. Runs appear after your Local Agent fetches sources\./);
+  assert.match(fetchLogPanel, /Add X access in Settings, then run Fetch sources again\./);
+  assert.doesNotMatch(fetchLogPanel, /No source update schedule has reported yet|No source updates yet|update sources again|source update details/);
   assert.match(fetchLogPanel, /posts fetched/);
   assert.doesNotMatch(fetchLogPanel, /posts read|post read/);
   assert.match(fetchLogPanel, /label="posts checked"/);
@@ -3055,6 +3060,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(settingsPage, />Advanced<\/p>/);
   assert.doesNotMatch(settingsPage, /Source and digest rules/);
   assert.doesNotMatch(settingsPage, /settings-rules-title|settings-rules-head/);
+  assert.match(settingsPage, /Fetch sources rules/);
   assert.match(settingsPage, /Fetch, filter, and write per-post summaries\./);
   assert.match(settingsPage, /AI Digest rules/);
   assert.match(settingsPage, /Write AI Digest headlines, source notes, and translated post summaries\./);
