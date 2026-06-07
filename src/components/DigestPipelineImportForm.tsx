@@ -476,7 +476,7 @@ function DigestPipelineMetaGrid({
         value={pipeline.latestDigestAt ? formatDate(pipeline.latestDigestAt) : "None yet"}
       />
       <div className="fb-hub-digest-meta-item">
-        <dt>Cron status</dt>
+        <dt>Schedule status</dt>
         <dd>
           {cronStatusControl ?? (
             <span className={`fb-hub-digest-status is-${status.key}`}>

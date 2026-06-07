@@ -760,7 +760,7 @@ function SourceFetchMetaGrid({
         value={latestRun ? formatMetaDate(latestRun.startedAt, hydrated) : "None yet"}
       />
       <div className="fb-hub-digest-meta-item source-fetch-status-item">
-        <dt>Cron status</dt>
+        <dt>Schedule status</dt>
         <dd>
           <FetchStatusToggle
             detailsOpen={detailsOpen}

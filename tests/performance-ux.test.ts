@@ -1057,7 +1057,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /Update frequency/);
   assert.match(fetchLogPanel, /Language/);
   assert.match(fetchLogPanel, /Latest fetch/);
-  assert.match(fetchLogPanel, /Cron status/);
+  assert.match(fetchLogPanel, /Schedule status/);
   assert.match(fetchLogPanel, /posts read/);
   assert.match(fetchLogPanel, /label="posts checked"/);
   assert.match(fetchLogPanel, /\} posts checked<\/span>/);
@@ -1065,7 +1065,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /Unknown source/);
   assert.doesNotMatch(fetchLogPanel, /entry\.name \?\? entry\.builderId \?\? "unknown"/);
   assert.match(fetchLogPanel, /refreshes fetched posts/);
-  assert.doesNotMatch(fetchLogPanel, /items read|Items checked|refreshes fetched items|label="checked"|\} checked<\/span>/);
+  assert.doesNotMatch(fetchLogPanel, /Cron status|items read|Items checked|refreshes fetched items|label="checked"|\} checked<\/span>/);
   assert.match(fetchLogPanel, /formatMetaDate\(latestRun\.startedAt, hydrated\)/);
   assert.match(fetchLogPanel, /function formatMetaDate\(iso: string, hydrated: boolean\)/);
   assert.match(fetchLogPanel, /if \(!hydrated\) return formatAbsolute\(iso\)/);
@@ -1766,13 +1766,13 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(digestPipelineForm, /Update frequency/);
   assert.match(digestPipelineForm, /Language/);
   assert.match(digestPipelineForm, /Latest AI Digest/);
-  assert.match(digestPipelineForm, /Cron status/);
+  assert.match(digestPipelineForm, /Schedule status/);
   assert.match(digestPipelineForm, /className="fb-hub-digest-headline"/);
   assert.match(digestPipelineForm, /fb-hub-digest-headline-kicker">Headlines/);
   assert.doesNotMatch(digestPipelineForm, /fb-hub-digest-headline-kicker">Summary/);
   assert.doesNotMatch(digestPipelineForm, /label="Agent"/);
   assert.doesNotMatch(digestPipelineForm, /label="Lookback"/);
-  assert.doesNotMatch(digestPipelineForm, /label="Cron job"/);
+  assert.doesNotMatch(digestPipelineForm, /Cron status|label="Cron job"/);
   assert.match(source("src/lib/digest-update-status.ts"), /export function getDigestUpdateStatus/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /buildDigestCronStatus/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /getDigestUpdateStatus/);
