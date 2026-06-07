@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarClock, Check, CircleStop, Copy } from "lucide-react";
 import {
@@ -531,9 +532,9 @@ export function SkillPromptActions({
               {status.text.includes("Connect a Local Agent") ? (
                 <>
                   {" "}
-                  <a className="underline" href="/settings">
+                  <Link className="underline" href="/settings">
                     Go to Settings
-                  </a>
+                  </Link>
                 </>
               ) : null}
             </span>
@@ -683,9 +684,9 @@ function TokenPickerDialog({
           {!open ? null : tokens.length === 0 ? (
             <EmptyState
               actions={
-                <a className="fb-btn light compact" href="/settings">
+                <Link className="fb-btn light compact" href="/settings">
                   Add access key
-                </a>
+                </Link>
               }
               body={
                 <>

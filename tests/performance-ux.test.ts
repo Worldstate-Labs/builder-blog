@@ -516,6 +516,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(commonRulesForm, /Common fetching rules cannot be empty\./);
   assert.doesNotMatch(commonRulesForm, /can't be empty/);
   assert.match(skillPromptActions, /async function copyTextToClipboard/);
+  assert.match(skillPromptActions, /import Link from "next\/link"/);
   assert.match(skillPromptActions, /document\.hasFocus\(\)/);
   assert.match(skillPromptActions, /document\.execCommand\("copy"\)/);
   assert.doesNotMatch(skillPromptActions, /await navigator\.clipboard\.writeText\(command\)/);
@@ -531,8 +532,10 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(skillPromptActions, /Last used|Never used|describeMachine\(token\)|formatRelative\(token\.lastUsedAt\)|token-picker-row-name">\{token\.name\}/);
   assert.match(skillPromptActions, /No Local Agent access yet/);
   assert.match(skillPromptActions, /Add one in Settings before copying Local Agent prompts\./);
+  assert.match(skillPromptActions, /<Link className="underline" href="\/settings">[\s\S]*Go to Settings/);
+  assert.match(skillPromptActions, /<Link className="fb-btn light compact" href="\/settings">[\s\S]*Add access key/);
   assert.match(skillPromptActions, /Add access key/);
-  assert.doesNotMatch(skillPromptActions, /No access keys yet|Add one in Settings<\/a>/);
+  assert.doesNotMatch(skillPromptActions, /<a[^>]+href="\/settings"|No access keys yet|Add one in Settings<\/a>/);
   assert.doesNotMatch(skillPromptActions, /No connected helpers|Connected helpers/);
   assert.doesNotMatch(skillPromptActions, /flex flex-wrap items-center justify-end gap-2|className="ml-2"|mr-2|text-\[11px\] text-\[var\(--danger\)\]|text-\[11px\] text-\[var\(--muted-strong\)\]/);
   assert.doesNotMatch(skillPromptActions, /className="grid"/);
