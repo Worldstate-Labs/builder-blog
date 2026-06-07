@@ -486,13 +486,14 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /FETCH_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /SUMMARY_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /How each post from this source is written as a per-post summary/);
+  assert.match(adminSourceTypeManager, /one-time or scheduled run prompt/);
   assert.match(adminSourceTypeManager, /Posts that fail are dropped from the pipeline/);
   assert.match(adminSourceTypeManager, /Drop posts whose body has fewer characters than this/);
   assert.match(adminSourceTypeManager, /Drop posts with too little real text/);
   assert.match(adminSourceTypeManager, /Could not save source type settings\./);
   assert.doesNotMatch(adminSourceTypeManager, /Save failed/);
   assert.doesNotMatch(adminSourceTypeManager, /turned into a brief/);
-  assert.doesNotMatch(adminSourceTypeManager, /How each item from this source|Items that fail|Drop items/);
+  assert.doesNotMatch(adminSourceTypeManager, /How each item from this source|cron run prompt|Items that fail|Drop items/);
   assert.match(adminSourceTypeManager, /placeholder="Example: 200"/);
   assert.match(adminSourceTypeManager, /placeholder="Example: 0\.35"/);
   assert.match(adminSourceTypeManager, /className="source-type-config-summary"/);
@@ -1058,6 +1059,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /Language/);
   assert.match(fetchLogPanel, /Latest fetch/);
   assert.match(fetchLogPanel, /Schedule status/);
+  assert.match(fetchLogPanel, /No source update schedule has reported yet/);
   assert.match(fetchLogPanel, /posts read/);
   assert.match(fetchLogPanel, /label="posts checked"/);
   assert.match(fetchLogPanel, /\} posts checked<\/span>/);
@@ -1065,7 +1067,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /Unknown source/);
   assert.doesNotMatch(fetchLogPanel, /entry\.name \?\? entry\.builderId \?\? "unknown"/);
   assert.match(fetchLogPanel, /refreshes fetched posts/);
-  assert.doesNotMatch(fetchLogPanel, /Cron status|items read|Items checked|refreshes fetched items|label="checked"|\} checked<\/span>/);
+  assert.doesNotMatch(fetchLogPanel, /Cron status|library fetch cron|items read|Items checked|refreshes fetched items|label="checked"|\} checked<\/span>/);
   assert.match(fetchLogPanel, /formatMetaDate\(latestRun\.startedAt, hydrated\)/);
   assert.match(fetchLogPanel, /function formatMetaDate\(iso: string, hydrated: boolean\)/);
   assert.match(fetchLogPanel, /if \(!hydrated\) return formatAbsolute\(iso\)/);

@@ -804,7 +804,7 @@ function FetchStatusPanel({
     return (
       <EmptyState
         className="sync-panel-empty is-dashed"
-        body="No library fetch cron has reported its schedule yet."
+        body="No source update schedule has reported yet."
       />
     );
   }
