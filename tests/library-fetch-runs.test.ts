@@ -281,6 +281,8 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /buildDigestCronStatus/);
   assert.match(panel, /run\.source === "cron"/);
   assert.match(panel, /run\.status === "synced"/);
+  assert.match(panel, /className="sync-panel-candidate-link-icon"/);
+  assert.doesNotMatch(panel, /h-3\.5 w-3\.5/);
   assert.match(panel, /VISIBLE_RUN_LIMIT = 2/);
   assert.match(panel, /slotDomId/);
   assert.match(panel, /onOpenRun/);

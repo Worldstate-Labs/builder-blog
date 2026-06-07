@@ -1072,7 +1072,7 @@ function CandidateRow({ item, synced }: { item: DigestRunCandidate; synced: bool
           target="_blank"
           title="View original"
         >
-          <ExternalLink className="h-3.5 w-3.5" />
+          <ExternalLink aria-hidden="true" className="sync-panel-candidate-link-icon" />
         </a>
       ) : null}
     </li>

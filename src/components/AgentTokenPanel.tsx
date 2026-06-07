@@ -478,6 +478,7 @@ function TokenRow({
     : token.lastUsedAt
       ? `Last connected ${formatRelativeCompact(token.lastUsedAt, hydrated)}`
       : "Never connected";
+  const statusDateTime = token.revokedAt ?? token.lastUsedAt;
 
   return (
     <div
@@ -490,7 +491,13 @@ function TokenRow({
       </span>
       <div className="access-key-device-copy">
         <div className="access-key-device-title">{tokenLabel}</div>
-        <div className="access-key-device-status">{statusLabel}</div>
+        {statusDateTime ? (
+          <time className="access-key-device-status" dateTime={statusDateTime}>
+            {statusLabel}
+          </time>
+        ) : (
+          <div className="access-key-device-status">{statusLabel}</div>
+        )}
       </div>
       {token.revokedAt ? (
         <span className="access-key-revoked-pill">Revoked</span>

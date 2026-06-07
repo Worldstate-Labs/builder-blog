@@ -430,6 +430,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(digestDetails, /BookOpen className="h-3\.5 w-3\.5"/);
   assert.match(globals, /\.item-summary-copy\s*{[\s\S]*min-width:\s*0/);
   assert.match(globals, /\.item-summary-action-icon\s*{[\s\S]*height:\s*0\.875rem/);
+  assert.match(globals, /\.sync-panel-candidate-link-icon\s*{[\s\S]*height:\s*0\.875rem/);
   assert.match(skillPromptActions, /!\s*open \? null/);
   assert.match(skillPromptActions, /className=\{compactOnly \? "skill-prompt-compact" : "fb-skill"\}/);
   assert.match(skillPromptActions, /className="fb-section-label skill-prompt-label"/);
@@ -1096,6 +1097,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /const hydrated = useHydrated\(\)/);
   assert.match(fetchLogPanel, /hydrated=\{hydrated\}/);
   assert.match(fetchLogPanel, /SourceFetchMetaItem/);
+  assert.match(digestLogPanel, /className="sync-panel-candidate-link-icon"/);
+  assert.doesNotMatch(digestLogPanel, /h-3\.5 w-3\.5/);
   assert.match(fetchLogPanel, /aria-label="Source update details"/);
   assert.match(fetchLogPanel, /Update frequency/);
   assert.match(fetchLogPanel, /Language/);
@@ -3016,6 +3019,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /useHydrated/);
   assert.match(tokenPanel, /formatRelativeCompact\(token\.lastUsedAt, hydrated\)/);
   assert.match(tokenPanel, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);
+  assert.match(tokenPanel, /<time className="access-key-device-status" dateTime=\{statusDateTime\}>/);
   assert.match(tokenPanel, /"Never connected"/);
   assert.match(tokenPanel, /if \(!hydrated\) return formatDate\(value\)/);
   assert.match(tokenPanel, /className="access-keys-list" role="list" aria-label="Local Agent access"/);
@@ -3038,14 +3042,18 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.5rem minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*8px/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*background:\s*var\(--paper\)/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*box-shadow:\s*0 1px 2px/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*5\.75rem/);
   assert.match(globals, /\.access-key-device-title\s*{[\s\S]*font-size:\s*1\.375rem/);
   assert.match(globals, /\.access-key-device-status\s*{[\s\S]*font-size:\s*1\.0625rem/);
   assert.match(globals, /\.access-key-device-icon svg\s*{[\s\S]*height:\s*1\.75rem/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*justify-self:\s*end/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*2\.75rem/);
+  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-width:\s*8\.5rem/);
+  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*text-align:\s*center/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.25rem minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*5rem/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-width:\s*7\.25rem/);
   assert.doesNotMatch(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*grid-column:\s*1 \/ -1/);
   assert.match(globals, /\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*border-radius:\s*8px/);
   assert.match(globals, /\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*height:\s*5\.75rem/);
