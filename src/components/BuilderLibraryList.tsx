@@ -254,10 +254,9 @@ export function BuilderLibraryList({
                 className="builder-library-source-section-body"
                 id={sectionBodyId}
               >
-                {section.builders.map((builder, index) => (
+                {section.builders.map((builder) => (
                   <BuilderCard
                     builder={builder}
-                    first={index === 0}
                     key={builder.id}
                     editableSourceOptions={editableSourceOptions}
                     removeError={removeErrors[builder.id]}
@@ -276,14 +275,12 @@ export function BuilderLibraryList({
 
 function BuilderCard({
   builder,
-  first,
   editableSourceOptions,
   onRemoveStateChange,
   onSubscriptionStateChange,
   removeError,
 }: {
   builder: BuilderLibraryListItem;
-  first: boolean;
   editableSourceOptions?: SourceOption[];
   onRemoveStateChange: (builderId: string, removed: boolean) => void;
   onSubscriptionStateChange: (
@@ -297,16 +294,12 @@ function BuilderCard({
   return (
     <article
       id={builder.id}
-      className={
-        first
-          ? "builder-library-card px-4 py-3.5"
-          : "builder-library-card border-t border-[var(--line)] px-4 py-3.5"
-      }
+      className="builder-library-card"
     >
-      <div className="builder-library-card-main grid items-center gap-3.5">
+      <div className="builder-library-card-main">
         <SourceAvatar className="builder-library-avatar" source={builder} />
         <BuilderInfo builder={builder} />
-        <div className="builder-library-actions row-actions flex flex-shrink-0 items-center gap-3">
+        <div className="builder-library-actions">
           {canEdit && editableSourceOptions ? (
             <div className="builder-library-row-tools" aria-label="Source tools">
               <BuilderEditDialog

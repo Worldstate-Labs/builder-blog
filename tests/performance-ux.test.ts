@@ -2494,7 +2494,10 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.digest-source-management\s*{[\s\S]*display:\s*grid/);
   assert.doesNotMatch(css, /mobile-sources-stack|data-active-tab|data-tab="imported"/);
   assert.match(css, /\.sources-sync-section \.digest-updates-panel/);
-  assert.match(css, /\.builder-library-card-main\s*{\s*\n\s*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);
+  assert.match(css, /\.builder-library-card\s*{[\s\S]*padding:\s*0\.875rem 1rem/);
+  assert.match(css, /\.builder-library-card \+ \.builder-library-card\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
+  assert.match(css, /\.builder-library-card-main\s*{[\s\S]*display:\s*grid/);
+  assert.match(css, /\.builder-library-card-main\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);
   assert.doesNotMatch(css, /\.builder-library-stats\s*{/);
   assert.doesNotMatch(css, /\.(?:action|empty)-panel\s*{/);
   assert.doesNotMatch(css, /\.(?:stats-panel|stat-card|metric-card|search-stats-panel)\b/);
@@ -2525,6 +2528,7 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.fb-panel\s*{[\s\S]*padding:\s*0\.95rem/);
   assert.doesNotMatch(css, /\.builder-row form,\s*\n\s*\.builder-row button\s*{\s*\n\s*width:\s*100%/);
   assert.match(builderLibraryList, /builder-library-card-main/);
+  assert.doesNotMatch(builderLibraryList, /px-4|py-3\.5|border-\[var\(--line\)\]|grid items-center|flex flex-shrink-0|gap-3/);
   assert.doesNotMatch(builderLibraryList, /BuilderStats/);
   assert.match(builderLibraryList, /builder-library-row-tools/);
   assert.match(source("src/components/BuilderFeedItems.tsx"), /className="builder-posts-summary"/);

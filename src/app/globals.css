@@ -5262,6 +5262,9 @@ svg.lucide {
 }
 
 .builder-library-card-main {
+  align-items: center;
+  display: grid;
+  gap: 0.875rem;
   grid-template-columns: 2rem minmax(0, 1fr) auto;
 }
 
@@ -5358,7 +5361,12 @@ svg.lucide {
 
 .builder-library-card {
   background: transparent;
+  padding: 0.875rem 1rem;
   transition: background-color 140ms ease;
+}
+
+.builder-library-card + .builder-library-card {
+  border-top: 1px solid var(--line);
 }
 
 .builder-library-card:hover,
