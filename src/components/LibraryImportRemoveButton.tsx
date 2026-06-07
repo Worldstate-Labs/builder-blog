@@ -55,7 +55,7 @@ export function LibraryImportRemoveButton({
         setRemoved(true);
         router.refresh();
       } catch {
-        setError("Could not remove imported source library.");
+        setError("Could not remove source library import.");
       }
     });
   }
@@ -73,7 +73,7 @@ export function LibraryImportRemoveButton({
         >
           <div className="fb-dialog-inner settings-dialog-stack">
             <h3 className="fb-section-heading" id="import-remove-source-library-title">
-              Remove imported source library?
+              Remove source library import?
             </h3>
             <div className="settings-dialog-copy">
               <p>
@@ -97,7 +97,7 @@ export function LibraryImportRemoveButton({
                 onClick={removeImport}
                 type="button"
               >
-                Remove source library
+                Remove import
               </button>
             </div>
           </div>
@@ -110,14 +110,14 @@ export function LibraryImportRemoveButton({
     <div className="import-remove-control">
       <button
         aria-busy={isPending}
-        aria-label={`Remove ${libraryName} from imported source libraries`}
+        aria-label={`Remove ${libraryName} source library import`}
         className="fb-btn light compact import-remove-button"
         disabled={isPending}
         onClick={requestRemove}
         type="button"
       >
         <Trash2 className="import-remove-icon" />
-        {isPending ? "Removing" : "Remove source library"}
+        {isPending ? "Removing" : "Remove import"}
       </button>
       {error ? (
         <span className="import-remove-error" role="status">

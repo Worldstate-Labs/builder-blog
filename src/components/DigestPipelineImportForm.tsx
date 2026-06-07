@@ -194,7 +194,7 @@ export function DigestPipelineImportForm({
         if (!response.ok) throw new Error("Unable to remove AI Digest import");
       } catch {
         setImportedIds((current) => new Set([...current, pipelineId]));
-        setError("Could not remove imported AI Digest.");
+        setError("Could not remove AI Digest import.");
       } finally {
         setPendingAction(null);
       }
@@ -269,7 +269,7 @@ export function DigestPipelineImportForm({
         {removeTarget ? (
           <div className="fb-dialog-inner settings-dialog-stack">
             <h3 className="fb-section-heading" id="hub-remove-ai-digest-title">
-              Remove imported AI Digest?
+              Remove AI Digest import?
             </h3>
             <div className="settings-dialog-copy">
               <p>
@@ -293,7 +293,7 @@ export function DigestPipelineImportForm({
                 onClick={confirmRemoveImported}
                 type="button"
               >
-                Remove AI Digest
+                Remove import
               </button>
             </div>
           </div>
@@ -369,14 +369,14 @@ function DigestPipelineCard({
       </span>
       <button
         aria-busy={pending !== null && isPending}
-        aria-label={`Remove ${pipeline.title} from imported AI Digests`}
+        aria-label={`Remove ${pipeline.title} AI Digest import`}
         className="fb-btn light compact hub-card-remove-button digest-pipeline-remove-button"
         disabled={pending !== null}
         onClick={() => onRemove(pipeline.id)}
         type="button"
       >
         <Trash2 aria-hidden="true" />
-        Remove AI Digest
+        Remove import
       </button>
     </>
   ) : (

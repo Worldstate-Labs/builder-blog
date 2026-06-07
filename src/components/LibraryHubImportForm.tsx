@@ -212,7 +212,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         if (!response.ok) throw new Error("Unable to remove source library import");
       } catch {
         setImportedIds((current) => new Set([...current, libraryId]));
-        setError("Could not remove imported source library.");
+        setError("Could not remove source library import.");
       } finally {
         setPendingAction(null);
       }
@@ -329,7 +329,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         {removeTarget ? (
           <div className="fb-dialog-inner settings-dialog-stack">
             <h3 className="fb-section-heading" id="hub-remove-source-library-title">
-              Remove imported source library?
+              Remove source library import?
             </h3>
             <div className="settings-dialog-copy">
               <p>
@@ -354,7 +354,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
                 onClick={confirmRemoveImported}
                 type="button"
               >
-                Remove source library
+                Remove import
               </button>
             </div>
           </div>
@@ -403,14 +403,14 @@ function HubCard({
       </span>
       <button
         aria-busy={pending === "remove" && isPending}
-        aria-label={`Remove ${library.name} from imported source libraries`}
+        aria-label={`Remove ${library.name} source library import`}
         className="fb-btn light compact hub-card-remove-button"
         disabled={pending !== null}
         onClick={() => onRemove(library.id)}
         type="button"
       >
         <Trash2 aria-hidden="true" />
-        Remove source library
+        Remove import
       </button>
     </>
   ) : (
