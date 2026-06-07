@@ -90,8 +90,10 @@ export function PostCard({
   const hasMoreSummary = summaryPreview !== summary;
   const title = post.title || firstLine(post.body);
   const actionContext = compactActionContext(title);
+  const summaryIdBase = useId();
   const rawIdBase = useId();
   const originalSummaryIdBase = useId();
+  const summaryTextId = `${summaryIdBase}-summary`;
   const rawRegionId = `${rawIdBase}-raw-content`;
   const originalSummaryRegionId = `${originalSummaryIdBase}-original-summary`;
 
@@ -192,11 +194,17 @@ export function PostCard({
           </div>
         ) : (
           <div className="fetched-post-summary post-summary">
-            <p className="fetched-post-summary-text">
+            <p className="fetched-post-summary-text" id={summaryTextId}>
               {summaryExpanded ? summary : summaryPreview}
             </p>
             {hasMoreSummary ? (
               <button
+                aria-controls={summaryTextId}
+                aria-expanded={summaryExpanded}
+                aria-label={actionLabel(
+                  summaryExpanded ? "Show less summary" : "Show more summary",
+                  actionContext,
+                )}
                 className="post-summary-toggle"
                 onClick={() => {
                   setSummaryExpanded((expanded) => !expanded);

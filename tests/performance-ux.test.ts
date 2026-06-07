@@ -1793,6 +1793,11 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /className="post-summary-toggle"/);
   assert.match(postCard, /className="fetched-post-raw"/);
   assert.match(postCard, /useId/);
+  assert.match(postCard, /summaryTextId/);
+  assert.match(postCard, /id=\{summaryTextId\}/);
+  assert.match(postCard, /aria-controls=\{summaryTextId\}/);
+  assert.match(postCard, /aria-expanded=\{summaryExpanded\}/);
+  assert.match(postCard, /actionLabel\(\s*summaryExpanded \? "Show less summary" : "Show more summary"/);
   assert.match(postCard, /aria-controls=\{rawRegionId\}/);
   assert.match(postCard, /id=\{rawRegionId\}/);
   assert.match(postCard, /See more/);

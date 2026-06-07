@@ -189,13 +189,14 @@ test("post card avoids duplicate source labels when builder name matches source 
 });
 
 test("post card action controls include the post title in accessible names", () => {
+  const longSummary = Array.from({ length: 205 }, (_, index) => `word${index}`).join(" ");
   const html = renderToStaticMarkup(
     createElement(PostCard, {
       post: {
         id: "feed_contextual_actions",
         title: "Contextual Button Labels",
         body: "Fetched raw body.",
-        summary: "Readable summary.",
+        summary: longSummary,
         originalSummary: "Original agent summary.",
         url: "https://example.com/contextual-button-labels",
         publishedAt: "2026-06-05T00:00:00.000Z",
@@ -208,9 +209,11 @@ test("post card action controls include the post title in accessible names", () 
   );
 
   assert.match(html, /aria-label="View original source: Contextual Button Labels"/);
+  assert.match(html, /aria-label="Show more summary: Contextual Button Labels"/);
   assert.match(html, /aria-label="Raw content: Contextual Button Labels"/);
   assert.match(html, /aria-label="Summary method: Contextual Button Labels"/);
   assert.match(html, /aria-label="View original summary: Contextual Button Labels"/);
+  assert.match(html, /aria-controls="[^"]+-summary"/);
   assert.match(html, /aria-controls="[^"]+-raw-content"/);
   assert.match(html, /aria-controls="[^"]+-original-summary"/);
   assert.match(html, /aria-expanded="false"/);
