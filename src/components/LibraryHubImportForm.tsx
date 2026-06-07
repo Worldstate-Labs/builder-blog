@@ -573,7 +573,7 @@ function libraryCardDescription(library: HubLibrary) {
 function topicLabel(library: HubLibrary) {
   if (library.isCommunity) return "Curated";
   if (library.owned) return "Personal";
-  return "Curated by user";
+  return "Shared by user";
 }
 
 function formatSourceToggleLabel(sourceCount: number) {
