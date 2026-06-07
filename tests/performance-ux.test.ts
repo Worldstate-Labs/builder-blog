@@ -1818,6 +1818,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(addBuilderForm, /className="fb-btn dark add-source-submit"/);
   assert.match(addBuilderForm, /className="add-source-callout"/);
   assert.match(addBuilderForm, /add-source-text-action/);
+  assert.match(addBuilderForm, /Switch source type/);
+  assert.doesNotMatch(addBuilderForm, />\s*Switch\s*<\/button>/);
   assert.doesNotMatch(addBuilderForm, /style=\{\{/);
   assert.doesNotMatch(addBuilderForm, /className="mt-1 rounded-md border/);
   assert.doesNotMatch(addBuilderForm, /h-3\.5 w-3\.5|w-full justify-center|sm:w-auto/);

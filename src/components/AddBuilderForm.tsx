@@ -328,7 +328,7 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
                 onClick={() => preview.suggestId && applySuggestion(preview.suggestId)}
                 type="button"
               >
-                Switch
+                Switch source type
               </button>
             </>
           ) : null}
