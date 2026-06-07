@@ -389,7 +389,7 @@ test("web app serves the agent skill and setup command", () => {
   // Both cron + once dialogs expose it for both contexts, defaulting off.
   assert.match(skillPromptActions, /OVERRIDE_COPY/);
   assert.match(skillPromptActions, /Refresh posts already saved/);
-  assert.match(skillPromptActions, /Include already digested items/);
+  assert.match(skillPromptActions, /Include already digested posts/);
   assert.match(skillPromptActions, /overrideFetched/);
   assert.match(skillPromptActions, /params\.set\("force", "1"\)/);
   // One-time runs now share the schedule dialog instead of a separate button/dialog.

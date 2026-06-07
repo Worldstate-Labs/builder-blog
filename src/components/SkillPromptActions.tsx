@@ -136,7 +136,7 @@ const OVERRIDE_COPY: Record<
       "Refreshes posts already in your library this time only.",
   },
   digest: {
-    name: "Include already digested items",
+    name: "Include already digested posts",
     cronHint:
       "Already digested posts can be included again on each run.",
     onceHint:

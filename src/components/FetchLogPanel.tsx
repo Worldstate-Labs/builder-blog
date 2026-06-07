@@ -649,7 +649,7 @@ function getFetchUpdateStatus(
     return {
       key: "syncing",
       label: "Syncing",
-      summary: "A fetch run is still updating item outcomes.",
+      summary: "A fetch run is still updating post outcomes.",
       style: statusStyle("partial"),
     };
   }
@@ -862,7 +862,7 @@ function FetchStatusPanel({
               {problemCount > 0 ? "Needs attention" : okCount > 0 ? "Healthy" : "Waiting"}
             </span>
             <span className="fb-chip">{cronJob.frequencyLabel}</span>
-            {cronJob.overrideFetched ? <span className="fb-chip">refreshes fetched items</span> : null}
+            {cronJob.overrideFetched ? <span className="fb-chip">refreshes fetched posts</span> : null}
           </div>
           <dl className="sync-panel-meta">
             <div className="sync-panel-meta-row">
@@ -1243,7 +1243,10 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
       </p>
 
       <div className="mono mt-2 text-[11.5px] text-[var(--muted-strong)]">
-        <CountMeta label="items read" value={run.itemsFetched} /> ·{" "}
+        <CountMeta
+          label={run.itemsFetched === 1 ? "post read" : "posts read"}
+          value={run.itemsFetched}
+        /> ·{" "}
         <CountMeta label="checked" value={run.tasksGenerated} /> ·{" "}
         <CountMeta label={run.userActionsCount === 1 ? "action needed" : "actions needed"} value={run.userActionsCount} /> ·{" "}
         {formatDuration(run.durationMs)}
@@ -1289,7 +1292,10 @@ function DetailsBody({ details }: { details: DetailsShape }) {
                 <span className="text-[var(--muted-strong)]"> · </span>
                 <span className="text-[var(--muted-strong)]">{entry.sourceType ?? "—"}</span>
                 <span className="text-[var(--muted-strong)]"> · </span>
-                <span>{formatCount(entry.itemsFetched ?? 0)} items</span>
+                <span>
+                  {formatCount(entry.itemsFetched ?? 0)}{" "}
+                  {(entry.itemsFetched ?? 0) === 1 ? "post" : "posts"}
+                </span>
                 <span className="text-[var(--muted-strong)]"> · </span>
                 <span>{formatCount(entry.tasksGenerated ?? 0)} checked</span>
                 {entry.error ? (
@@ -1307,7 +1313,7 @@ function DetailsBody({ details }: { details: DetailsShape }) {
       {fetchTasks.length > 0 ? (
         <div>
           <h3 className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted-strong)]">
-            Items checked ({fetchTasks.length})
+            Posts checked ({fetchTasks.length})
           </h3>
           <ul className="mt-1.5 grid gap-1">
             {fetchTasks.map((task, index) => (
@@ -1811,8 +1817,8 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
                 {sumRes.label === "Not reached"
                   ? "Fetch was blocked, so no summary was produced."
                   : sumRes.label === "Failed"
-                    ? "This item failed to summarize, so it was not saved."
-                    : "The Local Agent hasn't summarized this item yet."}
+                    ? "This post failed to summarize, so it was not saved."
+                    : "The Local Agent hasn't summarized this post yet."}
               </p>
             ) : null}
           </StageBlock>
