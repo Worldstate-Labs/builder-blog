@@ -81,7 +81,7 @@ export function BuilderEditDialog({
     setError(null);
     setWarning(null);
     if (!sourceValue.trim()) {
-      setError("URL or @handle is required.");
+      setError("Handle or URL is required.");
       return;
     }
     startTransition(async () => {
@@ -173,7 +173,7 @@ export function BuilderEditDialog({
               Edit source
             </h2>
             <p className="builder-edit-dialog-sub">
-              Update the source type, URL or handle, and display name. Save
+              Update the source type, handle or URL, and display name. Save
               applies the changes to your library.
             </p>
           </header>
@@ -195,7 +195,7 @@ export function BuilderEditDialog({
             </label>
 
             <label className="builder-edit-dialog-field">
-              <span className="builder-edit-dialog-field-label">URL or @handle</span>
+              <span className="builder-edit-dialog-field-label">Handle or URL</span>
               <input
                 className="fb-input mono"
                 value={sourceValue}
