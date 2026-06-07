@@ -51,11 +51,11 @@ export function LibraryImportRemoveButton({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ libraryId }),
         });
-        if (!response.ok) throw new Error("Unable to remove library import");
+        if (!response.ok) throw new Error("Unable to remove source library import");
         setRemoved(true);
         router.refresh();
       } catch {
-        setError("Could not remove imported library.");
+        setError("Could not remove imported source library.");
       }
     });
   }
@@ -107,14 +107,14 @@ export function LibraryImportRemoveButton({
     <div className="import-remove-control">
       <button
         aria-busy={isPending}
-        aria-label={`Remove ${libraryName} from library`}
+        aria-label={`Remove ${libraryName} from imported source libraries`}
         className="fb-btn light compact import-remove-button"
         disabled={isPending}
         onClick={requestRemove}
         type="button"
       >
         <Trash2 className="import-remove-icon" />
-        {isPending ? "Removing" : "Remove library"}
+        {isPending ? "Removing" : "Remove source library"}
       </button>
       {error ? (
         <span className="import-remove-error" role="status">

@@ -2535,6 +2535,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(libraryImportRemoveButton, /className="fb-dialog"/);
   assert.match(libraryImportRemoveButton, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.match(libraryImportRemoveButton, /Remove imported source library\?/);
+  assert.match(libraryImportRemoveButton, /Could not remove imported source library\./);
   assert.match(libraryImportRemoveButton, /sources from this\s+library will no longer appear in your Sources page or Following\./);
   assert.match(libraryImportRemoveButton, /You can import it again from the Hub later/);
   assert.match(libraryImportRemoveButton, /function requestRemove/);
@@ -2542,8 +2543,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(libraryImportRemoveButton, /className="import-remove-control"/);
   assert.match(libraryImportRemoveButton, /className="fb-btn light compact import-remove-button"/);
   assert.match(libraryImportRemoveButton, /className="import-remove-icon"/);
-  assert.match(libraryImportRemoveButton, /"Remove library"/);
-  assert.doesNotMatch(libraryImportRemoveButton, /builderCount|`Remove \$\{builderCount\}`/);
+  assert.match(libraryImportRemoveButton, /Remove \$\{libraryName\} from imported source libraries/);
+  assert.match(libraryImportRemoveButton, /"Remove source library"/);
+  assert.doesNotMatch(libraryImportRemoveButton, /builderCount|`Remove \$\{builderCount\}`|Remove \$\{libraryName\} from library|"Remove library"|Could not remove imported library\./);
   assert.match(libraryImportRemoveButton, /className="import-remove-error"/);
   assert.doesNotMatch(libraryImportRemoveButton, /inline-flex flex-col items-end|text-xs text-\[var\(--danger\)\]|h-4 w-4|button-danger gap-2/);
   assert.match(globals, /\.import-remove-button\s*{[\s\S]*gap:\s*0\.5rem/);
