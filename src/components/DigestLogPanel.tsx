@@ -878,12 +878,8 @@ function RunCard({ run }: { run: DigestRunListItem }) {
   const detailCount = run.candidates.length + contributing.length + Math.max(0, silentCount);
 
   return (
-    <article
-      className="rounded-[10px] border bg-[var(--paper-strong)] px-3.5 py-3"
-      id={runDomId(run.id)}
-      style={{ borderColor: "var(--line)" }}
-    >
-      <header className="flex flex-wrap items-center gap-2">
+    <article className="sync-panel-run-card" id={runDomId(run.id)}>
+      <header className="sync-panel-run-card-head">
         <span
           className="fb-chip"
           style={{ background: chip.style.background, color: chip.style.color, borderColor: chip.style.border }}
@@ -891,7 +887,7 @@ function RunCard({ run }: { run: DigestRunListItem }) {
           {chip.label}
         </span>
         <time
-          className="text-[12.5px] text-[var(--muted-strong)]"
+          className="sync-panel-run-card-time"
           dateTime={stampIso}
           title={formatAbsolute(stampIso)}
         >
@@ -900,13 +896,13 @@ function RunCard({ run }: { run: DigestRunListItem }) {
         <span className="fb-chip">{run.source === "cron" ? "Scheduled" : "One-time"}</span>
         {run.language ? <span className="fb-chip">{displayLanguagePreference(run.language)}</span> : null}
         {run.regenerate ? (
-          <span className="text-[11px] text-[var(--muted)]">rebuilt</span>
+          <span className="sync-panel-run-card-note">rebuilt</span>
         ) : null}
       </header>
 
-      <p className="mt-2 text-[13.5px] font-semibold leading-snug text-[var(--ink)]">{title}</p>
+      <p className="sync-panel-run-card-title">{title}</p>
 
-      <div className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-[12.5px]">
+      <div className="sync-panel-run-card-funnel">
         <FunnelStat value={run.candidateCount} label="found" />
         {run.status === "synced" ? (
           <>
@@ -916,13 +912,13 @@ function RunCard({ run }: { run: DigestRunListItem }) {
             <FunnelStat value={run.droppedCount ?? 0} label="skipped" tone="muted" />
           </>
         ) : (
-          <span className="text-[var(--muted)]">· not saved yet</span>
+          <span className="sync-panel-run-card-muted">· not saved yet</span>
         )}
       </div>
 
-      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-[var(--muted-strong)]">
+      <div className="sync-panel-run-card-meta">
         <span>
-          <span className="font-semibold text-[var(--ink)]">{formatCount(run.contributingSourceCount)}</span>
+          <span className="sync-panel-run-card-meta-strong">{formatCount(run.contributingSourceCount)}</span>
           /{formatCount(run.subscriptionCount)} sources contributed
         </span>
         <span>Covered {windowLabel}</span>
@@ -930,17 +926,17 @@ function RunCard({ run }: { run: DigestRunListItem }) {
       </div>
 
       {run.candidateCount === 0 ? (
-        <p className="mt-1.5 text-[12px] text-[var(--muted-strong)]">
+        <p className="sync-panel-run-card-help">
           No new posts were found in this window.
         </p>
       ) : null}
 
       {detailCount > 0 ? (
-        <details className="mt-2.5 rounded-[8px] border border-[var(--line)] bg-[var(--paper)]">
-          <summary className="cursor-pointer px-3 py-2 text-[12.5px] font-bold text-[var(--ink)]">
+        <details className="sync-panel-run-card-details">
+          <summary className="sync-panel-run-card-details-summary">
             Show run details
           </summary>
-          <div className="grid gap-3 border-t border-[var(--line)] px-3 py-2.5">
+          <div className="sync-panel-run-card-details-body">
             {contributing.length > 0 || silentCount > 0 ? (
               <section aria-label="Source coverage">
                 <div className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">

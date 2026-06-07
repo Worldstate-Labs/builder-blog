@@ -1164,7 +1164,11 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sync-panel-empty\s*{\s*padding:\s*1\.125rem;\s*}/);
   assert.match(globals, /\.sync-panel-run-card\s*{[\s\S]*background:\s*var\(--paper-strong\)/);
   assert.match(globals, /\.sync-panel-run-card-head\s*{[\s\S]*display:\s*flex/);
+  assert.match(globals, /\.sync-panel-run-card-title\s*{[\s\S]*font-weight:\s*650/);
+  assert.match(globals, /\.sync-panel-run-card-funnel\s*{[\s\S]*flex-wrap:\s*wrap/);
   assert.match(globals, /\.sync-panel-run-card-summary\s*{[\s\S]*line-height:\s*1\.55/);
+  assert.match(globals, /\.sync-panel-run-card-details\s*{[\s\S]*background:\s*var\(--paper\)/);
+  assert.match(globals, /\.sync-panel-run-card-details-body\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.sync-panel-layout\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*0\.85fr\) minmax\(0,\s*1\.15fr\)/);
   assert.match(fetchLogPanel, /className="fb-segmented-tabs sync-panel-tabs"/);
   assert.match(fetchLogPanel, /@\/components\/EmptyState/);
