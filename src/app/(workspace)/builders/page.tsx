@@ -191,7 +191,7 @@ async function DigestSourcesSection({
 function DigestSourcesFallback() {
   return (
     <section className="digest-source-management" aria-live="polite" aria-busy="true">
-      <span className="sr-only">Loading AI Digest settings</span>
+      <span className="sr-only">Loading AI Digest controls</span>
       <div className="source-sync-skeleton-panel" />
       <div className="source-sync-skeleton-panel" />
     </section>

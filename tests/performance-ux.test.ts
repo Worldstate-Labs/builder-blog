@@ -2266,7 +2266,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(buildersPage, /function FetchSourcesFallback/);
   assert.match(buildersPage, /<span className="sr-only">Loading Sources<\/span>/);
   assert.match(buildersPage, /function DigestSourcesFallback/);
-  assert.match(buildersPage, /<span className="sr-only">Loading AI Digest settings<\/span>/);
+  assert.match(buildersPage, /<span className="sr-only">Loading AI Digest controls<\/span>/);
+  assert.doesNotMatch(buildersPage, /Loading AI Digest settings/);
   assert.match(buildersPage, /<h1 className="sr-only">Sources<\/h1>/);
   assert.match(buildersPage, /className="sources-section-stack"/);
   assert.match(buildersPage, /className="your-library-panel fb-panel"/);
