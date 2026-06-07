@@ -97,7 +97,7 @@ export default async function Home() {
               {
                 title: "Daily updates become one AI Digest.",
                 detail:
-                  "New posts, videos, launches, and trending projects are grouped into a readable digest.",
+                  "New posts, videos, launches, and trending projects are grouped into a readable AI Digest.",
               },
               {
                 title: "Your sources stay connected.",
