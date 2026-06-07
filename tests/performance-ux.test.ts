@@ -128,7 +128,7 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(source("src/app/loading.tsx"), /<RouteLoading label="Loading" title="Loading FollowBrief" \/>/);
   assert.match(
     source("src/app/history/loading.tsx"),
-    /<RouteLoading label="Archive" title="Loading digest history" rows=\{6\} \/>/,
+    /<RouteLoading label="AI Digest" title="Loading AI Digest" rows=\{6\} \/>/,
   );
 });
 
