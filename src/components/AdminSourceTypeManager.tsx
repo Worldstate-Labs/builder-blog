@@ -98,7 +98,7 @@ export function AdminSourceTypeManager({
 }) {
   const [configs, setConfigs] = useState(initialConfigs);
   return (
-    <div className="settings-source-type-manager grid gap-3">
+    <div className="settings-source-type-manager">
       {configs.map((config) => (
         <SourceTypeCard
           key={config.sourceId}
@@ -284,7 +284,7 @@ function SourceTypeCard({
             title="Quality gates"
             description="Length, diversity, and timestamp-density checks applied after extraction. Posts that fail are not saved or used in Following and AI Digests."
           >
-            <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+            <div className="source-type-quality-grid">
               <FieldNumber
                 label="Min chars"
                 min={0}

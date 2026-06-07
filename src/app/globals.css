@@ -8722,6 +8722,7 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .settings-source-type-manager {
+  display: grid;
   gap: 0.75rem;
 }
 
@@ -8788,6 +8789,17 @@ a.fb-hub-source-name:focus-visible {
 .source-type-config-form {
   border-top: 1px solid color-mix(in oklch, var(--line) 78%, transparent);
   padding: 1rem 0.9rem 0.95rem;
+}
+
+.source-type-quality-grid {
+  display: grid;
+  gap: 0.75rem 1rem;
+}
+
+@media (min-width: 640px) {
+  .source-type-quality-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .settings-config-form {

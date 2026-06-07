@@ -2913,6 +2913,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /ChevronDown/);
   assert.match(adminSourceTypeManager, /className="source-type-config-toggle-icon" aria-hidden="true"/);
   assert.match(adminSourceTypeManager, /source-type-config-toggle-svg/);
+  assert.match(adminSourceTypeManager, /className="settings-source-type-manager"/);
+  assert.match(adminSourceTypeManager, /className="source-type-quality-grid"/);
+  assert.doesNotMatch(adminSourceTypeManager, /settings-source-type-manager grid gap-3/);
+  assert.doesNotMatch(adminSourceTypeManager, /grid gap-x-4 gap-y-3 sm:grid-cols-2/);
   assert.match(adminSourceTypeManager, /ChevronDown/);
   assert.doesNotMatch(globals, /\.settings-rules-summary::after[\s\S]*content:\s*"\+"/);
   assert.doesNotMatch(globals, /\.source-type-config-summary::after[\s\S]*content:\s*"\+"/);
@@ -2922,6 +2926,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.source-type-config-card\[open\] \.source-type-config-toggle-svg/);
   assert.match(globals, /transform:\s*rotate\(180deg\)/);
   assert.match(globals, /\.source-type-config-dirty\s*{[\s\S]*color:\s*var\(--warm\)/);
+  assert.match(globals, /\.settings-source-type-manager\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.source-type-quality-grid\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /@media \(min-width:\s*640px\)[\s\S]*\.source-type-quality-grid\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.settings-rules-summary\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto auto/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.settings-rules-summary-meta\s*{[\s\S]*grid-column:\s*auto/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.settings-rules-summary-meta\s*{[\s\S]*white-space:\s*nowrap/);
