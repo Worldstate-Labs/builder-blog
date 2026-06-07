@@ -245,6 +245,9 @@ function PostBlock({
     body: summary,
     summary,
     originalSummary,
+    detailUrl: favoriteState
+      ? postDetailHref(favoriteState.feedItemId, "/dashboard?tab=ai-digest", "AI Digest")
+      : null,
     url,
     publishedAt: null,
     createdAt: new Date(0).toISOString(),
@@ -283,6 +286,11 @@ function PostBlock({
       showSourceBadge={false}
     />
   );
+}
+
+function postDetailHref(feedItemId: string, returnTo: string, returnLabel: string) {
+  const params = new URLSearchParams({ returnLabel, returnTo });
+  return `/recommendations/items/${feedItemId}?${params.toString()}`;
 }
 
 function DigestFavoriteToggleButton({

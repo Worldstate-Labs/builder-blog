@@ -1540,12 +1540,11 @@ svg.lucide {
 
 /* Primary "go read the full thing" affordance. Labeled accent pill so it
    reads as the main call to action, distinct from the muted utility icons. */
+.post-read-detail,
 .post-read-original {
   align-items: center;
-  background: color-mix(in oklch, var(--accent) 8%, transparent);
-  border: 1px solid color-mix(in oklch, var(--accent) 30%, var(--line));
+  border: 1px solid var(--line);
   border-radius: 999px;
-  color: var(--accent);
   display: inline-flex;
   font-size: 0.78rem;
   font-weight: 600;
@@ -1557,22 +1556,42 @@ svg.lucide {
   white-space: nowrap;
 }
 
-.post-read-original:hover {
-  background: color-mix(in oklch, var(--accent) 15%, transparent);
-  border-color: color-mix(in oklch, var(--accent) 48%, var(--line));
+.post-read-detail {
+  background: color-mix(in oklch, var(--accent) 10%, transparent);
+  border-color: color-mix(in oklch, var(--accent) 34%, var(--line));
+  color: var(--accent);
 }
 
+.post-read-original {
+  background: color-mix(in oklch, var(--ink) 2%, transparent);
+  color: var(--muted-strong);
+}
+
+.post-read-detail:hover {
+  background: color-mix(in oklch, var(--accent) 16%, transparent);
+  border-color: color-mix(in oklch, var(--accent) 50%, var(--line));
+}
+
+.post-read-original:hover {
+  background: color-mix(in oklch, var(--ink) 5%, transparent);
+  border-color: color-mix(in oklch, var(--ink) 16%, var(--line));
+  color: var(--ink);
+}
+
+.post-read-detail-icon,
 .post-read-original-icon {
   height: 0.85em;
   width: 0.85em;
   transition: transform 140ms ease;
 }
 
+.post-read-detail:hover .post-read-detail-icon,
 .post-read-original:hover .post-read-original-icon {
   transform: translate(1px, -1px);
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .post-read-detail-icon,
   .post-read-original-icon {
     transition: none;
   }

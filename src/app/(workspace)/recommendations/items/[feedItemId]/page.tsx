@@ -112,7 +112,7 @@ function resolvePostBackLink(params: {
   if (isSafeInternalReturnTo(returnTo)) {
     return {
       href: returnTo,
-      label: firstParam(params.returnLabel) === "Search" ? "Search" : "Back",
+      label: safeReturnLabel(firstParam(params.returnLabel)),
     };
   }
 
@@ -125,4 +125,18 @@ function firstParam(value: string | string[] | undefined) {
 
 function isSafeInternalReturnTo(value: string) {
   return value.startsWith("/") && !value.startsWith("//") && !value.startsWith("/api/");
+}
+
+function safeReturnLabel(value: string) {
+  switch (value) {
+    case "AI Digest":
+    case "Favorites":
+    case "Following":
+    case "Search":
+    case "Source":
+    case "Sources":
+      return value;
+    default:
+      return "Back";
+  }
 }

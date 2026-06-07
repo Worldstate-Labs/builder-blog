@@ -1679,8 +1679,12 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const addBuilderForm = source("src/components/AddBuilderForm.tsx");
   const builderEditDialog = source("src/components/BuilderEditDialog.tsx");
+  const builderDetailPage = source("src/app/(workspace)/builder/[entityId]/page.tsx");
   const builderLibraryList = source("src/components/BuilderLibraryList.tsx");
   const builderFeedItems = source("src/components/BuilderFeedItems.tsx");
+  const digestContent = source("src/components/DigestContent.tsx");
+  const recentPostsList = source("src/components/RecentPostsList.tsx");
+  const recommendationFeed = source("src/components/RecommendationFeed.tsx");
   const recommendationItemPage = source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx");
   const postCard = source("src/components/PostCard.tsx");
   const globals = source("src/app/globals.css");
@@ -1947,7 +1951,16 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(postCard, /See more|See less/);
   assert.match(postCard, /Raw content/);
   assert.match(postCard, /View original/);
+  assert.match(postCard, /detailUrl\?: string \| null/);
+  assert.match(postCard, /Read in FollowBrief/);
+  assert.match(postCard, /className="post-read-detail"/);
+  assert.match(postCard, /className="post-read-original"/);
+  assert.match(recommendationFeed, /detailUrl:\s*postDetailHref/);
+  assert.match(recommendationFeed, /isFavoritesTab \? "Favorites" : "Following"/);
   assert.doesNotMatch(postCard, /whitespace-pre-wrap text-sm leading-6|mt-3 whitespace-pre-wrap rounded-lg|text-link mt-2/);
+  assert.match(globals, /\.post-read-detail,[\s\S]*\.post-read-original\s*{/);
+  assert.match(globals, /\.post-read-detail\s*{[\s\S]*color:\s*var\(--accent\)/);
+  assert.match(globals, /\.post-read-original\s*{[\s\S]*color:\s*var\(--muted-strong\)/);
   assert.match(globals, /\.fetched-post-summary-text\s*{[\s\S]*white-space:\s*pre-wrap/);
   assert.match(globals, /--post-summary-collapsed-height:\s*calc\(var\(--post-summary-lines\) \* var\(--post-summary-line-height\)\)/);
   assert.match(globals, /\.post-summary:not\(\.post-summary--expanded\) \.fetched-post-summary-text\s*{/);
@@ -1972,9 +1985,13 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(recommendationItemPage, /returnLabel/);
   assert.match(recommendationItemPage, /returnTo/);
   assert.match(recommendationItemPage, /isSafeInternalReturnTo/);
+  assert.match(recommendationItemPage, /safeReturnLabel/);
+  assert.match(recommendationItemPage, /case "Source"/);
+  assert.match(recommendationItemPage, /case "Sources"/);
+  assert.match(recommendationItemPage, /case "AI Digest"/);
   assert.match(recommendationItemPage, /showDebugActions=\{false\}/);
   assert.match(recommendationItemPage, /avatarUrl:\s*item\.builder\.avatarUrl/);
-  assert.equal((recommendationItemPage.match(/Following/g) ?? []).length, 1);
+  assert.match(recommendationItemPage, /return \{ href: "\/dashboard\?tab=following", label: "Following" \}/);
   assert.doesNotMatch(recommendationItemPage, /Back to feed/);
   assert.doesNotMatch(recommendationItemPage, /extraActions=/);
   assert.match(globals, /\.reading-page\s*{[\s\S]*width:\s*min\(100%,\s*var\(--reading-max\)\)/);
@@ -1993,6 +2010,11 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(feedItemsRoute, /fetchDedupedFeedForEntities/);
   assert.match(feedItemsRoute, /activePoolBuilderIds/);
   assert.match(feedItemsRoute, /NextResponse\.json/);
+  assert.match(builderFeedItems, /detailUrl:\s*postDetailHref\(item\.id, "\/builders", "Sources"\)/);
+  assert.match(builderDetailPage, /returnHref=\{`\/builder\/\$\{entityId\}`\}/);
+  assert.match(builderDetailPage, /returnLabel="Source"/);
+  assert.match(recentPostsList, /detailUrl:\s*postDetailHref\(item\.id, returnHref, returnLabel\)/);
+  assert.match(digestContent, /detailUrl:\s*favoriteState[\s\S]*postDetailHref\(favoriteState\.feedItemId, "\/dashboard\?tab=ai-digest", "AI Digest"\)/);
 });
 
 test("digest posts use source detail headings and unified original links", () => {

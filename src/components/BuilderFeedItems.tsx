@@ -126,6 +126,7 @@ export function BuilderFeedItems({
             post={{
               ...item,
               builder,
+              detailUrl: postDetailHref(item.id, "/builders", "Sources"),
             }}
             showSourceBadge={false}
             variant="row"
@@ -140,6 +141,11 @@ export function BuilderFeedItems({
       </div>
     </details>
   );
+}
+
+function postDetailHref(feedItemId: string, returnTo: string, returnLabel: string) {
+  const params = new URLSearchParams({ returnLabel, returnTo });
+  return `/recommendations/items/${feedItemId}?${params.toString()}`;
 }
 
 function formatPostDate(value: Date) {

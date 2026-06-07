@@ -13,9 +13,13 @@ type RecentPostsItem = {
 export function RecentPostsList({
   items,
   readKeys,
+  returnHref,
+  returnLabel,
 }: {
   items: RecentPostsItem[];
   readKeys: string[];
+  returnHref: string;
+  returnLabel: string;
 }) {
   const readKeySet = new Set(readKeys);
 
@@ -27,10 +31,18 @@ export function RecentPostsList({
             dataRead={readKeySet.has(item.readKey)}
             extraMeta={item.viaLabel ? <span>{item.viaLabel}</span> : null}
             onInteract={() => markPostRead(item.id)}
-            post={item.post}
+            post={{
+              ...item.post,
+              detailUrl: postDetailHref(item.id, returnHref, returnLabel),
+            }}
           />
         </li>
       ))}
     </ul>
   );
+}
+
+function postDetailHref(feedItemId: string, returnTo: string, returnLabel: string) {
+  const params = new URLSearchParams({ returnLabel, returnTo });
+  return `/recommendations/items/${feedItemId}?${params.toString()}`;
 }

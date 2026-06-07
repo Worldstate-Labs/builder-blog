@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
-import { ChevronDown, ExternalLink, FileText, ScrollText } from "lucide-react";
+import { BookOpen, ChevronDown, ExternalLink, FileText, ScrollText } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { SourceBadge } from "@/components/SourceBadge";
 import { SourceAvatar } from "@/components/SourceAvatar";
@@ -28,6 +28,7 @@ export type PostCardPost = {
   body: string;
   summary?: string | null;
   originalSummary?: string | null;
+  detailUrl?: string | null;
   url: string;
   publishedAt: string | null;
   createdAt: string;
@@ -282,7 +283,20 @@ export function PostCard({
           )}
 
           <div className="post-actions" onClickCapture={noteInteraction}>
-            {/* Primary action: open the original source to read the full content. */}
+            {post.detailUrl ? (
+              <Link
+                aria-label={actionLabel("Read in FollowBrief", actionContext)}
+                className="post-read-detail"
+                href={post.detailUrl}
+                onClick={noteInteraction}
+                title="Read in FollowBrief"
+              >
+                Read
+                <BookOpen aria-hidden="true" className="post-read-detail-icon" />
+              </Link>
+            ) : null}
+
+            {/* External source action: keep original content one deliberate click away. */}
             <a
               aria-label={actionLabel("View original source", actionContext)}
               className="post-read-original"

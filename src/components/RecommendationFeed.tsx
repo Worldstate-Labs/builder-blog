@@ -251,12 +251,24 @@ function RecommendationCard({
       }
       favoriteReadEmphasis={isFavoritesTab && isMarkedRead}
       onInteract={isFavoritesTab ? undefined : () => markRead(entry.item.id)}
-      post={entry.item}
+      post={{
+        ...entry.item,
+        detailUrl: postDetailHref(
+          entry.item.id,
+          isFavoritesTab ? "/dashboard?tab=favorites" : "/dashboard?tab=following",
+          isFavoritesTab ? "Favorites" : "Following",
+        ),
+      }}
       reasons={showAdminActions ? entry.reasons : undefined}
       showDebugActions={showAdminActions}
       stackActionsOnMobile={showAdminActions}
     />
   );
+}
+
+function postDetailHref(feedItemId: string, returnTo: string, returnLabel: string) {
+  const params = new URLSearchParams({ returnLabel, returnTo });
+  return `/recommendations/items/${feedItemId}?${params.toString()}`;
 }
 
 function FavoriteToggleButton({
