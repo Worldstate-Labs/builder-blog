@@ -1805,11 +1805,11 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
                   {" "}
                   {work.fixHref.startsWith("/") ? (
                     <Link className="sync-panel-task-link" href={work.fixHref}>
-                      open settings
+                      Open Settings
                     </Link>
                   ) : (
                     <a className="sync-panel-task-link" href={work.fixHref}>
-                      open settings
+                      Open Settings
                     </a>
                   )}
                 </>
