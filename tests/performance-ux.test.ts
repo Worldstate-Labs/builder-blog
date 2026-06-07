@@ -2017,6 +2017,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postDetailPage, /case "Source"/);
   assert.match(postDetailPage, /case "Sources"/);
   assert.match(postDetailPage, /case "AI Digest"/);
+  assert.doesNotMatch(postDetailPage, /case "Favorites"/);
   assert.match(postDetailPage, /showDebugActions=\{false\}/);
   assert.match(postDetailPage, /avatarUrl:\s*item\.builder\.avatarUrl/);
   assert.match(postDetailPage, /return \{ href: "\/dashboard\?tab=following", label: "Following" \}/);

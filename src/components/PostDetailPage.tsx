@@ -130,7 +130,6 @@ function isSafeInternalReturnTo(value: string) {
 function safeReturnLabel(value: string) {
   switch (value) {
     case "AI Digest":
-    case "Favorites":
     case "Following":
     case "Search":
     case "Source":
