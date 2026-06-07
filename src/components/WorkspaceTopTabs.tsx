@@ -84,7 +84,12 @@ export function WorkspaceTopTabs<TValue extends string>({
           }
 
           return (
-            <Link {...commonProps} href={item.href ?? "#"} key={item.value}>
+            <Link
+              {...commonProps}
+              aria-current={selected ? "page" : undefined}
+              href={item.href ?? "#"}
+              key={item.value}
+            >
               {item.label}
             </Link>
           );
