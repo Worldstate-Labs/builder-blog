@@ -193,12 +193,12 @@ export default async function BuilderDetailPage({ params }: Params) {
                 ) : null}
                 {headerSourceUrl ? (
                   <a
-                    aria-label={`Open ${entity.name} on its source site`}
+                    aria-label={`View ${entity.name} source site`}
                     className="builder-library-open-source"
                     href={headerSourceUrl}
                     rel="noopener noreferrer"
                     target="_blank"
-                    title="Open source"
+                    title="View source site"
                   >
                     <ExternalLink aria-hidden="true" />
                   </a>
@@ -324,12 +324,14 @@ async function ChannelsListSlot({
             </div>
             {channel.sourceUrl ? (
               <a
+                aria-label={`View ${channel.libraryName} source site`}
                 className="builder-detail-channel-link"
                 href={channel.sourceUrl}
                 rel="noreferrer"
                 target="_blank"
+                title="View source site"
               >
-                Open source
+                View source site
               </a>
             ) : null}
           </div>
