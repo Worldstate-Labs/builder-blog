@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 
 type BuilderLibraryActionsProps = {
   builderId: string;
+  builderName: string;
   initialSubscribed: boolean;
   onSubscriptionStateChange?: (
     builderId: string,
@@ -14,6 +15,7 @@ type BuilderLibraryActionsProps = {
 
 export function BuilderLibraryActions({
   builderId,
+  builderName,
   initialSubscribed,
   onSubscriptionStateChange,
 }: BuilderLibraryActionsProps) {
@@ -57,7 +59,7 @@ export function BuilderLibraryActions({
         <button
           aria-busy={isPending}
           aria-pressed={subscribed}
-          aria-label={subscribed ? "Unfollow" : "Follow"}
+          aria-label={`${subscribed ? "Unfollow" : "Follow"} ${builderName}`}
           className={`fb-follow-button${subscribed ? " is-following" : " is-follow"}`}
           disabled={isPending}
           onClick={updateSubscription}

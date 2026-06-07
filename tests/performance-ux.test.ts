@@ -633,6 +633,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /className="builder-detail-action-skeleton-button"/);
   assert.match(builderDetailActions, /className="builder-detail-action-stack"/);
   assert.match(builderDetailActions, /className="builder-detail-action-row"/);
+  assert.match(builderDetailActions, /sourceName: string/);
+  assert.match(builderDetailActions, /aria-label=\{`\$\{subscribed \? "Unfollow" : "Follow"\} \$\{sourceName\}`\}/);
+  assert.match(builderDetailPage, /sourceName=\{entity\.name\}/);
   assert.match(builderDetailActions, /className="builder-detail-action-error"/);
   assert.doesNotMatch(builderDetailActions, /className="grid gap-2"|flex flex-wrap items-center gap-3|text-xs text-\[var\(--danger\)\]/);
   assert.match(builderDetailPage, /className="builder-detail-section builder-detail-channels"/);

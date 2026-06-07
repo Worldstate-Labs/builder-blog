@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 type BuilderDetailActionsProps = {
   entityId: string;
   initialSubscribed: boolean;
+  sourceName: string;
 };
 
 /**
@@ -20,6 +21,7 @@ type BuilderDetailActionsProps = {
 export function BuilderDetailActions({
   entityId,
   initialSubscribed,
+  sourceName,
 }: BuilderDetailActionsProps) {
   const [subscribed, setSubscribed] = useState(initialSubscribed);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +57,7 @@ export function BuilderDetailActions({
           disabled={isPending}
           aria-busy={isPending}
           aria-pressed={subscribed}
-          aria-label={subscribed ? "Unfollow" : "Follow"}
+          aria-label={`${subscribed ? "Unfollow" : "Follow"} ${sourceName}`}
           onClick={() => follow(!subscribed)}
           className={`fb-follow-button${subscribed ? " is-following" : " is-follow"}`}
         >

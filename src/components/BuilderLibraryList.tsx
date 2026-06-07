@@ -316,6 +316,7 @@ function BuilderCard({
           )}
           <BuilderLibraryActions
             builderId={builder.id}
+            builderName={builder.name}
             initialSubscribed={builder.subscribed}
             key={`${builder.id}:${builder.subscribed}`}
             onSubscriptionStateChange={onSubscriptionStateChange}

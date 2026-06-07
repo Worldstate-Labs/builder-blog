@@ -129,6 +129,7 @@ export default async function BuilderDetailPage({ params }: Params) {
           <Suspense fallback={<BuilderActionsSkeleton />}>
             <BuilderDetailActionsSlot
               entityId={entityId}
+              sourceName={entity.name}
               userId={userId}
               channelIds={channelIds}
             />
@@ -255,10 +256,12 @@ async function countDedupedItemsForEntity(entityId: string): Promise<number> {
 
 async function BuilderDetailActionsSlot({
   entityId,
+  sourceName,
   userId,
   channelIds,
 }: {
   entityId: string;
+  sourceName: string;
   userId: string;
   channelIds: string[];
 }) {
@@ -276,6 +279,7 @@ async function BuilderDetailActionsSlot({
     <BuilderDetailActions
       entityId={entityId}
       initialSubscribed={subscribedCount > 0}
+      sourceName={sourceName}
     />
   );
 }
