@@ -557,7 +557,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*18px/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*box-shadow:\s*none/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.75rem minmax\(0,\s*1fr\) auto/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*7\.5rem/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*6\.75rem/);
   assert.match(globals, /\.access-key-device-title\s*{[\s\S]*font-size:\s*1\.25rem/);
   assert.match(globals, /\.access-key-device-status\s*{[\s\S]*font-size:\s*1rem/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*border-radius:\s*999px/);
@@ -3414,7 +3414,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.settings-rules-skeleton-list/);
   assert.match(globals, /\.settings-skeleton-line,[\s\S]*\.settings-skeleton-row\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);
   assert.match(globals, /\.settings-skeleton-pill\s*{[\s\S]*border-radius:\s*999px/);
-  assert.match(globals, /\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*height:\s*7\.5rem/);
+  assert.match(globals, /\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*height:\s*6\.75rem/);
   assert.match(globals, /\.token-picker-empty\s*{\s*margin:\s*0\.5rem;\s*}/);
   assert.doesNotMatch(globals, /border-left:\s*[2-9]/);
   assert.doesNotMatch(settingsPage, /createPersonalTokenAction/);
@@ -3527,7 +3527,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*18px/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*background:\s*var\(--paper\)/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*box-shadow:\s*none/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*7\.5rem/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*6\.75rem/);
   assert.match(globals, /\.access-key-device-title\s*{[\s\S]*font-size:\s*1\.25rem/);
   assert.match(globals, /\.access-key-device-status\s*{[\s\S]*font-size:\s*1rem/);
   assert.match(globals, /\.access-key-device-icon svg\s*{[\s\S]*height:\s*1\.65rem/);
@@ -3536,12 +3536,12 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-width:\s*10\.75rem/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*text-align:\s*center/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.125rem minmax\(0,\s*1fr\) auto/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*6\.75rem/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*6\.25rem/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-width:\s*7\.5rem/);
   assert.doesNotMatch(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*grid-column:\s*1 \/ -1/);
   assert.match(globals, /\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*border-radius:\s*18px/);
-  assert.match(globals, /\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*height:\s*7\.5rem/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*height:\s*6\.75rem/);
+  assert.match(globals, /\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*height:\s*6\.75rem/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-keys-list--skeleton \.settings-skeleton-row\s*{[\s\S]*height:\s*6\.25rem/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.access-keys-empty\s*{\s*margin:\s*0;\s*}/);
   assert.match(globals, /\.settings-dialog-stack/);

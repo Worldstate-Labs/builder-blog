@@ -8899,7 +8899,7 @@ a.fb-hub-source-name:focus-visible {
 
 .access-keys-list--skeleton .settings-skeleton-row {
   border-radius: 18px;
-  height: 7.5rem;
+  height: 6.75rem;
 }
 
 .settings-source-type-manager {
@@ -9725,11 +9725,11 @@ a.fb-hub-source-name:focus-visible {
   border-radius: 18px;
   box-shadow: none;
   display: grid;
-  gap: 1.1rem;
+  gap: 1rem;
   grid-template-columns: 2.75rem minmax(0, 1fr) auto;
-  min-height: 7.5rem;
+  min-height: 6.75rem;
   min-width: 0;
-  padding: 1.35rem 1.5rem;
+  padding: 1.2rem 1.45rem;
 }
 
 .access-key-card.fb-row--revoked {
@@ -10951,12 +10951,12 @@ body {
   .access-key-card {
     gap: 0.85rem;
     grid-template-columns: 2.125rem minmax(0, 1fr) auto;
-    min-height: 6.75rem;
+    min-height: 6.25rem;
     padding: 1rem 0.9rem;
   }
 
   .access-keys-list--skeleton .settings-skeleton-row {
-    height: 6.75rem;
+    height: 6.25rem;
   }
 
   .access-key-revoke-button,
