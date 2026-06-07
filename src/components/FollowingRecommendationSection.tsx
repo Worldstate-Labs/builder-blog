@@ -82,7 +82,7 @@ function FollowingRecommendationLoader({
   }, [loadTimeline]);
 
   if (status === "loading") {
-    return <FeedLoadingState label="Loading Following recommendations" />;
+    return <FeedLoadingState label="Loading Following" />;
   }
 
   // A fetch failure is distinct from "ready but nothing to show": the former is
@@ -129,7 +129,7 @@ function FollowingUnavailable({
       <FeedEmptyState
         actions={<FetchSourcesPrompt sourceReadiness={sourceReadiness} />}
         ariaLive="polite"
-        body="Ask your Local Agent to fetch and summarize your followed sources, then Following recommendations can appear."
+        body="Ask your Local Agent to fetch and summarize your followed sources, then Following can show their latest posts."
         className="is-actionable"
         title="No posts have been fetched for your followed sources yet"
       />
@@ -142,7 +142,7 @@ function FollowingUnavailable({
       ariaLive="polite"
       body="Following will update after new unread posts are fetched from your followed sources."
       className="is-actionable"
-      title="No unread recommendations yet"
+      title="No unread posts yet"
     />
   );
 }
@@ -174,7 +174,7 @@ function FollowingError({ onRetry }: { onRetry: () => void }) {
         </button>
       }
       ariaLive="assertive"
-      body="Something went wrong fetching recommendations."
+      body="Something went wrong loading Following."
       role="alert"
       title="Couldn't load Following"
       tone="error"

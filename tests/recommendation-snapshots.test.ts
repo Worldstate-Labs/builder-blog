@@ -313,6 +313,10 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.match(followingSection, /fetchedPostCount/);
   assert.match(followingSection, /No followed sources yet/);
   assert.match(followingSection, /No posts have been fetched for your followed sources yet/);
+  assert.match(followingSection, /No unread posts yet/);
+  assert.match(followingSection, /Following can show their latest posts/);
+  assert.match(followingSection, /Something went wrong loading Following/);
+  assert.doesNotMatch(followingSection, /Following recommendations can appear|No unread recommendations yet|fetching recommendations/);
   assert.match(followingSection, /FetchSourcesPrompt/);
   assert.match(followingSection, /context="library"/);
   assert.doesNotMatch(followingSection, /scope=\$\{scope\}/);

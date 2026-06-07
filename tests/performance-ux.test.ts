@@ -817,8 +817,11 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /showAdminActions=\{isAdmin\}/);
   assert.match(followingSection, /No followed sources yet/);
   assert.match(followingSection, /No posts have been fetched for your followed sources yet/);
-  assert.match(followingSection, /No unread recommendations yet/);
+  assert.match(followingSection, /No unread posts yet/);
   assert.match(followingSection, /Ask your Local Agent to fetch and summarize your followed sources/);
+  assert.match(followingSection, /Following can show their latest posts/);
+  assert.match(followingSection, /Something went wrong loading Following/);
+  assert.doesNotMatch(followingSection, /Following recommendations can appear|No unread recommendations yet|fetching recommendations/);
   assert.doesNotMatch(followingSection, /fetch and summarize them/);
   assert.match(followingSection, /<SkillPromptActions[\s\S]*context="library"/);
   assert.match(followingSection, /showStop=\{false\}/);
@@ -844,6 +847,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(recommendationFeed, /className="recommendation-snapshot-list"/);
   assert.match(recommendationFeed, /className="feed-load-more"/);
   assert.match(recommendationFeed, /className="feed-end-note"/);
+  assert.match(recommendationFeed, /No new unread posts left/);
+  assert.doesNotMatch(recommendationFeed, /No new unread recommendations left/);
   assert.match(recommendationFeed, /useHydrated/);
   assert.match(recommendationFeed, /formatDate\(snapshot\.createdAt, hydrated\)/);
   assert.match(recommendationFeed, /timeZone:\s*"UTC"/);
@@ -895,7 +900,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.post-footer\[data-stack-actions="true"\]\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(globals, /\.post-footer\[data-stack-actions="true"\] \.post-actions\s*{[\s\S]*justify-content:\s*flex-start/);
   assert.doesNotMatch(globals, /\.feed-state-icon|\.feed-state-inner|\.feed-state-title|\.feed-state-desc/);
-  assert.match(followingSection, /Loading Following recommendations/);
+  assert.match(followingSection, /Loading Following/);
   assert.match(feedState, /aria-live="polite"/);
   assert.match(followingSection, /ariaLive="polite"/);
   assert.match(timelineRoute, /export async function GET/);
