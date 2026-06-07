@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   useCallback,
   useEffect,
@@ -1802,9 +1803,15 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
               {work.fixHref ? (
                 <>
                   {" "}
-                  <a className="sync-panel-task-link" href={work.fixHref}>
-                    open settings
-                  </a>
+                  {work.fixHref.startsWith("/") ? (
+                    <Link className="sync-panel-task-link" href={work.fixHref}>
+                      open settings
+                    </Link>
+                  ) : (
+                    <a className="sync-panel-task-link" href={work.fixHref}>
+                      open settings
+                    </a>
+                  )}
                 </>
               ) : null}
             </div>

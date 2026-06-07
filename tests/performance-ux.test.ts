@@ -1310,6 +1310,10 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /No Fetch sources runs yet\. Runs appear after your Local Agent fetches sources\./);
   assert.match(fetchLogPanel, /title="No Fetch sources runs"/);
   assert.match(fetchLogPanel, /Add X access in Settings, then run Fetch sources again\./);
+  assert.match(fetchLogPanel, /import Link from "next\/link"/);
+  assert.match(fetchLogPanel, /work\.fixHref\.startsWith\("\/"\)/);
+  assert.match(fetchLogPanel, /<Link className="sync-panel-task-link" href=\{work\.fixHref\}>[\s\S]*open settings[\s\S]*<\/Link>/);
+  assert.doesNotMatch(fetchLogPanel, /\{" "\}\s*<a className="sync-panel-task-link" href=\{work\.fixHref\}>/);
   assert.doesNotMatch(fetchLogPanel, /No source update schedule has reported yet|No source updates yet|update sources again|source update details/);
   assert.match(fetchLogPanel, /posts fetched/);
   assert.doesNotMatch(fetchLogPanel, /posts read|post read/);
