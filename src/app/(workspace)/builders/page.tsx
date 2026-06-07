@@ -623,7 +623,7 @@ async function FetchSourcesSection({
   const userLibraryName =
     data.isAdmin
       ? adminCommunityLibraryName
-      : `${data.sessionUserName || data.sessionUserEmail || "Personal"} library`;
+      : `${data.sessionUserName || data.sessionUserEmail || "Personal"} source library`;
 
   const fetchSyncSection = (
     <section className="sources-sync-section">
@@ -654,7 +654,7 @@ async function FetchSourcesSection({
       <div className="library-hub-toolbar">
         <div className="library-hub-toolbar-copy">
           <h2 id="sources-library-section-title" className="fb-section-heading">
-            Your library
+            Your source library
           </h2>
         </div>
         <LibraryVisibilityToggle
@@ -671,7 +671,7 @@ async function FetchSourcesSection({
         className="your-library-panel fb-panel"
         hideHeader
         sourceOptions={data.sourceLabelOptions}
-        title="Your library"
+        title="Your source library"
       >
         <BuilderLibraryList
           acceptAddedBuilders

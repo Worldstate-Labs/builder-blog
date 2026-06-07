@@ -1419,7 +1419,7 @@ test("primary tabs use local loading fallbacks instead of full-route loaders", (
   assert.match(buildersPage, /<h1 className="sr-only">Sources<\/h1>/);
   assert.match(buildersPage, /className="sources-section-stack"/);
   assert.match(buildersPage, /className="your-library-panel fb-panel"/);
-  assert.match(buildersPage, /Your library/);
+  assert.match(buildersPage, /Your source library/);
   assert.match(buildersPage, /className="workspace-content-stack"/);
   assert.doesNotMatch(buildersPage, /sources-sync-section mt-5/);
   assert.doesNotMatch(buildersPage, /mt-6 grid gap-5/);
@@ -1620,12 +1620,14 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /<section className="fb-page-head"/);
   assert.match(buildersPage, /beforeBody=\{fetchSyncSection\}/);
   assert.match(buildersPage, /actionsPlacement="start"/);
-  assert.match(buildersPage, /title="Your library"/);
+  assert.match(buildersPage, /title="Your source library"/);
+  assert.match(buildersPage, /\$\{data\.sessionUserName \|\| data\.sessionUserEmail \|\| "Personal"\} source library/);
   assert.match(postCard, /useHydrated/);
   assert.match(postCard, /formatDate\(post\.publishedAt, hydrated\)/);
   assert.match(postCard, /timeZone:\s*"UTC"/);
   assert.match(buildersPage, /<section className="sources-section-stack">[\s\S]*\{privateSection\}[\s\S]*\{importedSection\}/);
   assert.doesNotMatch(buildersPage, /MobileSourcesSwitcher|privateLabel="Your library"|importedLabel="Imported"/);
+  assert.doesNotMatch(buildersPage, /title="Your library"|\bYour library\b/);
   assert.doesNotMatch(builderLibraryList, /function BuilderStats/);
   assert.match(builderLibraryList, /latestPostCreatedAt=\{builder\.latestPostCreatedAt\}/);
   assert.doesNotMatch(builderLibraryList, /CountMeta/);
