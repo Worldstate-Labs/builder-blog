@@ -25,6 +25,9 @@ test("source follow controls use one button that toggles Follow and Unfollow", (
 
   assert.match(libraryActions, /onClick=\{updateSubscription\}/);
   assert.match(detailActions, /onClick=\{\(\) => follow\(!subscribed\)\}/);
+  assert.match(libraryActions, /Could not update follow state\./);
+  assert.match(detailActions, /Could not update follow state\./);
+  assert.doesNotMatch(libraryActions, /Could not update subscription\./);
   assert.match(libraryActions, /builderName: string/);
   assert.match(detailActions, /sourceName: string/);
 });

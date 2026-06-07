@@ -2696,6 +2696,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(builderActions, /onSubscriptionStateChange\?\.\(builderId, nextSubscribed, previousSubscribed\)/);
   assert.doesNotMatch(builderActions, /fetch\("\/api\/builders\/subscriptions"|builder-library-bulk-action|Follow all/);
   assert.match(builderActions, /className="builder-library-action-error"/);
+  assert.match(builderActions, /Could not update follow state\./);
+  assert.doesNotMatch(builderActions, /Could not update subscription\./);
   assert.doesNotMatch(builderActions, /builder-library-remove-button|builder-library-remove-icon|builder-library-remove-confirm/);
   assert.match(builderEditDialog, /Trash2/);
   assert.match(builderEditDialog, /Update the source type, URL or handle, and display name/);
