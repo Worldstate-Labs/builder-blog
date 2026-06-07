@@ -413,6 +413,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /@\/components\/settings\/SettingsFields/);
   assert.match(adminSourceTypeManager, /FETCH_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /SUMMARY_PROMPT_PLACEHOLDER/);
+  assert.match(adminSourceTypeManager, /How each item from this source is written as a per-post summary/);
+  assert.doesNotMatch(adminSourceTypeManager, /turned into a brief/);
   assert.match(adminSourceTypeManager, /placeholder="Example: 200"/);
   assert.match(adminSourceTypeManager, /placeholder="Example: 0\.35"/);
   assert.match(adminSourceTypeManager, /className="source-type-config-summary"/);

@@ -267,7 +267,7 @@ function SourceTypeCard({
         <Section
           step="02"
           title="Summarization"
-          description="How each item of this source is turned into a brief. Output language comes from the one-time or cron run prompt."
+          description="How each item from this source is written as a per-post summary. Output language comes from the one-time or cron run prompt."
         >
           <MarkdownEditor
             ariaLabel={`${config.label} summary prompt`}
