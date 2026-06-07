@@ -5129,7 +5129,7 @@ svg.lucide {
 }
 
 .digest-picker-option:hover,
-.digest-picker-option[aria-current="true"] {
+.digest-picker-option[aria-current="page"] {
   background: color-mix(in oklch, var(--accent) 8%, transparent);
 }
 

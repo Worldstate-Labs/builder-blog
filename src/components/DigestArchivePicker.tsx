@@ -45,11 +45,39 @@ export function DigestArchivePicker({
 
   if (!selectedDigest) return null;
 
+  function focusOption(direction: "selected" | "next" | "previous") {
+    const options = Array.from(
+      pickerRef.current?.querySelectorAll<HTMLAnchorElement>(".digest-picker-option") ?? [],
+    );
+    if (options.length === 0) return;
+    const activeIndex = options.findIndex((option) => option === document.activeElement);
+    const selectedIndex = options.findIndex((option) => option.getAttribute("aria-selected") === "true");
+    const baseIndex = activeIndex >= 0 ? activeIndex : Math.max(selectedIndex, 0);
+    const nextIndex =
+      direction === "next"
+        ? (baseIndex + 1) % options.length
+        : direction === "previous"
+          ? (baseIndex - 1 + options.length) % options.length
+          : baseIndex;
+    options[nextIndex]?.focus();
+  }
+
   function handlePickerKeyDown(event: KeyboardEvent<HTMLDetailsElement>) {
-    if (event.key !== "Escape") return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setOpen(false);
+      summaryRef.current?.focus();
+      return;
+    }
+
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
     event.preventDefault();
-    setOpen(false);
-    summaryRef.current?.focus();
+    if (!open) {
+      setOpen(true);
+      window.requestAnimationFrame(() => focusOption("selected"));
+      return;
+    }
+    focusOption(event.key === "ArrowDown" ? "next" : "previous");
   }
 
   return (

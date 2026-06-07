@@ -41,7 +41,10 @@ test("home digest keeps pipeline and saved digest selection in a dedicated contr
   assert.match(digestPipelineSelector, /role="option"/);
   assert.match(digestPipelineSelector, /aria-selected=\{active\}/);
   assert.match(digestPipelineSelector, /onKeyDown=\{handlePickerKeyDown\}/);
-  assert.match(digestPipelineSelector, /event\.key !== "Escape"/);
+  assert.match(digestPipelineSelector, /event\.key === "Escape"/);
+  assert.match(digestPipelineSelector, /event\.key !== "ArrowDown" && event\.key !== "ArrowUp"/);
+  assert.match(digestPipelineSelector, /window\.requestAnimationFrame\(\(\) => focusOption\("selected"\)\)/);
+  assert.match(digestPipelineSelector, /focusOption\(event\.key === "ArrowDown" \? "next" : "previous"\)/);
   assert.match(digestPipelineSelector, /summaryRef\.current\?\.focus\(\)/);
   assert.match(digestPipelineSelector, /data-active=\{active \? "true" : undefined\}/);
   assert.match(globals, /\.digest-pipeline-trigger\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
@@ -79,6 +82,9 @@ test("home digest pipeline menu closes after a selection", () => {
   assert.match(digestPipelineSelector, /const \[open, setOpen\] = useState\(false\)/);
   assert.match(digestPipelineSelector, /document\.addEventListener\("pointerdown", handlePointerDown\)/);
   assert.match(digestPipelineSelector, /function handlePickerKeyDown/);
+  assert.match(digestPipelineSelector, /function focusOption/);
+  assert.match(digestPipelineSelector, /querySelectorAll<HTMLAnchorElement>\("\.digest-pipeline-option"\)/);
+  assert.match(digestPipelineSelector, /option\.getAttribute\("aria-selected"\) === "true"/);
   assert.match(digestPipelineSelector, /event\.preventDefault\(\)/);
   assert.match(digestPipelineSelector, /onClick=\{\(event\) => \{/);
   assert.match(digestPipelineSelector, /setOpen\(false\)/);
