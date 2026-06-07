@@ -713,7 +713,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(channelPreferenceToggle, /Couldn't update/);
   assert.match(appShell, /<MobileSearchLink \/>/);
   assert.match(mobileSearchLink, /usePathname/);
-  assert.match(mobileSearchLink, /const active = pathname === "\/search"/);
+  assert.match(mobileSearchLink, /useSearchParams/);
+  assert.match(mobileSearchLink, /const returnTo = pathname\.startsWith\("\/posts\/"\)/);
+  assert.match(mobileSearchLink, /const active = pathname === "\/search" \|\| returnTo\.startsWith\("\/search"\)/);
   assert.match(mobileSearchLink, /aria-current=\{active \? "page" : undefined\}/);
   assert.match(mobileSearchLink, /data-active=\{active \? "true" : undefined\}/);
   assert.match(mobileSearchLink, /aria-label="Search"/);
