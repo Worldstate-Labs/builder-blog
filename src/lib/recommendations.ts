@@ -723,7 +723,7 @@ export function scoreRecommendation({
   if (builder) {
     if (signals.subscribedBuilderIds.has(builder.id)) {
       score += 18;
-      reasons.push("from a subscribed builder");
+      reasons.push("from a followed source");
     } else if (signals.readBuilderIds.has(builder.id)) {
       score += 10;
       reasons.push("from a builder you have read before");

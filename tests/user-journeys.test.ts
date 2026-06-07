@@ -1318,7 +1318,7 @@ test("recommendation feed user path scores unread fetched posts from profile, su
   });
 
   assert.ok(relevant.score > unrelated.score);
-  assert.ok(relevant.reasons.includes("from a subscribed builder"));
+  assert.ok(relevant.reasons.includes("from a followed source"));
   assert.ok(relevant.reasons.includes("matches your profile and reading topics"));
 });
 

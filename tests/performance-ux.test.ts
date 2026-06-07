@@ -2138,6 +2138,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   const digestContent = source("src/components/DigestContent.tsx");
   const recentPostsList = source("src/components/RecentPostsList.tsx");
   const recommendationFeed = source("src/components/RecommendationFeed.tsx");
+  const recommendations = source("src/lib/recommendations.ts");
   const postDetailPage = source("src/components/PostDetailPage.tsx");
   const legacyRecommendationItemPage = source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx");
   const postCard = source("src/components/PostCard.tsx");
@@ -2434,6 +2435,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /className="post-raw-content-action"/);
   assert.match(recommendationFeed, /detailUrl:\s*postDetailHref/);
   assert.match(recommendationFeed, /"Following"/);
+  assert.match(recommendations, /from a followed source/);
+  assert.doesNotMatch(recommendations, /from a subscribed builder/);
   assert.match(recommendationFeed, /aria-label=\{label\}/);
   assert.match(recommendationFeed, /const label = isFavorite \? "Remove saved post" : "Save post"/);
   assert.match(recommendationFeed, /<Star aria-hidden="true" className="post-action-icon"/);
