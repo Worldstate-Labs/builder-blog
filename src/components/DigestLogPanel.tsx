@@ -426,7 +426,7 @@ function DigestScheduleSummary({
 }) {
   if (!cronJob) {
     return (
-      <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+      <p className="sync-panel-schedule-summary">
         {status.summary} Use Build digest to copy a Local Agent prompt.
       </p>
     );
@@ -441,7 +441,7 @@ function DigestScheduleSummary({
     : null;
 
   return (
-    <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--muted-strong)]">
+    <p className="sync-panel-schedule-summary">
       {status.summary} · {cronJob.frequencyLabel}
       {nextLabel ? ` · next ${nextLabel}` : ""}
       {cronJob.regenerateDigest ? " · includes posts already used in AI Digests" : ""}
@@ -471,13 +471,13 @@ function DigestStatusPanel({
   }
 
   if (cronJob.status !== "active") {
-    return (
-      <div className="sync-panel-card">
-        <div className="sync-panel-chip-row">
-          <span className="fb-chip">Stopped</span>
+  return (
+    <div className="sync-panel-card">
+      <div className="sync-panel-chip-row">
+        <span className="fb-chip">Stopped</span>
           {cronJob.stoppedAt ? (
             <time
-              className="text-[12.5px] text-[var(--muted-strong)]"
+              className="sync-panel-run-card-time"
               dateTime={cronJob.stoppedAt}
               title={formatAbsolute(cronJob.stoppedAt)}
             >
@@ -510,7 +510,7 @@ function DigestStatusPanel({
   return (
     <div className="sync-panel-card">
       <div className="sync-panel-layout">
-        <div className="min-w-0">
+        <div className="sync-panel-column">
           <div className="sync-panel-chip-row">
             <span
               className="fb-chip"
@@ -542,7 +542,7 @@ function DigestStatusPanel({
             ) : null}
             <div className="sync-panel-meta-row">
               <dt>Runner</dt>
-              <dd className="truncate">
+              <dd className="sync-panel-truncate">
                 {cronJob.runtime || "Local Agent"}
                 {cronJob.hostname ? ` · ${cronJob.hostname.replace(/\.local$/, "")}` : ""}
               </dd>
@@ -554,14 +554,14 @@ function DigestStatusPanel({
             <CountMetric label="Waiting" tone="waiting" value={waitingCount} />
           </div>
           {problemCount > 0 ? (
-            <p className="mt-2 text-[12.5px] leading-relaxed" style={{ color: statusTone.color }}>
+            <p className="sync-panel-status-note" style={{ color: statusTone.color }}>
               {problemDetail}
             </p>
           ) : null}
         </div>
 
         {slots.length > 0 ? (
-          <div className="min-w-0">
+          <div className="sync-panel-column">
             <div className="sync-panel-timeline-head">
               <span className="sync-panel-timeline-title">
                 Last {slots.length} scheduled {slots.length === 1 ? "window" : "windows"}
@@ -622,13 +622,17 @@ function cronSlotLabel(status: CronSlotStatus): string {
 
 function CronSlotBar({ onSelect, slot }: { onSelect: () => void; slot: DigestCronSlot }) {
   const style = cronSlotStyle(slot.status);
-  const height =
-    slot.status === "ok" ? "h-12" : slot.status === "waiting" || slot.status === "running" ? "h-8" : "h-10";
+  const heightClass =
+    slot.status === "ok"
+      ? "is-tall"
+      : slot.status === "waiting" || slot.status === "running"
+        ? "is-short"
+        : "is-medium";
   const label = cronSlotLabel(slot.status);
   return (
     <button
       aria-label={`${label} scheduled AI Digest run at ${formatAbsolute(slot.expectedAt)}`}
-      className={`block min-w-0 flex-1 cursor-pointer rounded-sm border ${height} transition hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]`}
+      className={`sync-panel-slot-bar ${heightClass}`}
       onClick={onSelect}
       style={{
         background: style.background,
@@ -654,10 +658,10 @@ function CronSlotRow({
   const label = cronSlotLabel(slot.status);
   return (
     <div
-      className="flex flex-wrap items-center justify-between gap-2 rounded-[7px] px-1 py-1 text-[12.5px] target:bg-[var(--accent-soft)]"
+      className="sync-panel-slot-row"
       id={slotDomId(slot)}
     >
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="sync-panel-slot-row-main">
         <span
           className="fb-chip"
           style={{ background: style.background, borderColor: style.border, color: style.color }}
@@ -665,15 +669,15 @@ function CronSlotRow({
           {label}
         </span>
         <time
-          className="text-[var(--ink)]"
+          className="sync-panel-slot-row-time"
           dateTime={slot.expectedAt}
           title={formatAbsolute(slot.expectedAt)}
         >
           {hydrated ? formatRelative(slot.expectedAt) : formatAbsolute(slot.expectedAt)}
         </time>
       </div>
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="mono truncate text-[11.5px] text-[var(--muted-strong)]">
+      <div className="sync-panel-slot-row-side">
+        <span className="mono sync-panel-slot-row-note">
           {slot.jobRun && !slot.run
             ? `${jobRunStatusLabel(slot.jobRun)} · ${slot.jobRun.runtime || "Local Agent"}`
             : slot.run
@@ -984,7 +988,7 @@ function RunCard({ run }: { run: DigestRunListItem }) {
 
 function Arrow() {
   return (
-    <span aria-hidden="true" className="text-[var(--muted)]">
+    <span aria-hidden="true" className="sync-panel-funnel-arrow">
       →
     </span>
   );
@@ -1006,11 +1010,11 @@ function FunnelStat({
         ? "var(--muted-strong)"
         : "var(--ink)";
   return (
-    <span className="inline-flex items-baseline gap-1">
-      <span className="mono text-[14px] font-semibold" style={{ color }}>
+    <span className="sync-panel-funnel-stat">
+      <span className="mono sync-panel-funnel-stat-value" style={{ color }}>
         {formatCount(value)}
       </span>
-      <span className="text-[var(--muted-strong)]">{label}</span>
+      <span className="sync-panel-funnel-stat-label">{label}</span>
     </span>
   );
 }
