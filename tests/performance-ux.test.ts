@@ -554,6 +554,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /fetchedPostCount/);
   assert.match(dashboardPage, /No followed sources yet/);
   assert.match(dashboardPage, /No AI Digest yet/);
+  assert.match(dashboardPage, /This imported AI Digest has no saved digest yet/);
+  assert.doesNotMatch(dashboardPage, /saved briefs/);
   assert.match(dashboardPage, /No summarized posts yet/);
   assert.match(dashboardPage, /No fetched posts yet/);
   assert.match(dashboardPage, /Ask your Local Agent to build an AI Digest from the summarized posts/);
@@ -2175,6 +2177,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(visibilityToggle, /className="hub-share-button"/);
   assert.match(visibilityToggle, /className="hub-share-label"/);
   assert.match(visibilityToggle, /className="hub-share-error"/);
+  assert.match(visibilityToggle, /Shared on Hub/);
+  assert.match(visibilityToggle, /Community source library on Hub/);
+  assert.match(visibilityToggle, /isPublic \? "Shared" : "Private"/);
+  assert.doesNotMatch(visibilityToggle, /Public on Hub|Community Library on Hub|isPublic \? "Public" : "Private"/);
   assert.doesNotMatch(visibilityToggle, /text-\[12px\]|text-\[10\.5px\]|disabled:cursor-not-allowed/);
   assert.match(visibilityToggle, /aria-pressed/);
   assert.match(visibilityRoute, /export async function PATCH/);
@@ -2572,8 +2578,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(tokenPanel, /visibleTokens|hiddenActiveCount|showAllTokens|access-keys-more/);
   assert.doesNotMatch(tokenPanel, /@\/components\/Count/);
   assert.match(tokenPanel, /<EmptyState[\s\S]*className="access-keys-empty"/);
+  assert.match(tokenPanel, /Add one when you connect a Local Agent\./);
   assert.match(tokenPanel, /activeTokens\.length === 0/);
   assert.doesNotMatch(tokenPanel, /access-keys-note|No active keys to show/);
+  assert.doesNotMatch(tokenPanel, /connect a local agent/);
   assert.match(tokenPanel, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.match(tokenPanel, /className="settings-dialog-copy"/);
   assert.match(tokenPanel, /className="settings-dialog-actions"/);

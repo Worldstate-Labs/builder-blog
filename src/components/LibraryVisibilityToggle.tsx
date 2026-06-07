@@ -81,8 +81,8 @@ export function LibraryVisibilityToggle({
         <strong>
           {isPublic
             ? isAdminLibrary
-              ? "Community Library on Hub"
-              : "Public on Hub"
+              ? "Community source library on Hub"
+              : "Shared on Hub"
             : "Private"}
         </strong>
         {error ? <small role="status">{error}</small> : null}
@@ -98,7 +98,7 @@ export function LibraryVisibilityToggle({
         <span className="library-visibility-track" aria-hidden="true">
           <span className="library-visibility-thumb" />
         </span>
-        <span>{isPending ? "Updating" : isPublic ? "Public" : "Private"}</span>
+        <span>{isPending ? "Updating" : isPublic ? "Shared" : "Private"}</span>
       </button>
     </div>
   );

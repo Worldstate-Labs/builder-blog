@@ -279,7 +279,7 @@ function DigestEmptyState({
       <EmptyState
         className="ai-digest-empty"
         title="No AI Digest yet"
-        body="This imported AI Digest has no saved briefs yet."
+        body="This imported AI Digest has no saved digest yet."
       />
     );
   }

@@ -287,7 +287,7 @@ export function AgentTokenPanel({
             title={tokens.length === 0 ? "No access keys yet" : "No active keys"}
             body={
               tokens.length === 0
-                ? "Add one when you connect a local agent."
+                ? "Add one when you connect a Local Agent."
                 : "Revoked keys are hidden from this list."
             }
           />
