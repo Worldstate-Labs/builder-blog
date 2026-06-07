@@ -168,7 +168,7 @@ export async function searchUserLibrary({
     ...feedItems.map<SearchDocument>((item) => ({
       id: item.id,
       type: "feed",
-      title: item.title ?? item.builder?.name ?? item.sourceName ?? "Untitled feed item",
+      title: item.title ?? item.builder?.name ?? item.sourceName ?? "Untitled post",
       body: [item.body, item.sourceName ?? "", item.url].join(" "),
       externalUrl: item.url,
       url: `/posts/${item.id}`,
@@ -194,8 +194,8 @@ export async function searchUserLibrary({
           ? `${displayDigestPipelineTitleForOwner(
               pipeline.title,
               pipeline.owner,
-            )} · ${digest.itemCount} items · ${digest.language}`
-          : `${digest.itemCount} items · ${digest.language}`,
+            )} · ${digest.itemCount} ${digest.itemCount === 1 ? "post" : "posts"} · ${digest.language}`
+          : `${digest.itemCount} ${digest.itemCount === 1 ? "post" : "posts"} · ${digest.language}`,
         date: digest.createdAt,
       };
     }),
