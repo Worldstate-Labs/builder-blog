@@ -1887,6 +1887,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /ActiveSearchFilters/);
   assert.match(searchPage, /searchHighlightTerms/);
   assert.match(searchPage, /search-result-refinements/);
+  assert.match(searchPage, /aria-label=\{`Narrow search from \$\{result\.title\}`\}/);
+  assert.match(searchPage, />\s*Narrow search\s*</);
+  assert.match(searchPage, /className="search-result-refinement-icon"/);
   assert.match(searchPage, /className="search-result-source-copy"/);
   assert.match(searchPage, /className="search-result-refinement-list"/);
   assert.match(searchPage, /More from this source/);
@@ -1908,10 +1911,13 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(globals, /\.fb-stabs\s*{|\.fb-stab\b|\.fb-filter-chip\b/);
   assert.doesNotMatch(searchPage, /className="ml-1 text-xs font-bold text-\[var\(--accent\)\]"/);
   assert.doesNotMatch(searchPage, /className="mt-2 flex flex-wrap gap-2"/);
+  assert.doesNotMatch(searchPage, /<summary>Refine<\/summary>/);
   assert.match(globals, /\.search-result-source-copy\s*{[\s\S]*min-width:\s*0/);
   assert.match(globals, /\.search-result h2\s*{[\s\S]*max-width:\s*var\(--measure\)/);
   assert.match(globals, /\.search-result-snippet\s*{[\s\S]*max-width:\s*var\(--measure\)/);
   assert.match(globals, /\.search-result-refinement-list\s*{[\s\S]*display:\s*flex/);
+  assert.match(globals, /\.search-result-refinement-icon\s*{[\s\S]*transition:\s*transform 160ms ease/);
+  assert.match(globals, /\.search-result-refinements\[open\] \.search-result-refinement-icon\s*{[\s\S]*transform:\s*rotate\(180deg\)/);
   assert.match(searchPage, /SearchQueryInsights/);
   assert.match(searchPage, /SearchTypeTabs/);
   assert.match(searchPage, /className="fb-segmented-tabs filter-tabs"/);

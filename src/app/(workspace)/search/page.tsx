@@ -688,8 +688,11 @@ function ResultCard({
         ) : null}
       </div>
       {sourceSite || typeFilter !== result.type ? (
-        <details className="search-result-refinements" aria-label={`Refine search for ${result.title}`}>
-          <summary>Refine</summary>
+        <details className="search-result-refinements" aria-label={`Narrow search from ${result.title}`}>
+          <summary>
+            <span>Narrow search</span>
+            <ChevronDown aria-hidden="true" className="search-result-refinement-icon" />
+          </summary>
           <div className="search-result-refinement-list">
             {sourceSite ? (
               <Link
