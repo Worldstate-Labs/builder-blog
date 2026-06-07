@@ -11060,9 +11060,13 @@ body {
     justify-content: center;
   }
 
-  .fb-hub-card-head,
-  .fb-hub-card-actions {
+  .fb-hub-card-head {
     align-items: stretch;
+    flex-direction: column;
+  }
+
+  .fb-hub-card-actions {
+    align-items: flex-start;
     flex-direction: column;
   }
 

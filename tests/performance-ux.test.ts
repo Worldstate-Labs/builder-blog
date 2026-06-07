@@ -2852,6 +2852,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /className="fb-segmented-tabs mobile-filter-tabs at-mobile"/);
   assert.match(globals, /\.mobile-filter-tabs\s*{[\s\S]*overflow-x:\s*auto/);
   assert.match(globals, /\.mobile-filter-tabs \.fb-btn\s*{[\s\S]*flex:\s*0 0 auto/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-actions\s*{[\s\S]*align-items:\s*flex-start/);
+  assert.doesNotMatch(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-head,\s*\.fb-hub-card-actions\s*{[\s\S]*align-items:\s*stretch/);
   assert.match(hubImportForm, /aria-pressed=\{activeFilter === filter\.key\}/);
   assert.match(hubImportForm, /className="fb-btn compact"/);
   assert.doesNotMatch(hubImportForm, /fb-stabs|fb-stab|fb-m-segctl|fb-m-seg/);
