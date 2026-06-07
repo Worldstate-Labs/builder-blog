@@ -40,6 +40,17 @@ type ChannelInfo = {
   status: string;
 };
 
+function channelLibraryLabel(channel: Pick<ChannelInfo, "isAdminCommunity" | "isOwnChannel">) {
+  if (channel.isOwnChannel) return "Your library";
+  if (channel.isAdminCommunity) return "Community library";
+  return null;
+}
+
+function formatChannelLibraryName(channel: Pick<ChannelInfo, "isAdminCommunity" | "isOwnChannel" | "libraryName">) {
+  const label = channelLibraryLabel(channel);
+  return label ? `${channel.libraryName} · ${label}` : channel.libraryName;
+}
+
 export default async function BuilderDetailPage({ params }: Params) {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
@@ -318,9 +329,7 @@ async function ChannelsListSlot({
         >
           <div>
             <div className="builder-detail-channel-name">
-              {channel.libraryName}
-              {channel.isAdminCommunity ? " · community" : ""}
-              {channel.isOwnChannel ? " · own" : ""}
+              {formatChannelLibraryName(channel)}
             </div>
             {channel.sourceUrl ? (
               <a
@@ -377,7 +386,7 @@ async function RecentPostsSlot({
   const listItems = items.map((item) => {
     const viaChannel = item.builderId ? channelMap.get(item.builderId) : null;
     const viaLabel = viaChannel
-      ? `via ${viaChannel.libraryName}${viaChannel.isOwnChannel ? " · own" : viaChannel.isAdminCommunity ? " · community" : ""}`
+      ? `via ${formatChannelLibraryName(viaChannel)}`
       : null;
     return {
       id: item.id,
