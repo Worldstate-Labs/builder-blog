@@ -41,7 +41,7 @@ export function ChannelPreferenceToggle({
         if (!response.ok) throw new Error("Channel preference update failed");
       } catch {
         setIsPreferred(previousIsPreferred);
-        setError("Couldn't update preference.");
+        setError("Could not update preference.");
       }
     });
   };

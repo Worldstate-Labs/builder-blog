@@ -821,7 +821,7 @@ function CronConfigDialog({
       // unchanged.
       const saved = await persistSummaryLanguage(pickedLanguage, savedLanguage);
       if (!saved) {
-        setError("Couldn't save the summary language. Try again.");
+        setError("Could not save the summary language. Try again.");
         setSubmitting(false);
         return;
       }
@@ -834,7 +834,7 @@ function CronConfigDialog({
         }
         const savedAge = await persistDigestMaxAge(maxAge, initialMaxAge);
         if (!savedAge) {
-          setError("Couldn't save max post age. Try again.");
+          setError("Could not save max post age. Try again.");
           setSubmitting(false);
           return;
         }

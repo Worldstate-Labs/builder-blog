@@ -44,7 +44,7 @@ export function BuilderDetailActions({
         if (!response.ok) throw new Error("Subscription update failed");
       } catch {
         setSubscribed(previous);
-        setError("Couldn't update follow state.");
+        setError("Could not update follow state.");
       }
     });
   };

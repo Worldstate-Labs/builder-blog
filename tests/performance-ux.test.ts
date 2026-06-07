@@ -473,7 +473,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /className="skill-prompt-status"/);
   assert.match(skillPromptActions, /className="skill-prompt-status-text"/);
   assert.match(skillPromptActions, /className="skill-prompt-status-text is-error"/);
-  assert.match(skillPromptActions, /Couldn't save the summary language\. Try again\./);
+  assert.match(skillPromptActions, /Could not save the summary language\. Try again\./);
+  assert.match(skillPromptActions, /Could not save max post age\. Try again\./);
+  assert.doesNotMatch(skillPromptActions, /Couldn't save/);
   assert.doesNotMatch(skillPromptActions, /summary language — try again/);
   assert.match(skillPromptActions, /async function copyTextToClipboard/);
   assert.match(skillPromptActions, /document\.hasFocus\(\)/);
@@ -640,6 +642,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(appShell, /label: "Digest"/);
   assert.doesNotMatch(appShell, /label: "For You"/);
   assert.doesNotMatch(appShell, /label: "History"/);
+  assert.match(builderDetailActions, /Could not update follow state\./);
+  assert.match(channelPreferenceToggle, /Could not update preference\./);
+  assert.doesNotMatch(builderDetailActions, /Couldn't update/);
+  assert.doesNotMatch(channelPreferenceToggle, /Couldn't update/);
   assert.match(appShell, /aria-label="Search"/);
   assert.match(appNav, /pathname\.startsWith\("\/recommendations\/"\)/);
   assert.match(appNav, /pathname\.startsWith\("\/builder\/"\)/);
