@@ -2392,7 +2392,10 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /`View \$\{formatCount\(sourceCount\)\} \$\{sourceCount === 1 \? "source" : "sources"\}`/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /See more/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fetched posts/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Latest fetch/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /formatLatestFetchLabel/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /latest at \$\{formatted\}/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /not fetched yet/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Latest fetch/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-summary-text/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /more source types/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /sourceGroups\.length === 1 \? "source type" : "source types"/);
