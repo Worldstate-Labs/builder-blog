@@ -7959,7 +7959,7 @@ a.fb-hub-source-name:focus-visible {
 
 .access-keys-list--skeleton .settings-skeleton-row {
   border-radius: 16px;
-  height: 5.25rem;
+  height: 5.75rem;
 }
 
 .settings-source-type-manager {
@@ -8756,15 +8756,15 @@ a.fb-hub-source-name:focus-visible {
 /* Access key device card */
 .access-key-card {
   align-items: center;
-  background: var(--paper);
-  border: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
+  background: var(--paper-strong);
+  border: 1px solid color-mix(in oklch, var(--ink) 10%, transparent);
   border-radius: 16px;
   display: grid;
-  gap: 1rem;
+  gap: 1.1rem;
   grid-template-columns: 2rem minmax(0, 1fr) auto;
-  min-height: 5.25rem;
+  min-height: 5.75rem;
   min-width: 0;
-  padding: 1rem 1.25rem;
+  padding: 1.15rem 1.3rem;
 }
 
 .access-key-card.fb-row--revoked {
@@ -9950,7 +9950,7 @@ body {
   .access-key-card {
     gap: 0.7rem;
     grid-template-columns: 2rem minmax(0, 1fr) auto;
-    min-height: 4.75rem;
+    min-height: 5rem;
     padding: 0.9rem;
   }
 

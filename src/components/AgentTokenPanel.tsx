@@ -271,7 +271,7 @@ export function AgentTokenPanel({
         </button>
       </div>
 
-      <div className="access-keys-list">
+      <div className="access-keys-list" role="list" aria-label="Access keys">
         {activeTokens.map((token) => (
           <TokenRow
             key={token.id}
@@ -476,6 +476,7 @@ function TokenRow({
     <div
       className={`access-key-card${token.revokedAt ? " fb-row--revoked" : ""}`}
       aria-label={`${tokenLabel}. ${statusLabel}`}
+      role="listitem"
     >
       <span className="access-key-device-icon" aria-hidden="true">
         <DeviceIcon />
