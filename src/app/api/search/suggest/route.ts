@@ -122,7 +122,7 @@ function resultTypeDetail(type: string) {
   if (type === "builder") return "Source";
   if (type === "feed") return "Post";
   if (type === "digest") return "AI Digest";
-  return "Library item";
+  return "Result";
 }
 
 function normalizeSuggestion(value: string) {

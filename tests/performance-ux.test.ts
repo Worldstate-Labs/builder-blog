@@ -225,6 +225,8 @@ test("workspace not-found uses the FollowBrief shell instead of the default Next
   assert.match(notFoundPage, /@\/components\/EmptyState/);
   assert.match(notFoundPage, /className="page-pad page-pad--reading workspace-not-found"/);
   assert.match(notFoundPage, /title="Page not found"/);
+  assert.match(notFoundPage, /belong to content outside your current library/);
+  assert.doesNotMatch(notFoundPage, /item outside your current library/);
   assert.match(notFoundPage, /href="\/dashboard"/);
   assert.match(notFoundPage, /href="\/search"/);
   assert.match(notFoundPage, /Home/);
@@ -1852,6 +1854,8 @@ test("search suggestions API exists for autocomplete-style queries", () => {
   assert.match(suggestRoute, /searchUserLibrary/);
   assert.match(suggestRoute, /items:/);
   assert.match(suggestRoute, /titlePrefixCompletions/);
+  assert.match(suggestRoute, /return "Result"/);
+  assert.doesNotMatch(suggestRoute, /Library item/);
   assert.match(suggestRoute, /claude code/);
   assert.match(suggestRoute, /past AI Digests/);
   assert.doesNotMatch(suggestRoute, /AI Digest archive/);
