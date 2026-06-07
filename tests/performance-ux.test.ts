@@ -1987,8 +1987,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries built and shared by other users\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Available source libraries/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /All source libraries/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /shortLabel:\s*"All sources"/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /shortLabel:\s*"My sources"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /shortLabel:\s*"All libraries"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /shortLabel:\s*"My libraries"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /\{filter\.shortLabel\}/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /My source libraries/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Your source library/);
@@ -2007,7 +2007,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-form-error"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /"hub-list-region has-filters"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-heading-row"/);
-  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Library filter|All libraries|My libraries|No libraries match this filter yet|\bYour library\b|label\.replace/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Library filter|No libraries match this filter yet|\bYour library\b|label\.replace/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /className="flex items-center justify-between"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /className="hub-card-action-row"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /hub-card-action-button/);

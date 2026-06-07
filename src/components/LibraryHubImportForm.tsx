@@ -57,10 +57,10 @@ type LibraryHubImportFormProps = {
 type FilterKey = "all" | "community" | "shared" | "my" | "imported";
 
 const FILTERS: Array<{ key: FilterKey; label: string; shortLabel: string }> = [
-  { key: "all", label: "All source libraries", shortLabel: "All sources" },
+  { key: "all", label: "All source libraries", shortLabel: "All libraries" },
   { key: "community", label: "Community", shortLabel: "Community" },
   { key: "shared", label: "Shared by users", shortLabel: "Shared" },
-  { key: "my", label: "My source libraries", shortLabel: "My sources" },
+  { key: "my", label: "My source libraries", shortLabel: "My libraries" },
   { key: "imported", label: "Imported", shortLabel: "Imported" },
 ];
 
