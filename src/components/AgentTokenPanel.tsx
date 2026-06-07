@@ -3,7 +3,6 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LaptopMinimal, Plus, Smartphone } from "lucide-react";
-import { CountBadge } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { useHydrated } from "@/components/ThemeToggle";
 
@@ -112,7 +111,6 @@ export function AgentTokenPanel({
   const router = useRouter();
   const [tokenName, setTokenName] = useState("");
   const [status, setStatus] = useState("");
-  const [showAllTokens, setShowAllTokens] = useState(false);
   const [isPending, startTransition] = useTransition();
   const hydrated = useHydrated();
 
@@ -173,8 +171,6 @@ export function AgentTokenPanel({
     () => tokens.filter((token) => !token.revokedAt),
     [tokens],
   );
-  const visibleTokens = showAllTokens ? activeTokens : activeTokens.slice(0, 2);
-  const hiddenActiveCount = Math.max(0, activeTokens.length - 2);
 
   function openCreateDialog() {
     setStatus("");
@@ -276,7 +272,7 @@ export function AgentTokenPanel({
       </div>
 
       <div className="access-keys-list">
-        {visibleTokens.map((token) => (
+        {activeTokens.map((token) => (
           <TokenRow
             key={token.id}
             token={token}
@@ -295,22 +291,6 @@ export function AgentTokenPanel({
                 : "Revoked keys are hidden from this list."
             }
           />
-        ) : null}
-        {hiddenActiveCount > 0 ? (
-          <button
-            className="access-keys-more"
-            onClick={() => setShowAllTokens((current) => !current)}
-            type="button"
-          >
-            {showAllTokens ? (
-              "See less"
-            ) : (
-              <span className="access-keys-more-label">
-                See more
-                <CountBadge value={hiddenActiveCount} />
-              </span>
-            )}
-          </button>
         ) : null}
       </div>
 
