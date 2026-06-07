@@ -168,7 +168,7 @@ export function RecommendationFeed({
         {loadingDirection ? (
           <span className="status-chip">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            Loading
+            Loading posts
           </span>
         ) : exhausted ? (
           <span className="feed-end-note">No new unread posts left.</span>

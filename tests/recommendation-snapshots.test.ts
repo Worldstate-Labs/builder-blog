@@ -308,7 +308,10 @@ test("recommendation snapshots request six posts at a time", () => {
   assert.match(source("src/app/(workspace)/recommendations/page.tsx"), /redirect\("\/dashboard\?tab=following"\)/);
   assert.match(source("src/app/api/recommendations/route.ts"), /limit"\) \?\? "6"/);
   assert.doesNotMatch(source("src/app/api/recommendations/route.ts"), /scope: recommendationScope/);
-  assert.match(source("src/components/RecommendationFeed.tsx"), /limit=6/);
+  const feed = source("src/components/RecommendationFeed.tsx");
+  assert.match(feed, /limit=6/);
+  assert.match(feed, /Loading posts/);
+  assert.doesNotMatch(feed, />\s*Loading\s*</);
 });
 
 test("following recommendation feed uses subscribed builders only", () => {
