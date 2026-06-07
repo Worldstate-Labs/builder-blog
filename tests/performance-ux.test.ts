@@ -1799,6 +1799,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(digestPipelineForm, /className="fb-hub-card-head"/);
   assert.match(digestPipelineForm, /className="fb-hub-digest-preview"/);
   assert.match(digestPipelineForm, /function DigestPipelineMetaGrid/);
+  assert.match(digestPipelineForm, /aria-label="AI Digest details"/);
   assert.match(digestPipelineForm, /Update frequency/);
   assert.match(digestPipelineForm, /Language/);
   assert.match(digestPipelineForm, /Latest AI Digest/);
@@ -1808,7 +1809,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(digestPipelineForm, /fb-hub-digest-headline-kicker">Summary/);
   assert.doesNotMatch(digestPipelineForm, /label="Agent"/);
   assert.doesNotMatch(digestPipelineForm, /label="Lookback"/);
-  assert.doesNotMatch(digestPipelineForm, /Cron status|label="Cron job"/);
+  assert.doesNotMatch(digestPipelineForm, /Digest pipeline details|Cron status|label="Cron job"/);
   assert.match(source("src/lib/digest-update-status.ts"), /export function getDigestUpdateStatus/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /buildDigestCronStatus/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /getDigestUpdateStatus/);
