@@ -388,6 +388,7 @@ function HubCard({
   const latestFetchedAt = latestIso(
     library.items.map((item) => item.builder.lastFetchedAt),
   );
+  const sourceToggleLabel = formatSourceToggleLabel(library.itemCount);
 
   const action = library.owned ? (
     <span className="fb-chip">
@@ -449,7 +450,7 @@ function HubCard({
 
       {sourceGroups.length > 0 ? (
         <details className="fb-hub-sources">
-          <summary className="fb-hub-sources-summary" aria-label={`Show sources in ${library.name}`}>
+          <summary className="fb-hub-sources-summary" aria-label={`${sourceToggleLabel} in ${library.name}`}>
             <div className="fb-hub-source-summary-strip">
               {sourceSummaryItems.map((item, index) => {
                 const sourceType = sourceTypeForBuilder(item.builder);
@@ -476,7 +477,7 @@ function HubCard({
                 );
               })}
               <span className="fb-hub-source-summary-more">
-                See more
+                {sourceToggleLabel}
               </span>
             </div>
             <span aria-hidden="true" className="fb-hub-sources-caret">
@@ -567,6 +568,10 @@ function topicLabel(library: HubLibrary) {
   if (library.isCommunity) return "Curated";
   if (library.owned) return "Personal";
   return "Curated by user";
+}
+
+function formatSourceToggleLabel(sourceCount: number) {
+  return `View ${formatCount(sourceCount)} ${sourceCount === 1 ? "source" : "sources"}`;
 }
 
 function sourceTypeForBuilder(builder: HubLibraryBuilder) {

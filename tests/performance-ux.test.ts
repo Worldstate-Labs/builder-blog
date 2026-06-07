@@ -2217,7 +2217,10 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /sourceSummaryItems = library\.items\.slice\(0, 4\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-summary-strip/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-summary-name/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /See more/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /sourceToggleLabel = formatSourceToggleLabel\(library\.itemCount\)/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /function formatSourceToggleLabel\(sourceCount: number\)/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /`View \$\{formatCount\(sourceCount\)\} \$\{sourceCount === 1 \? "source" : "sources"\}`/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /See more/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fetched posts/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Latest fetch/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-summary-text/);
@@ -2226,7 +2229,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-type-preview/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-handle/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /ChevronDown/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /aria-label=\{`Show sources in \$\{library\.name\}`\}/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /aria-label=\{`\$\{sourceToggleLabel\} in \$\{library\.name\}`\}/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), />\s*Show\s*</);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-stats"/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.hub-metric/);
