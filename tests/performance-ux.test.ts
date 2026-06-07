@@ -1397,7 +1397,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /search-insight-summary/);
   assert.match(searchPage, /Query matched/);
   assert.match(searchPage, /Use best match/);
-  assert.match(searchPage, /Search all content types/);
+  assert.match(searchPage, /Search all result types/);
   assert.match(searchPage, /Search all time/);
   assert.match(searchPage, /function SearchEmptyState/);
   assert.match(searchPage, /<EmptyState[\s\S]*className="search-empty"/);
@@ -1424,10 +1424,11 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /Remove excluded title terms/);
   assert.match(searchPage, /Remove excluded sites/);
   assert.match(searchPage, /Remove excluded phrases/);
-  assert.match(searchPage, /Remove excluded content types/);
-  assert.match(searchPage, /Remove content type/);
-  assert.match(searchPage, /Content type/);
-  assert.doesNotMatch(searchPage, /File type|Query type|Search all result types|Remove excluded file types|Remove file type/);
+  assert.match(searchPage, /Remove excluded result types/);
+  assert.match(searchPage, /Remove result type/);
+  assert.match(searchPage, /Result type/);
+  assert.doesNotMatch(searchPage, /Search all content types|Remove excluded content types|Remove content type|Content type/);
+  assert.doesNotMatch(searchPage, /File type|Query type|Remove excluded file types|Remove file type/);
   assert.match(searchPage, /normalizeSearchTime/);
   assert.match(searchForm, /useTransition/);
   assert.match(searchForm, /Searching/);

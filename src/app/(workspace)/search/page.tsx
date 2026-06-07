@@ -952,7 +952,7 @@ function buildSearchRecoveryActions({
   if (typeFilter !== "all") {
     actions.push({
       href: searchHref({ query, type: "all", mode, sort, time }),
-      label: "Search all content types",
+      label: "Search all result types",
     });
   }
   if (time !== "any" || parsed.after || parsed.before) {
@@ -994,7 +994,7 @@ function buildQueryInsightItems(
   const items = [
     { label: "Mode", value: searchModeLabels[mode] },
     { label: "Sort", value: searchSortLabels[sort] },
-    { label: "Content type", value: typeFilter === "all" ? "All results" : resultTypeLabels[typeFilter] },
+    { label: "Result type", value: typeFilter === "all" ? "All results" : resultTypeLabels[typeFilter] },
     { label: "Time", value: dateInsightLabel(parsed, time) },
   ];
   const phraseValue = [
@@ -1098,9 +1098,9 @@ function buildActiveSearchFilters({
 
   if (typeFilter !== "all") {
     filters.push({
-      clearLabel: `Remove ${resultTypeLabels[typeFilter]} content type filter`,
+      clearLabel: `Remove ${resultTypeLabels[typeFilter]} result type filter`,
       href: searchHref({ query, type: "all", mode, sort, time }),
-      label: "Content type",
+      label: "Result type",
       value: resultTypeLabels[typeFilter],
     });
   }
@@ -1158,7 +1158,7 @@ function buildActiveSearchFilters({
   }
   if (parsed.type) {
     filters.push({
-      clearLabel: `Remove content type ${resultTypeLabels[parsed.type]}`,
+      clearLabel: `Remove result type ${resultTypeLabels[parsed.type]}`,
       href: searchHref({
         query: stripSearchQueryOperators(query, ["type", "filetype"]),
         type: typeFilter,
@@ -1166,13 +1166,13 @@ function buildActiveSearchFilters({
         sort,
         time,
       }),
-      label: "Content type",
+      label: "Result type",
       value: resultTypeLabels[parsed.type],
     });
   }
   if (parsed.excludedTypes.length > 0) {
     filters.push({
-      clearLabel: "Remove excluded content types",
+      clearLabel: "Remove excluded result types",
       href: searchHref({
         query: stripNegativeSearchQueryOperators(query, ["type", "filetype"]),
         type: typeFilter,
@@ -1180,7 +1180,7 @@ function buildActiveSearchFilters({
         sort,
         time,
       }),
-      label: "Excludes content types",
+      label: "Excludes result types",
       value: parsed.excludedTypes.map((type) => resultTypeLabels[type]).join(", "),
     });
   }
