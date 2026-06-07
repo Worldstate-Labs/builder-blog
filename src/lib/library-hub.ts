@@ -10,7 +10,7 @@ import { prisma } from "@/lib/prisma";
 export const adminCommunityLibraryName = "Community source library";
 export const adminCommunityLibraryDescription =
   "Community source library curated by FollowBrief.";
-export const adminCommunityDigestTitle = "Community Digest";
+export const adminCommunityDigestTitle = "Community AI Digest";
 export const adminCommunityDigestDescription =
   "Community AI digest curated by FollowBrief.";
 

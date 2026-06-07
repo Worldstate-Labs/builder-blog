@@ -2359,6 +2359,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(digestPipelineForm, /Digests imported from the Hub/);
   assert.doesNotMatch(digestPipelineForm, /AI Digest archives built|latest AI Digest and archive/);
   assert.match(digestPipelineForm, /Shared AI Digests/);
+  assert.match(source("src/lib/library-hub.ts"), /adminCommunityDigestTitle = "Community AI Digest"/);
+  assert.doesNotMatch(source("src/lib/library-hub.ts"), /adminCommunityDigestTitle = "Community Digest"/);
   assert.doesNotMatch(digestPipelineForm, /Share my digest/);
   assert.doesNotMatch(digestPipelineForm, /Remove my digest/);
   assert.doesNotMatch(digestPipelineForm, /ownPipelineShared/);
@@ -2435,7 +2437,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(source("src/lib/library-hub.ts"), /removeDigestPipelineImportFromHub/);
   assert.match(source("src/lib/library-hub.ts"), /digestPipelineTitle/);
   assert.match(source("src/lib/library-hub.ts"), /displayDigestPipelineTitle/);
-  assert.match(source("src/lib/library-hub.ts"), /adminCommunityDigestTitle = "Community Digest"/);
+  assert.match(source("src/lib/library-hub.ts"), /adminCommunityDigestTitle = "Community AI Digest"/);
   assert.match(source("src/lib/library-hub.ts"), /ensureDefaultCommunityDigestImport/);
   assert.match(source("src/lib/library-hub.ts"), /findAdminCommunityDigestPipeline/);
   assert.match(source("src/lib/library-hub.ts"), /findOrCreateAdminCommunityDigestPipeline/);

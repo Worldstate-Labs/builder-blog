@@ -249,7 +249,7 @@ test("non-admin users default-import the admin community library and digest", ()
   assert.match(hubPage, /ensureDefaultCommunityDigestImport\(session\.user\.id\)/);
   assert.match(dashboardPage, /ensureDefaultCommunityDigestImport\(userId\)/);
   assert.match(userSearch, /ensureDefaultCommunityDigestImport\(userId\)/);
-  assert.match(libraryHub, /adminCommunityDigestTitle = "Community Digest"/);
+  assert.match(libraryHub, /adminCommunityDigestTitle = "Community AI Digest"/);
   assert.match(libraryHub, /findAdminCommunityDigestPipeline/);
   assert.match(libraryHub, /findOrCreateAdminCommunityDigestPipeline/);
   assert.match(libraryHub, /ensureDefaultCommunityDigestImport/);
