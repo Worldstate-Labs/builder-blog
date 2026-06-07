@@ -1941,7 +1941,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(globals, /\.search-meta-skeleton\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.search-meta-skeleton--count\s*{[\s\S]*width:\s*min\(14rem,\s*62%\)/);
   assert.match(globals, /\.search-meta-skeleton--page\s*{[\s\S]*width:\s*min\(8rem,\s*32%\)/);
-  assert.match(searchPage, /<PageHeader[\s\S]*title="Search"[\s\S]*Find sources, posts, saved posts, and AI Digests in one place\./);
+  assert.match(searchPage, /<PageHeader[\s\S]*title="Search"[\s\S]*Find sources, posts, saved posts, and AI Digest archives in one place\./);
+  assert.doesNotMatch(searchPage, /Find sources, posts, saved posts, and AI Digests in one place\./);
   assert.doesNotMatch(searchPage, /across your library/);
   assert.doesNotMatch(searchPage, /description="Find sources, saved posts, and digest history\."/);
   assert.doesNotMatch(searchPage, /<PageHeader[\s\S]{0,120}actions=/);
