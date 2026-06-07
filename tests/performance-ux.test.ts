@@ -1941,7 +1941,10 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /isShowingCorrectedResults/);
   assert.match(searchPage, /heading="Try searching"/);
   assert.match(searchPage, /heading = "Related searches"/);
-  assert.match(searchPage, /Advanced search/);
+  assert.match(searchPage, /Search operators/);
+  assert.match(searchPage, /className="search-operator-tips"/);
+  assert.match(searchPage, /className="search-operator-grid"/);
+  assert.doesNotMatch(searchPage, /Advanced search|Advanced syntax/);
   assert.match(searchPage, /"model \* pricing"/);
   assert.match(searchPage, /-"pricing page"/);
   assert.match(searchPage, /\+open/);
@@ -1977,7 +1980,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /className="search-result-refinement-list"/);
   assert.match(searchPage, /More from this source/);
   assert.match(searchPage, /Active filters/);
-  assert.match(searchPage, /Query details/);
+  assert.match(searchPage, /Search details/);
+  assert.doesNotMatch(searchPage, /Query details/);
   assert.match(searchPage, /ChevronDown/);
   assert.match(searchPage, /className="search-advanced-tools-icon"/);
   assert.doesNotMatch(searchPage, /Search tools/);
@@ -2039,6 +2043,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(globals, /\.search-advanced-tools\[open\] \.search-advanced-tools-icon\s*{[\s\S]*transform:\s*rotate\(180deg\)/);
   assert.doesNotMatch(globals, /\.search-advanced-tools > summary::after[\s\S]*content:\s*"\+"/);
   assert.match(globals, /\.search-advanced-tools-compact\[open\]\s*{[\s\S]*border-top:\s*1px solid/);
+  assert.match(globals, /\.search-operator-tips\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.search-operator-grid\s*{[\s\S]*display:\s*flex/);
+  assert.doesNotMatch(globals, /\.search-advanced-tools \.search-related/);
   assert.doesNotMatch(globals, /\.search-tools-row\s*{/);
   assert.match(searchPage, /Remove text search terms/);
   assert.match(searchPage, /Remove URL search terms/);

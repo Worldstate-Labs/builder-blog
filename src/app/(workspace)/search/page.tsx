@@ -322,7 +322,7 @@ async function SearchResultsSection({
           ) : null}
           <details className="search-advanced-tools search-advanced-tools-compact">
             <summary>
-              Query details
+              Search details
               <ChevronDown aria-hidden="true" className="search-advanced-tools-icon" />
             </summary>
             <SearchQueryInsights
@@ -418,7 +418,7 @@ async function SearchResultsSection({
           />
           <details className="search-advanced-tools search-advanced-tools-compact">
             <summary>
-              Advanced syntax
+              Search operators
               <ChevronDown aria-hidden="true" className="search-advanced-tools-icon" />
             </summary>
             <AdvancedSearchTips mode={mode} sort={sort} time={time} />
@@ -839,9 +839,9 @@ function AdvancedSearchTips({
   time: SearchTimeRange;
 }) {
   return (
-    <section className="search-related" aria-label="Advanced search">
-      <h2>Advanced search</h2>
-      <div className="search-related-grid">
+    <section className="search-operator-tips" aria-label="Search operators">
+      <h2>Search operators</h2>
+      <div className="search-operator-grid">
         {advancedSearchExamples.map((search) => (
           <Link
             className="search-related-link"

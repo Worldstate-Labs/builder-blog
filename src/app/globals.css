@@ -3406,15 +3406,31 @@ svg.lucide {
   outline: none;
 }
 
-.search-advanced-tools .search-related {
-  border-top: 1px solid var(--line);
-  margin-top: 0;
-  padding: 1rem;
-}
-
 .search-advanced-tools-compact[open] {
   border-top: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
   padding-top: 0.75rem;
+}
+
+.search-operator-tips {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 0;
+  padding-top: 0.85rem;
+}
+
+.search-operator-tips h2 {
+  color: var(--muted-strong);
+  font-family: var(--font-sans);
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.45;
+}
+
+.search-operator-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
 }
 
 .search-insight-summary {
