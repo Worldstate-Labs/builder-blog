@@ -5291,6 +5291,43 @@ svg.lucide {
   margin-top: 1rem;
 }
 
+.sync-panel-run-card {
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.75rem 0.875rem;
+}
+
+.sync-panel-run-card-head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.sync-panel-run-card-time {
+  color: var(--muted-strong);
+  font-size: 0.78125rem;
+}
+
+.sync-panel-run-card-runtime {
+  color: var(--muted-strong);
+  font-size: 0.71875rem;
+}
+
+.sync-panel-run-card-summary {
+  color: var(--ink);
+  font-size: 0.84375rem;
+  line-height: 1.55;
+  margin-top: 0.5rem;
+}
+
+.sync-panel-run-card-stage {
+  color: var(--muted-strong);
+  font-size: 0.71875rem;
+  margin-top: 0.5rem;
+}
+
 .sync-panel-slot-empty {
   border-radius: 8px;
   padding: 0.75rem;

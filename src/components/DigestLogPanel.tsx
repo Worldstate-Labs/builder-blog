@@ -796,11 +796,8 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
   const style = jobRunStatusStyle(jobRun);
   const startedAtLabel = hydrated ? formatRelative(jobRun.startedAt) : formatAbsolute(jobRun.startedAt);
   return (
-    <article
-      className="rounded-[10px] border bg-[var(--paper-strong)] px-3.5 py-3"
-      style={{ borderColor: "var(--line)" }}
-    >
-      <header className="flex flex-wrap items-center gap-2">
+    <article className="sync-panel-run-card">
+      <header className="sync-panel-run-card-head">
         <span
           className="fb-chip"
           style={{ background: style.background, color: style.color, borderColor: style.border }}
@@ -808,7 +805,7 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
           {jobRunStatusLabel(jobRun)}
         </span>
         <time
-          className="text-[12.5px] text-[var(--muted-strong)]"
+          className="sync-panel-run-card-time"
           dateTime={jobRun.startedAt}
           title={formatAbsolute(jobRun.startedAt)}
         >
@@ -816,16 +813,16 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
         </time>
         <span className="fb-chip">{jobRunLabel(jobRun)}</span>
         {jobRun.runtime ? (
-          <span className="text-[11.5px] text-[var(--muted-strong)]">
+          <span className="sync-panel-run-card-runtime">
             {jobRun.runtime}
             {jobRun.hostname ? ` · ${jobRun.hostname.replace(/\.local$/, "")}` : ""}
           </span>
         ) : null}
       </header>
-      <p className="mt-2 text-[13.5px] leading-relaxed text-[var(--ink)]">
+      <p className="sync-panel-run-card-summary">
         {jobRun.summary || "Runtime job did not create an AI Digest build record."}
       </p>
-      <div className="mono mt-2 text-[11.5px] text-[var(--muted-strong)]">
+      <div className="mono sync-panel-run-card-stage">
         {jobRun.stage || "runtime"} · {jobRun.finishedAt ? "finished" : "active"}
       </div>
     </article>

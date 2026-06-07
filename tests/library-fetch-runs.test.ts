@@ -248,6 +248,10 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /Open log/);
   assert.match(panel, /className="sync-panel-title-row"/);
   assert.match(panel, /className="sync-panel-error"/);
+  assert.match(panel, /className="sync-panel-run-card"/);
+  assert.match(panel, /className="sync-panel-run-card-head"/);
+  assert.match(panel, /className="sync-panel-run-card-summary"/);
+  assert.doesNotMatch(panel, /className="rounded-\[10px\] border bg-\[var\(--paper-strong\)\] px-3\.5 py-3"[\s\S]*Runtime job did not create an AI Digest build record/);
   assert.doesNotMatch(panel, /digest-updates-head[\s\S]{0,360}flex flex-wrap items-center gap-2/);
   assert.doesNotMatch(panel, /error \? \([\s\S]{0,120}mt-3 text-\[12px\] text-\[var\(--danger\)\]/);
   assert.doesNotMatch(panel, /slots\.slice\(-4\)/);
