@@ -2969,6 +2969,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.equal(existsSync(join(root, "src/components/BuilderLibraryAutoRefresh.tsx")), false);
   assert.equal(existsSync(join(root, "src/app/api/builders/library-state/route.ts")), false);
   assert.match(builderLibraryList, /BuilderLibraryActions/);
+  assert.match(builderLibraryList, /aria-label=\{`Source tools for \$\{builder\.name\}`\}/);
+  assert.match(builderLibraryList, /role="group"/);
+  assert.doesNotMatch(builderLibraryList, /aria-label="Source tools"/);
   assert.match(globals, /\.builder-library-row-tools\s*{\s*gap:\s*0\.2rem;\s*}/);
   assert.doesNotMatch(globals, /builder-library-card:hover \.builder-library-row-tools/);
   assert.match(globals, /\.builder-library-actions\s*{[\s\S]*grid-template-columns:/);

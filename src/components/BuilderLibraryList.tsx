@@ -301,7 +301,11 @@ function BuilderCard({
         <BuilderInfo builder={builder} />
         <div className="builder-library-actions">
           {canEdit && editableSourceOptions ? (
-            <div className="builder-library-row-tools" aria-label="Source tools">
+            <div
+              aria-label={`Source tools for ${builder.name}`}
+              className="builder-library-row-tools"
+              role="group"
+            >
               <BuilderEditDialog
                 builder={builder}
                 onRemoveStateChange={onRemoveStateChange}
