@@ -568,7 +568,7 @@ function SearchTypeTabs({
   time: SearchTimeRange;
 }) {
   return (
-    <nav className="fb-segmented-tabs filter-tabs" aria-label="Result type">
+    <nav className="fb-segmented-tabs filter-tabs" aria-label="Search result type filter">
       <TypeTab
         count={counts?.all}
         current={current}
