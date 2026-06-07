@@ -3339,7 +3339,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(globals, /\.mobile-filter-tabs \.fb-btn\s*{[\s\S]*flex:\s*0 0 auto/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-head\s*{[\s\S]*flex-direction:\s*row/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-actions\s*{[\s\S]*flex-direction:\s*row/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-actions\s*{[\s\S]*max-width:\s*52%/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-actions\s*{[\s\S]*max-width:\s*min\(16rem,\s*58%\)/);
+  assert.doesNotMatch(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-actions\s*{[\s\S]*max-width:\s*52%/);
   assert.doesNotMatch(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-head,\s*\.fb-hub-card-actions\s*{[\s\S]*align-items:\s*stretch/);
   assert.match(hubImportForm, /aria-pressed=\{activeFilter === filter\.key\}/);
   assert.match(hubImportForm, /className="fb-btn compact"/);

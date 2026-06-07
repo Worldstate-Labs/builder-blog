@@ -11270,7 +11270,7 @@ body {
     flex: 0 1 auto;
     flex-direction: row;
     justify-content: flex-end;
-    max-width: 52%;
+    max-width: min(16rem, 58%);
   }
 
   .digest-pipeline-card .fb-hub-card-head {
