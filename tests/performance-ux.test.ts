@@ -141,6 +141,7 @@ test("every app route has an explicit centered layout role", () => {
   const publicRoutes = [
     ["src/app/page.tsx", /className="fb-landing-grid min-h-screen"[\s\S]*fb-public-nav/],
     ["src/app/login/page.tsx", /className="fb-dark-frame"[\s\S]*fb-login-nav/],
+    ["src/app/not-found.tsx", /className="fb-landing-grid min-h-screen"[\s\S]*fb-public-nav/],
   ] as const;
   for (const [path, pattern] of publicRoutes) {
     assert.match(source(path), pattern, `${path} should use the centered public shell`);
@@ -224,10 +225,13 @@ test("every app route has an explicit centered layout role", () => {
 
 test("workspace not-found uses the FollowBrief shell instead of the default Next 404", () => {
   const notFoundPath = "src/app/(workspace)/not-found.tsx";
+  const rootNotFoundPath = "src/app/not-found.tsx";
   const notFoundPage = source(notFoundPath);
+  const rootNotFoundPage = source(rootNotFoundPath);
   const globals = source("src/app/globals.css");
 
   assert.equal(existsSync(join(root, notFoundPath)), true);
+  assert.equal(existsSync(join(root, rootNotFoundPath)), true);
   assert.match(notFoundPage, /@\/components\/PageHeader/);
   assert.match(notFoundPage, /@\/components\/EmptyState/);
   assert.match(notFoundPage, /className="page-pad page-pad--reading workspace-not-found"/);
@@ -242,6 +246,15 @@ test("workspace not-found uses the FollowBrief shell instead of the default Next
   assert.doesNotMatch(notFoundPage, /sources, posts, Favorites, and AI Digests/);
   assert.doesNotMatch(notFoundPage, /Return to your feeds/);
   assert.doesNotMatch(notFoundPage, /This page could not be found|404 \|/);
+  assert.match(rootNotFoundPage, /fb-landing-grid min-h-screen/);
+  assert.match(rootNotFoundPage, /fb-public-nav/);
+  assert.match(rootNotFoundPage, /FollowBrief/);
+  assert.match(rootNotFoundPage, /Nothing to open here\./);
+  assert.match(rootNotFoundPage, /signed-in FollowBrief workspace/);
+  assert.match(rootNotFoundPage, /href="\/"/);
+  assert.match(rootNotFoundPage, /href="\/search"/);
+  assert.doesNotMatch(rootNotFoundPage, /This page could not be found|404 \|/);
+  assert.doesNotMatch(rootNotFoundPage, /AppShell|page-pad|fb-login-nav/);
   assert.match(globals, /\.workspace-not-found-empty\s*{[\s\S]*border-style:\s*solid/);
   assert.match(globals, /\.workspace-not-found-actions\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /\.workspace-not-found-actions\s*{[\s\S]*flex-wrap:\s*wrap/);
