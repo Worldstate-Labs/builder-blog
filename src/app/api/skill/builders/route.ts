@@ -369,7 +369,7 @@ async function findExistingPersonalBuilderForSync(
   if (!builder) {
     return {
       status: "invalid" as const,
-      error: "Referenced personal builder was not found for this user.",
+      error: "Referenced source was not found for this user.",
     };
   }
   return { status: "ok" as const, builder };

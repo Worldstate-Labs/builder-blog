@@ -318,7 +318,8 @@ test("skill sync route binds agent task items to referenced personal builders", 
   assert.match(route, /builderIdFromItems/);
   assert.match(route, /ownerUserId: userId/);
   assert.match(route, /ownerUserId: userId/);
-  assert.match(route, /Referenced personal builder was not found/);
+  assert.match(route, /Referenced source was not found/);
+  assert.doesNotMatch(route, /Referenced personal builder was not found/);
 });
 
 test("web app serves the agent skill and setup command", () => {
