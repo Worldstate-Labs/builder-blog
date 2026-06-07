@@ -2718,6 +2718,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(postDetailPage, /Saved post/);
   assert.match(postDetailPage, /ChevronLeft/);
   assert.match(postDetailPage, /className="fb-breadcrumb-link reading-back-link"/);
+  assert.match(postDetailPage, /aria-label=\{`Back to \$\{backLink\.label\}`\}/);
   assert.doesNotMatch(postDetailPage, /button-light button-compact reading-back-link/);
   assert.match(postDetailPage, /href=\{backLink\.href\}/);
   assert.match(postDetailPage, /href:\s*"\/dashboard\?tab=following"/);

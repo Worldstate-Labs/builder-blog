@@ -63,7 +63,11 @@ export async function PostDetailPage({
   return (
     <div className="page-pad page-pad--reading reading-page">
       <nav aria-label="Post navigation" className="reading-page-toolbar">
-        <Link className="fb-breadcrumb-link reading-back-link" href={backLink.href}>
+        <Link
+          aria-label={`Back to ${backLink.label}`}
+          className="fb-breadcrumb-link reading-back-link"
+          href={backLink.href}
+        >
           <ChevronLeft aria-hidden="true" />
           {backLink.label}
         </Link>
