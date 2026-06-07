@@ -1984,6 +1984,10 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /No source libraries match this filter yet\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Could not import source library\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Could not remove imported source library\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Import source library \$\{library\.name\}/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /"Import source library"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Importing source library/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /\?\s*"Importing"\s*:\s*"Import"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Remove \$\{library\.name\} from imported source libraries/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), />\s*Remove source library\s*<\/button>/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-form-error"/);
@@ -2063,6 +2067,10 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-card-stats"/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-card digest-pipeline-card"/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-card-action-row"/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Import AI Digest \$\{pipeline\.title\}/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /"Import AI Digest"/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Importing AI Digest/);
+  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /\?\s*"Importing"\s*:\s*"Import"/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /hub-card-action-button/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /hub-card-remove-button/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /flex flex-wrap items-center gap-2|disabled:cursor-wait/);
@@ -2767,9 +2775,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /counts\[filter\.key\]/);
   assert.match(hubImportForm, /function importLibrary\(libraryId: string\)/);
   assert.match(hubImportForm, /JSON\.stringify\(\{ libraryIds: \[libraryId\] \}\)/);
-  assert.match(hubImportForm, /aria-label=\{`Import \$\{library\.name\}`\}/);
-  assert.match(hubImportForm, /: "Import"/);
-  assert.match(hubImportForm, /Importing/);
+  assert.match(hubImportForm, /aria-label=\{`Import source library \$\{library\.name\}`\}/);
+  assert.match(hubImportForm, /: "Import source library"/);
+  assert.match(hubImportForm, /Importing source library/);
+  assert.doesNotMatch(hubImportForm, /aria-label=\{`Import \$\{library\.name\}`\}|\?\s*"Importing"\s*:\s*"Import"/);
   assert.match(hubImportForm, /Imported/);
   assert.match(hubImportForm, /method: "DELETE"/);
   assert.match(hubImportForm, /className="fb-dialog"/);
@@ -2874,7 +2883,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /No AI Digests yet/);
   assert.doesNotMatch(digestPipelineForm, /No digests yet/);
   assert.match(digestPipelineForm, /imported=\{importedIds\.has\(pipeline\.id\)\}/);
-  assert.match(digestPipelineForm, /aria-label=\{`Import \$\{pipeline\.title\}`\}/);
+  assert.match(digestPipelineForm, /aria-label=\{`Import AI Digest \$\{pipeline\.title\}`\}/);
+  assert.match(digestPipelineForm, /: "Import AI Digest"/);
+  assert.match(digestPipelineForm, /Importing AI Digest/);
+  assert.doesNotMatch(digestPipelineForm, /aria-label=\{`Import \$\{pipeline\.title\}`\}|\?\s*"Importing"\s*:\s*"Import"/);
   assert.match(digestPipelineForm, /Imported/);
   assert.doesNotMatch(digestPipelineForm, /window\.confirm/);
   assert.match(digestPipelineForm, /className="fb-dialog"/);

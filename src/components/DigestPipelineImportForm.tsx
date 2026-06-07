@@ -376,14 +376,14 @@ function DigestPipelineCard({
   ) : (
     <button
       aria-busy={pending === "import" && isPending}
-      aria-label={`Import ${pipeline.title}`}
+      aria-label={`Import AI Digest ${pipeline.title}`}
       className="fb-btn dark compact hub-card-action-button"
       disabled={pending !== null}
       onClick={() => onImport(pipeline.id)}
       type="button"
     >
       <Download aria-hidden="true" />
-      {pending === "import" ? "Importing" : "Import"}
+      {pending === "import" ? "Importing AI Digest" : "Import AI Digest"}
     </button>
   );
 

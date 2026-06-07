@@ -397,14 +397,14 @@ function HubCard({
   ) : (
     <button
       aria-busy={pending === "import" && isPending}
-      aria-label={`Import ${library.name}`}
+      aria-label={`Import source library ${library.name}`}
       className="fb-btn dark compact hub-card-action-button"
       disabled={pending !== null}
       onClick={() => onImport(library.id)}
       type="button"
     >
       <Download aria-hidden="true" />
-      {pending === "import" ? "Importing" : "Import"}
+      {pending === "import" ? "Importing source library" : "Import source library"}
     </button>
   );
 
