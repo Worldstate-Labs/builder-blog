@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { KeyRound, Search, Sparkles } from "lucide-react";
+import { Search, Sparkles, UsersRound } from "lucide-react";
 import { AuthButtons } from "@/components/AuthButtons";
 import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -41,9 +41,9 @@ export default async function LoginPage({
             AI Digests searchable.
           </p>
           <div className="fb-login-proof-rail" aria-label="Workspace capabilities">
-            <LoginProof icon={Sparkles} label="AI Digest" />
+            <LoginProof icon={UsersRound} label="Follow" />
+            <LoginProof icon={Sparkles} label="Build AI Digest" />
             <LoginProof icon={Search} label="Search" />
-            <LoginProof icon={KeyRound} label="Local Agent" />
           </div>
         </section>
 
