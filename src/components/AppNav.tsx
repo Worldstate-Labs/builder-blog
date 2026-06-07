@@ -3,21 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType, CSSProperties } from "react";
-import { Archive, Home, LibraryBig, Search, Settings, UsersRound } from "lucide-react";
+import { Home, LibraryBig, UsersRound } from "lucide-react";
 
 export type AppNavItem = {
   href: string;
   label: string;
-  icon: "home" | "archive" | "builders" | "hub" | "search" | "settings";
+  icon: "home" | "builders" | "hub";
 };
 
 const icons: Record<AppNavItem["icon"], ComponentType<{ className?: string }>> = {
   home: Home,
-  archive: Archive,
   builders: UsersRound,
   hub: LibraryBig,
-  search: Search,
-  settings: Settings,
 };
 
 export function AppNav({
@@ -52,7 +49,7 @@ export function AppNav({
                 href={item.href}
                 key={item.href}
               >
-                <Icon className="h-4 w-4" aria-hidden="true" />
+                <Icon aria-hidden="true" />
                 <span>{item.label}</span>
               </Link>
             );

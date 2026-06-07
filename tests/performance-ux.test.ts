@@ -31,8 +31,12 @@ function cssRule(sourceText: string, selector: string) {
 
 test("primary app navigation keeps route prefetching enabled", () => {
   const appNav = source("src/components/AppNav.tsx");
+  const globals = source("src/app/globals.css");
 
   assert.equal(appNav.includes("prefetch={false}"), false);
+  assert.match(globals, /\.fb-nav svg\s*{[\s\S]*height:\s*1rem/);
+  assert.match(globals, /\.fb-m-tab svg\s*{[\s\S]*height:\s*1\.125rem/);
+  assert.doesNotMatch(appNav, /className="h-4 w-4"/);
 });
 
 test("app shell reuses the page session instead of fetching it again", () => {
@@ -461,7 +465,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(appShell, /aria-label="Search"/);
   assert.match(appNav, /pathname\.startsWith\("\/recommendations\/"\)/);
   assert.match(appNav, /pathname\.startsWith\("\/builder\/"\)/);
-  assert.match(appNav, /"search"/);
+  assert.match(appNav, /icon: "home" \| "builders" \| "hub"/);
+  assert.doesNotMatch(appNav, /Archive|Settings,|Search,|archive:|search:|settings:|className="h-4 w-4"/);
   assert.match(appShell, /className="fb-top"/);
   assert.match(appShell, /className="fb-top-inner"/);
   assert.match(appShell, /className="fb-top-search"/);
@@ -2447,6 +2452,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /aria-label=\{`Revoke access for \$\{tokenLabel\}`\}/);
   assert.match(tokenPanel, /\\b\(ios\|iphone\|ipad\)\\b/);
   assert.match(tokenPanel, /if \(os && isPhoneLikeToken\(token\)\) return os/);
+  assert.match(tokenPanel, /iOS\$\{iosVersion \? ` \$\{iosVersion\.replaceAll\("_", "\."\)\}` : ""\} iPhone/);
   assert.match(tokenPanel, /machineLabel === "unknown machine" && tokenName/);
   assert.doesNotMatch(tokenPanel, /access-key-device-detail/);
   assert.doesNotMatch(tokenPanel, /className="h-6 w-6"/);
@@ -2454,7 +2460,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /useHydrated/);
   assert.match(tokenPanel, /formatRelativeCompact\(token\.lastUsedAt, hydrated\)/);
   assert.match(tokenPanel, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);
-  assert.match(tokenPanel, /: "Not connected yet"/);
+  assert.match(tokenPanel, /Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
   assert.match(tokenPanel, /if \(!hydrated\) return formatDate\(value\)/);
   assert.match(tokenPanel, /Revoke access/);
   assert.doesNotMatch(tokenPanel, /className="mt-/);

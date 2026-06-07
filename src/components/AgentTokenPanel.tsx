@@ -23,6 +23,8 @@ export type AgentTokenListItem = {
 function prettyOs(platformString: string | null): string {
   if (!platformString) return "";
   const lower = platformString.toLowerCase();
+  if (/\b(ios|iphone|ipad)\b/.test(lower)) return platformString.slice(0, 48);
+  if (/\bandroid\b/.test(lower)) return platformString.slice(0, 48);
   if (lower.startsWith("darwin")) {
     // "darwin 24.3.0" → "macOS 14"
     const release = lower.match(/(\d+)/)?.[0];
@@ -32,8 +34,6 @@ function prettyOs(platformString: string | null): string {
   if (lower.startsWith("linux")) return "Linux";
   if (lower.startsWith("win")) return "Windows";
   if (lower.startsWith("freebsd")) return "FreeBSD";
-  if (/\b(ios|iphone|ipad)\b/.test(lower)) return platformString.slice(0, 48);
-  if (/\bandroid\b/.test(lower)) return platformString.slice(0, 48);
   return platformString.split(/\s+/)[0]!.slice(0, 32);
 }
 
@@ -62,7 +62,15 @@ function summarizeUserAgent(ua: string | null): string {
   if (!ua) return "unknown machine";
   const lower = ua.toLowerCase();
   let os = "";
-  if (lower.includes("mac")) os = "Mac";
+  const iosVersion = ua.match(/(?:iPhone OS|CPU OS|CPU iPhone OS)\s+([0-9_]+)/i)?.[1];
+  if (lower.includes("iphone")) {
+    os = `iOS${iosVersion ? ` ${iosVersion.replaceAll("_", ".")}` : ""} iPhone`;
+  } else if (lower.includes("ipad")) {
+    os = `iPadOS${iosVersion ? ` ${iosVersion.replaceAll("_", ".")}` : ""} iPad`;
+  } else if (lower.includes("android")) {
+    const androidVersion = ua.match(/Android\s+([0-9.]+)/i)?.[1];
+    os = `Android${androidVersion ? ` ${androidVersion}` : ""}`;
+  } else if (lower.includes("mac")) os = "Mac";
   else if (lower.includes("windows")) os = "Windows";
   else if (lower.includes("linux")) os = "Linux";
 
@@ -464,7 +472,7 @@ function TokenRow({
     ? `Revoked ${formatRelativeCompact(token.revokedAt, hydrated)}`
     : token.lastUsedAt
       ? `Last connected ${formatRelativeCompact(token.lastUsedAt, hydrated)}`
-      : "Not connected yet";
+      : `Created ${formatRelativeCompact(token.createdAt, hydrated)}`;
 
   return (
     <div
