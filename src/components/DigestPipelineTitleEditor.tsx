@@ -90,20 +90,26 @@ export function DigestPipelineTitleEditor({
         <button
           aria-busy={isPending}
           aria-label="Save AI Digest name"
-          className="fb-btn dark compact"
+          className="fb-btn dark compact digest-title-icon-button"
           disabled={isPending}
           type="submit"
         >
           <Check aria-hidden="true" />
+          <span className="fb-icon-tooltip" aria-hidden="true">
+            Save
+          </span>
         </button>
         <button
           aria-label="Cancel AI Digest name edit"
-          className="fb-btn ghost compact"
+          className="fb-btn ghost compact digest-title-icon-button"
           disabled={isPending}
           onClick={cancelEditing}
           type="button"
         >
           <X aria-hidden="true" />
+          <span className="fb-icon-tooltip" aria-hidden="true">
+            Cancel
+          </span>
         </button>
         {error ? (
           <span className="digest-title-edit-error" role="status">
@@ -123,11 +129,14 @@ export function DigestPipelineTitleEditor({
       </Heading>
       <button
         aria-label="Edit AI Digest name"
-        className="fb-btn ghost compact digest-title-edit-button"
+        className="fb-btn ghost compact digest-title-edit-button digest-title-icon-button"
         onClick={startEditing}
         type="button"
       >
         <Pencil aria-hidden="true" />
+        <span className="fb-icon-tooltip" aria-hidden="true">
+          Edit
+        </span>
       </button>
     </div>
   );

@@ -2913,6 +2913,13 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineTitleEditor, /AI Digest name/);
   assert.match(digestPipelineTitleEditor, /Save AI Digest name/);
   assert.match(digestPipelineTitleEditor, /Edit AI Digest name/);
+  assert.match(digestPipelineTitleEditor, /className="fb-btn dark compact digest-title-icon-button"/);
+  assert.match(digestPipelineTitleEditor, /className="fb-btn ghost compact digest-title-icon-button"/);
+  assert.match(digestPipelineTitleEditor, /className="fb-btn ghost compact digest-title-edit-button digest-title-icon-button"/);
+  assert.equal((digestPipelineTitleEditor.match(/className="fb-icon-tooltip"/g) ?? []).length, 3);
+  assert.match(globals, /\.fb-icon-tooltip\s*{[\s\S]*position:\s*absolute/);
+  assert.match(globals, /\.fb-icon-tooltip\s*{[\s\S]*opacity:\s*0/);
+  assert.match(globals, /\.digest-title-icon-button:hover \.fb-icon-tooltip,[\s\S]*\.digest-title-icon-button:focus-visible \.fb-icon-tooltip\s*{[\s\S]*opacity:\s*1/);
   assert.doesNotMatch(
     digestPipelineTitleEditor,
     /"Digest name cannot be empty\."|"Save digest name"|"Edit digest name"|"Unable to rename digest"|"Could not rename digest\."/,
