@@ -136,7 +136,7 @@ function FollowingUnavailable({
         ariaLive="polite"
         body="Ask your Local Agent to fetch and summarize your followed sources, then Following can show their latest posts."
         className="is-actionable"
-        title="No posts have been fetched for your followed sources yet"
+        title="No fetched posts yet"
       />
     );
   }
