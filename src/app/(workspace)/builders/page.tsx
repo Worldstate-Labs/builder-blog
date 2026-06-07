@@ -725,7 +725,8 @@ async function FetchSourcesSection({
                   subscribed: data.subscribed.has(builder.id),
                 }),
               )}
-              emptyBody="No active sources from this imported library."
+              emptyBody="This imported library has no active sources available right now."
+              emptyTitle="No active sources"
             />
           </LibrarySection>
         ))}
@@ -737,6 +738,7 @@ async function FetchSourcesSection({
               </Link>
             }
             body="Import source libraries shared by other users from Hub."
+            title="No imported source libraries"
           />
         ) : null}
       </div>
