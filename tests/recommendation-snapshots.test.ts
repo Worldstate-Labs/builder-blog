@@ -38,6 +38,8 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.doesNotMatch(feed, /mode = "following"|isFavoritesTab/);
   assert.match(feed, /onInteract=\{\(\) => markRead\(entry\.item\.id\)\}/);
   assert.match(postCard, /SourceAvatar/);
+  assert.match(postCard, /className="post-copy"/);
+  assert.doesNotMatch(postCard, /className="min-w-0"/);
   assert.match(postCard, /className="post-meta-author"/);
   assert.match(postCard, /className="post-meta-avatar"/);
   assert.match(postCard, /post-meta-author-link[\s\S]*onClick=\{noteInteraction\}/);

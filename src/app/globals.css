@@ -1264,6 +1264,10 @@ svg.lucide {
   padding: 1.15rem;
 }
 
+.post-copy {
+  min-width: 0;
+}
+
 .post-detail-card.feed-card {
   background: color-mix(in oklch, var(--paper-strong) 58%, transparent);
   border-color: color-mix(in oklch, var(--line) 84%, transparent);

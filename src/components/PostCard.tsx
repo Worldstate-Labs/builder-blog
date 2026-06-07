@@ -160,7 +160,7 @@ export function PostCard({
       className={`${variant === "row" ? "builder-post-row" : "feed-card"} fetched-post-card${isDetail ? " post-detail-card" : ""}`}
       data-read={dataRead ? "true" : undefined}
     >
-      <div className="min-w-0">
+      <div className="post-copy">
         {/* Line 1: Title */}
         {isDetail ? (
           <h1 className="post-detail-title">
