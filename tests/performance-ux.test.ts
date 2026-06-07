@@ -889,13 +889,17 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(workspaceAutoRefresh, /contentSyncStateChanged/);
   assert.match(fetchLogPanel, /className="source-fetch-overview"/);
   assert.match(fetchLogPanel, /SourceFetchMetaGrid/);
+  assert.match(fetchLogPanel, /const hydrated = useHydrated\(\)/);
+  assert.match(fetchLogPanel, /hydrated=\{hydrated\}/);
   assert.match(fetchLogPanel, /SourceFetchMetaItem/);
   assert.match(fetchLogPanel, /aria-label="Source update details"/);
   assert.match(fetchLogPanel, /Update frequency/);
   assert.match(fetchLogPanel, /Language/);
   assert.match(fetchLogPanel, /Latest fetch/);
   assert.match(fetchLogPanel, /Cron status/);
-  assert.match(fetchLogPanel, /formatMetaDate/);
+  assert.match(fetchLogPanel, /formatMetaDate\(latestRun\.startedAt, hydrated\)/);
+  assert.match(fetchLogPanel, /function formatMetaDate\(iso: string, hydrated: boolean\)/);
+  assert.match(fetchLogPanel, /if \(!hydrated\) return formatAbsolute\(iso\)/);
   assert.match(fetchLogPanel, /formatLanguage/);
   assert.match(fetchLogPanel, /className="sync-panel-error"/);
   assert.match(digestLogPanel, /className="sync-panel-title-row"/);

@@ -124,7 +124,7 @@ const RELATIVE_FORMATTER =
     : null;
 
 function formatRelative(iso: string): string {
-  if (!RELATIVE_FORMATTER) return new Date(iso).toLocaleString();
+  if (!RELATIVE_FORMATTER) return formatAbsolute(iso);
   const diffMs = Date.parse(iso) - Date.now();
   const abs = Math.abs(diffMs);
   const minute = 60_000;
@@ -152,8 +152,9 @@ function formatAbsolute(iso: string): string {
   }
 }
 
-function formatMetaDate(iso: string): string {
+function formatMetaDate(iso: string, hydrated: boolean): string {
   try {
+    if (!hydrated) return formatAbsolute(iso);
     return new Intl.DateTimeFormat(undefined, {
       month: "short",
       day: "numeric",
@@ -433,6 +434,7 @@ export function FetchLogPanel({
   const [expanded, setExpanded] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"status" | "log">("status");
+  const hydrated = useHydrated();
   const cronStatus = useMemo(
     () => buildCronStatus(cronJob, cronRuns, scheduledJobRuns),
     [cronJob, cronRuns, scheduledJobRuns],
@@ -576,6 +578,7 @@ export function FetchLogPanel({
             onToggleDetails={() => setDetailsOpen((value) => !value)}
             status={updateStatus}
             summaryLanguage={summaryLanguage}
+            hydrated={hydrated}
           />
         </div>
         {actionsPlacement === "end" ? actionsNode : null}
@@ -732,6 +735,7 @@ function SourceFetchMetaGrid({
   onToggleDetails,
   status,
   summaryLanguage,
+  hydrated,
 }: {
   cronJob: LibraryCronJobStatus | null;
   detailsOpen: boolean;
@@ -739,6 +743,7 @@ function SourceFetchMetaGrid({
   onToggleDetails: () => void;
   status: FetchUpdateStatus;
   summaryLanguage?: string | null;
+  hydrated: boolean;
 }) {
   return (
     <dl className="fb-hub-digest-meta source-fetch-meta" aria-label="Source update details">
@@ -752,7 +757,7 @@ function SourceFetchMetaGrid({
       />
       <SourceFetchMetaItem
         label="Latest fetch"
-        value={latestRun ? formatMetaDate(latestRun.startedAt) : "None yet"}
+        value={latestRun ? formatMetaDate(latestRun.startedAt, hydrated) : "None yet"}
       />
       <div className="fb-hub-digest-meta-item source-fetch-status-item">
         <dt>Cron status</dt>
