@@ -46,12 +46,21 @@ test("primary app navigation keeps route prefetching enabled", () => {
 });
 
 test("app shell reuses the page session instead of fetching it again", () => {
+  const rootLayout = source("src/app/layout.tsx");
   const appShell = source("src/components/AppShell.tsx");
   const workspaceLayout = source("src/app/(workspace)/layout.tsx");
+  const globals = source("src/app/globals.css");
 
   assert.equal(appShell.includes("getServerSession"), false);
   assert.match(appShell, /session\??:/);
   assert.match(workspaceLayout, /<AppShell session=\{session\}>/);
+  assert.match(rootLayout, /className=\{`\$\{geistSans\.variable\} \$\{geistMono\.variable\} \$\{newsreader\.variable\} fb-root`\}/);
+  assert.match(rootLayout, /<body className="fb-root-body">/);
+  assert.doesNotMatch(rootLayout, /h-full antialiased|min-h-full flex flex-col/);
+  assert.match(globals, /\.fb-root\s*{[\s\S]*height:\s*100%/);
+  assert.match(globals, /\.fb-root\s*{[\s\S]*-webkit-font-smoothing:\s*antialiased/);
+  assert.match(globals, /\.fb-root-body\s*{[\s\S]*display:\s*flex/);
+  assert.match(globals, /\.fb-root-body\s*{[\s\S]*min-height:\s*100%/);
   for (const pagePath of [
     "src/app/(workspace)/dashboard/page.tsx",
     "src/app/(workspace)/builders/page.tsx",
