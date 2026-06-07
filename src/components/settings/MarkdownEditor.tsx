@@ -45,7 +45,7 @@ const MODES: Array<{
   { id: "preview", label: "Preview", icon: Eye },
 ];
 
-function renderMarkdownPreview(markdown: string, placeholder?: string) {
+function renderMarkdownPreview(markdown: string) {
   const nodes = [];
   const lines = markdown.split("\n");
   let index = 0;
@@ -138,7 +138,7 @@ function renderMarkdownPreview(markdown: string, placeholder?: string) {
   if (nodes.length) return nodes;
   return (
     <p className="settings-markdown-preview-empty">
-      {placeholder ?? "Nothing to preview."}
+      No prompt preview yet. Write prompt text to preview formatting.
     </p>
   );
 }
@@ -313,7 +313,7 @@ export function MarkdownEditor({
             className="settings-markdown-preview"
             style={{ minHeight: `${height}px` }}
           >
-            {renderMarkdownPreview(value, placeholder)}
+            {renderMarkdownPreview(value)}
           </div>
         ) : null}
       </div>

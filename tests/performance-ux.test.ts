@@ -609,6 +609,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(commonRulesForm, /placeholder=\{\[/);
   assert.match(markdownEditor, /placeholder\?: string/);
   assert.match(markdownEditor, /placeholder=\{placeholder\}/);
+  assert.match(markdownEditor, /No prompt preview yet\. Write prompt text to preview formatting\./);
+  assert.doesNotMatch(markdownEditor, /Nothing to preview|renderMarkdownPreview\(value,\s*placeholder\)/);
   assert.match(globals, /\.settings-optional-badge/);
   assert.match(globals, /\.settings-optional-empty/);
   assert.match(globals, /\.settings-section-head\s*{[\s\S]*border-bottom:\s*1px solid var\(--line\)/);
