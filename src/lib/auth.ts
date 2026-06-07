@@ -7,6 +7,27 @@ import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
 
+function authLogValue(value: unknown): unknown {
+  if (value instanceof Error) {
+    return {
+      name: value.name,
+      message: value.message,
+      cause: authLogValue((value as Error & { cause?: unknown }).cause),
+    };
+  }
+
+  if (!value || typeof value !== "object") return value;
+
+  if (Array.isArray(value)) return value.map(authLogValue);
+
+  const record = value as Record<string, unknown>;
+  return {
+    providerId: record.providerId,
+    error: authLogValue(record.error),
+    error_description: record.error_description,
+  };
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: { strategy: "database" },
@@ -48,6 +69,14 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/login",
+  },
+  logger: {
+    error(code, metadata) {
+      console.error(
+        "[next-auth:error]",
+        JSON.stringify({ code, metadata: authLogValue(metadata) }),
+      );
+    },
   },
 };
 
