@@ -111,12 +111,12 @@ export function AdminDigestConfigForm({
   return (
     <div className="settings-config-form digest-composition-form">
       <Section
-        title="Digest prompts"
+        title="AI Digest prompts"
         description="Prompts used after posts already have per-post summaries."
       >
         <FieldBlock
           label="Headline prompt"
-          description="Writes the short headline summary in the selected digest language."
+          description="Writes the short headline summary in the selected AI Digest language."
         >
           <MarkdownEditor
             ariaLabel="Headline prompt"

@@ -406,6 +406,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /@\/components\/settings\/SettingsFields/);
   assert.match(adminDigestConfig, /HEADLINE_PROMPT_PLACEHOLDER/);
   assert.match(adminDigestConfig, /PER_SOURCE_SUMMARY_PROMPT_PLACEHOLDER/);
+  assert.match(adminDigestConfig, /AI Digest prompts/);
+  assert.match(adminDigestConfig, /selected AI Digest language/);
+  assert.doesNotMatch(adminDigestConfig, /title="Digest prompts"|selected digest language/);
   assert.match(adminDigestConfig, /headlinePrompt/);
   assert.match(adminDigestConfig, /perSourceSummaryPrompt/);
   assert.match(adminDigestConfig, /label="Per-source summary prompt"[\s\S]*optional/);
@@ -2525,9 +2528,11 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(settingsPage, /Source and digest rules/);
   assert.doesNotMatch(settingsPage, /settings-rules-title|settings-rules-head/);
   assert.match(settingsPage, /Fetch, filter, and write per-post summaries\./);
-  assert.match(settingsPage, /Write digest headlines, source notes, and translated post summaries\./);
+  assert.match(settingsPage, /AI Digest rules/);
+  assert.match(settingsPage, /Write AI Digest headlines, source notes, and translated post summaries\./);
   assert.doesNotMatch(settingsPage, /How source content is fetched, filtered, and summarized/);
   assert.doesNotMatch(settingsPage, /How digest headlines, source notes, and translated post summaries are written/);
+  assert.doesNotMatch(settingsPage, />Digest rules<|Write digest headlines, source notes, and translated post summaries\./);
   assert.match(settingsPage, /className="settings-rules-summary"/);
   assert.match(settingsPage, /className="settings-rules-summary-desc"/);
   assert.match(settingsPage, /CountMeta/);

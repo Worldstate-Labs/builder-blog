@@ -2741,7 +2741,8 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(settingsPage, /getUserDigestConfig\(userId\)/);
   assert.doesNotMatch(settingsPage, /Source and digest rules/);
   assert.match(settingsPage, /Source update rules/);
-  assert.match(settingsPage, /Digest rules/);
+  assert.match(settingsPage, /AI Digest rules/);
+  assert.doesNotMatch(settingsPage, />Digest rules</);
   assert.match(settingsPage, /CommonFetchRulesForm/);
   assert.match(settingsPage, /CommonSummaryRulesForm/);
   assert.match(settingsPage, /isAdminEmail\(session\.user\.email\)/);
@@ -2770,6 +2771,9 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(srcManager, /canEditQualityGates/);
   assert.match(srcManager, /patch\.contentQuality = contentQuality/);
   assert.match(digestForm, /\/api\/settings\/digest-config/);
+  assert.match(digestForm, /AI Digest prompts/);
+  assert.match(digestForm, /selected AI Digest language/);
+  assert.doesNotMatch(digestForm, /title="Digest prompts"|selected digest language/);
   assert.doesNotMatch(digestForm, /OrderedChoiceField/);
   assert.doesNotMatch(digestForm, /knownSourceIds/);
   assert.doesNotMatch(digestForm, /digestOrder/);
