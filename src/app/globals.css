@@ -1513,16 +1513,31 @@ svg.lucide {
 }
 
 .post-source-original {
+  align-items: center;
+  background: color-mix(in oklch, var(--paper-strong) 88%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted-strong);
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 700;
+  gap: 0.45rem;
+  min-height: 2rem;
+  padding: 0.26rem 0.72rem 0.26rem 0.32rem;
   text-decoration: none;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+  white-space: nowrap;
 }
 
 .post-source-original .source-badge {
-  min-height: 2rem;
-  padding: 0.26rem 0.72rem 0.26rem 0.32rem;
-  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  min-height: 0;
+  padding: 0;
 }
 
-.post-source-original:hover .source-badge {
+.post-source-original:hover {
   background: color-mix(in oklch, var(--accent) 8%, transparent);
   border-color: color-mix(in oklch, var(--accent) 28%, var(--line));
   color: var(--ink);
@@ -1541,9 +1556,12 @@ svg.lucide {
   font-family: inherit;
   font-weight: 600;
   gap: 0.32rem;
+  justify-content: center;
   letter-spacing: 0.01em;
   margin-right: 0.15rem;
-  padding: 0.26rem 0.7rem;
+  min-height: 2rem;
+  min-width: 2rem;
+  padding: 0.26rem;
   transition: background 140ms ease, border-color 140ms ease;
   white-space: nowrap;
 }
@@ -1600,7 +1618,10 @@ svg.lucide {
 .post-favorite-btn {
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 0.26rem 0.62rem;
+  justify-content: center;
+  min-height: 2rem;
+  min-width: 2rem;
+  padding: 0.26rem;
 }
 
 .post-favorite-btn.post-action-btn--active {

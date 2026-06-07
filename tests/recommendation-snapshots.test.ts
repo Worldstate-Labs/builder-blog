@@ -127,7 +127,8 @@ Source: https://anthropic.com/engineering/how-we-contain-claude`,
   );
 
   assert.match(html, /post-favorite-btn/);
-  assert.match(html, />Save</);
+  assert.doesNotMatch(html, />Save</);
+  assert.doesNotMatch(html, />Saved</);
   assert.match(html, /aria-pressed="false"/);
 });
 
@@ -182,14 +183,14 @@ test("post card suppresses duplicate source labels across meta and footer action
 
   const visibleText = html.replace(/<[^>]*>/g, "");
   assert.equal((visibleText.match(/Product Hunt Top Products/g) ?? []).length, 1);
-  assert.doesNotMatch(html, /aria-label="Product Hunt Top Products"/);
   assert.match(html, /aria-hidden="true"/);
   assert.match(html, /title="Product Hunt Top Products"/);
   assert.match(html, /class="post-source-original"/);
   assert.match(
     html,
-    /class="post-source-original"[\s\S]*<span aria-hidden="true" class="source-badge" data-source="product_hunt_top_products" title="Product Hunt Top Products">/,
+    /class="post-source-original"[\s\S]*<span aria-label="Product Hunt Top Products" class="source-badge" data-source="product_hunt_top_products" title="Product Hunt Top Products">/,
   );
+  assert.match(html, />View original</);
 });
 
 test("post card action controls include the post title in accessible names", () => {
@@ -212,8 +213,9 @@ test("post card action controls include the post title in accessible names", () 
     }),
   );
 
-  assert.match(html, /aria-label="Open original source: Contextual Button Labels"/);
+  assert.match(html, /aria-label="View original: Contextual Button Labels"/);
   assert.match(html, /aria-label="Raw content: Contextual Button Labels"/);
+  assert.doesNotMatch(html, />Read</);
   assert.doesNotMatch(html, /aria-label="Summary method: Contextual Button Labels"/);
   assert.doesNotMatch(html, /aria-label="View original summary: Contextual Button Labels"/);
   assert.doesNotMatch(html, /aria-label="Show more summary: Contextual Button Labels"/);

@@ -261,7 +261,6 @@ function DigestFavoriteToggleButton({
       type="button"
     >
       <Star className="h-4 w-4" />
-      <span>{isFavorite ? "Saved" : "Save"}</span>
     </button>
   );
 }

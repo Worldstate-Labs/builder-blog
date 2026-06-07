@@ -285,21 +285,22 @@ export function PostCard({
           )}
 
           <div className="post-actions" onClickCapture={noteInteraction}>
-            {/* External platform action: the visible label is the source type. */}
+            {/* External platform action: keep the platform icon, but use one stable label. */}
             <a
-              aria-label={actionLabel("Open original source", actionContext)}
+              aria-label={actionLabel("View original", actionContext)}
               className="post-source-original"
               href={post.url}
               onClick={noteInteraction}
               rel="noreferrer"
               target="_blank"
-              title="Open the original post on its source platform"
+              title="View original"
             >
               <SourceBadge
                 builder={builder}
-                suppressLabelWhen={authorName}
                 sourceType={builder?.sourceType ?? post.sourceType ?? null}
+                showLabel={false}
               />
+              <span>View original</span>
             </a>
 
             {canReadRawContent && post.detailUrl ? (
@@ -310,7 +311,6 @@ export function PostCard({
                 onClick={noteInteraction}
                 title={rawContentLabel}
               >
-                Read
                 <BookOpen aria-hidden="true" className="post-raw-content-action-icon" />
               </Link>
             ) : canReadRawContent ? (
@@ -326,7 +326,6 @@ export function PostCard({
                 title={rawContentLabel}
                 type="button"
               >
-                Read
                 <BookOpen aria-hidden="true" className="post-raw-content-action-icon" />
               </button>
             ) : null}

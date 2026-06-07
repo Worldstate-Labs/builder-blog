@@ -1981,7 +1981,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(recommendationFeed, /"Following"/);
   assert.doesNotMatch(recommendationFeed, /isFavoritesTab \? "Favorites" : "Following"/);
   assert.doesNotMatch(postCard, /whitespace-pre-wrap text-sm leading-6|mt-3 whitespace-pre-wrap rounded-lg|text-link mt-2/);
-  assert.match(globals, /\.post-source-original \.source-badge\s*{[\s\S]*min-height:\s*2rem/);
+  assert.match(globals, /\.post-source-original\s*{[\s\S]*min-height:\s*2rem/);
+  assert.match(globals, /\.post-source-original \.source-badge\s*{[\s\S]*min-height:\s*0/);
+  assert.match(globals, /\.post-favorite-btn\s*{[\s\S]*min-width:\s*2rem/);
   assert.match(globals, /\.post-raw-content-action\s*{[\s\S]*color:\s*var\(--accent\)/);
   assert.match(globals, /\.fetched-post-summary-text\s*{[\s\S]*white-space:\s*pre-wrap/);
   assert.match(globals, /--post-summary-collapsed-height:\s*calc\(var\(--post-summary-lines\) \* var\(--post-summary-line-height\)\)/);
@@ -2074,7 +2076,7 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(postCard, /actionContext = compactActionContext\(title\)/);
   assert.doesNotMatch(postCard, /originalSummaryRegionId|View original summary/);
   assert.match(postCard, /aria-label=\{actionLabel\(rawContentLabel, actionContext\)\}/);
-  assert.match(postCard, /aria-label=\{actionLabel\("Open original source", actionContext\)\}/);
+  assert.match(postCard, /aria-label=\{actionLabel\("View original", actionContext\)\}/);
   assert.match(postCard, /accessibleLabel=\{actionLabel\("Summary method", actionContext\)\}/);
   assert.match(fetchMethodPopover, /useId/);
   assert.match(fetchMethodPopover, /aria-controls=\{popoverId\}/);
