@@ -8708,8 +8708,8 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .access-keys-list--skeleton .settings-skeleton-row {
-  border-radius: 16px;
-  height: 6.25rem;
+  border-radius: 8px;
+  height: 5.75rem;
 }
 
 .settings-source-type-manager {
@@ -9402,10 +9402,10 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-device-title {
   color: var(--ink);
-  font-size: 1.5rem;
+  font-size: 1.375rem;
   font-weight: 540;
   letter-spacing: 0;
-  line-height: 1.15;
+  line-height: 1.1;
   overflow-wrap: anywhere;
 }
 
@@ -9417,7 +9417,7 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-device-status {
   color: var(--muted-strong);
-  font-size: 1.25rem;
+  font-size: 1.0625rem;
   line-height: 1.25;
 }
 
@@ -9425,15 +9425,15 @@ a.fb-hub-source-name:focus-visible {
   align-items: center;
   color: var(--ink);
   display: inline-flex;
-  height: 2.75rem;
+  height: 2.5rem;
   justify-content: center;
-  width: 2.75rem;
+  width: 2.5rem;
 }
 
 .access-key-device-icon svg {
-  height: 1.875rem;
+  height: 1.75rem;
   stroke-width: 1.75;
-  width: 1.875rem;
+  width: 1.75rem;
 }
 
 .access-key-revoke-button,
@@ -9449,8 +9449,8 @@ a.fb-hub-source-name:focus-visible {
   font-weight: 520;
   justify-content: center;
   justify-self: end;
-  min-height: 3rem;
-  padding: 0.6rem 1.2rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 1.15rem;
   white-space: nowrap;
 }
 
@@ -9509,13 +9509,13 @@ a.fb-hub-source-name:focus-visible {
   align-items: center;
   background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 8px;
   display: grid;
-  gap: 1.05rem;
-  grid-template-columns: 2.75rem minmax(0, 1fr) auto;
-  min-height: 6.25rem;
+  gap: 1rem;
+  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+  min-height: 5.75rem;
   min-width: 0;
-  padding: 1.25rem 1.35rem;
+  padding: 1.1rem 1.2rem;
 }
 
 .access-key-card.fb-row--revoked {
@@ -10701,7 +10701,7 @@ body {
   .access-key-card {
     gap: 0.7rem;
     grid-template-columns: 2.25rem minmax(0, 1fr) auto;
-    min-height: 5.25rem;
+    min-height: 5rem;
     padding: 0.9rem;
   }
 
