@@ -317,7 +317,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
               <p>
                 After removing <strong>{removeTarget.name}</strong>, sources
                 from this library will no longer appear in your Sources page or
-                Following feed.
+                Following.
               </p>
               <p className="settings-dialog-warning">
                 You can import it again from the Hub later.

@@ -949,6 +949,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /initialSnapshots=\{visibleSnapshots\}/);
   assert.match(followingSection, /function snapshotHasPosts/);
   assert.match(followingSection, /No followed sources yet/);
+  assert.match(followingSection, /start Following/);
   assert.match(followingSection, /No posts have been fetched for your followed sources yet/);
   assert.match(followingSection, /No unread posts yet/);
   assert.match(followingSection, /Ask your Local Agent to fetch and summarize your followed sources/);
@@ -956,7 +957,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /Could not load Following/);
   assert.match(followingSection, /Check your connection, then try again\./);
   assert.doesNotMatch(followingSection, /Something went wrong loading Following|Couldn't load Following/);
-  assert.doesNotMatch(followingSection, /Following recommendations can appear|No unread recommendations yet|fetching recommendations/);
+  assert.doesNotMatch(followingSection, /Following feed|Following recommendations can appear|No unread recommendations yet|fetching recommendations/);
   assert.doesNotMatch(followingSection, /fetch and summarize them/);
   assert.match(followingSection, /<SkillPromptActions[\s\S]*context="library"/);
   assert.match(followingSection, /showStop=\{false\}/);
@@ -2480,7 +2481,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /className="fb-dialog"/);
   assert.match(hubImportForm, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.match(hubImportForm, /Remove imported source library\?/);
-  assert.match(hubImportForm, /sources\s+from this library will no longer appear in your Sources page or\s+Following feed/);
+  assert.match(hubImportForm, /sources\s+from this library will no longer appear in your Sources page or\s+Following\./);
   assert.match(hubImportForm, /You can import it again from the Hub later/);
   assert.match(hubImportForm, /requestRemoveImported/);
   assert.match(hubImportForm, /confirmRemoveImported/);
@@ -2516,7 +2517,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(libraryImportRemoveButton, /className="fb-dialog"/);
   assert.match(libraryImportRemoveButton, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.match(libraryImportRemoveButton, /Remove imported source library\?/);
-  assert.match(libraryImportRemoveButton, /sources from this\s+library will no longer appear in your Sources page or Following\s+feed/);
+  assert.match(libraryImportRemoveButton, /sources from this\s+library will no longer appear in your Sources page or Following\./);
   assert.match(libraryImportRemoveButton, /You can import it again from the Hub later/);
   assert.match(libraryImportRemoveButton, /function requestRemove/);
   assert.match(libraryImportRemoveButton, /onClick=\{requestRemove\}/);

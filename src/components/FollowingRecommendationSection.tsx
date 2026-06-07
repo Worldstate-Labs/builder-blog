@@ -122,7 +122,7 @@ function FollowingUnavailable({
           </Link>
         }
         ariaLive="polite"
-        body="Follow a source from the Sources page, or add a new one to start your Following feed."
+        body="Follow a source from the Sources page, or add a new one to start Following."
         className="is-actionable"
         title="No followed sources yet"
       />
