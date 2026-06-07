@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { describeAccessDevice, type AgentTokenListItem } from "../src/components/AgentTokenPanel";
+import {
+  describeAccessDevice,
+  sortAccessTokensByRecentConnection,
+  type AgentTokenListItem,
+} from "../src/components/AgentTokenPanel";
 
 function token(overrides: Partial<AgentTokenListItem>): AgentTokenListItem {
   return {
@@ -30,5 +34,30 @@ test("access key device labels normalize mobile platform casing", () => {
   assert.equal(
     describeAccessDevice(token({ lastPlatform: "android 15", lastUserAgent: "Chrome Mobile" })),
     "Android 15",
+  );
+});
+
+test("access keys sort by latest connection before creation time", () => {
+  const sorted = sortAccessTokensByRecentConnection([
+    token({
+      id: "created_recently",
+      createdAt: "2026-06-07T08:00:00.000Z",
+      lastUsedAt: null,
+    }),
+    token({
+      id: "connected_recently",
+      createdAt: "2026-06-01T08:00:00.000Z",
+      lastUsedAt: "2026-06-07T09:00:00.000Z",
+    }),
+    token({
+      id: "connected_older",
+      createdAt: "2026-06-01T08:00:00.000Z",
+      lastUsedAt: "2026-06-02T09:00:00.000Z",
+    }),
+  ]);
+
+  assert.deepEqual(
+    sorted.map((item) => item.id),
+    ["connected_recently", "created_recently", "connected_older"],
   );
 });

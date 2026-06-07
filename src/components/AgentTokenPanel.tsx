@@ -84,6 +84,16 @@ export function describeAccessDevice(token: AgentTokenListItem): string {
   return tokenName || "Unknown device";
 }
 
+export function sortAccessTokensByRecentConnection(
+  tokens: AgentTokenListItem[],
+): AgentTokenListItem[] {
+  return [...tokens].sort((a, b) => {
+    const aTime = Date.parse(a.lastUsedAt ?? a.createdAt);
+    const bTime = Date.parse(b.lastUsedAt ?? b.createdAt);
+    return bTime - aTime;
+  });
+}
+
 function withPhoneDeviceName(os: string, ua: string | null): string {
   const lower = `${os} ${ua ?? ""}`.toLowerCase();
   if (lower.includes("ipad") && !/\bipad\b/i.test(os)) return `${os} iPad`;
@@ -189,7 +199,10 @@ export function AgentTokenPanel({
   }
 
   const activeTokens = useMemo(
-    () => tokens.filter((token) => !token.revokedAt),
+    () =>
+      sortAccessTokensByRecentConnection(
+        tokens.filter((token) => !token.revokedAt),
+      ),
     [tokens],
   );
 
