@@ -68,6 +68,7 @@ test("every app route has an explicit centered layout role", () => {
   assert.deepEqual(routeFiles, [
     "src/app/(workspace)/builder/[entityId]/loading.tsx",
     "src/app/(workspace)/builder/[entityId]/page.tsx",
+    "src/app/(workspace)/builder/x/[handle]/loading.tsx",
     "src/app/(workspace)/builder/x/[handle]/page.tsx",
     "src/app/(workspace)/builders/loading.tsx",
     "src/app/(workspace)/builders/page.tsx",
@@ -77,7 +78,9 @@ test("every app route has an explicit centered layout role", () => {
     "src/app/(workspace)/library-hub/page.tsx",
     "src/app/(workspace)/posts/[feedItemId]/loading.tsx",
     "src/app/(workspace)/posts/[feedItemId]/page.tsx",
+    "src/app/(workspace)/recommendations/items/[feedItemId]/loading.tsx",
     "src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx",
+    "src/app/(workspace)/recommendations/loading.tsx",
     "src/app/(workspace)/recommendations/page.tsx",
     "src/app/(workspace)/search/loading.tsx",
     "src/app/(workspace)/search/page.tsx",
@@ -158,8 +161,11 @@ test("every app route has an explicit centered layout role", () => {
   }
   const readingLoadingRoutes = [
     ["src/app/(workspace)/builder/[entityId]/loading.tsx", "Source", "Loading Source", 5],
+    ["src/app/(workspace)/builder/x/[handle]/loading.tsx", "Source", "Loading Source", 5],
     ["src/app/(workspace)/dashboard/loading.tsx", "Home", "Loading Home", 6],
     ["src/app/(workspace)/posts/[feedItemId]/loading.tsx", "Post", "Loading Post", 4],
+    ["src/app/(workspace)/recommendations/items/[feedItemId]/loading.tsx", "Post", "Loading Post", 4],
+    ["src/app/(workspace)/recommendations/loading.tsx", "Following", "Loading Following", 6],
     ["src/app/(workspace)/search/loading.tsx", "Search", "Loading Search", 5],
   ] as const;
   for (const [path, label, title, rows] of readingLoadingRoutes) {
