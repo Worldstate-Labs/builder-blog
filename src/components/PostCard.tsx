@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { ExternalLink, FileText, ScrollText } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { SourceBadge } from "@/components/SourceBadge";
@@ -90,6 +90,10 @@ export function PostCard({
   const hasMoreSummary = summaryPreview !== summary;
   const title = post.title || firstLine(post.body);
   const actionContext = compactActionContext(title);
+  const rawIdBase = useId();
+  const originalSummaryIdBase = useId();
+  const rawRegionId = `${rawIdBase}-raw-content`;
+  const originalSummaryRegionId = `${originalSummaryIdBase}-original-summary`;
 
   function noteInteraction() {
     if (!onInteract || interactionSentRef.current) return;
@@ -242,6 +246,7 @@ export function PostCard({
               <>
                 {/* 2. Raw content toggle */}
                 <button
+                  aria-controls={rawRegionId}
                   aria-label={actionLabel("Raw content", actionContext)}
                   aria-expanded={rawExpanded}
                   className={`post-action-btn${rawExpanded ? " post-action-btn--active" : ""}`}
@@ -268,6 +273,7 @@ export function PostCard({
 
             {originalSummary ? (
               <button
+                aria-controls={originalSummaryRegionId}
                 aria-label={actionLabel("View original summary", actionContext)}
                 aria-expanded={originalSummaryExpanded}
                 className={`post-action-btn${originalSummaryExpanded ? " post-action-btn--active" : ""}`}
@@ -295,6 +301,7 @@ export function PostCard({
         {originalSummaryExpanded && originalSummary ? (
           <div
             className="fetched-post-original-summary"
+            id={originalSummaryRegionId}
             role="region"
             aria-label={actionLabel("Original summary", actionContext)}
           >
@@ -308,6 +315,7 @@ export function PostCard({
           <div
             aria-label={actionLabel("Raw content", actionContext)}
             className="fetched-post-raw"
+            id={rawRegionId}
             role="region"
           >
             {post.body}

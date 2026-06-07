@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Info } from "lucide-react";
 
 type ParsedFetchTool = {
@@ -43,6 +43,7 @@ export function FetchMethodPopover({
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const popoverId = useId();
   const parsed = parseFetchTool(fetchTool);
   const summarizedDate = summarizedAt
     ? new Date(summarizedAt).toLocaleDateString()
@@ -62,6 +63,8 @@ export function FetchMethodPopover({
   return (
     <div className="fb-popover-anchor" ref={containerRef}>
       <button
+        aria-controls={popoverId}
+        aria-expanded={open}
         aria-label={accessibleLabel}
         className="post-action-btn"
         onClick={() => setOpen((v) => !v)}
@@ -71,7 +74,7 @@ export function FetchMethodPopover({
         <Info className="h-4 w-4" />
       </button>
       {open && (
-        <div className="fb-popover" role="tooltip">
+        <div className="fb-popover" id={popoverId} role="tooltip">
           {parsed.runtime || parsed.model || parsed.detail ? (
             <>
               {parsed.runtime ? (

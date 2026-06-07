@@ -1792,6 +1792,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /className="fetched-post-summary-text"/);
   assert.match(postCard, /className="post-summary-toggle"/);
   assert.match(postCard, /className="fetched-post-raw"/);
+  assert.match(postCard, /useId/);
+  assert.match(postCard, /aria-controls=\{rawRegionId\}/);
+  assert.match(postCard, /id=\{rawRegionId\}/);
   assert.match(postCard, /See more/);
   assert.match(postCard, /Raw content/);
   assert.match(postCard, /View original/);
@@ -1836,6 +1839,7 @@ test("digest posts use source detail headings and unified original links", () =>
   const digestContent = source("src/components/DigestContent.tsx");
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const postCard = source("src/components/PostCard.tsx");
+  const fetchMethodPopover = source("src/components/FetchMethodPopover.tsx");
   const sourceBadge = source("src/components/SourceBadge.tsx");
   const globals = source("src/app/globals.css");
 
@@ -1864,9 +1868,15 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(postCard, /ScrollText/);
   assert.match(postCard, /actionContext = compactActionContext\(title\)/);
   assert.match(postCard, /aria-label=\{actionLabel\("View original summary", actionContext\)\}/);
+  assert.match(postCard, /aria-controls=\{originalSummaryRegionId\}/);
+  assert.match(postCard, /id=\{originalSummaryRegionId\}/);
   assert.match(postCard, /aria-label=\{actionLabel\("Raw content", actionContext\)\}/);
   assert.match(postCard, /aria-label=\{actionLabel\("View original source", actionContext\)\}/);
   assert.match(postCard, /accessibleLabel=\{actionLabel\("Summary method", actionContext\)\}/);
+  assert.match(fetchMethodPopover, /useId/);
+  assert.match(fetchMethodPopover, /aria-controls=\{popoverId\}/);
+  assert.match(fetchMethodPopover, /aria-expanded=\{open\}/);
+  assert.match(fetchMethodPopover, /id=\{popoverId\}/);
   assert.match(postCard, /function compactActionContext/);
   assert.doesNotMatch(postCard, /aria-label="View original summary"/);
   assert.doesNotMatch(postCard, /aria-label="Raw content"/);
