@@ -345,7 +345,7 @@ async function ChannelsListSlot({
             ) : null}
           </div>
           <div className="builder-detail-channel-date mono">
-            {channel.lastFetchedAt ? dateFormatter.format(channel.lastFetchedAt) : "—"}
+            {channel.lastFetchedAt ? dateFormatter.format(channel.lastFetchedAt) : "Not fetched"}
           </div>
           <ChannelPreferenceToggle
             entityId={entityId}

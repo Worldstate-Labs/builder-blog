@@ -467,6 +467,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /className="skill-prompt-status"/);
   assert.match(skillPromptActions, /className="skill-prompt-status-text"/);
   assert.match(skillPromptActions, /className="skill-prompt-status-text is-error"/);
+  assert.match(skillPromptActions, /Couldn't save the summary language\. Try again\./);
+  assert.doesNotMatch(skillPromptActions, /summary language — try again/);
   assert.match(skillPromptActions, /async function copyTextToClipboard/);
   assert.match(skillPromptActions, /document\.hasFocus\(\)/);
   assert.match(skillPromptActions, /document\.execCommand\("copy"\)/);
@@ -788,6 +790,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(builderDetailPage, /className="fb-btn light compact w-fit" href="\/builders"/);
   assert.match(builderDetailPage, /className="builder-detail-identity"/);
   assert.match(builderDetailPage, /className="builder-detail-avatar"/);
+  assert.match(builderDetailPage, /: "Not fetched"/);
+  assert.doesNotMatch(builderDetailPage, /lastFetchedAt \? dateFormatter\.format\(channel\.lastFetchedAt\) : "—"/);
   assert.match(builderDetailPage, /className="builder-detail-title-stack"/);
   assert.match(builderDetailPage, /className="builder-detail-title-row"/);
   assert.match(builderDetailPage, /<SourceBadge[\s\S]*sourceType=\{headerSourceType\}[\s\S]*suppressLabelWhen=\{entity\.name\}/);
@@ -1277,6 +1281,12 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(fetchLogPanel, /className="mono mt-1 max-h-72 overflow-auto whitespace-pre-wrap text-\[11\.5px\]"/);
   assert.doesNotMatch(fetchLogPanel, /error \? \([\s\S]{0,120}mt-3 text-\[12px\] text-\[var\(--danger\)\]/);
   assert.doesNotMatch(digestLogPanel, /error \? \([\s\S]{0,120}mt-3 text-\[12px\] text-\[var\(--danger\)\]/);
+  assert.match(fetchLogPanel, /Unknown source type/);
+  assert.match(fetchLogPanel, /Skipped: no content/);
+  assert.match(fetchLogPanel, /Untitled task/);
+  assert.match(digestLogPanel, /Untitled candidate/);
+  assert.doesNotMatch(fetchLogPanel, /Skipped — no content|sync-panel-detail-action-message">\s*—|sync-panel-task-banner-blurb">\s*—|\?\? "—"/);
+  assert.doesNotMatch(digestLogPanel, /\?\? "—"/);
   assert.match(globals, /\.digest-updates-main\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /\.digest-updates-main\s*{[\s\S]*flex-wrap:\s*wrap/);
   assert.match(globals, /\.sources-sync-section \.digest-updates-main\s*{[\s\S]*display:\s*grid/);
@@ -2280,6 +2290,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(addBuilderForm, /className="add-source-primary-row"/);
   assert.match(addBuilderForm, /className="add-source-name-row"/);
   assert.match(addBuilderForm, /className="fb-input add-source-name-input"/);
+  assert.match(addBuilderForm, /Display name \(auto-filled from URL; edit to override\)/);
+  assert.doesNotMatch(addBuilderForm, /Display name \(auto-filled from URL — edit to override\)/);
   assert.match(addBuilderForm, /className="fb-btn dark add-source-submit"/);
   assert.match(addBuilderForm, /className="add-source-callout"/);
   assert.match(addBuilderForm, /add-source-text-action/);

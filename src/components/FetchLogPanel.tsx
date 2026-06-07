@@ -1290,7 +1290,7 @@ function DetailsBody({ details }: { details: DetailsShape }) {
               >
                 <span className="sync-panel-fetch-source-name">{entry.name ?? "Unknown source"}</span>
                 <span className="mono sync-panel-fetch-source-meta">
-                  {entry.sourceType ?? "—"} ·{" "}
+                  {entry.sourceType ?? "Unknown source type"} ·{" "}
                   {formatCount(entry.itemsFetched ?? 0)}{" "}
                   {(entry.itemsFetched ?? 0) === 1 ? "post" : "posts"} ·{" "}
                   {formatCount(entry.tasksGenerated ?? 0)} posts checked
@@ -1402,7 +1402,7 @@ function DetailsBody({ details }: { details: DetailsShape }) {
                 <span className="fb-chip sync-panel-detail-action-chip">{action.kind ?? "action"}</span>
                 <span className="sync-panel-detail-action-builder">{action.builder ?? ""}</span>
                 {action.message ? (
-                  <span className="sync-panel-detail-action-message"> — {action.message}</span>
+                  <span className="sync-panel-detail-action-message">: {action.message}</span>
                 ) : null}
                 {action.helpUrl ? (
                   <>
@@ -1610,7 +1610,7 @@ function summarizeOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
 function statusBanner(task: FetchTaskLog): { label: string; tone: Tone } {
   // A deliberate, evidence-backed skip (no primary content) is a clean terminal
   // state, not a failure.
-  if (task.status === "skipped") return { label: "Skipped — no content", tone: "idle" };
+  if (task.status === "skipped") return { label: "Skipped: no content", tone: "idle" };
   // Success is defined by a persisted summary — NOT by contentStatus="ready"
   // (that only means the body was fetched; the summarize step can still fail).
   if (isSummarized(task)) return { label: "Fetched & summarized", tone: "ok" };
@@ -1717,7 +1717,7 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
             {ready ? "ready" : "Local Agent"}
           </span>
           <span className="sync-panel-task-title">
-            {task.title ?? task.url ?? "—"}
+            {task.title ?? task.url ?? "Untitled task"}
           </span>
           {task.builder ? (
             <span className="sync-panel-task-builder">· {task.builder}</span>
@@ -1731,7 +1731,7 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
           >
             {banner.label}
             {work.blurb ? (
-              <span className="sync-panel-task-banner-blurb"> — {work.blurb}</span>
+              <span className="sync-panel-task-banner-blurb">: {work.blurb}</span>
             ) : null}
           </div>
 

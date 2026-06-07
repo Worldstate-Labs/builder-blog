@@ -1059,7 +1059,7 @@ function CandidateRow({ item, synced }: { item: DigestRunCandidate; synced: bool
       </span>
       <span className="sync-panel-candidate-copy">
         <span className={item.included ? "sync-panel-candidate-title" : "sync-panel-candidate-title is-muted"}>
-          {item.title ?? item.url ?? "—"}
+          {item.title ?? item.url ?? "Untitled candidate"}
         </span>
         {item.source ? <span className="sync-panel-candidate-source"> · {item.source}</span> : null}
       </span>

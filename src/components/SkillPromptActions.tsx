@@ -821,7 +821,7 @@ function CronConfigDialog({
       // unchanged.
       const saved = await persistSummaryLanguage(pickedLanguage, savedLanguage);
       if (!saved) {
-        setError("Couldn't save the summary language — try again.");
+        setError("Couldn't save the summary language. Try again.");
         setSubmitting(false);
         return;
       }
