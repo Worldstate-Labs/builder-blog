@@ -8799,8 +8799,8 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .access-keys-list--skeleton .settings-skeleton-row {
-  border-radius: 8px;
-  height: 4.5rem;
+  border-radius: 16px;
+  height: 5.25rem;
 }
 
 .settings-source-type-manager {
@@ -9505,7 +9505,7 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-device-title {
   color: var(--ink);
-  font-size: 1.0625rem;
+  font-size: 1.1875rem;
   font-weight: 500;
   letter-spacing: 0;
   line-height: 1.25;
@@ -9520,7 +9520,7 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-device-status {
   color: var(--muted-strong);
-  font-size: 0.9375rem;
+  font-size: 1rem;
   line-height: 1.35;
 }
 
@@ -9528,15 +9528,15 @@ a.fb-hub-source-name:focus-visible {
   align-items: center;
   color: var(--ink);
   display: inline-flex;
-  height: 2rem;
+  height: 2.25rem;
   justify-content: center;
-  width: 2rem;
+  width: 2.25rem;
 }
 
 .access-key-device-icon svg {
-  height: 1.375rem;
+  height: 1.5rem;
   stroke-width: 1.75;
-  width: 1.375rem;
+  width: 1.5rem;
 }
 
 .access-key-revoke-button,
@@ -9552,9 +9552,9 @@ a.fb-hub-source-name:focus-visible {
   font-weight: 520;
   justify-content: center;
   justify-self: end;
-  min-height: 2.5rem;
-  min-width: 8.5rem;
-  padding: 0.45rem 1rem;
+  min-height: 2.75rem;
+  min-width: 10rem;
+  padding: 0.55rem 1.15rem;
   text-align: center;
   white-space: nowrap;
 }
@@ -9612,16 +9612,16 @@ a.fb-hub-source-name:focus-visible {
 /* Access key device card */
 .access-key-card {
   align-items: center;
-  background: var(--paper);
+  background: color-mix(in oklch, var(--paper) 96%, var(--paper-strong));
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 16px;
   box-shadow: none;
   display: grid;
-  gap: 1rem;
-  grid-template-columns: 2rem minmax(0, 1fr) auto;
-  min-height: 4.75rem;
+  gap: 1.15rem;
+  grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+  min-height: 6rem;
   min-width: 0;
-  padding: 0.9rem 1rem;
+  padding: 1.1rem 1.25rem;
 }
 
 .access-key-card.fb-row--revoked {
@@ -10831,17 +10831,17 @@ body {
   }
 
   .access-key-card {
-    gap: 0.75rem;
+    gap: 0.85rem;
     grid-template-columns: 1.875rem minmax(0, 1fr) auto;
-    min-height: 4.5rem;
-    padding: 0.8rem;
+    min-height: 5.25rem;
+    padding: 0.9rem;
   }
 
   .access-key-revoke-button,
   .access-key-revoked-pill {
     font-size: 0.875rem;
     min-height: 2.25rem;
-    min-width: 7rem;
+    min-width: 7.5rem;
     padding-inline: 0.75rem;
   }
 
