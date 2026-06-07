@@ -233,8 +233,9 @@ test("public entry pages use the centered product layout", () => {
   assert.match(loginPage, /fb-login-panel-head/);
   assert.match(loginPage, /Sign in/);
   assert.match(loginPage, /AI Digest/);
-  assert.match(loginPage, /Use one account for your AI Digest archive and Local Agent\./);
+  assert.match(loginPage, /Use one account for your AI Digests and Local Agent\./);
   assert.doesNotMatch(loginPage, /Archive|web archive|searchable archive/);
+  assert.doesNotMatch(loginPage, /AI Digest archive/);
   assert.doesNotMatch(loginPage, /Continue securely/);
   assert.doesNotMatch(loginPage, /ShieldCheck|fb-login-panel-icon/);
   assert.match(loginPage, /fb-login-proof-icon/);
@@ -1211,6 +1212,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /className="page-pad page-pad--reading search-page"/);
   assert.match(searchPage, /searchPageSize/);
   assert.match(searchPage, /emptySearchCopy = "Search sources, posts, saved items, and AI Digests\."/);
+  assert.match(searchPage, /past AI Digests/);
+  assert.doesNotMatch(searchPage, /AI Digest archive/);
   assert.doesNotMatch(searchPage, /Enter a query to search across your sources/);
   assert.match(searchPage, /relatedSearchSuggestions/);
   assert.match(searchPage, /didYouMeanSearch/);
@@ -1415,6 +1418,8 @@ test("search suggestions API exists for autocomplete-style queries", () => {
   assert.match(suggestRoute, /items:/);
   assert.match(suggestRoute, /titlePrefixCompletions/);
   assert.match(suggestRoute, /claude code/);
+  assert.match(suggestRoute, /past AI Digests/);
+  assert.doesNotMatch(suggestRoute, /AI Digest archive/);
   assert.match(suggestRoute, /NextResponse/);
 });
 
@@ -2223,8 +2228,10 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /mode\?: "hub" \| "imported"/);
   assert.match(digestPipelineForm, /mode = "hub"/);
   assert.match(digestPipelineForm, /Imported AI Digests/);
-  assert.match(digestPipelineForm, /AI Digest archives built and shared by other users\./);
+  assert.match(digestPipelineForm, /AI Digests built and shared by other users\./);
+  assert.match(digestPipelineForm, /Import another user's latest and past AI Digests\./);
   assert.doesNotMatch(digestPipelineForm, /Digests imported from the Hub/);
+  assert.doesNotMatch(digestPipelineForm, /AI Digest archives built|latest AI Digest and archive/);
   assert.match(digestPipelineForm, /Shared AI Digests/);
   assert.doesNotMatch(digestPipelineForm, /Share my digest/);
   assert.doesNotMatch(digestPipelineForm, /Remove my digest/);

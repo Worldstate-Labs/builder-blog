@@ -10,7 +10,7 @@ const defaultSuggestions = [
   "agent memory",
   "embedding search",
   "product launch",
-  "AI Digest archive",
+  "past AI Digests",
   "podcast transcript",
 ];
 

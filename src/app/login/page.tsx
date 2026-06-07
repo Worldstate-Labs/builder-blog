@@ -54,7 +54,7 @@ export default async function LoginPage({
                 Sign in
               </h2>
               <p className="fb-login-panel-copy">
-                Use one account for your AI Digest archive and Local Agent.
+                Use one account for your AI Digests and Local Agent.
               </p>
             </div>
           </div>
