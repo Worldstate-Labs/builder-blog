@@ -132,6 +132,26 @@ test("every app route has an explicit centered layout role", () => {
   );
 });
 
+test("workspace not-found uses the FollowBrief shell instead of the default Next 404", () => {
+  const notFoundPath = "src/app/(workspace)/not-found.tsx";
+  const notFoundPage = source(notFoundPath);
+  const globals = source("src/app/globals.css");
+
+  assert.equal(existsSync(join(root, notFoundPath)), true);
+  assert.match(notFoundPage, /@\/components\/PageHeader/);
+  assert.match(notFoundPage, /@\/components\/EmptyState/);
+  assert.match(notFoundPage, /className="page-pad page-pad--reading workspace-not-found"/);
+  assert.match(notFoundPage, /title="Page not found"/);
+  assert.match(notFoundPage, /href="\/dashboard"/);
+  assert.match(notFoundPage, /href="\/search"/);
+  assert.match(notFoundPage, /Home/);
+  assert.match(notFoundPage, /Search/);
+  assert.doesNotMatch(notFoundPage, /This page could not be found|404 \|/);
+  assert.match(globals, /\.workspace-not-found-empty\s*{[\s\S]*border-style:\s*solid/);
+  assert.match(globals, /\.workspace-not-found-actions\s*{[\s\S]*display:\s*flex/);
+  assert.match(globals, /\.workspace-not-found-actions\s*{[\s\S]*flex-wrap:\s*wrap/);
+});
+
 test("public entry pages use the centered product layout", () => {
   const landingPage = source("src/app/page.tsx");
   const loginPage = source("src/app/login/page.tsx");

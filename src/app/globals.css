@@ -4332,6 +4332,16 @@ svg.lucide {
   margin-top: 1rem;
 }
 
+.workspace-not-found-empty {
+  border-style: solid;
+}
+
+.workspace-not-found-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+
 .hub-list-empty {
   grid-column: 1 / -1;
 }
