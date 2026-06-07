@@ -115,7 +115,7 @@
     --danger: oklch(0.72 0.14 24);
     --danger-soft: oklch(0.32 0.07 24);
     --line: color-mix(in oklch, var(--ink) 18%, transparent);
-    --shadow: color-mix(in oklch, black 55%, transparent);
+    --shadow: color-mix(in oklch, var(--surface-ink) 55%, transparent);
     --on-accent: var(--surface-ink);
     --on-danger: var(--surface-ink);
     --on-ink: var(--paper);
@@ -142,7 +142,7 @@
   --danger: oklch(0.72 0.14 24);
   --danger-soft: oklch(0.32 0.07 24);
   --line: color-mix(in oklch, var(--ink) 18%, transparent);
-  --shadow: color-mix(in oklch, black 55%, transparent);
+  --shadow: color-mix(in oklch, var(--surface-ink) 55%, transparent);
   --on-accent: var(--surface-ink);
   --on-danger: var(--surface-ink);
   --on-ink: var(--paper);
@@ -1081,15 +1081,15 @@ svg.lucide {
 
 .digest-panel {
   background:
-    linear-gradient(145deg, color-mix(in oklch, var(--charcoal) 96%, black), color-mix(in oklch, var(--accent-strong) 22%, var(--charcoal)));
+    linear-gradient(145deg, color-mix(in oklch, var(--charcoal) 96%, var(--surface-ink)), color-mix(in oklch, var(--accent-strong) 22%, var(--charcoal)));
   border-radius: 8px;
-  box-shadow: 0 22px 58px color-mix(in oklch, black 18%, transparent);
+  box-shadow: 0 22px 58px color-mix(in oklch, var(--surface-ink) 18%, transparent);
 }
 
 .digest-body {
   max-height: 56rem;
   overflow: auto;
-  scrollbar-color: color-mix(in oklch, white 26%, transparent) transparent;
+  scrollbar-color: color-mix(in oklch, var(--surface-paper) 26%, transparent) transparent;
 }
 
 .page-pad--reading > h1:not(.sr-only) {
@@ -2816,8 +2816,8 @@ svg.lucide {
 }
 
 .source-badge[data-source="x"] .source-badge-mark {
-  /* X's mark is a white glyph on a fixed black badge (brand). Use the non-
-     inverting surface token so dark mode doesn't flip it to white-on-white. */
+  /* X's mark is a light glyph on a fixed dark badge (brand). Use the non-
+     inverting surface token so dark mode keeps the contrast stable. */
   background: var(--surface-ink);
   color: var(--surface-paper);
 }
@@ -4518,7 +4518,7 @@ svg.lucide {
 }
 
 .fb-btn.danger:hover {
-  background: color-mix(in oklch, var(--danger) 88%, black);
+  background: color-mix(in oklch, var(--danger) 88%, var(--surface-ink));
 }
 
 .fb-follow-button {
@@ -7095,7 +7095,7 @@ a.builder-library-name:hover {
 
 /* Digest panel — the featured latest-brief card. Theme-following (light paper
    in light mode, dark surface in dark mode) so it sits inside the editorial page
-   instead of reading as a black slab. */
+   instead of reading as a harsh slab. */
 .fb-digest {
   background: transparent;
   border: 0;
@@ -7205,12 +7205,12 @@ a.builder-library-name:hover {
 }
 .digest-rich.on-dark {
   --dr-ink: oklch(98% 0.006 250);
-  --dr-muted: rgba(255, 255, 255, 0.76);
-  --dr-faint: rgba(255, 255, 255, 0.5);
-  --dr-line: rgba(255, 255, 255, 0.12);
-  --dr-accent: color-mix(in oklch, var(--accent) 55%, white);
-  --dr-chip: rgba(255, 255, 255, 0.1);
-  --dr-card: rgba(255, 255, 255, 0.05);
+  --dr-muted: color-mix(in oklch, var(--dr-ink) 76%, transparent);
+  --dr-faint: color-mix(in oklch, var(--dr-ink) 50%, transparent);
+  --dr-line: color-mix(in oklch, var(--dr-ink) 12%, transparent);
+  --dr-accent: color-mix(in oklch, var(--accent) 55%, var(--surface-paper));
+  --dr-chip: color-mix(in oklch, var(--dr-ink) 10%, transparent);
+  --dr-card: color-mix(in oklch, var(--dr-ink) 5%, transparent);
 }
 
 .digest-lead-note {
@@ -8252,7 +8252,7 @@ a.fb-hub-source-name:focus-visible {
 
 .fb-dark-mark {
   align-items: center;
-  background: white;
+  background: var(--surface-paper);
   border-radius: 7px;
   color: var(--charcoal);
   display: inline-flex;
@@ -9085,7 +9085,7 @@ a.fb-hub-source-name:focus-visible {
 
 .settings-optional-badge {
   align-items: center;
-  background: color-mix(in oklch, var(--paper-strong) 76%, white 10%);
+  background: color-mix(in oklch, var(--paper-strong) 76%, var(--surface-paper) 10%);
   border: 1px solid color-mix(in oklch, var(--line) 76%, transparent);
   border-radius: 999px;
   color: var(--muted-strong);
@@ -9293,14 +9293,14 @@ a.fb-hub-source-name:focus-visible {
 .settings-config-form .fb-textarea {
   background: var(--paper-strong);
   border-color: color-mix(in oklch, var(--line) 76%, transparent);
-  box-shadow: inset 0 1px 0 color-mix(in oklch, white 36%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--surface-paper) 36%, transparent);
 }
 
 .settings-markdown-editor {
   background: var(--paper-strong);
   border: 1px solid color-mix(in oklch, var(--line) 76%, transparent);
   border-radius: 8px;
-  box-shadow: inset 0 1px 0 color-mix(in oklch, white 36%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--surface-paper) 36%, transparent);
   overflow: hidden;
 }
 
@@ -9417,7 +9417,7 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .settings-markdown-preview-code {
-  background: color-mix(in oklch, var(--paper) 78%, black 4%);
+  background: color-mix(in oklch, var(--paper) 78%, var(--surface-ink) 4%);
   border: 1px solid var(--line);
   border-radius: 8px;
   font-family: var(--font-geist-mono);
@@ -9693,12 +9693,12 @@ a.fb-hub-source-name:focus-visible {
 /* Code block (terminal bootstrap) */
 .fb-code-block {
   align-items: center;
-  /* Always-dark code surface (light text): use the non-inverting surface token
-     so it stays dark in dark mode instead of flipping to white-on-white. */
+  /* Always-dark code surface: use the non-inverting surface token
+     so it stays dark in dark mode instead of flipping with the theme. */
   background: var(--surface-ink);
   border: 1px solid var(--line);
   border-radius: 10px;
-  color: rgba(255, 255, 255, 0.8);
+  color: color-mix(in oklch, var(--surface-paper) 80%, transparent);
   display: flex;
   font-family: var(--font-geist-mono);
   font-size: 0.75rem;
@@ -9715,10 +9715,10 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .fb-code-block-copy {
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in oklch, var(--surface-paper) 8%, transparent);
   border: 0;
   border-radius: 6px;
-  color: rgba(255, 255, 255, 0.7);
+  color: color-mix(in oklch, var(--surface-paper) 70%, transparent);
   cursor: pointer;
   flex-shrink: 0;
   font-family: var(--font-geist-sans);
@@ -9728,8 +9728,8 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .fb-code-block-copy:hover {
-  background: rgba(255, 255, 255, 0.16);
-  color: white;
+  background: color-mix(in oklch, var(--surface-paper) 16%, transparent);
+  color: var(--surface-paper);
 }
 
 /* Hero panel (landing) — already exists but ensure ridge */
@@ -10268,7 +10268,7 @@ mark.fb-mark-highlight {
 
 :root[data-theme="dark"] .fb-digest,
 :root[data-theme="dark"] .fb-code-block {
-  box-shadow: 0 22px 58px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 22px 58px color-mix(in oklch, var(--surface-ink) 55%, transparent);
 }
 
 /* ============ MOBILE (fb-m-*) ============ */
