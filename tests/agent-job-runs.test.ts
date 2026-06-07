@@ -98,12 +98,15 @@ test("web status uses scheduled job instances while history can show one-time ru
   for (const panel of [fetchPanel, digestPanel]) {
     assert.match(panel, /AgentJobRunListItem/);
     assert.match(panel, /trigger === "scheduled"/);
-    assert.match(panel, /Run history|Build history/);
     assert.match(panel, /Scheduled/);
     assert.match(panel, /One-time/);
     assert.match(panel, /Stalled/);
     assert.match(panel, /timed_out|timed out/);
   }
+  assert.match(fetchPanel, /Run history/);
+  assert.match(digestPanel, /Build log/);
+  assert.match(digestPanel, /AI Digest build history/);
+  assert.doesNotMatch(digestPanel, /Build history/);
 
   assert.match(fetchRoute, /jobRuns/);
   assert.match(fetchRoute, /scheduledJobRuns/);

@@ -303,7 +303,8 @@ export function DigestLogPanel({
           type="button"
         >
           <Clock3 aria-hidden="true" />
-          Build history
+          Build log
+          <span className="sr-only">AI Digest build history</span>
         </button>
       </div>
 
