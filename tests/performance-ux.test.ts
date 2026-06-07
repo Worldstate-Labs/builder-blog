@@ -1198,6 +1198,10 @@ test("dashboard digest tab owns the saved AI Digest selector", () => {
   assert.match(digestDetails, /item-headline-preview/);
   assert.match(digestDetails, /MAX_HEADLINE_SOURCE_ITEMS = 5/);
   assert.match(digestDetails, /parseHeadlineSourceSummaries/);
+  assert.match(digestDetails, /parseDigest/);
+  assert.match(digestDetails, /headlineSourceOrderFromDigestContent/);
+  assert.match(digestDetails, /headlineSourceOrderFromSourceLinks/);
+  assert.match(digestDetails, /DEFAULT_HEADLINE_SOURCE_TYPE_ORDER = \[/);
   assert.match(digestDetails, /<SourceAvatar/);
   assert.match(digestDetails, /digest-headline-list/);
   assert.match(globals, /\.digest-headline-text\s*{[\s\S]*max-width:\s*none/);

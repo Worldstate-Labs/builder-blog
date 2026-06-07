@@ -12,9 +12,19 @@ import {
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { useHydrated } from "@/components/ThemeToggle";
 import { digestPreviewFromContent } from "@/lib/digest-headline";
+import { parseDigest } from "@/lib/digest-markdown";
 import { displayLanguagePreference } from "@/lib/language-preference";
 
 const MAX_HEADLINE_SOURCE_ITEMS = 5;
+const DEFAULT_HEADLINE_SOURCE_TYPE_ORDER = [
+  "podcast",
+  "youtube",
+  "blog",
+  "x",
+  "github_trending",
+  "product_hunt_top_products",
+  "website",
+];
 
 export type DigestSummary = {
   id: string;
@@ -158,6 +168,7 @@ export function DigestDetails({
         <div className="fb-digest-head">
           {headerHeadline ? (
             <DigestHeadlineSummary
+              content={content}
               headerAction={headerAction}
               isLatest={isLatest}
               sourceLinks={sourceLinks}
@@ -316,12 +327,14 @@ function DigestBody({
 }
 
 function DigestHeadlineSummary({
+  content,
   headerAction,
   isLatest = false,
   loading = false,
   sourceLinks = [],
   text,
 }: {
+  content?: string | null;
   headerAction?: ReactNode;
   isLatest?: boolean;
   loading?: boolean;
@@ -330,8 +343,8 @@ function DigestHeadlineSummary({
 }) {
   const [expanded, setExpanded] = useState(false);
   const headlineItems = useMemo(
-    () => parseHeadlineSourceSummaries(text, sourceLinks),
-    [sourceLinks, text],
+    () => parseHeadlineSourceSummaries(text, sourceLinks, content),
+    [content, sourceLinks, text],
   );
   const canExpand = headlineItems.length > MAX_HEADLINE_SOURCE_ITEMS;
   const visibleHeadlineItems = expanded
@@ -407,6 +420,7 @@ type DigestHeadlineSourceItem = {
 function parseHeadlineSourceSummaries(
   text: string | undefined,
   sourceLinks: DigestSourceLink[],
+  content?: string | null,
 ): DigestHeadlineSourceItem[] {
   const trimmed = text?.trim();
   if (!trimmed) return [];
@@ -434,7 +448,7 @@ function parseHeadlineSourceSummaries(
       summary,
     });
   }
-  return items;
+  return sortHeadlineSourceItems(items, sourceLinks, content);
 }
 
 function headlineSeparatorIndex(line: string) {
@@ -443,6 +457,119 @@ function headlineSeparatorIndex(line: string) {
   if (zhIndex === -1) return asciiIndex;
   if (asciiIndex === -1) return zhIndex;
   return Math.min(zhIndex, asciiIndex);
+}
+
+function sortHeadlineSourceItems(
+  items: DigestHeadlineSourceItem[],
+  sourceLinks: DigestSourceLink[],
+  content?: string | null,
+) {
+  const sourceOrder =
+    headlineSourceOrderFromDigestContent(content, sourceLinks) ??
+    headlineSourceOrderFromSourceLinks(sourceLinks);
+  if (sourceOrder.size === 0) return items;
+
+  return [...items].sort((a, b) => {
+    const ai = headlineOrderForItem(a, sourceOrder) ?? Number.POSITIVE_INFINITY;
+    const bi = headlineOrderForItem(b, sourceOrder) ?? Number.POSITIVE_INFINITY;
+    if (ai !== bi) return ai - bi;
+    return 0;
+  });
+}
+
+function headlineOrderForItem(
+  item: DigestHeadlineSourceItem,
+  sourceOrder: Map<string, number>,
+) {
+  for (const key of headlineSourceItemKeys(item)) {
+    const rank = sourceOrder.get(key);
+    if (rank !== undefined) return rank;
+  }
+  return undefined;
+}
+
+function headlineSourceItemKeys(item: DigestHeadlineSourceItem) {
+  const keys = [
+    item.sourceName,
+    ...(item.sourceLink ? headlineSourceLinkKeys(item.sourceLink) : []),
+  ].filter(Boolean);
+  return [...keys, ...keys.map((key) => key.replace(/^@/, ""))]
+    .map(headlineSourceKey)
+    .filter(Boolean);
+}
+
+function headlineSourceOrderFromDigestContent(
+  content: string | null | undefined,
+  sourceLinks: DigestSourceLink[],
+) {
+  if (!content?.trim()) return null;
+  const doc = parseDigest(content);
+  if (!doc.hasStructure) return null;
+
+  const lookup = buildHeadlineSourceLookup(sourceLinks);
+  const order = new Map<string, number>();
+  let index = 0;
+  for (const section of doc.sections) {
+    for (const group of section.groups) {
+      if (!group.source) continue;
+      addHeadlineOrderKeys(order, group.source, index);
+      const sourceLink = headlineSourceLinkForSource(group.source, lookup);
+      if (sourceLink) {
+        for (const key of headlineSourceLinkKeys(sourceLink)) {
+          addHeadlineOrderKeys(order, key, index);
+        }
+      }
+      index += 1;
+    }
+  }
+  return order.size > 0 ? order : null;
+}
+
+function headlineSourceOrderFromSourceLinks(sourceLinks: DigestSourceLink[]) {
+  const order = new Map<string, number>();
+  const sorted = [...sourceLinks].sort((a, b) => {
+    const rank = headlineSourceTypeRank(a.sourceType) - headlineSourceTypeRank(b.sourceType);
+    if (rank !== 0) return rank;
+    return a.name.localeCompare(b.name);
+  });
+  sorted.forEach((link, index) => {
+    for (const key of headlineSourceLinkKeys(link)) {
+      addHeadlineOrderKeys(order, key, index);
+    }
+  });
+  return order;
+}
+
+function addHeadlineOrderKeys(order: Map<string, number>, value: string, index: number) {
+  const key = headlineSourceKey(value);
+  if (key && !order.has(key)) order.set(key, index);
+  const bareKey = headlineSourceKey(value.replace(/^@/, ""));
+  if (bareKey && !order.has(bareKey)) order.set(bareKey, index);
+}
+
+function headlineSourceLinkForSource(
+  source: string,
+  lookup: Map<string, DigestSourceLink>,
+) {
+  const direct = lookup.get(headlineSourceKey(source));
+  if (direct) return direct;
+
+  const parts = source
+    .normalize("NFKC")
+    .split(/[()（）]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  for (const part of parts) {
+    const match = lookup.get(headlineSourceKey(part));
+    if (match) return match;
+  }
+  return undefined;
+}
+
+function headlineSourceTypeRank(sourceType: string | null | undefined) {
+  const normalized = sourceType?.trim().toLowerCase().replace(/[\s-]+/g, "_") || "website";
+  const index = DEFAULT_HEADLINE_SOURCE_TYPE_ORDER.indexOf(normalized);
+  return index === -1 ? DEFAULT_HEADLINE_SOURCE_TYPE_ORDER.length : index;
 }
 
 function buildHeadlineSourceLookup(sourceLinks: DigestSourceLink[]) {
