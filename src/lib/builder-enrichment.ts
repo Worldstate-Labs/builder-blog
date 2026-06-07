@@ -96,7 +96,7 @@ export async function probeAndEnrichSource(input: ProbeInput): Promise<ProbeOutc
     // hard reject — we don't want a bug in this module to break adds.
     return {
       ok: true,
-      warning: "We couldn't verify the source right now; it was added but the agent will retry.",
+      warning: "We could not verify the source right now; it was added but the agent will retry.",
       enrichment: {},
     };
   }
@@ -161,7 +161,7 @@ async function probeX(input: ProbeInput): Promise<ProbeOutcome> {
     return {
       ok: true,
       warning:
-        "X API rejected the lookup; the source was added but we couldn't verify the handle.",
+        "X API rejected the lookup; the source was added but we could not verify the handle.",
       enrichment: {},
     };
   }
@@ -317,7 +317,7 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
   if (response.status === 403 || response.status === 429 || response.status >= 500) {
     return {
       ok: true,
-      warning: `Couldn't reach the page right now (HTTP ${response.status}); the source was added but the agent will retry.`,
+      warning: `Could not reach the page right now (HTTP ${response.status}); the source was added but the agent will retry.`,
       enrichment: {},
     };
   }
@@ -370,7 +370,7 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
   // surface it to the user as a confirmation prompt before persisting
   // so they understand the agent path they're opting into.
   if (input.sourceType === "blog" && !discoveredFetchUrl) {
-    warnings.push("No RSS feed found — the agent will fetch articles by scraping the page.");
+    warnings.push("No RSS feed found. The agent will fetch articles by scraping the page.");
     requiresConfirmation = true;
   }
   const warning = warnings.length > 0 ? warnings.join(" ") : undefined;
@@ -423,7 +423,7 @@ async function probePodcast(input: ProbeInput): Promise<ProbeOutcome> {
   if (response.status === 403 || response.status === 429 || response.status >= 500) {
     return {
       ok: true,
-      warning: `Couldn't reach the podcast RSS feed right now (HTTP ${response.status}); the agent will retry at sync time.`,
+      warning: `Could not reach the podcast RSS feed right now (HTTP ${response.status}); the agent will retry at sync time.`,
       enrichment: {},
     };
   }
@@ -466,7 +466,7 @@ async function probePodcast(input: ProbeInput): Promise<ProbeOutcome> {
   return {
     ok: false,
     hardError:
-      "That URL didn't return a parseable RSS feed and we couldn't find one linked from the page — paste the actual RSS feed URL.",
+      "That URL did not return a parseable RSS feed, and no feed was linked from the page. Paste the actual RSS feed URL.",
     enrichment: {},
   };
 }
@@ -504,7 +504,7 @@ function networkErrorMessage(error: unknown, subject: string): string {
     return `${capitalize(subject)} took longer than 4 seconds to respond; the agent will retry at sync time.`;
   }
   if (/ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(message)) {
-    return `${capitalize(subject)} hostname couldn't be resolved (DNS).`;
+    return `${capitalize(subject)} hostname could not be resolved (DNS).`;
   }
   if (/ECONNREFUSED|ECONNRESET|EHOSTUNREACH|ENETUNREACH/i.test(message)) {
     return `${capitalize(subject)} refused the connection.`;
@@ -512,7 +512,7 @@ function networkErrorMessage(error: unknown, subject: string): string {
   if (/SSL|TLS|CERT_|certificate/i.test(message)) {
     return `${capitalize(subject)} returned an SSL/TLS error.`;
   }
-  return `Couldn't reach ${subject}; the agent will retry at sync time.`;
+  return `Could not reach ${subject}; the agent will retry at sync time.`;
 }
 
 function capitalize(value: string): string {

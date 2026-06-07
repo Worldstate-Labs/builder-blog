@@ -2792,6 +2792,9 @@ test("content config is per-user, seeded from a system default", () => {
   assert.doesNotMatch(settingsPage, /knownSourceIds/);
   assert.match(commonSummaryRulesForm, /commonFetchRules/);
   assert.match(commonSummaryRulesForm, /Could not save \$\{title\.toLowerCase\(\)\}\./);
+  assert.match(commonSummaryRulesForm, /Common summary rules cannot be empty\./);
+  assert.match(commonSummaryRulesForm, /Common fetching rules cannot be empty\./);
+  assert.doesNotMatch(commonSummaryRulesForm, /can't be empty/);
   assert.doesNotMatch(commonSummaryRulesForm, /Save failed/);
   assert.match(commonSummaryRulesForm, /commonSummaryRules/);
   assert.match(commonSummaryRulesForm, /\/api\/settings\/digest-config/);

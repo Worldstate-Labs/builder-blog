@@ -58,8 +58,9 @@ test("probe classifies blog/website responses with 404 / 410 as hard reject", ()
   // 404 and 410 are gone-for-good.
   assert.match(PROBE_SOURCE, /404/);
   assert.match(PROBE_SOURCE, /410/);
-  // 403 / 429 / 5xx are degraded (Couldn't reach the page right now).
-  assert.match(PROBE_SOURCE, /Couldn't reach the page right now/);
+  // 403 / 429 / 5xx are degraded (Could not reach the page right now).
+  assert.match(PROBE_SOURCE, /Could not reach the page right now/);
+  assert.doesNotMatch(PROBE_SOURCE, /Couldn't reach/);
 });
 
 test("probe respects the 4s timeout and the standard User-Agent", () => {
@@ -126,7 +127,8 @@ test("resolvePodcast surfaces the Apple-zero-results case as a hard ResolutionFa
   // The Apple hard-fail must be owned by the resolver (not the probe)
   // so we don't double-call iTunes. results.length === 0 → ok: false.
   assert.match(RESOLVER_SOURCE, /results\.length\s*===\s*0/);
-  assert.match(RESOLVER_SOURCE, /Apple Podcasts has no record of this show/);
+  assert.match(RESOLVER_SOURCE, /Apple Podcasts has no record of this show\. Paste the actual RSS feed URL instead\./);
+  assert.doesNotMatch(RESOLVER_SOURCE, /show — paste|id…/);
 });
 
 test("probe maps thrown errors into friendly sentences (no raw exception leakage)", () => {
@@ -151,8 +153,9 @@ test("probe auto-discovers an RSS/Atom feed link in HTML and surfaces it as disc
   // and HARD-fails only when discovery also returns nothing.
   assert.match(
     PROBE_SOURCE,
-    /didn't return a parseable RSS feed and we couldn't find one linked from the page/,
+    /did not return a parseable RSS feed, and no feed was linked from the page/,
   );
+  assert.doesNotMatch(PROBE_SOURCE, /we couldn't find| — paste/);
 });
 
 test("routes persist the discovered feed URL as Builder.fetchUrl", () => {

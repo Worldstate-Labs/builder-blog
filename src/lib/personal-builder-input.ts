@@ -153,7 +153,7 @@ async function resolvePodcast(displayName: string, value: string): Promise<Resol
     return {
       ok: false,
       reason:
-        "Paste the Apple Podcasts URL (podcasts.apple.com/.../id…) or the show's RSS feed URL.",
+        "Paste the Apple Podcasts URL (podcasts.apple.com/.../id...) or the show's RSS feed URL.",
     };
   }
 
@@ -199,7 +199,7 @@ async function resolvePodcast(displayName: string, value: string): Promise<Resol
           return {
             ok: false,
             reason:
-              "Apple Podcasts has no record of this show — paste the actual RSS feed URL instead.",
+              "Apple Podcasts has no record of this show. Paste the actual RSS feed URL instead.",
           };
         }
         const result = results[0];
@@ -223,7 +223,7 @@ async function resolvePodcast(displayName: string, value: string): Promise<Resol
         warning = "Apple lookup failed. The agent will retry at sync time.";
       }
     } catch {
-      warning = "Couldn't reach Apple to resolve the RSS feed. The agent will retry at sync time.";
+      warning = "Could not reach Apple to resolve the RSS feed. The agent will retry at sync time.";
     }
   }
 

@@ -82,7 +82,7 @@ export function crossTypeWarning(
   if (!detected || detected === declared) return null;
   return {
     suggestId: detected,
-    message: `This looks like a ${DETECTED_SOURCE_LABELS[detected]} URL — switch source type?`,
+    message: `This looks like a ${DETECTED_SOURCE_LABELS[detected]} URL. Switch source type?`,
   };
 }
 
@@ -95,16 +95,16 @@ export function crossTypeWarning(
 export function podcastHostnameRejection(value: string): string | null {
   const v = value.toLowerCase();
   if (/(^|\/\/)open\.spotify\.com\/show\//.test(v)) {
-    return "Spotify doesn't expose podcast RSS publicly. Paste the Apple Podcasts URL (podcasts.apple.com/.../id…) or the show's RSS feed URL instead.";
+    return "Spotify does not expose podcast RSS publicly. Paste the Apple Podcasts URL (podcasts.apple.com/.../id...) or the show's RSS feed URL instead.";
   }
   if (/(^|\/\/)(www\.)?xiaoyuzhoufm\.com\//.test(v)) {
-    return "小宇宙 doesn't expose RSS feeds. Paste the Apple Podcasts URL or the show's RSS feed URL instead.";
+    return "小宇宙 does not expose RSS feeds. Paste the Apple Podcasts URL or the show's RSS feed URL instead.";
   }
   if (/(^|\/\/)(www\.)?ximalaya\.com\//.test(v)) {
-    return "喜马拉雅 uses a proprietary protocol — its content can't be imported via RSS.";
+    return "喜马拉雅 uses a proprietary protocol. Its content cannot be imported via RSS.";
   }
   if (/(^|\/\/)music\.163\.com/.test(v)) {
-    return "网易云音乐 uses a proprietary protocol — content can't be imported via RSS.";
+    return "网易云音乐 uses a proprietary protocol. Content cannot be imported via RSS.";
   }
   return null;
 }

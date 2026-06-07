@@ -477,6 +477,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /Could not save max post age\. Try again\./);
   assert.doesNotMatch(skillPromptActions, /Couldn't save/);
   assert.doesNotMatch(skillPromptActions, /summary language — try again/);
+  assert.match(commonRulesForm, /Common summary rules cannot be empty\./);
+  assert.match(commonRulesForm, /Common fetching rules cannot be empty\./);
+  assert.doesNotMatch(commonRulesForm, /can't be empty/);
   assert.match(skillPromptActions, /async function copyTextToClipboard/);
   assert.match(skillPromptActions, /document\.hasFocus\(\)/);
   assert.match(skillPromptActions, /document\.execCommand\("copy"\)/);
@@ -2212,9 +2215,13 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderLibraryList, /className="builder-library-error"/);
   assert.match(builderLibraryList, /<EmptyState body=\{emptyBody\} title=\{emptyTitle\} \/>/);
   assert.match(buildersPage, /emptyBody="Add a source, then use your Local Agent to fetch and summarize it\."/);
+  assert.match(personalBuilderRoute, /We could not verify the source right now/);
   assert.match(personalBuilderRoute, /your Local Agent can retry later/);
+  assert.doesNotMatch(personalBuilderRoute, /We couldn't verify/);
   assert.doesNotMatch(personalBuilderRoute, /local helper can retry later/);
+  assert.match(personalBuilderUpdateRoute, /We could not verify the source right now/);
   assert.match(personalBuilderUpdateRoute, /your Local Agent can retry later/);
+  assert.doesNotMatch(personalBuilderUpdateRoute, /We couldn't verify/);
   assert.doesNotMatch(personalBuilderUpdateRoute, /local helper can retry later/);
   assert.doesNotMatch(buildersPage, /import private sources/);
   assert.match(buildersPage, /body="Import source libraries shared by other users from Hub\."/);
@@ -2323,6 +2330,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(addBuilderForm, /className="add-source-callout"/);
   assert.match(addBuilderForm, /add-source-text-action/);
   assert.match(addBuilderForm, /Switch source type/);
+  assert.match(source("src/lib/source-value-detect.ts"), /Switch source type\?/);
+  assert.match(source("src/lib/source-value-detect.ts"), /content cannot be imported via RSS/);
+  assert.doesNotMatch(source("src/lib/source-value-detect.ts"), /can't be imported|doesn't expose| URL — switch/);
   assert.doesNotMatch(addBuilderForm, />\s*Switch\s*<\/button>/);
   assert.doesNotMatch(addBuilderForm, /style=\{\{/);
   assert.doesNotMatch(addBuilderForm, /fb-input flex-1/);
