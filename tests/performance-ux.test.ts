@@ -2764,6 +2764,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /@\/components\/EmptyState/);
   assert.match(tokenPanel, /fetch\("\/api\/settings\/tokens"/);
   assert.match(tokenPanel, /fetch\(`\/api\/settings\/tokens\/\$\{tokenId\}`/);
+  assert.match(tokenPanel, /Local Agents that can sync sources and AI Digests to this account\./);
+  assert.doesNotMatch(tokenPanel, /sync sources and digests to this account/);
   assert.match(tokenPanel, /"New access key"/);
   assert.match(tokenPanel, /fb-dialog/);
   assert.match(globals, /\.fb-dialog\s*{[\s\S]*max-width:\s*var\(--dialog-max\)/);

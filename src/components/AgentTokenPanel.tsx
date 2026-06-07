@@ -264,7 +264,7 @@ export function AgentTokenPanel({
         <div className="access-keys-copy">
           <h2 className="fb-section-heading">Access keys</h2>
           <p className="access-keys-desc">
-            Local Agents that can sync sources and digests to this account.
+            Local Agents that can sync sources and AI Digests to this account.
           </p>
         </div>
         <button
