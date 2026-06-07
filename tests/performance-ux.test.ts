@@ -334,6 +334,8 @@ test("public entry pages use the centered product layout", () => {
   assert.match(loginPage, /fb-login-panel-head/);
   assert.match(loginPage, /Sign in/);
   assert.match(loginPage, /AI Digest workspace/);
+  assert.match(loginPage, /sources, posts, saved posts, and AI Digests searchable/);
+  assert.doesNotMatch(loginPage, /keep your\s+AI Digests searchable/);
   assert.match(loginPage, /label="Follow"/);
   assert.match(loginPage, /label="Build AI Digest"/);
   assert.match(loginPage, /label="Search workspace"/);

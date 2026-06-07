@@ -38,7 +38,7 @@ export default async function LoginPage({
           </h1>
           <p className="fb-login-copy">
             Follow people and sources, collect new updates, and keep your
-            AI Digests searchable.
+            sources, posts, saved posts, and AI Digests searchable.
           </p>
           <div className="fb-login-proof-rail" aria-label="Workspace capabilities">
             <LoginProof icon={UsersRound} label="Follow" />
