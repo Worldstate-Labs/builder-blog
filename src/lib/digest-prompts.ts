@@ -96,7 +96,7 @@ professional who wants the key announcements and insights without reading the fu
 - Do NOT include filler like "In this blog post..." or "The author discusses..."
 - Jump straight into the substance.
 - Include the direct link to the original article.`,
-  fetchGithubTrendingRepo: `# Github Trending Repo Fetch Prompt
+  fetchGithubTrendingRepo: `# GitHub Trending Repo Fetch Prompt
 
 You are fetching exactly one GitHub Trending repository task for FollowBrief.
 The task item was created from https://github.com/trending?since=daily, and
@@ -133,7 +133,7 @@ Return a substantial body, not a summary-only stub. It must include:
 Do not summarize from the GitHub Trending row alone. Do not invent causes,
 numbers, quotes, benchmarks, or affiliations. Include source URLs for every
 material claim so the later summary can cite the repo and supporting pages.`,
-  summarizeGithubTrendingRepo: `# Github Trending Repo Summary Prompt
+  summarizeGithubTrendingRepo: `# GitHub Trending Repo Summary Prompt
 
 You are summarizing one GitHub Trending repository investigation for a busy
 professional. Use only task.item.body plus task.item metadata.

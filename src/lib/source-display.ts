@@ -16,7 +16,7 @@ export function sourceLabelForType(sourceType: string | null | undefined) {
   const id = normalizeSourceType(sourceType) || "website";
   const labels: Record<string, string> = {
     blog: "Blog",
-    github_trending: "Github Trending",
+    github_trending: "GitHub Trending",
     podcast: "Podcast RSS",
     product_hunt_top_products: "Product Hunt Top Products",
     website: "Website",

@@ -30,7 +30,7 @@ export type DetectedSourceId =
 export const DETECTED_SOURCE_LABELS: Record<DetectedSourceId, string> = {
   x: "X/Twitter",
   blog: "Blog",
-  github_trending: "Github Trending",
+  github_trending: "GitHub Trending",
   product_hunt_top_products: "Product Hunt Top Products",
   youtube: "YouTube",
   podcast: "Podcast",

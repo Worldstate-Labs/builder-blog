@@ -32,7 +32,7 @@
     },
     {
       "id": "github_trending",
-      "label": "Github Trending",
+      "label": "GitHub Trending",
       "builderKind": "WEBSITE",
       "feedItemKinds": [
         "BLOG_POST"

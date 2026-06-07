@@ -80,7 +80,7 @@ const LEGACY_SECTION_HEADINGS: Record<string, string> = {
   "podcasts": "Podcast RSS",
   "videos": "YouTube",
   "websites": "Website",
-  "github trending": "Github Trending",
+  "github trending": "GitHub Trending",
   "product hunt": "Product Hunt Top Products",
   "product hunt top products": "Product Hunt Top Products",
   "x / twitter": "X/Twitter",

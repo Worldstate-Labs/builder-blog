@@ -94,7 +94,7 @@ test("GitHub Trending fetcher emits per-repository agent tasks, not ready items"
   const result = await cli.fetchPersonalGithubTrendingBuilderForTest(
     {
       id: "builder_github_trending",
-      name: "Github Trending",
+      name: "GitHub Trending",
       sourceType: "github_trending",
       sourceUrl: "https://github.com/trending?since=daily",
       fetchUrl: "https://github.com/trending?since=daily",
@@ -136,7 +136,7 @@ test("GitHub Trending fetcher skips repos fetched on earlier trending days", asy
   const result = await cli.fetchPersonalGithubTrendingBuilderForTest(
     {
       id: builderId,
-      name: "Github Trending",
+      name: "GitHub Trending",
       sourceType: "github_trending",
       sourceUrl: "https://github.com/trending?since=daily",
       fetchUrl: "https://github.com/trending?since=daily",
@@ -1629,7 +1629,7 @@ test("render-digest labels GitHub Trending and Product Hunt sections distinctly"
     ...digestRenderContext(),
     digest: { order: ["github_trending", "product_hunt_top_products", "website"] },
     sources: {
-      github_trending: { id: "github_trending", label: "Github Trending" },
+      github_trending: { id: "github_trending", label: "GitHub Trending" },
       product_hunt_top_products: {
         id: "product_hunt_top_products",
         label: "Product Hunt Top Products",
@@ -1637,7 +1637,7 @@ test("render-digest labels GitHub Trending and Product Hunt sections distinctly"
       website: { id: "website", label: "Website" },
     },
     subscriptionEntities: [
-      { id: "entity_github", name: "Github Trending" },
+      { id: "entity_github", name: "GitHub Trending" },
       { id: "entity_ph", name: "Product Hunt Top Products" },
     ],
     items: [
@@ -1647,12 +1647,12 @@ test("render-digest labels GitHub Trending and Product Hunt sections distinctly"
         entityId: "entity_github",
         title: "Repo launch",
         url: "https://github.com/owner/repo",
-        sourceName: "Github Trending",
+        sourceName: "GitHub Trending",
         builder: {
           ...digestRenderContext().items[0].builder,
           id: "builder_github",
           entityId: "entity_github",
-          name: "Github Trending",
+          name: "GitHub Trending",
           sourceType: "github_trending",
           sourceUrl: "https://github.com/trending?since=daily",
         },
@@ -1684,7 +1684,7 @@ test("render-digest labels GitHub Trending and Product Hunt sections distinctly"
     ],
   });
 
-  assert.match(rendered.markdown, /^## Github Trending$/m);
+  assert.match(rendered.markdown, /^## GitHub Trending$/m);
   assert.match(rendered.markdown, /^## Product Hunt Top Products$/m);
   assert.doesNotMatch(rendered.markdown, /^## Website$/m);
 });

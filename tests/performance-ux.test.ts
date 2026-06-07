@@ -2359,6 +2359,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(tokenPanel, /access-key-device-detail/);
   assert.match(tokenPanel, /useHydrated/);
   assert.match(tokenPanel, /formatRelativeCompact\(token\.lastUsedAt, hydrated\)/);
+  assert.match(tokenPanel, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);
+  assert.match(tokenPanel, /: "Not connected yet"/);
   assert.match(tokenPanel, /if \(!hydrated\) return formatDate\(value\)/);
   assert.match(tokenPanel, /Revoke access/);
   assert.doesNotMatch(tokenPanel, /className="mt-/);
@@ -2366,6 +2368,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /className="access-keys-list access-keys-list--skeleton"/);
   assert.doesNotMatch(settingsPage, /mt-4 h-11 animate-pulse/);
   assert.match(globals, /\.access-keys-panel/);
+  assert.match(globals, /\.fb-token-row\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /\.fb-token-row\s*{[\s\S]*border-radius:\s*12px/);
+  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.access-keys-empty\s*{\s*margin:\s*0;\s*}/);
   assert.match(globals, /\.settings-dialog-stack/);
   assert.match(digestMaxAgeRoute, /export async function PATCH/);

@@ -3589,7 +3589,7 @@ function digestSectionLabel(sourceType, context = {}) {
     ? {
         x: "X/Twitter",
         blog: "Blog",
-        github_trending: "Github Trending",
+        github_trending: "GitHub Trending",
         product_hunt_top_products: "Product Hunt Top Products",
         youtube: "YouTube",
         podcast: "Podcast RSS",
@@ -3598,7 +3598,7 @@ function digestSectionLabel(sourceType, context = {}) {
     : {
         x: "X/Twitter",
         blog: "Blog",
-        github_trending: "Github Trending",
+        github_trending: "GitHub Trending",
         product_hunt_top_products: "Product Hunt Top Products",
         youtube: "YouTube",
         podcast: "Podcast RSS",

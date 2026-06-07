@@ -463,7 +463,7 @@ function TokenRow({
     ? `Revoked ${formatRelativeCompact(token.revokedAt, hydrated)}`
     : token.lastUsedAt
       ? `Last connected ${formatRelativeCompact(token.lastUsedAt, hydrated)}`
-      : `Created ${formatRelativeCompact(token.createdAt, hydrated)} · Not connected yet`;
+      : "Not connected yet";
 
   return (
     <div className={`fb-token-row${token.revokedAt ? " fb-row--revoked" : ""}`}>

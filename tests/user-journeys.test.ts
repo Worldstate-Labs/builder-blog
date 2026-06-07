@@ -159,7 +159,7 @@ test("manual builder input derives canonical fields from one handle or URL", asy
   assert.deepEqual(githubTrendingResult.value, {
     kind: BuilderKind.WEBSITE,
     sourceType: "github_trending",
-    name: "Github Trending",
+    name: "GitHub Trending",
     handle: null,
     sourceUrl: "https://github.com/trending?since=daily",
     fetchUrl: "https://github.com/trending?since=daily",
@@ -2561,7 +2561,7 @@ test("source registry centralizes current source categories", () => {
       sourceUrl: "https://github.com/trending?since=daily",
       fetchUrl: "https://github.com/trending?since=daily",
     })?.staticLabel,
-    "Github Trending",
+    "GitHub Trending",
   );
   assert.equal(builderKindForSourceType("github_trending"), BuilderKind.WEBSITE);
   assert.equal(

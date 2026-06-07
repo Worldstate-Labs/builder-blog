@@ -228,7 +228,7 @@ test("digest renderer uses source link metadata before section heading fallbacks
 
 ## Website
 
-### Github Trending
+### GitHub Trending
 
 **Repo launch**
 
@@ -247,10 +247,10 @@ Summary.
 Source: https://www.producthunt.com/products/lightfield`,
       sourceLinks: [
         {
-          aliases: ["Github Trending"],
+          aliases: ["GitHub Trending"],
           entityId: "entity_github",
           href: "/builder/entity_github",
-          name: "Github Trending",
+          name: "GitHub Trending",
           sourceType: "github_trending",
           sourceUrl: "https://github.com/trending?since=daily",
         },

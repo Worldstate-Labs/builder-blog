@@ -271,7 +271,7 @@ function resolveGithubTrending(displayName: string): Resolution {
     value: {
       kind: builderKindForSourceType(GITHUB_TRENDING_SOURCE_ID),
       sourceType: GITHUB_TRENDING_SOURCE_ID,
-      name: displayName.trim() || "Github Trending",
+      name: displayName.trim() || "GitHub Trending",
       handle: null,
       sourceUrl: GITHUB_TRENDING_URL,
       fetchUrl: GITHUB_TRENDING_URL,
