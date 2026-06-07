@@ -342,6 +342,8 @@ test("web app serves the agent skill and setup command", () => {
   const libraryCronPrompt = readFileSync("skills/builder-blog-digest/jobs/library-cron.md", "utf8");
   const digestCronPrompt = readFileSync("skills/builder-blog-digest/jobs/digest-cron.md", "utf8");
 
+  assert.match(skillJobRoute, /"your Local Agent"/);
+  assert.doesNotMatch(skillJobRoute, /"your local agent"/);
   assert.doesNotMatch(settingsPanel, /Copy setup command/);
   // The bootstrap curl block was intentionally removed from
   // AgentTokenPanel — users now copy the setup prompt from
@@ -1119,7 +1121,8 @@ test("every fetchTask resolves to a terminal state; skips need per-task evidence
 
   // Fetch-log UI renders skipped + evidence and treats skip as a clean terminal.
   const panel = readFileSync("src/components/FetchLogPanel.tsx", "utf8");
-  assert.match(panel, /Skipped — no content/);
+  assert.match(panel, /Skipped: no content/);
+  assert.doesNotMatch(panel, /Skipped — no content/);
   assert.match(panel, /formatEvidence/);
 
   // Contract forbids cross-task generalization / blanket skips.

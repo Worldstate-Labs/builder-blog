@@ -109,7 +109,7 @@ export async function GET(request: Request, { params }: Params) {
   // empty strings — the runner falls back to its discovery chain.
   content = content
     .replaceAll("{{AGENT_RUNTIME}}", runtime ?? "")
-    .replaceAll("{{AGENT_RUNTIME_LABEL}}", runtime ? runtimeLabels[runtime] : "your local agent")
+    .replaceAll("{{AGENT_RUNTIME_LABEL}}", runtime ? runtimeLabels[runtime] : "your Local Agent")
     .replaceAll("{{CRON_FREQUENCY_KEY}}", freq)
     .replaceAll("{{CRON_SCHEDULE}}", cronSchedules[freq].schedule)
     .replaceAll("{{CRON_FREQUENCY_LABEL}}", cronSchedules[freq].label)
