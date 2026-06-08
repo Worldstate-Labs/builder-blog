@@ -614,7 +614,12 @@ function libraryCardDescription(library: HubLibrary) {
 function topicLabel(library: HubLibrary) {
   if (library.isCommunity) return "Curated";
   if (library.owned) return "Managed by you";
-  return "Shared by user";
+  return sourceLibraryOwnerTopic(library.ownerLabel);
+}
+
+function sourceLibraryOwnerTopic(ownerLabel: string) {
+  const label = ownerLabel.trim().replace(/[.。]+$/u, "");
+  return label || "Shared by a FollowBrief user";
 }
 
 function formatSourceToggleLabel(sourceCount: number) {

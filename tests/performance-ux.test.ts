@@ -2415,7 +2415,10 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /return "Managed by you"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Your private source library\.|return "private"|return "Personal"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /return library\.ownerLabel/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /return "Shared by user"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /return sourceLibraryOwnerTopic\(library\.ownerLabel\)/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /function sourceLibraryOwnerTopic/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Shared by a FollowBrief user/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /return "Shared by user"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Curated by user/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /\{libraryCardDescription\(library\)\}/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-sources-summary"/);
