@@ -40,9 +40,20 @@ export function LibraryImportRemoveButton({
     setConfirmingRemove(true);
   }
 
+  function closeRemoveDialog() {
+    if (removeDialogRef.current?.open) {
+      removeDialogRef.current.close();
+    }
+    setConfirmingRemove(false);
+  }
+
+  function handleRemoveDialogClose() {
+    setConfirmingRemove(false);
+  }
+
   function removeImport() {
     if (isPending) return;
-    setConfirmingRemove(false);
+    closeRemoveDialog();
     setError(null);
     startTransition(async () => {
       try {
@@ -66,9 +77,9 @@ export function LibraryImportRemoveButton({
           aria-labelledby="import-remove-source-library-title"
           className="fb-dialog"
           onClick={(event) => {
-            if (event.target === removeDialogRef.current) setConfirmingRemove(false);
+            if (event.target === removeDialogRef.current) closeRemoveDialog();
           }}
-          onClose={() => setConfirmingRemove(false)}
+          onClose={handleRemoveDialogClose}
           ref={removeDialogRef}
         >
           <div className="fb-dialog-inner settings-dialog-stack">
@@ -87,7 +98,7 @@ export function LibraryImportRemoveButton({
             <div className="settings-dialog-actions">
               <button
                 className="fb-btn light compact"
-                onClick={() => setConfirmingRemove(false)}
+                onClick={closeRemoveDialog}
                 type="button"
               >
                 Cancel

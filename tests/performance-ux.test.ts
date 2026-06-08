@@ -3939,6 +3939,11 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(libraryImportRemoveButton, /aria-labelledby="import-remove-source-library-title"/);
   assert.match(libraryImportRemoveButton, /id="import-remove-source-library-title"/);
   assert.match(libraryImportRemoveButton, /className="fb-dialog"/);
+  assert.match(libraryImportRemoveButton, /function closeRemoveDialog\(\)/);
+  assert.match(libraryImportRemoveButton, /function handleRemoveDialogClose\(\)/);
+  assert.match(libraryImportRemoveButton, /onClose=\{handleRemoveDialogClose\}/);
+  assert.match(libraryImportRemoveButton, /if \(removeDialogRef\.current\?\.open\) \{/);
+  assert.doesNotMatch(libraryImportRemoveButton, /onClose=\{\(\) => setConfirmingRemove\(false\)\}/);
   assert.match(libraryImportRemoveButton, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.match(libraryImportRemoveButton, /Remove source library import\?/);
   assert.match(libraryImportRemoveButton, /Could not remove source library import\./);
