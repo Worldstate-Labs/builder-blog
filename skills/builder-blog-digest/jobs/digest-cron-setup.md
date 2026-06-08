@@ -24,10 +24,26 @@ below uses this pinned runtime; do not fall back to a different one.
 /bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}/api/skill/bootstrap)"
 ```
 
-2. Create required directories:
+2. Create required directories and verify this account's local credential before
+changing scheduler state. The web Copy-prompt version runs a one-time exchange
+step before step 1; static local copies cannot create the account file
+themselves. If the credential is missing, stop before pinning settings or
+installing the schedule.
 
 ```bash
 mkdir -p "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/logs"
+ACCT="${BUILDER_BLOG_ACCOUNT}"
+if [ -z "$ACCT" ]; then
+  echo "BUILDER_BLOG_ACCOUNT is empty. Re-copy this setup prompt from FollowBrief." >&2
+  exit 1
+fi
+SAFE_ACCT="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9._@+-' '_')"
+ACCOUNT_FILE="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/accounts/$SAFE_ACCT.json"
+if [ ! -s "$ACCOUNT_FILE" ]; then
+  echo "Account file not found for $ACCT (expected $ACCOUNT_FILE)." >&2
+  echo "Stop before installing the schedule. Re-copy this setup prompt from FollowBrief so it includes a fresh one-time exchange code, then run that prompt." >&2
+  exit 1
+fi
 ```
 
 3. Before changing anything, check whether this account's digest cron already

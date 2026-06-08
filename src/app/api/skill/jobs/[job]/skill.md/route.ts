@@ -156,10 +156,15 @@ export async function GET(request: Request, { params }: Params) {
       content = content.replaceAll("${BUILDER_BLOG_ACCOUNT}", email);
     }
 
-    // 1. Prepend the exchange step as the very first bash block
+    // 1. Prepend the exchange step as an explicitly numbered step. The setup
+    // prompts tell agents to run numbered steps exactly; leaving exchange as an
+    // unnumbered preface lets some agents skip it and install an unauthenticated
+    // schedule.
     const exchangeBlock = [
-      "Exchange the one-time setup code for an agent token (writes to",
-      `\`~/.builder-blog/accounts/${email}.json\`). The code is used once and expires.\n`,
+      "0. Exchange the one-time setup code for an agent token before step 1.",
+      "This writes to",
+      `\`~/.builder-blog/accounts/${email}.json\`. The code is used once and expires.`,
+      "If this command fails, stop and report the command, exit code, and stderr.\n",
       "```bash",
       `mkdir -p "\${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/accounts"`,
       `node "\${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" exchange --ec "${ecParam}"`,

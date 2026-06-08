@@ -346,6 +346,9 @@ test("web app serves the agent skill and setup command", () => {
 
   assert.match(skillJobRoute, /"your Local Agent"/);
   assert.doesNotMatch(skillJobRoute, /"your local agent"/);
+  assert.match(skillJobRoute, /0\. Exchange the one-time setup code/);
+  assert.match(skillJobRoute, /before step 1/);
+  assert.match(skillJobRoute, /If this command fails, stop/);
   assert.doesNotMatch(settingsPanel, /Copy setup command/);
   // The bootstrap curl block was intentionally removed from
   // AgentTokenPanel — users now copy the setup prompt from
@@ -494,10 +497,28 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /\{\{LAUNCHD_SCHEDULE\}\}/);
   assert.match(libraryCronSetupPrompt, /launchctl bootstrap/);
   assert.match(libraryCronSetupPrompt, /LaunchAgents/);
+  assert.match(libraryCronSetupPrompt, /verify this account's local credential/);
+  assert.match(libraryCronSetupPrompt, /Account file not found for \$ACCT/);
+  assert.match(libraryCronSetupPrompt, /Stop before installing the schedule/);
+  assertOrderedText(libraryCronSetupPrompt, [
+    "Create required directories and verify this account's local credential",
+    "Account file not found for $ACCT",
+    "Before changing anything, check whether this account's library fetch cron",
+    "Pin the scheduled runtime",
+  ]);
   assert.doesNotMatch(libraryCronSetupPrompt, /0 \*\/6 \* \* \*/);
   assert.match(digestCronSetupPrompt, /\{\{CRON_SCHEDULE\}\}/);
   assert.match(digestCronSetupPrompt, /\{\{LAUNCHD_SCHEDULE\}\}/);
   assert.match(digestCronSetupPrompt, /launchctl bootstrap/);
+  assert.match(digestCronSetupPrompt, /verify this account's local credential/);
+  assert.match(digestCronSetupPrompt, /Account file not found for \$ACCT/);
+  assert.match(digestCronSetupPrompt, /Stop before installing the schedule/);
+  assertOrderedText(digestCronSetupPrompt, [
+    "Create required directories and verify this account's local credential",
+    "Account file not found for $ACCT",
+    "Before changing anything, check whether this account's digest cron",
+    "Pin the scheduled runtime",
+  ]);
   assert.doesNotMatch(digestCronSetupPrompt, /0 8 \* \* \*/);
 
   // Digest "re-generate today's digest": the same ?force=1 channel drives
