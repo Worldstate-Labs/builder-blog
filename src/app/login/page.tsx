@@ -35,11 +35,11 @@ export default async function LoginPage({
         <section className="fb-login-intro">
           <h1 className="fb-login-title">
             Sign in to your{" "}
-            <span className="fb-login-title-break">AI Digest workspace.</span>
+            <span className="fb-login-title-break">FollowBrief workspace.</span>
           </h1>
           <p className="fb-login-copy">
-            Follow people and sources, collect new updates, and keep your
-            sources, posts, and AI Digest archives searchable.
+            Follow source libraries, read AI Digests, and keep sources, posts,
+            and AI Digest archives searchable.
           </p>
           <div className="fb-login-proof-rail" aria-label="Workspace capabilities">
             <LoginProof icon={UsersRound} label="Follow" />
@@ -55,7 +55,7 @@ export default async function LoginPage({
                 Sign in
               </h2>
               <p className="fb-login-panel-copy">
-                Use one account for your AI Digests and Local Agent.
+                Use one account for FollowBrief and your Local Agent.
               </p>
             </div>
           </div>
