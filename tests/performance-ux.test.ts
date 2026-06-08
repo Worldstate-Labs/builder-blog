@@ -3087,7 +3087,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /function formatPostDate/);
   assert.match(builderFeedItems, /className="builder-post-loading-line"/);
   assert.match(builderEditDialog, /Could not save source\./);
-  assert.match(builderEditDialog, /\{isPending \? "Saving" : "Save"\}/);
+  assert.match(builderEditDialog, /\{isPending \? "Saving" : "Save changes"\}/);
   assert.doesNotMatch(builderEditDialog, /Saving…/);
   assert.doesNotMatch(builderEditDialog, /Save failed\./);
   assert.match(builderFeedItems, /className="builder-post-loading-card"/);
@@ -3696,8 +3696,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(builderEditDialog, /Handle or URL is required\./);
   assert.match(builderEditDialog, />Handle or URL<\/span>/);
   assert.doesNotMatch(builderEditDialog, /URL or @handle is required|>URL or @handle<\/span>|Update the source type, URL or handle/);
-  assert.match(builderEditDialog, /Save\s+applies the changes to your library/);
-  assert.doesNotMatch(builderEditDialog, /Changes save\s+immediately/);
+  assert.match(builderEditDialog, /Save\s+applies the changes to your source library/);
+  assert.match(builderEditDialog, /\{isPending \? "Saving" : "Save changes"\}/);
+  assert.doesNotMatch(builderEditDialog, /Changes save\s+immediately|changes to your library\.|: "Save"\}/);
   assert.match(builderEditDialog, /className=\{`fb-btn compact builder-edit-remove-button/);
   assert.match(builderEditDialog, /Confirm remove/);
   assert.match(builderEditDialog, /fetch\(`\/api\/builders\/\$\{builder\.id\}\/library`/);

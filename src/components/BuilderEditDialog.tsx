@@ -175,7 +175,7 @@ export function BuilderEditDialog({
             </h2>
             <p className="builder-edit-dialog-sub">
               Update the source type, handle or URL, and display name. Save
-              applies the changes to your library.
+              applies the changes to your source library.
             </p>
           </header>
 
@@ -269,7 +269,7 @@ export function BuilderEditDialog({
                 className="fb-btn dark compact"
                 disabled={isPending}
               >
-                {isPending ? "Saving" : "Save"}
+                {isPending ? "Saving" : "Save changes"}
               </button>
             </div>
           </footer>
