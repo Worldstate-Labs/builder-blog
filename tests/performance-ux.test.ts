@@ -3081,7 +3081,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /className="post-detail-raw-head"/);
   assert.match(postCard, /className="post-detail-raw-toggle"/);
   assert.match(postCard, /\{rawExpanded \? "Hide raw content" : "Show raw content"\}/);
-  assert.match(postCard, /\{rawExpanded \? \(\s*<div className="post-detail-body" id=\{rawRegionId\}>/);
+  assert.match(postCard, /\{rawExpanded \? \(\s*<div[\s\S]*aria-label="Raw content"[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"/);
   assert.match(postCard, /post-detail-section-label/);
   assert.match(postCard, /post-detail-body/);
   assert.match(postCard, /const detailSummary = normalizedText\(post\.summary\)/);
@@ -3305,6 +3305,9 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(postCard, /aria-label=\{actionLabel\(rawContentLabel, actionContext\)\}/);
   assert.match(postCard, /aria-label=\{actionLabel\("View original", actionContext\)\}/);
   assert.match(postCard, /accessibleLabel=\{actionLabel\("Summary method", actionContext\)\}/);
+  assert.match(postCard, /aria-controls=\{rawRegionId\}/);
+  assert.match(postCard, /aria-expanded=\{rawExpanded\}/);
+  assert.match(postCard, /aria-label="Raw content"[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"/);
   assert.match(postCard, /Same post available via other source libraries/);
   assert.match(postCard, /additional source library/);
   assert.match(postCard, /additional source libraries/);

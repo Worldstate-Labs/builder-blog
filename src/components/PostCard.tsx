@@ -263,7 +263,12 @@ export function PostCard({
                 </button>
               </div>
               {rawExpanded ? (
-                <div className="post-detail-body" id={rawRegionId}>
+                <div
+                  aria-label="Raw content"
+                  className="post-detail-body"
+                  id={rawRegionId}
+                  role="region"
+                >
                   {post.body}
                 </div>
               ) : null}
