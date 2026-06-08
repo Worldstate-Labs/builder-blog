@@ -382,7 +382,10 @@ function DigestHeadlineSummary({
                     sourceUrl: item.sourceLink?.sourceUrl ?? null,
                   }}
                 />
-                <p className="digest-headline-item-text">{item.summary}</p>
+                <div className="digest-headline-item-body">
+                  <p className="digest-headline-source-name">{item.sourceName}</p>
+                  <p className="digest-headline-item-text">{item.summary}</p>
+                </div>
               </li>
             ))}
           </ul>

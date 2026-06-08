@@ -1951,11 +1951,14 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(digestDetails, /headlineIsLoading = status === "loading" && !content/);
   assert.match(digestDetails, /headlineIsLoading \? \(/);
   assert.match(digestDetails, /<SourceAvatar/);
+  assert.match(digestDetails, /digest-headline-source-name/);
+  assert.match(digestDetails, /\{item\.sourceName\}/);
   assert.match(digestDetails, /digest-headline-list/);
   assert.match(globals, /\.digest-headline-text\s*{[\s\S]*max-width:\s*none/);
   assert.match(globals, /\.digest-headline-list\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.digest-headline-item\s*{[\s\S]*grid-template-columns:\s*1\.75rem minmax\(0, 1fr\)/);
   assert.match(globals, /\.digest-headline-avatar\.fb-src-icon\s*{/);
+  assert.match(globals, /\.digest-headline-source-name\s*{[\s\S]*text-overflow:\s*ellipsis/);
   assert.match(globals, /\.digest-headline-list-wrap\.is-expandable:not\(\.is-expanded\)::after\s*{/);
   assert.match(globals, /\.digest-headline-toggle\s*{/);
   assert.match(globals, /\.digest-headline-loading span:first-child\s*{[\s\S]*max-width:\s*var\(--skeleton-title-max\)/);

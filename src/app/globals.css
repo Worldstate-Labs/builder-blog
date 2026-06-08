@@ -2145,6 +2145,25 @@ a.reading-source-label:focus-visible {
   width: 1.75rem;
 }
 
+.digest-headline-item-body {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.digest-headline-source-name {
+  color: var(--muted-strong);
+  font-size: 0.72rem;
+  font-weight: 720;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .digest-headline-item-text {
   color: var(--ink);
   font-size: 0.92rem;
