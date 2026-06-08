@@ -508,7 +508,7 @@ function HubCard({
                   <div className="fb-hub-source-type-meta">
                     <CountMeta label={group.items.length === 1 ? "source" : "sources"} value={group.items.length} />
                     <span> · </span>
-                    <CountMeta label={group.postCount === 1 ? "fetched post" : "fetched posts"} value={group.postCount} />
+                    <CountMeta label={group.postCount === 1 ? "post" : "posts"} value={group.postCount} />
                     <span> · {formatLatestFetchLabel(group.latestFetchedAt)}</span>
                   </div>
                 </div>
@@ -558,7 +558,7 @@ function HubCard({
 
       <div className="fb-hub-card-stats">
         <CountMeta label={library.itemCount === 1 ? "source" : "sources"} value={library.itemCount} />
-        <CountMeta label={fetchedPostCount === 1 ? "fetched post" : "fetched posts"} value={fetchedPostCount} />
+        <CountMeta label={fetchedPostCount === 1 ? "post" : "posts"} value={fetchedPostCount} />
         <span>{formatLatestFetchLabel(latestFetchedAt)}</span>
         <CountMeta label={library.importCount === 1 ? "import" : "imports"} value={library.importCount} />
         <CountMeta label={library.viewCount === 1 ? "view" : "views"} value={library.viewCount} />
