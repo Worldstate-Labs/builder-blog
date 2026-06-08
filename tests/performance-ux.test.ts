@@ -2428,7 +2428,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /Query matched/);
   assert.match(searchPage, /Use best match/);
   assert.match(searchPage, /Search all result types/);
-  assert.match(searchPage, /Search all time/);
+  assert.match(searchPage, /Search any time/);
+  assert.doesNotMatch(searchPage, /Search all time/);
   assert.match(searchPage, /function SearchEmptyState/);
   assert.match(searchPage, /<EmptyState[\s\S]*className="search-empty"/);
   assert.match(searchPage, /title=\{title\}/);

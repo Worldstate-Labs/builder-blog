@@ -1132,7 +1132,7 @@ function buildSearchRecoveryActions({
   if (time !== "any" || parsed.after || parsed.before) {
     actions.push({
       href: searchHref({ query: queryWithoutDate, type: typeFilter, mode, sort, time: "any" }),
-      label: "Search all time",
+      label: "Search any time",
     });
   }
   if (activeFilterCount > 0) {
