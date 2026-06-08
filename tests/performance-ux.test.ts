@@ -495,8 +495,9 @@ test("public entry pages use the centered product layout", () => {
   assert.match(loginPage, /className="fb-login-title-break"/);
   assert.doesNotMatch(loginPage, /your<br \/>AI Digest workspace/);
   assert.doesNotMatch(loginPage, /your<br \/>FollowBrief workspace/);
-  assert.match(loginPage, /Follow source libraries, read AI Digests/);
-  assert.match(loginPage, /sources, posts,\s*and AI Digest archives searchable/);
+  assert.match(loginPage, /Follow source libraries, read cited AI Digests/);
+  assert.match(loginPage, /sources,\s*posts, and AI Digest archives searchable/);
+  assert.doesNotMatch(loginPage, /Follow source libraries, read AI Digests/);
   assert.doesNotMatch(loginPage, /sources, posts, saved posts, and AI Digest archives searchable/);
   assert.doesNotMatch(loginPage, /sources, posts, saved posts, and AI Digests searchable/);
   assert.doesNotMatch(loginPage, /sources, posts, Favorites, and AI Digests searchable/);
