@@ -670,6 +670,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /const completed = await continueScheduleCopy\(selection\);/);
   assert.match(skillPromptActions, /if \(completed\) setCronConfigOpen\(false\);/);
   assert.match(skillPromptActions, /setStatus\(\{ kind: "info", text: "Connect a Local Agent in Settings first" \}\);\s*return false;/);
+  assert.match(skillPromptActions, /if \(activeTokens\.length === 0\) \{[\s\S]*Connect a Local Agent in Settings first[\s\S]*return;\s*\}[\s\S]*if \(target === "cron"\)/);
   assert.match(skillPromptActions, /Access keys for Local Agents/);
   assert.match(skillPromptActions, /describeAccessDevice/);
   assert.match(skillPromptActions, /describeAccessStatus/);
