@@ -4185,9 +4185,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /<EmptyState[\s\S]*className="access-keys-empty"/);
   assert.match(tokenPanel, /No Local Agent access yet/);
   assert.match(tokenPanel, /Add one when you connect a Local Agent\./);
-  assert.match(tokenPanel, /actions=\{[\s\S]*className="access-keys-empty-actions"/);
+  assert.doesNotMatch(tokenPanel, /access-keys-empty-actions/);
+  assert.doesNotMatch(tokenPanel, /actions=\{[\s\S]*className="access-keys-empty-actions"/);
   assert.match(tokenPanel, /className="fb-btn dark compact"[\s\S]*onClick=\{openCreateDialog\}[\s\S]*Add access key/);
-  assert.match(globals, /\.access-keys-empty-actions\s*{[\s\S]*flex-wrap:\s*wrap/);
+  assert.doesNotMatch(globals, /\.access-keys-empty-actions\s*{/);
   assert.doesNotMatch(tokenPanel, /No active access/);
   assert.doesNotMatch(tokenPanel, /Revoked access is hidden from this list\./);
   assert.match(tokenPanel, /sortedTokens\.length > 0/);

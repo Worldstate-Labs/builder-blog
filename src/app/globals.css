@@ -10104,12 +10104,6 @@ a.fb-hub-source-name:focus-visible {
   margin: 0;
 }
 
-.access-keys-empty-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
 .access-keys-note,
 .access-keys-status {
   color: var(--muted-strong);
