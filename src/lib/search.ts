@@ -15,7 +15,12 @@ export type SearchDocument = {
   type: SearchDocumentType;
   title: string;
   body: string;
+  postBody?: string | null;
+  postSummary?: string | null;
   avatarUrl?: string | null;
+  builderEntityId?: string | null;
+  builderId?: string | null;
+  builderKind?: "X" | "BLOG" | "PODCAST" | "WEBSITE" | null;
   externalUrl?: string | null;
   fetchUrl?: string | null;
   sourceUrl?: string | null;

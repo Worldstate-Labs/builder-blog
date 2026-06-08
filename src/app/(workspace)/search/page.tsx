@@ -13,6 +13,7 @@ import {
 import { CountBadge, CountRange, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
+import { PostCard } from "@/components/PostCard";
 import { SearchForm, type SearchTypeFilter } from "@/components/SearchForm";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { SourceBadge } from "@/components/SourceBadge";
@@ -646,7 +647,7 @@ function ResultCard({
   typeFilter: SearchTypeFilter;
 }) {
   const titleIsExternal = isExternalUrl(result.url);
-  const originalUrl = result.externalUrl ?? (titleIsExternal ? result.url : null);
+  const originalUrl = result.externalUrl ?? (titleIsExternal ? result.url ?? null : null);
   const resultHref = result.url
     ? withSearchReturnTarget(
         result.url,
@@ -656,6 +657,18 @@ function ResultCard({
   const displayUrl = formatDisplayUrl(originalUrl ?? result.url);
   const sourceSite = searchSiteFromUrl(originalUrl ?? result.url);
   const sourceName = result.sourceName ?? resultTypeItemLabels[result.type];
+
+  if (result.type === "feed") {
+    return (
+      <SearchPostResultCard
+        originalUrl={originalUrl}
+        result={result}
+        resultHref={resultHref}
+        sourceName={sourceName}
+      />
+    );
+  }
+
   const titleContent = <HighlightText text={result.title} query={query} />;
   const title = resultHref ? (
     titleIsExternal ? (
@@ -693,9 +706,6 @@ function ResultCard({
       </p>
       <div className="search-result-meta">
         <span>{resultTypeItemLabels[result.type]}</span>
-        {result.type === "feed" && result.favoritedAt ? (
-          <span className="search-result-saved">Saved post</span>
-        ) : null}
         {result.date ? <span>{formatDistanceToNow(result.date, { addSuffix: true })}</span> : null}
         {originalUrl ? (
           <a
@@ -745,6 +755,61 @@ function ResultCard({
       ) : null}
     </article>
   );
+}
+
+function SearchPostResultCard({
+  originalUrl,
+  result,
+  resultHref,
+  sourceName,
+}: {
+  originalUrl: string | null;
+  result: SearchResult;
+  resultHref: string | null;
+  sourceName: string;
+}) {
+  const builder = sourceName
+    ? {
+        id: result.builderId ?? `search:${result.id}`,
+        entityId: result.builderEntityId ?? null,
+        avatarUrl: result.avatarUrl ?? null,
+        name: sourceName,
+        kind: result.builderKind ?? sourceKindForSearchResult(result.sourceType),
+        sourceType: result.sourceType ?? "website",
+        sourceUrl: result.sourceUrl ?? originalUrl,
+        fetchUrl: result.fetchUrl ?? null,
+      }
+    : null;
+  const date = result.date?.toISOString() ?? new Date(0).toISOString();
+
+  return (
+    <PostCard
+      fallbackBuilder={builder}
+      post={{
+        id: result.id,
+        title: result.title,
+        body: result.postBody ?? result.body,
+        summary: result.postSummary ?? result.snippet,
+        detailUrl: resultHref,
+        url: originalUrl ?? result.url ?? "#",
+        publishedAt: result.date?.toISOString() ?? null,
+        createdAt: date,
+        sourceName,
+        sourceType: result.sourceType ?? null,
+        fetchTool: null,
+      }}
+    />
+  );
+}
+
+function sourceKindForSearchResult(
+  sourceType: string | null | undefined,
+): "X" | "BLOG" | "PODCAST" | "WEBSITE" {
+  const normalized = sourceType?.toLowerCase() ?? "";
+  if (normalized === "x" || normalized === "twitter") return "X";
+  if (normalized.includes("podcast") || normalized === "youtube") return "PODCAST";
+  if (normalized.includes("blog") || normalized.includes("rss")) return "BLOG";
+  return "WEBSITE";
 }
 
 function SearchResultSourceIcon({
