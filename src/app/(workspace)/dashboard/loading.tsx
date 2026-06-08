@@ -14,6 +14,7 @@ export default function DashboardLoading() {
           >
             <span className="fb-btn home-loading-tab">AI Digest</span>
             <span className="fb-btn home-loading-tab">Following</span>
+            <span className="fb-btn home-loading-tab">Favorites</span>
           </div>
         </div>
 

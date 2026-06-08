@@ -47,6 +47,7 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.match(postCard, /className="post-actions"[\s\S]*onClickCapture=\{noteInteraction\}/);
   assert.match(postDetailPage, /ChevronLeft/);
   assert.match(postDetailPage, /Following/);
+  assert.match(postDetailPage, /Favorites/);
   assert.doesNotMatch(postDetailPage, /Back to feed/);
   assert.match(postDetailPage, /href=\{backLink\.href\}/);
   assert.match(postDetailPage, /href:\s*"\/dashboard\?tab=following"/);
@@ -57,6 +58,7 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.doesNotMatch(postDetailPage, /function normalizeLegacyReturnTo/);
   assert.match(navigation, /value\.startsWith\("\/recommendations"\)[\s\S]*"\/dashboard\?tab=following"/);
   assert.match(postDetailPage, /isSafeInternalReturnTo/);
+  assert.match(postDetailPage, /returnTo\.includes\("tab=favorites"\)[\s\S]*return "Favorites"/);
   assert.match(postDetailPage, /feedRead\.create/);
   assert.match(postDetailPage, /avatarUrl:\s*item\.builder\.avatarUrl/);
   assert.match(postDetailPage, /item\.body/);

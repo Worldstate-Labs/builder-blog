@@ -263,6 +263,7 @@ test("every app route has an explicit centered layout role", () => {
   assert.doesNotMatch(dashboardLoading, /home-loading-tab is-active/);
   assert.match(dashboardLoading, /home-loading-tab[\s\S]*AI Digest/);
   assert.match(dashboardLoading, /home-loading-tab[\s\S]*Following/);
+  assert.match(dashboardLoading, /home-loading-tab[\s\S]*Favorites/);
   assert.match(dashboardLoading, /className="home-tab-panel" aria-label="Loading Home content"/);
   assert.doesNotMatch(dashboardLoading, /aria-label="Loading AI Digest selection"/);
   assert.doesNotMatch(dashboardLoading, /className="digest-control-bar home-loading-control"/);
@@ -3351,12 +3352,13 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postDetailPage, /function labelFromReturnTo\(returnTo: string\)/);
   assert.match(postDetailPage, /returnTo\.startsWith\("\/search"\)[\s\S]*return "Search"/);
   assert.match(postDetailPage, /returnTo\.startsWith\("\/library-hub"\)[\s\S]*return "Hub"/);
+  assert.match(postDetailPage, /returnTo\.includes\("tab=favorites"\)[\s\S]*return "Favorites"/);
   assert.match(postDetailPage, /returnTo\.includes\("tab=following"\) \? "Following" : "AI Digest"/);
   assert.match(postDetailPage, /case "Sources"/);
   assert.match(postDetailPage, /case "Source":[\s\S]*return "Sources"/);
   assert.match(postDetailPage, /case "AI Digest"/);
+  assert.match(postDetailPage, /case "Favorites"/);
   assert.match(postDetailPage, /case "Hub"/);
-  assert.doesNotMatch(postDetailPage, /case "Favorites"/);
   assert.match(postDetailPage, /showDebugActions=\{false\}/);
   assert.match(postDetailPage, /avatarUrl:\s*item\.builder\.avatarUrl/);
   assert.match(postDetailPage, /return \{ href: "\/dashboard\?tab=following", label: "Following" \}/);

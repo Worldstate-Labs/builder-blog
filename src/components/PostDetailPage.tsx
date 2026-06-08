@@ -152,6 +152,7 @@ function safeReturnLabel(value: string, returnTo: string) {
   switch (value) {
     case "AI Digest":
     case "Following":
+    case "Favorites":
     case "Search":
     case "Sources":
     case "Hub":
@@ -172,6 +173,7 @@ function labelFromReturnTo(returnTo: string) {
   if (returnTo.startsWith("/builders") || returnTo.startsWith("/builder/")) return "Sources";
   if (returnTo.startsWith("/library-hub")) return "Hub";
   if (returnTo.startsWith("/dashboard")) {
+    if (returnTo.includes("tab=favorites")) return "Favorites";
     return returnTo.includes("tab=following") ? "Following" : "AI Digest";
   }
   return "Back";
