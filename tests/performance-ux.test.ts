@@ -634,6 +634,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(settingsFields, /className="settings-choice-list"/);
   assert.match(settingsFields, /className="settings-footer-bar"/);
   assert.match(settingsFields, /className="settings-save-status is-saved"/);
+  assert.match(settingsFields, /\{isPending \? "Saving" : "Save changes"\}/);
+  assert.doesNotMatch(settingsFields, /Saving…/);
   assert.match(settingsFields, /onStatusAutoDismiss\?: \(\) => void/);
   assert.match(settingsFields, /onAutoDismiss=\{onStatusAutoDismiss\}/);
   assert.match(settingsFields, /Could not save changes\./);
@@ -2751,6 +2753,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /function formatPostDate/);
   assert.match(builderFeedItems, /className="builder-post-loading-line"/);
   assert.match(builderEditDialog, /Could not save source\./);
+  assert.match(builderEditDialog, /\{isPending \? "Saving" : "Save"\}/);
+  assert.doesNotMatch(builderEditDialog, /Saving…/);
   assert.doesNotMatch(builderEditDialog, /Save failed\./);
   assert.match(builderFeedItems, /className="builder-post-loading-card"/);
   assert.match(builderFeedItems, /className="builder-post-state builder-post-state--error"/);

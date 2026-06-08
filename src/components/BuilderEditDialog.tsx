@@ -269,7 +269,7 @@ export function BuilderEditDialog({
                 className="fb-btn dark compact"
                 disabled={isPending}
               >
-                {isPending ? "Saving…" : "Save"}
+                {isPending ? "Saving" : "Save"}
               </button>
             </div>
           </footer>

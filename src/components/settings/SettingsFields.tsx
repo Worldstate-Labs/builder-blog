@@ -419,7 +419,7 @@ export function FooterBar({
             disabled={!dirty || isPending}
             onClick={onSave}
           >
-            {isPending ? "Saving…" : "Save changes"}
+            {isPending ? "Saving" : "Save changes"}
           </button>
           <button
             type="button"
@@ -477,7 +477,7 @@ export function SaveStatus({
   if (status.kind === "saving") {
     return (
       <span className="settings-save-status is-saving" aria-live="polite">
-        Saving…
+        Saving
       </span>
     );
   }
