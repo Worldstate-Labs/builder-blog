@@ -470,7 +470,7 @@ export function AgentTokenPanel({
                 onClick={confirmRevoke}
                 type="button"
               >
-                Revoke
+                Revoke access
               </button>
             </div>
           </div>

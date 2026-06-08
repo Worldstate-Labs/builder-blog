@@ -4275,6 +4275,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /const tokenLabel = describeAccessDevice\(token\)/);
   assert.match(tokenPanel, /Revoke access for \{describeAccessDevice\(revokeTarget\)\}\?/);
   assert.match(tokenPanel, /<strong>\{describeAccessDevice\(revokeTarget\)\}<\/strong>/);
+  assert.match(tokenPanel, /className="fb-btn danger compact"[\s\S]*Revoke access[\s\S]*<\/button>/);
+  assert.doesNotMatch(tokenPanel, />\s*Revoke\s*<\/button>/);
   assert.doesNotMatch(tokenPanel, /Revoke access key &ldquo;\{revokeTarget\.name\}&rdquo;/);
   assert.doesNotMatch(tokenPanel, /access-key-device-detail/);
   assert.doesNotMatch(tokenPanel, /className="h-6 w-6"/);
