@@ -186,7 +186,7 @@ export function RecommendationFeed({
             </button>
           </span>
         ) : exhausted ? (
-          <span className="feed-end-note">No unread Following posts left.</span>
+          <span className="feed-end-note">No more unread Following posts to load.</span>
         ) : null}
       </div>
     </section>
