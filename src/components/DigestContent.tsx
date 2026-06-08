@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { ArrowRight, Star } from "lucide-react";
 import { PostCard, type PostCardPost } from "@/components/PostCard";
 import { SourceAvatar } from "@/components/SourceAvatar";
+import { postDetailHref } from "@/lib/navigation";
 import { normalizeSourceType } from "@/lib/source-display";
 import {
   parseDigest,
@@ -238,11 +239,6 @@ function PostBlock({
       showSourceBadge={false}
     />
   );
-}
-
-function postDetailHref(feedItemId: string, returnTo: string, returnLabel: string) {
-  const params = new URLSearchParams({ returnLabel, returnTo });
-  return `/posts/${feedItemId}?${params.toString()}`;
 }
 
 function DigestFavoriteToggleButton({

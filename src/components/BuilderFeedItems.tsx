@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { EmptyState } from "@/components/EmptyState";
 import { PostCard } from "@/components/PostCard";
+import { postDetailHref } from "@/lib/navigation";
 
 type BuilderSummary = {
   id: string;
@@ -144,11 +145,6 @@ export function BuilderFeedItems({
       </div>
     </details>
   );
-}
-
-function postDetailHref(feedItemId: string, returnTo: string, returnLabel: string) {
-  const params = new URLSearchParams({ returnLabel, returnTo });
-  return `/posts/${feedItemId}?${params.toString()}`;
 }
 
 function formatPostDate(value: Date) {

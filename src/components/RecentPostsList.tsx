@@ -2,6 +2,7 @@
 
 import { PostCard, type PostCardPost } from "@/components/PostCard";
 import { markPostRead } from "@/lib/mark-read";
+import { postDetailHref } from "@/lib/navigation";
 
 type RecentPostsItem = {
   id: string;
@@ -40,9 +41,4 @@ export function RecentPostsList({
       ))}
     </ul>
   );
-}
-
-function postDetailHref(feedItemId: string, returnTo: string, returnLabel: string) {
-  const params = new URLSearchParams({ returnLabel, returnTo });
-  return `/posts/${feedItemId}?${params.toString()}`;
 }

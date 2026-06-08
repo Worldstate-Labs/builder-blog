@@ -6,6 +6,7 @@ import { CountMeta } from "@/components/Count";
 import { PostCard } from "@/components/PostCard";
 import { useHydrated } from "@/components/ThemeToggle";
 import { markPostRead } from "@/lib/mark-read";
+import { postDetailHref } from "@/lib/navigation";
 
 export type RecommendationFeedEntry = {
   score: number;
@@ -231,11 +232,6 @@ function RecommendationCard({
       stackActionsOnMobile={showAdminActions}
     />
   );
-}
-
-function postDetailHref(feedItemId: string, returnTo: string, returnLabel: string) {
-  const params = new URLSearchParams({ returnLabel, returnTo });
-  return `/posts/${feedItemId}?${params.toString()}`;
 }
 
 function FavoriteToggleButton({

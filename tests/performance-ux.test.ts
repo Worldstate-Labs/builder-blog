@@ -2719,6 +2719,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   const recentPostsList = source("src/components/RecentPostsList.tsx");
   const recommendationFeed = source("src/components/RecommendationFeed.tsx");
   const recommendations = source("src/lib/recommendations.ts");
+  const navigation = source("src/lib/navigation.ts");
   const postDetailPage = source("src/components/PostDetailPage.tsx");
   const legacyRecommendationItemPage = source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx");
   const postCard = source("src/components/PostCard.tsx");
@@ -3036,7 +3037,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /fetch\(`\/api\/builders\/\$\{builderId\}\/feed-items`/);
   assert.match(builderFeedItems, /entityId: string \| null/);
   assert.match(builderFeedItems, /const returnHref = builder\.entityId \? `\/builder\/\$\{builder\.entityId\}` : "\/builders"/);
+  assert.match(builderFeedItems, /@\/lib\/navigation/);
   assert.match(builderFeedItems, /detailUrl: postDetailHref\(item\.id, returnHref, "Sources"\)/);
+  assert.doesNotMatch(builderFeedItems, /function postDetailHref/);
   assert.doesNotMatch(builderFeedItems, /detailUrl: postDetailHref\(item\.id, "\/builders", "Sources"\)/);
   // UI copy avoids "Fetched" in the row; detailed content still renders
   // through PostCard.
@@ -3086,6 +3089,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /aria-label=\{actionLabel\("Post actions", actionContext\)\}/);
   assert.match(postCard, /className="post-actions"[\s\S]*role="group"/);
   assert.match(recommendationFeed, /detailUrl:\s*postDetailHref/);
+  assert.match(recommendationFeed, /@\/lib\/navigation/);
+  assert.doesNotMatch(recommendationFeed, /function postDetailHref/);
   assert.match(recommendationFeed, /"Following"/);
   assert.match(recommendations, /from a followed source/);
   assert.doesNotMatch(recommendations, /from a subscribed builder/);
@@ -3093,6 +3098,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(recommendationFeed, /const label = isFavorite \? "Remove saved post" : "Save post"/);
   assert.match(recommendationFeed, /<Star aria-hidden="true" className="post-action-icon"/);
   assert.match(digestContent, /aria-label=\{label\}/);
+  assert.match(digestContent, /@\/lib\/navigation/);
+  assert.doesNotMatch(digestContent, /function postDetailHref/);
   assert.match(digestContent, /const label = isFavorite \? "Remove saved post" : "Save post"/);
   assert.match(digestContent, /<Star aria-hidden="true" className="post-action-icon"/);
   assert.doesNotMatch(recommendationFeed, /title=\{isFavorite \? "Saved post" : "Save post"\}|Favorites/);
@@ -3196,7 +3203,12 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderDetailPage, /returnLabel="Sources"/);
   assert.doesNotMatch(builderDetailPage, /returnLabel="Source"/);
   assert.match(recentPostsList, /detailUrl:\s*postDetailHref\(item\.id, returnHref, returnLabel\)/);
+  assert.match(recentPostsList, /@\/lib\/navigation/);
+  assert.doesNotMatch(recentPostsList, /function postDetailHref/);
   assert.match(digestContent, /detailUrl:\s*favoriteState[\s\S]*postDetailHref\(favoriteState\.feedItemId, "\/dashboard\?tab=ai-digest", "AI Digest"\)/);
+  assert.match(navigation, /export function postDetailHref/);
+  assert.match(navigation, /new URLSearchParams\(\{ returnLabel, returnTo \}\)/);
+  assert.match(navigation, /return `\/posts\/\$\{feedItemId\}\?\$\{params\.toString\(\)\}`/);
 });
 
 test("digest posts use source detail headings and unified original links", () => {
