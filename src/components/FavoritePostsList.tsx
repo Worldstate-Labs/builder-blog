@@ -69,7 +69,7 @@ export function FavoritePostsList({
         }
         className="favorites-empty is-actionable"
         title="No favorites yet"
-        body="Save any post to build a focused reading queue here."
+        body="Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here."
       />
     );
   }
