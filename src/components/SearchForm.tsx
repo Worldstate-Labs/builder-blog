@@ -22,6 +22,9 @@ type AutocompleteSuggestion = {
   kind: "recent" | "query" | "entity" | "result";
 };
 
+const recentSearchesStorageKey = "followbrief-searches";
+const legacyRecentSearchesStorageKey = "builder-blog-searches";
+
 export function SearchForm({
   variant = "page",
   query,
@@ -50,13 +53,7 @@ export function SearchForm({
   const inputRef = useRef<HTMLInputElement>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
-    try {
-      return normalizeRecentSearches(
-        JSON.parse(localStorage.getItem("builder-blog-searches") ?? "[]"),
-      );
-    } catch {
-      return [];
-    }
+    return readRecentSearches();
   });
   const [liveSuggestions, setLiveSuggestions] = useState<AutocompleteSuggestion[]>([]);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
@@ -151,11 +148,7 @@ export function SearchForm({
     if (queryWithDateRange) {
       const nextRecent = normalizeRecentSearches([queryWithDateRange, ...recentSearches]);
       setRecentSearches(nextRecent);
-      try {
-        localStorage.setItem("builder-blog-searches", JSON.stringify(nextRecent));
-      } catch {
-        // Recent searches are a progressive enhancement.
-      }
+      writeRecentSearches(nextRecent);
     }
 
     setSuggestionsOpen(false);
@@ -186,11 +179,7 @@ export function SearchForm({
     );
     setRecentSearches(nextRecent);
     setActiveSuggestionIndex(-1);
-    try {
-      localStorage.setItem("builder-blog-searches", JSON.stringify(nextRecent));
-    } catch {
-      // Recent searches are a progressive enhancement.
-    }
+    writeRecentSearches(nextRecent);
     inputRef.current?.focus();
   }
 
@@ -404,6 +393,29 @@ export function SearchForm({
 
 function normalizeSuggestionKey(value: string) {
   return value.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function readRecentSearches() {
+  try {
+    const stored =
+      localStorage.getItem(recentSearchesStorageKey) ??
+      localStorage.getItem(legacyRecentSearchesStorageKey);
+    const recent = normalizeRecentSearches(JSON.parse(stored ?? "[]"));
+    if (!localStorage.getItem(recentSearchesStorageKey) && recent.length > 0) {
+      writeRecentSearches(recent);
+    }
+    return recent;
+  } catch {
+    return [];
+  }
+}
+
+function writeRecentSearches(recentSearches: string[]) {
+  try {
+    localStorage.setItem(recentSearchesStorageKey, JSON.stringify(recentSearches));
+  } catch {
+    // Recent searches are a progressive enhancement.
+  }
 }
 
 function mergeAutocompleteSuggestions({

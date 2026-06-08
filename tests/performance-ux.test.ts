@@ -2300,7 +2300,14 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /normalizeSearchTime/);
   assert.match(searchForm, /useTransition/);
   assert.match(searchForm, /Searching/);
-  assert.match(searchForm, /localStorage\.getItem\("builder-blog-searches"\)/);
+  assert.match(searchForm, /const recentSearchesStorageKey = "followbrief-searches"/);
+  assert.match(searchForm, /const legacyRecentSearchesStorageKey = "builder-blog-searches"/);
+  assert.match(searchForm, /function readRecentSearches/);
+  assert.match(searchForm, /function writeRecentSearches/);
+  assert.match(searchForm, /localStorage\.getItem\(recentSearchesStorageKey\)/);
+  assert.match(searchForm, /localStorage\.getItem\(legacyRecentSearchesStorageKey\)/);
+  assert.match(searchForm, /localStorage\.setItem\(recentSearchesStorageKey, JSON\.stringify\(recentSearches\)\)/);
+  assert.doesNotMatch(searchForm, /localStorage\.setItem\("builder-blog-searches"/);
   assert.match(searchForm, /normalizeRecentSearches/);
   assert.match(searchForm, /Match style/);
   assert.match(searchForm, /variant\?: "page" \| "header"/);
