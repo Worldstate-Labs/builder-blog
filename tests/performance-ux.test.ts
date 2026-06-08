@@ -270,11 +270,13 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(buildersLoading, /className="page-pad sources-loading"/);
   assert.match(buildersLoading, /<h1 className="sr-only">Loading Sources<\/h1>/);
   assert.match(buildersLoading, /aria-label="Sources and AI Digest tabs"/);
-  assert.match(buildersLoading, /sources-loading-tab is-active[\s\S]*Sources/);
+  assert.doesNotMatch(buildersLoading, /sources-loading-tab is-active/);
+  assert.match(buildersLoading, /sources-loading-tab[\s\S]*Sources/);
   assert.match(buildersLoading, /sources-loading-tab[\s\S]*AI Digest/);
-  assert.match(buildersLoading, /className="sources-tab-body sources-tab-body--fetch"/);
+  assert.match(buildersLoading, /className="sources-tab-body" aria-label="Loading Sources content"/);
+  assert.doesNotMatch(buildersLoading, /sources-tab-body--fetch/);
   assert.match(buildersLoading, /className="sources-section-stack"/);
-  assert.match(buildersLoading, /className="your-library-panel fb-panel"/);
+  assert.doesNotMatch(buildersLoading, /className="your-library-panel fb-panel"/);
   assert.match(buildersLoading, /className="source-sync-skeleton-panel"/);
   const hubLoading = source("src/app/(workspace)/library-hub/loading.tsx");
   assert.doesNotMatch(hubLoading, /RouteLoading/);
@@ -1087,9 +1089,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.home-loading-tabs\s*{[\s\S]*pointer-events:\s*none/);
   assert.match(globals, /\.home-loading-tab\.is-active\s*{[\s\S]*box-shadow:\s*inset 0 -2px 0 var\(--accent\)/);
   assert.match(globals, /\.sources-loading-tabs\s*{[\s\S]*pointer-events:\s*none/);
-  assert.match(globals, /\.sources-loading-tab\.is-active\s*{[\s\S]*box-shadow:\s*inset 0 -2px 0 var\(--accent\)/);
+  assert.doesNotMatch(globals, /\.sources-loading-tab\.is-active/);
   assert.match(globals, /\.hub-loading-tabs\s*{[\s\S]*pointer-events:\s*none/);
-  assert.match(globals, /\.hub-loading-tab\.is-active\s*{[\s\S]*box-shadow:\s*inset 0 -2px 0 var\(--accent\)/);
+  assert.doesNotMatch(globals, /\.hub-loading-tab\.is-active/);
   assert.match(globals, /\.search-loading-form\s*{[\s\S]*pointer-events:\s*none/);
   assert.match(globals, /\.search-loading-tabs\s*{[\s\S]*pointer-events:\s*none/);
   assert.match(globals, /\.search-loading-tab\.is-active\s*{[\s\S]*box-shadow:\s*inset 0 -2px 0 var\(--accent\)/);
