@@ -297,19 +297,11 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
       ) : null}
 
       <section className={showFilters ? "hub-list-region has-filters" : "hub-list-region"}>
-        <div className="hub-list-heading at-desktop">
-          <div className="hub-list-heading-row">
-            <div>
-              <p className="hub-list-eyebrow">Current view</p>
-              <p className="hub-section-copy">
-                {listCopy.description}
-              </p>
-            </div>
-            <CountRange>
-              {formatCount(filteredLibraries.length)}{" "}
-              {filteredLibraries.length === 1 ? "source library" : "source libraries"}
-            </CountRange>
-          </div>
+        <div className="hub-list-count-row at-desktop">
+          <CountRange>
+            {formatCount(filteredLibraries.length)}{" "}
+            {filteredLibraries.length === 1 ? "source library" : "source libraries"}
+          </CountRange>
         </div>
         <div className="fb-hub-list">
           {filteredLibraries.map((library) => (

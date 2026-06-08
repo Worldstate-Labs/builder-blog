@@ -2739,9 +2739,10 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), />\s*Remove import\s*<\/button>/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-form-error"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /"hub-list-region has-filters"/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-heading-row"/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-eyebrow">Current view<\/p>/);
-  assert.match(source("src/app/globals.css"), /\.hub-list-eyebrow\s*{[\s\S]*text-transform:\s*uppercase/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-count-row at-desktop"/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-heading-row"/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-eyebrow">Current view<\/p>/);
+  assert.doesNotMatch(source("src/app/globals.css"), /\.hub-list-eyebrow\s*{/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Library filter|No libraries match this filter yet|\bYour library\b|label\.replace/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /className="flex items-center justify-between"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /className="hub-card-action-row"/);
@@ -2857,7 +2858,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /<section className="mt-10"/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-list mt-5"/);
   assert.match(source("src/app/globals.css"), /\.hub-list-region\.has-filters/);
-  assert.match(source("src/app/globals.css"), /\.hub-list-heading-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(source("src/app/globals.css"), /\.hub-list-count-row\s*{[\s\S]*justify-content:\s*flex-end/);
   assert.match(source("src/app/globals.css"), /\.library-hub-toolbar-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(source("src/app/globals.css"), /\.hub-section-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-line,[\s\S]*\.library-hub-skeleton-card\s*{[\s\S]*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);

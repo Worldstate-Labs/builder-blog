@@ -4108,24 +4108,10 @@ a.reading-source-label:focus-visible {
   margin-top: 1.75rem;
 }
 
-.hub-list-heading {
+.hub-list-count-row {
+  display: flex;
+  justify-content: flex-end;
   margin-bottom: 0.875rem;
-}
-
-.hub-list-heading-row {
-  align-items: baseline;
-  display: grid;
-  gap: 0.5rem 1rem;
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.hub-list-eyebrow {
-  color: var(--muted);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  line-height: 1.35;
-  text-transform: uppercase;
 }
 
 .hub-list-stack {
@@ -4267,10 +4253,6 @@ a.reading-source-label:focus-visible {
 @media (max-width: 760px) {
   .library-hub-toolbar {
     align-items: stretch;
-    grid-template-columns: 1fr;
-  }
-
-  .hub-list-heading-row {
     grid-template-columns: 1fr;
   }
 
