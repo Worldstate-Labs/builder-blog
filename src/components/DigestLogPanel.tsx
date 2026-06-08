@@ -491,7 +491,7 @@ function DigestScheduleSummary({
     <p className="sync-panel-schedule-summary">
       {status.summary} · {cronJob.frequencyLabel}
       {nextLabel ? ` · next ${nextLabel}` : ""}
-      {cronJob.regenerateDigest ? " · includes posts already used in AI Digests" : ""}
+      {cronJob.regenerateDigest ? " · includes posts already used in AI Digest archives" : ""}
     </p>
   );
 }

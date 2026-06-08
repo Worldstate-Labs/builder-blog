@@ -128,7 +128,7 @@ const MAX_PROMPT_WINDOW_DAYS = 90;
 
 // The override toggle reuses one URL channel (?force=1) but means different
 // things per context, so its copy is context-specific. Library: re-fetch posts
-// already in the library. Digest: re-include posts already used in AI Digests
+// already in the library. Digest: re-include posts already used in AI Digest archives
 // (additive — adds a new AI Digest that re-covers those posts, never deletes or
 // replaces past ones).
 const OVERRIDE_COPY: Record<
@@ -143,11 +143,11 @@ const OVERRIDE_COPY: Record<
       "Refreshes posts already in your library this time only.",
   },
   digest: {
-    name: "Include posts already used in AI Digests",
+    name: "Include posts already used in AI Digest archives",
     cronHint:
-      "Posts already used in AI Digests can be included again on each run.",
+      "Posts already used in AI Digest archives can be included again on each run.",
     onceHint:
-      "Posts already used in AI Digests can be included again this time.",
+      "Posts already used in AI Digest archives can be included again this time.",
   },
 };
 
