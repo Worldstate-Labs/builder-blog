@@ -50,19 +50,19 @@ export function FavoritePostsList({
           </div>
         }
         className="favorites-empty feed-state-panel is-actionable"
-        title="No saved posts yet"
-        body="Save any post to keep a focused reading queue here."
+        title="No Favorites yet"
+        body="Save any post to build a focused reading queue here."
       />
     );
   }
 
   return (
-    <section className="feed-content-stack favorites-feed" aria-label="Saved posts">
+    <section className="feed-content-stack favorites-feed" aria-label="Favorites">
       <div className="favorites-feed-head">
         <div>
-          <h2 className="favorites-feed-title">Saved posts</h2>
+          <h2 className="favorites-feed-title">Favorites</h2>
           <p className="favorites-feed-desc">
-            Posts you saved for deeper reading, newest saves first.
+            Saved for deeper reading, newest first.
           </p>
         </div>
         <span className="favorites-feed-count">

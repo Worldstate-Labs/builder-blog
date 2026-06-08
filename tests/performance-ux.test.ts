@@ -3350,7 +3350,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postFavoriteControl, /disabled=\{isPending\}/);
   assert.match(favoriteButton, /aria-label=\{label\}/);
   assert.match(favoriteButton, /disabled=\{disabled\}/);
-  assert.match(favoriteButton, /const label = isFavorite \? "Remove saved post" : "Save post"/);
+  assert.match(favoriteButton, /const label = isFavorite \? "Remove from Favorites" : "Save to Favorites"/);
   assert.match(favoriteButton, /<Star aria-hidden="true" className="post-action-icon"/);
   assert.match(digestContent, /@\/lib\/navigation/);
   assert.doesNotMatch(digestContent, /function postDetailHref/);

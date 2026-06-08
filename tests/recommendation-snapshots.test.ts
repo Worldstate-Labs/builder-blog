@@ -95,8 +95,9 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(favoriteSection, /orderBy:\s*\{ favoritedAt: "desc" \}/);
   assert.match(favoriteSection, /take:\s*favoritePostLimit/);
   assert.match(favoriteSection, /feedRead\.findMany/);
-  assert.match(favoriteList, /Saved posts/);
-  assert.match(favoriteList, /Posts you saved for deeper reading/);
+  assert.match(favoriteList, /aria-label="Favorites"/);
+  assert.match(favoriteList, /<h2 className="favorites-feed-title">Favorites<\/h2>/);
+  assert.match(favoriteList, /Saved for deeper reading, newest first\./);
   assert.match(favoriteList, /@\/components\/Count/);
   assert.match(favoriteList, /formatCount\(items\.length\)/);
   assert.match(favoriteList, /Open AI Digest/);
@@ -105,12 +106,13 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(favoriteList, /href="\/dashboard\?tab=following"/);
   assert.match(favoriteList, /favorites-empty feed-state-panel is-actionable/);
   assert.match(favoriteList, /favorites-empty-actions/);
-  assert.match(favoriteList, /Save any post to keep a focused reading queue here\./);
+  assert.match(favoriteList, /No Favorites yet/);
+  assert.match(favoriteList, /Save any post to build a focused reading queue here\./);
   assert.doesNotMatch(favoriteList, /Posts you marked for deeper reading/);
   assert.doesNotMatch(favoriteList, /Save posts from AI Digest or Following/);
   assert.match(favoriteList, /postDetailHref\(item\.feedItemId, "\/dashboard\?tab=favorites", "Favorites"\)/);
-  assert.match(favoriteList, /Remove saved post|PostFavoriteButton/);
-  assert.match(favoriteButton, /const label = isFavorite \? "Remove saved post" : "Save post"/);
+  assert.match(favoriteList, /PostFavoriteButton/);
+  assert.match(favoriteButton, /const label = isFavorite \? "Remove from Favorites" : "Save to Favorites"/);
   assert.match(favoriteButton, /title=\{label\}/);
   assert.match(favoriteButton, /className="post-action-icon"/);
   assert.match(favoriteButton, /disabled=\{disabled\}/);

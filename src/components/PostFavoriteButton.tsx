@@ -11,7 +11,7 @@ export function PostFavoriteButton({
   isFavorite: boolean;
   onToggle: () => void;
 }) {
-  const label = isFavorite ? "Remove saved post" : "Save post";
+  const label = isFavorite ? "Remove from Favorites" : "Save to Favorites";
   return (
     <button
       aria-label={label}
