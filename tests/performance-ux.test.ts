@@ -461,7 +461,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /Daily AI Digest flow/);
   assert.match(landingPage, /Daily updates become one AI Digest/);
   assert.match(landingPage, /readable AI Digest/);
-  assert.match(landingPage, /Build AI Digests/);
+  assert.doesNotMatch(landingPage, /Build AI Digests/);
   assert.match(landingPage, /Home reading lanes/);
   assert.match(landingPage, /AI Digest, Following, and Favorites stay separate/);
   assert.doesNotMatch(landingPage, /Home stays focused on readable AI Digests/);

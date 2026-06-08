@@ -146,7 +146,7 @@ export default async function Home() {
             {
               i: "02",
               icon: Terminal,
-              title: "Build AI Digests",
+              title: "Build AI Digest",
               copy: "Let your Local Agent fetch updates, summarize posts, and build a cited AI Digest from the summaries.",
             },
             {
