@@ -395,15 +395,32 @@ svg.lucide {
 }
 
 .reading-source-label {
+  align-items: center;
   color: var(--muted-strong);
+  display: inline-flex;
   font-size: 0.8125rem;
   font-weight: 650;
+  gap: 0.42rem;
   justify-self: end;
   max-width: min(100%, var(--copy-max));
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.reading-source-label .source-badge {
+  background: transparent;
+  border: 0;
+  flex: 0 0 auto;
+  min-height: 0;
+  padding: 0;
+}
+
+.reading-source-copy {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 a.reading-source-label {

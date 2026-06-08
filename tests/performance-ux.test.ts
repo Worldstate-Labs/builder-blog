@@ -2977,6 +2977,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(postDetailPage, /title="Post"/);
   assert.match(postDetailPage, /className="reading-page-toolbar"/);
   assert.match(postDetailPage, /className="reading-source-label"/);
+  assert.match(postDetailPage, /@\/components\/SourceBadge/);
+  assert.match(postDetailPage, /const sourceBuilder = item\.builder/);
+  assert.match(postDetailPage, /<SourceBadge builder=\{sourceBuilder\} decorative showLabel=\{false\} \/>/);
+  assert.match(postDetailPage, /className="reading-source-copy"/);
   assert.match(postDetailPage, /Source: \{sourceLabel\}/);
   assert.doesNotMatch(postDetailPage, /className="reading-source-label"[\s\S]*>\s*\{sourceLabel\}\s*<\/Link>/);
   assert.match(postDetailPage, /const sourceLabel = item\.builder\?\.name \?\? item\.sourceName \?\? "Post"/);
@@ -3011,7 +3015,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.fb-breadcrumb-link:hover,[\s\S]*\.fb-breadcrumb-link:focus-visible\s*{[\s\S]*color:\s*var\(--accent\)/);
   assert.doesNotMatch(globals, /\.reading-back-link\s*{/);
   assert.match(globals, /\.reading-source-label\s*{[\s\S]*font-size:\s*0\.8125rem/);
+  assert.match(globals, /\.reading-source-label\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.reading-source-label\s*{[\s\S]*max-width:\s*min\(100%,\s*var\(--copy-max\)\)/);
+  assert.match(globals, /\.reading-source-label \.source-badge\s*{[\s\S]*background:\s*transparent/);
+  assert.match(globals, /\.reading-source-copy\s*{[\s\S]*text-overflow:\s*ellipsis/);
   assert.match(globals, /\.reading-source-label\s*{[\s\S]*text-overflow:\s*ellipsis/);
   assert.match(globals, /a\.reading-source-label:hover,[\s\S]*a\.reading-source-label:focus-visible\s*{[\s\S]*color:\s*var\(--accent\)/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.reading-page-toolbar\s*{[\s\S]*grid-template-columns:\s*1fr/);

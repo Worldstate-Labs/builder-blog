@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { PostCard } from "@/components/PostCard";
+import { SourceBadge } from "@/components/SourceBadge";
 import { getCurrentSession } from "@/lib/auth";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
 import { prisma } from "@/lib/prisma";
@@ -40,6 +41,14 @@ export async function PostDetailPage({
   const entityId = item.builder.entityId;
   const sourceLabel = item.builder?.name ?? item.sourceName ?? "Post";
   const sourceHref = `/builder/${entityId}`;
+  const sourceBuilder = item.builder
+    ? {
+        kind: item.builder.kind,
+        sourceType: item.builder.sourceType,
+        sourceUrl: item.builder.sourceUrl,
+        fetchUrl: item.builder.fetchUrl,
+      }
+    : null;
   const existing = await prisma.feedRead.findFirst({
     where: {
       userId: session.user.id,
@@ -78,7 +87,8 @@ export async function PostDetailPage({
           className="reading-source-label"
           href={sourceHref}
         >
-          Source: {sourceLabel}
+          <SourceBadge builder={sourceBuilder} decorative showLabel={false} />
+          <span className="reading-source-copy">Source: {sourceLabel}</span>
         </Link>
       </nav>
 
