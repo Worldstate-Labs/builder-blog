@@ -12,18 +12,16 @@ export default function LibraryHubLoading() {
             aria-label="Hub tabs"
             className="workspace-top-tabs fb-segmented-tabs hub-loading-tabs"
           >
-            <span className="fb-btn hub-loading-tab is-active">Source libraries</span>
+            <span className="fb-btn hub-loading-tab">Source libraries</span>
             <span className="fb-btn hub-loading-tab">AI Digest archives</span>
           </div>
         </div>
 
-        <section aria-label="Loading source libraries">
+        <section aria-label="Loading Hub content">
           <div className="library-hub-toolbar">
             <div className="library-hub-toolbar-copy">
-              <h2 className="fb-section-heading">Source libraries</h2>
-              <p className="hub-section-copy">
-                Source libraries built and shared by other users.
-              </p>
+              <span className="sr-only">Loading Hub content</span>
+              <div className="library-hub-skeleton-line is-title" />
               <div className="library-hub-skeleton-line is-wide" />
             </div>
             <div className="library-hub-skeleton-pill" />
