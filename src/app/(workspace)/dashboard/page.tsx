@@ -300,7 +300,7 @@ function DigestEmptyState({
     return (
       <EmptyState
         actions={
-          <Link className="fb-btn dark compact" href="/builders">
+          <Link className="fb-btn dark compact" href="/builders?tab=fetch">
             Go to Sources
           </Link>
         }
