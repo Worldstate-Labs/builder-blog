@@ -2220,6 +2220,8 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(digestPipelineForm, /aria-label="Latest AI Digest headline"/);
   assert.equal((digestPipelineForm.match(/value=\{pipeline\.digestCount\}/g) ?? []).length, 2);
   assert.match(digestPipelineForm, /AI Digest archive/);
+  assert.match(digestPipelineForm, /archive entry/);
+  assert.doesNotMatch(digestPipelineForm, /pipeline\.digestCount === 1 \? "AI Digest archive" : "AI Digest archives"/);
   assert.doesNotMatch(digestPipelineForm, /archived AI Digest/);
   assert.doesNotMatch(digestPipelineForm, /saved AI Digest|saved digest/);
   assert.doesNotMatch(digestPipelineForm, /fb-hub-digest-count/);
@@ -4137,7 +4139,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(digestPipelineForm, /Browse Hub/);
   assert.match(digestPipelineForm, /No shared AI Digest archives/);
   assert.match(digestPipelineForm, /Shared AI Digest archives will appear here once users share them to Hub\./);
-  assert.match(digestPipelineForm, /No AI Digest archives yet/);
+  assert.match(digestPipelineForm, /No AI Digest archive entries yet/);
   assert.doesNotMatch(digestPipelineForm, /No AI Digests yet/);
   assert.doesNotMatch(digestPipelineForm, /No digests yet/);
   assert.match(digestPipelineForm, /imported=\{importedIds\.has\(pipeline\.id\)\}/);
