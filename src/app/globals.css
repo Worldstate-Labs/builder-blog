@@ -3737,7 +3737,7 @@ a.reading-source-label:focus-visible {
 }
 
 .search-result-title {
-  color: oklch(0.43 0.18 258);
+  color: var(--accent);
   display: inline;
   font-size: 1.22rem;
   font-weight: 700;

@@ -2103,6 +2103,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchPage, /<summary>Refine<\/summary>/);
   assert.match(globals, /\.search-result-source-copy\s*{[\s\S]*min-width:\s*0/);
   assert.match(globals, /\.search-result h2\s*{[\s\S]*max-width:\s*var\(--measure\)/);
+  assert.match(globals, /\.search-result-title\s*{[\s\S]*color:\s*var\(--accent\)/);
+  assert.doesNotMatch(globals, /\.search-result-title\s*{[\s\S]*color:\s*oklch\(0\.43 0\.18 258\)/);
   assert.match(globals, /\.search-result-snippet\s*{[\s\S]*max-width:\s*var\(--measure\)/);
   assert.match(globals, /\.search-result-refinement-list\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /\.search-result-refinement-icon\s*{[\s\S]*transition:\s*transform 160ms ease/);
