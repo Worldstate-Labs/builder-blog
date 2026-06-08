@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarClock, Check, CircleStop, Copy } from "lucide-react";
 import {
   describeAccessDevice,
-  formatRelativeCompact,
+  describeAccessStatus,
   sortAccessTokensByRecentConnection,
   type AgentTokenListItem,
 } from "@/components/AgentTokenPanel";
@@ -699,9 +699,7 @@ function TokenPickerDialog({
             tokens.map((token) => {
               const active = token.id === selectedTokenId;
               const tokenLabel = describeAccessDevice(token);
-              const statusLabel = token.lastUsedAt
-                ? `Last connected ${formatRelativeCompact(token.lastUsedAt, hydrated)}`
-                : "Never connected";
+              const statusLabel = describeAccessStatus(token, hydrated);
               return (
                 <label
                   key={token.id}

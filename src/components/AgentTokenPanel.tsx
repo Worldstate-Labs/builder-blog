@@ -94,6 +94,12 @@ export function sortAccessTokensByRecentConnection(
   });
 }
 
+export function describeAccessStatus(token: AgentTokenListItem, hydrated: boolean): string {
+  if (token.revokedAt) return `Revoked ${formatRelativeCompact(token.revokedAt, hydrated)}`;
+  if (token.lastUsedAt) return `Last connected ${formatRelativeCompact(token.lastUsedAt, hydrated)}`;
+  return "Never connected";
+}
+
 function withPhoneDeviceName(os: string, ua: string | null): string {
   const lower = `${os} ${ua ?? ""}`.toLowerCase();
   if (lower.includes("ipad") && !/\bipad\b/i.test(os)) return `${os} iPad`;
@@ -524,11 +530,7 @@ function TokenRow({
 }) {
   const DeviceIcon = isPhoneLikeToken(token) ? Smartphone : MonitorSmartphone;
   const tokenLabel = describeAccessDevice(token);
-  const statusLabel = token.revokedAt
-    ? `Revoked ${formatRelativeCompact(token.revokedAt, hydrated)}`
-    : token.lastUsedAt
-      ? `Last connected ${formatRelativeCompact(token.lastUsedAt, hydrated)}`
-      : "Never connected";
+  const statusLabel = describeAccessStatus(token, hydrated);
   const statusDateTime = token.revokedAt ?? token.lastUsedAt ?? token.createdAt;
 
   return (

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   describeAccessDevice,
+  describeAccessStatus,
   sortAccessTokensByRecentConnection,
   type AgentTokenListItem,
 } from "../src/components/AgentTokenPanel";
@@ -59,5 +60,20 @@ test("access keys sort by latest connection before creation time", () => {
   assert.deepEqual(
     sorted.map((item) => item.id),
     ["connected_recently", "created_recently", "connected_older"],
+  );
+});
+
+test("access key status labels read like authorized device activity", () => {
+  assert.equal(
+    describeAccessStatus(
+      token({ lastUsedAt: "2026-06-07T09:00:00.000Z" }),
+      false,
+    ),
+    "Last connected Jun 7, 2026, 9:00 AM UTC",
+  );
+  assert.equal(describeAccessStatus(token({ lastUsedAt: null }), true), "Never connected");
+  assert.match(
+    describeAccessStatus(token({ revokedAt: "2026-06-07T10:00:00.000Z" }), false),
+    /^Revoked Jun 7, 2026, 10:00 AM UTC$/,
   );
 });

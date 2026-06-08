@@ -563,15 +563,15 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /className="token-picker-form"/);
   assert.match(skillPromptActions, /Access keys for Local Agents/);
   assert.match(skillPromptActions, /describeAccessDevice/);
-  assert.match(skillPromptActions, /formatRelativeCompact/);
+  assert.match(skillPromptActions, /describeAccessStatus/);
   assert.match(skillPromptActions, /sortAccessTokensByRecentConnection/);
   assert.match(skillPromptActions, /useHydrated/);
   assert.match(skillPromptActions, /const activeTokens = useMemo\([\s\S]*sortAccessTokensByRecentConnection\(tokens\.filter/);
   assert.match(skillPromptActions, /return sortAccessTokensByRecentConnection\(tokens\)\[0\]\?\.id \?\? ""/);
   assert.match(skillPromptActions, /const tokenLabel = describeAccessDevice\(token\)/);
+  assert.match(skillPromptActions, /const statusLabel = describeAccessStatus\(token, hydrated\)/);
   assert.match(skillPromptActions, /aria-label=\{`\$\{tokenLabel\}\. \$\{statusLabel\}`\}/);
-  assert.match(skillPromptActions, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);
-  assert.match(skillPromptActions, /Never connected/);
+  assert.doesNotMatch(skillPromptActions, /const statusLabel = token\.lastUsedAt[\s\S]*Never connected/);
   assert.doesNotMatch(skillPromptActions, /Last used|Never used|Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}|describeMachine\(token\)|formatRelative\(token\.lastUsedAt\)|token-picker-row-name">\{token\.name\}/);
   assert.match(skillPromptActions, /No Local Agent access yet/);
   assert.match(skillPromptActions, /Add one in Settings before copying Local Agent prompts\./);
@@ -588,6 +588,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(agentTokenPanel, /<ul className="access-keys-list" aria-label="Access keys for Local Agents">/);
   assert.match(agentTokenPanel, /<li[\s\S]*className=\{`access-key-card/);
   assert.doesNotMatch(agentTokenPanel, /role="listitem"/);
+  assert.match(agentTokenPanel, /function describeAccessStatus/);
   assert.match(agentTokenPanel, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);
   assert.match(agentTokenPanel, /Never connected/);
   assert.doesNotMatch(agentTokenPanel, /Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
@@ -3840,7 +3841,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /className=\{`access-key-card\$\{token\.revokedAt \? " fb-row--revoked" : ""\}`\}/);
   assert.match(tokenPanel, /sortAccessTokensByRecentConnection/);
   assert.match(tokenPanel, /useHydrated/);
-  assert.match(tokenPanel, /formatRelativeCompact\(token\.lastUsedAt, hydrated\)/);
+  assert.match(tokenPanel, /describeAccessStatus\(token, hydrated\)/);
   assert.match(tokenPanel, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);
   assert.match(tokenPanel, /Never connected/);
   assert.doesNotMatch(tokenPanel, /Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
