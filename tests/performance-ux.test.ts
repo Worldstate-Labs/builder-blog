@@ -3798,9 +3798,12 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubPage, /digestPipelineOwnerLabel\(owner, \{ owned \}\)/);
   assert.match(hubPage, /recordLibraryHubViews\(libraries\.map/);
   assert.match(digestPipelineForm, /DigestPipelineTitleEditor/);
-  assert.match(digestPipelineTitleEditor, /AI Digest name/);
-  assert.match(digestPipelineTitleEditor, /Save AI Digest name/);
-  assert.match(digestPipelineTitleEditor, /Edit AI Digest name/);
+  assert.match(digestPipelineTitleEditor, /AI Digest collection name/);
+  assert.match(digestPipelineTitleEditor, /Save AI Digest collection name/);
+  assert.match(digestPipelineTitleEditor, /Edit AI Digest collection name/);
+  assert.match(digestPipelineTitleEditor, /Could not rename AI Digest collection\./);
+  assert.doesNotMatch(digestPipelineTitleEditor, /AI Digest name/);
+  assert.doesNotMatch(digestPipelineTitleEditor, /Could not rename AI Digest\./);
   assert.match(digestPipelineTitleEditor, /function handleInputKeyDown\(event: KeyboardEvent<HTMLInputElement>\)/);
   assert.match(digestPipelineTitleEditor, /event\.key !== "Escape"/);
   assert.match(digestPipelineTitleEditor, /cancelEditing\(\)/);
