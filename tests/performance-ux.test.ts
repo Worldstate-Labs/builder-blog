@@ -823,8 +823,19 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(appShell, /<aside className="fb-side-rail"|fb-side-rail" aria-label=/);
   assert.match(appShell, /<SearchForm query="" variant="header" \/>/);
   assert.match(searchForm, /name="q"/);
+  assert.match(searchForm, /name="mode"/);
+  assert.match(searchForm, /name="time"/);
+  assert.match(searchForm, /name="sort"/);
+  assert.match(searchForm, /name="after"/);
+  assert.match(searchForm, /name="before"/);
   assert.match(searchForm, />\s*Searching\s*<\/span>/);
   assert.doesNotMatch(searchForm, /Searching\.\.\./);
+  assert.match(globals, /\.search-mode-select\s*{[\s\S]*display:\s*inline-flex/);
+  assert.match(globals, /\.search-date-range\s*{[\s\S]*display:\s*inline-flex/);
+  assert.doesNotMatch(
+    globals,
+    /\.search-mode-select,\s*\.search-date-range\s*{\s*display:\s*none;\s*}/,
+  );
   assert.match(builderDetailActions, /\{isPending \? "Updating" : subscribed \? "Following" : "Follow"\}/);
   assert.doesNotMatch(builderDetailActions, /Updating\.\.\./);
   assert.match(appNav, /desktopLayout = "rail"/);
