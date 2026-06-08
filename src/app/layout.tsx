@@ -20,7 +20,8 @@ const newsreader = Newsreader({
 
 export const metadata: Metadata = {
   title: "FollowBrief",
-  description: "AI Digests from people and sources you follow.",
+  description:
+    "Follow source libraries, read cited AI Digests, and search sources, posts, and archives.",
 };
 
 export default function RootLayout({
