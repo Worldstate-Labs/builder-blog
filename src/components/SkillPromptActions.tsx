@@ -582,8 +582,8 @@ export function SkillPromptActions({
         digestMaxPostAgeDays={digestMaxPostAgeDays}
         onCancel={() => setCronConfigOpen(false)}
         onConfirm={async (selection) => {
-          setCronConfigOpen(false);
           await continueScheduleCopy(selection);
+          setCronConfigOpen(false);
         }}
       />
 

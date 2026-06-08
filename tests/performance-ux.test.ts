@@ -667,6 +667,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /className="token-picker-form"/);
   assert.match(skillPromptActions, />\s*Choose access key\s*<\/h2>/);
   assert.match(skillPromptActions, /short-lived setup code for that access key/);
+  assert.match(skillPromptActions, /await continueScheduleCopy\(selection\);\s*setCronConfigOpen\(false\);/);
   assert.match(skillPromptActions, /Access keys for Local Agents/);
   assert.match(skillPromptActions, /describeAccessDevice/);
   assert.match(skillPromptActions, /describeAccessStatus/);
