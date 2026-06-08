@@ -553,7 +553,7 @@ function TokenRow({
 
   return (
     <li
-      className={`access-key-card${token.revokedAt ? " access-key-card--revoked fb-row--revoked" : ""}`}
+      className={`access-key-card access-key-device-row${token.revokedAt ? " access-key-card--revoked fb-row--revoked" : ""}`}
       aria-label={`${tokenLabel}. ${statusLabel}`}
     >
       <AccessKeyDeviceIcon token={token} />
