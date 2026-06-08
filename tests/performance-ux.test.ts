@@ -954,6 +954,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardTabs, /Favorites|favorites|home-panel-favorites|home-tab-favorites/);
   assert.match(dashboardTabs, /value: "ai-digest"[\s\S]*label: "AI Digest"[\s\S]*value: "following"[\s\S]*label: "Following"/);
   assert.match(dashboardTabs, /id="home-panel-ai-digest"[\s\S]*id="home-panel-following"/);
+  assert.match(
+    dashboardPage,
+    /const aiDigest =[\s\S]*selectedTab === "ai-digest"[\s\S]*\? await AiDigestFeedSlot/,
+  );
   assert.doesNotMatch(dashboardPage, /scope="subscription"/);
   assert.doesNotMatch(dashboardPage, /scope="for-you"/);
   assert.doesNotMatch(dashboardPage, /<h3>Status<\/h3>/);

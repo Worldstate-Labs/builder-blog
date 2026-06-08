@@ -74,12 +74,15 @@ export default async function DashboardPage({
   const digestId = firstParam(params.digest);
   const pipelineId = firstParam(params.pipeline);
   const sourceReadiness = await dashboardSourceReadinessForUser(userId);
-  const aiDigest = await AiDigestFeedSlot({
-    userId,
-    digestId,
-    pipelineId,
-    ownDigestReadiness: sourceReadiness,
-  });
+  const aiDigest =
+    selectedTab === "ai-digest"
+      ? await AiDigestFeedSlot({
+          userId,
+          digestId,
+          pipelineId,
+          ownDigestReadiness: sourceReadiness,
+        })
+      : null;
 
   return (
     <div className="page-pad page-pad--reading home-page">
