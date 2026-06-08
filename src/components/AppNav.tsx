@@ -30,9 +30,9 @@ export function AppNav({
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const returnTo = pathname.startsWith("/posts/")
-    ? searchParams.get("returnTo") ?? ""
-    : "";
+  const returnTo = normalizeLegacyReturnTo(
+    pathname.startsWith("/posts/") ? searchParams.get("returnTo") ?? "" : "",
+  );
   const mobileNavItems = mobileItems ?? items;
   const desktopClassName =
     desktopLayout === "bar"
@@ -94,10 +94,7 @@ export function AppNav({
 function isActiveNavItem(pathname: string, item: AppNavItem, returnTo = "") {
   if (pathname === item.href || pathname.startsWith(`${item.href}/`)) return true;
   if (pathname.startsWith("/posts/")) {
-    if (
-      item.href === "/dashboard" &&
-      (returnTo.startsWith("/dashboard") || returnTo.startsWith("/recommendations"))
-    ) {
+    if (item.href === "/dashboard" && returnTo.startsWith("/dashboard")) {
       return true;
     }
     if (
@@ -110,4 +107,10 @@ function isActiveNavItem(pathname: string, item: AppNavItem, returnTo = "") {
   }
   if (item.href === "/builders") return pathname.startsWith("/builder/");
   return false;
+}
+
+function normalizeLegacyReturnTo(value: string) {
+  if (value.startsWith("/recommendations")) return "/dashboard?tab=following";
+  if (value.startsWith("/history")) return "/dashboard?tab=ai-digest";
+  return value;
 }
