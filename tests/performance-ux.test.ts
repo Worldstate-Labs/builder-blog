@@ -3412,10 +3412,12 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(source("src/lib/library-hub.ts"), /name:\s*sharedLibrary\.name \|\| personalSourceLibraryName\(params\)/);
   assert.doesNotMatch(source("src/lib/library-hub.ts"), /\$\{params\.name \|\| params\.email \|\| "Personal"\} library/);
   assert.match(source("src/lib/builder-pool.ts"), /adminCommunityLibraryName = "Community source library"/);
-  assert.match(hubPage, /if \(isFeatured\) return "Community source library"/);
+  assert.match(hubPage, /adminCommunityLibraryDescription/);
+  assert.match(hubPage, /if \(isFeatured\) return adminCommunityLibraryDescription/);
   assert.doesNotMatch(source("src/lib/library-hub.ts"), /adminCommunityLibraryName = "Community Library"/);
   assert.doesNotMatch(source("src/lib/builder-pool.ts"), /adminCommunityLibraryName = "Community Library"/);
   assert.doesNotMatch(hubPage, /if \(isFeatured\) return "Community Library"/);
+  assert.doesNotMatch(hubPage, /if \(isFeatured\) return "Community source library"/);
   assert.match(hubPage, /library\.isFeatured/);
   assert.match(hubPage, /isAdminEmail\(library\.owner\?\.email\)/);
   assert.match(visibilityRoute, /personalSourceLibraryName\(session\.user\)/);

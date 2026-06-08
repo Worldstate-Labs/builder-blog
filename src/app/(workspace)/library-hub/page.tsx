@@ -14,6 +14,7 @@ import {
   getDigestPipelineMetadataByOwnerIds,
 } from "@/lib/digest-pipeline-metadata";
 import {
+  adminCommunityLibraryDescription,
   adminCommunityLibraryName,
   digestPipelineTitle,
   digestPipelineOwnerLabel,
@@ -335,7 +336,7 @@ function selectedHubTabItem(value: LibraryHubTab) {
 }
 
 function ownerLabel(owner: { name: string | null; email: string | null } | null, isFeatured: boolean) {
-  if (isFeatured) return "Community source library";
+  if (isFeatured) return adminCommunityLibraryDescription;
   if (!owner) return "Curated by FollowBrief.";
   return `Shared by ${owner.name || owner.email || "a FollowBrief user"}.`;
 }
