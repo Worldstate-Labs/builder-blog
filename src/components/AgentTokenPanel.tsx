@@ -331,6 +331,19 @@ export function AgentTokenPanel({
         </ul>
       ) : (
         <EmptyState
+          actions={
+            <div className="access-keys-empty-actions">
+              <button
+                className="fb-btn dark compact"
+                disabled={isPending}
+                onClick={openCreateDialog}
+                type="button"
+              >
+                <Plus aria-hidden="true" />
+                Add access key
+              </button>
+            </div>
+          }
           className="access-keys-empty"
           title="No Local Agent access yet"
           body="Add one when you connect a Local Agent."
