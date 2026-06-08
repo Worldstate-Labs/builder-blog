@@ -454,6 +454,8 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.fb-demo-pulse,[\s\S]*\.fb-demo-line::after\s*{[\s\S]*transform:\s*none/);
   assert.match(globals, /\.fb-public-workspace\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*0\.9fr\) minmax\(0,\s*1\.1fr\)/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-public-feature-grid\s*{[\s\S]*grid-template-columns:\s*1fr/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-public-flow-step\s*{[\s\S]*border-radius:\s*999px/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-public-flow-step \+ \.fb-public-flow-step::before\s*{[\s\S]*content:\s*none/);
   assert.match(globals, /\.fb-login-nav\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
   assert.match(globals, /\.fb-login-nav\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /\.fb-dark-frame\s*{[\s\S]*background:\s*var\(--paper\)/);
@@ -485,6 +487,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /\.fb-public-copy\s*{[\s\S]*max-width:\s*var\(--public-copy-max\)/);
   assert.match(globals, /\.fb-public-flow\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /\.fb-public-flow-step \+ \.fb-public-flow-step::before\s*{[\s\S]*content:\s*"\/"/);
+  assert.match(globals, /\.fb-chip\s*{[\s\S]*white-space:\s*nowrap/);
   assert.match(globals, /\.fb-public-step-list\s*{[\s\S]*list-style:\s*none/);
   assert.match(globals, /\.fb-public-step-row\s*{[\s\S]*grid-template-columns:\s*2\.5rem minmax\(0,\s*1fr\)/);
   assert.match(globals, /\.fb-public-step-title-row\s*{[\s\S]*display:\s*flex/);
@@ -500,7 +503,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /\.fb-login-intro\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.fb-public-flow\s*{[\s\S]*max-width:\s*var\(--public-copy-max\)/);
   assert.match(globals, /\.fb-public-step-body\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
-  assert.equal((globals.match(/\.fb-public-flow\s*\{/g) ?? []).length, 1);
+  assert.equal((globals.match(/\.fb-public-flow\s*\{/g) ?? []).length, 2);
   assert.match(globals, /\.fb-login-copy\s*{[\s\S]*max-width:\s*var\(--login-copy-max\)/);
   assert.match(globals, /\.fb-login-proof-rail\s*{[\s\S]*max-width:\s*var\(--login-copy-max\)/);
   assert.match(globals, /\.fb-dark-panel\s*{[\s\S]*max-width:\s*var\(--dialog-max\)/);

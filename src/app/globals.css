@@ -4838,6 +4838,7 @@ a.reading-source-label:focus-visible {
   gap: 0.375rem;
   height: 1.625rem;
   padding: 0 0.625rem;
+  white-space: nowrap;
 }
 
 .fb-chip.success {
@@ -10552,6 +10553,21 @@ a.fb-hub-source-name:focus-visible {
 
   .fb-public-actions {
     margin-top: 1.25rem;
+  }
+
+  .fb-public-flow {
+    gap: 0.5rem;
+  }
+
+  .fb-public-flow-step {
+    background: color-mix(in oklch, var(--rail) 54%, transparent);
+    border: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
+    border-radius: 999px;
+    padding: 0.28rem 0.48rem;
+  }
+
+  .fb-public-flow-step + .fb-public-flow-step::before {
+    content: none;
   }
 
   .fb-public-section-kicker-row {
