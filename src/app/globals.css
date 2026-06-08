@@ -9103,6 +9103,16 @@ a.fb-hub-source-name:focus-visible {
   width: min(16rem, 100%);
 }
 
+.settings-skeleton-line--device-title {
+  height: 1.05rem;
+  width: min(14rem, 100%);
+}
+
+.settings-skeleton-line--device-status {
+  height: 0.9rem;
+  width: min(8.5rem, 82%);
+}
+
 .settings-skeleton-card {
   height: 6rem;
 }
@@ -9120,6 +9130,24 @@ a.fb-hub-source-name:focus-visible {
 .access-keys-list--skeleton .settings-skeleton-row {
   border-radius: 18px;
   height: 5rem;
+}
+
+.access-key-card--skeleton {
+  pointer-events: none;
+}
+
+.access-key-skeleton-icon {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background: color-mix(in oklch, var(--ink) 10%, transparent);
+  border-radius: 8px;
+  height: 2.25rem;
+  width: 2.25rem;
+}
+
+.access-key-skeleton-pill {
+  align-self: center;
+  justify-self: end;
+  min-width: 9.5rem;
 }
 
 .settings-source-type-manager {
@@ -11187,6 +11215,10 @@ body {
     height: 5.5rem;
   }
 
+  .access-key-card--skeleton {
+    min-height: 5.5rem;
+  }
+
   .access-key-revoke-button,
   .access-key-revoked-pill {
     font-size: 0.875rem;
@@ -11195,6 +11227,12 @@ body {
     min-height: 2.25rem;
     min-width: 7.25rem;
     padding-inline: 0.75rem;
+  }
+
+  .access-key-skeleton-pill {
+    grid-column: 2;
+    justify-self: start;
+    min-width: 7.25rem;
   }
 
   .access-key-device-title {

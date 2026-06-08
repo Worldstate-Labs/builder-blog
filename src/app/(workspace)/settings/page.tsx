@@ -194,9 +194,16 @@ function AgentTokenPanelSkeleton() {
         <div className="settings-skeleton-pill" />
       </div>
       <div className="access-keys-list access-keys-list--skeleton">
-        <div className="settings-skeleton-row" />
-        <div className="settings-skeleton-row" />
-        <div className="settings-skeleton-row" />
+        {[0, 1, 2].map((item) => (
+          <div className="access-key-card access-key-card--skeleton" key={item}>
+            <span className="access-key-skeleton-icon" />
+            <span className="access-keys-skeleton-copy">
+              <span className="settings-skeleton-line settings-skeleton-line--device-title" />
+              <span className="settings-skeleton-line settings-skeleton-line--device-status" />
+            </span>
+            <span className="settings-skeleton-pill access-key-skeleton-pill" />
+          </div>
+        ))}
       </div>
     </section>
   );
