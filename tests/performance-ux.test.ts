@@ -3265,6 +3265,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(builderActions, /Could not update subscription\./);
   assert.doesNotMatch(builderActions, /builder-library-remove-button|builder-library-remove-icon|builder-library-remove-confirm/);
   assert.match(builderEditDialog, /Trash2/);
+  assert.match(builderEditDialog, /aria-label=\{`Edit source \$\{builder\.name\}`\}/);
+  assert.doesNotMatch(builderEditDialog, /aria-label=\{`Edit \$\{builder\.name\}`\}/);
   assert.match(builderEditDialog, /Update the source type, handle or URL, and display name/);
   assert.match(builderEditDialog, /Handle or URL is required\./);
   assert.match(builderEditDialog, />Handle or URL<\/span>/);
