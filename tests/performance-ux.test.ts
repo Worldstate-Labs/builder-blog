@@ -2706,6 +2706,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderLibraryList, /fb-src-meta|source-host-meta|source-host-meta/);
   assert.match(builderLibraryList, /visibleSections/);
   assert.match(builderLibraryList, /groupBuildersBySourceType/);
+  assert.match(builderLibraryList, /initialExpandedSourceTypes\(builders\)/);
+  assert.match(builderLibraryList, /function initialExpandedSourceTypes\(builders: BuilderLibraryListItem\[\]\)/);
+  assert.match(builderLibraryList, /const firstSection = groupBuildersBySourceType\(builders\)\[0\]/);
   assert.match(buildersPage, /sourceTypeSortRank\(sourceTypeForBuilder\(a\)\)/);
   assert.match(buildersPage, /function normalizeBuilderSourceType/);
   assert.match(

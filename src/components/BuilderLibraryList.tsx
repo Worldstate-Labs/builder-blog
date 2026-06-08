@@ -41,7 +41,9 @@ export function BuilderLibraryList({
   editableSourceOptions,
 }: BuilderLibraryListProps) {
   const [addedBuilders, setAddedBuilders] = useState<BuilderLibraryListItem[]>([]);
-  const [expandedSourceTypes, setExpandedSourceTypes] = useState<Set<string>>(() => new Set());
+  const [expandedSourceTypes, setExpandedSourceTypes] = useState<Set<string>>(
+    () => initialExpandedSourceTypes(builders),
+  );
   const [removedBuilderIds, setRemovedBuilderIds] = useState<Set<string>>(() => new Set());
   const [removeErrors, setRemoveErrors] = useState<Record<string, string>>({});
   const listId = useId();
@@ -400,6 +402,11 @@ function sourceTypeForBuilder(builder: BuilderLibraryListItem) {
 
 function sourceTypeSectionBodyId(listId: string, sourceType: string) {
   return `builder-library-source-${listId}-${sourceType.replace(/[^a-z0-9_-]/gi, "-")}`;
+}
+
+function initialExpandedSourceTypes(builders: BuilderLibraryListItem[]) {
+  const firstSection = groupBuildersBySourceType(builders)[0];
+  return firstSection ? new Set([firstSection.sourceType]) : new Set<string>();
 }
 
 function normalizeSourceType(sourceType: string | null | undefined) {
