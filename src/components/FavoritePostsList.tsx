@@ -44,7 +44,7 @@ export function FavoritePostsList({
           ? current
           : sortFavoriteItems([...current, removedItem]),
       );
-      setError("Could not remove favorite. The post is still saved.");
+      setError("Could not remove favorite. The post remains in Favorites.");
     } finally {
       setPendingIds((current) => {
         const next = new Set(current);

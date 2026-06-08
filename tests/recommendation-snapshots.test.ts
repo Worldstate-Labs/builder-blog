@@ -109,7 +109,7 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(favoriteList, /className="favorites-empty is-actionable"/);
   assert.match(favoriteList, /favorites-empty-actions/);
   assert.match(favoriteList, /No favorites yet/);
-  assert.match(favoriteList, /Save any post to build a focused reading queue here\./);
+  assert.match(favoriteList, /Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
   assert.doesNotMatch(favoriteList, /Posts you marked for deeper reading/);
   assert.doesNotMatch(favoriteList, /Save posts from AI Digest or Following/);
   assert.match(favoriteList, /postDetailHref\(item\.feedItemId, "\/dashboard\?tab=favorites", "Favorites"\)/);
@@ -119,7 +119,7 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(favoriteList, /const \[pendingIds, setPendingIds\] = useState<Set<string>>\(\(\) => new Set\(\)\)/);
   assert.match(favoriteList, /disabled=\{pendingIds\.has\(item\.feedItemId\)\}/);
   assert.match(favoriteList, /sortFavoriteItems\(\[\.\.\.current, removedItem\]\)/);
-  assert.match(favoriteList, /Could not remove favorite\. The post is still saved\./);
+  assert.match(favoriteList, /Could not remove favorite\. The post remains in Favorites\./);
   assert.match(favoriteList, /className="favorites-feed-error" role="status"/);
   assert.doesNotMatch(favoriteList, /setItems\(previousItems\)/);
   assert.match(favoriteButton, /const label = isFavorite \? "Remove from Favorites" : "Save to Favorites"/);
@@ -131,7 +131,7 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(feed, /const \[pendingFavoriteIds, setPendingFavoriteIds\] = useState<Set<string>>\(\(\) => new Set\(\)\)/);
   assert.match(feed, /favoriteStateForItem\(snapshots, feedItemId\)/);
   assert.match(feed, /restoreFavoriteState\(current, feedItemId, previousFavoritedAt\)/);
-  assert.match(feed, /Could not update saved state\. Try again\./);
+  assert.match(feed, /Could not update favorite\. Try again\./);
   assert.match(feed, /className="feed-load-error recommendation-favorite-error" role="status"/);
   assert.match(feed, /disabled=\{pendingFavorite\}/);
   assert.match(feed, /if \(!response\.ok\) throw new Error\(`HTTP \$\{response\.status\}`\)/);
@@ -146,7 +146,7 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(postFavoriteControl, /fetch\("\/api\/favorites"/);
   assert.match(postFavoriteControl, /method: nextFavorite \? "POST" : "DELETE"/);
   assert.match(postFavoriteControl, /const \[error, setError\] = useState\(""\)/);
-  assert.match(postFavoriteControl, /setError\("Could not update saved state\. Try again\."\)/);
+  assert.match(postFavoriteControl, /setError\("Could not update favorite\. Try again\."\)/);
   assert.match(postFavoriteControl, /className="post-favorite-status" role="status"/);
   assert.match(postFavoriteControl, /className="post-favorite-control"/);
   assert.match(digestRoute, /favoriteStateByUrl/);
@@ -162,7 +162,7 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(digestDetails, /favoriteErrorByUrl: omitUrl\(current\.favoriteErrorByUrl, url\)/);
   assert.match(digestDetails, /favoritedAt: previousFavoritedAt/);
   assert.match(digestDetails, /pendingFavoriteUrls: removeUrl\(current\.pendingFavoriteUrls, url\)/);
-  assert.match(digestDetails, /Could not update saved state\. Try again\./);
+  assert.match(digestDetails, /Could not update favorite\. Try again\./);
   assert.match(digestDetails, /function omitUrl/);
   assert.match(digestDetails, /function removeUrl/);
   assert.match(digestDetails, /fetch\("\/api\/favorites"/);
@@ -209,7 +209,7 @@ Source: https://anthropic.com/engineering/how-we-contain-claude`,
       },
       favoriteErrorByUrl: {
         "https://anthropic.com/engineering/how-we-contain-claude":
-          "Could not update saved state. Try again.",
+          "Could not update favorite. Try again.",
       },
       onFavoriteToggle: () => undefined,
       pendingFavoriteUrls: new Set([
@@ -234,7 +234,7 @@ Source: https://anthropic.com/engineering/how-we-contain-claude`,
   assert.match(html, /aria-pressed="false"/);
   assert.match(html, /disabled=""/);
   assert.match(html, /post-favorite-status/);
-  assert.match(html, /Could not update saved state\. Try again\./);
+  assert.match(html, /Could not update favorite\. Try again\./);
 });
 
 test("source logos are shared across recommendation and library surfaces", () => {

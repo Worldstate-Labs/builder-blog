@@ -1570,7 +1570,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(favoriteList, /disabled=\{pendingIds\.has\(item\.feedItemId\)\}/);
   assert.match(favoriteList, /sortFavoriteItems\(\[\.\.\.current, removedItem\]\)/);
   assert.match(favoriteList, /className="favorites-feed-error" role="status"/);
-  assert.match(favoriteList, /Could not remove favorite\. The post is still saved\./);
+  assert.match(favoriteList, /Could not remove favorite\. The post remains in Favorites\./);
   assert.match(favoriteList, /Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
   assert.doesNotMatch(favoriteList, /showSourceBadge=\{false\}/);
   assert.doesNotMatch(favoriteList, /setItems\(previousItems\)/);
