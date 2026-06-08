@@ -392,7 +392,7 @@ function DigestPipelineCard({
       type="button"
     >
       <Download aria-hidden="true" />
-      {pending === "import" ? "Importing AI Digest archive" : "Import AI Digest archive"}
+      {pending === "import" ? "Importing" : "Import"}
     </button>
   );
 

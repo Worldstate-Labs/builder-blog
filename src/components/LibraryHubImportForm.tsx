@@ -433,7 +433,7 @@ function HubCard({
       type="button"
     >
       <Download aria-hidden="true" />
-      {pending === "import" ? "Importing source library" : "Import source library"}
+      {pending === "import" ? "Importing" : "Import"}
     </button>
   );
 

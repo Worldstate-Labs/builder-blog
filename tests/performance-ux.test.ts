@@ -2446,9 +2446,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Could not import source library\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Could not remove source library import\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Import source library \$\{library\.name\}/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /"Import source library"/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Importing source library/);
-  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /\?\s*"Importing"\s*:\s*"Import"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /\?\s*"Importing"\s*:\s*"Import"/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /"Import source library"|Importing source library/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Remove \$\{library\.name\} source library import/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), />\s*Remove import\s*<\/button>/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-form-error"/);
@@ -2550,9 +2549,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-card digest-pipeline-card"/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-card-action-row"/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Import AI Digest archive \$\{pipeline\.title\}/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /"Import AI Digest archive"/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Importing AI Digest archive/);
-  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /\?\s*"Importing"\s*:\s*"Import"/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /\?\s*"Importing"\s*:\s*"Import"/);
+  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /"Import AI Digest archive"|Importing AI Digest archive/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /hub-card-action-button/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /hub-card-remove-button/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /flex flex-wrap items-center gap-2|disabled:cursor-wait/);
@@ -3409,9 +3407,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /aria-label=\{`Source library actions for \$\{library\.name\}`\}/);
   assert.match(hubImportForm, /className="fb-hub-card-actions"[\s\S]*role="group"/);
   assert.match(hubImportForm, /aria-label=\{`Import source library \$\{library\.name\}`\}/);
-  assert.match(hubImportForm, /: "Import source library"/);
-  assert.match(hubImportForm, /Importing source library/);
-  assert.doesNotMatch(hubImportForm, /aria-label=\{`Import \$\{library\.name\}`\}|\?\s*"Importing"\s*:\s*"Import"/);
+  assert.match(hubImportForm, /\?\s*"Importing"\s*:\s*"Import"/);
+  assert.doesNotMatch(hubImportForm, /aria-label=\{`Import \$\{library\.name\}`\}|: "Import source library"|Importing source library/);
   assert.match(hubImportForm, /Imported/);
   assert.match(hubImportForm, /method: "DELETE"/);
   assert.match(hubImportForm, /aria-labelledby="hub-remove-source-library-title"/);
@@ -3546,9 +3543,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /aria-label=\{`AI Digest archive actions for \$\{pipeline\.title\}`\}/);
   assert.match(digestPipelineForm, /className="fb-hub-card-actions"[\s\S]*role="group"/);
   assert.match(digestPipelineForm, /aria-label=\{`Import AI Digest archive \$\{pipeline\.title\}`\}/);
-  assert.match(digestPipelineForm, /: "Import AI Digest archive"/);
-  assert.match(digestPipelineForm, /Importing AI Digest archive/);
-  assert.doesNotMatch(digestPipelineForm, /aria-label=\{`Import \$\{pipeline\.title\}`\}|\?\s*"Importing"\s*:\s*"Import"/);
+  assert.match(digestPipelineForm, /\?\s*"Importing"\s*:\s*"Import"/);
+  assert.doesNotMatch(digestPipelineForm, /aria-label=\{`Import \$\{pipeline\.title\}`\}|: "Import AI Digest archive"|Importing AI Digest archive/);
   assert.match(digestPipelineForm, /Imported/);
   assert.doesNotMatch(digestPipelineForm, /window\.confirm/);
   assert.match(digestPipelineForm, /aria-labelledby="hub-remove-ai-digest-title"/);
