@@ -4118,9 +4118,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(settingsPage, />Advanced<\/p>/);
   assert.doesNotMatch(settingsPage, /Source and digest rules/);
   assert.doesNotMatch(settingsPage, /settings-rules-title|settings-rules-head/);
-  assert.match(settingsPage, /Source fetch rules/);
-  assert.doesNotMatch(settingsPage, /Fetch sources rules/);
-  assert.match(settingsPage, /Runs before AI Digest: discover source posts, filter candidates, and\s*write per-post summaries\./);
+  assert.match(settingsPage, /Fetch sources rules/);
+  assert.doesNotMatch(settingsPage, /Source fetch rules/);
+  assert.match(settingsPage, /Used by Fetch sources: discover source posts, filter candidates, and\s*write per-post summaries\./);
+  assert.doesNotMatch(settingsPage, /Runs before AI Digest: discover source posts/);
   assert.match(settingsPage, /AI Digest rules/);
   assert.match(settingsPage, /Runs after per-post summaries: write the digest headline, source notes,\s*and localized post summaries\./);
   assert.doesNotMatch(settingsPage, /Write AI Digest headlines, source notes, and translated post summaries\./);
