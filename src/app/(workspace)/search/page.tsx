@@ -14,6 +14,7 @@ import { CountBadge, CountRange, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { PostCard } from "@/components/PostCard";
+import { PostFavoriteControl } from "@/components/PostFavoriteControl";
 import { SearchForm, type SearchTypeFilter } from "@/components/SearchForm";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { SourceBadge } from "@/components/SourceBadge";
@@ -837,6 +838,12 @@ function SearchPostResultCard({
 
   return (
     <PostCard
+      extraActions={
+        <PostFavoriteControl
+          feedItemId={result.id}
+          initialIsFavorite={Boolean(result.favoritedAt)}
+        />
+      }
       fallbackBuilder={builder}
       post={{
         id: result.id,

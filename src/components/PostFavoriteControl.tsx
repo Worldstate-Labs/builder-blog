@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { PostFavoriteButton } from "@/components/PostFavoriteButton";
 
-export function PostDetailFavoriteControl({
+export function PostFavoriteControl({
   feedItemId,
   initialIsFavorite,
 }: {

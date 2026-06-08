@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { PostCard } from "@/components/PostCard";
-import { PostDetailFavoriteControl } from "@/components/PostDetailFavoriteControl";
+import { PostFavoriteControl } from "@/components/PostFavoriteControl";
 import { SourceBadge } from "@/components/SourceBadge";
 import { getCurrentSession } from "@/lib/auth";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
@@ -114,7 +114,7 @@ export async function PostDetailPage({
         dataRead={true}
         extraActions={
           canFavorite ? (
-            <PostDetailFavoriteControl
+            <PostFavoriteControl
               feedItemId={item.id}
               initialIsFavorite={Boolean(favorite)}
             />
