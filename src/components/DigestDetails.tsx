@@ -37,10 +37,12 @@ export type DigestSummary = {
 
 type DigestLoadState = {
   content: string | null;
+  favoriteErrorByUrl: Record<string, string>;
   favoriteStateByUrl: DigestFavoriteStateByUrl;
   isOpen: boolean;
   key: string;
   originalSummariesByUrl: Record<string, string>;
+  pendingFavoriteUrls: Set<string>;
   status: "idle" | "loading" | "loaded" | "error";
 };
 
@@ -64,17 +66,19 @@ export function DigestDetails({
   const initialState: DigestLoadState = useMemo(
     () => ({
       content: null,
+      favoriteErrorByUrl: {},
       favoriteStateByUrl: {},
       isOpen: defaultOpen,
       key: stateKey,
       originalSummariesByUrl: {},
+      pendingFavoriteUrls: new Set<string>(),
       status: initialStatus,
     }),
     [defaultOpen, initialStatus, stateKey],
   );
   const [digestState, setDigestState] = useState<DigestLoadState>(initialState);
   const currentState = digestState.key === stateKey ? digestState : initialState;
-  const { content, isOpen, status } = currentState;
+  const { content, favoriteErrorByUrl, isOpen, pendingFavoriteUrls, status } = currentState;
   const favoriteStateByUrl = currentState.favoriteStateByUrl;
   const originalSummariesByUrl = currentState.originalSummariesByUrl;
   const headerHeadline = resolveHeadlineSummary(digest.headlineSummary, content, status);
@@ -111,9 +115,12 @@ export function DigestDetails({
   }, [digestId, updateDigestState]);
 
   const toggleFavorite = useCallback(async (url: string, feedItemId: string, nextFavorite: boolean) => {
+    if (pendingFavoriteUrls.has(url)) return;
     const fallbackFavoritedAt = nextFavorite ? new Date().toISOString() : null;
+    const previousFavoritedAt = favoriteStateByUrl[url]?.favoritedAt ?? null;
     updateDigestState((current) => ({
       ...current,
+      favoriteErrorByUrl: omitUrl(current.favoriteErrorByUrl, url),
       favoriteStateByUrl: {
         ...current.favoriteStateByUrl,
         [url]: {
@@ -121,6 +128,7 @@ export function DigestDetails({
           favoritedAt: fallbackFavoritedAt,
         },
       },
+      pendingFavoriteUrls: new Set([...current.pendingFavoriteUrls, url]),
     }));
 
     try {
@@ -143,9 +151,27 @@ export function DigestDetails({
         },
       }));
     } catch {
-      // Mirrors Following feed behavior: optimistic UI, reload restores truth.
+      updateDigestState((current) => ({
+        ...current,
+        favoriteErrorByUrl: {
+          ...current.favoriteErrorByUrl,
+          [url]: "Could not update saved state. Try again.",
+        },
+        favoriteStateByUrl: {
+          ...current.favoriteStateByUrl,
+          [url]: {
+            feedItemId,
+            favoritedAt: previousFavoritedAt,
+          },
+        },
+      }));
+    } finally {
+      updateDigestState((current) => ({
+        ...current,
+        pendingFavoriteUrls: removeUrl(current.pendingFavoriteUrls, url),
+      }));
     }
-  }, [updateDigestState]);
+  }, [favoriteStateByUrl, pendingFavoriteUrls, updateDigestState]);
 
   function loadDigest() {
     if (content || status === "loading") return;
@@ -179,9 +205,11 @@ export function DigestDetails({
         <div className="fb-digest-body">
           <DigestBody
             content={content}
+            favoriteErrorByUrl={favoriteErrorByUrl}
             favoriteStateByUrl={favoriteStateByUrl}
             onFavoriteToggle={toggleFavorite}
             originalSummariesByUrl={originalSummariesByUrl}
+            pendingFavoriteUrls={pendingFavoriteUrls}
             sourceLinks={sourceLinks}
             status={status}
             variant="today"
@@ -221,9 +249,11 @@ export function DigestDetails({
         </summary>
         <DigestBody
           content={content}
+          favoriteErrorByUrl={favoriteErrorByUrl}
           favoriteStateByUrl={favoriteStateByUrl}
           onFavoriteToggle={toggleFavorite}
           originalSummariesByUrl={originalSummariesByUrl}
+          pendingFavoriteUrls={pendingFavoriteUrls}
           sourceLinks={sourceLinks}
           status={status}
         />
@@ -234,17 +264,21 @@ export function DigestDetails({
 
 function DigestBody({
   content,
+  favoriteErrorByUrl,
   favoriteStateByUrl,
   onFavoriteToggle,
   originalSummariesByUrl,
+  pendingFavoriteUrls,
   sourceLinks,
   status,
   variant = "archive",
 }: {
   content: string | null;
+  favoriteErrorByUrl: Record<string, string>;
   favoriteStateByUrl: DigestFavoriteStateByUrl;
   onFavoriteToggle: (url: string, feedItemId: string, nextFavorite: boolean) => void;
   originalSummariesByUrl: Record<string, string>;
+  pendingFavoriteUrls: Set<string>;
   sourceLinks: DigestSourceLink[];
   status: "idle" | "loading" | "loaded" | "error";
   variant?: "today" | "archive";
@@ -300,9 +334,11 @@ function DigestBody({
     return (
       <DigestContent
         content={content ?? ""}
+        favoriteErrorByUrl={favoriteErrorByUrl}
         favoriteStateByUrl={favoriteStateByUrl}
         onFavoriteToggle={onFavoriteToggle}
         originalSummariesByUrl={originalSummariesByUrl}
+        pendingFavoriteUrls={pendingFavoriteUrls}
         showContents={false}
         showSectionCounts
         sourceLinks={sourceLinks}
@@ -314,9 +350,11 @@ function DigestBody({
     <div className="item-details">
       <DigestContent
         content={content ?? ""}
+        favoriteErrorByUrl={favoriteErrorByUrl}
         favoriteStateByUrl={favoriteStateByUrl}
         onFavoriteToggle={onFavoriteToggle}
         originalSummariesByUrl={originalSummariesByUrl}
+        pendingFavoriteUrls={pendingFavoriteUrls}
         sourceLinks={sourceLinks}
         tone="paper"
       />
@@ -630,6 +668,18 @@ function cleanOriginalSummaries(value: unknown): Record<string, string> {
     .map(([url, summary]) => [url, typeof summary === "string" ? summary.trim() : ""] as const)
     .filter(([url, summary]) => url.length > 0 && summary.length > 0);
   return Object.fromEntries(entries);
+}
+
+function omitUrl<T>(record: Record<string, T>, url: string): Record<string, T> {
+  const next = { ...record };
+  delete next[url];
+  return next;
+}
+
+function removeUrl(urls: Set<string>, url: string): Set<string> {
+  const next = new Set(urls);
+  next.delete(url);
+  return next;
 }
 
 function cleanFavoriteStateByUrl(value: unknown): DigestFavoriteStateByUrl {

@@ -154,9 +154,27 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(digestRoute, /feedFavorite\.findMany/);
   assert.match(digestDetails, /favoriteStateByUrl/);
   assert.match(digestDetails, /cleanFavoriteStateByUrl/);
+  assert.match(digestDetails, /favoriteErrorByUrl: Record<string, string>/);
+  assert.match(digestDetails, /pendingFavoriteUrls: Set<string>/);
+  assert.match(digestDetails, /pendingFavoriteUrls: new Set<string>\(\)/);
+  assert.match(digestDetails, /if \(pendingFavoriteUrls\.has\(url\)\) return/);
+  assert.match(digestDetails, /const previousFavoritedAt = favoriteStateByUrl\[url\]\?\.favoritedAt \?\? null/);
+  assert.match(digestDetails, /favoriteErrorByUrl: omitUrl\(current\.favoriteErrorByUrl, url\)/);
+  assert.match(digestDetails, /favoritedAt: previousFavoritedAt/);
+  assert.match(digestDetails, /pendingFavoriteUrls: removeUrl\(current\.pendingFavoriteUrls, url\)/);
+  assert.match(digestDetails, /Could not update saved state\. Try again\./);
+  assert.match(digestDetails, /function omitUrl/);
+  assert.match(digestDetails, /function removeUrl/);
   assert.match(digestDetails, /fetch\("\/api\/favorites"/);
+  assert.doesNotMatch(digestDetails, /reload restores truth|Best-effort optimistic UI/);
   assert.match(digestContent, /PostFavoriteButton/);
   assert.match(digestContent, /onFavoriteToggle/);
+  assert.match(digestContent, /const EMPTY_PENDING_FAVORITE_URLS = new Set<string>\(\)/);
+  assert.match(digestContent, /favoriteErrorByUrl\?: Record<string, string>/);
+  assert.match(digestContent, /pendingFavoriteUrls\?: Set<string>/);
+  assert.match(digestContent, /disabled=\{pendingFavoriteUrls\.has\(url\)\}/);
+  assert.match(digestContent, /className="post-favorite-control"/);
+  assert.match(digestContent, /className="post-favorite-status" role="status"/);
   assert.doesNotMatch(feed, /disabled=\{isRead\}/);
   assert.doesNotMatch(feed, /mode\?: "favorites"|FavoriteReadButton|markedReadAt|\/api\/favorites\/read/);
   assert.doesNotMatch(favoriteList, /FavoriteReadButton|markedReadAt|\/api\/favorites\/read/);
@@ -189,7 +207,14 @@ Source: https://anthropic.com/engineering/how-we-contain-claude`,
           favoritedAt: null,
         },
       },
+      favoriteErrorByUrl: {
+        "https://anthropic.com/engineering/how-we-contain-claude":
+          "Could not update saved state. Try again.",
+      },
       onFavoriteToggle: () => undefined,
+      pendingFavoriteUrls: new Set([
+        "https://anthropic.com/engineering/how-we-contain-claude",
+      ]),
       sourceLinks: [
         {
           aliases: ["anthropic.com"],
@@ -207,6 +232,9 @@ Source: https://anthropic.com/engineering/how-we-contain-claude`,
   assert.doesNotMatch(html, />Save</);
   assert.doesNotMatch(html, />Saved</);
   assert.match(html, /aria-pressed="false"/);
+  assert.match(html, /disabled=""/);
+  assert.match(html, /post-favorite-status/);
+  assert.match(html, /Could not update saved state\. Try again\./);
 });
 
 test("source logos are shared across recommendation and library surfaces", () => {

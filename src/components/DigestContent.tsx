@@ -37,21 +37,27 @@ export type DigestFavoriteStateByUrl = Record<
   }
 >;
 
+const EMPTY_PENDING_FAVORITE_URLS = new Set<string>();
+
 // Renders the CLI-produced digest markdown as a progressively-readable document:
 // source links, source-grouped sections, and the shared PostCard for each post.
 // `tone` adapts it to the dark "today" hero vs the paper archive.
 export function DigestContent({
   content,
+  favoriteErrorByUrl = {},
   favoriteStateByUrl = {},
   originalSummariesByUrl = {},
   onFavoriteToggle,
+  pendingFavoriteUrls = EMPTY_PENDING_FAVORITE_URLS,
   sourceLinks = [],
   tone = "paper",
 }: {
   content: string;
+  favoriteErrorByUrl?: Record<string, string>;
   favoriteStateByUrl?: DigestFavoriteStateByUrl;
   originalSummariesByUrl?: Record<string, string>;
   onFavoriteToggle?: (url: string, feedItemId: string, nextFavorite: boolean) => void;
+  pendingFavoriteUrls?: Set<string>;
   showContents?: boolean;
   showSectionCounts?: boolean;
   sourceLinks?: DigestSourceLink[];
@@ -93,9 +99,11 @@ export function DigestContent({
         <SectionBlock
           key={section.id}
           section={section}
+          favoriteErrorByUrl={favoriteErrorByUrl}
           favoriteStateByUrl={favoriteStateByUrl}
           onFavoriteToggle={onFavoriteToggle}
           originalSummariesByUrl={originalSummariesByUrl}
+          pendingFavoriteUrls={pendingFavoriteUrls}
           sourceType={sectionSourceTypes.get(section.id) ?? "website"}
           sourceLookup={sourceLookup}
         />
@@ -110,16 +118,20 @@ function wrapClass(tone: "paper" | "dark"): string {
 
 function SectionBlock({
   section,
+  favoriteErrorByUrl,
   favoriteStateByUrl,
   onFavoriteToggle,
   originalSummariesByUrl,
+  pendingFavoriteUrls,
   sourceType,
   sourceLookup,
 }: {
   section: DigestSection;
+  favoriteErrorByUrl: Record<string, string>;
   favoriteStateByUrl: DigestFavoriteStateByUrl;
   onFavoriteToggle?: (url: string, feedItemId: string, nextFavorite: boolean) => void;
   originalSummariesByUrl: Record<string, string>;
+  pendingFavoriteUrls: Set<string>;
   sourceType: string;
   sourceLookup: Map<string, DigestSourceLink>;
 }) {
@@ -148,9 +160,11 @@ function SectionBlock({
               section={section}
               sectionSourceType={sectionSourceType}
               sourceLink={group.source ? sourceLinkForSource(group.source, sourceLookup) : undefined}
+              favoriteErrorByUrl={favoriteErrorByUrl}
               favoriteStateByUrl={favoriteStateByUrl}
               onFavoriteToggle={onFavoriteToggle}
               originalSummariesByUrl={originalSummariesByUrl}
+              pendingFavoriteUrls={pendingFavoriteUrls}
             />
           ))}
         </div>
@@ -171,18 +185,22 @@ function PostBlock({
   section,
   sectionSourceType,
   sourceLink,
+  favoriteErrorByUrl,
   favoriteStateByUrl,
   onFavoriteToggle,
   originalSummariesByUrl,
+  pendingFavoriteUrls,
 }: {
   group: DigestGroup;
   post: DigestPost;
   section: DigestSection;
   sectionSourceType: string;
   sourceLink?: DigestSourceLink;
+  favoriteErrorByUrl: Record<string, string>;
   favoriteStateByUrl: DigestFavoriteStateByUrl;
   onFavoriteToggle?: (url: string, feedItemId: string, nextFavorite: boolean) => void;
   originalSummariesByUrl: Record<string, string>;
+  pendingFavoriteUrls: Set<string>;
 }) {
   const summary = [post.lede, ...post.paragraphs]
     .filter((nodes): nodes is DigestInline[] => Boolean(nodes))
@@ -193,6 +211,7 @@ function PostBlock({
   const url = post.media[0]?.url ?? sourceLink?.sourceUrl ?? sourceLink?.fetchUrl ?? "#";
   const originalSummary = originalSummariesByUrl[url] ?? null;
   const favoriteState = favoriteStateByUrl[url];
+  const favoriteError = favoriteErrorByUrl[url] ?? "";
   const postCard: PostCardPost = {
     id: `digest-${section.id}-${post.id}`,
     title: post.title,
@@ -225,12 +244,20 @@ function PostBlock({
     <PostCard
       extraActions={
         favoriteState && onFavoriteToggle ? (
-          <PostFavoriteButton
-            isFavorite={Boolean(favoriteState.favoritedAt)}
-            onToggle={() =>
-              onFavoriteToggle(url, favoriteState.feedItemId, !favoriteState.favoritedAt)
-            }
-          />
+          <span className="post-favorite-control">
+            <PostFavoriteButton
+              disabled={pendingFavoriteUrls.has(url)}
+              isFavorite={Boolean(favoriteState.favoritedAt)}
+              onToggle={() =>
+                onFavoriteToggle(url, favoriteState.feedItemId, !favoriteState.favoritedAt)
+              }
+            />
+            {favoriteError ? (
+              <span className="post-favorite-status" role="status">
+                {favoriteError}
+              </span>
+            ) : null}
+          </span>
         ) : undefined
       }
       post={postCard}
