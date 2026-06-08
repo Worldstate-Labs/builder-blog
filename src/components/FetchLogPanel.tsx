@@ -665,7 +665,7 @@ export function FetchLogPanel({
             >
               <Clock3 aria-hidden="true" />
               Fetch log
-              <span className="sr-only">Run history</span>
+              <span className="sr-only">Fetch sources run history</span>
             </button>
           </div>
 

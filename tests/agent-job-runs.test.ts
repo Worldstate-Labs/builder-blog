@@ -103,7 +103,7 @@ test("web status uses scheduled job instances while history can show one-time ru
     assert.match(panel, /Stalled/);
     assert.match(panel, /timed_out|timed out/);
   }
-  assert.match(fetchPanel, /Run history/);
+  assert.match(fetchPanel, /Fetch sources run history/);
   assert.match(digestPanel, /Build log/);
   assert.match(digestPanel, /AI Digest build history/);
   assert.doesNotMatch(digestPanel, /Build history/);
