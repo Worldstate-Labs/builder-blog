@@ -654,6 +654,10 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /headlinePrompt/);
   assert.match(adminDigestConfig, /perSourceSummaryPrompt/);
   assert.match(adminDigestConfig, /label="Per-source summary prompt"[\s\S]*optional/);
+  assert.match(adminDigestConfig, /label="Localized post summary prompt"/);
+  assert.match(adminDigestConfig, /ariaLabel="Localized post summary prompt"/);
+  assert.match(adminDigestConfig, /selected AI Digest language without dropping key points/);
+  assert.doesNotMatch(adminDigestConfig, /label="Translate prompt"|ariaLabel="Translate prompt"/);
   assert.match(adminDigestConfig, /under 300 Chinese characters/);
   assert.match(adminDigestConfig, /under 300 words/);
   assert.match(adminDigestConfig, /Preserve the original summary's key claims/);

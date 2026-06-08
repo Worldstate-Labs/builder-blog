@@ -144,11 +144,11 @@ export function AdminDigestConfigForm({
           />
         </FieldBlock>
         <FieldBlock
-          label="Translate prompt"
-          description="Rewrites or translates existing per-post summaries, then compresses them without dropping key points."
+          label="Localized post summary prompt"
+          description="Rewrites or translates existing per-post summaries into the selected AI Digest language without dropping key points."
         >
           <MarkdownEditor
-            ariaLabel="Translate prompt"
+            ariaLabel="Localized post summary prompt"
             height={340}
             placeholder={TRANSLATE_PROMPT_PLACEHOLDER}
             value={draft.translate}

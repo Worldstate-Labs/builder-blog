@@ -2760,7 +2760,8 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(settingsPage, /canEditQualityGates=\{isAdmin\}/);
   assert.match(settingsPage, /getUserDigestConfig\(userId\)/);
   assert.doesNotMatch(settingsPage, /Source and digest rules/);
-  assert.match(settingsPage, /Fetch sources rules/);
+  assert.match(settingsPage, /Source fetch rules/);
+  assert.doesNotMatch(settingsPage, /Fetch sources rules/);
   assert.match(settingsPage, /AI Digest rules/);
   assert.doesNotMatch(settingsPage, />Digest rules</);
   assert.match(settingsPage, /CommonFetchRulesForm/);
@@ -2793,8 +2794,9 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(digestForm, /\/api\/settings\/digest-config/);
   assert.match(digestForm, /AI Digest prompts/);
   assert.match(digestForm, /selected AI Digest language/);
+  assert.match(digestForm, /Localized post summary prompt/);
   assert.match(digestForm, /Could not save AI Digest prompts\./);
-  assert.doesNotMatch(digestForm, /title="Digest prompts"|selected digest language/);
+  assert.doesNotMatch(digestForm, /title="Digest prompts"|selected digest language|label="Translate prompt"|ariaLabel="Translate prompt"/);
   assert.doesNotMatch(digestForm, /Save failed/);
   assert.doesNotMatch(digestForm, /OrderedChoiceField/);
   assert.doesNotMatch(digestForm, /knownSourceIds/);
