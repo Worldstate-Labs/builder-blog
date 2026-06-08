@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarClock, Check, CircleStop, Copy } from "lucide-react";
+import { CalendarClock, Check, CircleStop, Copy, KeyRound } from "lucide-react";
 import {
   describeAccessDevice,
   describeAccessStatus,
@@ -62,6 +62,7 @@ type SchedulePromptSelection =
 // (no runtime/cadence to pick). Either source flips ?force=1.
 type CopyExtras = { cron: CronConfig | null; force: boolean; fetchDays: number };
 type ManualCopyPrompt = { target: CopyTarget; text: string };
+const missingAccessMessage = "Connect a Local Agent in Settings first";
 
 async function copyTextToClipboard(text: string) {
   try {
@@ -437,7 +438,7 @@ export function SkillPromptActions({
   async function continueCronCopy(cron: CronConfig) {
     const extras: CopyExtras = { cron, force: false, fetchDays: cron.fetchDays };
     if (activeTokens.length === 0) {
-      setStatus({ kind: "info", text: "Connect a Local Agent in Settings first" });
+      setStatus({ kind: "info", text: missingAccessMessage });
       return false;
     }
     if (activeTokens.length === 1) {
@@ -455,7 +456,7 @@ export function SkillPromptActions({
   async function continueOnceCopy(overrideFetched: boolean, fetchDays: number) {
     const extras: CopyExtras = { cron: null, force: overrideFetched, fetchDays };
     if (activeTokens.length === 0) {
-      setStatus({ kind: "info", text: "Connect a Local Agent in Settings first" });
+      setStatus({ kind: "info", text: missingAccessMessage });
       return false;
     }
     if (activeTokens.length === 1) {
@@ -477,7 +478,7 @@ export function SkillPromptActions({
     setStatus(null);
 
     if (activeTokens.length === 0) {
-      setStatus({ kind: "info", text: "Connect a Local Agent in Settings first" });
+      setStatus({ kind: "info", text: missingAccessMessage });
       return;
     }
 
@@ -505,7 +506,7 @@ export function SkillPromptActions({
     if (!stopJob) return;
     setStatus(null);
     if (activeTokens.length === 0) {
-      setStatus({ kind: "info", text: "Connect a Local Agent in Settings first" });
+      setStatus({ kind: "info", text: missingAccessMessage });
       return;
     }
     if (activeTokens.length === 1) {
@@ -556,25 +557,30 @@ export function SkillPromptActions({
         </button>
       ) : null}
 
-      <span aria-live="polite" className="skill-prompt-status">
-        {status ? (
-          status.kind === "info" ? (
-            <span className="skill-prompt-status-text">
-              {status.text}
-              {status.text.includes("Connect a Local Agent") ? (
-                <>
-                  {" "}
-                  <Link className="underline" href="/settings">
-                    Go to Settings
-                  </Link>
-                </>
-              ) : null}
+      {activeTokens.length === 0 ? (
+        <div aria-live="polite" className="skill-prompt-access-required" role="status">
+          <KeyRound aria-hidden="true" className="skill-prompt-access-icon" />
+          <span className="skill-prompt-access-copy">
+            <span className="skill-prompt-access-title">Local Agent access required</span>
+            <span className="skill-prompt-access-body">
+              Add an access key before copying Local Agent prompts.
             </span>
-          ) : (
-            <span className="skill-prompt-status-text is-error">{status.text}</span>
-          )
-        ) : null}
-      </span>
+          </span>
+          <Link className="fb-btn dark compact" href="/settings">
+            Open Settings
+          </Link>
+        </div>
+      ) : (
+        <span aria-live="polite" className="skill-prompt-status">
+          {status ? (
+            status.kind === "info" ? (
+              <span className="skill-prompt-status-text">{status.text}</span>
+            ) : (
+              <span className="skill-prompt-status-text is-error">{status.text}</span>
+            )
+          ) : null}
+        </span>
+      )}
 
       <CronConfigDialog
         open={cronConfigOpen}
