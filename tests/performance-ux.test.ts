@@ -1307,6 +1307,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(builderDetailActions, /className="grid gap-2"|flex flex-wrap items-center gap-3|text-xs text-\[var\(--danger\)\]/);
   assert.match(builderDetailPage, /className="builder-detail-section builder-detail-channels"/);
   assert.match(builderDetailPage, /className="builder-detail-channels-summary"/);
+  assert.doesNotMatch(builderDetailPage, /<details className="builder-detail-section builder-detail-channels" open>/);
+  assert.doesNotMatch(builderDetailLoading, /<details className="builder-detail-section builder-detail-channels" open>/);
   assert.match(builderDetailPage, /<Suspense fallback=\{<ChannelsListSkeleton \/>/);
   assert.match(builderDetailPage, /Source libraries/);
   assert.match(builderDetailPage, /channels\.length === 1 \? "library" : "libraries"/);

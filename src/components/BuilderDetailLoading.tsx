@@ -59,7 +59,7 @@ export function BuilderDetailLoading() {
           </ul>
         </section>
 
-        <details className="builder-detail-section builder-detail-channels" open>
+        <details className="builder-detail-section builder-detail-channels">
           <summary className="builder-detail-channels-summary">
             <span>Source libraries</span>
             <span className="builder-detail-loading-chip" />
