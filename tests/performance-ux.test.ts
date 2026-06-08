@@ -59,6 +59,7 @@ test("primary app navigation keeps route prefetching enabled", () => {
   assert.match(navigation, /value\.startsWith\("\/history"\)[\s\S]*return "\/dashboard\?tab=ai-digest"/);
   assert.match(globals, /\.fb-nav svg\s*{[\s\S]*height:\s*1rem/);
   assert.match(globals, /\.fb-m-tab svg\s*{[\s\S]*height:\s*1\.125rem/);
+  assert.doesNotMatch(globals, /\.(?:nav-link|mobile-header|mobile-tabbar|mobile-tab)\b/);
   assert.doesNotMatch(appNav, /className="h-4 w-4"/);
 });
 
@@ -967,6 +968,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(appShell, /className="app-main"/);
   assert.match(appShell, /<div className="fb-side-rail">/);
   assert.doesNotMatch(appShell, /<aside className="fb-side-rail"|fb-side-rail" aria-label=/);
+  assert.doesNotMatch(globals, /\.(?:nav-link|mobile-header|mobile-tabbar|mobile-tab)\b/);
   assert.match(appShell, /<SearchForm query="" variant="header" \/>/);
   assert.match(searchForm, /name="q"/);
   assert.match(searchForm, /name="mode"/);
