@@ -2118,7 +2118,8 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(buildersPage, /role="tabpanel"/);
   assert.match(buildersPage, /function selectedSourcesTabItem/);
   assert.match(buildersPage, /const showStopDigestCron = data\.digestCronJob\?\.status === "active"/);
-  assert.match(buildersPage, /Your AI Digest archive/);
+  assert.match(buildersPage, /Your AI Digest collection/);
+  assert.doesNotMatch(buildersPage, /Your AI Digest archive/);
   assert.doesNotMatch(buildersPage, />\s*Your AI Digest\s*<\/h2>/);
   assert.match(buildersPage, /<section className="your-digest-section"/);
   assert.match(buildersPage, /<OwnDigestPipelineUpdatesCard/);
