@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { AdminDigestConfigForm } from "@/components/AdminDigestConfigForm";
 import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
 import { AgentTokenPanel } from "@/components/AgentTokenPanel";
+import { AgentTokenPanelSkeleton } from "@/components/AgentTokenPanelSkeleton";
 import { CountMeta } from "@/components/Count";
 import { PageHeader } from "@/components/PageHeader";
 import { SettingsRulesSkeleton } from "@/components/SettingsRulesSkeleton";
@@ -169,31 +170,4 @@ async function AgentTokenSlot({ userId }: { userId: string }) {
     revokedAt: token.revokedAt?.toISOString() ?? null,
   }));
   return <AgentTokenPanel initialTokens={serializedTokens} />;
-}
-
-function AgentTokenPanelSkeleton() {
-  return (
-    <section className="access-keys-panel" aria-busy="true" aria-live="polite">
-      <span className="sr-only">Loading Local Agent access</span>
-      <div className="access-keys-head">
-        <div className="access-keys-skeleton-copy">
-          <div className="settings-skeleton-line settings-skeleton-line--access-title" />
-          <div className="settings-skeleton-line settings-skeleton-line--access-desc" />
-        </div>
-        <div className="settings-skeleton-pill" />
-      </div>
-      <div className="access-keys-list access-keys-list--skeleton">
-        {[0, 1, 2].map((item) => (
-          <div className="access-key-card access-key-card--skeleton" key={item}>
-            <span className="access-key-skeleton-icon" />
-            <span className="access-keys-skeleton-copy">
-              <span className="settings-skeleton-line settings-skeleton-line--device-title" />
-              <span className="settings-skeleton-line settings-skeleton-line--device-status" />
-            </span>
-            <span className="settings-skeleton-pill access-key-skeleton-pill" />
-          </div>
-        ))}
-      </div>
-    </section>
-  );
 }
