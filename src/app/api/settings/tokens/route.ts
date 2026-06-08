@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  const name = parsed.data.name ?? "Manual web token";
+  const name = parsed.data.name ?? "Local Agent access";
 
   const { token, record } = await createAgentToken(session.user.id, name);
 

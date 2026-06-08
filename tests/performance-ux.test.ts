@@ -4517,6 +4517,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(digestMaxAgeRoute, /redirect\(/);
   assert.match(tokensRoute, /export async function POST/);
   assert.match(tokensRoute, /createAgentToken/);
+  assert.match(tokensRoute, /parsed\.data\.name \?\? "Local Agent access"/);
+  assert.doesNotMatch(tokensRoute, /Manual web token/);
   assert.doesNotMatch(tokensRoute, /redirect\(/);
   assert.match(exchangeRoute, /prisma\.agentToken\.update/);
   assert.match(exchangeRoute, /lastUsedAt:\s*new Date\(\)/);
