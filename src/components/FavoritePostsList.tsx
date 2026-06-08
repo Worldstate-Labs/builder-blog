@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { PostCard, type PostCardPost } from "@/components/PostCard";
 import { PostFavoriteButton } from "@/components/PostFavoriteButton";
@@ -65,7 +66,7 @@ export function FavoritePostsList({
           </p>
         </div>
         <span className="favorites-feed-count">
-          {items.length} {items.length === 1 ? "post" : "posts"}
+          {formatCount(items.length)} {items.length === 1 ? "post" : "posts"}
         </span>
       </div>
       <div className="favorites-feed-list">

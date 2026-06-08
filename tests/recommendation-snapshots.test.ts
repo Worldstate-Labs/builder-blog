@@ -97,6 +97,8 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(favoriteSection, /feedRead\.findMany/);
   assert.match(favoriteList, /Saved posts/);
   assert.match(favoriteList, /Posts you saved for deeper reading/);
+  assert.match(favoriteList, /@\/components\/Count/);
+  assert.match(favoriteList, /formatCount\(items\.length\)/);
   assert.match(favoriteList, /Open AI Digest/);
   assert.match(favoriteList, /href="\/dashboard"/);
   assert.match(favoriteList, /Open Following/);
