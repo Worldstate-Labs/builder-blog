@@ -159,7 +159,7 @@ async function DigestSourcesSection({
         <div className="library-hub-toolbar">
           <div className="library-hub-toolbar-copy">
             <h2 id="sources-digest-section-title" className="fb-section-heading">
-              Your AI Digest
+              Your AI Digest archive
             </h2>
           </div>
           <DigestPipelineVisibilityToggle initialShared={data.ownPipelineShared} />
