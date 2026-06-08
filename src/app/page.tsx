@@ -33,7 +33,7 @@ export default async function Home() {
           <p className="fb-public-copy">
             Follow blogs, newsletters, channels, feeds, GitHub Trending,
             and Product Hunt. Your Local Agent fetches updates, summarizes
-            posts, builds cited AI Digests, and syncs them back to FollowBrief.
+            posts, builds a cited AI Digest, and syncs it back to FollowBrief.
           </p>
           <div className="fb-public-actions">
             <Link className="fb-btn dark" href="/login">
@@ -132,7 +132,7 @@ export default async function Home() {
         <div className="fb-public-section-kicker-row">
           <span className="fb-section-label">Workflow</span>
           <span className="fb-public-section-note">
-            Built around the loop of following, reading AI Digests, and returning to sources later.
+            Built around the loop of following sources, reading AI Digest, and returning to sources later.
           </span>
         </div>
         <ol className="fb-public-step-list">
