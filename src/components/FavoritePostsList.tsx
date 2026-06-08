@@ -116,7 +116,6 @@ export function FavoritePostsList({
               ...item.post,
               detailUrl: postDetailHref(item.feedItemId, "/dashboard?tab=favorites", "Favorites"),
             }}
-            showSourceBadge={false}
           />
         ))}
       </div>

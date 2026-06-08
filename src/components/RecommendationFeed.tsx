@@ -256,7 +256,6 @@ function RecommendationCard({
       }}
       reasons={showAdminActions ? entry.reasons : undefined}
       showDebugActions={showAdminActions}
-      showSourceBadge={false}
       stackActionsOnMobile={showAdminActions}
     />
   );

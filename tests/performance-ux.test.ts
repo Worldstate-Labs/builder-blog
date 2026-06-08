@@ -1555,6 +1555,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(favoriteList, /sortFavoriteItems\(\[\.\.\.current, removedItem\]\)/);
   assert.match(favoriteList, /className="favorites-feed-error" role="status"/);
   assert.match(favoriteList, /Could not remove favorite\. The post is still saved\./);
+  assert.doesNotMatch(favoriteList, /showSourceBadge=\{false\}/);
   assert.doesNotMatch(favoriteList, /setItems\(previousItems\)/);
   assert.match(globals, /\.favorites-feed-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(dashboardPage, /<FollowingRecommendationSection[\s\S]*isAdmin=\{isAdmin\}[\s\S]*sourceReadiness=\{sourceReadiness\}/);
@@ -1593,6 +1594,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(recommendationFeed, /reasons=\{showAdminActions \? entry\.reasons : undefined\}/);
   assert.match(recommendationFeed, /showDebugActions=\{showAdminActions\}/);
   assert.match(recommendationFeed, /stackActionsOnMobile=\{showAdminActions\}/);
+  assert.doesNotMatch(recommendationFeed, /showSourceBadge=\{false\}/);
   assert.match(recommendationFeed, /feed-content-stack recommendation-feed/);
   assert.match(recommendationFeed, /className="recommendation-feed-actions"/);
   assert.match(recommendationFeed, /className="recommendation-snapshot-list"/);
