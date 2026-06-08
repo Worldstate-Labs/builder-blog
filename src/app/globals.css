@@ -10781,25 +10781,28 @@ a.fb-hub-source-name:focus-visible {
   color: var(--muted-strong);
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem;
+  gap: 0.625rem;
   margin-top: 1.75rem;
   max-width: var(--public-copy-max);
 }
 
 .fb-public-flow-step {
   align-items: center;
+  background: color-mix(in oklch, var(--rail) 54%, transparent);
+  border: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
+  border-radius: 999px;
   color: var(--muted-strong);
   display: inline-flex;
   font-size: 0.625rem;
   font-weight: 800;
   letter-spacing: 0.12em;
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
   text-transform: uppercase;
 }
 
 .fb-public-flow-step + .fb-public-flow-step::before {
-  color: color-mix(in oklch, var(--muted) 70%, transparent);
-  content: "/";
-  margin-right: 0.6rem;
+  content: none;
 }
 
 .fb-public-step-list {
@@ -10917,18 +10920,18 @@ a.fb-hub-source-name:focus-visible {
   }
 
   .fb-public-flow {
+    display: grid;
     gap: 0.5rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .fb-public-flow-step {
-    background: color-mix(in oklch, var(--rail) 54%, transparent);
-    border: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
-    border-radius: 999px;
-    padding: 0.28rem 0.48rem;
+    justify-content: center;
+    min-width: 0;
   }
 
-  .fb-public-flow-step + .fb-public-flow-step::before {
-    content: none;
+  .fb-public-flow-step:last-child {
+    grid-column: 1 / -1;
   }
 
   .fb-public-section-kicker-row {

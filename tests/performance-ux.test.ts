@@ -588,8 +588,11 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.fb-demo-pulse,[\s\S]*\.fb-demo-line::after\s*{[\s\S]*transform:\s*none/);
   assert.match(globals, /\.fb-public-workspace\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*0\.9fr\) minmax\(0,\s*1\.1fr\)/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-public-feature-grid\s*{[\s\S]*grid-template-columns:\s*1fr/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-public-flow-step\s*{[\s\S]*border-radius:\s*999px/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-public-flow-step \+ \.fb-public-flow-step::before\s*{[\s\S]*content:\s*none/);
+  assert.match(globals, /\.fb-public-flow-step\s*{[\s\S]*border-radius:\s*999px/);
+  assert.match(globals, /\.fb-public-flow-step \+ \.fb-public-flow-step::before\s*{[\s\S]*content:\s*none/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-public-flow\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-public-flow\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-public-flow-step:last-child\s*{[\s\S]*grid-column:\s*1 \/ -1/);
   assert.match(globals, /\.fb-login-nav\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
   assert.match(globals, /\.fb-login-nav\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /\.fb-dark-frame\s*{[\s\S]*background:\s*var\(--paper\)/);
@@ -624,7 +627,7 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(globals, /\.fb-login-proof-grid|\.fb-dark-proof/);
   assert.match(globals, /\.fb-public-copy\s*{[\s\S]*max-width:\s*var\(--public-copy-max\)/);
   assert.match(globals, /\.fb-public-flow\s*{[\s\S]*display:\s*flex/);
-  assert.match(globals, /\.fb-public-flow-step \+ \.fb-public-flow-step::before\s*{[\s\S]*content:\s*"\/"/);
+  assert.doesNotMatch(globals, /\.fb-public-flow-step \+ \.fb-public-flow-step::before\s*{[\s\S]*content:\s*"\/"/);
   assert.match(globals, /\.fb-chip\s*{[\s\S]*white-space:\s*nowrap/);
   assert.match(globals, /\.fb-public-step-list\s*{[\s\S]*list-style:\s*none/);
   assert.match(globals, /\.fb-public-step-row\s*{[\s\S]*grid-template-columns:\s*2\.5rem minmax\(0,\s*1fr\)/);
