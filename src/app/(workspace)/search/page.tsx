@@ -59,7 +59,7 @@ const defaultSuggestions = [
   "open source models",
   "founder essays",
   "product launch",
-  "AI Digest archives",
+  "agent memory",
   "podcast transcript",
   "research notes",
   "tool benchmarks",

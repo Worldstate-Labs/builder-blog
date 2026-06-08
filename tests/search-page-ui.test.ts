@@ -1,0 +1,21 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import test from "node:test";
+
+const root = process.cwd();
+
+function source(path: string) {
+  return readFileSync(join(root, path), "utf8");
+}
+
+test("search suggestions stay query-like instead of repeating result type labels", () => {
+  const searchPage = source("src/app/(workspace)/search/page.tsx");
+  const defaultSuggestionBlock = searchPage.match(
+    /const defaultSuggestions = \[([\s\S]*?)\];/,
+  )?.[1] ?? "";
+
+  assert.match(defaultSuggestionBlock, /"agent memory"/);
+  assert.doesNotMatch(defaultSuggestionBlock, /"AI Digest archives"/);
+  assert.match(searchPage, /digest:\s*"AI Digest archives"/);
+});
