@@ -70,7 +70,8 @@ async function SourceTypeConfigSection({
           <div className="settings-rules-summary-copy">
             <h3 className="fb-section-heading">Source fetch rules</h3>
             <p className="settings-rules-summary-desc">
-              Fetch, filter, and write per-post summaries.
+              Runs before AI Digest: discover source posts, filter candidates, and
+              write per-post summaries.
             </p>
           </div>
           <span className="settings-rules-summary-meta source-summary-line">
@@ -118,7 +119,8 @@ async function SourceTypeConfigSection({
           <div className="settings-rules-summary-copy">
             <h3 className="fb-section-heading">AI Digest rules</h3>
             <p className="settings-rules-summary-desc">
-              Write AI Digest headlines, source notes, and localized post summaries.
+              Runs after per-post summaries: write the digest headline, source notes,
+              and localized post summaries.
             </p>
           </div>
           <span className="settings-rules-summary-meta source-summary-line">
