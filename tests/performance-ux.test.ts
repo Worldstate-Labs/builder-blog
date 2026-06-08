@@ -2901,6 +2901,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   const recommendations = source("src/lib/recommendations.ts");
   const navigation = source("src/lib/navigation.ts");
   const postDetailPage = source("src/components/PostDetailPage.tsx");
+  const postDetailFavoriteControl = source("src/components/PostDetailFavoriteControl.tsx");
   const legacyRecommendationItemPage = source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx");
   const postCard = source("src/components/PostCard.tsx");
   const globals = source("src/app/globals.css");
@@ -3291,7 +3292,18 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   const favoriteButton = source("src/components/PostFavoriteButton.tsx");
   assert.match(recommendationFeed, /PostFavoriteButton/);
   assert.match(digestContent, /PostFavoriteButton/);
+  assert.match(postDetailPage, /@\/components\/PostDetailFavoriteControl/);
+  assert.match(postDetailPage, /prisma\.feedFavorite\.findUnique/);
+  assert.match(postDetailPage, /const canFavorite = poolBuilderIds\.includes\(item\.builderId\)/);
+  assert.match(postDetailPage, /extraActions=\{/);
+  assert.match(postDetailPage, /<PostDetailFavoriteControl[\s\S]*feedItemId=\{item\.id\}[\s\S]*initialIsFavorite=\{Boolean\(favorite\)\}/);
+  assert.match(postDetailFavoriteControl, /"use client"/);
+  assert.match(postDetailFavoriteControl, /PostFavoriteButton/);
+  assert.match(postDetailFavoriteControl, /fetch\("\/api\/favorites"/);
+  assert.match(postDetailFavoriteControl, /method: nextFavorite \? "POST" : "DELETE"/);
+  assert.match(postDetailFavoriteControl, /disabled=\{isPending\}/);
   assert.match(favoriteButton, /aria-label=\{label\}/);
+  assert.match(favoriteButton, /disabled=\{disabled\}/);
   assert.match(favoriteButton, /const label = isFavorite \? "Remove saved post" : "Save post"/);
   assert.match(favoriteButton, /<Star aria-hidden="true" className="post-action-icon"/);
   assert.match(digestContent, /@\/lib\/navigation/);
@@ -3366,7 +3378,6 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postDetailPage, /avatarUrl:\s*item\.builder\.avatarUrl/);
   assert.match(postDetailPage, /return \{ href: "\/dashboard\?tab=following", label: "Following" \}/);
   assert.doesNotMatch(postDetailPage, /Back to feed/);
-  assert.doesNotMatch(postDetailPage, /extraActions=/);
   assert.match(legacyRecommendationItemPage, /permanentRedirect\(`\/posts\/\$\{feedItemId\}\$\{suffix\}`\)/);
   assert.match(globals, /\.reading-page\s*{[\s\S]*width:\s*min\(100%,\s*var\(--reading-max\)\)/);
   assert.match(globals, /\.reading-page-toolbar\s*{[\s\S]*display:\s*grid/);

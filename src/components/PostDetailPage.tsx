@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { PostCard } from "@/components/PostCard";
+import { PostDetailFavoriteControl } from "@/components/PostDetailFavoriteControl";
 import { SourceBadge } from "@/components/SourceBadge";
 import { getCurrentSession } from "@/lib/auth";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
@@ -37,6 +38,7 @@ export async function PostDetailPage({
     poolBuilderIds.includes(item.builderId) ||
     hubItems.some((hubItem) => hubItem.builderId === item.builderId);
   if (!canRead) notFound();
+  const canFavorite = poolBuilderIds.includes(item.builderId);
 
   if (!item.builder?.entityId) notFound();
   const entityId = item.builder.entityId;
@@ -50,15 +52,30 @@ export async function PostDetailPage({
         fetchUrl: item.builder.fetchUrl,
       }
     : null;
-  const existing = await prisma.feedRead.findFirst({
-    where: {
-      userId: session.user.id,
-      entityId,
-      kind: item.kind,
-      externalId: item.externalId,
-    },
-    select: { id: true },
-  });
+  const [existing, favorite] = await Promise.all([
+    prisma.feedRead.findFirst({
+      where: {
+        userId: session.user.id,
+        entityId,
+        kind: item.kind,
+        externalId: item.externalId,
+      },
+      select: { id: true },
+    }),
+    canFavorite
+      ? prisma.feedFavorite.findUnique({
+          where: {
+            userId_entityId_kind_externalId: {
+              userId: session.user.id,
+              entityId,
+              kind: item.kind,
+              externalId: item.externalId,
+            },
+          },
+          select: { id: true },
+        })
+      : null,
+  ]);
   const readData = {
     userId: session.user.id,
     feedItemId: item.id,
@@ -95,6 +112,14 @@ export async function PostDetailPage({
 
       <PostCard
         dataRead={true}
+        extraActions={
+          canFavorite ? (
+            <PostDetailFavoriteControl
+              feedItemId={item.id}
+              initialIsFavorite={Boolean(favorite)}
+            />
+          ) : undefined
+        }
         post={{
           id: item.id,
           title: item.title,

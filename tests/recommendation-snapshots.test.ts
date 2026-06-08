@@ -76,6 +76,8 @@ test("favorites saves posts into a focused reading tab", () => {
   const favoriteSection = source("src/components/FavoritePostsSection.tsx");
   const favoriteList = source("src/components/FavoritePostsList.tsx");
   const favoriteButton = source("src/components/PostFavoriteButton.tsx");
+  const postDetailPage = source("src/components/PostDetailPage.tsx");
+  const postDetailFavoriteControl = source("src/components/PostDetailFavoriteControl.tsx");
   const digestRoute = source("src/app/api/digests/[digestId]/route.ts");
   const digestDetails = source("src/components/DigestDetails.tsx");
   const digestContent = source("src/components/DigestContent.tsx");
@@ -106,7 +108,15 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(favoriteButton, /const label = isFavorite \? "Remove saved post" : "Save post"/);
   assert.match(favoriteButton, /title=\{label\}/);
   assert.match(favoriteButton, /className="post-action-icon"/);
+  assert.match(favoriteButton, /disabled=\{disabled\}/);
   assert.match(feed, /PostFavoriteButton/);
+  assert.match(postDetailPage, /PostDetailFavoriteControl/);
+  assert.match(postDetailPage, /prisma\.feedFavorite\.findUnique/);
+  assert.match(postDetailPage, /const canFavorite = poolBuilderIds\.includes\(item\.builderId\)/);
+  assert.match(postDetailPage, /initialIsFavorite=\{Boolean\(favorite\)\}/);
+  assert.match(postDetailFavoriteControl, /PostFavoriteButton/);
+  assert.match(postDetailFavoriteControl, /fetch\("\/api\/favorites"/);
+  assert.match(postDetailFavoriteControl, /method: nextFavorite \? "POST" : "DELETE"/);
   assert.match(digestRoute, /favoriteStateByUrl/);
   assert.match(digestRoute, /activePoolBuilderIds/);
   assert.match(digestRoute, /feedFavorite\.findMany/);

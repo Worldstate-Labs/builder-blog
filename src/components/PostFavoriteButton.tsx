@@ -3,9 +3,11 @@
 import { Star } from "lucide-react";
 
 export function PostFavoriteButton({
+  disabled = false,
   isFavorite,
   onToggle,
 }: {
+  disabled?: boolean;
   isFavorite: boolean;
   onToggle: () => void;
 }) {
@@ -15,6 +17,7 @@ export function PostFavoriteButton({
       aria-label={label}
       aria-pressed={isFavorite}
       className={`post-action-btn post-favorite-btn${isFavorite ? " post-action-btn--active" : ""}`}
+      disabled={disabled}
       onClick={onToggle}
       title={label}
       type="button"
