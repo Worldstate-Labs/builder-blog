@@ -186,6 +186,11 @@ export default async function Home() {
             copy="Home stays focused on readable AI Digests, not raw feed noise."
           />
           <Feature
+            icon={Radio}
+            title="Following posts"
+            copy="Unread posts from followed sources stay separate from the AI Digest."
+          />
+          <Feature
             icon={Search}
             title="Workspace search"
             copy="Sources, posts, and AI Digest archives share one search surface."
