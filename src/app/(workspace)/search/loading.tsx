@@ -36,7 +36,7 @@ export default function SearchLoading() {
             className="fb-segmented-tabs filter-tabs search-loading-tabs"
             role="tablist"
           >
-            <span className="fb-btn compact search-loading-tab is-active">All</span>
+            <span className="fb-btn compact search-loading-tab">All</span>
             <span className="fb-btn compact search-loading-tab">Sources</span>
             <span className="fb-btn compact search-loading-tab">Posts</span>
             <span className="fb-btn compact search-loading-tab">AI Digest archives</span>

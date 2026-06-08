@@ -12,42 +12,24 @@ export default function DashboardLoading() {
             aria-label="Home feed tabs"
             className="workspace-top-tabs fb-segmented-tabs home-loading-tabs"
           >
-            <span className="fb-btn home-loading-tab is-active">AI Digest</span>
+            <span className="fb-btn home-loading-tab">AI Digest</span>
             <span className="fb-btn home-loading-tab">Following</span>
           </div>
         </div>
 
-        <section className="home-tab-panel">
-          <div className="ai-digest-stack">
-            <section
-              aria-label="Loading AI Digest selection"
-              className="digest-control-bar home-loading-control"
-            >
-              <div className="digest-control-field">
-                <span className="digest-control-label">AI Digest</span>
-                <span className="home-loading-field" />
-              </div>
-              <div className="digest-control-field">
-                <span className="digest-control-label">AI Digest archive</span>
-                <span className="home-loading-field" />
-              </div>
-            </section>
-
-            <section className="ai-digest-panel">
-              <div className="ai-digest-body">
-                <div className="home-loading-digest-card">
-                  <span className="home-loading-line is-kicker" />
-                  <span className="home-loading-line is-title" />
-                  <span className="home-loading-line" />
-                  <span className="home-loading-line is-short" />
-                </div>
-                <div className="home-loading-post-list">
-                  {[0, 1, 2].map((index) => (
-                    <span className="home-loading-post-row" key={index} />
-                  ))}
-                </div>
-              </div>
-            </section>
+        <section className="home-tab-panel" aria-label="Loading Home content">
+          <div className="ai-digest-body" aria-hidden="true">
+            <div className="home-loading-digest-card">
+              <span className="home-loading-line is-kicker" />
+              <span className="home-loading-line is-title" />
+              <span className="home-loading-line" />
+              <span className="home-loading-line is-short" />
+            </div>
+            <div className="home-loading-post-list">
+              {[0, 1, 2].map((index) => (
+                <span className="home-loading-post-row" key={index} />
+              ))}
+            </div>
           </div>
         </section>
       </section>
