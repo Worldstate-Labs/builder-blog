@@ -225,7 +225,12 @@ export default async function BuilderDetailPage({ params }: Params) {
         <section className="builder-detail-section">
           <h2 className="fb-section-title">Recent posts</h2>
           <Suspense fallback={<RecentPostsSkeleton />}>
-            <RecentPostsSlot userId={userId} entityId={entityId} channels={channels} />
+            <RecentPostsSlot
+              userId={userId}
+              entityId={entityId}
+              sourceName={entity.name}
+              channels={channels}
+            />
           </Suspense>
         </section>
 
@@ -237,6 +242,7 @@ export default async function BuilderDetailPage({ params }: Params) {
           <Suspense fallback={<ChannelsListSkeleton />}>
             <ChannelsListSlot
               entityId={entityId}
+              sourceName={entity.name}
               userId={userId}
               channels={channels}
             />
@@ -305,10 +311,12 @@ function BuilderActionsSkeleton() {
 
 async function ChannelsListSlot({
   entityId,
+  sourceName,
   userId,
   channels,
 }: {
   entityId: string;
+  sourceName: string;
   userId: string;
   channels: ChannelInfo[];
 }) {
@@ -333,7 +341,7 @@ async function ChannelsListSlot({
             </div>
             {channel.sourceUrl ? (
               <a
-                aria-label={`View ${channel.libraryName} source site`}
+                aria-label={`View ${sourceName} source site`}
                 className="builder-detail-channel-link"
                 href={channel.sourceUrl}
                 rel="noreferrer"
@@ -363,10 +371,12 @@ async function ChannelsListSlot({
 async function RecentPostsSlot({
   userId,
   entityId,
+  sourceName,
   channels,
 }: {
   userId: string;
   entityId: string;
+  sourceName: string;
   channels: ChannelInfo[];
 }) {
   const [items, readKeySet] = await Promise.all([
@@ -430,7 +440,7 @@ async function RecentPostsSlot({
       items={listItems}
       readKeys={[...readKeySet]}
       returnHref={`/builder/${entityId}`}
-      returnLabel="Sources"
+      returnLabel={sourceName}
     />
   );
 }

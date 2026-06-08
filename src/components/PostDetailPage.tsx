@@ -132,7 +132,7 @@ function resolvePostBackLink(params: {
   if (isSafeInternalReturnTo(returnTo)) {
     return {
       href: returnTo,
-      label: safeReturnLabel(firstParam(params.returnLabel)),
+      label: safeReturnLabel(firstParam(params.returnLabel), returnTo),
     };
   }
 
@@ -147,7 +147,7 @@ function isSafeInternalReturnTo(value: string) {
   return value.startsWith("/") && !value.startsWith("//") && !value.startsWith("/api/");
 }
 
-function safeReturnLabel(value: string) {
+function safeReturnLabel(value: string, returnTo: string) {
   switch (value) {
     case "AI Digest":
     case "Following":
@@ -157,6 +157,16 @@ function safeReturnLabel(value: string) {
     case "Source":
       return "Sources";
     default:
+      if (returnTo.startsWith("/builder/")) {
+        const sourceLabel = cleanDynamicReturnLabel(value);
+        if (sourceLabel) return sourceLabel;
+      }
       return "Back";
   }
+}
+
+function cleanDynamicReturnLabel(value: string) {
+  const label = value.trim().replace(/\s+/g, " ");
+  if (!label || label.length > 80) return null;
+  return label;
 }

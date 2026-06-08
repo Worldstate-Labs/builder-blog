@@ -1034,7 +1034,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /latest at \{dateFormatter\.format\(lastFetchedMax\)\}/);
   assert.doesNotMatch(builderDetailPage, /Last summarized/);
   assert.match(builderDetailPage, /aria-label=\{`View \$\{entity\.name\} source site`\}/);
-  assert.match(builderDetailPage, /aria-label=\{`View \$\{channel\.libraryName\} source site`\}/);
+  assert.match(builderDetailPage, /aria-label=\{`View \$\{sourceName\} source site`\}/);
+  assert.doesNotMatch(builderDetailPage, /aria-label=\{`View \$\{channel\.libraryName\} source site`\}/);
   assert.match(builderDetailPage, /title="View source site"/);
   assert.match(builderDetailPage, />\s*View source site\s*<\/a>/);
   assert.doesNotMatch(builderDetailPage, /Open source/);
@@ -3060,6 +3061,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postDetailPage, /returnTo/);
   assert.match(postDetailPage, /isSafeInternalReturnTo/);
   assert.match(postDetailPage, /safeReturnLabel/);
+  assert.match(postDetailPage, /safeReturnLabel\(firstParam\(params\.returnLabel\), returnTo\)/);
+  assert.match(postDetailPage, /returnTo\.startsWith\("\/builder\/"\)/);
+  assert.match(postDetailPage, /cleanDynamicReturnLabel/);
   assert.match(postDetailPage, /case "Sources"/);
   assert.match(postDetailPage, /case "Source":[\s\S]*return "Sources"/);
   assert.match(postDetailPage, /case "AI Digest"/);
@@ -3093,8 +3097,11 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(source("src/lib/builder-channel-resolver.ts"), /kind:\s*true/);
   assert.match(builderDetailPage, /kind:\s*item\.builder\.kind/);
   assert.doesNotMatch(builderDetailPage, /kind:\s*item\.builder\.sourceType as/);
+  assert.match(builderDetailPage, /sourceName=\{entity\.name\}/);
+  assert.match(builderDetailPage, /aria-label=\{`View \$\{sourceName\} source site`\}/);
   assert.match(builderDetailPage, /returnHref=\{`\/builder\/\$\{entityId\}`\}/);
-  assert.match(builderDetailPage, /returnLabel="Sources"/);
+  assert.match(builderDetailPage, /returnLabel=\{sourceName\}/);
+  assert.doesNotMatch(builderDetailPage, /returnLabel="Sources"/);
   assert.doesNotMatch(builderDetailPage, /returnLabel="Source"/);
   assert.match(recentPostsList, /detailUrl:\s*postDetailHref\(item\.id, returnHref, returnLabel\)/);
   assert.match(digestContent, /detailUrl:\s*favoriteState[\s\S]*postDetailHref\(favoriteState\.feedItemId, "\/dashboard\?tab=ai-digest", "AI Digest"\)/);
