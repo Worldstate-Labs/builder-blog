@@ -2007,7 +2007,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /sourceUrl: result\.sourceUrl \?\? result\.externalUrl \?\? null/);
   assert.match(searchPage, /result\.type === "feed" && result\.favoritedAt/);
   assert.match(searchPage, /className="search-result-saved"/);
-  assert.match(searchPage, />Saved<\/span>/);
+  assert.match(searchPage, />Saved post<\/span>/);
+  assert.doesNotMatch(searchPage, />Saved<\/span>/);
   assert.match(searchPage, /aria-current=\{pageNumber === currentPage \? "page" : undefined\}/);
   assert.match(searchPage, /<span aria-disabled="true" className="search-page-link search-page-link-disabled">/);
   assert.doesNotMatch(searchPage, /sourceName\.slice\(0,\s*1\)\.toUpperCase\(\)/);
