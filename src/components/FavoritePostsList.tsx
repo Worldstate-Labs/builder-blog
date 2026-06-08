@@ -51,7 +51,7 @@ export function FavoritePostsList({
         }
         className="favorites-empty feed-state-panel is-actionable"
         title="No saved posts yet"
-        body="Save posts from AI Digest or Following to keep a focused reading queue here."
+        body="Save any post to keep a focused reading queue here."
       />
     );
   }
