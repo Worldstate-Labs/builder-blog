@@ -2859,7 +2859,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /emptyBody="This imported library has no active sources available right now\."/);
   assert.doesNotMatch(buildersPage, /No active sources from this imported library\./);
   assert.match(buildersPage, /title="No imported source libraries"/);
-  assert.match(buildersPage, /body="Import source libraries shared by other users from Hub\."/);
+  assert.match(buildersPage, /body="Import source libraries built and shared by other users from Hub\."/);
   assert.doesNotMatch(buildersPage, /No imported source libraries yet\./);
   assert.match(buildersPage, /href="\/library-hub\?tab=source-library"/);
   assert.match(buildersPage, /Import from Hub/);
@@ -2908,8 +2908,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /timeZone:\s*"UTC"/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported source libraries/);
-  assert.match(buildersPage, /Source libraries you imported into Sources\./);
-  assert.doesNotMatch(buildersPage, /Imported source libraries[\s\S]*Source libraries built and shared by other users\./);
+  assert.match(buildersPage, /Source libraries built and shared by other users, now available in your Sources\./);
+  assert.doesNotMatch(buildersPage, /Source libraries you imported into Sources\./);
   assert.match(buildersPage, /importedLibrarySections/);
   assert.match(buildersPage, /className="imported-libraries-section"/);
   assert.match(buildersPage, /className="imported-libraries-head"/);

@@ -721,7 +721,7 @@ async function FetchSourcesSection({
         <div className="imported-libraries-copy">
           <h2 className="fb-section-heading">Imported source libraries</h2>
           <p className="library-section-copy">
-            Source libraries you imported into Sources.
+            Source libraries built and shared by other users, now available in your Sources.
           </p>
         </div>
         {data.importedLibrarySections.length > 0 ? (
@@ -768,7 +768,7 @@ async function FetchSourcesSection({
                 Import from Hub
               </Link>
             }
-            body="Import source libraries shared by other users from Hub."
+            body="Import source libraries built and shared by other users from Hub."
             title="No imported source libraries"
           />
         ) : null}
