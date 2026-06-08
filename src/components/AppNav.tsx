@@ -3,18 +3,18 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { ComponentType, CSSProperties } from "react";
-import { Home, LibraryBig, UsersRound } from "lucide-react";
+import { Home, LibraryBig, Rss } from "lucide-react";
 import { postReturnToFromPath } from "@/lib/navigation";
 
 export type AppNavItem = {
   href: string;
   label: string;
-  icon: "home" | "builders" | "hub";
+  icon: "home" | "sources" | "hub";
 };
 
 const icons: Record<AppNavItem["icon"], ComponentType<{ className?: string }>> = {
   home: Home,
-  builders: UsersRound,
+  sources: Rss,
   hub: LibraryBig,
 };
 

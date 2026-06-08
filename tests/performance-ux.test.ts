@@ -952,7 +952,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(appNav, /const returnTo = postReturnToFromPath\(pathname, searchParams\.get\("returnTo"\)\)/);
   assert.doesNotMatch(appNav, /returnTo\.startsWith\("\/recommendations"\)/);
   assert.match(appNav, /pathname\.startsWith\("\/builder\/"\)/);
-  assert.match(appNav, /icon: "home" \| "builders" \| "hub"/);
+  assert.match(appNav, /icon: "home" \| "sources" \| "hub"/);
+  assert.match(appNav, /import \{ Home, LibraryBig, Rss \} from "lucide-react"/);
+  assert.match(appNav, /sources: Rss/);
+  assert.doesNotMatch(appNav, /UsersRound|builders: UsersRound/);
   assert.doesNotMatch(appNav, /Archive|Settings,|Search,|archive:|search:|settings:|className="h-4 w-4"/);
   assert.match(appShell, /className="fb-top"/);
   assert.match(appShell, /className="fb-top-inner"/);
