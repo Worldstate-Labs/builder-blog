@@ -51,6 +51,8 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.match(postDetailPage, /href:\s*"\/dashboard\?tab=following"/);
   assert.match(postDetailPage, /returnLabel/);
   assert.match(postDetailPage, /returnTo/);
+  assert.match(postDetailPage, /normalizeLegacyReturnTo/);
+  assert.match(postDetailPage, /value\.startsWith\("\/recommendations"\)[\s\S]*"\/dashboard\?tab=following"/);
   assert.match(postDetailPage, /isSafeInternalReturnTo/);
   assert.match(postDetailPage, /feedRead\.create/);
   assert.match(postDetailPage, /avatarUrl:\s*item\.builder\.avatarUrl/);

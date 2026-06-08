@@ -128,7 +128,7 @@ function resolvePostBackLink(params: {
   returnLabel?: string | string[];
   returnTo?: string | string[];
 }) {
-  const returnTo = firstParam(params.returnTo);
+  const returnTo = normalizeLegacyReturnTo(firstParam(params.returnTo));
   if (isSafeInternalReturnTo(returnTo)) {
     return {
       href: returnTo,
@@ -141,6 +141,12 @@ function resolvePostBackLink(params: {
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function normalizeLegacyReturnTo(value: string) {
+  if (value.startsWith("/recommendations")) return "/dashboard?tab=following";
+  if (value.startsWith("/history")) return "/dashboard?tab=ai-digest";
+  return value;
 }
 
 function isSafeInternalReturnTo(value: string) {
