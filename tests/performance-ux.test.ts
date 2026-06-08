@@ -979,7 +979,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /onKeyDown=\{handleTabKeyDown\}/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /"ArrowLeft", "ArrowRight", "Home", "End"/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /tabIndex:\s*selected \? 0 : -1/);
-  assert.match(source("src/components/WorkspaceTopTabs.tsx"), /aria-current=\{selected \? "page" : undefined\}/);
+  assert.match(source("src/components/WorkspaceTopTabs.tsx"), /"aria-selected": selected/);
+  assert.doesNotMatch(source("src/components/WorkspaceTopTabs.tsx"), /aria-current=\{selected \? "page" : undefined\}/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /querySelectorAll<HTMLElement>\('\[role="tab"\]'\)/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /tabs\[nextIndex\]\?\.focus\(\)/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /if \(onSelect\) \{[\s\S]*onSelect\(items\[nextIndex\]!\.value\)/);
