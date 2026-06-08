@@ -4018,7 +4018,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /className="fb-dialog"/);
   assert.match(hubImportForm, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.match(hubImportForm, /Remove source library import\?/);
-  assert.match(hubImportForm, /sources\s+from this library will no longer appear in Sources or\s+Following\./);
+  assert.match(hubImportForm, /sources\s+from this library will no longer appear in Sources, AI Digest,\s+or Following\./);
+  assert.doesNotMatch(hubImportForm, /sources\s+from this library will no longer appear in Sources or\s+Following\./);
   assert.match(hubImportForm, /You can import it again from Hub later/);
   assert.match(hubImportForm, />\s*Remove import\s*<\/button>/);
   assert.match(hubImportForm, /requestRemoveImported/);
@@ -4070,7 +4071,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(libraryImportRemoveButton, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.match(libraryImportRemoveButton, /Remove source library import\?/);
   assert.match(libraryImportRemoveButton, /Could not remove source library import\./);
-  assert.match(libraryImportRemoveButton, /sources from this\s+library will no longer appear in Sources or Following\./);
+  assert.match(libraryImportRemoveButton, /sources from this\s+library will no longer appear in Sources, AI Digest, or Following\./);
+  assert.doesNotMatch(libraryImportRemoveButton, /sources from this\s+library will no longer appear in Sources or Following\./);
   assert.match(libraryImportRemoveButton, /You can import it again from Hub later/);
   assert.match(libraryImportRemoveButton, />\s*Remove import\s*<\/button>/);
   assert.match(libraryImportRemoveButton, /function requestRemove/);

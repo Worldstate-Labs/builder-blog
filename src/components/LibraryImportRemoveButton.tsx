@@ -89,7 +89,7 @@ export function LibraryImportRemoveButton({
             <div className="settings-dialog-copy">
               <p>
                 After removing <strong>{libraryName}</strong>, sources from this
-                library will no longer appear in Sources or Following.
+                library will no longer appear in Sources, AI Digest, or Following.
               </p>
               <p className="settings-dialog-warning">
                 You can import it again from Hub later.
