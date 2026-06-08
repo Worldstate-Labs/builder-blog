@@ -127,6 +127,15 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(favoriteButton, /className="post-action-icon"/);
   assert.match(favoriteButton, /disabled=\{disabled\}/);
   assert.match(feed, /PostFavoriteButton/);
+  assert.match(feed, /const \[favoriteError, setFavoriteError\] = useState\(""\)/);
+  assert.match(feed, /const \[pendingFavoriteIds, setPendingFavoriteIds\] = useState<Set<string>>\(\(\) => new Set\(\)\)/);
+  assert.match(feed, /favoriteStateForItem\(snapshots, feedItemId\)/);
+  assert.match(feed, /restoreFavoriteState\(current, feedItemId, previousFavoritedAt\)/);
+  assert.match(feed, /Could not update saved state\. Try again\./);
+  assert.match(feed, /className="feed-load-error recommendation-favorite-error" role="status"/);
+  assert.match(feed, /disabled=\{pendingFavorite\}/);
+  assert.match(feed, /if \(!response\.ok\) throw new Error\(`HTTP \$\{response\.status\}`\)/);
+  assert.doesNotMatch(feed, /Best-effort optimistic UI/);
   assert.match(postDetailPage, /PostFavoriteControl/);
   assert.match(postDetailPage, /prisma\.feedFavorite\.findUnique/);
   assert.match(postDetailPage, /const canFavorite = poolBuilderIds\.includes\(item\.builderId\)/);

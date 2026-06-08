@@ -1584,6 +1584,15 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(recommendationFeed, /setLoadErrorDirection\(direction\)/);
   assert.match(recommendationFeed, /className="feed-load-error" role="status"/);
   assert.match(recommendationFeed, /Could not load Following posts\./);
+  assert.match(recommendationFeed, /const \[favoriteError, setFavoriteError\] = useState\(""\)/);
+  assert.match(recommendationFeed, /const \[pendingFavoriteIds, setPendingFavoriteIds\] = useState<Set<string>>\(\(\) => new Set\(\)\)/);
+  assert.match(recommendationFeed, /favoriteStateForItem\(snapshots, feedItemId\)/);
+  assert.match(recommendationFeed, /restoreFavoriteState\(current, feedItemId, previousFavoritedAt\)/);
+  assert.match(recommendationFeed, /className="feed-load-error recommendation-favorite-error" role="status"/);
+  assert.match(recommendationFeed, /Could not update saved state\. Try again\./);
+  assert.match(recommendationFeed, /disabled=\{pendingFavorite\}/);
+  assert.match(recommendationFeed, /if \(!response\.ok\) throw new Error\(`HTTP \$\{response\.status\}`\)/);
+  assert.doesNotMatch(recommendationFeed, /Best-effort optimistic UI/);
   assert.match(recommendationFeed, /onClick=\{\(\) => void requestSnapshot\(loadErrorDirection\)\}/);
   assert.match(recommendationFeed, /className="feed-end-note"/);
   assert.match(recommendationFeed, /No more unread Following posts to load/);

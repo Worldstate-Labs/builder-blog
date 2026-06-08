@@ -56,6 +56,8 @@ export function RecommendationFeed({
   const hydrated = useHydrated();
   const [loadingDirection, setLoadingDirection] = useState<"append" | "prepend" | null>(null);
   const [loadErrorDirection, setLoadErrorDirection] = useState<"append" | "prepend" | null>(null);
+  const [favoriteError, setFavoriteError] = useState("");
+  const [pendingFavoriteIds, setPendingFavoriteIds] = useState<Set<string>>(() => new Set());
   const loadingGuard = useRef<"append" | "prepend" | null>(null);
   const [exhausted, setExhausted] = useState(initialSnapshots.length === 0);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
@@ -76,7 +78,11 @@ export function RecommendationFeed({
   }, []);
 
   const toggleFavorite = useCallback(async (feedItemId: string, nextFavorite: boolean) => {
+    if (pendingFavoriteIds.has(feedItemId)) return;
     const fallbackFavoritedAt = nextFavorite ? new Date().toISOString() : null;
+    const previousFavoritedAt = favoriteStateForItem(snapshots, feedItemId);
+    setFavoriteError("");
+    setPendingFavoriteIds((current) => new Set([...current, feedItemId]));
     setSnapshots((current) =>
       current.map((snapshot) => ({
         ...snapshot,
@@ -87,8 +93,19 @@ export function RecommendationFeed({
         ),
       })),
     );
-    await setPostFavorite(feedItemId, nextFavorite);
-  }, []);
+    try {
+      await setPostFavorite(feedItemId, nextFavorite);
+    } catch {
+      setSnapshots((current) => restoreFavoriteState(current, feedItemId, previousFavoritedAt));
+      setFavoriteError("Could not update saved state. Try again.");
+    } finally {
+      setPendingFavoriteIds((current) => {
+        const next = new Set(current);
+        next.delete(feedItemId);
+        return next;
+      });
+    }
+  }, [pendingFavoriteIds, snapshots]);
 
   const requestSnapshot = useCallback(
     async (direction: "append" | "prepend") => {
@@ -148,6 +165,11 @@ export function RecommendationFeed({
           Refresh
         </button>
       </div>
+      {favoriteError ? (
+        <p className="feed-load-error recommendation-favorite-error" role="status">
+          {favoriteError}
+        </p>
+      ) : null}
       <div className="recommendation-snapshot-list">
         {snapshots.map((snapshot) => (
           <section className="recommendation-snapshot" key={snapshot.id}>
@@ -164,6 +186,7 @@ export function RecommendationFeed({
                 entry={entry}
                 key={`${snapshot.id}:${entry.item.id}`}
                 markRead={markRead}
+                pendingFavorite={pendingFavoriteIds.has(entry.item.id)}
                 showAdminActions={showAdminActions}
                 toggleFavorite={toggleFavorite}
               />
@@ -199,11 +222,13 @@ export function RecommendationFeed({
 function RecommendationCard({
   entry,
   markRead,
+  pendingFavorite,
   showAdminActions,
   toggleFavorite,
 }: {
   entry: RecommendationFeedEntry;
   markRead: (feedItemId: string) => Promise<void>;
+  pendingFavorite: boolean;
   showAdminActions: boolean;
   toggleFavorite: (feedItemId: string, nextFavorite: boolean) => Promise<void>;
 }) {
@@ -215,6 +240,7 @@ function RecommendationCard({
       dataRead={isRead}
       extraActions={
         <PostFavoriteButton
+          disabled={pendingFavorite}
           isFavorite={isFavorite}
           onToggle={() => void toggleFavorite(entry.item.id, !isFavorite)}
         />
@@ -237,15 +263,36 @@ function RecommendationCard({
 }
 
 async function setPostFavorite(feedItemId: string, favorite: boolean) {
-  try {
-    await fetch("/api/favorites", {
-      method: favorite ? "POST" : "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ feedItemId }),
-    });
-  } catch {
-    // Best-effort optimistic UI; a reload restores the authoritative state.
+  const response = await fetch("/api/favorites", {
+    method: favorite ? "POST" : "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ feedItemId }),
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+}
+
+function favoriteStateForItem(
+  snapshots: RecommendationSnapshotEntry[],
+  feedItemId: string,
+): string | null {
+  for (const snapshot of snapshots) {
+    const entry = snapshot.items.find((candidate) => candidate.item.id === feedItemId);
+    if (entry) return entry.favoritedAt;
   }
+  return null;
+}
+
+function restoreFavoriteState(
+  snapshots: RecommendationSnapshotEntry[],
+  feedItemId: string,
+  favoritedAt: string | null,
+): RecommendationSnapshotEntry[] {
+  return snapshots.map((snapshot) => ({
+    ...snapshot,
+    items: snapshot.items.map((entry) =>
+      entry.item.id === feedItemId ? { ...entry, favoritedAt } : entry,
+    ),
+  }));
 }
 
 function mergeSnapshots(snapshots: RecommendationSnapshotEntry[]) {
