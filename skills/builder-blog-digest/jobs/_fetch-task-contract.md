@@ -20,7 +20,7 @@ Fetch task boundary:
   `task.discoveryInstructions.prompt` and writing a strict JSON payload to:
 
 ```text
-${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}/library-discovery-result.json
+$TMP_DIR/library-discovery-result.json
 ```
 
   Shape:
@@ -30,7 +30,9 @@ ${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}/
   `evidence`. Then run:
 
 ```bash
-TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}"
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
+TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/{{TMP_JOB}}}"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" expand-discovery \
   --tasks "$TMP_DIR/library-fetch-result.json" \
@@ -117,7 +119,7 @@ Per-task independence and accountability (CRITICAL):
 Write the sync payload to:
 
 ```text
-${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}/library-agent-sync.json
+$TMP_DIR/library-agent-sync.json
 ```
 
 The payload is `{ builders: [{ …builderSync, items: [synced items] }],
@@ -126,15 +128,20 @@ taskOutcomes: [non-synced task outcomes] }`.
 Then validate before sync, and sync, running these commands exactly:
 
 ```bash
-TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}"
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
+TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/{{TMP_JOB}}}"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" validate-agent-sync \
   --tasks "$TMP_DIR/library-fetch-result.json" \
   --file "$TMP_DIR/library-agent-sync.json"
-TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}"
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
+TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/{{TMP_JOB}}}"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" sync-builders \
-  --file "$TMP_DIR/library-agent-sync.json"
+  --file "$TMP_DIR/library-agent-sync.json" \
+  --tasks "$TMP_DIR/library-fetch-result.json"
 ```
 
 A fetchTask is complete ONLY when its item is synced with real crawled content

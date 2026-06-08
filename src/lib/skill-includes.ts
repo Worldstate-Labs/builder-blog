@@ -6,7 +6,7 @@ import { join } from "node:path";
 // fetch-task / summarize execution contract instead of duplicating it.
 //
 // Directive syntax inside a prompt:
-//   {{INCLUDE:fetch-task-contract REPORT_TARGET="the user"}}
+//   {{INCLUDE:fetch-task-contract REPORT_TARGET="the user" TMP_JOB="library-once"}}
 //
 // The named fragment is loaded, its own placeholders ({{REPORT_TARGET}})
 // are substituted from the directive's params, and the directive is
@@ -55,6 +55,7 @@ export async function expandSkillIncludes(content: string): Promise<string> {
     fragment = fragment.replace(LEADING_HTML_COMMENT, "");
     fragment = fragment
       .replaceAll("{{REPORT_TARGET}}", params.REPORT_TARGET ?? "")
+      .replaceAll("{{TMP_JOB}}", params.TMP_JOB ?? "")
       .trim();
     out = out.replace(whole, fragment);
   }

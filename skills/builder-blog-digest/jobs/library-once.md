@@ -29,7 +29,9 @@ Execution contract:
 2. Fetch normal personal source items and save the full result:
 
 ```bash
-TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}"
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
+TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-once}"
 mkdir -p "$TMP_DIR"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" fetch-personal --days {{FETCH_DAYS}} --limit 3 {{FETCH_FLAG}} \
@@ -39,12 +41,14 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" fetch-p
 3. Print the fetch result:
 
 ```bash
-TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}"
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
+TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-once}"
 cat "$TMP_DIR/library-fetch-result.json"
 ```
 
 4. Complete and sync the fetch tasks exactly as specified below.
 
-{{INCLUDE:fetch-task-contract REPORT_TARGET="to the user"}}
+{{INCLUDE:fetch-task-contract REPORT_TARGET="to the user" TMP_JOB="library-once"}}
 
 5. Report the fetch JSON plus any `validate-agent-sync` and `sync-builders` JSON.

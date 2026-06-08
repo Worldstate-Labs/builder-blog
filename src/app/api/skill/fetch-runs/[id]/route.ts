@@ -99,10 +99,26 @@ export async function PATCH(request: Request, { params }: Params) {
     return { ...t, ...patch };
   });
   details.fetchTasks = mergedTasks;
+  const plannedBuilderIds = new Set(
+    (Array.isArray(details.perBuilder) ? details.perBuilder : [])
+      .map((builder) =>
+        builder && typeof builder === "object"
+          ? (builder as Record<string, unknown>).builderId
+          : null,
+      )
+      .filter((id): id is string => typeof id === "string" && id.length > 0),
+  );
   for (const outcome of parsed.data.taskOutcomes) {
     if (existingIds.has(outcome.fetchTaskId)) continue;
     const plannedTask = plannedTaskById.get(outcome.fetchTaskId);
     if (!plannedTask) continue;
+    const plannedBuilderId = plannedTask.builderId;
+    if (
+      plannedBuilderIds.size > 0 &&
+      (typeof plannedBuilderId !== "string" || !plannedBuilderIds.has(plannedBuilderId))
+    ) {
+      continue;
+    }
     const patch: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(outcome)) {
       if (key === "fetchTaskId" || key === "plannedTask" || value === undefined) continue;

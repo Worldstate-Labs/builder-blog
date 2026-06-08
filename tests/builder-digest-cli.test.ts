@@ -1435,6 +1435,57 @@ test("personal fetcher keeps fetched builders eligible and tracks fetched post k
   );
 });
 
+test("library fetch reconciliation defaults to the job-specific tmp directory", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const previousJobTmp = process.env.BUILDER_BLOG_JOB_TMP_DIR;
+  const previousAgentDir = process.env.BUILDER_BLOG_AGENT_DIR;
+  const previousAccount = process.env.BUILDER_BLOG_ACCOUNT;
+  const previousAccountSlug = process.env.BUILDER_BLOG_ACCOUNT_SLUG;
+  try {
+    process.env.BUILDER_BLOG_JOB_TMP_DIR = "/tmp/followbrief-job-specific";
+    process.env.BUILDER_BLOG_AGENT_DIR = "/tmp/followbrief-agent-global";
+    process.env.BUILDER_BLOG_ACCOUNT = "jie@example.com";
+    delete process.env.BUILDER_BLOG_ACCOUNT_SLUG;
+    assert.equal(
+      cli.defaultLibraryFetchResultFileForTest(),
+      "/tmp/followbrief-job-specific/library-fetch-result.json",
+    );
+    assert.equal(
+      cli.libraryFetchRunIdFileForTest(),
+      "/tmp/followbrief-job-specific/library-fetch-run-id",
+    );
+
+    delete process.env.BUILDER_BLOG_JOB_TMP_DIR;
+    assert.equal(
+      cli.defaultLibraryFetchResultFileForTest(),
+      "/tmp/followbrief-agent-global/tmp/accounts/jie_example_com/library-once/library-fetch-result.json",
+    );
+    assert.equal(
+      cli.libraryFetchRunIdFileForTest(),
+      "/tmp/followbrief-agent-global/tmp/accounts/jie_example_com/library-once/library-fetch-run-id",
+    );
+    assert.equal(
+      cli.defaultDigestContextFileForTest(),
+      "/tmp/followbrief-agent-global/tmp/accounts/jie_example_com/digest-once/builder-blog-context.json",
+    );
+
+    process.env.BUILDER_BLOG_ACCOUNT_SLUG = "custom_slug";
+    assert.equal(
+      cli.defaultLibraryFetchResultFileForTest(),
+      "/tmp/followbrief-agent-global/tmp/accounts/custom_slug/library-once/library-fetch-result.json",
+    );
+  } finally {
+    if (previousJobTmp === undefined) delete process.env.BUILDER_BLOG_JOB_TMP_DIR;
+    else process.env.BUILDER_BLOG_JOB_TMP_DIR = previousJobTmp;
+    if (previousAgentDir === undefined) delete process.env.BUILDER_BLOG_AGENT_DIR;
+    else process.env.BUILDER_BLOG_AGENT_DIR = previousAgentDir;
+    if (previousAccount === undefined) delete process.env.BUILDER_BLOG_ACCOUNT;
+    else process.env.BUILDER_BLOG_ACCOUNT = previousAccount;
+    if (previousAccountSlug === undefined) delete process.env.BUILDER_BLOG_ACCOUNT_SLUG;
+    else process.env.BUILDER_BLOG_ACCOUNT_SLUG = previousAccountSlug;
+  }
+});
+
 // --- Per-task terminal-state accountability (taskOutcomes) ---
 
 function youtubePlannedTask(cli: typeof import("../scripts/builder-digest.mjs"), externalId: string) {

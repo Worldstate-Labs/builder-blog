@@ -8,7 +8,7 @@ browse the web and do not invent facts.
 Write exactly one JSON object to:
 
 ```text
-${BUILDER_BLOG_JOB_TMP_DIR:-${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/tmp}/builder-blog-digest-agent-output.json
+$TMP_DIR/builder-blog-digest-agent-output.json
 ```
 
 JSON schema:

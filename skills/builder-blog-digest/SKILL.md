@@ -185,10 +185,13 @@ This command:
 Validate agent-produced items before syncing them:
 
 ```bash
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
+TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-once}"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node ~/.builder-blog/builder-digest.mjs validate-agent-sync \
-  --tasks /tmp/builder-blog-fetch-result.json \
-  --file /tmp/builder-blog-agent-sync.json
+  --tasks "$TMP_DIR/library-fetch-result.json" \
+  --file "$TMP_DIR/library-agent-sync.json"
 ```
 
 Use `--force` only when the user explicitly wants to re-sync already-synced
@@ -206,8 +209,13 @@ Agents may also sync already-fetched user-owned sources manually. This is an
 `in library` operation, not a digest subscription unless `subscribe` is true:
 
 ```bash
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
+TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-once}"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-node ~/.builder-blog/builder-digest.mjs sync-builders --file /tmp/personal-builders.json
+node ~/.builder-blog/builder-digest.mjs sync-builders \
+  --file "$TMP_DIR/library-agent-sync.json" \
+  --tasks "$TMP_DIR/library-fetch-result.json"
 ```
 
 Payload shape:
@@ -287,18 +295,24 @@ node ~/.builder-blog/builder-digest.mjs prepare
 4. Sync the final digest to the web app:
 
 ```bash
-cat > /tmp/builder-blog-digest.md <<'DIGEST'
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
+TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/digest-once}"
+mkdir -p "$TMP_DIR"
+
+cat > "$TMP_DIR/builder-blog-digest.md" <<'DIGEST'
 <final digest text>
 DIGEST
 
-cat > /tmp/builder-blog-digest-headlines.txt <<'HEADLINES'
+cat > "$TMP_DIR/builder-blog-digest-headlines.txt" <<'HEADLINES'
 <headline summary text>
 HEADLINES
 
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node ~/.builder-blog/builder-digest.mjs sync \
-  --file /tmp/builder-blog-digest.md \
-  --summary-file /tmp/builder-blog-digest-headlines.txt \
+  --file "$TMP_DIR/builder-blog-digest.md" \
+  --summary-file "$TMP_DIR/builder-blog-digest-headlines.txt" \
+  --context "$TMP_DIR/builder-blog-context.json" \
   --title "AI Builder Digest"
 ```
 

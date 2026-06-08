@@ -69,6 +69,7 @@ test("migration creates LibraryFetchRun with the expected columns and index", ()
 
 test("skill fetch-runs route validates payload size and gates auth on user session", () => {
   const route = source("src/app/api/skill/fetch-runs/route.ts");
+  const patchRoute = source("src/app/api/skill/fetch-runs/[id]/route.ts");
   const cronRoute = source("src/app/api/skill/cron-jobs/route.ts");
   // POST is bearer-token (CLI), GET is web session (browser).
   assert.match(route, /getUserFromBearer\(request\)/);
@@ -87,6 +88,10 @@ test("skill fetch-runs route validates payload size and gates auth on user sessi
   assert.match(route, /cronRuns/);
   assert.match(route, /libraryCronJob\.findUnique/);
   assert.match(route, /cronJob: cron/);
+  // PATCH may append discovery-expanded tasks, but only for builders already
+  // present in this run's perBuilder snapshot.
+  assert.match(patchRoute, /plannedBuilderIds/);
+  assert.match(patchRoute, /details\.perBuilder/);
   // Server orders by startedAt desc and limits to the spec'd 25.
   assert.match(route, /orderBy: \{ startedAt: "desc" \}/);
   assert.match(route, /take: RUN_HISTORY_LIMIT/);

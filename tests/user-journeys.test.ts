@@ -542,8 +542,8 @@ test("web app serves the agent skill and setup command", () => {
   // The digest-writing instructions (incl. the context.language rule) now live
   // in the shared digest-task-contract include, pulled into both digest jobs.
   // The contract's content is asserted below where it's read (digestTaskContract).
-  assert.match(digestOncePrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
-  assert.match(digestCronPrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
+  assert.match(digestOncePrompt, /\{\{INCLUDE:digest-task-contract TMP_JOB="digest-once"\}\}/);
+  assert.match(digestCronPrompt, /\{\{INCLUDE:digest-task-contract TMP_JOB="digest-cron"\}\}/);
   // Regenerate is additive: it never deletes past digests or digestedItem
   // markers — it re-includes already-digested candidates and re-points each
   // presented post's provenance to the new digest. It also records the
@@ -588,16 +588,21 @@ test("web app serves the agent skill and setup command", () => {
   function expandIncludes(content: string): string {
     return content
       .replace(
-        /\{\{INCLUDE:fetch-task-contract REPORT_TARGET="([^"]*)"\}\}/g,
-        (_m, target) =>
+        /\{\{INCLUDE:fetch-task-contract REPORT_TARGET="([^"]*)" TMP_JOB="([^"]*)"\}\}/g,
+        (_m, target, tmpJob) =>
           fetchTaskContract
             .replace(/^\s*<!--[\s\S]*?-->\s*/, "")
             .replaceAll("{{REPORT_TARGET}}", target)
+            .replaceAll("{{TMP_JOB}}", tmpJob)
             .trim(),
       )
       .replace(
-        /\{\{INCLUDE:digest-task-contract\}\}/g,
-        () => digestTaskContract.replace(/^\s*<!--[\s\S]*?-->\s*/, "").trim(),
+        /\{\{INCLUDE:digest-task-contract TMP_JOB="([^"]*)"\}\}/g,
+        (_m, tmpJob) =>
+          digestTaskContract
+            .replace(/^\s*<!--[\s\S]*?-->\s*/, "")
+            .replaceAll("{{TMP_JOB}}", tmpJob)
+            .trim(),
       );
   }
   const libraryOnceExpanded = expandIncludes(libraryOncePrompt);
@@ -607,13 +612,19 @@ test("web app serves the agent skill and setup command", () => {
 
   // Anti-drift: both library jobs reference the shared contract via the
   // directive, and neither raw file restates the execution steps inline.
-  assert.match(libraryOncePrompt, /\{\{INCLUDE:fetch-task-contract REPORT_TARGET="to the user"\}\}/);
-  assert.match(libraryCronPrompt, /\{\{INCLUDE:fetch-task-contract REPORT_TARGET="to the scheduled job log"\}\}/);
+  assert.match(
+    libraryOncePrompt,
+    /\{\{INCLUDE:fetch-task-contract REPORT_TARGET="to the user" TMP_JOB="library-once"\}\}/,
+  );
+  assert.match(
+    libraryCronPrompt,
+    /\{\{INCLUDE:fetch-task-contract REPORT_TARGET="to the scheduled job log" TMP_JOB="library-cron"\}\}/,
+  );
   assert.doesNotMatch(libraryOncePrompt, /How to execute each `fetchTask`/);
   assert.doesNotMatch(libraryCronPrompt, /How to execute each `fetchTask`/);
   // Expansion leaves no unresolved placeholders.
-  assert.doesNotMatch(libraryOnceExpanded, /\{\{INCLUDE|\{\{REPORT_TARGET\}\}/);
-  assert.doesNotMatch(libraryCronExpanded, /\{\{INCLUDE|\{\{REPORT_TARGET\}\}/);
+  assert.doesNotMatch(libraryOnceExpanded, /\{\{INCLUDE|\{\{REPORT_TARGET\}\}|\{\{TMP_JOB\}\}/);
+  assert.doesNotMatch(libraryCronExpanded, /\{\{INCLUDE|\{\{REPORT_TARGET\}\}|\{\{TMP_JOB\}\}/);
   // REPORT_TARGET is substituted per job.
   assert.match(libraryOnceExpanded, /Action needed" notice and skip[\s\S]*to the user/);
   assert.match(libraryCronExpanded, /Action needed" notice and skip[\s\S]*to the scheduled job log/);
@@ -622,6 +633,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryOnceExpanded, /fetch-personal --days \{\{FETCH_DAYS\}\} --limit 3/);
   assert.match(libraryOnceExpanded, /validate-agent-sync/);
   assert.match(libraryOnceExpanded, /sync-builders/);
+  assert.match(libraryOnceExpanded, /--tasks "\$TMP_DIR\/library-fetch-result\.json"/);
+  assert.match(libraryOnceExpanded, /tmp\/accounts\/\$ACCOUNT_SLUG\/library-once/);
   assert.match(libraryOnceExpanded, /rawJson\.agentExecutionProof/);
   assert.match(libraryOnceExpanded, /complete exactly\s+the task IDs returned by the CLI/i);
   assert.match(libraryOnceExpanded, /fetchTasks/);
@@ -704,8 +717,8 @@ test("web app serves the agent skill and setup command", () => {
   // Anti-drift: the digest-writing method lives in the shared partial included
   // by both digest jobs. The expanded prompt references the current structured
   // output contract, not disk prompt files or agent-authored final markdown.
-  assert.match(digestOncePrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
-  assert.doesNotMatch(digestOnceExpanded, /\{\{INCLUDE/);
+  assert.match(digestOncePrompt, /\{\{INCLUDE:digest-task-contract TMP_JOB="digest-once"\}\}/);
+  assert.doesNotMatch(digestOnceExpanded, /\{\{INCLUDE|\{\{TMP_JOB\}\}/);
   assert.match(digestOnceExpanded, /builder-blog-digest-agent-output\.json/);
   assert.match(digestOnceExpanded, /context\.digest\.headlinePrompt/);
   assert.doesNotMatch(digestOnceExpanded, /300 characters or fewer/);
@@ -716,6 +729,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestOncePrompt, /render-digest/);
   assert.match(digestOnceExpanded, /headlineSummary/);
   assert.match(digestOncePrompt, /BUILDER_BLOG_JOB_TMP_DIR/);
+  assert.match(digestOncePrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/digest-once/);
   assert.match(digestOncePrompt, /builder-blog-digest-headlines\.txt/);
   assert.match(digestOncePrompt, /--summary-file "\$TMP_DIR\/builder-blog-digest-headlines\.txt"/);
   assert.match(digestOncePrompt, /--context "\$TMP_DIR\/builder-blog-context\.json"/);
@@ -725,6 +739,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronStopPrompt, /cron-status/);
   assert.match(libraryCronStopPrompt, /--status stopped/);
   assert.match(libraryCronStopPrompt, /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"/);
+  assert.match(libraryCronStopPrompt, /runtime-library-cron-\$ACCOUNT_SLUG/);
+  assert.match(libraryCronStopPrompt, /fetch-force-library-cron-\$ACCOUNT_SLUG/);
+  assert.match(libraryCronStopPrompt, /fetch-days-library-cron-\$ACCOUNT_SLUG/);
+  assert.match(libraryCronStopPrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron\/current\.json/);
   assert.doesNotMatch(libraryCronStopPrompt, /Do not\s+exchange a token or make any network call/);
   assert.match(digestCronSetupPrompt, /BUILDER_BLOG_DISABLE_WEB_SYNC=1/);
   assert.match(digestCronSetupPrompt, /webSyncDisabled: true/);
@@ -734,6 +752,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronStopPrompt, /--job digest-cron/);
   assert.match(digestCronStopPrompt, /--status stopped/);
   assert.match(digestCronStopPrompt, /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"/);
+  assert.match(digestCronStopPrompt, /runtime-digest-cron-\$ACCOUNT_SLUG/);
+  assert.match(digestCronStopPrompt, /regenerate-digest-cron-\$ACCOUNT_SLUG/);
+  assert.match(digestCronStopPrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/digest-cron\/current\.json/);
   assert.doesNotMatch(digestCronStopPrompt, /Do not\s+exchange a token or make any network call/);
   // Setup now pins the chosen runtime in an account-scoped pin file so the
   // runner picks the matching unattended-mode invocation at cron-fire time
@@ -819,6 +840,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronSetupPrompt, /\(none found\)/);
   assert.match(digestCronSetupPrompt, /\$LABEL\.log/);
   assert.match(digestCronPrompt, /BUILDER_BLOG_JOB_TMP_DIR/);
+  assert.match(digestCronPrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/digest-cron/);
   assert.match(digestCronPrompt, /--context "\$TMP_DIR\/builder-blog-context\.json"/);
   assertOrderedText(digestCronSetupPrompt, [
     "account's digest cron",
@@ -899,7 +921,8 @@ test("web app serves the agent skill and setup command", () => {
     "BUILDER_BLOG_ACCOUNT must win over a bare BUILDER_BLOG_TOKEN for account isolation",
   );
   assert.match(cli, /BUILDER_BLOG_JOB_TMP_DIR/);
-  assert.match(cli, /join\(jobTmpDir \|\| join\(agentDir, "tmp"\), "builder-blog-context\.json"\)/);
+  assert.match(cli, /defaultDigestContextFile/);
+  assert.match(cli, /defaultLibraryFetchResultFile/);
   assert.match(runner, /No local agent runtime found/);
   // Runner self-updates from the server each run and re-execs the new
   // version, so cron jobs pick up runner fixes without re-running setup;
@@ -960,6 +983,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronExpanded, /fetch-personal --days \$\{BUILDER_BLOG_FETCH_DAYS:-30\} --limit 3/);
   assert.match(libraryCronExpanded, /validate-agent-sync/);
   assert.match(libraryCronExpanded, /sync-builders/);
+  assert.match(libraryCronExpanded, /--tasks "\$TMP_DIR\/library-fetch-result\.json"/);
+  assert.match(libraryCronExpanded, /tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron/);
   assert.match(libraryCronExpanded, /rawJson\.fetchTaskId/);
   assert.match(libraryCronExpanded, /fetchTasks/);
   assert.match(libraryCronExpanded, /single-post\s+`?summary`?/);
@@ -1010,8 +1035,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronPrompt, /runner already downloaded the latest skill files/);
   // The recurring run shares the once job's structured output contract via the
   // partial.
-  assert.match(digestCronPrompt, /\{\{INCLUDE:digest-task-contract\}\}/);
-  assert.doesNotMatch(digestCronExpanded, /\{\{INCLUDE/);
+  assert.match(digestCronPrompt, /\{\{INCLUDE:digest-task-contract TMP_JOB="digest-cron"\}\}/);
+  assert.doesNotMatch(digestCronExpanded, /\{\{INCLUDE|\{\{TMP_JOB\}\}/);
   assert.match(digestCronExpanded, /builder-blog-digest-agent-output\.json/);
   assert.match(digestCronExpanded, /context\.digest\.headlinePrompt/);
   assert.match(digestCronExpanded, /context\.digest\.perSourceSummaryPrompt/);

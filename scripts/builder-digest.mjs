@@ -2,7 +2,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { homedir, hostname, platform, release, userInfo } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
@@ -42,11 +42,37 @@ const RUN_PLATFORM = (() => {
 
 const CONFIG_DIR = join(homedir(), ".builder-blog");
 const ACCOUNTS_DIR = join(CONFIG_DIR, "accounts");
-const TMP_DIR = join(CONFIG_DIR, "tmp");
-// fetch-personal writes the emitted run's id here so the later, separate
-// sync-builders step can PATCH per-post fetch/summary outcomes onto the same
-// fetch-log record (the two run in the same job on the same machine).
-const FETCH_RUN_ID_FILE = join(TMP_DIR, "library-fetch-run-id");
+function agentDir() {
+  return process.env.BUILDER_BLOG_AGENT_DIR?.trim() || CONFIG_DIR;
+}
+function accountSlug() {
+  const fromEnv = process.env.BUILDER_BLOG_ACCOUNT_SLUG?.trim();
+  if (fromEnv) return fromEnv;
+  const account = process.env.BUILDER_BLOG_ACCOUNT?.trim() || "default";
+  return account.replace(/[^a-zA-Z0-9]/g, "_");
+}
+function jobTmpDir(defaultJobName = "") {
+  const explicit = process.env.BUILDER_BLOG_JOB_TMP_DIR?.trim();
+  if (explicit) return explicit;
+  const jobName =
+    process.env.BUILDER_BLOG_JOB?.trim() ||
+    process.env.BUILDER_BLOG_SCHEDULE_JOB?.trim() ||
+    defaultJobName;
+  if (jobName) return join(agentDir(), "tmp", "accounts", accountSlug(), jobName);
+  return join(agentDir(), "tmp");
+}
+function libraryFetchRunIdFile() {
+  // fetch-personal writes the emitted run's id here so the later, separate
+  // sync-builders step can PATCH per-post fetch/summary outcomes onto the same
+  // fetch-log record (the two run in the same job on the same machine).
+  return join(jobTmpDir("library-once"), "library-fetch-run-id");
+}
+function defaultLibraryFetchResultFile() {
+  return join(jobTmpDir("library-once"), "library-fetch-result.json");
+}
+function defaultDigestContextFile() {
+  return join(jobTmpDir("digest-once"), "builder-blog-context.json");
+}
 const SOURCES_CONFIG_PATH = join(CONFIG_DIR, "sources.json");
 const GITHUB_TRENDING_URL = "https://github.com/trending?since=daily";
 const PRODUCT_HUNT_TOP_PRODUCTS_URL = "https://www.producthunt.com/";
@@ -108,7 +134,7 @@ function usage() {
   expand-discovery --tasks fetch-result.json --file discovery-result.json [--out expanded-fetch-result.json]
   prepare [--regenerate]
   validate-agent-sync --tasks fetch-result.json --file personal-builders.json
-  sync-builders --file personal-builders.json [--agent-model gpt-5.5]
+  sync-builders --file personal-builders.json [--tasks fetch-result.json] [--agent-model gpt-5.5]
   render-digest --context builder-blog-context.json --agent-output digest-agent-output.json --out digest.md --summary-out digest-headlines.txt
   sync --file digest.md [--summary-file digest-headlines.txt] [--title "AI Builder Digest"] [--regenerate] [--context builder-blog-context.json]
   cron-status --job library-cron|digest-cron --status active|stopped [--freq 6h] [--schedule "0 */6 * * *"]
@@ -879,8 +905,9 @@ async function emitFetchRunRecord(config, record) {
       // per-post outcomes. Best-effort: if persisting fails, the run is still
       // recorded — sync-builders just skips the per-post patch.
       try {
-        await mkdir(TMP_DIR, { recursive: true });
-        await writeFile(FETCH_RUN_ID_FILE, String(result.id), "utf8");
+        const runIdFile = libraryFetchRunIdFile();
+        await mkdir(dirname(runIdFile), { recursive: true });
+        await writeFile(runIdFile, String(result.id), "utf8");
       } catch {
         // ignore — non-fatal
       }
@@ -1306,6 +1333,18 @@ export function personalBuildersForFetch(context) {
   return (context.libraryBuilders ?? []).filter(
     (builder) => builder.scope === "PERSONAL",
   );
+}
+
+export function defaultLibraryFetchResultFileForTest() {
+  return defaultLibraryFetchResultFile();
+}
+
+export function libraryFetchRunIdFileForTest() {
+  return libraryFetchRunIdFile();
+}
+
+export function defaultDigestContextFileForTest() {
+  return defaultDigestContextFile();
 }
 
 export function personalFetcherSourceForBuilder(builder) {
@@ -3985,12 +4024,10 @@ async function sync(args) {
   // Default matches where the digest prompts write the context. Scheduled
   // runner jobs set BUILDER_BLOG_JOB_TMP_DIR so multiple accounts on the same
   // machine do not read each other's prepared context.
-  const agentDir = process.env.BUILDER_BLOG_AGENT_DIR?.trim() || CONFIG_DIR;
-  const jobTmpDir = process.env.BUILDER_BLOG_JOB_TMP_DIR?.trim();
   const contextPath = argValue(
     args,
     "--context",
-    join(jobTmpDir || join(agentDir, "tmp"), "builder-blog-context.json"),
+    defaultDigestContextFile(),
   );
   let digestedItems = [];
   // The DigestRun id the server issued at `prepare`; links this sync back to the
@@ -4087,8 +4124,7 @@ async function syncBuilders(args) {
   // Reconcile the fetch log against the FULL planned task list so a task the
   // agent dropped (fetched but never summarized) is recorded as a failure, not
   // left pending. Read the planned tasks the CLI emitted in fetch-personal.
-  const agentDir = process.env.BUILDER_BLOG_AGENT_DIR?.trim() || CONFIG_DIR;
-  const tasksFile = argValue(args, "--tasks", join(agentDir, "tmp", "library-fetch-result.json"));
+  const tasksFile = argValue(args, "--tasks", defaultLibraryFetchResultFile());
   let plannedTasks = [];
   let plannedTaskOutcomes = [];
   try {
@@ -4117,7 +4153,7 @@ async function patchFetchRunOutcomes(
   if (!config?.appUrl || !config?.token) return;
   let runId = "";
   try {
-    runId = (await readFile(FETCH_RUN_ID_FILE, "utf8")).trim();
+    runId = (await readFile(libraryFetchRunIdFile(), "utf8")).trim();
   } catch {
     return;
   }
