@@ -4,7 +4,7 @@ export default function BuilderDetailLoading() {
   return (
     <RouteLoading
       label="Source"
-      title="Loading Source"
+      title="Loading source"
       rows={5}
     />
   );
