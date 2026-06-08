@@ -638,8 +638,13 @@ function TypeTab({
   value: SearchTypeFilter;
 }) {
   const isActive = current === value;
+  const accessibleLabel =
+    typeof count === "number"
+      ? `${label}, ${formatCount(count)} ${count === 1 ? "result" : "results"}`
+      : label;
   return (
     <Link
+      aria-label={accessibleLabel}
       aria-current={isActive ? "page" : undefined}
       className="fb-btn compact"
       data-active={isActive ? "true" : undefined}
@@ -916,7 +921,7 @@ function RelatedSearches({
   typeFilter: SearchTypeFilter;
 }) {
   return (
-    <section className="search-related" aria-label="Related searches">
+    <section className="search-related" aria-label={heading}>
       <h2>{heading}</h2>
       <div className="search-related-grid">
         {searches.map((search) => (

@@ -2125,6 +2125,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /isShowingCorrectedResults/);
   assert.match(searchPage, /heading="Try searching"/);
   assert.match(searchPage, /heading = "Related searches"/);
+  assert.match(searchPage, /<section className="search-related" aria-label=\{heading\}>/);
+  assert.doesNotMatch(searchPage, /<section className="search-related" aria-label="Related searches">/);
   assert.match(searchPage, /Search operators/);
   assert.match(searchPage, /className="search-operator-tips"/);
   assert.match(searchPage, /className="search-operator-grid"/);
@@ -2199,6 +2201,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /SearchTypeTabs/);
   assert.match(searchPage, /className="fb-segmented-tabs filter-tabs"/);
   assert.match(searchPage, /className="fb-btn compact"/);
+  assert.match(searchPage, /const accessibleLabel =[\s\S]*typeof count === "number"[\s\S]*`\$\{label\}, \$\{formatCount\(count\)\} \$\{count === 1 \? "result" : "results"\}`[\s\S]*: label/);
+  assert.match(searchPage, /aria-label=\{accessibleLabel\}/);
   assert.match(searchPage, /aria-current=\{isActive \? "page" : undefined\}/);
   assert.match(globals, /\.filter-tabs\s*{/);
   assert.doesNotMatch(searchPage, /fb-stabs|fb-stab/);
