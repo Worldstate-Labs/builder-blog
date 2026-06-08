@@ -7152,6 +7152,11 @@ a.builder-library-name:hover {
   width: 100%;
 }
 
+.skill-prompt-manual-error {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 /* Shared modal frame used by the token picker and the per-row builder
    edit dialog. Both are centered, blur the page behind them, and pin
    their max height so the form scrolls inside the dialog. */
@@ -10127,7 +10132,7 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-device-title {
   color: var(--ink);
-  font-size: 1.1875rem;
+  font-size: 1.125rem;
   font-weight: 520;
   letter-spacing: 0;
   line-height: 1.2;
@@ -10142,7 +10147,7 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-device-status {
   color: var(--muted-strong);
-  font-size: 1rem;
+  font-size: 0.9375rem;
   line-height: 1.28;
 }
 
@@ -10150,15 +10155,15 @@ a.fb-hub-source-name:focus-visible {
   align-items: center;
   color: var(--ink);
   display: inline-flex;
-  height: 2.5rem;
+  height: 2.25rem;
   justify-content: center;
-  width: 2.5rem;
+  width: 2.25rem;
 }
 
 .access-key-device-icon svg {
-  height: 1.72rem;
+  height: 1.55rem;
   stroke-width: 1.85;
-  width: 1.72rem;
+  width: 1.55rem;
 }
 
 .access-key-revoke-button,
@@ -10170,13 +10175,13 @@ a.fb-hub-source-name:focus-visible {
   border-radius: 999px;
   color: var(--ink);
   display: inline-flex;
-  font-size: 1.0625rem;
+  font-size: 0.9375rem;
   font-weight: 520;
   justify-content: center;
   justify-self: end;
-  min-height: 2.55rem;
-  min-width: 10rem;
-  padding: 0.42rem 1.15rem;
+  min-height: 2.35rem;
+  min-width: 0;
+  padding: 0.42rem 1rem;
   text-align: center;
   white-space: nowrap;
 }
@@ -10246,10 +10251,10 @@ a.fb-hub-source-name:focus-visible {
   box-shadow: none;
   display: grid;
   gap: 1rem;
-  grid-template-columns: 2.5rem minmax(0, 1fr) max-content;
-  min-height: 5.75rem;
+  grid-template-columns: 2.25rem minmax(0, 1fr) max-content;
+  min-height: 5.25rem;
   min-width: 0;
-  padding: 1.1rem 1.35rem;
+  padding: 1rem 1.25rem;
 }
 
 .access-key-card--revoked {
@@ -11493,17 +11498,17 @@ body {
 
   .access-key-card {
     gap: 0.8rem;
-    grid-template-columns: 2.5rem minmax(0, 1fr);
-    min-height: 5.5rem;
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    min-height: 5.25rem;
     padding: 1rem;
   }
 
   .access-keys-list--skeleton .settings-skeleton-row {
-    height: 5.5rem;
+    height: 5.25rem;
   }
 
   .access-key-card--skeleton {
-    min-height: 5.5rem;
+    min-height: 5.25rem;
   }
 
   .access-key-revoke-button,

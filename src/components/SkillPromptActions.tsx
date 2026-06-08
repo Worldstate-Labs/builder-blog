@@ -61,6 +61,7 @@ type SchedulePromptSelection =
 // flow (its own override lives inside it); `force` is the once flow's override
 // (no runtime/cadence to pick). Either source flips ?force=1.
 type CopyExtras = { cron: CronConfig | null; force: boolean; fetchDays: number };
+type PreparedPrompt = { target: CopyTarget; text: string };
 
 function hasClipboardUserActivation() {
   const activation = (
@@ -69,30 +70,6 @@ function hasClipboardUserActivation() {
     }
   ).userActivation;
   return activation?.isActive !== false;
-}
-
-function copyAsyncTextToClipboard(textPromise: Promise<string>): Promise<boolean> | null {
-  if (!document.hasFocus() || !hasClipboardUserActivation()) return null;
-  const ClipboardItemCtor = (
-    window as Window & {
-      ClipboardItem?: new (
-        items: Record<string, Blob | Promise<Blob>>,
-      ) => ClipboardItem;
-    }
-  ).ClipboardItem;
-  if (!navigator.clipboard?.write || !ClipboardItemCtor) return null;
-
-  try {
-    const item = new ClipboardItemCtor({
-      "text/plain": textPromise.then((text) => new Blob([text], { type: "text/plain" })),
-    });
-    return navigator.clipboard.write([item]).then(
-      () => true,
-      () => false,
-    );
-  } catch {
-    return null;
-  }
 }
 
 async function copyTextToClipboard(text: string) {
@@ -359,7 +336,7 @@ export function SkillPromptActions({
 
   const [copiedTarget, setCopiedTarget] = useState<CopyTarget | null>(null);
   const [status, setStatus] = useState<{ kind: "error" | "info"; text: string } | null>(null);
-  const [manualCopy, setManualCopy] = useState<{ target: CopyTarget; text: string } | null>(null);
+  const [preparedPrompt, setPreparedPrompt] = useState<PreparedPrompt | null>(null);
   const [pickerTarget, setPickerTarget] = useState<CopyTarget | null>(null);
   // Job dialog: pick one-time or recurring cadence before the token picker.
   // Recurring copies also include runtime + cadence URL params so the
@@ -412,19 +389,11 @@ export function SkillPromptActions({
   }
 
   function markPromptCopied(target: CopyTarget) {
-    setManualCopy(null);
+    setPreparedPrompt(null);
     setCopiedTarget(target);
     window.setTimeout(() => setCopiedTarget(null), 1800);
     setStatus({ kind: "info", text: "Copied · valid for 10 minutes" });
     window.setTimeout(() => setStatus(null), 8000);
-  }
-
-  function showManualCopy(target: CopyTarget, command: string) {
-    setManualCopy({ target, text: command });
-    setStatus({
-      kind: "error",
-      text: "Clipboard did not update. Copy the prepared prompt below.",
-    });
   }
 
   async function copyPreparedCommand(target: CopyTarget, command: string) {
@@ -433,7 +402,10 @@ export function SkillPromptActions({
       markPromptCopied(target);
       return true;
     }
-    showManualCopy(target, command);
+    setStatus({
+      kind: "error",
+      text: "Clipboard did not update. Select the prompt text and copy it.",
+    });
     return false;
   }
 
@@ -449,34 +421,22 @@ export function SkillPromptActions({
     return command;
   }
 
-  async function copyForToken(
+  async function preparePromptForToken(
     target: CopyTarget,
     tokenId: string,
     extras: CopyExtras,
   ) {
     setStatus(null);
-    setManualCopy(null);
-    const commandPromise = prepareCommandForToken(target, tokenId, extras);
-    const asyncClipboardCopy = copyAsyncTextToClipboard(commandPromise);
-    let command: string;
+    setPreparedPrompt(null);
     try {
-      command = await commandPromise;
+      const command = await prepareCommandForToken(target, tokenId, extras);
+      setPreparedPrompt({ target, text: command });
     } catch (error) {
-      await asyncClipboardCopy?.catch(() => false);
       setStatus({
         kind: "error",
         text: error instanceof Error ? error.message : "Could not prepare a Local Agent prompt",
       });
-      return;
     }
-
-    let copied = asyncClipboardCopy ? await asyncClipboardCopy : false;
-    if (!copied) copied = await copyTextToClipboard(command);
-    if (copied) {
-      markPromptCopied(target);
-      return;
-    }
-    showManualCopy(target, command);
   }
 
   // After the cron runtime is picked, continue to the token picker
@@ -490,7 +450,7 @@ export function SkillPromptActions({
       return;
     }
     if (activeTokens.length === 1) {
-      await copyForToken("cron", activeTokens[0].id, extras);
+      await preparePromptForToken("cron", activeTokens[0].id, extras);
       return;
     }
     // Open the token picker with the cron config stashed; we read it back
@@ -508,7 +468,7 @@ export function SkillPromptActions({
       return;
     }
     if (activeTokens.length === 1) {
-      await copyForToken("once", activeTokens[0].id, extras);
+      await preparePromptForToken("once", activeTokens[0].id, extras);
       return;
     }
     pendingExtrasRef.current = extras;
@@ -538,7 +498,7 @@ export function SkillPromptActions({
       return;
     }
     if (activeTokens.length === 1) {
-      await copyForToken(target, activeTokens[0].id, {
+      await preparePromptForToken(target, activeTokens[0].id, {
         cron: null,
         force: false,
         fetchDays: DEFAULT_PROMPT_WINDOW_DAYS,
@@ -558,7 +518,7 @@ export function SkillPromptActions({
       return;
     }
     if (activeTokens.length === 1) {
-      await copyForToken("stop", activeTokens[0].id, {
+      await preparePromptForToken("stop", activeTokens[0].id, {
         cron: null,
         force: false,
         fetchDays: DEFAULT_PROMPT_WINDOW_DAYS,
@@ -625,30 +585,6 @@ export function SkillPromptActions({
         ) : null}
       </span>
 
-      {manualCopy ? (
-        <div className="skill-prompt-manual-copy">
-          <label className="skill-prompt-manual-label" htmlFor={`skill-prompt-manual-${context}`}>
-            Prepared prompt
-          </label>
-          <textarea
-            id={`skill-prompt-manual-${context}`}
-            className="fb-textarea skill-prompt-manual-text"
-            readOnly
-            rows={3}
-            value={manualCopy.text}
-            onFocus={(e) => e.currentTarget.select()}
-          />
-          <button
-            className="fb-btn light compact"
-            onClick={() => void copyPreparedCommand(manualCopy.target, manualCopy.text)}
-            type="button"
-          >
-            <Copy aria-hidden="true" />
-            Copy again
-          </button>
-        </div>
-      ) : null}
-
       <CronConfigDialog
         open={cronConfigOpen}
         context={context}
@@ -678,8 +614,17 @@ export function SkillPromptActions({
           };
           setPickerTarget(null);
           pendingExtrasRef.current = null;
-          if (target) await copyForToken(target, tokenId, extras);
+          if (target) await preparePromptForToken(target, tokenId, extras);
         }}
+      />
+
+      <PreparedPromptDialog
+        key={preparedPrompt?.text ?? "empty-prepared-prompt"}
+        open={preparedPrompt !== null}
+        context={context}
+        prompt={preparedPrompt}
+        onCancel={() => setPreparedPrompt(null)}
+        onCopy={copyPreparedCommand}
       />
     </div>
   );
@@ -775,7 +720,7 @@ function TokenPickerDialog({
             Choose access key
           </h2>
           <p className="token-picker-sub">
-            We&rsquo;ll create a short-lived setup code for that access key and copy the prompt.
+            We&rsquo;ll create a short-lived setup code for that access key.
           </p>
         </header>
 
@@ -843,7 +788,124 @@ function TokenPickerDialog({
             disabled={!selectedTokenId || submitting || tokens.length === 0}
           >
             <Copy aria-hidden="true" />
-            {submitting ? "Copying" : "Copy prompt"}
+            {submitting ? "Preparing" : "Prepare prompt"}
+          </button>
+        </footer>
+      </form>
+    </dialog>
+  );
+}
+
+function PreparedPromptDialog({
+  open,
+  context,
+  prompt,
+  onCancel,
+  onCopy,
+}: {
+  open: boolean;
+  context: SkillPromptContext;
+  prompt: PreparedPrompt | null;
+  onCancel: () => void;
+  onCopy: (target: CopyTarget, command: string) => boolean | Promise<boolean>;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [copying, setCopying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const promptTextId = `prepared-prompt-${context}`;
+
+  useEffect(() => {
+    const d = dialogRef.current;
+    if (!d) return;
+    if (open && !d.open) {
+      try {
+        d.showModal();
+      } catch {
+        // showModal throws if already open; ignore.
+      }
+    } else if (!open && d.open) {
+      d.close();
+    }
+  }, [open]);
+
+  useEffect(() => {
+    const d = dialogRef.current;
+    if (!d) return;
+    const onClose = () => {
+      setCopying(false);
+      onCancel();
+    };
+    d.addEventListener("close", onClose);
+    return () => d.removeEventListener("close", onClose);
+  }, [onCancel]);
+
+  async function copyPrompt() {
+    if (!prompt || copying) return;
+    setCopying(true);
+    setError(null);
+    try {
+      const copied = await onCopy(prompt.target, prompt.text);
+      if (!copied) {
+        setError("Clipboard did not update. Select the prompt text and copy it.");
+      }
+    } finally {
+      setCopying(false);
+    }
+  }
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="prepared-prompt-title"
+      className="token-picker-dialog"
+      onClick={(e) => {
+        if (e.target === dialogRef.current) onCancel();
+      }}
+    >
+      <form
+        className="token-picker-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void copyPrompt();
+        }}
+      >
+        <header className="token-picker-header">
+          <h2 id="prepared-prompt-title" className="token-picker-title">
+            Prepared prompt
+          </h2>
+        </header>
+
+        <div className="skill-prompt-manual-copy">
+          <label className="skill-prompt-manual-label" htmlFor={promptTextId}>
+            Prompt
+          </label>
+          <textarea
+            id={promptTextId}
+            className="fb-textarea skill-prompt-manual-text"
+            readOnly
+            rows={4}
+            value={prompt?.text ?? ""}
+            onFocus={(e) => e.currentTarget.select()}
+          />
+          {error ? <p className="cron-field-error skill-prompt-manual-error">{error}</p> : null}
+        </div>
+
+        <footer className="token-picker-footer">
+          <button
+            type="button"
+            className="fb-btn light compact"
+            onClick={onCancel}
+            disabled={copying}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="fb-btn dark compact"
+            disabled={!prompt || copying}
+          >
+            <Copy aria-hidden="true" />
+            {copying ? "Copying" : "Copy"}
           </button>
         </footer>
       </form>
@@ -1101,7 +1163,7 @@ function CronConfigDialog({
             disabled={submitting}
           >
             <Copy aria-hidden="true" />
-            {submitting ? "Copying" : "Copy"}
+            {submitting ? "Preparing" : "Prepare prompt"}
           </button>
         </footer>
       </form>

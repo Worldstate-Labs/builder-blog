@@ -375,9 +375,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /async function copyTextToClipboard/);
   assert.match(skillPromptActions, /document\.hasFocus\(\)/);
   assert.match(skillPromptActions, /userActivation/);
-  assert.match(skillPromptActions, /function copyAsyncTextToClipboard/);
-  assert.match(skillPromptActions, /ClipboardItem/);
-  assert.match(skillPromptActions, /Clipboard did not update\. Copy the prepared prompt below\./);
+  assert.match(skillPromptActions, /PreparedPromptDialog/);
+  assert.match(skillPromptActions, /Clipboard did not update\. Select the prompt text and copy it\./);
   assert.match(skillPromptActions, /className="skill-prompt-manual-copy"/);
   assert.match(skillPromptActions, /document\.execCommand\("copy"\)/);
   assert.doesNotMatch(skillPromptActions, /await navigator\.clipboard\.writeText\(command\)/);
@@ -427,7 +426,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /Math\.min\(MAX_PROMPT_WINDOW_DAYS, Math\.max\(1/);
   assert.match(skillPromptActions, /Max post age must be a whole number from 1 to 90 days/);
   assert.match(skillPromptActions, /Fetch days must be a whole number from 1 to 90 days/);
-  assert.match(skillPromptActions, /\{submitting \? "Copying" : "Copy"\}/);
+  assert.match(skillPromptActions, /\{submitting \? "Preparing" : "Prepare prompt"\}/);
+  assert.match(skillPromptActions, /\{copying \? "Copying" : "Copy"\}/);
   assert.doesNotMatch(skillPromptActions, /\{submitting \? "…" : "Copy"\}|Copying\.\.\./);
   assert.doesNotMatch(skillPromptActions, /Copy a prompt for one run or for a recurring local schedule/);
   assert.doesNotMatch(skillPromptActions, /Local helper|connected helpers|Connected helpers/);
