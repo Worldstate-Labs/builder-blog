@@ -399,6 +399,11 @@ async function RecentPostsSlot({
   if (items.length === 0) {
     return (
       <EmptyState
+        actions={
+          <Link className="fb-btn light compact" href="/builders">
+            Open Sources
+          </Link>
+        }
         title="No summarized posts yet"
         body="Fetch and summarize sources from the Sources page, then posts from this source will appear here."
       />

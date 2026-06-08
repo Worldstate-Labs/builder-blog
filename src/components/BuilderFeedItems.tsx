@@ -139,7 +139,7 @@ export function BuilderFeedItems({
           <EmptyState
             className="builder-post-empty"
             title="No summarized posts yet"
-            body="Fetch and summarize sources with your Local Agent, then posts from this source will appear here."
+            body="Run Fetch sources, then posts from this source will appear here."
           />
         ) : null}
       </div>
