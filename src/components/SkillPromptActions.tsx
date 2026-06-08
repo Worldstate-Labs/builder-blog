@@ -420,12 +420,13 @@ export function SkillPromptActions({
     setManualCopyPrompt(null);
     try {
       const command = await prepareCommandForToken(target, tokenId, extras);
-      await copyPreparedCommand(target, command);
+      return await copyPreparedCommand(target, command);
     } catch (error) {
       setStatus({
         kind: "error",
         text: error instanceof Error ? error.message : "Could not prepare a Local Agent prompt",
       });
+      return false;
     }
   }
 
@@ -437,16 +438,16 @@ export function SkillPromptActions({
     const extras: CopyExtras = { cron, force: false, fetchDays: cron.fetchDays };
     if (activeTokens.length === 0) {
       setStatus({ kind: "info", text: "Connect a Local Agent in Settings first" });
-      return;
+      return false;
     }
     if (activeTokens.length === 1) {
-      await copyForToken("cron", activeTokens[0].id, extras);
-      return;
+      return await copyForToken("cron", activeTokens[0].id, extras);
     }
     // Open the token picker with the cron config stashed; we read it back
     // when the user confirms a token.
     pendingExtrasRef.current = extras;
     setPickerTarget("cron");
+    return true;
   }
 
   // Once flow: after the override (+ language) choice, continue to the token picker
@@ -455,22 +456,21 @@ export function SkillPromptActions({
     const extras: CopyExtras = { cron: null, force: overrideFetched, fetchDays };
     if (activeTokens.length === 0) {
       setStatus({ kind: "info", text: "Connect a Local Agent in Settings first" });
-      return;
+      return false;
     }
     if (activeTokens.length === 1) {
-      await copyForToken("once", activeTokens[0].id, extras);
-      return;
+      return await copyForToken("once", activeTokens[0].id, extras);
     }
     pendingExtrasRef.current = extras;
     setPickerTarget("once");
+    return true;
   }
 
   async function continueScheduleCopy(selection: SchedulePromptSelection) {
     if (selection.target === "once") {
-      await continueOnceCopy(selection.overrideFetched, selection.fetchDays);
-      return;
+      return await continueOnceCopy(selection.overrideFetched, selection.fetchDays);
     }
-    await continueCronCopy(selection.cron);
+    return await continueCronCopy(selection.cron);
   }
 
   async function copyCommand(target: CopyTarget) {
@@ -582,8 +582,8 @@ export function SkillPromptActions({
         digestMaxPostAgeDays={digestMaxPostAgeDays}
         onCancel={() => setCronConfigOpen(false)}
         onConfirm={async (selection) => {
-          await continueScheduleCopy(selection);
-          setCronConfigOpen(false);
+          const completed = await continueScheduleCopy(selection);
+          if (completed) setCronConfigOpen(false);
         }}
       />
 
