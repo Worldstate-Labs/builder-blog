@@ -879,18 +879,49 @@ function LibrarySection({
 }
 
 function builderSort(a: BuilderWithCount, b: BuilderWithCount) {
-  // Kind-grouped, newest-first within each kind. The user prefers
-  // scanning by source type (all X together, all podcasts together);
-  // within a group the most-recently-added row sits at the top, so a
-  // newly added builder lands at the top of its KIND group — not
-  // necessarily the top of the page. Name is the deterministic
-  // tiebreaker when createdAt is identical (e.g. seeded rows).
-  const kindCmp = a.kind.localeCompare(b.kind);
-  if (kindCmp !== 0) return kindCmp;
+  // Source-type grouped, newest-first within each type. Keep this in
+  // sync with BuilderLibraryList's clientBuilderSort so optimistic rows
+  // keep the same section after the server data refreshes.
+  const sourceCmp =
+    sourceTypeSortRank(sourceTypeForBuilder(a)) -
+    sourceTypeSortRank(sourceTypeForBuilder(b));
+  if (sourceCmp !== 0) return sourceCmp;
   const ta = a.createdAt.getTime();
   const tb = b.createdAt.getTime();
   if (ta !== tb) return tb - ta;
   return a.name.localeCompare(b.name);
+}
+
+function sourceTypeForBuilder(
+  builder: Pick<BuilderWithCount, "kind" | "sourceType">,
+) {
+  const explicit = normalizeBuilderSourceType(builder.sourceType);
+  if (explicit) return explicit;
+  if (builder.kind === BuilderKind.X) return "x";
+  if (builder.kind === BuilderKind.BLOG) return "blog";
+  if (builder.kind === BuilderKind.PODCAST) return "podcast";
+  return "website";
+}
+
+function normalizeBuilderSourceType(sourceType: string | null | undefined) {
+  const normalized = sourceType?.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (!normalized || normalized === "auto") return "";
+  if (normalized === "pdf") return "website";
+  return normalized;
+}
+
+function sourceTypeSortRank(sourceType: string) {
+  const order = [
+    "blog",
+    "github_trending",
+    "product_hunt_top_products",
+    "youtube",
+    "podcast",
+    "x",
+    "website",
+  ];
+  const index = order.indexOf(sourceType);
+  return index === -1 ? order.length : index;
 }
 
 function firstParam(value: string | string[] | undefined) {

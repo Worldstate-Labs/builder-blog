@@ -2612,6 +2612,13 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderLibraryList, /fb-src-meta|source-host-meta|source-host-meta/);
   assert.match(builderLibraryList, /visibleSections/);
   assert.match(builderLibraryList, /groupBuildersBySourceType/);
+  assert.match(buildersPage, /sourceTypeSortRank\(sourceTypeForBuilder\(a\)\)/);
+  assert.match(buildersPage, /function normalizeBuilderSourceType/);
+  assert.match(
+    buildersPage,
+    /"blog"[\s\S]*"github_trending"[\s\S]*"product_hunt_top_products"[\s\S]*"youtube"[\s\S]*"podcast"[\s\S]*"x"[\s\S]*"website"/,
+  );
+  assert.doesNotMatch(buildersPage, /const kindCmp = a\.kind\.localeCompare\(b\.kind\)/);
   assert.match(builderLibraryList, /className="builder-library-source-section"/);
   assert.match(builderLibraryList, /className="builder-library-source-section-head"/);
   assert.match(builderLibraryList, /<SourceBadge sourceType=\{section\.sourceType\} \/>/);
