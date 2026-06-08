@@ -293,7 +293,7 @@ export function DigestPipelineImportForm({
             <div className="settings-dialog-copy">
               <p>
                 After removing <strong>{removeTarget.title}</strong>, you will
-                no longer see this AI Digest archive on the Home page.
+                no longer see this AI Digest archive on Home.
               </p>
               <p className="settings-dialog-warning">
                 You can import it again from Hub later.

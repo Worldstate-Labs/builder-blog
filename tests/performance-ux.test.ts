@@ -4156,7 +4156,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.doesNotMatch(digestPipelineForm, /className="digest-remove-popover"/);
   assert.match(digestPipelineForm, /Remove AI Digest archive import\?/);
-  assert.match(digestPipelineForm, /you will\s+no longer see this AI Digest archive on the Home page/);
+  assert.match(digestPipelineForm, /you will\s+no longer see this AI Digest archive on Home\./);
   assert.match(digestPipelineForm, /You can import it again from Hub later/);
   assert.match(digestPipelineForm, />\s*Remove import\s*<\/button>/);
   assert.match(digestPipelineForm, /confirmRemoveImported/);
@@ -4167,7 +4167,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, />\s*Remove import\s*<\/button>/);
   assert.match(digestPipelineForm, /Could not import AI Digest archive/);
   assert.match(digestPipelineForm, /Could not remove AI Digest archive import/);
-  assert.doesNotMatch(digestPipelineForm, /Remove \$\{pipeline\.title\} from Home|Remove \$\{pipeline\.title\} from imported AI Digests|Remove imported digest\?|Remove imported AI Digest\?|Remove digest|>\s*Remove AI Digest\s*<\/button>|Could not import digest|Could not remove imported digest|no longer see this digest on the Home page/);
+  assert.doesNotMatch(digestPipelineForm, /Remove \$\{pipeline\.title\} from Home|Remove \$\{pipeline\.title\} from imported AI Digests|Remove imported digest\?|Remove imported AI Digest\?|Remove digest|>\s*Remove AI Digest\s*<\/button>|Could not import digest|Could not remove imported digest|no longer see this digest on the Home page|no longer see this AI Digest archive on the Home page/);
   assert.match(digestPipelineForm, /<Trash2 aria-hidden="true" \/>/);
   assert.match(digestPipelineShareRoute, /shareDigestPipelineToHub/);
   assert.match(digestPipelineShareRoute, /updateDigestPipelineTitle/);
