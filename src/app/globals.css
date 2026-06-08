@@ -1203,6 +1203,49 @@ a.reading-source-label:focus-visible {
   min-width: 0;
 }
 
+.favorites-feed-head {
+  align-items: end;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 0.15rem;
+  padding-bottom: 0.85rem;
+}
+
+.favorites-feed-title {
+  color: var(--ink);
+  font-family: var(--font-geist-sans);
+  font-size: 1rem;
+  font-weight: 780;
+  letter-spacing: 0;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.favorites-feed-desc {
+  color: var(--muted-strong);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  margin: 0.25rem 0 0;
+  max-width: var(--copy-max);
+}
+
+.favorites-feed-count,
+.favorite-saved-at {
+  color: var(--muted);
+  font-family: var(--font-geist-mono);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.favorites-feed-list {
+  display: grid;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
 .recommendation-snapshot-list {
   display: grid;
   gap: 0.6rem;
@@ -11455,6 +11498,11 @@ body {
   .access-key-device-icon svg {
     height: 1.55rem;
     width: 1.55rem;
+  }
+
+  .favorites-feed-head {
+    align-items: start;
+    display: grid;
   }
 
   .fb-pill {

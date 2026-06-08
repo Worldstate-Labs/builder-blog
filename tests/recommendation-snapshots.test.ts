@@ -68,9 +68,12 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.doesNotMatch(feed, /filter\(\(entry\) => entry\.item\.id !== feedItemId\)/);
 });
 
-test("favorites saves posts without reintroducing a separate saved feed", () => {
+test("favorites saves posts into a focused reading tab", () => {
   const schema = source("prisma/schema.prisma");
   const favoriteRoute = source("src/app/api/favorites/route.ts");
+  const favoriteSection = source("src/components/FavoritePostsSection.tsx");
+  const favoriteList = source("src/components/FavoritePostsList.tsx");
+  const favoriteButton = source("src/components/PostFavoriteButton.tsx");
   const digestRoute = source("src/app/api/digests/[digestId]/route.ts");
   const digestDetails = source("src/components/DigestDetails.tsx");
   const digestContent = source("src/components/DigestContent.tsx");
@@ -83,25 +86,28 @@ test("favorites saves posts without reintroducing a separate saved feed", () => 
   assert.match(favoriteRoute, /favoritePost/);
   assert.match(favoriteRoute, /unfavoritePost/);
   assert.doesNotMatch(favoriteRoute, /export async function GET/);
-  assert.match(feed, /FavoriteToggleButton/);
-  assert.match(feed, /Save post/);
-  assert.match(feed, /const label = isFavorite \? "Remove saved post" : "Save post"/);
-  assert.match(feed, /title=\{label\}/);
-  assert.match(feed, /className="post-action-icon"/);
+  assert.match(favoriteSection, /feedFavorite\.findMany/);
+  assert.match(favoriteSection, /orderBy:\s*\{ favoritedAt: "desc" \}/);
+  assert.match(favoriteSection, /take:\s*favoritePostLimit/);
+  assert.match(favoriteSection, /feedRead\.findMany/);
+  assert.match(favoriteList, /Saved posts/);
+  assert.match(favoriteList, /postDetailHref\(item\.feedItemId, "\/dashboard\?tab=favorites", "Favorites"\)/);
+  assert.match(favoriteList, /Remove saved post|PostFavoriteButton/);
+  assert.match(favoriteButton, /const label = isFavorite \? "Remove saved post" : "Save post"/);
+  assert.match(favoriteButton, /title=\{label\}/);
+  assert.match(favoriteButton, /className="post-action-icon"/);
+  assert.match(feed, /PostFavoriteButton/);
   assert.match(digestRoute, /favoriteStateByUrl/);
   assert.match(digestRoute, /activePoolBuilderIds/);
   assert.match(digestRoute, /feedFavorite\.findMany/);
   assert.match(digestDetails, /favoriteStateByUrl/);
   assert.match(digestDetails, /cleanFavoriteStateByUrl/);
   assert.match(digestDetails, /fetch\("\/api\/favorites"/);
-  assert.match(digestContent, /DigestFavoriteToggleButton/);
+  assert.match(digestContent, /PostFavoriteButton/);
   assert.match(digestContent, /onFavoriteToggle/);
-  assert.match(digestContent, /post-favorite-btn/);
-  assert.match(digestContent, /className="post-action-icon"/);
-  assert.doesNotMatch(feed, /Favorites|Saved to Favorites|Save to Favorites/);
-  assert.doesNotMatch(digestContent, /Favorites|Saved to Favorites|Save to Favorites/);
   assert.doesNotMatch(feed, /disabled=\{isRead\}/);
   assert.doesNotMatch(feed, /mode\?: "favorites"|FavoriteReadButton|markedReadAt|\/api\/favorites\/read/);
+  assert.doesNotMatch(favoriteList, /FavoriteReadButton|markedReadAt|\/api\/favorites\/read/);
   assert.doesNotMatch(postCard, /data-favorite-read|favoriteReadEmphasis/);
   assert.doesNotMatch(globals, /data-favorite-read="true"|favorite-read-label|favorite-mark-read/);
   assert.doesNotMatch(globals, /inset 4px 0 0/);
@@ -348,11 +354,11 @@ test("following recommendation feed uses subscribed builders only", () => {
 
   assert.match(tabs, /AI Digest/);
   assert.match(tabs, /Following/);
+  assert.match(tabs, /Favorites/);
   assert.doesNotMatch(tabs, /For You/);
-  assert.doesNotMatch(tabs, /Favorites/);
   assert.match(dashboardPage, /aiDigest=/);
-  assert.doesNotMatch(dashboardPage, /FavoritePostsSection/);
-  assert.match(dashboardPage, /requestedTab === "favorites"[\s\S]*redirect\("\/dashboard"\)/);
+  assert.match(dashboardPage, /FavoritePostsSection/);
+  assert.doesNotMatch(dashboardPage, /requestedTab === "favorites"[\s\S]*redirect\("\/dashboard"\)/);
   assert.match(dashboardPage, /FollowingRecommendationSection/);
   assert.match(dashboardPage, /sourceReadiness=\{sourceReadiness\}/);
   assert.match(dashboardPage, /dashboardSourceReadinessForUser/);

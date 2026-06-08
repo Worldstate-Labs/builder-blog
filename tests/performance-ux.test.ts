@@ -1122,9 +1122,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardTabs, /ai-digest/);
   assert.match(dashboardTabs, /AI Digest[\s\S]*Following/);
   assert.doesNotMatch(dashboardTabs, /For You/);
-  assert.doesNotMatch(dashboardTabs, /Favorites|favorites|home-panel-favorites|home-tab-favorites/);
-  assert.match(dashboardTabs, /value: "ai-digest"[\s\S]*label: "AI Digest"[\s\S]*value: "following"[\s\S]*label: "Following"/);
-  assert.match(dashboardTabs, /id="home-panel-ai-digest"[\s\S]*id="home-panel-following"/);
+  assert.match(dashboardTabs, /Favorites/);
+  assert.match(dashboardTabs, /home-panel-favorites|home-tab-favorites/);
+  assert.match(dashboardTabs, /value: "ai-digest"[\s\S]*label: "AI Digest"[\s\S]*value: "following"[\s\S]*label: "Following"[\s\S]*value: "favorites"[\s\S]*label: "Favorites"/);
+  assert.match(dashboardTabs, /id="home-panel-ai-digest"[\s\S]*id="home-panel-following"[\s\S]*id="home-panel-favorites"/);
   assert.match(
     dashboardPage,
     /const aiDigest =[\s\S]*selectedTab === "ai-digest"[\s\S]*\? await AiDigestFeedSlot/,
@@ -1138,8 +1139,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /Recent digest/);
   assert.match(digestArchivePicker, /AI Digest archive/);
   assert.match(digestArchivePicker, /setOpen\(false\)/);
-  assert.doesNotMatch(dashboardPage, /FavoritePostsSection/);
-  assert.match(dashboardPage, /requestedTab === "favorites"[\s\S]*redirect\("\/dashboard"\)/);
+  assert.match(dashboardPage, /FavoritePostsSection/);
+  assert.match(dashboardPage, /selectedTab === "favorites"/);
+  assert.doesNotMatch(dashboardPage, /requestedTab === "favorites"[\s\S]*redirect\("\/dashboard"\)/);
   assert.match(dashboardPage, /FollowingRecommendationSection/);
   assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
   assert.match(digestDetails, /mode === "today"/);
@@ -1433,6 +1435,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   const followingSection = source("src/components/FollowingRecommendationSection.tsx");
   const feedState = source("src/components/FeedState.tsx");
   const recommendationFeed = source("src/components/RecommendationFeed.tsx");
+  const favoriteButton = source("src/components/PostFavoriteButton.tsx");
   const globals = source("src/app/globals.css");
   const timelineRoute = source("src/app/api/recommendations/timeline/route.ts");
   const serializer = source("src/lib/recommendation-view-model.ts");
@@ -1440,8 +1443,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
   assert.doesNotMatch(dashboardPage, /RecommendationFeed/);
   assert.match(dashboardPage, /isAdminEmail\(session\.user\.email\)/);
-  assert.doesNotMatch(dashboardPage, /<FavoritePostsSection/);
-  assert.equal(existsSync(join(root, "src/components/FavoritePostsSection.tsx")), false);
+  assert.match(dashboardPage, /<FavoritePostsSection/);
+  assert.equal(existsSync(join(root, "src/components/FavoritePostsSection.tsx")), true);
   assert.equal(existsSync(join(root, "src/app/api/favorites/read/route.ts")), false);
   assert.match(dashboardPage, /<FollowingRecommendationSection[\s\S]*isAdmin=\{isAdmin\}[\s\S]*sourceReadiness=\{sourceReadiness\}/);
   assert.match(dashboardPage, /dashboardSourceReadinessForUser/);
@@ -1521,7 +1524,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /Retry/);
   assert.match(recommendationFeed, /className="feed-action-icon"/);
   assert.match(recommendationFeed, /className="feed-loading-icon"/);
-  assert.match(recommendationFeed, /className="post-action-icon"/);
+  assert.match(favoriteButton, /className="post-action-icon"/);
   assert.doesNotMatch(recommendationFeed, /h-4 w-4|h-3\.5 w-3\.5|animate-spin/);
   assert.doesNotMatch(followingSection, /h-4 w-4|h-3\.5 w-3\.5|animate-spin/);
   assert.doesNotMatch(recommendationFeed, /Favorites|Saved to Favorites|Save to Favorites/);
@@ -3281,14 +3284,14 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(recommendationFeed, /"Following"/);
   assert.match(recommendations, /from a followed source/);
   assert.doesNotMatch(recommendations, /from a subscribed builder/);
-  assert.match(recommendationFeed, /aria-label=\{label\}/);
-  assert.match(recommendationFeed, /const label = isFavorite \? "Remove saved post" : "Save post"/);
-  assert.match(recommendationFeed, /<Star aria-hidden="true" className="post-action-icon"/);
-  assert.match(digestContent, /aria-label=\{label\}/);
+  const favoriteButton = source("src/components/PostFavoriteButton.tsx");
+  assert.match(recommendationFeed, /PostFavoriteButton/);
+  assert.match(digestContent, /PostFavoriteButton/);
+  assert.match(favoriteButton, /aria-label=\{label\}/);
+  assert.match(favoriteButton, /const label = isFavorite \? "Remove saved post" : "Save post"/);
+  assert.match(favoriteButton, /<Star aria-hidden="true" className="post-action-icon"/);
   assert.match(digestContent, /@\/lib\/navigation/);
   assert.doesNotMatch(digestContent, /function postDetailHref/);
-  assert.match(digestContent, /const label = isFavorite \? "Remove saved post" : "Save post"/);
-  assert.match(digestContent, /<Star aria-hidden="true" className="post-action-icon"/);
   assert.doesNotMatch(recommendationFeed, /title=\{isFavorite \? "Saved post" : "Save post"\}|Favorites/);
   assert.doesNotMatch(digestContent, /title=\{isFavorite \? "Saved post" : "Save post"\}|Favorites/);
   assert.doesNotMatch(recommendationFeed, /isFavoritesTab \? "Favorites" : "Following"/);

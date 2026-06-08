@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { WorkspaceTopTabs, type WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
 
-type DashboardTab = "ai-digest" | "following";
+type DashboardTab = "ai-digest" | "following" | "favorites";
 
 const HOME_TABS: Array<WorkspaceTopTabItem<DashboardTab>> = [
   {
@@ -18,14 +18,23 @@ const HOME_TABS: Array<WorkspaceTopTabItem<DashboardTab>> = [
     panelId: "home-panel-following",
     tabId: "home-tab-following",
   },
+  {
+    value: "favorites",
+    label: "Favorites",
+    href: "/dashboard?tab=favorites",
+    panelId: "home-panel-favorites",
+    tabId: "home-tab-favorites",
+  },
 ];
 
 export function DashboardHomeTabs({
   aiDigest,
+  favorites,
   following,
   initialTab,
 }: {
   aiDigest: ReactNode;
+  favorites: ReactNode;
   following: ReactNode;
   initialTab: DashboardTab;
 }) {
@@ -53,6 +62,15 @@ export function DashboardHomeTabs({
         role="tabpanel"
       >
         {initialTab === "following" ? following : null}
+      </section>
+      <section
+        aria-labelledby="home-tab-favorites"
+        className="home-tab-panel"
+        hidden={initialTab !== "favorites"}
+        id="home-panel-favorites"
+        role="tabpanel"
+      >
+        {initialTab === "favorites" ? favorites : null}
       </section>
     </>
   );

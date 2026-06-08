@@ -4,6 +4,7 @@ import { DigestArchivePicker, type DigestArchivePickerOption } from "@/component
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
 import type { DigestSourceLink } from "@/components/DigestContent";
 import { EmptyState } from "@/components/EmptyState";
+import { FavoritePostsSection } from "@/components/FavoritePostsSection";
 import {
   FollowingRecommendationSection,
   type FollowingSourceReadiness,
@@ -71,7 +72,6 @@ export default async function DashboardPage({
   const params = await searchParams;
   const requestedTab = firstParam(params.tab);
   if (requestedTab === "subscription") redirect("/dashboard?tab=following");
-  if (requestedTab === "favorites") redirect("/dashboard");
   const selectedTab = parseTab(requestedTab);
   const digestId = firstParam(params.digest);
   const pipelineId = firstParam(params.pipeline);
@@ -94,6 +94,11 @@ export default async function DashboardPage({
         <DashboardHomeTabs
           initialTab={selectedTab}
           aiDigest={aiDigest}
+          favorites={
+            selectedTab === "favorites" ? (
+              <FavoritePostsSection userId={userId} />
+            ) : null
+          }
           following={
             <FollowingRecommendationSection
               isAdmin={isAdmin}
@@ -451,6 +456,7 @@ async function digestSourceLinksForUser(userId: string): Promise<DigestSourceLin
 
 function parseTab(value: string | undefined) {
   if (value === "following") return value;
+  if (value === "favorites") return value;
   if (value === "subscription") return "following";
   return "ai-digest";
 }

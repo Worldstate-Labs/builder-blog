@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { ArrowRight, Star } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { PostCard, type PostCardPost } from "@/components/PostCard";
+import { PostFavoriteButton } from "@/components/PostFavoriteButton";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { postDetailHref } from "@/lib/navigation";
 import { normalizeSourceType } from "@/lib/source-display";
@@ -224,9 +225,9 @@ function PostBlock({
     <PostCard
       extraActions={
         favoriteState && onFavoriteToggle ? (
-          <DigestFavoriteToggleButton
+          <PostFavoriteButton
             isFavorite={Boolean(favoriteState.favoritedAt)}
-            toggleFavorite={() =>
+            onToggle={() =>
               onFavoriteToggle(url, favoriteState.feedItemId, !favoriteState.favoritedAt)
             }
           />
@@ -238,28 +239,6 @@ function PostBlock({
       showPublishedDate={false}
       showSourceBadge={false}
     />
-  );
-}
-
-function DigestFavoriteToggleButton({
-  isFavorite,
-  toggleFavorite,
-}: {
-  isFavorite: boolean;
-  toggleFavorite: () => void;
-}) {
-  const label = isFavorite ? "Remove saved post" : "Save post";
-  return (
-    <button
-      aria-label={label}
-      aria-pressed={isFavorite}
-      className={`post-action-btn post-favorite-btn${isFavorite ? " post-action-btn--active" : ""}`}
-      onClick={toggleFavorite}
-      title={label}
-      type="button"
-    >
-      <Star aria-hidden="true" className="post-action-icon" />
-    </button>
   );
 }
 

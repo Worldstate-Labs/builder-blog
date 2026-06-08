@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, RefreshCcw, Star } from "lucide-react";
+import { Loader2, RefreshCcw } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { PostCard } from "@/components/PostCard";
+import { PostFavoriteButton } from "@/components/PostFavoriteButton";
 import { useHydrated } from "@/components/ThemeToggle";
 import { markPostRead } from "@/lib/mark-read";
 import { postDetailHref } from "@/lib/navigation";
@@ -213,9 +214,9 @@ function RecommendationCard({
     <PostCard
       dataRead={isRead}
       extraActions={
-        <FavoriteToggleButton
+        <PostFavoriteButton
           isFavorite={isFavorite}
-          toggleFavorite={() => toggleFavorite(entry.item.id, !isFavorite)}
+          onToggle={() => void toggleFavorite(entry.item.id, !isFavorite)}
         />
       }
       onInteract={() => markRead(entry.item.id)}
@@ -232,28 +233,6 @@ function RecommendationCard({
       showSourceBadge={false}
       stackActionsOnMobile={showAdminActions}
     />
-  );
-}
-
-function FavoriteToggleButton({
-  isFavorite,
-  toggleFavorite,
-}: {
-  isFavorite: boolean;
-  toggleFavorite: () => Promise<void>;
-}) {
-  const label = isFavorite ? "Remove saved post" : "Save post";
-  return (
-    <button
-      aria-label={label}
-      aria-pressed={isFavorite}
-      className={`post-action-btn post-favorite-btn${isFavorite ? " post-action-btn--active" : ""}`}
-      onClick={() => void toggleFavorite()}
-      title={label}
-      type="button"
-    >
-      <Star aria-hidden="true" className="post-action-icon" />
-    </button>
   );
 }
 
