@@ -17,6 +17,11 @@ export default async function LegacyRecommendationItemPage({
       query.set(key, value);
     }
   }
+  const returnTo = query.get("returnTo") ?? "";
+  if (!returnTo || returnTo.startsWith("/recommendations")) {
+    query.set("returnTo", "/dashboard?tab=following");
+    query.set("returnLabel", "Following");
+  }
   const suffix = query.toString() ? `?${query.toString()}` : "";
   redirect(`/posts/${feedItemId}${suffix}`);
 }

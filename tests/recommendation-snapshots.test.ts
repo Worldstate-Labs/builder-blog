@@ -56,6 +56,10 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.match(postDetailPage, /avatarUrl:\s*item\.builder\.avatarUrl/);
   assert.match(postDetailPage, /item\.body/);
   assert.match(legacyDetailPage, /redirect\(`\/posts\/\$\{feedItemId\}\$\{suffix\}`\)/);
+  assert.match(legacyDetailPage, /returnTo\.startsWith\("\/recommendations"\)/);
+  assert.match(legacyDetailPage, /query\.set\("returnTo", "\/dashboard\?tab=following"\)/);
+  assert.match(legacyDetailPage, /query\.set\("returnLabel", "Following"\)/);
+  assert.doesNotMatch(legacyDetailPage, /For You/);
   assert.doesNotMatch(feed, /filter\(\(entry\) => entry\.item\.id !== feedItemId\)/);
 });
 

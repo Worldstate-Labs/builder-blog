@@ -186,6 +186,10 @@ test("every app route has an explicit centered layout role", () => {
     assert.match(text, pattern, `${path} should redirect into the canonical centered route`);
     assert.doesNotMatch(text, /page-pad|fb-public-nav|fb-login-nav|AppShell/);
   }
+  assert.match(
+    source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx"),
+    /query\.set\("returnTo", "\/dashboard\?tab=following"\)[\s\S]*query\.set\("returnLabel", "Following"\)/,
+  );
 
   assert.match(source("src/app/loading.tsx"), /<RouteLoading label="Loading" title="Loading FollowBrief" \/>/);
   const workspaceLoadingRoutes = [
