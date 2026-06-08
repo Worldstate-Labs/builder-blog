@@ -9895,7 +9895,7 @@ a.fb-hub-source-name:focus-visible {
 .access-key-revoked-pill {
   align-items: center;
   align-self: center;
-  background: color-mix(in oklch, var(--ink) 4%, var(--paper-strong));
+  background: color-mix(in oklch, var(--ink) 5%, var(--paper));
   border: 0;
   border-radius: 999px;
   color: var(--ink);
@@ -9917,7 +9917,7 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .access-key-revoke-button:hover {
-  background: color-mix(in oklch, var(--ink) 7%, var(--paper-strong));
+  background: color-mix(in oklch, var(--ink) 8%, var(--paper));
 }
 
 .access-key-revoke-button:disabled {
@@ -9972,14 +9972,14 @@ a.fb-hub-source-name:focus-visible {
   align-items: center;
   background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 16px;
   box-shadow: none;
   display: grid;
   gap: 1.1rem;
   grid-template-columns: 2.25rem minmax(0, 1fr) auto;
-  min-height: 5rem;
+  min-height: 5.25rem;
   min-width: 0;
-  padding: 1rem 1.25rem 1rem 1.125rem;
+  padding: 1rem 1.35rem 1rem 1.125rem;
 }
 
 .access-key-card.fb-row--revoked {

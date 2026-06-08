@@ -638,10 +638,10 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(agentTokenPanel, /Revoke access/);
   assert.match(globals, /\.access-keys-list\s*{[\s\S]*list-style:\s*none/);
   assert.match(globals, /\.access-keys-list\s*{[\s\S]*padding:\s*0/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*18px/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*16px/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*box-shadow:\s*none/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.25rem minmax\(0,\s*1fr\) auto/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*5rem/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*5.25rem/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.25rem minmax\(0,\s*1fr\)/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*5\.5rem/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*grid-column:\s*2/);
@@ -4083,10 +4083,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.settings-dialog-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.doesNotMatch(globals, /\.access-keys-status\.is-error/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.25rem minmax\(0,\s*1fr\) auto/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*18px/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*16px/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*background:\s*var\(--paper\)/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*box-shadow:\s*none/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*5rem/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*5.25rem/);
   assert.match(globals, /\.access-key-device-title\s*{[\s\S]*font-size:\s*1\.125rem/);
   assert.match(globals, /\.access-key-device-status\s*{[\s\S]*font-size:\s*1rem/);
   assert.match(globals, /\.access-key-device-icon svg\s*{[\s\S]*height:\s*1\.6rem/);
