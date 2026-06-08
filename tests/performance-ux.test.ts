@@ -216,7 +216,6 @@ test("every app route has an explicit centered layout role", () => {
     ["src/app/(workspace)/recommendations/items/[feedItemId]/loading.tsx", "Post", "Loading post", 4],
     ["src/app/(workspace)/history/loading.tsx", "AI Digest", "Loading AI Digest", 6],
     ["src/app/(workspace)/recommendations/loading.tsx", "Following", "Loading Following", 6],
-    ["src/app/(workspace)/search/loading.tsx", "Search", "Loading Search", 5],
   ] as const;
   for (const [path, label, title, rows] of readingLoadingRoutes) {
     assert.match(
@@ -273,6 +272,19 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(hubLoading, /Source libraries built and shared by other users\./);
   assert.match(hubLoading, /className="hub-list-stack fb-hub-list"/);
   assert.match(hubLoading, /className="fb-hub-card" key=\{index\}/);
+  const searchLoading = source("src/app/(workspace)/search/loading.tsx");
+  assert.doesNotMatch(searchLoading, /RouteLoading/);
+  assert.match(searchLoading, /@\/components\/PageHeader/);
+  assert.match(searchLoading, /className="page-pad page-pad--reading search-page search-loading"/);
+  assert.match(searchLoading, /<PageHeader[\s\S]*title="Search"[\s\S]*Find sources, posts, and AI Digest archives in one place\./);
+  assert.match(searchLoading, /className="workspace-content-stack search-results-workspace"/);
+  assert.match(searchLoading, /className="search-hero-form" aria-label="Loading search controls"/);
+  assert.match(searchLoading, /className="search-form search-loading-form"/);
+  assert.match(searchLoading, /className="fb-segmented-tabs filter-tabs search-loading-tabs"/);
+  assert.match(searchLoading, /search-loading-tab is-active[\s\S]*All/);
+  assert.match(searchLoading, /search-loading-tab[\s\S]*AI Digest archives/);
+  assert.match(searchLoading, /className="search-meta-skeleton search-meta-skeleton--count"/);
+  assert.match(searchLoading, /className="search-result-skeleton" key=\{index\}/);
   assert.equal(existsSync(join(root, "src/app/history/page.tsx")), false);
   assert.equal(existsSync(join(root, "src/app/history/loading.tsx")), false);
 });
@@ -1052,6 +1064,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.sources-loading-tab\.is-active\s*{[\s\S]*box-shadow:\s*inset 0 -2px 0 var\(--accent\)/);
   assert.match(globals, /\.hub-loading-tabs\s*{[\s\S]*pointer-events:\s*none/);
   assert.match(globals, /\.hub-loading-tab\.is-active\s*{[\s\S]*box-shadow:\s*inset 0 -2px 0 var\(--accent\)/);
+  assert.match(globals, /\.search-loading-form\s*{[\s\S]*pointer-events:\s*none/);
+  assert.match(globals, /\.search-loading-tabs\s*{[\s\S]*pointer-events:\s*none/);
+  assert.match(globals, /\.search-loading-tab\.is-active\s*{[\s\S]*box-shadow:\s*inset 0 -2px 0 var\(--accent\)/);
+  assert.match(globals, /\.search-loading-input,[\s\S]*\.search-loading-button\s*{[\s\S]*animation:\s*pulse/);
   assert.match(globals, /\.home-loading-field,[\s\S]*\.home-loading-line,[\s\S]*\.home-loading-post-row\s*{[\s\S]*animation:\s*pulse/);
   assert.match(globals, /\.library-hub-skeleton-line,[\s\S]*\.library-hub-skeleton-card\s*{[\s\S]*animation:\s*pulse/);
   assert.match(globals, /\.home-loading-digest-card\s*{[\s\S]*background:\s*var\(--paper-strong\)/);
@@ -2484,16 +2500,12 @@ test("user library search can fetch operator-only candidate sets", () => {
 
 test("primary tabs keep local loading fallbacks alongside route loaders", () => {
   assert.equal(existsSync(join(root, "src/app/(workspace)/history/loading.tsx")), true);
-  for (const path of [
-    "src/app/(workspace)/search/loading.tsx",
-  ]) {
-    assert.equal(existsSync(join(root, path)), true, path);
-    assert.match(source(path), /RouteLoading/);
-  }
   assert.equal(existsSync(join(root, "src/app/(workspace)/builders/loading.tsx")), true);
   assert.doesNotMatch(source("src/app/(workspace)/builders/loading.tsx"), /RouteLoading/);
   assert.equal(existsSync(join(root, "src/app/(workspace)/library-hub/loading.tsx")), true);
   assert.doesNotMatch(source("src/app/(workspace)/library-hub/loading.tsx"), /RouteLoading/);
+  assert.equal(existsSync(join(root, "src/app/(workspace)/search/loading.tsx")), true);
+  assert.doesNotMatch(source("src/app/(workspace)/search/loading.tsx"), /RouteLoading/);
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const digestPipelineForm = source("src/components/DigestPipelineImportForm.tsx");
   const libraryHubPage = source("src/app/(workspace)/library-hub/page.tsx");
