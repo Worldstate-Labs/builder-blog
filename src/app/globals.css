@@ -9033,7 +9033,7 @@ a.fb-hub-source-name:focus-visible {
 
 .access-keys-list--skeleton .settings-skeleton-row {
   border-radius: 16px;
-  height: 4.75rem;
+  height: 6rem;
 }
 
 .settings-source-type-manager {
@@ -9764,22 +9764,22 @@ a.fb-hub-source-name:focus-visible {
   align-items: center;
   color: var(--ink);
   display: inline-flex;
-  height: 2.25rem;
+  height: 2.5rem;
   justify-content: center;
-  width: 2.25rem;
+  width: 2.5rem;
 }
 
 .access-key-device-icon svg {
-  height: 1.5rem;
+  height: 1.65rem;
   stroke-width: 1.9;
-  width: 1.5rem;
+  width: 1.65rem;
 }
 
 .access-key-revoke-button,
 .access-key-revoked-pill {
   align-items: center;
   align-self: center;
-  background: color-mix(in oklch, var(--ink) 4%, var(--paper-strong));
+  background: color-mix(in oklch, var(--ink) 5%, var(--paper-strong));
   border: 0;
   border-radius: 999px;
   color: var(--ink);
@@ -9788,8 +9788,8 @@ a.fb-hub-source-name:focus-visible {
   font-weight: 520;
   justify-content: center;
   justify-self: end;
-  min-height: 2.35rem;
-  min-width: 8.75rem;
+  min-height: 2.5rem;
+  min-width: 9rem;
   padding: 0.4rem 1rem;
   text-align: center;
   white-space: nowrap;
@@ -9856,14 +9856,14 @@ a.fb-hub-source-name:focus-visible {
   align-items: center;
   background: color-mix(in oklch, var(--paper) 92%, var(--paper-strong));
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 16px;
   box-shadow: none;
   display: grid;
-  gap: 0.9rem;
-  grid-template-columns: 2.25rem minmax(0, 1fr) auto;
-  min-height: 5.25rem;
+  gap: 1rem;
+  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+  min-height: 6rem;
   min-width: 0;
-  padding: 1rem 1.25rem;
+  padding: 1.15rem 1.35rem;
 }
 
 .access-key-card.fb-row--revoked {
@@ -11092,13 +11092,13 @@ body {
 
   .access-key-card {
     gap: 0.8rem;
-    grid-template-columns: 2.25rem minmax(0, 1fr);
-    min-height: 5.25rem;
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    min-height: 6rem;
     padding: 1rem;
   }
 
   .access-keys-list--skeleton .settings-skeleton-row {
-    height: 5.25rem;
+    height: 6rem;
   }
 
   .access-key-revoke-button,
@@ -11106,7 +11106,7 @@ body {
     font-size: 0.9375rem;
     grid-column: 2;
     justify-self: start;
-    min-height: 2.35rem;
+    min-height: 2.5rem;
     min-width: 7.5rem;
     padding-inline: 0.75rem;
   }
@@ -11120,13 +11120,13 @@ body {
   }
 
   .access-key-device-icon {
-    height: 2.25rem;
-    width: 2.25rem;
+    height: 2.5rem;
+    width: 2.5rem;
   }
 
   .access-key-device-icon svg {
-    height: 1.5rem;
-    width: 1.5rem;
+    height: 1.65rem;
+    width: 1.65rem;
   }
 
   .fb-pill {

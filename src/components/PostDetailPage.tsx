@@ -153,6 +153,7 @@ function safeReturnLabel(value: string, returnTo: string) {
     case "Following":
     case "Search":
     case "Sources":
+    case "Hub":
       return value;
     case "Source":
       return "Sources";
@@ -161,8 +162,18 @@ function safeReturnLabel(value: string, returnTo: string) {
         const sourceLabel = cleanDynamicReturnLabel(value);
         if (sourceLabel) return sourceLabel;
       }
-      return "Back";
+      return labelFromReturnTo(returnTo);
   }
+}
+
+function labelFromReturnTo(returnTo: string) {
+  if (returnTo.startsWith("/search")) return "Search";
+  if (returnTo.startsWith("/builders") || returnTo.startsWith("/builder/")) return "Sources";
+  if (returnTo.startsWith("/library-hub")) return "Hub";
+  if (returnTo.startsWith("/dashboard")) {
+    return returnTo.includes("tab=following") ? "Following" : "AI Digest";
+  }
+  return "Back";
 }
 
 function cleanDynamicReturnLabel(value: string) {
