@@ -644,6 +644,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /AI Digest prompts/);
   assert.match(adminDigestConfig, /selected AI Digest language/);
   assert.match(adminDigestConfig, /Could not save AI Digest prompts\./);
+  assert.match(adminDigestConfig, /50 Chinese\/Japanese\/Korean characters or 50 words for word-delimited languages/);
+  assert.doesNotMatch(adminDigestConfig, /50 characters or 50 words/);
   assert.match(adminDigestConfig, /function clearSavedStatus\(\)/);
   assert.match(adminDigestConfig, /onStatusAutoDismiss=\{clearSavedStatus\}/);
   assert.doesNotMatch(adminDigestConfig, /Save failed/);
