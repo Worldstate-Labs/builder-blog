@@ -339,7 +339,7 @@ export function AgentTokenPanel({
       </div>
 
       {sortedTokens.length > 0 ? (
-        <ul className="access-keys-list" aria-label="Access keys for Local Agents">
+        <ul className="access-keys-list" aria-label="Authorized devices and Local Agents">
           {sortedTokens.map((token) => (
             <TokenRow
               key={token.id}

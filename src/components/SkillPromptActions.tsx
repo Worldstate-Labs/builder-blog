@@ -722,7 +722,7 @@ function TokenPickerDialog({
         </header>
 
         <fieldset className="token-picker-list">
-          <legend className="sr-only">Access keys for Local Agents</legend>
+          <legend className="sr-only">Authorized devices and Local Agents</legend>
           {!open ? null : tokens.length === 0 ? (
             <EmptyState
               actions={

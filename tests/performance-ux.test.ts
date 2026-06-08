@@ -734,7 +734,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /const missingAccessMessage = "Connect a Local Agent in Settings first"/);
   assert.match(skillPromptActions, /setStatus\(\{ kind: "info", text: missingAccessMessage \}\);\s*return false;/);
   assert.match(skillPromptActions, /if \(activeTokens\.length === 0\) \{[\s\S]*missingAccessMessage[\s\S]*return;\s*\}[\s\S]*if \(target === "cron"\)/);
-  assert.match(skillPromptActions, /Access keys for Local Agents/);
+  assert.match(skillPromptActions, /Authorized devices and Local Agents/);
+  assert.doesNotMatch(skillPromptActions, /Access keys for Local Agents/);
   assert.match(skillPromptActions, /AccessKeyDeviceIcon/);
   assert.match(skillPromptActions, /describeAccessDevice/);
   assert.match(skillPromptActions, /describeAccessStatus/);
@@ -766,8 +767,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(agentTokenPanel, /<h2 className="fb-section-heading">Local Agent access<\/h2>/);
   assert.doesNotMatch(agentTokenPanel, /<h2 className="fb-section-heading">Access keys<\/h2>/);
   assert.match(agentTokenPanel, /Devices and Local Agents authorized to update this FollowBrief account\./);
-  assert.match(agentTokenPanel, /aria-label="Access keys for Local Agents"/);
-  assert.match(agentTokenPanel, /<ul className="access-keys-list" aria-label="Access keys for Local Agents">/);
+  assert.match(agentTokenPanel, /aria-label="Authorized devices and Local Agents"/);
+  assert.match(agentTokenPanel, /<ul className="access-keys-list" aria-label="Authorized devices and Local Agents">/);
+  assert.doesNotMatch(agentTokenPanel, /aria-label="Access keys for Local Agents"/);
   assert.match(agentTokenPanel, /const sortedTokens = useMemo\([\s\S]*sortAccessTokensByRecentConnection\(tokens\)/);
   assert.match(agentTokenPanel, /sortedTokens\.length > 0/);
   assert.match(agentTokenPanel, /sortedTokens\.map\(\(token\) =>/);
@@ -4489,7 +4491,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(tokenPanel, /const statusDateTime = token\.revokedAt \?\? token\.lastUsedAt \?\? token\.createdAt/);
   assert.doesNotMatch(tokenPanel, /:\s*"Not connected yet"|Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
   assert.match(tokenPanel, /if \(!hydrated\) return formatDate\(value\)/);
-  assert.match(tokenPanel, /<ul className="access-keys-list" aria-label="Access keys for Local Agents">/);
+  assert.match(tokenPanel, /<ul className="access-keys-list" aria-label="Authorized devices and Local Agents">/);
+  assert.doesNotMatch(tokenPanel, /aria-label="Access keys for Local Agents"/);
   assert.match(tokenPanel, /Could not create access\./);
   assert.match(tokenPanel, /Could not revoke access\./);
   assert.doesNotMatch(tokenPanel, /Could not create access key|Could not revoke access key/);
