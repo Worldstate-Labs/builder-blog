@@ -50,7 +50,7 @@ export function FavoritePostsList({
         <div>
           <h2 className="favorites-feed-title">Saved posts</h2>
           <p className="favorites-feed-desc">
-            Posts you marked for deeper reading, newest saves first.
+            Posts you saved for deeper reading, newest saves first.
           </p>
         </div>
         <span className="favorites-feed-count">
