@@ -602,7 +602,7 @@ function SearchTypeTabs({
   time: SearchTimeRange;
 }) {
   return (
-    <nav className="fb-segmented-tabs filter-tabs" aria-label="Search result type filter">
+    <nav className="fb-segmented-tabs filter-tabs" aria-label="Search result type filter" role="tablist">
       <TypeTab
         count={counts?.all}
         current={current}
@@ -645,10 +645,11 @@ function TypeTab({
   return (
     <Link
       aria-label={accessibleLabel}
-      aria-current={isActive ? "page" : undefined}
+      aria-selected={isActive}
       className="fb-btn compact"
       data-active={isActive ? "true" : undefined}
       href={href}
+      role="tab"
     >
       <span>{label}</span>
       {typeof count === "number" ? <CountBadge value={count} /> : null}

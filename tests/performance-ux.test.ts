@@ -2048,7 +2048,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /<Suspense/);
   assert.match(searchPage, /SearchResultsFallback/);
   assert.match(searchPage, /SearchResultsSection/);
-  assert.match(searchPage, /aria-label="Search result type filter"/);
+  assert.match(searchPage, /aria-label="Search result type filter" role="tablist"/);
   assert.doesNotMatch(searchPage, /aria-label="Result type"/);
   assert.match(searchPage, /aria-label="Search recovery actions"/);
   assert.doesNotMatch(searchPage, /aria-label="Broaden search"/);
@@ -2209,7 +2209,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /className="fb-btn compact"/);
   assert.match(searchPage, /const accessibleLabel =[\s\S]*typeof count === "number"[\s\S]*`\$\{label\}, \$\{formatCount\(count\)\} \$\{count === 1 \? "result" : "results"\}`[\s\S]*: label/);
   assert.match(searchPage, /aria-label=\{accessibleLabel\}/);
-  assert.match(searchPage, /aria-current=\{isActive \? "page" : undefined\}/);
+  assert.match(searchPage, /aria-selected=\{isActive\}/);
+  assert.match(searchPage, /role="tab"/);
+  assert.doesNotMatch(searchPage, /aria-current=\{isActive \? "page" : undefined\}/);
   assert.match(globals, /\.filter-tabs\s*{/);
   assert.doesNotMatch(searchPage, /fb-stabs|fb-stab/);
   assert.match(searchPage, /counts=\{hasQuery \? typeCounts : null\}/);
