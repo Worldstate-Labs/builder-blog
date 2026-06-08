@@ -209,15 +209,6 @@ test("every app route has an explicit centered layout role", () => {
   );
 
   assert.match(source("src/app/loading.tsx"), /<RouteLoading label="Loading" title="Loading FollowBrief" \/>/);
-  const workspaceLoadingRoutes = [
-    ["src/app/(workspace)/settings/loading.tsx", "Settings", "Loading Settings", 5],
-  ] as const;
-  for (const [path, label, title, rows] of workspaceLoadingRoutes) {
-    assert.match(
-      source(path),
-      new RegExp(`<RouteLoading[\\s\\S]*label="${label}"[\\s\\S]*title="${title}"[\\s\\S]*rows=\\{${rows}\\}[\\s\\S]*variant="workspace"`),
-    );
-  }
   const readingLoadingRoutes = [
     ["src/app/(workspace)/builder/[entityId]/loading.tsx", "Source", "Loading source", 5],
     ["src/app/(workspace)/builder/x/[handle]/loading.tsx", "Source", "Loading source", 5],
@@ -238,10 +229,17 @@ test("every app route has an explicit centered layout role", () => {
     `${source("src/app/(workspace)/builder/[entityId]/loading.tsx")}\n${source("src/app/(workspace)/builder/x/[handle]/loading.tsx")}\n${source("src/app/(workspace)/posts/[feedItemId]/loading.tsx")}\n${source("src/app/(workspace)/recommendations/items/[feedItemId]/loading.tsx")}`,
     /Summarized post|Loading summarized post|title="Loading Post"|title="Loading Source"/,
   );
-  assert.match(
-    source("src/app/(workspace)/settings/loading.tsx"),
-    /<RouteLoading[\s\S]*label="Settings"[\s\S]*title="Loading Settings"[\s\S]*rows=\{5\}[\s\S]*variant="workspace"/,
-  );
+  const settingsLoading = source("src/app/(workspace)/settings/loading.tsx");
+  assert.doesNotMatch(settingsLoading, /RouteLoading/);
+  assert.match(settingsLoading, /@\/components\/PageHeader/);
+  assert.match(settingsLoading, /className="page-pad page-pad--settings settings-loading"/);
+  assert.match(settingsLoading, /<PageHeader title="Settings" \/>/);
+  assert.match(settingsLoading, /className="workspace-content-stack settings-workspace"/);
+  assert.match(settingsLoading, /className="settings-access-grid"/);
+  assert.match(settingsLoading, /<span className="sr-only">Loading Local Agent access<\/span>/);
+  assert.match(settingsLoading, /className="access-key-card access-key-card--skeleton"/);
+  assert.match(settingsLoading, /<span className="sr-only">Loading Settings rules<\/span>/);
+  assert.match(settingsLoading, /className="settings-rules settings-rules-skeleton"/);
   const dashboardLoading = source("src/app/(workspace)/dashboard/loading.tsx");
   assert.doesNotMatch(dashboardLoading, /RouteLoading/);
   assert.match(dashboardLoading, /className="page-pad page-pad--reading home-page home-loading"/);
@@ -796,10 +794,15 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(settingsPage, /<PageHeader title="Settings" \/>/);
   assert.doesNotMatch(settingsPage, /<section className="fb-page-head"/);
   assert.equal(existsSync(join(root, "src/app/(workspace)/settings/loading.tsx")), true);
-  assert.match(
-    source("src/app/(workspace)/settings/loading.tsx"),
-    /<RouteLoading[\s\S]*label="Settings"[\s\S]*title="Loading Settings"/,
-  );
+  const settingsLoading = source("src/app/(workspace)/settings/loading.tsx");
+  assert.doesNotMatch(settingsLoading, /RouteLoading/);
+  assert.match(settingsLoading, /className="page-pad page-pad--settings settings-loading"/);
+  assert.match(settingsLoading, /<PageHeader title="Settings" \/>/);
+  assert.match(settingsLoading, /className="workspace-content-stack settings-workspace"/);
+  assert.match(settingsLoading, /<span className="sr-only">Loading Local Agent access<\/span>/);
+  assert.match(settingsLoading, /className="access-key-card access-key-card--skeleton"/);
+  assert.match(settingsLoading, /<span className="sr-only">Loading Settings rules<\/span>/);
+  assert.match(settingsLoading, /className="settings-rules settings-rules-skeleton"/);
   assert.doesNotMatch(settingsPage, /ActiveTokenChip/);
   assert.match(settingsPage, /<Suspense fallback=\{<AgentTokenPanelSkeleton \/>/);
   assert.doesNotMatch(settingsPage, /Agent login/);
