@@ -315,6 +315,8 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(hubLoading, /className="library-hub-skeleton-line is-title"/);
   assert.match(hubLoading, /className="hub-list-stack fb-hub-list"/);
   assert.match(hubLoading, /className="fb-hub-card" key=\{index\}/);
+  assert.match(hubLoading, /className="fb-hub-card-stats library-hub-skeleton-stats"/);
+  assert.match(hubLoading, /className="library-hub-skeleton-stat"/);
   const searchLoading = source("src/app/(workspace)/search/loading.tsx");
   assert.doesNotMatch(searchLoading, /RouteLoading/);
   assert.match(searchLoading, /@\/components\/PageHeader/);

@@ -41,6 +41,11 @@ export default function LibraryHubLoading() {
                   <div className="library-hub-skeleton-row" />
                   <div className="library-hub-skeleton-row" />
                 </div>
+                <div className="fb-hub-card-stats library-hub-skeleton-stats">
+                  <span className="library-hub-skeleton-stat" />
+                  <span className="library-hub-skeleton-stat" />
+                  <span className="library-hub-skeleton-stat" />
+                </div>
               </div>
             ))}
           </div>
