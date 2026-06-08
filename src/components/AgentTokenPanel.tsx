@@ -324,7 +324,7 @@ export function AgentTokenPanel({
         <div className="access-keys-copy">
           <h2 className="fb-section-heading">Local Agent access</h2>
           <p className="access-keys-desc">
-            Devices and Local Agents authorized to update this FollowBrief account.
+            Authorized devices and Local Agents can update this FollowBrief account.
           </p>
         </div>
         <button

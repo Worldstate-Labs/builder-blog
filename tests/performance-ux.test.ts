@@ -766,7 +766,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(skillPromptActions, /className="grid"/);
   assert.match(agentTokenPanel, /<h2 className="fb-section-heading">Local Agent access<\/h2>/);
   assert.doesNotMatch(agentTokenPanel, /<h2 className="fb-section-heading">Access keys<\/h2>/);
-  assert.match(agentTokenPanel, /Devices and Local Agents authorized to update this FollowBrief account\./);
+  assert.match(agentTokenPanel, /Authorized devices and Local Agents can update this FollowBrief account\./);
+  assert.doesNotMatch(agentTokenPanel, /Devices and Local Agents authorized to update this FollowBrief account\./);
   assert.match(agentTokenPanel, /aria-label="Authorized devices and Local Agents"/);
   assert.match(agentTokenPanel, /<ul className="access-keys-list" aria-label="Authorized devices and Local Agents">/);
   assert.doesNotMatch(agentTokenPanel, /aria-label="Access keys for Local Agents"/);
@@ -4397,7 +4398,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /fetch\("\/api\/settings\/tokens"/);
   assert.match(tokenPanel, /fetch\(`\/api\/settings\/tokens\/\$\{tokenId\}`/);
   assert.match(tokenPanel, /<h2 className="fb-section-heading">Local Agent access<\/h2>/);
-  assert.match(tokenPanel, /Devices and Local Agents authorized to update this FollowBrief account\./);
+  assert.match(tokenPanel, /Authorized devices and Local Agents can update this FollowBrief account\./);
+  assert.doesNotMatch(tokenPanel, /Devices and Local Agents authorized to update this FollowBrief account\./);
   assert.doesNotMatch(tokenPanel, />\s*Local Agents that can sync sources and AI Digests to this account\.|Devices and Local Agents that can sync sources and AI Digests to this account\./);
   assert.doesNotMatch(tokenPanel, /Access keys let trusted devices and Local Agents sync sources and AI Digests to this account\./);
   assert.doesNotMatch(tokenPanel, /sync sources and digests to this account/);
