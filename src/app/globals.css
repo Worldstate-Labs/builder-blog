@@ -8625,6 +8625,7 @@ a.fb-hub-source-name:focus-visible {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+    justify-content: flex-start;
     padding-block: 2rem 1rem;
   }
 

@@ -476,6 +476,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /\.fb-auth-btn:disabled\s*{[\s\S]*cursor:\s*wait/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-login-shell\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-login-shell\s*{[\s\S]*flex-direction:\s*column/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-login-shell\s*{[\s\S]*justify-content:\s*flex-start/);
   assert.match(globals, /\.fb-login-title-break\s*{[\s\S]*display:\s*block/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-login-title-break\s*{[\s\S]*display:\s*inline/);
   assert.doesNotMatch(globals, /\.fb-login-title br\s*{/);
