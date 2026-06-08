@@ -264,7 +264,13 @@ export function AgentTokenPanel({
   }
 
   function closeRevokeDialog() {
-    revokeDialogRef.current?.close();
+    if (revokeDialogRef.current?.open) {
+      revokeDialogRef.current.close();
+    }
+    setRevokeTarget(null);
+  }
+
+  function handleRevokeDialogClose() {
     setRevokeTarget(null);
   }
 
@@ -422,7 +428,7 @@ export function AgentTokenPanel({
         ref={revokeDialogRef}
         aria-labelledby="access-key-revoke-title"
         className="fb-dialog"
-        onClose={closeRevokeDialog}
+        onClose={handleRevokeDialogClose}
       >
         {revokeTarget ? (
           <div className="fb-dialog-inner settings-dialog-stack">

@@ -4271,6 +4271,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(tokenPanel, /setStatus\(error instanceof Error \? error\.message : "Could not create access\."\)/);
   assert.match(tokenPanel, /aria-labelledby="access-key-revoke-title"/);
   assert.match(tokenPanel, /id="access-key-revoke-title"/);
+  assert.match(tokenPanel, /function handleRevokeDialogClose\(\)/);
+  assert.match(tokenPanel, /onClose=\{handleRevokeDialogClose\}/);
+  assert.match(tokenPanel, /if \(revokeDialogRef\.current\?\.open\) \{/);
+  assert.doesNotMatch(tokenPanel, /onClose=\{closeRevokeDialog\}/);
   assert.match(tokenPanel, /fb-dialog/);
   assert.match(globals, /\.fb-dialog\s*{[\s\S]*max-width:\s*var\(--dialog-max\)/);
   assert.match(globals, /\.fb-dialog\s*{[\s\S]*position:\s*fixed/);
