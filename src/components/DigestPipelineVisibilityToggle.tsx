@@ -31,7 +31,7 @@ export function DigestPipelineVisibilityToggle({
         if (!response.ok) throw new Error("Unable to update AI Digest sharing");
       } catch {
         setShared(!nextShared);
-        setError("Could not update hub sharing.");
+        setError("Could not update AI Digest archive sharing.");
       }
     });
   }

@@ -45,7 +45,7 @@ export function LibraryVisibilityToggle({
         setIsPublic(Boolean(payload.isPublic));
       } catch {
         setIsPublic(!nextIsPublic);
-        setError("Could not update hub availability.");
+        setError("Could not update source library sharing.");
       }
     });
   }
@@ -94,7 +94,7 @@ export function LibraryVisibilityToggle({
   return (
     <div className="library-visibility-control">
       <div className="library-visibility-copy">
-        <span>Hub availability</span>
+        <span>Source library sharing</span>
         <strong>
           {isPublic
             ? isAdminLibrary
