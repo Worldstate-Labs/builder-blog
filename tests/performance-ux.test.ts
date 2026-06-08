@@ -3017,6 +3017,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /post-detail-title/);
   assert.match(postCard, /post-detail-summary/);
   assert.match(postCard, /post-detail-raw/);
+  assert.match(postCard, /className="post-detail-raw-head"/);
+  assert.match(postCard, /className="post-detail-raw-toggle"/);
+  assert.match(postCard, /\{rawExpanded \? "Hide raw content" : "Show raw content"\}/);
+  assert.match(postCard, /\{rawExpanded \? \(\s*<div className="post-detail-body" id=\{rawRegionId\}>/);
   assert.match(postCard, /post-detail-section-label/);
   assert.match(postCard, /post-detail-body/);
   assert.match(postCard, /const detailSummary = normalizedText\(post\.summary\)/);

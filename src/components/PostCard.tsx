@@ -245,11 +245,28 @@ export function PostCard({
                 <p>{detailSummary}</p>
               </section>
             ) : null}
-            <section className="post-detail-raw" aria-label="Raw content">
-              <h2 className="post-detail-section-label">Raw content</h2>
-              <div className="post-detail-body">
-                {post.body}
+            <section
+              className={`post-detail-raw${rawExpanded ? " post-detail-raw--expanded" : ""}`}
+              aria-label="Raw content"
+            >
+              <div className="post-detail-raw-head">
+                <h2 className="post-detail-section-label">Raw content</h2>
+                <button
+                  aria-controls={rawRegionId}
+                  aria-expanded={rawExpanded}
+                  className="post-detail-raw-toggle"
+                  onClick={() => setRawExpanded((expanded) => !expanded)}
+                  type="button"
+                >
+                  <BookOpen aria-hidden="true" className="post-detail-raw-toggle-icon" />
+                  {rawExpanded ? "Hide raw content" : "Show raw content"}
+                </button>
               </div>
+              {rawExpanded ? (
+                <div className="post-detail-body" id={rawRegionId}>
+                  {post.body}
+                </div>
+              ) : null}
             </section>
           </>
         ) : (
