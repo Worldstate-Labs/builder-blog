@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
+import { postReturnToFromPath } from "@/lib/navigation";
 
 export function MobileSearchLink() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const returnTo = pathname.startsWith("/posts/")
-    ? searchParams.get("returnTo") ?? ""
-    : "";
+  const returnTo = postReturnToFromPath(pathname, searchParams.get("returnTo"));
   const active = pathname === "/search" || returnTo.startsWith("/search");
 
   return (

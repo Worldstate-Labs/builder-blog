@@ -37,8 +37,7 @@ test("primary app navigation keeps route prefetching enabled", () => {
   assert.equal(appNav.includes("prefetch={false}"), false);
   assert.match(appNav, /@\/lib\/navigation/);
   assert.match(appNav, /useSearchParams/);
-  assert.match(appNav, /const returnTo = normalizeLegacyReturnTo\(/);
-  assert.match(appNav, /pathname\.startsWith\("\/posts\/"\) \? searchParams\.get\("returnTo"\) \?\? "" : ""/);
+  assert.match(appNav, /const returnTo = postReturnToFromPath\(pathname, searchParams\.get\("returnTo"\)\)/);
   assert.match(appNav, /isActiveNavItem\(pathname, item, returnTo\)/);
   assert.match(appNav, /aria-current=\{active \? "page" : undefined\}/);
   assert.match(appNav, /aria-current=\{active \? "page" : undefined\}[\s\S]*className=\{`fb-nav/);
@@ -53,6 +52,9 @@ test("primary app navigation keeps route prefetching enabled", () => {
   assert.doesNotMatch(appNav, /returnTo\.startsWith\("\/history"\)/);
   assert.doesNotMatch(appNav, /function normalizeLegacyReturnTo/);
   assert.match(navigation, /export function normalizeLegacyReturnTo/);
+  assert.match(navigation, /export function postReturnToFromPath\(pathname: string, returnTo\?: string \| null\)/);
+  assert.match(navigation, /if \(!pathname\.startsWith\("\/posts\/"\)\) return ""/);
+  assert.match(navigation, /return normalizeLegacyReturnTo\(returnTo \?\? ""\)/);
   assert.match(navigation, /value\.startsWith\("\/recommendations"\)[\s\S]*return "\/dashboard\?tab=following"/);
   assert.match(navigation, /value\.startsWith\("\/history"\)[\s\S]*return "\/dashboard\?tab=ai-digest"/);
   assert.match(globals, /\.fb-nav svg\s*{[\s\S]*height:\s*1rem/);
@@ -807,12 +809,12 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(appShell, /<MobileSearchLink \/>/);
   assert.match(mobileSearchLink, /usePathname/);
   assert.match(mobileSearchLink, /useSearchParams/);
-  assert.match(mobileSearchLink, /const returnTo = pathname\.startsWith\("\/posts\/"\)/);
+  assert.match(mobileSearchLink, /const returnTo = postReturnToFromPath\(pathname, searchParams\.get\("returnTo"\)\)/);
   assert.match(mobileSearchLink, /const active = pathname === "\/search" \|\| returnTo\.startsWith\("\/search"\)/);
   assert.match(mobileSearchLink, /aria-current=\{active \? "page" : undefined\}/);
   assert.match(mobileSearchLink, /data-active=\{active \? "true" : undefined\}/);
   assert.match(mobileSearchLink, /aria-label="Search"/);
-  assert.match(appNav, /const returnTo = normalizeLegacyReturnTo\(/);
+  assert.match(appNav, /const returnTo = postReturnToFromPath\(pathname, searchParams\.get\("returnTo"\)\)/);
   assert.doesNotMatch(appNav, /returnTo\.startsWith\("\/recommendations"\)/);
   assert.match(appNav, /pathname\.startsWith\("\/builder\/"\)/);
   assert.match(appNav, /icon: "home" \| "builders" \| "hub"/);

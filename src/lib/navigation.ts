@@ -4,6 +4,11 @@ export function normalizeLegacyReturnTo(value: string) {
   return value;
 }
 
+export function postReturnToFromPath(pathname: string, returnTo?: string | null) {
+  if (!pathname.startsWith("/posts/")) return "";
+  return normalizeLegacyReturnTo(returnTo ?? "");
+}
+
 export function postDetailHref(feedItemId: string, returnTo: string, returnLabel: string) {
   return withPostReturnTarget(`/posts/${feedItemId}`, returnTo, returnLabel);
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { ComponentType, CSSProperties } from "react";
 import { Home, LibraryBig, UsersRound } from "lucide-react";
-import { normalizeLegacyReturnTo } from "@/lib/navigation";
+import { postReturnToFromPath } from "@/lib/navigation";
 
 export type AppNavItem = {
   href: string;
@@ -31,9 +31,7 @@ export function AppNav({
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const returnTo = normalizeLegacyReturnTo(
-    pathname.startsWith("/posts/") ? searchParams.get("returnTo") ?? "" : "",
-  );
+  const returnTo = postReturnToFromPath(pathname, searchParams.get("returnTo"));
   const mobileNavItems = mobileItems ?? items;
   const desktopClassName =
     desktopLayout === "bar"
