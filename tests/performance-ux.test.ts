@@ -731,6 +731,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /setStatus\(\{ kind: "info", text: missingAccessMessage \}\);\s*return false;/);
   assert.match(skillPromptActions, /if \(activeTokens\.length === 0\) \{[\s\S]*missingAccessMessage[\s\S]*return;\s*\}[\s\S]*if \(target === "cron"\)/);
   assert.match(skillPromptActions, /Access keys for Local Agents/);
+  assert.match(skillPromptActions, /AccessKeyDeviceIcon/);
   assert.match(skillPromptActions, /describeAccessDevice/);
   assert.match(skillPromptActions, /describeAccessStatus/);
   assert.match(skillPromptActions, /sortAccessTokensByRecentConnection/);
@@ -739,6 +740,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /return sortAccessTokensByRecentConnection\(tokens\)\[0\]\?\.id \?\? ""/);
   assert.match(skillPromptActions, /const tokenLabel = describeAccessDevice\(token\)/);
   assert.match(skillPromptActions, /const statusLabel = describeAccessStatus\(token, hydrated\)/);
+  assert.match(skillPromptActions, /className="token-picker-device-icon"/);
   assert.match(skillPromptActions, /aria-label=\{`\$\{tokenLabel\}\. \$\{statusLabel\}`\}/);
   assert.doesNotMatch(skillPromptActions, /const statusLabel = token\.lastUsedAt[\s\S]*Never connected/);
   assert.doesNotMatch(skillPromptActions, /Last used|Never used|Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}|describeMachine\(token\)|formatRelative\(token\.lastUsedAt\)|token-picker-row-name">\{token\.name\}/);
@@ -775,7 +777,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(agentTokenPanel, /Never connected/);
   assert.doesNotMatch(agentTokenPanel, /Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
   assert.match(agentTokenPanel, /className=\{`access-key-card/);
-  assert.match(agentTokenPanel, /className="access-key-device-icon"/);
+  assert.match(agentTokenPanel, /export function AccessKeyDeviceIcon/);
+  assert.match(agentTokenPanel, /className = "access-key-device-icon"/);
+  assert.match(agentTokenPanel, /<AccessKeyDeviceIcon token=\{token\} \/>/);
   assert.match(agentTokenPanel, /className="access-key-device-title"/);
   assert.match(agentTokenPanel, /className="access-key-device-status"/);
   assert.doesNotMatch(agentTokenPanel, /CheckCircle2|access-key-capability-list/);
@@ -797,6 +801,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*2\.45rem/);
   assert.doesNotMatch(globals, /\.access-key-capability-list/);
+  assert.match(globals, /\.token-picker-row\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.token-picker-row\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) max-content/);
+  assert.match(globals, /\.token-picker-device-icon\s*{[\s\S]*height:\s*2rem/);
   assert.match(globals, /\.skill-prompt-label\s*{[\s\S]*margin-right:\s*0\.5rem/);
   assert.match(globals, /\.skill-prompt-compact\s*{[\s\S]*justify-content:\s*flex-end/);
   assert.match(globals, /\.skill-prompt-status-text\.is-error\s*{[\s\S]*color:\s*var\(--danger\)/);

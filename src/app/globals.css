@@ -7369,13 +7369,14 @@ a.builder-library-name:hover {
 }
 
 .token-picker-row {
-  align-items: flex-start;
+  align-items: center;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 12px;
   cursor: pointer;
-  display: flex;
-  gap: 0.625rem;
-  padding: 0.625rem 0.75rem;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 2rem minmax(0, 1fr) max-content;
+  padding: 0.75rem;
   transition:
     background-color 140ms ease,
     border-color 140ms ease;
@@ -7399,7 +7400,8 @@ a.builder-library-name:hover {
 .token-picker-radio {
   accent-color: var(--accent);
   flex: 0 0 auto;
-  margin-top: 0.1875rem;
+  justify-self: end;
+  margin: 0;
 }
 
 .token-picker-row-body {
@@ -7427,6 +7429,21 @@ a.builder-library-name:hover {
 
 .token-picker-row-meta > span[aria-hidden] {
   color: var(--muted);
+}
+
+.token-picker-device-icon {
+  align-items: center;
+  color: var(--ink);
+  display: inline-flex;
+  height: 2rem;
+  justify-content: center;
+  width: 2rem;
+}
+
+.token-picker-device-icon svg {
+  height: 1.35rem;
+  stroke-width: 1.9;
+  width: 1.35rem;
 }
 
 .token-picker-footer {

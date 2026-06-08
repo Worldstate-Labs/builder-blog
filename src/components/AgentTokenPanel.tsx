@@ -139,6 +139,21 @@ function isPhoneLikeToken(token: AgentTokenListItem) {
   return /iphone|ipad|ios|android|mobile/.test(haystack);
 }
 
+export function AccessKeyDeviceIcon({
+  className = "access-key-device-icon",
+  token,
+}: {
+  className?: string;
+  token: AgentTokenListItem;
+}) {
+  const DeviceIcon = isPhoneLikeToken(token) ? Smartphone : Laptop;
+  return (
+    <span className={className} aria-hidden="true">
+      <DeviceIcon />
+    </span>
+  );
+}
+
 export function AgentTokenPanel({
   initialTokens,
 }: {
@@ -531,7 +546,6 @@ function TokenRow({
   isPending: boolean;
   onRevoke: () => void;
 }) {
-  const DeviceIcon = isPhoneLikeToken(token) ? Smartphone : Laptop;
   const tokenLabel = describeAccessDevice(token);
   const statusLabel = describeAccessStatus(token, hydrated);
   const statusDateTime = token.revokedAt ?? token.lastUsedAt;
@@ -542,9 +556,7 @@ function TokenRow({
       className={`access-key-card${token.revokedAt ? " access-key-card--revoked fb-row--revoked" : ""}`}
       aria-label={`${tokenLabel}. ${statusLabel}`}
     >
-      <span className="access-key-device-icon" aria-hidden="true">
-        <DeviceIcon />
-      </span>
+      <AccessKeyDeviceIcon token={token} />
       <div className="access-key-device-copy">
         <div className="access-key-device-title">{tokenLabel}</div>
         {statusDateTime ? (

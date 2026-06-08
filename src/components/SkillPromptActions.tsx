@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarClock, Check, CircleStop, Copy, KeyRound } from "lucide-react";
 import {
+  AccessKeyDeviceIcon,
   describeAccessDevice,
   describeAccessStatus,
   sortAccessTokensByRecentConnection,
@@ -749,6 +750,13 @@ function TokenPickerDialog({
                   data-target={target ?? undefined}
                   aria-label={`${tokenLabel}. ${statusLabel}`}
                 >
+                  <AccessKeyDeviceIcon className="token-picker-device-icon" token={token} />
+                  <span className="token-picker-row-body">
+                    <span className="token-picker-row-name">{tokenLabel}</span>
+                    <span className="token-picker-row-meta">
+                      <span>{statusLabel}</span>
+                    </span>
+                  </span>
                   <input
                     type="radio"
                     name="agent-token"
@@ -757,12 +765,6 @@ function TokenPickerDialog({
                     onChange={() => setPickedTokenId(token.id)}
                     className="token-picker-radio"
                   />
-                  <span className="token-picker-row-body">
-                    <span className="token-picker-row-name">{tokenLabel}</span>
-                    <span className="token-picker-row-meta">
-                      <span>{statusLabel}</span>
-                    </span>
-                  </span>
                 </label>
               );
             })
