@@ -657,10 +657,13 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /import Link from "next\/link"/);
   assert.match(skillPromptActions, /document\.hasFocus\(\)/);
   assert.match(skillPromptActions, /userActivation/);
-  assert.match(skillPromptActions, /PreparedPromptDialog/);
+  assert.match(skillPromptActions, /PreparedPromptPanel/);
+  assert.match(skillPromptActions, /showingPreparedPrompt/);
+  assert.match(skillPromptActions, /prepared-prompt-\$\{prompt\.context\}-\$\{prompt\.target\}/);
+  assert.doesNotMatch(skillPromptActions, /prepared-prompt-\$\{prompt\.target\}/);
   assert.match(skillPromptActions, /Clipboard did not update\. Select the prompt text and copy it\./);
   assert.match(skillPromptActions, /className="skill-prompt-manual-copy"/);
-  assert.match(skillPromptActions, />\s*Prepared prompt\s*<\/h2>/);
+  assert.match(skillPromptActions, /showingPreparedPrompt \? "Prepared prompt" : dialogConfig\.title/);
   assert.match(skillPromptActions, /document\.execCommand\("copy"\)/);
   assert.doesNotMatch(skillPromptActions, /await navigator\.clipboard\.writeText\(command\)/);
   assert.match(skillPromptActions, /className="token-picker-form"/);

@@ -375,7 +375,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /async function copyTextToClipboard/);
   assert.match(skillPromptActions, /document\.hasFocus\(\)/);
   assert.match(skillPromptActions, /userActivation/);
-  assert.match(skillPromptActions, /PreparedPromptDialog/);
+  assert.match(skillPromptActions, /PreparedPromptPanel/);
+  assert.match(skillPromptActions, /showingPreparedPrompt/);
+  assert.match(skillPromptActions, /prepared-prompt-\$\{prompt\.context\}-\$\{prompt\.target\}/);
+  assert.doesNotMatch(skillPromptActions, /prepared-prompt-\$\{prompt\.target\}/);
   assert.match(skillPromptActions, /Clipboard did not update\. Select the prompt text and copy it\./);
   assert.match(skillPromptActions, /className="skill-prompt-manual-copy"/);
   assert.match(skillPromptActions, /document\.execCommand\("copy"\)/);
