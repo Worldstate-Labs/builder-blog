@@ -417,7 +417,14 @@ async function SearchResultsSection({
             </SearchEmptyState>
           ) : null}
           {relatedSearches.length > 0 ? (
-            <RelatedSearches query={activeQuery} searches={relatedSearches} mode={mode} sort={sort} time={time} />
+            <RelatedSearches
+              mode={mode}
+              query={activeQuery}
+              searches={relatedSearches}
+              sort={sort}
+              time={time}
+              typeFilter={typeFilter}
+            />
           ) : null}
         </>
       ) : (
@@ -432,6 +439,7 @@ async function SearchResultsSection({
             searches={defaultSuggestions}
             sort={sort}
             time={time}
+            typeFilter={typeFilter}
           />
           <details className="search-advanced-tools search-advanced-tools-compact">
             <summary>
@@ -895,6 +903,7 @@ function RelatedSearches({
   searches,
   sort,
   time,
+  typeFilter,
 }: {
   heading?: string;
   mode: SearchMode;
@@ -902,6 +911,7 @@ function RelatedSearches({
   searches: string[];
   sort: SearchSort;
   time: SearchTimeRange;
+  typeFilter: SearchTypeFilter;
 }) {
   return (
     <section className="search-related" aria-label="Related searches">
@@ -910,7 +920,7 @@ function RelatedSearches({
         {searches.map((search) => (
           <Link
             className="search-related-link"
-            href={searchHref({ query: search, type: "all", mode, sort, time })}
+            href={searchHref({ query: search, type: typeFilter, mode, sort, time })}
             key={`${query}:${search}`}
           >
             {search}

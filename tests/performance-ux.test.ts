@@ -1955,6 +1955,10 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
 
 test("search page uses a client form with pending feedback", () => {
   const searchPage = source("src/app/(workspace)/search/page.tsx");
+  const relatedSearchesFunction = searchPage.slice(
+    searchPage.indexOf("function RelatedSearches"),
+    searchPage.indexOf("function AdvancedSearchTips"),
+  );
   const searchForm = source("src/components/SearchForm.tsx");
   const formSubmitButton = source("src/components/FormSubmitButton.tsx");
   const globals = source("src/app/globals.css");
@@ -1999,6 +2003,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /relatedSearchSuggestions/);
   assert.match(searchPage, /didYouMeanSearch/);
   assert.match(searchPage, /shouldUseCorrectedSearch/);
+  assert.match(searchPage, /<RelatedSearches[\s\S]*typeFilter=\{typeFilter\}/);
+  assert.match(relatedSearchesFunction, /href=\{searchHref\(\{ query: search, type: typeFilter, mode, sort, time \}\)\}/);
+  assert.doesNotMatch(relatedSearchesFunction, /type: "all"/);
   assert.match(searchPage, /<Suspense/);
   assert.match(searchPage, /SearchResultsFallback/);
   assert.match(searchPage, /SearchResultsSection/);
