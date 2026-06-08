@@ -561,6 +561,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /document\.execCommand\("copy"\)/);
   assert.doesNotMatch(skillPromptActions, /await navigator\.clipboard\.writeText\(command\)/);
   assert.match(skillPromptActions, /className="token-picker-form"/);
+  assert.match(skillPromptActions, />\s*Choose access key\s*<\/h2>/);
+  assert.match(skillPromptActions, /short-lived setup code for that access key and copy the prompt/);
   assert.match(skillPromptActions, /Access keys for Local Agents/);
   assert.match(skillPromptActions, /describeAccessDevice/);
   assert.match(skillPromptActions, /describeAccessStatus/);
@@ -581,7 +583,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /\{submitting \? "Copying" : "Copy prompt"\}/);
   assert.match(skillPromptActions, /\{submitting \? "Copying" : "Copy"\}/);
   assert.doesNotMatch(skillPromptActions, /Copying\.\.\./);
-  assert.doesNotMatch(skillPromptActions, /<a[^>]+href="\/settings"|No access keys yet|Add one in Settings<\/a>/);
+  assert.doesNotMatch(skillPromptActions, /<a[^>]+href="\/settings"|No access keys yet|Add one in Settings<\/a>|Choose a Local Agent/);
   assert.doesNotMatch(skillPromptActions, /No connected helpers|Connected helpers/);
   assert.doesNotMatch(skillPromptActions, /flex flex-wrap items-center justify-end gap-2|className="ml-2"|mr-2|text-\[11px\] text-\[var\(--danger\)\]|text-\[11px\] text-\[var\(--muted-strong\)\]/);
   assert.doesNotMatch(skillPromptActions, /className="grid"/);

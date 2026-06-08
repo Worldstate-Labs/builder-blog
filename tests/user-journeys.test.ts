@@ -422,10 +422,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /Math\.min\(MAX_PROMPT_WINDOW_DAYS, Math\.max\(1/);
   assert.match(skillPromptActions, /Max post age must be a whole number from 1 to 90 days/);
   assert.match(skillPromptActions, /Fetch days must be a whole number from 1 to 90 days/);
-  assert.match(skillPromptActions, /\{submitting \? "Copying\.\.\." : "Copy"\}/);
-  assert.doesNotMatch(skillPromptActions, /\{submitting \? "…" : "Copy"\}/);
+  assert.match(skillPromptActions, /\{submitting \? "Copying" : "Copy"\}/);
+  assert.doesNotMatch(skillPromptActions, /\{submitting \? "…" : "Copy"\}|Copying\.\.\./);
   assert.doesNotMatch(skillPromptActions, /Copy a prompt for one run or for a recurring local schedule/);
   assert.doesNotMatch(skillPromptActions, /Local helper|connected helpers|Connected helpers/);
+  assert.doesNotMatch(skillPromptActions, /Choose a Local Agent/);
   assert.match(skillPromptActions, /No Local Agent access yet/);
   assert.match(skillPromptActions, /Add one in Settings before copying Local Agent prompts\./);
   assert.doesNotMatch(skillPromptActions, /Saved for future summaries/);

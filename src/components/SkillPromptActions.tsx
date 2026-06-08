@@ -671,10 +671,10 @@ function TokenPickerDialog({
       >
         <header className="token-picker-header">
           <h2 id="token-picker-title" className="token-picker-title">
-            Choose a Local Agent
+            Choose access key
           </h2>
           <p className="token-picker-sub">
-            We&rsquo;ll create a short-lived setup code and copy the prompt.
+            We&rsquo;ll create a short-lived setup code for that access key and copy the prompt.
           </p>
         </header>
 
