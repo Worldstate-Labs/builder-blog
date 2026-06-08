@@ -656,6 +656,12 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /async function copyTextToClipboard/);
   assert.match(skillPromptActions, /import Link from "next\/link"/);
   assert.match(skillPromptActions, /document\.hasFocus\(\)/);
+  assert.match(skillPromptActions, /userActivation/);
+  assert.match(skillPromptActions, /function copyAsyncTextToClipboard/);
+  assert.match(skillPromptActions, /ClipboardItem/);
+  assert.match(skillPromptActions, /Clipboard did not update\. Copy the prepared prompt below\./);
+  assert.match(skillPromptActions, /className="skill-prompt-manual-copy"/);
+  assert.match(skillPromptActions, /Copy again/);
   assert.match(skillPromptActions, /document\.execCommand\("copy"\)/);
   assert.doesNotMatch(skillPromptActions, /await navigator\.clipboard\.writeText\(command\)/);
   assert.match(skillPromptActions, /className="token-picker-form"/);
@@ -724,6 +730,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(globals, /\.skill-prompt-label\s*{[\s\S]*margin-right:\s*0\.5rem/);
   assert.match(globals, /\.skill-prompt-compact\s*{[\s\S]*justify-content:\s*flex-end/);
   assert.match(globals, /\.skill-prompt-status-text\.is-error\s*{[\s\S]*color:\s*var\(--danger\)/);
+  assert.match(globals, /\.skill-prompt-manual-copy\s*{[\s\S]*flex:\s*1 0 100%/);
+  assert.match(globals, /\.skill-prompt-manual-text\s*{[\s\S]*font-family:\s*var\(--font-geist-mono\)/);
   assert.match(globals, /\.token-picker-form\s*{[\s\S]*min-width:\s*0/);
   assert.match(digestDetails, /useHydrated/);
   // Timestamp formatting now lives in the shared settings field module; both

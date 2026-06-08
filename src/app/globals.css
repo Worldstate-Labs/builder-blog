@@ -7125,6 +7125,33 @@ a.builder-library-name:hover {
   color: var(--danger);
 }
 
+.skill-prompt-manual-copy {
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  flex: 1 0 100%;
+  gap: 0.5rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+  padding: 0.625rem;
+}
+
+.skill-prompt-manual-label {
+  color: var(--muted-strong);
+  font-size: 0.75rem;
+  font-weight: 700;
+  grid-column: 1 / -1;
+}
+
+.skill-prompt-manual-text {
+  font-family: var(--font-geist-mono);
+  min-height: 4.25rem;
+  min-width: 0;
+  resize: vertical;
+  width: 100%;
+}
+
 /* Shared modal frame used by the token picker and the per-row builder
    edit dialog. Both are centered, blur the page behind them, and pin
    their max height so the form scrolls inside the dialog. */

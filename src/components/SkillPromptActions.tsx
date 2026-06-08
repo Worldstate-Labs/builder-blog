@@ -62,9 +62,44 @@ type SchedulePromptSelection =
 // (no runtime/cadence to pick). Either source flips ?force=1.
 type CopyExtras = { cron: CronConfig | null; force: boolean; fetchDays: number };
 
-async function copyTextToClipboard(text: string) {
+function hasClipboardUserActivation() {
+  const activation = (
+    navigator as Navigator & {
+      userActivation?: { isActive?: boolean };
+    }
+  ).userActivation;
+  return activation?.isActive !== false;
+}
+
+function copyAsyncTextToClipboard(textPromise: Promise<string>): Promise<boolean> | null {
+  if (!document.hasFocus() || !hasClipboardUserActivation()) return null;
+  const ClipboardItemCtor = (
+    window as Window & {
+      ClipboardItem?: new (
+        items: Record<string, Blob | Promise<Blob>>,
+      ) => ClipboardItem;
+    }
+  ).ClipboardItem;
+  if (!navigator.clipboard?.write || !ClipboardItemCtor) return null;
+
   try {
-    if (navigator.clipboard?.writeText && document.hasFocus()) {
+    const item = new ClipboardItemCtor({
+      "text/plain": textPromise.then((text) => new Blob([text], { type: "text/plain" })),
+    });
+    return navigator.clipboard.write([item]).then(
+      () => true,
+      () => false,
+    );
+  } catch {
+    return null;
+  }
+}
+
+async function copyTextToClipboard(text: string) {
+  if (!document.hasFocus() || !hasClipboardUserActivation()) return false;
+
+  try {
+    if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);
       return true;
     }
@@ -324,6 +359,7 @@ export function SkillPromptActions({
 
   const [copiedTarget, setCopiedTarget] = useState<CopyTarget | null>(null);
   const [status, setStatus] = useState<{ kind: "error" | "info"; text: string } | null>(null);
+  const [manualCopy, setManualCopy] = useState<{ target: CopyTarget; text: string } | null>(null);
   const [pickerTarget, setPickerTarget] = useState<CopyTarget | null>(null);
   // Job dialog: pick one-time or recurring cadence before the token picker.
   // Recurring copies also include runtime + cadence URL params so the
@@ -375,31 +411,72 @@ export function SkillPromptActions({
     return `Read ${promptUrl} and follow the instructions.`;
   }
 
+  function markPromptCopied(target: CopyTarget) {
+    setManualCopy(null);
+    setCopiedTarget(target);
+    window.setTimeout(() => setCopiedTarget(null), 1800);
+    setStatus({ kind: "info", text: "Copied · valid for 10 minutes" });
+    window.setTimeout(() => setStatus(null), 8000);
+  }
+
+  function showManualCopy(target: CopyTarget, command: string) {
+    setManualCopy({ target, text: command });
+    setStatus({
+      kind: "error",
+      text: "Clipboard did not update. Copy the prepared prompt below.",
+    });
+  }
+
+  async function copyPreparedCommand(target: CopyTarget, command: string) {
+    const copied = await copyTextToClipboard(command);
+    if (copied) {
+      markPromptCopied(target);
+      return true;
+    }
+    showManualCopy(target, command);
+    return false;
+  }
+
+  async function prepareCommandForToken(
+    target: CopyTarget,
+    tokenId: string,
+    extras: CopyExtras,
+  ) {
+    const code = await fetchExchangeCode(tokenId);
+    if (!code) throw new Error("Could not prepare a secure setup code");
+    const command = buildCommand(target, code, extras);
+    if (!command) throw new Error("Could not prepare a Local Agent prompt");
+    return command;
+  }
+
   async function copyForToken(
     target: CopyTarget,
     tokenId: string,
     extras: CopyExtras,
   ) {
     setStatus(null);
-    const code = await fetchExchangeCode(tokenId);
-    if (!code) {
-      setStatus({ kind: "error", text: "Could not prepare a secure setup code" });
-      return;
-    }
-    const command = buildCommand(target, code, extras);
+    setManualCopy(null);
+    const commandPromise = prepareCommandForToken(target, tokenId, extras);
+    const asyncClipboardCopy = copyAsyncTextToClipboard(commandPromise);
+    let command: string;
     try {
-      const copied = await copyTextToClipboard(command);
-      if (!copied) throw new Error("Could not copy prompt");
-      setCopiedTarget(target);
-      window.setTimeout(() => setCopiedTarget(null), 1800);
-      setStatus({ kind: "info", text: "Copied · valid for 10 minutes" });
-      window.setTimeout(() => setStatus(null), 8000);
-    } catch {
+      command = await commandPromise;
+    } catch (error) {
+      await asyncClipboardCopy?.catch(() => false);
       setStatus({
         kind: "error",
-        text: "Could not copy prompt. Keep this page focused and try again.",
+        text: error instanceof Error ? error.message : "Could not prepare a Local Agent prompt",
       });
+      return;
     }
+
+    let copied = asyncClipboardCopy ? await asyncClipboardCopy : false;
+    if (!copied) copied = await copyTextToClipboard(command);
+    if (copied) {
+      markPromptCopied(target);
+      return;
+    }
+    showManualCopy(target, command);
   }
 
   // After the cron runtime is picked, continue to the token picker
@@ -547,6 +624,30 @@ export function SkillPromptActions({
           )
         ) : null}
       </span>
+
+      {manualCopy ? (
+        <div className="skill-prompt-manual-copy">
+          <label className="skill-prompt-manual-label" htmlFor={`skill-prompt-manual-${context}`}>
+            Prepared prompt
+          </label>
+          <textarea
+            id={`skill-prompt-manual-${context}`}
+            className="fb-textarea skill-prompt-manual-text"
+            readOnly
+            rows={3}
+            value={manualCopy.text}
+            onFocus={(e) => e.currentTarget.select()}
+          />
+          <button
+            className="fb-btn light compact"
+            onClick={() => void copyPreparedCommand(manualCopy.target, manualCopy.text)}
+            type="button"
+          >
+            <Copy aria-hidden="true" />
+            Copy again
+          </button>
+        </div>
+      ) : null}
 
       <CronConfigDialog
         open={cronConfigOpen}
