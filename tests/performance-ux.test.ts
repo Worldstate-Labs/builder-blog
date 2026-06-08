@@ -3207,8 +3207,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(recentPostsList, /function postDetailHref/);
   assert.match(digestContent, /detailUrl:\s*favoriteState[\s\S]*postDetailHref\(favoriteState\.feedItemId, "\/dashboard\?tab=ai-digest", "AI Digest"\)/);
   assert.match(navigation, /export function postDetailHref/);
-  assert.match(navigation, /new URLSearchParams\(\{ returnLabel, returnTo \}\)/);
-  assert.match(navigation, /return `\/posts\/\$\{feedItemId\}\?\$\{params\.toString\(\)\}`/);
+  assert.match(navigation, /return withPostReturnTarget\(`\/posts\/\$\{feedItemId\}`, returnTo, returnLabel\)/);
+  assert.match(navigation, /export function withPostReturnTarget/);
+  assert.match(navigation, /params\.set\("returnTo", returnTo\)/);
+  assert.match(navigation, /params\.set\("returnLabel", returnLabel\)/);
 });
 
 test("digest posts use source detail headings and unified original links", () => {
@@ -4122,6 +4124,7 @@ test("list actions use compact controls instead of full-width mobile buttons", (
 test("search feed results keep post detail links while preserving originals", () => {
   const userSearch = source("src/lib/user-search.ts");
   const searchPage = source("src/app/(workspace)/search/page.tsx");
+  const navigation = source("src/lib/navigation.ts");
 
   assert.match(userSearch, /externalUrl:\s*item\.url/);
   assert.match(userSearch, /url:\s*`\/posts\/\$\{item\.id\}`/);
@@ -4130,9 +4133,13 @@ test("search feed results keep post detail links while preserving originals", ()
   assert.match(userSearch, /builderId:\s*item\.builder\?\.id/);
   assert.match(userSearch, /builderEntityId:\s*item\.builder\?\.entityId/);
   assert.match(userSearch, /builderKind:\s*item\.builder\?\.kind/);
-  assert.match(searchPage, /withSearchReturnTarget/);
-  assert.match(searchPage, /params\.set\("returnTo", returnTo\)/);
-  assert.match(searchPage, /params\.set\("returnLabel", "Search"\)/);
+  assert.match(searchPage, /@\/lib\/navigation/);
+  assert.match(searchPage, /withPostReturnTarget\(/);
+  assert.match(searchPage, /withPostReturnTarget\([\s\S]*result\.url,[\s\S]*searchHref\(\{ query, type: typeFilter, mode, sort, time, page: currentPage \}\),[\s\S]*"Search"/);
+  assert.doesNotMatch(searchPage, /function withSearchReturnTarget/);
+  assert.doesNotMatch(searchPage, /params\.set\("returnLabel", "Search"\)/);
+  assert.match(navigation, /export function withPostReturnTarget/);
+  assert.match(navigation, /params\.set\("returnLabel", returnLabel\)/);
   assert.match(searchPage, /currentPage=\{currentPage\}/);
   assert.match(searchPage, /page: currentPage/);
   assert.match(searchPage, /import \{ PostCard \} from "@\/components\/PostCard"/);

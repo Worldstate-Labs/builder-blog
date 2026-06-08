@@ -18,6 +18,7 @@ import { SearchForm, type SearchTypeFilter } from "@/components/SearchForm";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { SourceBadge } from "@/components/SourceBadge";
 import { getCurrentSession } from "@/lib/auth";
+import { withPostReturnTarget } from "@/lib/navigation";
 import { searchUserLibrary } from "@/lib/user-search";
 import {
   didYouMeanSearch,
@@ -670,9 +671,10 @@ function ResultCard({
   const titleIsExternal = isExternalUrl(result.url);
   const originalUrl = result.externalUrl ?? (titleIsExternal ? result.url ?? null : null);
   const resultHref = result.url
-    ? withSearchReturnTarget(
+    ? withPostReturnTarget(
         result.url,
         searchHref({ query, type: typeFilter, mode, sort, time, page: currentPage }),
+        "Search",
       )
     : null;
   const displayUrl = formatDisplayUrl(originalUrl ?? result.url);
@@ -1207,15 +1209,6 @@ function searchHref({
   if (page && page > 1) params.set("page", String(page));
   const queryString = params.toString();
   return queryString ? `/search?${queryString}` : "/search";
-}
-
-function withSearchReturnTarget(href: string, returnTo: string) {
-  if (!href.startsWith("/posts/")) return href;
-  const [pathname, existingQuery = ""] = href.split("?");
-  const params = new URLSearchParams(existingQuery);
-  params.set("returnTo", returnTo);
-  params.set("returnLabel", "Search");
-  return `${pathname}?${params.toString()}`;
 }
 
 function buildActiveSearchFilters({

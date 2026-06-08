@@ -5,6 +5,14 @@ export function normalizeLegacyReturnTo(value: string) {
 }
 
 export function postDetailHref(feedItemId: string, returnTo: string, returnLabel: string) {
-  const params = new URLSearchParams({ returnLabel, returnTo });
-  return `/posts/${feedItemId}?${params.toString()}`;
+  return withPostReturnTarget(`/posts/${feedItemId}`, returnTo, returnLabel);
+}
+
+export function withPostReturnTarget(href: string, returnTo: string, returnLabel: string) {
+  if (!href.startsWith("/posts/")) return href;
+  const [pathname, existingQuery = ""] = href.split("?");
+  const params = new URLSearchParams(existingQuery);
+  params.set("returnTo", returnTo);
+  params.set("returnLabel", returnLabel);
+  return `${pathname}?${params.toString()}`;
 }
