@@ -530,10 +530,14 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(appShell, /@\/components\/UserMenu/);
   assert.match(userMenu, /"use client"/);
   assert.match(userMenu, /usePathname/);
+  assert.match(userMenu, /useId/);
+  assert.match(userMenu, /const popoverId = useId\(\)/);
   assert.match(userMenu, /const pathname = usePathname\(\)/);
   assert.match(userMenu, /const closeMenu = useCallback\(\(options\?: \{ restoreFocus\?: boolean \}\) => \{[\s\S]*detailsRef\.current\.open = false[\s\S]*summaryRef\.current\?\.focus\(\)[\s\S]*\}, \[\]\)/);
   assert.match(userMenu, /useEffect\(\(\) => \{[\s\S]*closeMenu\(\);[\s\S]*\}, \[closeMenu, pathname\]\)/);
   assert.match(userMenu, /className="user-menu-trigger"/);
+  assert.match(userMenu, /aria-controls=\{popoverId\}/);
+  assert.match(userMenu, /className="user-menu-popover" id=\{popoverId\}/);
   assert.match(userMenu, /className="user-menu-icon"/);
   assert.doesNotMatch(userMenu, /h-4 w-4|w-full text-left/);
   assert.match(userMenu, /aria-label=\{email \? `Account menu for \$\{email\}` : `Account menu for \$\{name\}`\}/);
