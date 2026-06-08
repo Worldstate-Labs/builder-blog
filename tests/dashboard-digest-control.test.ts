@@ -38,8 +38,8 @@ test("home digest keeps pipeline and archive selection in a dedicated control ba
   assert.match(digestPipelineSelector, /aria-controls=\{menuId\}/);
   assert.match(digestPipelineSelector, /aria-haspopup="listbox"/);
   assert.match(digestPipelineSelector, /role="listbox"/);
-  assert.match(digestPipelineSelector, /aria-label="AI Digest source choices"/);
-  assert.doesNotMatch(digestPipelineSelector, /aria-label="AI Digest choices"/);
+  assert.match(digestPipelineSelector, /aria-label="AI Digest collection choices"/);
+  assert.doesNotMatch(digestPipelineSelector, /aria-label="AI Digest choices"|AI Digest source/);
   assert.match(digestPipelineSelector, /className="digest-pipeline-option"/);
   assert.match(digestPipelineSelector, /role="option"/);
   assert.match(digestPipelineSelector, /aria-selected=\{active\}/);
