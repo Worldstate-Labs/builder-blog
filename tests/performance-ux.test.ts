@@ -210,7 +210,6 @@ test("every app route has an explicit centered layout role", () => {
 
   assert.match(source("src/app/loading.tsx"), /<RouteLoading label="Loading" title="Loading FollowBrief" \/>/);
   const workspaceLoadingRoutes = [
-    ["src/app/(workspace)/builders/loading.tsx", "Sources", "Loading Sources", 6],
     ["src/app/(workspace)/library-hub/loading.tsx", "Hub", "Loading Hub", 5],
     ["src/app/(workspace)/settings/loading.tsx", "Settings", "Loading Settings", 5],
   ] as const;
@@ -254,6 +253,17 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(dashboardLoading, /aria-label="Loading AI Digest selection"/);
   assert.match(dashboardLoading, /className="digest-control-bar home-loading-control"/);
   assert.match(dashboardLoading, /className="home-loading-field"/);
+  const buildersLoading = source("src/app/(workspace)/builders/loading.tsx");
+  assert.doesNotMatch(buildersLoading, /RouteLoading/);
+  assert.match(buildersLoading, /className="page-pad sources-loading"/);
+  assert.match(buildersLoading, /<h1 className="sr-only">Loading Sources<\/h1>/);
+  assert.match(buildersLoading, /aria-label="Sources and AI Digest tabs"/);
+  assert.match(buildersLoading, /sources-loading-tab is-active[\s\S]*Sources/);
+  assert.match(buildersLoading, /sources-loading-tab[\s\S]*AI Digest/);
+  assert.match(buildersLoading, /className="sources-tab-body sources-tab-body--fetch"/);
+  assert.match(buildersLoading, /className="sources-section-stack"/);
+  assert.match(buildersLoading, /className="your-library-panel fb-panel"/);
+  assert.match(buildersLoading, /className="source-sync-skeleton-panel"/);
   assert.equal(existsSync(join(root, "src/app/history/page.tsx")), false);
   assert.equal(existsSync(join(root, "src/app/history/loading.tsx")), false);
 });
@@ -1024,6 +1034,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.home-tab-panel\s*{[\s\S]*padding-top:\s*1\.25rem/);
   assert.match(globals, /\.home-loading-tabs\s*{[\s\S]*pointer-events:\s*none/);
   assert.match(globals, /\.home-loading-tab\.is-active\s*{[\s\S]*box-shadow:\s*inset 0 -2px 0 var\(--accent\)/);
+  assert.match(globals, /\.sources-loading-tabs\s*{[\s\S]*pointer-events:\s*none/);
+  assert.match(globals, /\.sources-loading-tab\.is-active\s*{[\s\S]*box-shadow:\s*inset 0 -2px 0 var\(--accent\)/);
   assert.match(globals, /\.home-loading-field,[\s\S]*\.home-loading-line,[\s\S]*\.home-loading-post-row\s*{[\s\S]*animation:\s*pulse/);
   assert.match(globals, /\.home-loading-digest-card\s*{[\s\S]*background:\s*var\(--paper-strong\)/);
   assert.match(globals, /\.workspace-top-tabs\.fb-segmented-tabs\s*{[\s\S]*background:\s*transparent/);
@@ -2456,13 +2468,14 @@ test("user library search can fetch operator-only candidate sets", () => {
 test("primary tabs keep local loading fallbacks alongside route loaders", () => {
   assert.equal(existsSync(join(root, "src/app/(workspace)/history/loading.tsx")), true);
   for (const path of [
-    "src/app/(workspace)/builders/loading.tsx",
     "src/app/(workspace)/library-hub/loading.tsx",
     "src/app/(workspace)/search/loading.tsx",
   ]) {
     assert.equal(existsSync(join(root, path)), true, path);
     assert.match(source(path), /RouteLoading/);
   }
+  assert.equal(existsSync(join(root, "src/app/(workspace)/builders/loading.tsx")), true);
+  assert.doesNotMatch(source("src/app/(workspace)/builders/loading.tsx"), /RouteLoading/);
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const digestPipelineForm = source("src/components/DigestPipelineImportForm.tsx");
   const libraryHubPage = source("src/app/(workspace)/library-hub/page.tsx");
