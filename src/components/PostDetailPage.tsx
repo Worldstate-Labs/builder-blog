@@ -5,6 +5,7 @@ import { PostCard } from "@/components/PostCard";
 import { SourceBadge } from "@/components/SourceBadge";
 import { getCurrentSession } from "@/lib/auth";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
+import { normalizeLegacyReturnTo } from "@/lib/navigation";
 import { prisma } from "@/lib/prisma";
 
 export async function PostDetailPage({
@@ -141,12 +142,6 @@ function resolvePostBackLink(params: {
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
-}
-
-function normalizeLegacyReturnTo(value: string) {
-  if (value.startsWith("/recommendations")) return "/dashboard?tab=following";
-  if (value.startsWith("/history")) return "/dashboard?tab=ai-digest";
-  return value;
 }
 
 function isSafeInternalReturnTo(value: string) {

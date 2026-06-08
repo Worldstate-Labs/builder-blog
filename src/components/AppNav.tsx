@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { ComponentType, CSSProperties } from "react";
 import { Home, LibraryBig, UsersRound } from "lucide-react";
+import { normalizeLegacyReturnTo } from "@/lib/navigation";
 
 export type AppNavItem = {
   href: string;
@@ -107,10 +108,4 @@ function isActiveNavItem(pathname: string, item: AppNavItem, returnTo = "") {
   }
   if (item.href === "/builders") return pathname.startsWith("/builder/");
   return false;
-}
-
-function normalizeLegacyReturnTo(value: string) {
-  if (value.startsWith("/recommendations")) return "/dashboard?tab=following";
-  if (value.startsWith("/history")) return "/dashboard?tab=ai-digest";
-  return value;
 }

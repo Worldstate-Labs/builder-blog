@@ -32,8 +32,10 @@ function cssRule(sourceText: string, selector: string) {
 test("primary app navigation keeps route prefetching enabled", () => {
   const appNav = source("src/components/AppNav.tsx");
   const globals = source("src/app/globals.css");
+  const navigation = source("src/lib/navigation.ts");
 
   assert.equal(appNav.includes("prefetch={false}"), false);
+  assert.match(appNav, /@\/lib\/navigation/);
   assert.match(appNav, /useSearchParams/);
   assert.match(appNav, /const returnTo = normalizeLegacyReturnTo\(/);
   assert.match(appNav, /pathname\.startsWith\("\/posts\/"\) \? searchParams\.get\("returnTo"\) \?\? "" : ""/);
@@ -49,9 +51,10 @@ test("primary app navigation keeps route prefetching enabled", () => {
   assert.doesNotMatch(appNav, /pathname === "\/history"/);
   assert.doesNotMatch(appNav, /returnTo\.startsWith\("\/recommendations"\)/);
   assert.doesNotMatch(appNav, /returnTo\.startsWith\("\/history"\)/);
-  assert.match(appNav, /function normalizeLegacyReturnTo/);
-  assert.match(appNav, /value\.startsWith\("\/recommendations"\)[\s\S]*return "\/dashboard\?tab=following"/);
-  assert.match(appNav, /value\.startsWith\("\/history"\)[\s\S]*return "\/dashboard\?tab=ai-digest"/);
+  assert.doesNotMatch(appNav, /function normalizeLegacyReturnTo/);
+  assert.match(navigation, /export function normalizeLegacyReturnTo/);
+  assert.match(navigation, /value\.startsWith\("\/recommendations"\)[\s\S]*return "\/dashboard\?tab=following"/);
+  assert.match(navigation, /value\.startsWith\("\/history"\)[\s\S]*return "\/dashboard\?tab=ai-digest"/);
   assert.match(globals, /\.fb-nav svg\s*{[\s\S]*height:\s*1rem/);
   assert.match(globals, /\.fb-m-tab svg\s*{[\s\S]*height:\s*1\.125rem/);
   assert.doesNotMatch(appNav, /className="h-4 w-4"/);
@@ -3140,9 +3143,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postDetailPage, /href:\s*"\/dashboard\?tab=following"/);
   assert.match(postDetailPage, /returnLabel/);
   assert.match(postDetailPage, /returnTo/);
+  assert.match(postDetailPage, /@\/lib\/navigation/);
   assert.match(postDetailPage, /normalizeLegacyReturnTo\(firstParam\(params\.returnTo\)\)/);
-  assert.match(postDetailPage, /value\.startsWith\("\/recommendations"\)[\s\S]*return "\/dashboard\?tab=following"/);
-  assert.match(postDetailPage, /value\.startsWith\("\/history"\)[\s\S]*return "\/dashboard\?tab=ai-digest"/);
+  assert.doesNotMatch(postDetailPage, /function normalizeLegacyReturnTo/);
   assert.match(postDetailPage, /isSafeInternalReturnTo/);
   assert.match(postDetailPage, /safeReturnLabel/);
   assert.match(postDetailPage, /safeReturnLabel\(firstParam\(params\.returnLabel\), returnTo\)/);

@@ -17,6 +17,7 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   const postCard = source("src/components/PostCard.tsx");
   const postDetailPage = source("src/components/PostDetailPage.tsx");
   const legacyDetailPage = source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx");
+  const navigation = source("src/lib/navigation.ts");
 
   assert.match(schema, /model RecommendationSnapshot/);
   assert.match(schema, /model RecommendationSnapshotItem/);
@@ -51,8 +52,10 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.match(postDetailPage, /href:\s*"\/dashboard\?tab=following"/);
   assert.match(postDetailPage, /returnLabel/);
   assert.match(postDetailPage, /returnTo/);
+  assert.match(postDetailPage, /@\/lib\/navigation/);
   assert.match(postDetailPage, /normalizeLegacyReturnTo/);
-  assert.match(postDetailPage, /value\.startsWith\("\/recommendations"\)[\s\S]*"\/dashboard\?tab=following"/);
+  assert.doesNotMatch(postDetailPage, /function normalizeLegacyReturnTo/);
+  assert.match(navigation, /value\.startsWith\("\/recommendations"\)[\s\S]*"\/dashboard\?tab=following"/);
   assert.match(postDetailPage, /isSafeInternalReturnTo/);
   assert.match(postDetailPage, /feedRead\.create/);
   assert.match(postDetailPage, /avatarUrl:\s*item\.builder\.avatarUrl/);
