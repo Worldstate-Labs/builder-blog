@@ -203,13 +203,14 @@ export default async function BuilderDetailPage({ params }: Params) {
                 {headerSourceUrl ? (
                   <a
                     aria-label={`View ${entity.name} source site`}
-                    className="builder-library-open-source"
+                    className="builder-detail-source-link"
                     href={headerSourceUrl}
                     rel="noopener noreferrer"
                     target="_blank"
                     title="View source site"
                   >
                     <ExternalLink aria-hidden="true" />
+                    <span>View source site</span>
                   </a>
                 ) : null}
               </div>

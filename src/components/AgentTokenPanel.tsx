@@ -303,7 +303,7 @@ export function AgentTokenPanel({
         <div className="access-keys-copy">
           <h2 className="fb-section-heading">Local Agent access</h2>
           <p className="access-keys-desc">
-            Access keys let trusted devices and Local Agents sync sources and AI Digests to this account.
+            Devices and Local Agents authorized to update this FollowBrief account.
           </p>
         </div>
         <button
