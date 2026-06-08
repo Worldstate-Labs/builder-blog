@@ -63,7 +63,7 @@ type SchedulePromptSelection =
 // (no runtime/cadence to pick). Either source flips ?force=1.
 type CopyExtras = { cron: CronConfig | null; force: boolean; fetchDays: number };
 type ManualCopyPrompt = { target: CopyTarget; text: string };
-const missingAccessMessage = "Connect a Local Agent in Settings first";
+const missingAccessMessage = "Add an access key in Settings first";
 
 async function copyTextToClipboard(text: string) {
   try {
