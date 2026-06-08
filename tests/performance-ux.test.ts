@@ -2085,6 +2085,12 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(globals, /\.search-hero-form\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
   assert.match(globals, /\.search-hero-form\s*{[\s\S]*margin:\s*0 auto/);
   assert.match(globals, /\.search-form\s*{[\s\S]*margin:\s*0/);
+  assert.match(cssRule(globals, ".search-form"), /border-radius:\s*20px/);
+  assert.doesNotMatch(cssRule(globals, ".search-form"), /border-radius:\s*999px/);
+  assert.match(cssRule(globals, ".search-query-label"), /flex:\s*1 1 100%/);
+  assert.match(cssRule(globals, ".search-form .search-input-wrap"), /border-radius:\s*999px/);
+  assert.match(cssRule(globals, ".search-mode-select"), /flex:\s*1 1 11rem/);
+  assert.match(cssRule(globals, ".search-date-range"), /flex:\s*2 1 21rem/);
   assert.match(globals, /\.page-pad--reading\s*{[\s\S]*width:\s*min\(100%, var\(--reading-max\)\)/);
   assert.match(globals, /\.page-pad--settings\s*{[\s\S]*width:\s*min\(100%, var\(--settings-max\)\)/);
   assert.match(searchForm, /className="fb-btn dark submit-button"/);
