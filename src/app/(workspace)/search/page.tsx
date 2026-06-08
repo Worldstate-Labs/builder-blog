@@ -50,7 +50,7 @@ type SearchParams = Promise<{
 }>;
 
 const searchPageSize = 10;
-const emptySearchCopy = "Search sources, posts, saved posts, and AI Digest archives.";
+const emptySearchCopy = "Search sources, posts, and AI Digest archives.";
 const defaultSuggestions = [
   "model pricing",
   "open source models",
@@ -162,7 +162,7 @@ export default async function SearchPage({
     <div className="page-pad page-pad--reading search-page">
       <PageHeader
         title="Search"
-        description="Find sources, posts, saved posts, and AI Digest archives in one place."
+        description="Find sources, posts, and AI Digest archives in one place."
       />
 
       <div className="workspace-content-stack search-results-workspace">

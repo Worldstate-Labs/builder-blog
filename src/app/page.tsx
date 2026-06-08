@@ -108,7 +108,7 @@ export default async function Home() {
               {
                 title: "Search after the read.",
                 detail:
-                  "Find sources, posts, saved posts, and AI Digest archives when you need the detail later.",
+                  "Find sources, posts, and AI Digest archives when you need the detail later.",
               },
             ].map((item) => (
               <article className="fb-signal" key={item.title}>
@@ -153,7 +153,7 @@ export default async function Home() {
               i: "03",
               icon: Search,
               title: "Search and revisit",
-              copy: "Open the original posts behind each summary and search sources, posts, saved posts, and AI Digest archives later.",
+              copy: "Open the original posts behind each summary and search sources, posts, and AI Digest archives later.",
             },
           ].map(({ i, icon: Icon, title, copy }) => (
             <li key={title} className="fb-public-step-row">
@@ -188,7 +188,7 @@ export default async function Home() {
           <Feature
             icon={Search}
             title="Workspace search"
-            copy="Sources, posts, saved posts, and AI Digest archives share one search surface."
+            copy="Sources, posts, and AI Digest archives share one search surface."
           />
         </div>
       </section>

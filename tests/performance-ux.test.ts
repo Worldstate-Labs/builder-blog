@@ -257,7 +257,8 @@ test("workspace not-found uses the FollowBrief shell instead of the default Next
   assert.match(notFoundPage, /href="\/search"/);
   assert.match(notFoundPage, /Home/);
   assert.match(notFoundPage, /Search/);
-  assert.match(notFoundPage, /Return Home, or search across sources, posts, saved posts, and AI Digest archives\./);
+  assert.match(notFoundPage, /Return Home, or search across sources, posts, and AI Digest archives\./);
+  assert.doesNotMatch(notFoundPage, /search across sources, posts, saved posts, and AI Digest archives\./);
   assert.doesNotMatch(notFoundPage, /search across sources, posts, saved posts, and AI Digests\./);
   assert.doesNotMatch(notFoundPage, /sources, posts, Favorites, and AI Digests/);
   assert.doesNotMatch(notFoundPage, /Return to your feeds/);
@@ -329,13 +330,14 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /reading AI Digests/);
   assert.match(landingPage, /builds cited AI Digests/);
   assert.match(landingPage, />AI Digest<\/span>/);
-  assert.match(landingPage, /Find sources, posts, saved posts, and AI Digest archives/);
+  assert.match(landingPage, /Find sources, posts, and AI Digest archives/);
+  assert.doesNotMatch(landingPage, /Find sources, posts, saved posts, and AI Digest archives/);
   assert.doesNotMatch(landingPage, /Find sources, saved posts, and AI Digest archives/);
   assert.doesNotMatch(landingPage, /posts you've saved/);
   assert.match(landingPage, /Open the original posts behind each summary/);
-  assert.match(landingPage, /search sources, posts, saved posts, and AI Digest archives later/);
+  assert.match(landingPage, /search sources, posts, and AI Digest archives later/);
   assert.match(landingPage, /Workspace search/);
-  assert.match(landingPage, /Sources, posts, saved posts, and AI Digest archives share one search surface\./);
+  assert.match(landingPage, /Sources, posts, and AI Digest archives share one search surface\./);
   assert.doesNotMatch(landingPage, /sources, posts, Favorites, and AI Digests|Sources, posts, Favorites, and AI Digests/);
   assert.match(landingPage, /Start from shared source libraries/);
   assert.doesNotMatch(landingPage, /Start from shared libraries/);
@@ -392,7 +394,8 @@ test("public entry pages use the centered product layout", () => {
   assert.match(loginPage, /Sign in to your\{" "\}/);
   assert.match(loginPage, /className="fb-login-title-break"/);
   assert.doesNotMatch(loginPage, /your<br \/>AI Digest workspace/);
-  assert.match(loginPage, /sources, posts, saved posts, and AI Digest archives searchable/);
+  assert.match(loginPage, /sources, posts, and AI Digest archives searchable/);
+  assert.doesNotMatch(loginPage, /sources, posts, saved posts, and AI Digest archives searchable/);
   assert.doesNotMatch(loginPage, /sources, posts, saved posts, and AI Digests searchable/);
   assert.doesNotMatch(loginPage, /sources, posts, Favorites, and AI Digests searchable/);
   assert.doesNotMatch(loginPage, /keep your\s+AI Digests searchable/);
@@ -1951,7 +1954,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /@\/components\/PageHeader/);
   assert.match(searchPage, /className="page-pad page-pad--reading search-page"/);
   assert.match(searchPage, /searchPageSize/);
-  assert.match(searchPage, /emptySearchCopy = "Search sources, posts, saved posts, and AI Digest archives\."/);
+  assert.match(searchPage, /emptySearchCopy = "Search sources, posts, and AI Digest archives\."/);
+  assert.doesNotMatch(searchPage, /emptySearchCopy = "Search sources, posts, saved posts, and AI Digest archives\."/);
   assert.match(searchPage, /<SearchEmptyState title="Start with a search">\{emptySearchCopy\}<\/SearchEmptyState>/);
   assert.match(searchPage, /<SearchEmptyState actions=\{recoveryActions\} title="No matches found">/);
   assert.match(searchPage, /searchNoMatchesCopy/);
@@ -1995,7 +1999,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(globals, /\.search-meta-skeleton\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.search-meta-skeleton--count\s*{[\s\S]*width:\s*min\(14rem,\s*62%\)/);
   assert.match(globals, /\.search-meta-skeleton--page\s*{[\s\S]*width:\s*min\(8rem,\s*32%\)/);
-  assert.match(searchPage, /<PageHeader[\s\S]*title="Search"[\s\S]*Find sources, posts, saved posts, and AI Digest archives in one place\./);
+  assert.match(searchPage, /<PageHeader[\s\S]*title="Search"[\s\S]*Find sources, posts, and AI Digest archives in one place\./);
+  assert.doesNotMatch(searchPage, /Find sources, posts, saved posts, and AI Digest archives in one place\./);
   assert.doesNotMatch(searchPage, /Find sources, posts, saved posts, and AI Digests in one place\./);
   assert.doesNotMatch(searchPage, /across your library/);
   assert.doesNotMatch(searchPage, /description="Find sources, saved posts, and digest history\."/);
@@ -2233,7 +2238,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /spellCheck=\{false\}/);
   assert.match(searchForm, /role="listbox"/);
   assert.match(searchForm, /role="option"/);
-  assert.match(searchForm, /placeholder="Search sources, posts, saved posts, and AI Digest archives"/);
+  assert.match(searchForm, /placeholder="Search sources, posts, and AI Digest archives"/);
+  assert.doesNotMatch(searchForm, /placeholder="Search sources, posts, saved posts, and AI Digest archives"/);
   assert.doesNotMatch(searchForm, /saved items|Favorites/);
   assert.match(searchForm, /submitSuggestion\(activeSuggestion, event\.currentTarget\.form\)/);
   assert.match(searchForm, /role="option"[\s\S]*className="search-suggestion-item"/);
