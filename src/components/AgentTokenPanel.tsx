@@ -204,11 +204,8 @@ export function AgentTokenPanel({
     });
   }
 
-  const activeTokens = useMemo(
-    () =>
-      sortAccessTokensByRecentConnection(
-        tokens.filter((token) => !token.revokedAt),
-      ),
+  const sortedTokens = useMemo(
+    () => sortAccessTokensByRecentConnection(tokens),
     [tokens],
   );
 
@@ -277,8 +274,12 @@ export function AgentTokenPanel({
     closeRevokeDialog();
     setStatus("");
     const previousTokens = tokens;
-    // Optimistically remove the row.
-    setTokens((current) => current.filter((token) => token.id !== tokenId));
+    const revokedAt = new Date().toISOString();
+    setTokens((current) =>
+      current.map((token) =>
+        token.id === tokenId ? { ...token, revokedAt } : token,
+      ),
+    );
     startTransition(async () => {
       try {
         const response = await fetch(`/api/settings/tokens/${tokenId}`, {
@@ -316,9 +317,9 @@ export function AgentTokenPanel({
         </button>
       </div>
 
-      {activeTokens.length > 0 ? (
+      {sortedTokens.length > 0 ? (
         <ul className="access-keys-list" aria-label="Access keys for Local Agents">
-          {activeTokens.map((token) => (
+          {sortedTokens.map((token) => (
             <TokenRow
               key={token.id}
               token={token}
@@ -331,12 +332,8 @@ export function AgentTokenPanel({
       ) : (
         <EmptyState
           className="access-keys-empty"
-          title={tokens.length === 0 ? "No Local Agent access yet" : "No active access"}
-          body={
-            tokens.length === 0
-              ? "Add one when you connect a Local Agent."
-              : "Revoked access is hidden from this list."
-          }
+          title="No Local Agent access yet"
+          body="Add one when you connect a Local Agent."
         />
       )}
 
