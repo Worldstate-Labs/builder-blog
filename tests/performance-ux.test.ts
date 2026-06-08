@@ -160,8 +160,8 @@ test("every app route has an explicit centered layout role", () => {
   }
 
   const workspaceRoutes = [
-    ["src/app/(workspace)/builders/page.tsx", /className="page-pad"[\s\S]*<h1 className="sr-only">Sources<\/h1>[\s\S]*<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/],
-    ["src/app/(workspace)/library-hub/page.tsx", /className="page-pad"[\s\S]*<h1 className="sr-only">Hub<\/h1>[\s\S]*<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/],
+    ["src/app/(workspace)/builders/page.tsx", /className="page-pad"[\s\S]*<h1 className="sr-only">Sources<\/h1>[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/],
+    ["src/app/(workspace)/library-hub/page.tsx", /className="page-pad"[\s\S]*<h1 className="sr-only">Hub<\/h1>[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/],
   ] as const;
   for (const [path, pattern] of workspaceRoutes) {
     const text = source(path);
@@ -173,13 +173,30 @@ test("every app route has an explicit centered layout role", () => {
 
   const readingRoutes = [
     ["src/app/(workspace)/builder/[entityId]/page.tsx", /className="page-pad page-pad--reading builder-detail-page"/],
-    ["src/app/(workspace)/dashboard/page.tsx", /className="page-pad page-pad--reading home-page"[\s\S]*<h1 className="sr-only">Home<\/h1>/],
+    ["src/app/(workspace)/dashboard/page.tsx", /className="page-pad page-pad--reading home-page"[\s\S]*<h1 className="sr-only">Home<\/h1>[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first home-workspace"/],
     ["src/components/PostDetailPage.tsx", /className="page-pad page-pad--reading reading-page"/],
     ["src/app/(workspace)/search/page.tsx", /className="page-pad page-pad--reading search-page"[\s\S]*<PageHeader[\s\S]*title="Search"/],
   ] as const;
   for (const [path, pattern] of readingRoutes) {
     assert.match(source(path), pattern, `${path} should use the centered reading rail`);
   }
+
+  const tabFirstLoadingRoutes = [
+    "src/app/(workspace)/builders/loading.tsx",
+    "src/app/(workspace)/dashboard/loading.tsx",
+    "src/app/(workspace)/library-hub/loading.tsx",
+  ];
+  for (const path of tabFirstLoadingRoutes) {
+    assert.match(
+      source(path),
+      /workspace-content-stack workspace-content-stack--tabs-first/,
+      `${path} should keep loading tabs aligned with the loaded page`,
+    );
+  }
+
+  const globals = source("src/app/globals.css");
+  assert.match(globals, /\.workspace-content-stack\s*{[\s\S]*margin-top:\s*clamp\(1\.25rem,\s*2vw,\s*2rem\)/);
+  assert.match(globals, /\.workspace-content-stack--tabs-first\s*{[\s\S]*margin-top:\s*clamp\(0\.375rem,\s*0\.9vw,\s*0\.875rem\)/);
 
   assert.match(
     source("src/app/(workspace)/settings/page.tsx"),
@@ -976,7 +993,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /<PageHeader title="Home" \/>/);
   assert.doesNotMatch(dashboardPage, /Read your AI Digest, saved posts, and followed-source updates/);
   assert.doesNotMatch(dashboardPage, /<header className="fb-page-head"/);
-  assert.match(dashboardPage, /className="workspace-content-stack home-workspace"/);
+  assert.match(dashboardPage, /className="workspace-content-stack workspace-content-stack--tabs-first home-workspace"/);
   assert.match(dashboardPage, /className="ai-digest-stack"/);
   assert.doesNotMatch(dashboardPage, /className="ai-digest-titleblock"/);
   assert.doesNotMatch(dashboardPage, /className="fb-section-heading ai-digest-imported-title"/);
@@ -2615,7 +2632,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(buildersPage, /className="your-library-panel fb-panel"/);
   assert.match(buildersPage, /Your source library/);
   assert.match(buildersPage, /personalSourceLibraryName/);
-  assert.match(buildersPage, /className="workspace-content-stack"/);
+  assert.match(buildersPage, /className="workspace-content-stack workspace-content-stack--tabs-first"/);
   assert.doesNotMatch(buildersPage, /sources-sync-section mt-5/);
   assert.doesNotMatch(buildersPage, /mt-6 grid gap-5/);
   assert.doesNotMatch(buildersPage, /className="grid gap-5"/);
@@ -2637,7 +2654,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(libraryHubPage, /label: "Source libraries"/);
   assert.match(libraryHubPage, /Source libraries built and shared by other users\./);
   assert.doesNotMatch(libraryHubPage, /Available source libraries/);
-  assert.match(libraryHubPage, /className="workspace-content-stack"/);
+  assert.match(libraryHubPage, /className="workspace-content-stack workspace-content-stack--tabs-first"/);
   assert.doesNotMatch(libraryHubPage, /@\/components\/PageHeader/);
   assert.doesNotMatch(libraryHubPage, /<PageHeader/);
   assert.match(libraryHubPage, /<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/);

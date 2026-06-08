@@ -90,7 +90,7 @@ export default async function DashboardPage({
     <div className="page-pad page-pad--reading home-page">
       <h1 className="sr-only">Home</h1>
 
-      <section className="workspace-content-stack home-workspace">
+      <section className="workspace-content-stack workspace-content-stack--tabs-first home-workspace">
         <DashboardHomeTabs
           initialTab={selectedTab}
           aiDigest={aiDigest}

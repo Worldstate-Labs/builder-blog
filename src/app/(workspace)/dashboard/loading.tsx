@@ -6,7 +6,7 @@ export default function DashboardLoading() {
       className="page-pad page-pad--reading home-page home-loading"
     >
       <h1 className="sr-only">Loading Home</h1>
-      <section className="workspace-content-stack home-workspace">
+      <section className="workspace-content-stack workspace-content-stack--tabs-first home-workspace">
         <div className="workspace-top-tabs-row">
           <div
             aria-label="Home feed tabs"

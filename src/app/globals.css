@@ -441,6 +441,10 @@ a.reading-source-label:focus-visible {
   min-width: 0;
 }
 
+.workspace-content-stack--tabs-first {
+  margin-top: clamp(0.375rem, 0.9vw, 0.875rem);
+}
+
 .page-toolbar {
   align-items: center;
   display: flex;

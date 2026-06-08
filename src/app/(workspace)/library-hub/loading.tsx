@@ -6,7 +6,7 @@ export default function LibraryHubLoading() {
       className="page-pad hub-loading"
     >
       <h1 className="sr-only">Loading Hub</h1>
-      <div className="workspace-content-stack">
+      <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <div className="workspace-top-tabs-row">
           <div
             aria-label="Hub tabs"

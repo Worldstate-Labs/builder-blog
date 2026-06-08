@@ -6,7 +6,7 @@ export default function BuildersLoading() {
       className="page-pad sources-loading"
     >
       <h1 className="sr-only">Loading Sources</h1>
-      <div className="workspace-content-stack">
+      <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <section className="sources-tab-surface">
           <div className="workspace-top-tabs-row">
             <div
