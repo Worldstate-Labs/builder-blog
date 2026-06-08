@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
 export default async function LegacyRecommendationItemPage({
   params,
@@ -23,5 +23,5 @@ export default async function LegacyRecommendationItemPage({
     query.set("returnLabel", "Following");
   }
   const suffix = query.toString() ? `?${query.toString()}` : "";
-  redirect(`/posts/${feedItemId}${suffix}`);
+  permanentRedirect(`/posts/${feedItemId}${suffix}`);
 }

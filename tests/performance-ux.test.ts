@@ -177,9 +177,9 @@ test("every app route has an explicit centered layout role", () => {
 
   const redirectOnlyRoutes = [
     ["src/app/(workspace)/builder/x/[handle]/page.tsx", /redirect\(`\/builder\/\$\{entity\.id\}`\)/],
-    ["src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx", /redirect\(`\/posts\/\$\{feedItemId\}\$\{suffix\}`\)/],
-    ["src/app/(workspace)/recommendations/page.tsx", /redirect\("\/dashboard\?tab=following"\)/],
-    ["src/app/(workspace)/history/page.tsx", /redirect\("\/dashboard\?tab=ai-digest"\)/],
+    ["src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx", /permanentRedirect\(`\/posts\/\$\{feedItemId\}\$\{suffix\}`\)/],
+    ["src/app/(workspace)/recommendations/page.tsx", /permanentRedirect\("\/dashboard\?tab=following"\)/],
+    ["src/app/(workspace)/history/page.tsx", /permanentRedirect\("\/dashboard\?tab=ai-digest"\)/],
   ] as const;
   for (const [path, pattern] of redirectOnlyRoutes) {
     const text = source(path);
@@ -978,7 +978,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /FollowingRecommendationSection/);
   assert.doesNotMatch(dashboardPage, /getRecommendationTimeline/);
   assert.match(digestDetails, /mode === "today"/);
-  assert.match(recommendationsPage, /redirect\("\/dashboard\?tab=following"\)/);
+  assert.match(recommendationsPage, /permanentRedirect\("\/dashboard\?tab=following"\)/);
   assert.match(builderDetailPage, /@\/components\/PageHeader/);
   assert.match(builderDetailPage, /className="page-pad page-pad--reading builder-detail-page"/);
   assert.match(builderDetailPage, /<PageHeader[\s\S]*className="builder-detail-page-head"[\s\S]*title=\{entity\.name\}/);
@@ -1896,7 +1896,7 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(globals, /\.digest-control-picker \.digest-picker-summary,[\s\S]*\.digest-control-picker \.digest-picker-static\s*{[\s\S]*min-height:\s*2\.5rem/);
   assert.match(globals, /\.digest-picker-static\s*{[\s\S]*border:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.digest-picker\[open\] \.digest-picker-icon\s*{[\s\S]*transform:\s*rotate\(180deg\)/);
-  assert.match(historyPage, /redirect\("\/dashboard\?tab=ai-digest"\)/);
+  assert.match(historyPage, /permanentRedirect\("\/dashboard\?tab=ai-digest"\)/);
   assert.doesNotMatch(historyPage, /AppShell/);
   assert.match(digestDetails, /"use client"/);
   assert.match(digestDetails, /fetch\(`\/api\/digests\/\$\{digestId\}`/);
@@ -3029,7 +3029,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postDetailPage, /return \{ href: "\/dashboard\?tab=following", label: "Following" \}/);
   assert.doesNotMatch(postDetailPage, /Back to feed/);
   assert.doesNotMatch(postDetailPage, /extraActions=/);
-  assert.match(legacyRecommendationItemPage, /redirect\(`\/posts\/\$\{feedItemId\}\$\{suffix\}`\)/);
+  assert.match(legacyRecommendationItemPage, /permanentRedirect\(`\/posts\/\$\{feedItemId\}\$\{suffix\}`\)/);
   assert.match(globals, /\.reading-page\s*{[\s\S]*width:\s*min\(100%,\s*var\(--reading-max\)\)/);
   assert.match(globals, /\.reading-page-toolbar\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.reading-page-toolbar\s*{[\s\S]*grid-template-columns:\s*auto minmax\(0,\s*1fr\)/);

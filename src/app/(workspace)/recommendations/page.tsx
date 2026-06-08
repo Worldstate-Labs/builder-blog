@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
 export default function RecommendationsPage() {
-  redirect("/dashboard?tab=following");
+  permanentRedirect("/dashboard?tab=following");
 }

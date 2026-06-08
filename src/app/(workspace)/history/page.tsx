@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
 export default async function HistoryPage({
   searchParams,
@@ -6,5 +6,5 @@ export default async function HistoryPage({
   searchParams: Promise<{ page?: string }>;
 }) {
   await searchParams;
-  redirect("/dashboard?tab=ai-digest");
+  permanentRedirect("/dashboard?tab=ai-digest");
 }

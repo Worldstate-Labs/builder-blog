@@ -55,7 +55,7 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.match(postDetailPage, /feedRead\.create/);
   assert.match(postDetailPage, /avatarUrl:\s*item\.builder\.avatarUrl/);
   assert.match(postDetailPage, /item\.body/);
-  assert.match(legacyDetailPage, /redirect\(`\/posts\/\$\{feedItemId\}\$\{suffix\}`\)/);
+  assert.match(legacyDetailPage, /permanentRedirect\(`\/posts\/\$\{feedItemId\}\$\{suffix\}`\)/);
   assert.match(legacyDetailPage, /returnTo\.startsWith\("\/recommendations"\)/);
   assert.match(legacyDetailPage, /query\.set\("returnTo", "\/dashboard\?tab=following"\)/);
   assert.match(legacyDetailPage, /query\.set\("returnLabel", "Following"\)/);
@@ -323,7 +323,7 @@ test("recommendation snapshots request six posts at a time", () => {
   assert.match(source("src/lib/recommendations.ts"), /defaultRecommendationLimit = 6/);
   assert.match(source("src/app/api/recommendations/timeline/route.ts"), /itemLimit: 6/);
   assert.doesNotMatch(source("src/app/api/recommendations/timeline/route.ts"), /recommendationScope/);
-  assert.match(source("src/app/(workspace)/recommendations/page.tsx"), /redirect\("\/dashboard\?tab=following"\)/);
+  assert.match(source("src/app/(workspace)/recommendations/page.tsx"), /permanentRedirect\("\/dashboard\?tab=following"\)/);
   assert.match(source("src/app/api/recommendations/route.ts"), /limit"\) \?\? "6"/);
   assert.doesNotMatch(source("src/app/api/recommendations/route.ts"), /scope: recommendationScope/);
   const feed = source("src/components/RecommendationFeed.tsx");
