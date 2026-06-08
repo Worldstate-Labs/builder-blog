@@ -137,9 +137,9 @@ function FollowingUnavailable({
       <FeedEmptyState
         actions={<FetchSourcesPrompt sourceReadiness={sourceReadiness} />}
         ariaLive="polite"
-        body="Ask your Local Agent to fetch and summarize your followed sources, then Following can show their latest posts."
+        body="Run Fetch sources to summarize posts from your followed sources. Following will show the latest unread posts."
         className="is-actionable"
-        title="No fetched posts yet"
+        title="No summarized posts yet"
       />
     );
   }

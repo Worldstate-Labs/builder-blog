@@ -1104,10 +1104,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /Use Sources to follow or add sources\. They feed both AI Digest and Following/);
   assert.doesNotMatch(dashboardPage, /start building AI Digests/);
   assert.match(dashboardPage, /No summarized posts yet/);
-  assert.match(dashboardPage, /No fetched posts yet/);
+  assert.doesNotMatch(dashboardPage, /No fetched posts yet/);
   assert.match(dashboardPage, /Ask your Local Agent to build an AI Digest from the summarized posts/);
-  assert.match(dashboardPage, /before building an AI Digest/);
-  assert.match(dashboardPage, /Ask your Local Agent to fetch and summarize your followed sources/);
+  assert.match(dashboardPage, /Run Fetch sources to summarize posts from your followed sources before building an AI Digest/);
+  assert.doesNotMatch(dashboardPage, /Ask your Local Agent to fetch and summarize your followed sources/);
   assert.doesNotMatch(dashboardPage, /No digest yet|No archived AI Digests|This imported digest|This imported AI Digest has no archived AI Digest yet|build a digest from|material for a digest|start building digests|before building a digest/);
   assert.match(dashboardPage, /href="\/builders"/);
   assert.match(dashboardPage, /<SkillPromptActions[\s\S]*context="digest"/);
@@ -1526,10 +1526,10 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /Use Sources to follow or add sources\. They feed both AI Digest and Following/);
   assert.doesNotMatch(followingSection, /start seeing Following posts/);
   assert.doesNotMatch(followingSection, /start Following/);
-  assert.match(followingSection, /No fetched posts yet/);
+  assert.match(followingSection, /No summarized posts yet/);
   assert.match(followingSection, /No unread posts yet/);
-  assert.match(followingSection, /Ask your Local Agent to fetch and summarize your followed sources/);
-  assert.match(followingSection, /Following can show their latest posts/);
+  assert.match(followingSection, /Run Fetch sources to summarize posts from your followed sources/);
+  assert.match(followingSection, /Following will show the latest unread posts/);
   assert.match(followingSection, /title="Could not load Following posts"/);
   assert.match(followingSection, /Check your connection, then try again\./);
   assert.doesNotMatch(followingSection, /title="Could not load Following"|Something went wrong loading Following|Couldn't load Following|No posts have been fetched for your followed sources yet/);
@@ -3064,7 +3064,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.equal(existsSync(join(root, "src/components/MobileSourcesSwitcher.tsx")), false);
   assert.match(builderLibraryList, /className="builder-library-error"/);
   assert.match(builderLibraryList, /<EmptyState body=\{emptyBody\} title=\{emptyTitle\} \/>/);
-  assert.match(buildersPage, /emptyBody="Add a source, then use your Local Agent to fetch and summarize it\."/);
+  assert.match(buildersPage, /emptyBody="Add a source, then run Fetch sources\."/);
   assert.match(personalBuilderRoute, /We could not verify the source right now/);
   assert.match(personalBuilderRoute, /your Local Agent can retry later/);
   assert.doesNotMatch(personalBuilderRoute, /We couldn't verify/);

@@ -331,8 +331,6 @@ function DigestEmptyState({
     );
   }
 
-  const hasFetchedPosts = readiness.fetchedPostCount > 0;
-
   return (
     <EmptyState
       actions={
@@ -346,12 +344,8 @@ function DigestEmptyState({
         />
       }
       className="ai-digest-empty is-actionable"
-      title={hasFetchedPosts ? "No summarized posts yet" : "No fetched posts yet"}
-      body={
-        hasFetchedPosts
-          ? "Ask your Local Agent to fetch and summarize your followed sources before building an AI Digest."
-          : "Ask your Local Agent to fetch and summarize your followed sources so there is material for an AI Digest."
-      }
+      title="No summarized posts yet"
+      body="Run Fetch sources to summarize posts from your followed sources before building an AI Digest."
     />
   );
 }

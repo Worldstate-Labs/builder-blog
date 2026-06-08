@@ -398,9 +398,11 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.match(followingSection, /fetchedPostCount/);
   assert.match(followingSection, /No followed sources yet/);
   assert.match(followingSection, /Use Sources to follow or add sources\. They feed both AI Digest and Following/);
-  assert.match(followingSection, /No fetched posts yet/);
+  assert.match(followingSection, /No summarized posts yet/);
   assert.match(followingSection, /No unread posts yet/);
-  assert.match(followingSection, /Following can show their latest posts/);
+  assert.match(followingSection, /Run Fetch sources to summarize posts from your followed sources/);
+  assert.match(followingSection, /Following will show the latest unread posts/);
+  assert.doesNotMatch(followingSection, /No fetched posts yet|Following can show their latest posts/);
   assert.match(followingSection, /title="Could not load Following posts"/);
   assert.match(followingSection, /Check your connection, then try again\./);
   assert.doesNotMatch(followingSection, /title="Could not load Following"|Something went wrong loading Following|Couldn't load Following/);
