@@ -186,6 +186,12 @@ test("every app route has an explicit centered layout role", () => {
     assert.match(text, pattern, `${path} should redirect into the canonical centered route`);
     assert.doesNotMatch(text, /page-pad|fb-public-nav|fb-login-nav|AppShell/);
   }
+  const builderHandleAlias = source("src/app/(workspace)/builder/x/[handle]/page.tsx");
+  assert.match(builderHandleAlias, /getCurrentSession\(\)/);
+  assert.match(builderHandleAlias, /if \(!session\?\.user\?\.id\) redirect\("\/login"\)/);
+  assert.match(builderHandleAlias, /prisma\.builderEntity\.findFirst/);
+  assert.match(builderHandleAlias, /poolEntries: \{ some: \{ userId: session\.user\.id, removedAt: null \} \}/);
+  assert.doesNotMatch(builderHandleAlias, /prisma\.builderEntity\.findUnique/);
   assert.match(
     source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx"),
     /query\.set\("returnTo", "\/dashboard\?tab=following"\)[\s\S]*query\.set\("returnLabel", "Following"\)/,
