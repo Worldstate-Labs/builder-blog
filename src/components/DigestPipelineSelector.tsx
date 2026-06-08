@@ -4,6 +4,10 @@ import Link from "next/link";
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
+type PickerFocusDirection = "first" | "last" | "selected" | "next" | "previous";
+
+const pickerNavigationKeys = new Set(["ArrowDown", "ArrowUp", "Home", "End"]);
+
 export type DigestPipelineSelectorOption = {
   id: string;
   title: string;
@@ -51,7 +55,7 @@ export function DigestPipelineSelector({
     );
   }
 
-  function focusOption(direction: "selected" | "next" | "previous") {
+  function focusOption(direction: PickerFocusDirection) {
     const options = Array.from(
       pickerRef.current?.querySelectorAll<HTMLAnchorElement>(".digest-pipeline-option") ?? [],
     );
@@ -59,12 +63,16 @@ export function DigestPipelineSelector({
     const activeIndex = options.findIndex((option) => option === document.activeElement);
     const selectedIndex = options.findIndex((option) => option.getAttribute("aria-selected") === "true");
     const baseIndex = activeIndex >= 0 ? activeIndex : Math.max(selectedIndex, 0);
-    const nextIndex =
-      direction === "next"
-        ? (baseIndex + 1) % options.length
-        : direction === "previous"
-          ? (baseIndex - 1 + options.length) % options.length
-          : baseIndex;
+    let nextIndex = baseIndex;
+    if (direction === "first") {
+      nextIndex = 0;
+    } else if (direction === "last") {
+      nextIndex = options.length - 1;
+    } else if (direction === "next") {
+      nextIndex = (baseIndex + 1) % options.length;
+    } else if (direction === "previous") {
+      nextIndex = (baseIndex - 1 + options.length) % options.length;
+    }
     options[nextIndex]?.focus();
   }
 
@@ -76,14 +84,16 @@ export function DigestPipelineSelector({
       return;
     }
 
-    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    if (!pickerNavigationKeys.has(event.key)) return;
     event.preventDefault();
     if (!open) {
       setOpen(true);
-      window.requestAnimationFrame(() => focusOption("selected"));
+      window.requestAnimationFrame(() => {
+        focusOption(initialFocusDirectionForKey(event.key));
+      });
       return;
     }
-    focusOption(event.key === "ArrowDown" ? "next" : "previous");
+    focusOption(focusDirectionForKey(event.key));
   }
 
   return (
@@ -148,6 +158,18 @@ export function DigestPipelineSelector({
       </div>
     </details>
   );
+}
+
+function initialFocusDirectionForKey(key: string): PickerFocusDirection {
+  if (key === "Home") return "first";
+  if (key === "End") return "last";
+  return "selected";
+}
+
+function focusDirectionForKey(key: string): PickerFocusDirection {
+  if (key === "Home") return "first";
+  if (key === "End") return "last";
+  return key === "ArrowDown" ? "next" : "previous";
 }
 
 function pipelineOwnerLine(pipeline: DigestPipelineSelectorOption) {
