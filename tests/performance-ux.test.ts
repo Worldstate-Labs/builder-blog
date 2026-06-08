@@ -223,7 +223,6 @@ test("every app route has an explicit centered layout role", () => {
   const readingLoadingRoutes = [
     ["src/app/(workspace)/builder/[entityId]/loading.tsx", "Source", "Loading source", 5],
     ["src/app/(workspace)/builder/x/[handle]/loading.tsx", "Source", "Loading source", 5],
-    ["src/app/(workspace)/dashboard/loading.tsx", "Home", "Loading Home", 6],
     ["src/app/(workspace)/posts/[feedItemId]/loading.tsx", "Post", "Loading post", 4],
     ["src/app/(workspace)/recommendations/items/[feedItemId]/loading.tsx", "Post", "Loading post", 4],
     ["src/app/(workspace)/history/loading.tsx", "AI Digest", "Loading AI Digest", 6],
@@ -245,6 +244,16 @@ test("every app route has an explicit centered layout role", () => {
     source("src/app/(workspace)/settings/loading.tsx"),
     /<RouteLoading[\s\S]*label="Settings"[\s\S]*title="Loading Settings"[\s\S]*rows=\{5\}[\s\S]*variant="workspace"/,
   );
+  const dashboardLoading = source("src/app/(workspace)/dashboard/loading.tsx");
+  assert.doesNotMatch(dashboardLoading, /RouteLoading/);
+  assert.match(dashboardLoading, /className="page-pad page-pad--reading home-page home-loading"/);
+  assert.match(dashboardLoading, /<h1 className="sr-only">Loading Home<\/h1>/);
+  assert.match(dashboardLoading, /aria-label="Home feed tabs"/);
+  assert.match(dashboardLoading, /home-loading-tab is-active[\s\S]*AI Digest/);
+  assert.match(dashboardLoading, /home-loading-tab[\s\S]*Following/);
+  assert.match(dashboardLoading, /aria-label="Loading AI Digest selection"/);
+  assert.match(dashboardLoading, /className="digest-control-bar home-loading-control"/);
+  assert.match(dashboardLoading, /className="home-loading-field"/);
   assert.equal(existsSync(join(root, "src/app/history/page.tsx")), false);
   assert.equal(existsSync(join(root, "src/app/history/loading.tsx")), false);
 });
@@ -1013,6 +1022,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.workspace-top-tabs-row\s*{[\s\S]*justify-content:\s*center/);
   assert.match(globals, /\.workspace-top-tabs-row\s*{[\s\S]*border-bottom:\s*1px solid/);
   assert.match(globals, /\.home-tab-panel\s*{[\s\S]*padding-top:\s*1\.25rem/);
+  assert.match(globals, /\.home-loading-tabs\s*{[\s\S]*pointer-events:\s*none/);
+  assert.match(globals, /\.home-loading-tab\.is-active\s*{[\s\S]*box-shadow:\s*inset 0 -2px 0 var\(--accent\)/);
+  assert.match(globals, /\.home-loading-field,[\s\S]*\.home-loading-line,[\s\S]*\.home-loading-post-row\s*{[\s\S]*animation:\s*pulse/);
+  assert.match(globals, /\.home-loading-digest-card\s*{[\s\S]*background:\s*var\(--paper-strong\)/);
   assert.match(globals, /\.workspace-top-tabs\.fb-segmented-tabs\s*{[\s\S]*background:\s*transparent/);
   assert.doesNotMatch(globals, /\.home-feed-tabs|\.sources-subtabs/);
   assert.doesNotMatch(globals, /\.workspace-top-tabs\s*{[^}]*background:|\.filter-tabs\s*{[^}]*background:|\.mobile-filter-tabs\s*{[^}]*background:|\.sync-panel-tabs\s*{[^}]*background:/);
