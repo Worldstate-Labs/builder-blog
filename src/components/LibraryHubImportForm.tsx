@@ -323,6 +323,17 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
           ))}
           {filteredLibraries.length === 0 ? (
             <EmptyState
+              actions={
+                activeFilter === "imported" ? (
+                  <button
+                    className="fb-btn light compact"
+                    onClick={() => setActiveFilter("all")}
+                    type="button"
+                  >
+                    Browse source libraries
+                  </button>
+                ) : null
+              }
               className="hub-list-empty"
               body={emptyBody}
               title={emptyTitle}

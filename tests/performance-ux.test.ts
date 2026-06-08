@@ -2464,6 +2464,9 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /No source libraries yet/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /No imported source libraries/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /No matching source libraries/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /activeFilter === "imported" \? \(/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /onClick=\{\(\) => setActiveFilter\("all"\)\}/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), />\s*Browse source libraries\s*<\/button>/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries built and shared by other users will appear here\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /No shared source libraries match this filter\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Import source libraries from Hub to see them in Sources\./);
