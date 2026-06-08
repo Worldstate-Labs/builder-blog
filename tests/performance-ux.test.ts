@@ -970,7 +970,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /The owner has not shared any AI Digest archives yet/);
   assert.match(dashboardPage, /No AI Digest archives/);
   assert.doesNotMatch(dashboardPage, /saved briefs/);
-  assert.match(dashboardPage, /start building AI Digests/);
+  assert.match(dashboardPage, /They feed both AI Digest and Following/);
+  assert.doesNotMatch(dashboardPage, /start building AI Digests/);
   assert.match(dashboardPage, /No summarized posts yet/);
   assert.match(dashboardPage, /No fetched posts yet/);
   assert.match(dashboardPage, /Ask your Local Agent to build an AI Digest from the summarized posts/);
@@ -1335,7 +1336,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /initialSnapshots=\{visibleSnapshots\}/);
   assert.match(followingSection, /function snapshotHasPosts/);
   assert.match(followingSection, /No followed sources yet/);
-  assert.match(followingSection, /start seeing Following posts/);
+  assert.match(followingSection, /They feed both AI Digest and Following/);
+  assert.doesNotMatch(followingSection, /start seeing Following posts/);
   assert.doesNotMatch(followingSection, /start Following/);
   assert.match(followingSection, /No fetched posts yet/);
   assert.match(followingSection, /No unread posts yet/);

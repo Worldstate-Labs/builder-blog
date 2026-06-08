@@ -17,6 +17,9 @@ type TimelineResponse = {
   strategy: string;
 };
 
+const NO_FOLLOWED_SOURCES_BODY =
+  "Follow or add sources from the Sources page. They feed both AI Digest and Following.";
+
 export type FollowingSourceReadiness = {
   activeTokens: AgentTokenListItem[];
   digestMaxPostAgeDays: number | null;
@@ -122,7 +125,7 @@ function FollowingUnavailable({
           </Link>
         }
         ariaLive="polite"
-        body="Follow a source from the Sources page, or add a new one to start seeing Following posts."
+        body={NO_FOLLOWED_SOURCES_BODY}
         className="is-actionable"
         title="No followed sources yet"
       />

@@ -24,6 +24,8 @@ import {
 import { prisma } from "@/lib/prisma";
 
 const digestPickerSize = 100;
+const NO_FOLLOWED_SOURCES_BODY =
+  "Follow or add sources from the Sources page. They feed both AI Digest and Following.";
 const digestSummarySelect = {
   id: true,
   title: true,
@@ -299,7 +301,7 @@ function DigestEmptyState({
         }
         className="ai-digest-empty is-actionable"
         title="No followed sources yet"
-        body="Follow a source from the Sources page, or add a new one to start building AI Digests."
+        body={NO_FOLLOWED_SOURCES_BODY}
       />
     );
   }

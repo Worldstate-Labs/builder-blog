@@ -358,6 +358,7 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.match(followingSection, /followedSourceCount/);
   assert.match(followingSection, /fetchedPostCount/);
   assert.match(followingSection, /No followed sources yet/);
+  assert.match(followingSection, /They feed both AI Digest and Following/);
   assert.match(followingSection, /No fetched posts yet/);
   assert.match(followingSection, /No unread posts yet/);
   assert.match(followingSection, /Following can show their latest posts/);
