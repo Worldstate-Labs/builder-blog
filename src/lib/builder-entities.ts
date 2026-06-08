@@ -203,29 +203,57 @@ async function pickPrimaryCandidateForEntity(params: {
   return imported?.id ?? null;
 }
 
+const builderEntityWithChannelsSelect = {
+  id: true,
+  canonicalKey: true,
+  kind: true,
+  name: true,
+  handle: true,
+  bio: true,
+  createdAt: true,
+  updatedAt: true,
+  builders: {
+    select: {
+      id: true,
+      ownerUserId: true,
+      sourceType: true,
+      sourceUrl: true,
+      fetchUrl: true,
+      avatarUrl: true,
+      handle: true,
+      lastFetchedAt: true,
+      itemCount: true,
+      status: true,
+      owner: { select: { id: true, email: true, name: true } },
+      hubItems: {
+        select: {
+          hubEntry: { select: { id: true, name: true, slug: true, ownerUserId: true } },
+        },
+      },
+    },
+  },
+} satisfies Parameters<typeof prisma.builderEntity.findUnique>[0]["select"];
+
 export async function getEntityWithChannels(entityId: string) {
   return prisma.builderEntity.findUnique({
     where: { id: entityId },
-    include: {
+    select: builderEntityWithChannelsSelect,
+  });
+}
+
+export async function getEntityWithReachableChannels(entityId: string, userId: string) {
+  return prisma.builderEntity.findUnique({
+    where: { id: entityId },
+    select: {
+      ...builderEntityWithChannelsSelect,
       builders: {
-        select: {
-          id: true,
-          ownerUserId: true,
-          sourceType: true,
-          sourceUrl: true,
-          fetchUrl: true,
-          avatarUrl: true,
-          handle: true,
-          lastFetchedAt: true,
-          itemCount: true,
-          status: true,
-          owner: { select: { id: true, email: true, name: true } },
-          hubItems: {
-            select: {
-              hubEntry: { select: { id: true, name: true, slug: true, ownerUserId: true } },
-            },
-          },
+        where: {
+          OR: [
+            { ownerUserId: userId },
+            { poolEntries: { some: { userId, removedAt: null } } },
+          ],
         },
+        ...builderEntityWithChannelsSelect.builders,
       },
     },
   });

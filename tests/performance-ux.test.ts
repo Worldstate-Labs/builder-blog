@@ -976,6 +976,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /@\/components\/PageHeader/);
   assert.match(builderDetailPage, /className="page-pad page-pad--reading builder-detail-page"/);
   assert.match(builderDetailPage, /<PageHeader[\s\S]*className="builder-detail-page-head"[\s\S]*title=\{entity\.name\}/);
+  assert.match(builderDetailPage, /getEntityWithReachableChannels\(entityId, userId\)/);
+  assert.doesNotMatch(builderDetailPage, /getEntityWithChannels\(entityId\)/);
+  assert.match(builderDetailPage, /if \(!entity \|\| entity\.builders\.length === 0\) notFound\(\)/);
   assert.doesNotMatch(builderDetailPage, /<header className="fb-page-head"/);
   assert.match(builderDetailPage, /className="workspace-content-stack builder-detail-workspace"/);
   assert.match(builderDetailPage, /className="builder-detail-head-stack"/);
@@ -998,6 +1001,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(builderDetailPage, /className="builder-detail-host source-host-meta mono truncate"/);
   assert.match(builderDetailPage, /headerHostLabel \? \([\s\S]*className="source-count-dot source-meta-dot"/);
   assert.match(builderDetailPage, /<CountMeta label=\{headerItemCount === 1 \? "post" : "posts"\} value=\{headerItemCount\} \/>/);
+  assert.match(builderDetailPage, /const dedupedItemCount = await countDedupedItemsForEntity\(channelIds\)/);
+  assert.match(builderDetailPage, /where: \{ builderId: \{ in: builderIds \} \}/);
+  assert.doesNotMatch(builderDetailPage, /where: \{ builder: \{ entityId \} \}/);
   assert.doesNotMatch(builderDetailPage, /headerItemCount === 1 \? "item" : "items"/);
   assert.match(builderDetailPage, /latest at \{dateFormatter\.format\(lastFetchedMax\)\}/);
   assert.doesNotMatch(builderDetailPage, /Last summarized/);
@@ -1030,6 +1036,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /return "Your source library"/);
   assert.match(builderDetailPage, /return "Community source library"/);
   assert.match(builderDetailPage, /via \$\{formatChannelLibraryName\(viaChannel\)\}/);
+  assert.match(builderDetailPage, /builderIds: channels\.map\(\(channel\) => channel\.builderId\)/);
   assert.doesNotMatch(builderDetailPage, /" · own"|" · community"/);
   assert.match(channelPreferenceToggle, /className="channel-preference-control"/);
   assert.match(channelPreferenceToggle, /className="channel-preference-button"/);

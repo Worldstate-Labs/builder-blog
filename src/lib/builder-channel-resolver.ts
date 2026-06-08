@@ -123,15 +123,20 @@ export async function loadDigestedContentKeys(
 export async function fetchDedupedFeedForEntities(params: {
   userId: string;
   entityIds: string[];
+  builderIds?: string[] | null;
   publishedAfter?: Date | null;
   limit?: number;
   excludeDigestedForUserId?: string | null;
 }): Promise<DedupedFeedItem[]> {
   if (params.entityIds.length === 0) return [];
+  if (params.builderIds && params.builderIds.length === 0) return [];
   const excludeDigested = Boolean(params.excludeDigestedForUserId);
   const rawItems = (await prisma.feedItem.findMany({
     where: {
-      builder: { entityId: { in: params.entityIds } },
+      builder: {
+        entityId: { in: params.entityIds },
+        ...(params.builderIds ? { id: { in: params.builderIds } } : {}),
+      },
       ...(params.publishedAfter ? { publishedAt: { gte: params.publishedAfter } } : {}),
     },
     include: {

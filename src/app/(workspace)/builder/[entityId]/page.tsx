@@ -5,7 +5,7 @@ import { ChevronLeft, ExternalLink } from "lucide-react";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { fetchDedupedFeedForEntities, getReadEntityKeys } from "@/lib/builder-channel-resolver";
-import { getEntityWithChannels } from "@/lib/builder-entities";
+import { getEntityWithReachableChannels } from "@/lib/builder-entities";
 import { BuilderDetailActions } from "@/components/BuilderDetailActions";
 import { ChannelPreferenceToggle } from "@/components/ChannelPreferenceToggle";
 import { CountMeta } from "@/components/Count";
@@ -57,11 +57,8 @@ export default async function BuilderDetailPage({ params }: Params) {
   const userId = session.user.id;
 
   const { entityId } = await params;
-  const [entity, dedupedItemCount] = await Promise.all([
-    getEntityWithChannels(entityId),
-    countDedupedItemsForEntity(entityId),
-  ]);
-  if (!entity) notFound();
+  const entity = await getEntityWithReachableChannels(entityId, userId);
+  if (!entity || entity.builders.length === 0) notFound();
 
   const channels: ChannelInfo[] = entity.builders.map((channel) => {
     const ownerEmail = channel.owner?.email;
@@ -87,6 +84,13 @@ export default async function BuilderDetailPage({ params }: Params) {
       status: channel.status,
     };
   });
+
+  // Every Builder (channel) of this entity that the user has access
+  // to — used by the entity-level Follow button and by the header
+  // count so this page never reports global/private channel data the
+  // current user cannot actually see.
+  const channelIds = channels.map((c) => c.builderId);
+  const dedupedItemCount = await countDedupedItemsForEntity(channelIds);
 
   // BuilderEntity is the canonical creator; it may have multiple
   // Builder rows (channels) — typically the user's own row + the
@@ -126,12 +130,6 @@ export default async function BuilderDetailPage({ params }: Params) {
     if (!max || c.lastFetchedAt > max) return c.lastFetchedAt;
     return max;
   }, null);
-
-  // Every Builder (channel) of this entity that the user has access
-  // to — used by the entity-level Follow button to compute "any
-  // channel subscribed" and to fan out subscribe/unsubscribe across
-  // them.
-  const channelIds = channels.map((c) => c.builderId);
 
   return (
     <div className="page-pad page-pad--reading builder-detail-page">
@@ -250,15 +248,16 @@ export default async function BuilderDetailPage({ params }: Params) {
 }
 
 /**
- * Count canonical (deduped) FeedItems linked to this BuilderEntity
- * across all its channels. Two FeedItems collapse into one when they
+ * Count canonical (deduped) FeedItems linked to the user's reachable
+ * channels for this BuilderEntity. Two FeedItems collapse into one when they
  * share (kind, externalId) — that's the same dedup key used by
  * fetchDedupedFeedForEntities for the post list below the header,
  * so the header's "N posts" matches what the user actually sees.
  */
-async function countDedupedItemsForEntity(entityId: string): Promise<number> {
+async function countDedupedItemsForEntity(builderIds: string[]): Promise<number> {
+  if (builderIds.length === 0) return 0;
   const distinct = await prisma.feedItem.findMany({
-    where: { builder: { entityId } },
+    where: { builderId: { in: builderIds } },
     distinct: ["kind", "externalId"],
     select: { id: true },
   });
@@ -371,7 +370,12 @@ async function RecentPostsSlot({
   channels: ChannelInfo[];
 }) {
   const [items, readKeySet] = await Promise.all([
-    fetchDedupedFeedForEntities({ userId, entityIds: [entityId], limit: 25 }),
+    fetchDedupedFeedForEntities({
+      userId,
+      entityIds: [entityId],
+      builderIds: channels.map((channel) => channel.builderId),
+      limit: 25,
+    }),
     getReadEntityKeys(userId, [entityId]),
   ]);
 
