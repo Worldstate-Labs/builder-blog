@@ -1283,6 +1283,11 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(channelPreferenceToggle, /preferredBuilderId: next \? builderId : null/);
   assert.match(channelPreferenceToggle, /setIsPreferred\(customEvent\.detail\.preferredBuilderId === builderId\)/);
   assert.match(channelPreferenceToggle, /aria-busy=\{isPending\}/);
+  assert.match(channelPreferenceToggle, /Clear preferred source library/);
+  assert.match(channelPreferenceToggle, /Set as preferred source library/);
+  assert.match(channelPreferenceToggle, /Preferred source library/);
+  assert.match(channelPreferenceToggle, /Prefer source library/);
+  assert.doesNotMatch(channelPreferenceToggle, /preferred channel|Set as preferred channel|Clear preferred channel/);
   assert.doesNotMatch(channelPreferenceToggle, /flex flex-col items-end|text-xs text-\[var\(--danger\)\]|fill-\[var\(--warm\)\]|transition-colors/);
   assert.match(builderDetailPage, /EmptyState/);
   assert.match(builderDetailPage, /title="No summarized posts yet"/);

@@ -58,7 +58,7 @@ export function ChannelPreferenceToggle({
             builderId: next ? builderId : null,
           }),
         });
-        if (!response.ok) throw new Error("Channel preference update failed");
+        if (!response.ok) throw new Error("Source library preference update failed");
         window.dispatchEvent(
           new CustomEvent<ChannelPreferenceChangedDetail>(channelPreferenceChanged, {
             detail: {
@@ -81,7 +81,11 @@ export function ChannelPreferenceToggle({
         disabled={isPending}
         aria-busy={isPending}
         onClick={toggle}
-        title={isPreferred ? "Clear preferred channel" : "Set as preferred channel"}
+        title={
+          isPreferred
+            ? "Clear preferred source library"
+            : "Set as preferred source library"
+        }
         className="channel-preference-button"
         aria-pressed={isPreferred}
       >
@@ -89,7 +93,7 @@ export function ChannelPreferenceToggle({
           size={13}
           className="channel-preference-icon"
         />
-        <span>{isPreferred ? "Preferred" : "Set as preferred"}</span>
+        <span>{isPreferred ? "Preferred source library" : "Prefer source library"}</span>
       </button>
       {error ? (
         <div className="channel-preference-error" role="status">
