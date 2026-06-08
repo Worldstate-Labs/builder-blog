@@ -182,6 +182,12 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /Fetch status/);
   assert.match(panel, /Fetch log/);
   assert.match(panel, /Run history/);
+  // A fetch run linked to a stopped/killed runtime job is no longer live even
+  // if its planned task outcomes were never patched.
+  assert.match(panel, /jobRunByInstanceId/);
+  assert.match(panel, /isRunInflight\(run, run\.jobRunId \? jobsByInstanceId\.get\(run\.jobRunId\) : null\)/);
+  assert.match(panel, /interruptedFetchRunStatus/);
+  assert.match(panel, /label: "Stopped"/);
   assert.match(panel, /actionsPlacement = "end"/);
   assert.match(panel, /actionsPlacement === "start"/);
   assert.match(panel, /className="source-fetch-overview"/);

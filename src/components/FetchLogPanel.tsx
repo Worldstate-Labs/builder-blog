@@ -230,11 +230,14 @@ function readDetails(value: unknown): DetailsShape {
 
 // A run is "in flight" between the two writes: fetch-personal POSTed the row
 // (tasks fetched/pending) but sync-builders hasn't PATCHed the per-post
-// outcomes yet (which flip them to synced/skipped/failed). We bound this by run
-// age so a run that ended without a PATCH (agent crashed mid-work) stops being
+// outcomes yet (which flip them to synced/skipped/failed). If the linked
+// runtime job has already reached a terminal state (for example Stop cron
+// killed it), the run is no longer live even if planned tasks remain pending.
+// We still bound unlinked/older runs by age so a crash mid-work stops being
 // chased after a while instead of polling forever.
 const INFLIGHT_MAX_AGE_MS = 30 * 60_000;
-function isRunInflight(run: LibraryFetchRunListItem): boolean {
+function isRunInflight(run: LibraryFetchRunListItem, jobRun?: AgentJobRunListItem | null): boolean {
+  if (jobRun && !isActiveJobRun(jobRun)) return false;
   const ageMs = Date.now() - Date.parse(run.startedAt);
   if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > INFLIGHT_MAX_AGE_MS) return false;
   const tasks = readDetails(run.details).fetchTasks;
@@ -338,6 +341,10 @@ function cronGraceMs(cronJob: LibraryCronJobStatus): number {
 
 function isActiveJobRun(jobRun: AgentJobRunListItem): boolean {
   return jobRun.status === "starting" || jobRun.status === "running";
+}
+
+function jobRunByInstanceId(jobRuns: AgentJobRunListItem[]): Map<string, AgentJobRunListItem> {
+  return new Map(jobRuns.map((jobRun) => [jobRun.instanceId, jobRun]));
 }
 
 function isStalledJobRun(jobRun: AgentJobRunListItem, nowMs = Date.now()): boolean {
@@ -450,8 +457,8 @@ export function FetchLogPanel({
     [cronJob, cronRuns, scheduledJobRuns],
   );
   const updateStatus = useMemo(
-    () => getFetchUpdateStatus(cronJob, cronStatus.slots, runs),
-    [cronJob, cronStatus.slots, runs],
+    () => getFetchUpdateStatus(cronJob, cronStatus.slots, runs, jobRuns),
+    [cronJob, cronStatus.slots, runs, jobRuns],
   );
   const actionsNode = actions ? (
     <div className="digest-updates-actions">
@@ -568,7 +575,10 @@ export function FetchLogPanel({
       schedule();
     };
     const schedule = () => {
-      const inflight = runsRef.current.some(isRunInflight) ||
+      const jobsByInstanceId = jobRunByInstanceId(jobRunsRef.current);
+      const inflight = runsRef.current.some((run) =>
+          isRunInflight(run, run.jobRunId ? jobsByInstanceId.get(run.jobRunId) : null),
+        ) ||
         jobRunsRef.current.some((run) => isActiveJobRun(run));
       timer = window.setTimeout(tick, inflight ? POLL_INFLIGHT_MS : POLL_IDLE_MS);
     };
@@ -699,8 +709,12 @@ function getFetchUpdateStatus(
   cronJob: LibraryCronJobStatus | null,
   slots: CronSlot[],
   runs: LibraryFetchRunListItem[],
+  jobRuns: AgentJobRunListItem[] = [],
 ): FetchUpdateStatus {
-  const activeRun = runs.find(isRunInflight);
+  const jobsByInstanceId = jobRunByInstanceId(jobRuns);
+  const activeRun = runs.find((run) =>
+    isRunInflight(run, run.jobRunId ? jobsByInstanceId.get(run.jobRunId) : null),
+  );
   if (activeRun) {
     return {
       key: "syncing",
@@ -1107,8 +1121,15 @@ function FetchRunList({
   setExpanded: (value: (previous: boolean) => boolean) => void;
 }) {
   const runJobIds = new Set(runs.map((run) => run.jobRunId).filter((id): id is string => Boolean(id)));
+  const jobsByInstanceId = jobRunByInstanceId(jobRuns);
   const entries = [
-    ...runs.map((run) => ({ kind: "fetch" as const, id: run.id, startedAt: run.startedAt, run })),
+    ...runs.map((run) => ({
+      kind: "fetch" as const,
+      id: run.id,
+      startedAt: run.startedAt,
+      run,
+      jobRun: run.jobRunId ? jobsByInstanceId.get(run.jobRunId) : undefined,
+    })),
     ...jobRuns
       .filter((jobRun) => !runJobIds.has(jobRun.instanceId))
       .map((jobRun) => ({
@@ -1132,7 +1153,7 @@ function FetchRunList({
         <>
           {visibleEntries.map((entry) => (
             entry.kind === "fetch"
-              ? <RunCard key={entry.id} run={entry.run} />
+              ? <RunCard key={entry.id} jobRun={entry.jobRun} run={entry.run} />
               : <JobRunCard key={entry.id} jobRun={entry.jobRun} />
           ))}
           {entries.length > VISIBLE_RUN_LIMIT ? (
@@ -1193,6 +1214,20 @@ function jobRunStatusLabel(jobRun: AgentJobRunListItem): string {
   }
 }
 
+function interruptedFetchRunStatus(jobRun?: AgentJobRunListItem | null): {
+  label: string;
+  style: ReturnType<typeof statusStyle>;
+} | null {
+  if (!jobRun || isActiveJobRun(jobRun) || jobRun.status === "succeeded") return null;
+  if (jobRun.status === "killed") {
+    return { label: "Stopped", style: statusStyle("partial") };
+  }
+  if (jobRun.status === "replaced") {
+    return { label: "Replaced", style: statusStyle("partial") };
+  }
+  return { label: jobRunStatusLabel(jobRun), style: statusStyle("failed") };
+}
+
 function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
   const hydrated = useHydrated();
   const style = jobRunStatusStyle(jobRun);
@@ -1235,7 +1270,13 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
   );
 }
 
-function RunCard({ run }: { run: LibraryFetchRunListItem }) {
+function RunCard({
+  jobRun,
+  run,
+}: {
+  jobRun?: AgentJobRunListItem;
+  run: LibraryFetchRunListItem;
+}) {
   const hydrated = useHydrated();
   const style = statusStyle(run.status);
   const label = STATUS_LABEL[run.status] ?? run.status;
@@ -1243,7 +1284,8 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
   // Mid-sync: fetch-personal recorded the run but sync-builders hasn't patched
   // the per-post outcomes yet. The run-level status already reads "ok" here, so
   // show a live "Syncing…" badge to make the in-between state legible.
-  const inflight = isRunInflight(run);
+  const inflight = isRunInflight(run, jobRun);
+  const interruptedStatus = interruptedFetchRunStatus(jobRun);
   // Show the Local Agent that ran this fetch. Model names are kept out of the
   // run header because they are not useful for everyday readers.
   const agentLabel =
@@ -1280,6 +1322,18 @@ function RunCard({ run }: { run: LibraryFetchRunListItem }) {
               className="sync-panel-run-card-live-dot"
             />
             Updating…
+          </span>
+        ) : null}
+        {!inflight && interruptedStatus ? (
+          <span
+            className="fb-chip"
+            style={{
+              background: interruptedStatus.style.background,
+              color: interruptedStatus.style.color,
+              borderColor: interruptedStatus.style.border,
+            }}
+          >
+            {interruptedStatus.label}
           </span>
         ) : null}
         <time
