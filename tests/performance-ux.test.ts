@@ -605,6 +605,7 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(globals, /\.fb-login-panel-icon\s*{/);
   assert.match(globals, /\.fb-login-proof-rail\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /\.fb-login-proof\s*{[\s\S]*display:\s*inline-flex/);
+  assert.match(globals, /\.fb-login-proof\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.fb-login-proof-icon\s*{/);
   assert.match(globals, /\.fb-login-proof-label\s*{/);
   assert.match(globals, /\.auth-button-stack\s*{[\s\S]*display:\s*grid/);
@@ -613,6 +614,9 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-login-shell\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-login-shell\s*{[\s\S]*flex-direction:\s*column/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-login-shell\s*{[\s\S]*justify-content:\s*flex-start/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-login-proof-rail\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-login-proof-rail\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-login-proof:last-child\s*{[\s\S]*grid-column:\s*1 \/ -1/);
   assert.match(globals, /\.fb-login-title-break\s*{[\s\S]*display:\s*block/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-login-title-break\s*{[\s\S]*display:\s*inline/);
   assert.doesNotMatch(globals, /\.fb-login-title br\s*{/);

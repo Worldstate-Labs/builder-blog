@@ -8722,7 +8722,7 @@ a.fb-hub-source-name:focus-visible {
   border-top: 1px solid var(--line);
   display: flex;
   flex-wrap: wrap;
-  gap: 0.875rem 1.1rem;
+  gap: 0.625rem;
   margin-top: 2.25rem;
   max-width: var(--login-copy-max);
   padding-top: 1rem;
@@ -8794,9 +8794,13 @@ a.fb-hub-source-name:focus-visible {
 
 .fb-login-proof {
   align-items: center;
+  border: 1px solid color-mix(in oklch, var(--line) 88%, transparent);
+  border-radius: 999px;
   color: var(--muted-strong);
   display: inline-flex;
   gap: 0.45rem;
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
 }
 
 .fb-login-proof-icon {
@@ -8894,9 +8898,26 @@ a.fb-hub-source-name:focus-visible {
   }
 
   .fb-login-proof-rail {
-    gap: 0.65rem 0.85rem;
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-top: 1.25rem;
     padding-top: 0.8rem;
+  }
+
+  .fb-login-proof {
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .fb-login-proof:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .fb-login-proof-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .fb-login-panel-title {
