@@ -2710,9 +2710,15 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(buildersPage, /className="grid gap-5"/);
   assert.match(libraryHubPage, /<Suspense fallback=\{<LibraryHubImportFallback \/>/);
   assert.match(libraryHubPage, /<h1 className="sr-only">Hub<\/h1>/);
+  assert.match(libraryHubPage, /function LibraryHubImportFallback/);
+  assert.match(libraryHubPage, /function DigestPipelineImportFallback/);
+  assert.match(libraryHubPage, /className="fb-hub-card-stats library-hub-skeleton-stats"/);
+  assert.match(libraryHubPage, /className="library-hub-skeleton-stat"/);
   assert.match(libraryHubPage, /getDigestPipelineMetadataByOwnerIds/);
   assert.match(libraryHubPage, /loadSourceLibraryHubPageData/);
   assert.match(libraryHubPage, /loadDigestPipelineHubPageData/);
+  assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-stat/);
+  assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-stat\s*{[\s\S]*border-radius:\s*999px/);
   assert.doesNotMatch(libraryHubPage, /loadLibraryHubPageData/);
   assert.match(
     libraryHubPage,

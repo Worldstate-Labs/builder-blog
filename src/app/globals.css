@@ -7933,6 +7933,7 @@ a.builder-library-name:hover {
 .library-hub-skeleton-line,
 .library-hub-skeleton-pill,
 .library-hub-skeleton-chip,
+.library-hub-skeleton-stat,
 .library-hub-skeleton-row,
 .library-hub-skeleton-card {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -7987,6 +7988,13 @@ a.builder-library-name:hover {
   border-radius: 999px;
   height: 1.75rem;
   width: 5rem;
+}
+
+.library-hub-skeleton-stat {
+  border-radius: 999px;
+  display: inline-block;
+  height: 0.875rem;
+  width: 4.75rem;
 }
 
 .library-hub-skeleton-row {
