@@ -210,7 +210,6 @@ test("every app route has an explicit centered layout role", () => {
 
   assert.match(source("src/app/loading.tsx"), /<RouteLoading label="Loading" title="Loading FollowBrief" \/>/);
   const workspaceLoadingRoutes = [
-    ["src/app/(workspace)/library-hub/loading.tsx", "Hub", "Loading Hub", 5],
     ["src/app/(workspace)/settings/loading.tsx", "Settings", "Loading Settings", 5],
   ] as const;
   for (const [path, label, title, rows] of workspaceLoadingRoutes) {
@@ -264,6 +263,18 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(buildersLoading, /className="sources-section-stack"/);
   assert.match(buildersLoading, /className="your-library-panel fb-panel"/);
   assert.match(buildersLoading, /className="source-sync-skeleton-panel"/);
+  const hubLoading = source("src/app/(workspace)/library-hub/loading.tsx");
+  assert.doesNotMatch(hubLoading, /RouteLoading/);
+  assert.match(hubLoading, /className="page-pad hub-loading"/);
+  assert.match(hubLoading, /<h1 className="sr-only">Loading Hub<\/h1>/);
+  assert.match(hubLoading, /aria-label="Hub tabs"/);
+  assert.match(hubLoading, /hub-loading-tab is-active[\s\S]*Source libraries/);
+  assert.match(hubLoading, /hub-loading-tab[\s\S]*AI Digest archives/);
+  assert.match(hubLoading, /aria-label="Loading source libraries"/);
+  assert.match(hubLoading, /<h2 className="fb-section-heading">Source libraries<\/h2>/);
+  assert.match(hubLoading, /Source libraries built and shared by other users\./);
+  assert.match(hubLoading, /className="hub-list-stack fb-hub-list"/);
+  assert.match(hubLoading, /className="fb-hub-card" key=\{index\}/);
   assert.equal(existsSync(join(root, "src/app/history/page.tsx")), false);
   assert.equal(existsSync(join(root, "src/app/history/loading.tsx")), false);
 });
@@ -1036,7 +1047,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.home-loading-tab\.is-active\s*{[\s\S]*box-shadow:\s*inset 0 -2px 0 var\(--accent\)/);
   assert.match(globals, /\.sources-loading-tabs\s*{[\s\S]*pointer-events:\s*none/);
   assert.match(globals, /\.sources-loading-tab\.is-active\s*{[\s\S]*box-shadow:\s*inset 0 -2px 0 var\(--accent\)/);
+  assert.match(globals, /\.hub-loading-tabs\s*{[\s\S]*pointer-events:\s*none/);
+  assert.match(globals, /\.hub-loading-tab\.is-active\s*{[\s\S]*box-shadow:\s*inset 0 -2px 0 var\(--accent\)/);
   assert.match(globals, /\.home-loading-field,[\s\S]*\.home-loading-line,[\s\S]*\.home-loading-post-row\s*{[\s\S]*animation:\s*pulse/);
+  assert.match(globals, /\.library-hub-skeleton-line,[\s\S]*\.library-hub-skeleton-card\s*{[\s\S]*animation:\s*pulse/);
   assert.match(globals, /\.home-loading-digest-card\s*{[\s\S]*background:\s*var\(--paper-strong\)/);
   assert.match(globals, /\.workspace-top-tabs\.fb-segmented-tabs\s*{[\s\S]*background:\s*transparent/);
   assert.doesNotMatch(globals, /\.home-feed-tabs|\.sources-subtabs/);
@@ -2468,7 +2482,6 @@ test("user library search can fetch operator-only candidate sets", () => {
 test("primary tabs keep local loading fallbacks alongside route loaders", () => {
   assert.equal(existsSync(join(root, "src/app/(workspace)/history/loading.tsx")), true);
   for (const path of [
-    "src/app/(workspace)/library-hub/loading.tsx",
     "src/app/(workspace)/search/loading.tsx",
   ]) {
     assert.equal(existsSync(join(root, path)), true, path);
@@ -2476,6 +2489,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   }
   assert.equal(existsSync(join(root, "src/app/(workspace)/builders/loading.tsx")), true);
   assert.doesNotMatch(source("src/app/(workspace)/builders/loading.tsx"), /RouteLoading/);
+  assert.equal(existsSync(join(root, "src/app/(workspace)/library-hub/loading.tsx")), true);
+  assert.doesNotMatch(source("src/app/(workspace)/library-hub/loading.tsx"), /RouteLoading/);
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const digestPipelineForm = source("src/components/DigestPipelineImportForm.tsx");
   const libraryHubPage = source("src/app/(workspace)/library-hub/page.tsx");
