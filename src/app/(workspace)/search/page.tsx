@@ -706,6 +706,7 @@ function ResultCard({
   const displayUrl = formatDisplayUrl(originalUrl ?? result.url);
   const sourceSite = searchSiteFromUrl(originalUrl ?? result.url);
   const sourceName = result.sourceName ?? resultTypeItemLabels[result.type];
+  const originalActionLabel = searchOriginalActionLabel(result.type);
 
   if (result.type === "feed") {
     return (
@@ -758,15 +759,15 @@ function ResultCard({
         {result.date ? <span>{formatDistanceToNow(result.date, { addSuffix: true })}</span> : null}
         {originalUrl ? (
           <a
-            aria-label={`View original: ${result.title}`}
+            aria-label={`${originalActionLabel}: ${result.title}`}
             className="post-source-original"
             href={originalUrl}
             rel="noreferrer"
             target="_blank"
-            title="View original"
+            title={originalActionLabel}
           >
             <SourceBadge decorative showLabel={false} sourceType={result.sourceType ?? result.type} />
-            <span>View original</span>
+            <span>{originalActionLabel}</span>
           </a>
         ) : null}
       </div>
@@ -804,6 +805,10 @@ function ResultCard({
       ) : null}
     </article>
   );
+}
+
+function searchOriginalActionLabel(type: SearchDocumentType) {
+  return type === "builder" ? "Open source site" : "View original";
 }
 
 function SearchPostResultCard({
