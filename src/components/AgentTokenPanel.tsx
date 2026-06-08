@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Laptop, Plus, Smartphone } from "lucide-react";
+import { CheckCircle2, Laptop, Plus, Smartphone } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { useHydrated } from "@/components/ThemeToggle";
 
@@ -547,6 +547,20 @@ function TokenRow({
         ) : (
           <span className="access-key-device-status">{statusLabel}</span>
         )}
+        <ul className="access-key-capability-list" aria-label={`Access granted to ${tokenLabel}`}>
+          <li>
+            <CheckCircle2 aria-hidden="true" />
+            Update sources and AI Digests
+          </li>
+          <li>
+            <CheckCircle2 aria-hidden="true" />
+            Copy Local Agent prompts
+          </li>
+          <li>
+            <CheckCircle2 aria-hidden="true" />
+            Revoke anytime
+          </li>
+        </ul>
       </div>
       {token.revokedAt ? (
         <span className="access-key-revoked-pill">Access revoked</span>
