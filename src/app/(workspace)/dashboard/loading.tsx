@@ -11,10 +11,20 @@ export default function DashboardLoading() {
           <div
             aria-label="Home feed tabs"
             className="workspace-top-tabs fb-segmented-tabs home-loading-tabs"
+            role="tablist"
           >
-            <span className="fb-btn home-loading-tab">AI Digest</span>
-            <span className="fb-btn home-loading-tab">Following</span>
-            <span className="fb-btn home-loading-tab">Favorites</span>
+            {["AI Digest", "Following", "Favorites"].map((label) => (
+              <span
+                aria-disabled="true"
+                aria-selected="false"
+                className="fb-btn home-loading-tab"
+                key={label}
+                role="tab"
+                tabIndex={-1}
+              >
+                {label}
+              </span>
+            ))}
           </div>
         </div>
 
