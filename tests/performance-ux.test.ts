@@ -2652,7 +2652,7 @@ test("search suggestions API exists for autocomplete-style queries", () => {
   assert.match(suggestRoute, /return "Result"/);
   assert.doesNotMatch(suggestRoute, /Library item/);
   assert.match(suggestRoute, /claude code/);
-  assert.match(suggestRoute, /AI Digest archives/);
+  assert.doesNotMatch(suggestRoute, /AI Digest archives/);
   assert.match(suggestRoute, /AI Digest archive/);
   assert.doesNotMatch(suggestRoute, /past AI Digests/);
   assert.match(suggestRoute, /NextResponse/);
@@ -4438,8 +4438,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /Last connected \$\{formatRelativeCompact\(token\.lastUsedAt, hydrated\)\}/);
   assert.match(tokenPanel, /Never connected/);
   assert.doesNotMatch(tokenPanel, /Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
-  assert.match(tokenPanel, /<time className="access-key-device-status" dateTime=\{statusDateTime\}>/);
-  assert.match(tokenPanel, /<span className="access-key-device-status">\{statusLabel\}<\/span>/);
+  assert.match(tokenPanel, /const statusId = `access-key-status-\$\{token\.id\}`/);
+  assert.match(tokenPanel, /<time className="access-key-device-status" dateTime=\{statusDateTime\} id=\{statusId\}>/);
+  assert.match(tokenPanel, /<span className="access-key-device-status" id=\{statusId\}>\{statusLabel\}<\/span>/);
+  assert.match(tokenPanel, /aria-describedby=\{statusId\}/);
   assert.match(tokenPanel, /const statusDateTime = token\.revokedAt \?\? token\.lastUsedAt/);
   assert.doesNotMatch(tokenPanel, /const statusDateTime = token\.revokedAt \?\? token\.lastUsedAt \?\? token\.createdAt/);
   assert.doesNotMatch(tokenPanel, /:\s*"Not connected yet"|Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
