@@ -59,7 +59,7 @@ type FilterKey = "all" | "community" | "shared" | "my" | "imported";
 const FILTERS: Array<{ key: FilterKey; label: string; shortLabel: string }> = [
   { key: "all", label: "All source libraries", shortLabel: "All libraries" },
   { key: "community", label: "Community", shortLabel: "Community" },
-  { key: "shared", label: "Shared by users", shortLabel: "Shared" },
+  { key: "shared", label: "Shared libraries", shortLabel: "Shared" },
   { key: "my", label: "My source libraries", shortLabel: "My libraries" },
   { key: "imported", label: "Imported", shortLabel: "Imported" },
 ];
@@ -633,8 +633,11 @@ function topicLabel(library: HubLibrary) {
 }
 
 function sourceLibraryOwnerTopic(ownerLabel: string) {
-  const label = ownerLabel.trim().replace(/[.。]+$/u, "");
-  return label || "Shared by a FollowBrief user";
+  const label = ownerLabel
+    .trim()
+    .replace(/^Shared by\s+/i, "")
+    .replace(/[.。]+$/u, "");
+  return label || "a FollowBrief user";
 }
 
 function formatSourceToggleLabel(sourceCount: number) {

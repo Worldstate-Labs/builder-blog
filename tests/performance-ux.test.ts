@@ -2452,6 +2452,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries you imported into Sources\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Available source libraries/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /All source libraries/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Shared libraries/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Shared by users/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /shortLabel:\s*"All libraries"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /shortLabel:\s*"My libraries"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /\{filter\.shortLabel\}/);
@@ -2499,7 +2501,9 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /return library\.ownerLabel/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /return sourceLibraryOwnerTopic\(library\.ownerLabel\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /function sourceLibraryOwnerTopic/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Shared by a FollowBrief user/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /\.replace\(\s*\/\^Shared by\\s\+\/i/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /a FollowBrief user/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Shared by a FollowBrief user/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /return "Shared by user"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Curated by user/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /\{libraryCardDescription\(library\)\}/);
