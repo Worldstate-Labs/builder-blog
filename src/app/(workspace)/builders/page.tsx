@@ -718,10 +718,17 @@ async function FetchSourcesSection({
   const importedSection = (
     <section className="imported-libraries-section">
       <div className="imported-libraries-head">
-        <h2 className="fb-section-heading">Imported source libraries</h2>
-        <p className="library-section-copy">
-          Source libraries built and shared by other users.
-        </p>
+        <div className="imported-libraries-copy">
+          <h2 className="fb-section-heading">Imported source libraries</h2>
+          <p className="library-section-copy">
+            Source libraries built and shared by other users.
+          </p>
+        </div>
+        {data.importedLibrarySections.length > 0 ? (
+          <Link className="fb-btn light compact" href="/library-hub?tab=source-library">
+            Import from Hub
+          </Link>
+        ) : null}
       </div>
       <div className="imported-library-stack">
         {data.importedLibrarySections.map((library) => (

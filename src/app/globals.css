@@ -2581,6 +2581,14 @@ a.reading-source-label:focus-visible {
 }
 
 .imported-libraries-head {
+  align-items: start;
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+}
+
+.imported-libraries-copy {
   max-width: var(--copy-max);
   min-width: 0;
 }
@@ -10765,6 +10773,14 @@ body {
   /* Imported library headers small on mobile */
   .imported-library-stack .library-section-summary h2 {
     font-size: 0.9375rem;
+  }
+
+  .imported-libraries-head {
+    grid-template-columns: 1fr;
+  }
+
+  .imported-libraries-head .fb-btn {
+    justify-self: start;
   }
 }
 

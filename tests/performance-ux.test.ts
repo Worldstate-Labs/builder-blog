@@ -2787,6 +2787,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /importedLibrarySections/);
   assert.match(buildersPage, /className="imported-libraries-section"/);
   assert.match(buildersPage, /className="imported-libraries-head"/);
+  assert.match(buildersPage, /className="imported-libraries-copy"/);
+  assert.match(buildersPage, /data\.importedLibrarySections\.length > 0 \? \(/);
+  assert.match(buildersPage, /className="fb-btn light compact" href="\/library-hub\?tab=source-library"[\s\S]*Import from Hub/);
   assert.doesNotMatch(buildersPage, /className="imported-libraries-head at-desktop"/);
   assert.match(buildersPage, /className="library-section-summary-copy"/);
   assert.match(buildersPage, /<h3 className="fb-section-heading">\{title\}<\/h3>/);
@@ -2901,7 +2904,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.source-section-skeleton-desc\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);
   assert.match(globals, /\.sources-section-stack,[\s\S]*\.imported-libraries-section\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.your-digest-section,[\s\S]*\.your-library-section\s*{[\s\S]*display:\s*grid/);
-  assert.match(globals, /\.imported-libraries-head\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
+  assert.match(globals, /\.imported-libraries-head\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /\.imported-libraries-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
+  assert.match(globals, /@media \(max-width:\s*1023\.99px\)[\s\S]*\.imported-libraries-head\s*{[\s\S]*grid-template-columns:\s*1fr/);
   assert.match(globals, /\.library-section-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(globals, /\.source-summary-line \.count-meta\s*{[\s\S]*font-size:\s*0\.8125rem/);
   assert.match(globals, /\.source-summary-line \.count-meta \+ \.count-meta::before\s*{[\s\S]*content:\s*"·"/);
