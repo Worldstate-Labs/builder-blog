@@ -48,7 +48,7 @@ export function BuilderLibraryActions({
       } catch {
         setSubscribed(previousSubscribed);
         onSubscriptionStateChange?.(builderId, previousSubscribed, nextSubscribed);
-        setError("Could not update follow state.");
+        setError(`Could not update following for ${builderName}.`);
       }
     });
   }

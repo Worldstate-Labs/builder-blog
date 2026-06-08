@@ -933,10 +933,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(appShell, /label: "Digest"/);
   assert.doesNotMatch(appShell, /label: "For You"/);
   assert.doesNotMatch(appShell, /label: "History"/);
-  assert.match(builderDetailActions, /Could not update follow state\./);
-  assert.match(channelPreferenceToggle, /Could not update preference\./);
+  assert.match(builderDetailActions, /Could not update following for \$\{sourceName\}\./);
+  assert.match(channelPreferenceToggle, /Could not update preferred source library\./);
   assert.doesNotMatch(builderDetailActions, /Couldn't update/);
-  assert.doesNotMatch(channelPreferenceToggle, /Couldn't update/);
+  assert.doesNotMatch(channelPreferenceToggle, /Couldn't update|Could not update preference\./);
   assert.match(appShell, /<MobileSearchLink \/>/);
   assert.match(mobileSearchLink, /usePathname/);
   assert.match(mobileSearchLink, /useSearchParams/);
@@ -1258,6 +1258,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailActions, /className="builder-detail-action-row"/);
   assert.match(builderDetailActions, /sourceName: string/);
   assert.match(builderDetailActions, /aria-label=\{`\$\{subscribed \? "Unfollow" : "Follow"\} \$\{sourceName\}`\}/);
+  assert.match(builderDetailActions, /Could not update following for \$\{sourceName\}\./);
+  assert.doesNotMatch(builderDetailActions, /Could not update follow state\./);
   assert.match(builderDetailPage, /sourceName=\{entity\.name\}/);
   assert.match(builderDetailActions, /className="builder-detail-action-error"/);
   assert.doesNotMatch(builderDetailActions, /className="grid gap-2"|flex flex-wrap items-center gap-3|text-xs text-\[var\(--danger\)\]/);
@@ -1292,7 +1294,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(channelPreferenceToggle, /Set as preferred source library/);
   assert.match(channelPreferenceToggle, /Preferred source library/);
   assert.match(channelPreferenceToggle, /Prefer source library/);
-  assert.doesNotMatch(channelPreferenceToggle, /preferred channel|Set as preferred channel|Clear preferred channel/);
+  assert.match(channelPreferenceToggle, /Could not update preferred source library\./);
+  assert.doesNotMatch(channelPreferenceToggle, /preferred channel|Set as preferred channel|Clear preferred channel|Could not update preference\./);
   assert.doesNotMatch(channelPreferenceToggle, /flex flex-col items-end|text-xs text-\[var\(--danger\)\]|fill-\[var\(--warm\)\]|transition-colors/);
   assert.match(builderDetailPage, /EmptyState/);
   assert.match(builderDetailPage, /title="No summarized posts yet"/);
@@ -3695,7 +3698,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(builderActions, /onSubscriptionStateChange\?\.\(builderId, nextSubscribed, previousSubscribed\)/);
   assert.doesNotMatch(builderActions, /fetch\("\/api\/builders\/subscriptions"|builder-library-bulk-action|Follow all/);
   assert.match(builderActions, /className="builder-library-action-error"/);
-  assert.match(builderActions, /Could not update follow state\./);
+  assert.match(builderActions, /Could not update following for \$\{builderName\}\./);
+  assert.doesNotMatch(builderActions, /Could not update follow state\./);
   assert.doesNotMatch(builderActions, /Could not update subscription\./);
   assert.doesNotMatch(builderActions, /builder-library-remove-button|builder-library-remove-icon|builder-library-remove-confirm/);
   assert.match(builderEditDialog, /Trash2/);

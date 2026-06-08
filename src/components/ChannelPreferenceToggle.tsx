@@ -69,7 +69,7 @@ export function ChannelPreferenceToggle({
         );
       } catch {
         setIsPreferred(previousIsPreferred);
-        setError("Could not update preference.");
+        setError("Could not update preferred source library.");
       }
     });
   };
