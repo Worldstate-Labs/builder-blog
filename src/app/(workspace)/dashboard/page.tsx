@@ -3,7 +3,7 @@ import Link from "next/link";
 import { DigestArchivePicker, type DigestArchivePickerOption } from "@/components/DigestArchivePicker";
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
 import type { DigestSourceLink } from "@/components/DigestContent";
-import { EmptyState } from "@/components/EmptyState";
+import { FeedEmptyState } from "@/components/FeedState";
 import { FavoritePostsSection } from "@/components/FavoritePostsSection";
 import {
   FollowingRecommendationSection,
@@ -288,7 +288,7 @@ function DigestEmptyState({
 }) {
   if (!isOwnPipeline) {
     return (
-      <EmptyState
+      <FeedEmptyState
         className="ai-digest-empty"
         title="No AI Digest archives yet"
         body={`${ownerLabel} has not shared any AI Digest archives yet.`}
@@ -298,7 +298,7 @@ function DigestEmptyState({
 
   if (readiness.followedSourceCount === 0) {
     return (
-      <EmptyState
+      <FeedEmptyState
         actions={
           <Link className="fb-btn dark compact" href="/builders?tab=fetch">
             Go to Sources
@@ -313,7 +313,7 @@ function DigestEmptyState({
 
   if (readiness.summarizedPostCount > 0) {
     return (
-      <EmptyState
+      <FeedEmptyState
         actions={
           <SkillPromptActions
             compactOnly
@@ -332,7 +332,7 @@ function DigestEmptyState({
   }
 
   return (
-    <EmptyState
+    <FeedEmptyState
       actions={
         <SkillPromptActions
           compactOnly

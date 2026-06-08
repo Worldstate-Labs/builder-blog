@@ -1124,8 +1124,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(globals, /\.digest-picker-option\[aria-current="true"\]/);
   assert.doesNotMatch(globals, /\.digest-picker-summary::after[\s\S]*content:\s*"▾"/);
   assert.doesNotMatch(dashboardPage, /digest-source-pill fb-btn compact/);
-  assert.match(dashboardPage, /@\/components\/EmptyState/);
-  assert.match(dashboardPage, /<EmptyState[\s\S]*className="ai-digest-empty"/);
+  assert.match(dashboardPage, /@\/components\/FeedState/);
+  assert.match(dashboardPage, /<FeedEmptyState[\s\S]*className="ai-digest-empty"/);
   assert.match(dashboardPage, /function DigestEmptyState/);
   assert.match(dashboardPage, /followedSourceCount/);
   assert.match(dashboardPage, /summarizedPostCount/);
@@ -1637,6 +1637,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /FeedLoadingState/);
   assert.match(followingSection, /FeedEmptyState/);
   assert.doesNotMatch(followingSection, /@\/components\/EmptyState/);
+  assert.match(dashboardPage, /<FeedEmptyState/);
+  assert.doesNotMatch(dashboardPage, /@\/components\/EmptyState/);
   assert.doesNotMatch(followingSection, /className="feed-content-stack"|className="feed-skeleton-list"|className="feed-state-panel"/);
   assert.match(feedState, /@\/components\/EmptyState/);
   assert.match(feedState, /className="feed-content-stack"/);
