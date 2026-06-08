@@ -4082,7 +4082,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /mode = "hub"/);
   assert.match(digestPipelineForm, /Imported AI Digest archives/);
   assert.match(digestPipelineForm, /AI Digest archives built and shared by other users\./);
-  assert.match(digestPipelineForm, /AI Digest archives you imported from Hub\./);
+  assert.match(digestPipelineForm, /AI Digest archives from Hub that are already available on Home\./);
+  assert.doesNotMatch(digestPipelineForm, /AI Digest archives you imported from Hub\./);
   assert.doesNotMatch(digestPipelineForm, /Digests imported from the Hub/);
   assert.doesNotMatch(digestPipelineForm, /latest AI Digest and archive/);
   assert.match(digestPipelineForm, /Shared AI Digest archives/);
@@ -4126,7 +4127,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /isPending=\{importPending \|\| pendingAction !== null\}/);
   assert.match(digestPipelineForm, /disabled=\{isPending \|\| pending !== null\}/);
   assert.match(digestPipelineForm, /No imported AI Digest archives/);
-  assert.match(digestPipelineForm, /Import an AI Digest archive from Hub to see it on Home\./);
+  assert.match(digestPipelineForm, /Import AI Digest archives built and shared by other users to see them on Home\./);
+  assert.doesNotMatch(digestPipelineForm, /Import an AI Digest archive from Hub to see it on Home\./);
   assert.match(digestPipelineForm, /href="\/library-hub\?tab=ai-digests"/);
   assert.match(digestPipelineForm, /Browse AI Digest archives/);
   assert.doesNotMatch(digestPipelineForm, /Browse Hub/);
