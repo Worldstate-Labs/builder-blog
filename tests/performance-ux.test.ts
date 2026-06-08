@@ -1163,8 +1163,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.digest-source-pill\[aria-current="page"\]\s*{[\s\S]*background:\s*var\(--accent-soft\)/);
   assert.match(globals, /\.digest-source-pill:hover,[\s\S]*\.digest-source-pill:focus-visible\s*{[\s\S]*background:\s*color-mix/);
   assert.doesNotMatch(globals, /\.fb-tabs\s*{|\.fb-tab\b/);
-  assert.match(dashboardTabs, /href: "\/dashboard"/);
+  assert.match(dashboardTabs, /href: "\/dashboard\?tab=ai-digest"/);
   assert.match(dashboardTabs, /href: "\/dashboard\?tab=following"/);
+  assert.doesNotMatch(dashboardTabs, /href: "\/dashboard",/);
   assert.match(dashboardTabs, /selectedValue=\{initialTab\}/);
   assert.match(dashboardTabs, /hidden=\{initialTab !== "ai-digest"\}/);
   assert.match(dashboardTabs, /hidden=\{initialTab !== "following"\}/);

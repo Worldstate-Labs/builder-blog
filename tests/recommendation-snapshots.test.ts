@@ -101,7 +101,7 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(favoriteList, /@\/components\/Count/);
   assert.match(favoriteList, /formatCount\(items\.length\)/);
   assert.match(favoriteList, /Open AI Digest/);
-  assert.match(favoriteList, /href="\/dashboard"/);
+  assert.match(favoriteList, /href="\/dashboard\?tab=ai-digest"/);
   assert.match(favoriteList, /Open Following/);
   assert.match(favoriteList, /href="\/dashboard\?tab=following"/);
   assert.match(favoriteList, /favorites-empty feed-state-panel is-actionable/);

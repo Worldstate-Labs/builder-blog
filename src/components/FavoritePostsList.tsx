@@ -41,7 +41,7 @@ export function FavoritePostsList({
       <EmptyState
         actions={
           <div className="favorites-empty-actions">
-            <Link className="fb-btn dark compact" href="/dashboard">
+            <Link className="fb-btn dark compact" href="/dashboard?tab=ai-digest">
               Open AI Digest
             </Link>
             <Link className="fb-btn light compact" href="/dashboard?tab=following">

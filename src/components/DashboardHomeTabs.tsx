@@ -7,7 +7,7 @@ const HOME_TABS: Array<WorkspaceTopTabItem<DashboardTab>> = [
   {
     value: "ai-digest",
     label: "AI Digest",
-    href: "/dashboard",
+    href: "/dashboard?tab=ai-digest",
     panelId: "home-panel-ai-digest",
     tabId: "home-tab-ai-digest",
   },
