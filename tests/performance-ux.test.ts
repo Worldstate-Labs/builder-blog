@@ -2103,7 +2103,7 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(buildersPage, /WorkspaceTopTabs/);
   assert.match(buildersPage, /ariaLabel="Sources and AI Digest tabs"/);
   assert.doesNotMatch(buildersPage, /ariaLabel="Sources and AI Digest"/);
-  assert.match(buildersPage, /label:\s*"Sources"[\s\S]*href:\s*"\/builders"/);
+  assert.match(buildersPage, /label:\s*"Sources"[\s\S]*href:\s*"\/builders\?tab=fetch"/);
   assert.match(buildersPage, /panelId:\s*"sources-panel-fetch"/);
   assert.match(buildersPage, /tabId:\s*"sources-tab-fetch"/);
   assert.doesNotMatch(buildersPage, /label:\s*"Source Library"/);
@@ -2690,6 +2690,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   );
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
   assert.match(libraryHubPage, /label: "Source libraries"/);
+  assert.match(libraryHubPage, /label:\s*"Source libraries"[\s\S]*href:\s*"\/library-hub\?tab=source-library"/);
   assert.match(libraryHubPage, /Community source libraries, your shared source libraries, and source libraries built by other users\./);
   assert.doesNotMatch(libraryHubPage, /Available source libraries/);
   assert.match(libraryHubPage, /className="workspace-content-stack workspace-content-stack--tabs-first"/);

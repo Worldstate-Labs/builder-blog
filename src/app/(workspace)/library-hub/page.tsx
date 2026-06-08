@@ -37,7 +37,7 @@ const LIBRARY_HUB_TABS: Array<WorkspaceTopTabItem<LibraryHubTab>> = [
   {
     value: "source-library",
     label: "Source libraries",
-    href: "/library-hub",
+    href: "/library-hub?tab=source-library",
     panelId: "hub-panel-source-library",
     tabId: "hub-tab-source-library",
   },

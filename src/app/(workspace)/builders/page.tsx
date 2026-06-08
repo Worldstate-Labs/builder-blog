@@ -79,7 +79,7 @@ const SOURCES_TABS: Array<WorkspaceTopTabItem<SourcesTab>> = [
   {
     value: "fetch",
     label: "Sources",
-    href: "/builders",
+    href: "/builders?tab=fetch",
     panelId: "sources-panel-fetch",
     tabId: "sources-tab-fetch",
   },
