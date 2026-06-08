@@ -2922,6 +2922,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(addBuilderForm, /className="add-source-callout"/);
   assert.match(addBuilderForm, /add-source-text-action/);
   assert.match(addBuilderForm, /Switch source type/);
+  assert.match(addBuilderForm, /Could not add source\./);
+  assert.doesNotMatch(addBuilderForm, /"Could not add source"/);
   assert.match(source("src/lib/source-value-detect.ts"), /Switch source type\?/);
   assert.match(source("src/lib/source-value-detect.ts"), /content cannot be imported via RSS/);
   assert.doesNotMatch(source("src/lib/source-value-detect.ts"), /can't be imported|doesn't expose| URL — switch/);

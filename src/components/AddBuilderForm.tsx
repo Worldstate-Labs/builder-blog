@@ -212,10 +212,10 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
         if (!response.ok) {
           if (payload?.suggestId) {
             setError(
-              `${payload.error ?? "Could not add source"}${ERROR_SUGGEST_SEP}${payload.suggestId}`,
+              `${payload.error ?? "Could not add source."}${ERROR_SUGGEST_SEP}${payload.suggestId}`,
             );
           } else {
-            setError(payload?.error ?? "Could not add source");
+            setError(payload?.error ?? "Could not add source.");
           }
           return;
         }
