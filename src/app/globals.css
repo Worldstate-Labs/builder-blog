@@ -1877,6 +1877,20 @@ a.reading-source-label:focus-visible {
   border-color: color-mix(in oklch, var(--accent) 35%, var(--line));
 }
 
+.post-favorite-control {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.post-favorite-status {
+  color: var(--danger);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  max-width: min(16rem, 45vw);
+}
+
 /* Expandable fetch-task row (Fetch log details) */
 .fb-task > summary {
   cursor: pointer;

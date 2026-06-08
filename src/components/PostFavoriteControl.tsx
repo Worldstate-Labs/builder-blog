@@ -11,10 +11,12 @@ export function PostFavoriteControl({
   initialIsFavorite: boolean;
 }) {
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite);
+  const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
   function toggleFavorite() {
     const nextFavorite = !isFavorite;
+    setError("");
     setIsFavorite(nextFavorite);
     startTransition(async () => {
       try {
@@ -26,15 +28,23 @@ export function PostFavoriteControl({
         if (!response.ok) throw new Error("Favorite update failed");
       } catch {
         setIsFavorite(!nextFavorite);
+        setError("Could not update saved state. Try again.");
       }
     });
   }
 
   return (
-    <PostFavoriteButton
-      disabled={isPending}
-      isFavorite={isFavorite}
-      onToggle={toggleFavorite}
-    />
+    <span className="post-favorite-control">
+      <PostFavoriteButton
+        disabled={isPending}
+        isFavorite={isFavorite}
+        onToggle={toggleFavorite}
+      />
+      {error ? (
+        <span className="post-favorite-status" role="status">
+          {error}
+        </span>
+      ) : null}
+    </span>
   );
 }

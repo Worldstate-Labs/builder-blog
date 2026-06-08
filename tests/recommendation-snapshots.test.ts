@@ -145,6 +145,10 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(postFavoriteControl, /PostFavoriteButton/);
   assert.match(postFavoriteControl, /fetch\("\/api\/favorites"/);
   assert.match(postFavoriteControl, /method: nextFavorite \? "POST" : "DELETE"/);
+  assert.match(postFavoriteControl, /const \[error, setError\] = useState\(""\)/);
+  assert.match(postFavoriteControl, /setError\("Could not update saved state\. Try again\."\)/);
+  assert.match(postFavoriteControl, /className="post-favorite-status" role="status"/);
+  assert.match(postFavoriteControl, /className="post-favorite-control"/);
   assert.match(digestRoute, /favoriteStateByUrl/);
   assert.match(digestRoute, /activePoolBuilderIds/);
   assert.match(digestRoute, /feedFavorite\.findMany/);
@@ -161,6 +165,7 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.doesNotMatch(globals, /inset 4px 0 0/);
   assert.doesNotMatch(globals, /linear-gradient\(\s*90deg/);
   assert.match(globals, /\.favorites-empty-actions\s*{[\s\S]*flex-wrap:\s*wrap/);
+  assert.match(globals, /\.post-favorite-status\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.favorites-feed-error\s*{[\s\S]*color:\s*var\(--danger\)/);
 });
 

@@ -3432,6 +3432,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postFavoriteControl, /fetch\("\/api\/favorites"/);
   assert.match(postFavoriteControl, /method: nextFavorite \? "POST" : "DELETE"/);
   assert.match(postFavoriteControl, /disabled=\{isPending\}/);
+  assert.match(postFavoriteControl, /const \[error, setError\] = useState\(""\)/);
+  assert.match(postFavoriteControl, /setError\("Could not update saved state\. Try again\."\)/);
+  assert.match(postFavoriteControl, /className="post-favorite-status" role="status"/);
+  assert.match(postFavoriteControl, /className="post-favorite-control"/);
   assert.match(favoriteButton, /aria-label=\{label\}/);
   assert.match(favoriteButton, /disabled=\{disabled\}/);
   assert.match(favoriteButton, /const label = isFavorite \? "Remove from Favorites" : "Save to Favorites"/);
@@ -3449,6 +3453,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.post-detail-raw\s*{[\s\S]*border-top:\s*1px solid/);
   assert.match(globals, /\.post-detail-section-label\s*{[\s\S]*text-transform:\s*uppercase/);
   assert.match(globals, /\.post-favorite-btn\s*{[\s\S]*min-width:\s*2rem/);
+  assert.match(globals, /\.post-favorite-status\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.post-raw-content-action\s*{[\s\S]*color:\s*var\(--accent\)/);
   assert.match(globals, /\.post-read-action\s*{[\s\S]*padding:\s*0\.26rem 0\.72rem/);
   assert.match(globals, /\.fetched-post-summary-text\s*{[\s\S]*white-space:\s*pre-wrap/);
