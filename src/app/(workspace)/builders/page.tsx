@@ -721,7 +721,7 @@ async function FetchSourcesSection({
         <div className="imported-libraries-copy">
           <h2 className="fb-section-heading">Imported source libraries</h2>
           <p className="library-section-copy">
-            Source libraries built and shared by other users.
+            Source libraries you imported into Sources.
           </p>
         </div>
         {data.importedLibrarySections.length > 0 ? (

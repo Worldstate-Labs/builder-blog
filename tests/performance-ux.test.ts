@@ -2847,6 +2847,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /timeZone:\s*"UTC"/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported source libraries/);
+  assert.match(buildersPage, /Source libraries you imported into Sources\./);
+  assert.doesNotMatch(buildersPage, /Imported source libraries[\s\S]*Source libraries built and shared by other users\./);
   assert.match(buildersPage, /importedLibrarySections/);
   assert.match(buildersPage, /className="imported-libraries-section"/);
   assert.match(buildersPage, /className="imported-libraries-head"/);
