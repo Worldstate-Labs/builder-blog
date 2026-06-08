@@ -1991,10 +1991,14 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /<FileText \/>/);
   assert.match(searchPage, /<SourceAvatar[\s\S]*className="search-result-icon"[\s\S]*imageSize=\{32\}/);
   assert.match(searchPage, /sourceUrl: result\.sourceUrl \?\? result\.externalUrl \?\? null/);
+  assert.match(searchPage, /result\.type === "feed" && result\.favoritedAt/);
+  assert.match(searchPage, /className="search-result-saved"/);
+  assert.match(searchPage, />Saved<\/span>/);
   assert.match(searchPage, /aria-current=\{pageNumber === currentPage \? "page" : undefined\}/);
   assert.match(searchPage, /<span aria-disabled="true" className="search-page-link search-page-link-disabled">/);
   assert.doesNotMatch(searchPage, /sourceName\.slice\(0,\s*1\)\.toUpperCase\(\)/);
   assert.match(globals, /\.search-result-icon-digest svg\s*{[\s\S]*stroke-width:\s*1\.9/);
+  assert.match(globals, /\.search-result-saved\s*{[\s\S]*border:\s*1px solid color-mix\(in oklch, var\(--signal\) 34%, transparent\)/);
   assert.doesNotMatch(searchPage, /className="search-hero"/);
   assert.doesNotMatch(searchPage, /fb-m-search/);
   assert.doesNotMatch(searchPage, /search-page-active/);
@@ -2269,6 +2273,10 @@ test("user library search can fetch operator-only candidate sets", () => {
   assert.match(userSearch, /sourceType: builder\.sourceType/);
   assert.match(userSearch, /avatarUrl: item\.builder\?\.avatarUrl \?\? null/);
   assert.match(userSearch, /sourceType: item\.builder\?\.sourceType \?\? null/);
+  assert.match(userSearch, /loadFavoriteContentKeys/);
+  assert.match(userSearch, /prisma\.feedFavorite\.findMany/);
+  assert.match(userSearch, /contentKey\(item\.builder\.entityId, item\.kind, item\.externalId\)/);
+  assert.match(userSearch, /favoritedAt: favoriteKey \? favoriteByContentKey\.get\(favoriteKey\) \?\? null : null/);
   assert.match(userSearch, /"Untitled post"/);
   assert.doesNotMatch(userSearch, /Untitled feed item/);
   assert.match(userSearch, /digest\.itemCount === 1 \? "post" : "posts"/);
@@ -2280,6 +2288,7 @@ test("user library search can fetch operator-only candidate sets", () => {
   assert.match(userSearch, /url: builder\.entityId \? `\/builder\/\$\{builder\.entityId\}` : `\/builders#\$\{builder\.id\}`/);
   assert.match(searchLib, /externalUrl\?: string \| null/);
   assert.match(searchLib, /sourceType\?: string \| null/);
+  assert.match(searchLib, /favoritedAt\?: Date \| null/);
   assert.match(searchLib, /documentSiteMatches\(document, parsedQuery\.site\)/);
   assert.match(searchPage, /const originalUrl = result\.externalUrl \?\? \(titleIsExternal \? result\.url : null\)/);
   assert.match(searchPage, /className="post-source-original"/);

@@ -693,6 +693,9 @@ function ResultCard({
       </p>
       <div className="search-result-meta">
         <span>{resultTypeItemLabels[result.type]}</span>
+        {result.type === "feed" && result.favoritedAt ? (
+          <span className="search-result-saved">Saved</span>
+        ) : null}
         {result.date ? <span>{formatDistanceToNow(result.date, { addSuffix: true })}</span> : null}
         {originalUrl ? (
           <a

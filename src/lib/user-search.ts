@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { FeedItemKind, Prisma } from "@prisma/client";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
 import {
   displayDigestPipelineTitleForOwner,
@@ -119,6 +119,7 @@ export async function searchUserLibrary({
       include: {
         builder: {
           select: {
+            entityId: true,
             name: true,
             sourceType: true,
             sourceUrl: true,
@@ -139,6 +140,10 @@ export async function searchUserLibrary({
       take: searchLimits.digest,
     }),
   ]);
+  const favoriteByContentKey = await loadFavoriteContentKeys({
+    feedItems,
+    userId,
+  });
 
   const documents = [
     ...builders.map<SearchDocument>((builder) => {
@@ -165,20 +170,26 @@ export async function searchUserLibrary({
         date: builder.updatedAt,
       };
     }),
-    ...feedItems.map<SearchDocument>((item) => ({
-      id: item.id,
-      type: "feed",
-      title: item.title ?? item.builder?.name ?? item.sourceName ?? "Untitled post",
-      body: [item.body, item.sourceName ?? "", item.url].join(" "),
-      externalUrl: item.url,
-      url: `/posts/${item.id}`,
-      avatarUrl: item.builder?.avatarUrl ?? null,
-      fetchUrl: item.builder?.fetchUrl ?? null,
-      sourceName: item.builder?.name ?? item.sourceName,
-      sourceType: item.builder?.sourceType ?? null,
-      sourceUrl: item.builder?.sourceUrl ?? item.url,
-      date: item.publishedAt ?? item.createdAt,
-    })),
+    ...feedItems.map<SearchDocument>((item) => {
+      const favoriteKey = item.builder?.entityId
+        ? contentKey(item.builder.entityId, item.kind, item.externalId)
+        : null;
+      return {
+        id: item.id,
+        type: "feed",
+        title: item.title ?? item.builder?.name ?? item.sourceName ?? "Untitled post",
+        body: [item.body, item.sourceName ?? "", item.url].join(" "),
+        externalUrl: item.url,
+        url: `/posts/${item.id}`,
+        avatarUrl: item.builder?.avatarUrl ?? null,
+        fetchUrl: item.builder?.fetchUrl ?? null,
+        sourceName: item.builder?.name ?? item.sourceName,
+        sourceType: item.builder?.sourceType ?? null,
+        sourceUrl: item.builder?.sourceUrl ?? item.url,
+        date: item.publishedAt ?? item.createdAt,
+        favoritedAt: favoriteKey ? favoriteByContentKey.get(favoriteKey) ?? null : null,
+      };
+    }),
     ...digests.map<SearchDocument>((digest) => {
       const pipeline =
         digest.userId === userId ? null : digestOwnerToPipeline.get(digest.userId);
@@ -216,6 +227,55 @@ export async function searchUserLibrary({
       limit: 40,
     }),
   };
+}
+
+async function loadFavoriteContentKeys({
+  feedItems,
+  userId,
+}: {
+  feedItems: Array<{
+    kind: FeedItemKind;
+    externalId: string;
+    builder: { entityId: string | null } | null;
+  }>;
+  userId: string;
+}) {
+  const contentKeys = new Map<string, { entityId: string; kind: FeedItemKind; externalId: string }>();
+  for (const item of feedItems) {
+    const entityId = item.builder?.entityId;
+    if (!entityId) continue;
+    const key = contentKey(entityId, item.kind, item.externalId);
+    contentKeys.set(key, { entityId, kind: item.kind, externalId: item.externalId });
+  }
+  if (contentKeys.size === 0) return new Map<string, Date>();
+
+  const favorites = await prisma.feedFavorite.findMany({
+    where: {
+      userId,
+      OR: [...contentKeys.values()].map((item) => ({
+        entityId: item.entityId,
+        kind: item.kind,
+        externalId: item.externalId,
+      })),
+    },
+    select: {
+      entityId: true,
+      kind: true,
+      externalId: true,
+      favoritedAt: true,
+    },
+  });
+
+  return new Map(
+    favorites.map((favorite) => [
+      contentKey(favorite.entityId, favorite.kind, favorite.externalId),
+      favorite.favoritedAt,
+    ]),
+  );
+}
+
+function contentKey(entityId: string, kind: FeedItemKind, externalId: string) {
+  return `${entityId}:${kind}:${externalId}`;
 }
 
 function builderSearchConditions(terms: string[]): Prisma.BuilderWhereInput[] {
