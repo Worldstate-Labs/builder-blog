@@ -3993,7 +3993,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /Never connected/);
   assert.doesNotMatch(tokenPanel, /Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
   assert.match(tokenPanel, /<time className="access-key-device-status" dateTime=\{statusDateTime\}>/);
-  assert.match(tokenPanel, /const statusDateTime = token\.revokedAt \?\? token\.lastUsedAt \?\? token\.createdAt/);
+  assert.match(tokenPanel, /<span className="access-key-device-status">\{statusLabel\}<\/span>/);
+  assert.match(tokenPanel, /const statusDateTime = token\.revokedAt \?\? token\.lastUsedAt/);
+  assert.doesNotMatch(tokenPanel, /const statusDateTime = token\.revokedAt \?\? token\.lastUsedAt \?\? token\.createdAt/);
   assert.doesNotMatch(tokenPanel, /:\s*"Not connected yet"|Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
   assert.match(tokenPanel, /if \(!hydrated\) return formatDate\(value\)/);
   assert.match(tokenPanel, /<ul className="access-keys-list" aria-label="Access keys for Local Agents">/);

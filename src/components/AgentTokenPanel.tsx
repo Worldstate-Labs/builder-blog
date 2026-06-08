@@ -528,7 +528,7 @@ function TokenRow({
   const DeviceIcon = isPhoneLikeToken(token) ? Smartphone : MonitorSmartphone;
   const tokenLabel = describeAccessDevice(token);
   const statusLabel = describeAccessStatus(token, hydrated);
-  const statusDateTime = token.revokedAt ?? token.lastUsedAt ?? token.createdAt;
+  const statusDateTime = token.revokedAt ?? token.lastUsedAt;
 
   return (
     <li
@@ -540,9 +540,13 @@ function TokenRow({
       </span>
       <div className="access-key-device-copy">
         <div className="access-key-device-title">{tokenLabel}</div>
-        <time className="access-key-device-status" dateTime={statusDateTime}>
-          {statusLabel}
-        </time>
+        {statusDateTime ? (
+          <time className="access-key-device-status" dateTime={statusDateTime}>
+            {statusLabel}
+          </time>
+        ) : (
+          <span className="access-key-device-status">{statusLabel}</span>
+        )}
       </div>
       {token.revokedAt ? (
         <span className="access-key-revoked-pill">Revoked</span>
