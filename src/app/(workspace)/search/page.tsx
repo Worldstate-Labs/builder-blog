@@ -1041,7 +1041,7 @@ function SearchEmptyState({
   title: string;
 }) {
   const actionContent = actions.length > 0 ? (
-    <div className="search-empty-actions">
+    <div className="search-empty-actions" aria-label="Search recovery actions">
       {actions.map((action) => (
         <Link className="search-recovery-action" href={action.href} key={action.label}>
           <RotateCcw aria-hidden="true" className="search-recovery-action-icon" />

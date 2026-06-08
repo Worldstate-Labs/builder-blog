@@ -2190,6 +2190,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /aria-label="Search result type filter" role="tablist"/);
   assert.doesNotMatch(searchPage, /aria-label="Result type"/);
   assert.match(searchPage, /aria-label="Search recovery actions"/);
+  assert.match(searchPage, /<div className="search-empty-actions" aria-label="Search recovery actions">/);
   assert.doesNotMatch(searchPage, /aria-label="Broaden search"/);
   assert.match(searchPage, /<div className="search-meta-row" role="status">[\s\S]*<span className="sr-only">Loading search results<\/span>/);
   assert.match(searchPage, /className="search-meta-skeleton search-meta-skeleton--count"/);
