@@ -2410,6 +2410,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchPage, /className="search-tools-row"/);
   assert.match(searchPage, /className="search-meta-row"[\s\S]*\{formatCount\(filteredResults\.length\)\}[\s\S]*searchResultCountLabel\(typeFilter, filteredResults\.length\)[\s\S]*Page \{formatCount\(currentPage\)\} of \{formatCount\(pageCount\)\}/);
   assert.doesNotMatch(searchPage, /About \{formatCount\(filteredResults\.length\)\} result/);
+  assert.match(searchPage, /visibleResults\.length > 0 \? \([\s\S]*<div className="search-results-list">[\s\S]*visibleResults\.map/);
+  assert.match(searchPage, /filteredResults\.length === 0 \? \([\s\S]*<SearchEmptyState actions=\{recoveryActions\} title="No matches found">/);
   assert.match(searchPage, /<ResultCard[\s\S]*currentPage=\{currentPage\}/);
   assert.match(searchPage, /currentPage: number/);
   assert.match(searchPage, /searchHref\(\{ query, type: typeFilter, mode, sort, time, page: currentPage \}\)/);

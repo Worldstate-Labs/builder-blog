@@ -352,20 +352,22 @@ async function SearchResultsSection({
               typeFilter={typeFilter}
             />
           </details>
-          <div className="search-results-list">
-            {visibleResults.map((result) => (
-              <ResultCard
-                currentPage={currentPage}
-                key={`${result.type}:${result.id}`}
-                mode={mode}
-                query={activeQuery}
-                result={result}
-                sort={sort}
-                time={time}
-                typeFilter={typeFilter}
-              />
-            ))}
-          </div>
+          {visibleResults.length > 0 ? (
+            <div className="search-results-list">
+              {visibleResults.map((result) => (
+                <ResultCard
+                  currentPage={currentPage}
+                  key={`${result.type}:${result.id}`}
+                  mode={mode}
+                  query={activeQuery}
+                  result={result}
+                  sort={sort}
+                  time={time}
+                  typeFilter={typeFilter}
+                />
+              ))}
+            </div>
+          ) : null}
           {pageCount > 1 ? (
             <nav className="search-pagination" aria-label="Search result pages">
               <PageLink
