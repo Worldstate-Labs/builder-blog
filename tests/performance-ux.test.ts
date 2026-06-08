@@ -1732,6 +1732,8 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(dashboardPage, /pipeline\?: string \| string\[\]/);
   assert.match(dashboardPage, /selectedPipeline/);
   assert.match(dashboardPage, /digestPipelineImport\.findMany/);
+  assert.match(dashboardPage, /aria-label="Selected AI Digest"/);
+  assert.doesNotMatch(dashboardPage, /aria-label="Selected digest"/);
   assert.match(dashboardPage, /take:\s*digestPickerSize/);
   assert.match(dashboardPage, /digestSummarySelect/);
   assert.match(dashboardPage, /id:\s*true/);

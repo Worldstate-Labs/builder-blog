@@ -245,7 +245,7 @@ function AiDigestFeed({
       />
       <section className="ai-digest-panel">
         <div className="ai-digest-body">
-          <section className="ai-digest-section" aria-label="Selected digest">
+          <section className="ai-digest-section" aria-label="Selected AI Digest">
             {selectedDigest ? (
               <DigestDetails
                 digest={serializeDigestSummary(selectedDigest)}
