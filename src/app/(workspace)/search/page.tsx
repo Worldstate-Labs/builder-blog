@@ -552,7 +552,11 @@ function SearchQueryInsights({
         ))}
       </dl>
       {actions.length > 0 ? (
-        <div className="search-insight-actions" aria-label="Search recovery actions">
+        <div
+          aria-label="Search recovery actions"
+          className="search-insight-actions"
+          role="group"
+        >
           {actions.map((action) => (
             <Link className="search-recovery-action" href={action.href} key={action.label}>
               <RotateCcw aria-hidden="true" className="search-recovery-action-icon" />
@@ -1041,7 +1045,11 @@ function SearchEmptyState({
   title: string;
 }) {
   const actionContent = actions.length > 0 ? (
-    <div className="search-empty-actions" aria-label="Search recovery actions">
+    <div
+      aria-label="Search recovery actions"
+      className="search-empty-actions"
+      role="group"
+    >
       {actions.map((action) => (
         <Link className="search-recovery-action" href={action.href} key={action.label}>
           <RotateCcw aria-hidden="true" className="search-recovery-action-icon" />
