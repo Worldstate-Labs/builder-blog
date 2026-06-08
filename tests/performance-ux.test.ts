@@ -1088,7 +1088,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /The owner has not shared any AI Digest archives yet/);
   assert.match(dashboardPage, /No AI Digest archives/);
   assert.doesNotMatch(dashboardPage, /saved briefs/);
-  assert.match(dashboardPage, /They feed both AI Digest and Following/);
+  assert.match(dashboardPage, /Use Sources to follow or add sources\. They feed both AI Digest and Following/);
   assert.doesNotMatch(dashboardPage, /start building AI Digests/);
   assert.match(dashboardPage, /No summarized posts yet/);
   assert.match(dashboardPage, /No fetched posts yet/);
@@ -1291,7 +1291,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(channelPreferenceToggle, /flex flex-col items-end|text-xs text-\[var\(--danger\)\]|fill-\[var\(--warm\)\]|transition-colors/);
   assert.match(builderDetailPage, /EmptyState/);
   assert.match(builderDetailPage, /title="No summarized posts yet"/);
-  assert.match(builderDetailPage, /Fetch and summarize sources from the Sources page, then posts from this source will appear here\./);
+  assert.match(builderDetailPage, /Fetch and summarize sources from Sources, then posts from this source will appear here\./);
+  assert.doesNotMatch(builderDetailPage, /from the Sources page/);
   assert.match(builderDetailPage, /actions=\{[\s\S]*href="\/builders"[\s\S]*Open Sources/);
   assert.doesNotMatch(builderDetailPage, /body="No posts summarized yet\."/);
   assert.match(builderDetailPage, /className="recent-post-list recent-post-list--skeleton"/);
@@ -1504,7 +1505,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /initialSnapshots=\{visibleSnapshots\}/);
   assert.match(followingSection, /function snapshotHasPosts/);
   assert.match(followingSection, /No followed sources yet/);
-  assert.match(followingSection, /They feed both AI Digest and Following/);
+  assert.match(followingSection, /Use Sources to follow or add sources\. They feed both AI Digest and Following/);
   assert.doesNotMatch(followingSection, /start seeing Following posts/);
   assert.doesNotMatch(followingSection, /start Following/);
   assert.match(followingSection, /No fetched posts yet/);
@@ -3842,7 +3843,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /className="fb-dialog"/);
   assert.match(hubImportForm, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.match(hubImportForm, /Remove source library import\?/);
-  assert.match(hubImportForm, /sources\s+from this library will no longer appear in your Sources page or\s+Following\./);
+  assert.match(hubImportForm, /sources\s+from this library will no longer appear in Sources or\s+Following\./);
   assert.match(hubImportForm, /You can import it again from Hub later/);
   assert.match(hubImportForm, />\s*Remove import\s*<\/button>/);
   assert.match(hubImportForm, /requestRemoveImported/);
@@ -3889,7 +3890,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(libraryImportRemoveButton, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.match(libraryImportRemoveButton, /Remove source library import\?/);
   assert.match(libraryImportRemoveButton, /Could not remove source library import\./);
-  assert.match(libraryImportRemoveButton, /sources from this\s+library will no longer appear in your Sources page or Following\./);
+  assert.match(libraryImportRemoveButton, /sources from this\s+library will no longer appear in Sources or Following\./);
   assert.match(libraryImportRemoveButton, /You can import it again from Hub later/);
   assert.match(libraryImportRemoveButton, />\s*Remove import\s*<\/button>/);
   assert.match(libraryImportRemoveButton, /function requestRemove/);

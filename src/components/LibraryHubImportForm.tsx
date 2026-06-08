@@ -357,7 +357,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
             <div className="settings-dialog-copy">
               <p>
                 After removing <strong>{removeTarget.name}</strong>, sources
-                from this library will no longer appear in your Sources page or
+                from this library will no longer appear in Sources or
                 Following.
               </p>
               <p className="settings-dialog-warning">

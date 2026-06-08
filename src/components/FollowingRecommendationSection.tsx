@@ -18,7 +18,7 @@ type TimelineResponse = {
 };
 
 const NO_FOLLOWED_SOURCES_BODY =
-  "Follow or add sources from the Sources page. They feed both AI Digest and Following.";
+  "Use Sources to follow or add sources. They feed both AI Digest and Following.";
 
 export type FollowingSourceReadiness = {
   activeTokens: AgentTokenListItem[];
