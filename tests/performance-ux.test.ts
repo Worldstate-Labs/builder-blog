@@ -798,6 +798,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /AI Digest prompts/);
   assert.match(adminDigestConfig, /selected AI Digest language/);
   assert.match(adminDigestConfig, /Could not save AI Digest prompts\./);
+  assert.match(adminDigestConfig, /Headline prompt cannot be empty\./);
+  assert.match(adminDigestConfig, /Localized post summary prompt cannot be empty\./);
+  assert.match(adminDigestConfig, /draft\.perSourceSummaryPrompt\.trim\(\)\.length === 0 \? "" : draft\.perSourceSummaryPrompt/);
   assert.match(adminDigestConfig, /50 Chinese\/Japanese\/Korean characters or 50 words for word-delimited languages/);
   assert.doesNotMatch(adminDigestConfig, /50 characters or 50 words/);
   assert.match(adminDigestConfig, /function clearSavedStatus\(\)/);
@@ -822,6 +825,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(digestPrompts, /300 words or fewer/);
   assert.match(digestPrompts, /Preserve the original[\s\S]*important points/);
   assert.match(digestPrompts, /Compress wording, not meaning/);
+  const digestConfigRoute = source("src/app/api/settings/digest-config/route.ts");
+  assert.match(digestConfigRoute, /perSourceSummaryPrompt: z\.string\(\)\.max\(20_000\)\.optional\(\)/);
   assert.match(adminSourceTypeManager, /@\/components\/settings\/SettingsFields/);
   assert.match(adminSourceTypeManager, /FETCH_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /SUMMARY_PROMPT_PLACEHOLDER/);

@@ -79,9 +79,18 @@ export function AdminDigestConfigForm({
   }
 
   function save() {
+    if (draft.headlinePrompt.trim().length === 0) {
+      setStatus({ kind: "error", message: "Headline prompt cannot be empty." });
+      return;
+    }
+    if (draft.translate.trim().length === 0) {
+      setStatus({ kind: "error", message: "Localized post summary prompt cannot be empty." });
+      return;
+    }
     const patch = {
       headlinePrompt: draft.headlinePrompt,
-      perSourceSummaryPrompt: draft.perSourceSummaryPrompt,
+      perSourceSummaryPrompt:
+        draft.perSourceSummaryPrompt.trim().length === 0 ? "" : draft.perSourceSummaryPrompt,
       translate: draft.translate,
     };
     setStatus({ kind: "saving" });

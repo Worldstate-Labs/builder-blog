@@ -2826,6 +2826,9 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(digestForm, /AI Digest prompts/);
   assert.match(digestForm, /selected AI Digest language/);
   assert.match(digestForm, /Localized post summary prompt/);
+  assert.match(digestForm, /Headline prompt cannot be empty\./);
+  assert.match(digestForm, /Localized post summary prompt cannot be empty\./);
+  assert.match(digestForm, /draft\.perSourceSummaryPrompt\.trim\(\)\.length === 0 \? "" : draft\.perSourceSummaryPrompt/);
   assert.match(digestForm, /Could not save AI Digest prompts\./);
   assert.doesNotMatch(digestForm, /title="Digest prompts"|selected digest language|label="Translate prompt"|ariaLabel="Translate prompt"/);
   assert.doesNotMatch(digestForm, /Save failed/);
@@ -2842,6 +2845,8 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(commonSummaryRulesForm, /commonSummaryRules/);
   assert.match(commonSummaryRulesForm, /\/api\/settings\/digest-config/);
   assert.doesNotMatch(digestForm, /commonSummaryRules/);
+  const digestConfigRoute = readFileSync("src/app/api/settings/digest-config/route.ts", "utf8");
+  assert.match(digestConfigRoute, /perSourceSummaryPrompt: z\.string\(\)\.max\(20_000\)\.optional\(\)/);
 
   // Config is no longer described as admin-owned in the agent contract / CLI.
   const contract = readFileSync(
