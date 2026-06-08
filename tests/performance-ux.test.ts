@@ -2955,6 +2955,14 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   // via React state in the fetch body, not via form-data.
   assert.match(addBuilderForm, /role="radiogroup"/);
   assert.match(addBuilderForm, /aria-label="Source type"/);
+  assert.match(addBuilderForm, /onKeyDown=\{handleSourceTypeKeyDown\}/);
+  assert.match(addBuilderForm, /"ArrowLeft", "ArrowUp", "ArrowRight", "ArrowDown", "Home", "End"/);
+  assert.match(addBuilderForm, /tabIndex=\{selected \? 0 : -1\}/);
+  assert.match(addBuilderForm, /id=\{sourceTypeOptionId\(source\.id\)\}/);
+  assert.match(addBuilderForm, /function sourceTypeOptionId\(sourceId: string\)/);
+  assert.match(addBuilderForm, /function selectSourceType\(nextSourceType: string\)/);
+  assert.match(addBuilderForm, /focusSourceType\(nextSource\.id\)/);
+  assert.match(addBuilderForm, /document\.getElementById\(sourceTypeOptionId\(sourceId\)\)\?\.focus\(\)/);
   assert.match(addBuilderForm, /name="sourceValue"/);
   assert.match(addBuilderForm, /Handle or URL/);
   assert.match(addBuilderForm, /className="add-source-form"/);

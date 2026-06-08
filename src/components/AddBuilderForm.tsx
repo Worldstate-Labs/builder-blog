@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState, useTransition } from "react";
+import { type FormEvent, type KeyboardEvent, useEffect, useMemo, useState, useTransition } from "react";
 
 const ERROR_SUGGEST_SEP = "__SUGGEST__";
 
@@ -172,8 +172,45 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
   const effectiveName = nameTouched ? name : derivedName;
 
   function applySuggestion(target: DetectedSourceId) {
-    setSourceType(target);
+    selectSourceType(target);
     setError("");
+  }
+
+  function selectSourceType(nextSourceType: string) {
+    setSourceType(nextSourceType);
+    // The pending confirmation was tied to the previous source type —
+    // invalidate so the user isn't asked to confirm a different source
+    // than the one shown.
+    setPendingConfirmation(null);
+  }
+
+  function focusSourceType(sourceId: string) {
+    window.requestAnimationFrame(() => {
+      document.getElementById(sourceTypeOptionId(sourceId))?.focus();
+    });
+  }
+
+  function handleSourceTypeKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const keys = new Set(["ArrowLeft", "ArrowUp", "ArrowRight", "ArrowDown", "Home", "End"]);
+    if (!keys.has(event.key) || sourceOptions.length === 0) return;
+
+    event.preventDefault();
+    const selectedIndex = Math.max(
+      0,
+      sourceOptions.findIndex((source) => source.id === sourceType),
+    );
+    const nextIndex =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? sourceOptions.length - 1
+          : event.key === "ArrowRight" || event.key === "ArrowDown"
+            ? (selectedIndex + 1) % sourceOptions.length
+            : (selectedIndex - 1 + sourceOptions.length) % sourceOptions.length;
+    const nextSource = sourceOptions[nextIndex];
+    if (!nextSource) return;
+    selectSourceType(nextSource.id);
+    focusSourceType(nextSource.id);
   }
 
   function submitAdd(confirmedWarning: boolean) {
@@ -260,25 +297,28 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
 
   return (
     <form className="add-source-form" onSubmit={addBuilder}>
-      <div role="radiogroup" aria-label="Source type" className="add-source-type-list">
+      <div
+        aria-label="Source type"
+        className="add-source-type-list"
+        onKeyDown={handleSourceTypeKeyDown}
+        role="radiogroup"
+      >
         {sourceOptions.map((source) => {
           const Icon = sourceIcons[source.id] ?? Globe;
           const selected = source.id === sourceType;
           return (
             <button
-              key={source.id}
-              type="button"
-              role="radio"
               aria-checked={selected}
-              onClick={() => {
-                setSourceType(source.id);
-                // The pending confirmation was tied to the previous
-                // source type — invalidate so the user isn't asked
-                // to confirm a different source than the one shown.
-                setPendingConfirmation(null);
-              }}
               className="source-pick"
               data-selected={selected ? "true" : undefined}
+              id={sourceTypeOptionId(source.id)}
+              key={source.id}
+              onClick={() => {
+                selectSourceType(source.id);
+              }}
+              role="radio"
+              tabIndex={selected ? 0 : -1}
+              type="button"
             >
               <Icon aria-hidden="true" />
               <span>{source.label}</span>
@@ -412,4 +452,8 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
       ) : null}
     </form>
   );
+}
+
+function sourceTypeOptionId(sourceId: string) {
+  return `add-source-type-${sourceId}`;
 }
