@@ -10195,31 +10195,6 @@ a.fb-hub-source-name:focus-visible {
   width: 1.42rem;
 }
 
-.access-key-capability-list {
-  color: var(--muted-strong);
-  display: grid;
-  font-size: 0.8125rem;
-  gap: 0.42rem;
-  line-height: 1.35;
-  list-style: none;
-  margin: 0.25rem 0 0;
-  padding: 0;
-}
-
-.access-key-capability-list li {
-  align-items: center;
-  display: grid;
-  gap: 0.5rem;
-  grid-template-columns: 1.05rem minmax(0, 1fr);
-}
-
-.access-key-capability-list svg {
-  color: var(--signal);
-  height: 1.05rem;
-  stroke-width: 2.3;
-  width: 1.05rem;
-}
-
 .access-key-revoke-button,
 .access-key-revoked-pill {
   align-items: center;
@@ -10318,14 +10293,6 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-card--revoked .access-key-device-title {
   color: var(--muted-strong);
-}
-
-.access-key-card--revoked .access-key-capability-list {
-  color: var(--muted);
-}
-
-.access-key-card--revoked .access-key-capability-list svg {
-  color: var(--muted);
 }
 
 /* Admin item row */
@@ -11609,16 +11576,6 @@ body {
 
   .access-key-device-status {
     font-size: 1rem;
-  }
-
-  .access-key-capability-list {
-    font-size: 0.8125rem;
-    gap: 0.46rem;
-    margin-top: 0.35rem;
-  }
-
-  .access-key-capability-list li {
-    gap: 0.46rem;
   }
 
   .access-key-device-icon {

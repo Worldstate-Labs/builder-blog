@@ -739,11 +739,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(agentTokenPanel, /className="access-key-device-icon"/);
   assert.match(agentTokenPanel, /className="access-key-device-title"/);
   assert.match(agentTokenPanel, /className="access-key-device-status"/);
-  assert.match(agentTokenPanel, /CheckCircle2/);
-  assert.match(agentTokenPanel, /className="access-key-capability-list"/);
-  assert.match(agentTokenPanel, /Update sources and AI Digests/);
-  assert.match(agentTokenPanel, /Copy Local Agent prompts/);
-  assert.match(agentTokenPanel, /Revoke anytime/);
+  assert.doesNotMatch(agentTokenPanel, /CheckCircle2|access-key-capability-list/);
+  assert.doesNotMatch(agentTokenPanel, /Update sources and AI Digests|Copy Local Agent prompts|Revoke anytime/);
   assert.match(agentTokenPanel, /Laptop/);
   assert.match(agentTokenPanel, /Revoke access/);
   assert.match(globals, /\.access-keys-list\s*{[\s\S]*list-style:\s*none/);
@@ -760,9 +757,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(globals, /\.access-key-device-status\s*{[\s\S]*font-size:\s*1rem/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*2\.25rem/);
-  assert.match(globals, /\.access-key-capability-list\s*{[\s\S]*list-style:\s*none/);
-  assert.match(globals, /\.access-key-capability-list li\s*{[\s\S]*grid-template-columns:\s*1\.05rem minmax\(0,\s*1fr\)/);
-  assert.match(globals, /\.access-key-capability-list svg\s*{[\s\S]*color:\s*var\(--signal\)/);
+  assert.doesNotMatch(globals, /\.access-key-capability-list/);
   assert.match(globals, /\.skill-prompt-label\s*{[\s\S]*margin-right:\s*0\.5rem/);
   assert.match(globals, /\.skill-prompt-compact\s*{[\s\S]*justify-content:\s*flex-end/);
   assert.match(globals, /\.skill-prompt-status-text\.is-error\s*{[\s\S]*color:\s*var\(--danger\)/);
