@@ -643,7 +643,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /className="skill-prompt-status"/);
   assert.match(skillPromptActions, /className="skill-prompt-status-text"/);
   assert.match(skillPromptActions, /className="skill-prompt-status-text is-error"/);
-  assert.match(skillPromptActions, /\{submitting \? "Preparing" : "Prepare prompt"\}/);
+  assert.match(skillPromptActions, /\{submitting \? "Copying" : "Copy prompt"\}/);
   assert.match(skillPromptActions, /\{copying \? "Copying" : "Copy"\}/);
   assert.doesNotMatch(skillPromptActions, /\{submitting \? "…" : "Copy"\}/);
   assert.match(skillPromptActions, /Could not save the summary language\. Try again\./);
@@ -656,14 +656,12 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /async function copyTextToClipboard/);
   assert.match(skillPromptActions, /import Link from "next\/link"/);
   assert.match(skillPromptActions, /document\.hasFocus\(\)/);
-  assert.match(skillPromptActions, /userActivation/);
-  assert.match(skillPromptActions, /PreparedPromptPanel/);
-  assert.match(skillPromptActions, /showingPreparedPrompt/);
-  assert.match(skillPromptActions, /prepared-prompt-\$\{prompt\.context\}-\$\{prompt\.target\}/);
-  assert.doesNotMatch(skillPromptActions, /prepared-prompt-\$\{prompt\.target\}/);
+  assert.doesNotMatch(skillPromptActions, /userActivation/);
+  assert.match(skillPromptActions, /ManualCopyPromptPanel/);
+  assert.match(skillPromptActions, /manual-copy-prompt-\$\{prompt\.target\}/);
   assert.match(skillPromptActions, /Clipboard did not update\. Select the prompt text and copy it\./);
   assert.match(skillPromptActions, /className="skill-prompt-manual-copy"/);
-  assert.match(skillPromptActions, /showingPreparedPrompt \? "Prepared prompt" : dialogConfig\.title/);
+  assert.doesNotMatch(skillPromptActions, /Prepare prompt|Preparing|Prepared prompt/);
   assert.match(skillPromptActions, /document\.execCommand\("copy"\)/);
   assert.doesNotMatch(skillPromptActions, /await navigator\.clipboard\.writeText\(command\)/);
   assert.match(skillPromptActions, /className="token-picker-form"/);
@@ -686,7 +684,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /<Link className="underline" href="\/settings">[\s\S]*Go to Settings/);
   assert.match(skillPromptActions, /<Link className="fb-btn light compact" href="\/settings">[\s\S]*Add access key/);
   assert.match(skillPromptActions, /Add access key/);
-  assert.match(skillPromptActions, /\{submitting \? "Preparing" : "Prepare prompt"\}/);
+  assert.match(skillPromptActions, /\{submitting \? "Copying" : "Copy prompt"\}/);
   assert.match(skillPromptActions, /\{copying \? "Copying" : "Copy"\}/);
   assert.doesNotMatch(skillPromptActions, /Copying\.\.\./);
   assert.doesNotMatch(skillPromptActions, /<a[^>]+href="\/settings"|No access keys yet|Add one in Settings<\/a>|Choose a Local Agent/);

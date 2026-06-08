@@ -374,11 +374,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /onClick=\{\(\) => copyCommand\("once"\)\}/);
   assert.match(skillPromptActions, /async function copyTextToClipboard/);
   assert.match(skillPromptActions, /document\.hasFocus\(\)/);
-  assert.match(skillPromptActions, /userActivation/);
-  assert.match(skillPromptActions, /PreparedPromptPanel/);
-  assert.match(skillPromptActions, /showingPreparedPrompt/);
-  assert.match(skillPromptActions, /prepared-prompt-\$\{prompt\.context\}-\$\{prompt\.target\}/);
-  assert.doesNotMatch(skillPromptActions, /prepared-prompt-\$\{prompt\.target\}/);
+  assert.doesNotMatch(skillPromptActions, /userActivation/);
+  assert.match(skillPromptActions, /ManualCopyPromptPanel/);
+  assert.match(skillPromptActions, /manual-copy-prompt-\$\{prompt\.target\}/);
   assert.match(skillPromptActions, /Clipboard did not update\. Select the prompt text and copy it\./);
   assert.match(skillPromptActions, /className="skill-prompt-manual-copy"/);
   assert.match(skillPromptActions, /document\.execCommand\("copy"\)/);
@@ -429,8 +427,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /Math\.min\(MAX_PROMPT_WINDOW_DAYS, Math\.max\(1/);
   assert.match(skillPromptActions, /Max post age must be a whole number from 1 to 90 days/);
   assert.match(skillPromptActions, /Fetch days must be a whole number from 1 to 90 days/);
-  assert.match(skillPromptActions, /\{submitting \? "Preparing" : "Prepare prompt"\}/);
+  assert.match(skillPromptActions, /\{submitting \? "Copying" : "Copy prompt"\}/);
   assert.match(skillPromptActions, /\{copying \? "Copying" : "Copy"\}/);
+  assert.doesNotMatch(skillPromptActions, /Prepare prompt|Preparing|Prepared prompt/);
   assert.doesNotMatch(skillPromptActions, /\{submitting \? "…" : "Copy"\}|Copying\.\.\./);
   assert.doesNotMatch(skillPromptActions, /Copy a prompt for one run or for a recurring local schedule/);
   assert.doesNotMatch(skillPromptActions, /Local helper|connected helpers|Connected helpers/);
