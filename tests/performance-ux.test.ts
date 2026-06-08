@@ -2208,10 +2208,17 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /SearchTypeTabs/);
   assert.match(searchPage, /className="fb-segmented-tabs filter-tabs"/);
   assert.match(searchPage, /className="fb-btn compact"/);
+  assert.match(searchPage, /const searchResultsPanelId = "search-results-panel"/);
+  assert.match(searchPage, /aria-labelledby=\{searchTypeTabId\(typeFilter\)\}[\s\S]*className="search-results-shell"[\s\S]*id=\{searchResultsPanelId\}[\s\S]*role="tabpanel"/);
+  assert.match(searchPage, /aria-labelledby=\{searchTypeTabId\(current\)\}[\s\S]*className="search-results-shell"[\s\S]*id=\{searchResultsPanelId\}[\s\S]*role="tabpanel"/);
   assert.match(searchPage, /const accessibleLabel =[\s\S]*typeof count === "number"[\s\S]*`\$\{label\}, \$\{formatCount\(count\)\} \$\{count === 1 \? "result" : "results"\}`[\s\S]*: label/);
+  assert.match(searchPage, /aria-controls=\{searchResultsPanelId\}/);
   assert.match(searchPage, /aria-label=\{accessibleLabel\}/);
   assert.match(searchPage, /aria-selected=\{isActive\}/);
+  assert.match(searchPage, /id=\{searchTypeTabId\(value\)\}/);
   assert.match(searchPage, /role="tab"/);
+  assert.match(searchPage, /tabIndex=\{isActive \? 0 : -1\}/);
+  assert.match(searchPage, /function searchTypeTabId\(value: SearchTypeFilter\)/);
   assert.doesNotMatch(searchPage, /aria-current=\{isActive \? "page" : undefined\}/);
   assert.match(globals, /\.filter-tabs\s*{/);
   assert.doesNotMatch(searchPage, /fb-stabs|fb-stab/);

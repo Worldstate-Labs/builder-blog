@@ -52,6 +52,7 @@ type SearchParams = Promise<{
 }>;
 
 const searchPageSize = 10;
+const searchResultsPanelId = "search-results-panel";
 const emptySearchCopyByType: Record<SearchTypeFilter, string> = {
   all: "Search sources, posts, and AI Digest archives.",
   builder: "Search sources.",
@@ -293,7 +294,12 @@ async function SearchResultsSection({
     : [];
 
   return (
-    <section className="search-results-shell">
+    <section
+      aria-labelledby={searchTypeTabId(typeFilter)}
+      className="search-results-shell"
+      id={searchResultsPanelId}
+      role="tabpanel"
+    >
       <SearchTypeTabs
         counts={hasQuery ? typeCounts : null}
         current={typeFilter}
@@ -471,7 +477,14 @@ function SearchResultsFallback({
   time: SearchTimeRange;
 }) {
   return (
-    <section className="search-results-shell" aria-busy="true" aria-live="polite">
+    <section
+      aria-busy="true"
+      aria-labelledby={searchTypeTabId(current)}
+      aria-live="polite"
+      className="search-results-shell"
+      id={searchResultsPanelId}
+      role="tabpanel"
+    >
       <SearchTypeTabs
         counts={null}
         current={current}
@@ -644,17 +657,24 @@ function TypeTab({
       : label;
   return (
     <Link
+      aria-controls={searchResultsPanelId}
       aria-label={accessibleLabel}
       aria-selected={isActive}
       className="fb-btn compact"
       data-active={isActive ? "true" : undefined}
       href={href}
+      id={searchTypeTabId(value)}
       role="tab"
+      tabIndex={isActive ? 0 : -1}
     >
       <span>{label}</span>
       {typeof count === "number" ? <CountBadge value={count} /> : null}
     </Link>
   );
+}
+
+function searchTypeTabId(value: SearchTypeFilter) {
+  return `search-type-tab-${value}`;
 }
 
 function ResultCard({
