@@ -10143,6 +10143,7 @@ a.fb-hub-source-name:focus-visible {
   display: grid;
   gap: 0.24rem;
   min-width: 0;
+  padding-block: 0.08rem;
 }
 
 .access-key-device-status {
@@ -10191,7 +10192,8 @@ a.fb-hub-source-name:focus-visible {
   transition: background-color 140ms ease, color 140ms ease;
 }
 
-.access-key-revoke-button:hover {
+.access-key-revoke-button:hover,
+.access-key-revoke-button:focus-visible {
   background: color-mix(in oklch, var(--ink) 8%, var(--paper-strong));
 }
 
@@ -10246,7 +10248,7 @@ a.fb-hub-source-name:focus-visible {
 .access-key-card {
   align-items: center;
   background: var(--paper);
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in oklch, var(--line) 88%, var(--ink) 12%);
   border-radius: 14px;
   box-shadow: none;
   display: grid;
@@ -10259,6 +10261,10 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-card--revoked {
   opacity: 0.72;
+}
+
+.access-key-card--revoked .access-key-device-title {
+  color: var(--muted-strong);
 }
 
 /* Admin item row */

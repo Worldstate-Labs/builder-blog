@@ -562,7 +562,7 @@ function TokenRow({
         )}
       </div>
       {token.revokedAt ? (
-        <span className="access-key-revoked-pill">Revoked</span>
+        <span className="access-key-revoked-pill">Access revoked</span>
       ) : (
         <button
           className="access-key-revoke-button"
