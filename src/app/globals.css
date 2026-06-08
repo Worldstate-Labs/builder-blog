@@ -9236,7 +9236,7 @@ a.fb-hub-source-name:focus-visible {
 .access-key-skeleton-pill {
   align-self: center;
   justify-self: end;
-  min-width: 9.5rem;
+  min-width: 10.75rem;
 }
 
 .settings-source-type-manager {
@@ -9944,10 +9944,10 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-device-title {
   color: var(--ink);
-  font-size: 1.25rem;
+  font-size: 1.1875rem;
   font-weight: 500;
   letter-spacing: 0;
-  line-height: 1.2;
+  line-height: 1.22;
   overflow-wrap: anywhere;
 }
 
@@ -9959,8 +9959,8 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-device-status {
   color: var(--muted-strong);
-  font-size: 1.0625rem;
-  line-height: 1.25;
+  font-size: 1rem;
+  line-height: 1.3;
 }
 
 .access-key-device-icon {
@@ -9982,18 +9982,18 @@ a.fb-hub-source-name:focus-visible {
 .access-key-revoked-pill {
   align-items: center;
   align-self: center;
-  background: color-mix(in oklch, var(--ink) 5%, var(--paper));
+  background: color-mix(in oklch, var(--ink) 5%, var(--paper-strong));
   border: 0;
   border-radius: 999px;
   color: var(--ink);
   display: inline-flex;
-  font-size: 1rem;
+  font-size: 1.0625rem;
   font-weight: 520;
   justify-content: center;
   justify-self: end;
-  min-height: 2.45rem;
-  min-width: 9.5rem;
-  padding: 0.42rem 1.05rem;
+  min-height: 2.875rem;
+  min-width: 10.75rem;
+  padding: 0.48rem 1.15rem;
   text-align: center;
   white-space: nowrap;
 }
@@ -10004,7 +10004,7 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .access-key-revoke-button:hover {
-  background: color-mix(in oklch, var(--ink) 8%, var(--paper));
+  background: color-mix(in oklch, var(--ink) 8%, var(--paper-strong));
 }
 
 .access-key-revoke-button:disabled {
@@ -10059,14 +10059,14 @@ a.fb-hub-source-name:focus-visible {
   align-items: center;
   background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 14px;
   box-shadow: none;
   display: grid;
-  gap: 1.25rem;
+  gap: 1.3rem;
   grid-template-columns: 2.1rem minmax(0, 1fr) max-content;
-  min-height: 6.75rem;
+  min-height: 6.9rem;
   min-width: 0;
-  padding: 1.35rem 1.6rem 1.35rem 1.35rem;
+  padding: 1.45rem 1.55rem 1.45rem 1.4rem;
 }
 
 .access-key-card.fb-row--revoked {
@@ -11328,7 +11328,7 @@ body {
     font-size: 0.875rem;
     grid-column: 2;
     justify-self: start;
-    min-height: 2.25rem;
+    min-height: 2.35rem;
     min-width: 7.25rem;
     padding-inline: 0.75rem;
   }
