@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
+import { SettingsRulesSkeleton } from "@/components/SettingsRulesSkeleton";
 
 export default function SettingsLoading() {
   return (
@@ -35,13 +36,7 @@ export default function SettingsLoading() {
           </section>
         </div>
 
-        <section className="settings-rules settings-rules-skeleton">
-          <span className="sr-only">Loading Settings rules</span>
-          <div className="settings-rules-skeleton-list">
-            <div className="settings-skeleton-card" />
-            <div className="settings-skeleton-card" />
-          </div>
-        </section>
+        <SettingsRulesSkeleton />
       </div>
     </div>
   );

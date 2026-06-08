@@ -6,6 +6,7 @@ import { AdminSourceTypeManager } from "@/components/AdminSourceTypeManager";
 import { AgentTokenPanel } from "@/components/AgentTokenPanel";
 import { CountMeta } from "@/components/Count";
 import { PageHeader } from "@/components/PageHeader";
+import { SettingsRulesSkeleton } from "@/components/SettingsRulesSkeleton";
 import {
   CommonFetchRulesForm,
   CommonSummaryRulesForm,
@@ -38,7 +39,7 @@ export default async function SettingsPage() {
           </Suspense>
         </div>
 
-        <Suspense fallback={<SourceTypeConfigSkeleton />}>
+        <Suspense fallback={<SettingsRulesSkeleton />}>
           <SourceTypeConfigSection userId={userId} isAdmin={isAdmin} />
         </Suspense>
       </div>
@@ -146,18 +147,6 @@ async function SourceTypeConfigSection({
           />
         </div>
       </details>
-    </section>
-  );
-}
-
-function SourceTypeConfigSkeleton() {
-  return (
-    <section className="settings-rules settings-rules-skeleton" aria-busy="true" aria-live="polite">
-      <span className="sr-only">Loading Settings rules</span>
-      <div className="settings-rules-skeleton-list">
-        <div className="settings-skeleton-card" />
-        <div className="settings-skeleton-card" />
-      </div>
     </section>
   );
 }
