@@ -346,6 +346,7 @@ async function SearchResultsSection({
           <div className="search-results-list">
             {visibleResults.map((result) => (
               <ResultCard
+                currentPage={currentPage}
                 key={`${result.type}:${result.id}`}
                 mode={mode}
                 query={activeQuery}
@@ -628,6 +629,7 @@ function TypeTab({
 }
 
 function ResultCard({
+  currentPage,
   mode,
   query,
   result,
@@ -635,6 +637,7 @@ function ResultCard({
   time,
   typeFilter,
 }: {
+  currentPage: number;
   mode: SearchMode;
   query: string;
   result: SearchResult;
@@ -647,7 +650,7 @@ function ResultCard({
   const resultHref = result.url
     ? withSearchReturnTarget(
         result.url,
-        searchHref({ query, type: typeFilter, mode, sort, time }),
+        searchHref({ query, type: typeFilter, mode, sort, time, page: currentPage }),
       )
     : null;
   const displayUrl = formatDisplayUrl(originalUrl ?? result.url);

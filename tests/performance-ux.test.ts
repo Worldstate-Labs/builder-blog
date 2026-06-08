@@ -2062,6 +2062,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchPage, /Search tools/);
   assert.doesNotMatch(searchPage, /className="search-tools-row"/);
   assert.match(searchPage, /className="search-meta-row"[\s\S]*About \{formatCount\(filteredResults\.length\)\} result[\s\S]*Page \{formatCount\(currentPage\)\} of \{formatCount\(pageCount\)\}/);
+  assert.match(searchPage, /<ResultCard[\s\S]*currentPage=\{currentPage\}/);
+  assert.match(searchPage, /currentPage: number/);
+  assert.match(searchPage, /searchHref\(\{ query, type: typeFilter, mode, sort, time, page: currentPage \}\)/);
   assert.match(searchPage, /className="search-advanced-tools search-advanced-tools-compact"/);
   assert.match(searchPage, /Clear all/);
   assert.match(searchPage, /className="search-filter-chip-row"/);
@@ -3900,6 +3903,8 @@ test("search feed results keep post detail links while preserving originals", ()
   assert.match(searchPage, /withSearchReturnTarget/);
   assert.match(searchPage, /params\.set\("returnTo", returnTo\)/);
   assert.match(searchPage, /params\.set\("returnLabel", "Search"\)/);
+  assert.match(searchPage, /currentPage=\{currentPage\}/);
+  assert.match(searchPage, /page: currentPage/);
   assert.match(searchPage, /const originalUrl = result\.externalUrl \?\? \(titleIsExternal \? result\.url : null\)/);
   assert.match(searchPage, /titleIsExternal \? \(/);
   assert.match(searchPage, /<Link className="search-result-title" href=\{resultHref\}>/);
