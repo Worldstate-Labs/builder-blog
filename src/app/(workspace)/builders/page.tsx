@@ -100,7 +100,8 @@ export default async function BuildersPage({
   const params = await searchParams;
   const selectedTab = parseSourcesTab(firstParam(params.tab));
   const selectedTabItem = selectedSourcesTabItem(selectedTab);
-  const dataPromise = loadBuildersPageData();
+  const fetchDataPromise =
+    selectedTab === "fetch" ? loadBuildersPageData() : null;
   const digestDataPromise =
     selectedTab === "digest" ? loadDigestSourcesPageData() : null;
 
@@ -123,7 +124,7 @@ export default async function BuildersPage({
               role="tabpanel"
             >
               <Suspense fallback={<FetchSourcesFallback />}>
-                <FetchSourcesSection dataPromise={dataPromise} />
+                <FetchSourcesSection dataPromise={fetchDataPromise!} />
               </Suspense>
             </section>
           ) : (
@@ -134,7 +135,7 @@ export default async function BuildersPage({
               role="tabpanel"
             >
               <Suspense fallback={<DigestSourcesFallback />}>
-                <DigestSourcesSection dataPromise={digestDataPromise ?? loadDigestSourcesPageData()} />
+                <DigestSourcesSection dataPromise={digestDataPromise!} />
               </Suspense>
             </section>
           )}
@@ -340,11 +341,6 @@ async function loadBuildersPageData() {
   if (!session?.user?.id) redirect("/login");
   const isAdmin = isAdminEmail(session.user.email);
   await ensureDefaultCommunityLibraryImport(session.user.id);
-  if (isAdmin) {
-    await ensureAdminCommunityDigestPipeline(session.user.id, session.user.email);
-  } else {
-    await ensureDefaultCommunityDigestImport(session.user.id);
-  }
 
   const [
     poolEntries,

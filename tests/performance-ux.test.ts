@@ -2293,6 +2293,15 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   const searchPage = source("src/app/(workspace)/search/page.tsx");
   assert.doesNotMatch(buildersPage, /BuilderStatsFallback|BuilderStatsSlot|BuilderLibraryStats/);
   assert.match(buildersPage, /<Suspense fallback=\{<FetchSourcesFallback \/>/);
+  assert.match(
+    buildersPage,
+    /selectedTab === "fetch" \? loadBuildersPageData\(\) : null/,
+  );
+  assert.match(
+    buildersPage,
+    /selectedTab === "digest" \? loadDigestSourcesPageData\(\) : null/,
+  );
+  assert.doesNotMatch(buildersPage, /digestDataPromise \?\? loadDigestSourcesPageData\(\)/);
   assert.match(buildersPage, /function FetchSourcesFallback/);
   assert.match(buildersPage, /<span className="sr-only">Loading Sources<\/span>/);
   assert.match(buildersPage, /function DigestSourcesFallback/);
