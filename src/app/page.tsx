@@ -108,7 +108,7 @@ export default async function Home() {
               {
                 title: "Search after the read.",
                 detail:
-                  "Find sources, posts you've saved, and AI Digest archives when you need the detail later.",
+                  "Find sources, saved posts, and AI Digest archives when you need the detail later.",
               },
             ].map((item) => (
               <article className="fb-signal" key={item.title}>

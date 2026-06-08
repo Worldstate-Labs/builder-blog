@@ -329,7 +329,8 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /reading AI Digests/);
   assert.match(landingPage, /builds cited AI Digests/);
   assert.match(landingPage, />AI Digest<\/span>/);
-  assert.match(landingPage, /Find sources, posts you've saved, and AI Digest archives/);
+  assert.match(landingPage, /Find sources, saved posts, and AI Digest archives/);
+  assert.doesNotMatch(landingPage, /posts you've saved/);
   assert.match(landingPage, /Open the original posts behind each summary/);
   assert.match(landingPage, /search sources, posts, saved posts, and AI Digest archives later/);
   assert.match(landingPage, /Workspace search/);
