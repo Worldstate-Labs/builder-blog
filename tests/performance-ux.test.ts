@@ -545,8 +545,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /className="skill-prompt-status"/);
   assert.match(skillPromptActions, /className="skill-prompt-status-text"/);
   assert.match(skillPromptActions, /className="skill-prompt-status-text is-error"/);
-  assert.match(skillPromptActions, /\{submitting \? "Copying\.\.\." : "Copy prompt"\}/);
-  assert.match(skillPromptActions, /\{submitting \? "Copying\.\.\." : "Copy"\}/);
+  assert.match(skillPromptActions, /\{submitting \? "Copying" : "Copy prompt"\}/);
+  assert.match(skillPromptActions, /\{submitting \? "Copying" : "Copy"\}/);
   assert.doesNotMatch(skillPromptActions, /\{submitting \? "…" : "Copy"\}/);
   assert.match(skillPromptActions, /Could not save the summary language\. Try again\./);
   assert.match(skillPromptActions, /Could not save max post age\. Try again\./);
@@ -578,6 +578,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /<Link className="underline" href="\/settings">[\s\S]*Go to Settings/);
   assert.match(skillPromptActions, /<Link className="fb-btn light compact" href="\/settings">[\s\S]*Add access key/);
   assert.match(skillPromptActions, /Add access key/);
+  assert.match(skillPromptActions, /\{submitting \? "Copying" : "Copy prompt"\}/);
+  assert.match(skillPromptActions, /\{submitting \? "Copying" : "Copy"\}/);
+  assert.doesNotMatch(skillPromptActions, /Copying\.\.\./);
   assert.doesNotMatch(skillPromptActions, /<a[^>]+href="\/settings"|No access keys yet|Add one in Settings<\/a>/);
   assert.doesNotMatch(skillPromptActions, /No connected helpers|Connected helpers/);
   assert.doesNotMatch(skillPromptActions, /flex flex-wrap items-center justify-end gap-2|className="ml-2"|mr-2|text-\[11px\] text-\[var\(--danger\)\]|text-\[11px\] text-\[var\(--muted-strong\)\]/);
