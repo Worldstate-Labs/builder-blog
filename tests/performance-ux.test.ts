@@ -3899,6 +3899,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /propImportedIds/);
   assert.match(digestPipelineForm, /importedPipelines = sharedPipelines\.filter/);
   assert.match(digestPipelineForm, /visiblePipelines = mode === "imported" \? importedPipelines : sharedPipelines/);
+  assert.match(digestPipelineForm, /CountRange/);
+  assert.match(digestPipelineForm, /formatCount\(visiblePipelines\.length\)/);
+  assert.match(digestPipelineForm, /className="hub-list-count-row at-desktop"/);
   assert.match(digestPipelineForm, /visiblePipelines\.map/);
   assert.match(digestPipelineForm, /isPending=\{importPending \|\| pendingAction !== null\}/);
   assert.match(digestPipelineForm, /disabled=\{isPending \|\| pending !== null\}/);

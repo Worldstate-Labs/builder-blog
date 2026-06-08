@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { CheckCircle2, Download, Radio, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { CountMeta } from "@/components/Count";
+import { CountMeta, CountRange, formatCount } from "@/components/Count";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
 import { EmptyState } from "@/components/EmptyState";
 import type { DigestPipelineRuntimeMetadata } from "@/lib/digest-pipeline-metadata";
@@ -231,6 +231,15 @@ export function DigestPipelineImportForm({
           {error}
         </p>
       ) : null}
+
+      <div className="hub-list-count-row at-desktop">
+        <CountRange>
+          {formatCount(visiblePipelines.length)}{" "}
+          {visiblePipelines.length === 1
+            ? "AI Digest archive"
+            : "AI Digest archives"}
+        </CountRange>
+      </div>
 
       <div className="hub-list-stack fb-hub-list">
         {visiblePipelines.map((pipeline) => (
