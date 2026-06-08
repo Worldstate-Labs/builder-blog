@@ -307,8 +307,9 @@ async function SearchResultsSection({
         <>
           <div className="search-meta-row">
             <CountRange>
-              {formatCount(filteredResults.length)} result
-              {filteredResults.length === 1 ? "" : "s"} for <span>{activeQuery}</span>
+              {formatCount(filteredResults.length)}{" "}
+              {searchResultCountLabel(typeFilter, filteredResults.length)} for{" "}
+              <span>{activeQuery}</span>
             </CountRange>
             {pageCount > 1 ? (
               <CountRange>
@@ -525,7 +526,7 @@ function SearchQueryInsights({
   return (
     <section className="search-insights" aria-label="Search interpretation">
       <p className="search-insight-summary">
-        Query matched {resultCount} result{resultCount === 1 ? "" : "s"}.
+        Query matched {resultCount} {searchResultCountLabel(typeFilter, resultCount)}.
       </p>
       <dl className="search-insight-grid">
         {items.map((item) => (
@@ -641,7 +642,7 @@ function TypeTab({
   const isActive = current === value;
   const accessibleLabel =
     typeof count === "number"
-      ? `${label}, ${formatCount(count)} ${count === 1 ? "result" : "results"}`
+      ? `${label}, ${formatCount(count)} ${searchResultCountLabel(value, count)}`
       : label;
   return (
     <Link
@@ -663,6 +664,15 @@ function TypeTab({
 
 function searchTypeTabId(value: SearchTypeFilter) {
   return `search-type-tab-${value}`;
+}
+
+function searchResultCountLabel(typeFilter: SearchTypeFilter, count: number) {
+  if (typeFilter === "builder") return count === 1 ? "source" : "sources";
+  if (typeFilter === "feed") return count === 1 ? "post" : "posts";
+  if (typeFilter === "digest") {
+    return count === 1 ? "AI Digest archive" : "AI Digest archives";
+  }
+  return count === 1 ? "result" : "results";
 }
 
 function ResultCard({

@@ -2214,6 +2214,14 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /AI Digest archives/);
   assert.match(searchPage, /resultTypeFilterLabels/);
   assert.match(searchPage, /resultTypeItemLabels/);
+  assert.match(searchPage, /function searchResultCountLabel/);
+  assert.match(searchPage, /typeFilter === "builder"[\s\S]*"source"[\s\S]*"sources"/);
+  assert.match(searchPage, /typeFilter === "feed"[\s\S]*"post"[\s\S]*"posts"/);
+  assert.match(searchPage, /typeFilter === "digest"[\s\S]*"AI Digest archive"[\s\S]*"AI Digest archives"/);
+  assert.match(searchPage, /searchResultCountLabel\(typeFilter, filteredResults\.length\)/);
+  assert.match(searchPage, /searchResultCountLabel\(value, count\)/);
+  assert.match(searchPage, /searchResultCountLabel\(typeFilter, resultCount\)/);
+  assert.doesNotMatch(searchPage, /Query matched \{resultCount\} result\{resultCount === 1 \? "" : "s"\}/);
   assert.match(searchPage, /digest:\s*"AI Digest archives"/);
   assert.match(searchPage, /digest:\s*"AI Digest archive"/);
   assert.match(searchPage, /model pricing type:post/);
@@ -2367,7 +2375,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /className="search-advanced-tools-icon"/);
   assert.doesNotMatch(searchPage, /Search tools/);
   assert.doesNotMatch(searchPage, /className="search-tools-row"/);
-  assert.match(searchPage, /className="search-meta-row"[\s\S]*\{formatCount\(filteredResults\.length\)\} result[\s\S]*Page \{formatCount\(currentPage\)\} of \{formatCount\(pageCount\)\}/);
+  assert.match(searchPage, /className="search-meta-row"[\s\S]*\{formatCount\(filteredResults\.length\)\}[\s\S]*searchResultCountLabel\(typeFilter, filteredResults\.length\)[\s\S]*Page \{formatCount\(currentPage\)\} of \{formatCount\(pageCount\)\}/);
   assert.doesNotMatch(searchPage, /About \{formatCount\(filteredResults\.length\)\} result/);
   assert.match(searchPage, /<ResultCard[\s\S]*currentPage=\{currentPage\}/);
   assert.match(searchPage, /currentPage: number/);
@@ -2399,7 +2407,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /const searchResultsPanelId = "search-results-panel"/);
   assert.match(searchPage, /aria-labelledby=\{searchTypeTabId\(typeFilter\)\}[\s\S]*className="search-results-shell"[\s\S]*id=\{searchResultsPanelId\}[\s\S]*role="tabpanel"/);
   assert.match(searchPage, /aria-labelledby=\{searchTypeTabId\(current\)\}[\s\S]*className="search-results-shell"[\s\S]*id=\{searchResultsPanelId\}[\s\S]*role="tabpanel"/);
-  assert.match(searchPage, /const accessibleLabel =[\s\S]*typeof count === "number"[\s\S]*`\$\{label\}, \$\{formatCount\(count\)\} \$\{count === 1 \? "result" : "results"\}`[\s\S]*: label/);
+  assert.match(searchPage, /const accessibleLabel =[\s\S]*typeof count === "number"[\s\S]*`\$\{label\}, \$\{formatCount\(count\)\} \$\{searchResultCountLabel\(value, count\)\}`[\s\S]*: label/);
   assert.match(searchPage, /aria-controls=\{searchResultsPanelId\}/);
   assert.match(searchPage, /aria-label=\{accessibleLabel\}/);
   assert.match(searchPage, /aria-selected=\{isActive\}/);
