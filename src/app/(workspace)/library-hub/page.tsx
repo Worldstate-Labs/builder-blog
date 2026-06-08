@@ -272,7 +272,7 @@ function LibraryHubImportFallback() {
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Source libraries</h2>
           <p className="hub-section-copy">
-            Community source libraries, your shared source libraries, and source libraries built by other users.
+            Source libraries built and shared by other users.
           </p>
           <div className="library-hub-skeleton-line is-wide" />
         </div>

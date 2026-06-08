@@ -241,7 +241,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Source libraries</h2>
           <p className="hub-section-copy">
-            Community source libraries, your shared source libraries, and source libraries built by other users.
+            Source libraries built and shared by other users.
           </p>
         </div>
       </div>
@@ -622,7 +622,7 @@ function sourceLibraryListCopy(filter: FilterKey) {
     case "all":
     default:
       return {
-        description: "Community source libraries, your shared source libraries, and source libraries built by other users.",
+        description: "Source libraries built and shared by other users.",
         emptyBody: "Try another source library filter.",
       };
   }
