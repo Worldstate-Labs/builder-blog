@@ -912,7 +912,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /No followed sources yet/);
   assert.match(dashboardPage, /No AI Digest yet/);
   assert.match(dashboardPage, /No AI Digest archives yet/);
-  assert.match(dashboardPage, /The owner has not shared any AI Digest archives yet/);
+  assert.match(dashboardPage, /\`\$\{ownerLabel\} has not shared any AI Digest archives yet\.\`/);
+  assert.doesNotMatch(dashboardPage, /The owner has not shared any AI Digest archives yet/);
   assert.match(dashboardPage, /No AI Digest archives/);
   assert.doesNotMatch(dashboardPage, /saved briefs/);
   assert.match(dashboardPage, /start building AI Digests/);
