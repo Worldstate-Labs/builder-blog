@@ -142,7 +142,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         : "No matching source libraries";
   const emptyBody =
     activeFilter === "all"
-      ? "Source libraries built and shared by other users will appear here."
+      ? "Source libraries shared to Hub will appear here."
       : listCopy.emptyBody;
   const removeTarget = removeTargetId
     ? libraries.find((library) => library.id === removeTargetId) ?? null
@@ -241,7 +241,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Source libraries</h2>
           <p className="hub-section-copy">
-            Source libraries built and shared by other users.
+            Community libraries, your shared libraries, and source libraries built by other users.
           </p>
         </div>
       </div>
@@ -622,7 +622,7 @@ function sourceLibraryListCopy(filter: FilterKey) {
     case "all":
     default:
       return {
-        description: "Source libraries built and shared by other users.",
+        description: "Community libraries, your shared libraries, and source libraries built by other users.",
         emptyBody: "Try another source library filter.",
       };
   }

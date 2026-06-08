@@ -2668,7 +2668,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   );
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
   assert.match(libraryHubPage, /label: "Source libraries"/);
-  assert.match(libraryHubPage, /Source libraries built and shared by other users\./);
+  assert.match(libraryHubPage, /Community libraries, your shared libraries, and source libraries built by other users\./);
   assert.doesNotMatch(libraryHubPage, /Available source libraries/);
   assert.match(libraryHubPage, /className="workspace-content-stack workspace-content-stack--tabs-first"/);
   assert.doesNotMatch(libraryHubPage, /@\/components\/PageHeader/);
@@ -2700,6 +2700,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(libraryHubPage, /<section className="fb-page-head"/);
   assert.match(libraryHubPage, /<span className="sr-only">Loading source libraries<\/span>/);
   assert.match(libraryHubPage, /<span className="sr-only">Loading AI Digest archives<\/span>/);
+  assert.match(libraryHubPage, /Community libraries, your shared libraries, and source libraries built by other users\./);
   assert.match(libraryHubPage, /<h2 className="fb-section-heading">AI Digest archives<\/h2>/);
   assert.match(libraryHubPage, /AI Digest archives built and shared by other users\./);
   assert.doesNotMatch(libraryHubPage, /className="library-hub-skeleton-line is-heading"/);
@@ -2771,7 +2772,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /activeFilter === "imported" \? \(/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /onClick=\{\(\) => setActiveFilter\("all"\)\}/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), />\s*Browse source libraries\s*<\/button>/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries built and shared by other users will appear here\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries shared to Hub will appear here\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Community libraries, your shared libraries, and source libraries built by other users\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /No shared source libraries match this filter\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Import source libraries built and shared by other users to see them in Sources\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Imported source libraries will appear here\./);
