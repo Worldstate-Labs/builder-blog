@@ -2310,6 +2310,17 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(libraryHubPage, /<Suspense fallback=\{<LibraryHubImportFallback \/>/);
   assert.match(libraryHubPage, /<h1 className="sr-only">Hub<\/h1>/);
   assert.match(libraryHubPage, /getDigestPipelineMetadataByOwnerIds/);
+  assert.match(libraryHubPage, /loadSourceLibraryHubPageData/);
+  assert.match(libraryHubPage, /loadDigestPipelineHubPageData/);
+  assert.doesNotMatch(libraryHubPage, /loadLibraryHubPageData/);
+  assert.match(
+    libraryHubPage,
+    /selectedTab === "source-library" \? loadSourceLibraryHubPageData\(\) : null/,
+  );
+  assert.match(
+    libraryHubPage,
+    /selectedTab === "ai-digests" \? loadDigestPipelineHubPageData\(\) : null/,
+  );
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
   assert.match(libraryHubPage, /label: "Source libraries"/);
   assert.match(libraryHubPage, /Source libraries built and shared by other users\./);
@@ -3256,6 +3267,16 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(hubPage, /importHubLibrariesAction/);
   assert.match(hubPage, /ensureDefaultCommunityLibraryImport\(session\.user\.id\)/);
   assert.match(hubPage, /ensureDefaultCommunityDigestImport\(session\.user\.id\)/);
+  assert.match(hubPage, /async function loadSourceLibraryHubPageData/);
+  assert.match(hubPage, /async function loadDigestPipelineHubPageData/);
+  assert.match(
+    hubPage,
+    /loadSourceLibraryHubPageData[\s\S]*ensureDefaultCommunityLibraryImport\(session\.user\.id\)[\s\S]*prisma\.libraryHubEntry\.findMany/,
+  );
+  assert.match(
+    hubPage,
+    /loadDigestPipelineHubPageData[\s\S]*ensureDefaultCommunityDigestImport\(session\.user\.id\)[\s\S]*prisma\.digestPipelineShare\.findMany/,
+  );
   assert.match(hubPage, /LibraryHubImportForm/);
   assert.match(hubPage, /DigestPipelineImportForm/);
   assert.match(hubPage, /fb-hub-list/);

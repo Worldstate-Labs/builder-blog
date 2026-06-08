@@ -25,7 +25,8 @@ import {
 } from "@/lib/library-hub";
 import { prisma } from "@/lib/prisma";
 
-type LibraryHubPageData = Awaited<ReturnType<typeof loadLibraryHubPageData>>;
+type SourceLibraryHubPageData = Awaited<ReturnType<typeof loadSourceLibraryHubPageData>>;
+type DigestPipelineHubPageData = Awaited<ReturnType<typeof loadDigestPipelineHubPageData>>;
 type LibraryHubTab = "source-library" | "ai-digests";
 type LibraryHubSearchParams = Promise<{
   tab?: string | string[];
@@ -56,7 +57,10 @@ export default async function LibraryHubPage({
   const params = await searchParams;
   const selectedTab = parseHubTab(firstParam(params.tab));
   const selectedTabItem = selectedHubTabItem(selectedTab);
-  const dataPromise = loadLibraryHubPageData();
+  const sourceLibraryDataPromise =
+    selectedTab === "source-library" ? loadSourceLibraryHubPageData() : null;
+  const digestPipelineDataPromise =
+    selectedTab === "ai-digests" ? loadDigestPipelineHubPageData() : null;
 
   return (
     <div className="page-pad">
@@ -75,7 +79,7 @@ export default async function LibraryHubPage({
             role="tabpanel"
           >
             <Suspense fallback={<LibraryHubImportFallback />}>
-              <LibraryHubImportSection dataPromise={dataPromise} />
+              <LibraryHubImportSection dataPromise={sourceLibraryDataPromise!} />
             </Suspense>
           </section>
         ) : (
@@ -85,7 +89,7 @@ export default async function LibraryHubPage({
             role="tabpanel"
           >
             <Suspense fallback={<DigestPipelineImportFallback />}>
-              <DigestPipelineImportSection dataPromise={dataPromise} />
+              <DigestPipelineImportSection dataPromise={digestPipelineDataPromise!} />
             </Suspense>
           </section>
         )}
@@ -94,17 +98,17 @@ export default async function LibraryHubPage({
   );
 }
 
-async function loadLibraryHubPageData() {
+async function requireLibraryHubSession() {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
-  await ensureDefaultCommunityLibraryImport(session.user.id);
-  if (isAdminEmail(session.user.email)) {
-    await ensureAdminCommunityDigestPipeline(session.user.id, session.user.email);
-  } else {
-    await ensureDefaultCommunityDigestImport(session.user.id);
-  }
+  return session;
+}
 
-  const [libraries, imports, digestPipelineShares, digestPipelineImports] = await Promise.all([
+async function loadSourceLibraryHubPageData() {
+  const session = await requireLibraryHubSession();
+  await ensureDefaultCommunityLibraryImport(session.user.id);
+
+  const [libraries, imports] = await Promise.all([
     prisma.libraryHubEntry.findMany({
       include: {
         owner: { select: { name: true, email: true } },
@@ -139,33 +143,10 @@ async function loadLibraryHubPageData() {
       where: { userId: session.user.id },
       select: { hubEntryId: true },
     }),
-    prisma.digestPipelineShare.findMany({
-      where: { isPublic: true },
-      include: {
-        owner: { select: { name: true, email: true } },
-        imports: {
-          where: { userId: session.user.id },
-          select: { userId: true },
-        },
-      },
-      orderBy: [{ importCount: "desc" }, { viewCount: "desc" }, { updatedAt: "desc" }],
-    }),
-    prisma.digestPipelineImport.findMany({
-      where: { userId: session.user.id },
-      select: { pipelineId: true },
-    }),
   ]);
   await recordLibraryHubViews(libraries.map((library) => library.id));
-  await recordDigestPipelineHubViews(
-    digestPipelineShares
-      .filter((pipeline) => pipeline.ownerUserId !== session.user.id)
-      .map((pipeline) => pipeline.id),
-  );
 
   const importedLibraryIds = new Set(imports.map((item) => item.hubEntryId));
-  const importedDigestPipelineIds = new Set(
-    digestPipelineImports.map((item) => item.pipelineId),
-  );
   const hubLibraries: HubLibrary[] = libraries.map((library) => {
     const isCommunityLibrary = library.isFeatured || isAdminEmail(library.owner?.email);
     return {
@@ -190,6 +171,45 @@ async function loadLibraryHubPageData() {
     };
   });
 
+  return {
+    hubLibraries,
+  };
+}
+
+async function loadDigestPipelineHubPageData() {
+  const session = await requireLibraryHubSession();
+  if (isAdminEmail(session.user.email)) {
+    await ensureAdminCommunityDigestPipeline(session.user.id, session.user.email);
+  } else {
+    await ensureDefaultCommunityDigestImport(session.user.id);
+  }
+
+  const [digestPipelineShares, digestPipelineImports] = await Promise.all([
+    prisma.digestPipelineShare.findMany({
+      where: { isPublic: true },
+      include: {
+        owner: { select: { name: true, email: true } },
+        imports: {
+          where: { userId: session.user.id },
+          select: { userId: true },
+        },
+      },
+      orderBy: [{ importCount: "desc" }, { viewCount: "desc" }, { updatedAt: "desc" }],
+    }),
+    prisma.digestPipelineImport.findMany({
+      where: { userId: session.user.id },
+      select: { pipelineId: true },
+    }),
+  ]);
+  await recordDigestPipelineHubViews(
+    digestPipelineShares
+      .filter((pipeline) => pipeline.ownerUserId !== session.user.id)
+      .map((pipeline) => pipeline.id),
+  );
+
+  const importedDigestPipelineIds = new Set(
+    digestPipelineImports.map((item) => item.pipelineId),
+  );
   const digestMetadataByOwnerId = await getDigestPipelineMetadataByOwnerIds(
     digestPipelineShares.map((pipeline) => pipeline.ownerUserId),
   );
@@ -217,8 +237,8 @@ async function loadLibraryHubPageData() {
       };
     })
     .sort((a, b) => Number(b.owned) - Number(a.owned));
+
   return {
-    hubLibraries,
     hubDigestPipelines,
   };
 }
@@ -226,7 +246,7 @@ async function loadLibraryHubPageData() {
 async function LibraryHubImportSection({
   dataPromise,
 }: {
-  dataPromise: Promise<LibraryHubPageData>;
+  dataPromise: Promise<SourceLibraryHubPageData>;
 }) {
   const data = await dataPromise;
 
@@ -236,7 +256,7 @@ async function LibraryHubImportSection({
 async function DigestPipelineImportSection({
   dataPromise,
 }: {
-  dataPromise: Promise<LibraryHubPageData>;
+  dataPromise: Promise<DigestPipelineHubPageData>;
 }) {
   const data = await dataPromise;
 
