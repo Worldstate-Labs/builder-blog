@@ -323,7 +323,8 @@ async function postJson(url, body, token) {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      ...(token ? { authorization: `Bearer ${token}`, ...MACHINE_HEADERS } : {}),
+      ...MACHINE_HEADERS,
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(body),
   });

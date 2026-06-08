@@ -4046,6 +4046,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   const digestMaxAgeRoute = source("src/app/api/settings/digest-max-age/route.ts");
   const tokensRoute = source("src/app/api/settings/tokens/route.ts");
   const tokenRoute = source("src/app/api/settings/tokens/[tokenId]/route.ts");
+  const exchangeRoute = source("src/app/api/skill/exchange/route.ts");
+  const builderDigestCli = source("scripts/builder-digest.mjs");
   const adminSourceTypeManager = source("src/components/AdminSourceTypeManager.tsx");
   const globals = source("src/app/globals.css");
 
@@ -4321,6 +4323,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokensRoute, /export async function POST/);
   assert.match(tokensRoute, /createAgentToken/);
   assert.doesNotMatch(tokensRoute, /redirect\(/);
+  assert.match(exchangeRoute, /prisma\.agentToken\.update/);
+  assert.match(exchangeRoute, /lastUsedAt:\s*new Date\(\)/);
+  assert.match(exchangeRoute, /x-machine-hostname/);
+  assert.match(builderDigestCli, /headers:\s*\{[\s\S]*\.\.\.MACHINE_HEADERS[\s\S]*authorization: `Bearer \$\{token\}`/);
   assert.match(tokenRoute, /export async function DELETE/);
   // Revoke is a SOFT delete: stamp revokedAt (keeps the row + audit trail +
   // "Revoked [date]" UI), never a hard row delete.
