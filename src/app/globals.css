@@ -7779,6 +7779,25 @@ a.builder-library-name:hover {
   margin-top: 0.5rem;
 }
 
+.library-hub-skeleton-digest-preview {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.85rem;
+}
+
+.library-hub-skeleton-meta-grid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.library-hub-skeleton-meta-grid .library-hub-skeleton-row {
+  height: 3.25rem;
+  margin-top: 0;
+}
+
 .library-hub-skeleton-card {
   min-height: 11rem;
 }
@@ -11389,6 +11408,10 @@ body {
 
   .fb-hub-source-row-meta {
     white-space: normal;
+  }
+
+  .library-hub-skeleton-meta-grid {
+    grid-template-columns: 1fr;
   }
 
 }

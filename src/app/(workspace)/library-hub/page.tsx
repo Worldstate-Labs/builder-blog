@@ -315,8 +315,27 @@ function DigestPipelineImportFallback() {
         <div className="library-hub-skeleton-pill" />
       </div>
       <div className="hub-list-stack fb-hub-list">
-        <div className="fb-hub-card library-hub-skeleton-card" />
-        <div className="fb-hub-card library-hub-skeleton-card" />
+        {Array.from({ length: 3 }, (_, index) => (
+          <div className="fb-hub-card" key={index}>
+            <div className="fb-hub-card-head">
+              <div className="library-hub-skeleton-copy">
+                <div className="library-hub-skeleton-line is-title" />
+                <div className="library-hub-skeleton-line is-body" />
+              </div>
+              <div className="library-hub-skeleton-chip" />
+            </div>
+            <div className="library-hub-skeleton-digest-preview">
+              <div className="library-hub-skeleton-line is-medium" />
+              <div className="library-hub-skeleton-line is-body" />
+              <div className="library-hub-skeleton-line is-body" />
+            </div>
+            <div className="library-hub-skeleton-meta-grid">
+              <div className="library-hub-skeleton-row" />
+              <div className="library-hub-skeleton-row" />
+              <div className="library-hub-skeleton-row" />
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );

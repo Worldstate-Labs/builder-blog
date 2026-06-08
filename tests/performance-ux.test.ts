@@ -2451,9 +2451,14 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(libraryHubPage, /className="library-hub-skeleton-line is-title"/);
   assert.match(libraryHubPage, /className="library-hub-skeleton-line is-body"/);
   assert.match(libraryHubPage, /className="library-hub-skeleton-pill"/);
+  assert.match(libraryHubPage, /className="library-hub-skeleton-digest-preview"/);
+  assert.match(libraryHubPage, /className="library-hub-skeleton-meta-grid"/);
+  assert.doesNotMatch(libraryHubPage, /<div className="fb-hub-card library-hub-skeleton-card" \/>/);
   assert.match(libraryHubPage, /<h2 className="fb-section-heading">Source libraries<\/h2>/);
   assert.match(libraryHubPage, /className="fb-hub-card" key=\{index\}/);
-  assert.match(libraryHubPage, /className="fb-hub-card library-hub-skeleton-card"/);
+  assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-digest-preview\s*{[\s\S]*border:\s*1px solid var\(--line\)/);
+  assert.match(source("src/app/globals.css"), /\.library-hub-skeleton-meta-grid\s*{[\s\S]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.library-hub-skeleton-meta-grid\s*{[\s\S]*grid-template-columns:\s*1fr/);
   assert.doesNotMatch(libraryHubPage, /className="section-heading">Source libraries/);
   assert.doesNotMatch(libraryHubPage, /className="library-hub-card" key=\{index\}/);
   assert.doesNotMatch(libraryHubPage, /className="library-hub-card library-hub-skeleton-card"/);
