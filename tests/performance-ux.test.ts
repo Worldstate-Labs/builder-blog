@@ -1777,6 +1777,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /title="No Fetch sources schedule"/);
   assert.match(fetchLogPanel, /No Fetch sources runs yet\. Runs appear after your Local Agent fetches sources\./);
   assert.match(fetchLogPanel, /title="No Fetch sources runs"/);
+  assert.match(fetchLogPanel, /Could not refresh\. Try again\./);
   assert.match(fetchLogPanel, /Add X access in Settings, then run Fetch sources again\./);
   assert.match(fetchLogPanel, /import Link from "next\/link"/);
   assert.match(fetchLogPanel, /work\.fixHref\.startsWith\("\/"\)/);
@@ -1798,6 +1799,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /if \(!hydrated\) return formatAbsolute\(iso\)/);
   assert.match(fetchLogPanel, /formatLanguage/);
   assert.match(fetchLogPanel, /className="sync-panel-error"/);
+  assert.match(digestLogPanel, /Could not refresh\. Try again\./);
+  assert.doesNotMatch(`${fetchLogPanel}\n${digestLogPanel}`, /Refresh failed/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card"/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card-head"/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card-summary"/);

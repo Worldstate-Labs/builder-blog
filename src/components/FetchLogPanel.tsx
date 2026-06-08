@@ -540,7 +540,7 @@ export function FetchLogPanel({
         setScheduledJobRuns(Array.isArray(body?.scheduledJobRuns) ? body.scheduledJobRuns : []);
         setCronJob(body?.cronJob ?? null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Refresh failed");
+        setError(err instanceof Error ? err.message : "Could not refresh. Try again.");
       }
     });
   }, []);
