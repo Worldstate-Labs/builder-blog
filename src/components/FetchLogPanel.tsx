@@ -976,7 +976,7 @@ function FetchStatusPanel({
               <span className="sync-panel-timeline-title">
                 Last {slots.length} scheduled {slots.length === 1 ? "window" : "windows"}
               </span>
-              <span>Green OK · amber waiting · red issue.</span>
+              <span>Recent outcomes by scheduled window.</span>
             </div>
             <div className="sync-panel-status-graph" aria-label="Fetch schedule status graph">
               {slots.map((slot) => (
@@ -1286,6 +1286,9 @@ function RunCard({
   // show a live "Syncing…" badge to make the in-between state legible.
   const inflight = isRunInflight(run, jobRun);
   const interruptedStatus = interruptedFetchRunStatus(jobRun);
+  const displayStatus = !inflight && interruptedStatus
+    ? interruptedStatus
+    : { label, style };
   // Show the Local Agent that ran this fetch. Model names are kept out of the
   // run header because they are not useful for everyday readers.
   const agentLabel =
@@ -1301,12 +1304,12 @@ function RunCard({
         <span
           className="fb-chip"
           style={{
-            background: style.background,
-            color: style.color,
-            borderColor: style.border,
+            background: displayStatus.style.background,
+            color: displayStatus.style.color,
+            borderColor: displayStatus.style.border,
           }}
         >
-          {label}
+          {displayStatus.label}
         </span>
         {inflight ? (
           <span
@@ -1322,18 +1325,6 @@ function RunCard({
               className="sync-panel-run-card-live-dot"
             />
             Updating…
-          </span>
-        ) : null}
-        {!inflight && interruptedStatus ? (
-          <span
-            className="fb-chip"
-            style={{
-              background: interruptedStatus.style.background,
-              color: interruptedStatus.style.color,
-              borderColor: interruptedStatus.style.border,
-            }}
-          >
-            {interruptedStatus.label}
           </span>
         ) : null}
         <time

@@ -1676,6 +1676,10 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /className="sync-panel-candidate-link-icon"/);
   assert.doesNotMatch(digestLogPanel, /h-3\.5 w-3\.5/);
   assert.match(fetchLogPanel, /className="sync-panel-status-note"/);
+  assert.match(fetchLogPanel, /Recent outcomes by scheduled window\./);
+  assert.doesNotMatch(fetchLogPanel, /Green OK|amber waiting|red issue/);
+  assert.match(fetchLogPanel, /const displayStatus = !inflight && interruptedStatus/);
+  assert.match(fetchLogPanel, /displayStatus\.label/);
   assert.match(fetchLogPanel, /className=\{`sync-panel-slot-bar \$\{heightClass\}`\}/);
   assert.match(fetchLogPanel, /className="sync-panel-slot-row"/);
   assert.match(fetchLogPanel, /className="sync-panel-slot-row-main"/);

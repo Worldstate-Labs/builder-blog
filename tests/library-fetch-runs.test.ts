@@ -188,6 +188,11 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /isRunInflight\(run, run\.jobRunId \? jobsByInstanceId\.get\(run\.jobRunId\) : null\)/);
   assert.match(panel, /interruptedFetchRunStatus/);
   assert.match(panel, /label: "Stopped"/);
+  assert.match(panel, /const displayStatus = !inflight && interruptedStatus/);
+  assert.match(panel, /displayStatus\.label/);
+  assert.match(panel, /displayStatus\.style\.background/);
+  assert.match(panel, /Recent outcomes by scheduled window\./);
+  assert.doesNotMatch(panel, /Green OK|amber waiting|red issue/);
   assert.match(panel, /actionsPlacement = "end"/);
   assert.match(panel, /actionsPlacement === "start"/);
   assert.match(panel, /className="source-fetch-overview"/);
