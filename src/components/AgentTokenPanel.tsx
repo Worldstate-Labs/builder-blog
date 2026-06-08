@@ -535,6 +535,7 @@ function TokenRow({
   const tokenLabel = describeAccessDevice(token);
   const statusLabel = describeAccessStatus(token, hydrated);
   const statusDateTime = token.revokedAt ?? token.lastUsedAt;
+  const statusId = `access-key-status-${token.id}`;
 
   return (
     <li
@@ -547,15 +548,17 @@ function TokenRow({
       <div className="access-key-device-copy">
         <div className="access-key-device-title">{tokenLabel}</div>
         {statusDateTime ? (
-          <time className="access-key-device-status" dateTime={statusDateTime}>
+          <time className="access-key-device-status" dateTime={statusDateTime} id={statusId}>
             {statusLabel}
           </time>
         ) : (
-          <span className="access-key-device-status">{statusLabel}</span>
+          <span className="access-key-device-status" id={statusId}>{statusLabel}</span>
         )}
       </div>
       {token.revokedAt ? (
-        <span className="access-key-revoked-pill">Access revoked</span>
+        <span className="access-key-revoked-pill" aria-describedby={statusId}>
+          Access revoked
+        </span>
       ) : (
         <button
           className="access-key-revoke-button"
@@ -563,6 +566,7 @@ function TokenRow({
           onClick={onRevoke}
           type="button"
           aria-label={`Revoke access for ${tokenLabel}`}
+          aria-describedby={statusId}
         >
           Revoke access
         </button>

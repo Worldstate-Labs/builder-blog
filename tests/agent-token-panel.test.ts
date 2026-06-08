@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   describeAccessDevice,
   describeAccessStatus,
+  formatRelativeCompact,
   sortAccessTokensByRecentConnection,
   type AgentTokenListItem,
 } from "../src/components/AgentTokenPanel";
@@ -76,4 +77,22 @@ test("access key status labels read like authorized device activity", () => {
     describeAccessStatus(token({ revokedAt: "2026-06-07T10:00:00.000Z" }), false),
     /^Revoked Jun 7, 2026, 10:00 AM UTC$/,
   );
+});
+
+test("access key mobile rows match device plus last connection summary", () => {
+  const originalNow = Date.now;
+  Date.now = () => Date.parse("2026-06-08T04:00:00.000Z");
+  try {
+    const mobileToken = token({
+      lastPlatform: "ios 26.6",
+      lastUserAgent: "Mobile Safari iPhone",
+      lastUsedAt: "2026-06-07T09:00:00.000Z",
+    });
+
+    assert.equal(describeAccessDevice(mobileToken), "iOS 26.6 iPhone");
+    assert.equal(formatRelativeCompact(mobileToken.lastUsedAt!, true), "19h");
+    assert.equal(describeAccessStatus(mobileToken, true), "Last connected 19h");
+  } finally {
+    Date.now = originalNow;
+  }
 });
