@@ -59,7 +59,7 @@ type FilterKey = "all" | "community" | "shared" | "my" | "imported";
 const FILTERS: Array<{ key: FilterKey; label: string; shortLabel: string }> = [
   { key: "all", label: "All source libraries", shortLabel: "All libraries" },
   { key: "community", label: "Community", shortLabel: "Community" },
-  { key: "shared", label: "Shared libraries", shortLabel: "Shared" },
+  { key: "shared", label: "Shared source libraries", shortLabel: "Shared" },
   { key: "my", label: "My source libraries", shortLabel: "My libraries" },
   { key: "imported", label: "Imported", shortLabel: "Imported" },
 ];
@@ -241,7 +241,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Source libraries</h2>
           <p className="hub-section-copy">
-            Community libraries, your shared libraries, and source libraries built by other users.
+            Community source libraries, your shared source libraries, and source libraries built by other users.
           </p>
         </div>
       </div>
@@ -622,7 +622,7 @@ function sourceLibraryListCopy(filter: FilterKey) {
     case "all":
     default:
       return {
-        description: "Community libraries, your shared libraries, and source libraries built by other users.",
+        description: "Community source libraries, your shared source libraries, and source libraries built by other users.",
         emptyBody: "Try another source library filter.",
       };
   }
