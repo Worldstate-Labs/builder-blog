@@ -114,6 +114,9 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.doesNotMatch(favoriteList, /Save posts from AI Digest or Following/);
   assert.match(favoriteList, /postDetailHref\(item\.feedItemId, "\/dashboard\?tab=favorites", "Favorites"\)/);
   assert.match(favoriteList, /PostFavoriteButton/);
+  assert.match(favoriteList, /const response = await fetch\("\/api\/favorites"/);
+  assert.match(favoriteList, /if \(!response\.ok\) throw new Error\("Favorite update failed"\)/);
+  assert.match(favoriteList, /catch\s*\{[\s\S]*setItems\(previousItems\)/);
   assert.match(favoriteButton, /const label = isFavorite \? "Remove from Favorites" : "Save to Favorites"/);
   assert.match(favoriteButton, /title=\{label\}/);
   assert.match(favoriteButton, /className="post-action-icon"/);

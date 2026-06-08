@@ -26,11 +26,12 @@ export function FavoritePostsList({
     const previousItems = items;
     setItems((current) => current.filter((item) => item.feedItemId !== feedItemId));
     try {
-      await fetch("/api/favorites", {
+      const response = await fetch("/api/favorites", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ feedItemId }),
       });
+      if (!response.ok) throw new Error("Favorite update failed");
     } catch {
       setItems(previousItems);
     }
