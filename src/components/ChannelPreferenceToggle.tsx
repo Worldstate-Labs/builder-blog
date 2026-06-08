@@ -58,7 +58,7 @@ export function ChannelPreferenceToggle({
             builderId: next ? builderId : null,
           }),
         });
-        if (!response.ok) throw new Error("Source library preference update failed");
+        if (!response.ok) throw new Error("Primary source library update failed");
         window.dispatchEvent(
           new CustomEvent<ChannelPreferenceChangedDetail>(channelPreferenceChanged, {
             detail: {
@@ -69,10 +69,14 @@ export function ChannelPreferenceToggle({
         );
       } catch {
         setIsPreferred(previousIsPreferred);
-        setError("Could not update preferred source library.");
+        setError("Could not update primary source library.");
       }
     });
   };
+
+  const actionLabel = isPreferred
+    ? "Clear primary source library"
+    : "Use as primary source library";
 
   return (
     <div className="channel-preference-control">
@@ -81,19 +85,16 @@ export function ChannelPreferenceToggle({
         disabled={isPending}
         aria-busy={isPending}
         onClick={toggle}
-        title={
-          isPreferred
-            ? "Clear preferred source library"
-            : "Set as preferred source library"
-        }
+        title={actionLabel}
         className="channel-preference-button"
         aria-pressed={isPreferred}
+        aria-label={actionLabel}
       >
         <Star
           size={13}
           className="channel-preference-icon"
         />
-        <span>{isPreferred ? "Preferred source library" : "Prefer source library"}</span>
+        <span>{isPreferred ? "Primary source library" : "Use as primary"}</span>
       </button>
       {error ? (
         <div className="channel-preference-error" role="status">
