@@ -210,8 +210,6 @@ test("every app route has an explicit centered layout role", () => {
 
   assert.match(source("src/app/loading.tsx"), /<RouteLoading label="Loading" title="Loading FollowBrief" \/>/);
   const readingLoadingRoutes = [
-    ["src/app/(workspace)/builder/[entityId]/loading.tsx", "Source", "Loading source", 5],
-    ["src/app/(workspace)/builder/x/[handle]/loading.tsx", "Source", "Loading source", 5],
     ["src/app/(workspace)/posts/[feedItemId]/loading.tsx", "Post", "Loading post", 4],
     ["src/app/(workspace)/recommendations/items/[feedItemId]/loading.tsx", "Post", "Loading post", 4],
     ["src/app/(workspace)/history/loading.tsx", "AI Digest", "Loading AI Digest", 6],
@@ -228,6 +226,24 @@ test("every app route has an explicit centered layout role", () => {
     `${source("src/app/(workspace)/builder/[entityId]/loading.tsx")}\n${source("src/app/(workspace)/builder/x/[handle]/loading.tsx")}\n${source("src/app/(workspace)/posts/[feedItemId]/loading.tsx")}\n${source("src/app/(workspace)/recommendations/items/[feedItemId]/loading.tsx")}`,
     /Summarized post|Loading summarized post|title="Loading Post"|title="Loading Source"/,
   );
+  const builderDetailLoading = source("src/components/BuilderDetailLoading.tsx");
+  assert.doesNotMatch(source("src/app/(workspace)/builder/[entityId]/loading.tsx"), /RouteLoading/);
+  assert.doesNotMatch(source("src/app/(workspace)/builder/x/[handle]/loading.tsx"), /RouteLoading/);
+  assert.match(source("src/app/(workspace)/builder/[entityId]/loading.tsx"), /@\/components\/BuilderDetailLoading/);
+  assert.match(source("src/app/(workspace)/builder/x/[handle]/loading.tsx"), /@\/components\/BuilderDetailLoading/);
+  assert.match(builderDetailLoading, /className="page-pad page-pad--reading builder-detail-page builder-detail-loading"/);
+  assert.match(builderDetailLoading, /<PageHeader[\s\S]*className="builder-detail-page-head"[\s\S]*title="Loading source"/);
+  assert.match(builderDetailLoading, /className="fb-breadcrumb-link builder-detail-breadcrumb builder-detail-loading-breadcrumb"/);
+  assert.match(builderDetailLoading, /className="builder-detail-identity"/);
+  assert.match(builderDetailLoading, /className="builder-detail-avatar builder-detail-loading-avatar"/);
+  assert.match(builderDetailLoading, /className="builder-detail-loading-title"/);
+  assert.match(builderDetailLoading, /className="workspace-content-stack builder-detail-workspace"/);
+  assert.match(builderDetailLoading, /<h2 className="fb-section-title">Recent posts<\/h2>/);
+  assert.match(builderDetailLoading, /className="recent-post-list recent-post-list--skeleton"/);
+  assert.match(builderDetailLoading, /<li className="sr-only">Loading recent posts<\/li>/);
+  assert.match(builderDetailLoading, /className="builder-detail-section builder-detail-channels"/);
+  assert.match(builderDetailLoading, /<span>Source libraries<\/span>/);
+  assert.match(builderDetailLoading, /<span className="sr-only">Loading source libraries<\/span>/);
   const settingsLoading = source("src/app/(workspace)/settings/loading.tsx");
   assert.doesNotMatch(settingsLoading, /RouteLoading/);
   assert.match(settingsLoading, /@\/components\/PageHeader/);
@@ -674,21 +690,21 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(agentTokenPanel, /className="access-key-device-icon"/);
   assert.match(agentTokenPanel, /className="access-key-device-title"/);
   assert.match(agentTokenPanel, /className="access-key-device-status"/);
-  assert.match(agentTokenPanel, /MonitorSmartphone/);
+  assert.match(agentTokenPanel, /Laptop/);
   assert.match(agentTokenPanel, /Revoke access/);
   assert.match(globals, /\.access-keys-list\s*{[\s\S]*list-style:\s*none/);
   assert.match(globals, /\.access-keys-list\s*{[\s\S]*padding:\s*0/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*14px/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*16px/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*box-shadow:\s*none/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.1rem minmax\(0,\s*1fr\) max-content/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*6.9rem/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.25rem minmax\(0,\s*1fr\) max-content/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*5.95rem/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.25rem minmax\(0,\s*1fr\)/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*5\.5rem/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*5\.35rem/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*grid-column:\s*2/);
-  assert.match(globals, /\.access-key-device-title\s*{[\s\S]*font-size:\s*1\.1875rem/);
-  assert.match(globals, /\.access-key-device-status\s*{[\s\S]*font-size:\s*1rem/);
+  assert.match(globals, /\.access-key-device-title\s*{[\s\S]*font-size:\s*1\.125rem/);
+  assert.match(globals, /\.access-key-device-status\s*{[\s\S]*font-size:\s*0\.9375rem/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*border-radius:\s*999px/);
-  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*2\.875rem/);
+  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*2\.45rem/);
   assert.match(globals, /\.skill-prompt-label\s*{[\s\S]*margin-right:\s*0\.5rem/);
   assert.match(globals, /\.skill-prompt-compact\s*{[\s\S]*justify-content:\s*flex-end/);
   assert.match(globals, /\.skill-prompt-status-text\.is-error\s*{[\s\S]*color:\s*var\(--danger\)/);
@@ -838,6 +854,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   const dashboardTabs = source("src/components/DashboardHomeTabs.tsx");
   const builderDetailPage = source("src/app/(workspace)/builder/[entityId]/page.tsx");
   const builderDetailActions = source("src/components/BuilderDetailActions.tsx");
+  const builderDetailLoading = source("src/components/BuilderDetailLoading.tsx");
   const channelPreferenceToggle = source("src/components/ChannelPreferenceToggle.tsx");
   const rootLoading = source("src/app/loading.tsx");
   const routeLoading = source("src/components/RouteLoading.tsx");
@@ -1114,27 +1131,39 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(digestDetails, /mode === "today"/);
   assert.match(recommendationsPage, /permanentRedirect\("\/dashboard\?tab=following"\)/);
   assert.match(builderDetailPage, /@\/components\/PageHeader/);
+  assert.match(builderDetailLoading, /@\/components\/PageHeader/);
   assert.match(builderDetailPage, /className="page-pad page-pad--reading builder-detail-page"/);
+  assert.match(builderDetailLoading, /className="page-pad page-pad--reading builder-detail-page builder-detail-loading"/);
   assert.match(builderDetailPage, /<PageHeader[\s\S]*className="builder-detail-page-head"[\s\S]*title=\{entity\.name\}/);
+  assert.match(builderDetailLoading, /<PageHeader[\s\S]*className="builder-detail-page-head"[\s\S]*title="Loading source"/);
   assert.match(builderDetailPage, /getEntityWithReachableChannels\(entityId, userId\)/);
   assert.doesNotMatch(builderDetailPage, /getEntityWithChannels\(entityId\)/);
   assert.match(builderDetailPage, /if \(!entity \|\| entity\.builders\.length === 0\) notFound\(\)/);
   assert.doesNotMatch(builderDetailPage, /<header className="fb-page-head"/);
   assert.match(builderDetailPage, /className="workspace-content-stack builder-detail-workspace"/);
+  assert.match(builderDetailLoading, /className="workspace-content-stack builder-detail-workspace"/);
   assert.match(builderDetailPage, /className="builder-detail-head-stack"/);
+  assert.match(builderDetailLoading, /className="builder-detail-head-stack"/);
   assert.match(builderDetailPage, /ChevronLeft/);
+  assert.match(builderDetailLoading, /ChevronLeft/);
   assert.match(builderDetailPage, /className="fb-breadcrumb-link builder-detail-breadcrumb"/);
+  assert.match(builderDetailLoading, /className="fb-breadcrumb-link builder-detail-breadcrumb builder-detail-loading-breadcrumb"/);
   assert.doesNotMatch(builderDetailPage, /Back to Sources/);
   assert.doesNotMatch(builderDetailPage, /className="fb-btn light compact w-fit" href="\/builders"/);
   assert.match(builderDetailPage, /className="builder-detail-identity"/);
+  assert.match(builderDetailLoading, /className="builder-detail-identity"/);
   assert.match(builderDetailPage, /className="builder-detail-avatar"/);
+  assert.match(builderDetailLoading, /className="builder-detail-avatar builder-detail-loading-avatar"/);
   assert.match(builderDetailPage, /`\s*latest at \$\{dateFormatter\.format\(channel\.lastFetchedAt\)\}\s*`/);
   assert.match(builderDetailPage, /: "not fetched yet"/);
   assert.doesNotMatch(builderDetailPage, /: "Not fetched"/);
   assert.doesNotMatch(builderDetailPage, /lastFetchedAt \? dateFormatter\.format\(channel\.lastFetchedAt\) : "—"/);
   assert.doesNotMatch(builderDetailPage, /lastFetchedAt \? dateFormatter\.format\(channel\.lastFetchedAt\) : "Not fetched"/);
   assert.match(builderDetailPage, /className="builder-detail-title-stack"/);
+  assert.match(builderDetailLoading, /className="builder-detail-title-stack"/);
   assert.match(builderDetailPage, /className="builder-detail-title-row"/);
+  assert.match(builderDetailLoading, /className="builder-detail-title-row"/);
+  assert.match(builderDetailLoading, /className="builder-detail-loading-title"/);
   assert.match(builderDetailPage, /<SourceBadge[\s\S]*sourceType=\{headerSourceType\}[\s\S]*suppressLabelWhen=\{entity\.name\}/);
   assert.doesNotMatch(builderDetailPage, /source-kind-meta fb-kind-pill/);
   assert.match(builderDetailPage, /className="builder-detail-host source-host-meta mono"/);
@@ -1202,12 +1231,19 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /Fetch and summarize sources from the Sources page, then posts from this source will appear here\./);
   assert.doesNotMatch(builderDetailPage, /body="No posts summarized yet\."/);
   assert.match(builderDetailPage, /className="recent-post-list recent-post-list--skeleton"/);
+  assert.match(builderDetailLoading, /className="recent-post-list recent-post-list--skeleton"/);
   assert.match(builderDetailPage, /<li className="sr-only">Loading recent posts<\/li>/);
+  assert.match(builderDetailLoading, /<li className="sr-only">Loading recent posts<\/li>/);
   assert.match(builderDetailPage, /className="recent-post-skeleton-card fb-panel"/);
+  assert.match(builderDetailLoading, /className="recent-post-skeleton-card fb-panel"/);
   assert.match(builderDetailPage, /className="recent-post-skeleton-line recent-post-skeleton-line--meta"/);
   assert.match(builderDetailPage, /className="recent-post-skeleton-line recent-post-skeleton-line--title"/);
   assert.match(builderDetailPage, /function ChannelsListSkeleton/);
   assert.match(builderDetailPage, /<span className="sr-only">Loading source libraries<\/span>/);
+  assert.match(builderDetailLoading, /className="builder-detail-section builder-detail-channels"/);
+  assert.match(builderDetailLoading, /<span>Source libraries<\/span>/);
+  assert.match(builderDetailLoading, /<span className="sr-only">Loading source libraries<\/span>/);
+  assert.doesNotMatch(builderDetailLoading, /RouteLoading/);
   assert.doesNotMatch(builderDetailPage, /<SourceAvatar[\s\S]*style=\{\{/);
   assert.doesNotMatch(builderDetailPage, /bg-black\/10|className="h-|animate-pulse rounded/);
   assert.doesNotMatch(builderDetailPage, /className="grid gap-3"/);
@@ -1237,6 +1273,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*margin-inline:\s*auto/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*width:\s*100%/);
+  assert.match(globals, /\.builder-detail-loading-avatar,[\s\S]*\.builder-detail-loading-chip\s*{[\s\S]*animation:\s*pulse/);
+  assert.match(globals, /\.builder-detail-loading-title\s*{[\s\S]*width:\s*min\(18rem,\s*70vw\)/);
+  assert.match(globals, /\.builder-detail-loading-bio\s*{[\s\S]*max-width:\s*var\(--measure\)/);
   assert.match(globals, /\.builder-detail-page-head\s*{[\s\S]*--page-head-copy-max:\s*var\(--empty-max\)/);
   assert.match(globals, /\.builder-detail-host\s*{[\s\S]*overflow:\s*hidden/);
   assert.match(globals, /\.builder-detail-host\s*{[\s\S]*text-overflow:\s*ellipsis/);
@@ -4036,7 +4075,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.settings-skeleton-line--device-title\s*{[\s\S]*width:\s*min\(14rem,\s*100%\)/);
   assert.match(globals, /\.settings-skeleton-line--device-status\s*{[\s\S]*width:\s*min\(8\.5rem,\s*82%\)/);
   assert.match(globals, /\.access-key-skeleton-pill\s*{[\s\S]*min-width:\s*10\.75rem/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card--skeleton\s*{[\s\S]*min-height:\s*5\.5rem/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card--skeleton\s*{[\s\S]*min-height:\s*5\.35rem/);
   assert.match(globals, /\.token-picker-empty\s*{\s*margin:\s*0\.5rem;\s*}/);
   assert.doesNotMatch(globals, /border-left:\s*[2-9]/);
   assert.doesNotMatch(settingsPage, /createPersonalTokenAction/);
@@ -4123,7 +4162,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(tokenPanel, /Revoke access key &ldquo;\{revokeTarget\.name\}&rdquo;/);
   assert.doesNotMatch(tokenPanel, /access-key-device-detail/);
   assert.doesNotMatch(tokenPanel, /className="h-6 w-6"/);
-  assert.match(tokenPanel, /className=\{`access-key-card\$\{token\.revokedAt \? " fb-row--revoked" : ""\}`\}/);
+  assert.match(tokenPanel, /className=\{`access-key-card\$\{token\.revokedAt \? " access-key-card--revoked fb-row--revoked" : ""\}`\}/);
   assert.match(tokenPanel, /sortAccessTokensByRecentConnection/);
   assert.match(tokenPanel, /useHydrated/);
   assert.match(tokenPanel, /describeAccessStatus\(token, hydrated\)/);
@@ -4154,23 +4193,23 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.access-keys-status-message\.is-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.settings-dialog-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.doesNotMatch(globals, /\.access-keys-status\.is-error/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.1rem minmax\(0,\s*1fr\) max-content/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*14px/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.25rem minmax\(0,\s*1fr\) max-content/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*border-radius:\s*16px/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*background:\s*var\(--paper\)/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*box-shadow:\s*none/);
-  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*6.9rem/);
-  assert.match(globals, /\.access-key-device-title\s*{[\s\S]*font-size:\s*1\.1875rem/);
-  assert.match(globals, /\.access-key-device-status\s*{[\s\S]*font-size:\s*1rem/);
-  assert.match(globals, /\.access-key-device-icon svg\s*{[\s\S]*height:\s*1\.72rem/);
+  assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*5.95rem/);
+  assert.match(globals, /\.access-key-device-title\s*{[\s\S]*font-size:\s*1\.125rem/);
+  assert.match(globals, /\.access-key-device-status\s*{[\s\S]*font-size:\s*0\.9375rem/);
+  assert.match(globals, /\.access-key-device-icon svg\s*{[\s\S]*height:\s*1\.65rem/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*justify-self:\s*end/);
-  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*2\.875rem/);
-  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-width:\s*10\.75rem/);
+  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*2\.45rem/);
+  assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-width:\s*9\.5rem/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*text-align:\s*center/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2\.25rem minmax\(0,\s*1fr\)/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*5\.5rem/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*5\.35rem/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*grid-column:\s*2/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*2\.35rem/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-width:\s*7\.25rem/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-width:\s*7\.5rem/);
   assert.doesNotMatch(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*grid-column:\s*1 \/ -1/);
   assert.match(globals, /\.access-key-card--skeleton\s*{[\s\S]*pointer-events:\s*none/);
   assert.match(globals, /\.access-key-skeleton-icon\s*{[\s\S]*background:\s*color-mix\(in oklch, var\(--ink\) 10%, transparent\)/);

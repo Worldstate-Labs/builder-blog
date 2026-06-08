@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { MonitorSmartphone, Plus, Smartphone } from "lucide-react";
+import { Laptop, Plus, Smartphone } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { useHydrated } from "@/components/ThemeToggle";
 
@@ -525,14 +525,14 @@ function TokenRow({
   isPending: boolean;
   onRevoke: () => void;
 }) {
-  const DeviceIcon = isPhoneLikeToken(token) ? Smartphone : MonitorSmartphone;
+  const DeviceIcon = isPhoneLikeToken(token) ? Smartphone : Laptop;
   const tokenLabel = describeAccessDevice(token);
   const statusLabel = describeAccessStatus(token, hydrated);
   const statusDateTime = token.revokedAt ?? token.lastUsedAt;
 
   return (
     <li
-      className={`access-key-card${token.revokedAt ? " fb-row--revoked" : ""}`}
+      className={`access-key-card${token.revokedAt ? " access-key-card--revoked fb-row--revoked" : ""}`}
       aria-label={`${tokenLabel}. ${statusLabel}`}
     >
       <span className="access-key-device-icon" aria-hidden="true">

@@ -8938,6 +8938,58 @@ a.fb-hub-source-name:focus-visible {
   width: 3.5rem;
 }
 
+.builder-detail-loading-avatar,
+.builder-detail-loading-title,
+.builder-detail-loading-badge,
+.builder-detail-loading-meta,
+.builder-detail-loading-bio,
+.builder-detail-loading-chip {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background: color-mix(in oklch, var(--ink) 10%, transparent);
+  border-radius: 8px;
+  display: inline-flex;
+}
+
+.builder-detail-loading-avatar {
+  border-radius: 999px;
+  flex-shrink: 0;
+  height: 3.5rem;
+  width: 3.5rem;
+}
+
+.builder-detail-loading-title {
+  height: 2rem;
+  width: min(18rem, 70vw);
+}
+
+.builder-detail-loading-badge,
+.builder-detail-loading-chip {
+  border-radius: 999px;
+  height: 1.5rem;
+  width: 5.5rem;
+}
+
+.builder-detail-loading-meta {
+  height: 0.875rem;
+  width: 8rem;
+}
+
+.builder-detail-loading-meta--short {
+  width: 4.5rem;
+}
+
+.builder-detail-loading-meta--wide {
+  width: 9.5rem;
+}
+
+.builder-detail-loading-bio {
+  display: block;
+  height: 0.95rem;
+  margin-top: 0.2rem;
+  max-width: var(--measure);
+  width: min(100%, 34rem);
+}
+
 .builder-detail-title-stack {
   display: grid;
   gap: 0.375rem;
@@ -10005,56 +10057,56 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-device-title {
   color: var(--ink);
-  font-size: 1.1875rem;
-  font-weight: 500;
+  font-size: 1.125rem;
+  font-weight: 520;
   letter-spacing: 0;
-  line-height: 1.22;
+  line-height: 1.2;
   overflow-wrap: anywhere;
 }
 
 .access-key-device-copy {
   display: grid;
-  gap: 0.28rem;
+  gap: 0.24rem;
   min-width: 0;
 }
 
 .access-key-device-status {
   color: var(--muted-strong);
-  font-size: 1rem;
-  line-height: 1.3;
+  font-size: 0.9375rem;
+  line-height: 1.28;
 }
 
 .access-key-device-icon {
   align-items: center;
   color: var(--ink);
   display: inline-flex;
-  height: 2.1rem;
+  height: 2.25rem;
   justify-content: center;
-  width: 2.1rem;
+  width: 2.25rem;
 }
 
 .access-key-device-icon svg {
-  height: 1.72rem;
-  stroke-width: 1.8;
-  width: 1.72rem;
+  height: 1.65rem;
+  stroke-width: 1.85;
+  width: 1.65rem;
 }
 
 .access-key-revoke-button,
 .access-key-revoked-pill {
   align-items: center;
   align-self: center;
-  background: color-mix(in oklch, var(--ink) 5%, var(--paper-strong));
+  background: color-mix(in oklch, var(--ink) 5%, var(--paper));
   border: 0;
   border-radius: 999px;
   color: var(--ink);
   display: inline-flex;
-  font-size: 1.0625rem;
+  font-size: 1rem;
   font-weight: 520;
   justify-content: center;
   justify-self: end;
-  min-height: 2.875rem;
-  min-width: 10.75rem;
-  padding: 0.48rem 1.15rem;
+  min-height: 2.45rem;
+  min-width: 9.5rem;
+  padding: 0.42rem 1.05rem;
   text-align: center;
   white-space: nowrap;
 }
@@ -10120,17 +10172,17 @@ a.fb-hub-source-name:focus-visible {
   align-items: center;
   background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 16px;
   box-shadow: none;
   display: grid;
-  gap: 1.3rem;
-  grid-template-columns: 2.1rem minmax(0, 1fr) max-content;
-  min-height: 6.9rem;
+  gap: 1.1rem;
+  grid-template-columns: 2.25rem minmax(0, 1fr) max-content;
+  min-height: 5.95rem;
   min-width: 0;
-  padding: 1.45rem 1.55rem 1.45rem 1.4rem;
+  padding: 1.25rem 1.35rem;
 }
 
-.access-key-card.fb-row--revoked {
+.access-key-card--revoked {
   opacity: 0.72;
 }
 
@@ -11372,16 +11424,16 @@ body {
   .access-key-card {
     gap: 0.8rem;
     grid-template-columns: 2.25rem minmax(0, 1fr);
-    min-height: 5.5rem;
+    min-height: 5.35rem;
     padding: 1rem;
   }
 
   .access-keys-list--skeleton .settings-skeleton-row {
-    height: 5.5rem;
+    height: 5.35rem;
   }
 
   .access-key-card--skeleton {
-    min-height: 5.5rem;
+    min-height: 5.35rem;
   }
 
   .access-key-revoke-button,
@@ -11390,18 +11442,18 @@ body {
     grid-column: 2;
     justify-self: start;
     min-height: 2.35rem;
-    min-width: 7.25rem;
+    min-width: 7.5rem;
     padding-inline: 0.75rem;
   }
 
   .access-key-skeleton-pill {
     grid-column: 2;
     justify-self: start;
-    min-width: 7.25rem;
+    min-width: 7.5rem;
   }
 
   .access-key-device-title {
-    font-size: 1rem;
+    font-size: 1.0625rem;
   }
 
   .access-key-device-status {

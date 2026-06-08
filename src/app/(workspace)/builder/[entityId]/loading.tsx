@@ -1,11 +1,3 @@
-import { RouteLoading } from "@/components/RouteLoading";
+import { BuilderDetailLoading } from "@/components/BuilderDetailLoading";
 
-export default function BuilderDetailLoading() {
-  return (
-    <RouteLoading
-      label="Source"
-      title="Loading source"
-      rows={5}
-    />
-  );
-}
+export default BuilderDetailLoading;
