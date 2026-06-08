@@ -1202,7 +1202,10 @@ a.reading-source-label:focus-visible {
 .route-loading-title,
 .route-loading-desc,
 .home-loading-line,
-.home-loading-post-row {
+.home-loading-post-row,
+.post-detail-loading-line,
+.post-detail-loading-pill,
+.post-detail-loading-source-mark {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   background: color-mix(in oklch, var(--ink) 10%, transparent);
   border-radius: 8px;
@@ -1493,6 +1496,84 @@ a.reading-source-label:focus-visible {
   margin-top: 0.85rem;
   max-width: var(--measure);
   white-space: pre-wrap;
+}
+
+.post-detail-loading .reading-page-toolbar {
+  pointer-events: none;
+}
+
+.post-detail-loading-back,
+.post-detail-loading-source {
+  min-height: 1.5rem;
+}
+
+.post-detail-loading-source-mark {
+  border-radius: 999px;
+  flex: 0 0 auto;
+  height: 1.25rem;
+  width: 1.25rem;
+}
+
+.post-detail-loading-card {
+  pointer-events: none;
+}
+
+.post-detail-loading-line {
+  display: block;
+  height: 0.875rem;
+}
+
+.post-detail-loading-line--back {
+  width: 4.75rem;
+}
+
+.post-detail-loading-line--source {
+  width: min(12rem, 42vw);
+}
+
+.post-detail-loading-line--title {
+  height: 2rem;
+  width: min(100%, var(--skeleton-title-max));
+}
+
+.post-detail-loading-meta {
+  pointer-events: none;
+}
+
+.post-detail-loading-line--meta {
+  width: 7.5rem;
+}
+
+.post-detail-loading-line--meta-short {
+  width: 4rem;
+}
+
+.post-detail-loading-line--label {
+  height: 0.7rem;
+  width: 5.5rem;
+}
+
+.post-detail-loading-line--summary {
+  height: 1rem;
+  margin-top: 0.75rem;
+  width: min(100%, var(--skeleton-wide-max));
+}
+
+.post-detail-loading-line--summary-short {
+  height: 1rem;
+  margin-top: 0.75rem;
+  width: min(68%, var(--skeleton-copy-max));
+}
+
+.post-detail-loading-pill {
+  border-radius: 999px;
+  height: 1.9rem;
+  width: 8.5rem;
+}
+
+.post-detail-loading-line--published {
+  height: 0.875rem;
+  width: 8rem;
 }
 
 .fetched-post-title {
@@ -3822,6 +3903,9 @@ a.reading-source-label:focus-visible {
   .route-loading-row,
   .route-loading-title,
   .route-loading-desc,
+  .post-detail-loading-line,
+  .post-detail-loading-pill,
+  .post-detail-loading-source-mark,
   .search-meta-skeleton,
   .search-result-skeleton::before {
     animation: none;

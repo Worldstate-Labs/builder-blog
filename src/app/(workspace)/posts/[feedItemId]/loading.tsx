@@ -1,11 +1,5 @@
-import { RouteLoading } from "@/components/RouteLoading";
+import { PostDetailLoading } from "@/components/PostDetailLoading";
 
 export default function PostLoading() {
-  return (
-    <RouteLoading
-      label="Post"
-      title="Loading post"
-      rows={4}
-    />
-  );
+  return <PostDetailLoading />;
 }

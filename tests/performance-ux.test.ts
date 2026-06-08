@@ -227,9 +227,28 @@ test("every app route has an explicit centered layout role", () => {
   );
 
   assert.match(source("src/app/loading.tsx"), /<RouteLoading label="Loading" title="Loading FollowBrief" \/>/);
+  const postDetailLoadingRoutes = [
+    "src/app/(workspace)/posts/[feedItemId]/loading.tsx",
+    "src/app/(workspace)/recommendations/items/[feedItemId]/loading.tsx",
+  ] as const;
+  for (const path of postDetailLoadingRoutes) {
+    const text = source(path);
+    assert.match(text, /@\/components\/PostDetailLoading/);
+    assert.match(text, /<PostDetailLoading \/>/);
+    assert.doesNotMatch(text, /RouteLoading|title="Loading post"|rows=\{4\}/);
+  }
+  const postDetailLoading = source("src/components/PostDetailLoading.tsx");
+  assert.match(postDetailLoading, /className="page-pad page-pad--reading reading-page post-detail-loading"/);
+  assert.match(postDetailLoading, /className="reading-page-toolbar"/);
+  assert.match(postDetailLoading, /className="fb-breadcrumb-link post-detail-loading-back"/);
+  assert.match(postDetailLoading, /className="reading-source-label post-detail-loading-source"/);
+  assert.match(postDetailLoading, /className="feed-card fetched-post-card post-detail-card post-detail-loading-card"/);
+  assert.match(postDetailLoading, /className="post-detail-summary"/);
+  assert.match(postDetailLoading, /className="post-detail-raw"/);
+  assert.match(postDetailLoading, /className="post-footer"/);
+  assert.match(postDetailLoading, /<span className="sr-only">Loading post<\/span>/);
+  assert.doesNotMatch(postDetailLoading, /RouteLoading|PageHeader/);
   const readingLoadingRoutes = [
-    ["src/app/(workspace)/posts/[feedItemId]/loading.tsx", "Post", "Loading post", 4],
-    ["src/app/(workspace)/recommendations/items/[feedItemId]/loading.tsx", "Post", "Loading post", 4],
     ["src/app/(workspace)/history/loading.tsx", "AI Digest", "Loading AI Digest", 6],
     ["src/app/(workspace)/recommendations/loading.tsx", "Following", "Loading Following", 6],
   ] as const;
@@ -3564,6 +3583,11 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(globals, /\.reading-page-head\s*{/);
   assert.match(globals, /\.post-detail-card\.feed-card/);
   assert.match(globals, /\.post-detail-card \.post-footer\s*{[\s\S]*border-top:/);
+  assert.match(globals, /\.post-detail-loading-line,[\s\S]*\.post-detail-loading-source-mark\s*{[\s\S]*animation:\s*pulse/);
+  assert.match(globals, /\.post-detail-loading-card\s*{[\s\S]*pointer-events:\s*none/);
+  assert.match(globals, /\.post-detail-loading-line--title\s*{[\s\S]*width:\s*min\(100%,\s*var\(--skeleton-title-max\)\)/);
+  assert.match(globals, /\.post-detail-loading-line--summary\s*{[\s\S]*width:\s*min\(100%,\s*var\(--skeleton-wide-max\)\)/);
+  assert.match(globals, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.post-detail-loading-source-mark,[\s\S]*animation:\s*none/);
   assert.match(feedItemsRoute, /fetchDedupedFeedForEntities/);
   assert.match(feedItemsRoute, /activePoolBuilderIds/);
   assert.match(feedItemsRoute, /NextResponse\.json/);
