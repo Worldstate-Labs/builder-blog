@@ -356,9 +356,9 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.match(followingSection, /No fetched posts yet/);
   assert.match(followingSection, /No unread posts yet/);
   assert.match(followingSection, /Following can show their latest posts/);
-  assert.match(followingSection, /Could not load Following/);
+  assert.match(followingSection, /title="Could not load Following posts"/);
   assert.match(followingSection, /Check your connection, then try again\./);
-  assert.doesNotMatch(followingSection, /Something went wrong loading Following|Couldn't load Following/);
+  assert.doesNotMatch(followingSection, /title="Could not load Following"|Something went wrong loading Following|Couldn't load Following/);
   assert.doesNotMatch(followingSection, /Following recommendations can appear|No unread recommendations yet|No posts have been fetched for your followed sources yet|fetching recommendations/);
   assert.match(followingSection, /FetchSourcesPrompt/);
   assert.match(followingSection, /context="library"/);

@@ -181,7 +181,7 @@ function FollowingError({ onRetry }: { onRetry: () => void }) {
       ariaLive="assertive"
       body="Check your connection, then try again."
       role="alert"
-      title="Could not load Following"
+      title="Could not load Following posts"
       tone="error"
     />
   );

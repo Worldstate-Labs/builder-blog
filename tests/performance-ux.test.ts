@@ -1275,9 +1275,9 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /No unread posts yet/);
   assert.match(followingSection, /Ask your Local Agent to fetch and summarize your followed sources/);
   assert.match(followingSection, /Following can show their latest posts/);
-  assert.match(followingSection, /Could not load Following/);
+  assert.match(followingSection, /title="Could not load Following posts"/);
   assert.match(followingSection, /Check your connection, then try again\./);
-  assert.doesNotMatch(followingSection, /Something went wrong loading Following|Couldn't load Following|No posts have been fetched for your followed sources yet/);
+  assert.doesNotMatch(followingSection, /title="Could not load Following"|Something went wrong loading Following|Couldn't load Following|No posts have been fetched for your followed sources yet/);
   assert.doesNotMatch(followingSection, /Following feed|Following recommendations can appear|No unread recommendations yet|fetching recommendations/);
   assert.doesNotMatch(followingSection, /fetch and summarize them/);
   assert.match(followingSection, /<SkillPromptActions[\s\S]*context="library"/);
