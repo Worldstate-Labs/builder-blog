@@ -487,7 +487,11 @@ function HubCard({
                 const sourceType = sourceTypeForBuilder(item.builder);
                 return (
                   <span
-                    className={`fb-hub-source-summary-item${index >= 2 ? " is-desktop-only" : ""}`}
+                    className={[
+                      "fb-hub-source-summary-item",
+                      index >= 1 ? "is-mobile-hidden" : "",
+                      index >= 2 ? "is-desktop-only" : "",
+                    ].filter(Boolean).join(" ")}
                     key={item.builderId}
                   >
                     <SourceAvatar

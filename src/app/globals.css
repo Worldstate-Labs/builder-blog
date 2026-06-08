@@ -11369,6 +11369,10 @@ body {
     display: none;
   }
 
+  .fb-hub-source-summary-item.is-mobile-hidden {
+    display: none;
+  }
+
   .fb-hub-source-summary-item {
     max-width: min(42vw, 8.75rem);
   }

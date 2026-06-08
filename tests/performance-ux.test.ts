@@ -2518,6 +2518,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /function selectSourceSummaryItems/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /for \(const group of sourceGroups\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /for \(const item of libraryItems\)/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /index >= 1 \? "is-mobile-hidden" : ""/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /sourceSummaryItems = library\.items\.slice\(0, 4\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-summary-strip/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-summary-name/);
@@ -2619,6 +2620,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-summary-strip\s*{[\s\S]*display:\s*flex/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-summary-avatar\.fb-src-icon\s*{/);
   assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-source-summary-item\.is-desktop-only\s*{[\s\S]*display:\s*none/);
+  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-source-summary-item\.is-mobile-hidden\s*{[\s\S]*display:\s*none/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-source-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-source-type-groups\s*{/);
