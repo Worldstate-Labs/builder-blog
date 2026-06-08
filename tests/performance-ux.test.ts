@@ -1017,7 +1017,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /className="min-w-0"/);
   assert.doesNotMatch(dashboardPage, /className="fb-section-heading mt-1"/);
   assert.match(dashboardPage, /function DigestControlBar/);
-  assert.match(dashboardPage, /aria-label="AI Digest selection"/);
+  assert.match(dashboardPage, /aria-label="AI Digest collection and archive selection"/);
   assert.match(dashboardPage, /className="digest-control-bar"/);
   assert.match(dashboardPage, /className="digest-control-field"/);
   assert.match(dashboardPage, /className="digest-control-label"/);
@@ -1028,6 +1028,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /rounded-\[8px\]|text-\[0\.68rem\]|\[&_\.digest-picker|md:grid-cols-2/);
   assert.match(dashboardPage, /<DigestPipelineSelector/);
   assert.match(dashboardPage, /<DigestArchivePicker/);
+  assert.match(dashboardPage, />\s*AI Digest collection\s*<\/span>/);
+  assert.match(dashboardPage, />\s*AI Digest archive\s*<\/span>/);
+  assert.doesNotMatch(dashboardPage, /aria-label="AI Digest selection"/);
   assert.match(digestPipelineSelector, /ChevronDown/);
   assert.match(digestPipelineSelector, /className="digest-pipeline-trigger"/);
   assert.match(digestPipelineSelector, /aria-label=\{`AI Digest collection: \$\{selectedLabel\}`\}/);
@@ -1999,7 +2002,7 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(dashboardPage, /DigestDetails/);
   assert.doesNotMatch(dashboardPage, /headerAction=\{/);
   assert.match(dashboardPage, /function DigestControlBar/);
-  assert.match(dashboardPage, /aria-label="AI Digest selection"/);
+  assert.match(dashboardPage, /aria-label="AI Digest collection and archive selection"/);
   assert.match(globals, /\.digest-control-picker \.digest-picker-summary,[\s\S]*\.digest-control-picker \.digest-picker-static\s*{[\s\S]*min-height:\s*2\.5rem/);
   assert.match(globals, /\.digest-control-empty\s*{[\s\S]*border:\s*1px dashed var\(--line\)/);
   assert.match(digestDetails, /headlineSummary/);
