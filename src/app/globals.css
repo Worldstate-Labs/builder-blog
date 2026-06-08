@@ -1172,6 +1172,13 @@ a.reading-source-label:focus-visible {
   white-space: nowrap;
 }
 
+.favorites-feed-error {
+  color: var(--danger);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
 .favorites-feed-list {
   display: grid;
   gap: 0.6rem;

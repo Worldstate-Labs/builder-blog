@@ -116,7 +116,12 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(favoriteList, /PostFavoriteButton/);
   assert.match(favoriteList, /const response = await fetch\("\/api\/favorites"/);
   assert.match(favoriteList, /if \(!response\.ok\) throw new Error\("Favorite update failed"\)/);
-  assert.match(favoriteList, /catch\s*\{[\s\S]*setItems\(previousItems\)/);
+  assert.match(favoriteList, /const \[pendingIds, setPendingIds\] = useState<Set<string>>\(\(\) => new Set\(\)\)/);
+  assert.match(favoriteList, /disabled=\{pendingIds\.has\(item\.feedItemId\)\}/);
+  assert.match(favoriteList, /sortFavoriteItems\(\[\.\.\.current, removedItem\]\)/);
+  assert.match(favoriteList, /Could not remove favorite\. The post is still saved\./);
+  assert.match(favoriteList, /className="favorites-feed-error" role="status"/);
+  assert.doesNotMatch(favoriteList, /setItems\(previousItems\)/);
   assert.match(favoriteButton, /const label = isFavorite \? "Remove from Favorites" : "Save to Favorites"/);
   assert.match(favoriteButton, /title=\{label\}/);
   assert.match(favoriteButton, /className="post-action-icon"/);
@@ -147,6 +152,7 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.doesNotMatch(globals, /inset 4px 0 0/);
   assert.doesNotMatch(globals, /linear-gradient\(\s*90deg/);
   assert.match(globals, /\.favorites-empty-actions\s*{[\s\S]*flex-wrap:\s*wrap/);
+  assert.match(globals, /\.favorites-feed-error\s*{[\s\S]*color:\s*var\(--danger\)/);
 });
 
 test("digest posts can render a save control for their source feed item", () => {

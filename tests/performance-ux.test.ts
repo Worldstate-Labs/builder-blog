@@ -1511,6 +1511,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
 test("dashboard defers heavy recommendation timeline work to a client island", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const followingSection = source("src/components/FollowingRecommendationSection.tsx");
+  const favoriteList = source("src/components/FavoritePostsList.tsx");
   const feedState = source("src/components/FeedState.tsx");
   const recommendationFeed = source("src/components/RecommendationFeed.tsx");
   const favoriteButton = source("src/components/PostFavoriteButton.tsx");
@@ -1524,6 +1525,13 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(dashboardPage, /<FavoritePostsSection/);
   assert.equal(existsSync(join(root, "src/components/FavoritePostsSection.tsx")), true);
   assert.equal(existsSync(join(root, "src/app/api/favorites/read/route.ts")), false);
+  assert.match(favoriteList, /const \[pendingIds, setPendingIds\] = useState<Set<string>>\(\(\) => new Set\(\)\)/);
+  assert.match(favoriteList, /disabled=\{pendingIds\.has\(item\.feedItemId\)\}/);
+  assert.match(favoriteList, /sortFavoriteItems\(\[\.\.\.current, removedItem\]\)/);
+  assert.match(favoriteList, /className="favorites-feed-error" role="status"/);
+  assert.match(favoriteList, /Could not remove favorite\. The post is still saved\./);
+  assert.doesNotMatch(favoriteList, /setItems\(previousItems\)/);
+  assert.match(globals, /\.favorites-feed-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(dashboardPage, /<FollowingRecommendationSection[\s\S]*isAdmin=\{isAdmin\}[\s\S]*sourceReadiness=\{sourceReadiness\}/);
   assert.match(dashboardPage, /dashboardSourceReadinessForUser/);
   assert.match(followingSection, /"use client"/);

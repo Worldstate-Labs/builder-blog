@@ -21,9 +21,15 @@ export function FavoritePostsList({
   initialItems: FavoritePostListItem[];
 }) {
   const [items, setItems] = useState(initialItems);
+  const [pendingIds, setPendingIds] = useState<Set<string>>(() => new Set());
+  const [error, setError] = useState("");
 
   async function removeFavorite(feedItemId: string) {
-    const previousItems = items;
+    if (pendingIds.has(feedItemId)) return;
+    const removedItem = items.find((item) => item.feedItemId === feedItemId);
+    if (!removedItem) return;
+    setError("");
+    setPendingIds((current) => new Set([...current, feedItemId]));
     setItems((current) => current.filter((item) => item.feedItemId !== feedItemId));
     try {
       const response = await fetch("/api/favorites", {
@@ -33,7 +39,18 @@ export function FavoritePostsList({
       });
       if (!response.ok) throw new Error("Favorite update failed");
     } catch {
-      setItems(previousItems);
+      setItems((current) =>
+        current.some((item) => item.feedItemId === feedItemId)
+          ? current
+          : sortFavoriteItems([...current, removedItem]),
+      );
+      setError("Could not remove favorite. The post is still saved.");
+    } finally {
+      setPendingIds((current) => {
+        const next = new Set(current);
+        next.delete(feedItemId);
+        return next;
+      });
     }
   }
 
@@ -70,12 +87,18 @@ export function FavoritePostsList({
           {formatCount(items.length)} {items.length === 1 ? "post" : "posts"}
         </span>
       </div>
+      {error ? (
+        <p className="favorites-feed-error" role="status">
+          {error}
+        </p>
+      ) : null}
       <div className="favorites-feed-list">
         {items.map((item) => (
           <PostCard
             dataRead={Boolean(item.readAt)}
             extraActions={
               <PostFavoriteButton
+                disabled={pendingIds.has(item.feedItemId)}
                 isFavorite
                 onToggle={() => void removeFavorite(item.feedItemId)}
               />
@@ -99,6 +122,10 @@ export function FavoritePostsList({
       </div>
     </section>
   );
+}
+
+function sortFavoriteItems(items: FavoritePostListItem[]) {
+  return [...items].sort((a, b) => Date.parse(b.favoritedAt) - Date.parse(a.favoritedAt));
 }
 
 function formatDate(value: string) {
