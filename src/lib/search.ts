@@ -934,7 +934,14 @@ function normalizeTypeOperatorValue(value: string): SearchDocumentType | null {
     .replace(/s$/, "");
   if (singular === "builder" || singular === "source") return "builder";
   if (singular === "feed" || singular === "post" || singular === "item") return "feed";
-  if (singular === "digest" || singular === "brief") return "digest";
+  if (
+    singular === "digest" ||
+    singular === "digest-archive" ||
+    singular === "archive" ||
+    singular === "brief"
+  ) {
+    return "digest";
+  }
   return null;
 }
 

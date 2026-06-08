@@ -93,8 +93,8 @@ const advancedSearchExamples = [
   "allinurl:release model",
   "model pricing type:post",
   "model pricing type:source",
-  "model pricing type:ai-digest",
-  "model pricing -type:ai-digest",
+  "model pricing type:ai-digest-archive",
+  "model pricing -type:ai-digest-archive",
   "model pricing after:2026-01-01",
   "model pricing before:2026-12-31",
 ];
@@ -1205,7 +1205,13 @@ function normalizeTypeFilter(value: string): SearchTypeFilter {
   if (normalized === "feed" || normalized === "post" || normalized === "posts") {
     return "feed";
   }
-  if (normalized === "digest" || normalized === "digests" || normalized === "ai-digest") {
+  if (
+    normalized === "digest" ||
+    normalized === "digests" ||
+    normalized === "ai-digest" ||
+    normalized === "ai-digest-archive" ||
+    normalized === "ai-digest-archives"
+  ) {
     return "digest";
   }
   return "all";

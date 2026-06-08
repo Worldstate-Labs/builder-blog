@@ -2048,8 +2048,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /digest:\s*"AI Digest archive"/);
   assert.match(searchPage, /model pricing type:post/);
   assert.match(searchPage, /model pricing type:source/);
-  assert.match(searchPage, /model pricing type:ai-digest/);
-  assert.match(searchPage, /model pricing -type:ai-digest/);
+  assert.match(searchPage, /model pricing type:ai-digest-archive/);
+  assert.match(searchPage, /model pricing -type:ai-digest-archive/);
   assert.doesNotMatch(searchPage, /model pricing type:feed/);
   assert.match(searchPage, /searchDocumentTypeParamValue/);
   assert.doesNotMatch(searchPage, /params\.set\("type", type\)/);
@@ -2174,8 +2174,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /allinurl:release model/);
   assert.match(searchPage, /type:post/);
   assert.match(searchPage, /type:source/);
-  assert.match(searchPage, /type:ai-digest/);
-  assert.match(searchPage, /-type:ai-digest/);
+  assert.match(searchPage, /type:ai-digest-archive/);
+  assert.match(searchPage, /-type:ai-digest-archive/);
   assert.doesNotMatch(searchPage, /filetype:ai-digest/);
   assert.match(searchPage, /after:2026-01-01/);
   assert.match(searchPage, /-enterprise/);
