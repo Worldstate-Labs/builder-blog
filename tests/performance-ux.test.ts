@@ -3226,8 +3226,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /post-detail-raw/);
   assert.match(postCard, /className="post-detail-raw-head"/);
   assert.match(postCard, /className="post-detail-raw-toggle"/);
-  assert.match(postCard, /\{rawExpanded \? "Hide raw content" : "Show raw content"\}/);
-  assert.match(postCard, /\{rawExpanded \? \(\s*<div[\s\S]*aria-label="Raw content"[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"/);
+  assert.match(postCard, /\{rawExpanded \? "Hide crawled content" : "Show crawled content"\}/);
+  assert.match(postCard, /\{rawExpanded \? \(\s*<div[\s\S]*aria-label="Crawled content"[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"/);
   assert.match(postCard, /post-detail-section-label/);
   assert.match(postCard, /post-detail-body/);
   assert.match(postCard, /const detailSummary = normalizedText\(post\.summary\)/);
@@ -3247,7 +3247,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /id=\{rawRegionId\}/);
   assert.match(postCard, /ChevronDown/);
   assert.doesNotMatch(postCard, /See more|See less/);
-  assert.match(postCard, /Raw content/);
+  assert.match(postCard, /Crawled content/);
   assert.match(postCard, /showRawContent = true/);
   assert.match(postCard, /const showReadIndicator = Boolean\(dataRead && !isDetail\)/);
   assert.match(postCard, /showReadIndicator \?/);
@@ -3453,7 +3453,7 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(postCard, /accessibleLabel=\{actionLabel\("Summary method", actionContext\)\}/);
   assert.match(postCard, /aria-controls=\{rawRegionId\}/);
   assert.match(postCard, /aria-expanded=\{rawExpanded\}/);
-  assert.match(postCard, /aria-label="Raw content"[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"/);
+  assert.match(postCard, /aria-label="Crawled content"[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"/);
   assert.match(postCard, /Same post available via other source libraries/);
   assert.match(postCard, /additional source library/);
   assert.match(postCard, /additional source libraries/);
@@ -3464,7 +3464,7 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(fetchMethodPopover, /id=\{popoverId\}/);
   assert.match(postCard, /function compactActionContext/);
   assert.doesNotMatch(postCard, /aria-label="View original summary"/);
-  assert.doesNotMatch(postCard, /<button[\s\S]{0,320}aria-label="Raw content"/);
+  assert.doesNotMatch(postCard, /<button[\s\S]{0,320}aria-label="Crawled content"/);
   assert.match(postCard, /rawContentModeForSourceType\(builder\?\.sourceType \?\? post\.sourceType\)/);
   assert.match(postCard, /rawContentModesBySourceType/);
   assert.match(globals, /\.digest-group-heading/);

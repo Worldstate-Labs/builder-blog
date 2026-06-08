@@ -34,7 +34,7 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.match(feed, /stackActionsOnMobile=\{showAdminActions\}/);
   assert.match(postCard, /data-read/);
   assert.match(postCard, /data-stack-actions/);
-  assert.match(postCard, /Raw content/);
+  assert.match(postCard, /Crawled content/);
   assert.match(postCard, /showRawContent = true/);
   assert.doesNotMatch(feed, /mode = "following"|isFavoritesTab/);
   assert.match(feed, /onInteract=\{\(\) => markRead\(entry\.item\.id\)\}/);
@@ -239,7 +239,7 @@ test("post card action controls include the post title in accessible names", () 
   );
 
   assert.match(html, /aria-label="View original: Contextual Button Labels"/);
-  assert.match(html, /aria-label="Raw content: Contextual Button Labels"/);
+  assert.match(html, /aria-label="Crawled content: Contextual Button Labels"/);
   assert.doesNotMatch(html, />Read</);
   assert.doesNotMatch(html, /aria-label="Summary method: Contextual Button Labels"/);
   assert.doesNotMatch(html, /aria-label="View original summary: Contextual Button Labels"/);
@@ -250,7 +250,7 @@ test("post card action controls include the post title in accessible names", () 
   assert.doesNotMatch(html, />See less</);
   assert.match(html, /aria-controls="[^"]+-raw-content"/);
   assert.match(html, /aria-expanded="false"/);
-  assert.doesNotMatch(html, /aria-label="Raw content"/);
+  assert.doesNotMatch(html, /aria-label="Crawled content"/);
   assert.doesNotMatch(html, /aria-label="Summary method"/);
 
   const adminHtml = renderToStaticMarkup(

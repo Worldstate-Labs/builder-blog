@@ -145,7 +145,7 @@ export function PostCard({
   const rawContent = rawContentMode === "raw_summary"
     ? originalSummary || summary
     : post.body;
-  const rawContentLabel = rawContentMode === "raw_summary" ? "Source summary" : "Raw content";
+  const rawContentLabel = rawContentMode === "raw_summary" ? "Source summary" : "Crawled content";
   const detailSummary = normalizedText(post.summary);
   const detailRawContent = normalizedText(post.body);
   const showDetailSummary = Boolean(
@@ -247,10 +247,10 @@ export function PostCard({
             ) : null}
             <section
               className={`post-detail-raw${rawExpanded ? " post-detail-raw--expanded" : ""}`}
-              aria-label="Raw content"
+              aria-label="Crawled content"
             >
               <div className="post-detail-raw-head">
-                <h2 className="post-detail-section-label">Raw content</h2>
+                <h2 className="post-detail-section-label">Crawled content</h2>
                 <button
                   aria-controls={rawRegionId}
                   aria-expanded={rawExpanded}
@@ -259,12 +259,12 @@ export function PostCard({
                   type="button"
                 >
                   <BookOpen aria-hidden="true" className="post-detail-raw-toggle-icon" />
-                  {rawExpanded ? "Hide raw content" : "Show raw content"}
+                  {rawExpanded ? "Hide crawled content" : "Show crawled content"}
                 </button>
               </div>
               {rawExpanded ? (
                 <div
-                  aria-label="Raw content"
+                  aria-label="Crawled content"
                   className="post-detail-body"
                   id={rawRegionId}
                   role="region"
@@ -392,7 +392,7 @@ export function PostCard({
           </div>
         </div>
 
-        {/* Raw content collapsible region */}
+        {/* Crawled content collapsible region */}
         {rawExpanded && rawContent ? (
           <div
             aria-label={actionLabel(rawContentLabel, actionContext)}

@@ -2530,7 +2530,7 @@ test("web display boundaries keep raw fetched content in the builders tab", () =
   assert.equal(builderFeedItems.includes("formatPostDate"), true);
   assert.equal(builderFeedItems.includes("PostCard"), true);
   assert.equal(builderFeedItems.includes("showSourceBadge={false}"), true);
-  assert.equal(readFileSync("src/components/PostCard.tsx", "utf8").includes("Raw content"), true);
+  assert.equal(readFileSync("src/components/PostCard.tsx", "utf8").includes("Crawled content"), true);
 });
 
 test("source registry centralizes current source categories", () => {
