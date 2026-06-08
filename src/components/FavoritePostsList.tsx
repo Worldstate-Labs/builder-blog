@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { formatCount } from "@/components/Count";
-import { EmptyState } from "@/components/EmptyState";
+import { FeedEmptyState } from "@/components/FeedState";
 import { PostCard, type PostCardPost } from "@/components/PostCard";
 import { PostFavoriteButton } from "@/components/PostFavoriteButton";
 import { postDetailHref } from "@/lib/navigation";
@@ -38,7 +38,7 @@ export function FavoritePostsList({
 
   if (items.length === 0) {
     return (
-      <EmptyState
+      <FeedEmptyState
         actions={
           <div className="favorites-empty-actions">
             <Link className="fb-btn dark compact" href="/dashboard?tab=ai-digest">
@@ -49,8 +49,8 @@ export function FavoritePostsList({
             </Link>
           </div>
         }
-        className="favorites-empty feed-state-panel is-actionable"
-        title="No Favorites yet"
+        className="favorites-empty is-actionable"
+        title="No favorites yet"
         body="Save any post to build a focused reading queue here."
       />
     );

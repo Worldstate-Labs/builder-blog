@@ -104,9 +104,11 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(favoriteList, /href="\/dashboard\?tab=ai-digest"/);
   assert.match(favoriteList, /Open Following/);
   assert.match(favoriteList, /href="\/dashboard\?tab=following"/);
-  assert.match(favoriteList, /favorites-empty feed-state-panel is-actionable/);
+  assert.match(favoriteList, /@\/components\/FeedState/);
+  assert.match(favoriteList, /<FeedEmptyState/);
+  assert.match(favoriteList, /className="favorites-empty is-actionable"/);
   assert.match(favoriteList, /favorites-empty-actions/);
-  assert.match(favoriteList, /No Favorites yet/);
+  assert.match(favoriteList, /No favorites yet/);
   assert.match(favoriteList, /Save any post to build a focused reading queue here\./);
   assert.doesNotMatch(favoriteList, /Posts you marked for deeper reading/);
   assert.doesNotMatch(favoriteList, /Save posts from AI Digest or Following/);
