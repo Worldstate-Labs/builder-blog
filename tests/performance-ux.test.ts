@@ -269,7 +269,9 @@ test("workspace not-found uses the FollowBrief shell instead of the default Next
   assert.match(rootNotFoundPage, /Nothing to open here\./);
   assert.match(rootNotFoundPage, /signed-in FollowBrief workspace/);
   assert.match(rootNotFoundPage, /href="\/"/);
-  assert.match(rootNotFoundPage, /href="\/search"/);
+  assert.match(rootNotFoundPage, /href="\/login"/);
+  assert.match(rootNotFoundPage, /LogIn/);
+  assert.doesNotMatch(rootNotFoundPage, /href="\/search"|Search workspace/);
   assert.doesNotMatch(rootNotFoundPage, /This page could not be found|404 \|/);
   assert.doesNotMatch(rootNotFoundPage, /AppShell|page-pad|fb-login-nav/);
   assert.match(globals, /\.workspace-not-found-empty\s*{[\s\S]*border-style:\s*solid/);

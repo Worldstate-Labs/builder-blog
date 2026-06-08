@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Home, Search } from "lucide-react";
+import { Home, LogIn } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -35,9 +35,9 @@ export default function NotFound() {
             <Home aria-hidden="true" />
             Home
           </Link>
-          <Link className="fb-btn light" href="/search">
-            <Search aria-hidden="true" />
-            Search workspace
+          <Link className="fb-btn light" href="/login">
+            <LogIn aria-hidden="true" />
+            Sign in
           </Link>
         </div>
       </section>
