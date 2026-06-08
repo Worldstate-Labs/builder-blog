@@ -51,7 +51,12 @@ type SearchParams = Promise<{
 }>;
 
 const searchPageSize = 10;
-const emptySearchCopy = "Search sources, posts, and AI Digest archives.";
+const emptySearchCopyByType: Record<SearchTypeFilter, string> = {
+  all: "Search sources, posts, and AI Digest archives.",
+  builder: "Search sources.",
+  feed: "Search posts.",
+  digest: "Search AI Digest archives.",
+};
 const defaultSuggestions = [
   "model pricing",
   "open source models",
@@ -417,7 +422,9 @@ async function SearchResultsSection({
         </>
       ) : (
         <>
-          <SearchEmptyState title="Start with a search">{emptySearchCopy}</SearchEmptyState>
+          <SearchEmptyState title="Start with a search">
+            {emptySearchCopyForType(typeFilter)}
+          </SearchEmptyState>
           <RelatedSearches
             heading="Try searching"
             mode={mode}
@@ -478,10 +485,16 @@ function SearchResultsFallback({
           </div>
         </>
       ) : (
-        <SearchEmptyState title="Start with a search">{emptySearchCopy}</SearchEmptyState>
+        <SearchEmptyState title="Start with a search">
+          {emptySearchCopyForType(current)}
+        </SearchEmptyState>
       )}
     </section>
   );
+}
+
+function emptySearchCopyForType(typeFilter: SearchTypeFilter) {
+  return emptySearchCopyByType[typeFilter];
 }
 
 function SearchQueryInsights({
