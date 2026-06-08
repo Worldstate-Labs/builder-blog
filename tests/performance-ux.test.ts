@@ -302,6 +302,10 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(dashboardLoading, /home-loading-tab[\s\S]*Following/);
   assert.match(dashboardLoading, /home-loading-tab[\s\S]*Favorites/);
   assert.match(dashboardLoading, /className="home-tab-panel" aria-label="Loading Home content"/);
+  assert.match(dashboardLoading, /className="feed-content-stack home-loading-content"/);
+  assert.match(dashboardLoading, /className="feed-skeleton-list"/);
+  assert.match(dashboardLoading, /className="feed-skeleton-card" key=\{index\}/);
+  assert.doesNotMatch(dashboardLoading, /className="ai-digest-body"|home-loading-digest-card|home-loading-post-list|home-loading-post-row|home-loading-line/);
   assert.doesNotMatch(dashboardLoading, /aria-label="Loading AI Digest selection"/);
   assert.doesNotMatch(dashboardLoading, /className="digest-control-bar home-loading-control"/);
   assert.doesNotMatch(dashboardLoading, /className="home-loading-field"/);
@@ -1187,9 +1191,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.search-loading-tabs\s*{[\s\S]*pointer-events:\s*none/);
   assert.doesNotMatch(globals, /\.search-loading-tab\.is-active/);
   assert.match(globals, /\.search-loading-input,[\s\S]*\.search-loading-button\s*{[\s\S]*animation:\s*pulse/);
-  assert.match(globals, /\.home-loading-line,[\s\S]*\.home-loading-post-row\s*{[\s\S]*animation:\s*pulse/);
+  assert.doesNotMatch(globals, /\.home-loading-line|\.home-loading-post-row|\.home-loading-digest-card|\.home-loading-post-list/);
   assert.match(globals, /\.library-hub-skeleton-line,[\s\S]*\.library-hub-skeleton-card\s*{[\s\S]*animation:\s*pulse/);
-  assert.match(globals, /\.home-loading-digest-card\s*{[\s\S]*background:\s*var\(--paper-strong\)/);
   assert.match(globals, /\.workspace-top-tabs\.fb-segmented-tabs\s*{[\s\S]*background:\s*transparent/);
   assert.doesNotMatch(globals, /\.home-feed-tabs|\.sources-subtabs/);
   assert.doesNotMatch(globals, /\.workspace-top-tabs\s*{[^}]*background:|\.filter-tabs\s*{[^}]*background:|\.mobile-filter-tabs\s*{[^}]*background:|\.sync-panel-tabs\s*{[^}]*background:/);

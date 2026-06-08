@@ -19,16 +19,10 @@ export default function DashboardLoading() {
         </div>
 
         <section className="home-tab-panel" aria-label="Loading Home content">
-          <div className="ai-digest-body" aria-hidden="true">
-            <div className="home-loading-digest-card">
-              <span className="home-loading-line is-kicker" />
-              <span className="home-loading-line is-title" />
-              <span className="home-loading-line" />
-              <span className="home-loading-line is-short" />
-            </div>
-            <div className="home-loading-post-list">
+          <div className="feed-content-stack home-loading-content" aria-hidden="true">
+            <div className="feed-skeleton-list">
               {[0, 1, 2].map((index) => (
-                <span className="home-loading-post-row" key={index} />
+                <div className="feed-skeleton-card" key={index} />
               ))}
             </div>
           </div>
