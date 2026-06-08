@@ -1320,7 +1320,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(recommendationFeed, /useState\(\(\) => nonEmptySnapshots\(initialSnapshots\)\)/);
   assert.match(recommendationFeed, /return nonEmptySnapshots\(snapshots\)\.filter/);
   assert.match(recommendationFeed, /function nonEmptySnapshots/);
-  assert.match(recommendationFeed, /Following update/);
+  assert.match(recommendationFeed, /Following snapshot/);
+  assert.doesNotMatch(recommendationFeed, /Following update/);
   assert.doesNotMatch(recommendationFeed, />Picks</);
   assert.match(recommendationFeed, /className="feed-load-more"/);
   assert.match(recommendationFeed, /const \[loadErrorDirection, setLoadErrorDirection\] = useState<"append" \| "prepend" \| null>\(null\)/);

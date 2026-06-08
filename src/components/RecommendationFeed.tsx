@@ -149,7 +149,7 @@ export function RecommendationFeed({
         {snapshots.map((snapshot) => (
           <section className="recommendation-snapshot" key={snapshot.id}>
             <div className="recommendation-snapshot-header">
-              <span>Following update</span>
+              <span>Following snapshot</span>
               <span>{formatDate(snapshot.createdAt, hydrated)}</span>
               <CountMeta
                 label={snapshot.items.length === 1 ? "post" : "posts"}
