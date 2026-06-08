@@ -194,8 +194,29 @@ function DigestSourcesFallback() {
   return (
     <section className="digest-source-management" aria-live="polite" aria-busy="true">
       <span className="sr-only">Loading AI Digest controls</span>
-      <div className="source-sync-skeleton-panel" />
-      <div className="source-sync-skeleton-panel" />
+      <section className="your-digest-section" aria-label="Loading your AI Digest collection">
+        <div className="library-hub-toolbar">
+          <div className="library-hub-toolbar-copy">
+            <h2 className="fb-section-heading">
+              Your AI Digest collection
+            </h2>
+            <div className="source-sync-skeleton-line" />
+          </div>
+          <div className="source-section-skeleton-chip" />
+        </div>
+        <div className="source-sync-skeleton-panel" />
+      </section>
+      <section className="digest-source-management" aria-label="Loading imported AI Digest archives">
+        <div className="library-hub-toolbar">
+          <div className="library-hub-toolbar-copy">
+            <h2 className="fb-section-heading">
+              Imported AI Digest archives
+            </h2>
+            <div className="source-sync-skeleton-line" />
+          </div>
+        </div>
+        <div className="source-sync-skeleton-panel" />
+      </section>
     </section>
   );
 }
