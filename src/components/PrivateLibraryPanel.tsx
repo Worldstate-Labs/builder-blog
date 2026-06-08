@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { Plus, X } from "lucide-react";
 import { AddBuilderForm } from "@/components/AddBuilderForm";
 import {
@@ -33,6 +33,7 @@ export function PrivateLibraryPanel({
   children: ReactNode;
 }) {
   const [addOpen, setAddOpen] = useState(false);
+  const addPanelId = useId();
 
   useEffect(() => {
     function onBuilderAdded(event: Event) {
@@ -76,6 +77,7 @@ export function PrivateLibraryPanel({
         <div className="library-source-list-shell">
           <div className="library-source-list-tools">
             <button
+              aria-controls={addPanelId}
               aria-expanded={addOpen}
               aria-label={addOpen ? "Close add source" : "Add source"}
               className="library-add-source-toggle"
@@ -87,7 +89,7 @@ export function PrivateLibraryPanel({
             </button>
           </div>
           {addOpen ? (
-            <div className="add-source-panel fb-panel">
+            <div className="add-source-panel fb-panel" id={addPanelId}>
               <AddBuilderForm sourceOptions={sourceOptions} />
             </div>
           ) : null}

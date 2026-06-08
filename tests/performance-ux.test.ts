@@ -2971,7 +2971,12 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(addBuilderForm, /className="mt-1 rounded-md border/);
   assert.doesNotMatch(addBuilderForm, /h-3\.5 w-3\.5|w-full justify-center|sm:w-auto/);
   const privateLibraryPanel = source("src/components/PrivateLibraryPanel.tsx");
+  assert.match(privateLibraryPanel, /useId/);
+  assert.match(privateLibraryPanel, /const addPanelId = useId\(\)/);
+  assert.match(privateLibraryPanel, /aria-controls=\{addPanelId\}/);
+  assert.match(privateLibraryPanel, /aria-expanded=\{addOpen\}/);
   assert.match(privateLibraryPanel, /className="add-source-panel fb-panel"/);
+  assert.match(privateLibraryPanel, /className="add-source-panel fb-panel" id=\{addPanelId\}/);
   assert.match(privateLibraryPanel, /className="library-source-list-shell"/);
   assert.match(privateLibraryPanel, /className="library-source-list-tools"/);
   assert.match(privateLibraryPanel, /className="library-add-source-toggle"/);
