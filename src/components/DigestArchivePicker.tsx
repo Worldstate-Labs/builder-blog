@@ -31,6 +31,13 @@ export function DigestArchivePicker({
   const pickerRef = useRef<HTMLDetailsElement>(null);
   const summaryRef = useRef<HTMLElement>(null);
   const selectedDigest = digests.find((digest) => digest.id === selectedDigestId) ?? digests[0];
+  const selectedLabel = selectedDigest
+    ? digestArchiveLabel({
+        digest: selectedDigest,
+        hydrated,
+        isLatest: selectedDigest.id === latestDigestId,
+      })
+    : "";
 
   useEffect(() => {
     if (!open) return;
@@ -47,7 +54,7 @@ export function DigestArchivePicker({
 
   if (digests.length <= 1) {
     return (
-      <div className="digest-picker-static" aria-label="AI Digest archive">
+      <div className="digest-picker-static" aria-label={`AI Digest archive: ${selectedLabel}`}>
         <DigestPickerItem
           digest={selectedDigest}
           hydrated={hydrated}
@@ -98,7 +105,7 @@ export function DigestArchivePicker({
         aria-controls={menuId}
         aria-expanded={open}
         aria-haspopup="listbox"
-        aria-label="Choose AI Digest archive"
+        aria-label={`Choose AI Digest archive, current: ${selectedLabel}`}
         className="digest-picker-summary"
         onClick={(event) => {
           event.preventDefault();
@@ -159,6 +166,23 @@ function DigestPickerItem({
       {isLatest ? <span className="digest-latest-mark">Latest</span> : null}
     </span>
   );
+}
+
+function digestArchiveLabel({
+  digest,
+  hydrated,
+  isLatest,
+}: {
+  digest: DigestArchivePickerOption;
+  hydrated: boolean;
+  isLatest: boolean;
+}) {
+  const postLabel = `${digest.itemCount} ${digest.itemCount === 1 ? "post" : "posts"}`;
+  return [
+    formatDigestPickerDate(digest.createdAt, hydrated),
+    postLabel,
+    isLatest ? "Latest" : "",
+  ].filter(Boolean).join(", ");
 }
 
 function digestHref({
