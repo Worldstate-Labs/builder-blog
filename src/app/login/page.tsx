@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { BookOpenCheck, Search, UsersRound } from "lucide-react";
+import { BookOpenCheck, Rss, Search } from "lucide-react";
 import { AuthButtons } from "@/components/AuthButtons";
 import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -42,7 +42,7 @@ export default async function LoginPage({
             posts, and AI Digest archives searchable.
           </p>
           <div className="fb-login-proof-rail" aria-label="Workspace capabilities">
-            <LoginProof icon={UsersRound} label="Follow" />
+            <LoginProof icon={Rss} label="Follow" />
             <LoginProof icon={BookOpenCheck} label="Build AI Digest" />
             <LoginProof icon={Search} label="Search workspace" />
           </div>

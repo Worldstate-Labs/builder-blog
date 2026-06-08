@@ -451,7 +451,10 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(landingPage, /className="grid gap/);
   assert.doesNotMatch(landingPage, /className="mt-/);
   assert.doesNotMatch(landingPage, /className="rounded-lg border/);
+  assert.match(landingPage, /import \{ Newspaper, Radio, Rss, Search, Terminal \} from "lucide-react"/);
+  assert.match(landingPage, /icon: Rss,[\s\S]*title: "Choose sources"/);
   assert.match(landingPage, /Newspaper/);
+  assert.doesNotMatch(landingPage, /UsersRound/);
   assert.doesNotMatch(landingPage, /Sparkles/);
   assert.match(landingPage, /GitHub Trending/);
   assert.match(landingPage, /Product Hunt/);
@@ -503,6 +506,9 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(loginPage, /sources, posts, saved posts, and AI Digests searchable/);
   assert.doesNotMatch(loginPage, /sources, posts, Favorites, and AI Digests searchable/);
   assert.doesNotMatch(loginPage, /keep your\s+AI Digests searchable/);
+  assert.match(loginPage, /import \{ BookOpenCheck, Rss, Search \} from "lucide-react"/);
+  assert.match(loginPage, /<LoginProof icon=\{Rss\} label="Follow" \/>/);
+  assert.doesNotMatch(loginPage, /UsersRound/);
   assert.match(loginPage, /label="Follow"/);
   assert.match(loginPage, /label="Build AI Digest"/);
   assert.match(loginPage, /label="Search workspace"/);

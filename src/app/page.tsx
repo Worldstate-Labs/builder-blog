@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Newspaper, Radio, Search, Terminal, UsersRound } from "lucide-react";
+import { Newspaper, Radio, Rss, Search, Terminal } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { getCurrentSession } from "@/lib/auth";
@@ -139,7 +139,7 @@ export default async function Home() {
           {[
             {
               i: "01",
-              icon: UsersRound,
+              icon: Rss,
               title: "Choose sources",
               copy: "Start from shared source libraries, then add blogs, channels, feeds, GitHub Trending, Product Hunt, and sources your Local Agent can fetch.",
             },
