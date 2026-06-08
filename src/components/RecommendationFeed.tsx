@@ -97,7 +97,7 @@ export function RecommendationFeed({
       await setPostFavorite(feedItemId, nextFavorite);
     } catch {
       setSnapshots((current) => restoreFavoriteState(current, feedItemId, previousFavoritedAt));
-      setFavoriteError("Could not update saved state. Try again.");
+      setFavoriteError("Could not update favorite. Try again.");
     } finally {
       setPendingFavoriteIds((current) => {
         const next = new Set(current);

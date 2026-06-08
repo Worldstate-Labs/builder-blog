@@ -155,7 +155,7 @@ export function DigestDetails({
         ...current,
         favoriteErrorByUrl: {
           ...current.favoriteErrorByUrl,
-          [url]: "Could not update saved state. Try again.",
+          [url]: "Could not update favorite. Try again.",
         },
         favoriteStateByUrl: {
           ...current.favoriteStateByUrl,
