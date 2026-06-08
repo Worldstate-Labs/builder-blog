@@ -255,6 +255,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
           >
             {visibleFilters.map((filter) => (
               <button
+                aria-label={sourceLibraryFilterLabel(filter, counts[filter.key])}
                 aria-pressed={activeFilter === filter.key}
                 className="fb-btn compact"
                 data-active={activeFilter === filter.key ? "true" : undefined}
@@ -274,6 +275,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
           >
             {visibleFilters.map((filter) => (
               <button
+                aria-label={sourceLibraryFilterLabel(filter, counts[filter.key])}
                 aria-pressed={activeFilter === filter.key}
                 className="fb-btn compact"
                 data-active={activeFilter === filter.key ? "true" : undefined}
@@ -387,6 +389,13 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
       </dialog>
     </section>
   );
+}
+
+function sourceLibraryFilterLabel(
+  filter: (typeof FILTERS)[number],
+  count: number,
+) {
+  return `${filter.label}, ${formatCount(count)} ${count === 1 ? "source library" : "source libraries"}`;
 }
 
 function HubCard({

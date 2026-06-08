@@ -2529,6 +2529,12 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /shortLabel:\s*"All libraries"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /shortLabel:\s*"My libraries"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /\{filter\.shortLabel\}/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /function sourceLibraryFilterLabel/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /`\$\{filter\.label\}, \$\{formatCount\(count\)\} \$\{count === 1 \? "source library" : "source libraries"\}`/);
+  assert.equal(
+    (source("src/components/LibraryHubImportForm.tsx").match(/aria-label=\{sourceLibraryFilterLabel\(filter, counts\[filter\.key\]\)\}/g) ?? []).length,
+    2,
+  );
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /My source libraries/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Your source library/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /aria-label="Source library filter"/);
