@@ -299,7 +299,7 @@ async function SearchResultsSection({
         <>
           <div className="search-meta-row">
             <CountRange>
-              About {formatCount(filteredResults.length)} result
+              {formatCount(filteredResults.length)} result
               {filteredResults.length === 1 ? "" : "s"} for <span>{activeQuery}</span>
             </CountRange>
             {pageCount > 1 ? (

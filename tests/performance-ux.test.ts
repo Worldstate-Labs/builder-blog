@@ -2108,7 +2108,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /className="search-advanced-tools-icon"/);
   assert.doesNotMatch(searchPage, /Search tools/);
   assert.doesNotMatch(searchPage, /className="search-tools-row"/);
-  assert.match(searchPage, /className="search-meta-row"[\s\S]*About \{formatCount\(filteredResults\.length\)\} result[\s\S]*Page \{formatCount\(currentPage\)\} of \{formatCount\(pageCount\)\}/);
+  assert.match(searchPage, /className="search-meta-row"[\s\S]*\{formatCount\(filteredResults\.length\)\} result[\s\S]*Page \{formatCount\(currentPage\)\} of \{formatCount\(pageCount\)\}/);
+  assert.doesNotMatch(searchPage, /About \{formatCount\(filteredResults\.length\)\} result/);
   assert.match(searchPage, /<ResultCard[\s\S]*currentPage=\{currentPage\}/);
   assert.match(searchPage, /currentPage: number/);
   assert.match(searchPage, /searchHref\(\{ query, type: typeFilter, mode, sort, time, page: currentPage \}\)/);
