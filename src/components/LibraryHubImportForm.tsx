@@ -135,7 +135,11 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
   const showFilters = libraries.length > 3 && visibleFilters.length > 1;
   const listCopy = sourceLibraryListCopy(activeFilter);
   const emptyTitle =
-    activeFilter === "all" ? "No source libraries yet" : "No matching source libraries";
+    activeFilter === "all"
+      ? "No source libraries yet"
+      : activeFilter === "imported"
+        ? "No imported source libraries"
+        : "No matching source libraries";
   const emptyBody =
     activeFilter === "all"
       ? "Source libraries built and shared by other users will appear here."
@@ -588,7 +592,7 @@ function sourceLibraryListCopy(filter: FilterKey) {
     case "imported":
       return {
         description: "Source libraries you imported into Sources.",
-        emptyBody: "Imported source libraries will appear here.",
+        emptyBody: "Import source libraries from Hub to see them in Sources.",
       };
     case "shared":
       return {
