@@ -205,13 +205,20 @@ export function DigestPipelineImportForm({
   }
 
   function closeRemoveDialog() {
+    if (removeDialogRef.current?.open) {
+      removeDialogRef.current.close();
+    }
+    setRemoveTargetId(null);
+  }
+
+  function handleRemoveDialogClose() {
     setRemoveTargetId(null);
   }
 
   function confirmRemoveImported() {
     if (!removeTargetId) return;
     const pipelineId = removeTargetId;
-    setRemoveTargetId(null);
+    closeRemoveDialog();
     removeImported(pipelineId);
   }
 
@@ -275,7 +282,7 @@ export function DigestPipelineImportForm({
         onClick={(event) => {
           if (event.target === removeDialogRef.current) closeRemoveDialog();
         }}
-        onClose={closeRemoveDialog}
+        onClose={handleRemoveDialogClose}
         ref={removeDialogRef}
       >
         {removeTarget ? (

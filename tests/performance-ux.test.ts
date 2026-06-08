@@ -2818,6 +2818,10 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Imported source libraries will appear here\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Could not import source library\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Could not remove source library import\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /function handleRemoveDialogClose\(\)/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /onClose=\{handleRemoveDialogClose\}/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /if \(removeDialogRef\.current\?\.open\) \{/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /onClose=\{closeRemoveDialog\}/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Import source library \$\{library\.name\}/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /\?\s*"Importing"\s*:\s*"Import"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /"Import source library"|Importing source library/);
@@ -2928,6 +2932,10 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Import AI Digest archive \$\{pipeline\.title\}/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /\?\s*"Importing"\s*:\s*"Import"/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /"Import AI Digest archive"|Importing AI Digest archive/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /function handleRemoveDialogClose\(\)/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /onClose=\{handleRemoveDialogClose\}/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /if \(removeDialogRef\.current\?\.open\) \{/);
+  assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /onClose=\{closeRemoveDialog\}/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /hub-card-action-button/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /hub-card-remove-button/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /flex flex-wrap items-center gap-2|disabled:cursor-wait/);
