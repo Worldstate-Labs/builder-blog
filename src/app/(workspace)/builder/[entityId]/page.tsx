@@ -336,9 +336,12 @@ async function ChannelsListSlot({
           key={channel.builderId}
           className="builder-detail-channel-row"
         >
-          <div>
-            <div className="builder-detail-channel-name">
-              {formatChannelLibraryName(channel)}
+          <div className="builder-detail-channel-copy">
+            <div className="builder-detail-channel-title-row">
+              <div className="builder-detail-channel-name">
+                {formatChannelLibraryName(channel)}
+              </div>
+              <SourceBadge sourceType={channel.sourceType} />
             </div>
             {channel.sourceUrl ? (
               <a
@@ -349,6 +352,7 @@ async function ChannelsListSlot({
                 target="_blank"
                 title="View source site"
               >
+                <ExternalLink aria-hidden="true" />
                 View source site
               </a>
             ) : null}

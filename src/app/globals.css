@@ -8935,6 +8935,7 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .builder-detail-channel-row {
+  align-items: center;
   border-bottom: 1px solid var(--line);
   display: grid;
   gap: 0.75rem;
@@ -8942,16 +8943,40 @@ a.fb-hub-source-name:focus-visible {
   padding-block: 0.75rem;
 }
 
+.builder-detail-channel-copy {
+  display: grid;
+  gap: 0.38rem;
+  min-width: 0;
+}
+
+.builder-detail-channel-title-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
 .builder-detail-channel-name {
   color: var(--ink);
   font-size: 0.875rem;
   font-weight: 650;
+  min-width: 0;
 }
 
 .builder-detail-channel-link {
+  align-items: center;
   color: var(--accent);
+  display: inline-flex;
   font-size: 0.75rem;
   font-weight: 700;
+  gap: 0.28rem;
+  width: fit-content;
+}
+
+.builder-detail-channel-link svg {
+  height: 0.78rem;
+  width: 0.78rem;
 }
 
 .builder-detail-channel-link:hover {

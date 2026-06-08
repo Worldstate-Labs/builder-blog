@@ -1094,7 +1094,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /aria-label=\{`View \$\{sourceName\} source site`\}/);
   assert.doesNotMatch(builderDetailPage, /aria-label=\{`View \$\{channel\.libraryName\} source site`\}/);
   assert.match(builderDetailPage, /title="View source site"/);
-  assert.match(builderDetailPage, />\s*View source site\s*<\/a>/);
+  assert.match(builderDetailPage, /<ExternalLink aria-hidden="true" \/>[\s\S]*View source site/);
   assert.doesNotMatch(builderDetailPage, /className="builder-library-open-source"/);
   assert.doesNotMatch(builderDetailPage, /Open source/);
   assert.match(builderDetailPage, /className="builder-detail-bio fb-desc"/);
@@ -1119,6 +1119,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(builderDetailPage, /channels\.length === 1 \? "source library" : "source libraries"/);
   assert.match(builderDetailPage, /className="builder-detail-channel-list"/);
   assert.match(builderDetailPage, /className="builder-detail-channel-row"/);
+  assert.match(builderDetailPage, /className="builder-detail-channel-copy"/);
+  assert.match(builderDetailPage, /className="builder-detail-channel-title-row"/);
+  assert.match(builderDetailPage, /<SourceBadge sourceType=\{channel\.sourceType\} \/>/);
   assert.match(builderDetailPage, /function channelLibraryLabel/);
   assert.match(builderDetailPage, /return "Your source library"/);
   assert.match(builderDetailPage, /return "Community source library"/);
@@ -1191,6 +1194,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.builder-detail-channels-summary::after\s*{[\s\S]*border-bottom:\s*1\.8px solid currentcolor/);
   assert.match(globals, /\.builder-detail-channels-summary::after\s*{[\s\S]*transform:\s*rotate\(45deg\)/);
   assert.match(globals, /\.builder-detail-channels\[open\] \.builder-detail-channels-summary::after\s*{[\s\S]*transform:\s*rotate\(225deg\)/);
+  assert.match(globals, /\.builder-detail-channel-copy\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.builder-detail-channel-title-row\s*{[\s\S]*display:\s*flex/);
+  assert.match(globals, /\.builder-detail-channel-link svg\s*{[\s\S]*height:\s*0\.78rem/);
   assert.match(globals, /\.inline-disclosure > summary::after\s*{[\s\S]*border-bottom:\s*1\.8px solid currentcolor/);
   assert.doesNotMatch(globals, /content:\s*"\+"/);
   assert.match(globals, /\.channel-preference-button\s*{[\s\S]*display:\s*inline-flex/);
