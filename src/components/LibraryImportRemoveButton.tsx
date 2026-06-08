@@ -81,7 +81,7 @@ export function LibraryImportRemoveButton({
                 library will no longer appear in your Sources page or Following.
               </p>
               <p className="settings-dialog-warning">
-                You can import it again from the Hub later.
+                You can import it again from Hub later.
               </p>
             </div>
             <div className="settings-dialog-actions">

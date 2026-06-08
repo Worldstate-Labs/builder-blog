@@ -352,7 +352,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
                 Following.
               </p>
               <p className="settings-dialog-warning">
-                You can import it again from the Hub later.
+                You can import it again from Hub later.
               </p>
             </div>
             <div className="settings-dialog-actions">
