@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { EmptyState } from "@/components/EmptyState";
 import { PostCard, type PostCardPost } from "@/components/PostCard";
@@ -37,7 +38,17 @@ export function FavoritePostsList({
   if (items.length === 0) {
     return (
       <EmptyState
-        className="favorites-empty feed-state-panel"
+        actions={
+          <div className="favorites-empty-actions">
+            <Link className="fb-btn dark compact" href="/dashboard">
+              Open AI Digest
+            </Link>
+            <Link className="fb-btn light compact" href="/dashboard?tab=following">
+              Open Following
+            </Link>
+          </div>
+        }
+        className="favorites-empty feed-state-panel is-actionable"
         title="No saved posts yet"
         body="Save posts from AI Digest or Following to keep a focused reading queue here."
       />

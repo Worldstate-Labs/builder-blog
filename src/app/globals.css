@@ -5074,6 +5074,13 @@ a.reading-source-label:focus-visible {
   margin-top: 1rem;
 }
 
+.favorites-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
 .workspace-not-found-empty {
   border-style: solid;
 }

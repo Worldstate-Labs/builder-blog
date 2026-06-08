@@ -94,6 +94,12 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(favoriteSection, /feedRead\.findMany/);
   assert.match(favoriteList, /Saved posts/);
   assert.match(favoriteList, /Posts you saved for deeper reading/);
+  assert.match(favoriteList, /Open AI Digest/);
+  assert.match(favoriteList, /href="\/dashboard"/);
+  assert.match(favoriteList, /Open Following/);
+  assert.match(favoriteList, /href="\/dashboard\?tab=following"/);
+  assert.match(favoriteList, /favorites-empty feed-state-panel is-actionable/);
+  assert.match(favoriteList, /favorites-empty-actions/);
   assert.doesNotMatch(favoriteList, /Posts you marked for deeper reading/);
   assert.match(favoriteList, /postDetailHref\(item\.feedItemId, "\/dashboard\?tab=favorites", "Favorites"\)/);
   assert.match(favoriteList, /Remove saved post|PostFavoriteButton/);
@@ -116,6 +122,7 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.doesNotMatch(globals, /data-favorite-read="true"|favorite-read-label|favorite-mark-read/);
   assert.doesNotMatch(globals, /inset 4px 0 0/);
   assert.doesNotMatch(globals, /linear-gradient\(\s*90deg/);
+  assert.match(globals, /\.favorites-empty-actions\s*{[\s\S]*flex-wrap:\s*wrap/);
 });
 
 test("digest posts can render a save control for their source feed item", () => {
