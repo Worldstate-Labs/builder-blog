@@ -10161,22 +10161,22 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-device-title {
   color: var(--ink);
-  font-size: 1.0625rem;
+  font-size: 1.125rem;
   font-weight: 500;
   letter-spacing: 0;
-  line-height: 1.22;
+  line-height: 1.2;
   overflow-wrap: anywhere;
 }
 
 .access-key-device-copy {
   display: grid;
-  gap: 0.22rem;
+  gap: 0.32rem;
   min-width: 0;
 }
 
 .access-key-device-status {
   color: var(--muted-strong);
-  font-size: 0.9375rem;
+  font-size: 1rem;
   line-height: 1.3;
 }
 
@@ -10199,7 +10199,7 @@ a.fb-hub-source-name:focus-visible {
 .access-key-revoked-pill {
   align-items: center;
   align-self: center;
-  background: color-mix(in oklch, var(--ink) 5%, var(--paper-strong));
+  background: var(--paper-strong);
   border: 0;
   border-radius: 999px;
   color: var(--ink);
@@ -10222,7 +10222,7 @@ a.fb-hub-source-name:focus-visible {
 
 .access-key-revoke-button:hover,
 .access-key-revoke-button:focus-visible {
-  background: color-mix(in oklch, var(--ink) 8%, var(--paper-strong));
+  background: color-mix(in oklch, var(--ink) 7%, var(--paper-strong));
 }
 
 .access-key-revoke-button:disabled {
@@ -10276,15 +10276,15 @@ a.fb-hub-source-name:focus-visible {
 .access-key-card {
   align-items: center;
   background: var(--paper);
-  border: 1px solid color-mix(in oklch, var(--line) 86%, var(--ink) 14%);
-  border-radius: 16px;
+  border: 1px solid color-mix(in oklch, var(--line) 92%, var(--ink) 8%);
+  border-radius: 18px;
   box-shadow: none;
   display: grid;
-  gap: 1.05rem;
+  gap: 1.15rem;
   grid-template-columns: 2rem minmax(0, 1fr) max-content;
-  min-height: 4.7rem;
+  min-height: 5rem;
   min-width: 0;
-  padding: 1rem 1.2rem;
+  padding: 1.1rem 1.35rem;
 }
 
 .access-key-card--revoked {
@@ -11542,16 +11542,16 @@ body {
   .access-key-card {
     gap: 0.8rem;
     grid-template-columns: 2rem minmax(0, 1fr);
-    min-height: 4.7rem;
-    padding: 1rem;
+    min-height: 5rem;
+    padding: 1.05rem;
   }
 
   .access-keys-list--skeleton .settings-skeleton-row {
-    height: 4.7rem;
+    height: 5rem;
   }
 
   .access-key-card--skeleton {
-    min-height: 4.7rem;
+    min-height: 5rem;
   }
 
   .access-key-revoke-button,
@@ -11571,11 +11571,11 @@ body {
   }
 
   .access-key-device-title {
-    font-size: 1.0625rem;
+    font-size: 1.125rem;
   }
 
   .access-key-device-status {
-    font-size: 0.9375rem;
+    font-size: 1rem;
   }
 
   .access-key-device-icon {
