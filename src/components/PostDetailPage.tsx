@@ -87,7 +87,7 @@ export async function PostDetailPage({
           className="reading-source-label"
           href={sourceHref}
         >
-          <SourceBadge builder={sourceBuilder} decorative showLabel={false} />
+          <SourceBadge builder={sourceBuilder} />
           <span className="reading-source-copy">Source: {sourceLabel}</span>
         </Link>
       </nav>
