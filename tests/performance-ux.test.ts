@@ -2721,6 +2721,10 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries built and shared by other users\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /sourceLibraryListCopy\(activeFilter\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /function sourceLibraryListCopy\(filter: FilterKey\)/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /showFilters && activeFilter !== "all"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="hub-list-context"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /\{listCopy\.description\}/);
+  assert.match(source("src/app/globals.css"), /\.hub-list-context\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Curated source libraries maintained by FollowBrief\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries you publish or manage\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries from Hub that are already available in your Sources\./);

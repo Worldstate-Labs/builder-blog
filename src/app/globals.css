@@ -4114,6 +4114,14 @@ a.reading-source-label:focus-visible {
   margin-top: 1.75rem;
 }
 
+.hub-list-context {
+  color: var(--muted-strong);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  margin: 0.875rem 0 0;
+  max-width: var(--copy-max);
+}
+
 .hub-list-count-row {
   display: flex;
   justify-content: flex-end;

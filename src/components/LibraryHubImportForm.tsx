@@ -290,6 +290,10 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         </>
       ) : null}
 
+      {showFilters && activeFilter !== "all" ? (
+        <p className="hub-list-context">{listCopy.description}</p>
+      ) : null}
+
       {error ? (
         <p className="hub-form-error" role="status">
           {error}
