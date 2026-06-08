@@ -874,7 +874,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /SUMMARY_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /How each post from this source is written as a per-post summary/);
   assert.match(adminSourceTypeManager, /one-time or scheduled run prompt/);
-  assert.match(adminSourceTypeManager, /Posts that fail are not saved or used in Following and AI Digests/);
+  assert.match(adminSourceTypeManager, /Posts that fail are not saved or used in Following or AI Digest/);
   assert.match(adminSourceTypeManager, /Drop posts whose body has fewer characters than this/);
   assert.match(adminSourceTypeManager, /Drop posts with too little real text/);
   assert.match(adminSourceTypeManager, /Could not save source type settings\./);
@@ -896,10 +896,10 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(adminSourceTypeManager, /style=\{\{/);
   assert.doesNotMatch(adminSourceTypeManager, /cursor-pointer select-none|ml-auto inline-flex|text-base font-medium/);
   assert.match(settingsPage, /canEditQualityGates=\{isAdmin\}/);
-  assert.match(commonRulesForm, /Following or AI Digests/);
+  assert.match(commonRulesForm, /Following or AI Digest/);
   assert.match(commonRulesForm, /function clearSavedStatus\(\)/);
   assert.match(commonRulesForm, /onStatusAutoDismiss=\{clearSavedStatus\}/);
-  assert.doesNotMatch(commonRulesForm, /feeds or digests/);
+  assert.doesNotMatch(commonRulesForm, /feeds or digests|Following or AI Digests/);
   assert.match(commonRulesForm, /placeholder=\{\[/);
   assert.match(markdownEditor, /placeholder\?: string/);
   assert.match(markdownEditor, /placeholder=\{placeholder\}/);

@@ -286,7 +286,7 @@ function SourceTypeCard({
           <Section
             step="03"
             title="Quality gates"
-            description="Length, diversity, and timestamp-density checks applied after extraction. Posts that fail are not saved or used in Following and AI Digests."
+            description="Length, diversity, and timestamp-density checks applied after extraction. Posts that fail are not saved or used in Following or AI Digest."
           >
             <div className="source-type-quality-grid">
               <FieldNumber
