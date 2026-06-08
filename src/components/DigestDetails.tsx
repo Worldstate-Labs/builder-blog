@@ -383,7 +383,9 @@ function DigestHeadlineSummary({
                   }}
                 />
                 <div className="digest-headline-item-body">
-                  <p className="digest-headline-source-name">{item.sourceName}</p>
+                  <p className="digest-headline-source-name" title={item.sourceName}>
+                    {item.sourceName}
+                  </p>
                   <p className="digest-headline-item-text">{item.summary}</p>
                 </div>
               </li>

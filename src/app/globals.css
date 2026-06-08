@@ -2155,7 +2155,6 @@ a.reading-source-label:focus-visible {
   color: var(--muted-strong);
   font-size: 0.72rem;
   font-weight: 720;
-  letter-spacing: 0.02em;
   line-height: 1.25;
   margin: 0;
   min-width: 0;

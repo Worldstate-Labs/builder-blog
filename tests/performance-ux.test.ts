@@ -1952,6 +1952,7 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(digestDetails, /headlineIsLoading \? \(/);
   assert.match(digestDetails, /<SourceAvatar/);
   assert.match(digestDetails, /digest-headline-source-name/);
+  assert.match(digestDetails, /title=\{item\.sourceName\}/);
   assert.match(digestDetails, /\{item\.sourceName\}/);
   assert.match(digestDetails, /digest-headline-list/);
   assert.match(globals, /\.digest-headline-text\s*{[\s\S]*max-width:\s*none/);
