@@ -16,11 +16,11 @@ export default function WorkspaceNotFound() {
             <div className="workspace-not-found-actions">
               <Link className="fb-btn dark" href="/dashboard">
                 <Home aria-hidden="true" />
-                Home
+                Return Home
               </Link>
               <Link className="fb-btn light" href="/search">
                 <Search aria-hidden="true" />
-                Search
+                Search workspace
               </Link>
             </div>
           }
