@@ -10,12 +10,16 @@ import {
   RotateCcw,
   X,
 } from "lucide-react";
-import { CountBadge, CountRange, formatCount } from "@/components/Count";
+import { CountRange, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { PostCard } from "@/components/PostCard";
 import { PostFavoriteControl } from "@/components/PostFavoriteControl";
 import { SearchForm, type SearchTypeFilter } from "@/components/SearchForm";
+import {
+  SearchTypeTabs as SearchTypeTabsControl,
+  type SearchTypeTabItem,
+} from "@/components/SearchTypeTabs";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { SourceBadge } from "@/components/SourceBadge";
 import { getCurrentSession } from "@/lib/auth";
@@ -610,30 +614,35 @@ function SearchTypeTabs({
   sort: SearchSort;
   time: SearchTimeRange;
 }) {
+  const items: SearchTypeTabItem[] = [
+    searchTypeTabItem({
+      count: counts?.all,
+      current,
+      href: searchHref({ query, type: "all", mode, sort, time }),
+      label: "All",
+      value: "all",
+    }),
+    ...(["builder", "feed", "digest"] as const).map((type) =>
+      searchTypeTabItem({
+        count: counts?.[type],
+        current,
+        href: searchHref({ query, type, mode, sort, time }),
+        label: resultTypeFilterLabels[type],
+        value: type,
+      }),
+    ),
+  ];
+
   return (
-    <div className="fb-segmented-tabs filter-tabs" aria-label="Search result type filter" role="tablist">
-      <TypeTab
-        count={counts?.all}
-        current={current}
-        href={searchHref({ query, type: "all", mode, sort, time })}
-        label="All"
-        value="all"
-      />
-      {(["builder", "feed", "digest"] as const).map((type) => (
-        <TypeTab
-          count={counts?.[type]}
-          current={current}
-          href={searchHref({ query, type, mode, sort, time })}
-          key={type}
-          label={resultTypeFilterLabels[type]}
-          value={type}
-        />
-      ))}
-    </div>
+    <SearchTypeTabsControl
+      ariaLabel="Search result type filter"
+      controlsId={searchResultsPanelId}
+      items={items}
+    />
   );
 }
 
-function TypeTab({
+function searchTypeTabItem({
   count,
   current,
   href,
@@ -645,28 +654,20 @@ function TypeTab({
   href: string;
   label: string;
   value: SearchTypeFilter;
-}) {
+}): SearchTypeTabItem {
   const isActive = current === value;
-  const accessibleLabel =
+  const ariaLabel =
     typeof count === "number"
       ? `${label}, ${formatCount(count)} ${searchResultCountLabel(value, count)}`
       : label;
-  return (
-    <Link
-      aria-controls={searchResultsPanelId}
-      aria-label={accessibleLabel}
-      aria-selected={isActive}
-      className="fb-btn compact"
-      data-active={isActive ? "true" : undefined}
-      href={href}
-      id={searchTypeTabId(value)}
-      role="tab"
-      tabIndex={isActive ? 0 : -1}
-    >
-      <span>{label}</span>
-      {typeof count === "number" ? <CountBadge value={count} /> : null}
-    </Link>
-  );
+  return {
+    active: isActive,
+    ariaLabel,
+    count: typeof count === "number" ? count : null,
+    href,
+    id: searchTypeTabId(value),
+    label,
+  };
 }
 
 function searchTypeTabId(value: SearchTypeFilter) {

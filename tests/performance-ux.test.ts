@@ -2384,6 +2384,7 @@ test("search page uses a client form with pending feedback", () => {
     searchPage.indexOf("function AdvancedSearchTips"),
   );
   const searchForm = source("src/components/SearchForm.tsx");
+  const searchTypeTabs = source("src/components/SearchTypeTabs.tsx");
   const formSubmitButton = source("src/components/FormSubmitButton.tsx");
   const globals = source("src/app/globals.css");
 
@@ -2438,7 +2439,14 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /<Suspense/);
   assert.match(searchPage, /SearchResultsFallback/);
   assert.match(searchPage, /SearchResultsSection/);
-  assert.match(searchPage, /<div className="fb-segmented-tabs filter-tabs" aria-label="Search result type filter" role="tablist">/);
+  assert.match(searchPage, /SearchTypeTabs as SearchTypeTabsControl/);
+  assert.match(searchPage, /<SearchTypeTabsControl[\s\S]*ariaLabel="Search result type filter"[\s\S]*controlsId=\{searchResultsPanelId\}[\s\S]*items=\{items\}/);
+  assert.match(searchTypeTabs, /"use client"/);
+  assert.match(searchTypeTabs, /onKeyDown=\{handleKeyDown\}/);
+  assert.match(searchTypeTabs, /const navigableKeys = new Set\(\["ArrowLeft", "ArrowRight", "Home", "End"\]\)/);
+  assert.match(searchTypeTabs, /querySelectorAll<HTMLAnchorElement>\('\[role="tab"\]'\)/);
+  assert.match(searchTypeTabs, /tabs\[nextIndex\]\?\.focus\(\)/);
+  assert.match(searchTypeTabs, /<div[\s\S]*className="fb-segmented-tabs filter-tabs"[\s\S]*role="tablist"/);
   assert.doesNotMatch(searchPage, /<nav className="fb-segmented-tabs filter-tabs" aria-label="Search result type filter" role="tablist">/);
   assert.doesNotMatch(searchPage, /aria-label="Result type"/);
   assert.match(searchPage, /aria-label="Search recovery actions"/);
@@ -2608,20 +2616,20 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /SearchTypeTabs/);
   assert.match(searchPage, /SearchResultRefinements/);
   assert.match(searchPage, /function SearchResultRefinements/);
-  assert.match(searchPage, /className="fb-segmented-tabs filter-tabs"/);
-  assert.match(searchPage, /className="fb-btn compact"/);
+  assert.match(searchTypeTabs, /className="fb-segmented-tabs filter-tabs"/);
+  assert.match(searchTypeTabs, /className="fb-btn compact"/);
   assert.match(searchPage, /const searchResultsPanelId = "search-results-panel"/);
   assert.match(searchPage, /aria-labelledby=\{searchTypeTabId\(typeFilter\)\}[\s\S]*className="search-results-shell"[\s\S]*id=\{searchResultsPanelId\}[\s\S]*role="tabpanel"/);
   assert.match(searchPage, /aria-labelledby=\{searchTypeTabId\(current\)\}[\s\S]*className="search-results-shell"[\s\S]*id=\{searchResultsPanelId\}[\s\S]*role="tabpanel"/);
-  assert.match(searchPage, /const accessibleLabel =[\s\S]*typeof count === "number"[\s\S]*`\$\{label\}, \$\{formatCount\(count\)\} \$\{searchResultCountLabel\(value, count\)\}`[\s\S]*: label/);
-  assert.match(searchPage, /aria-controls=\{searchResultsPanelId\}/);
-  assert.match(searchPage, /aria-label=\{accessibleLabel\}/);
-  assert.match(searchPage, /aria-selected=\{isActive\}/);
-  assert.match(searchPage, /id=\{searchTypeTabId\(value\)\}/);
-  assert.match(searchPage, /role="tab"/);
-  assert.match(searchPage, /tabIndex=\{isActive \? 0 : -1\}/);
+  assert.match(searchPage, /const ariaLabel =[\s\S]*typeof count === "number"[\s\S]*`\$\{label\}, \$\{formatCount\(count\)\} \$\{searchResultCountLabel\(value, count\)\}`[\s\S]*: label/);
+  assert.match(searchTypeTabs, /aria-controls=\{controlsId\}/);
+  assert.match(searchTypeTabs, /aria-label=\{item\.ariaLabel\}/);
+  assert.match(searchTypeTabs, /aria-selected=\{item\.active\}/);
+  assert.match(searchTypeTabs, /id=\{item\.id\}/);
+  assert.match(searchTypeTabs, /role="tab"/);
+  assert.match(searchTypeTabs, /tabIndex=\{item\.active \? 0 : -1\}/);
   assert.match(searchPage, /function searchTypeTabId\(value: SearchTypeFilter\)/);
-  assert.doesNotMatch(searchPage, /aria-current=\{isActive \? "page" : undefined\}/);
+  assert.doesNotMatch(searchTypeTabs, /aria-current=\{item\.active \? "page" : undefined\}/);
   assert.match(globals, /\.filter-tabs\s*{/);
   assert.doesNotMatch(searchPage, /fb-stabs|fb-stab/);
   assert.match(searchPage, /counts=\{hasQuery \? typeCounts : null\}/);
