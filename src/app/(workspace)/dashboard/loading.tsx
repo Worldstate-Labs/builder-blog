@@ -29,11 +29,29 @@ export default function DashboardLoading() {
         </div>
 
         <section className="home-tab-panel" aria-label="Loading Home content">
-          <div className="feed-content-stack home-loading-content" aria-hidden="true">
-            <div className="feed-skeleton-list">
-              {[0, 1, 2].map((index) => (
-                <div className="feed-skeleton-card" key={index} />
+          <div className="ai-digest-stack home-loading-ai-digest" aria-hidden="true">
+            <section className="digest-control-bar home-loading-control">
+              {["AI Digest archive source", "AI Digest archive"].map((label) => (
+                <div className="digest-control-field" key={label}>
+                  <span className="digest-control-label">{label}</span>
+                  <span className="home-loading-control-shell" />
+                </div>
               ))}
+            </section>
+            <div className="ai-digest-panel">
+              <div className="ai-digest-body">
+                <section className="home-loading-digest-card">
+                  <span className="home-loading-line home-loading-line--kicker" />
+                  <span className="home-loading-line home-loading-line--title" />
+                  <span className="home-loading-line" />
+                  <span className="home-loading-line home-loading-line--short" />
+                  <div className="home-loading-post-list">
+                    {[0, 1, 2].map((index) => (
+                      <span className="home-loading-post-row" key={index} />
+                    ))}
+                  </div>
+                </section>
+              </div>
             </div>
           </div>
         </section>

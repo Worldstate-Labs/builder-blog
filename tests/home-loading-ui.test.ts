@@ -19,4 +19,9 @@ test("home loading tabs mirror final tab semantics without picking an active tab
   assert.match(loading, /aria-selected="false"/);
   assert.match(loading, /tabIndex=\{-1\}/);
   assert.doesNotMatch(loading, /home-loading-tab is-active|data-active/);
+  assert.match(loading, /className="ai-digest-stack home-loading-ai-digest"/);
+  assert.match(loading, /className="digest-control-bar home-loading-control"/);
+  assert.match(loading, /\["AI Digest archive source", "AI Digest archive"\]\.map/);
+  assert.match(loading, /className="home-loading-digest-card"/);
+  assert.doesNotMatch(loading, /className="feed-content-stack home-loading-content"|className="feed-skeleton-list"/);
 });
