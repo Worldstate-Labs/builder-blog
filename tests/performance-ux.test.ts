@@ -4125,7 +4125,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /mode = "hub"/);
   assert.match(digestPipelineForm, /Imported AI Digest archives/);
   assert.match(digestPipelineForm, /AI Digest archives built and shared by other users\./);
-  assert.match(digestPipelineForm, /AI Digest archives from Hub that are already available on Home\./);
+  assert.match(digestPipelineForm, /AI Digest archives from Hub that are already available in Home AI Digest\./);
   assert.doesNotMatch(digestPipelineForm, /AI Digest archives you imported from Hub\./);
   assert.doesNotMatch(digestPipelineForm, /Digests imported from the Hub/);
   assert.doesNotMatch(digestPipelineForm, /latest AI Digest and archive/);
@@ -4170,8 +4170,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /isPending=\{importPending \|\| pendingAction !== null\}/);
   assert.match(digestPipelineForm, /disabled=\{isPending \|\| pending !== null\}/);
   assert.match(digestPipelineForm, /No imported AI Digest archives/);
-  assert.match(digestPipelineForm, /Import AI Digest archives built and shared by other users to see them on Home\./);
+  assert.match(digestPipelineForm, /Import AI Digest archives built and shared by other users to see them in Home AI Digest\./);
   assert.doesNotMatch(digestPipelineForm, /Import an AI Digest archive from Hub to see it on Home\./);
+  assert.doesNotMatch(digestPipelineForm, /to see them on Home\./);
   assert.match(digestPipelineForm, /href="\/library-hub\?tab=ai-digests"/);
   assert.match(digestPipelineForm, /Browse AI Digest archives/);
   assert.doesNotMatch(digestPipelineForm, /Browse Hub/);
@@ -4194,7 +4195,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.doesNotMatch(digestPipelineForm, /className="digest-remove-popover"/);
   assert.match(digestPipelineForm, /Remove AI Digest archive import\?/);
-  assert.match(digestPipelineForm, /you will\s+no longer see this AI Digest archive on Home\./);
+  assert.match(digestPipelineForm, /you will\s+no longer see this AI Digest archive in Home AI Digest\./);
+  assert.doesNotMatch(digestPipelineForm, /no longer see this AI Digest archive on Home\./);
   assert.match(digestPipelineForm, /You can import it again from Hub later/);
   assert.match(digestPipelineForm, />\s*Remove import\s*<\/button>/);
   assert.match(digestPipelineForm, /confirmRemoveImported/);

@@ -97,7 +97,7 @@ export function DigestPipelineImportForm({
     mode === "imported" ? "Imported AI Digest archives" : "Shared AI Digest archives";
   const description =
     mode === "imported"
-      ? "AI Digest archives from Hub that are already available on Home."
+      ? "AI Digest archives from Hub that are already available in Home AI Digest."
       : "AI Digest archives built and shared by other users.";
   const emptyTitle =
     mode === "imported"
@@ -105,7 +105,7 @@ export function DigestPipelineImportForm({
       : "No shared AI Digest archives";
   const emptyMessage =
     mode === "imported"
-      ? "Import AI Digest archives built and shared by other users to see them on Home."
+      ? "Import AI Digest archives built and shared by other users to see them in Home AI Digest."
       : "Shared AI Digest archives will appear here once users share them to Hub.";
 
   function setImportedIds(updater: (current: Set<string>) => Set<string>) {
@@ -293,7 +293,7 @@ export function DigestPipelineImportForm({
             <div className="settings-dialog-copy">
               <p>
                 After removing <strong>{removeTarget.title}</strong>, you will
-                no longer see this AI Digest archive on Home.
+                no longer see this AI Digest archive in Home AI Digest.
               </p>
               <p className="settings-dialog-warning">
                 You can import it again from Hub later.
