@@ -3662,12 +3662,13 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postDetailPage, /<SourceBadge builder=\{sourceBuilder\} \/>/);
   assert.doesNotMatch(postDetailPage, /<SourceBadge builder=\{sourceBuilder\} decorative showLabel=\{false\} \/>/);
   assert.match(postDetailPage, /className="reading-source-copy"/);
-  assert.match(postDetailPage, /View source: \{sourceLabel\}/);
+  assert.match(postDetailPage, /Source profile: \{sourceLabel\}/);
+  assert.doesNotMatch(postDetailPage, /View source: \{sourceLabel\}/);
   assert.doesNotMatch(postDetailPage, /Source: \{sourceLabel\}/);
   assert.doesNotMatch(postDetailPage, /className="reading-source-label"[\s\S]*>\s*\{sourceLabel\}\s*<\/Link>/);
   assert.match(postDetailPage, /const sourceLabel = item\.builder\?\.name \?\? item\.sourceName \?\? "Post"/);
   assert.match(postDetailPage, /const sourceHref = `\/builder\/\$\{entityId\}`/);
-  assert.match(postDetailPage, /aria-label=\{`View \$\{sourceLabel\} source`\}/);
+  assert.match(postDetailPage, /aria-label=\{`View \$\{sourceLabel\} source profile`\}/);
   assert.match(postDetailPage, /href=\{sourceHref\}/);
   assert.doesNotMatch(postDetailPage, /Saved post/);
   assert.match(postDetailPage, /ChevronLeft/);

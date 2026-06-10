@@ -101,12 +101,12 @@ export async function PostDetailPage({
           {backLink.label}
         </Link>
         <Link
-          aria-label={`View ${sourceLabel} source`}
+          aria-label={`View ${sourceLabel} source profile`}
           className="reading-source-label"
           href={sourceHref}
         >
           <SourceBadge builder={sourceBuilder} />
-          <span className="reading-source-copy">View source: {sourceLabel}</span>
+          <span className="reading-source-copy">Source profile: {sourceLabel}</span>
         </Link>
       </nav>
 
