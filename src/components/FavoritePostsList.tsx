@@ -65,6 +65,9 @@ export function FavoritePostsList({
             <Link className="fb-btn light compact" href="/dashboard?tab=following">
               Open Following
             </Link>
+            <Link className="fb-btn light compact" href="/search">
+              Search posts
+            </Link>
           </div>
         }
         className="favorites-empty is-actionable"

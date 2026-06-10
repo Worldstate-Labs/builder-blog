@@ -1639,6 +1639,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(favoriteList, /Reading queue is empty/);
   assert.match(favoriteList, /Posts you starred for focused reading, newest first\./);
   assert.match(favoriteList, /Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
+  assert.match(favoriteList, /Search posts/);
+  assert.match(favoriteList, /href="\/search"/);
   assert.doesNotMatch(favoriteList, /<h2 className="favorites-feed-title">Favorites<\/h2>/);
   assert.doesNotMatch(favoriteList, /Saved for deeper reading/);
   assert.doesNotMatch(favoriteList, /showSourceBadge=\{false\}/);
