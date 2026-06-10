@@ -2988,6 +2988,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /sourceToggleLabel = formatSourceToggleLabel\(library\.itemCount\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /function formatSourceToggleLabel\(sourceCount: number\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /`View \$\{formatCount\(sourceCount\)\} \$\{sourceCount === 1 \? "source" : "sources"\}`/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /aria-label=\{`View \$\{item\.builder\.name\} source site`\}/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /title="View source site"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /See more/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /label=\{group\.postCount === 1 \? "post" : "posts"\}/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /label=\{fetchedPostCount === 1 \? "post" : "posts"\}/);

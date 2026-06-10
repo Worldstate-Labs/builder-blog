@@ -553,10 +553,12 @@ function HubCard({
                       >
                         {sourceHref ? (
                           <a
+                            aria-label={`View ${item.builder.name} source site`}
                             className="fb-hub-source-name"
                             href={sourceHref}
                             rel="noreferrer"
                             target="_blank"
+                            title="View source site"
                           >
                             {item.builder.name}
                           </a>
