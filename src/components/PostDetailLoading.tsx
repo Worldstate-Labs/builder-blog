@@ -15,6 +15,7 @@ export function PostDetailLoading() {
         </span>
         <span className="reading-source-label post-detail-loading-source">
           <span className="post-detail-loading-source-mark" />
+          <span className="reading-source-kicker">Source</span>
           <span className="post-detail-loading-line post-detail-loading-line--source" />
         </span>
       </nav>

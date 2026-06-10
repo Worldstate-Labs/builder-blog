@@ -417,6 +417,17 @@ svg.lucide {
   padding: 0;
 }
 
+.reading-source-kicker {
+  color: var(--muted);
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
 .reading-source-copy {
   min-width: 0;
   overflow: hidden;

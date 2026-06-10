@@ -3693,8 +3693,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postDetailPage, /const sourceBuilder = item\.builder/);
   assert.match(postDetailPage, /<SourceBadge builder=\{sourceBuilder\} \/>/);
   assert.doesNotMatch(postDetailPage, /<SourceBadge builder=\{sourceBuilder\} decorative showLabel=\{false\} \/>/);
+  assert.match(postDetailPage, /className="reading-source-kicker"[\s\S]*>\s*Source\s*<\/span>/);
   assert.match(postDetailPage, /className="reading-source-copy"/);
-  assert.match(postDetailPage, /Source profile: \{sourceLabel\}/);
+  assert.match(postDetailPage, /className="reading-source-copy"[\s\S]*>\s*\{sourceLabel\}\s*<\/span>/);
+  assert.doesNotMatch(postDetailPage, /Source profile: \{sourceLabel\}/);
   assert.doesNotMatch(postDetailPage, /View source: \{sourceLabel\}/);
   assert.doesNotMatch(postDetailPage, /Source: \{sourceLabel\}/);
   assert.doesNotMatch(postDetailPage, /className="reading-source-label"[\s\S]*>\s*\{sourceLabel\}\s*<\/Link>/);
@@ -3745,6 +3747,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.reading-source-label\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.reading-source-label\s*{[\s\S]*max-width:\s*min\(100%,\s*var\(--copy-max\)\)/);
   assert.match(globals, /\.reading-source-label \.source-badge\s*{[\s\S]*background:\s*transparent/);
+  assert.match(globals, /\.reading-source-kicker\s*{[\s\S]*font-family:\s*var\(--font-mono\)/);
+  assert.match(globals, /\.reading-source-kicker\s*{[\s\S]*text-transform:\s*uppercase/);
   assert.match(globals, /\.reading-source-copy\s*{[\s\S]*text-overflow:\s*ellipsis/);
   assert.match(globals, /\.reading-source-label\s*{[\s\S]*text-overflow:\s*ellipsis/);
   assert.match(globals, /a\.reading-source-label:hover,[\s\S]*a\.reading-source-label:focus-visible\s*{[\s\S]*color:\s*var\(--accent\)/);
