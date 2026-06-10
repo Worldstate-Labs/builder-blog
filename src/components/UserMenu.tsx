@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useId, useRef } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import type { Session } from "next-auth";
 import { usePathname } from "next/navigation";
@@ -20,6 +20,7 @@ export function UserMenu({
 }) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const summaryRef = useRef<HTMLElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const popoverId = useId();
   const pathname = usePathname();
   const theme = useTheme();
@@ -70,9 +71,14 @@ export function UserMenu({
   }, [closeMenu]);
 
   return (
-    <details ref={detailsRef} className={`user-menu ${compact ? "user-menu-compact" : ""}`}>
+    <details
+      ref={detailsRef}
+      className={`user-menu ${compact ? "user-menu-compact" : ""}`}
+      onToggle={() => setMenuOpen(detailsRef.current?.open ?? false)}
+    >
       <summary
         aria-controls={popoverId}
+        aria-expanded={menuOpen ? "true" : "false"}
         aria-label={email ? `Account menu for ${email}` : `Account menu for ${name}`}
         className="user-menu-trigger"
         ref={summaryRef}

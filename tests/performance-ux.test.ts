@@ -691,12 +691,16 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /"use client"/);
   assert.match(userMenu, /usePathname/);
   assert.match(userMenu, /useId/);
+  assert.match(userMenu, /useState/);
   assert.match(userMenu, /const popoverId = useId\(\)/);
+  assert.match(userMenu, /const \[menuOpen, setMenuOpen\] = useState\(false\)/);
   assert.match(userMenu, /const pathname = usePathname\(\)/);
   assert.match(userMenu, /const closeMenu = useCallback\(\(options\?: \{ restoreFocus\?: boolean \}\) => \{[\s\S]*detailsRef\.current\.open = false[\s\S]*summaryRef\.current\?\.focus\(\)[\s\S]*\}, \[\]\)/);
   assert.match(userMenu, /useEffect\(\(\) => \{[\s\S]*closeMenu\(\);[\s\S]*\}, \[closeMenu, pathname\]\)/);
+  assert.match(userMenu, /onToggle=\{\(\) => setMenuOpen\(detailsRef\.current\?\.open \?\? false\)\}/);
   assert.match(userMenu, /className="user-menu-trigger"/);
   assert.match(userMenu, /aria-controls=\{popoverId\}/);
+  assert.match(userMenu, /aria-expanded=\{menuOpen \? "true" : "false"\}/);
   assert.match(userMenu, /className="user-menu-popover" id=\{popoverId\}/);
   assert.match(userMenu, /className="user-menu-icon"/);
   assert.doesNotMatch(userMenu, /h-4 w-4|w-full text-left/);
