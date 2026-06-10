@@ -740,7 +740,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestOncePrompt, /--context "\$TMP_DIR\/builder-blog-context\.json"/);
   assert.match(libraryCronSetupPrompt, /builder-agent-runner\.sh library-cron/);
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_SMOKE_CHECK=1/);
-  assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_AGENT_TIMEOUT_SECONDS=300/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /BUILDER_BLOG_AGENT_TIMEOUT_SECONDS=300/);
   assert.match(libraryCronSetupPrompt, /followbriefSmokeCheck/);
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_WORKER_MODE=1/);
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_DISABLE_WEB_SYNC=1/);
@@ -756,7 +756,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronStopPrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron\/current\.json/);
   assert.doesNotMatch(libraryCronStopPrompt, /Do not\s+exchange a token or make any network call/);
   assert.match(digestCronSetupPrompt, /BUILDER_BLOG_SMOKE_CHECK=1/);
-  assert.match(digestCronSetupPrompt, /BUILDER_BLOG_AGENT_TIMEOUT_SECONDS=300/);
+  assert.doesNotMatch(digestCronSetupPrompt, /BUILDER_BLOG_AGENT_TIMEOUT_SECONDS=300/);
   assert.match(digestCronSetupPrompt, /followbriefSmokeCheck/);
   assert.match(digestCronSetupPrompt, /BUILDER_BLOG_WORKER_MODE=1/);
   assert.match(digestCronSetupPrompt, /BUILDER_BLOG_DISABLE_WEB_SYNC=1/);
@@ -824,6 +824,7 @@ test("web app serves the agent skill and setup command", () => {
     "launchctl bootstrap",
     "7. Run one immediate runtime smoke check",
     "BUILDER_BLOG_SMOKE_CHECK=1",
+    "INTERVAL_MINUTES=\"{{CRON_INTERVAL_MINUTES}}\"",
     "report its output",
     "8. After the runtime smoke check succeeds",
     "BUILDER_BLOG_WORKER_MODE=1",
@@ -881,6 +882,7 @@ test("web app serves the agent skill and setup command", () => {
     "launchctl bootstrap",
     "7. Run one immediate runtime smoke check",
     "BUILDER_BLOG_SMOKE_CHECK=1",
+    "INTERVAL_MINUTES=\"{{CRON_INTERVAL_MINUTES}}\"",
     "report its output",
     "8. After the runtime smoke check succeeds",
     "BUILDER_BLOG_WORKER_MODE=1",
@@ -909,6 +911,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /BUILDER_BLOG_SMOKE_CHECK/);
   assert.match(runner, /followbriefSmokeCheck/);
   assert.match(runner, /Do not run FollowBrief fetch, digest, sync, cron-status, or setup commands/);
+  assert.match(runner, /run_runtime_smoke_check\(\)[\s\S]*timeout_seconds_for_job "\$\{INTERVAL_MINUTES:-60\}" "\$JOB_NAME"/);
   assert.match(skillJobRoute, /\{\{CRON_INTERVAL_MINUTES\}\}/);
   assert.match(runner, /library-once\|digest-once\|library-cron-setup\|digest-cron-setup\|library-cron\|digest-cron/);
   assert.match(runner, /codex exec --skip-git-repo-check/);

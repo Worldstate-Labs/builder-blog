@@ -189,7 +189,7 @@ started later by launchd/crontab is allowed to sync results to the web app:
 
 ```bash
 BUILDER_BLOG_SMOKE_CHECK=1 \
-BUILDER_BLOG_AGENT_TIMEOUT_SECONDS=300 \
+INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 $HOME/.builder-blog/builder-agent-runner.sh library-cron
 ```
@@ -197,8 +197,9 @@ $HOME/.builder-blog/builder-agent-runner.sh library-cron
 This delegates only the runtime check to the runner; do not run the
 `library-cron` prompt yourself and do not do any fetch/summarize/sync work. Just
 report its output: it succeeds when the command exits 0 and the output contains
-`followbriefSmokeCheck` with value `ok`. If it errors or times out, report the
-command, exit code, and stderr, and stop.
+`followbriefSmokeCheck` with value `ok`. It uses the same timeout calculation as
+the scheduled cron job. If it errors or times out, report the command, exit
+code, and stderr, and stop.
 
 8. After the runtime smoke check succeeds, run one real local validation run
 while the user is still present. This validates the actual `library-cron`

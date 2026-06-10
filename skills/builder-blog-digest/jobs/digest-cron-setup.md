@@ -181,16 +181,17 @@ job is the only run that should sync web state:
 
 ```bash
 BUILDER_BLOG_SMOKE_CHECK=1 \
-BUILDER_BLOG_AGENT_TIMEOUT_SECONDS=300 \
+INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 $HOME/.builder-blog/builder-agent-runner.sh digest-cron
 ```
 
 Just report its output: it succeeds when the command exits 0 and the output
-contains `followbriefSmokeCheck` with value `ok`. If it errors or times out,
-report the command, exit code, and stderr, and stop. If the pinned runtime CLI is
-not installed, do not claim the digest cron is installed successfully — record
-that the user must install {{AGENT_RUNTIME_LABEL}} (or set
+contains `followbriefSmokeCheck` with value `ok`. It uses the same timeout
+calculation as the scheduled cron job. If it errors or times out, report the
+command, exit code, and stderr, and stop. If the pinned runtime CLI is not
+installed, do not claim the digest cron is installed successfully — record that
+the user must install {{AGENT_RUNTIME_LABEL}} (or set
 `BUILDER_BLOG_AGENT_COMMAND`) first.
 
 8. After the runtime smoke check succeeds, run one real local validation run

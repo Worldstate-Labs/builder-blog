@@ -188,7 +188,7 @@ Do not browse the web.
 EOF
   PROMPT_FILE="$SMOKE_PROMPT_FILE"
   export BUILDER_BLOG_RUN_SOURCE=smoke
-  _timeout="${BUILDER_BLOG_AGENT_TIMEOUT_SECONDS:-300}"
+  _timeout="${BUILDER_BLOG_AGENT_TIMEOUT_SECONDS:-$(timeout_seconds_for_job "${INTERVAL_MINUTES:-60}" "$JOB_NAME")}"
   echo "Running FollowBrief runtime smoke check for $JOB_NAME with ${PINNED_RUNTIME:-auto} (timeout ${_timeout}s)." >&2
   set +e
   run_selected_runtime &
