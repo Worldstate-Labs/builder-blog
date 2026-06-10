@@ -340,42 +340,45 @@ async function ChannelsListSlot({
 
   return (
     <ul className="builder-detail-channel-list">
-      {channels.map((channel) => (
-        <li
-          key={channel.builderId}
-          className="builder-detail-channel-row"
-        >
-          <div className="builder-detail-channel-copy">
-            <div className="builder-detail-channel-title-row">
-              <div className="builder-detail-channel-name">
-                {formatChannelLibraryName(channel)}
+      {channels.map((channel) => {
+        const channelSourceHref = channel.sourceUrl || channel.fetchUrl;
+        return (
+          <li
+            key={channel.builderId}
+            className="builder-detail-channel-row"
+          >
+            <div className="builder-detail-channel-copy">
+              <div className="builder-detail-channel-title-row">
+                <div className="builder-detail-channel-name">
+                  {formatChannelLibraryName(channel)}
+                </div>
+                <SourceBadge sourceType={channel.sourceType} />
               </div>
-              <SourceBadge sourceType={channel.sourceType} />
+              {channelSourceHref ? (
+                <a
+                  aria-label={`View ${sourceName} source site`}
+                  className="builder-detail-channel-link"
+                  href={channelSourceHref}
+                  rel="noreferrer"
+                  target="_blank"
+                  title="View source site"
+                >
+                  <ExternalLink aria-hidden="true" />
+                  View source site
+                </a>
+              ) : null}
             </div>
-            {channel.sourceUrl ? (
-              <a
-                aria-label={`View ${sourceName} source site`}
-                className="builder-detail-channel-link"
-                href={channel.sourceUrl}
-                rel="noreferrer"
-                target="_blank"
-                title="View source site"
-              >
-                <ExternalLink aria-hidden="true" />
-                View source site
-              </a>
-            ) : null}
-          </div>
-          <div className="builder-detail-channel-date mono">
-            {formatFetchedAt(channel.lastFetchedAt)}
-          </div>
-          <ChannelPreferenceToggle
-            entityId={entityId}
-            builderId={channel.builderId}
-            initialIsPreferred={pinnedBuilderId === channel.builderId}
-          />
-        </li>
-      ))}
+            <div className="builder-detail-channel-date mono">
+              {formatFetchedAt(channel.lastFetchedAt)}
+            </div>
+            <ChannelPreferenceToggle
+              entityId={entityId}
+              builderId={channel.builderId}
+              initialIsPreferred={pinnedBuilderId === channel.builderId}
+            />
+          </li>
+        );
+      })}
     </ul>
   );
 }
