@@ -14,18 +14,22 @@ export default function BuildersLoading() {
               className="workspace-top-tabs fb-segmented-tabs sources-loading-tabs"
               role="tablist"
             >
-              {["Sources", "AI Digest"].map((label) => (
-                <span
-                  aria-disabled="true"
-                  aria-selected="false"
-                  className="fb-btn sources-loading-tab"
-                  key={label}
-                  role="tab"
-                  tabIndex={-1}
-                >
-                  {label}
-                </span>
-              ))}
+              {["Sources", "AI Digest"].map((label) => {
+                const selected = label === "Sources";
+                return (
+                  <span
+                    aria-disabled="true"
+                    aria-selected={selected ? "true" : "false"}
+                    className="fb-btn sources-loading-tab"
+                    data-active={selected ? "true" : undefined}
+                    key={label}
+                    role="tab"
+                    tabIndex={-1}
+                  >
+                    {label}
+                  </span>
+                );
+              })}
             </div>
           </div>
 

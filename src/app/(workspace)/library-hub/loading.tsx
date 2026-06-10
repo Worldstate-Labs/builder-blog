@@ -13,18 +13,22 @@ export default function LibraryHubLoading() {
             className="workspace-top-tabs fb-segmented-tabs hub-loading-tabs"
             role="tablist"
           >
-            {["Source libraries", "AI Digest archives"].map((label) => (
-              <span
-                aria-disabled="true"
-                aria-selected="false"
-                className="fb-btn hub-loading-tab"
-                key={label}
-                role="tab"
-                tabIndex={-1}
-              >
-                {label}
-              </span>
-            ))}
+            {["Source libraries", "AI Digest archives"].map((label) => {
+              const selected = label === "Source libraries";
+              return (
+                <span
+                  aria-disabled="true"
+                  aria-selected={selected ? "true" : "false"}
+                  className="fb-btn hub-loading-tab"
+                  data-active={selected ? "true" : undefined}
+                  key={label}
+                  role="tab"
+                  tabIndex={-1}
+                >
+                  {label}
+                </span>
+              );
+            })}
           </div>
         </div>
 
