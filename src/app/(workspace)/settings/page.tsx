@@ -125,7 +125,7 @@ async function SourceTypeConfigSection({
             <h3 className="fb-section-heading">AI Digest rules</h3>
             <p className="settings-rules-summary-desc">
               Runs after per-post summaries: write the digest headline, source notes,
-              and localized post summaries.
+              and post summaries in the selected AI Digest language.
             </p>
           </div>
           <span className="settings-rules-summary-meta source-summary-line">
