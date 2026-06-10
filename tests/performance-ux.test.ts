@@ -3336,6 +3336,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /className="library-section-summary-copy"/);
   assert.match(buildersPage, /<h3 className="fb-section-heading">\{title\}<\/h3>/);
   assert.doesNotMatch(buildersPage, /<h2 className="fb-section-heading">\{title\}<\/h2>/);
+  assert.match(globals, /\.imported-library-stack \.library-section-summary h3\s*{[\s\S]*font-size:\s*0\.9375rem/);
+  assert.doesNotMatch(globals, /\.imported-library-stack \.library-section-summary h2\s*{/);
   assert.match(buildersPage, /className="library-section-copy"/);
   assert.doesNotMatch(buildersPage, /className="grid gap-3"/);
   assert.doesNotMatch(buildersPage, /mt-1 text-sm text-\[var\(--muted-strong\)\]/);

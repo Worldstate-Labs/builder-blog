@@ -11299,7 +11299,7 @@ body {
   }
 
   /* Imported library headers small on mobile */
-  .imported-library-stack .library-section-summary h2 {
+  .imported-library-stack .library-section-summary h3 {
     font-size: 0.9375rem;
   }
 
