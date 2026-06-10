@@ -2541,7 +2541,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /ActiveSearchFilters/);
   assert.match(searchPage, /searchHighlightTerms/);
   assert.match(searchPage, /search-result-refinements/);
-  assert.match(searchPage, /aria-label=\{`Narrow search from \$\{result\.title\}`\}/);
+  assert.match(searchPage, /aria-label=\{`Narrow search from \$\{resultTitle\}`\}/);
   assert.match(searchPage, />\s*Narrow search\s*</);
   assert.match(searchPage, /className="search-result-refinement-icon"/);
   assert.match(searchPage, /className="search-result-source-copy"/);
@@ -2584,6 +2584,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(globals, /\.search-result-refinements\[open\] \.search-result-refinement-icon\s*{[\s\S]*transform:\s*rotate\(180deg\)/);
   assert.match(searchPage, /SearchQueryInsights/);
   assert.match(searchPage, /SearchTypeTabs/);
+  assert.match(searchPage, /SearchResultRefinements/);
+  assert.match(searchPage, /function SearchResultRefinements/);
   assert.match(searchPage, /className="fb-segmented-tabs filter-tabs"/);
   assert.match(searchPage, /className="fb-btn compact"/);
   assert.match(searchPage, /const searchResultsPanelId = "search-results-panel"/);
@@ -4787,6 +4789,9 @@ test("search feed results keep post detail links while preserving originals", ()
   assert.match(searchPage, /function SearchPostResultCard/);
   assert.match(searchPage, /result\.type === "feed"/);
   assert.match(searchPage, /<PostCard/);
+  assert.match(searchPage, /refinements=\{refinements\}/);
+  assert.match(searchPage, /refinements: ReactNode/);
+  assert.match(searchPage, /context=\{refinements\}/);
   assert.match(searchPage, /dataRead=\{Boolean\(result\.readAt\)\}/);
   assert.match(searchPage, /detailUrl: resultHref/);
   assert.match(searchPage, /url: originalUrl \?\? result\.url \?\? "#"/);

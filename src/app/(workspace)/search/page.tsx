@@ -1,7 +1,7 @@
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import {
   ChevronDown,
   ChevronLeft,
@@ -712,11 +712,24 @@ function ResultCard({
   const sourceSite = searchSiteFromUrl(originalUrl ?? result.url);
   const sourceName = result.sourceName ?? resultTypeItemLabels[result.type];
   const originalActionLabel = searchOriginalActionLabel(result.type);
+  const refinements = (
+    <SearchResultRefinements
+      mode={mode}
+      query={query}
+      resultTitle={result.title}
+      resultType={result.type}
+      sort={sort}
+      sourceSite={sourceSite}
+      time={time}
+      typeFilter={typeFilter}
+    />
+  );
 
   if (result.type === "feed") {
     return (
       <SearchPostResultCard
         originalUrl={originalUrl}
+        refinements={refinements}
         result={result}
         resultHref={resultHref}
         sourceName={sourceName}
@@ -776,38 +789,7 @@ function ResultCard({
           </a>
         ) : null}
       </div>
-      {sourceSite || typeFilter !== result.type ? (
-        <details className="search-result-refinements" aria-label={`Narrow search from ${result.title}`}>
-          <summary>
-            <span>Narrow search</span>
-            <ChevronDown aria-hidden="true" className="search-result-refinement-icon" />
-          </summary>
-          <div className="search-result-refinement-list">
-            {sourceSite ? (
-              <Link
-                className="search-result-refinement"
-                href={searchHref({
-                  query: withSiteSearchOperator(query, sourceSite),
-                  type: "all",
-                  mode,
-                  sort,
-                  time,
-                })}
-              >
-                More from this source
-              </Link>
-            ) : null}
-            {typeFilter !== result.type ? (
-              <Link
-                className="search-result-refinement"
-                href={searchHref({ query, type: result.type, mode, sort, time })}
-              >
-                Only {resultTypeFilterLabels[result.type]}
-              </Link>
-            ) : null}
-          </div>
-        </details>
-      ) : null}
+      {refinements}
     </article>
   );
 }
@@ -818,11 +800,13 @@ function searchOriginalActionLabel(type: SearchDocumentType) {
 
 function SearchPostResultCard({
   originalUrl,
+  refinements,
   result,
   resultHref,
   sourceName,
 }: {
   originalUrl: string | null;
+  refinements: ReactNode;
   result: SearchResult;
   resultHref: string | null;
   sourceName: string;
@@ -844,6 +828,7 @@ function SearchPostResultCard({
   return (
     <PostCard
       dataRead={Boolean(result.readAt)}
+      context={refinements}
       extraActions={
         <PostFavoriteControl
           feedItemId={result.id}
@@ -866,6 +851,61 @@ function SearchPostResultCard({
         fetchTool: null,
       }}
     />
+  );
+}
+
+function SearchResultRefinements({
+  mode,
+  query,
+  resultTitle,
+  resultType,
+  sort,
+  sourceSite,
+  time,
+  typeFilter,
+}: {
+  mode: SearchMode;
+  query: string;
+  resultTitle: string;
+  resultType: SearchDocumentType;
+  sort: SearchSort;
+  sourceSite: string | null;
+  time: SearchTimeRange;
+  typeFilter: SearchTypeFilter;
+}) {
+  if (!sourceSite && typeFilter === resultType) return null;
+
+  return (
+    <details className="search-result-refinements" aria-label={`Narrow search from ${resultTitle}`}>
+      <summary>
+        <span>Narrow search</span>
+        <ChevronDown aria-hidden="true" className="search-result-refinement-icon" />
+      </summary>
+      <div className="search-result-refinement-list">
+        {sourceSite ? (
+          <Link
+            className="search-result-refinement"
+            href={searchHref({
+              query: withSiteSearchOperator(query, sourceSite),
+              type: "all",
+              mode,
+              sort,
+              time,
+            })}
+          >
+            More from this source
+          </Link>
+        ) : null}
+        {typeFilter !== resultType ? (
+          <Link
+            className="search-result-refinement"
+            href={searchHref({ query, type: resultType, mode, sort, time })}
+          >
+            Only {resultTypeFilterLabels[resultType]}
+          </Link>
+        ) : null}
+      </div>
+    </details>
   );
 }
 
