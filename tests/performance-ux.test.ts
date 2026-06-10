@@ -1138,6 +1138,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(digestPipelineSelector, /aria-label=\{`Choose AI Digest archive source, current: \$\{selectedLabel\}`\}/);
   assert.match(digestPipelineSelector, /aria-label="AI Digest archive sources"/);
   assert.match(digestPipelineSelector, /function digestArchiveSourceLabel/);
+  assert.match(globals, /\.digest-pipeline-selector\[open\] \.digest-pipeline-trigger\s*{[\s\S]*border-color:\s*color-mix\(in oklch, var\(--accent\) 30%, var\(--line\)\)/);
+  assert.match(globals, /\.digest-pipeline-icon\s*{[\s\S]*transition:\s*transform 140ms ease/);
+  assert.match(globals, /\.digest-pipeline-selector\[open\] \.digest-pipeline-icon\s*{[\s\S]*transform:\s*rotate\(180deg\)/);
   assert.doesNotMatch(digestPipelineSelector, /aria-label="AI Digest choices"|digestSourceLabel/);
   assert.match(digestPipelineSelector, /aria-expanded=\{open\}/);
   assert.match(digestPipelineSelector, /aria-controls=\{menuId\}/);
