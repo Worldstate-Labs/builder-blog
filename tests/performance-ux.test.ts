@@ -2753,7 +2753,8 @@ test("user library search can fetch operator-only candidate sets", () => {
   assert.match(searchPage, /aria-label=\{`\$\{originalActionLabel\}: \$\{result\.title\}`\}/);
   assert.match(searchPage, /title=\{originalActionLabel\}/);
   assert.match(searchPage, /function searchOriginalActionLabel/);
-  assert.match(searchPage, /type === "builder" \? "Open source site" : "View original"/);
+  assert.match(searchPage, /type === "builder" \? "View source site" : "View original"/);
+  assert.doesNotMatch(searchPage, /Open source site/);
   assert.doesNotMatch(searchPage, /aria-label=\{`View original: \$\{result\.title\}`\}/);
   assert.match(searchPage, /<SourceBadge decorative showLabel=\{false\} sourceType=\{result\.sourceType \?\? result\.type\} \/>/);
   assert.doesNotMatch(searchPage, /Open original source/);

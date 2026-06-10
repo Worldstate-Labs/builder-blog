@@ -808,7 +808,7 @@ function ResultCard({
 }
 
 function searchOriginalActionLabel(type: SearchDocumentType) {
-  return type === "builder" ? "Open source site" : "View original";
+  return type === "builder" ? "View source site" : "View original";
 }
 
 function SearchPostResultCard({
