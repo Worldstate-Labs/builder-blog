@@ -3123,7 +3123,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /className="fb-hub-card digest-pipeline-card"/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /className="hub-card-action-row"/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /Import AI Digest archive \$\{pipeline\.title\}/);
-  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /\?\s*"Importing"\s*:\s*"Import"/);
+  assert.match(source("src/components/DigestPipelineImportForm.tsx"), /\?\s*"Importing archive"\s*:\s*"Import archive"/);
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /"Import AI Digest archive"|Importing AI Digest archive/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /function handleRemoveDialogClose\(\)/);
   assert.match(source("src/components/DigestPipelineImportForm.tsx"), /onClose=\{handleRemoveDialogClose\}/);
@@ -4307,7 +4307,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /aria-label=\{`AI Digest archive actions for \$\{pipeline\.title\}`\}/);
   assert.match(digestPipelineForm, /className="fb-hub-card-actions"[\s\S]*role="group"/);
   assert.match(digestPipelineForm, /aria-label=\{`Import AI Digest archive \$\{pipeline\.title\}`\}/);
-  assert.match(digestPipelineForm, /\?\s*"Importing"\s*:\s*"Import"/);
+  assert.match(digestPipelineForm, /\?\s*"Importing archive"\s*:\s*"Import archive"/);
   assert.doesNotMatch(digestPipelineForm, /aria-label=\{`Import \$\{pipeline\.title\}`\}|: "Import AI Digest archive"|Importing AI Digest archive/);
   assert.match(digestPipelineForm, /Imported/);
   assert.doesNotMatch(digestPipelineForm, /window\.confirm/);
