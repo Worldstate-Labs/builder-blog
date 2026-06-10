@@ -3569,7 +3569,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /entityId: string \| null/);
   assert.match(builderFeedItems, /const returnHref = builder\.entityId \? `\/builder\/\$\{builder\.entityId\}` : "\/builders"/);
   assert.match(builderFeedItems, /@\/lib\/navigation/);
-  assert.match(builderFeedItems, /detailUrl: postDetailHref\(item\.id, returnHref, "Sources"\)/);
+  assert.match(builderFeedItems, /const returnLabel = builder\.entityId \? builder\.name : "Sources"/);
+  assert.match(builderFeedItems, /detailUrl: postDetailHref\(item\.id, returnHref, returnLabel\)/);
+  assert.doesNotMatch(builderFeedItems, /postDetailHref\(item\.id, returnHref, "Sources"\)/);
   assert.doesNotMatch(builderFeedItems, /function postDetailHref/);
   assert.doesNotMatch(builderFeedItems, /detailUrl: postDetailHref\(item\.id, "\/builders", "Sources"\)/);
   // UI copy avoids "Fetched" in the row; detailed content still renders

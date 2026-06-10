@@ -63,6 +63,7 @@ export function BuilderFeedItems({
     ? `${builder.name} posts, ${postCountLabel}, latest at ${latestDateLabel}`
     : `${builder.name} posts, ${postCountLabel}`;
   const returnHref = builder.entityId ? `/builder/${builder.entityId}` : "/builders";
+  const returnLabel = builder.entityId ? builder.name : "Sources";
 
   useEffect(() => {
     if (!detailsRef.current?.open) return;
@@ -133,7 +134,7 @@ export function BuilderFeedItems({
             post={{
               ...item,
               builder,
-              detailUrl: postDetailHref(item.id, returnHref, "Sources"),
+              detailUrl: postDetailHref(item.id, returnHref, returnLabel),
             }}
             showSourceBadge={false}
             variant="row"
