@@ -25,6 +25,7 @@ export type FollowingSourceReadiness = {
   digestMaxPostAgeDays: number | null;
   fetchedPostCount: number;
   followedSourceCount: number;
+  summarizedPostCount: number;
   summaryLanguage: string | null;
 };
 
@@ -132,7 +133,7 @@ function FollowingUnavailable({
     );
   }
 
-  if (sourceReadiness.fetchedPostCount === 0) {
+  if (sourceReadiness.summarizedPostCount === 0) {
     return (
       <FeedEmptyState
         actions={<FetchSourcesPrompt sourceReadiness={sourceReadiness} />}

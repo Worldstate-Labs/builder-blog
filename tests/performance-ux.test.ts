@@ -1637,6 +1637,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /"use client"/);
   assert.match(followingSection, /isAdmin\?: boolean/);
   assert.match(followingSection, /sourceReadiness: FollowingSourceReadiness/);
+  assert.match(followingSection, /summarizedPostCount: number/);
   assert.match(followingSection, /showAdminActions=\{isAdmin\}/);
   assert.match(followingSection, /const visibleSnapshots = timeline\?\.snapshots\.filter\(snapshotHasPosts\) \?\? \[\]/);
   assert.match(followingSection, /initialSnapshots=\{visibleSnapshots\}/);
@@ -1646,6 +1647,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /Use Sources to follow or add sources\. They feed both AI Digest and Following/);
   assert.doesNotMatch(followingSection, /start seeing Following posts/);
   assert.doesNotMatch(followingSection, /start Following/);
+  assert.match(followingSection, /sourceReadiness\.summarizedPostCount === 0/);
+  assert.doesNotMatch(followingSection, /sourceReadiness\.fetchedPostCount === 0/);
   assert.match(followingSection, /No summarized posts yet/);
   assert.match(followingSection, /No unread posts yet/);
   assert.match(followingSection, /Run Fetch sources to summarize posts from your followed sources/);
