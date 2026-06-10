@@ -838,6 +838,7 @@ function SearchPostResultCard({
 
   return (
     <PostCard
+      dataRead={Boolean(result.readAt)}
       extraActions={
         <PostFavoriteControl
           feedItemId={result.id}

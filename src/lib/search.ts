@@ -29,6 +29,7 @@ export type SearchDocument = {
   sourceType?: string | null;
   date?: Date | null;
   favoritedAt?: Date | null;
+  readAt?: Date | null;
 };
 
 export type SearchResult = SearchDocument & {

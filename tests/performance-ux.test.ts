@@ -2724,9 +2724,12 @@ test("user library search can fetch operator-only candidate sets", () => {
   assert.match(userSearch, /avatarUrl: item\.builder\?\.avatarUrl \?\? null/);
   assert.match(userSearch, /sourceType: item\.builder\?\.sourceType \?\? null/);
   assert.match(userSearch, /loadFavoriteContentKeys/);
+  assert.match(userSearch, /loadReadContentKeys/);
+  assert.match(userSearch, /prisma\.feedRead\.findMany/);
   assert.match(userSearch, /prisma\.feedFavorite\.findMany/);
   assert.match(userSearch, /contentKey\(item\.builder\.entityId, item\.kind, item\.externalId\)/);
   assert.match(userSearch, /favoritedAt: favoriteKey \? favoriteByContentKey\.get\(favoriteKey\) \?\? null : null/);
+  assert.match(userSearch, /readAt: readKey \? readByContentKey\.get\(readKey\) \?\? null : null/);
   assert.match(userSearch, /"Untitled post"/);
   assert.doesNotMatch(userSearch, /Untitled feed item/);
   assert.match(userSearch, /digest\.itemCount === 1 \? "post" : "posts"/);
@@ -2739,6 +2742,7 @@ test("user library search can fetch operator-only candidate sets", () => {
   assert.match(searchLib, /externalUrl\?: string \| null/);
   assert.match(searchLib, /sourceType\?: string \| null/);
   assert.match(searchLib, /favoritedAt\?: Date \| null/);
+  assert.match(searchLib, /readAt\?: Date \| null/);
   assert.match(searchLib, /documentSiteMatches\(document, parsedQuery\.site\)/);
   assert.match(searchPage, /const originalUrl = result\.externalUrl \?\? \(titleIsExternal \? result\.url \?\? null : null\)/);
   assert.match(searchPage, /className="post-source-original"/);
@@ -4676,6 +4680,7 @@ test("search feed results keep post detail links while preserving originals", ()
   assert.match(searchPage, /function SearchPostResultCard/);
   assert.match(searchPage, /result\.type === "feed"/);
   assert.match(searchPage, /<PostCard/);
+  assert.match(searchPage, /dataRead=\{Boolean\(result\.readAt\)\}/);
   assert.match(searchPage, /detailUrl: resultHref/);
   assert.match(searchPage, /url: originalUrl \?\? result\.url \?\? "#"/);
   assert.match(searchPage, /const originalUrl = result\.externalUrl \?\? \(titleIsExternal \? result\.url \?\? null : null\)/);

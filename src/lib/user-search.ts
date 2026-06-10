@@ -142,10 +142,16 @@ export async function searchUserLibrary({
       take: searchLimits.digest,
     }),
   ]);
-  const favoriteByContentKey = await loadFavoriteContentKeys({
-    feedItems,
-    userId,
-  });
+  const [favoriteByContentKey, readByContentKey] = await Promise.all([
+    loadFavoriteContentKeys({
+      feedItems,
+      userId,
+    }),
+    loadReadContentKeys({
+      feedItems,
+      userId,
+    }),
+  ]);
 
   const documents = [
     ...builders.map<SearchDocument>((builder) => {
@@ -179,6 +185,7 @@ export async function searchUserLibrary({
       const favoriteKey = item.builder?.entityId
         ? contentKey(item.builder.entityId, item.kind, item.externalId)
         : null;
+      const readKey = favoriteKey;
       return {
         id: item.id,
         type: "feed",
@@ -198,6 +205,7 @@ export async function searchUserLibrary({
         sourceUrl: item.builder?.sourceUrl ?? item.url,
         date: item.publishedAt ?? item.createdAt,
         favoritedAt: favoriteKey ? favoriteByContentKey.get(favoriteKey) ?? null : null,
+        readAt: readKey ? readByContentKey.get(readKey) ?? null : null,
       };
     }),
     ...digests.map<SearchDocument>((digest) => {
@@ -250,13 +258,7 @@ async function loadFavoriteContentKeys({
   }>;
   userId: string;
 }) {
-  const contentKeys = new Map<string, { entityId: string; kind: FeedItemKind; externalId: string }>();
-  for (const item of feedItems) {
-    const entityId = item.builder?.entityId;
-    if (!entityId) continue;
-    const key = contentKey(entityId, item.kind, item.externalId);
-    contentKeys.set(key, { entityId, kind: item.kind, externalId: item.externalId });
-  }
+  const contentKeys = contentKeyRowsForFeedItems(feedItems);
   if (contentKeys.size === 0) return new Map<string, Date>();
 
   const favorites = await prisma.feedFavorite.findMany({
@@ -282,6 +284,62 @@ async function loadFavoriteContentKeys({
       favorite.favoritedAt,
     ]),
   );
+}
+
+async function loadReadContentKeys({
+  feedItems,
+  userId,
+}: {
+  feedItems: Array<{
+    kind: FeedItemKind;
+    externalId: string;
+    builder: { entityId: string | null } | null;
+  }>;
+  userId: string;
+}) {
+  const contentKeys = contentKeyRowsForFeedItems(feedItems);
+  if (contentKeys.size === 0) return new Map<string, Date>();
+
+  const reads = await prisma.feedRead.findMany({
+    where: {
+      userId,
+      OR: [...contentKeys.values()].map((item) => ({
+        entityId: item.entityId,
+        kind: item.kind,
+        externalId: item.externalId,
+      })),
+    },
+    select: {
+      entityId: true,
+      kind: true,
+      externalId: true,
+      readAt: true,
+    },
+  });
+
+  return new Map(
+    reads.map((read) => [
+      contentKey(read.entityId, read.kind, read.externalId),
+      read.readAt,
+    ]),
+  );
+}
+
+function contentKeyRowsForFeedItems(
+  feedItems: Array<{
+    kind: FeedItemKind;
+    externalId: string;
+    builder: { entityId: string | null } | null;
+  }>,
+) {
+  const contentKeys = new Map<string, { entityId: string; kind: FeedItemKind; externalId: string }>();
+  for (const item of feedItems) {
+    const entityId = item.builder?.entityId;
+    if (!entityId) continue;
+    const key = contentKey(entityId, item.kind, item.externalId);
+    contentKeys.set(key, { entityId, kind: item.kind, externalId: item.externalId });
+  }
+  return contentKeys;
 }
 
 function contentKey(entityId: string, kind: FeedItemKind, externalId: string) {
