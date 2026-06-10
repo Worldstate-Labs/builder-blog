@@ -1428,7 +1428,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /Run Fetch sources\. Summarized posts from this source will appear here\./);
   assert.doesNotMatch(builderDetailPage, /Run Fetch sources, then posts from this source will appear here\./);
   assert.doesNotMatch(builderDetailPage, /Fetch and summarize sources from Sources|from the Sources page/);
-  assert.match(builderDetailPage, /actions=\{[\s\S]*href="\/builders\?tab=fetch"[\s\S]*Open Sources/);
+  assert.match(builderDetailPage, /actions=\{[\s\S]*href="\/builders\?tab=fetch"[\s\S]*Run Fetch sources/);
+  assert.doesNotMatch(builderDetailPage, /actions=\{[\s\S]*href="\/builders\?tab=fetch"[\s\S]*Open Sources/);
   assert.doesNotMatch(builderDetailPage, /body="No posts summarized yet\."/);
   assert.match(builderDetailPage, /className="recent-post-list recent-post-list--skeleton"/);
   assert.match(builderDetailLoading, /className="recent-post-list recent-post-list--skeleton"/);

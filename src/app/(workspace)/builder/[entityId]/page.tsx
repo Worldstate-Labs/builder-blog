@@ -408,7 +408,7 @@ async function RecentPostsSlot({
       <EmptyState
         actions={
           <Link className="fb-btn light compact" href="/builders?tab=fetch">
-            Open Sources
+            Run Fetch sources
           </Link>
         }
         title="No summarized posts yet"
