@@ -113,7 +113,9 @@ If the path printed is empty, install or symlink the CLI into
 For OpenClaw only, also verify that scheduled runs will not wait for exec
 approval prompts. Do not change OpenClaw policy from this setup prompt; just
 fail fast if this machine is configured to ask. The user can either configure
-OpenClaw for unattended exec or choose a different Local Agent.
+OpenClaw for unattended exec or choose a different Local Agent. The runner
+raises OpenClaw's response timeout to the scheduled FollowBrief job timeout
+before each unattended run, so do not edit that timeout by hand here.
 
 ```bash
 if [ "{{AGENT_RUNTIME}}" = "openclaw" ]; then

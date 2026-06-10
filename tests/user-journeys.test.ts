@@ -920,6 +920,9 @@ test("web app serves the agent skill and setup command", () => {
   // `--agent` between `--local` and `--message`.
   assert.match(runner, /openclaw agent --local --agent .* --timeout .* --message/);
   assert.match(runner, /openclaw agent --local --agent .* --timeout "\$_openclaw_timeout" --message/);
+  assert.match(runner, /sync_openclaw_timeout_config "\$_openclaw_timeout"/);
+  assert.match(runner, /openclaw config get agents\.defaults\.timeoutSeconds/);
+  assert.match(runner, /openclaw config set agents\.defaults\.timeoutSeconds "\$_seconds" --strict-json/);
   assert.match(runner, /BUILDER_BLOG_AGENT_TIMEOUT_SECONDS/);
   assert.match(runner, /timeout_seconds_for_job "\$\{INTERVAL_MINUTES:-60\}" "\$JOB_NAME"/);
   assert.match(runner, /gemini -p/);

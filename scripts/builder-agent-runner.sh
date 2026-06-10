@@ -142,7 +142,25 @@ run_with_openclaw_unattended() {
   # (the bare `--local --message` form errors "Pass --to/--session-id/--agent"),
   # so pass `--agent`.
   _openclaw_timeout="${BUILDER_BLOG_AGENT_TIMEOUT_SECONDS:-${_timeout:-$(timeout_seconds_for_job "${INTERVAL_MINUTES:-60}" "$JOB_NAME")}}"
+  sync_openclaw_timeout_config "$_openclaw_timeout"
   openclaw agent --local --agent "${OPENCLAW_AGENT:-main}" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")"
+}
+
+sync_openclaw_timeout_config() {
+  _seconds="${1:-}"
+  case "$_seconds" in
+    ''|*[!0-9]*) return 0 ;;
+  esac
+  _current="$(openclaw config get agents.defaults.timeoutSeconds 2>/dev/null || true)"
+  case "$_current" in
+    *[!0-9]*|'') _current="0" ;;
+  esac
+  if [ "$_current" -ge "$_seconds" ]; then
+    return 0
+  fi
+  if ! openclaw config set agents.defaults.timeoutSeconds "$_seconds" --strict-json >/dev/null 2>&1; then
+    echo "Warning: failed to set OpenClaw agents.defaults.timeoutSeconds to ${_seconds}s; continuing with --timeout." >&2
+  fi
 }
 
 run_with_gemini_unattended() {
