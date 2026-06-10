@@ -11899,37 +11899,42 @@ body {
 
   .fb-hub-card-head {
     align-items: flex-start;
-    flex-direction: row;
+    flex-direction: column;
     flex-wrap: nowrap;
+    gap: 0.7rem;
   }
 
   .fb-hub-card-actions {
-    align-items: center;
+    align-items: flex-start;
     flex: 0 1 auto;
     flex-direction: row;
-    justify-content: flex-end;
-    max-width: min(16rem, 58%);
+    justify-content: flex-start;
+    max-width: 100%;
+    width: 100%;
   }
 
   .digest-pipeline-card .fb-hub-card-head {
     align-items: flex-start;
-    flex-direction: row;
+    flex-direction: column;
     flex-wrap: nowrap;
   }
 
   .digest-pipeline-card .fb-hub-card-titleblock {
     flex: 1 1 auto;
-    width: auto;
+    width: 100%;
   }
 
   .digest-pipeline-card .fb-hub-card-actions {
-    align-items: center;
+    align-items: flex-start;
     flex-direction: row;
+    justify-content: flex-start;
+    max-width: 100%;
+    width: 100%;
   }
 
   .fb-hub-card-titleblock {
     flex: 1 1 auto;
-    width: auto;
+    width: 100%;
   }
 
   .fb-hub-sources-summary {

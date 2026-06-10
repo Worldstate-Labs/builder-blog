@@ -3030,6 +3030,9 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /hub-card-action-button/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /flex flex-wrap items-center gap-2|disabled:cursor-wait/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-head"/);
+  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-head\s*{[\s\S]*flex-direction:\s*column/);
+  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-actions\s*{[\s\S]*justify-content:\s*flex-start[\s\S]*max-width:\s*100%[\s\S]*width:\s*100%/);
+  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-titleblock\s*{[\s\S]*width:\s*100%/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /function libraryCardDescription/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /library\.description\?\.trim\(\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /A source library you manage\./);
@@ -3141,8 +3144,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(source("src/components/DigestPipelineImportForm.tsx"), /flex flex-wrap items-center gap-2|disabled:cursor-wait/);
   assert.match(source("src/app/globals.css"), /\.own-digest-card\s*{[\s\S]*min-height:\s*0/);
   assert.match(source("src/app/globals.css"), /\.hub-card-remove-button\s*{/);
-  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.digest-pipeline-card \.fb-hub-card-head\s*{[\s\S]*flex-direction:\s*row/);
-  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.digest-pipeline-card \.fb-hub-card-titleblock\s*{[\s\S]*width:\s*auto/);
+  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.digest-pipeline-card \.fb-hub-card-head\s*{[\s\S]*flex-direction:\s*column/);
+  assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.digest-pipeline-card \.fb-hub-card-titleblock\s*{[\s\S]*width:\s*100%/);
   assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.digest-pipeline-card \.fb-hub-card-actions\s*{[\s\S]*flex-direction:\s*row/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.own-digest-card \.fb-hub-card-stats\s*{[\s\S]*display:\s*none/);
   assert.match(source("src/app/globals.css"), /\.sources-tab-body\s*{[\s\S]*overflow-x:\s*clip/);
@@ -4214,9 +4217,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(hubImportForm, /role="group"/);
   assert.match(globals, /\.mobile-filter-tabs\s*{[\s\S]*overflow-x:\s*auto/);
   assert.match(globals, /\.mobile-filter-tabs \.fb-btn\s*{[\s\S]*flex:\s*0 0 auto/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-head\s*{[\s\S]*flex-direction:\s*row/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-head\s*{[\s\S]*flex-direction:\s*column/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-actions\s*{[\s\S]*flex-direction:\s*row/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-actions\s*{[\s\S]*max-width:\s*min\(16rem,\s*58%\)/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-actions\s*{[\s\S]*max-width:\s*100%/);
   assert.doesNotMatch(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-actions\s*{[\s\S]*max-width:\s*52%/);
   assert.doesNotMatch(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-head,\s*\.fb-hub-card-actions\s*{[\s\S]*align-items:\s*stretch/);
   assert.match(hubImportForm, /aria-pressed=\{activeFilter === filter\.key\}/);
