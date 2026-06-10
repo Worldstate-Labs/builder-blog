@@ -73,10 +73,10 @@ async function SourceTypeConfigSection({
       <details className="settings-rules-panel fb-panel">
         <summary className="settings-rules-summary">
           <div className="settings-rules-summary-copy">
-            <h3 className="fb-section-heading">Fetch sources rules</h3>
+            <h3 className="fb-section-heading">Source fetching rules</h3>
             <p className="settings-rules-summary-desc">
-              Used by Fetch sources: discover source posts, filter candidates, and
-              write per-post summaries.
+              Used when Fetch sources discovers posts, filters candidates, and
+              writes per-post summaries.
             </p>
           </div>
           <span className="settings-rules-summary-meta source-summary-line">

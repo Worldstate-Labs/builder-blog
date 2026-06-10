@@ -287,7 +287,7 @@ test("every app route has an explicit centered layout role", () => {
   assert.doesNotMatch(settingsLoading, /<span className="sr-only">Loading Settings rules<\/span>/);
   assert.doesNotMatch(settingsLoading, /className="settings-rules settings-rules-skeleton"/);
   const settingsRulesSkeleton = source("src/components/SettingsRulesSkeleton.tsx");
-  assert.match(settingsRulesSkeleton, /Fetch sources rules/);
+  assert.match(settingsRulesSkeleton, /Source fetching rules/);
   assert.match(settingsRulesSkeleton, /AI Digest rules/);
   assert.match(settingsRulesSkeleton, /className="settings-skeleton-card-label"/);
   const dashboardLoading = source("src/app/(workspace)/dashboard/loading.tsx");
@@ -4375,9 +4375,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(settingsPage, />Advanced<\/p>/);
   assert.doesNotMatch(settingsPage, /Source and digest rules/);
   assert.doesNotMatch(settingsPage, /settings-rules-title|settings-rules-head/);
-  assert.match(settingsPage, /Fetch sources rules/);
-  assert.doesNotMatch(settingsPage, /Source fetch rules/);
-  assert.match(settingsPage, /Used by Fetch sources: discover source posts, filter candidates, and\s*write per-post summaries\./);
+  assert.match(settingsPage, /Source fetching rules/);
+  assert.doesNotMatch(settingsPage, /Fetch sources rules|Source fetch rules/);
+  assert.match(settingsPage, /Used when Fetch sources discovers posts, filters candidates, and\s*writes per-post summaries\./);
   assert.doesNotMatch(settingsPage, /Runs before AI Digest: discover source posts/);
   assert.match(settingsPage, /AI Digest rules/);
   assert.match(settingsPage, /Runs after per-post summaries: write the digest headline, source notes,\s*and post summaries in the selected AI Digest language\./);
@@ -4403,7 +4403,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(settingsPage, /settings-skeleton-line--eyebrow/);
   assert.doesNotMatch(settingsPage, /className="settings-skeleton-line settings-skeleton-line--title"/);
   const settingsRulesSkeleton = source("src/components/SettingsRulesSkeleton.tsx");
-  assert.match(settingsRulesSkeleton, /settingsRuleSkeletonLabels = \["Fetch sources rules", "AI Digest rules"\]/);
+  assert.match(settingsRulesSkeleton, /settingsRuleSkeletonLabels = \["Source fetching rules", "AI Digest rules"\]/);
+  assert.doesNotMatch(settingsRulesSkeleton, /Fetch sources rules/);
   assert.match(settingsRulesSkeleton, /className="settings-skeleton-card-label"/);
   assert.match(settingsRulesSkeleton, /className="settings-skeleton-card"/);
   assert.match(globals, /\.settings-skeleton-card-label\s*{[\s\S]*text-transform:\s*uppercase/);

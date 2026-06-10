@@ -1,4 +1,4 @@
-const settingsRuleSkeletonLabels = ["Fetch sources rules", "AI Digest rules"];
+const settingsRuleSkeletonLabels = ["Source fetching rules", "AI Digest rules"];
 
 export function SettingsRulesSkeleton() {
   return (
