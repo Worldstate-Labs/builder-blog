@@ -294,6 +294,9 @@ test("every app route has an explicit centered layout role", () => {
   assert.doesNotMatch(dashboardLoading, /RouteLoading/);
   assert.match(dashboardLoading, /className="page-pad page-pad--reading home-page home-loading"/);
   assert.match(dashboardLoading, /<h1 className="sr-only">Loading Home<\/h1>/);
+  assert.match(dashboardLoading, /const selected = label === "AI Digest"/);
+  assert.match(dashboardLoading, /aria-selected=\{selected \? "true" : "false"\}/);
+  assert.match(dashboardLoading, /data-active=\{selected \? "true" : undefined\}/);
   assert.match(dashboardLoading, /aria-label="Home feed tabs"/);
   assert.doesNotMatch(dashboardLoading, /home-loading-tab is-active/);
   assert.match(dashboardLoading, /home-loading-tab[\s\S]*AI Digest/);

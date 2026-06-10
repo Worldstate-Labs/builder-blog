@@ -13,18 +13,22 @@ export default function DashboardLoading() {
             className="workspace-top-tabs fb-segmented-tabs home-loading-tabs"
             role="tablist"
           >
-            {["AI Digest", "Following", "Favorites"].map((label) => (
-              <span
-                aria-disabled="true"
-                aria-selected="false"
-                className="fb-btn home-loading-tab"
-                key={label}
-                role="tab"
-                tabIndex={-1}
-              >
-                {label}
-              </span>
-            ))}
+            {["AI Digest", "Following", "Favorites"].map((label) => {
+              const selected = label === "AI Digest";
+              return (
+                <span
+                  aria-disabled="true"
+                  aria-selected={selected ? "true" : "false"}
+                  className="fb-btn home-loading-tab"
+                  data-active={selected ? "true" : undefined}
+                  key={label}
+                  role="tab"
+                  tabIndex={-1}
+                >
+                  {label}
+                </span>
+              );
+            })}
           </div>
         </div>
 
