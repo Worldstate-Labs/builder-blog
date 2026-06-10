@@ -199,7 +199,11 @@ test("every app route has an explicit centered layout role", () => {
 
   assert.match(
     source("src/app/(workspace)/settings/page.tsx"),
-    /className="page-pad page-pad--settings"[\s\S]*<PageHeader[\s\S]*title="Settings"[\s\S]*Manage Local Agent access and the rules used by Fetch sources and AI Digest\./,
+    /className="page-pad page-pad--settings"[\s\S]*<PageHeader[\s\S]*title="Settings"[\s\S]*Manage authorized access and the rules used by Fetch sources and AI Digest\./,
+  );
+  assert.doesNotMatch(
+    source("src/app/(workspace)/settings/page.tsx"),
+    /Manage Local Agent access and the rules used by Fetch sources and AI Digest\./,
   );
 
   const redirectOnlyRoutes = [
@@ -274,7 +278,7 @@ test("every app route has an explicit centered layout role", () => {
   assert.doesNotMatch(settingsLoading, /RouteLoading/);
   assert.match(settingsLoading, /@\/components\/PageHeader/);
   assert.match(settingsLoading, /className="page-pad page-pad--settings settings-loading"/);
-  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage Local Agent access and the rules used by Fetch sources and AI Digest\./);
+  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage authorized access and the rules used by Fetch sources and AI Digest\./);
   assert.match(settingsLoading, /className="workspace-content-stack settings-workspace"/);
   assert.match(settingsLoading, /className="settings-access-grid"/);
   assert.match(settingsLoading, /@\/components\/AgentTokenPanelSkeleton/);
@@ -973,13 +977,15 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /closeMenu\(\);[\s\S]*signOut\(\{ callbackUrl: "\/login" \}\)[\s\S]*Sign out/);
   assert.match(settingsPage, /@\/components\/PageHeader/);
   assert.match(settingsPage, /className="page-pad page-pad--settings"/);
-  assert.match(settingsPage, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage Local Agent access and the rules used by Fetch sources and AI Digest\./);
+  assert.match(settingsPage, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage authorized access and the rules used by Fetch sources and AI Digest\./);
+  assert.doesNotMatch(settingsPage, /Manage Local Agent access and the rules used by Fetch sources and AI Digest\./);
   assert.doesNotMatch(settingsPage, /<section className="fb-page-head"/);
   assert.equal(existsSync(join(root, "src/app/(workspace)/settings/loading.tsx")), true);
   const settingsLoading = source("src/app/(workspace)/settings/loading.tsx");
   assert.doesNotMatch(settingsLoading, /RouteLoading/);
   assert.match(settingsLoading, /className="page-pad page-pad--settings settings-loading"/);
-  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage Local Agent access and the rules used by Fetch sources and AI Digest\./);
+  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage authorized access and the rules used by Fetch sources and AI Digest\./);
+  assert.doesNotMatch(settingsLoading, /Manage Local Agent access and the rules used by Fetch sources and AI Digest\./);
   assert.match(settingsLoading, /className="workspace-content-stack settings-workspace"/);
   assert.match(settingsLoading, /@\/components\/AgentTokenPanelSkeleton/);
   assert.match(settingsLoading, /<AgentTokenPanelSkeleton \/>/);
