@@ -75,12 +75,12 @@ export function FavoritePostsList({
   }
 
   return (
-    <section className="feed-content-stack favorites-feed" aria-label="Favorites">
+    <section className="feed-content-stack favorites-feed" aria-label="Favorite posts">
       <div className="favorites-feed-head">
         <div>
-          <h2 className="favorites-feed-title">Favorites</h2>
+          <h2 className="favorites-feed-title">Reading queue</h2>
           <p className="favorites-feed-desc">
-            Focused reading queue, newest first.
+            Posts you starred for focused reading, newest first.
           </p>
         </div>
         <span className="favorites-feed-count">

@@ -1618,8 +1618,11 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(favoriteList, /sortFavoriteItems\(\[\.\.\.current, removedItem\]\)/);
   assert.match(favoriteList, /className="favorites-feed-error" role="status"/);
   assert.match(favoriteList, /Could not remove favorite\. The post remains in Favorites\./);
-  assert.match(favoriteList, /Focused reading queue, newest first\./);
+  assert.match(favoriteList, /aria-label="Favorite posts"/);
+  assert.match(favoriteList, /Reading queue/);
+  assert.match(favoriteList, /Posts you starred for focused reading, newest first\./);
   assert.match(favoriteList, /Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
+  assert.doesNotMatch(favoriteList, /<h2 className="favorites-feed-title">Favorites<\/h2>/);
   assert.doesNotMatch(favoriteList, /Saved for deeper reading/);
   assert.doesNotMatch(favoriteList, /showSourceBadge=\{false\}/);
   assert.doesNotMatch(favoriteList, /setItems\(previousItems\)/);
