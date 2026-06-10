@@ -848,6 +848,7 @@ function SearchPostResultCard({
         <PostFavoriteControl
           feedItemId={result.id}
           initialIsFavorite={Boolean(result.favoritedAt)}
+          targetLabel={favoriteTargetLabel(result.title, sourceName)}
         />
       }
       fallbackBuilder={builder}
@@ -944,6 +945,10 @@ function PageLink({
       {label}
     </Link>
   );
+}
+
+function favoriteTargetLabel(title: string | null, sourceName: string) {
+  return title?.trim() || sourceName.trim() || "this post";
 }
 
 function RelatedSearches({

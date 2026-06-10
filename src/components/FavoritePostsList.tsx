@@ -5,7 +5,7 @@ import { useState } from "react";
 import { formatCount } from "@/components/Count";
 import { FeedEmptyState } from "@/components/FeedState";
 import { PostCard, type PostCardPost } from "@/components/PostCard";
-import { PostFavoriteButton } from "@/components/PostFavoriteButton";
+import { PostFavoriteButton, postFavoriteActionLabel } from "@/components/PostFavoriteButton";
 import { postDetailHref } from "@/lib/navigation";
 
 export type FavoritePostListItem = {
@@ -98,7 +98,7 @@ export function FavoritePostsList({
             dataRead={Boolean(item.readAt)}
             extraActions={
               <PostFavoriteButton
-                ariaLabel={`Remove ${favoritePostLabel(item.post)} from Favorites`}
+                ariaLabel={postFavoriteActionLabel(true, favoritePostLabel(item.post))}
                 disabled={pendingIds.has(item.feedItemId)}
                 isFavorite
                 onToggle={() => void removeFavorite(item.feedItemId)}

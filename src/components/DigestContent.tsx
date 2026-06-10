@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { ArrowRight } from "lucide-react";
 import { PostCard, type PostCardPost } from "@/components/PostCard";
-import { PostFavoriteButton } from "@/components/PostFavoriteButton";
+import { PostFavoriteButton, postFavoriteActionLabel } from "@/components/PostFavoriteButton";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { postDetailHref } from "@/lib/navigation";
 import { normalizeSourceType } from "@/lib/source-display";
@@ -246,6 +246,10 @@ function PostBlock({
         favoriteState && onFavoriteToggle ? (
           <span className="post-favorite-control">
             <PostFavoriteButton
+              ariaLabel={postFavoriteActionLabel(
+                Boolean(favoriteState.favoritedAt),
+                digestFavoriteTargetLabel(postCard),
+              )}
               disabled={pendingFavoriteUrls.has(url)}
               isFavorite={Boolean(favoriteState.favoritedAt)}
               onToggle={() =>
@@ -267,6 +271,10 @@ function PostBlock({
       showSourceBadge={false}
     />
   );
+}
+
+function digestFavoriteTargetLabel(post: PostCardPost) {
+  return post.title?.trim() || post.sourceName?.trim() || "this post";
 }
 
 function DigestGroupHeading({

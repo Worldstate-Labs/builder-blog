@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { PostFavoriteButton } from "@/components/PostFavoriteButton";
+import { PostFavoriteButton, postFavoriteActionLabel } from "@/components/PostFavoriteButton";
 
 export function PostFavoriteControl({
   feedItemId,
   initialIsFavorite,
+  targetLabel,
 }: {
   feedItemId: string;
   initialIsFavorite: boolean;
+  targetLabel?: string | null;
 }) {
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite);
   const [error, setError] = useState("");
@@ -36,6 +38,7 @@ export function PostFavoriteControl({
   return (
     <span className="post-favorite-control">
       <PostFavoriteButton
+        ariaLabel={postFavoriteActionLabel(isFavorite, targetLabel)}
         disabled={isPending}
         isFavorite={isFavorite}
         onToggle={toggleFavorite}

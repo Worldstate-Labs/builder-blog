@@ -117,6 +117,7 @@ export async function PostDetailPage({
             <PostFavoriteControl
               feedItemId={item.id}
               initialIsFavorite={Boolean(favorite)}
+              targetLabel={item.title?.trim() || item.sourceName?.trim() || sourceLabel}
             />
           ) : undefined
         }

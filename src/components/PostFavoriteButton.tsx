@@ -13,7 +13,7 @@ export function PostFavoriteButton({
   isFavorite: boolean;
   onToggle: () => void;
 }) {
-  const label = isFavorite ? "Remove from Favorites" : "Save to Favorites";
+  const label = postFavoriteActionLabel(isFavorite);
   const accessibleLabel = ariaLabel ?? label;
   return (
     <button
@@ -28,4 +28,10 @@ export function PostFavoriteButton({
       <Star aria-hidden="true" className="post-action-icon" />
     </button>
   );
+}
+
+export function postFavoriteActionLabel(isFavorite: boolean, targetLabel?: string | null) {
+  const target = targetLabel?.trim();
+  if (!target) return isFavorite ? "Remove from Favorites" : "Save to Favorites";
+  return isFavorite ? `Remove ${target} from Favorites` : `Save ${target} to Favorites`;
 }

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, RefreshCcw } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { PostCard } from "@/components/PostCard";
-import { PostFavoriteButton } from "@/components/PostFavoriteButton";
+import { PostFavoriteButton, postFavoriteActionLabel } from "@/components/PostFavoriteButton";
 import { useHydrated } from "@/components/ThemeToggle";
 import { markPostRead } from "@/lib/mark-read";
 import { postDetailHref } from "@/lib/navigation";
@@ -240,6 +240,7 @@ function RecommendationCard({
       dataRead={isRead}
       extraActions={
         <PostFavoriteButton
+          ariaLabel={postFavoriteActionLabel(isFavorite, recommendationTargetLabel(entry.item))}
           disabled={pendingFavorite}
           isFavorite={isFavorite}
           onToggle={() => void toggleFavorite(entry.item.id, !isFavorite)}
@@ -259,6 +260,10 @@ function RecommendationCard({
       stackActionsOnMobile={showAdminActions}
     />
   );
+}
+
+function recommendationTargetLabel(item: RecommendationFeedEntry["item"]) {
+  return item.title?.trim() || item.sourceName?.trim() || "this post";
 }
 
 async function setPostFavorite(feedItemId: string, favorite: boolean) {
