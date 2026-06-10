@@ -1713,7 +1713,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(recommendationFeed, /favoriteStateForItem\(snapshots, feedItemId\)/);
   assert.match(recommendationFeed, /restoreFavoriteState\(current, feedItemId, previousFavoritedAt\)/);
   assert.match(recommendationFeed, /className="feed-load-error recommendation-favorite-error" role="status"/);
-  assert.match(recommendationFeed, /Could not update favorite\. Try again\./);
+  assert.match(recommendationFeed, /Could not update reading queue\. Try again\./);
+  assert.doesNotMatch(recommendationFeed, /Could not update favorite\. Try again\./);
   assert.doesNotMatch(recommendationFeed, /Could not update saved state/);
   assert.match(recommendationFeed, /disabled=\{pendingFavorite\}/);
   assert.match(recommendationFeed, /if \(!response\.ok\) throw new Error\(`HTTP \$\{response\.status\}`\)/);
@@ -3649,7 +3650,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postFavoriteControl, /method: nextFavorite \? "POST" : "DELETE"/);
   assert.match(postFavoriteControl, /disabled=\{isPending\}/);
   assert.match(postFavoriteControl, /const \[error, setError\] = useState\(""\)/);
-  assert.match(postFavoriteControl, /setError\("Could not update favorite\. Try again\."\)/);
+  assert.match(postFavoriteControl, /setError\("Could not update reading queue\. Try again\."\)/);
+  assert.doesNotMatch(postFavoriteControl, /Could not update favorite\. Try again\./);
   assert.doesNotMatch(postFavoriteControl, /Could not update saved state/);
   assert.match(postFavoriteControl, /className="post-favorite-status" role="status"/);
   assert.match(postFavoriteControl, /className="post-favorite-control"/);
@@ -3663,7 +3665,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(digestDetails, /pendingFavoriteUrls: removeUrl\(current\.pendingFavoriteUrls, url\)/);
   assert.match(digestDetails, /function omitUrl/);
   assert.match(digestDetails, /function removeUrl/);
-  assert.match(digestDetails, /Could not update favorite\. Try again\./);
+  assert.match(digestDetails, /Could not update reading queue\. Try again\./);
+  assert.doesNotMatch(digestDetails, /Could not update favorite\. Try again\./);
   assert.doesNotMatch(digestDetails, /Could not update saved state/);
   assert.doesNotMatch(digestDetails, /reload restores truth|Best-effort optimistic UI/);
   assert.match(digestContent, /const EMPTY_PENDING_FAVORITE_URLS = new Set<string>\(\)/);

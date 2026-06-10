@@ -155,7 +155,7 @@ export function DigestDetails({
         ...current,
         favoriteErrorByUrl: {
           ...current.favoriteErrorByUrl,
-          [url]: "Could not update favorite. Try again.",
+          [url]: "Could not update reading queue. Try again.",
         },
         favoriteStateByUrl: {
           ...current.favoriteStateByUrl,

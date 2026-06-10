@@ -30,7 +30,7 @@ export function PostFavoriteControl({
         if (!response.ok) throw new Error("Favorite update failed");
       } catch {
         setIsFavorite(!nextFavorite);
-        setError("Could not update favorite. Try again.");
+        setError("Could not update reading queue. Try again.");
       }
     });
   }
