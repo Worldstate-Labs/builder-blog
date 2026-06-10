@@ -471,6 +471,10 @@ test("web app serves the agent skill and setup command", () => {
   // Server validates freq against a whitelist → fixed cron expression and
   // substitutes the schedule + cadence label into the cron-setup prompt.
   assert.match(skillJobRoute, /cronSchedules/);
+  assert.match(skillJobRoute, /new Set\(\["claude", "codex", "gemini", "openclaw"\]\)/);
+  assert.match(skillJobRoute, /openclaw: "OpenClaw"/);
+  assert.match(skillPromptActions, /id: "openclaw"/);
+  assert.match(skillPromptActions, /label: "OpenClaw"/);
   assert.match(skillJobRoute, /searchParams\.get\("freq"\)/);
   assert.match(skillJobRoute, /searchParams\.get\("days"\)/);
   assert.match(skillJobRoute, /\{\{FETCH_DAYS\}\}/);
@@ -768,6 +772,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /Do not\s+invoke any other\s+skill, plugin, or subagent/);
   assert.match(digestCronSetupPrompt, /Do not\s+invoke any other\s+skill, plugin, or subagent/);
   assert.match(libraryCronSetupPrompt, /Pin the scheduled runtime/);
+  assert.match(libraryCronSetupPrompt, /openclaw exec-policy show/);
+  assert.match(libraryCronSetupPrompt, /grep -q 'ask=off'/);
+  assert.match(libraryCronSetupPrompt, /Scheduled FollowBrief jobs cannot wait for approvals/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /exec-policy preset yolo/);
   // Pin files are per-account and per-job so multiple FollowBrief accounts and
   // job types can use different runtimes on one machine.
   assert.match(libraryCronSetupPrompt, /ACCOUNT_SLUG/);
@@ -830,6 +838,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronSetupPrompt, /\{\{AGENT_RUNTIME\}\}/);
   assert.match(digestCronSetupPrompt, /\{\{AGENT_RUNTIME_LABEL\}\}/);
   assert.match(digestCronSetupPrompt, /Pin the scheduled runtime/);
+  assert.match(digestCronSetupPrompt, /openclaw exec-policy show/);
+  assert.match(digestCronSetupPrompt, /grep -q 'ask=off'/);
+  assert.match(digestCronSetupPrompt, /Scheduled FollowBrief jobs cannot wait for approvals/);
+  assert.doesNotMatch(digestCronSetupPrompt, /exec-policy preset yolo/);
   assert.match(digestCronSetupPrompt, /ACCOUNT_SLUG/);
   assert.match(digestCronSetupPrompt, /runtime-digest-cron-\$ACCOUNT_SLUG/);
   assert.match(digestCronSetupPrompt, /6\. Install the schedule/);
@@ -877,7 +889,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /claude -p/);
   // openclaw 2026.5.20+ requires a session selector, so the runner passes
   // `--agent` between `--local` and `--message`.
-  assert.match(runner, /openclaw agent --local --agent .* --message/);
+  assert.match(runner, /openclaw agent --local --agent .* --timeout .* --message/);
+  assert.match(runner, /openclaw agent --local --agent .* --timeout "\$_openclaw_timeout" --message/);
+  assert.match(runner, /BUILDER_BLOG_AGENT_TIMEOUT_SECONDS/);
+  assert.match(runner, /timeout_seconds_for_job "\$\{INTERVAL_MINUTES:-60\}" "\$JOB_NAME"/);
   assert.match(runner, /gemini -p/);
   // Pinned-runtime dispatch for *-cron jobs: each runtime has an
   // _unattended variant with the matching allowlist / auto-approve

@@ -141,7 +141,8 @@ run_with_openclaw_unattended() {
   # global policy at all. `agent` requires a session selector on 2026.5.20
   # (the bare `--local --message` form errors "Pass --to/--session-id/--agent"),
   # so pass `--agent`.
-  openclaw agent --local --agent "${OPENCLAW_AGENT:-main}" --message "$(cat "$PROMPT_FILE")"
+  _openclaw_timeout="${BUILDER_BLOG_AGENT_TIMEOUT_SECONDS:-${_timeout:-$(timeout_seconds_for_job "${INTERVAL_MINUTES:-60}" "$JOB_NAME")}}"
+  openclaw agent --local --agent "${OPENCLAW_AGENT:-main}" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")"
 }
 
 run_with_gemini_unattended() {

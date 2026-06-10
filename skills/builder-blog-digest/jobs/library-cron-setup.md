@@ -108,6 +108,23 @@ PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" command -v {{AGENT_RUNTIME
 If the path printed is empty, install or symlink the CLI into
 `/usr/local/bin` before continuing — the scheduler will not find it otherwise.
 
+For OpenClaw only, also verify that scheduled runs will not wait for exec
+approval prompts. Do not change OpenClaw policy from this setup prompt; just
+fail fast if this machine is configured to ask. The user can either configure
+OpenClaw for unattended exec or choose a different Local Agent.
+
+```bash
+if [ "{{AGENT_RUNTIME}}" = "openclaw" ]; then
+  OPENCLAW_POLICY="$(openclaw exec-policy show 2>&1)"
+  printf '%s\n' "$OPENCLAW_POLICY"
+  printf '%s\n' "$OPENCLAW_POLICY" | grep -q 'ask=off' || {
+    echo "OpenClaw exec policy is not ask=off. Scheduled FollowBrief jobs cannot wait for approvals." >&2
+    echo "Configure OpenClaw for unattended exec, then re-run this setup prompt." >&2
+    exit 1
+  }
+fi
+```
+
 6. Install the schedule to run {{CRON_FREQUENCY_LABEL}}. Pick the path for this
 machine's OS — run `uname` if unsure.
 
