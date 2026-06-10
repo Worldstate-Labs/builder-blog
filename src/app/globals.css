@@ -9036,6 +9036,19 @@ a.fb-hub-source-name:focus-visible {
   display: none;
 }
 
+.builder-detail-channels-summary-copy {
+  display: grid;
+  gap: 0.18rem;
+  min-width: min(100%, 22rem);
+}
+
+.builder-detail-channels-summary-desc {
+  color: var(--muted-strong);
+  font-size: 0.75rem;
+  font-weight: 520;
+  line-height: 1.35;
+}
+
 .builder-detail-channels-summary::after {
   border-bottom: 1.8px solid currentcolor;
   border-right: 1.8px solid currentcolor;

@@ -237,7 +237,12 @@ export default async function BuilderDetailPage({ params }: Params) {
 
         <details className="builder-detail-section builder-detail-channels">
           <summary className="builder-detail-channels-summary">
-            <span>Source libraries</span>
+            <span className="builder-detail-channels-summary-copy">
+              <span>Source libraries</span>
+              <span className="builder-detail-channels-summary-desc">
+                Where this source is available in your Sources.
+              </span>
+            </span>
             <CountMeta label={channels.length === 1 ? "library" : "libraries"} value={channels.length} />
           </summary>
           <Suspense fallback={<ChannelsListSkeleton />}>

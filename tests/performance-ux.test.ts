@@ -1366,6 +1366,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(builderDetailLoading, /<details className="builder-detail-section builder-detail-channels" open>/);
   assert.match(builderDetailPage, /<Suspense fallback=\{<ChannelsListSkeleton \/>/);
   assert.match(builderDetailPage, /Source libraries/);
+  assert.match(builderDetailPage, /className="builder-detail-channels-summary-copy"/);
+  assert.match(builderDetailPage, /className="builder-detail-channels-summary-desc"/);
+  assert.match(builderDetailPage, /Where this source is available in your Sources\./);
+  assert.match(builderDetailLoading, /Where this source is available in your Sources\./);
   assert.match(builderDetailPage, /channels\.length === 1 \? "library" : "libraries"/);
   assert.doesNotMatch(builderDetailPage, /channels\.length === 1 \? "source library" : "source libraries"/);
   assert.match(builderDetailPage, /className="builder-detail-channel-list"/);
@@ -1462,6 +1466,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.builder-detail-action-row\s*{[\s\S]*flex-wrap:\s*wrap/);
   assert.match(globals, /\.builder-detail-action-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.builder-detail-channels\s*{[\s\S]*border-top:\s*1px solid/);
+  assert.match(globals, /\.builder-detail-channels-summary-copy\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.builder-detail-channels-summary-desc\s*{[\s\S]*color:\s*var\(--muted-strong\)/);
   assert.match(globals, /\.builder-detail-channels-summary::after\s*{[\s\S]*border-bottom:\s*1\.8px solid currentcolor/);
   assert.match(globals, /\.builder-detail-channels-summary::after\s*{[\s\S]*transform:\s*rotate\(45deg\)/);
   assert.match(globals, /\.builder-detail-channels\[open\] \.builder-detail-channels-summary::after\s*{[\s\S]*transform:\s*rotate\(225deg\)/);
