@@ -886,7 +886,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /selected AI Digest language/);
   assert.match(adminDigestConfig, /Could not save AI Digest prompts\./);
   assert.match(adminDigestConfig, /Headline prompt cannot be empty\./);
-  assert.match(adminDigestConfig, /Localized post summary prompt cannot be empty\./);
+  assert.match(adminDigestConfig, /Post summary prompt cannot be empty\./);
   assert.match(adminDigestConfig, /draft\.perSourceSummaryPrompt\.trim\(\)\.length === 0 \? "" : draft\.perSourceSummaryPrompt/);
   assert.match(adminDigestConfig, /50 Chinese\/Japanese\/Korean characters or 50 words for word-delimited languages/);
   assert.doesNotMatch(adminDigestConfig, /50 characters or 50 words/);
@@ -897,10 +897,10 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /headlinePrompt/);
   assert.match(adminDigestConfig, /perSourceSummaryPrompt/);
   assert.match(adminDigestConfig, /label="Per-source summary prompt"[\s\S]*optional/);
-  assert.match(adminDigestConfig, /label="Localized post summary prompt"/);
-  assert.match(adminDigestConfig, /ariaLabel="Localized post summary prompt"/);
+  assert.match(adminDigestConfig, /label="Post summary prompt"/);
+  assert.match(adminDigestConfig, /ariaLabel="Post summary prompt"/);
   assert.match(adminDigestConfig, /selected AI Digest language without dropping key points/);
-  assert.doesNotMatch(adminDigestConfig, /label="Translate prompt"|ariaLabel="Translate prompt"/);
+  assert.doesNotMatch(adminDigestConfig, /label="Localized post summary prompt"|ariaLabel="Localized post summary prompt"|label="Translate prompt"|ariaLabel="Translate prompt"/);
   assert.match(adminDigestConfig, /under 300 Chinese characters/);
   assert.match(adminDigestConfig, /under 300 words/);
   assert.match(adminDigestConfig, /Preserve the original summary's key claims/);

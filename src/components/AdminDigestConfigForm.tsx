@@ -84,7 +84,7 @@ export function AdminDigestConfigForm({
       return;
     }
     if (draft.translate.trim().length === 0) {
-      setStatus({ kind: "error", message: "Localized post summary prompt cannot be empty." });
+      setStatus({ kind: "error", message: "Post summary prompt cannot be empty." });
       return;
     }
     const patch = {
@@ -153,11 +153,11 @@ export function AdminDigestConfigForm({
           />
         </FieldBlock>
         <FieldBlock
-          label="Localized post summary prompt"
+          label="Post summary prompt"
           description="Rewrites or translates existing per-post summaries into the selected AI Digest language without dropping key points."
         >
           <MarkdownEditor
-            ariaLabel="Localized post summary prompt"
+            ariaLabel="Post summary prompt"
             height={340}
             placeholder={TRANSLATE_PROMPT_PLACEHOLDER}
             value={draft.translate}
