@@ -31,7 +31,10 @@ export default async function SettingsPage() {
 
   return (
     <div className="page-pad page-pad--settings">
-      <PageHeader title="Settings" />
+      <PageHeader
+        title="Settings"
+        description="Manage Local Agent access and the rules used by Fetch sources and AI Digest."
+      />
 
       <div className="workspace-content-stack settings-workspace">
         <div className="settings-access-grid">
