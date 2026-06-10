@@ -369,12 +369,12 @@ function DigestControlBar({
 }) {
   return (
     <section
-      aria-label="AI Digest collection and archive selection"
+      aria-label="AI Digest archive source and archive selection"
       className="digest-control-bar"
     >
       <div className="digest-control-field">
         <span className="digest-control-label">
-          AI Digest collection
+          AI Digest archive source
         </span>
         <DigestPipelineSelector
           options={options}
