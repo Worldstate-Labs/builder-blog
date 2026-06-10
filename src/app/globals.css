@@ -9487,7 +9487,7 @@ a.fb-hub-source-name:focus-visible {
 
 .access-keys-list--skeleton .settings-skeleton-row {
   border-radius: 18px;
-  height: 6rem;
+  height: 5.25rem;
 }
 
 .access-key-card--skeleton {
@@ -10332,11 +10332,11 @@ a.fb-hub-source-name:focus-visible {
   border-radius: 16px;
   box-shadow: none;
   display: grid;
-  gap: 1.1rem;
+  gap: 1rem;
   grid-template-columns: 2rem minmax(0, 1fr) max-content;
-  min-height: 6rem;
+  min-height: 5.25rem;
   min-width: 0;
-  padding: 1.15rem 1.35rem;
+  padding: 0.95rem 1.35rem;
 }
 
 .access-key-card--revoked {
@@ -11597,16 +11597,16 @@ body {
   .access-key-card {
     gap: 0.8rem;
     grid-template-columns: 2rem minmax(0, 1fr);
-    min-height: 6rem;
+    min-height: 5.25rem;
     padding: 1rem;
   }
 
   .access-keys-list--skeleton .settings-skeleton-row {
-    height: 6rem;
+    height: 5.25rem;
   }
 
   .access-key-card--skeleton {
-    min-height: 6rem;
+    min-height: 5.25rem;
   }
 
   .access-key-revoke-button,
