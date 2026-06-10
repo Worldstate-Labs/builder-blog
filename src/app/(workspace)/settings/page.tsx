@@ -70,7 +70,7 @@ async function SourceTypeConfigSection({
   }));
   return (
     <section className="settings-rules">
-      <details className="settings-rules-panel fb-panel">
+      <details className="settings-rules-panel fb-panel" open>
         <summary className="settings-rules-summary">
           <div className="settings-rules-summary-copy">
             <h3 className="fb-section-heading">Source fetching rules</h3>

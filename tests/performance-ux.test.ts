@@ -4400,6 +4400,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(settingsPage, /Source and digest rules/);
   assert.doesNotMatch(settingsPage, /settings-rules-title|settings-rules-head/);
   assert.match(settingsPage, /Source fetching rules/);
+  assert.match(settingsPage, /<details className="settings-rules-panel fb-panel" open>[\s\S]*Source fetching rules/);
+  assert.equal((settingsPage.match(/<details className="settings-rules-panel fb-panel" open>/g) ?? []).length, 1);
   assert.doesNotMatch(settingsPage, /Fetch sources rules|Source fetch rules/);
   assert.match(settingsPage, /Used when Fetch sources discovers posts, filters candidates, and\s*writes per-post summaries\./);
   assert.doesNotMatch(settingsPage, /Runs before AI Digest: discover source posts/);
