@@ -3263,6 +3263,15 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderLibraryList, /Open \$\{builder\.name\} on its source site/);
   assert.doesNotMatch(builderLibraryList, /sourceSummary/);
   assert.doesNotMatch(builderLibraryList, /fb-src-meta|source-host-meta|source-host-meta/);
+  assert.match(builderLibraryList, /const sourceHref = builder\.sourceUrl \|\| builder\.fetchUrl/);
+  assert.match(builderLibraryList, /const sourceLabel = sourceHref \? sourceOriginLabel\(sourceHref\) : null/);
+  assert.match(builderLibraryList, /className="builder-library-meta"/);
+  assert.match(builderLibraryList, /aria-label=\{`Open source site for \$\{builder\.name\}`\}/);
+  assert.match(builderLibraryList, /className="builder-library-source-link"/);
+  assert.match(builderLibraryList, /target="_blank"/);
+  assert.match(builderLibraryList, /No summarized posts yet/);
+  assert.match(builderLibraryList, /function sourceOriginLabel\(value: string\)/);
+  assert.match(builderLibraryList, /url\.hostname\.replace\(\s*\/\^www\\\.\//);
   assert.match(builderLibraryList, /visibleSections/);
   assert.match(builderLibraryList, /groupBuildersBySourceType/);
   assert.match(builderLibraryList, /initialExpandedSourceTypes\(builders\)/);
@@ -4790,6 +4799,10 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.builder-library-info-head\s*{[\s\S]*display:\s*flex/);
   assert.match(css, /\.builder-library-name\s*{[\s\S]*text-overflow:\s*ellipsis/);
   assert.match(css, /a\.builder-library-name:hover\s*{[\s\S]*text-decoration:\s*underline/);
+  assert.match(css, /\.builder-library-meta\s*{[\s\S]*color:\s*var\(--muted-strong\)/);
+  assert.match(css, /\.builder-library-meta\s*{[\s\S]*flex-wrap:\s*wrap/);
+  assert.match(css, /\.builder-library-source-link\s*{[\s\S]*text-overflow:\s*ellipsis/);
+  assert.match(css, /\.builder-library-source-link:hover\s*{[\s\S]*color:\s*var\(--accent-strong\)/);
   assert.doesNotMatch(css, /\.builder-library-card \.fb-src-name\s*{/);
   assert.doesNotMatch(css, /\.builder-library-stats\s*{/);
   assert.doesNotMatch(css, /\.(?:action|empty)-panel\s*{/);

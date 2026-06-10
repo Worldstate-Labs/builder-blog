@@ -430,6 +430,8 @@ function sourceTypeSortRank(sourceType: string) {
 }
 
 function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
+  const sourceHref = builder.sourceUrl || builder.fetchUrl;
+  const sourceLabel = sourceHref ? sourceOriginLabel(sourceHref) : null;
   return (
     <div className="builder-library-info">
       <div className="builder-library-info-head">
@@ -444,6 +446,36 @@ function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
           <div className="builder-library-name">{builder.name}</div>
         )}
       </div>
+      {sourceLabel || builder.feedItemCount === 0 ? (
+        <div className="builder-library-meta">
+          {sourceHref && sourceLabel ? (
+            <a
+              aria-label={`Open source site for ${builder.name}`}
+              className="builder-library-source-link"
+              href={sourceHref}
+              rel="noreferrer"
+              target="_blank"
+            >
+              {sourceLabel}
+            </a>
+          ) : null}
+          {sourceLabel && builder.feedItemCount === 0 ? (
+            <span aria-hidden="true">·</span>
+          ) : null}
+          {builder.feedItemCount === 0 ? (
+            <span>No summarized posts yet</span>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
+}
+
+function sourceOriginLabel(value: string) {
+  try {
+    const url = new URL(value);
+    return url.hostname.replace(/^www\./, "");
+  } catch {
+    return value.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0] || value;
+  }
 }
