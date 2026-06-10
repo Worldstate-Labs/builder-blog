@@ -3702,7 +3702,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postDetailPage, /returnTo\.startsWith\("\/builder\/"\)/);
   assert.match(postDetailPage, /cleanDynamicReturnLabel/);
   assert.match(postDetailPage, /function labelFromReturnTo\(returnTo: string\)/);
-  assert.match(postDetailPage, /returnTo\.startsWith\("\/search"\)[\s\S]*return "Search"/);
+  assert.match(postDetailPage, /returnTo\.startsWith\("\/search"\)[\s\S]*return "Search results"/);
   assert.match(postDetailPage, /returnTo\.startsWith\("\/library-hub"\)[\s\S]*return "Hub"/);
   assert.match(postDetailPage, /returnTo\.includes\("tab=favorites"\)[\s\S]*return "Favorites"/);
   assert.match(postDetailPage, /returnTo\.includes\("tab=following"\) \? "Following" : "AI Digest"/);
@@ -3710,6 +3710,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postDetailPage, /case "Source":[\s\S]*return "Sources"/);
   assert.match(postDetailPage, /case "AI Digest"/);
   assert.match(postDetailPage, /case "Favorites"/);
+  assert.match(postDetailPage, /case "Search results"/);
   assert.match(postDetailPage, /case "Hub"/);
   assert.match(postDetailPage, /showDebugActions=\{false\}/);
   assert.match(postDetailPage, /avatarUrl:\s*item\.builder\.avatarUrl/);
@@ -4762,7 +4763,7 @@ test("search feed results keep post detail links while preserving originals", ()
   assert.match(userSearch, /builderKind:\s*item\.builder\?\.kind/);
   assert.match(searchPage, /@\/lib\/navigation/);
   assert.match(searchPage, /withPostReturnTarget\(/);
-  assert.match(searchPage, /withPostReturnTarget\([\s\S]*result\.url,[\s\S]*searchHref\(\{ query, type: typeFilter, mode, sort, time, page: currentPage \}\),[\s\S]*"Search"/);
+  assert.match(searchPage, /withPostReturnTarget\([\s\S]*result\.url,[\s\S]*searchHref\(\{ query, type: typeFilter, mode, sort, time, page: currentPage \}\),[\s\S]*"Search results"/);
   assert.doesNotMatch(searchPage, /function withSearchReturnTarget/);
   assert.doesNotMatch(searchPage, /params\.set\("returnLabel", "Search"\)/);
   assert.match(navigation, /export function withPostReturnTarget/);

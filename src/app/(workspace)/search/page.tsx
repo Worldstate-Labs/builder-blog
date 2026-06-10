@@ -705,7 +705,7 @@ function ResultCard({
     ? withPostReturnTarget(
         result.url,
         searchHref({ query, type: typeFilter, mode, sort, time, page: currentPage }),
-        "Search",
+        "Search results",
       )
     : null;
   const displayUrl = formatDisplayUrl(originalUrl ?? result.url);

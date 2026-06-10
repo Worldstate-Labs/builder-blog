@@ -180,6 +180,7 @@ function safeReturnLabel(value: string, returnTo: string) {
     case "Following":
     case "Favorites":
     case "Search":
+    case "Search results":
     case "Sources":
     case "Hub":
       return value;
@@ -195,7 +196,7 @@ function safeReturnLabel(value: string, returnTo: string) {
 }
 
 function labelFromReturnTo(returnTo: string) {
-  if (returnTo.startsWith("/search")) return "Search";
+  if (returnTo.startsWith("/search")) return "Search results";
   if (returnTo.startsWith("/builders") || returnTo.startsWith("/builder/")) return "Sources";
   if (returnTo.startsWith("/library-hub")) return "Hub";
   if (returnTo.startsWith("/dashboard")) {
