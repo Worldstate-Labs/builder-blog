@@ -44,7 +44,7 @@ export default async function Home() {
             </a>
           </div>
           <div className="fb-public-flow" aria-label="FollowBrief workflow">
-            {["Follow", "Build AI Digest", "Search workspace"].map((step) => (
+            {["Follow sources", "Build AI Digest", "Search workspace"].map((step) => (
               <span className="fb-public-flow-step" key={step}>
                 {step}
               </span>
@@ -64,8 +64,8 @@ export default async function Home() {
               </div>
             </div>
             <span className="fb-chip success" aria-label="Preview data">
-              <Radio aria-hidden="true" />
-              Live loop
+              <Terminal aria-hidden="true" />
+              Local Agent loop
             </span>
           </div>
           <div className="fb-product-demo" aria-hidden="true">

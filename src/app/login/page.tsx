@@ -42,7 +42,7 @@ export default async function LoginPage({
             posts, and AI Digest archives searchable.
           </p>
           <div className="fb-login-proof-rail" aria-label="Workspace capabilities">
-            <LoginProof icon={Rss} label="Follow" />
+            <LoginProof icon={Rss} label="Follow sources" />
             <LoginProof icon={BookOpenCheck} label="Build AI Digest" />
             <LoginProof icon={Search} label="Search workspace" />
           </div>

@@ -433,7 +433,7 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(landingPage, /Open workspace/);
   assert.match(landingPage, /fb-public-flow/);
   assert.match(landingPage, /fb-public-flow-step/);
-  assert.match(landingPage, /\["Follow", "Build AI Digest", "Search workspace"\]/);
+  assert.match(landingPage, /\["Follow sources", "Build AI Digest", "Search workspace"\]/);
   assert.doesNotMatch(landingPage, /\["Follow", "Build AI Digest", "Search"\]/);
   assert.match(landingPage, /Build AI Digest/);
   assert.doesNotMatch(landingPage, /"Brief"/);
@@ -442,7 +442,8 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /fb-product-preview-title-row/);
   assert.match(landingPage, />\s*Preview\s*<\/div>/);
   assert.match(landingPage, /aria-label="Preview data"/);
-  assert.match(landingPage, />\s*Live loop\s*<\/span>/);
+  assert.match(landingPage, />\s*Local Agent loop\s*<\/span>/);
+  assert.doesNotMatch(landingPage, />\s*Live loop\s*<\/span>/);
   assert.doesNotMatch(landingPage, />\s*Demo\s*<\/div>|>\s*Sample\s*<\/span>/);
   assert.match(landingPage, /fb-product-demo/);
   assert.match(landingPage, /fb-demo-sources/);
@@ -546,9 +547,10 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(loginPage, /sources, posts, Favorites, and AI Digests searchable/);
   assert.doesNotMatch(loginPage, /keep your\s+AI Digests searchable/);
   assert.match(loginPage, /import \{ BookOpenCheck, Rss, Search \} from "lucide-react"/);
-  assert.match(loginPage, /<LoginProof icon=\{Rss\} label="Follow" \/>/);
+  assert.match(loginPage, /<LoginProof icon=\{Rss\} label="Follow sources" \/>/);
   assert.doesNotMatch(loginPage, /UsersRound/);
-  assert.match(loginPage, /label="Follow"/);
+  assert.match(loginPage, /label="Follow sources"/);
+  assert.doesNotMatch(loginPage, /label="Follow"/);
   assert.match(loginPage, /label="Build AI Digest"/);
   assert.match(loginPage, /label="Search workspace"/);
   assert.doesNotMatch(loginPage, /label="Search"/);
