@@ -3207,6 +3207,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   const personalBuilderRoute = source("src/app/api/builders/personal/route.ts");
   const personalBuilderUpdateRoute = source("src/app/api/builders/[builderId]/personal/route.ts");
   const feedItemsRoute = source("src/app/api/builders/[builderId]/feed-items/route.ts");
+  const sourceInputs = source("src/lib/source-inputs.ts");
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
   assert.doesNotMatch(buildersPage, /@\/components\/PageHeader/);
@@ -3390,6 +3391,15 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderEditDialog, /aria-describedby=\{error \|\| warning \? sourceFeedbackId : undefined\}/);
   assert.match(builderEditDialog, /aria-invalid=\{error \? "true" : undefined\}/);
   assert.match(builderEditDialog, /setSourceValue\(e\.target\.value\);[\s\S]*setError\(null\);[\s\S]*setWarning\(null\);/);
+  assert.match(builderEditDialog, /FIXED_SOURCE_VALUE_BY_ID/);
+  assert.match(builderEditDialog, /placeholderForSourceId\(sourceType\)/);
+  assert.match(builderEditDialog, /const resolvedSourceValue = FIXED_SOURCE_VALUE_BY_ID\[sourceType\] \?\? sourceValue/);
+  assert.match(builderEditDialog, /const sourceValueIsFixed = Boolean\(FIXED_SOURCE_VALUE_BY_ID\[sourceType\]\)/);
+  assert.match(builderEditDialog, /sourceValue: resolvedSourceValue\.trim\(\)/);
+  assert.match(builderEditDialog, /aria-readonly=\{sourceValueIsFixed\}/);
+  assert.match(builderEditDialog, /readOnly=\{sourceValueIsFixed\}/);
+  assert.match(builderEditDialog, /if \(sourceValueIsFixed\) return;/);
+  assert.doesNotMatch(builderEditDialog, /sourceValue: sourceValue\.trim\(\)/);
   assert.match(builderEditDialog, /id=\{sourceFeedbackId\}[\s\S]*className="builder-edit-dialog-message is-error"/);
   assert.match(builderEditDialog, /id=\{sourceFeedbackId\}[\s\S]*className="builder-edit-dialog-message"[\s\S]*role="status"/);
   assert.doesNotMatch(builderEditDialog, /style=\{\{/);
@@ -3425,6 +3435,13 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(addBuilderForm, /id=\{sourceTypeOptionId\(source\.id\)\}/);
   assert.match(addBuilderForm, /function sourceTypeOptionId\(sourceId: string\)/);
   assert.match(addBuilderForm, /function selectSourceType\(nextSourceType: string\)/);
+  assert.match(addBuilderForm, /@\/lib\/source-inputs/);
+  assert.match(sourceInputs, /export const FIXED_SOURCE_VALUE_BY_ID/);
+  assert.match(sourceInputs, /github_trending/);
+  assert.match(sourceInputs, /product_hunt_top_products/);
+  assert.match(sourceInputs, /export function placeholderForSourceId/);
+  assert.doesNotMatch(addBuilderForm, /const FIXED_SOURCE_VALUE_BY_ID/);
+  assert.doesNotMatch(addBuilderForm, /function placeholderForSourceId/);
   assert.match(addBuilderForm, /focusSourceType\(nextSource\.id\)/);
   assert.match(addBuilderForm, /document\.getElementById\(sourceTypeOptionId\(sourceId\)\)\?\.focus\(\)/);
   assert.match(addBuilderForm, /name="sourceValue"/);

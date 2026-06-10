@@ -29,36 +29,17 @@ import {
   podcastHostnameRejection,
   type DetectedSourceId,
 } from "@/lib/source-value-detect";
+import {
+  FIXED_SOURCE_VALUE_BY_ID,
+  GITHUB_TRENDING_SOURCE_ID,
+  placeholderForSourceId,
+  PRODUCT_HUNT_TOP_PRODUCTS_SOURCE_ID,
+} from "@/lib/source-inputs";
 
 type SourceOption = {
   id: string;
   label: string;
 };
-
-const GITHUB_TRENDING_SOURCE_ID = "github_trending";
-const GITHUB_TRENDING_URL = "https://github.com/trending?since=daily";
-const PRODUCT_HUNT_TOP_PRODUCTS_SOURCE_ID = "product_hunt_top_products";
-const PRODUCT_HUNT_TOP_PRODUCTS_URL = "https://www.producthunt.com/";
-const FIXED_SOURCE_VALUE_BY_ID: Record<string, string> = {
-  [GITHUB_TRENDING_SOURCE_ID]: GITHUB_TRENDING_URL,
-  [PRODUCT_HUNT_TOP_PRODUCTS_SOURCE_ID]: PRODUCT_HUNT_TOP_PRODUCTS_URL,
-};
-
-// Per-source-type placeholder hint for the URL/handle field. Keys
-// mirror the sourceId values seeded from config/sources.json.
-const PLACEHOLDER_BY_SOURCE_ID: Record<string, string> = {
-  x: "@deepmind or https://x.com/deepmind",
-  blog: "https://example.com/blog or https://example.com/feed.xml",
-  github_trending: GITHUB_TRENDING_URL,
-  product_hunt_top_products: PRODUCT_HUNT_TOP_PRODUCTS_URL,
-  youtube: "https://youtube.com/@deepmind",
-  podcast: "https://podcasts.apple.com/…/id123 or https://feeds.example.com/show.rss",
-  website: "https://example.com",
-};
-
-function placeholderForSourceId(sourceId: string): string {
-  return PLACEHOLDER_BY_SOURCE_ID[sourceId] ?? "@handle or https://example.com/feed";
-}
 
 // Inline preview computed entirely on the client — no network. Mirrors
 // the hard checks the server-side resolver will run, so the user gets

@@ -4,6 +4,10 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
 import type { BuilderLibraryEventItem } from "@/lib/builder-library-events";
+import {
+  FIXED_SOURCE_VALUE_BY_ID,
+  placeholderForSourceId,
+} from "@/lib/source-inputs";
 
 type SourceOption = { id: string; label: string };
 
@@ -39,6 +43,8 @@ export function BuilderEditDialog({
   const [warning, setWarning] = useState<string | null>(null);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const resolvedSourceValue = FIXED_SOURCE_VALUE_BY_ID[sourceType] ?? sourceValue;
+  const sourceValueIsFixed = Boolean(FIXED_SOURCE_VALUE_BY_ID[sourceType]);
   const sourceFeedbackId = `edit-builder-${builder.id}-source-feedback`;
 
   // Sync the underlying <dialog>'s open state with React state.
@@ -93,7 +99,7 @@ export function BuilderEditDialog({
           body: JSON.stringify({
             name: name.trim(),
             sourceType,
-            sourceValue: sourceValue.trim(),
+            sourceValue: resolvedSourceValue.trim(),
           }),
         });
         const body = await response.json().catch(() => null);
@@ -200,14 +206,17 @@ export function BuilderEditDialog({
               <input
                 aria-describedby={error || warning ? sourceFeedbackId : undefined}
                 aria-invalid={error ? "true" : undefined}
+                aria-readonly={sourceValueIsFixed}
                 className="fb-input mono"
-                value={sourceValue}
+                value={resolvedSourceValue}
                 onChange={(e) => {
+                  if (sourceValueIsFixed) return;
                   setSourceValue(e.target.value);
                   setError(null);
                   setWarning(null);
                 }}
-                placeholder="@handle or https://…"
+                placeholder={placeholderForSourceId(sourceType)}
+                readOnly={sourceValueIsFixed}
                 required
               />
             </label>
