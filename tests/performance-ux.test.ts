@@ -919,6 +919,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /SUMMARY_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /How each post from this source is written as a per-post summary/);
   assert.match(adminSourceTypeManager, /one-time or scheduled run prompt/);
+  assert.match(adminSourceTypeManager, /Extra instructions for this source type when Fetch sources needs agent extraction\./);
   assert.match(adminSourceTypeManager, /Posts that fail are not saved or used in Following or AI Digest/);
   assert.match(adminSourceTypeManager, /Drop posts whose body has fewer characters than this/);
   assert.match(adminSourceTypeManager, /Drop posts with too little real text/);
@@ -934,9 +935,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /className="source-type-config-dirty"/);
   assert.match(adminSourceTypeManager, /className="source-type-config-dirty-dot"/);
   assert.match(adminSourceTypeManager, /<OptionalMarkdownField/);
-  assert.match(adminSourceTypeManager, /buttonLabel="Add fetch prompt"/);
-  assert.match(adminSourceTypeManager, /No source-specific fetch prompt for this source\./);
-  assert.doesNotMatch(adminSourceTypeManager, /No extra fetch prompt for this source\./);
+  assert.match(adminSourceTypeManager, /buttonLabel="Add source-type fetch prompt"/);
+  assert.match(adminSourceTypeManager, /No source-type fetch prompt is set\./);
+  assert.doesNotMatch(adminSourceTypeManager, /No extra fetch prompt for this source\.|No source-specific fetch prompt for this source\./);
   assert.match(adminSourceTypeManager, /canEditQualityGates \? \(/);
   assert.doesNotMatch(adminSourceTypeManager, /style=\{\{/);
   assert.doesNotMatch(adminSourceTypeManager, /cursor-pointer select-none|ml-auto inline-flex|text-base font-medium/);
