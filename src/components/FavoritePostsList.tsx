@@ -98,6 +98,7 @@ export function FavoritePostsList({
             dataRead={Boolean(item.readAt)}
             extraActions={
               <PostFavoriteButton
+                ariaLabel={`Remove ${favoritePostLabel(item.post)} from Favorites`}
                 disabled={pendingIds.has(item.feedItemId)}
                 isFavorite
                 onToggle={() => void removeFavorite(item.feedItemId)}
@@ -125,6 +126,10 @@ export function FavoritePostsList({
 
 function sortFavoriteItems(items: FavoritePostListItem[]) {
   return [...items].sort((a, b) => Date.parse(b.favoritedAt) - Date.parse(a.favoritedAt));
+}
+
+function favoritePostLabel(post: PostCardPost) {
+  return post.title?.trim() || post.sourceName?.trim() || "this post";
 }
 
 function formatDate(value: string) {

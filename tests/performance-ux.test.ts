@@ -1612,6 +1612,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.equal(existsSync(join(root, "src/components/FavoritePostsSection.tsx")), true);
   assert.equal(existsSync(join(root, "src/app/api/favorites/read/route.ts")), false);
   assert.match(favoriteList, /const \[pendingIds, setPendingIds\] = useState<Set<string>>\(\(\) => new Set\(\)\)/);
+  assert.match(favoriteList, /ariaLabel=\{`Remove \$\{favoritePostLabel\(item\.post\)\} from Favorites`\}/);
+  assert.match(favoriteList, /function favoritePostLabel\(post: PostCardPost\)/);
   assert.match(favoriteList, /disabled=\{pendingIds\.has\(item\.feedItemId\)\}/);
   assert.match(favoriteList, /sortFavoriteItems\(\[\.\.\.current, removedItem\]\)/);
   assert.match(favoriteList, /className="favorites-feed-error" role="status"/);
@@ -3596,7 +3598,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(digestContent, /disabled=\{pendingFavoriteUrls\.has\(url\)\}/);
   assert.match(digestContent, /className="post-favorite-control"/);
   assert.match(digestContent, /className="post-favorite-status" role="status"/);
-  assert.match(favoriteButton, /aria-label=\{label\}/);
+  assert.match(favoriteButton, /ariaLabel\?: string/);
+  assert.match(favoriteButton, /const accessibleLabel = ariaLabel \?\? label/);
+  assert.match(favoriteButton, /aria-label=\{accessibleLabel\}/);
   assert.match(favoriteButton, /disabled=\{disabled\}/);
   assert.match(favoriteButton, /const label = isFavorite \? "Remove from Favorites" : "Save to Favorites"/);
   assert.match(favoriteButton, /<Star aria-hidden="true" className="post-action-icon"/);
