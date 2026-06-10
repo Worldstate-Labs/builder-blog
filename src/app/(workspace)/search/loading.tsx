@@ -36,10 +36,18 @@ export default function SearchLoading() {
             className="fb-segmented-tabs filter-tabs search-loading-tabs"
             role="tablist"
           >
-            <span className="fb-btn compact search-loading-tab">All</span>
-            <span className="fb-btn compact search-loading-tab">Sources</span>
-            <span className="fb-btn compact search-loading-tab">Posts</span>
-            <span className="fb-btn compact search-loading-tab">AI Digest archives</span>
+            {["All", "Sources", "Posts", "AI Digest archives"].map((label) => (
+              <span
+                aria-disabled="true"
+                aria-selected="false"
+                className="fb-btn compact search-loading-tab"
+                key={label}
+                role="tab"
+                tabIndex={-1}
+              >
+                {label}
+              </span>
+            ))}
           </nav>
           <div className="search-meta-row" role="status">
             <span className="sr-only">Loading search results</span>

@@ -357,6 +357,11 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(searchLoading, /className="search-hero-form" aria-label="Loading search controls"/);
   assert.match(searchLoading, /className="search-form search-loading-form"/);
   assert.match(searchLoading, /className="fb-segmented-tabs filter-tabs search-loading-tabs"/);
+  assert.match(searchLoading, /role="tablist"/);
+  assert.match(searchLoading, /aria-disabled="true"/);
+  assert.match(searchLoading, /aria-selected="false"/);
+  assert.match(searchLoading, /role="tab"/);
+  assert.match(searchLoading, /tabIndex=\{-1\}/);
   assert.doesNotMatch(searchLoading, /search-loading-tab is-active/);
   assert.match(searchLoading, /search-loading-tab[\s\S]*All/);
   assert.match(searchLoading, /search-loading-tab[\s\S]*AI Digest archives/);
