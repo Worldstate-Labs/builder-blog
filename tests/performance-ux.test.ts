@@ -3264,7 +3264,15 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /bg-black\/10|className="h-/);
   assert.match(
     builderFeedItems,
-    /className="builder-posts-count"[\s\S]*\{visibleCount\} posts[\s\S]*className="builder-posts-dot"[\s\S]*<time[\s\S]*className="builder-posts-latest"[\s\S]*latest at \{latestDateLabel\}/,
+    /const postCountLabel = `\$\{visibleCount\} \$\{visibleCount === 1 \? "post" : "posts"\}`/,
+  );
+  assert.match(
+    builderFeedItems,
+    /const postsSummaryLabel = latestDateLabel[\s\S]*\$\{builder\.name\} posts, \$\{postCountLabel\}, latest at \$\{latestDateLabel\}/,
+  );
+  assert.match(
+    builderFeedItems,
+    /<summary aria-label=\{postsSummaryLabel\}>[\s\S]*className="builder-posts-count"[\s\S]*\{postCountLabel\}[\s\S]*className="builder-posts-dot"[\s\S]*<time[\s\S]*className="builder-posts-latest"[\s\S]*latest at \{latestDateLabel\}/,
   );
   assert.doesNotMatch(builderFeedItems, /CountMeta|builder-posts-label|builder-posts-meta|summarized"\}/);
   assert.doesNotMatch(builderFeedItems, /Latest \{|formatCompactDate|hour:\s*"numeric"|minute:\s*"2-digit"/);

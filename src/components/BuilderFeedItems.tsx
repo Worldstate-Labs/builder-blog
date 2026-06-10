@@ -55,9 +55,13 @@ export function BuilderFeedItems({
       ? itemState.items
       : null;
   const visibleCount = items ? items.length : totalCount;
+  const postCountLabel = `${visibleCount} ${visibleCount === 1 ? "post" : "posts"}`;
   const latestDateLabel = latestPostCreatedAt
     ? formatPostDate(new Date(latestPostCreatedAt))
     : null;
+  const postsSummaryLabel = latestDateLabel
+    ? `${builder.name} posts, ${postCountLabel}, latest at ${latestDateLabel}`
+    : `${builder.name} posts, ${postCountLabel}`;
   const returnHref = builder.entityId ? `/builder/${builder.entityId}` : "/builders";
 
   useEffect(() => {
@@ -91,10 +95,10 @@ export function BuilderFeedItems({
       onToggle={(event) => loadItems(event.currentTarget.open)}
       ref={detailsRef}
     >
-      <summary>
+      <summary aria-label={postsSummaryLabel}>
         <span className="builder-posts-summary">
           <span className="builder-posts-count">
-            <span>{visibleCount} posts</span>
+            <span>{postCountLabel}</span>
             {latestDateLabel ? (
               <>
                 <span aria-hidden="true" className="builder-posts-dot">·</span>
