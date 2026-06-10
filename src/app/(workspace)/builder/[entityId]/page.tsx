@@ -51,6 +51,10 @@ function formatChannelLibraryName(channel: Pick<ChannelInfo, "isAdminCommunity" 
   return label ? `${channel.libraryName} · ${label}` : channel.libraryName;
 }
 
+function formatFetchedAt(value: Date | null) {
+  return value ? `fetched ${dateFormatter.format(value)}` : "not fetched yet";
+}
+
 export default async function BuilderDetailPage({ params }: Params) {
   const session = await getCurrentSession();
   if (!session?.user?.id) redirect("/login");
@@ -196,7 +200,7 @@ export default async function BuilderDetailPage({ params }: Params) {
                   <>
                     <span className="source-latest-dot source-meta-dot">·</span>
                     <span className="source-latest-meta">
-                      latest at {dateFormatter.format(lastFetchedMax)}
+                      {formatFetchedAt(lastFetchedMax)}
                     </span>
                   </>
                 ) : null}
@@ -363,9 +367,7 @@ async function ChannelsListSlot({
             ) : null}
           </div>
           <div className="builder-detail-channel-date mono">
-            {channel.lastFetchedAt
-              ? `latest at ${dateFormatter.format(channel.lastFetchedAt)}`
-              : "not fetched yet"}
+            {formatFetchedAt(channel.lastFetchedAt)}
           </div>
           <ChannelPreferenceToggle
             entityId={entityId}

@@ -1319,9 +1319,12 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailLoading, /className="builder-detail-identity"/);
   assert.match(builderDetailPage, /className="builder-detail-avatar"/);
   assert.match(builderDetailLoading, /className="builder-detail-avatar builder-detail-loading-avatar"/);
-  assert.match(builderDetailPage, /`\s*latest at \$\{dateFormatter\.format\(channel\.lastFetchedAt\)\}\s*`/);
+  assert.match(builderDetailPage, /function formatFetchedAt\(value: Date \| null\)/);
+  assert.match(builderDetailPage, /return value \? `fetched \$\{dateFormatter\.format\(value\)\}` : "not fetched yet"/);
+  assert.match(builderDetailPage, /\{formatFetchedAt\(channel\.lastFetchedAt\)\}/);
   assert.match(builderDetailPage, /: "not fetched yet"/);
   assert.doesNotMatch(builderDetailPage, /: "Not fetched"/);
+  assert.doesNotMatch(builderDetailPage, /latest at \$\{dateFormatter\.format\(channel\.lastFetchedAt\)\}/);
   assert.doesNotMatch(builderDetailPage, /lastFetchedAt \? dateFormatter\.format\(channel\.lastFetchedAt\) : "—"/);
   assert.doesNotMatch(builderDetailPage, /lastFetchedAt \? dateFormatter\.format\(channel\.lastFetchedAt\) : "Not fetched"/);
   assert.match(builderDetailPage, /className="builder-detail-title-stack"/);
@@ -1339,7 +1342,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /where: \{ builderId: \{ in: builderIds \} \}/);
   assert.doesNotMatch(builderDetailPage, /where: \{ builder: \{ entityId \} \}/);
   assert.doesNotMatch(builderDetailPage, /headerItemCount === 1 \? "item" : "items"/);
-  assert.match(builderDetailPage, /latest at \{dateFormatter\.format\(lastFetchedMax\)\}/);
+  assert.match(builderDetailPage, /\{formatFetchedAt\(lastFetchedMax\)\}/);
+  assert.doesNotMatch(builderDetailPage, /latest at \{dateFormatter\.format\(lastFetchedMax\)\}/);
   assert.doesNotMatch(builderDetailPage, /Last summarized/);
   assert.match(builderDetailPage, /aria-label=\{`View \$\{entity\.name\} source site`\}/);
   assert.match(builderDetailPage, /className="builder-detail-source-link"/);
