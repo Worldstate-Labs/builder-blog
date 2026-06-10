@@ -173,22 +173,24 @@ ACCT="${BUILDER_BLOG_ACCOUNT}"; LABEL="com.followbrief.digest.$(printf '%s' "$AC
 crontab -l | grep 'builder-agent-runner.sh digest-cron'
 ```
 
-7. Run one immediate smoke check. This runs in your current session (which has
-keychain access), so it validates the local digest pipeline without writing a
-DigestRun, digest, or digested-item markers to FollowBrief. The recurring
-launchd/crontab job is the only run that should sync web state:
+7. Run one immediate runtime smoke check. This runs in your current session
+(which has keychain access), so it validates that the pinned local runtime can
+execute unattended and return. It does not build a digest, write a DigestRun,
+digest, or digested-item markers to FollowBrief. The recurring launchd/crontab
+job is the only run that should sync web state:
 
 ```bash
-BUILDER_BLOG_DISABLE_WEB_SYNC=1 \
+BUILDER_BLOG_SMOKE_CHECK=1 \
+BUILDER_BLOG_AGENT_TIMEOUT_SECONDS=300 \
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 $HOME/.builder-blog/builder-agent-runner.sh digest-cron
 ```
 
-Just report its output: it succeeds when the digest is generated locally and
-the final sync step prints `webSyncDisabled: true`. If it errors, report the
-command, exit code, and stderr, and stop. If the pinned runtime CLI is not
-installed, do not claim the digest cron is installed successfully — record that
-the user must install {{AGENT_RUNTIME_LABEL}} (or set
+Just report its output: it succeeds when the command exits 0 and the output
+contains `followbriefSmokeCheck` with value `ok`. If it errors or times out,
+report the command, exit code, and stderr, and stop. If the pinned runtime CLI is
+not installed, do not claim the digest cron is installed successfully — record
+that the user must install {{AGENT_RUNTIME_LABEL}} (or set
 `BUILDER_BLOG_AGENT_COMMAND`) first.
 
 8. After the smoke check succeeds, report the active scheduled job to

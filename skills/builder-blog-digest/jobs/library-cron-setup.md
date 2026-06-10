@@ -12,11 +12,12 @@ exactly as written; this prompt is the whole task.
 
 Agent discretion boundary: this is a scheduler setup task. Do not change paths,
 flags, cadence, titles, output files, JSON schema, or success criteria. You are
-only installing the cron job and running one smoke check — you never complete
-fetch tasks yourself. The smoke check delegates that to the runner, which feeds
-the agent the `library-cron` prompt (the single source of truth for how fetch
-tasks are fetched, summarized, validated, and synced); this file does not
-restate any of it.
+only installing the cron job and running one short runtime smoke check — you
+never complete fetch tasks yourself. The smoke check validates that the pinned
+runtime can run unattended; the recurring job later feeds the agent the
+`library-cron` prompt (the single source of truth for how fetch tasks are
+fetched, summarized, validated, and synced). This file does not restate any of
+that fetch-task work.
 
 Scheduled runtime: **{{AGENT_RUNTIME_LABEL}}** ({{AGENT_RUNTIME}}). Every step
 below uses this pinned runtime; do not fall back to a different one.
@@ -179,23 +180,24 @@ ACCT="${BUILDER_BLOG_ACCOUNT}"; LABEL="com.followbrief.library.$(printf '%s' "$A
 crontab -l | grep 'builder-agent-runner.sh library-cron'
 ```
 
-7. Run one immediate smoke check. This runs in your current session (which has
-keychain access), so it validates the local fetch/task pipeline without writing
+7. Run one immediate runtime smoke check. This runs in your current session
+(which has keychain access), so it validates that the pinned local runtime can
+execute unattended and return. It does not fetch sources, summarize posts, write
 fetch-log rows, builders, or feed items to FollowBrief. Only the recurring job
 started later by launchd/crontab is allowed to sync results to the web app:
 
 ```bash
-BUILDER_BLOG_DISABLE_WEB_SYNC=1 \
+BUILDER_BLOG_SMOKE_CHECK=1 \
+BUILDER_BLOG_AGENT_TIMEOUT_SECONDS=300 \
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 $HOME/.builder-blog/builder-agent-runner.sh library-cron
 ```
 
-This delegates the fetch/summarize/sync to the runner (the `library-cron`
-prompt); do not do that work yourself. Just report its output: it succeeds when
-the JSON shows status ok, localErrors empty, and `fetchTasks` either empty or
-all validated. If `sync-builders` runs during the smoke check, it must print
-`webSyncDisabled: true`; that means no web sync occurred. If it errors, report
-the command, exit code, and stderr, and stop.
+This delegates only the runtime check to the runner; do not run the
+`library-cron` prompt yourself and do not do any fetch/summarize/sync work. Just
+report its output: it succeeds when the command exits 0 and the output contains
+`followbriefSmokeCheck` with value `ok`. If it errors or times out, report the
+command, exit code, and stderr, and stop.
 
 8. After the smoke check succeeds, report the active schedule to FollowBrief so
 the web app can compare expected runs with fetch logs. This is a status update

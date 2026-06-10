@@ -170,6 +170,47 @@ if (fetchTasks > 0) {
 NODE
 }
 
+run_runtime_smoke_check() {
+  SMOKE_PROMPT_FILE="$JOB_TMP_DIR/runtime-smoke.md"
+  cat > "$SMOKE_PROMPT_FILE" <<EOF
+You are validating a FollowBrief scheduled local runtime.
+
+Run exactly one harmless shell command:
+
+printf 'followbrief-runtime-smoke:%s\n' "$JOB_NAME"
+
+Then print exactly one JSON object and stop:
+
+{"followbriefSmokeCheck":"ok","job":"$JOB_NAME","runtime":"${BUILDER_BLOG_RUNTIME:-auto}"}
+
+Do not run FollowBrief fetch, digest, sync, cron-status, or setup commands.
+Do not browse the web.
+EOF
+  PROMPT_FILE="$SMOKE_PROMPT_FILE"
+  export BUILDER_BLOG_RUN_SOURCE=smoke
+  _timeout="${BUILDER_BLOG_AGENT_TIMEOUT_SECONDS:-300}"
+  echo "Running FollowBrief runtime smoke check for $JOB_NAME with ${PINNED_RUNTIME:-auto} (timeout ${_timeout}s)." >&2
+  set +e
+  run_selected_runtime &
+  SMOKE_PID="$!"
+  _elapsed=0
+  while kill -0 "$SMOKE_PID" 2>/dev/null; do
+    if [ "$_elapsed" -ge "$_timeout" ]; then
+      echo "FollowBrief runtime smoke check timed out after ${_timeout}s." >&2
+      terminate_process_tree "$SMOKE_PID" TERM 10 || terminate_process_tree "$SMOKE_PID" KILL 3 || true
+      wait "$SMOKE_PID" 2>/dev/null || true
+      set -e
+      return 124
+    fi
+    sleep 2
+    _elapsed=$(( _elapsed + 2 ))
+  done
+  wait "$SMOKE_PID"
+  _code="$?"
+  set -e
+  return "$_code"
+}
+
 # Cron-setup pins config in per-account, per-job files so two FollowBrief
 # accounts and two job types can use different runtimes/fetch modes on one
 # machine. Read the account-scoped file first, then fall back to the legacy
@@ -511,6 +552,11 @@ run_selected_runtime() {
     fi
   fi
 }
+
+if [ "$IS_CRON_JOB" = 1 ] && [ "${BUILDER_BLOG_SMOKE_CHECK:-0}" = "1" ]; then
+  run_runtime_smoke_check
+  exit "$?"
+fi
 
 if [ "$IS_CRON_JOB" = 1 ] && [ "${BUILDER_BLOG_WORKER_MODE:-0}" != "1" ] && [ "${BUILDER_BLOG_DISABLE_WEB_SYNC:-0}" != "1" ]; then
   run_cron_supervisor
