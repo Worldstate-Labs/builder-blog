@@ -196,9 +196,7 @@ On macOS you MUST use a launchd LaunchAgent, not cron. A LaunchAgent runs
 inside your login session, so it can reach the login keychain and the pinned
 agent ({{AGENT_RUNTIME_LABEL}}) is authenticated. Plain `cron` runs outside
 your session and cannot reach the keychain, so the agent CLI fails every run
-with "Not logged in". The plist label is account-scoped, so multiple accounts
-coexist as separate agents, and re-running this replaces only this account's
-agent.
+with "Not logged in".
 
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
@@ -256,7 +254,3 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-st
   --runtime "{{AGENT_RUNTIME}}" \
   --regenerate "{{DIGEST_REGENERATE}}"
 ```
-
-Multiple FollowBrief accounts can share one machine: each gets its own
-account-scoped LaunchAgent label (macOS) or cron marker (Linux), so installing
-one never touches another's, and re-running replaces only this account's.
