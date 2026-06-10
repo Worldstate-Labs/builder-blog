@@ -3432,6 +3432,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(privateLibraryPanel, /className="library-source-list-shell"/);
   assert.match(privateLibraryPanel, /className="library-source-list-tools"/);
   assert.match(privateLibraryPanel, /className="library-add-source-toggle"/);
+  assert.match(privateLibraryPanel, /Close add source form/);
+  assert.doesNotMatch(privateLibraryPanel, /Close add source"/);
   assert.match(privateLibraryPanel, /\{beforeBody\}[\s\S]*className="library-source-list-shell"[\s\S]*\{children\}/);
   assert.match(privateLibraryPanel, /library-section-summary--static/);
   assert.match(privateLibraryPanel, /\{beforeBody\}/);

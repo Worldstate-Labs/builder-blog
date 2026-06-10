@@ -79,13 +79,13 @@ export function PrivateLibraryPanel({
             <button
               aria-controls={addPanelId}
               aria-expanded={addOpen}
-              aria-label={addOpen ? "Close add source" : "Add source"}
+              aria-label={addOpen ? "Close add source form" : "Add source"}
               className="library-add-source-toggle"
               onClick={toggleAdd}
               type="button"
             >
               {addOpen ? <X aria-hidden="true" /> : <Plus aria-hidden="true" />}
-              <span>{addOpen ? "Close add source" : "Add source"}</span>
+              <span>{addOpen ? "Close add source form" : "Add source"}</span>
             </button>
           </div>
           {addOpen ? (
