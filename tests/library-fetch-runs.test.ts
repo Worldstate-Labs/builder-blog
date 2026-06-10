@@ -131,6 +131,11 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /summarizeFetchTasksForLog/);
   assert.match(cli, /fetchTasks: slimFetchTasks/);
   assert.match(cli, /prompts: promptsBySourceType/);
+  // Product Hunt direct-fetch 403s are recoverable: they should be shown as a
+  // fallback note while agent discovery continues, not counted as a source error.
+  assert.match(cli, /isRecoverableCandidateDiscoveryFallback/);
+  assert.match(cli, /builderStat\.fallback = sourceFallbackNotice\(task, message\)/);
+  assert.match(cli, /else \{[\s\S]*builderStat\.error = message;[\s\S]*errorCount \+= 1;/);
 });
 
 test("agent runner tags cron-driven CLI runs as source=cron", () => {
@@ -182,10 +187,16 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /Fetch status/);
   assert.match(panel, /Fetch log/);
   assert.match(panel, /Fetch sources run history/);
+  assert.match(panel, /fallback\?:/);
+  assert.match(panel, /sync-panel-fetch-source-note/);
   // A fetch run linked to a stopped/killed runtime job is no longer live even
   // if its planned task outcomes were never patched.
   assert.match(panel, /jobRunByInstanceId/);
-  assert.match(panel, /isRunInflight\(run, run\.jobRunId \? jobsByInstanceId\.get\(run\.jobRunId\) : null\)/);
+  assert.match(panel, /cronJobRef/);
+  assert.match(panel, /run\.source === "cron" && cronJob && cronJob\.status !== "active"/);
+  assert.match(panel, /isRunInflight\(run, run\.jobRunId \? jobsByInstanceId\.get\(run\.jobRunId\) : null, cronJob\)/);
+  assert.match(panel, /if \(cronJob\.status !== "active"\) \{[\s\S]*key: "stopped"/);
+  assert.match(panel, /<RunCard key=\{entry\.id\} cronJob=\{cronJob\} jobRun=\{entry\.jobRun\} run=\{entry\.run\} \/>/);
   assert.match(panel, /interruptedFetchRunStatus/);
   assert.match(panel, /label: "Stopped"/);
   assert.match(panel, /const displayStatus = !inflight && interruptedStatus/);

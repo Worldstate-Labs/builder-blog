@@ -6264,6 +6264,11 @@ a.reading-source-label:focus-visible {
   grid-column: 1 / -1;
 }
 
+.sync-panel-fetch-source-note {
+  color: var(--muted-strong);
+  grid-column: 1 / -1;
+}
+
 .sync-panel-candidate-row {
   align-items: flex-start;
   display: flex;

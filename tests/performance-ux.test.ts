@@ -2095,6 +2095,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sync-panel-source-row\s*{[\s\S]*justify-content:\s*space-between/);
   assert.match(globals, /\.sync-panel-fetch-source-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /\.sync-panel-fetch-source-error\s*{[\s\S]*grid-column:\s*1 \/ -1/);
+  assert.match(globals, /\.sync-panel-fetch-source-note\s*{[\s\S]*color:\s*var\(--muted-strong\)/);
   assert.match(globals, /\.sync-panel-task-card\s*{[\s\S]*background:\s*var\(--paper-strong\)/);
   assert.match(globals, /\.sync-panel-task-summary\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /\.sync-panel-task-body\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
@@ -2324,9 +2325,9 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(digestPipelineForm, /latestDigestHeadline/);
   assert.match(digestPipelineForm, /aria-label="Latest AI Digest headline"/);
   assert.equal((digestPipelineForm.match(/value=\{pipeline\.digestCount\}/g) ?? []).length, 2);
-  assert.match(digestPipelineForm, /AI Digest archive/);
   assert.match(digestPipelineForm, /archive entry/);
   assert.doesNotMatch(digestPipelineForm, /pipeline\.digestCount === 1 \? "AI Digest archive" : "AI Digest archives"/);
+  assert.match(digestPipelineForm, /AI Digest archive/);
   assert.doesNotMatch(digestPipelineForm, /archived AI Digest/);
   assert.doesNotMatch(digestPipelineForm, /saved AI Digest|saved digest/);
   assert.doesNotMatch(digestPipelineForm, /fb-hub-digest-count/);

@@ -692,8 +692,6 @@ async function fetchPersonal(args) {
         builderStat.sourceType = source.id;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        builderStat.error = message;
-        errorCount += 1;
         const task = buildPersonalFetchErrorTask(builder, {
           builderSync: fallbackBuilderSync,
           error,
@@ -703,6 +701,12 @@ async function fetchPersonal(args) {
           commonFetchRules,
           commonSummaryRules,
         });
+        if (isRecoverableCandidateDiscoveryFallback(task)) {
+          builderStat.fallback = sourceFallbackNotice(task, message);
+        } else {
+          builderStat.error = message;
+          errorCount += 1;
+        }
         fetchTasks.push(task);
         builderStat.tasksGenerated += 1;
       }
@@ -877,6 +881,19 @@ export function summarizeFetchTasksForLog(
     };
   }
   return { slimFetchTasks, promptsBySourceType };
+}
+
+function isRecoverableCandidateDiscoveryFallback(task) {
+  return task?.type === "candidate_discovery" && task?.agentWorkType === "candidate_discovery_fallback";
+}
+
+function sourceFallbackNotice(task, reason) {
+  const status = task?.discovery?.failureEvidence?.status;
+  return {
+    kind: "candidate_discovery_fallback",
+    message: `Direct fetch was blocked${status ? ` (HTTP ${status})` : ""}; using Local Agent discovery.`,
+    reason,
+  };
 }
 
 function buildFetchRunSummary({

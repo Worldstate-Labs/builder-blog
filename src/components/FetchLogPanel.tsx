@@ -61,6 +61,11 @@ type PerBuilder = {
   sourceType?: string;
   itemsFetched?: number;
   tasksGenerated?: number;
+  fallback?: {
+    kind?: string;
+    message?: string;
+    reason?: string;
+  };
   error?: string;
 };
 
@@ -236,7 +241,12 @@ function readDetails(value: unknown): DetailsShape {
 // We still bound unlinked/older runs by age so a crash mid-work stops being
 // chased after a while instead of polling forever.
 const INFLIGHT_MAX_AGE_MS = 30 * 60_000;
-function isRunInflight(run: LibraryFetchRunListItem, jobRun?: AgentJobRunListItem | null): boolean {
+function isRunInflight(
+  run: LibraryFetchRunListItem,
+  jobRun?: AgentJobRunListItem | null,
+  cronJob?: LibraryCronJobStatus | null,
+): boolean {
+  if (run.source === "cron" && cronJob && cronJob.status !== "active") return false;
   if (jobRun && !isActiveJobRun(jobRun)) return false;
   const ageMs = Date.now() - Date.parse(run.startedAt);
   if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > INFLIGHT_MAX_AGE_MS) return false;
@@ -495,12 +505,16 @@ export function FetchLogPanel({
   // sees fresh data while keeping the [refresh]-only effect stable.
   const runsRef = useRef(runs);
   const jobRunsRef = useRef(jobRuns);
+  const cronJobRef = useRef(cronJob);
   useEffect(() => {
     runsRef.current = runs;
   }, [runs]);
   useEffect(() => {
     jobRunsRef.current = jobRuns;
   }, [jobRuns]);
+  useEffect(() => {
+    cronJobRef.current = cronJob;
+  }, [cronJob]);
 
   const openRun = useCallback((runId: string) => {
     setDetailsOpen(true);
@@ -577,7 +591,7 @@ export function FetchLogPanel({
     const schedule = () => {
       const jobsByInstanceId = jobRunByInstanceId(jobRunsRef.current);
       const inflight = runsRef.current.some((run) =>
-          isRunInflight(run, run.jobRunId ? jobsByInstanceId.get(run.jobRunId) : null),
+          isRunInflight(run, run.jobRunId ? jobsByInstanceId.get(run.jobRunId) : null, cronJobRef.current),
         ) ||
         jobRunsRef.current.some((run) => isActiveJobRun(run));
       timer = window.setTimeout(tick, inflight ? POLL_INFLIGHT_MS : POLL_IDLE_MS);
@@ -692,6 +706,7 @@ export function FetchLogPanel({
           >
             {activeTab === "log" ? (
               <FetchRunList
+                cronJob={cronJob}
                 expanded={expanded}
                 jobRuns={jobRuns}
                 runs={runs}
@@ -711,18 +726,6 @@ function getFetchUpdateStatus(
   runs: LibraryFetchRunListItem[],
   jobRuns: AgentJobRunListItem[] = [],
 ): FetchUpdateStatus {
-  const jobsByInstanceId = jobRunByInstanceId(jobRuns);
-  const activeRun = runs.find((run) =>
-    isRunInflight(run, run.jobRunId ? jobsByInstanceId.get(run.jobRunId) : null),
-  );
-  if (activeRun) {
-    return {
-      key: "syncing",
-      label: "Syncing",
-      summary: "A Fetch sources run is still writing post outcomes.",
-      style: statusStyle("partial"),
-    };
-  }
   if (!cronJob) {
     return {
       key: "not-connected",
@@ -736,6 +739,18 @@ function getFetchUpdateStatus(
       key: "stopped",
       label: "Stopped",
       summary: "The recurring Fetch sources schedule is stopped.",
+      style: statusStyle("partial"),
+    };
+  }
+  const jobsByInstanceId = jobRunByInstanceId(jobRuns);
+  const activeRun = runs.find((run) =>
+    isRunInflight(run, run.jobRunId ? jobsByInstanceId.get(run.jobRunId) : null, cronJob),
+  );
+  if (activeRun) {
+    return {
+      key: "syncing",
+      label: "Syncing",
+      summary: "A Fetch sources run is still writing post outcomes.",
       style: statusStyle("partial"),
     };
   }
@@ -1110,11 +1125,13 @@ function CronSlotRow({
 }
 
 function FetchRunList({
+  cronJob,
   expanded,
   jobRuns,
   runs,
   setExpanded,
 }: {
+  cronJob: LibraryCronJobStatus | null;
   expanded: boolean;
   jobRuns: AgentJobRunListItem[];
   runs: LibraryFetchRunListItem[];
@@ -1153,7 +1170,7 @@ function FetchRunList({
         <>
           {visibleEntries.map((entry) => (
             entry.kind === "fetch"
-              ? <RunCard key={entry.id} jobRun={entry.jobRun} run={entry.run} />
+              ? <RunCard key={entry.id} cronJob={cronJob} jobRun={entry.jobRun} run={entry.run} />
               : <JobRunCard key={entry.id} jobRun={entry.jobRun} />
           ))}
           {entries.length > VISIBLE_RUN_LIMIT ? (
@@ -1271,9 +1288,11 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
 }
 
 function RunCard({
+  cronJob,
   jobRun,
   run,
 }: {
+  cronJob: LibraryCronJobStatus | null;
   jobRun?: AgentJobRunListItem;
   run: LibraryFetchRunListItem;
 }) {
@@ -1284,7 +1303,7 @@ function RunCard({
   // Mid-sync: fetch-personal recorded the run but sync-builders hasn't patched
   // the per-post outcomes yet. The run-level status already reads "ok" here, so
   // show a live "Syncing…" badge to make the in-between state legible.
-  const inflight = isRunInflight(run, jobRun);
+  const inflight = isRunInflight(run, jobRun, cronJob);
   const interruptedStatus = interruptedFetchRunStatus(jobRun);
   const displayStatus = !inflight && interruptedStatus
     ? interruptedStatus
@@ -1401,6 +1420,14 @@ function DetailsBody({ details }: { details: DetailsShape }) {
                 </span>
                 {entry.error ? (
                   <span className="sync-panel-fetch-source-error">{entry.error}</span>
+                ) : null}
+                {entry.fallback?.message ? (
+                  <span
+                    className="sync-panel-fetch-source-note"
+                    title={entry.fallback.reason}
+                  >
+                    {entry.fallback.message}
+                  </span>
                 ) : null}
               </li>
             ))}
