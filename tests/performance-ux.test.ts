@@ -1199,7 +1199,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /summarizedPostCount/);
   assert.match(dashboardPage, /fetchedPostCount/);
   assert.match(dashboardPage, /No followed sources yet/);
-  assert.match(dashboardPage, /href="\/builders\?tab=fetch"[\s\S]*Go to Sources/);
+  assert.match(dashboardPage, /href="\/builders\?tab=fetch"[\s\S]*Choose sources/);
+  assert.doesNotMatch(dashboardPage, /href="\/builders\?tab=fetch"[\s\S]*Go to Sources/);
   assert.match(dashboardPage, /No AI Digest yet/);
   assert.match(dashboardPage, /No AI Digest archives yet/);
   assert.match(dashboardPage, /\`\$\{ownerLabel\} has not shared any AI Digest archives yet\.\`/);
@@ -1664,7 +1665,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /initialSnapshots=\{visibleSnapshots\}/);
   assert.match(followingSection, /function snapshotHasPosts/);
   assert.match(followingSection, /No followed sources yet/);
-  assert.match(followingSection, /href="\/builders\?tab=fetch"[\s\S]*Go to Sources/);
+  assert.match(followingSection, /href="\/builders\?tab=fetch"[\s\S]*Choose sources/);
+  assert.doesNotMatch(followingSection, /href="\/builders\?tab=fetch"[\s\S]*Go to Sources/);
   assert.match(followingSection, /Use Sources to follow or add sources\. They feed both AI Digest and Following/);
   assert.doesNotMatch(followingSection, /start seeing Following posts/);
   assert.doesNotMatch(followingSection, /start Following/);

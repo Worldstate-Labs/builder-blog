@@ -122,7 +122,7 @@ function FollowingUnavailable({
       <FeedEmptyState
         actions={
           <Link className="fb-btn dark compact" href="/builders?tab=fetch">
-            Go to Sources
+            Choose sources
           </Link>
         }
         ariaLive="polite"
