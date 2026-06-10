@@ -1402,6 +1402,12 @@ a.reading-source-label:focus-visible {
   justify-content: space-between;
 }
 
+.post-detail-raw-copy {
+  display: grid;
+  gap: 0.25rem;
+  min-width: min(100%, 18rem);
+}
+
 .post-detail-section-label {
   color: var(--muted);
   font-family: var(--font-geist-mono), monospace;
@@ -1415,6 +1421,14 @@ a.reading-source-label:focus-visible {
 
 .post-detail-raw-head .post-detail-section-label {
   margin-bottom: 0;
+}
+
+.post-detail-section-desc {
+  color: var(--muted-strong);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  margin: 0;
+  max-width: var(--copy-max);
 }
 
 .post-detail-raw-toggle {
@@ -1521,6 +1535,10 @@ a.reading-source-label:focus-visible {
   height: 1rem;
   margin-top: 0.75rem;
   width: min(68%, var(--skeleton-copy-max));
+}
+
+.post-detail-loading-line--raw-desc {
+  width: min(100%, 18rem);
 }
 
 .post-detail-loading-pill {

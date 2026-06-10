@@ -35,7 +35,10 @@ export function PostDetailLoading() {
           </section>
           <section className="post-detail-raw" aria-hidden="true">
             <div className="post-detail-raw-head">
-              <div className="post-detail-loading-line post-detail-loading-line--label" />
+              <div className="post-detail-raw-copy">
+                <div className="post-detail-loading-line post-detail-loading-line--label" />
+                <div className="post-detail-loading-line post-detail-loading-line--raw-desc" />
+              </div>
               <div className="post-detail-loading-pill" />
             </div>
           </section>

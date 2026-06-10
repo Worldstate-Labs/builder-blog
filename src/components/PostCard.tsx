@@ -250,7 +250,13 @@ export function PostCard({
               aria-label="Crawled content"
             >
               <div className="post-detail-raw-head">
-                <h2 className="post-detail-section-label">Crawled content</h2>
+                <div className="post-detail-raw-copy">
+                  <h2 className="post-detail-section-label">Crawled content</h2>
+                  <p className="post-detail-section-desc">
+                    Full content captured by Fetch sources. It stays collapsed until
+                    you need the source text.
+                  </p>
+                </div>
                 <button
                   aria-controls={rawRegionId}
                   aria-expanded={rawExpanded}

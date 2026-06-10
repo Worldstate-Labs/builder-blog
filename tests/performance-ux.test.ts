@@ -3506,6 +3506,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /post-detail-summary/);
   assert.match(postCard, /post-detail-raw/);
   assert.match(postCard, /className="post-detail-raw-head"/);
+  assert.match(postCard, /className="post-detail-raw-copy"/);
+  assert.match(postCard, /className="post-detail-section-desc"/);
+  assert.match(postCard, /Full content captured by Fetch sources/);
+  assert.match(postCard, /It stays collapsed until[\s\S]*you need the source text\./);
   assert.match(postCard, /className="post-detail-raw-toggle"/);
   assert.match(postCard, /\{rawExpanded \? "Hide crawled content" : "Show crawled content"\}/);
   assert.match(postCard, /\{rawExpanded \? \(\s*<div[\s\S]*aria-label="Crawled content"[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"/);
@@ -3603,7 +3607,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.post-source-original \.source-badge\s*{[\s\S]*min-height:\s*0/);
   assert.match(globals, /\.post-detail-summary\s*{[\s\S]*line-height:\s*1\.72/);
   assert.match(globals, /\.post-detail-raw\s*{[\s\S]*border-top:\s*1px solid/);
+  assert.match(globals, /\.post-detail-raw-copy\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.post-detail-section-label\s*{[\s\S]*text-transform:\s*uppercase/);
+  assert.match(globals, /\.post-detail-section-desc\s*{[\s\S]*color:\s*var\(--muted-strong\)/);
   assert.match(globals, /\.post-favorite-btn\s*{[\s\S]*min-width:\s*2rem/);
   assert.match(globals, /\.post-favorite-status\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.post-raw-content-action\s*{[\s\S]*color:\s*var\(--accent\)/);
@@ -3692,6 +3698,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.post-detail-loading-card\s*{[\s\S]*pointer-events:\s*none/);
   assert.match(globals, /\.post-detail-loading-line--title\s*{[\s\S]*width:\s*min\(100%,\s*var\(--skeleton-title-max\)\)/);
   assert.match(globals, /\.post-detail-loading-line--summary\s*{[\s\S]*width:\s*min\(100%,\s*var\(--skeleton-wide-max\)\)/);
+  assert.match(globals, /\.post-detail-loading-line--raw-desc\s*{[\s\S]*width:\s*min\(100%,\s*18rem\)/);
   assert.match(globals, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.post-detail-loading-source-mark,[\s\S]*animation:\s*none/);
   assert.match(feedItemsRoute, /fetchDedupedFeedForEntities/);
   assert.match(feedItemsRoute, /activePoolBuilderIds/);
