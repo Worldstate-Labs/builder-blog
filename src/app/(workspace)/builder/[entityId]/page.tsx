@@ -412,7 +412,7 @@ async function RecentPostsSlot({
           </Link>
         }
         title="No summarized posts yet"
-        body="Run Fetch sources, then summarized posts from this source will appear here."
+        body="Run Fetch sources. Summarized posts from this source will appear here."
       />
     );
   }

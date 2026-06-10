@@ -1415,7 +1415,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(channelPreferenceToggle, /flex flex-col items-end|text-xs text-\[var\(--danger\)\]|fill-\[var\(--warm\)\]|transition-colors/);
   assert.match(builderDetailPage, /EmptyState/);
   assert.match(builderDetailPage, /title="No summarized posts yet"/);
-  assert.match(builderDetailPage, /Run Fetch sources, then summarized posts from this source will appear here\./);
+  assert.match(builderDetailPage, /Run Fetch sources\. Summarized posts from this source will appear here\./);
   assert.doesNotMatch(builderDetailPage, /Run Fetch sources, then posts from this source will appear here\./);
   assert.doesNotMatch(builderDetailPage, /Fetch and summarize sources from Sources|from the Sources page/);
   assert.match(builderDetailPage, /actions=\{[\s\S]*href="\/builders\?tab=fetch"[\s\S]*Open Sources/);
@@ -3330,7 +3330,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /@\/components\/EmptyState/);
   assert.match(builderFeedItems, /<EmptyState[\s\S]*className="builder-post-empty"/);
   assert.match(builderFeedItems, /title="No summarized posts yet"/);
-  assert.match(builderFeedItems, /Run Fetch sources, then summarized posts from this source will appear here\./);
+  assert.match(builderFeedItems, /Run Fetch sources\. Summarized posts from this source will appear here\./);
   assert.doesNotMatch(builderFeedItems, /Run Fetch sources, then posts from this source will appear here\./);
   assert.doesNotMatch(builderFeedItems, /Fetch and summarize sources with your Local Agent/);
   assert.match(globals, /\.builder-post-empty\s*{\s*margin:\s*0\.75rem 0\.95rem;\s*}/);
