@@ -433,8 +433,10 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /fb-public-nav/);
   assert.match(landingPage, /fb-public-section fb-public-hero/);
   assert.match(landingPage, /fb-public-title/);
-  assert.match(landingPage, /Keep up with people\{" "\}/);
+  assert.match(landingPage, /Keep up with sources worth following\.\{" "\}/);
+  assert.match(landingPage, /Read them as one AI Digest\./);
   assert.match(landingPage, /className="fb-public-title-break"/);
+  assert.doesNotMatch(landingPage, /people and sources you follow/);
   assert.doesNotMatch(landingPage, /people<br \/>and sources you follow/);
   assert.match(landingPage, /fb-public-copy/);
   assert.match(landingPage, /fb-public-actions/);
