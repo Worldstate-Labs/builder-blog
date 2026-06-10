@@ -540,7 +540,7 @@ function HubCard({
                     <CountMeta label={group.items.length === 1 ? "source" : "sources"} value={group.items.length} />
                     <span> · </span>
                     <CountMeta label={group.postCount === 1 ? "post" : "posts"} value={group.postCount} />
-                    <span> · {formatLatestFetchLabel(group.latestFetchedAt)}</span>
+                    <span> · {formatFetchStatusLabel(group.latestFetchedAt)}</span>
                   </div>
                 </div>
                 <ul className="fb-hub-source-list">
@@ -570,7 +570,7 @@ function HubCard({
                             label={item.builder._count.feedItems === 1 ? "post" : "posts"}
                             value={item.builder._count.feedItems}
                           />
-                          <span> · {formatLatestFetchLabel(item.builder.lastFetchedAt)}</span>
+                          <span> · {formatFetchStatusLabel(item.builder.lastFetchedAt)}</span>
                         </span>
                       </li>
                     );
@@ -592,7 +592,7 @@ function HubCard({
       <div className="fb-hub-card-stats">
         <CountMeta label={library.itemCount === 1 ? "source" : "sources"} value={library.itemCount} />
         <CountMeta label={fetchedPostCount === 1 ? "post" : "posts"} value={fetchedPostCount} />
-        <span>{formatLatestFetchLabel(latestFetchedAt)}</span>
+        <span>{formatFetchStatusLabel(latestFetchedAt)}</span>
         <CountMeta label={library.importCount === 1 ? "import" : "imports"} value={library.importCount} />
         <CountMeta label={library.viewCount === 1 ? "view" : "views"} value={library.viewCount} />
       </div>
@@ -760,9 +760,9 @@ function formatFetchDate(value: string | null) {
   return fetchDateFormatter.format(date);
 }
 
-function formatLatestFetchLabel(value: string | null) {
+function formatFetchStatusLabel(value: string | null) {
   if (!value) return "not fetched yet";
   const formatted = formatFetchDate(value);
-  if (formatted === "unknown") return "latest date unknown";
-  return `latest at ${formatted}`;
+  if (formatted === "unknown") return "fetch date unknown";
+  return `fetched ${formatted}`;
 }
