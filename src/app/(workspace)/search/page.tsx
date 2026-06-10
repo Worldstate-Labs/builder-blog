@@ -435,7 +435,7 @@ async function SearchResultsSection({
       ) : (
         <>
           <RelatedSearches
-            heading="Try searching"
+            heading="Suggested searches"
             mode={mode}
             query={query}
             searches={defaultSuggestions}

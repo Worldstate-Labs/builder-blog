@@ -2460,7 +2460,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(globals, /\.search-suggestion-chip\s*{[\s\S]*cursor:\s*pointer/);
   assert.match(searchPage, /Search instead for/);
   assert.match(searchPage, /isShowingCorrectedResults/);
-  assert.match(searchPage, /heading="Try searching"/);
+  assert.match(searchPage, /heading="Suggested searches"/);
+  assert.doesNotMatch(searchPage, /heading="Try searching"/);
   assert.match(searchPage, /heading = "Related searches"/);
   assert.match(searchPage, /<section className="search-related" aria-label=\{heading\}>/);
   assert.doesNotMatch(searchPage, /<section className="search-related" aria-label="Related searches">/);
