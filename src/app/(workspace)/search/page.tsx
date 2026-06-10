@@ -339,7 +339,7 @@ async function SearchResultsSection({
           ) : null}
           <details className="search-advanced-tools search-advanced-tools-compact">
             <summary>
-              Search details
+              Query interpretation
               <ChevronDown aria-hidden="true" className="search-advanced-tools-icon" />
             </summary>
             <SearchQueryInsights
@@ -531,7 +531,7 @@ function SearchQueryInsights({
   const items = buildQueryInsightItems(query, { mode, sort, time, typeFilter });
 
   return (
-    <section className="search-insights" aria-label="Search interpretation">
+    <section className="search-insights" aria-label="Query interpretation">
       <p className="search-insight-summary">
         Query matched {resultCount} {searchResultCountLabel(typeFilter, resultCount)}.
       </p>

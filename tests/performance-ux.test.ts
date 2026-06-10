@@ -2534,8 +2534,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /className="search-result-refinement-list"/);
   assert.match(searchPage, /More from this source/);
   assert.match(searchPage, /Active filters/);
-  assert.match(searchPage, /Search details/);
-  assert.doesNotMatch(searchPage, /Query details/);
+  assert.match(searchPage, /Query interpretation/);
+  assert.match(searchPage, /aria-label="Query interpretation"/);
+  assert.doesNotMatch(searchPage, /Search details|Query details/);
   assert.match(searchPage, /ChevronDown/);
   assert.match(searchPage, /className="search-advanced-tools-icon"/);
   assert.doesNotMatch(searchPage, /Search tools/);
