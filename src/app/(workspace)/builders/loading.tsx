@@ -31,8 +31,45 @@ export default function BuildersLoading() {
 
           <section className="sources-tab-body" aria-label="Loading Sources content">
             <section className="sources-section-stack" aria-hidden="true">
-              <div className="source-sync-skeleton-panel" />
-              <div className="source-sync-skeleton-panel" />
+              <section className="your-library-section">
+                <div className="library-hub-toolbar">
+                  <div className="library-hub-toolbar-copy">
+                    <h2 className="fb-section-heading">Your source library</h2>
+                    <div className="source-sync-skeleton-line" />
+                  </div>
+                  <div className="source-section-skeleton-chip" />
+                </div>
+                <section className="your-library-panel fb-panel">
+                  <div className="source-sync-skeleton-panel" />
+                  <div className="library-section-panel">
+                    <div className="library-section-summary">
+                      <div className="library-section-summary-copy source-section-skeleton-copy">
+                        <div className="source-section-skeleton-title" />
+                        <div className="source-section-skeleton-desc" />
+                      </div>
+                      <div className="library-section-meta">
+                        <div className="source-section-skeleton-chip source-section-skeleton-chip--short" />
+                        <div className="source-section-skeleton-chip" />
+                      </div>
+                    </div>
+                    <div className="library-section-body">
+                      <div className="source-section-skeleton-row" />
+                      <div className="source-section-skeleton-card" />
+                    </div>
+                  </div>
+                </section>
+              </section>
+
+              <section className="imported-libraries-section">
+                <div className="imported-libraries-head">
+                  <div className="imported-libraries-copy">
+                    <h2 className="fb-section-heading">Imported source libraries</h2>
+                    <div className="source-sync-skeleton-line" />
+                  </div>
+                  <div className="source-section-skeleton-chip source-section-skeleton-chip--short" />
+                </div>
+                <div className="source-sync-skeleton-panel" />
+              </section>
             </section>
           </section>
         </section>

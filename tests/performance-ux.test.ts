@@ -336,8 +336,15 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(buildersLoading, /className="sources-tab-body" aria-label="Loading Sources content"/);
   assert.doesNotMatch(buildersLoading, /sources-tab-body--fetch/);
   assert.match(buildersLoading, /className="sources-section-stack"/);
-  assert.doesNotMatch(buildersLoading, /className="your-library-panel fb-panel"/);
+  assert.match(buildersLoading, /Your source library/);
+  assert.match(buildersLoading, /Imported source libraries/);
+  assert.match(buildersLoading, /className="your-library-panel fb-panel"/);
+  assert.match(buildersLoading, /className="library-section-summary-copy source-section-skeleton-copy"/);
+  assert.match(buildersLoading, /className="source-section-skeleton-row"/);
+  assert.match(buildersLoading, /className="source-section-skeleton-card"/);
+  assert.match(buildersLoading, /className="imported-libraries-section"/);
   assert.match(buildersLoading, /className="source-sync-skeleton-panel"/);
+  assert.doesNotMatch(buildersLoading, /<div className="source-sync-skeleton-panel" \/>\s*<div className="source-sync-skeleton-panel" \/>/);
   const hubLoading = source("src/app/(workspace)/library-hub/loading.tsx");
   assert.doesNotMatch(hubLoading, /RouteLoading/);
   assert.match(hubLoading, /className="page-pad hub-loading"/);
