@@ -143,7 +143,16 @@ run_with_openclaw_unattended() {
   # so pass `--agent`.
   _openclaw_timeout="${BUILDER_BLOG_AGENT_TIMEOUT_SECONDS:-${_timeout:-$(timeout_seconds_for_job "${INTERVAL_MINUTES:-60}" "$JOB_NAME")}}"
   sync_openclaw_timeout_config "$_openclaw_timeout"
-  openclaw agent --local --agent "${OPENCLAW_AGENT:-main}" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")"
+  _openclaw_output="$JOB_TMP_DIR/openclaw-agent-output-$$.log"
+  set +e
+  openclaw agent --local --agent "${OPENCLAW_AGENT:-main}" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
+  _openclaw_code="$?"
+  set -e
+  cat "$_openclaw_output"
+  if openclaw_output_has_timeout "$_openclaw_output"; then
+    return 124
+  fi
+  return "$_openclaw_code"
 }
 
 sync_openclaw_timeout_config() {
@@ -161,6 +170,14 @@ sync_openclaw_timeout_config() {
   if ! openclaw config set agents.defaults.timeoutSeconds "$_seconds" --strict-json >/dev/null 2>&1; then
     echo "Warning: failed to set OpenClaw agents.defaults.timeoutSeconds to ${_seconds}s; continuing with --timeout." >&2
   fi
+}
+
+openclaw_output_has_timeout() {
+  _file="${1:-}"
+  [ -n "$_file" ] && [ -r "$_file" ] || return 1
+  grep -E -q \
+    "Request timed out before a response was generated|codex app-server turn idle timed out|embedded run failover decision:.*reason=timeout" \
+    "$_file"
 }
 
 run_with_gemini_unattended() {
@@ -513,6 +530,8 @@ run_with_job_tracking() {
   _code="$?"
   if [ "$_code" -eq 0 ]; then
     job_run_update succeeded "Runtime completed successfully." "runtime_finished"
+  elif [ "$_code" -eq 124 ]; then
+    job_run_update timed_out "Runtime reported a timeout." "runtime_reported_timeout"
   else
     job_run_update failed "Runtime exited with code $_code." "runtime_finished"
   fi

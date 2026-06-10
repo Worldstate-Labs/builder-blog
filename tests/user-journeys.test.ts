@@ -929,6 +929,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /sync_openclaw_timeout_config "\$_openclaw_timeout"/);
   assert.match(runner, /openclaw config get agents\.defaults\.timeoutSeconds/);
   assert.match(runner, /openclaw config set agents\.defaults\.timeoutSeconds "\$_seconds" --strict-json/);
+  assert.match(runner, /openclaw_output_has_timeout/);
+  assert.match(runner, /Request timed out before a response was generated/);
+  assert.match(runner, /codex app-server turn idle timed out/);
+  assert.match(runner, /return 124/);
+  assert.match(runner, /Runtime reported a timeout/);
   assert.match(runner, /BUILDER_BLOG_AGENT_TIMEOUT_SECONDS/);
   assert.match(runner, /timeout_seconds_for_job "\$\{INTERVAL_MINUTES:-60\}" "\$JOB_NAME"/);
   assert.match(runner, /gemini -p/);
