@@ -2435,7 +2435,11 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchPage, />Saved post<\/span>/);
   assert.doesNotMatch(searchPage, />Saved<\/span>/);
   assert.match(searchPage, /aria-current=\{pageNumber === currentPage \? "page" : undefined\}/);
-  assert.match(searchPage, /<span aria-disabled="true" className="search-page-link search-page-link-disabled">/);
+  assert.match(searchPage, /Current search results page \$\{pageNumber\}/);
+  assert.match(searchPage, /Search results page \$\{pageNumber\}/);
+  assert.match(searchPage, /const pageLabel = `\$\{label\} search results page`/);
+  assert.match(searchPage, /<span[\s\S]*aria-disabled="true"[\s\S]*aria-label=\{pageLabel\}[\s\S]*className="search-page-link search-page-link-disabled"/);
+  assert.match(searchPage, /<Link aria-label=\{pageLabel\} className="search-page-link" href=\{href\}>/);
   assert.doesNotMatch(searchPage, /sourceName\.slice\(0,\s*1\)\.toUpperCase\(\)/);
   assert.match(globals, /\.search-result-icon-digest svg\s*{[\s\S]*stroke-width:\s*1\.9/);
   assert.doesNotMatch(globals, /\.search-result-saved/);
