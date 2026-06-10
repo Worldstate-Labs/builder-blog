@@ -1,7 +1,7 @@
 export function AgentTokenPanelSkeleton() {
   return (
     <section className="access-keys-panel" aria-busy="true" aria-live="polite">
-      <span className="sr-only">Loading Local Agent access</span>
+      <span className="sr-only">Loading authorized access</span>
       <div className="access-keys-head">
         <div className="access-keys-skeleton-copy">
           <div className="settings-skeleton-line settings-skeleton-line--access-title" />

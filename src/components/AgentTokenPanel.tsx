@@ -322,7 +322,7 @@ export function AgentTokenPanel({
     <section className="access-keys-panel">
       <div className="access-keys-head">
         <div className="access-keys-copy">
-          <h2 className="fb-section-heading">Local Agent access</h2>
+          <h2 className="fb-section-heading">Authorized access</h2>
           <p className="access-keys-desc">
             Authorized devices and Local Agents can update this FollowBrief account.
           </p>
@@ -353,8 +353,8 @@ export function AgentTokenPanel({
       ) : (
         <EmptyState
           className="access-keys-empty"
-          title="No Local Agent access yet"
-          body="Add one when you connect a Local Agent."
+          title="No authorized access yet"
+          body="Add an access key when you connect a device or Local Agent."
         />
       )}
 

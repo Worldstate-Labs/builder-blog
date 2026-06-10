@@ -281,7 +281,8 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(settingsLoading, /<AgentTokenPanelSkeleton \/>/);
   const agentTokenPanelSkeleton = source("src/components/AgentTokenPanelSkeleton.tsx");
   assert.match(agentTokenPanelSkeleton, /aria-busy="true" aria-live="polite"/);
-  assert.match(agentTokenPanelSkeleton, /<span className="sr-only">Loading Local Agent access<\/span>/);
+  assert.match(agentTokenPanelSkeleton, /<span className="sr-only">Loading authorized access<\/span>/);
+  assert.doesNotMatch(agentTokenPanelSkeleton, /<span className="sr-only">Loading Local Agent access<\/span>/);
   assert.match(agentTokenPanelSkeleton, /className="access-key-card access-key-card--skeleton"/);
   assert.match(settingsLoading, /SettingsRulesSkeleton/);
   assert.doesNotMatch(settingsLoading, /<span className="sr-only">Loading Settings rules<\/span>/);
@@ -798,7 +799,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(skillPromptActions, /No connected helpers|Connected helpers/);
   assert.doesNotMatch(skillPromptActions, /flex flex-wrap items-center justify-end gap-2|className="ml-2"|mr-2|text-\[11px\] text-\[var\(--danger\)\]|text-\[11px\] text-\[var\(--muted-strong\)\]/);
   assert.doesNotMatch(skillPromptActions, /className="grid"/);
-  assert.match(agentTokenPanel, /<h2 className="fb-section-heading">Local Agent access<\/h2>/);
+  assert.match(agentTokenPanel, /<h2 className="fb-section-heading">Authorized access<\/h2>/);
+  assert.doesNotMatch(agentTokenPanel, /<h2 className="fb-section-heading">Local Agent access<\/h2>/);
   assert.doesNotMatch(agentTokenPanel, /<h2 className="fb-section-heading">Access keys<\/h2>/);
   assert.match(agentTokenPanel, /Authorized devices and Local Agents can update this FollowBrief account\./);
   assert.doesNotMatch(agentTokenPanel, /Devices and Local Agents authorized to update this FollowBrief account\./);
@@ -983,7 +985,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(settingsLoading, /<AgentTokenPanelSkeleton \/>/);
   const agentTokenPanelSkeleton = source("src/components/AgentTokenPanelSkeleton.tsx");
   assert.match(agentTokenPanelSkeleton, /aria-busy="true" aria-live="polite"/);
-  assert.match(agentTokenPanelSkeleton, /<span className="sr-only">Loading Local Agent access<\/span>/);
+  assert.match(agentTokenPanelSkeleton, /<span className="sr-only">Loading authorized access<\/span>/);
+  assert.doesNotMatch(agentTokenPanelSkeleton, /<span className="sr-only">Loading Local Agent access<\/span>/);
   assert.match(agentTokenPanelSkeleton, /className="access-key-card access-key-card--skeleton"/);
   assert.match(settingsLoading, /SettingsRulesSkeleton/);
   assert.doesNotMatch(settingsLoading, /<span className="sr-only">Loading Settings rules<\/span>/);
@@ -4456,7 +4459,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(agentTokenPanelSkeleton, /settings-skeleton-line--device-title/);
   assert.match(agentTokenPanelSkeleton, /settings-skeleton-line--device-status/);
   assert.match(agentTokenPanelSkeleton, /className="settings-skeleton-pill access-key-skeleton-pill"/);
-  assert.match(agentTokenPanelSkeleton, /<span className="sr-only">Loading Local Agent access<\/span>/);
+  assert.match(agentTokenPanelSkeleton, /<span className="sr-only">Loading authorized access<\/span>/);
+  assert.doesNotMatch(agentTokenPanelSkeleton, /<span className="sr-only">Loading Local Agent access<\/span>/);
   assert.doesNotMatch(settingsPage, /animate-pulse rounded bg-\[var\(--paper-strong\)\]|className="h-/);
   assert.doesNotMatch(settingsPage, /settings-rules grid gap-4/);
   assert.doesNotMatch(settingsPage, /fb-section-heading mt-1/);
@@ -4540,7 +4544,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /@\/components\/EmptyState/);
   assert.match(tokenPanel, /fetch\("\/api\/settings\/tokens"/);
   assert.match(tokenPanel, /fetch\(`\/api\/settings\/tokens\/\$\{tokenId\}`/);
-  assert.match(tokenPanel, /<h2 className="fb-section-heading">Local Agent access<\/h2>/);
+  assert.match(tokenPanel, /<h2 className="fb-section-heading">Authorized access<\/h2>/);
+  assert.doesNotMatch(tokenPanel, /<h2 className="fb-section-heading">Local Agent access<\/h2>/);
   assert.match(tokenPanel, /Authorized devices and Local Agents can update this FollowBrief account\./);
   assert.doesNotMatch(tokenPanel, /Devices and Local Agents authorized to update this FollowBrief account\./);
   assert.doesNotMatch(tokenPanel, />\s*Local Agents that can sync sources and AI Digests to this account\.|Devices and Local Agents that can sync sources and AI Digests to this account\./);
@@ -4581,8 +4586,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(tokenPanel, /visibleTokens|hiddenActiveCount|showAllTokens|access-keys-more/);
   assert.doesNotMatch(tokenPanel, /@\/components\/Count/);
   assert.match(tokenPanel, /<EmptyState[\s\S]*className="access-keys-empty"/);
-  assert.match(tokenPanel, /No Local Agent access yet/);
-  assert.match(tokenPanel, /Add one when you connect a Local Agent\./);
+  assert.match(tokenPanel, /No authorized access yet/);
+  assert.match(tokenPanel, /Add an access key when you connect a device or Local Agent\./);
+  assert.doesNotMatch(tokenPanel, /No Local Agent access yet/);
+  assert.doesNotMatch(tokenPanel, /Add one when you connect a Local Agent\./);
   assert.doesNotMatch(tokenPanel, /access-keys-empty-actions/);
   assert.doesNotMatch(tokenPanel, /actions=\{[\s\S]*className="access-keys-empty-actions"/);
   assert.match(tokenPanel, /className="fb-btn dark compact"[\s\S]*onClick=\{openCreateDialog\}[\s\S]*Add access key/);
