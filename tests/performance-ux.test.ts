@@ -125,7 +125,6 @@ test("every app route has an explicit centered layout role", () => {
     "src/app/(workspace)/builders/page.tsx",
     "src/app/(workspace)/dashboard/loading.tsx",
     "src/app/(workspace)/dashboard/page.tsx",
-    "src/app/(workspace)/history/loading.tsx",
     "src/app/(workspace)/history/page.tsx",
     "src/app/(workspace)/library-hub/loading.tsx",
     "src/app/(workspace)/library-hub/page.tsx",
@@ -133,7 +132,6 @@ test("every app route has an explicit centered layout role", () => {
     "src/app/(workspace)/posts/[feedItemId]/page.tsx",
     "src/app/(workspace)/recommendations/items/[feedItemId]/loading.tsx",
     "src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx",
-    "src/app/(workspace)/recommendations/loading.tsx",
     "src/app/(workspace)/recommendations/page.tsx",
     "src/app/(workspace)/search/loading.tsx",
     "src/app/(workspace)/search/page.tsx",
@@ -248,17 +246,8 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(postDetailLoading, /className="post-footer"/);
   assert.match(postDetailLoading, /<span className="sr-only">Loading post<\/span>/);
   assert.doesNotMatch(postDetailLoading, /RouteLoading|PageHeader/);
-  const readingLoadingRoutes = [
-    ["src/app/(workspace)/history/loading.tsx", "AI Digest", "Loading AI Digest", 6],
-    ["src/app/(workspace)/recommendations/loading.tsx", "Following", "Loading Following", 6],
-  ] as const;
-  for (const [path, label, title, rows] of readingLoadingRoutes) {
-    assert.match(
-      source(path),
-      new RegExp(`<RouteLoading[\\s\\S]*label="${label}"[\\s\\S]*title="${title}"[\\s\\S]*rows=\\{${rows}\\}`),
-    );
-    assert.doesNotMatch(source(path), /variant="workspace"/);
-  }
+  assert.equal(existsSync(join(root, "src/app/(workspace)/history/loading.tsx")), false);
+  assert.equal(existsSync(join(root, "src/app/(workspace)/recommendations/loading.tsx")), false);
   assert.doesNotMatch(
     `${source("src/app/(workspace)/builder/[entityId]/loading.tsx")}\n${source("src/app/(workspace)/builder/x/[handle]/loading.tsx")}\n${source("src/app/(workspace)/posts/[feedItemId]/loading.tsx")}\n${source("src/app/(workspace)/recommendations/items/[feedItemId]/loading.tsx")}`,
     /Summarized post|Loading summarized post|title="Loading Post"|title="Loading Source"/,
@@ -2748,7 +2737,8 @@ test("user library search can fetch operator-only candidate sets", () => {
 });
 
 test("primary tabs keep local loading fallbacks alongside route loaders", () => {
-  assert.equal(existsSync(join(root, "src/app/(workspace)/history/loading.tsx")), true);
+  assert.equal(existsSync(join(root, "src/app/(workspace)/history/loading.tsx")), false);
+  assert.equal(existsSync(join(root, "src/app/(workspace)/recommendations/loading.tsx")), false);
   assert.equal(existsSync(join(root, "src/app/(workspace)/builders/loading.tsx")), true);
   assert.doesNotMatch(source("src/app/(workspace)/builders/loading.tsx"), /RouteLoading/);
   assert.equal(existsSync(join(root, "src/app/(workspace)/library-hub/loading.tsx")), true);
