@@ -1179,29 +1179,36 @@ function buildSearchRecoveryActions({
   const parsed = parseSearchQuery(query);
   const actions: SearchRecoveryAction[] = [];
   const queryWithoutDate = withDateSearchOperators(query, { after: null, before: null });
+  let coveredFilterCount = 0;
 
   if (mode !== "hybrid") {
+    coveredFilterCount += 1;
     actions.push({
       href: searchHref({ query, type: typeFilter, mode: "hybrid", sort, time }),
       label: "Use best match",
     });
   }
   if (typeFilter !== "all") {
+    coveredFilterCount += 1;
     actions.push({
       href: searchHref({ query, type: "all", mode, sort, time }),
       label: "Search all result types",
     });
   }
   if (time !== "any" || parsed.after || parsed.before) {
+    coveredFilterCount +=
+      Number(time !== "any") +
+      Number(Boolean(parsed.after)) +
+      Number(Boolean(parsed.before));
     actions.push({
       href: searchHref({ query: queryWithoutDate, type: typeFilter, mode, sort, time: "any" }),
       label: "Search any time",
     });
   }
-  if (activeFilterCount > 0) {
+  if (activeFilterCount > coveredFilterCount) {
     actions.push({
       href: clearAllSearchHref(query),
-      label: "Clear filters",
+      label: "Clear all filters",
     });
   }
 

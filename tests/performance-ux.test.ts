@@ -2611,9 +2611,13 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchPage, /search-insight-card/);
   assert.match(searchPage, /search-insight-summary/);
   assert.match(searchPage, /Query matched/);
+  assert.match(searchPage, /let coveredFilterCount = 0/);
+  assert.match(searchPage, /activeFilterCount > coveredFilterCount/);
   assert.match(searchPage, /Use best match/);
   assert.match(searchPage, /Search all result types/);
   assert.match(searchPage, /Search any time/);
+  assert.match(searchPage, /Clear all filters/);
+  assert.doesNotMatch(searchPage, /label:\s*"Clear filters"/);
   assert.doesNotMatch(searchPage, /Search all time/);
   assert.match(searchPage, /function SearchEmptyState/);
   assert.match(searchPage, /<EmptyState[\s\S]*className="search-empty"/);
