@@ -193,8 +193,30 @@ not installed, do not claim the digest cron is installed successfully — record
 that the user must install {{AGENT_RUNTIME_LABEL}} (or set
 `BUILDER_BLOG_AGENT_COMMAND`) first.
 
-8. After the smoke check succeeds, report the active scheduled job to
-FollowBrief. Do not run this before the smoke check succeeds.
+8. After the runtime smoke check succeeds, run one real local validation run
+while the user is still present. This validates the actual `digest-cron`
+pipeline end to end, including candidate preparation, agent JSON output,
+rendering, and final sync command shape. Web sync is disabled, so no DigestRun,
+digest, or digested-item markers are uploaded. This can take until the normal
+job timeout; do not treat a lack of output as a hang before the command exits or
+the runner timeout fires.
+
+```bash
+BUILDER_BLOG_WORKER_MODE=1 \
+BUILDER_BLOG_DISABLE_WEB_SYNC=1 \
+INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+$HOME/.builder-blog/builder-agent-runner.sh digest-cron
+```
+
+Report its output. It succeeds when the digest is generated locally and the
+final sync step prints `webSyncDisabled: true`; that means this validation run
+did not write web state. If it errors or times out, report the command, exit
+code, and stderr, and stop.
+
+9. After both checks succeed, report the active scheduled job to FollowBrief. Do
+not run this before the smoke check and validation run have both finished
+successfully.
 
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \

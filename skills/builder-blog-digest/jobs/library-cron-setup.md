@@ -12,12 +12,13 @@ exactly as written; this prompt is the whole task.
 
 Agent discretion boundary: this is a scheduler setup task. Do not change paths,
 flags, cadence, titles, output files, JSON schema, or success criteria. You are
-only installing the cron job and running one short runtime smoke check — you
-never complete fetch tasks yourself. The smoke check validates that the pinned
-runtime can run unattended; the recurring job later feeds the agent the
-`library-cron` prompt (the single source of truth for how fetch tasks are
-fetched, summarized, validated, and synced). This file does not restate any of
-that fetch-task work.
+installing the cron job, running one short runtime smoke check, and then running
+one real local validation run while the user is present. The runtime smoke check
+validates that the pinned runtime can start unattended. The validation run feeds
+the agent the `library-cron` prompt (the single source of truth for how fetch
+tasks are fetched, summarized, validated, and synced) but disables web sync so
+only the recurring job writes web results. This setup file does not restate any
+fetch-task work.
 
 Scheduled runtime: **{{AGENT_RUNTIME_LABEL}}** ({{AGENT_RUNTIME}}). Every step
 below uses this pinned runtime; do not fall back to a different one.
@@ -199,10 +200,32 @@ report its output: it succeeds when the command exits 0 and the output contains
 `followbriefSmokeCheck` with value `ok`. If it errors or times out, report the
 command, exit code, and stderr, and stop.
 
-8. After the smoke check succeeds, report the active schedule to FollowBrief so
+8. After the runtime smoke check succeeds, run one real local validation run
+while the user is still present. This validates the actual `library-cron`
+pipeline end to end, including source fetching, summarization, validation, and
+the final sync command shape. Web sync is disabled, so no fetch-log rows,
+builders, or feed items are uploaded. This can take until the normal job
+timeout; do not treat a lack of output as a hang before the command exits or the
+runner timeout fires.
+
+```bash
+BUILDER_BLOG_WORKER_MODE=1 \
+BUILDER_BLOG_DISABLE_WEB_SYNC=1 \
+INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+$HOME/.builder-blog/builder-agent-runner.sh library-cron
+```
+
+Report its output. It succeeds when the command exits 0 and the validation/sync
+output shows the planned fetch tasks are either validated, synced, or accounted
+for by terminal outcomes. The final `sync-builders` step should print
+`webSyncDisabled: true`; that means this validation run did not write web state.
+If it errors or times out, report the command, exit code, and stderr, and stop.
+
+9. After both checks succeed, report the active schedule to FollowBrief so
 the web app can compare expected runs with fetch logs. This is a status update
 only; it does not fetch content. Do not run this step before the smoke check
-has finished successfully:
+and validation run have both finished successfully:
 
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \

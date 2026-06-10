@@ -56,6 +56,15 @@ export async function GET(request: Request, { params }: Params) {
     "3h": { schedule: "0 */3 * * *", label: "every 3 hours" },
     "6h": { schedule: "0 */6 * * *", label: "every 6 hours" },
   };
+  const cronIntervalMinutes: Record<string, string> = {
+    "30m": "30",
+    "1h": "60",
+    "12h": "720",
+    daily: "1440",
+    weekly: "10080",
+    "3h": "180",
+    "6h": "360",
+  };
   // macOS uses a launchd LaunchAgent (runs in the user's login session, so
   // the agent CLI can reach the login keychain — plain cron cannot). One
   // XML fragment per cadence, dropped into the plist via {{LAUNCHD_SCHEDULE}}.
@@ -113,6 +122,7 @@ export async function GET(request: Request, { params }: Params) {
     .replaceAll("{{CRON_FREQUENCY_KEY}}", freq)
     .replaceAll("{{CRON_SCHEDULE}}", cronSchedules[freq].schedule)
     .replaceAll("{{CRON_FREQUENCY_LABEL}}", cronSchedules[freq].label)
+    .replaceAll("{{CRON_INTERVAL_MINUTES}}", cronIntervalMinutes[freq] ?? "360")
     .replaceAll("{{LAUNCHD_SCHEDULE}}", launchdSchedules[freq] ?? launchdSchedules["6h"])
     .replaceAll("{{FETCH_FORCE}}", fetchForce ? "1" : "0")
     .replaceAll("{{FETCH_FLAG}}", fetchForce ? "--force" : "")
