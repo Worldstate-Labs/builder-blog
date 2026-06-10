@@ -1657,6 +1657,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.doesNotMatch(favoriteList, /showSourceBadge=\{false\}/);
   assert.doesNotMatch(favoriteList, /setItems\(previousItems\)/);
   assert.match(globals, /\.favorites-feed-error\s*{[\s\S]*color:\s*var\(--danger\)/);
+  assert.match(globals, /\.favorites-empty-actions\s*{[\s\S]*justify-content:\s*flex-start/);
   assert.match(dashboardPage, /<FollowingRecommendationSection[\s\S]*isAdmin=\{isAdmin\}[\s\S]*sourceReadiness=\{sourceReadiness\}/);
   assert.match(dashboardPage, /dashboardSourceReadinessForUser/);
   assert.match(followingSection, /"use client"/);

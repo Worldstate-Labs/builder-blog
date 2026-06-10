@@ -195,6 +195,7 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.doesNotMatch(globals, /inset 4px 0 0/);
   assert.doesNotMatch(globals, /linear-gradient\(\s*90deg/);
   assert.match(globals, /\.favorites-empty-actions\s*{[\s\S]*flex-wrap:\s*wrap/);
+  assert.match(globals, /\.favorites-empty-actions\s*{[\s\S]*justify-content:\s*flex-start/);
   assert.match(globals, /\.post-favorite-status\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.favorites-feed-error\s*{[\s\S]*color:\s*var\(--danger\)/);
 });
