@@ -3283,8 +3283,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.equal(existsSync(join(root, "src/components/MobileSourcesSwitcher.tsx")), false);
   assert.match(builderLibraryList, /className="builder-library-error"/);
   assert.match(builderLibraryList, /<EmptyState body=\{emptyBody\} title=\{emptyTitle\} \/>/);
-  assert.match(buildersPage, /emptyBody="Add a source, then run Fetch sources\. Sources feed both AI Digest and Following\."/);
+  assert.match(buildersPage, /emptyBody="Add sources here, then run Fetch sources\. AI Digest and Following both draw from this library\."/);
   assert.doesNotMatch(buildersPage, /emptyBody="Add a source, then run Fetch sources\."/);
+  assert.doesNotMatch(buildersPage, /Sources feed both AI Digest and Following/);
   assert.match(personalBuilderRoute, /We could not verify the source right now/);
   assert.match(personalBuilderRoute, /your Local Agent can retry later/);
   assert.doesNotMatch(personalBuilderRoute, /We couldn't verify/);
