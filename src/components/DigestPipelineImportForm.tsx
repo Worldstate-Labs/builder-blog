@@ -417,6 +417,10 @@ function DigestPipelineCard({
       <div>
         <div className="fb-hub-card-head">
           <div className="fb-hub-card-titleblock">
+            <div className="fb-hub-card-kicker">
+              <span className="fb-kind-pill">{digestPipelineKindBadge(pipeline)}</span>
+              <span className="fb-hub-card-topic">· {digestPipelineOwnerTopic(pipeline.ownerLabel)}</span>
+            </div>
             <h3 className="fb-hub-title">
               {pipeline.title}
             </h3>
@@ -453,6 +457,14 @@ function digestPipelineCardDescription(pipeline: HubDigestPipeline) {
   const description = pipeline.description?.trim();
   if (description) return description;
   return `Shared by ${pipeline.ownerLabel}.`;
+}
+
+function digestPipelineKindBadge(pipeline: Pick<HubDigestPipeline, "ownerLabel">) {
+  return pipeline.ownerLabel === "FollowBrief" ? "community" : "shared";
+}
+
+function digestPipelineOwnerTopic(ownerLabel: string) {
+  return ownerLabel.trim() || "a FollowBrief user";
 }
 
 export function DigestPipelinePreviewCard({

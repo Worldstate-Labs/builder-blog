@@ -3076,6 +3076,12 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(digestPipelineForm, /className="library-hub-toolbar-copy"/);
   assert.match(digestPipelineForm, /className="hub-list-stack fb-hub-list"/);
   assert.match(digestPipelineForm, /className="fb-hub-card-head"/);
+  assert.match(digestPipelineForm, /className="fb-hub-card-kicker"/);
+  assert.match(digestPipelineForm, /digestPipelineKindBadge\(pipeline\)/);
+  assert.match(digestPipelineForm, /function digestPipelineKindBadge/);
+  assert.match(digestPipelineForm, /pipeline\.ownerLabel === "FollowBrief" \? "community" : "shared"/);
+  assert.match(digestPipelineForm, /function digestPipelineOwnerTopic\(ownerLabel: string\)/);
+  assert.match(digestPipelineForm, /digestPipelineOwnerTopic\(pipeline\.ownerLabel\)/);
   assert.match(digestPipelineForm, /className="fb-hub-digest-preview"/);
   assert.match(digestPipelineForm, /function DigestPipelineMetaGrid/);
   assert.match(digestPipelineForm, /aria-label="AI Digest details"/);
