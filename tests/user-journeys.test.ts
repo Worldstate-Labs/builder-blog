@@ -481,6 +481,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_KEY\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_SCHEDULE\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_LABEL\}\}/);
+  assert.match(skillJobRoute, /\{\{CRON_TIMEOUT_SECONDS\}\}/);
+  assert.match(skillJobRoute, /timeoutSecondsForJob/);
   // macOS scheduling uses a launchd LaunchAgent (keychain access); the route
   // provides a launchd schedule fragment per cadence.
   assert.match(skillJobRoute, /launchdSchedules/);
@@ -786,6 +788,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /openclaw exec-policy show/);
   assert.match(libraryCronSetupPrompt, /grep -q 'ask=off'/);
   assert.match(libraryCronSetupPrompt, /Scheduled FollowBrief jobs cannot wait for approvals/);
+  assert.match(libraryCronSetupPrompt, /openclaw config get agents\.defaults\.timeoutSeconds/);
+  assert.match(libraryCronSetupPrompt, /openclaw config set agents\.defaults\.timeoutSeconds "\{\{CRON_TIMEOUT_SECONDS\}\}" --strict-json/);
   assert.doesNotMatch(libraryCronSetupPrompt, /exec-policy preset yolo/);
   // Pin files are per-account and per-job so multiple FollowBrief accounts and
   // job types can use different runtimes on one machine.
@@ -860,6 +864,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronSetupPrompt, /openclaw exec-policy show/);
   assert.match(digestCronSetupPrompt, /grep -q 'ask=off'/);
   assert.match(digestCronSetupPrompt, /Scheduled FollowBrief jobs cannot wait for approvals/);
+  assert.match(digestCronSetupPrompt, /openclaw config get agents\.defaults\.timeoutSeconds/);
+  assert.match(digestCronSetupPrompt, /openclaw config set agents\.defaults\.timeoutSeconds "\{\{CRON_TIMEOUT_SECONDS\}\}" --strict-json/);
   assert.doesNotMatch(digestCronSetupPrompt, /exec-policy preset yolo/);
   assert.match(digestCronSetupPrompt, /ACCOUNT_SLUG/);
   assert.match(digestCronSetupPrompt, /runtime-digest-cron-\$ACCOUNT_SLUG/);

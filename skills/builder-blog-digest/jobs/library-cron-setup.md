@@ -126,6 +126,11 @@ if [ "{{AGENT_RUNTIME}}" = "openclaw" ]; then
     echo "Configure OpenClaw for unattended exec, then re-run this setup prompt." >&2
     exit 1
   }
+  OPENCLAW_TIMEOUT_CURRENT="$(openclaw config get agents.defaults.timeoutSeconds 2>/dev/null || printf '0\n')"
+  case "$OPENCLAW_TIMEOUT_CURRENT" in ''|*[!0-9]*) OPENCLAW_TIMEOUT_CURRENT=0 ;; esac
+  if [ "$OPENCLAW_TIMEOUT_CURRENT" -lt "{{CRON_TIMEOUT_SECONDS}}" ]; then
+    openclaw config set agents.defaults.timeoutSeconds "{{CRON_TIMEOUT_SECONDS}}" --strict-json
+  fi
 fi
 ```
 

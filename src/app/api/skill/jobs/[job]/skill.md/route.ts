@@ -7,6 +7,15 @@ import { prisma } from "@/lib/prisma";
 
 type Params = { params: Promise<{ job: string }> };
 
+function timeoutSecondsForJob(intervalMinutes: string, job: string) {
+  const interval = Number(intervalMinutes);
+  const safeInterval = Number.isFinite(interval) && interval > 0 ? interval : 60;
+  const base = safeInterval * 48;
+  const min = 20 * 60;
+  const max = job.startsWith("library") ? 120 * 60 : 45 * 60;
+  return String(Math.min(max, Math.max(min, base)));
+}
+
 export async function GET(request: Request, { params }: Params) {
   const { job } = await params;
   const path = jobSkillFiles[job as keyof typeof jobSkillFiles];
@@ -87,6 +96,8 @@ export async function GET(request: Request, { params }: Params) {
   const defaultFreq = job.startsWith("digest") ? "daily" : "6h";
   const freqRaw = url.searchParams.get("freq");
   const freq = freqRaw && cronSchedules[freqRaw] ? freqRaw : defaultFreq;
+  const cronInterval = cronIntervalMinutes[freq] ?? "360";
+  const cronTimeoutSeconds = timeoutSecondsForJob(cronInterval, job);
 
   // Forced re-fetch toggle. "1" → re-fetch posts already in the library
   // (ignore the fetchedAt cutoff + externalId dedup). Default off. Closed
@@ -122,7 +133,8 @@ export async function GET(request: Request, { params }: Params) {
     .replaceAll("{{CRON_FREQUENCY_KEY}}", freq)
     .replaceAll("{{CRON_SCHEDULE}}", cronSchedules[freq].schedule)
     .replaceAll("{{CRON_FREQUENCY_LABEL}}", cronSchedules[freq].label)
-    .replaceAll("{{CRON_INTERVAL_MINUTES}}", cronIntervalMinutes[freq] ?? "360")
+    .replaceAll("{{CRON_INTERVAL_MINUTES}}", cronInterval)
+    .replaceAll("{{CRON_TIMEOUT_SECONDS}}", cronTimeoutSeconds)
     .replaceAll("{{LAUNCHD_SCHEDULE}}", launchdSchedules[freq] ?? launchdSchedules["6h"])
     .replaceAll("{{FETCH_FORCE}}", fetchForce ? "1" : "0")
     .replaceAll("{{FETCH_FLAG}}", fetchForce ? "--force" : "")
