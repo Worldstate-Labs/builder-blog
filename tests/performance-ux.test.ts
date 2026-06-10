@@ -4605,7 +4605,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(tokenPanel, /Could not create access key|Could not revoke access key/);
   assert.match(tokenPanel, /This access has been used by/);
   assert.match(tokenPanel, /This access has never been used/);
+  assert.match(tokenPanel, /that device or Local Agent will lose/);
+  assert.match(tokenPanel, /No device or Local Agent will lose access/);
   assert.doesNotMatch(tokenPanel, /This access key has been used by|This access key has never been used/);
+  assert.doesNotMatch(tokenPanel, /that Local Agent will lose access|No machine will lose access/);
   assert.doesNotMatch(tokenPanel, /role="listitem"/);
   assert.match(tokenPanel, /Revoke access/);
   assert.doesNotMatch(tokenPanel, /className="mt-/);

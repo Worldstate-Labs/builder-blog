@@ -467,14 +467,14 @@ export function AgentTokenPanel({
                     .
                   </p>
                   <p className="settings-dialog-warning">
-                    After revoking it, that Local Agent will lose access to
-                    FollowBrief and need a new access key to update again.
+                    After revoking it, that device or Local Agent will lose
+                    access to FollowBrief and need a new access key to update again.
                   </p>
                 </>
               ) : (
                 <p>
                   This access has never been used. Revoking it now is safe.
-                  No machine will lose access.
+                  No device or Local Agent will lose access.
                 </p>
               )}
             </div>
