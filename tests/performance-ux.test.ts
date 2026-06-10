@@ -568,6 +568,8 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(loginPage, /label="Search"/);
   assert.match(loginPage, /Use one account for FollowBrief and your Local Agent\./);
   assert.doesNotMatch(loginPage, /Use one account for your AI Digests and Local Agent\./);
+  assert.match(loginPage, /After sign-in, add access keys in Settings\./);
+  assert.doesNotMatch(loginPage, /Access keys are set up after sign-in from Settings\./);
   assert.doesNotMatch(loginPage, /label="Local Agent"/);
   assert.doesNotMatch(loginPage, /KeyRound/);
   assert.match(rootLayout, /Follow sources, read the cited AI Digest, and search sources, posts, and AI Digest archives\./);

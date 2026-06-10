@@ -71,7 +71,7 @@ export default async function LoginPage({
             <AuthButtons callbackUrl={safeCallbackUrl(params.callbackUrl)} />
           </div>
           <p className="fb-login-note">
-            Access keys are set up after sign-in from Settings.
+            After sign-in, add access keys in Settings.
           </p>
         </section>
       </div>
