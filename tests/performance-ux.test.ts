@@ -393,7 +393,8 @@ test("workspace not-found uses the FollowBrief shell instead of the default Next
   assert.match(notFoundPage, /@\/components\/EmptyState/);
   assert.match(notFoundPage, /className="page-pad page-pad--reading workspace-not-found"/);
   assert.match(notFoundPage, /title="Page not found"/);
-  assert.match(notFoundPage, /belong to content outside your current library/);
+  assert.match(notFoundPage, /belong to content outside your Sources or imported AI Digest archives/);
+  assert.doesNotMatch(notFoundPage, /current library/);
   assert.doesNotMatch(notFoundPage, /item outside your current library/);
   assert.match(notFoundPage, /href="\/dashboard"/);
   assert.match(notFoundPage, /href="\/search"/);
