@@ -26,7 +26,7 @@ ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-
 TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron}"
 mkdir -p "$TMP_DIR"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" fetch-personal --days ${BUILDER_BLOG_FETCH_DAYS:-30} --limit 3 ${BUILDER_BLOG_FETCH_FORCE:-} \
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" fetch-personal --days ${BUILDER_BLOG_FETCH_DAYS:-30} --limit ${BUILDER_BLOG_FETCH_LIMIT:-3} ${BUILDER_BLOG_FETCH_FORCE:-} \
   > "$TMP_DIR/library-fetch-result.json"
 ```
 

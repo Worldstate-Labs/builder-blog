@@ -211,6 +211,7 @@ runner timeout fires.
 ```bash
 BUILDER_BLOG_WORKER_MODE=1 \
 BUILDER_BLOG_DISABLE_WEB_SYNC=1 \
+BUILDER_BLOG_FETCH_LIMIT=1 \
 INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 $HOME/.builder-blog/builder-agent-runner.sh library-cron
@@ -218,7 +219,9 @@ $HOME/.builder-blog/builder-agent-runner.sh library-cron
 
 Report its output. It succeeds when the command exits 0 and the validation/sync
 output shows the planned fetch tasks are either validated, synced, or accounted
-for by terminal outcomes. The final `sync-builders` step should print
+for by terminal outcomes. This validation run fetches at most one item per
+source so setup catches real pipeline errors without doing a full recurring run.
+The final `sync-builders` step should print
 `webSyncDisabled: true`; that means this validation run did not write web state.
 If it errors or times out, report the command, exit code, and stderr, and stop.
 

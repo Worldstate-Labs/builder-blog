@@ -744,6 +744,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /followbriefSmokeCheck/);
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_WORKER_MODE=1/);
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_DISABLE_WEB_SYNC=1/);
+  assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_FETCH_LIMIT=1/);
   assert.match(libraryCronSetupPrompt, /INTERVAL_MINUTES="\{\{CRON_INTERVAL_MINUTES\}\}"/);
   assert.match(libraryCronSetupPrompt, /webSyncDisabled: true/);
   assert.match(libraryCronStopPrompt, /cron-status/);
@@ -826,6 +827,7 @@ test("web app serves the agent skill and setup command", () => {
     "report its output",
     "8. After the runtime smoke check succeeds",
     "BUILDER_BLOG_WORKER_MODE=1",
+    "BUILDER_BLOG_FETCH_LIMIT=1",
     "webSyncDisabled: true",
     "9. After both checks succeed",
     "cron-status",
@@ -844,7 +846,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronPrompt, /BUILDER_BLOG_JOB_TMP_DIR/);
   assert.match(
     libraryCronPrompt,
-    /fetch-personal --days \$\{BUILDER_BLOG_FETCH_DAYS:-30\} --limit 3 \$\{BUILDER_BLOG_FETCH_FORCE:-\}/,
+    /fetch-personal --days \$\{BUILDER_BLOG_FETCH_DAYS:-30\} --limit \$\{BUILDER_BLOG_FETCH_LIMIT:-3\} \$\{BUILDER_BLOG_FETCH_FORCE:-\}/,
   );
   assert.match(digestCronSetupPrompt, /builder-agent-runner\.sh digest-cron/);
   // digest cron-setup pins the runtime too (parity with library) so the
@@ -1020,7 +1022,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skill, /failed extraction attempts are not command-contract\s+failures/);
   assert.match(skill, /~\/\.builder-blog\/builder-digest\.mjs/);
   // Cron contract = same shared fragment, asserted on the EXPANDED prompt.
-  assert.match(libraryCronExpanded, /fetch-personal --days \$\{BUILDER_BLOG_FETCH_DAYS:-30\} --limit 3/);
+  assert.match(libraryCronExpanded, /fetch-personal --days \$\{BUILDER_BLOG_FETCH_DAYS:-30\} --limit \$\{BUILDER_BLOG_FETCH_LIMIT:-3\}/);
   assert.match(libraryCronExpanded, /validate-agent-sync/);
   assert.match(libraryCronExpanded, /sync-builders/);
   assert.match(libraryCronExpanded, /--tasks "\$TMP_DIR\/library-fetch-result\.json"/);
