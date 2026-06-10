@@ -3062,6 +3062,10 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-sources-summary"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /groupedSources/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-type-groups/);
+  assert.match(
+    source("src/components/LibraryHubImportForm.tsx"),
+    /"blog"[\s\S]*"github_trending"[\s\S]*"product_hunt_top_products"[\s\S]*"youtube"[\s\S]*"podcast"[\s\S]*"x"[\s\S]*"website"/,
+  );
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceBadge/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceAvatar/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /sourceSummaryItems = selectSourceSummaryItems\(library\.items, sourceGroups, 4\)/);

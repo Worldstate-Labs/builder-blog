@@ -732,7 +732,15 @@ function groupedSources(libraryItems: HubLibrary["items"]): SourceGroup[] {
 }
 
 function sourceTypeRank(sourceType: string) {
-  const order = ["x", "blog", "github_trending", "product_hunt_top_products", "youtube", "podcast", "website"];
+  const order = [
+    "blog",
+    "github_trending",
+    "product_hunt_top_products",
+    "youtube",
+    "podcast",
+    "x",
+    "website",
+  ];
   const index = order.indexOf(sourceType);
   return index === -1 ? order.length : index;
 }
