@@ -3564,6 +3564,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /Crawled content/);
   assert.match(postCard, /showRawContent = true/);
   assert.match(postCard, /const showReadIndicator = Boolean\(dataRead && !isDetail\)/);
+  assert.match(postCard, /\{!isDetail && rawExpanded && rawContent \? \(/);
   assert.match(postCard, /showReadIndicator \?/);
   assert.doesNotMatch(postCard, /dataRead \? \(\s*<>\s*\{\(showSourceBadge \|\| hasAlternateChannels\)/);
   assert.match(postCard, /detailUrl\?: string \| null/);

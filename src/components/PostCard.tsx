@@ -401,7 +401,7 @@ export function PostCard({
         </div>
 
         {/* Crawled content collapsible region */}
-        {rawExpanded && rawContent ? (
+        {!isDetail && rawExpanded && rawContent ? (
           <div
             aria-label={actionLabel(rawContentLabel, actionContext)}
             className="fetched-post-raw"
