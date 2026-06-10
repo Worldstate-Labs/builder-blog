@@ -95,7 +95,7 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(favoriteSection, /orderBy:\s*\{ favoritedAt: "desc" \}/);
   assert.match(favoriteSection, /take:\s*favoritePostLimit/);
   assert.match(favoriteSection, /feedRead\.findMany/);
-  assert.match(favoriteList, /aria-label="Favorite posts"/);
+  assert.match(favoriteList, /aria-label="Reading queue posts"/);
   assert.match(favoriteList, /<h2 className="favorites-feed-title">Reading queue<\/h2>/);
   assert.doesNotMatch(favoriteList, /<h2 className="favorites-feed-title">Favorites<\/h2>/);
   assert.match(favoriteList, /Posts you starred for focused reading, newest first\./);
@@ -110,7 +110,7 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(favoriteList, /<FeedEmptyState/);
   assert.match(favoriteList, /className="favorites-empty is-actionable"/);
   assert.match(favoriteList, /favorites-empty-actions/);
-  assert.match(favoriteList, /No favorites yet/);
+  assert.match(favoriteList, /Reading queue is empty/);
   assert.match(favoriteList, /Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
   assert.doesNotMatch(favoriteList, /Posts you marked for deeper reading/);
   assert.doesNotMatch(favoriteList, /Saved for deeper reading/);
@@ -122,7 +122,7 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(favoriteList, /const \[pendingIds, setPendingIds\] = useState<Set<string>>\(\(\) => new Set\(\)\)/);
   assert.match(favoriteList, /disabled=\{pendingIds\.has\(item\.feedItemId\)\}/);
   assert.match(favoriteList, /sortFavoriteItems\(\[\.\.\.current, removedItem\]\)/);
-  assert.match(favoriteList, /Could not remove favorite\. The post remains in Favorites\./);
+  assert.match(favoriteList, /Could not remove post from reading queue\. It remains here\./);
   assert.match(favoriteList, /className="favorites-feed-error" role="status"/);
   assert.doesNotMatch(favoriteList, /setItems\(previousItems\)/);
   assert.match(favoriteButton, /const label = postFavoriteActionLabel\(isFavorite\)/);
