@@ -7,6 +7,16 @@ AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 PROMPT_FILE="$AGENT_DIR/jobs/$JOB_NAME.md"
 ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
 JOB_TMP_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/$JOB_NAME"
+# A direct worker-mode invocation (the setup validation run, or any manual
+# BUILDER_BLOG_WORKER_MODE=1 run) bypasses run_cron_supervisor and its
+# current.json single-instance lock. Only such direct calls carry WORKER_MODE=1
+# at entry — the scheduled path enters without it and the supervisor sets it
+# later in-process, after JOB_TMP_DIR is already fixed. Give the bypassing run
+# an isolated temp dir so it can never race a launchd-scheduled run of the same
+# job over the shared library-cron/digest-cron temp files.
+if [ "${BUILDER_BLOG_WORKER_MODE:-0}" = "1" ]; then
+  JOB_TMP_DIR="$JOB_TMP_DIR-validate"
+fi
 HEARTBEAT_INTERVAL_SECONDS=60
 
 PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"

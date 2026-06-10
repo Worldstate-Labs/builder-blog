@@ -11,14 +11,20 @@ invoke any other skill, plugin, or subagent — run the numbered steps yourself
 exactly as written; this prompt is the whole task.
 
 Agent discretion boundary: this is a scheduler setup task. Do not change paths,
-flags, cadence, titles, output files, JSON schema, or success criteria. You are
-installing the cron job, running one short runtime smoke check, and then running
-one real local validation run while the user is present. The runtime smoke check
-validates that the pinned runtime can start unattended. The validation run feeds
-the agent the `library-cron` prompt (the single source of truth for how fetch
-tasks are fetched, summarized, validated, and synced) but disables web sync so
-only the recurring job writes web results. This setup file does not restate any
-fetch-task work.
+flags, cadence, titles, output files, JSON schema, or success criteria. You run
+one short runtime smoke check, then one real local validation run while the user
+is present, and only install the cron schedule after both succeed. Installing the
+schedule last is deliberate: it never arms a recurring job whose pipeline has not
+been proven, and on a fresh setup it keeps the schedule from firing into the same
+`library-cron` temp directory while the unmanaged validation run is still writing
+it. On an override re-setup an existing schedule stays loaded through validation
+(so a failed validation never leaves the account with no schedule) and is
+replaced atomically in step 8 only after validation passes. The runtime smoke
+check validates that the pinned runtime can start
+unattended. The validation run feeds the agent the `library-cron` prompt (the
+single source of truth for how fetch tasks are fetched, summarized, validated,
+and synced) but disables web sync so only the recurring job writes web results.
+This setup file does not restate any fetch-task work.
 
 Scheduled runtime: **{{AGENT_RUNTIME_LABEL}}** ({{AGENT_RUNTIME}}). Every step
 below uses this pinned runtime; do not fall back to a different one.
@@ -77,6 +83,12 @@ runtime/fetch settings (including fetch days; jobs for other accounts are left u
 the user whether to override. Only continue past this step after the user
 explicitly confirms. If they decline, stop and change nothing.
 
+On an override, do not unload the existing schedule here. Leave it loaded through
+the validation run and let step 8 replace it atomically (its install block boots
+out the old job, then bootstraps the new one) only after validation has passed —
+so a failed validation never tears down a working schedule and leaves the account
+with none.
+
 4. Pin the scheduled runtime and fetch mode for this account's job. These pin
 files are per-account and per-job (suffixed with the cron job name and account
 slug), so multiple FollowBrief accounts and job types can use different
@@ -134,8 +146,85 @@ if [ "{{AGENT_RUNTIME}}" = "openclaw" ]; then
 fi
 ```
 
-6. Install the schedule to run {{CRON_FREQUENCY_LABEL}}. Pick the path for this
-machine's OS — run `uname` if unsure.
+6. Run one immediate runtime smoke check. This runs in your current session
+(which has keychain access), so it validates that the pinned local runtime can
+execute unattended and return. It does not fetch sources, summarize posts, write
+fetch-log rows, builders, or feed items to FollowBrief. Only the recurring job
+installed in step 8 is allowed to sync results to the web app:
+
+```bash
+BUILDER_BLOG_SMOKE_CHECK=1 \
+INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+$HOME/.builder-blog/builder-agent-runner.sh library-cron
+```
+
+This delegates only the runtime check to the runner; do not run the
+`library-cron` prompt yourself and do not do any fetch/summarize/sync work. Just
+report its output: it succeeds when the command exits 0 and the output contains
+`followbriefSmokeCheck` with value `ok`. It uses the same timeout calculation as
+the scheduled cron job. If it errors or times out, report the command, exit
+code, and stderr, and stop.
+
+7. After the runtime smoke check succeeds, run one real local validation run
+while the user is still present. This validates the actual `library-cron`
+pipeline end to end, including source fetching, summarization, validation, and
+the final sync command shape. Web sync is disabled, so no fetch-log rows,
+builders, or feed items are uploaded. On a fresh setup no schedule is armed yet,
+so nothing competes for this run's temp directory; on an override re-setup the
+prior schedule is still loaded and is replaced only in step 8 after this passes.
+This can take until the normal job timeout; do not treat a lack of output as a
+hang before the command exits or the runner timeout fires.
+
+```bash
+BUILDER_BLOG_WORKER_MODE=1 \
+BUILDER_BLOG_DISABLE_WEB_SYNC=1 \
+BUILDER_BLOG_FETCH_LIMIT=1 \
+INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+$HOME/.builder-blog/builder-agent-runner.sh library-cron
+```
+
+Report its output. It succeeds when the command exits 0 and the validation/sync
+output shows the planned fetch tasks are either validated, synced, or accounted
+for by terminal outcomes. This validation run fetches at most one item per
+source so setup catches real pipeline errors without doing a full recurring run.
+The final `sync-builders` step should print
+`webSyncDisabled: true`; that means this validation run did not write web state.
+If it errors or times out, report the command, exit code, and stderr, and stop —
+do not install the schedule in step 8.
+
+If this validation run surfaces an `x_token_missing` — or any `*_token_missing`
+— action-needed notice, the source needs a local API credential that the bare
+cron environment can read. Collect it now so the first scheduled run succeeds
+instead of repeating the notice. This is the one credential exception that may
+ask the user a question; it is non-blocking.
+
+1. Ask the user for the token. For an X source this is an X API bearer token
+   (free read-only tier at https://developer.x.com/en/portal/dashboard). If the
+   user does not have one yet, continue to step 8 and tell them the source stays
+   in "Action needed" until they add it.
+2. Merge it into the local secrets file without overwriting existing keys, and
+   lock the file down. One top-level token serves every account on this machine
+   (an X bearer token is app-scoped, so one covers all X sources):
+
+```bash
+SECRETS="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/secrets.json"
+node -e 'const fs=require("fs");const[p,k,v]=process.argv.slice(1);let d={};try{d=JSON.parse(fs.readFileSync(p,"utf8"))}catch{}d[k]=v;fs.writeFileSync(p,JSON.stringify(d,null,2))' "$SECRETS" X_BEARER_TOKEN "PASTE_THE_TOKEN_THE_USER_GAVE"
+chmod 600 "$SECRETS"
+```
+
+   Only if separate accounts on this machine must use different X API apps, nest
+   the token under `accounts."<account-email>".X_BEARER_TOKEN` instead of at the
+   top level. The runner reads env first, then the per-account entry, then this
+   top-level value.
+3. Re-run the step-7 validation command; the notice should be gone.
+
+8. Only after the smoke check and validation run have both succeeded, install the
+schedule to run {{CRON_FREQUENCY_LABEL}}. Installing it last means the schedule
+is never armed while the unmanaged validation run above is using the shared
+`library-cron` temp directory, and a pipeline that failed validation never gets
+scheduled. Pick the path for this machine's OS — run `uname` if unsure.
 
 ### macOS (`uname` is Darwin) → launchd LaunchAgent
 
@@ -188,81 +277,10 @@ ACCT="${BUILDER_BLOG_ACCOUNT}"; LABEL="com.followbrief.library.$(printf '%s' "$A
 crontab -l | grep 'builder-agent-runner.sh library-cron'
 ```
 
-7. Run one immediate runtime smoke check. This runs in your current session
-(which has keychain access), so it validates that the pinned local runtime can
-execute unattended and return. It does not fetch sources, summarize posts, write
-fetch-log rows, builders, or feed items to FollowBrief. Only the recurring job
-started later by launchd/crontab is allowed to sync results to the web app:
-
-```bash
-BUILDER_BLOG_SMOKE_CHECK=1 \
-INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
-BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-$HOME/.builder-blog/builder-agent-runner.sh library-cron
-```
-
-This delegates only the runtime check to the runner; do not run the
-`library-cron` prompt yourself and do not do any fetch/summarize/sync work. Just
-report its output: it succeeds when the command exits 0 and the output contains
-`followbriefSmokeCheck` with value `ok`. It uses the same timeout calculation as
-the scheduled cron job. If it errors or times out, report the command, exit
-code, and stderr, and stop.
-
-8. After the runtime smoke check succeeds, run one real local validation run
-while the user is still present. This validates the actual `library-cron`
-pipeline end to end, including source fetching, summarization, validation, and
-the final sync command shape. Web sync is disabled, so no fetch-log rows,
-builders, or feed items are uploaded. This can take until the normal job
-timeout; do not treat a lack of output as a hang before the command exits or the
-runner timeout fires.
-
-```bash
-BUILDER_BLOG_WORKER_MODE=1 \
-BUILDER_BLOG_DISABLE_WEB_SYNC=1 \
-BUILDER_BLOG_FETCH_LIMIT=1 \
-INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
-BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-$HOME/.builder-blog/builder-agent-runner.sh library-cron
-```
-
-Report its output. It succeeds when the command exits 0 and the validation/sync
-output shows the planned fetch tasks are either validated, synced, or accounted
-for by terminal outcomes. This validation run fetches at most one item per
-source so setup catches real pipeline errors without doing a full recurring run.
-The final `sync-builders` step should print
-`webSyncDisabled: true`; that means this validation run did not write web state.
-If it errors or times out, report the command, exit code, and stderr, and stop.
-
-If this validation run surfaces an `x_token_missing` — or any `*_token_missing`
-— action-needed notice, the source needs a local API credential that the bare
-cron environment can read. Collect it now so the first scheduled run succeeds
-instead of repeating the notice. This is the one credential exception that may
-ask the user a question; it is non-blocking.
-
-1. Ask the user for the token. For an X source this is an X API bearer token
-   (free read-only tier at https://developer.x.com/en/portal/dashboard). If the
-   user does not have one yet, skip to step 9 and tell them the source stays in
-   "Action needed" until they add it.
-2. Merge it into the local secrets file without overwriting existing keys, and
-   lock the file down. One top-level token serves every account on this machine
-   (an X bearer token is app-scoped, so one covers all X sources):
-
-```bash
-SECRETS="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/secrets.json"
-node -e 'const fs=require("fs");const[p,k,v]=process.argv.slice(1);let d={};try{d=JSON.parse(fs.readFileSync(p,"utf8"))}catch{}d[k]=v;fs.writeFileSync(p,JSON.stringify(d,null,2))' "$SECRETS" X_BEARER_TOKEN "PASTE_THE_TOKEN_THE_USER_GAVE"
-chmod 600 "$SECRETS"
-```
-
-   Only if separate accounts on this machine must use different X API apps, nest
-   the token under `accounts."<account-email>".X_BEARER_TOKEN` instead of at the
-   top level. The runner reads env first, then the per-account entry, then this
-   top-level value.
-3. Re-run the step-8 validation command; the notice should be gone.
-
-9. After both checks succeed, report the active schedule to FollowBrief so
+9. After the schedule is installed, report the active schedule to FollowBrief so
 the web app can compare expected runs with fetch logs. This is a status update
-only; it does not fetch content. Do not run this step before the smoke check
-and validation run have both finished successfully:
+only; it does not fetch content. Do not run this step before the smoke check,
+validation run, and schedule install have all finished successfully:
 
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
@@ -279,3 +297,5 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-st
 Multiple FollowBrief accounts can share one machine: each gets its own
 account-scoped LaunchAgent label (macOS) or cron marker (Linux), so installing
 one never touches another's, and re-running replaces only this account's.
+</content>
+</invoke>
