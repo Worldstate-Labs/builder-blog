@@ -61,6 +61,39 @@ function jobTmpDir(defaultJobName = "") {
   if (jobName) return join(agentDir(), "tmp", "accounts", accountSlug(), jobName);
   return join(agentDir(), "tmp");
 }
+// Secrets that can't ride along in the copy-paste setup prompt — e.g. an X API
+// bearer token — live in a local, git-ignored secrets file the user fills in
+// once, so scheduled cron runs (which see a bare environment) can read them.
+// An exported env var still wins, so a one-off `export X_BEARER_TOKEN=...`
+// overrides the file. Shape:
+//   { "X_BEARER_TOKEN": "...",                         // global fallback
+//     "accounts": { "<email>": { "X_BEARER_TOKEN": "..." } } }  // per-account
+let agentSecretsCache;
+function agentSecrets() {
+  if (agentSecretsCache !== undefined) return agentSecretsCache;
+  const path = join(agentDir(), "secrets.json");
+  try {
+    agentSecretsCache = existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : null;
+  } catch {
+    agentSecretsCache = null; // malformed file → behave as if absent
+  }
+  return agentSecretsCache;
+}
+function agentSecret(key) {
+  const fromEnv = process.env[key]?.trim();
+  if (fromEnv) return fromEnv;
+  const secrets = agentSecrets();
+  if (!secrets || typeof secrets !== "object") return null;
+  const byAccount =
+    secrets.accounts && typeof secrets.accounts === "object" ? secrets.accounts : null;
+  const account = process.env.BUILDER_BLOG_ACCOUNT?.trim();
+  const scoped =
+    (account && byAccount?.[account]?.[key]) ||
+    byAccount?.[accountSlug()]?.[key] ||
+    secrets[key];
+  const value = typeof scoped === "string" ? scoped.trim() : "";
+  return value || null;
+}
 function libraryFetchRunIdFile() {
   // fetch-personal writes the emitted run's id here so the later, separate
   // sync-builders step can PATCH per-post fetch/summary outcomes onto the same
@@ -2421,7 +2454,7 @@ async function fetchPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel,
 }
 
 async function fetchPersonalXBuilder(builder, { cutoff, limit, agentModel, fetchedItemKeys = new Set(), sources = {} }) {
-  const bearerToken = process.env.X_BEARER_TOKEN?.trim();
+  const bearerToken = agentSecret("X_BEARER_TOKEN");
   if (!bearerToken) {
     // No throw: unauthenticated x.com scraping doesn't yield usable post
     // content (login wall + JS challenge), so retry-with-agent is futile.
@@ -2441,8 +2474,11 @@ async function fetchPersonalXBuilder(builder, { cutoff, limit, agentModel, fetch
         `without it, and unauthenticated x.com scraping does not return usable ` +
         `content. Get a free bearer token at ` +
         `https://developer.x.com/en/portal/dashboard (the Free tier covers ` +
-        `read-only access), then export X_BEARER_TOKEN=... in the shell that ` +
-        `runs this skill before re-running.`,
+        `read-only access). For a one-off run, export X_BEARER_TOKEN=... in ` +
+        `the shell first. For scheduled cron runs (which see a bare ` +
+        `environment), add it to ~/.builder-blog/secrets.json as ` +
+        `{"accounts":{"${process.env.BUILDER_BLOG_ACCOUNT?.trim() || "<account-email>"}":{"X_BEARER_TOKEN":"..."}}} ` +
+        `(chmod 600), then re-run.`,
       agentHelpUrl: "https://developer.x.com/en/portal/dashboard",
       item: {
         kind: "TWEET",

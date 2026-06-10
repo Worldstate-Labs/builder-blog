@@ -35,6 +35,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# local agent secrets (X_BEARER_TOKEN etc.) — never commit
+secrets.json
+
 # local database
 prisma/dev.db
 prisma/dev.db-journal

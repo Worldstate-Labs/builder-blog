@@ -233,6 +233,32 @@ The final `sync-builders` step should print
 `webSyncDisabled: true`; that means this validation run did not write web state.
 If it errors or times out, report the command, exit code, and stderr, and stop.
 
+If this validation run surfaces an `x_token_missing` — or any `*_token_missing`
+— action-needed notice, the source needs a local API credential that the bare
+cron environment can read. Collect it now so the first scheduled run succeeds
+instead of repeating the notice. This is the one credential exception that may
+ask the user a question; it is non-blocking.
+
+1. Ask the user for the token. For an X source this is an X API bearer token
+   (free read-only tier at https://developer.x.com/en/portal/dashboard). If the
+   user does not have one yet, skip to step 9 and tell them the source stays in
+   "Action needed" until they add it.
+2. Merge it into the local secrets file without overwriting existing keys, and
+   lock the file down. One top-level token serves every account on this machine
+   (an X bearer token is app-scoped, so one covers all X sources):
+
+```bash
+SECRETS="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/secrets.json"
+node -e 'const fs=require("fs");const[p,k,v]=process.argv.slice(1);let d={};try{d=JSON.parse(fs.readFileSync(p,"utf8"))}catch{}d[k]=v;fs.writeFileSync(p,JSON.stringify(d,null,2))' "$SECRETS" X_BEARER_TOKEN "PASTE_THE_TOKEN_THE_USER_GAVE"
+chmod 600 "$SECRETS"
+```
+
+   Only if separate accounts on this machine must use different X API apps, nest
+   the token under `accounts."<account-email>".X_BEARER_TOKEN` instead of at the
+   top level. The runner reads env first, then the per-account entry, then this
+   top-level value.
+3. Re-run the step-8 validation command; the notice should be gone.
+
 9. After both checks succeed, report the active schedule to FollowBrief so
 the web app can compare expected runs with fetch logs. This is a status update
 only; it does not fetch content. Do not run this step before the smoke check
