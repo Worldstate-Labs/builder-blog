@@ -11,9 +11,20 @@ export default function LibraryHubLoading() {
           <div
             aria-label="Hub tabs"
             className="workspace-top-tabs fb-segmented-tabs hub-loading-tabs"
+            role="tablist"
           >
-            <span className="fb-btn hub-loading-tab">Source libraries</span>
-            <span className="fb-btn hub-loading-tab">AI Digest archives</span>
+            {["Source libraries", "AI Digest archives"].map((label) => (
+              <span
+                aria-disabled="true"
+                aria-selected="false"
+                className="fb-btn hub-loading-tab"
+                key={label}
+                role="tab"
+                tabIndex={-1}
+              >
+                {label}
+              </span>
+            ))}
           </div>
         </div>
 

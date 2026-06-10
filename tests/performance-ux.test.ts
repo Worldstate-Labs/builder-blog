@@ -312,6 +312,11 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(buildersLoading, /className="page-pad sources-loading"/);
   assert.match(buildersLoading, /<h1 className="sr-only">Loading Sources<\/h1>/);
   assert.match(buildersLoading, /aria-label="Sources and AI Digest tabs"/);
+  assert.match(buildersLoading, /role="tablist"/);
+  assert.match(buildersLoading, /aria-disabled="true"/);
+  assert.match(buildersLoading, /aria-selected="false"/);
+  assert.match(buildersLoading, /role="tab"/);
+  assert.match(buildersLoading, /tabIndex=\{-1\}/);
   assert.doesNotMatch(buildersLoading, /sources-loading-tab is-active/);
   assert.match(buildersLoading, /sources-loading-tab[\s\S]*Sources/);
   assert.match(buildersLoading, /sources-loading-tab[\s\S]*AI Digest/);
@@ -325,6 +330,11 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(hubLoading, /className="page-pad hub-loading"/);
   assert.match(hubLoading, /<h1 className="sr-only">Loading Hub<\/h1>/);
   assert.match(hubLoading, /aria-label="Hub tabs"/);
+  assert.match(hubLoading, /role="tablist"/);
+  assert.match(hubLoading, /aria-disabled="true"/);
+  assert.match(hubLoading, /aria-selected="false"/);
+  assert.match(hubLoading, /role="tab"/);
+  assert.match(hubLoading, /tabIndex=\{-1\}/);
   assert.doesNotMatch(hubLoading, /hub-loading-tab is-active/);
   assert.match(hubLoading, /hub-loading-tab[\s\S]*Source libraries/);
   assert.match(hubLoading, /hub-loading-tab[\s\S]*AI Digest archives/);

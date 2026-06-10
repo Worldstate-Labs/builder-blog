@@ -12,9 +12,20 @@ export default function BuildersLoading() {
             <div
               aria-label="Sources and AI Digest tabs"
               className="workspace-top-tabs fb-segmented-tabs sources-loading-tabs"
+              role="tablist"
             >
-              <span className="fb-btn sources-loading-tab">Sources</span>
-              <span className="fb-btn sources-loading-tab">AI Digest</span>
+              {["Sources", "AI Digest"].map((label) => (
+                <span
+                  aria-disabled="true"
+                  aria-selected="false"
+                  className="fb-btn sources-loading-tab"
+                  key={label}
+                  role="tab"
+                  tabIndex={-1}
+                >
+                  {label}
+                </span>
+              ))}
             </div>
           </div>
 
