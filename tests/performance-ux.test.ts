@@ -550,9 +550,9 @@ test("public entry pages use the centered product layout", () => {
   assert.match(loginPage, /className="fb-login-title-break"/);
   assert.doesNotMatch(loginPage, /your<br \/>AI Digest workspace/);
   assert.doesNotMatch(loginPage, /your<br \/>FollowBrief workspace/);
-  assert.match(loginPage, /Follow source libraries, read the cited AI Digest/);
+  assert.match(loginPage, /Follow sources, read the cited AI Digest/);
   assert.match(loginPage, /sources,\s*posts, and AI Digest archives searchable/);
-  assert.doesNotMatch(loginPage, /Follow source libraries, read AI Digests|read cited AI Digests/);
+  assert.doesNotMatch(loginPage, /Follow source libraries|Follow source libraries, read AI Digests|read cited AI Digests/);
   assert.doesNotMatch(loginPage, /sources, posts, saved posts, and AI Digest archives searchable/);
   assert.doesNotMatch(loginPage, /sources, posts, saved posts, and AI Digests searchable/);
   assert.doesNotMatch(loginPage, /sources, posts, Favorites, and AI Digests searchable/);
@@ -569,7 +569,8 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(loginPage, /Use one account for your AI Digests and Local Agent\./);
   assert.doesNotMatch(loginPage, /label="Local Agent"/);
   assert.doesNotMatch(loginPage, /KeyRound/);
-  assert.match(rootLayout, /Follow source libraries, read the cited AI Digest, and search sources, posts, and AI Digest archives\./);
+  assert.match(rootLayout, /Follow sources, read the cited AI Digest, and search sources, posts, and AI Digest archives\./);
+  assert.doesNotMatch(rootLayout, /Follow source libraries/);
   assert.doesNotMatch(rootLayout, /read cited AI Digests/);
   assert.doesNotMatch(rootLayout, /AI Digests from people and sources you follow\./);
   assert.doesNotMatch(rootLayout, /search sources, posts, and archives\./);
