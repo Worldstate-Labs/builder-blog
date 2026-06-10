@@ -80,7 +80,7 @@ export function FavoritePostsList({
         <div>
           <h2 className="favorites-feed-title">Favorites</h2>
           <p className="favorites-feed-desc">
-            Saved for deeper reading, newest first.
+            Focused reading queue, newest first.
           </p>
         </div>
         <span className="favorites-feed-count">

@@ -97,7 +97,7 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(favoriteSection, /feedRead\.findMany/);
   assert.match(favoriteList, /aria-label="Favorites"/);
   assert.match(favoriteList, /<h2 className="favorites-feed-title">Favorites<\/h2>/);
-  assert.match(favoriteList, /Saved for deeper reading, newest first\./);
+  assert.match(favoriteList, /Focused reading queue, newest first\./);
   assert.match(favoriteList, /@\/components\/Count/);
   assert.match(favoriteList, /formatCount\(items\.length\)/);
   assert.match(favoriteList, /Open AI Digest/);
@@ -111,6 +111,7 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(favoriteList, /No favorites yet/);
   assert.match(favoriteList, /Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
   assert.doesNotMatch(favoriteList, /Posts you marked for deeper reading/);
+  assert.doesNotMatch(favoriteList, /Saved for deeper reading/);
   assert.doesNotMatch(favoriteList, /Save posts from AI Digest or Following/);
   assert.match(favoriteList, /postDetailHref\(item\.feedItemId, "\/dashboard\?tab=favorites", "Favorites"\)/);
   assert.match(favoriteList, /PostFavoriteButton/);
