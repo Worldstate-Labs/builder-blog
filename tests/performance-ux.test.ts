@@ -317,9 +317,9 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(buildersLoading, /aria-label="Sources and AI Digest tabs"/);
   assert.match(buildersLoading, /role="tablist"/);
   assert.match(buildersLoading, /aria-disabled="true"/);
-  assert.match(buildersLoading, /const selected = label === "Sources"/);
-  assert.match(buildersLoading, /aria-selected=\{selected \? "true" : "false"\}/);
-  assert.match(buildersLoading, /data-active=\{selected \? "true" : undefined\}/);
+  assert.doesNotMatch(buildersLoading, /const selected = label === "Sources"/);
+  assert.match(buildersLoading, /aria-selected="false"/);
+  assert.doesNotMatch(buildersLoading, /data-active=/);
   assert.match(buildersLoading, /role="tab"/);
   assert.match(buildersLoading, /tabIndex=\{-1\}/);
   assert.doesNotMatch(buildersLoading, /sources-loading-tab is-active/);
@@ -337,9 +337,9 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(hubLoading, /aria-label="Hub tabs"/);
   assert.match(hubLoading, /role="tablist"/);
   assert.match(hubLoading, /aria-disabled="true"/);
-  assert.match(hubLoading, /const selected = label === "Source libraries"/);
-  assert.match(hubLoading, /aria-selected=\{selected \? "true" : "false"\}/);
-  assert.match(hubLoading, /data-active=\{selected \? "true" : undefined\}/);
+  assert.doesNotMatch(hubLoading, /const selected = label === "Source libraries"/);
+  assert.match(hubLoading, /aria-selected="false"/);
+  assert.doesNotMatch(hubLoading, /data-active=/);
   assert.match(hubLoading, /role="tab"/);
   assert.match(hubLoading, /tabIndex=\{-1\}/);
   assert.doesNotMatch(hubLoading, /hub-loading-tab is-active/);
@@ -366,9 +366,9 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(searchLoading, /className="fb-segmented-tabs filter-tabs search-loading-tabs"/);
   assert.match(searchLoading, /role="tablist"/);
   assert.match(searchLoading, /aria-disabled="true"/);
-  assert.match(searchLoading, /const selected = label === "All"/);
-  assert.match(searchLoading, /aria-selected=\{selected \? "true" : "false"\}/);
-  assert.match(searchLoading, /data-active=\{selected \? "true" : undefined\}/);
+  assert.doesNotMatch(searchLoading, /const selected = label === "All"/);
+  assert.match(searchLoading, /aria-selected="false"/);
+  assert.doesNotMatch(searchLoading, /data-active=/);
   assert.match(searchLoading, /role="tab"/);
   assert.match(searchLoading, /tabIndex=\{-1\}/);
   assert.doesNotMatch(searchLoading, /search-loading-tab is-active/);
