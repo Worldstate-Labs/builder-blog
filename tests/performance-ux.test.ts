@@ -2885,9 +2885,10 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(libraryHubPage, /label=\{data\.digestPipelineCount === 1 \? "AI Digest" : "AI Digests"\}/);
   assert.doesNotMatch(libraryHubPage, /<section className="fb-page-head"/);
   assert.match(libraryHubPage, /<span className="sr-only">Loading source libraries<\/span>/);
-  assert.match(libraryHubPage, /<span className="sr-only">Loading AI Digest archives<\/span>/);
+  assert.match(libraryHubPage, /<span className="sr-only">Loading shared AI Digest archives<\/span>/);
   assert.match(libraryHubPage, /Source libraries built and shared by other users\./);
-  assert.match(libraryHubPage, /<h2 className="fb-section-heading">AI Digest archives<\/h2>/);
+  assert.match(libraryHubPage, /<h2 className="fb-section-heading">Shared AI Digest archives<\/h2>/);
+  assert.doesNotMatch(libraryHubPage, /<h2 className="fb-section-heading">AI Digest archives<\/h2>/);
   assert.match(libraryHubPage, /AI Digest archives built and shared by other users\./);
   assert.doesNotMatch(libraryHubPage, /className="library-hub-skeleton-line is-heading"/);
   assert.doesNotMatch(libraryHubPage, /<span>Loading source libraries<\/span>/);

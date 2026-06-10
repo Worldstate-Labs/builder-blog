@@ -308,10 +308,10 @@ function LibraryHubImportFallback() {
 function DigestPipelineImportFallback() {
   return (
     <section aria-live="polite" aria-busy="true">
-      <span className="sr-only">Loading AI Digest archives</span>
+      <span className="sr-only">Loading shared AI Digest archives</span>
       <div className="library-hub-toolbar">
         <div className="library-hub-toolbar-copy">
-          <h2 className="fb-section-heading">AI Digest archives</h2>
+          <h2 className="fb-section-heading">Shared AI Digest archives</h2>
           <p className="hub-section-copy">
             AI Digest archives built and shared by other users.
           </p>
