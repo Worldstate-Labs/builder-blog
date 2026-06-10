@@ -1856,8 +1856,8 @@ a.reading-source-label:focus-visible {
   letter-spacing: 0.01em;
   margin-right: 0.15rem;
   min-height: 2rem;
-  min-width: 2rem;
-  padding: 0.26rem;
+  min-width: 0;
+  padding: 0.26rem 0.72rem;
   transition: background 140ms ease, border-color 140ms ease;
   white-space: nowrap;
 }
@@ -1871,6 +1871,7 @@ a.reading-source-label:focus-visible {
 
 .post-raw-content-action-icon {
   height: 0.85em;
+  flex: 0 0 auto;
   width: 0.85em;
   transition: transform 140ms ease;
 }

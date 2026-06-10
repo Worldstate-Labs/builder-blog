@@ -3536,6 +3536,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /actionLabel\(\s*summaryExpanded \? "Show less summary" : "Show more summary"/);
   assert.match(postCard, /aria-controls=\{rawRegionId\}/);
   assert.match(postCard, /id=\{rawRegionId\}/);
+  assert.match(postCard, /\{rawExpanded \? `Hide \$\{rawContentLabel\.toLowerCase\(\)\}` : `Show \$\{rawContentLabel\.toLowerCase\(\)\}`\}/);
   assert.match(postCard, /ChevronDown/);
   assert.match(postCard, /\{summaryExpanded \? "Show less" : "See more"\}/);
   assert.match(postCard, /Crawled content/);
@@ -3628,6 +3629,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.post-favorite-btn\s*{[\s\S]*min-width:\s*2rem/);
   assert.match(globals, /\.post-favorite-status\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.post-raw-content-action\s*{[\s\S]*color:\s*var\(--accent\)/);
+  assert.match(globals, /\.post-raw-content-action\s*{[\s\S]*min-width:\s*0/);
+  assert.match(globals, /\.post-raw-content-action\s*{[\s\S]*padding:\s*0\.26rem 0\.72rem/);
   assert.match(globals, /\.post-read-action\s*{[\s\S]*padding:\s*0\.26rem 0\.72rem/);
   assert.match(globals, /\.fetched-post-summary-text\s*{[\s\S]*white-space:\s*pre-wrap/);
   assert.match(globals, /--post-summary-collapsed-height:\s*calc\(var\(--post-summary-lines\) \* var\(--post-summary-line-height\)\)/);
@@ -3806,6 +3809,7 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(postCard, /accessibleLabel=\{actionLabel\("Summary method", actionContext\)\}/);
   assert.match(postCard, /aria-controls=\{rawRegionId\}/);
   assert.match(postCard, /aria-expanded=\{rawExpanded\}/);
+  assert.doesNotMatch(postCard, /<button[\s\S]{0,420}<BookOpen aria-hidden="true" className="post-raw-content-action-icon" \/>[\s\S]{0,60}<\/button>/);
   assert.match(postCard, /aria-label="Crawled content"[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"/);
   assert.match(postCard, /Same post available via other source libraries/);
   assert.match(postCard, /additional source library/);

@@ -380,6 +380,7 @@ export function PostCard({
                 type="button"
               >
                 <BookOpen aria-hidden="true" className="post-raw-content-action-icon" />
+                <span>{rawExpanded ? `Hide ${rawContentLabel.toLowerCase()}` : `Show ${rawContentLabel.toLowerCase()}`}</span>
               </button>
             ) : null}
 
