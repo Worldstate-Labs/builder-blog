@@ -3184,6 +3184,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderLibraryList, /aria-expanded=\{expanded\}/);
   assert.match(builderLibraryList, /builder-library-source-section-toggle/);
   assert.match(builderLibraryList, /builder-library-source-count/);
+  assert.match(builderLibraryList, /formatCount\(sectionFollowedCount\)\} in Following/);
+  assert.doesNotMatch(builderLibraryList, /followed"\s+\{sectionFollowedCount === 1 \? "source" : "sources"\}/);
   assert.match(builderLibraryList, /className="builder-library-info"/);
   assert.match(builderLibraryList, /className="builder-library-info-head"/);
   assert.match(builderLibraryList, /className="builder-library-name"/);
@@ -3191,8 +3193,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderLibraryList, /flex flex-wrap items-center gap-2|truncate hover:underline/);
   assert.match(builderLibraryList, /formatCount\(section\.builders\.length\)/);
   assert.match(builderLibraryList, /\? "source" : "sources"/);
-  assert.match(builderLibraryList, /formatCount\(sectionFollowedCount\)\} followed/);
-  assert.match(builderLibraryList, /sectionFollowedCount === 1 \? "source" : "sources"/);
+  assert.match(builderLibraryList, /formatCount\(sectionFollowedCount\)\} in Following/);
+  assert.doesNotMatch(builderLibraryList, /sectionFollowedCount === 1 \? "source" : "sources"/);
   assert.doesNotMatch(builderLibraryList, /formatCount\(sectionFollowedCount\)\} followed<\/span>/);
   assert.match(builderLibraryList, /const sourceType = sourceTypeForBuilder\(builder\)/);
   assert.match(builderLibraryList, /setExpandedSourceTypes/);
@@ -3433,7 +3435,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.builder-library-source-section-chevron\s*{[\s\S]*flex:\s*0 0 auto/);
   assert.match(globals, /\.builder-library-source-count\s*{[\s\S]*font-weight:\s*750/);
   assert.match(builderLibraryList, /sectionFollowedCount/);
-  assert.match(builderLibraryList, /followed/);
+  assert.match(builderLibraryList, /in Following/);
+  assert.doesNotMatch(builderLibraryList, /followed/);
   assert.match(globals, /\.builder-library-source-count\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.builder-library-source-section-body\s*{[\s\S]*margin-left:\s*1\.35rem/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-posts\s*{[\s\S]*margin-left:\s*0/);

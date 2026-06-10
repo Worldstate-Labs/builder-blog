@@ -248,8 +248,7 @@ export function BuilderLibraryList({
                   </span>
                   <span aria-hidden="true">·</span>
                   <span>
-                    {formatCount(sectionFollowedCount)} followed{" "}
-                    {sectionFollowedCount === 1 ? "source" : "sources"}
+                    {formatCount(sectionFollowedCount)} in Following
                   </span>
                 </span>
               </button>
