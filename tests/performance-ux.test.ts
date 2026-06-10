@@ -1220,6 +1220,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /if \(onSelect\) \{[\s\S]*onSelect\(items\[nextIndex\]!\.value\)/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /className="workspace-top-tabs-row"/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /className="fb-segmented-tabs workspace-top-tabs"/);
+  assert.doesNotMatch(source("src/components/WorkspaceTopTabs.tsx"), /<nav[\s\S]*role="tablist"/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /className: "fb-btn compact"/);
   assert.doesNotMatch(dashboardTabs, /fb-tabs|fb-tab|fb-m-segctl|fb-m-seg/);
   assert.match(globals, /\.fb-segmented-tabs/);
@@ -2390,7 +2391,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /<Suspense/);
   assert.match(searchPage, /SearchResultsFallback/);
   assert.match(searchPage, /SearchResultsSection/);
-  assert.match(searchPage, /aria-label="Search result type filter" role="tablist"/);
+  assert.match(searchPage, /<div className="fb-segmented-tabs filter-tabs" aria-label="Search result type filter" role="tablist">/);
+  assert.doesNotMatch(searchPage, /<nav className="fb-segmented-tabs filter-tabs" aria-label="Search result type filter" role="tablist">/);
   assert.doesNotMatch(searchPage, /aria-label="Result type"/);
   assert.match(searchPage, /aria-label="Search recovery actions"/);
   assert.match(searchPage, /className="search-insight-actions"[\s\S]*role="group"/);

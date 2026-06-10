@@ -52,7 +52,7 @@ export function WorkspaceTopTabs<TValue extends string>({
 
   return (
     <div className="workspace-top-tabs-row">
-      <nav
+      <div
         className="fb-segmented-tabs workspace-top-tabs"
         role="tablist"
         aria-label={ariaLabel}
@@ -93,7 +93,7 @@ export function WorkspaceTopTabs<TValue extends string>({
             </Link>
           );
         })}
-      </nav>
+      </div>
     </div>
   );
 }
