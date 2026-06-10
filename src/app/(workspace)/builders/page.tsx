@@ -729,7 +729,7 @@ async function FetchSourcesSection({
             }),
           )}
           editableSourceOptions={data.sourceLabelOptions}
-          emptyBody="Add a source, then run Fetch sources."
+          emptyBody="Add a source, then run Fetch sources. Sources feed both AI Digest and Following."
           emptyTitle="No sources in your source library yet"
         />
       </PrivateLibraryPanel>
