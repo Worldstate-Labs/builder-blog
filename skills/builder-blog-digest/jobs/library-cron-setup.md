@@ -297,5 +297,3 @@ node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-st
 Multiple FollowBrief accounts can share one machine: each gets its own
 account-scoped LaunchAgent label (macOS) or cron marker (Linux), so installing
 one never touches another's, and re-running replaces only this account's.
-</content>
-</invoke>
