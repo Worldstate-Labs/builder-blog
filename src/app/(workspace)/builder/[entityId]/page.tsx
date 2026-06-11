@@ -48,7 +48,10 @@ function channelLibraryLabel(channel: Pick<ChannelInfo, "isAdminCommunity" | "is
 
 function formatChannelLibraryName(channel: Pick<ChannelInfo, "isAdminCommunity" | "isOwnChannel" | "libraryName">) {
   const label = channelLibraryLabel(channel);
-  return label ? `${channel.libraryName} · ${label}` : channel.libraryName;
+  if (!label) return channel.libraryName;
+  return channel.libraryName.trim().toLowerCase() === label.toLowerCase()
+    ? channel.libraryName
+    : `${channel.libraryName} · ${label}`;
 }
 
 function formatFetchedAt(value: Date | null) {
