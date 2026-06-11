@@ -196,28 +196,11 @@ The final `sync-builders` step should print
 If it errors or times out, report the command, exit code, and stderr, and stop —
 do not install the schedule in step 8.
 
-If this validation run surfaces an `x_token_missing` — or any `*_token_missing`
-— action-needed notice, the source needs a local API credential that the bare
-cron environment can read. Collect it now so the first scheduled run succeeds
-instead of repeating the notice. This is the one credential exception that may
-ask the user a question; it is non-blocking.
-
-1. Ask the user for the token. For an X source this is an X API bearer token
-   (free read-only tier at https://developer.x.com/en/portal/dashboard). If the
-   user does not have one yet, continue to step 8 and tell them the source stays
-   in "Action needed" until they add it.
-2. Merge it into the local secrets file without overwriting existing keys, and
-   lock the file down. One token per machine is enough — an X bearer token is
-   app-scoped, so a single top-level value serves every account and every X
-   source on this host:
-
-```bash
-SECRETS="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/secrets.json"
-node -e 'const fs=require("fs");const[p,k,v]=process.argv.slice(1);let d={};try{d=JSON.parse(fs.readFileSync(p,"utf8"))}catch{}d[k]=v;fs.writeFileSync(p,JSON.stringify(d,null,2))' "$SECRETS" X_BEARER_TOKEN "PASTE_THE_TOKEN_THE_USER_GAVE"
-chmod 600 "$SECRETS"
-```
-
-3. Re-run the step-7 validation command; the notice should be gone.
+If this validation run surfaces an `x_token_missing` (or any `*_token_missing`)
+notice, that is expected when the user declined or skipped that token in the
+credential-prep step earlier. Report it as an "Action needed" notice and
+continue — do NOT re-ask. That source stays in "Action needed" until its token
+is added to `~/.builder-blog/secrets.json` later.
 
 8. Only after the smoke check and validation run have both succeeded, install the
 schedule to run {{CRON_FREQUENCY_LABEL}}. Installing it last means the schedule
