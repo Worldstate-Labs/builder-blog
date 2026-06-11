@@ -728,6 +728,10 @@ a.reading-source-label:focus-visible {
   z-index: 60;
 }
 
+.user-menu:not([open]) .user-menu-popover {
+  display: none;
+}
+
 .user-menu-compact .user-menu-popover {
   width: min(var(--popover-max), calc(100vw - 2rem));
 }

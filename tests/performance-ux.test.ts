@@ -1019,6 +1019,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(settingsPage, /Agent login/);
   assert.match(globals, /\.user-avatar/);
   assert.match(globals, /\.user-menu-popover/);
+  assert.match(globals, /\.user-menu:not\(\[open\]\) \.user-menu-popover\s*{[\s\S]*display:\s*none/);
   assert.match(globals, /\.user-menu-item\s*{[\s\S]*text-align:\s*left/);
   assert.match(globals, /\.user-menu-item\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.user-menu-item:hover,[\s\S]*\.user-menu-item:focus-visible,[\s\S]*\.user-menu-item\[data-active="true"\]\s*{[\s\S]*background:\s*var\(--soft\)/);
