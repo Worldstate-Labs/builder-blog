@@ -3652,7 +3652,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /\{rawExpanded \? \(\s*<div[\s\S]*aria-label="Crawled content"[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"/);
   assert.match(postCard, /post-detail-section-label/);
   assert.match(postCard, /post-detail-body/);
-  assert.match(postCard, /const detailSummary = normalizedText\(post\.summary\)/);
+  assert.match(postCard, /const detailSummary = displaySummaryText\(post\.summary, post\.url\)/);
   assert.match(postCard, /const showDetailSummary = Boolean/);
   assert.match(postDetailPage, /summary: item\.summary/);
   assert.doesNotMatch(postDetailPage, /summary: null/);

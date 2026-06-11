@@ -376,6 +376,32 @@ test("post card action controls include the post title in accessible names", () 
   assert.match(adminHtml, /aria-label="Why recommended"/);
 });
 
+test("post card keeps source URLs as actions instead of repeated summary text", () => {
+  const html = renderToStaticMarkup(
+    createElement(PostCard, {
+      post: {
+        id: "feed_summary_trailing_url",
+        title: "Source URL belongs in the action row",
+        body: "Fetched raw body.",
+        summary:
+          "A useful summary should stay readable without repeating the original URL. https://example.com/source-url-action",
+        url: "https://example.com/source-url-action",
+        publishedAt: "2026-06-05T00:00:00.000Z",
+        createdAt: "2026-06-06T00:00:00.000Z",
+        sourceName: "Example",
+        sourceType: "blog",
+        fetchTool: null,
+      },
+    }),
+  );
+  const visibleText = html.replace(/<[^>]*>/g, "");
+
+  assert.match(html, /A useful summary should stay readable without repeating the original URL\./);
+  assert.match(html, /href="https:\/\/example\.com\/source-url-action"/);
+  assert.match(html, />View original</);
+  assert.doesNotMatch(visibleText, /https:\/\/example\.com\/source-url-action/);
+});
+
 test("digest renderer uses source link metadata before section heading fallbacks", () => {
   const html = renderToStaticMarkup(
     createElement(DigestContent, {

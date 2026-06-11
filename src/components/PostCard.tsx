@@ -88,7 +88,7 @@ export function PostCard({
   const summaryTextRef = useRef<HTMLParagraphElement | null>(null);
   const builder = post.builder ?? fallbackBuilder ?? null;
   const isDetail = variant === "detail";
-  const summary = normalizedText(post.summary) || normalizedText(post.body);
+  const summary = displaySummaryText(post.summary, post.url) || normalizedText(post.body);
   const originalSummary = normalizedText(post.originalSummary);
   const title = post.title || firstLine(post.body);
   const actionContext = compactActionContext(title);
@@ -146,7 +146,7 @@ export function PostCard({
     ? originalSummary || summary
     : post.body;
   const rawContentLabel = rawContentMode === "raw_summary" ? "Source summary" : "Crawled content";
-  const detailSummary = normalizedText(post.summary);
+  const detailSummary = displaySummaryText(post.summary, post.url);
   const detailRawContent = normalizedText(post.body);
   const showDetailSummary = Boolean(
     isDetail && detailSummary && detailSummary !== detailRawContent,
@@ -441,6 +441,33 @@ function compactActionContext(value: string) {
 
 function normalizedText(value: string | null | undefined) {
   return value?.trim() ?? "";
+}
+
+function displaySummaryText(value: string | null | undefined, sourceUrl: string | null | undefined) {
+  return stripTrailingSourceUrl(normalizedText(value), sourceUrl);
+}
+
+function stripTrailingSourceUrl(value: string, sourceUrl: string | null | undefined) {
+  const url = normalizedText(sourceUrl);
+  if (!value || !url) return value;
+
+  const candidates = [url, url.replace(/\/+$/, ""), url.endsWith("/") ? url : `${url}/`]
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length);
+  for (const candidate of [...new Set(candidates)]) {
+    const pattern = new RegExp(
+      `(?:\\s*(?:\\(?\\s*(?:source|source url|original|original url|来源|原文|链接)\\s*[:：]\\s*)?)${escapeRegExp(candidate)}[\\s.)）]*$`,
+      "i",
+    );
+    const next = value.replace(pattern, "").trim();
+    if (next !== value) return next;
+  }
+
+  return value;
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 const rawContentModesBySourceType: Partial<Record<string, "raw_content" | "raw_summary">> = {};
