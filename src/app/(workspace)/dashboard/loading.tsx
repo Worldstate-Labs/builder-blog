@@ -13,10 +13,14 @@ export default function DashboardLoading() {
             className="workspace-top-tabs fb-segmented-tabs home-loading-tabs"
             role="tablist"
           >
-            {["AI Digest", "Following", "Favorites"].map((label) => (
+            {[
+              { label: "AI Digest", selected: true },
+              { label: "Following", selected: false },
+              { label: "Favorites", selected: false },
+            ].map(({ label, selected }) => (
               <span
                 aria-disabled="true"
-                aria-selected="false"
+                aria-selected={selected}
                 className="fb-btn home-loading-tab"
                 key={label}
                 role="tab"

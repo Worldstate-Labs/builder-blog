@@ -36,10 +36,15 @@ export default function SearchLoading() {
             className="fb-segmented-tabs filter-tabs search-loading-tabs"
             role="tablist"
           >
-            {["All", "Sources", "Posts", "AI Digest archives"].map((label) => (
+            {[
+              { label: "All", selected: true },
+              { label: "Sources", selected: false },
+              { label: "Posts", selected: false },
+              { label: "AI Digest archives", selected: false },
+            ].map(({ label, selected }) => (
               <span
                 aria-disabled="true"
-                aria-selected="false"
+                aria-selected={selected}
                 className="fb-btn compact search-loading-tab"
                 key={label}
                 role="tab"

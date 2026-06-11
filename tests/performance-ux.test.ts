@@ -301,8 +301,10 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(dashboardLoading, /<h1 className="sr-only">Loading Home<\/h1>/);
   assert.match(dashboardLoading, /aria-label="Home feed tabs"/);
   assert.doesNotMatch(dashboardLoading, /home-loading-tab is-active/);
-  assert.doesNotMatch(dashboardLoading, /const selected = label === "AI Digest"/);
-  assert.match(dashboardLoading, /aria-selected="false"/);
+  assert.match(dashboardLoading, /label:\s*"AI Digest",\s*selected:\s*true/);
+  assert.match(dashboardLoading, /label:\s*"Following",\s*selected:\s*false/);
+  assert.match(dashboardLoading, /label:\s*"Favorites",\s*selected:\s*false/);
+  assert.match(dashboardLoading, /aria-selected=\{selected\}/);
   assert.doesNotMatch(dashboardLoading, /data-active=/);
   assert.match(dashboardLoading, /home-loading-tab[\s\S]*AI Digest/);
   assert.match(dashboardLoading, /home-loading-tab[\s\S]*Following/);
@@ -325,8 +327,9 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(buildersLoading, /aria-label="Sources and AI Digest tabs"/);
   assert.match(buildersLoading, /role="tablist"/);
   assert.match(buildersLoading, /aria-disabled="true"/);
-  assert.doesNotMatch(buildersLoading, /const selected = label === "Sources"/);
-  assert.match(buildersLoading, /aria-selected="false"/);
+  assert.match(buildersLoading, /label:\s*"Sources",\s*selected:\s*true/);
+  assert.match(buildersLoading, /label:\s*"AI Digest",\s*selected:\s*false/);
+  assert.match(buildersLoading, /aria-selected=\{selected\}/);
   assert.doesNotMatch(buildersLoading, /data-active=/);
   assert.match(buildersLoading, /role="tab"/);
   assert.match(buildersLoading, /tabIndex=\{-1\}/);
@@ -382,8 +385,11 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(searchLoading, /className="fb-segmented-tabs filter-tabs search-loading-tabs"/);
   assert.match(searchLoading, /role="tablist"/);
   assert.match(searchLoading, /aria-disabled="true"/);
-  assert.doesNotMatch(searchLoading, /const selected = label === "All"/);
-  assert.match(searchLoading, /aria-selected="false"/);
+  assert.match(searchLoading, /label:\s*"All",\s*selected:\s*true/);
+  assert.match(searchLoading, /label:\s*"Sources",\s*selected:\s*false/);
+  assert.match(searchLoading, /label:\s*"Posts",\s*selected:\s*false/);
+  assert.match(searchLoading, /label:\s*"AI Digest archives",\s*selected:\s*false/);
+  assert.match(searchLoading, /aria-selected=\{selected\}/);
   assert.doesNotMatch(searchLoading, /data-active=/);
   assert.match(searchLoading, /role="tab"/);
   assert.match(searchLoading, /tabIndex=\{-1\}/);

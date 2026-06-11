@@ -14,10 +14,13 @@ export default function BuildersLoading() {
               className="workspace-top-tabs fb-segmented-tabs sources-loading-tabs"
               role="tablist"
             >
-              {["Sources", "AI Digest"].map((label) => (
+              {[
+                { label: "Sources", selected: true },
+                { label: "AI Digest", selected: false },
+              ].map(({ label, selected }) => (
                 <span
                   aria-disabled="true"
-                  aria-selected="false"
+                  aria-selected={selected}
                   className="fb-btn sources-loading-tab"
                   key={label}
                   role="tab"
