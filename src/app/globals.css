@@ -5715,7 +5715,7 @@ a.reading-source-label:focus-visible {
 
 .your-library-panel > .library-section-body {
   gap: 1rem;
-  padding: 1rem 0;
+  padding: 0 0 1rem;
 }
 
 .your-library-panel .sources-sync-section {
