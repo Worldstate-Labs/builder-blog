@@ -352,8 +352,9 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(hubLoading, /aria-label="Hub tabs"/);
   assert.match(hubLoading, /role="tablist"/);
   assert.match(hubLoading, /aria-disabled="true"/);
-  assert.doesNotMatch(hubLoading, /const selected = label === "Source libraries"/);
-  assert.match(hubLoading, /aria-selected="false"/);
+  assert.match(hubLoading, /label:\s*"Source libraries",\s*selected:\s*true/);
+  assert.match(hubLoading, /label:\s*"AI Digest archives",\s*selected:\s*false/);
+  assert.match(hubLoading, /aria-selected=\{selected\}/);
   assert.doesNotMatch(hubLoading, /data-active=/);
   assert.match(hubLoading, /role="tab"/);
   assert.match(hubLoading, /tabIndex=\{-1\}/);

@@ -13,10 +13,13 @@ export default function LibraryHubLoading() {
             className="workspace-top-tabs fb-segmented-tabs hub-loading-tabs"
             role="tablist"
           >
-            {["Source libraries", "AI Digest archives"].map((label) => (
+            {[
+              { label: "Source libraries", selected: true },
+              { label: "AI Digest archives", selected: false },
+            ].map(({ label, selected }) => (
               <span
                 aria-disabled="true"
-                aria-selected="false"
+                aria-selected={selected}
                 className="fb-btn hub-loading-tab"
                 key={label}
                 role="tab"
