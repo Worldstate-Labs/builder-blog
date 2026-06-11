@@ -947,8 +947,8 @@ function FetchStatusPanel({
   const missedCount = slots.filter((slot) => slot.status === "missed").length;
   const failedCount = slots.filter((slot) => slot.status === "failed").length;
   const stalledCount = slots.filter((slot) => slot.status === "stalled").length;
-  const problemCount = missedCount + failedCount + stalledCount;
-  const waitingCount = slots.filter((slot) => slot.status === "waiting" || slot.status === "running").length;
+  const failedOrStalledCount = failedCount + stalledCount;
+  const activeCount = slots.filter((slot) => slot.status === "waiting" || slot.status === "running").length;
   const latestSlot = slots.at(-1) ?? null;
   const latestIsPending = latestSlot?.status === "waiting" || latestSlot?.status === "running";
   const latestIsStalled = latestSlot?.status === "stalled";
@@ -956,10 +956,10 @@ function FetchStatusPanel({
   const hasProblem = latestIsStalled || (!latestIsPending && (latestResolved === "missed" || latestResolved === "failed"));
   const problemDetail =
     latestIsStalled
-      ? "The latest scheduled fetch run stopped sending heartbeats."
+      ? "The latest scheduled fetch run stopped sending heartbeats. Open the log to see where it stopped."
       : latestResolved === "missed"
-      ? "The latest scheduled window has no recorded fetch run in its expected time range."
-      : "The latest scheduled fetch run did not finish successfully.";
+      ? "No run was recorded for the latest scheduled window. The Local Agent may not have started."
+      : "The latest scheduled fetch run reported a failure. Open the log for task-level details.";
   const statusTone = hasProblem
     ? statusStyle("failed")
     : latestSlot?.status === "running" || latestSlot?.status === "waiting"
@@ -1018,8 +1018,9 @@ function FetchStatusPanel({
           </dl>
           <div className="sync-panel-metrics">
             <CountMetric label="OK" tone="ok" value={okCount} />
-            <CountMetric label="Issue" tone="issue" value={problemCount} />
-            <CountMetric label="Waiting" tone="waiting" value={waitingCount} />
+            <CountMetric label="Missed" tone="issue" value={missedCount} />
+            <CountMetric label="Failed" tone="issue" value={failedOrStalledCount} />
+            <CountMetric label="Active" tone="waiting" value={activeCount} />
           </div>
           {hasProblem ? (
             <p className="sync-panel-status-note" style={{ color: statusTone.color }}>
@@ -1089,6 +1090,18 @@ function cronSlotLabel(status: CronSlotStatus): string {
   return "Waiting";
 }
 
+function cronSlotRunNote(slot: CronSlot): string {
+  const runSummary = slot.run
+    ? `${slot.run.itemsFetched} fetched · ${formatDuration(slot.run.durationMs)}`
+    : null;
+  if (slot.run && slot.jobRun && slot.jobRun.status !== "succeeded") {
+    return `${jobRunStatusLabel(slot.jobRun)} · ${runSummary}`;
+  }
+  if (runSummary) return runSummary;
+  if (slot.jobRun) return `${jobRunStatusLabel(slot.jobRun)} · ${slot.jobRun.runtime || "Local Agent"}`;
+  return "No run recorded";
+}
+
 function CronSlotBar({ onSelect, slot }: { onSelect: () => void; slot: CronSlot }) {
   const style = cronSlotStyle(slot.status);
   const heightClass =
@@ -1146,13 +1159,7 @@ function CronSlotRow({
         </time>
       </div>
       <div className="sync-panel-slot-row-side">
-        <span className="mono sync-panel-slot-row-note">
-          {slot.jobRun && !slot.run
-            ? `${jobRunStatusLabel(slot.jobRun)} · ${slot.jobRun.runtime || "Local Agent"}`
-            : slot.run
-            ? `${slot.run.itemsFetched} fetched · ${formatDuration(slot.run.durationMs)}`
-            : "No run recorded"}
-        </span>
+        <span className="mono sync-panel-slot-row-note">{cronSlotRunNote(slot)}</span>
         {slot.run ? (
           <button
             className="fb-btn light compact"
@@ -1292,6 +1299,9 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
   const hydrated = useHydrated();
   const style = jobRunStatusStyle(jobRun);
   const startedAtLabel = hydrated ? formatRelative(jobRun.startedAt) : formatAbsolute(jobRun.startedAt);
+  const fallbackSummary = isActiveJobRun(jobRun)
+    ? "The Local Agent has started; no fetch log has been received yet."
+    : "The Local Agent ended before FollowBrief received a fetch log.";
   return (
     <article className="sync-panel-run-card">
       <header className="sync-panel-run-card-head">
@@ -1321,7 +1331,7 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
         ) : null}
       </header>
       <p className="sync-panel-run-card-summary">
-        {jobRun.summary || "Runtime job did not create a fetch log entry."}
+        {jobRun.summary || fallbackSummary}
       </p>
       <div className="mono sync-panel-run-card-stage">
         {jobRun.stage || "runtime"} · {jobRun.finishedAt ? "finished" : "active"}
@@ -1793,6 +1803,15 @@ function summarizeOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
   return { label: "Pending", tone: "warn" };
 }
 
+function taskSummaryPillLabel(task: FetchTaskLog): string {
+  if (isSummarized(task)) return "summarized";
+  if (task.status === "failed") return "failed";
+  if (task.status === "skipped") return "skipped";
+  if (task.status === "action_needed" || isBlocked(task)) return "action";
+  if (task.contentStatus === "ready") return "ready";
+  return "Local Agent";
+}
+
 function statusBanner(task: FetchTaskLog): { label: string; tone: Tone } {
   // A deliberate, evidence-backed skip (no primary content) is a clean terminal
   // state, not a failure.
@@ -1893,7 +1912,7 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
   const sumRes = summarizeOutcome(task);
   const banner = statusBanner(task);
   const bannerStyle = toneStyle(banner.tone);
-  const ready = task.contentStatus === "ready";
+  const pillLabel = taskSummaryPillLabel(task);
   // Colour the type pill by the real outcome, not by "ready" (a ready fetch can
   // still fail to summarize).
   const pillTone: Tone = banner.tone;
@@ -1926,7 +1945,7 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
             className="sync-panel-task-status-pill"
             style={{ ...toneStyle(pillTone), fontFamily: "var(--font-geist-mono)" }}
           >
-            {ready ? "ready" : "Local Agent"}
+            {pillLabel}
           </span>
           <span className="sync-panel-task-title">
             {task.title ?? task.url ?? "Untitled task"}
