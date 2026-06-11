@@ -498,6 +498,35 @@ clear_current_file() {
   fi
 }
 
+job_run_update_for_instance() {
+  _target_instance="$1"
+  _target_started="$2"
+  _target_expected="$3"
+  shift 3
+
+  _saved_instance="${BUILDER_BLOG_JOB_RUN_ID:-}"
+  _saved_started="${BUILDER_BLOG_JOB_STARTED_AT:-}"
+  _saved_expected="${BUILDER_BLOG_EXPECTED_AT:-}"
+
+  BUILDER_BLOG_JOB_RUN_ID="$_target_instance"
+  if [ -n "$_target_started" ]; then
+    BUILDER_BLOG_JOB_STARTED_AT="$_target_started"
+  fi
+  if [ -n "$_target_expected" ]; then
+    BUILDER_BLOG_EXPECTED_AT="$_target_expected"
+  elif [ -n "$_target_started" ]; then
+    BUILDER_BLOG_EXPECTED_AT="$_target_started"
+  fi
+  export BUILDER_BLOG_JOB_RUN_ID BUILDER_BLOG_JOB_STARTED_AT BUILDER_BLOG_EXPECTED_AT
+
+  job_run_update "$@"
+
+  BUILDER_BLOG_JOB_RUN_ID="$_saved_instance"
+  BUILDER_BLOG_JOB_STARTED_AT="$_saved_started"
+  BUILDER_BLOG_EXPECTED_AT="$_saved_expected"
+  export BUILDER_BLOG_JOB_RUN_ID BUILDER_BLOG_JOB_STARTED_AT BUILDER_BLOG_EXPECTED_AT
+}
+
 run_cron_supervisor() {
   INSTANCE_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
   STARTED_AT="$(iso_now)"
@@ -513,24 +542,19 @@ run_cron_supervisor() {
   if [ -r "$CURRENT_FILE" ]; then
     OLD_PID="$(json_get_number workerPid "$CURRENT_FILE")"
     OLD_INSTANCE="$(json_get_string instanceId "$CURRENT_FILE")"
+    OLD_STARTED="$(json_get_string startedAt "$CURRENT_FILE")"
+    OLD_EXPECTED="$(json_get_string expectedAt "$CURRENT_FILE")"
     if [ -n "$OLD_PID" ] && verify_followbrief_pid "$OLD_PID"; then
-      OLD_ENV_INSTANCE="$BUILDER_BLOG_JOB_RUN_ID"
-      BUILDER_BLOG_JOB_RUN_ID="$OLD_INSTANCE"
-      export BUILDER_BLOG_JOB_RUN_ID
-      job_run_update replaced "Replaced by a newer scheduled run." "status replaced next_schedule_arrived"
+      job_run_update_for_instance "$OLD_INSTANCE" "$OLD_STARTED" "$OLD_EXPECTED" \
+        replaced "Replaced by a newer scheduled run." "status replaced next_schedule_arrived"
       if ! terminate_process_tree "$OLD_PID" TERM 30; then
         terminate_process_tree "$OLD_PID" KILL 3 || true
-        job_run_update killed "Previous run was force-killed before the new schedule." "status killed next_schedule_arrived"
+        job_run_update_for_instance "$OLD_INSTANCE" "$OLD_STARTED" "$OLD_EXPECTED" \
+          killed "Previous run was force-killed before the new schedule." "status killed next_schedule_arrived"
       fi
-      BUILDER_BLOG_JOB_RUN_ID="$OLD_ENV_INSTANCE"
-      export BUILDER_BLOG_JOB_RUN_ID
     elif [ -n "$OLD_INSTANCE" ]; then
-      OLD_ENV_INSTANCE="$BUILDER_BLOG_JOB_RUN_ID"
-      BUILDER_BLOG_JOB_RUN_ID="$OLD_INSTANCE"
-      export BUILDER_BLOG_JOB_RUN_ID
-      job_run_update stale "Previous run pid was no longer alive." "stale_pid"
-      BUILDER_BLOG_JOB_RUN_ID="$OLD_ENV_INSTANCE"
-      export BUILDER_BLOG_JOB_RUN_ID
+      job_run_update_for_instance "$OLD_INSTANCE" "$OLD_STARTED" "$OLD_EXPECTED" \
+        stale "Previous run pid was no longer alive." "stale_pid"
     fi
   fi
 

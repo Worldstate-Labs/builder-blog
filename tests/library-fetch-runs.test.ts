@@ -131,6 +131,8 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /summarizeFetchTasksForLog/);
   assert.match(cli, /fetchTasks: slimFetchTasks/);
   assert.match(cli, /prompts: promptsBySourceType/);
+  assert.match(cli, /Fetched \$\{itemsFetched\} post/);
+  assert.doesNotMatch(cli, /Synced \$\{itemsFetched\} post/);
   // Product Hunt direct-fetch 403s are recoverable: they should be shown as a
   // fallback note while agent discovery continues, not counted as a source error.
   assert.match(cli, /isRecoverableCandidateDiscoveryFallback/);
@@ -152,8 +154,11 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.doesNotMatch(runner, /WORKER_PID="\$!"/);
   assert.match(runner, /verify_followbrief_pid/);
   assert.match(runner, /terminate_process_tree/);
-  assert.match(runner, /job_run_update replaced/);
-  assert.match(runner, /job_run_update killed/);
+  assert.match(runner, /job_run_update_for_instance/);
+  assert.match(runner, /OLD_STARTED="\$\(json_get_string startedAt "\$CURRENT_FILE"\)"/);
+  assert.match(runner, /OLD_EXPECTED="\$\(json_get_string expectedAt "\$CURRENT_FILE"\)"/);
+  assert.match(runner, /status replaced/);
+  assert.match(runner, /status killed/);
   assert.match(runner, /\*\-cron\)/);
 });
 
@@ -202,6 +207,11 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /const displayStatus = !inflight && interruptedStatus/);
   assert.match(panel, /displayStatus\.label/);
   assert.match(panel, /displayStatus\.style\.background/);
+  assert.match(panel, /case "stale":[\s\S]*return "Stopped"/);
+  assert.match(panel, /latestSlot\?\.status === "running"/);
+  assert.match(panel, /The current scheduled Fetch sources run is still in progress/);
+  assert.match(panel, /slot\.status === "waiting" \|\| slot\.status === "running"/);
+  assert.match(panel, /latestIsStalled/);
   assert.match(panel, /Recent outcomes by scheduled window\./);
   assert.doesNotMatch(panel, /Green OK|amber waiting|red issue/);
   assert.match(panel, /actionsPlacement = "end"/);

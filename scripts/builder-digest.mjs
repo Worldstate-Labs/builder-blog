@@ -940,7 +940,7 @@ function buildFetchRunSummary({
   const parts = [];
   if (itemsFetched > 0) {
     parts.push(
-      `Synced ${itemsFetched} post${itemsFetched === 1 ? "" : "s"} from ${buildersAttempted} source${buildersAttempted === 1 ? "" : "s"}`,
+      `Fetched ${itemsFetched} post${itemsFetched === 1 ? "" : "s"} from ${buildersAttempted} source${buildersAttempted === 1 ? "" : "s"}`,
     );
   } else {
     parts.push(`Fetched 0 new posts from ${buildersAttempted} source${buildersAttempted === 1 ? "" : "s"}`);

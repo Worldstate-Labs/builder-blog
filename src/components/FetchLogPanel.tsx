@@ -756,6 +756,32 @@ function getFetchUpdateStatus(
     };
   }
 
+  const latestSlot = slots.at(-1) ?? null;
+  if (latestSlot?.status === "running") {
+    return {
+      key: "syncing",
+      label: "Running",
+      summary: "The current scheduled Fetch sources run is still in progress.",
+      style: statusStyle("partial"),
+    };
+  }
+  if (latestSlot?.status === "waiting") {
+    return {
+      key: "waiting",
+      label: "Waiting",
+      summary: "The next scheduled Fetch sources run has not reached its grace window yet.",
+      style: statusStyle("partial"),
+    };
+  }
+  if (latestSlot?.status === "stalled") {
+    return {
+      key: "needs-attention",
+      label: "Needs attention",
+      summary: "The latest scheduled Fetch sources run stopped sending heartbeats.",
+      style: statusStyle("failed"),
+    };
+  }
+
   const latestResolved = latestResolvedSlotStatus(slots);
   if (latestResolved === "missed" || latestResolved === "failed") {
     return {
@@ -920,19 +946,34 @@ function FetchStatusPanel({
   const okCount = slots.filter((slot) => slot.status === "ok").length;
   const missedCount = slots.filter((slot) => slot.status === "missed").length;
   const failedCount = slots.filter((slot) => slot.status === "failed").length;
-  const problemCount = missedCount + failedCount;
-  const waitingCount = slots.filter((slot) => slot.status === "waiting").length;
+  const stalledCount = slots.filter((slot) => slot.status === "stalled").length;
+  const problemCount = missedCount + failedCount + stalledCount;
+  const waitingCount = slots.filter((slot) => slot.status === "waiting" || slot.status === "running").length;
+  const latestSlot = slots.at(-1) ?? null;
+  const latestIsPending = latestSlot?.status === "waiting" || latestSlot?.status === "running";
+  const latestIsStalled = latestSlot?.status === "stalled";
   const latestResolved = latestResolvedSlotStatus(slots);
-  const hasProblem = latestResolved === "missed" || latestResolved === "failed";
+  const hasProblem = latestIsStalled || (!latestIsPending && (latestResolved === "missed" || latestResolved === "failed"));
   const problemDetail =
-    latestResolved === "missed"
+    latestIsStalled
+      ? "The latest scheduled fetch run stopped sending heartbeats."
+      : latestResolved === "missed"
       ? "The latest scheduled window has no recorded fetch run in its expected time range."
       : "The latest scheduled fetch run did not finish successfully.";
   const statusTone = hasProblem
     ? statusStyle("failed")
-    : latestResolved === "ok"
+    : latestSlot?.status === "running" || latestSlot?.status === "waiting"
+      ? statusStyle("partial")
+      : latestResolved === "ok"
       ? statusStyle("ok")
       : statusStyle("partial");
+  const statusLabel = hasProblem
+    ? "Needs attention"
+    : latestSlot?.status === "running"
+      ? "Running"
+      : latestResolved === "ok"
+        ? "Healthy"
+        : "Waiting";
 
   return (
     <div className="sync-panel-card">
@@ -947,7 +988,7 @@ function FetchStatusPanel({
                 color: statusTone.color,
               }}
             >
-              {hasProblem ? "Needs attention" : latestResolved === "ok" ? "Healthy" : "Waiting"}
+              {statusLabel}
             </span>
             <span className="fb-chip">{cronJob.frequencyLabel}</span>
             {cronJob.overrideFetched ? <span className="fb-chip">refreshes library posts</span> : null}
@@ -1223,7 +1264,7 @@ function jobRunStatusLabel(jobRun: AgentJobRunListItem): string {
     case "killed":
       return "Killed";
     case "stale":
-      return "Stale";
+      return "Stopped";
     case "replaced":
       return "Replaced";
     case "failed":
