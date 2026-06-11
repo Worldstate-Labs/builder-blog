@@ -4157,6 +4157,8 @@ async function syncBuilders(args) {
     "manual JSON sync",
     argValue(args, "--agent-model", DEFAULT_AGENT_MODEL),
   );
+  const tasksFile = argValue(args, "--tasks", defaultLibraryFetchResultFile());
+  const { plannedTasks, plannedTaskOutcomes } = await readPlannedFetchResult(tasksFile);
   if (webSyncDisabled()) {
     console.log(JSON.stringify(
       {
@@ -4171,23 +4173,42 @@ async function syncBuilders(args) {
     ));
     return;
   }
+  if (Array.isArray(payload.builders) && payload.builders.length === 0) {
+    validateAgentSyncPayload({ fetchTasks: plannedTasks }, payload);
+    await patchFetchRunOutcomes(config, payload, { itemResults: [] }, plannedTasks, plannedTaskOutcomes);
+    console.log(JSON.stringify(
+      {
+        status: "ok",
+        builders: 0,
+        feedItems: 0,
+        taskOutcomes: Array.isArray(payload.taskOutcomes) ? payload.taskOutcomes.length : 0,
+        message: "No builders to sync; fetch log updated only.",
+      },
+      null,
+      2,
+    ));
+    return;
+  }
   const result = await postJson(`${config.appUrl}/api/skill/builders`, payload, config.token);
   console.log(JSON.stringify(result, null, 2));
 
   // Reconcile the fetch log against the FULL planned task list so a task the
   // agent dropped (fetched but never summarized) is recorded as a failure, not
   // left pending. Read the planned tasks the CLI emitted in fetch-personal.
-  const tasksFile = argValue(args, "--tasks", defaultLibraryFetchResultFile());
-  let plannedTasks = [];
-  let plannedTaskOutcomes = [];
+  await patchFetchRunOutcomes(config, payload, result, plannedTasks, plannedTaskOutcomes);
+}
+
+async function readPlannedFetchResult(tasksFile) {
   try {
     const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
-    plannedTasks = Array.isArray(fetchResult?.fetchTasks) ? fetchResult.fetchTasks : [];
-    plannedTaskOutcomes = Array.isArray(fetchResult?.taskOutcomes) ? fetchResult.taskOutcomes : [];
+    return {
+      plannedTasks: Array.isArray(fetchResult?.fetchTasks) ? fetchResult.fetchTasks : [],
+      plannedTaskOutcomes: Array.isArray(fetchResult?.taskOutcomes) ? fetchResult.taskOutcomes : [],
+    };
   } catch {
     // No planned-tasks file (e.g. ad-hoc sync) → reconcile against payload only.
+    return { plannedTasks: [], plannedTaskOutcomes: [] };
   }
-  await patchFetchRunOutcomes(config, payload, result, plannedTasks, plannedTaskOutcomes);
 }
 
 // After a sync, attach per-post fetch/summary outcomes to the fetch-log record

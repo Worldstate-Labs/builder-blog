@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 test("personal blog fetcher discovers RSS feed articles", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
@@ -1576,6 +1583,81 @@ test("failed / blocked outcomes require a reason", async () => {
   );
   assert.equal(result.status, "ok");
   assert.equal(result.accountedOutcomes, 1);
+});
+
+test("sync-builders treats explicit empty builders payload as a successful no-op", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-empty-builder-sync-"));
+  const payloadFile = join(tmp, "library-agent-sync.json");
+  const tasksFile = join(tmp, "library-fetch-result.json");
+  await writeFile(payloadFile, `${JSON.stringify({ builders: [], taskOutcomes: [] })}\n`, "utf8");
+  await writeFile(tasksFile, `${JSON.stringify({ status: "ok", localErrors: [], fetchTasks: [] })}\n`, "utf8");
+
+  const { stdout } = await execFileAsync(
+    process.execPath,
+    [
+      "scripts/builder-digest.mjs",
+      "sync-builders",
+      "--file",
+      payloadFile,
+      "--tasks",
+      tasksFile,
+    ],
+    {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        BUILDER_BLOG_AGENT_DIR: tmp,
+        BUILDER_BLOG_ACCOUNT_SLUG: "empty_sync",
+        BUILDER_BLOG_TOKEN: "test-token",
+        BUILDER_BLOG_URL: "http://127.0.0.1:9",
+      },
+    },
+  );
+  const result = JSON.parse(stdout);
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.builders, 0);
+  assert.equal(result.feedItems, 0);
+  assert.equal(result.taskOutcomes, 0);
+});
+
+test("sync-builders rejects empty builders when planned tasks are unaccounted", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-unaccounted-empty-sync-"));
+  const payloadFile = join(tmp, "library-agent-sync.json");
+  const tasksFile = join(tmp, "library-fetch-result.json");
+  const cli = await import("../scripts/builder-digest.mjs");
+  const task = youtubePlannedTask(cli, "vid_unaccounted_sync");
+  await writeFile(payloadFile, `${JSON.stringify({ builders: [], taskOutcomes: [] })}\n`, "utf8");
+  await writeFile(
+    tasksFile,
+    `${JSON.stringify({ status: "ok", localErrors: [], fetchTasks: [task] })}\n`,
+    "utf8",
+  );
+
+  await assert.rejects(
+    execFileAsync(
+      process.execPath,
+      [
+        "scripts/builder-digest.mjs",
+        "sync-builders",
+        "--file",
+        payloadFile,
+        "--tasks",
+        tasksFile,
+      ],
+      {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          BUILDER_BLOG_AGENT_DIR: tmp,
+          BUILDER_BLOG_ACCOUNT_SLUG: "unaccounted_empty_sync",
+          BUILDER_BLOG_TOKEN: "test-token",
+          BUILDER_BLOG_URL: "http://127.0.0.1:9",
+        },
+      },
+    ),
+    /Agent sync validation failed/,
+  );
 });
 
 test("render-digest requires agent summaries for every context item", async () => {
