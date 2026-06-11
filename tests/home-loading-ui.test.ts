@@ -23,7 +23,7 @@ test("home loading tabs mirror the default AI Digest tab without becoming intera
   assert.doesNotMatch(loading, /home-loading-tab is-active|data-active/);
   assert.match(loading, /className="ai-digest-stack home-loading-ai-digest"/);
   assert.match(loading, /className="digest-control-bar home-loading-control"/);
-  assert.match(loading, /\["AI Digest archive source", "AI Digest archive"\]\.map/);
+  assert.match(loading, /\["AI Digest source", "AI Digest issue"\]\.map/);
   assert.match(loading, /className="home-loading-digest-card"/);
   assert.doesNotMatch(loading, /className="feed-content-stack home-loading-content"|className="feed-skeleton-list"/);
 });

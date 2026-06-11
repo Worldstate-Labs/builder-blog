@@ -16,7 +16,7 @@ test("home digest keeps pipeline and archive selection in a dedicated control ba
   const globals = source("src/app/globals.css");
 
   assert.match(dashboardPage, /function DigestControlBar/);
-  assert.match(dashboardPage, /aria-label="AI Digest collection and archive selection"/);
+  assert.match(dashboardPage, /aria-label="AI Digest source and issue selection"/);
   assert.match(dashboardPage, /className="digest-control-bar"/);
   assert.match(dashboardPage, /className="digest-control-field"/);
   assert.match(dashboardPage, /className="digest-control-label"/);
@@ -24,8 +24,8 @@ test("home digest keeps pipeline and archive selection in a dedicated control ba
   assert.match(dashboardPage, /className="digest-control-empty"/);
   assert.match(dashboardPage, /<DigestPipelineSelector/);
   assert.match(dashboardPage, /<DigestArchivePicker/);
-  assert.match(dashboardPage, />\s*AI Digest collection\s*<\/span>/);
-  assert.match(dashboardPage, /AI Digest archive/);
+  assert.match(dashboardPage, />\s*AI Digest source\s*<\/span>/);
+  assert.match(dashboardPage, />\s*AI Digest issue\s*<\/span>/);
   assert.doesNotMatch(dashboardPage, /aria-label="AI Digest selection"/);
   assert.doesNotMatch(dashboardPage, /Your digest/);
   assert.match(dashboardPage, /No AI Digest archives/);
@@ -39,8 +39,8 @@ test("home digest keeps pipeline and archive selection in a dedicated control ba
   assert.match(digestPipelineSelector, /aria-controls=\{menuId\}/);
   assert.match(digestPipelineSelector, /aria-haspopup="listbox"/);
   assert.match(digestPipelineSelector, /role="listbox"/);
-  assert.match(digestPipelineSelector, /aria-label="AI Digest collection choices"/);
-  assert.doesNotMatch(digestPipelineSelector, /aria-label="AI Digest choices"|AI Digest source/);
+  assert.match(digestPipelineSelector, /aria-label="AI Digest sources"/);
+  assert.doesNotMatch(digestPipelineSelector, /aria-label="AI Digest choices"|AI Digest collection choices/);
   assert.match(digestPipelineSelector, /className="digest-pipeline-option"/);
   assert.match(digestPipelineSelector, /role="option"/);
   assert.match(digestPipelineSelector, /aria-selected=\{active\}/);
@@ -55,11 +55,11 @@ test("home digest keeps pipeline and archive selection in a dedicated control ba
   assert.match(digestPipelineSelector, /summaryRef\.current\?\.focus\(\)/);
   assert.match(digestPipelineSelector, /data-active=\{active \? "true" : undefined\}/);
   assert.match(digestArchivePicker, /digests\.length <= 1[\s\S]*className="digest-picker-static"/);
-  assert.match(digestArchivePicker, /aria-label=\{`AI Digest archive: \$\{selectedLabel\}`\}/);
-  assert.match(digestArchivePicker, /aria-label=\{`Choose AI Digest archive, current: \$\{selectedLabel\}`\}/);
+  assert.match(digestArchivePicker, /aria-label=\{`AI Digest issue: \$\{selectedLabel\}`\}/);
+  assert.match(digestArchivePicker, /aria-label=\{`Choose AI Digest issue, current: \$\{selectedLabel\}`\}/);
   assert.match(digestArchivePicker, /const pickerNavigationKeys = new Set\(\["ArrowDown", "ArrowUp", "Home", "End"\]\)/);
   assert.match(digestArchivePicker, /focusOption\(focusDirectionForKey\(event\.key\)\)/);
-  assert.match(digestArchivePicker, /role="listbox" aria-label="AI Digest archives"/);
+  assert.match(digestArchivePicker, /role="listbox" aria-label="AI Digest issues"/);
   assert.match(globals, /\.digest-pipeline-trigger\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /\.digest-control-picker \.digest-picker-summary,[\s\S]*\.digest-control-picker \.digest-picker-static\s*{[\s\S]*min-height:\s*2\.5rem/);
   assert.match(globals, /\.digest-pipeline-option\[data-active="true"\]/);

@@ -35,7 +35,7 @@ export default function DashboardLoading() {
         <section className="home-tab-panel" aria-label="Loading Home content">
           <div className="ai-digest-stack home-loading-ai-digest" aria-hidden="true">
             <section className="digest-control-bar home-loading-control">
-              {["AI Digest archive source", "AI Digest archive"].map((label) => (
+              {["AI Digest source", "AI Digest issue"].map((label) => (
                 <div className="digest-control-field" key={label}>
                   <span className="digest-control-label">{label}</span>
                   <span className="home-loading-control-shell" />
