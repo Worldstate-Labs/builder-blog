@@ -30,7 +30,11 @@ cat "$BUILDER_BLOG_SHARD_FILE"
 2. Complete every task in the shard file's `fetchTasks` array exactly as
 specified below. Notes for this worker context: "the sync payload" below means
 your shard result file, and report notices/blockers by printing them to stdout
-(the runner copies each worker's output into the scheduled job log).
+(the runner copies each worker's output into the scheduled job log). You never
+see validator feedback (the runner validates the merged result of all workers
+after you exit), so the quality gates below are your only chance to get each
+item right — especially the 1200-character summary cap and the rule that
+titles/descriptions are never primary content.
 
 {{INCLUDE:fetch-task-core REPORT_TARGET="to this worker's stdout"}}
 

@@ -58,7 +58,8 @@ How to execute each `fetchTask`:
   `task.summaryInstructions.prompt` is the only prompt source for fetch-task
   summaries. It already includes the common post-summary rules, source-specific
   rules, and output language. Do not re-compose it from `context.sources` or
-  other prompt configuration.
+  other prompt configuration. Keep the finished summary under 1200 characters —
+  the validator rejects longer ones as `summary_too_long`.
 - Build one output item under the copied builder. Copy stable item fields from
   `task.item` (`kind`, `externalId`, `title`, `url`, `publishedAt`,
   `sourceName`), set `body`, set `summary`, and set `rawJson`.

@@ -793,21 +793,72 @@ run_sharded_library() {
     --results-dir "$_results_dir" \
     --out "$JOB_TMP_DIR/library-agent-sync.json"
 
+  # Validate-and-repair loop. In the single-agent path the runtime agent sees
+  # validate-agent-sync errors itself and fixes them before syncing; sharded
+  # workers are forbidden from validating, so the runner closes that loop here:
+  # on failure it hands the exact error list to one repair agent that fixes
+  # ONLY the failing items in the merged payload, then re-validates. Bounded at
+  # 2 rounds so a hopeless payload still fails fast instead of looping.
   # validate-agent-sync exits non-zero when any task fails validation; capture
   # the exit code (instead of letting set -e abort) so the validation details
   # always land in the job log before we refuse to sync.
   _validate_file="$JOB_TMP_DIR/validate-agent-sync-result.json"
-  set +e
-  node "$AGENT_DIR/builder-digest.mjs" validate-agent-sync \
-    --tasks "$_result_file" \
-    --file "$JOB_TMP_DIR/library-agent-sync.json" > "$_validate_file" 2>&1
-  _validate_code="$?"
-  set -e
-  cat "$_validate_file"
-  if [ "$_validate_code" -ne 0 ] || ! grep -q '"status": "ok"' "$_validate_file"; then
-    echo "validate-agent-sync did not return status ok (exit $_validate_code); not syncing." >&2
-    return 65
-  fi
+  _sync_payload="$JOB_TMP_DIR/library-agent-sync.json"
+  _repair_round=0
+  while :; do
+    set +e
+    node "$AGENT_DIR/builder-digest.mjs" validate-agent-sync \
+      --tasks "$_result_file" \
+      --file "$_sync_payload" > "$_validate_file" 2>&1
+    _validate_code="$?"
+    set -e
+    cat "$_validate_file"
+    if [ "$_validate_code" -eq 0 ] && grep -q '"status": "ok"' "$_validate_file"; then
+      break
+    fi
+    if [ "$_repair_round" -ge 2 ]; then
+      echo "validate-agent-sync still failing after $_repair_round repair round(s) (exit $_validate_code); not syncing." >&2
+      return 65
+    fi
+    _repair_round=$(( _repair_round + 1 ))
+    echo "validate-agent-sync failed (exit $_validate_code); running repair agent, round $_repair_round of 2."
+    REPAIR_PROMPT_FILE="$JOB_TMP_DIR/library-repair-prompt.md"
+    cat > "$REPAIR_PROMPT_FILE" <<EOF
+Use the FollowBrief skill to repair a merged library sync payload that failed
+validation. This is an unattended repair pass. Do not ask the user questions.
+
+Files:
+- Validation errors (read first): $_validate_file
+- Merged sync payload — fix it IN PLACE at this exact path: $_sync_payload
+- Planned fetch tasks with authoritative per-task instructions: $_result_file
+
+Fix ONLY the tasks listed in the validation errors. Do not touch items that
+validated, do not add or remove any other items, and keep the payload shape
+exactly: builders (each with items) plus taskOutcomes.
+
+Per error type:
+- summary_too_long: rewrite that one item's summary to under 1200 characters,
+  still following that task's summaryInstructions.prompt.
+- content-quality errors (for example description_or_title_is_not_primary_content):
+  re-extract real primary content for that task per its fetchInstructions.prompt
+  and minimumContentQuality, replace the item body, and re-summarize it. If real
+  primary content genuinely cannot be obtained, remove that item and add one
+  taskOutcomes entry with fetchTaskId, status (skipped or failed), reason, and
+  per-task evidence.
+- any other error: resolve it per that task's instructions in the fetch tasks
+  file; every planned task must keep exactly one terminal state.
+
+Hard rules: do NOT run validate-agent-sync, sync-builders, fetch-personal, or
+expand-discovery; do NOT fetch tasks that are not listed in the errors. Write
+the corrected JSON back to the payload path, print one line {"repairDone": true},
+and stop.
+EOF
+    if ! ( PROMPT_FILE="$REPAIR_PROMPT_FILE"
+           IS_CRON_JOB=1
+           run_selected_runtime ); then
+      echo "Repair agent round $_repair_round exited non-zero; re-validating anyway." >&2
+    fi
+  done
 
   node "$AGENT_DIR/builder-digest.mjs" sync-builders \
     --file "$JOB_TMP_DIR/library-agent-sync.json" \
