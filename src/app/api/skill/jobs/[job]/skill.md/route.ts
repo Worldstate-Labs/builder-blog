@@ -16,6 +16,86 @@ function timeoutSecondsForJob(intervalMinutes: string, job: string) {
   return String(Math.min(max, Math.max(min, base)));
 }
 
+// Source-type-aware credential prep for the library cron setup prompt. The web
+// copy-prompt flow resolves the account from the exchange code, so we can tell
+// the agent up front which sources need a local API token in secrets.json —
+// instead of only finding out when the validation run surfaces an
+// *_token_missing notice. Read-only; returns "" when no credentialed sources.
+const SOURCE_CREDENTIAL_SPECS: {
+  kinds: string[];
+  envKey: string;
+  label: string;
+  help: string;
+}[] = [
+  {
+    kinds: ["X"],
+    envKey: "X_BEARER_TOKEN",
+    label: "X (Twitter)",
+    help: "free read-only tier at https://developer.x.com/en/portal/dashboard",
+  },
+];
+
+async function buildSourceCredentialPrep(userId: string): Promise<string> {
+  const entries = await prisma.builderPoolEntry.findMany({
+    where: { userId, removedAt: null },
+    select: { builder: { select: { kind: true } } },
+  });
+  const kinds = new Set<string>();
+  for (const entry of entries) {
+    if (entry.builder?.kind) kinds.add(entry.builder.kind);
+  }
+  const needed = SOURCE_CREDENTIAL_SPECS.filter((spec) =>
+    spec.kinds.some((kind) => kinds.has(kind)),
+  );
+  if (needed.length === 0) return "";
+
+  // This runs on the user's machine (the server can't see their secrets.json):
+  // checkJs reports present/missing with the same lookup as the runner — env,
+  // then the single top-level token (one app-scoped X token serves the whole
+  // host) — so we never re-ask for an already-configured token.
+  const checkJs =
+    'const fs=require("fs");const k=process.env.KEY,p=process.env.SECRETS;' +
+    'let ok=Boolean((process.env[k]||"").trim());' +
+    'if(!ok){let d={};try{d=JSON.parse(fs.readFileSync(p,"utf8"))}catch{}' +
+    'ok=Boolean(d[k]&&String(d[k]).trim())}' +
+    'console.log(k+": "+(ok?"present — already configured, skip":"missing — ask the user"))';
+  const writeJs =
+    'const fs=require("fs");const[p,k,v]=process.argv.slice(1);let d={};' +
+    'try{d=JSON.parse(fs.readFileSync(p,"utf8"))}catch{}d[k]=v;fs.writeFileSync(p,JSON.stringify(d,null,2))';
+
+  const blocks = needed
+    .map((spec) =>
+      [
+        `- **${spec.label}** source(s) present → needs \`${spec.envKey}\` (${spec.help}).`,
+        "  Check whether it is already on this machine; only ask the user if missing:",
+        "",
+        "  ```bash",
+        `  SECRETS="\${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/secrets.json"`,
+        `  KEY=${spec.envKey} SECRETS="$SECRETS" node -e '${checkJs}'`,
+        "  ```",
+        "",
+        "  If that prints `missing`, ask the user for the token and store it",
+        "  (preserves other keys); if `present`, skip:",
+        "",
+        "  ```bash",
+        `  node -e '${writeJs}' "$SECRETS" ${spec.envKey} "PASTE_${spec.envKey}"`,
+        '  chmod 600 "$SECRETS"',
+        "  ```",
+      ].join("\n"),
+    )
+    .join("\n\n");
+
+  return [
+    "**Prepare source API credentials (before the validation run).** This account",
+    "has sources that fetch through an authenticated API, so the bare cron",
+    "environment needs their tokens in the local secrets file. For each one below,",
+    "check first and only ask the user when the token is actually missing — never",
+    "re-ask for a token that is already configured. Non-blocking.",
+    "",
+    blocks,
+  ].join("\n");
+}
+
 export async function GET(request: Request, { params }: Params) {
   const { job } = await params;
   const path = jobSkillFiles[job as keyof typeof jobSkillFiles];
@@ -148,6 +228,7 @@ export async function GET(request: Request, { params }: Params) {
     .replaceAll("{{DIGEST_REGENERATE}}", fetchForce ? "1" : "0")
     .replaceAll("{{DIGEST_REGENERATE_FLAG}}", fetchForce ? "--regenerate" : "");
 
+  let credentialPrep = "";
   if (ecParam) {
     // Validate the exchange code: must exist, not expired, not yet used.
     // Do NOT mark usedAt here — only the CLI exchange endpoint marks it.
@@ -155,7 +236,7 @@ export async function GET(request: Request, { params }: Params) {
       where: { code: ecParam },
       include: {
         agentToken: {
-          include: { user: { select: { email: true } } },
+          include: { user: { select: { email: true, id: true } } },
         },
       },
     });
@@ -165,6 +246,13 @@ export async function GET(request: Request, { params }: Params) {
     }
 
     const email = record.agentToken.user.email ?? "";
+
+    // Tell the agent up front which sources need an API token, based on this
+    // account's actual source types — so prep happens before the validation run
+    // instead of only when it surfaces an *_token_missing notice.
+    if (content.includes("{{SOURCE_CREDENTIAL_PREP}}")) {
+      credentialPrep = await buildSourceCredentialPrep(record.agentToken.user.id);
+    }
 
     // Bake the resolved account into every `${BUILDER_BLOG_ACCOUNT}` in the
     // prompt. The cron-setup smoke check (step 7) and the launchd/crontab
@@ -213,6 +301,8 @@ export async function GET(request: Request, { params }: Params) {
       return "```bash\n" + rewritten + "```";
     });
   }
+
+  content = content.replaceAll("{{SOURCE_CREDENTIAL_PREP}}", credentialPrep);
 
   return new Response(content, {
     headers: {

@@ -57,6 +57,8 @@ if [ ! -s "$ACCOUNT_FILE" ]; then
 fi
 ```
 
+{{SOURCE_CREDENTIAL_PREP}}
+
 3. Before changing anything, check whether this account's library fetch cron
 already exists on this machine. Run the check for this machine's OS — run
 `uname` if unsure.
@@ -205,8 +207,9 @@ ask the user a question; it is non-blocking.
    user does not have one yet, continue to step 8 and tell them the source stays
    in "Action needed" until they add it.
 2. Merge it into the local secrets file without overwriting existing keys, and
-   lock the file down. One top-level token serves every account on this machine
-   (an X bearer token is app-scoped, so one covers all X sources):
+   lock the file down. One token per machine is enough — an X bearer token is
+   app-scoped, so a single top-level value serves every account and every X
+   source on this host:
 
 ```bash
 SECRETS="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/secrets.json"
@@ -214,10 +217,6 @@ node -e 'const fs=require("fs");const[p,k,v]=process.argv.slice(1);let d={};try{
 chmod 600 "$SECRETS"
 ```
 
-   Only if separate accounts on this machine must use different X API apps, nest
-   the token under `accounts."<account-email>".X_BEARER_TOKEN` instead of at the
-   top level. The runner reads env first, then the per-account entry, then this
-   top-level value.
 3. Re-run the step-7 validation command; the notice should be gone.
 
 8. Only after the smoke check and validation run have both succeeded, install the

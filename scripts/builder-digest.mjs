@@ -65,9 +65,8 @@ function jobTmpDir(defaultJobName = "") {
 // bearer token — live in a local, git-ignored secrets file the user fills in
 // once, so scheduled cron runs (which see a bare environment) can read them.
 // An exported env var still wins, so a one-off `export X_BEARER_TOKEN=...`
-// overrides the file. Shape:
-//   { "X_BEARER_TOKEN": "...",                         // global fallback
-//     "accounts": { "<email>": { "X_BEARER_TOKEN": "..." } } }  // per-account
+// overrides the file. One token per machine (an X bearer token is app-scoped,
+// so it serves every account on the host). Shape: { "X_BEARER_TOKEN": "..." }
 let agentSecretsCache;
 function agentSecrets() {
   if (agentSecretsCache !== undefined) return agentSecretsCache;
@@ -83,15 +82,7 @@ function agentSecret(key) {
   const fromEnv = process.env[key]?.trim();
   if (fromEnv) return fromEnv;
   const secrets = agentSecrets();
-  if (!secrets || typeof secrets !== "object") return null;
-  const byAccount =
-    secrets.accounts && typeof secrets.accounts === "object" ? secrets.accounts : null;
-  const account = process.env.BUILDER_BLOG_ACCOUNT?.trim();
-  const scoped =
-    (account && byAccount?.[account]?.[key]) ||
-    byAccount?.[accountSlug()]?.[key] ||
-    secrets[key];
-  const value = typeof scoped === "string" ? scoped.trim() : "";
+  const value = secrets && typeof secrets[key] === "string" ? secrets[key].trim() : "";
   return value || null;
 }
 function libraryFetchRunIdFile() {
@@ -2494,8 +2485,7 @@ async function fetchPersonalXBuilder(builder, { cutoff, limit, agentModel, fetch
         `read-only access). For a one-off run, export X_BEARER_TOKEN=... in ` +
         `the shell first. For scheduled cron runs (which see a bare ` +
         `environment), add it to ~/.builder-blog/secrets.json as ` +
-        `{"accounts":{"${process.env.BUILDER_BLOG_ACCOUNT?.trim() || "<account-email>"}":{"X_BEARER_TOKEN":"..."}}} ` +
-        `(chmod 600), then re-run.`,
+        `{"X_BEARER_TOKEN":"..."} (chmod 600), then re-run.`,
       agentHelpUrl: "https://developer.x.com/en/portal/dashboard",
       item: {
         kind: "TWEET",
