@@ -21,6 +21,7 @@ import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
 import {
   buildDigestCronStatus,
   getDigestUpdateStatus,
+  latestResolvedSlotStatus,
   isActiveDigestJobRun,
   isDigestRunInflight,
   statusStyle,
@@ -542,18 +543,17 @@ function DigestStatusPanel({
   const failedCount = slots.filter((slot) => slot.status === "failed").length;
   const problemCount = missedCount + failedCount;
   const waitingCount = slots.filter((slot) => slot.status === "waiting").length;
+  const latestResolved = latestResolvedSlotStatus(slots);
+  const hasProblem = latestResolved === "missed" || latestResolved === "failed";
   const problemDetail =
-    missedCount > 0 && failedCount > 0
-      ? `${missedCount} scheduled ${missedCount === 1 ? "window has" : "windows have"} no recorded run; ${failedCount} recorded ${failedCount === 1 ? "run did" : "runs did"} not save an AI Digest.`
-      : missedCount > 0
-        ? `${missedCount} scheduled ${missedCount === 1 ? "window has" : "windows have"} no recorded run in ${missedCount === 1 ? "its" : "their"} expected time range.`
-        : `${failedCount} recorded ${failedCount === 1 ? "run did" : "runs did"} not save an AI Digest.`;
-  const statusTone =
-    problemCount > 0
-      ? statusStyle("failed")
-      : okCount > 0
-        ? statusStyle("ok")
-        : statusStyle("partial");
+    latestResolved === "missed"
+      ? "The latest scheduled window has no recorded run in its expected time range."
+      : "The latest scheduled run did not save an AI Digest.";
+  const statusTone = hasProblem
+    ? statusStyle("failed")
+    : latestResolved === "ok"
+      ? statusStyle("ok")
+      : statusStyle("partial");
 
   return (
     <div className="sync-panel-card">
@@ -568,7 +568,7 @@ function DigestStatusPanel({
                 color: statusTone.color,
               }}
             >
-              {problemCount > 0 ? "Needs attention" : okCount > 0 ? "Healthy" : "Waiting"}
+              {hasProblem ? "Needs attention" : latestResolved === "ok" ? "Healthy" : "Waiting"}
             </span>
             <span className="fb-chip">{cronJob.frequencyLabel}</span>
             {cronJob.regenerateDigest ? <span className="fb-chip">rebuilds past posts</span> : null}
@@ -601,7 +601,7 @@ function DigestStatusPanel({
             <CountMetric label="Issue" tone="issue" value={problemCount} />
             <CountMetric label="Waiting" tone="waiting" value={waitingCount} />
           </div>
-          {problemCount > 0 ? (
+          {hasProblem ? (
             <p className="sync-panel-status-note" style={{ color: statusTone.color }}>
               {problemDetail}
             </p>

@@ -181,6 +181,20 @@ export function buildDigestCronStatus<Run extends DigestCronRunStatusInput>(
   return { slots, nextExpectedAt: nextExpected.toISOString() };
 }
 
+export type ResolvedSlotStatus = "ok" | "missed" | "failed";
+
+// The status chip judges only the most recent window that has a settled
+// outcome; waiting/running/stalled windows are still undecided and skipped.
+export function latestResolvedSlotStatus(
+  slots: ReadonlyArray<{ status: CronSlotStatus }>,
+): ResolvedSlotStatus | null {
+  for (let index = slots.length - 1; index >= 0; index -= 1) {
+    const status = slots[index].status;
+    if (status === "ok" || status === "missed" || status === "failed") return status;
+  }
+  return null;
+}
+
 export function getDigestUpdateStatus(
   cronJob: DigestCronJobStatus | null,
   slots: CronSlot[],
@@ -212,17 +226,19 @@ export function getDigestUpdateStatus(
     };
   }
 
-  const problemCount = slots.filter((slot) => slot.status === "missed" || slot.status === "failed").length;
-  const okCount = slots.filter((slot) => slot.status === "ok").length;
-  if (problemCount > 0) {
+  const latestResolved = latestResolvedSlotStatus(slots);
+  if (latestResolved === "missed" || latestResolved === "failed") {
     return {
       key: "needs-attention",
       label: "Needs attention",
-      summary: `${problemCount} scheduled ${problemCount === 1 ? "run needs" : "runs need"} review.`,
+      summary:
+        latestResolved === "missed"
+          ? "The latest scheduled window has no recorded run."
+          : "The latest scheduled run did not save an AI Digest.",
       style: statusStyle("failed"),
     };
   }
-  if (okCount > 0) {
+  if (latestResolved === "ok") {
     return {
       key: "healthy",
       label: "Healthy",

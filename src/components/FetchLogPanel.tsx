@@ -16,6 +16,7 @@ import { CountBadge, CountMeta, CountMetric, formatCount } from "@/components/Co
 import { EmptyState } from "@/components/EmptyState";
 import { useHydrated } from "@/components/ThemeToggle";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
+import { latestResolvedSlotStatus } from "@/lib/digest-update-status";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
 import { displayLanguagePreference } from "@/lib/language-preference";
 
@@ -393,7 +394,7 @@ function buildCronStatus(
   const nextExpected = addScheduleInterval(cursor, cronJob);
   const expected: Date[] = [];
   for (let index = 0; index < CRON_SLOT_LIMIT * 3 && expected.length < CRON_SLOT_LIMIT; index += 1) {
-    if (cursor.getTime() + graceMs >= startedAt) {
+    if (cursor.getTime() >= startedAt) {
       expected.unshift(new Date(cursor));
     }
     cursor = addScheduleInterval(cursor, cronJob, -1);
@@ -755,17 +756,19 @@ function getFetchUpdateStatus(
     };
   }
 
-  const problemCount = slots.filter((slot) => slot.status === "missed" || slot.status === "failed").length;
-  const okCount = slots.filter((slot) => slot.status === "ok").length;
-  if (problemCount > 0) {
+  const latestResolved = latestResolvedSlotStatus(slots);
+  if (latestResolved === "missed" || latestResolved === "failed") {
     return {
       key: "needs-attention",
       label: "Needs attention",
-      summary: `${problemCount} scheduled ${problemCount === 1 ? "run needs" : "runs need"} review.`,
+      summary:
+        latestResolved === "missed"
+          ? "The latest scheduled window has no recorded fetch run."
+          : "The latest scheduled fetch run did not finish successfully.",
       style: statusStyle("failed"),
     };
   }
-  if (okCount > 0) {
+  if (latestResolved === "ok") {
     return {
       key: "healthy",
       label: "Healthy",
@@ -919,18 +922,17 @@ function FetchStatusPanel({
   const failedCount = slots.filter((slot) => slot.status === "failed").length;
   const problemCount = missedCount + failedCount;
   const waitingCount = slots.filter((slot) => slot.status === "waiting").length;
+  const latestResolved = latestResolvedSlotStatus(slots);
+  const hasProblem = latestResolved === "missed" || latestResolved === "failed";
   const problemDetail =
-    missedCount > 0 && failedCount > 0
-      ? `${missedCount} scheduled ${missedCount === 1 ? "window has" : "windows have"} no recorded fetch run; ${failedCount} recorded ${failedCount === 1 ? "run did" : "runs did"} not finish successfully.`
-      : missedCount > 0
-        ? `${missedCount} scheduled ${missedCount === 1 ? "window has" : "windows have"} no recorded fetch run in ${missedCount === 1 ? "its" : "their"} expected time range.`
-        : `${failedCount} recorded ${failedCount === 1 ? "run did" : "runs did"} not finish successfully.`;
-  const statusTone =
-    problemCount > 0
-      ? statusStyle("failed")
-      : okCount > 0
-        ? statusStyle("ok")
-        : statusStyle("partial");
+    latestResolved === "missed"
+      ? "The latest scheduled window has no recorded fetch run in its expected time range."
+      : "The latest scheduled fetch run did not finish successfully.";
+  const statusTone = hasProblem
+    ? statusStyle("failed")
+    : latestResolved === "ok"
+      ? statusStyle("ok")
+      : statusStyle("partial");
 
   return (
     <div className="sync-panel-card">
@@ -945,7 +947,7 @@ function FetchStatusPanel({
                 color: statusTone.color,
               }}
             >
-              {problemCount > 0 ? "Needs attention" : okCount > 0 ? "Healthy" : "Waiting"}
+              {hasProblem ? "Needs attention" : latestResolved === "ok" ? "Healthy" : "Waiting"}
             </span>
             <span className="fb-chip">{cronJob.frequencyLabel}</span>
             {cronJob.overrideFetched ? <span className="fb-chip">refreshes library posts</span> : null}
@@ -978,7 +980,7 @@ function FetchStatusPanel({
             <CountMetric label="Issue" tone="issue" value={problemCount} />
             <CountMetric label="Waiting" tone="waiting" value={waitingCount} />
           </div>
-          {problemCount > 0 ? (
+          {hasProblem ? (
             <p className="sync-panel-status-note" style={{ color: statusTone.color }}>
               {problemDetail}
             </p>
