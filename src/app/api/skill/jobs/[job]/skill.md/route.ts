@@ -201,6 +201,14 @@ export async function GET(request: Request, { params }: Params) {
       ? String(Math.min(90, Math.floor(daysRaw)))
       : "30";
 
+  // Library worker fan-out. Closed numeric range; absent/invalid keeps the
+  // conservative single-agent behavior so old copied prompts do not change.
+  const parallelRaw = Number(url.searchParams.get("parallel") ?? "1");
+  const parallelWorkers =
+    job.startsWith("library") && Number.isFinite(parallelRaw) && parallelRaw >= 1
+      ? String(Math.min(8, Math.floor(parallelRaw)))
+      : "1";
+
   let content = await readFile(join(process.cwd(), path), "utf8");
   // Expand {{INCLUDE:...}} directives (shared fetch-task contract) before
   // the exchange-code / runtime substitutions below.
@@ -224,6 +232,7 @@ export async function GET(request: Request, { params }: Params) {
     .replaceAll("{{FETCH_FORCE}}", fetchForce ? "1" : "0")
     .replaceAll("{{FETCH_FLAG}}", fetchForce ? "--force" : "")
     .replaceAll("{{FETCH_DAYS}}", fetchDays)
+    .replaceAll("{{PARALLEL_WORKERS}}", parallelWorkers)
     // Digest analogue of the fetch force flag. The digest job never fetches —
     // here `force=1` means "re-generate today's digest" (re-cover the full
     // window + replace today's existing digest). Two placeholders mirror the

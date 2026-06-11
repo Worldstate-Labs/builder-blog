@@ -54,6 +54,7 @@ type CronConfig = {
   freq: CronFrequency;
   overrideFetched: boolean;
   fetchDays: number;
+  parallelWorkers: number;
 };
 type SchedulePromptSelection =
   | { target: "once"; overrideFetched: boolean; fetchDays: number }
@@ -126,6 +127,8 @@ const DEFAULT_FREQUENCY: Record<SkillPromptContext, ScheduleFrequency> = {
 // own language.
 const DEFAULT_PROMPT_WINDOW_DAYS = 30;
 const MAX_PROMPT_WINDOW_DAYS = 90;
+const DEFAULT_PARALLEL_WORKERS = 1;
+const MAX_PARALLEL_WORKERS = 8;
 
 // The override toggle reuses one URL channel (?force=1) but means different
 // things per context, so its copy is context-specific. Library: re-fetch posts
@@ -229,6 +232,14 @@ function parseWindowDays(value: string): number | null {
   if (!Number.isFinite(numeric)) return null;
   if (!Number.isInteger(numeric)) return null;
   if (numeric < 1 || numeric > MAX_PROMPT_WINDOW_DAYS) return null;
+  return numeric;
+}
+
+function parseParallelWorkers(value: string): number | null {
+  const numeric = Number(value.trim());
+  if (!Number.isFinite(numeric)) return null;
+  if (!Number.isInteger(numeric)) return null;
+  if (numeric < 1 || numeric > MAX_PARALLEL_WORKERS) return null;
   return numeric;
 }
 
@@ -368,6 +379,9 @@ export function SkillPromptActions({
     if (extras.cron) {
       params.set("runtime", extras.cron.runtime);
       params.set("freq", extras.cron.freq);
+      if (context === "library") {
+        params.set("parallel", String(extras.cron.parallelWorkers));
+      }
     }
     if (extras.cron?.overrideFetched || extras.force) {
       params.set("force", "1");
@@ -875,6 +889,9 @@ function CronConfigDialog({
     String(initialMaxAge),
   );
   const [pickedFetchDays, setPickedFetchDays] = useState(String(DEFAULT_PROMPT_WINDOW_DAYS));
+  const [pickedParallelWorkers, setPickedParallelWorkers] = useState(
+    String(DEFAULT_PARALLEL_WORKERS),
+  );
   const [overrideFetched, setOverrideFetched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -942,6 +959,15 @@ function CronConfigDialog({
         setSubmitting(false);
         return;
       }
+      const parallelWorkers =
+        context === "library" && pickedFreq !== "once"
+          ? parseParallelWorkers(pickedParallelWorkers)
+          : DEFAULT_PARALLEL_WORKERS;
+      if (parallelWorkers === null) {
+        setError(`Parallel workers must be a whole number from 1 to ${MAX_PARALLEL_WORKERS}.`);
+        setSubmitting(false);
+        return;
+      }
       if (pickedFreq === "once") {
         await onConfirm({ target: "once", overrideFetched, fetchDays });
       } else {
@@ -952,6 +978,7 @@ function CronConfigDialog({
             freq: pickedFreq,
             overrideFetched,
             fetchDays,
+            parallelWorkers,
           },
         });
       }
@@ -1025,6 +1052,33 @@ function CronConfigDialog({
                 </select>
               </div>
               <p className="cron-field-hint">{runtimeHint}</p>
+              {context === "library" ? (
+                <>
+                  <div className="cron-field">
+                    <label htmlFor="cron-parallel-workers" className="cron-field-label">
+                      Parallel workers
+                    </label>
+                    <select
+                      id="cron-parallel-workers"
+                      className="cron-field-select"
+                      value={pickedParallelWorkers}
+                      onChange={(e) => setPickedParallelWorkers(e.target.value)}
+                    >
+                      {Array.from({ length: MAX_PARALLEL_WORKERS }, (_, index) => index + 1).map(
+                        (count) => (
+                          <option key={count} value={count}>
+                            {count === 1 ? "1 worker" : `${count} workers`}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </div>
+                  <p className="cron-field-hint">
+                    Runs source tasks in parallel after candidates are found. Use 1 for the safest
+                    setup.
+                  </p>
+                </>
+              ) : null}
             </>
           )}
 

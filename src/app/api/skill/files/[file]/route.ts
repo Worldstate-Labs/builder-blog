@@ -73,6 +73,7 @@ export async function GET(_request: Request, { params }: Params) {
   // neutralize them to the normal non-override 30-day path.
   content = content.replaceAll("{{FETCH_FLAG}}", "");
   content = content.replaceAll("{{FETCH_DAYS}}", "30");
+  content = content.replaceAll("{{PARALLEL_WORKERS}}", "1");
   return new Response(content, {
     headers: {
       "content-type": asset.contentType,

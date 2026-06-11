@@ -110,7 +110,11 @@ run_with_claude() {
 run_with_openclaw() {
   # `agent` requires a session selector on 2026.5.20+ (the bare form errors
   # with "Pass --to/--session-id/--agent"); default to the `main` agent.
-  openclaw agent --local --agent "${OPENCLAW_AGENT:-main}" --message "$(cat "$PROMPT_FILE")"
+  if [ -n "${OPENCLAW_SESSION_ID:-}" ]; then
+    openclaw agent --local --session-id "$OPENCLAW_SESSION_ID" --message "$(cat "$PROMPT_FILE")"
+  else
+    openclaw agent --local --agent "${OPENCLAW_AGENT:-main}" --message "$(cat "$PROMPT_FILE")"
+  fi
 }
 
 run_with_gemini() {
@@ -157,7 +161,11 @@ run_with_openclaw_unattended() {
   sync_openclaw_timeout_config "$_openclaw_timeout"
   _openclaw_output="$JOB_TMP_DIR/openclaw-agent-output-$$.log"
   set +e
-  openclaw agent --local --agent "${OPENCLAW_AGENT:-main}" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
+  if [ -n "${OPENCLAW_SESSION_ID:-}" ]; then
+    openclaw agent --local --session-id "$OPENCLAW_SESSION_ID" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
+  else
+    openclaw agent --local --agent "${OPENCLAW_AGENT:-main}" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
+  fi
   _openclaw_code="$?"
   set -e
   cat "$_openclaw_output"
@@ -718,6 +726,10 @@ run_sharded_library() {
       BUILDER_BLOG_SHARD_FILE="$_shard_file"
       BUILDER_BLOG_SHARD_RESULT="$_results_dir/$_shard_name-result.json"
       export BUILDER_BLOG_SHARD_FILE BUILDER_BLOG_SHARD_RESULT
+      if [ "$PINNED_RUNTIME" = "openclaw" ]; then
+        OPENCLAW_SESSION_ID="$(printf 'followbrief-%s-%s-%s' "$ACCOUNT_SLUG" "$JOB_NAME" "$_shard_name" | tr -c 'a-zA-Z0-9_.@+-' '_')"
+        export OPENCLAW_SESSION_ID
+      fi
       PROMPT_FILE="$AGENT_DIR/jobs/library-worker.md"
       # Workers must never wait on interactive permission prompts, so they
       # always use the pinned runtime's unattended invocation — even when the

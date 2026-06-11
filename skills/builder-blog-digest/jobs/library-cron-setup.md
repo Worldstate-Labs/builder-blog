@@ -102,7 +102,10 @@ run). `fetch-force-library-cron-$ACCOUNT_SLUG` is `1` when the schedule was
 configured to override already-fetched posts and `0` otherwise; the runner
 turns `1` into the `--force` flag so the recurring fetch re-pulls posts already
 in the library. `fetch-days-library-cron-$ACCOUNT_SLUG` pins the selected
-lookback window for this recurring fetch.
+lookback window for this recurring fetch. `parallel-library-cron-$ACCOUNT_SLUG`
+pins the selected worker count; `1` keeps the normal single-agent path, while
+`2`-`8` lets the runner shard source tasks across parallel workers after
+candidates are found.
 
 ```bash
 ACCT="${BUILDER_BLOG_ACCOUNT}"
@@ -110,6 +113,7 @@ ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
 printf '{{AGENT_RUNTIME}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-library-cron-$ACCOUNT_SLUG"
 printf '{{FETCH_FORCE}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-force-library-cron-$ACCOUNT_SLUG"
 printf '{{FETCH_DAYS}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-days-library-cron-$ACCOUNT_SLUG"
+printf '{{PARALLEL_WORKERS}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/parallel-library-cron-$ACCOUNT_SLUG"
 ```
 
 5. Verify the runtime CLI is on PATH for the scheduler. Schedulers (launchd and

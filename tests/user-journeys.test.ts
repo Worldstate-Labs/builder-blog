@@ -477,7 +477,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /label: "OpenClaw"/);
   assert.match(skillJobRoute, /searchParams\.get\("freq"\)/);
   assert.match(skillJobRoute, /searchParams\.get\("days"\)/);
+  assert.match(skillJobRoute, /searchParams\.get\("parallel"\)/);
   assert.match(skillJobRoute, /\{\{FETCH_DAYS\}\}/);
+  assert.match(skillJobRoute, /\{\{PARALLEL_WORKERS\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_KEY\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_SCHEDULE\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_LABEL\}\}/);
@@ -496,6 +498,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillFileRoute, /\{\{FETCH_FLAG\}\}/);
   assert.match(skillFileRoute, /\{\{FETCH_DAYS\}\}/);
   assert.match(skillFileRoute, /replaceAll\("\{\{FETCH_DAYS\}\}", "30"\)/);
+  assert.match(skillFileRoute, /replaceAll\("\{\{PARALLEL_WORKERS\}\}", "1"\)/);
   // cron-setup prompts use the placeholders, not a hard-coded schedule, and
   // install via launchd on macOS / crontab on Linux.
   assert.match(libraryCronSetupPrompt, /\{\{CRON_SCHEDULE\}\}/);
@@ -507,6 +510,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /verify this account's local credential/);
   assert.match(libraryCronSetupPrompt, /Account file not found for \$ACCT/);
   assert.match(libraryCronSetupPrompt, /Stop before installing the schedule/);
+  assert.match(libraryCronSetupPrompt, /parallel-library-cron-\$ACCOUNT_SLUG/);
+  assert.match(libraryCronSetupPrompt, /\{\{PARALLEL_WORKERS\}\}/);
   assertOrderedText(libraryCronSetupPrompt, [
     "Create required directories and verify this account's local credential",
     "Account file not found for $ACCT",
@@ -866,7 +871,7 @@ test("web app serves the agent skill and setup command", () => {
   // job types can use different runtimes on one machine.
   assert.match(libraryCronSetupPrompt, /ACCOUNT_SLUG/);
   assert.match(libraryCronSetupPrompt, /runtime-library-cron-\$ACCOUNT_SLUG/);
-  assert.match(libraryCronSetupPrompt, /6\. Install the schedule/);
+  assert.match(libraryCronSetupPrompt, /8\. Only after the smoke check and validation run have both succeeded, install the/);
   assert.match(libraryCronSetupPrompt, /crontab/);
   assert.match(libraryCronSetupPrompt, /Do not use `--force`/);
   assert.match(libraryCronSetupPrompt, /\{\{CRON_INTERVAL_MINUTES\}\}/);
@@ -883,7 +888,7 @@ test("web app serves the agent skill and setup command", () => {
   // cron-setup must NOT restate the fetch-task execution steps.
   assert.match(libraryCronSetupPrompt, /single source of truth/);
   assert.match(libraryCronSetupPrompt, /one real local validation run/);
-  assert.match(libraryCronSetupPrompt, /do not treat a lack of output as a hang/);
+  assert.match(libraryCronSetupPrompt, /do not treat a lack of output as a\s+hang/);
   assert.doesNotMatch(libraryCronSetupPrompt, /How to execute each `fetchTask`/);
   assert.doesNotMatch(libraryCronSetupPrompt, /Read `task\.contentStatus`/);
   assert.doesNotMatch(libraryCronSetupPrompt, /Copy `task\.builderSync`/);
@@ -895,17 +900,17 @@ test("web app serves the agent skill and setup command", () => {
   assertOrderedText(libraryCronSetupPrompt, [
     "account's library fetch cron",
     "4. Pin the scheduled runtime",
-    "6. Install the schedule",
-    "launchctl bootstrap",
-    "7. Run one immediate runtime smoke check",
+    "6. Run one immediate runtime smoke check",
     "BUILDER_BLOG_SMOKE_CHECK=1",
     "INTERVAL_MINUTES=\"{{CRON_INTERVAL_MINUTES}}\"",
     "report its output",
-    "8. After the runtime smoke check succeeds",
+    "7. After the runtime smoke check succeeds",
     "BUILDER_BLOG_WORKER_MODE=1",
     "BUILDER_BLOG_FETCH_LIMIT=1",
     "webSyncDisabled: true",
-    "9. After both checks succeed",
+    "8. Only after the smoke check and validation run have both succeeded",
+    "launchctl bootstrap",
+    "9. After the schedule is installed",
     "cron-status",
   ]);
   // Override-already-fetched toggle: cron-setup pins fetch-force (0/1) next to
@@ -940,7 +945,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(digestCronSetupPrompt, /exec-policy preset yolo/);
   assert.match(digestCronSetupPrompt, /ACCOUNT_SLUG/);
   assert.match(digestCronSetupPrompt, /runtime-digest-cron-\$ACCOUNT_SLUG/);
-  assert.match(digestCronSetupPrompt, /6\. Install the schedule/);
+  assert.match(digestCronSetupPrompt, /8\. Only after the smoke check and validation run have both succeeded, install the/);
   assert.match(digestCronSetupPrompt, /crontab/);
   assert.match(digestCronSetupPrompt, /\{\{CRON_INTERVAL_MINUTES\}\}/);
   // Same pre-install detection + override gate as library.
@@ -955,16 +960,16 @@ test("web app serves the agent skill and setup command", () => {
   assertOrderedText(digestCronSetupPrompt, [
     "account's digest cron",
     "4. Pin the scheduled runtime",
-    "6. Install the schedule",
-    "launchctl bootstrap",
-    "7. Run one immediate runtime smoke check",
+    "6. Run one immediate runtime smoke check",
     "BUILDER_BLOG_SMOKE_CHECK=1",
     "INTERVAL_MINUTES=\"{{CRON_INTERVAL_MINUTES}}\"",
     "report its output",
-    "8. After the runtime smoke check succeeds",
+    "7. After the runtime smoke check succeeds",
     "BUILDER_BLOG_WORKER_MODE=1",
     "webSyncDisabled: true",
-    "9. After both checks succeed",
+    "8. Only after the smoke check and validation run have both succeeded",
+    "launchctl bootstrap",
+    "9. After the schedule is installed",
     "cron-status",
   ]);
   assert.doesNotMatch(skillPromptActions, /fetch-personal[^\n`]*--force/);
@@ -1028,8 +1033,8 @@ test("web app serves the agent skill and setup command", () => {
   // two accounts can run the same job type without sharing runtime or mode.
   assert.match(runner, /read_pin\(\)/);
   assert.match(runner, /ACCOUNT_SLUG/);
-  assert.match(runner, /\$AGENT_DIR\/\$1-\$JOB_NAME-\$ACCOUNT_SLUG/);
-  assert.match(runner, /\$AGENT_DIR\/\$1-\$JOB_NAME/);
+  assert.match(runner, /\$AGENT_DIR\/\$1-\$_pin_job-\$ACCOUNT_SLUG/);
+  assert.match(runner, /\$AGENT_DIR\/\$1-\$_pin_job/);
   assert.match(runner, /\$AGENT_DIR\/\$1\b/);
   assert.match(runner, /BUILDER_BLOG_JOB_TMP_DIR/);
   assert.match(runner, /CURRENT_FILE="\$JOB_TMP_DIR\/current\.json"/);
@@ -1044,6 +1049,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /read_pin fetch-force/);
   assert.match(runner, /BUILDER_BLOG_FETCH_FORCE="--force"/);
   assert.match(runner, /export BUILDER_BLOG_FETCH_FORCE/);
+  assert.match(runner, /MAX_PARALLEL_WORKERS="\$\(read_pin parallel\)"/);
+  assert.match(runner, /run_sharded_library/);
+  assert.match(runner, /OPENCLAW_SESSION_ID="\$\(printf 'followbrief-%s-%s-%s'/);
   assert.match(cli, /if \(envAccount\)/);
   assert.match(cli, /if \(envToken\)/);
   assert.ok(
@@ -2953,7 +2961,7 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(settingsPage, /canEditQualityGates=\{isAdmin\}/);
   assert.match(settingsPage, /getUserDigestConfig\(userId\)/);
   assert.doesNotMatch(settingsPage, /Source and digest rules/);
-  assert.match(settingsPage, /Fetch sources rules/);
+  assert.match(settingsPage, /Source fetching rules/);
   assert.doesNotMatch(settingsPage, /Source fetch rules/);
   assert.match(settingsPage, /AI Digest rules/);
   assert.doesNotMatch(settingsPage, />Digest rules</);
@@ -2987,9 +2995,9 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(digestForm, /\/api\/settings\/digest-config/);
   assert.match(digestForm, /AI Digest prompts/);
   assert.match(digestForm, /selected AI Digest language/);
-  assert.match(digestForm, /Localized post summary prompt/);
+  assert.match(digestForm, /Post summary prompt/);
   assert.match(digestForm, /Headline prompt cannot be empty\./);
-  assert.match(digestForm, /Localized post summary prompt cannot be empty\./);
+  assert.match(digestForm, /Post summary prompt cannot be empty\./);
   assert.match(digestForm, /draft\.perSourceSummaryPrompt\.trim\(\)\.length === 0 \? "" : draft\.perSourceSummaryPrompt/);
   assert.match(digestForm, /Could not save AI Digest prompts\./);
   assert.doesNotMatch(digestForm, /title="Digest prompts"|selected digest language|label="Translate prompt"|ariaLabel="Translate prompt"/);
