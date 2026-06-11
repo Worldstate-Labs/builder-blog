@@ -1701,8 +1701,7 @@ function describeWork(task: FetchTaskLog): WorkInfo {
     case "youtube_transcription":
       return {
         label: "YouTube transcript",
-        blurb:
-          "The video transcript was read and summarized.",
+        blurb: "The Local Agent uses the video transcript for this task.",
         fix: null,
       };
     case "fetch_builder_fallback":
@@ -1737,6 +1736,13 @@ function fetchOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
   if (isBlocked(task)) return { label: "Blocked", tone: "fail" };
   // A content failure is a fetch-stage failure (no real crawled content).
   if (isContentFailure(task)) return { label: "Failed", tone: "fail" };
+  if (
+    task.status === "failed" &&
+    task.failureReason === "worker_missing_result" &&
+    typeof task.bodyChars !== "number"
+  ) {
+    return { label: "Not completed", tone: "fail" };
+  }
   if (typeof task.bodyChars === "number" && task.bodyChars > 0)
     return { label: "Fetched", tone: "ok" };
   if (task.contentStatus === "ready") return { label: "Fetched", tone: "ok" };
@@ -1752,7 +1758,7 @@ const FAILURE_REASON_LABEL: Record<string, string> = {
   content_too_short: "The readable content was too short",
   // Parallel-run outcomes backfilled by merge-task-results when a shard
   // worker never reported a task (crash/timeout) or discovery never expanded.
-  worker_missing_result: "A parallel worker did not finish this task",
+  worker_missing_result: "A parallel worker stopped before reporting this task",
   discovery_not_expanded: "Candidate discovery did not complete",
 };
 
@@ -1798,6 +1804,26 @@ function statusBanner(task: FetchTaskLog): { label: string; tone: Tone } {
   if (task.status === "action_needed") return { label: "Action needed", tone: "fail" };
   if (isBlocked(task)) return { label: "Action needed", tone: "fail" };
   return { label: "Awaiting summary", tone: "warn" };
+}
+
+function missingShardText(task: FetchTaskLog): string | null {
+  const missingShard = task.evidence?.missingShard;
+  if (!missingShard || typeof missingShard !== "object") return null;
+  const shard = "shard" in missingShard ? String(missingShard.shard) : null;
+  const resultFile = "resultFile" in missingShard ? String(missingShard.resultFile) : null;
+  if (!shard && !resultFile) return null;
+  const parts = [];
+  if (shard) parts.push(shard);
+  if (resultFile) parts.push(`missing ${resultFile}`);
+  return parts.join(" · ");
+}
+
+function workerLogText(task: FetchTaskLog): string | null {
+  const missingShard = task.evidence?.missingShard;
+  if (!missingShard || typeof missingShard !== "object") return null;
+  if (!("workerLogTail" in missingShard)) return null;
+  const tail = missingShard.workerLogTail;
+  return typeof tail === "string" && tail.trim() ? tail.trim() : null;
 }
 
 function sizeText(chars: number | null | undefined, words: number | null | undefined): string | null {
@@ -1876,6 +1902,12 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
   const bodySize = sizeText(task.bodyChars, task.bodyWords);
   const summarySize = sizeText(task.summaryChars, task.summaryWords);
   const compression = compressionText(task.bodyChars, task.summaryChars);
+  const bannerBlurb =
+    banner.tone === "fail"
+      ? failureReasonText(task) ?? work.blurb
+      : work.blurb;
+  const missingShard = missingShardText(task);
+  const workerLog = workerLogText(task);
 
   return (
     <li>
@@ -1910,8 +1942,8 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
             style={bannerStyle}
           >
             {banner.label}
-            {work.blurb ? (
-              <span className="sync-panel-task-banner-blurb">: {work.blurb}</span>
+            {bannerBlurb ? (
+              <span className="sync-panel-task-banner-blurb">: {bannerBlurb}</span>
             ) : null}
           </div>
 
@@ -1990,6 +2022,18 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
                 value={
                   <span className="sync-panel-task-danger">{failureReasonText(task)}</span>
                 }
+              />
+            ) : null}
+            {missingShard ? (
+              <FactRow
+                label="Missing result"
+                value={<span className="mono">{missingShard}</span>}
+              />
+            ) : null}
+            {workerLog ? (
+              <FactRow
+                label="Worker log"
+                value={<span className="mono">{workerLog}</span>}
               />
             ) : null}
             {!agentLabel && !summarySize && !failureReasonText(task) ? (

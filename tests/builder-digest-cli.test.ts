@@ -2132,7 +2132,23 @@ test("merge-task-results merges shard payloads and backfills missing tasks as fa
     },
     { name: "shard-1-result.json", error: "worker timed out" },
   ];
-  const merged = cli.mergeShardSyncPayloads(fetchResult, shardResults);
+  const merged = cli.mergeShardSyncPayloads(fetchResult, shardResults, {
+    shardTimeoutSeconds: 1440,
+    shardPlans: [
+      {
+        shard: "shard-0",
+        resultFile: "shard-0-result.json",
+        tasks: fetchResult.fetchTasks.slice(0, 2),
+      },
+      {
+        shard: "shard-1",
+        resultFile: "shard-1-result.json",
+        workerLogFile: "shard-1-worker.log",
+        workerLogTail: "Worker shard-1 exceeded 1440s; terminating it.",
+        tasks: [fetchResult.fetchTasks[2]],
+      },
+    ],
+  });
 
   // t1 synced, t2 outcome preserved, t3 backfilled, t4 (user action) untouched.
   assert.equal(merged.payload.builders.length, 1);
@@ -2141,11 +2157,26 @@ test("merge-task-results merges shard payloads and backfills missing tasks as fa
     fetchTaskId: string;
     status: string;
     reason: string;
+    evidence?: Record<string, unknown>;
   }[];
   const outcomesById = new Map(outcomes.map((o) => [o.fetchTaskId, o]));
   assert.deepEqual([...outcomesById.keys()].sort(), ["t2", "t3"]);
   assert.equal(outcomesById.get("t3")?.status, "failed");
   assert.equal(outcomesById.get("t3")?.reason, "worker_missing_result");
+  const t3Evidence = outcomesById.get("t3")?.evidence as {
+    missingShard?: {
+      shard?: string;
+      resultFile?: string;
+      workerLogTail?: string;
+      taskIds?: string[];
+    };
+    shardTimeoutSeconds?: number;
+  };
+  assert.equal(t3Evidence.missingShard?.shard, "shard-1");
+  assert.equal(t3Evidence.missingShard?.resultFile, "shard-1-result.json");
+  assert.deepEqual(t3Evidence.missingShard?.taskIds, ["t3"]);
+  assert.match(t3Evidence.missingShard?.workerLogTail ?? "", /exceeded 1440s/);
+  assert.equal(t3Evidence.shardTimeoutSeconds, 1440);
   assert.equal(merged.backfilledOutcomes, 1);
   // Duplicate item for an already-synced normal task is dropped on merge.
   const withDuplicate = cli.mergeShardSyncPayloads(fetchResult, [

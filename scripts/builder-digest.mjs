@@ -3618,11 +3618,68 @@ async function shardTasks(args) {
   );
 }
 
-export function mergeShardSyncPayloads(fetchResult, shardResults) {
+function normalizeShardPlan(plan) {
+  if (!plan || typeof plan !== "object") return null;
+  const shard = String(plan.shard || plan.name || "").trim();
+  if (!shard) return null;
+  const resultFile = String(plan.resultFile || `${shard}-result.json`);
+  const tasks = Array.isArray(plan.tasks) ? plan.tasks : [];
+  return {
+    shard,
+    resultFile,
+    workerLogFile: String(plan.workerLogFile || `${shard}-worker.log`),
+    workerLogTail: typeof plan.workerLogTail === "string" ? plan.workerLogTail : null,
+    workerLogBytes: Number.isFinite(Number(plan.workerLogBytes)) ? Number(plan.workerLogBytes) : null,
+    taskCount: Number.isFinite(Number(plan.taskCount)) ? Number(plan.taskCount) : tasks.length,
+    taskIds: tasks.map((task) => String(task?.id || fetchTaskId(task))),
+    taskTitles: tasks
+      .map((task) => task?.title || task?.item?.title || task?.url || task?.item?.url || task?.id || null)
+      .filter(Boolean)
+      .slice(0, 5),
+  };
+}
+
+function missingShardEvidence(task, shardPlan, shardSummaries, options = {}) {
+  const evidence = {
+    mergedBy: "merge-task-results",
+    failureKind: "missing_worker_result_file",
+    shards: shardSummaries.map((s) => `${s.shard}:${s.status}`),
+  };
+  if (shardPlan) {
+    evidence.missingShard = {
+      shard: shardPlan.shard,
+      resultFile: shardPlan.resultFile,
+      workerLogFile: shardPlan.workerLogFile,
+      taskCount: shardPlan.taskCount,
+      taskIds: shardPlan.taskIds,
+      taskTitles: shardPlan.taskTitles,
+    };
+    if (shardPlan.workerLogTail) evidence.missingShard.workerLogTail = shardPlan.workerLogTail;
+    if (shardPlan.workerLogBytes !== null) evidence.missingShard.workerLogBytes = shardPlan.workerLogBytes;
+  } else {
+    evidence.missingTask = {
+      taskId: String(task?.id || fetchTaskId(task)),
+      title: task?.title || task?.url || null,
+    };
+  }
+  if (Number.isFinite(Number(options.shardTimeoutSeconds))) {
+    evidence.shardTimeoutSeconds = Number(options.shardTimeoutSeconds);
+  }
+  return evidence;
+}
+
+export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) {
   const planned = extractFetchTasks(fetchResult);
   const taskTypeById = new Map(
     planned.map((task) => [String(task?.id || fetchTaskId(task)), task?.agentWorkType || ""]),
   );
+  const shardPlans = (options.shardPlans ?? [])
+    .map(normalizeShardPlan)
+    .filter(Boolean);
+  const shardPlanByTaskId = new Map();
+  for (const plan of shardPlans) {
+    for (const taskId of plan.taskIds) shardPlanByTaskId.set(taskId, plan);
+  }
 
   const builders = [];
   const builderIndex = new Map();
@@ -3689,6 +3746,17 @@ export function mergeShardSyncPayloads(fetchResult, shardResults) {
       taskOutcomes: outcomeCount,
     });
   }
+  const knownShardResults = new Set(shardSummaries.map((summary) => summary.shard));
+  for (const plan of shardPlans) {
+    if (knownShardResults.has(plan.resultFile)) continue;
+    shardSummaries.push({
+      shard: plan.resultFile,
+      status: "missing",
+      error: "no result file",
+      sourceShard: plan.shard,
+      taskCount: plan.taskCount,
+    });
+  }
 
   // Terminal-state backstop: every planned task a worker never reported
   // (worker crash, timeout, missing result file, un-expanded discovery)
@@ -3707,10 +3775,12 @@ export function mergeShardSyncPayloads(fetchResult, shardResults) {
         task?.agentWorkType === "candidate_discovery_fallback"
           ? "discovery_not_expanded"
           : "worker_missing_result",
-      evidence: {
-        mergedBy: "merge-task-results",
-        shards: shardSummaries.map((s) => `${s.shard}:${s.status}`),
-      },
+      evidence: missingShardEvidence(
+        task,
+        shardPlanByTaskId.get(id),
+        shardSummaries,
+        options,
+      ),
     });
     backfilled += 1;
   }
@@ -3722,10 +3792,59 @@ export function mergeShardSyncPayloads(fetchResult, shardResults) {
   };
 }
 
+function tailLines(text, maxLines = 20, maxChars = 3000) {
+  const lines = String(text || "").split(/\r?\n/).filter((line) => line.length > 0);
+  const tail = lines.slice(-maxLines).join("\n");
+  if (tail.length <= maxChars) return tail;
+  return tail.slice(tail.length - maxChars);
+}
+
+async function readOptionalText(file) {
+  try {
+    return await readFile(file, "utf8");
+  } catch {
+    return null;
+  }
+}
+
+async function readShardPlans(resultsDir) {
+  const shardDir = dirname(resultsDir);
+  let names;
+  try {
+    names = await readdir(shardDir);
+  } catch {
+    return [];
+  }
+  const shardNames = names.filter((name) => /^shard-.*\.json$/.test(name)).sort();
+  const plans = [];
+  for (const name of shardNames) {
+    const file = join(shardDir, name);
+    const shard = name.replace(/\.json$/, "");
+    let payload;
+    try {
+      payload = JSON.parse(await readFile(file, "utf8"));
+    } catch {
+      payload = {};
+    }
+    const workerLogFile = `${shard}-worker.log`;
+    const workerLogText = await readOptionalText(join(resultsDir, workerLogFile));
+    plans.push({
+      shard,
+      resultFile: `${shard}-result.json`,
+      workerLogFile,
+      workerLogTail: workerLogText ? tailLines(workerLogText) : null,
+      workerLogBytes: workerLogText ? Buffer.byteLength(workerLogText, "utf8") : null,
+      tasks: Array.isArray(payload.fetchTasks) ? payload.fetchTasks : [],
+    });
+  }
+  return plans;
+}
+
 async function mergeTaskResults(args) {
   const tasksFile = argValue(args, "--tasks");
   const resultsDir = argValue(args, "--results-dir");
   const outFile = argValue(args, "--out");
+  const shardTimeoutSeconds = Number(argValue(args, "--shard-timeout-seconds", ""));
   if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
   if (!resultsDir) throw new Error("Missing --results-dir");
   if (!outFile) throw new Error("Missing --out library-agent-sync.json");
@@ -3747,7 +3866,10 @@ async function mergeTaskResults(args) {
     }
   }
 
-  const merged = mergeShardSyncPayloads(fetchResult, shardResults);
+  const merged = mergeShardSyncPayloads(fetchResult, shardResults, {
+    shardPlans: await readShardPlans(resultsDir),
+    shardTimeoutSeconds: Number.isFinite(shardTimeoutSeconds) ? shardTimeoutSeconds : null,
+  });
   await writeFile(outFile, `${JSON.stringify(merged.payload, null, 2)}\n`, "utf8");
   console.log(
     JSON.stringify(

@@ -815,6 +815,7 @@ run_sharded_library() {
   node "$AGENT_DIR/builder-digest.mjs" merge-task-results \
     --tasks "$_result_file" \
     --results-dir "$_results_dir" \
+    --shard-timeout-seconds "$_shard_timeout" \
     --out "$JOB_TMP_DIR/library-agent-sync.json"
 
   # Validate-and-repair loop. In the single-agent path the runtime agent sees
