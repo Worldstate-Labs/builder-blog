@@ -4,13 +4,15 @@ tasks.
 This is an unattended parallel worker run launched by the FollowBrief runner.
 Do not ask the user questions.
 
-You complete ONLY the fetch tasks in your assigned shard file, write one shard
-result JSON file, and stop. The runner merges every worker's result, validates
-the combined payload with `validate-agent-sync`, and syncs it with
-`sync-builders`. Because of that, these boundaries are hard:
+You complete ONLY the fetch tasks in your assigned shard file, validate your
+own shard result locally, write it, and stop. The runner merges every worker's
+result, runs the final `validate-agent-sync` over the combined payload, and
+syncs it with `sync-builders`. Because of that, these boundaries are hard:
 
-- Do NOT run `fetch-personal`, `expand-discovery`, `validate-agent-sync`,
-  `sync-builders`, or any other syncing/cron builder-digest.mjs command.
+- Do NOT run `fetch-personal`, `expand-discovery`, `sync-builders`, or any
+  other syncing/cron builder-digest.mjs command. The ONLY builder-digest.mjs
+  command you run is `validate-agent-sync` scoped to your own shard (step 4) —
+  it is a local read-only check and never contacts the server.
 - Do NOT complete tasks that are not in your shard file.
 - Write only your shard result file (plus your own scratch files under the
   shard temp directory, if you need any).
@@ -47,8 +49,23 @@ shaped exactly like a full sync payload but covering only this shard's tasks:
 ```
 
 Every fetchTaskId in your shard file must end as exactly one synced item or
-one `taskOutcomes` entry in this file. Do not validate or sync it yourself —
-the runner does that over the merged result of all workers.
+one `taskOutcomes` entry in this file.
 
-4. Print one final JSON line to stdout and stop:
+4. Validate YOUR OWN shard before reporting — your shard file is a valid
+`--tasks` input, so the same validator the runner uses on the merged payload
+can check your slice now, while you can still fix it:
+
+```bash
+BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" validate-agent-sync \
+  --tasks "$BUILDER_BLOG_SHARD_FILE" \
+  --file "$BUILDER_BLOG_SHARD_RESULT"
+```
+
+If it reports errors (for example `summary_too_long` or a content-quality
+gate), fix the listed items in your shard result — and only those — then
+re-run the command. Repeat until it prints `"status": "ok"`. Do not exit with
+a result file that still fails its own shard validation.
+
+5. Print one final JSON line to stdout and stop:
 `{"shardDone": true, "items": <synced item count>, "taskOutcomes": <outcome count>}`
