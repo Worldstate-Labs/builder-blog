@@ -31,6 +31,8 @@ curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-cron-setup.md" -o "$AG
 curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest-cron-setup.md" -o "$AGENT_DIR/jobs/digest-cron-setup.md"
 curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-cron.md" -o "$AGENT_DIR/jobs/library-cron.md"
 curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest-cron.md" -o "$AGENT_DIR/jobs/digest-cron.md"
+curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-worker.md" -o "$AGENT_DIR/jobs/library-worker.md"
+curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-discovery.md" -o "$AGENT_DIR/jobs/library-discovery.md"
 # Per-source config (content-quality floors, url patterns) — the single source
 # of truth the CLI reads. Downloaded here so the once-flow (bootstrap → direct
 # CLI, no runner) always has it; the CLI no longer carries an embedded fallback.

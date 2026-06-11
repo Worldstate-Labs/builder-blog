@@ -567,16 +567,26 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /BUILDER_BLOG_PROMPT_URL/);
   assert.doesNotMatch(skillPromptActions, /builder-agent-runner\.sh \$\{job\}/);
   assert.doesNotMatch(skillPromptActions, /Run the commands exactly in order/);
-  // The fetch-task / summarize execution contract is a single shared
-  // fragment; library-once and library-cron pull it in via an
-  // {{INCLUDE:...}} directive expanded server-side. Tests assert on the
-  // EXPANDED prompt (what the agent actually receives) plus the directive
-  // itself, so the contract can live in exactly one place and the two
-  // jobs can never drift.
-  const fetchTaskContract = readFileSync(
-    "skills/builder-blog-digest/jobs/_fetch-task-contract.md",
+  // The fetch-task / summarize execution contract is a set of shared
+  // fragments (discovery → per-task core → validate/sync tail); library-once
+  // and library-cron pull all three in via {{INCLUDE:...}} directives
+  // expanded server-side, and the parallel worker prompt reuses ONLY the
+  // core. Tests assert on the EXPANDED prompt (what the agent actually
+  // receives) plus the directives themselves, so the contract lives in
+  // exactly one place and the sequential/parallel jobs can never drift.
+  const fetchTaskDiscovery = readFileSync(
+    "skills/builder-blog-digest/jobs/_fetch-task-discovery.md",
     "utf8",
   );
+  const fetchTaskCore = readFileSync(
+    "skills/builder-blog-digest/jobs/_fetch-task-core.md",
+    "utf8",
+  );
+  const fetchTaskSyncing = readFileSync(
+    "skills/builder-blog-digest/jobs/_fetch-task-syncing.md",
+    "utf8",
+  );
+  const fetchTaskContract = [fetchTaskDiscovery, fetchTaskCore, fetchTaskSyncing].join("\n");
   const digestTaskContract = readFileSync(
     "skills/builder-blog-digest/jobs/_digest-task-contract.md",
     "utf8",
@@ -595,9 +605,25 @@ test("web app serves the agent skill and setup command", () => {
   function expandIncludes(content: string): string {
     return content
       .replace(
-        /\{\{INCLUDE:fetch-task-contract REPORT_TARGET="([^"]*)" TMP_JOB="([^"]*)"\}\}/g,
+        /\{\{INCLUDE:fetch-task-discovery TMP_JOB="([^"]*)"\}\}/g,
+        (_m, tmpJob) =>
+          fetchTaskDiscovery
+            .replace(/^\s*<!--[\s\S]*?-->\s*/, "")
+            .replaceAll("{{TMP_JOB}}", tmpJob)
+            .trim(),
+      )
+      .replace(
+        /\{\{INCLUDE:fetch-task-core REPORT_TARGET="([^"]*)"\}\}/g,
+        (_m, target) =>
+          fetchTaskCore
+            .replace(/^\s*<!--[\s\S]*?-->\s*/, "")
+            .replaceAll("{{REPORT_TARGET}}", target)
+            .trim(),
+      )
+      .replace(
+        /\{\{INCLUDE:fetch-task-syncing REPORT_TARGET="([^"]*)" TMP_JOB="([^"]*)"\}\}/g,
         (_m, target, tmpJob) =>
-          fetchTaskContract
+          fetchTaskSyncing
             .replace(/^\s*<!--[\s\S]*?-->\s*/, "")
             .replaceAll("{{REPORT_TARGET}}", target)
             .replaceAll("{{TMP_JOB}}", tmpJob)
@@ -621,12 +647,38 @@ test("web app serves the agent skill and setup command", () => {
   // directive, and neither raw file restates the execution steps inline.
   assert.match(
     libraryOncePrompt,
-    /\{\{INCLUDE:fetch-task-contract REPORT_TARGET="to the user" TMP_JOB="library-once"\}\}/,
+    /\{\{INCLUDE:fetch-task-discovery TMP_JOB="library-once"\}\}/,
+  );
+  assert.match(
+    libraryOncePrompt,
+    /\{\{INCLUDE:fetch-task-core REPORT_TARGET="to the user"\}\}/,
+  );
+  assert.match(
+    libraryOncePrompt,
+    /\{\{INCLUDE:fetch-task-syncing REPORT_TARGET="to the user" TMP_JOB="library-once"\}\}/,
   );
   assert.match(
     libraryCronPrompt,
-    /\{\{INCLUDE:fetch-task-contract REPORT_TARGET="to the scheduled job log" TMP_JOB="library-cron"\}\}/,
+    /\{\{INCLUDE:fetch-task-discovery TMP_JOB="library-cron"\}\}/,
   );
+  assert.match(
+    libraryCronPrompt,
+    /\{\{INCLUDE:fetch-task-core REPORT_TARGET="to the scheduled job log"\}\}/,
+  );
+  assert.match(
+    libraryCronPrompt,
+    /\{\{INCLUDE:fetch-task-syncing REPORT_TARGET="to the scheduled job log" TMP_JOB="library-cron"\}\}/,
+  );
+  // The parallel worker prompt reuses ONLY the per-task core — no discovery,
+  // no validate/sync (the runner owns those in a sharded run).
+  const libraryWorkerPrompt = readFileSync(
+    "skills/builder-blog-digest/jobs/library-worker.md",
+    "utf8",
+  );
+  assert.match(libraryWorkerPrompt, /\{\{INCLUDE:fetch-task-core REPORT_TARGET="[^"]+"\}\}/);
+  assert.doesNotMatch(libraryWorkerPrompt, /\{\{INCLUDE:fetch-task-discovery/);
+  assert.doesNotMatch(libraryWorkerPrompt, /\{\{INCLUDE:fetch-task-syncing/);
+  assert.doesNotMatch(libraryWorkerPrompt, /How to execute each `fetchTask`/);
   assert.doesNotMatch(libraryOncePrompt, /How to execute each `fetchTask`/);
   assert.doesNotMatch(libraryCronPrompt, /How to execute each `fetchTask`/);
   // Expansion leaves no unresolved placeholders.
@@ -636,8 +688,15 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryOnceExpanded, /Action needed" notice and skip[\s\S]*to the user/);
   assert.match(libraryCronExpanded, /Action needed" notice and skip[\s\S]*to the scheduled job log/);
 
-  // Contract content, asserted on the expanded once-prompt.
-  assert.match(libraryOnceExpanded, /fetch-personal --days \{\{FETCH_DAYS\}\} --limit 3/);
+  // Contract content, asserted on the expanded once-prompt. The fetch command
+  // prefers the runner-exported ${BUILDER_BLOG_FETCH_*} settings (so a
+  // runner-launched one-time run matches the recurring job's pins) and falls
+  // back to the per-copy baked values when pasted directly — `${VAR-default}`
+  // (no colon) so the runner's exported-but-empty force suppresses the flag.
+  assert.match(
+    libraryOnceExpanded,
+    /fetch-personal --days \$\{BUILDER_BLOG_FETCH_DAYS-\{\{FETCH_DAYS\}\}\} --limit \$\{BUILDER_BLOG_FETCH_LIMIT-3\}/,
+  );
   assert.match(libraryOnceExpanded, /validate-agent-sync/);
   assert.match(libraryOnceExpanded, /sync-builders/);
   assert.match(libraryOnceExpanded, /--tasks "\$TMP_DIR\/library-fetch-result\.json"/);
@@ -669,7 +728,7 @@ test("web app serves the agent skill and setup command", () => {
   // to run the command verbatim.
   assert.match(
     libraryOnceExpanded,
-    /fetch-personal --days \{\{FETCH_DAYS\}\} --limit 3 \{\{FETCH_FLAG\}\}/,
+    /fetch-personal --days \$\{BUILDER_BLOG_FETCH_DAYS-\{\{FETCH_DAYS\}\}\} --limit \$\{BUILDER_BLOG_FETCH_LIMIT-3\} \$\{BUILDER_BLOG_FETCH_FORCE-\{\{FETCH_FLAG\}\}\}/,
   );
   assert.match(libraryOnceExpanded, /Do not add or remove `--force`\s+yourself/);
   assert.doesNotMatch(libraryOnceExpanded, /Do not use `--force`\./);
@@ -700,8 +759,20 @@ test("web app serves the agent skill and setup command", () => {
   const tracingForJobsRoute = nextConfig.slice(
     nextConfig.indexOf('"/api/skill/jobs/[job]/skill.md"'),
   );
-  assert.match(tracingForFilesRoute, /_fetch-task-contract\.md/);
-  assert.match(tracingForJobsRoute, /_fetch-task-contract\.md/);
+  for (const fragment of [
+    "_fetch-task-discovery.md",
+    "_fetch-task-core.md",
+    "_fetch-task-syncing.md",
+  ]) {
+    assert.ok(
+      tracingForFilesRoute.includes(fragment),
+      `files-route tracing is missing ${fragment}`,
+    );
+    assert.ok(
+      tracingForJobsRoute.includes(fragment),
+      `jobs-route tracing is missing ${fragment}`,
+    );
+  }
   // Every job the [job]/skill.md route can serve must be in its tracing list,
   // or that job 500s (ENOENT) on Vercel even though it works locally. Derive
   // the set from the registry so a newly-added job can't be forgotten here
@@ -1212,7 +1283,7 @@ test("fetch task success requires a persisted summary; failures are recorded wit
   // The contract tells the agent a task is complete only when synced with a
   // summary, and to not silently drop unsummarized tasks.
   const contract = readFileSync(
-    "skills/builder-blog-digest/jobs/_fetch-task-contract.md",
+    "skills/builder-blog-digest/jobs/_fetch-task-syncing.md",
     "utf8",
   );
   assert.match(contract, /complete ONLY when its item is synced with real crawled content/);
@@ -1244,11 +1315,12 @@ test("every fetchTask resolves to a terminal state; skips need per-task evidence
   assert.doesNotMatch(panel, /Skipped — no content/);
   assert.match(panel, /formatEvidence/);
 
-  // Contract forbids cross-task generalization / blanket skips.
-  const contract = readFileSync(
-    "skills/builder-blog-digest/jobs/_fetch-task-contract.md",
-    "utf8",
-  );
+  // Contract forbids cross-task generalization / blanket skips. The rule
+  // spans the per-task core and the validate/sync tail, so assert on both.
+  const contract = [
+    readFileSync("skills/builder-blog-digest/jobs/_fetch-task-core.md", "utf8"),
+    readFileSync("skills/builder-blog-digest/jobs/_fetch-task-syncing.md", "utf8"),
+  ].join("\n");
   assert.match(contract, /NEVER infer one task's content/);
   assert.match(contract, /per-task evidence/);
   assert.match(contract, /taskOutcomes/);
@@ -2940,7 +3012,7 @@ test("content config is per-user, seeded from a system default", () => {
 
   // Config is no longer described as admin-owned in the agent contract / CLI.
   const contract = readFileSync(
-    "skills/builder-blog-digest/jobs/_fetch-task-contract.md",
+    "skills/builder-blog-digest/jobs/_fetch-task-core.md",
     "utf8",
   );
   assert.match(contract, /common fetching rules plus your per-source fetch prompt/);

@@ -1709,6 +1709,10 @@ const FAILURE_REASON_LABEL: Record<string, string> = {
   not_synced: "Not saved",
   content_missing: "No readable content was found",
   content_too_short: "The readable content was too short",
+  // Parallel-run outcomes backfilled by merge-task-results when a shard
+  // worker never reported a task (crash/timeout) or discovery never expanded.
+  worker_missing_result: "A parallel worker did not finish this task",
+  discovery_not_expanded: "Candidate discovery did not complete",
 };
 
 function failureReasonText(task: FetchTaskLog): string | null {

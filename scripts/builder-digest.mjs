@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { homedir, hostname, platform, release, userInfo } from "node:os";
 import { dirname, join } from "node:path";
@@ -156,6 +156,8 @@ function usage() {
   exchange --ec <code> [--app-url ${DEFAULT_APP_URL}]
   fetch-personal [--days ${DEFAULT_PERSONAL_FETCH_DAYS}] [--limit 3] [--force] [--agent-model gpt-5.5]
   expand-discovery --tasks fetch-result.json --file discovery-result.json [--out expanded-fetch-result.json]
+  shard-tasks --tasks fetch-result.json --out-dir shards/ [--max-workers 3]
+  merge-task-results --tasks fetch-result.json --results-dir shards/results/ --out library-agent-sync.json
   prepare [--regenerate]
   validate-agent-sync --tasks fetch-result.json --file personal-builders.json
   sync-builders --file personal-builders.json [--tasks fetch-result.json] [--agent-model gpt-5.5]
@@ -3388,6 +3390,275 @@ async function expandDiscovery(args) {
   console.log(json.trimEnd());
 }
 
+// --- Parallel shard orchestration -----------------------------------------
+// shard-tasks / merge-task-results back the runner's sharded library run:
+// shard-tasks splits a fetch result's fetchTasks into at most N worker shard
+// files, and merge-task-results reassembles the workers' per-shard payloads
+// into the single sync payload that validate-agent-sync / sync-builders
+// consume. Grouping is by builder so one source's tasks are never fetched by
+// two concurrent workers (per-source serialization is the rate-limit
+// contract), and weights bias the bin-packing so transcript-heavy sources
+// don't pile onto one shard.
+
+function shardTaskWeight(task) {
+  if (task?.contentStatus === "ready") return 1;
+  const sourceType = String(task?.sourceType || "").toLowerCase();
+  if (sourceType === "youtube" || sourceType === "podcast") return 4;
+  return 2;
+}
+
+function shardGroupKey(task) {
+  const sync = task?.builderSync ?? {};
+  return String(
+    sync.builderId || task?.builderId || sync.sourceUrl || sync.handle || task?.builder || "ungrouped",
+  );
+}
+
+export function shardFetchTasksForWorkers(fetchResult, maxWorkers) {
+  const all = extractFetchTasks(fetchResult);
+  const userActionTasks = all.filter((task) => task?.agentWorkType === "x_token_missing");
+  const discoveryTasks = all.filter(
+    (task) => task?.agentWorkType === "candidate_discovery_fallback",
+  );
+  const workTasks = all.filter(
+    (task) =>
+      task?.agentWorkType !== "x_token_missing" &&
+      task?.agentWorkType !== "candidate_discovery_fallback",
+  );
+
+  const groups = new Map();
+  for (const task of workTasks) {
+    const key = shardGroupKey(task);
+    const group = groups.get(key) ?? { key, weight: 0, tasks: [] };
+    group.weight += shardTaskWeight(task);
+    group.tasks.push(task);
+    groups.set(key, group);
+  }
+
+  const shardCount = Math.max(1, Math.min(maxWorkers, groups.size));
+  const shards = Array.from({ length: shardCount }, () => ({ weight: 0, tasks: [] }));
+  const ordered = [...groups.values()].sort((a, b) => b.weight - a.weight);
+  for (const group of ordered) {
+    const target = shards.reduce(
+      (best, shard) => (shard.weight < best.weight ? shard : best),
+      shards[0],
+    );
+    target.weight += group.weight;
+    target.tasks.push(...group.tasks);
+  }
+  return {
+    shards: shards.filter((shard) => shard.tasks.length > 0),
+    userActionTasks,
+    discoveryTasks,
+  };
+}
+
+async function shardTasks(args) {
+  const tasksFile = argValue(args, "--tasks");
+  const outDir = argValue(args, "--out-dir");
+  const maxWorkersRaw = Number(argValue(args, "--max-workers", "3"));
+  const maxWorkers = Number.isFinite(maxWorkersRaw)
+    ? Math.max(1, Math.min(8, Math.floor(maxWorkersRaw)))
+    : 3;
+  if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
+  if (!outDir) throw new Error("Missing --out-dir");
+
+  const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
+  const { shards, userActionTasks, discoveryTasks } = shardFetchTasksForWorkers(
+    fetchResult,
+    maxWorkers,
+  );
+  await mkdir(outDir, { recursive: true });
+  const shardFiles = [];
+  for (const [index, shard] of shards.entries()) {
+    const file = join(outDir, `shard-${index}.json`);
+    await writeFile(
+      file,
+      `${JSON.stringify(
+        {
+          status: "ok",
+          shardIndex: index,
+          shardCount: shards.length,
+          fetchTasks: shard.tasks,
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+    shardFiles.push({ file, tasks: shard.tasks.length, weight: shard.weight });
+  }
+  console.log(
+    JSON.stringify(
+      {
+        status: "ok",
+        shards: shardFiles,
+        // Leftover discovery tasks mean the pre-pass failed or was skipped;
+        // they are excluded from shards and merge-task-results reports them
+        // as failed outcomes so validation still sees a terminal state.
+        discoveryTasks: discoveryTasks.map((task) => task.id || fetchTaskId(task)),
+        userActions: userActionTasks.map((task) => ({
+          fetchTaskId: task.id || fetchTaskId(task),
+          message: task.agentMessage ?? null,
+        })),
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+export function mergeShardSyncPayloads(fetchResult, shardResults) {
+  const planned = extractFetchTasks(fetchResult);
+  const taskTypeById = new Map(
+    planned.map((task) => [String(task?.id || fetchTaskId(task)), task?.agentWorkType || ""]),
+  );
+
+  const builders = [];
+  const builderIndex = new Map();
+  const taskOutcomes = [];
+  // Tasks with any terminal signal (item or outcome) across all shards; the
+  // backfill below covers the rest.
+  const accounted = new Set();
+  // Normal post tasks already synced — duplicate-item guard across shards.
+  const syncedTaskIds = new Set();
+  const seenFallbackItems = new Set();
+  const shardSummaries = [];
+
+  const builderKey = (builder) =>
+    String(builder?.builderId || builder?.sourceUrl || builder?.handle || builder?.name || "unknown");
+
+  for (const shard of shardResults) {
+    if (!shard.payload) {
+      shardSummaries.push({
+        shard: shard.name,
+        status: "missing",
+        error: shard.error ?? "no result file",
+      });
+      continue;
+    }
+    let itemCount = 0;
+    for (const builder of shard.payload?.builders ?? []) {
+      const key = builderKey(builder);
+      let target = builderIndex.get(key);
+      if (!target) {
+        target = { ...builder, items: [] };
+        builderIndex.set(key, target);
+        builders.push(target);
+      }
+      for (const item of builder?.items ?? []) {
+        const taskId = item?.rawJson?.fetchTaskId ? String(item.rawJson.fetchTaskId) : null;
+        if (taskId && taskTypeById.get(taskId) === "fetch_builder_fallback") {
+          // Builder-fallback tasks legitimately produce multiple items per
+          // task id; dedupe those by item identity instead.
+          const itemKey = `${taskId} ${item?.externalId || item?.url || ""}`;
+          if (seenFallbackItems.has(itemKey)) continue;
+          seenFallbackItems.add(itemKey);
+        } else if (taskId) {
+          if (syncedTaskIds.has(taskId)) continue;
+          syncedTaskIds.add(taskId);
+        }
+        if (taskId) accounted.add(taskId);
+        target.items.push(item);
+        itemCount += 1;
+      }
+    }
+    let outcomeCount = 0;
+    for (const outcome of shard.payload?.taskOutcomes ?? []) {
+      if (!outcome?.fetchTaskId) continue;
+      const id = String(outcome.fetchTaskId);
+      if (accounted.has(id)) continue;
+      accounted.add(id);
+      taskOutcomes.push(outcome);
+      outcomeCount += 1;
+    }
+    shardSummaries.push({
+      shard: shard.name,
+      status: "ok",
+      items: itemCount,
+      taskOutcomes: outcomeCount,
+    });
+  }
+
+  // Terminal-state backstop: every planned task a worker never reported
+  // (worker crash, timeout, missing result file, un-expanded discovery)
+  // becomes a failed outcome so validate-agent-sync still passes coverage and
+  // the fetch log records the loss instead of silently dropping the task.
+  let backfilled = 0;
+  for (const task of planned) {
+    if (task?.agentWorkType === "x_token_missing") continue;
+    const id = String(task?.id || fetchTaskId(task));
+    if (accounted.has(id)) continue;
+    accounted.add(id);
+    taskOutcomes.push({
+      fetchTaskId: id,
+      status: "failed",
+      reason:
+        task?.agentWorkType === "candidate_discovery_fallback"
+          ? "discovery_not_expanded"
+          : "worker_missing_result",
+      evidence: {
+        mergedBy: "merge-task-results",
+        shards: shardSummaries.map((s) => `${s.shard}:${s.status}`),
+      },
+    });
+    backfilled += 1;
+  }
+
+  return {
+    payload: { builders, taskOutcomes },
+    shards: shardSummaries,
+    backfilledOutcomes: backfilled,
+  };
+}
+
+async function mergeTaskResults(args) {
+  const tasksFile = argValue(args, "--tasks");
+  const resultsDir = argValue(args, "--results-dir");
+  const outFile = argValue(args, "--out");
+  if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
+  if (!resultsDir) throw new Error("Missing --results-dir");
+  if (!outFile) throw new Error("Missing --out library-agent-sync.json");
+
+  const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
+  const entries = (await readdir(resultsDir)).filter((name) =>
+    /^shard-.*-result\.json$/.test(name),
+  );
+  const shardResults = [];
+  for (const name of entries.sort()) {
+    try {
+      const payload = JSON.parse(await readFile(join(resultsDir, name), "utf8"));
+      shardResults.push({ name, payload });
+    } catch (error) {
+      shardResults.push({
+        name,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  const merged = mergeShardSyncPayloads(fetchResult, shardResults);
+  await writeFile(outFile, `${JSON.stringify(merged.payload, null, 2)}\n`, "utf8");
+  console.log(
+    JSON.stringify(
+      {
+        status: "ok",
+        out: outFile,
+        builders: merged.payload.builders.length,
+        items: merged.payload.builders.reduce(
+          (count, builder) => count + (builder.items?.length ?? 0),
+          0,
+        ),
+        taskOutcomes: merged.payload.taskOutcomes.length,
+        backfilledOutcomes: merged.backfilledOutcomes,
+        shards: merged.shards,
+      },
+      null,
+      2,
+    ),
+  );
+}
+
 // Validate a single non-synced terminal outcome. A task that wasn't synced as
 // an item must be one of skipped / failed / blocked, each with a reason; a
 // `skipped` (no-content) decision additionally requires that task's OWN
@@ -4431,6 +4702,8 @@ async function main() {
   }
   else if (command === "fetch-personal") await fetchPersonal(args);
   else if (command === "expand-discovery") await expandDiscovery(args);
+  else if (command === "shard-tasks") await shardTasks(args);
+  else if (command === "merge-task-results") await mergeTaskResults(args);
   else if (command === "prepare") await prepare(args);
   else if (command === "validate-agent-sync") await validateAgentSync(args);
   else if (command === "sync-builders") await syncBuilders(args);

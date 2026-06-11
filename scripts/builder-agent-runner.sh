@@ -73,6 +73,8 @@ refresh_skill_files() {
   curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest-cron-setup.md" -o "$AGENT_DIR/jobs/digest-cron-setup.md"
   curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-cron.md" -o "$AGENT_DIR/jobs/library-cron.md"
   curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest-cron.md" -o "$AGENT_DIR/jobs/digest-cron.md"
+  curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-worker.md" -o "$AGENT_DIR/jobs/library-worker.md"
+  curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-discovery.md" -o "$AGENT_DIR/jobs/library-discovery.md"
   chmod +x "$AGENT_DIR/builder-digest.mjs"
 }
 
@@ -261,13 +263,31 @@ EOF
 # machine. Read the account-scoped file first, then fall back to the legacy
 # per-job/global files so crons installed before the split keep working after
 # the runner self-updates.
+#
+# One-time jobs additionally fall back to their recurring job's pins: the user
+# expectation for library-once / digest-once is "run the scheduled job right
+# now", so when the once job has no pin of its own it inherits the cron job's
+# runtime, fetch-force, fetch-days, and parallel settings. Cron jobs never
+# fall back the other way.
+case "$JOB_NAME" in
+  library-once) PIN_FALLBACK_JOB="library-cron" ;;
+  digest-once) PIN_FALLBACK_JOB="digest-cron" ;;
+  *) PIN_FALLBACK_JOB="" ;;
+esac
+
 read_pin() {
-  # $1 = base name (runtime | fetch-force | regenerate)
-  if [ -r "$AGENT_DIR/$1-$JOB_NAME-$ACCOUNT_SLUG" ]; then
-    tr -d ' \t\r\n' < "$AGENT_DIR/$1-$JOB_NAME-$ACCOUNT_SLUG"
-  elif [ -r "$AGENT_DIR/$1-$JOB_NAME" ]; then
-    tr -d ' \t\r\n' < "$AGENT_DIR/$1-$JOB_NAME"
-  elif [ -r "$AGENT_DIR/$1" ]; then
+  # $1 = base name (runtime | fetch-force | fetch-days | regenerate | parallel)
+  for _pin_job in "$JOB_NAME" $PIN_FALLBACK_JOB; do
+    if [ -r "$AGENT_DIR/$1-$_pin_job-$ACCOUNT_SLUG" ]; then
+      tr -d ' \t\r\n' < "$AGENT_DIR/$1-$_pin_job-$ACCOUNT_SLUG"
+      return 0
+    fi
+    if [ -r "$AGENT_DIR/$1-$_pin_job" ]; then
+      tr -d ' \t\r\n' < "$AGENT_DIR/$1-$_pin_job"
+      return 0
+    fi
+  done
+  if [ -r "$AGENT_DIR/$1" ]; then
     tr -d ' \t\r\n' < "$AGENT_DIR/$1"
   fi
 }
@@ -322,6 +342,18 @@ if [ "$(read_pin regenerate)" = "1" ]; then
   BUILDER_BLOG_DIGEST_REGENERATE="--regenerate"
 fi
 export BUILDER_BLOG_DIGEST_REGENERATE
+
+# Parallel fetch fan-out: when the parallel pin is >= 2 the runner orchestrates
+# the library job itself — fetch-personal, shard-tasks, merge-task-results,
+# validate-agent-sync, and sync-builders are deterministic CLI steps, and N
+# runtime workers each complete one shard of fetchTasks. The pin is per-account
+# and per-job with the usual once→cron fallback, so a one-time run parallelizes
+# exactly like the recurring job. Absent/0/1 → single-agent path (default).
+MAX_PARALLEL_WORKERS="$(read_pin parallel)"
+case "$MAX_PARALLEL_WORKERS" in
+  ''|*[!0-9]*) MAX_PARALLEL_WORKERS="1" ;;
+esac
+if [ "$MAX_PARALLEL_WORKERS" -gt 8 ]; then MAX_PARALLEL_WORKERS="8"; fi
 
 job_type_for_name() {
   case "$JOB_NAME" in
@@ -517,7 +549,7 @@ run_with_job_tracking() {
 
   _timeout="$(timeout_seconds_for_job "${INTERVAL_MINUTES:-60}" "$JOB_NAME")"
   job_run_update running "Runtime agent started." "runtime_agent_started"
-  run_selected_runtime &
+  run_job_payload &
   RUNTIME_PID="$!"
   _elapsed=0
   _status="succeeded"
@@ -556,6 +588,27 @@ esac
 run_selected_runtime() {
   if [ -n "${BUILDER_BLOG_AGENT_COMMAND:-}" ]; then
     run_with_override
+  elif [ "$IS_CRON_JOB" = 0 ] && [ -n "$PINNED_RUNTIME" ]; then
+    # One-time run with a pinned runtime (its own pin, or inherited from the
+    # recurring job via the read_pin fallback): use the SAME agent the cron
+    # job runs with, so a manual "run it now" produces the same results as the
+    # schedule — instead of whatever the discovery chain finds first on PATH.
+    # Interactive permission gates are kept (the user is at a TTY). A missing
+    # binary falls back to the discovery chain rather than failing the run.
+    case "$PINNED_RUNTIME" in
+      claude|codex|gemini|openclaw)
+        if command -v "$PINNED_RUNTIME" >/dev/null 2>&1; then
+          "run_with_$PINNED_RUNTIME"
+          return "$?"
+        fi
+        echo "Pinned runtime '$PINNED_RUNTIME' not on PATH for this one-time run — falling back to the discovery chain." >&2
+        PINNED_RUNTIME=""
+        ;;
+      *)
+        echo "Unknown pinned runtime '$PINNED_RUNTIME' in $AGENT_DIR — falling back to the discovery chain." >&2
+        PINNED_RUNTIME=""
+        ;;
+    esac
   elif [ "$IS_CRON_JOB" = 1 ] && [ -n "$PINNED_RUNTIME" ]; then
     case "$PINNED_RUNTIME" in
       claude)
@@ -598,6 +651,138 @@ run_selected_runtime() {
       exit 78
     fi
   fi
+}
+
+# The job payload run inside the supervised/tracked worker. Library jobs with
+# a parallel pin >= 2 use the sharded orchestration; everything else (digest
+# jobs, un-pinned accounts) keeps the single-agent path. The runtime smoke
+# check never goes through here — it calls run_selected_runtime directly.
+run_job_payload() {
+  case "$JOB_NAME" in
+    library-once|library-cron)
+      if [ "$MAX_PARALLEL_WORKERS" -ge 2 ]; then
+        run_sharded_library
+        return "$?"
+      fi
+      ;;
+  esac
+  run_selected_runtime
+}
+
+# Sharded library run: the runner owns every deterministic step (fetch, shard,
+# merge, validate, sync) and runtime agents only do the genuinely agentic work
+# — a discovery pre-pass when the fetch result contains candidate-discovery
+# tasks, then one worker per shard completing that shard's fetchTasks. Workers
+# write per-shard result files; merge-task-results assembles the single sync
+# payload and backfills a failed taskOutcome for any task a worker never
+# reported (crash/timeout), so the "every task ends in a terminal state"
+# validation contract holds even with partial worker failure.
+run_sharded_library() {
+  _shards_dir="$JOB_TMP_DIR/shards"
+  _results_dir="$_shards_dir/results"
+  rm -rf "$_shards_dir"
+  mkdir -p "$_results_dir"
+  _result_file="$JOB_TMP_DIR/library-fetch-result.json"
+
+  echo "FollowBrief parallel library run: up to $MAX_PARALLEL_WORKERS workers."
+
+  node "$AGENT_DIR/builder-digest.mjs" fetch-personal \
+    --days "${BUILDER_BLOG_FETCH_DAYS:-30}" \
+    --limit "${BUILDER_BLOG_FETCH_LIMIT:-3}" \
+    ${BUILDER_BLOG_FETCH_FORCE:-} > "$_result_file"
+  cat "$_result_file"
+
+  if grep -q '"candidate_discovery_fallback"' "$_result_file"; then
+    echo "Discovery tasks present; running the discovery agent pre-pass."
+    if ! ( PROMPT_FILE="$AGENT_DIR/jobs/library-discovery.md"
+           IS_CRON_JOB=1
+           run_selected_runtime ); then
+      echo "Discovery pre-pass failed; un-expanded discovery tasks will be reported as failed." >&2
+    fi
+  fi
+
+  node "$AGENT_DIR/builder-digest.mjs" shard-tasks \
+    --tasks "$_result_file" \
+    --out-dir "$_shards_dir" \
+    --max-workers "$MAX_PARALLEL_WORKERS"
+
+  # Per-shard timeout: half the whole-job timeout. A hung shard is terminated
+  # and its tasks surface as failed outcomes, while the other shards still
+  # merge and sync — partial success instead of losing the whole run.
+  _shard_timeout=$(( $(timeout_seconds_for_job "${INTERVAL_MINUTES:-60}" "$JOB_NAME") / 2 ))
+  _worker_entries=""
+  for _shard_file in "$_shards_dir"/shard-*.json; do
+    [ -e "$_shard_file" ] || continue
+    _shard_name="$(basename "$_shard_file" .json)"
+    (
+      BUILDER_BLOG_SHARD_FILE="$_shard_file"
+      BUILDER_BLOG_SHARD_RESULT="$_results_dir/$_shard_name-result.json"
+      export BUILDER_BLOG_SHARD_FILE BUILDER_BLOG_SHARD_RESULT
+      PROMPT_FILE="$AGENT_DIR/jobs/library-worker.md"
+      # Workers must never wait on interactive permission prompts, so they
+      # always use the pinned runtime's unattended invocation — even when the
+      # enclosing job is a one-time run.
+      IS_CRON_JOB=1
+      run_selected_runtime
+    ) > "$_results_dir/$_shard_name-worker.log" 2>&1 &
+    _worker_entries="$_worker_entries $!:$(date +%s):$_shard_name"
+    echo "Started worker $_shard_name (pid $!)."
+  done
+
+  while :; do
+    _alive=0
+    _now="$(date +%s)"
+    for _entry in $_worker_entries; do
+      _pid="${_entry%%:*}"
+      _rest="${_entry#*:}"
+      _started="${_rest%%:*}"
+      _name="${_rest#*:}"
+      if kill -0 "$_pid" 2>/dev/null; then
+        if [ $(( _now - _started )) -ge "$_shard_timeout" ]; then
+          echo "Worker $_name exceeded ${_shard_timeout}s; terminating it (its tasks will be reported as failed)." >&2
+          terminate_process_tree "$_pid" TERM 10 || terminate_process_tree "$_pid" KILL 3 || true
+        else
+          _alive=$(( _alive + 1 ))
+        fi
+      fi
+    done
+    [ "$_alive" -eq 0 ] && break
+    sleep 5
+  done
+  for _entry in $_worker_entries; do
+    wait "${_entry%%:*}" 2>/dev/null || true
+  done
+
+  for _worker_log in "$_results_dir"/*-worker.log; do
+    [ -e "$_worker_log" ] || continue
+    echo "--- $(basename "$_worker_log") ---"
+    cat "$_worker_log"
+  done
+
+  node "$AGENT_DIR/builder-digest.mjs" merge-task-results \
+    --tasks "$_result_file" \
+    --results-dir "$_results_dir" \
+    --out "$JOB_TMP_DIR/library-agent-sync.json"
+
+  # validate-agent-sync exits non-zero when any task fails validation; capture
+  # the exit code (instead of letting set -e abort) so the validation details
+  # always land in the job log before we refuse to sync.
+  _validate_file="$JOB_TMP_DIR/validate-agent-sync-result.json"
+  set +e
+  node "$AGENT_DIR/builder-digest.mjs" validate-agent-sync \
+    --tasks "$_result_file" \
+    --file "$JOB_TMP_DIR/library-agent-sync.json" > "$_validate_file" 2>&1
+  _validate_code="$?"
+  set -e
+  cat "$_validate_file"
+  if [ "$_validate_code" -ne 0 ] || ! grep -q '"status": "ok"' "$_validate_file"; then
+    echo "validate-agent-sync did not return status ok (exit $_validate_code); not syncing." >&2
+    return 65
+  fi
+
+  node "$AGENT_DIR/builder-digest.mjs" sync-builders \
+    --file "$JOB_TMP_DIR/library-agent-sync.json" \
+    --tasks "$_result_file"
 }
 
 if [ "$IS_CRON_JOB" = 1 ] && [ "${BUILDER_BLOG_SMOKE_CHECK:-0}" = "1" ]; then

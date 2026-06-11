@@ -1990,3 +1990,92 @@ function digestRenderContext() {
     ],
   };
 }
+
+test("shard-tasks groups by builder, balances by weight, excludes non-work tasks", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      { id: "t1", agentWorkType: "fetch_post", contentStatus: "requires_agent", sourceType: "youtube", builderSync: { builderId: "b1" } },
+      { id: "t2", agentWorkType: "fetch_post", contentStatus: "requires_agent", sourceType: "youtube", builderSync: { builderId: "b1" } },
+      { id: "t3", agentWorkType: "fetch_post", contentStatus: "ready", sourceType: "blog", builderSync: { builderId: "b2" } },
+      { id: "t4", agentWorkType: "fetch_post", contentStatus: "requires_agent", sourceType: "website", builderSync: { builderId: "b3" } },
+      { id: "t5", agentWorkType: "x_token_missing", builderSync: { builderId: "b4" }, agentMessage: "needs token" },
+      { id: "t6", agentWorkType: "candidate_discovery_fallback", builderSync: { builderId: "b5" } },
+    ],
+  };
+  const { shards, userActionTasks, discoveryTasks } = cli.shardFetchTasksForWorkers(fetchResult, 3);
+
+  // One source's tasks never split across shards (per-source serialization).
+  const shardOfTask = new Map<string, number>();
+  shards.forEach((shard: { tasks: { id: string }[] }, index: number) => {
+    for (const task of shard.tasks) shardOfTask.set(task.id, index);
+  });
+  assert.equal(shardOfTask.get("t1"), shardOfTask.get("t2"));
+  // All work tasks are covered exactly once; non-work tasks are excluded.
+  assert.deepEqual([...shardOfTask.keys()].sort(), ["t1", "t2", "t3", "t4"]);
+  assert.deepEqual(userActionTasks.map((t: { id: string }) => t.id), ["t5"]);
+  assert.deepEqual(discoveryTasks.map((t: { id: string }) => t.id), ["t6"]);
+  // maxWorkers caps shard count; builder count caps it too.
+  assert.ok(shards.length <= 3);
+  assert.equal(cli.shardFetchTasksForWorkers(fetchResult, 8).shards.length, 3);
+});
+
+test("merge-task-results merges shard payloads and backfills missing tasks as failed", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      { id: "t1", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+      { id: "t2", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+      { id: "t3", agentWorkType: "fetch_post", builderSync: { builderId: "b2" } },
+      { id: "t4", agentWorkType: "x_token_missing", builderSync: { builderId: "b3" } },
+    ],
+  };
+  const shardResults = [
+    {
+      name: "shard-0-result.json",
+      payload: {
+        builders: [
+          { builderId: "b1", items: [{ externalId: "v1", rawJson: { fetchTaskId: "t1" } }] },
+        ],
+        taskOutcomes: [
+          { fetchTaskId: "t2", status: "skipped", reason: "no_audio", evidence: { meanVolumeDb: -91 } },
+        ],
+      },
+    },
+    { name: "shard-1-result.json", error: "worker timed out" },
+  ];
+  const merged = cli.mergeShardSyncPayloads(fetchResult, shardResults);
+
+  // t1 synced, t2 outcome preserved, t3 backfilled, t4 (user action) untouched.
+  assert.equal(merged.payload.builders.length, 1);
+  assert.equal(merged.payload.builders[0].items.length, 1);
+  const outcomes = merged.payload.taskOutcomes as {
+    fetchTaskId: string;
+    status: string;
+    reason: string;
+  }[];
+  const outcomesById = new Map(outcomes.map((o) => [o.fetchTaskId, o]));
+  assert.deepEqual([...outcomesById.keys()].sort(), ["t2", "t3"]);
+  assert.equal(outcomesById.get("t3")?.status, "failed");
+  assert.equal(outcomesById.get("t3")?.reason, "worker_missing_result");
+  assert.equal(merged.backfilledOutcomes, 1);
+  // Duplicate item for an already-synced normal task is dropped on merge.
+  const withDuplicate = cli.mergeShardSyncPayloads(fetchResult, [
+    ...shardResults,
+    {
+      name: "shard-2-result.json",
+      payload: {
+        builders: [
+          { builderId: "b1", items: [{ externalId: "v1-dup", rawJson: { fetchTaskId: "t1" } }] },
+        ],
+        taskOutcomes: [],
+      },
+    },
+  ]);
+  assert.equal(
+    withDuplicate.payload.builders.flatMap((b: { items: unknown[] }) => b.items).length,
+    1,
+  );
+});

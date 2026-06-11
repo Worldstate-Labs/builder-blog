@@ -41,7 +41,11 @@ cat "$TMP_DIR/library-fetch-result.json"
 
 3. Complete and sync the fetch tasks exactly as specified below.
 
-{{INCLUDE:fetch-task-contract REPORT_TARGET="to the scheduled job log" TMP_JOB="library-cron"}}
+{{INCLUDE:fetch-task-discovery TMP_JOB="library-cron"}}
+
+{{INCLUDE:fetch-task-core REPORT_TARGET="to the scheduled job log"}}
+
+{{INCLUDE:fetch-task-syncing REPORT_TARGET="to the scheduled job log" TMP_JOB="library-cron"}}
 
 4. Write the fetch JSON plus any `validate-agent-sync` and `sync-builders` JSON
 to the scheduled job log.

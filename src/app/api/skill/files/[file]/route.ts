@@ -34,6 +34,14 @@ const skillFiles = {
     path: "skills/builder-blog-digest/jobs/library-once.md",
     contentType: "text/markdown; charset=utf-8",
   },
+  "builder-blog-library-worker.md": {
+    path: "skills/builder-blog-digest/jobs/library-worker.md",
+    contentType: "text/markdown; charset=utf-8",
+  },
+  "builder-blog-library-discovery.md": {
+    path: "skills/builder-blog-digest/jobs/library-discovery.md",
+    contentType: "text/markdown; charset=utf-8",
+  },
   "builder-agent-runner.sh": {
     path: "scripts/builder-agent-runner.sh",
     contentType: "text/x-shellscript; charset=utf-8",

@@ -2,11 +2,15 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 // Server-side include expansion for skill job prompts. Lets the library
-// job prompts (library-once.md, library-cron.md) share ONE copy of the
-// fetch-task / summarize execution contract instead of duplicating it.
+// job prompts (library-once.md, library-cron.md, library-worker.md,
+// library-discovery.md) share ONE copy of the fetch-task / summarize
+// execution contract instead of duplicating it. The contract is split in
+// three so the parallel worker can reuse the per-task core without
+// inheriting discovery or the validate/sync tail (the runner owns those in
+// a sharded run): discovery → core → syncing.
 //
 // Directive syntax inside a prompt:
-//   {{INCLUDE:fetch-task-contract REPORT_TARGET="the user" TMP_JOB="library-once"}}
+//   {{INCLUDE:fetch-task-core REPORT_TARGET="the user"}}
 //
 // The named fragment is loaded, its own placeholders ({{REPORT_TARGET}})
 // are substituted from the directive's params, and the directive is
@@ -14,7 +18,9 @@ import { join } from "node:path";
 // unchanged, so this is safe to call on every served file.
 
 const FRAGMENTS: Record<string, string> = {
-  "fetch-task-contract": "skills/builder-blog-digest/jobs/_fetch-task-contract.md",
+  "fetch-task-discovery": "skills/builder-blog-digest/jobs/_fetch-task-discovery.md",
+  "fetch-task-core": "skills/builder-blog-digest/jobs/_fetch-task-core.md",
+  "fetch-task-syncing": "skills/builder-blog-digest/jobs/_fetch-task-syncing.md",
   "digest-task-contract": "skills/builder-blog-digest/jobs/_digest-task-contract.md",
 };
 

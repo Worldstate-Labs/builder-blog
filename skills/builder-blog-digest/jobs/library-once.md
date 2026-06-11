@@ -8,10 +8,14 @@ Execution contract:
 - Run the numbered command steps exactly.
 - If a command outside the explicit `fetchTasks` work fails, stop and report the
   command, exit code, and stderr to the user.
-- Run the fetch command exactly as written. It already carries the right
-  re-fetch flag for this run (a `--force` is present only when this run was
-  configured to override already-fetched posts). Do not add or remove `--force`
-  yourself.
+- Run the fetch command exactly as written. When the FollowBrief runner
+  launched this job, the `${BUILDER_BLOG_FETCH_*}` variables already carry this
+  account's recurring-job settings, so a one-time run fetches exactly like the
+  scheduled job; when they are unset (this prompt was pasted directly), the
+  baked-in values for this copy apply. Either way the command already carries
+  the right lookback window and re-fetch flag (a `--force` is present only when
+  this run was configured to override already-fetched posts).
+  Do not add or remove `--force` yourself.
 - Do not browse for extra context unless a `fetchTasks` payload requires you to
   extract content from a URL the task supplies.
 - Do not change paths, flags, cadence, titles, output files, JSON schema, or
@@ -34,7 +38,7 @@ ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-
 TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-once}"
 mkdir -p "$TMP_DIR"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" fetch-personal --days {{FETCH_DAYS}} --limit 3 {{FETCH_FLAG}} \
+node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" fetch-personal --days ${BUILDER_BLOG_FETCH_DAYS-{{FETCH_DAYS}}} --limit ${BUILDER_BLOG_FETCH_LIMIT-3} ${BUILDER_BLOG_FETCH_FORCE-{{FETCH_FLAG}}} \
   > "$TMP_DIR/library-fetch-result.json"
 ```
 
@@ -49,6 +53,10 @@ cat "$TMP_DIR/library-fetch-result.json"
 
 4. Complete and sync the fetch tasks exactly as specified below.
 
-{{INCLUDE:fetch-task-contract REPORT_TARGET="to the user" TMP_JOB="library-once"}}
+{{INCLUDE:fetch-task-discovery TMP_JOB="library-once"}}
+
+{{INCLUDE:fetch-task-core REPORT_TARGET="to the user"}}
+
+{{INCLUDE:fetch-task-syncing REPORT_TARGET="to the user" TMP_JOB="library-once"}}
 
 5. Report the fetch JSON plus any `validate-agent-sync` and `sync-builders` JSON.
