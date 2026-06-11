@@ -842,7 +842,7 @@ function SearchPostResultCard({
         id: result.id,
         title: result.title,
         body: result.postBody ?? result.body,
-        summary: result.postSummary ?? result.snippet,
+        summary: decodeHtmlEntities(result.postSummary ?? result.snippet),
         detailUrl: resultHref,
         url: originalUrl ?? result.url ?? "#",
         publishedAt: result.date?.toISOString() ?? null,

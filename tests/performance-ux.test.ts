@@ -4906,6 +4906,7 @@ test("search feed results keep post detail links while preserving originals", ()
   assert.match(searchPage, /refinements: ReactNode/);
   assert.match(searchPage, /context=\{refinements\}/);
   assert.match(searchPage, /dataRead=\{Boolean\(result\.readAt\)\}/);
+  assert.match(searchPage, /summary:\s*decodeHtmlEntities\(result\.postSummary \?\? result\.snippet\)/);
   assert.match(searchPage, /detailUrl: resultHref/);
   assert.match(searchPage, /url: originalUrl \?\? result\.url \?\? "#"/);
   assert.match(searchPage, /const originalUrl = result\.externalUrl \?\? \(titleIsExternal \? result\.url \?\? null : null\)/);
