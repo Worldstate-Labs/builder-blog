@@ -478,6 +478,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /searchParams\.get\("freq"\)/);
   assert.match(skillJobRoute, /searchParams\.get\("days"\)/);
   assert.match(skillJobRoute, /searchParams\.get\("parallel"\)/);
+  assert.match(skillJobRoute, /Number\.isInteger\(parallelRaw\)/);
   assert.match(skillJobRoute, /\{\{FETCH_DAYS\}\}/);
   assert.match(skillJobRoute, /\{\{PARALLEL_WORKERS\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_KEY\}\}/);
@@ -831,6 +832,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronStopPrompt, /runtime-library-cron-\$ACCOUNT_SLUG/);
   assert.match(libraryCronStopPrompt, /fetch-force-library-cron-\$ACCOUNT_SLUG/);
   assert.match(libraryCronStopPrompt, /fetch-days-library-cron-\$ACCOUNT_SLUG/);
+  assert.match(libraryCronStopPrompt, /parallel-library-cron-\$ACCOUNT_SLUG/);
   assert.match(libraryCronStopPrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron\/current\.json/);
   assert.doesNotMatch(libraryCronStopPrompt, /Do not\s+exchange a token or make any network call/);
   assert.match(digestCronSetupPrompt, /BUILDER_BLOG_SMOKE_CHECK=1/);
@@ -1051,7 +1053,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /export BUILDER_BLOG_FETCH_FORCE/);
   assert.match(runner, /MAX_PARALLEL_WORKERS="\$\(read_pin parallel\)"/);
   assert.match(runner, /run_sharded_library/);
-  assert.match(runner, /OPENCLAW_SESSION_ID="\$\(printf 'followbrief-%s-%s-%s'/);
+  assert.match(runner, /followbrief-%s-%s-%s-discovery/);
+  assert.match(runner, /OPENCLAW_SESSION_ID="\$\(printf 'followbrief-%s-%s-%s-%s'/);
   assert.match(cli, /if \(envAccount\)/);
   assert.match(cli, /if \(envToken\)/);
   assert.ok(

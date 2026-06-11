@@ -155,8 +155,9 @@ run_with_openclaw_unattended() {
   # approval for EVERY openclaw session on the host (and `--profile` does not
   # relocate that file, so it can't be scoped that way). So we don't touch
   # global policy at all. `agent` requires a session selector on 2026.5.20
-  # (the bare `--local --message` form errors "Pass --to/--session-id/--agent"),
-  # so pass `--agent`.
+  # (the bare `--local --message` form errors "Pass --to/--session-id/--agent");
+  # parallel workers can set OPENCLAW_SESSION_ID for isolated sessions, and the
+  # regular path otherwise uses the configured main agent.
   _openclaw_timeout="${BUILDER_BLOG_AGENT_TIMEOUT_SECONDS:-${_timeout:-$(timeout_seconds_for_job "${INTERVAL_MINUTES:-60}" "$JOB_NAME")}}"
   sync_openclaw_timeout_config "$_openclaw_timeout"
   _openclaw_output="$JOB_TMP_DIR/openclaw-agent-output-$$.log"
@@ -702,7 +703,11 @@ run_sharded_library() {
 
   if grep -q '"candidate_discovery_fallback"' "$_result_file"; then
     echo "Discovery tasks present; running the discovery agent pre-pass."
-    if ! ( PROMPT_FILE="$AGENT_DIR/jobs/library-discovery.md"
+    if ! ( if [ "$PINNED_RUNTIME" = "openclaw" ]; then
+             OPENCLAW_SESSION_ID="$(printf 'followbrief-%s-%s-%s-discovery' "$ACCOUNT_SLUG" "$JOB_NAME" "$$" | tr -c 'a-zA-Z0-9_.@+-' '_')"
+             export OPENCLAW_SESSION_ID
+           fi
+           PROMPT_FILE="$AGENT_DIR/jobs/library-discovery.md"
            IS_CRON_JOB=1
            run_selected_runtime ); then
       echo "Discovery pre-pass failed; un-expanded discovery tasks will be reported as failed." >&2
@@ -727,7 +732,7 @@ run_sharded_library() {
       BUILDER_BLOG_SHARD_RESULT="$_results_dir/$_shard_name-result.json"
       export BUILDER_BLOG_SHARD_FILE BUILDER_BLOG_SHARD_RESULT
       if [ "$PINNED_RUNTIME" = "openclaw" ]; then
-        OPENCLAW_SESSION_ID="$(printf 'followbrief-%s-%s-%s' "$ACCOUNT_SLUG" "$JOB_NAME" "$_shard_name" | tr -c 'a-zA-Z0-9_.@+-' '_')"
+        OPENCLAW_SESSION_ID="$(printf 'followbrief-%s-%s-%s-%s' "$ACCOUNT_SLUG" "$JOB_NAME" "$$" "$_shard_name" | tr -c 'a-zA-Z0-9_.@+-' '_')"
         export OPENCLAW_SESSION_ID
       fi
       PROMPT_FILE="$AGENT_DIR/jobs/library-worker.md"

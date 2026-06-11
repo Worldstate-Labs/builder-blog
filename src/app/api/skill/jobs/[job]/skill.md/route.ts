@@ -205,7 +205,10 @@ export async function GET(request: Request, { params }: Params) {
   // conservative single-agent behavior so old copied prompts do not change.
   const parallelRaw = Number(url.searchParams.get("parallel") ?? "1");
   const parallelWorkers =
-    job.startsWith("library") && Number.isFinite(parallelRaw) && parallelRaw >= 1
+    job.startsWith("library") &&
+    Number.isFinite(parallelRaw) &&
+    Number.isInteger(parallelRaw) &&
+    parallelRaw >= 1
       ? String(Math.min(8, Math.floor(parallelRaw)))
       : "1";
 
