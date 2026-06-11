@@ -3133,6 +3133,10 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(digestPipelineForm, /\(\) => pipelines\.filter\(\(pipeline\) => !pipeline\.owned\)/);
   assert.match(digestPipelineForm, /export function OwnDigestPipelineCard/);
   assert.match(digestPipelineForm, /export function DigestPipelinePreviewCard/);
+  assert.match(digestPipelineForm, /cleanDigestHeadlinePreview\(pipeline\.latestDigestHeadline\)/);
+  assert.match(digestPipelineForm, /function cleanDigestHeadlinePreview/);
+  assert.match(digestPipelineForm, /\.\s*replace\(\/\^\(\?:\[-\*•\]\|\\d\+\[\.\)\]\)\\s\+\/gm, ""\)/);
+  assert.doesNotMatch(digestPipelineForm, /Radio|fb-hub-digest-preview-icon/);
   assert.match(digestPipelineForm, /<DigestPipelineTitleEditor/);
   assert.match(digestPipelineForm, /<article className="own-digest-card">/);
   assert.doesNotMatch(digestPipelineForm, /className="fb-hub-card own-digest-card"/);
@@ -3217,6 +3221,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-headline\s*{/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-headline\s*{[\s\S]*max-width:\s*none/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-headline\s*{[\s\S]*width:\s*100%/);
+  assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-digest-preview-icon/);
   assert.doesNotMatch(source("src/app/globals.css"), /max-width:\s*76ch/);
   assert.match(searchPage, /<Suspense[\s\S]*fallback=\{[\s\S]*<SearchResultsFallback/);
   assert.doesNotMatch(source("src/app/globals.css"), /max-width:\s*(62ch|65ch)/);

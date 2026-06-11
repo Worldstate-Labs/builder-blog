@@ -8602,13 +8602,6 @@ a.fb-hub-source-name:focus-visible {
   min-width: 0;
 }
 
-.fb-hub-digest-preview-icon {
-  color: var(--accent);
-  height: 1rem;
-  margin-top: 0.125rem;
-  width: 1rem;
-}
-
 .fb-hub-digest-preview-title {
   color: var(--ink);
   font-size: 0.8125rem;

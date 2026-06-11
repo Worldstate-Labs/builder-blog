@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { CheckCircle2, Download, Radio, Trash2 } from "lucide-react";
+import { CheckCircle2, Download, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { CountMeta, CountRange, formatCount } from "@/components/Count";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
@@ -474,23 +474,24 @@ export function DigestPipelinePreviewCard({
   cronStatusControl?: ReactNode;
   pipeline: DigestPipelinePreviewData;
 }) {
+  const headline = cleanDigestHeadlinePreview(pipeline.latestDigestHeadline);
+
   return (
     <div className="fb-hub-digest-preview">
       <div className="fb-hub-digest-preview-row">
-        <Radio className="fb-hub-digest-preview-icon" aria-hidden="true" />
         <div>
           <div className="fb-hub-digest-preview-title">
             {pipeline.latestDigestAt
               ? `Latest AI Digest ${formatDate(pipeline.latestDigestAt)}`
               : "No AI Digest archive entries yet"}
           </div>
-          {pipeline.latestDigestHeadline ? (
+          {headline ? (
             <section
               aria-label="Latest AI Digest headline"
               className="fb-hub-digest-headline"
             >
               <div className="fb-hub-digest-headline-kicker">Headlines</div>
-              <p>{pipeline.latestDigestHeadline}</p>
+              <p>{headline}</p>
             </section>
           ) : null}
         </div>
@@ -498,6 +499,13 @@ export function DigestPipelinePreviewCard({
       <DigestPipelineMetaGrid cronStatusControl={cronStatusControl} pipeline={pipeline} />
     </div>
   );
+}
+
+function cleanDigestHeadlinePreview(value: string | null | undefined) {
+  return (value ?? "")
+    .trim()
+    .replace(/^(?:[-*•]|\d+[.)])\s+/gm, "")
+    .trim();
 }
 
 function DigestPipelineMetaGrid({
