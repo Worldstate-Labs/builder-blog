@@ -39,6 +39,10 @@ const RUN_HOSTNAME = (() => {
 const RUN_PLATFORM = (() => {
   try { return `${platform()} ${release()}`.trim() || null; } catch { return null; }
 })();
+const JOB_RUN_UPDATE_TIMEOUT_MS = (() => {
+  const value = Number(process.env.BUILDER_BLOG_JOB_RUN_UPDATE_TIMEOUT_MS || 10_000);
+  return Number.isFinite(value) && value > 0 ? value : 10_000;
+})();
 
 const CONFIG_DIR = join(homedir(), ".builder-blog");
 const ACCOUNTS_DIR = join(CONFIG_DIR, "accounts");
@@ -413,16 +417,30 @@ function numberOrNull(value) {
   return numeric || null;
 }
 
-async function postJson(url, body, token) {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      ...MACHINE_HEADERS,
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(body),
-  });
+async function postJson(url, body, token, options = {}) {
+  const timeoutMs = Number(options.timeoutMs || 0);
+  const controller = timeoutMs > 0 ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  let response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...MACHINE_HEADERS,
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+      ...(controller ? { signal: controller.signal } : {}),
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error(`HTTP POST timed out after ${Math.round(timeoutMs / 1000)}s`);
+    }
+    throw error;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(data.error || `HTTP ${response.status}`);
@@ -488,7 +506,9 @@ async function emitAgentJobRunRecord(config, record) {
     details: record.details ?? {},
   };
   if (!body.instanceId) return null;
-  return postJson(`${config.appUrl}/api/skill/job-runs`, body, config.token);
+  return postJson(`${config.appUrl}/api/skill/job-runs`, body, config.token, {
+    timeoutMs: JOB_RUN_UPDATE_TIMEOUT_MS,
+  });
 }
 
 async function jobRunCommand(args, defaultStatus = "running") {
