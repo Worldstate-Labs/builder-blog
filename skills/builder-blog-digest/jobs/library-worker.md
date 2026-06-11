@@ -38,9 +38,22 @@ after you exit), so the quality gates below are your only chance to get each
 item right — especially the 1200-character summary cap and the rule that
 titles/descriptions are never primary content.
 
+Ordering and checkpointing (protects finished work from the shard timeout —
+the runner kills a worker that exceeds it, and only what is already in the
+result file survives):
+- Complete CHEAP tasks first: all `ready` tasks (body provided, summary only),
+  then light extractions (web articles), and only then heavy extractions
+  (audio/video downloads, transcription).
+- After EACH completed task, write the full shard result file (step 3 shape,
+  containing every item and outcome finished so far) — always valid JSON,
+  never a partial fragment. Do NOT batch everything into one final write: if
+  you are terminated mid-task, every previously finished task must already be
+  on disk so the runner's merge can keep it.
+
 {{INCLUDE:fetch-task-core REPORT_TARGET="to this worker's stdout"}}
 
-3. Write the shard result to the exact path in `$BUILDER_BLOG_SHARD_RESULT`,
+3. Maintain the shard result at the exact path in `$BUILDER_BLOG_SHARD_RESULT`
+(rewriting it after each completed task, per the checkpointing rule above),
 shaped exactly like a full sync payload but covering only this shard's tasks:
 
 ```text
