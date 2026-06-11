@@ -5341,6 +5341,10 @@ a.reading-source-label:focus-visible {
   z-index: 20;
 }
 
+.digest-pipeline-selector:not([open]) .digest-pipeline-menu {
+  display: none;
+}
+
 .digest-pipeline-option {
   border-radius: 6px;
   color: var(--ink);
@@ -5592,6 +5596,10 @@ a.reading-source-label:focus-visible {
   min-width: min(22rem, calc(100vw - 2rem));
   right: 0;
   z-index: 20;
+}
+
+.digest-picker:not([open]) .digest-picker-menu {
+  display: none;
 }
 
 .digest-picker-option {

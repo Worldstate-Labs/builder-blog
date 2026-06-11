@@ -1182,6 +1182,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.digest-pipeline-option:hover,[\s\S]*\.digest-pipeline-option:focus-visible\s*{[\s\S]*background:\s*color-mix/);
   assert.match(globals, /\.digest-pipeline-option:focus-visible\s*{[\s\S]*outline:\s*2px solid var\(--accent\)/);
   assert.match(globals, /\.digest-pipeline-menu\s*{[\s\S]*box-shadow:\s*var\(--shadow-pop\)/);
+  assert.match(globals, /\.digest-pipeline-selector:not\(\[open\]\) \.digest-pipeline-menu\s*{[\s\S]*display:\s*none/);
   assert.doesNotMatch(digestPipelineSelector, /rounded-\[|grid-cols-\[|text-\[var|font-\[|shadow-\[|min-h-10|px-3|py-2|h-3\.5|w-3\.5/);
   assert.doesNotMatch(digestPipelineSelector, />\s*v\s*<\/span>/);
   assert.match(digestArchivePicker, /ChevronDown/);
@@ -1210,6 +1211,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.digest-picker-option\[aria-current="page"\]/);
   assert.match(globals, /\.digest-picker-option:hover,[\s\S]*\.digest-picker-option:focus-visible,[\s\S]*\.digest-picker-option\[aria-current="page"\]\s*{[\s\S]*background:\s*color-mix/);
   assert.match(globals, /\.digest-picker-option:focus-visible\s*{[\s\S]*outline:\s*2px solid var\(--accent\)/);
+  assert.match(globals, /\.digest-picker:not\(\[open\]\) \.digest-picker-menu\s*{[\s\S]*display:\s*none/);
   assert.doesNotMatch(globals, /\.digest-picker-option\[aria-current="true"\]/);
   assert.doesNotMatch(globals, /\.digest-picker-summary::after[\s\S]*content:\s*"▾"/);
   assert.doesNotMatch(dashboardPage, /digest-source-pill fb-btn compact/);
