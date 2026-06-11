@@ -64,18 +64,30 @@ self_update_and_reexec "$@"
 
 refresh_skill_files() {
   mkdir -p "$AGENT_DIR" "$AGENT_DIR/jobs" "$AGENT_DIR/logs" "$AGENT_DIR/tmp"
-  curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest.md" -o "$AGENT_DIR/SKILL.md"
-  curl -fsSL "$APP_URL/api/skill/files/builder-digest.mjs" -o "$AGENT_DIR/builder-digest.mjs"
-  curl -fsSL "$APP_URL/api/skill/files/sources.json" -o "$AGENT_DIR/sources.json"
-  curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-once.md" -o "$AGENT_DIR/jobs/library-once.md"
-  curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest-once.md" -o "$AGENT_DIR/jobs/digest-once.md"
-  curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-cron-setup.md" -o "$AGENT_DIR/jobs/library-cron-setup.md"
-  curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest-cron-setup.md" -o "$AGENT_DIR/jobs/digest-cron-setup.md"
-  curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-cron.md" -o "$AGENT_DIR/jobs/library-cron.md"
-  curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest-cron.md" -o "$AGENT_DIR/jobs/digest-cron.md"
-  curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-worker.md" -o "$AGENT_DIR/jobs/library-worker.md"
-  curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-discovery.md" -o "$AGENT_DIR/jobs/library-discovery.md"
+  download_skill_file "$APP_URL/api/skill/files/builder-blog-digest.md" "$AGENT_DIR/SKILL.md"
+  download_skill_file "$APP_URL/api/skill/files/builder-digest.mjs" "$AGENT_DIR/builder-digest.mjs"
+  download_skill_file "$APP_URL/api/skill/files/sources.json" "$AGENT_DIR/sources.json"
+  download_skill_file "$APP_URL/api/skill/files/builder-blog-library-once.md" "$AGENT_DIR/jobs/library-once.md"
+  download_skill_file "$APP_URL/api/skill/files/builder-blog-digest-once.md" "$AGENT_DIR/jobs/digest-once.md"
+  download_skill_file "$APP_URL/api/skill/files/builder-blog-library-cron-setup.md" "$AGENT_DIR/jobs/library-cron-setup.md"
+  download_skill_file "$APP_URL/api/skill/files/builder-blog-digest-cron-setup.md" "$AGENT_DIR/jobs/digest-cron-setup.md"
+  download_skill_file "$APP_URL/api/skill/files/builder-blog-library-cron.md" "$AGENT_DIR/jobs/library-cron.md"
+  download_skill_file "$APP_URL/api/skill/files/builder-blog-digest-cron.md" "$AGENT_DIR/jobs/digest-cron.md"
+  download_skill_file "$APP_URL/api/skill/files/builder-blog-library-worker.md" "$AGENT_DIR/jobs/library-worker.md"
+  download_skill_file "$APP_URL/api/skill/files/builder-blog-library-discovery.md" "$AGENT_DIR/jobs/library-discovery.md"
   chmod +x "$AGENT_DIR/builder-digest.mjs"
+}
+
+download_skill_file() {
+  _url="$1"
+  _dest="$2"
+  mkdir -p "$(dirname "$_dest")"
+  _tmp="$(dirname "$_dest")/.$(basename "$_dest").$ACCOUNT_SLUG.$JOB_NAME.$$.tmp"
+  if ! curl -fsSL "$_url" -o "$_tmp"; then
+    rm -f "$_tmp" 2>/dev/null || true
+    return 1
+  fi
+  mv "$_tmp" "$_dest"
 }
 
 # Always pull latest CLI to avoid version drift between cached prompt/CLI and the server.
@@ -83,7 +95,7 @@ refresh_skill_files
 
 if [ -n "${BUILDER_BLOG_PROMPT_URL:-}" ]; then
   mkdir -p "$AGENT_DIR/jobs"
-  curl -fsSL "$BUILDER_BLOG_PROMPT_URL" -o "$PROMPT_FILE"
+  download_skill_file "$BUILDER_BLOG_PROMPT_URL" "$PROMPT_FILE"
 fi
 
 if [ ! -f "$PROMPT_FILE" ]; then

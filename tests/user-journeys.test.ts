@@ -1075,7 +1075,15 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /fetchTasks/);
   assert.match(runner, /process\.exit\(78\)/);
   assert.match(runner, /refresh_skill_files/);
+  assert.match(runner, /download_skill_file\(\)/);
+  assert.match(runner, /mv "\$_tmp" "\$_dest"/);
   assert.match(runner, /api\/skill\/files\/builder-digest\.mjs/);
+  assert.doesNotMatch(
+    runner,
+    /curl -fsSL "\$APP_URL\/api\/skill\/files\/builder-digest\.mjs" -o "\$AGENT_DIR\/builder-digest\.mjs"/,
+  );
+  assert.match(bootstrapRoute, /download_skill_file\(\)/);
+  assert.match(bootstrapRoute, /mv "\$_tmp" "\$_dest"/);
   assert.match(skillFileRoute, /builder-blog-digest\.md/);
   assert.match(skillFileRoute, /builder-blog-library-once\.md/);
   assert.match(skillFileRoute, /builder-blog-digest-once\.md/);

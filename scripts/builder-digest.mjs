@@ -104,8 +104,51 @@ const MAX_DIGEST_CONTENT_CHARS = 200_000;
 const MAX_DIGEST_HEADLINE_SUMMARY_CHARS = 1200;
 const MAX_DIGEST_ITEMS = 5_000;
 const ORIGINAL_CONTENT_LANGUAGE_VALUE = "source";
+const DEFAULT_SOURCE_FETCH_TIMEOUT_MS = 30_000;
 
 let _sourcesConfig = null;
+
+function sourceFetchTimeoutMs() {
+  const raw = Number(process.env.BUILDER_BLOG_SOURCE_FETCH_TIMEOUT_MS || DEFAULT_SOURCE_FETCH_TIMEOUT_MS);
+  if (!Number.isFinite(raw) || raw <= 0) return DEFAULT_SOURCE_FETCH_TIMEOUT_MS;
+  return Math.min(5 * 60 * 1000, Math.max(1_000, Math.floor(raw)));
+}
+
+function inputUrlForError(input) {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.href;
+  if (typeof input?.url === "string") return input.url;
+  return String(input || "");
+}
+
+async function timedSourceFetch(input, init = {}, fetchImpl = fetch) {
+  const timeoutMs = sourceFetchTimeoutMs();
+  if (init?.signal) return fetchImpl(input, init);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetchImpl(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error(
+        `Source fetch timed out after ${Math.round(timeoutMs / 1000)}s: ${inputUrlForError(input)}`,
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function isUserActionAgentWorkType(kind) {
+  const value = String(kind || "");
+  return value.startsWith("user_action_") || value === "x_token_missing" || value === "x_token_invalid";
+}
+
+export function timedSourceFetchForTest(input, init = {}, fetchImpl = fetch) {
+  return timedSourceFetch(input, init, fetchImpl);
+}
 
 function loadSourcesConfig() {
   if (_sourcesConfig) return _sourcesConfig;
@@ -721,7 +764,7 @@ async function fetchPersonal(args) {
     // first-class collection so the UI can surface them prominently.
     for (const task of agentTasks) {
       const kind = task?.agentWorkType ?? "";
-      if (typeof kind === "string" && kind.startsWith("user_action_")) {
+      if (isUserActionAgentWorkType(kind)) {
         userActions.push({
           kind,
           builder: task.builder ?? task.builderId ?? "unknown",
@@ -820,8 +863,7 @@ export function summarizeFetchTasksForLog(
 ) {
   const slimFetchTasks = fetchTasks.map((task) => {
     const ready = task?.contentStatus === "ready";
-    const isUserAction =
-      typeof task?.agentWorkType === "string" && task.agentWorkType.startsWith("user_action_");
+    const isUserAction = isUserActionAgentWorkType(task?.agentWorkType);
     // Stage 1: fetch-personal knows the plan and, for `ready` posts, the body
     // it already fetched. The agent-stage fields (summary size, model, final
     // status) stay null until sync-builders PATCHes them by matching `id`.
@@ -1545,7 +1587,7 @@ function normalizeSourceType(sourceType) {
 
 async function fetchPersonalYouTubeBuilder(
   builder,
-  { cutoff, limit, agentModel, fetchedItemKeys = new Set(), fetcher = fetch, sources = {} },
+  { cutoff, limit, agentModel, fetchedItemKeys = new Set(), fetcher = timedSourceFetch, sources = {} },
 ) {
   const sourceUrl = builder.fetchUrl || builder.sourceUrl;
   if (!sourceUrl) return { items: [], agentTasks: [] };
@@ -1842,11 +1884,14 @@ function isNearDuplicate(text, reference) {
   return text.length <= normalizedReference.length + 20 && normalizedReference.includes(text);
 }
 
-async function fetchPersonalBlogBuilder(builder, { cutoff, limit, agentModel, fetchedItemKeys = new Set() }) {
+async function fetchPersonalBlogBuilder(
+  builder,
+  { cutoff, limit, agentModel, fetchedItemKeys = new Set(), fetcher = timedSourceFetch },
+) {
   const indexUrl = builder.fetchUrl || builder.sourceUrl;
   if (!indexUrl) return [];
 
-  const indexResponse = await fetch(indexUrl, {
+  const indexResponse = await fetcher(indexUrl, {
     headers: { "User-Agent": "FollowBriefSkill/1.0 (personal agent fetcher)" },
   });
   if (!indexResponse.ok) {
@@ -1861,7 +1906,7 @@ async function fetchPersonalBlogBuilder(builder, { cutoff, limit, agentModel, fe
   const items = [];
 
   for (const article of candidates) {
-    const articleResponse = await fetch(article.url, {
+    const articleResponse = await fetcher(article.url, {
       headers: { "User-Agent": "FollowBriefSkill/1.0 (personal agent fetcher)" },
     });
     if (!articleResponse.ok) continue;
@@ -1896,7 +1941,7 @@ async function fetchPersonalBlogBuilder(builder, { cutoff, limit, agentModel, fe
 
 async function fetchPersonalPodcastBuilder(
   builder,
-  { cutoff, limit, agentModel, fetchedItemKeys = new Set(), fetcher = fetch, sources = {} },
+  { cutoff, limit, agentModel, fetchedItemKeys = new Set(), fetcher = timedSourceFetch, sources = {} },
 ) {
   const rawFeedUrl = builder.fetchUrl || builder.sourceUrl;
   if (!rawFeedUrl) return { items: [], agentTasks: [] };
@@ -1959,7 +2004,7 @@ async function fetchPersonalGithubTrendingBuilder(
     limit,
     agentModel,
     fetchedItemKeys = new Set(),
-    fetcher = fetch,
+    fetcher = timedSourceFetch,
     sources = {},
     now = new Date(),
   },
@@ -2044,7 +2089,7 @@ async function fetchPersonalProductHuntTopProductsBuilder(
     limit,
     agentModel,
     fetchedItemKeys = new Set(),
-    fetcher = fetch,
+    fetcher = timedSourceFetch,
     sources = {},
     now = new Date(),
   },
@@ -2316,7 +2361,7 @@ function githubTrendingAgentTaskForRepository(builder, repo, { sources = {}, age
 
 const APPLE_PODCAST_URL_RE = /podcasts\.apple\.com\/[^?\s]*\/id(\d+)/i;
 
-async function resolveApplePodcastFeedUrl(url, fetcher = fetch) {
+async function resolveApplePodcastFeedUrl(url, fetcher = timedSourceFetch) {
   const match = String(url || "").match(APPLE_PODCAST_URL_RE);
   if (!match) return url;
   const collectionId = match[1];
@@ -2423,11 +2468,14 @@ export function parsePodcastFeedItems(xml, feedUrl) {
     .filter((item) => item.externalId && (item.url || item.enclosureUrl));
 }
 
-async function fetchPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel, fetchedItemKeys = new Set() }) {
+async function fetchPersonalWebsiteBuilder(
+  builder,
+  { cutoff, limit, agentModel, fetchedItemKeys = new Set(), fetcher = timedSourceFetch },
+) {
   const sourceUrl = builder.fetchUrl || builder.sourceUrl;
   if (!sourceUrl) return [];
 
-  const response = await fetch(sourceUrl, {
+  const response = await fetcher(sourceUrl, {
     headers: { "User-Agent": "FollowBriefSkill/1.0 (personal website fetcher)" },
   });
   if (!response.ok) {
@@ -2463,22 +2511,18 @@ async function fetchPersonalWebsiteBuilder(builder, { cutoff, limit, agentModel,
   ].slice(0, limit);
 }
 
-async function fetchPersonalXBuilder(builder, { cutoff, limit, agentModel, fetchedItemKeys = new Set(), sources = {} }) {
+async function fetchPersonalXBuilder(
+  builder,
+  { cutoff, limit, agentModel, fetchedItemKeys = new Set(), fetcher = timedSourceFetch, sources = {} },
+) {
   const bearerToken = agentSecret("X_BEARER_TOKEN");
   if (!bearerToken) {
     // No throw: unauthenticated x.com scraping doesn't yield usable post
     // content (login wall + JS challenge), so retry-with-agent is futile.
     // Surface a structured task the agent prints to the user instead.
-    const handleString = normalizeXHandle(builder.handle || builder.sourceUrl) ?? "";
-    const profileUrl = handleString
-      ? `https://x.com/${handleString}`
-      : (builder.sourceUrl ?? "");
-    const task = {
+    return xTokenActionResult(builder, sources, {
       type: "x_token_missing",
-      builder: builder.name,
-      builderId: builder.id,
-      sourceType: "x",
-      agentMessage:
+      message:
         `Action needed for X source "${builder.name}": personal X (Twitter) ` +
         `fetching requires an X API bearer token. The CLI cannot fetch posts ` +
         `without it, and unauthenticated x.com scraping does not return usable ` +
@@ -2488,39 +2532,45 @@ async function fetchPersonalXBuilder(builder, { cutoff, limit, agentModel, fetch
         `the shell first. For scheduled cron runs (which see a bare ` +
         `environment), add it to ~/.builder-blog/secrets.json as ` +
         `{"X_BEARER_TOKEN":"..."} (chmod 600), then re-run.`,
-      agentHelpUrl: "https://developer.x.com/en/portal/dashboard",
-      item: {
-        kind: "TWEET",
-        externalId: `x-token-missing:${builder.id}`,
-        title: builder.name,
-        url: profileUrl,
-        publishedAt: null,
-        sourceName: builder.name,
-      },
-      minimumContentQuality: genericMinimumContentQuality(sources, "x"),
-    };
-    return {
-      items: [],
-      agentTasks: [{ ...task, id: agentTaskId(task) }],
-    };
+    });
   }
   const handle = normalizeXHandle(builder.handle || builder.sourceUrl);
   if (!handle) return [];
 
-  const userResponse = await fetch(
+  const userResponse = await fetcher(
     `https://api.x.com/2/users/by/username/${encodeURIComponent(handle)}?user.fields=description`,
     { headers: { authorization: `Bearer ${bearerToken}` } },
   );
+  if (xTokenRejected(userResponse.status)) {
+    return xTokenActionResult(builder, sources, {
+      type: "x_token_invalid",
+      status: userResponse.status,
+      message:
+        `Action needed for X source "${builder.name}": the saved X API bearer ` +
+        `token was rejected (HTTP ${userResponse.status}). Update X_BEARER_TOKEN ` +
+        `in your shell or ~/.builder-blog/secrets.json, then re-run.`,
+    });
+  }
   if (!userResponse.ok) {
     throw new Error(`Failed to resolve X user ${handle}: HTTP ${userResponse.status}`);
   }
   const user = (await userResponse.json())?.data;
   if (!user?.id) return [];
 
-  const tweetResponse = await fetch(
+  const tweetResponse = await fetcher(
     `https://api.x.com/2/users/${encodeURIComponent(user.id)}/tweets?max_results=${Math.min(100, Math.max(5, limit * 3))}&tweet.fields=created_at,note_tweet&exclude=retweets,replies`,
     { headers: { authorization: `Bearer ${bearerToken}` } },
   );
+  if (xTokenRejected(tweetResponse.status)) {
+    return xTokenActionResult(builder, sources, {
+      type: "x_token_invalid",
+      status: tweetResponse.status,
+      message:
+        `Action needed for X source "${builder.name}": the saved X API bearer ` +
+        `token was rejected while fetching posts (HTTP ${tweetResponse.status}). ` +
+        `Update X_BEARER_TOKEN in your shell or ~/.builder-blog/secrets.json, then re-run.`,
+    });
+  }
   if (!tweetResponse.ok) {
     throw new Error(`Failed to fetch X tweets for ${handle}: HTTP ${tweetResponse.status}`);
   }
@@ -2550,6 +2600,46 @@ async function fetchPersonalXBuilder(builder, { cutoff, limit, agentModel, fetch
     .filter((item) => isAfterCutoff(item.publishedAt, cutoff))
     .filter((item) => !fetchedItemKeys.has(personalItemKey(builder.id, "TWEET", item.externalId)))
     .slice(0, limit);
+}
+
+function xTokenRejected(status) {
+  return status === 401 || status === 403;
+}
+
+function xTokenActionResult(builder, sources = {}, { type, message, status = null }) {
+  const handleString = normalizeXHandle(builder.handle || builder.sourceUrl) ?? "";
+  const profileUrl = handleString ? `https://x.com/${handleString}` : (builder.sourceUrl ?? "");
+  const task = {
+    type,
+    builder: builder.name,
+    builderId: builder.id,
+    sourceType: "x",
+    agentMessage: message,
+    agentHelpUrl: "https://developer.x.com/en/portal/dashboard",
+    item: {
+      kind: "TWEET",
+      externalId: `${type}:${builder.id}`,
+      title: builder.name,
+      url: profileUrl,
+      publishedAt: null,
+      sourceName: builder.name,
+      rawJson: {
+        source: type,
+        builderId: builder.id,
+        builderName: builder.name,
+        ...(status ? { httpStatus: status } : {}),
+      },
+    },
+    minimumContentQuality: genericMinimumContentQuality(sources, "x"),
+  };
+  return {
+    items: [],
+    agentTasks: [{ ...task, id: agentTaskId(task) }],
+  };
+}
+
+export function fetchPersonalXBuilderForTest(builder, options) {
+  return fetchPersonalXBuilder(builder, options);
 }
 
 async function fetchPersonalWithExternalCommand(builder, { fallbackCutoff, force, limit, context, agentModel }) {
@@ -2956,7 +3046,7 @@ function escapeRegex(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-export async function youtubeFeedUrl(sourceUrl, fetcher = fetch) {
+export async function youtubeFeedUrl(sourceUrl, fetcher = timedSourceFetch) {
   if (!sourceUrl) return "";
   const parsed = new URL(sourceUrl);
   if (parsed.pathname.includes("/feeds/videos.xml")) return parsed.href;
@@ -2988,7 +3078,7 @@ export async function youtubeFeedUrl(sourceUrl, fetcher = fetch) {
  * @param {(input: string, init?: RequestInit) => Promise<Response>} [fetcher]
  * @param {{ retryDelays?: number[] }} [options]
  */
-export async function fetchYouTubeVideos(sourceUrl, fetcher = fetch, options = {}) {
+export async function fetchYouTubeVideos(sourceUrl, fetcher = timedSourceFetch, options = {}) {
   const feedUrl = await youtubeFeedUrl(sourceUrl, fetcher);
   if (!feedUrl) {
     throw new Error(`Could not resolve a YouTube feed for ${sourceUrl}`);
@@ -3191,7 +3281,7 @@ function youtubeRendererMetadataText(renderer) {
     .join(" · ");
 }
 
-async function fetchYouTubeTranscript(videoUrl, fetcher = fetch, metadata = {}) {
+async function fetchYouTubeTranscript(videoUrl, fetcher = timedSourceFetch, metadata = {}) {
   const videoId = youtubeVideoId(videoUrl);
   if (!videoId) return { text: "" };
   const response = await fetcher(`https://www.youtube.com/watch?v=${videoId}`, {
@@ -3416,13 +3506,13 @@ function shardGroupKey(task) {
 
 export function shardFetchTasksForWorkers(fetchResult, maxWorkers) {
   const all = extractFetchTasks(fetchResult);
-  const userActionTasks = all.filter((task) => task?.agentWorkType === "x_token_missing");
+  const userActionTasks = all.filter((task) => isUserActionAgentWorkType(task?.agentWorkType));
   const discoveryTasks = all.filter(
     (task) => task?.agentWorkType === "candidate_discovery_fallback",
   );
   const workTasks = all.filter(
     (task) =>
-      task?.agentWorkType !== "x_token_missing" &&
+      !isUserActionAgentWorkType(task?.agentWorkType) &&
       task?.agentWorkType !== "candidate_discovery_fallback",
   );
 
@@ -3551,7 +3641,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults) {
         if (taskId && taskTypeById.get(taskId) === "fetch_builder_fallback") {
           // Builder-fallback tasks legitimately produce multiple items per
           // task id; dedupe those by item identity instead.
-          const itemKey = `${taskId} ${item?.externalId || item?.url || ""}`;
+          const itemKey = `${taskId}\u0000${item?.externalId || item?.url || ""}`;
           if (seenFallbackItems.has(itemKey)) continue;
           seenFallbackItems.add(itemKey);
         } else if (taskId) {
@@ -3586,7 +3676,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults) {
   // the fetch log records the loss instead of silently dropping the task.
   let backfilled = 0;
   for (const task of planned) {
-    if (task?.agentWorkType === "x_token_missing") continue;
+    if (isUserActionAgentWorkType(task?.agentWorkType)) continue;
     const id = String(task?.id || fetchTaskId(task));
     if (accounted.has(id)) continue;
     accounted.add(id);
@@ -3699,7 +3789,7 @@ export function validateAgentSyncPayload(fetchResult, payload) {
     // User-action tasks (e.g., x_token_missing) are informational: the
     // agent prints them and does not include them in the sync payload,
     // so the validator must not flag them as missing.
-    if (task.agentWorkType === "x_token_missing") {
+    if (isUserActionAgentWorkType(task.agentWorkType)) {
       userActionTasks.push({
         fetchTaskId: id,
         agentWorkType: task.agentWorkType,

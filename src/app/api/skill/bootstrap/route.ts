@@ -22,21 +22,34 @@ fi
 
 mkdir -p "$AGENT_DIR"
 mkdir -p "$AGENT_DIR/jobs" "$AGENT_DIR/logs" "$AGENT_DIR/tmp"
-curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest.md" -o "$AGENT_DIR/SKILL.md"
-curl -fsSL "$APP_URL/api/skill/files/builder-digest.mjs" -o "$AGENT_DIR/builder-digest.mjs"
-curl -fsSL "$APP_URL/api/skill/files/builder-agent-runner.sh" -o "$AGENT_DIR/builder-agent-runner.sh"
-curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-once.md" -o "$AGENT_DIR/jobs/library-once.md"
-curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest-once.md" -o "$AGENT_DIR/jobs/digest-once.md"
-curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-cron-setup.md" -o "$AGENT_DIR/jobs/library-cron-setup.md"
-curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest-cron-setup.md" -o "$AGENT_DIR/jobs/digest-cron-setup.md"
-curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-cron.md" -o "$AGENT_DIR/jobs/library-cron.md"
-curl -fsSL "$APP_URL/api/skill/files/builder-blog-digest-cron.md" -o "$AGENT_DIR/jobs/digest-cron.md"
-curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-worker.md" -o "$AGENT_DIR/jobs/library-worker.md"
-curl -fsSL "$APP_URL/api/skill/files/builder-blog-library-discovery.md" -o "$AGENT_DIR/jobs/library-discovery.md"
+
+download_skill_file() {
+  _url="$1"
+  _dest="$2"
+  mkdir -p "$(dirname "$_dest")"
+  _tmp="$(dirname "$_dest")/.$(basename "$_dest").$$.tmp"
+  if ! curl -fsSL "$_url" -o "$_tmp"; then
+    rm -f "$_tmp" 2>/dev/null || true
+    return 1
+  fi
+  mv "$_tmp" "$_dest"
+}
+
+download_skill_file "$APP_URL/api/skill/files/builder-blog-digest.md" "$AGENT_DIR/SKILL.md"
+download_skill_file "$APP_URL/api/skill/files/builder-digest.mjs" "$AGENT_DIR/builder-digest.mjs"
+download_skill_file "$APP_URL/api/skill/files/builder-agent-runner.sh" "$AGENT_DIR/builder-agent-runner.sh"
+download_skill_file "$APP_URL/api/skill/files/builder-blog-library-once.md" "$AGENT_DIR/jobs/library-once.md"
+download_skill_file "$APP_URL/api/skill/files/builder-blog-digest-once.md" "$AGENT_DIR/jobs/digest-once.md"
+download_skill_file "$APP_URL/api/skill/files/builder-blog-library-cron-setup.md" "$AGENT_DIR/jobs/library-cron-setup.md"
+download_skill_file "$APP_URL/api/skill/files/builder-blog-digest-cron-setup.md" "$AGENT_DIR/jobs/digest-cron-setup.md"
+download_skill_file "$APP_URL/api/skill/files/builder-blog-library-cron.md" "$AGENT_DIR/jobs/library-cron.md"
+download_skill_file "$APP_URL/api/skill/files/builder-blog-digest-cron.md" "$AGENT_DIR/jobs/digest-cron.md"
+download_skill_file "$APP_URL/api/skill/files/builder-blog-library-worker.md" "$AGENT_DIR/jobs/library-worker.md"
+download_skill_file "$APP_URL/api/skill/files/builder-blog-library-discovery.md" "$AGENT_DIR/jobs/library-discovery.md"
 # Per-source config (content-quality floors, url patterns) — the single source
 # of truth the CLI reads. Downloaded here so the once-flow (bootstrap → direct
 # CLI, no runner) always has it; the CLI no longer carries an embedded fallback.
-curl -fsSL "$APP_URL/api/skill/files/sources.json" -o "$AGENT_DIR/sources.json"
+download_skill_file "$APP_URL/api/skill/files/sources.json" "$AGENT_DIR/sources.json"
 chmod +x "$AGENT_DIR/builder-digest.mjs"
 chmod +x "$AGENT_DIR/builder-agent-runner.sh"
 

@@ -2021,6 +2021,92 @@ test("shard-tasks groups by builder, balances by weight, excludes non-work tasks
   assert.equal(cli.shardFetchTasksForWorkers(fetchResult, 8).shards.length, 3);
 });
 
+test("x token action tasks are logged and sharded as user actions", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      { id: "missing", agentWorkType: "x_token_missing", builderSync: { builderId: "x1" }, agentMessage: "missing token" },
+      { id: "invalid", agentWorkType: "x_token_invalid", builderSync: { builderId: "x2" }, agentMessage: "invalid token" },
+      { id: "work", agentWorkType: "fetch_post", contentStatus: "requires_agent", sourceType: "youtube", builderSync: { builderId: "y1" } },
+    ],
+  };
+
+  const { slimFetchTasks } = cli.summarizeFetchTasksForLog(fetchResult.fetchTasks);
+  assert.deepEqual(
+    slimFetchTasks.map((task: { id: string; status: string }) => [task.id, task.status]),
+    [
+      ["missing", "action_needed"],
+      ["invalid", "action_needed"],
+      ["work", "pending"],
+    ],
+  );
+
+  const { shards, userActionTasks } = cli.shardFetchTasksForWorkers(fetchResult, 2);
+  assert.deepEqual(userActionTasks.map((task: { id: string }) => task.id), ["missing", "invalid"]);
+  assert.deepEqual(shards.flatMap((shard: { tasks: { id: string }[] }) => shard.tasks.map((task) => task.id)), ["work"]);
+});
+
+test("x fetch returns action-needed task when the bearer token is rejected", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const previousToken = process.env.X_BEARER_TOKEN;
+  try {
+    process.env.X_BEARER_TOKEN = "bad-token";
+    const result = await cli.fetchPersonalXBuilderForTest(
+      {
+        id: "builder_x",
+        kind: "X",
+        name: "Bad Token Source",
+        handle: "badtoken",
+        sourceUrl: "https://x.com/badtoken",
+      },
+      {
+        cutoff: null,
+        limit: 3,
+        agentModel: "test-model",
+        fetchedItemKeys: new Set(),
+        fetcher: async () => ({ ok: false, status: 401 }),
+        sources: {},
+      },
+    );
+
+    assert.equal(result.items.length, 0);
+    assert.equal(result.agentTasks.length, 1);
+    assert.equal(result.agentTasks[0].type, "x_token_invalid");
+    assert.match(result.agentTasks[0].agentMessage, /HTTP 401/);
+  } finally {
+    if (previousToken === undefined) delete process.env.X_BEARER_TOKEN;
+    else process.env.X_BEARER_TOKEN = previousToken;
+  }
+});
+
+test("source fetch timeout aborts stalled external requests", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const previousTimeout = process.env.BUILDER_BLOG_SOURCE_FETCH_TIMEOUT_MS;
+  try {
+    process.env.BUILDER_BLOG_SOURCE_FETCH_TIMEOUT_MS = "5";
+    await assert.rejects(
+      () =>
+        cli.timedSourceFetchForTest(
+          "https://example.com/slow",
+          {},
+          (_url: string, init: { signal: AbortSignal }) =>
+            new Promise((_resolve, reject) => {
+              init.signal.addEventListener("abort", () => {
+                const error = new Error("aborted");
+                error.name = "AbortError";
+                reject(error);
+              });
+            }),
+        ),
+      /Source fetch timed out after/,
+    );
+  } finally {
+    if (previousTimeout === undefined) delete process.env.BUILDER_BLOG_SOURCE_FETCH_TIMEOUT_MS;
+    else process.env.BUILDER_BLOG_SOURCE_FETCH_TIMEOUT_MS = previousTimeout;
+  }
+});
+
 test("merge-task-results merges shard payloads and backfills missing tasks as failed", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const fetchResult = {
