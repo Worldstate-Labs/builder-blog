@@ -143,19 +143,37 @@ run_with_codex_unattended() {
   # library fetch (FollowBrief API + content sources) and surfaces as a
   # generic "fetch failed". Re-enable network for the workspace sandbox so the
   # job can reach the network while keeping the filesystem sandbox intact.
+  _codex_output="$JOB_TMP_DIR/codex-agent-output-$$.log"
+  set +e
   codex exec --skip-git-repo-check --full-auto \
     -c sandbox_workspace_write.network_access=true \
-    -C "$AGENT_DIR" - < "$PROMPT_FILE"
+    -C "$AGENT_DIR" - < "$PROMPT_FILE" > "$_codex_output" 2>&1
+  _codex_code="$?"
+  set -e
+  cat "$_codex_output"
+  if agent_output_has_timeout "$_codex_output"; then
+    return 124
+  fi
+  return "$_codex_code"
 }
 
 run_with_claude_unattended() {
   # acceptEdits auto-approves edits; allowedTools whitelists the tool
   # surface the library-once skill actually uses (Bash for node CLI +
   # curl, WebFetch for content extraction, file IO under tmp/).
+  _claude_output="$JOB_TMP_DIR/claude-agent-output-$$.log"
+  set +e
   claude -p "$(cat "$PROMPT_FILE")" \
     --add-dir "$AGENT_DIR" \
     --permission-mode acceptEdits \
-    --allowedTools "Bash,Edit,Read,Write,Grep,Glob,WebFetch"
+    --allowedTools "Bash,Edit,Read,Write,Grep,Glob,WebFetch" > "$_claude_output" 2>&1
+  _claude_code="$?"
+  set -e
+  cat "$_claude_output"
+  if agent_output_has_timeout "$_claude_output"; then
+    return 124
+  fi
+  return "$_claude_code"
 }
 
 run_with_openclaw_unattended() {
@@ -182,7 +200,7 @@ run_with_openclaw_unattended() {
   _openclaw_code="$?"
   set -e
   cat "$_openclaw_output"
-  if openclaw_output_has_timeout "$_openclaw_output"; then
+  if agent_output_has_timeout "$_openclaw_output"; then
     return 124
   fi
   return "$_openclaw_code"
@@ -205,16 +223,25 @@ sync_openclaw_timeout_config() {
   fi
 }
 
-openclaw_output_has_timeout() {
+agent_output_has_timeout() {
   _file="${1:-}"
   [ -n "$_file" ] && [ -r "$_file" ] || return 1
-  grep -E -q \
-    "Request timed out before a response was generated|codex app-server turn idle timed out|embedded run failover decision:.*reason=timeout" \
+  grep -E -i -q \
+    "Request timed out before a response was generated|codex app-server turn idle timed out|codex app-server client retired after timed-out turn|embedded run failover decision:.*reason=timeout|LLM timed out|Profile .* timed out|DEADLINE_EXCEEDED|deadline exceeded" \
     "$_file"
 }
 
 run_with_gemini_unattended() {
-  gemini --yolo -p "$(cat "$PROMPT_FILE")"
+  _gemini_output="$JOB_TMP_DIR/gemini-agent-output-$$.log"
+  set +e
+  gemini --yolo -p "$(cat "$PROMPT_FILE")" > "$_gemini_output" 2>&1
+  _gemini_code="$?"
+  set -e
+  cat "$_gemini_output"
+  if agent_output_has_timeout "$_gemini_output"; then
+    return 124
+  fi
+  return "$_gemini_code"
 }
 
 run_shell_library_fallback() {

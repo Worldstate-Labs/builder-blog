@@ -90,6 +90,13 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /library-cron\)[\s\S]*75 \* 60/);
   assert.match(runner, /digest-cron\)[\s\S]*45 \* 60/);
   assert.match(runner, /20 \* 60/);
+  assert.match(runner, /agent_output_has_timeout/);
+  assert.match(runner, /codex-agent-output/);
+  assert.match(runner, /claude-agent-output/);
+  assert.match(runner, /gemini-agent-output/);
+  assert.match(runner, /Request timed out before a response was generated/);
+  assert.match(runner, /codex app-server turn idle timed out/);
+  assert.match(runner, /DEADLINE_EXCEEDED/);
   assert.doesNotMatch(runner, /skipping duplicate cron launch/);
   assert.doesNotMatch(runner, /\)\s*>> "\$LOG_FILE" 2>&1 &/);
   assert.doesNotMatch(runner, /WORKER_PID="\$!"/);
