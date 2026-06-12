@@ -486,6 +486,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_LABEL\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_TIMEOUT_SECONDS\}\}/);
   assert.match(skillJobRoute, /timeoutSecondsForJob/);
+  assert.match(skillJobRoute, /job\.startsWith\("library"\) \? 75 \* 60 : 45 \* 60/);
   // macOS scheduling uses a launchd LaunchAgent (keychain access); the route
   // provides a launchd schedule fragment per cadence.
   assert.match(skillJobRoute, /launchdSchedules/);

@@ -12,7 +12,7 @@ function timeoutSecondsForJob(intervalMinutes: string, job: string) {
   const safeInterval = Number.isFinite(interval) && interval > 0 ? interval : 60;
   const base = safeInterval * 48;
   const min = 20 * 60;
-  const max = job.startsWith("library") ? 120 * 60 : 45 * 60;
+  const max = job.startsWith("library") ? 75 * 60 : 45 * 60;
   return String(Math.min(max, Math.max(min, base)));
 }
 
