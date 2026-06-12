@@ -137,6 +137,48 @@ type JobRunDetailsShape = {
   timedOutWorkerPid?: number | null;
   termination?: string | null;
   skippedWaitPids?: string | null;
+  progress?: FetchJobProgress | null;
+};
+
+type FetchJobProgress = {
+  version?: number;
+  stage?: string | null;
+  updatedAt?: string | null;
+  counters?: {
+    sourcesTotal?: number;
+    sourcesChecked?: number;
+    candidatesFound?: number;
+    tasksPlanned?: number;
+    tasksDone?: number;
+    synced?: number;
+    skipped?: number;
+    failed?: number;
+    actionNeeded?: number;
+  };
+  current?: {
+    source?: string | null;
+    task?: string | null;
+    workerId?: string | null;
+  };
+  sources?: Array<{
+    builderId?: string | null;
+    name?: string | null;
+    sourceType?: string | null;
+    status?: string | null;
+    itemsFetched?: number | null;
+    tasksGenerated?: number | null;
+    error?: string | null;
+    updatedAt?: string | null;
+  }>;
+  recentEvents?: Array<{
+    at?: string | null;
+    type?: string | null;
+    message?: string | null;
+    taskId?: string | null;
+    builderId?: string | null;
+    status?: string | null;
+    reason?: string | null;
+  }>;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -248,6 +290,16 @@ function readDetails(value: unknown): DetailsShape {
 function readJobRunDetails(value: unknown): JobRunDetailsShape {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return value as JobRunDetailsShape;
+}
+
+function readFetchJobProgress(value: unknown): FetchJobProgress | null {
+  const progress = readJobRunDetails(value).progress;
+  if (!progress || typeof progress !== "object" || Array.isArray(progress)) return null;
+  return progress;
+}
+
+function hasActiveFetchProgress(jobRuns: AgentJobRunListItem[]): boolean {
+  return jobRuns.some((jobRun) => isActiveJobRun(jobRun) && readFetchJobProgress(jobRun.details));
 }
 
 // A run is "in flight" between the two writes: fetch-personal POSTed the row
@@ -593,6 +645,7 @@ export function FetchLogPanel({
   // and never while the tab is hidden (saves requests and respects rate limits).
   // Unlike the timestamp tick above, this is data, not motion — so it runs
   // regardless of prefers-reduced-motion.
+  const POLL_ACTIVE_PROGRESS_MS = 3_000;
   const POLL_INFLIGHT_MS = 8_000;
   const POLL_IDLE_MS = 45_000;
   useEffect(() => {
@@ -611,7 +664,11 @@ export function FetchLogPanel({
           isRunInflight(run, run.jobRunId ? jobsByInstanceId.get(run.jobRunId) : null, cronJobRef.current),
         ) ||
         jobRunsRef.current.some((run) => isActiveJobRun(run));
-      timer = window.setTimeout(tick, inflight ? POLL_INFLIGHT_MS : POLL_IDLE_MS);
+      const activeProgress = hasActiveFetchProgress(jobRunsRef.current);
+      timer = window.setTimeout(
+        tick,
+        activeProgress ? POLL_ACTIVE_PROGRESS_MS : inflight ? POLL_INFLIGHT_MS : POLL_IDLE_MS,
+      );
     };
     // Refresh immediately when the user returns to the tab so they don't wait a
     // full interval to see what changed while it was hidden.
@@ -1358,11 +1415,63 @@ function jobRunDiagnostic(jobRun: AgentJobRunListItem): string | null {
   return parts.length ? parts.join(" · ") : null;
 }
 
+function LiveProgressSummary({ progress }: { progress: FetchJobProgress | null }) {
+  if (!progress) return null;
+  const counters = progress.counters ?? {};
+  const recentEvent = Array.isArray(progress.recentEvents)
+    ? progress.recentEvents.at(-1)
+    : null;
+  const current = progress.current ?? {};
+  const stage = progress.stage ? progress.stage.replace(/_/g, " ") : "running";
+  const hasSourceProgress = typeof counters.sourcesTotal === "number" && counters.sourcesTotal > 0;
+  const hasTaskProgress = typeof counters.tasksPlanned === "number" && counters.tasksPlanned > 0;
+
+  return (
+    <div className="sync-panel-live-progress">
+      <div className="mono sync-panel-run-card-meta">
+        <span>{stage}</span>
+        {hasSourceProgress ? (
+          <>
+            {" · "}
+            <CountMeta label="sources checked" value={counters.sourcesChecked ?? 0} />
+            <span> / {counters.sourcesTotal}</span>
+          </>
+        ) : null}
+        {hasTaskProgress ? (
+          <>
+            {" · "}
+            <CountMeta label="tasks done" value={counters.tasksDone ?? 0} />
+            <span> / {counters.tasksPlanned}</span>
+          </>
+        ) : null}
+        {typeof counters.synced === "number" && counters.synced > 0 ? (
+          <>
+            {" · "}
+            <CountMeta label="synced" value={counters.synced} />
+          </>
+        ) : null}
+        {typeof counters.failed === "number" && counters.failed > 0 ? (
+          <>
+            {" · "}
+            <CountMeta label="failed" value={counters.failed} />
+          </>
+        ) : null}
+      </div>
+      {current.source || current.task || recentEvent?.message ? (
+        <div className="mono sync-panel-run-card-stage">
+          {current.source ? `Now: ${current.source}` : current.task ? `Now: ${current.task}` : recentEvent?.message}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
   const hydrated = useHydrated();
   const style = jobRunStatusStyle(jobRun);
   const startedAtLabel = hydrated ? formatRelative(jobRun.startedAt) : formatAbsolute(jobRun.startedAt);
   const diagnostic = jobRunDiagnostic(jobRun);
+  const liveProgress = readFetchJobProgress(jobRun.details);
   const fallbackSummary = isActiveJobRun(jobRun)
     ? "The Local Agent has started; no fetch log has been received yet."
     : "The Local Agent ended before FollowBrief received a fetch log.";
@@ -1397,6 +1506,7 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
       <p className="sync-panel-run-card-summary">
         {jobRun.summary || fallbackSummary}
       </p>
+      <LiveProgressSummary progress={liveProgress} />
       <div className="mono sync-panel-run-card-stage">
         {jobRun.stage || "runtime"} · {jobRun.finishedAt ? "finished" : "active"}
       </div>
@@ -1436,6 +1546,7 @@ function RunCard({
     details.agentRuntime || (run.cliVersion ? "Local Agent" : "");
   const startedAtLabel = hydrated ? formatRelative(run.startedAt) : formatAbsolute(run.startedAt);
   const diagnostic = jobRun ? jobRunDiagnostic(jobRun) : null;
+  const liveProgress = jobRun ? readFetchJobProgress(jobRun.details) : null;
 
   return (
     <article
@@ -1497,6 +1608,7 @@ function RunCard({
         <CountMeta label={run.userActionsCount === 1 ? "action needed" : "actions needed"} value={run.userActionsCount} /> ·{" "}
         {formatDuration(run.durationMs)}
       </div>
+      <LiveProgressSummary progress={liveProgress} />
       {diagnostic ? (
         <div className="mono sync-panel-run-card-stage">
           {diagnostic}

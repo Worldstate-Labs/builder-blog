@@ -131,6 +131,9 @@ function libraryFetchRunIdFile() {
 function defaultLibraryFetchResultFile() {
   return join(jobTmpDir("library-once"), "library-fetch-result.json");
 }
+function defaultLibraryFetchProgressFile() {
+  return join(jobTmpDir("library-once"), "library-fetch-progress.json");
+}
 function defaultDigestContextFile() {
   return join(jobTmpDir("digest-once"), "builder-blog-context.json");
 }
@@ -686,6 +689,146 @@ async function jobRunCommand(args, defaultStatus = "running") {
   console.log(JSON.stringify(result ?? { status: "skipped" }, null, 2));
 }
 
+const FETCH_PROGRESS_VERSION = 1;
+const FETCH_PROGRESS_RECENT_EVENT_LIMIT = 60;
+
+function createFetchProgressState(initial = {}) {
+  return {
+    version: FETCH_PROGRESS_VERSION,
+    stage: initial.stage ?? "starting",
+    updatedAt: new Date().toISOString(),
+    counters: {
+      sourcesTotal: 0,
+      sourcesChecked: 0,
+      candidatesFound: 0,
+      tasksPlanned: 0,
+      tasksDone: 0,
+      synced: 0,
+      skipped: 0,
+      failed: 0,
+      actionNeeded: 0,
+      ...(initial.counters ?? {}),
+    },
+    current: initial.current ?? {},
+    sources: Array.isArray(initial.sources) ? initial.sources : [],
+    recentEvents: Array.isArray(initial.recentEvents)
+      ? initial.recentEvents.slice(-FETCH_PROGRESS_RECENT_EVENT_LIMIT)
+      : [],
+  };
+}
+
+function fetchProgressSnapshot(progress) {
+  return {
+    version: FETCH_PROGRESS_VERSION,
+    stage: progress.stage,
+    updatedAt: new Date().toISOString(),
+    counters: { ...(progress.counters ?? {}) },
+    current: { ...(progress.current ?? {}) },
+    sources: Array.isArray(progress.sources) ? progress.sources : [],
+    recentEvents: Array.isArray(progress.recentEvents)
+      ? progress.recentEvents.slice(-FETCH_PROGRESS_RECENT_EVENT_LIMIT)
+      : [],
+  };
+}
+
+function appendFetchProgressEvent(progress, event) {
+  progress.recentEvents = [
+    ...(Array.isArray(progress.recentEvents) ? progress.recentEvents : []),
+    {
+      at: new Date().toISOString(),
+      type: event.type,
+      message: event.message,
+      ...(event.builderId ? { builderId: event.builderId } : {}),
+      ...(event.taskId ? { taskId: event.taskId } : {}),
+      ...(event.status ? { status: event.status } : {}),
+      ...(event.reason ? { reason: event.reason } : {}),
+    },
+  ].slice(-FETCH_PROGRESS_RECENT_EVENT_LIMIT);
+}
+
+function upsertFetchProgressSource(progress, source) {
+  const sources = Array.isArray(progress.sources) ? progress.sources : [];
+  const key = source.builderId ?? source.name;
+  const index = sources.findIndex((item) => (item.builderId ?? item.name) === key);
+  const value = {
+    ...(index >= 0 ? sources[index] : {}),
+    ...source,
+    updatedAt: new Date().toISOString(),
+  };
+  if (index >= 0) sources[index] = value;
+  else sources.push(value);
+  progress.sources = sources;
+}
+
+async function writeFetchProgressState(progress) {
+  try {
+    const file = defaultLibraryFetchProgressFile();
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, `${JSON.stringify(fetchProgressSnapshot(progress), null, 2)}\n`, "utf8");
+  } catch {
+    // Local progress continuity is best-effort; never fail the fetch pipeline.
+  }
+}
+
+async function readFetchProgressState() {
+  try {
+    const raw = JSON.parse(await readFile(defaultLibraryFetchProgressFile(), "utf8"));
+    if (raw?.version !== FETCH_PROGRESS_VERSION) return null;
+    return createFetchProgressState(raw);
+  } catch {
+    return null;
+  }
+}
+
+async function emitFetchJobProgress(config, progress, update = {}) {
+  if (!progress) return;
+  if (update.stage) progress.stage = update.stage;
+  if (update.current) progress.current = update.current;
+  if (update.counters) progress.counters = { ...(progress.counters ?? {}), ...update.counters };
+  if (update.source) upsertFetchProgressSource(progress, update.source);
+  if (update.event) appendFetchProgressEvent(progress, update.event);
+  progress.updatedAt = new Date().toISOString();
+  await writeFetchProgressState(progress);
+
+  if (webSyncDisabled() || !config?.appUrl || !config?.token || !envJobRunId()) return;
+  try {
+    const fetchProgressSnapshotValue = fetchProgressSnapshot(progress);
+    await emitAgentJobRunRecord(config, {
+      jobType: "library-fetch",
+      trigger: envJobTrigger(),
+      scheduleJob: envScheduleJob(),
+      instanceId: envJobRunId(),
+      status: "running",
+      stage: progress.stage,
+      summary: update.summary ?? progressSummary(fetchProgressSnapshotValue),
+      details: {
+        cliVersion: CLI_VERSION,
+        progress: fetchProgressSnapshotValue,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Failed to update live fetch progress: ${message}`);
+  }
+}
+
+function progressSummary(progress) {
+  const counters = progress.counters ?? {};
+  const stage = String(progress.stage ?? "running").replace(/_/g, " ");
+  const sourcePart = counters.sourcesTotal
+    ? `${formatProgressCount(counters.sourcesChecked ?? 0)}/${formatProgressCount(counters.sourcesTotal)} sources`
+    : null;
+  const taskPart = counters.tasksPlanned
+    ? `${formatProgressCount(counters.tasksDone ?? 0)}/${formatProgressCount(counters.tasksPlanned)} tasks`
+    : null;
+  return [stage, sourcePart, taskPart].filter(Boolean).join(" · ").slice(0, 500);
+}
+
+function formatProgressCount(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? String(Math.max(0, Math.floor(n))) : "0";
+}
+
 
 function requireLoggedIn(config) {
   if (!config.token) {
@@ -755,6 +898,11 @@ async function fetchPersonal(args) {
   // No token → no upload possible; let the original error bubble so
   // the user sees the actionable login message.
   requireLoggedIn(config);
+  const fetchProgress = createFetchProgressState({
+    stage: "starting",
+    counters: { sourcesTotal: 0, sourcesChecked: 0 },
+    current: { source: null },
+  });
 
   let perBuilder = [];
   const userActions = [];
@@ -784,10 +932,36 @@ async function fetchPersonal(args) {
     );
     const personalBuilders = personalBuildersForFetch(context);
     buildersAttempted = personalBuilders.length;
+    await emitFetchJobProgress(config, fetchProgress, {
+      stage: "scanning_sources",
+      counters: {
+        sourcesTotal: personalBuilders.length,
+        sourcesChecked: 0,
+      },
+      current: { source: personalBuilders[0]?.name ?? null },
+      event: {
+        type: "scanning_sources",
+        message: `Scanning ${personalBuilders.length} source${personalBuilders.length === 1 ? "" : "s"}.`,
+      },
+    });
 
     if (personalBuilders.length === 0) {
       const payload = { status: "ok", localErrors: [], fetchTasks: [] };
       console.log(JSON.stringify(payload, null, 2));
+      await emitFetchJobProgress(config, fetchProgress, {
+        stage: "reconciled",
+        counters: {
+          sourcesTotal: 0,
+          sourcesChecked: 0,
+          tasksPlanned: 0,
+          tasksDone: 0,
+        },
+        current: {},
+        event: {
+          type: "reconciled",
+          message: "No personal sources to fetch.",
+        },
+      });
       await emitFetchRunRecord(config, {
         startedAt,
         status: "ok",
@@ -908,6 +1082,41 @@ async function fetchPersonal(args) {
         }
         fetchTasks.push(task);
         builderStat.tasksGenerated += 1;
+      } finally {
+        const checked = (fetchProgress.counters.sourcesChecked ?? 0) + 1;
+        const sourceStatus = builderStat.error
+          ? "failed"
+          : builderStat.fallback
+            ? "action_needed"
+            : "checked";
+        await emitFetchJobProgress(config, fetchProgress, {
+          counters: {
+            sourcesChecked: checked,
+            candidatesFound:
+              (fetchProgress.counters.candidatesFound ?? 0) +
+              builderStat.itemsFetched +
+              builderStat.tasksGenerated,
+          },
+          current: {
+            source: personalBuilders[checked]?.name ?? null,
+          },
+          source: {
+            builderId: builderStat.builderId,
+            name: builderStat.name,
+            sourceType: builderStat.sourceType,
+            status: sourceStatus,
+            itemsFetched: builderStat.itemsFetched,
+            tasksGenerated: builderStat.tasksGenerated,
+            error: builderStat.error ?? null,
+          },
+          event: {
+            type: "source_checked",
+            builderId: builderStat.builderId,
+            status: sourceStatus,
+            reason: builderStat.error ?? builderStat.fallback?.reason ?? null,
+            message: `${builderStat.name}: ${builderStat.itemsFetched} post${builderStat.itemsFetched === 1 ? "" : "s"}, ${builderStat.tasksGenerated} task${builderStat.tasksGenerated === 1 ? "" : "s"}.`,
+          },
+        });
       }
     }
 
@@ -922,6 +1131,18 @@ async function fetchPersonal(args) {
     const agentTasks = fetchTasks.filter((task) => task?.contentStatus !== "ready");
     itemsFetched = builders.reduce((sum, builder) => sum + (builder.items?.length ?? 0), 0);
     tasksGenerated = fetchTasks.length;
+    await emitFetchJobProgress(config, fetchProgress, {
+      stage: "tasks_planned",
+      counters: {
+        tasksPlanned: tasksGenerated,
+        tasksDone: fetchTasks.filter((task) => task?.contentStatus === "ready").length,
+      },
+      current: { source: null },
+      event: {
+        type: "tasks_planned",
+        message: `Planned ${tasksGenerated} post task${tasksGenerated === 1 ? "" : "s"}.`,
+      },
+    });
 
     // Extract user-action items (e.g. x_token_missing) into a
     // first-class collection so the UI can surface them prominently.
@@ -5572,6 +5793,15 @@ async function syncBuilders(args) {
   );
   const tasksFile = argValue(args, "--tasks", defaultLibraryFetchResultFile());
   const { plannedTasks, plannedTaskOutcomes, discoveryExpansions } = await readPlannedFetchResult(tasksFile);
+  const fetchProgress =
+    (await readFetchProgressState()) ??
+    createFetchProgressState({
+      stage: "syncing",
+      counters: {
+        tasksPlanned: plannedTasks.length,
+        tasksDone: 0,
+      },
+    });
   if (webSyncDisabled()) {
     console.log(JSON.stringify(
       {
@@ -5586,6 +5816,17 @@ async function syncBuilders(args) {
     ));
     return;
   }
+  await emitFetchJobProgress(config, fetchProgress, {
+    stage: "syncing",
+    counters: {
+      tasksPlanned: Math.max(fetchProgress.counters.tasksPlanned ?? 0, plannedTasks.length),
+    },
+    current: { task: null },
+    event: {
+      type: "syncing",
+      message: "Syncing fetched posts to FollowBrief.",
+    },
+  });
   if (Array.isArray(payload.builders) && payload.builders.length === 0) {
     validateAgentSyncPayload({ fetchTasks: plannedTasks }, payload);
     await patchFetchRunOutcomes(
@@ -5595,6 +5836,7 @@ async function syncBuilders(args) {
       plannedTasks,
       plannedTaskOutcomes,
       discoveryExpansions,
+      fetchProgress,
     );
     console.log(JSON.stringify(
       {
@@ -5626,6 +5868,7 @@ async function syncBuilders(args) {
     plannedTasks,
     plannedTaskOutcomes,
     discoveryExpansions,
+    fetchProgress,
   );
 }
 
@@ -5658,6 +5901,7 @@ async function patchFetchRunOutcomes(
   plannedTasks = [],
   plannedTaskOutcomes = [],
   discoveryExpansions = [],
+  fetchProgress = null,
 ) {
   if (!config?.appUrl || !config?.token) return;
   let runId = "";
@@ -5801,7 +6045,43 @@ async function patchFetchRunOutcomes(
       ...(evidence ? { evidence } : {}),
     });
   }
-  if (taskOutcomes.length === 0) return;
+  if (fetchProgress) {
+    const counts = taskOutcomes.reduce(
+      (acc, outcome) => {
+        acc.tasksDone += 1;
+        if (outcome.status === "synced") acc.synced += 1;
+        else if (outcome.status === "skipped") acc.skipped += 1;
+        else if (outcome.status === "action_needed") acc.actionNeeded += 1;
+        else if (outcome.status === "failed") acc.failed += 1;
+        appendFetchProgressEvent(fetchProgress, {
+          type: "task_completed",
+          taskId: outcome.fetchTaskId,
+          status: outcome.status,
+          reason: outcome.failureReason ?? null,
+          message: `${outcome.fetchTaskId}: ${String(outcome.status ?? "done").replace(/_/g, " ")}.`,
+        });
+        return acc;
+      },
+      { tasksDone: 0, synced: 0, skipped: 0, failed: 0, actionNeeded: 0 },
+    );
+    fetchProgress.counters = {
+      ...(fetchProgress.counters ?? {}),
+      tasksPlanned: Math.max(fetchProgress.counters?.tasksPlanned ?? 0, taskIds.length),
+      ...counts,
+    };
+  }
+  if (taskOutcomes.length === 0) {
+    if (fetchProgress) {
+      await emitFetchJobProgress(config, fetchProgress, {
+        stage: "reconciled",
+        event: {
+          type: "reconciled",
+          message: "No post tasks needed reconciliation.",
+        },
+      });
+    }
+    return;
+  }
 
   try {
     await patchJson(
@@ -5810,6 +6090,16 @@ async function patchFetchRunOutcomes(
       config.token,
       { label: "fetch log task patch" },
     );
+    if (fetchProgress) {
+      await emitFetchJobProgress(config, fetchProgress, {
+        stage: "reconciled",
+        current: {},
+        event: {
+          type: "reconciled",
+          message: `Reconciled ${taskOutcomes.length} post task${taskOutcomes.length === 1 ? "" : "s"}.`,
+        },
+      });
+    }
   } catch (patchError) {
     const message = patchError instanceof Error ? patchError.message : String(patchError);
     console.error(`Failed to attach per-post info to the fetch log: ${message}`);

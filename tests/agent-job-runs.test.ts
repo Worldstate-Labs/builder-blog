@@ -62,6 +62,31 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
   assert.match(cli, /BUILDER_BLOG_JOB_RUN_ID/);
 });
 
+test("library fetch job runs carry bounded live progress without schema churn", () => {
+  const cli = source("scripts/builder-digest.mjs");
+  const panel = source("src/components/FetchLogPanel.tsx");
+
+  assert.match(cli, /FETCH_PROGRESS_VERSION = 1/);
+  assert.match(cli, /FETCH_PROGRESS_RECENT_EVENT_LIMIT = 60/);
+  assert.match(cli, /function createFetchProgressState/);
+  assert.match(cli, /async function emitFetchJobProgress/);
+  assert.match(cli, /progress: fetchProgressSnapshotValue/);
+  assert.match(cli, /stage: "scanning_sources"/);
+  assert.match(cli, /stage: "tasks_planned"/);
+  assert.match(cli, /stage: "syncing"/);
+  assert.match(cli, /stage: "reconciled"/);
+  assert.match(cli, /type: "source_checked"/);
+  assert.match(cli, /type: "task_completed"/);
+  assert.doesNotMatch(cli, /model LibraryFetchProgress/);
+
+  assert.match(panel, /type FetchJobProgress/);
+  assert.match(panel, /function readFetchJobProgress/);
+  assert.match(panel, /function LiveProgressSummary/);
+  assert.match(panel, /jobRun\.details[\s\S]*progress/);
+  assert.match(panel, /tasksDone/);
+  assert.match(panel, /recentEvents/);
+});
+
 test("runner supervises cron workers instead of skipping active old instances", () => {
   const runner = source("scripts/builder-agent-runner.sh");
 
