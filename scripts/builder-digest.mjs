@@ -1394,6 +1394,11 @@ function buildFetchRunSummary({
 async function emitFetchRunRecord(config, record) {
   if (webSyncDisabled()) return;
   if (!config?.appUrl || !config?.token) return;
+  try {
+    await rm(libraryFetchRunIdFile(), { force: true });
+  } catch {
+    // ignore — a stale id is best-effort cleanup only
+  }
   const finishedAt = new Date();
   const body = {
     startedAt: record.startedAt.toISOString(),

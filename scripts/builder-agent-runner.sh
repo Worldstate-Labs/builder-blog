@@ -136,7 +136,7 @@ run_with_gemini() {
 agent_output_file() {
   _runtime="$1"
   mkdir -p "$JOB_TMP_DIR"
-  mktemp "$JOB_TMP_DIR/$_runtime-agent-output.XXXXXX.log"
+  mktemp "$JOB_TMP_DIR/$_runtime-agent-output.XXXXXX"
 }
 
 # Unattended (cron / launchd) — each runtime gets the permission
@@ -993,11 +993,26 @@ run_sharded_library() {
     cat "$_worker_log"
   done
 
+  _merge_result_file="$JOB_TMP_DIR/merge-task-results.json"
   node "$AGENT_DIR/builder-digest.mjs" merge-task-results \
     --tasks "$_result_file" \
     --results-dir "$_results_dir" \
     --shard-timeout-seconds "$_shard_timeout" \
-    --out "$JOB_TMP_DIR/library-agent-sync.json"
+    --out "$JOB_TMP_DIR/library-agent-sync.json" | tee "$_merge_result_file"
+  _merge_issue_count="$(node - "$_merge_result_file" <<'NODE'
+const fs = require("fs");
+try {
+  const result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+  const backfilled = Number(result.backfilledOutcomes || 0);
+  const missing = Array.isArray(result.shards)
+    ? result.shards.filter((shard) => shard && shard.status !== "ok").length
+    : 0;
+  console.log(backfilled + missing);
+} catch {
+  console.log(0);
+}
+NODE
+)"
 
   # Validate-and-repair loop. In the single-agent path the runtime agent sees
   # validate-agent-sync errors itself and fixes them before syncing; sharded
@@ -1118,6 +1133,10 @@ EOF
 
   if [ "$_sync_failures" -gt 0 ]; then
     echo "$_sync_failures library result slice(s) failed to sync." >&2
+    return 65
+  fi
+  if [ "${_merge_issue_count:-0}" -gt 0 ]; then
+    echo "Parallel library run completed with $_merge_issue_count worker/result issue(s); synced terminal outcomes, but marking the runtime failed." >&2
     return 65
   fi
 }

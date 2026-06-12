@@ -124,6 +124,8 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /emitFetchRunRecord\(config, \{[\s\S]*status: "failed"/);
   // Upload failures must not fail the command itself.
   assert.match(cli, /Failed to upload fetch log:/);
+  // A failed fetch-run POST must not leave sync-builders patching a stale run id.
+  assert.match(cli, /rm\(libraryFetchRunIdFile\(\), \{ force: true \}\)/);
   // Original error is printed and rethrown so the user still sees it.
   assert.match(cli, /console\.error\(message\);[\s\S]*throw error;/);
   // Fetch-run details carry an audit trail of the queued tasks plus

@@ -126,7 +126,8 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /20 \* 60/);
   assert.match(runner, /agent_output_has_timeout/);
   assert.match(runner, /agent_output_file\(\)/);
-  assert.match(runner, /mktemp "\$JOB_TMP_DIR\/\$_runtime-agent-output\.XXXXXX\.log"/);
+  assert.match(runner, /mktemp "\$JOB_TMP_DIR\/\$_runtime-agent-output\.XXXXXX"/);
+  assert.doesNotMatch(runner, /mktemp "\$JOB_TMP_DIR\/\$_runtime-agent-output\.XXXXXX\.log"/);
   assert.match(runner, /_codex_output="\$\(agent_output_file codex\)"/);
   assert.match(runner, /_claude_output="\$\(agent_output_file claude\)"/);
   assert.match(runner, /_openclaw_output="\$\(agent_output_file openclaw\)"/);
@@ -138,6 +139,9 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.doesNotMatch(runner, /skipping duplicate cron launch/);
   assert.doesNotMatch(runner, /\)\s*>> "\$LOG_FILE" 2>&1 &/);
   assert.doesNotMatch(runner, /WORKER_PID="\$!"/);
+  assert.match(runner, /merge-task-results[\s\S]*tee "\$_merge_result_file"/);
+  assert.match(runner, /backfilledOutcomes/);
+  assert.match(runner, /worker\/result issue\(s\)/);
 });
 
 test("web status uses scheduled job instances while history can show one-time runs", () => {
