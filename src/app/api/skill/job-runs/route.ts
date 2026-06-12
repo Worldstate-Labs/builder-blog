@@ -30,6 +30,28 @@ const AgentJobRunSchema = z.object({
   details: z.unknown().optional(),
 });
 
+function detailsRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : {};
+}
+
+function mergeAgentJobRunDetails(
+  existing: unknown,
+  incoming: unknown,
+): Record<string, unknown> {
+  const current = detailsRecord(existing);
+  const next = detailsRecord(incoming);
+  const merged = { ...current, ...next };
+  if (
+    Object.prototype.hasOwnProperty.call(current, "progress") &&
+    !Object.prototype.hasOwnProperty.call(next, "progress")
+  ) {
+    merged.progress = current.progress;
+  }
+  return merged;
+}
+
 export async function POST(request: Request) {
   const user = await getUserFromBearer(request);
   if (!user) {
@@ -50,7 +72,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
 
-  const detailsValue = parsed.data.details ?? {};
+  const existingRun = await prisma.agentJobRun.findUnique({
+    where: {
+      userId_instanceId: {
+        userId: user.id,
+        instanceId: parsed.data.instanceId,
+      },
+    },
+    select: { details: true },
+  });
+  const detailsValue = mergeAgentJobRunDetails(existingRun?.details, parsed.data.details ?? {});
   let detailsJson = "";
   try {
     detailsJson = JSON.stringify(detailsValue);

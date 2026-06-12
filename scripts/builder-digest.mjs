@@ -691,6 +691,7 @@ async function jobRunCommand(args, defaultStatus = "running") {
 
 const FETCH_PROGRESS_VERSION = 1;
 const FETCH_PROGRESS_RECENT_EVENT_LIMIT = 60;
+const FETCH_PROGRESS_SOURCE_LIMIT = 120;
 
 function createFetchProgressState(initial = {}) {
   return {
@@ -714,21 +715,30 @@ function createFetchProgressState(initial = {}) {
     recentEvents: Array.isArray(initial.recentEvents)
       ? initial.recentEvents.slice(-FETCH_PROGRESS_RECENT_EVENT_LIMIT)
       : [],
+    completedTaskIds: Array.isArray(initial.completedTaskIds)
+      ? initial.completedTaskIds.map((id) => String(id)).filter(Boolean)
+      : [],
   };
 }
 
-function fetchProgressSnapshot(progress) {
-  return {
+function fetchProgressSnapshot(progress, options = {}) {
+  const snapshot = {
     version: FETCH_PROGRESS_VERSION,
     stage: progress.stage,
     updatedAt: new Date().toISOString(),
     counters: { ...(progress.counters ?? {}) },
     current: { ...(progress.current ?? {}) },
-    sources: Array.isArray(progress.sources) ? progress.sources : [],
+    sources: Array.isArray(progress.sources)
+      ? progress.sources.slice(options.includeInternal ? undefined : -FETCH_PROGRESS_SOURCE_LIMIT)
+      : [],
     recentEvents: Array.isArray(progress.recentEvents)
       ? progress.recentEvents.slice(-FETCH_PROGRESS_RECENT_EVENT_LIMIT)
       : [],
   };
+  if (options.includeInternal && Array.isArray(progress.completedTaskIds)) {
+    snapshot.completedTaskIds = progress.completedTaskIds;
+  }
+  return snapshot;
 }
 
 function appendFetchProgressEvent(progress, event) {
@@ -764,7 +774,7 @@ async function writeFetchProgressState(progress) {
   try {
     const file = defaultLibraryFetchProgressFile();
     await mkdir(dirname(file), { recursive: true });
-    await writeFile(file, `${JSON.stringify(fetchProgressSnapshot(progress), null, 2)}\n`, "utf8");
+    await writeFile(file, `${JSON.stringify(fetchProgressSnapshot(progress, { includeInternal: true }), null, 2)}\n`, "utf8");
   } catch {
     // Local progress continuity is best-effort; never fail the fetch pipeline.
   }
@@ -827,6 +837,49 @@ function progressSummary(progress) {
 function formatProgressCount(value) {
   const n = Number(value);
   return Number.isFinite(n) ? String(Math.max(0, Math.floor(n))) : "0";
+}
+
+function applyFetchProgressTaskOutcomes(progress, taskOutcomes, taskIds = []) {
+  if (!progress) return;
+  const completed = new Set(
+    Array.isArray(progress.completedTaskIds)
+      ? progress.completedTaskIds.map((id) => String(id)).filter(Boolean)
+      : [],
+  );
+  const delta = { tasksDone: 0, synced: 0, skipped: 0, failed: 0, actionNeeded: 0 };
+  for (const outcome of taskOutcomes) {
+    const id = String(outcome?.fetchTaskId ?? "");
+    if (!id || completed.has(id)) continue;
+    completed.add(id);
+    delta.tasksDone += 1;
+    if (outcome.status === "synced") delta.synced += 1;
+    else if (outcome.status === "skipped") delta.skipped += 1;
+    else if (outcome.status === "action_needed") delta.actionNeeded += 1;
+    else if (outcome.status === "failed") delta.failed += 1;
+    appendFetchProgressEvent(progress, {
+      type: "task_completed",
+      taskId: id,
+      status: outcome.status,
+      reason: outcome.failureReason ?? null,
+      message: `${id}: ${String(outcome.status ?? "done").replace(/_/g, " ")}.`,
+    });
+  }
+  const counters = progress.counters ?? {};
+  const tasksPlanned = Math.max(
+    counters.tasksPlanned ?? 0,
+    taskIds.length,
+    completed.size,
+  );
+  progress.completedTaskIds = [...completed];
+  progress.counters = {
+    ...counters,
+    tasksPlanned,
+    tasksDone: Math.min(tasksPlanned, (counters.tasksDone ?? 0) + delta.tasksDone),
+    synced: (counters.synced ?? 0) + delta.synced,
+    skipped: (counters.skipped ?? 0) + delta.skipped,
+    failed: (counters.failed ?? 0) + delta.failed,
+    actionNeeded: (counters.actionNeeded ?? 0) + delta.actionNeeded,
+  };
 }
 
 
@@ -1135,7 +1188,7 @@ async function fetchPersonal(args) {
       stage: "tasks_planned",
       counters: {
         tasksPlanned: tasksGenerated,
-        tasksDone: fetchTasks.filter((task) => task?.contentStatus === "ready").length,
+        tasksDone: 0,
       },
       current: { source: null },
       event: {
@@ -6046,29 +6099,7 @@ async function patchFetchRunOutcomes(
     });
   }
   if (fetchProgress) {
-    const counts = taskOutcomes.reduce(
-      (acc, outcome) => {
-        acc.tasksDone += 1;
-        if (outcome.status === "synced") acc.synced += 1;
-        else if (outcome.status === "skipped") acc.skipped += 1;
-        else if (outcome.status === "action_needed") acc.actionNeeded += 1;
-        else if (outcome.status === "failed") acc.failed += 1;
-        appendFetchProgressEvent(fetchProgress, {
-          type: "task_completed",
-          taskId: outcome.fetchTaskId,
-          status: outcome.status,
-          reason: outcome.failureReason ?? null,
-          message: `${outcome.fetchTaskId}: ${String(outcome.status ?? "done").replace(/_/g, " ")}.`,
-        });
-        return acc;
-      },
-      { tasksDone: 0, synced: 0, skipped: 0, failed: 0, actionNeeded: 0 },
-    );
-    fetchProgress.counters = {
-      ...(fetchProgress.counters ?? {}),
-      tasksPlanned: Math.max(fetchProgress.counters?.tasksPlanned ?? 0, taskIds.length),
-      ...counts,
-    };
+    applyFetchProgressTaskOutcomes(fetchProgress, taskOutcomes, taskIds);
   }
   if (taskOutcomes.length === 0) {
     if (fetchProgress) {

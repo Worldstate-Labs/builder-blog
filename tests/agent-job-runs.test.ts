@@ -65,11 +65,16 @@ test("agent job run API accepts lifecycle updates for scheduled and one-time run
 test("library fetch job runs carry bounded live progress without schema churn", () => {
   const cli = source("scripts/builder-digest.mjs");
   const panel = source("src/components/FetchLogPanel.tsx");
+  const route = source("src/app/api/skill/job-runs/route.ts");
 
   assert.match(cli, /FETCH_PROGRESS_VERSION = 1/);
   assert.match(cli, /FETCH_PROGRESS_RECENT_EVENT_LIMIT = 60/);
+  assert.match(cli, /FETCH_PROGRESS_SOURCE_LIMIT = 120/);
   assert.match(cli, /function createFetchProgressState/);
   assert.match(cli, /async function emitFetchJobProgress/);
+  assert.match(cli, /function applyFetchProgressTaskOutcomes/);
+  assert.match(cli, /completedTaskIds/);
+  assert.match(cli, /includeInternal/);
   assert.match(cli, /progress: fetchProgressSnapshotValue/);
   assert.match(cli, /stage: "scanning_sources"/);
   assert.match(cli, /stage: "tasks_planned"/);
@@ -85,6 +90,10 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(panel, /jobRun\.details[\s\S]*progress/);
   assert.match(panel, /tasksDone/);
   assert.match(panel, /recentEvents/);
+  assert.match(panel, /actionNeeded/);
+  assert.match(route, /function mergeAgentJobRunDetails/);
+  assert.match(route, /existingRun\?\.details/);
+  assert.match(route, /merged\.progress = current\.progress/);
 });
 
 test("runner supervises cron workers instead of skipping active old instances", () => {

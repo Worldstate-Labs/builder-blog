@@ -1456,6 +1456,18 @@ function LiveProgressSummary({ progress }: { progress: FetchJobProgress | null }
             <CountMeta label="failed" value={counters.failed} />
           </>
         ) : null}
+        {typeof counters.skipped === "number" && counters.skipped > 0 ? (
+          <>
+            {" · "}
+            <CountMeta label="skipped" value={counters.skipped} />
+          </>
+        ) : null}
+        {typeof counters.actionNeeded === "number" && counters.actionNeeded > 0 ? (
+          <>
+            {" · "}
+            <CountMeta label="action needed" value={counters.actionNeeded} />
+          </>
+        ) : null}
       </div>
       {current.source || current.task || recentEvent?.message ? (
         <div className="mono sync-panel-run-card-stage">
