@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { homedir, hostname, platform, release, userInfo } from "node:os";
-import { dirname, join } from "node:path";
+import { homedir, hostname, platform, release, tmpdir, userInfo } from "node:os";
+import { basename, dirname, join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
@@ -142,6 +142,8 @@ const MAX_DIGEST_HEADLINE_SUMMARY_CHARS = 1200;
 const MAX_DIGEST_ITEMS = 5_000;
 const ORIGINAL_CONTENT_LANGUAGE_VALUE = "source";
 const DEFAULT_SOURCE_FETCH_TIMEOUT_MS = 30_000;
+const DEFAULT_YOUTUBE_TOOL_TIMEOUT_MS = 120_000;
+const DEFAULT_YOUTUBE_ASR_TIMEOUT_MS = 45 * 60 * 1000;
 
 let _sourcesConfig = null;
 
@@ -1749,7 +1751,15 @@ function normalizeSourceType(sourceType) {
 
 async function fetchPersonalYouTubeBuilder(
   builder,
-  { cutoff, limit, agentModel, fetchedItemKeys = new Set(), fetcher = timedSourceFetch, sources = {} },
+  {
+    cutoff,
+    limit,
+    agentModel,
+    fetchedItemKeys = new Set(),
+    fetcher = timedSourceFetch,
+    sources = {},
+    commandRunner = runTool,
+  },
 ) {
   const sourceUrl = builder.fetchUrl || builder.sourceUrl;
   if (!sourceUrl) return { items: [], agentTasks: [] };
@@ -1762,19 +1772,27 @@ async function fetchPersonalYouTubeBuilder(
   const agentTasks = [];
 
   for (const video of videos) {
-    const transcriptResult = await fetchYouTubeTranscript(video.url, fetcher, {
-      title: video.title,
-      description: video.description,
-    }).catch(() => ({ text: "" }));
+    const transcriptResult = await fetchYouTubePrimaryContent(video, {
+      fetcher,
+      commandRunner,
+      metadata: {
+        title: video.title,
+        description: video.description,
+      },
+    });
     const transcript = transcriptResult.text || "";
+    const transcriptSource = transcriptResult.transcriptSource || (transcript ? "youtube-captions" : "missing");
     const quality = youtubeContentQuality(transcript, {
-      source: transcript ? "youtube-captions" : "missing",
+      source: transcriptSource,
       title: video.title,
       description: video.description,
       standards: youtubeMinimumContentQuality(sources),
     });
     if (!quality.ok) {
-      agentTasks.push(youtubeAgentTaskForVideo(builder, video, sources));
+      agentTasks.push(youtubeAgentTaskForVideo(builder, video, sources, {
+        youtubeExtractionAttempts: transcriptResult.attempts || [],
+        contentQuality: quality,
+      }));
       continue;
     }
     items.push({
@@ -1796,10 +1814,11 @@ async function fetchPersonalYouTubeBuilder(
         title: video.title,
         url: video.url,
         publishedAt: video.publishedAt,
-        transcriptSource: "youtube-captions",
+        transcriptSource,
         captionLanguageCode: transcriptResult.captionLanguageCode,
         inferredSourceLanguage: transcriptResult.inferredSourceLanguage,
         captionSelectionReason: transcriptResult.captionSelectionReason,
+        youtubeExtractionAttempts: transcriptResult.attempts || [],
         contentQuality: quality,
       },
     });
@@ -2014,7 +2033,7 @@ export function agentTaskId(task) {
     .join(":");
 }
 
-function youtubeAgentTaskForVideo(builder, video, sources = {}) {
+function youtubeAgentTaskForVideo(builder, video, sources = {}, extra = {}) {
   const item = {
     kind: "PODCAST_EPISODE",
     externalId: video.videoId || video.url,
@@ -2032,6 +2051,10 @@ function youtubeAgentTaskForVideo(builder, video, sources = {}) {
     item,
     minimumContentQuality: youtubeMinimumContentQuality(sources),
   };
+  if (Array.isArray(extra.youtubeExtractionAttempts) && extra.youtubeExtractionAttempts.length > 0) {
+    task.youtubeExtractionAttempts = extra.youtubeExtractionAttempts;
+  }
+  if (extra.contentQuality) task.contentQuality = extra.contentQuality;
   return { ...task, id: agentTaskId(task) };
 }
 
@@ -2855,6 +2878,57 @@ function runExternalFetcher(command, payload) {
   });
 }
 
+function envToolTimeoutMs(name, fallback) {
+  const raw = Number(process.env[name] || fallback);
+  if (!Number.isFinite(raw) || raw <= 0) return fallback;
+  return Math.min(2 * 60 * 60 * 1000, Math.max(1_000, Math.floor(raw)));
+}
+
+function runTool(command, args = [], options = {}) {
+  const timeoutMs = options.timeoutMs ?? envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_TOOL_TIMEOUT_MS", DEFAULT_YOUTUBE_TOOL_TIMEOUT_MS);
+  return new Promise((resolve) => {
+    const child = spawn(command, args, {
+      cwd: options.cwd,
+      env: options.env ?? process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    const stdout = [];
+    const stderr = [];
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGTERM");
+    }, timeoutMs);
+    child.stdout.on("data", (chunk) => stdout.push(chunk));
+    child.stderr.on("data", (chunk) => stderr.push(chunk));
+    child.on("error", (error) => {
+      clearTimeout(timer);
+      resolve({
+        ok: false,
+        code: null,
+        stdout: "",
+        stderr: error?.code === "ENOENT" ? "command_not_found" : String(error?.message || error),
+        timedOut: false,
+      });
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      resolve({
+        ok: code === 0 && !timedOut,
+        code,
+        stdout: Buffer.concat(stdout).toString("utf8"),
+        stderr: Buffer.concat(stderr).toString("utf8"),
+        timedOut,
+      });
+    });
+  });
+}
+
+async function commandExists(command, commandRunner = runTool) {
+  const result = await commandRunner(command, ["--version"], { timeoutMs: 10_000 });
+  return result.ok || (typeof result.stdout === "string" && result.stdout.trim().length > 0);
+}
+
 function filterFetchedItems(items, { builderId, cutoff, limit = Number.POSITIVE_INFINITY, fetchedItemKeys = new Set() }) {
   return items
     .filter((item) => item?.kind && item?.externalId && item?.body && item?.url)
@@ -3443,6 +3517,423 @@ function youtubeRendererMetadataText(renderer) {
     .join(" · ");
 }
 
+async function fetchYouTubePrimaryContent(video, {
+  fetcher = timedSourceFetch,
+  commandRunner = runTool,
+  metadata = {},
+} = {}) {
+  const attempts = [];
+  const ytdlp = await fetchYouTubeTranscriptWithYtDlp(video.url, {
+    fetcher,
+    commandRunner,
+    metadata,
+    attempts,
+  });
+  if (ytdlp.text) return ytdlp;
+
+  const watch = await fetchYouTubeTranscript(video.url, fetcher, metadata)
+    .catch((error) => ({ text: "", error: errorMessage(error) }));
+  attempts.push({
+    method: "youtube-watch-captions",
+    status: watch.text ? "ok" : "unavailable",
+    reason: watch.text ? watch.captionSelectionReason || "caption_selected" : watch.error || "no_usable_caption_track",
+    captionLanguageCode: watch.captionLanguageCode || null,
+  });
+  if (watch.text) return { ...watch, attempts };
+
+  const transcriptApi = await fetchYouTubeTranscriptApi(video.url, {
+    commandRunner,
+    metadata,
+    attempts,
+  });
+  if (transcriptApi.text) return transcriptApi;
+
+  const localAsr = await fetchYouTubeLocalAsr(video.url, {
+    commandRunner,
+    attempts,
+  });
+  if (localAsr.text) return localAsr;
+
+  return { text: "", attempts };
+}
+
+async function fetchYouTubeTranscriptWithYtDlp(videoUrl, {
+  fetcher = timedSourceFetch,
+  commandRunner = runTool,
+  metadata = {},
+  attempts = [],
+} = {}) {
+  if (!(await commandExists("yt-dlp", commandRunner))) {
+    attempts.push({ method: "yt-dlp-captions", status: "skipped", reason: "yt-dlp_missing" });
+    return { text: "" };
+  }
+  const metadataResult = await commandRunner("yt-dlp", ["-J", "--skip-download", videoUrl], {
+    timeoutMs: envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_METADATA_TIMEOUT_MS", DEFAULT_YOUTUBE_TOOL_TIMEOUT_MS),
+  });
+  if (!metadataResult.ok) {
+    attempts.push({ method: "yt-dlp-captions", status: "failed", reason: commandFailureReason(metadataResult) });
+    return { text: "" };
+  }
+  let data = null;
+  try {
+    data = JSON.parse(metadataResult.stdout || "{}");
+  } catch (error) {
+    attempts.push({ method: "yt-dlp-captions", status: "failed", reason: `metadata_json_invalid:${errorMessage(error)}` });
+    return { text: "" };
+  }
+  const tracks = ytDlpCaptionTracks(data);
+  if (tracks.length === 0) {
+    attempts.push({ method: "yt-dlp-captions", status: "unavailable", reason: "no_caption_tracks" });
+    return { text: "" };
+  }
+  const selection = preferredCaptionTrack(tracks, {
+    title: metadata.title || data.title || "",
+    description: metadata.description || data.description || "",
+  });
+  if (!selection?.track?.baseUrl) {
+    attempts.push({
+      method: "yt-dlp-captions",
+      status: "ambiguous",
+      reason: "caption_source_language_uncertain",
+      availableCaptionLanguages: [...new Set(tracks.map((track) => track.languageCode).filter(Boolean))],
+    });
+    return { text: "" };
+  }
+  const text = await fetchYouTubeCaptionTrackText(selection.track, fetcher).catch(() => "");
+  attempts.push({
+    method: "yt-dlp-captions",
+    status: text ? "ok" : "failed",
+    reason: text ? selection.reason : "selected_caption_download_failed",
+    captionLanguageCode: selection.track.languageCode || null,
+    captionKind: selection.track.kind === "asr" ? "automatic" : "manual",
+  });
+  if (!text) return { text: "" };
+  return {
+    text,
+    transcriptSource: "youtube-captions",
+    captionLanguageCode: selection.track.languageCode || "",
+    inferredSourceLanguage: selection.inferredSourceLanguage,
+    captionSelectionReason: selection.reason,
+    attempts,
+  };
+}
+
+function ytDlpCaptionTracks(data) {
+  return [
+    ...ytDlpCaptionTracksFromMap(data?.subtitles, "manual"),
+    ...ytDlpCaptionTracksFromMap(data?.automatic_captions, "asr"),
+  ];
+}
+
+function ytDlpCaptionTracksFromMap(map, kind) {
+  if (!map || typeof map !== "object") return [];
+  const tracks = [];
+  for (const [languageCode, formats] of Object.entries(map)) {
+    const format = bestYtDlpCaptionFormat(Array.isArray(formats) ? formats : []);
+    if (!format?.url) continue;
+    tracks.push({
+      languageCode,
+      baseUrl: format.url,
+      ext: format.ext || "",
+      name: format.name || "",
+      kind,
+    });
+  }
+  return tracks;
+}
+
+function bestYtDlpCaptionFormat(formats) {
+  const priority = ["json3", "vtt", "srv3", "ttml", "srt"];
+  return [...formats]
+    .filter((format) => format?.url)
+    .sort((a, b) => priorityIndex(a?.ext, priority) - priorityIndex(b?.ext, priority))[0] || null;
+}
+
+function priorityIndex(value, priority) {
+  const index = priority.indexOf(String(value || "").toLowerCase());
+  return index === -1 ? priority.length : index;
+}
+
+async function fetchYouTubeCaptionTrackText(track, fetcher = timedSourceFetch) {
+  const response = await fetcher(track.baseUrl, {
+    headers: {
+      "User-Agent": "FollowBriefSkill/1.0 (personal YouTube fetcher)",
+    },
+  });
+  if (!response.ok) return "";
+  const body = await response.text();
+  const ext = String(track.ext || "").toLowerCase();
+  if (body.trim().startsWith("{") || ext === "json3") return parseYouTubeJsonTranscript(body);
+  if (body.trim().startsWith("<") || ext === "srv3" || ext === "ttml") return parseYouTubeXmlTranscript(body);
+  if (ext === "srt") return parseYouTubeSrtTranscript(body);
+  return parseYouTubeVttTranscript(body);
+}
+
+async function fetchYouTubeTranscriptApi(videoUrl, {
+  commandRunner = runTool,
+  metadata = {},
+  attempts = [],
+} = {}) {
+  const videoId = youtubeVideoId(videoUrl);
+  if (!videoId) {
+    attempts.push({ method: "youtube-transcript-api", status: "skipped", reason: "video_id_missing" });
+    return { text: "" };
+  }
+  const script = youtubeTranscriptApiPythonScript();
+  for (const python of ["python3", "python"]) {
+    const result = await commandRunner(python, ["-c", script, videoId, inferSourceLanguageFromMetadata(metadata)], {
+      timeoutMs: envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_TRANSCRIPT_API_TIMEOUT_MS", DEFAULT_YOUTUBE_TOOL_TIMEOUT_MS),
+    });
+    if (!result.ok) {
+      const reason = commandFailureReason(result);
+      if (reason === "command_not_found") continue;
+      if (/ModuleNotFoundError|No module named ['"]youtube_transcript_api/.test(`${result.stderr}\n${result.stdout}`)) {
+        attempts.push({ method: "youtube-transcript-api", status: "skipped", reason: "youtube_transcript_api_missing" });
+        return { text: "" };
+      }
+      attempts.push({ method: "youtube-transcript-api", status: "failed", reason });
+      return { text: "" };
+    }
+    let parsed = null;
+    try {
+      parsed = JSON.parse(result.stdout || "{}");
+    } catch (error) {
+      attempts.push({ method: "youtube-transcript-api", status: "failed", reason: `result_json_invalid:${errorMessage(error)}` });
+      return { text: "" };
+    }
+    attempts.push({
+      method: "youtube-transcript-api",
+      status: parsed.text ? "ok" : parsed.status || "unavailable",
+      reason: parsed.reason || null,
+      captionLanguageCode: parsed.languageCode || null,
+    });
+    if (!parsed.text) return { text: "" };
+    return {
+      text: cleanTranscriptText(parsed.text),
+      transcriptSource: "youtube-captions",
+      captionLanguageCode: parsed.languageCode || "",
+      inferredSourceLanguage: parsed.inferredSourceLanguage || "",
+      captionSelectionReason: parsed.reason || "youtube_transcript_api_selected",
+      attempts,
+    };
+  }
+  attempts.push({ method: "youtube-transcript-api", status: "skipped", reason: "python_missing" });
+  return { text: "" };
+}
+
+function youtubeTranscriptApiPythonScript() {
+  return String.raw`
+import json, sys
+video_id = sys.argv[1]
+metadata_language = sys.argv[2] if len(sys.argv) > 2 else ""
+try:
+    from youtube_transcript_api import YouTubeTranscriptApi
+except Exception:
+    print(json.dumps({"status":"skipped","reason":"youtube_transcript_api_missing"}))
+    raise SystemExit(0)
+
+def base(code):
+    code = (code or "").lower()
+    if code.startswith("zh"): return "zh"
+    if code.startswith("ja"): return "ja"
+    if code.startswith("ko"): return "ko"
+    if code.startswith("en"): return "en"
+    return code.split("-")[0].split("_")[0]
+
+try:
+    api = YouTubeTranscriptApi()
+    if hasattr(api, "list"):
+        transcript_list = api.list(video_id)
+    else:
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+    transcripts = list(transcript_list)
+    languages = sorted(set(base(getattr(t, "language_code", "")) for t in transcripts if base(getattr(t, "language_code", ""))))
+    if not transcripts:
+        print(json.dumps({"status":"unavailable","reason":"no_transcripts"}))
+        raise SystemExit(0)
+    if len(languages) == 1:
+        wanted = languages[0]
+    elif metadata_language and metadata_language in languages:
+        wanted = metadata_language
+    else:
+        print(json.dumps({"status":"ambiguous","reason":"transcript_source_language_uncertain","languages":languages}))
+        raise SystemExit(0)
+    matching = [t for t in transcripts if base(getattr(t, "language_code", "")) == wanted]
+    matching.sort(key=lambda t: 1 if getattr(t, "is_generated", False) else 0)
+    chosen = matching[0]
+    rows = chosen.fetch()
+    texts = []
+    for row in rows:
+        if isinstance(row, dict):
+            texts.append(row.get("text", ""))
+        else:
+            texts.append(getattr(row, "text", ""))
+    print(json.dumps({
+        "status":"ok",
+        "text":" ".join(texts),
+        "languageCode":getattr(chosen, "language_code", wanted),
+        "inferredSourceLanguage":wanted,
+        "reason":"youtube_transcript_api_source_language_selected"
+    }, ensure_ascii=False))
+except Exception as exc:
+    print(json.dumps({"status":"failed","reason":str(exc)[:500]}))
+`;
+}
+
+async function fetchYouTubeLocalAsr(videoUrl, {
+  commandRunner = runTool,
+  attempts = [],
+} = {}) {
+  if (!(await commandExists("yt-dlp", commandRunner))) {
+    attempts.push({ method: "local-asr", status: "skipped", reason: "yt-dlp_missing" });
+    return { text: "" };
+  }
+  if (!(await commandExists("ffmpeg", commandRunner))) {
+    attempts.push({ method: "local-asr", status: "skipped", reason: "ffmpeg_missing" });
+    return { text: "" };
+  }
+
+  const workDir = await mkdtemp(join(tmpdir(), "followbrief-youtube-asr-"));
+  try {
+    const rawTemplate = join(workDir, "audio.%(ext)s");
+    const download = await commandRunner(
+      "yt-dlp",
+      ["-f", "ba", "-x", "--audio-format", "mp3", "--audio-quality", "64K", "-o", rawTemplate, videoUrl],
+      { timeoutMs: envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_AUDIO_DOWNLOAD_TIMEOUT_MS", DEFAULT_YOUTUBE_ASR_TIMEOUT_MS) },
+    );
+    if (!download.ok) {
+      attempts.push({ method: "local-asr", status: "failed", reason: `audio_download:${commandFailureReason(download)}` });
+      return { text: "" };
+    }
+    const files = await readdir(workDir);
+    const audioFile = files.map((file) => join(workDir, file)).find((file) => basename(file).startsWith("audio."));
+    if (!audioFile) {
+      attempts.push({ method: "local-asr", status: "failed", reason: "audio_download_missing_file" });
+      return { text: "" };
+    }
+    const monoAudio = join(workDir, "audio-mono.wav");
+    const convert = await commandRunner("ffmpeg", ["-y", "-i", audioFile, "-ac", "1", "-ar", "16000", monoAudio], {
+      timeoutMs: envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_AUDIO_CONVERT_TIMEOUT_MS", DEFAULT_YOUTUBE_TOOL_TIMEOUT_MS),
+    });
+    if (!convert.ok) {
+      attempts.push({ method: "local-asr", status: "failed", reason: `audio_convert:${commandFailureReason(convert)}` });
+      return { text: "" };
+    }
+
+    const asr = await transcribeLocalAudio(monoAudio, workDir, commandRunner);
+    attempts.push({ method: "local-asr", status: asr.text ? "ok" : "skipped", reason: asr.reason, backend: asr.backend || null });
+    if (!asr.text) return { text: "" };
+    return {
+      text: cleanTranscriptText(asr.text),
+      transcriptSource: "local-speech-to-text",
+      captionLanguageCode: "",
+      inferredSourceLanguage: "",
+      captionSelectionReason: asr.backend,
+      attempts,
+    };
+  } finally {
+    await rm(workDir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+async function transcribeLocalAudio(audioFile, workDir, commandRunner = runTool) {
+  const faster = await transcribeWithPythonModule("faster_whisper", audioFile, commandRunner);
+  if (faster.text) return { ...faster, backend: "faster-whisper" };
+
+  const mlx = await transcribeWithPythonModule("mlx_whisper", audioFile, commandRunner);
+  if (mlx.text) return { ...mlx, backend: "mlx-whisper" };
+
+  if (await commandExists("whisper", commandRunner)) {
+    const model = process.env.BUILDER_BLOG_WHISPER_MODEL?.trim() || "base";
+    const result = await commandRunner(
+      "whisper",
+      [audioFile, "--model", model, "--output_format", "txt", "--output_dir", workDir, "--fp16", "False"],
+      { timeoutMs: envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_ASR_TIMEOUT_MS", DEFAULT_YOUTUBE_ASR_TIMEOUT_MS) },
+    );
+    if (result.ok) {
+      const txtFiles = (await readdir(workDir)).filter((file) => file.endsWith(".txt"));
+      for (const file of txtFiles) {
+        const text = await readFile(join(workDir, file), "utf8").catch(() => "");
+        if (cleanTranscriptText(text)) return { text, backend: "whisper-cli", reason: "whisper_cli_transcribed" };
+      }
+    }
+    return { text: "", reason: `whisper_cli_failed:${commandFailureReason(result)}` };
+  }
+  return { text: "", reason: faster.reason || mlx.reason || "asr_backend_missing" };
+}
+
+async function transcribeWithPythonModule(moduleName, audioFile, commandRunner = runTool) {
+  const script = moduleName === "faster_whisper"
+    ? fasterWhisperPythonScript()
+    : mlxWhisperPythonScript();
+  for (const python of ["python3", "python"]) {
+    const result = await commandRunner(python, ["-c", script, audioFile], {
+      timeoutMs: envToolTimeoutMs("BUILDER_BLOG_YOUTUBE_ASR_TIMEOUT_MS", DEFAULT_YOUTUBE_ASR_TIMEOUT_MS),
+    });
+    if (!result.ok) {
+      const reason = commandFailureReason(result);
+      if (reason === "command_not_found") continue;
+      if (new RegExp(`No module named ['"]${moduleName}|ModuleNotFoundError`).test(`${result.stderr}\n${result.stdout}`)) {
+        return { text: "", reason: `${moduleName}_missing` };
+      }
+      return { text: "", reason: `${moduleName}_failed:${reason}` };
+    }
+    try {
+      const parsed = JSON.parse(result.stdout || "{}");
+      return { text: parsed.text || "", reason: parsed.reason || `${moduleName}_transcribed` };
+    } catch (error) {
+      return { text: "", reason: `${moduleName}_json_invalid:${errorMessage(error)}` };
+    }
+  }
+  return { text: "", reason: "python_missing" };
+}
+
+function fasterWhisperPythonScript() {
+  return String.raw`
+import json, os, sys
+from faster_whisper import WhisperModel
+audio = sys.argv[1]
+model_name = os.environ.get("BUILDER_BLOG_FASTER_WHISPER_MODEL", "base")
+model = WhisperModel(model_name, device="auto", compute_type=os.environ.get("BUILDER_BLOG_FASTER_WHISPER_COMPUTE_TYPE", "auto"))
+segments, info = model.transcribe(audio, vad_filter=True)
+print(json.dumps({"text":" ".join(segment.text for segment in segments)}, ensure_ascii=False))
+`;
+}
+
+function mlxWhisperPythonScript() {
+  return String.raw`
+import json, os, sys
+import mlx_whisper
+audio = sys.argv[1]
+model = os.environ.get("BUILDER_BLOG_MLX_WHISPER_MODEL")
+kwargs = {"path_or_hf_repo": model} if model else {}
+result = mlx_whisper.transcribe(audio, **kwargs)
+print(json.dumps({"text": result.get("text", "")}, ensure_ascii=False))
+`;
+}
+
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error || "");
+}
+
+function commandFailureReason(result) {
+  if (result?.timedOut) return "timeout";
+  const stderr = String(result?.stderr || "").trim();
+  if (stderr === "command_not_found") return "command_not_found";
+  const stdout = String(result?.stdout || "").trim();
+  const text = stderr || stdout;
+  return text ? text.slice(0, 500) : `exit_${result?.code ?? "unknown"}`;
+}
+
+function cleanTranscriptText(text) {
+  return String(text || "")
+    .replace(/\r/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
 async function fetchYouTubeTranscript(videoUrl, fetcher = timedSourceFetch, metadata = {}) {
   const videoId = youtubeVideoId(videoUrl);
   if (!videoId) return { text: "" };
@@ -3468,6 +3959,7 @@ async function fetchYouTubeTranscript(videoUrl, fetcher = timedSourceFetch, meta
   const text = body.trim().startsWith("{") ? parseYouTubeJsonTranscript(body) : parseYouTubeXmlTranscript(body);
   return {
     text,
+    transcriptSource: "youtube-captions",
     captionLanguageCode: track.languageCode || "",
     inferredSourceLanguage: selection.inferredSourceLanguage,
     captionSelectionReason: selection.reason,
@@ -3609,6 +4101,50 @@ function parseYouTubeXmlTranscript(xml) {
     .join(" ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function parseYouTubeVttTranscript(vtt) {
+  return dedupeTranscriptLines(
+    String(vtt || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) =>
+        line &&
+        !/^WEBVTT\b/i.test(line) &&
+        !/^Kind:/i.test(line) &&
+        !/^Language:/i.test(line) &&
+        !/^NOTE\b/i.test(line) &&
+        !/-->/i.test(line) &&
+        !/^\d+$/.test(line),
+      )
+      .map((line) =>
+        decodeHtml(stripHtml(line))
+          .replace(/<\d{2}:\d{2}:\d{2}\.\d{3}>/g, "")
+          .replace(/\s+/g, " ")
+          .trim(),
+      ),
+  );
+}
+
+function parseYouTubeSrtTranscript(srt) {
+  return dedupeTranscriptLines(
+    String(srt || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !/^\d+$/.test(line) && !/-->/i.test(line))
+      .map((line) => decodeHtml(stripHtml(line)).replace(/\s+/g, " ").trim()),
+  );
+}
+
+function dedupeTranscriptLines(lines) {
+  const output = [];
+  let previous = "";
+  for (const line of lines) {
+    if (!line || line === previous) continue;
+    output.push(line);
+    previous = line;
+  }
+  return output.join(" ").replace(/\s+/g, " ").trim();
 }
 
 async function validateAgentSync(args) {
@@ -4798,7 +5334,7 @@ async function syncBuilders(args) {
     argValue(args, "--agent-model", DEFAULT_AGENT_MODEL),
   );
   const tasksFile = argValue(args, "--tasks", defaultLibraryFetchResultFile());
-  const { plannedTasks, plannedTaskOutcomes } = await readPlannedFetchResult(tasksFile);
+  const { plannedTasks, plannedTaskOutcomes, discoveryExpansions } = await readPlannedFetchResult(tasksFile);
   if (webSyncDisabled()) {
     console.log(JSON.stringify(
       {
@@ -4815,7 +5351,14 @@ async function syncBuilders(args) {
   }
   if (Array.isArray(payload.builders) && payload.builders.length === 0) {
     validateAgentSyncPayload({ fetchTasks: plannedTasks }, payload);
-    await patchFetchRunOutcomes(config, payload, { itemResults: [] }, plannedTasks, plannedTaskOutcomes);
+    await patchFetchRunOutcomes(
+      config,
+      payload,
+      { itemResults: [] },
+      plannedTasks,
+      plannedTaskOutcomes,
+      discoveryExpansions,
+    );
     console.log(JSON.stringify(
       {
         status: "ok",
@@ -4839,7 +5382,14 @@ async function syncBuilders(args) {
   // Reconcile the fetch log against the FULL planned task list so a task the
   // agent dropped (fetched but never summarized) is recorded as a failure, not
   // left pending. Read the planned tasks the CLI emitted in fetch-personal.
-  await patchFetchRunOutcomes(config, payload, result, plannedTasks, plannedTaskOutcomes);
+  await patchFetchRunOutcomes(
+    config,
+    payload,
+    result,
+    plannedTasks,
+    plannedTaskOutcomes,
+    discoveryExpansions,
+  );
 }
 
 async function readPlannedFetchResult(tasksFile) {
@@ -4848,10 +5398,13 @@ async function readPlannedFetchResult(tasksFile) {
     return {
       plannedTasks: Array.isArray(fetchResult?.fetchTasks) ? fetchResult.fetchTasks : [],
       plannedTaskOutcomes: Array.isArray(fetchResult?.taskOutcomes) ? fetchResult.taskOutcomes : [],
+      discoveryExpansions: Array.isArray(fetchResult?.discoveryExpansions)
+        ? fetchResult.discoveryExpansions
+        : [],
     };
   } catch {
     // No planned-tasks file (e.g. ad-hoc sync) → reconcile against payload only.
-    return { plannedTasks: [], plannedTaskOutcomes: [] };
+    return { plannedTasks: [], plannedTaskOutcomes: [], discoveryExpansions: [] };
   }
 }
 
@@ -4867,6 +5420,7 @@ async function patchFetchRunOutcomes(
   serverResult = {},
   plannedTasks = [],
   plannedTaskOutcomes = [],
+  discoveryExpansions = [],
 ) {
   if (!config?.appUrl || !config?.token) return;
   let runId = "";
@@ -4913,6 +5467,11 @@ async function patchFetchRunOutcomes(
       .filter((o) => o && o.fetchTaskId)
       .map((o) => [String(o.fetchTaskId), o]),
   );
+  const discoveryExpansionById = new Map(
+    (Array.isArray(discoveryExpansions) ? discoveryExpansions : [])
+      .filter((expansion) => expansion?.fetchTaskId)
+      .map((expansion) => [String(expansion.fetchTaskId), expansion]),
+  );
 
   // Classify every planned task; fall back to payload+server ids when no
   // planned list is available.
@@ -4927,9 +5486,10 @@ async function patchFetchRunOutcomes(
             ...serverByTaskId.keys(),
             ...sizesByTaskId.keys(),
             ...agentOutcomeById.keys(),
+            ...discoveryExpansionById.keys(),
           ]),
         ]
-      : [...new Set([...serverByTaskId.keys(), ...sizesByTaskId.keys()])];
+      : [...new Set([...serverByTaskId.keys(), ...sizesByTaskId.keys(), ...discoveryExpansionById.keys()])];
 
   const taskOutcomes = [];
   for (const id of taskIds) {
@@ -4941,6 +5501,20 @@ async function patchFetchRunOutcomes(
         ? agentOutcome.plannedTask
         : null;
     const work = String(planned?.agentWorkType || "");
+    const discoveryExpansion = discoveryExpansionById.get(id);
+    if (discoveryExpansion) {
+      taskOutcomes.push({
+        fetchTaskId: id,
+        status: "synced",
+        evidence: {
+          discoveryExpanded: true,
+          candidates: discoveryExpansion.candidates ?? null,
+          fetchTasks: discoveryExpansion.fetchTasks ?? null,
+          sourceType: discoveryExpansion.sourceType ?? null,
+        },
+      });
+      continue;
+    }
     // Informational user-action tasks (e.g. x_token_missing) aren't failures.
     if (work === "x_token_missing" || work.startsWith("user_action_")) {
       taskOutcomes.push({

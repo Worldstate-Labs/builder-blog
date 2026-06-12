@@ -1540,6 +1540,7 @@ test("digest generation user path exposes source-specific prompt instructions", 
       "fetchGithubTrendingRepo",
       "fetchPodcastAudio",
       "fetchProductHuntTopProduct",
+      "fetchYouTubeTranscript",
       "headline",
       "perSourceSummary",
       "summarizeBlogs",
@@ -1560,6 +1561,8 @@ test("digest generation user path exposes source-specific prompt instructions", 
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.summarizeGithubTrendingRepo, /Chinese|项目名称/);
   assert.match(DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct, /Product Hunt product page/);
   assert.match(DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct, /substantive user comments/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /creator\/manual captions/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript, /Do not use the OpenAI API/);
   assert.match(
     DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct,
     /user-selected output language/,

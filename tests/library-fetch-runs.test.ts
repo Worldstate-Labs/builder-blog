@@ -142,6 +142,11 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /isRecoverableCandidateDiscoveryFallback/);
   assert.match(cli, /builderStat\.fallback = sourceFallbackNotice\(task, message\)/);
   assert.match(cli, /else \{[\s\S]*builderStat\.error = message;[\s\S]*errorCount \+= 1;/);
+  // Expanded candidate discovery is reconciled back onto the original
+  // discovery task, otherwise the initial fetch-log row stays pending forever.
+  assert.match(cli, /discoveryExpansions/);
+  assert.match(cli, /discoveryExpansionById/);
+  assert.match(cli, /discoveryExpanded: true/);
 });
 
 test("agent runner tags cron-driven CLI runs as source=cron", () => {
@@ -239,6 +244,11 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /taskSummaryPillLabel/);
   assert.match(panel, /return "summarized"/);
   assert.match(panel, /return "failed"/);
+  assert.match(panel, /isCandidateDiscoveryTask/);
+  assert.match(panel, /return "expanded"/);
+  assert.match(panel, /Candidates discovered/);
+  assert.match(panel, /② Expand/);
+  assert.match(panel, /Expanded into/);
   assert.doesNotMatch(panel, /\{ready \? "ready" : "Local Agent"\}/);
   assert.match(panel, /<FactRow label="Local Agent"/);
   assert.doesNotMatch(panel, /Read by helper|<FactRow label="Helper"|\{ready \? "ready" : "helper"\}/);

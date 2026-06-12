@@ -88,6 +88,7 @@ function fetchPromptBodyForSourceId(sourceId: string): string | null {
   if (sourceId === "product_hunt_top_products") {
     return DEFAULT_DIGEST_PROMPTS.fetchProductHuntTopProduct;
   }
+  if (sourceId === "youtube") return DEFAULT_DIGEST_PROMPTS.fetchYouTubeTranscript;
   if (sourceId === "podcast") return DEFAULT_DIGEST_PROMPTS.fetchPodcastAudio;
   return null;
 }

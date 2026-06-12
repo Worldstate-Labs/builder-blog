@@ -1775,6 +1775,12 @@ type WorkInfo = {
 function describeWork(task: FetchTaskLog): WorkInfo {
   const code = (task.agentWorkType ?? task.fetchTool ?? "").trim();
   switch (code) {
+    case "candidate_discovery_fallback":
+      return {
+        label: "Candidate discovery",
+        blurb: "Direct discovery was blocked, so the Local Agent found candidate posts.",
+        fix: null,
+      };
     case "x_token_missing":
       return {
         label: "Needs X access",
@@ -1817,7 +1823,14 @@ function isContentFailure(task: FetchTaskLog): boolean {
   );
 }
 
+function isCandidateDiscoveryTask(task: FetchTaskLog): boolean {
+  return task.agentWorkType === "candidate_discovery_fallback";
+}
+
 function fetchOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
+  if (isCandidateDiscoveryTask(task) && task.status === "synced") {
+    return { label: "Discovered", tone: "ok" };
+  }
   if (isBlocked(task)) return { label: "Blocked", tone: "fail" };
   // A content failure is a fetch-stage failure (no real crawled content).
   if (isContentFailure(task)) return { label: "Failed", tone: "fail" };
@@ -1867,6 +1880,12 @@ function isSummarized(task: FetchTaskLog): boolean {
 }
 
 function summarizeOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
+  if (isCandidateDiscoveryTask(task)) {
+    if (task.status === "synced") return { label: "Expanded", tone: "ok" };
+    if (task.status === "failed") return { label: "Failed", tone: "fail" };
+    if (isBlocked(task)) return { label: "Not reached", tone: "idle" };
+    return { label: "Pending", tone: "warn" };
+  }
   if (isSummarized(task)) return { label: "Summarized", tone: "ok" };
   // Skipped (no content) or a content failure means summarize never ran.
   if (task.status === "skipped") return { label: "Skipped", tone: "idle" };
@@ -1879,6 +1898,12 @@ function summarizeOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
 }
 
 function taskSummaryPillLabel(task: FetchTaskLog): string {
+  if (isCandidateDiscoveryTask(task)) {
+    if (task.status === "synced") return "expanded";
+    if (task.status === "failed") return "failed";
+    if (task.status === "action_needed" || isBlocked(task)) return "action";
+    return "discovery";
+  }
   if (isSummarized(task)) return "summarized";
   if (task.status === "failed") return "failed";
   if (task.status === "skipped") return "skipped";
@@ -1888,6 +1913,14 @@ function taskSummaryPillLabel(task: FetchTaskLog): string {
 }
 
 function statusBanner(task: FetchTaskLog): { label: string; tone: Tone } {
+  if (isCandidateDiscoveryTask(task)) {
+    if (task.status === "synced") return { label: "Candidates discovered", tone: "ok" };
+    if (task.status === "failed") return { label: "Discovery failed", tone: "fail" };
+    if (task.status === "action_needed" || isBlocked(task)) {
+      return { label: "Action needed", tone: "fail" };
+    }
+    return { label: "Awaiting discovery", tone: "warn" };
+  }
   // A deliberate, evidence-backed skip (no primary content) is a clean terminal
   // state, not a failure.
   if (task.status === "skipped") return { label: "Skipped: no content", tone: "idle" };
@@ -1918,6 +1951,17 @@ function workerLogText(task: FetchTaskLog): string | null {
   if (!("workerLogTail" in missingShard)) return null;
   const tail = missingShard.workerLogTail;
   return typeof tail === "string" && tail.trim() ? tail.trim() : null;
+}
+
+function discoveryExpansionText(evidence: Record<string, unknown> | null | undefined): string | null {
+  if (!evidence || evidence.discoveryExpanded !== true) return null;
+  const candidates = typeof evidence.candidates === "number" ? evidence.candidates : null;
+  const fetchTasks = typeof evidence.fetchTasks === "number" ? evidence.fetchTasks : null;
+  if (candidates === null && fetchTasks === null) return "expanded into fetch tasks";
+  const parts = [];
+  if (candidates !== null) parts.push(`${candidates} candidate${candidates === 1 ? "" : "s"}`);
+  if (fetchTasks !== null) parts.push(`${fetchTasks} fetch task${fetchTasks === 1 ? "" : "s"}`);
+  return parts.join(" · ");
 }
 
 function sizeText(chars: number | null | undefined, words: number | null | undefined): string | null {
@@ -2002,6 +2046,8 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
       : work.blurb;
   const missingShard = missingShardText(task);
   const workerLog = workerLogText(task);
+  const discoveryExpansion = discoveryExpansionText(task.evidence);
+  const secondStageTitle = isCandidateDiscoveryTask(task) ? "② Expand" : "② Summarize";
 
   return (
     <li>
@@ -2104,9 +2150,12 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
             ) : null}
           </StageBlock>
 
-          <StageBlock title="② Summarize" tone={sumRes.tone} outcome={sumRes.label}>
+          <StageBlock title={secondStageTitle} tone={sumRes.tone} outcome={sumRes.label}>
             {agentLabel ? (
               <FactRow label="Local Agent" value={<span>{agentLabel}</span>} />
+            ) : null}
+            {discoveryExpansion ? (
+              <FactRow label="Expanded into" value={<span>{discoveryExpansion}</span>} />
             ) : null}
             {summarySize ? <FactRow label="Summary size" value={summarySize} /> : null}
             {compression ? <FactRow label="Compression" value={compression} /> : null}
@@ -2130,9 +2179,11 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
                 value={<span className="mono">{workerLog}</span>}
               />
             ) : null}
-            {!agentLabel && !summarySize && !failureReasonText(task) ? (
+            {!agentLabel && !summarySize && !failureReasonText(task) && !discoveryExpansion ? (
               <p className="sync-panel-task-note">
-                {sumRes.label === "Not reached"
+                {isCandidateDiscoveryTask(task)
+                  ? "The Local Agent hasn't expanded this discovery task yet."
+                  : sumRes.label === "Not reached"
                   ? "Fetch was blocked, so no summary was produced."
                   : sumRes.label === "Failed"
                     ? "This post failed to summarize, so it was not saved."

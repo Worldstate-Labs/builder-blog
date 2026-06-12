@@ -7,6 +7,13 @@ import test from "node:test";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
+const missingCommandRunner = async () => ({
+  ok: false,
+  code: null,
+  stdout: "",
+  stderr: "command_not_found",
+  timedOut: false,
+});
 
 test("personal blog fetcher discovers RSS feed articles", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
@@ -730,6 +737,7 @@ test("personal YouTube fetcher returns agent tasks instead of syncing descriptio
           },
         },
       },
+      commandRunner: missingCommandRunner,
       fetcher: async (url: string) => {
         if (url === "https://www.youtube.com/@NeedsAgent") {
           return new Response('<html>{"externalId":"UCneedsagent00000000000000"}</html>');
@@ -761,8 +769,12 @@ test("personal YouTube fetcher returns agent tasks instead of syncing descriptio
   const minimumContentQuality = result.agentTasks[0].minimumContentQuality as { minContentUnits: number };
   assert.equal(minimumContentQuality.minContentUnits, 24);
   assert.equal("reason" in result.agentTasks[0], false);
-  assert.equal("quality" in result.agentTasks[0], false);
   assert.equal("sourceDetail" in result.agentTasks[0], false);
+  assert.ok(Array.isArray(result.agentTasks[0].youtubeExtractionAttempts));
+  assert.match(
+    result.agentTasks[0].youtubeExtractionAttempts.map((attempt: { reason?: string }) => attempt.reason).join(" "),
+    /yt-dlp_missing/,
+  );
 });
 
 test("personal YouTube fetcher chooses Chinese captions when metadata strongly indicates Chinese", async () => {
@@ -795,6 +807,7 @@ test("personal YouTube fetcher chooses Chinese captions when metadata strongly i
           },
         },
       },
+      commandRunner: missingCommandRunner,
       fetcher: async (url: string) => {
         const href = String(url);
         if (href === "https://www.youtube.com/@xiaojunpodcast") {
@@ -847,6 +860,103 @@ test("personal YouTube fetcher chooses Chinese captions when metadata strongly i
   assert.equal(result.items[0].rawJson.inferredSourceLanguage, "zh");
 });
 
+test("personal YouTube fetcher uses yt-dlp metadata captions before agent fallback", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const zhLine =
+    "何小鹏 讨论 人形机器人 技术 组织 产品 战略 赌注 汽车 智能 驾驶 未来 市场 竞争 团队 决策 风险 机会 产业 变化";
+  const vtt = [
+    "WEBVTT",
+    "",
+    "00:00:01.000 --> 00:00:04.000",
+    zhLine,
+    "",
+    "00:00:04.000 --> 00:00:07.000",
+    zhLine,
+    "",
+    "00:00:07.000 --> 00:00:10.000",
+    `${zhLine} 机器人 软件 硬件 供应链 商业化 节奏 判断`,
+  ].join("\n");
+
+  const result = await cli.fetchPersonalYouTubeBuilderForTest(
+    {
+      id: "builder_youtube_ytdlp",
+      name: "Zhang Xiaojun Podcast",
+      sourceUrl: "https://www.youtube.com/@xiaojunpodcast",
+      fetchUrl: "https://www.youtube.com/@xiaojunpodcast",
+    },
+    {
+      cutoff: null,
+      limit: 1,
+      agentModel: "gpt-test",
+      fetchedItemKeys: new Set(),
+      sources: {
+        youtube: {
+          contentQuality: {
+            minChars: 80,
+            minContentUnits: 24,
+            minLocalDiversity: 0.2,
+            maxTimestampDensity: 0.1,
+          },
+        },
+      },
+      commandRunner: async (command: string, args: string[]) => {
+        if (command === "yt-dlp" && args[0] === "--version") {
+          return { ok: true, code: 0, stdout: "2026.01.01", stderr: "", timedOut: false };
+        }
+        if (command === "yt-dlp" && args.includes("-J")) {
+          return {
+            ok: true,
+            code: 0,
+            stdout: JSON.stringify({
+              title: "He Xiaopeng: Robot IRON's Birth",
+              subtitles: {
+                "en-US": [{ ext: "vtt", url: "https://captions.example/en.vtt" }],
+                "zh-Hans": [{ ext: "vtt", url: "https://captions.example/zh.vtt" }],
+              },
+              automatic_captions: {},
+            }),
+            stderr: "",
+            timedOut: false,
+          };
+        }
+        return missingCommandRunner();
+      },
+      fetcher: async (url: string) => {
+        const href = String(url);
+        if (href === "https://www.youtube.com/@xiaojunpodcast") {
+          return new Response('<html>{"externalId":"UCxiaojun0000000000000000"}</html>');
+        }
+        if (href.includes("/feeds/videos.xml")) {
+          return new Response(`
+            <feed>
+              <entry>
+                <yt:videoId>zhvideo2</yt:videoId>
+                <title>He Xiaopeng: Robot IRON's Birth</title>
+                <link rel="alternate" href="https://www.youtube.com/watch?v=zhvideo2" />
+                <published>2026-05-22T10:00:00Z</published>
+                <media:description>本集是何小鹏的中文访谈，讨论人形机器人、AI、汽车产业和技术剧变。</media:description>
+              </entry>
+            </feed>
+          `);
+        }
+        if (href === "https://captions.example/zh.vtt") return new Response(vtt);
+        if (href === "https://captions.example/en.vtt") {
+          return new Response("WEBVTT\n\n00:00:01.000 --> 00:00:03.000\nEnglish translation");
+        }
+        return new Response("missing", { status: 404 });
+      },
+    },
+  );
+
+  assert.equal(result.agentTasks.length, 0);
+  assert.equal(result.items.length, 1);
+  assert.match(result.items[0].body, /何小鹏/);
+  assert.doesNotMatch(result.items[0].body, /00:00/);
+  assert.equal(result.items[0].rawJson.captionLanguageCode, "zh-Hans");
+  assert.equal(result.items[0].rawJson.youtubeExtractionAttempts[0].method, "yt-dlp-captions");
+  assert.equal(result.items[0].rawJson.youtubeExtractionAttempts[0].status, "ok");
+});
+
 test("personal YouTube fetcher falls back to agent when caption language is ambiguous", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const result = await cli.fetchPersonalYouTubeBuilderForTest(
@@ -871,6 +981,7 @@ test("personal YouTube fetcher falls back to agent when caption language is ambi
           },
         },
       },
+      commandRunner: missingCommandRunner,
       fetcher: async (url: string) => {
         const href = String(url);
         if (href === "https://www.youtube.com/@ambiguous") {
