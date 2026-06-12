@@ -12,6 +12,8 @@
 // Output is a typed tree the renderer turns into links, embedded video, and a
 // progressively-readable layout.
 
+import { decodeHtmlEntities } from "@/lib/decode-entities";
+
 export type DigestInline =
   | { type: "text"; value: string }
   | { type: "strong"; value: string }
@@ -151,7 +153,12 @@ function toMedia(url: string, label: string): DigestMedia {
 
 const INLINE = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|\*\*([^*]+)\*\*|(https?:\/\/[^\s)]+)/g;
 
-export function parseInline(text: string): DigestInline[] {
+export function parseInline(rawText: string): DigestInline[] {
+  // Decode entities up front so every emitted node value (text, bold, link
+  // label) carries real characters. Entity tokens never contain the markdown
+  // delimiters the regex below looks for, so decoding first cannot fabricate
+  // spurious bold/link matches.
+  const text = decodeHtmlEntities(rawText);
   const out: DigestInline[] = [];
   let last = 0;
   let m: RegExpExecArray | null;

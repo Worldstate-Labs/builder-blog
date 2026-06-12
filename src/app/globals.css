@@ -90,6 +90,8 @@
   --elev-0: none;
   --elev-1: 0 1px 2px var(--shadow);
   --elev-2: 0 4px 12px var(--shadow);
+  --shadow-soft: var(--elev-1);
+  --shadow-pop: var(--elev-2);
 
   /* Motion — one duration, one easing; all motion gated by prefers-reduced-motion. */
   --ease: cubic-bezier(0.2, 0, 0, 1);
@@ -245,7 +247,7 @@ svg.lucide {
   align-items: center;
   background: var(--ink);
   border-radius: 8px;
-  color: var(--paper);
+  color: var(--on-ink);
   display: inline-flex;
   height: 2.35rem;
   justify-content: center;
@@ -385,7 +387,6 @@ svg.lucide {
 .fb-breadcrumb-link:hover,
 .fb-breadcrumb-link:focus-visible {
   color: var(--accent);
-  outline: none;
   text-decoration: none;
 }
 
@@ -441,7 +442,6 @@ a.reading-source-label {
 a.reading-source-label:hover,
 a.reading-source-label:focus-visible {
   color: var(--accent);
-  outline: none;
   text-decoration: none;
 }
 
@@ -638,6 +638,10 @@ a.reading-source-label:focus-visible {
   transform: translateY(0);
 }
 
+details:not([open]) > :not(summary) {
+  display: none;
+}
+
 .user-menu {
   position: relative;
 }
@@ -677,7 +681,7 @@ a.reading-source-label:focus-visible {
   aspect-ratio: 1;
   background: var(--ink);
   border-radius: 999px;
-  color: var(--paper);
+  color: var(--on-ink);
   display: inline-flex;
   flex: 0 0 auto;
   font-size: 0.95rem;
@@ -726,10 +730,6 @@ a.reading-source-label:focus-visible {
   right: 0;
   top: calc(100% + 0.5rem);
   z-index: 60;
-}
-
-.user-menu:not([open]) .user-menu-popover {
-  display: none;
 }
 
 .user-menu-compact .user-menu-popover {
@@ -1671,7 +1671,6 @@ a.reading-source-label:focus-visible {
   font-size: 0.875rem;
   line-height: var(--post-summary-line-height);
   margin: 0;
-  min-height: var(--post-summary-collapsed-height);
   white-space: pre-wrap;
 }
 
@@ -1679,9 +1678,12 @@ a.reading-source-label:focus-visible {
   cursor: default;
 }
 
+/* Clamp to the collapsed height only as a ceiling, never a floor: long
+   summaries cap at --post-summary-lines (overflow drives the See-more toggle),
+   while short summaries sit at their natural height instead of being padded out
+   to six lines — which otherwise left a dead gap above the action row. */
 .post-summary:not(.post-summary--expanded) .fetched-post-summary-text {
   display: block;
-  height: var(--post-summary-collapsed-height);
   max-height: var(--post-summary-collapsed-height);
   overflow: hidden;
 }
@@ -1980,6 +1982,15 @@ a.reading-source-label:focus-visible {
   color: var(--ink);
 }
 
+.post-action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.post-action-btn:disabled:hover {
+  color: var(--muted);
+}
+
 .post-action-btn--active {
   color: var(--accent);
 }
@@ -2005,6 +2016,10 @@ a.reading-source-label:focus-visible {
 .post-favorite-btn.post-action-btn--active {
   background: color-mix(in oklch, var(--accent) 10%, transparent);
   border-color: color-mix(in oklch, var(--accent) 35%, var(--line));
+}
+
+.post-favorite-btn.post-action-btn--active .post-action-icon {
+  fill: currentColor;
 }
 
 .post-favorite-control {
@@ -2576,7 +2591,6 @@ a.reading-source-label:focus-visible {
 .library-add-source-toggle:focus-visible {
   background: color-mix(in oklch, var(--accent) 12%, transparent);
   border-color: color-mix(in oklch, var(--accent) 34%, var(--line));
-  outline: none;
 }
 
 .library-add-source-toggle svg {
@@ -3217,7 +3231,7 @@ a.reading-source-label:focus-visible {
 .source-pick[data-selected="true"] {
   background: var(--ink);
   border-color: var(--ink);
-  color: var(--paper);
+  color: var(--on-ink);
 }
 
 .recommendation-snapshot {
@@ -3428,7 +3442,6 @@ a.reading-source-label:focus-visible {
 .search-input-clear:focus-visible {
   background: color-mix(in oklch, var(--ink) 7%, transparent);
   color: var(--ink);
-  outline: none;
 }
 
 .search-action-icon,
@@ -3452,6 +3465,7 @@ a.reading-source-label:focus-visible {
   min-width: 10.5rem;
   min-height: 2.75rem;
   padding: 0.2rem 0.35rem 0.2rem 0.8rem;
+  position: relative;
   text-transform: uppercase;
 }
 
@@ -3466,6 +3480,24 @@ a.reading-source-label:focus-visible {
   min-height: 2.25rem;
   outline: none;
   padding: 0 1.6rem 0 0.8rem;
+}
+
+/* Restore a dropdown affordance: appearance:none drops the native caret, so
+   these read as static pills without it. The mask paints in --muted so it
+   stays legible in both themes; it sits in the padding the select already
+   reserves and ignores pointer events so the whole pill stays clickable. */
+.search-mode-select::after {
+  background-color: var(--muted);
+  content: "";
+  height: 0.85rem;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%23000'%20stroke-width='2.5'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='m6%209%206%206%206-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%23000'%20stroke-width='2.5'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='m6%209%206%206%206-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  pointer-events: none;
+  position: absolute;
+  right: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0.85rem;
 }
 
 .search-date-range {
@@ -3650,7 +3682,6 @@ a.reading-source-label:focus-visible {
 .search-suggestion-remove:focus-visible {
   background: color-mix(in oklch, var(--accent) 12%, transparent);
   color: var(--accent);
-  outline: none;
 }
 
 .search-results-shell {
@@ -3755,7 +3786,6 @@ a.reading-source-label:focus-visible {
   background: color-mix(in oklch, var(--accent) 8%, transparent);
   border-color: color-mix(in oklch, var(--accent) 28%, var(--line));
   color: var(--accent);
-  outline: none;
 }
 
 .search-advanced-tools-compact[open] {
@@ -4568,7 +4598,7 @@ a.reading-source-label:focus-visible {
   align-items: center;
   background: var(--ink);
   border-radius: 7px;
-  color: var(--paper);
+  color: var(--on-ink);
   display: inline-flex;
   font-family: var(--font-display), serif;
   font-size: 1rem;
@@ -4659,7 +4689,7 @@ a.reading-source-label:focus-visible {
   align-items: center;
   background: var(--ink);
   border-radius: 999px;
-  color: var(--paper);
+  color: var(--on-ink);
   display: inline-flex;
   font-size: 0.8125rem;
   font-weight: 700;
@@ -5010,7 +5040,7 @@ a.reading-source-label:focus-visible {
   background: var(--accent);
   border-color: var(--accent);
   box-shadow: 0 8px 18px color-mix(in oklch, var(--accent) 18%, transparent);
-  color: var(--paper);
+  color: var(--on-accent);
 }
 
 .fb-follow-button.is-follow:hover {
@@ -5341,10 +5371,6 @@ a.reading-source-label:focus-visible {
   z-index: 20;
 }
 
-.digest-pipeline-selector:not([open]) .digest-pipeline-menu {
-  display: none;
-}
-
 .digest-pipeline-option {
   border-radius: 6px;
   color: var(--ink);
@@ -5403,7 +5429,6 @@ a.reading-source-label:focus-visible {
 .digest-source-pill:focus-visible {
   background: color-mix(in oklch, var(--ink) 5%, transparent);
   color: var(--ink);
-  outline: 0;
 }
 
 .digest-source-pill[aria-current="page"] {
@@ -5596,10 +5621,6 @@ a.reading-source-label:focus-visible {
   min-width: min(22rem, calc(100vw - 2rem));
   right: 0;
   z-index: 20;
-}
-
-.digest-picker:not([open]) .digest-picker-menu {
-  display: none;
 }
 
 .digest-picker-option {
@@ -6883,7 +6904,6 @@ a.reading-source-label:focus-visible {
 .builder-library-source-section-toggle:hover,
 .builder-library-source-section-toggle:focus-visible {
   background: color-mix(in oklch, var(--rail) 35%, transparent);
-  outline: 0;
 }
 
 .builder-library-source-section-title {
@@ -8704,9 +8724,6 @@ a.fb-hub-source-name:focus-visible {
 /* Hub card source-list expand/collapse. Suppresses the native triangle
  * so the avatar+name row reads as a normal label, with a quiet icon
  * affordance on the right that rotates by [open]. */
-.fb-hub-sources > summary {
-  outline: none;
-}
 .fb-hub-sources > summary::-webkit-details-marker {
   display: none;
 }
@@ -10288,7 +10305,7 @@ a.fb-hub-source-name:focus-visible {
 .fb-pill.active {
   background: var(--ink);
   border-color: var(--ink);
-  color: var(--paper);
+  color: var(--on-ink);
 }
 
 /* Access keys settings panel */
@@ -12064,4 +12081,9 @@ body {
     grid-template-columns: 1fr;
   }
 
+}
+
+:is(input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }

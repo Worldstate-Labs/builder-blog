@@ -758,6 +758,7 @@ function maxIso(a: string | null, b: string | null) {
 const fetchDateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   month: "short",
+  timeZone: "UTC",
   year: "numeric",
 });
 

@@ -10,6 +10,7 @@ import { SourceAvatar } from "@/components/SourceAvatar";
 import { FetchMethodPopover } from "@/components/FetchMethodPopover";
 import { RecommendationReasonsPopover } from "@/components/RecommendationReasonsPopover";
 import { useHydrated } from "@/components/ThemeToggle";
+import { decodeHtmlEntities } from "@/lib/decode-entities";
 
 type FetchedPostBuilder = {
   id: string;
@@ -90,7 +91,7 @@ export function PostCard({
   const isDetail = variant === "detail";
   const summary = displaySummaryText(post.summary, post.url) || normalizedText(post.body);
   const originalSummary = normalizedText(post.originalSummary);
-  const title = post.title || firstLine(post.body);
+  const title = decodeHtmlEntities(post.title || firstLine(post.body));
   const actionContext = compactActionContext(title);
   const summaryIdBase = useId();
   const rawIdBase = useId();
@@ -440,7 +441,10 @@ function compactActionContext(value: string) {
 }
 
 function normalizedText(value: string | null | undefined) {
-  return value?.trim() ?? "";
+  // Decode entities so summaries render `we'd` rather than the literal
+  // `we&#x27;d` the model emits. Crawled raw content is rendered separately and
+  // intentionally left untouched to preserve source fidelity.
+  return decodeHtmlEntities(value?.trim() ?? "");
 }
 
 function displaySummaryText(value: string | null | undefined, sourceUrl: string | null | undefined) {

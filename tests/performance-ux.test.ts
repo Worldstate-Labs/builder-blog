@@ -29,6 +29,10 @@ function cssRule(sourceText: string, selector: string) {
   return match[0];
 }
 
+function cssCustomProperties(sourceText: string, pattern: RegExp) {
+  return new Set(Array.from(sourceText.matchAll(pattern), (match) => match[1]));
+}
+
 test("primary app navigation keeps route prefetching enabled", () => {
   const appNav = source("src/components/AppNav.tsx");
   const globals = source("src/app/globals.css");
@@ -82,9 +86,15 @@ test("app shell reuses the page session instead of fetching it again", () => {
   assert.match(globals, /--on-ink:\s*var\(--paper-strong\)/);
   assert.match(globals, /--on-warm:\s*var\(--ink\)/);
   assert.match(globals, /--surface-paper:\s*oklch/);
+  assert.match(globals, /--soft:\s*var\(--rail\)/);
+  assert.match(globals, /--elev-1:\s*0 1px 2px var\(--shadow\)/);
+  assert.match(globals, /--elev-2:\s*0 4px 12px var\(--shadow\)/);
+  assert.match(globals, /--shadow-soft:\s*var\(--elev-1\)/);
+  assert.match(globals, /--shadow-pop:\s*var\(--elev-2\)/);
   assert.doesNotMatch(globals, /#(?:000|fff)\b/i);
   assert.doesNotMatch(globals, /(?:^|[\s(:,])(?:black|white)(?=[\s),;])/i);
   assert.doesNotMatch(globals, /rgba\((?:255,\s*255,\s*255|0,\s*0,\s*0)/i);
+  assert.doesNotMatch(globals, /color:\s*var\(--paper(?:-strong)?\)/);
   assert.match(globals, /@media \(prefers-color-scheme:\s*dark\)[\s\S]*--on-accent:\s*var\(--surface-ink\)/);
   assert.match(globals, /@media \(prefers-color-scheme:\s*dark\)[\s\S]*--on-warm:\s*var\(--surface-ink\)/);
   assert.match(globals, /:root\[data-theme="dark"\][\s\S]*--on-accent:\s*var\(--surface-ink\)/);
@@ -99,6 +109,21 @@ test("app shell reuses the page session instead of fetching it again", () => {
   assert.doesNotMatch(cssRule(globals, ".fb-btn.dark"), /color:\s*(white|#fff)/);
   assert.doesNotMatch(cssRule(globals, ".fb-btn.danger"), /color:\s*(white|#fff)/);
   assert.doesNotMatch(globals, /\.fb-segmented-tabs \.fb-btn\[aria-selected="true"\],[^}]*color:\s*#fff/);
+  assert.doesNotMatch(globals, /:focus-visible[^{]*{[^}]*outline:\s*(?:none|0)\b/);
+  assert.match(globals, /:is\(input, select, textarea, summary\):focus-visible\s*{[\s\S]*outline:\s*2px solid var\(--accent\)/);
+  const usedCustomProperties = cssCustomProperties(globals, /var\((--[a-zA-Z0-9-]+)/g);
+  const definedCustomProperties = cssCustomProperties(globals, /(?:^|\s)(--[a-zA-Z0-9-]+)\s*:/g);
+  const externallyInjectedCustomProperties = new Set([
+    "--dr-clamp-lines",
+    "--font-display",
+    "--font-geist-mono",
+    "--font-geist-sans",
+    "--tab-count",
+  ]);
+  const missingCustomProperties = [...usedCustomProperties]
+    .filter((property) => !definedCustomProperties.has(property))
+    .filter((property) => !externallyInjectedCustomProperties.has(property));
+  assert.deepEqual(missingCustomProperties, []);
   assert.match(globals, /\.fb-root\s*{[\s\S]*height:\s*100%/);
   assert.match(globals, /\.fb-root\s*{[\s\S]*-webkit-font-smoothing:\s*antialiased/);
   assert.match(globals, /\.fb-root-body\s*{[\s\S]*display:\s*flex/);
@@ -1019,7 +1044,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(settingsPage, /Agent login/);
   assert.match(globals, /\.user-avatar/);
   assert.match(globals, /\.user-menu-popover/);
-  assert.match(globals, /\.user-menu:not\(\[open\]\) \.user-menu-popover\s*{[\s\S]*display:\s*none/);
+  assert.match(globals, /details:not\(\[open\]\) > :not\(summary\)\s*{[\s\S]*display:\s*none/);
   assert.match(globals, /\.user-menu-item\s*{[\s\S]*text-align:\s*left/);
   assert.match(globals, /\.user-menu-item\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.user-menu-item:hover,[\s\S]*\.user-menu-item:focus-visible,[\s\S]*\.user-menu-item\[data-active="true"\]\s*{[\s\S]*background:\s*var\(--soft\)/);
@@ -1182,7 +1207,6 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.digest-pipeline-option:hover,[\s\S]*\.digest-pipeline-option:focus-visible\s*{[\s\S]*background:\s*color-mix/);
   assert.match(globals, /\.digest-pipeline-option:focus-visible\s*{[\s\S]*outline:\s*2px solid var\(--accent\)/);
   assert.match(globals, /\.digest-pipeline-menu\s*{[\s\S]*box-shadow:\s*var\(--shadow-pop\)/);
-  assert.match(globals, /\.digest-pipeline-selector:not\(\[open\]\) \.digest-pipeline-menu\s*{[\s\S]*display:\s*none/);
   assert.doesNotMatch(digestPipelineSelector, /rounded-\[|grid-cols-\[|text-\[var|font-\[|shadow-\[|min-h-10|px-3|py-2|h-3\.5|w-3\.5/);
   assert.doesNotMatch(digestPipelineSelector, />\s*v\s*<\/span>/);
   assert.match(digestArchivePicker, /ChevronDown/);
@@ -1211,7 +1235,6 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.digest-picker-option\[aria-current="page"\]/);
   assert.match(globals, /\.digest-picker-option:hover,[\s\S]*\.digest-picker-option:focus-visible,[\s\S]*\.digest-picker-option\[aria-current="page"\]\s*{[\s\S]*background:\s*color-mix/);
   assert.match(globals, /\.digest-picker-option:focus-visible\s*{[\s\S]*outline:\s*2px solid var\(--accent\)/);
-  assert.match(globals, /\.digest-picker:not\(\[open\]\) \.digest-picker-menu\s*{[\s\S]*display:\s*none/);
   assert.doesNotMatch(globals, /\.digest-picker-option\[aria-current="true"\]/);
   assert.doesNotMatch(globals, /\.digest-picker-summary::after[\s\S]*content:\s*"▾"/);
   assert.doesNotMatch(dashboardPage, /digest-source-pill fb-btn compact/);
@@ -3111,6 +3134,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /"fetched post"|"fetched posts"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /formatFetchStatusLabel/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fetched \$\{formatted\}/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /new Intl\.DateTimeFormat\("en-US", \{[\s\S]*timeZone:\s*"UTC"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /not fetched yet/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fetch date unknown/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /latest at \$\{formatted\}|latest date unknown|Latest fetch/);
@@ -3161,6 +3185,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(digestPipelineForm, /Build frequency/);
   assert.match(digestPipelineForm, /Language/);
   assert.match(digestPipelineForm, /Latest AI Digest/);
+  assert.match(digestPipelineForm, /new Intl\.DateTimeFormat\("en-US", \{[\s\S]*timeZone:\s*"UTC"/);
+  assert.doesNotMatch(digestPipelineForm, /new Intl\.DateTimeFormat\(undefined/);
   assert.match(digestPipelineForm, /Schedule status/);
   assert.doesNotMatch(digestPipelineForm, /Update frequency/);
   assert.match(digestPipelineForm, /className="fb-hub-digest-headline"/);
@@ -3764,7 +3790,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.post-detail-raw-copy\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.post-detail-section-label\s*{[\s\S]*text-transform:\s*uppercase/);
   assert.match(globals, /\.post-detail-section-desc\s*{[\s\S]*color:\s*var\(--muted-strong\)/);
+  assert.match(globals, /\.post-action-btn:disabled\s*{[\s\S]*cursor:\s*not-allowed/);
   assert.match(globals, /\.post-favorite-btn\s*{[\s\S]*min-width:\s*2rem/);
+  assert.match(globals, /\.post-favorite-btn\.post-action-btn--active \.post-action-icon\s*{[\s\S]*fill:\s*currentColor/);
   assert.match(globals, /\.post-favorite-status\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.post-raw-content-action\s*{[\s\S]*color:\s*var\(--accent\)/);
   assert.match(globals, /\.post-raw-content-action\s*{[\s\S]*min-width:\s*0/);
