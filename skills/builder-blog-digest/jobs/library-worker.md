@@ -26,6 +26,7 @@ variables):
 ```bash
 printf 'shard file: %s\n' "$BUILDER_BLOG_SHARD_FILE"
 printf 'result file: %s\n' "$BUILDER_BLOG_SHARD_RESULT"
+printf 'checkpoint dir: %s\n' "$BUILDER_BLOG_SHARD_CHECKPOINT_DIR"
 cat "$BUILDER_BLOG_SHARD_FILE"
 ```
 
@@ -44,11 +45,31 @@ result file survives):
 - Complete CHEAP tasks first: all `ready` tasks (body provided, summary only),
   then light extractions (web articles), and only then heavy extractions
   (audio/video downloads, transcription).
-- After EACH completed task, write the full shard result file (step 3 shape,
-  containing every item and outcome finished so far) — always valid JSON,
-  never a partial fragment. Do NOT batch everything into one final write: if
-  you are terminated mid-task, every previously finished task must already be
-  on disk so the runner's merge can keep it.
+- After EACH completed task, write BOTH:
+  - one task checkpoint JSON under `$BUILDER_BLOG_SHARD_CHECKPOINT_DIR`;
+  - the full shard result file (step 3 shape, containing every item and
+    outcome finished so far).
+  Both files must be valid JSON, never a partial fragment. Do NOT batch
+  everything into one final write: if you are terminated mid-task, every
+  previously finished task must already be on disk so the runner's merge can
+  keep it.
+
+Task checkpoint shape:
+
+```text
+{ "builders": [{ …builderSync, "items": [items for exactly this task] }],
+  "taskOutcomes": [outcome for exactly this task, if it did not sync] }
+```
+
+Use one checkpoint file per completed `fetchTaskId`. A safe filename is:
+
+```bash
+printf '%s' "$FETCH_TASK_ID" | shasum -a 256 | awk '{print $1}'
+```
+
+Then write it as `$BUILDER_BLOG_SHARD_CHECKPOINT_DIR/<hash>.json`. The runner
+uses these task-level checkpoints as the source of truth for completed work if
+the worker later crashes, times out, or fails to write the final shard result.
 
 {{INCLUDE:fetch-task-core REPORT_TARGET="to this worker's stdout"}}
 

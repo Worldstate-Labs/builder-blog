@@ -412,6 +412,8 @@ test("web app serves the agent skill and setup command", () => {
   // One-time runs now share the schedule dialog instead of a separate button/dialog.
   assert.doesNotMatch(skillPromptActions, /<OnceConfigDialog/);
   assert.match(skillPromptActions, /continueOnceCopy/);
+  assert.match(skillPromptActions, /continueOnceCopy\([\s\S]*parallelWorkers/);
+  assert.match(skillPromptActions, /params\.set\("parallel", String\(extras\.cron\?\.parallelWorkers \?\? extras\.parallelWorkers\)\)/);
   // Cron + once dialogs: compact <select> controls, plus an account-wide
   // summary language select persisted via /api/settings/summary-language —
   // now shown for digest as well as library.
@@ -494,8 +496,8 @@ test("web app serves the agent skill and setup command", () => {
   // Forced re-fetch toggle: ?force=1 → {{FETCH_FORCE}} substituted to 1.
   assert.match(skillJobRoute, /searchParams\.get\("force"\)/);
   assert.match(skillJobRoute, /\{\{FETCH_FORCE\}\}/);
-  // {{FETCH_FLAG}} bakes --force straight into the once command; the files
-  // route neutralizes it to "" for the runner-fed copy.
+  // {{FETCH_FLAG}} bakes the one-time override choice into the runner env; the
+  // files route neutralizes it to "" for the cached prompt copy.
   assert.match(skillJobRoute, /\{\{FETCH_FLAG\}\}/);
   assert.match(skillFileRoute, /\{\{FETCH_FLAG\}\}/);
   assert.match(skillFileRoute, /\{\{FETCH_DAYS\}\}/);
@@ -575,12 +577,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /builder-agent-runner\.sh \$\{job\}/);
   assert.doesNotMatch(skillPromptActions, /Run the commands exactly in order/);
   // The fetch-task / summarize execution contract is a set of shared
-  // fragments (discovery → per-task core → validate/sync tail); library-once
-  // and library-cron pull all three in via {{INCLUDE:...}} directives
-  // expanded server-side, and the parallel worker prompt reuses ONLY the
-  // core. Tests assert on the EXPANDED prompt (what the agent actually
-  // receives) plus the directives themselves, so the contract lives in
-  // exactly one place and the sequential/parallel jobs can never drift.
+  // fragments (discovery → per-task core → validate/sync tail). The scheduled
+  // job pulls all three in via {{INCLUDE:...}} directives expanded server-side,
+  // while the one-time prompt is intentionally only a thin wrapper around
+  // builder-agent-runner.sh library-once. That keeps copied one-time prompts on
+  // the same runner path as "run the schedule now" instead of duplicating a
+  // second direct fetch/sync implementation.
   const fetchTaskDiscovery = readFileSync(
     "skills/builder-blog-digest/jobs/_fetch-task-discovery.md",
     "utf8",
@@ -650,20 +652,19 @@ test("web app serves the agent skill and setup command", () => {
   const digestOnceExpanded = expandIncludes(digestOncePrompt);
   const digestCronExpanded = expandIncludes(digestCronPrompt);
 
-  // Anti-drift: both library jobs reference the shared contract via the
-  // directive, and neither raw file restates the execution steps inline.
-  assert.match(
-    libraryOncePrompt,
-    /\{\{INCLUDE:fetch-task-discovery TMP_JOB="library-once"\}\}/,
-  );
-  assert.match(
-    libraryOncePrompt,
-    /\{\{INCLUDE:fetch-task-core REPORT_TARGET="to the user"\}\}/,
-  );
-  assert.match(
-    libraryOncePrompt,
-    /\{\{INCLUDE:fetch-task-syncing REPORT_TARGET="to the user" TMP_JOB="library-once"\}\}/,
-  );
+  // Anti-drift: one-time source fetch invokes the runner; it must not restate
+  // fetch-personal, validation, sync, or the task contract inline.
+  assert.match(libraryOncePrompt, /builder-agent-runner\.sh" library-once/);
+  assert.match(libraryOncePrompt, /BUILDER_BLOG_FETCH_DAYS/);
+  assert.match(libraryOncePrompt, /BUILDER_BLOG_FETCH_FORCE/);
+  assert.match(libraryOncePrompt, /BUILDER_BLOG_PARALLEL_WORKERS/);
+  assert.doesNotMatch(libraryOncePrompt, /\{\{INCLUDE:fetch-task-/);
+  assert.doesNotMatch(libraryOncePrompt, /fetch-personal/);
+  assert.doesNotMatch(libraryOncePrompt, /validate-agent-sync/);
+  assert.doesNotMatch(libraryOncePrompt, /sync-builders/);
+
+  // The scheduled job still owns the complete single-agent contract; the
+  // runner also uses it as the fallback for non-parallel cron execution.
   assert.match(
     libraryCronPrompt,
     /\{\{INCLUDE:fetch-task-discovery TMP_JOB="library-cron"\}\}/,
@@ -692,65 +693,53 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(libraryOnceExpanded, /\{\{INCLUDE|\{\{REPORT_TARGET\}\}|\{\{TMP_JOB\}\}/);
   assert.doesNotMatch(libraryCronExpanded, /\{\{INCLUDE|\{\{REPORT_TARGET\}\}|\{\{TMP_JOB\}\}/);
   // REPORT_TARGET is substituted per job.
-  assert.match(libraryOnceExpanded, /Action needed" notice and skip[\s\S]*to the user/);
   assert.match(libraryCronExpanded, /Action needed" notice and skip[\s\S]*to the scheduled job log/);
 
-  // Contract content, asserted on the expanded once-prompt. The fetch command
-  // prefers the runner-exported ${BUILDER_BLOG_FETCH_*} settings (so a
-  // runner-launched one-time run matches the recurring job's pins) and falls
-  // back to the per-copy baked values when pasted directly — `${VAR-default}`
-  // (no colon) so the runner's exported-but-empty force suppresses the flag.
+  // The one-time wrapper carries the per-run URL choices into the runner, so a
+  // pasted prompt still uses the same days/force/parallel inputs as the
+  // scheduled path without duplicating cron's shell steps.
   assert.match(
     libraryOnceExpanded,
-    /fetch-personal --days \$\{BUILDER_BLOG_FETCH_DAYS-\{\{FETCH_DAYS\}\}\} --limit \$\{BUILDER_BLOG_FETCH_LIMIT-3\}/,
+    /BUILDER_BLOG_FETCH_DAYS="\$\{BUILDER_BLOG_FETCH_DAYS-\{\{FETCH_DAYS\}\}\}"/,
   );
-  assert.match(libraryOnceExpanded, /validate-agent-sync/);
-  assert.match(libraryOnceExpanded, /sync-builders/);
-  assert.match(libraryOnceExpanded, /--tasks "\$TMP_DIR\/library-fetch-result\.json"/);
-  assert.match(libraryOnceExpanded, /tmp\/accounts\/\$ACCOUNT_SLUG\/library-once/);
-  assert.match(libraryOnceExpanded, /rawJson\.agentExecutionProof/);
-  assert.match(libraryOnceExpanded, /complete exactly\s+the task IDs returned by the CLI/i);
-  assert.match(libraryOnceExpanded, /fetchTasks/);
-  assert.match(libraryOnceExpanded, /single-post\s+`?summary`?/);
-  assert.match(libraryOnceExpanded, /summaryInstructions\.prompt/);
-  assert.match(libraryOnceExpanded, /only prompt source for fetch-task\s+summaries/);
-  assert.match(libraryOnceExpanded, /Do not re-compose it from[\s\S]*`context\.sources`/);
-  assert.match(libraryOnceExpanded, /Fetch task boundary/);
-  assert.match(libraryOnceExpanded, /How to execute each `fetchTask`/);
-  assert.match(libraryOnceExpanded, /Read `task\.contentStatus`/);
-  assert.match(libraryOnceExpanded, /Copy `task\.builderSync` exactly/);
-  assert.match(libraryOnceExpanded, /Use `task\.minimumContentQuality`/);
-  assert.match(libraryOnceExpanded, /Build one output item/);
-  assert.match(libraryOnceExpanded, /both `body` and `summary`/);
-  assert.match(libraryOnceExpanded, /task\.builderSync/);
-  assert.doesNotMatch(libraryOnceExpanded, /agentTasks/);
-  assert.doesNotMatch(libraryOnceExpanded, /summaryTasks/);
-  assert.doesNotMatch(libraryOnceExpanded, /summarize-tweets\.md/);
-  assert.doesNotMatch(libraryOnceExpanded, /summarize-podcast\.md/);
-  assert.doesNotMatch(libraryOnceExpanded, /summarize-blogs\.md/);
-  assert.match(libraryOnceExpanded, /Do not add new sources, URLs, or feed items/);
-  // library-once carries a per-run --force toggle inline via {{FETCH_FLAG}}
-  // (the jobs route substitutes it from ?force=, the files route neutralizes
-  // it to ""). The old blanket "Do not use --force." is replaced by guidance
-  // to run the command verbatim.
   assert.match(
     libraryOnceExpanded,
-    /fetch-personal --days \$\{BUILDER_BLOG_FETCH_DAYS-\{\{FETCH_DAYS\}\}\} --limit \$\{BUILDER_BLOG_FETCH_LIMIT-3\} \$\{BUILDER_BLOG_FETCH_FORCE-\{\{FETCH_FLAG\}\}\}/,
+    /BUILDER_BLOG_FETCH_FORCE="\$\{BUILDER_BLOG_FETCH_FORCE-\{\{FETCH_FLAG\}\}\}"/,
   );
-  assert.match(libraryOnceExpanded, /Do not add or remove `--force`\s+yourself/);
-  assert.doesNotMatch(libraryOnceExpanded, /Do not use `--force`\./);
+  assert.match(
+    libraryOnceExpanded,
+    /BUILDER_BLOG_PARALLEL_WORKERS="\$\{BUILDER_BLOG_PARALLEL_WORKERS-\{\{PARALLEL_WORKERS\}\}\}"/,
+  );
   assert.match(libraryOnceExpanded, /execution\s+contract, not as user-facing documentation/);
   assert.doesNotMatch(libraryOnceExpanded, /Environment contract/);
   assertOrderedText(libraryOnceExpanded, [
-    "3. Print the fetch result",
-    "How to execute each `fetchTask`",
-    "sync-builders",
-    "5. Report the fetch JSON",
+    "1. Install or refresh the skill",
+    "2. Run one source fetch through the FollowBrief runner",
+    "3. Report the runner output",
   ]);
-  // The cron job's expanded prompt carries the identical contract.
+  // Contract content, asserted on the expanded cron prompt.
   assert.match(libraryCronExpanded, /How to execute each `fetchTask`/);
   assert.match(libraryCronExpanded, /Build one output item/);
   assert.match(libraryCronExpanded, /validate-agent-sync/);
+  assert.match(libraryCronExpanded, /rawJson\.agentExecutionProof/);
+  assert.match(libraryCronExpanded, /complete exactly\s+the task IDs returned by the CLI/i);
+  assert.match(libraryCronExpanded, /fetchTasks/);
+  assert.match(libraryCronExpanded, /single-post\s+`?summary`?/);
+  assert.match(libraryCronExpanded, /summaryInstructions\.prompt/);
+  assert.match(libraryCronExpanded, /only prompt source for fetch-task\s+summaries/);
+  assert.match(libraryCronExpanded, /Do not re-compose it from[\s\S]*`context\.sources`/);
+  assert.match(libraryCronExpanded, /Fetch task boundary/);
+  assert.match(libraryCronExpanded, /Read `task\.contentStatus`/);
+  assert.match(libraryCronExpanded, /Copy `task\.builderSync` exactly/);
+  assert.match(libraryCronExpanded, /Use `task\.minimumContentQuality`/);
+  assert.match(libraryCronExpanded, /both `body` and `summary`/);
+  assert.match(libraryCronExpanded, /task\.builderSync/);
+  assert.doesNotMatch(libraryCronExpanded, /agentTasks/);
+  assert.doesNotMatch(libraryCronExpanded, /summaryTasks/);
+  assert.doesNotMatch(libraryCronExpanded, /summarize-tweets\.md/);
+  assert.doesNotMatch(libraryCronExpanded, /summarize-podcast\.md/);
+  assert.doesNotMatch(libraryCronExpanded, /summarize-blogs\.md/);
+  assert.match(libraryCronExpanded, /Do not add new sources, URLs, or feed items/);
   // Both routes expand includes.
   assert.match(skillFileRoute, /expandSkillIncludes/);
   assert.match(skillJobRoute, /expandSkillIncludes/);
@@ -992,6 +981,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(cli, /normalFetcher/);
   assert.doesNotMatch(cli, /suggestedAction/);
   assert.match(runner, /BUILDER_BLOG_AGENT_COMMAND/);
+  assert.match(runner, /INCOMING_FETCH_FORCE_SET/);
+  assert.match(runner, /INCOMING_FETCH_DAYS_SET/);
+  assert.match(runner, /INCOMING_PARALLEL_WORKERS_SET/);
+  assert.match(runner, /MAX_PARALLEL_WORKERS="\$INCOMING_PARALLEL_WORKERS"/);
   assert.match(runner, /BUILDER_BLOG_PROMPT_URL/);
   assert.match(runner, /BUILDER_BLOG_SMOKE_CHECK/);
   assert.match(runner, /followbriefSmokeCheck/);
@@ -1008,7 +1001,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /sync_openclaw_timeout_config "\$_openclaw_timeout"/);
   assert.match(runner, /openclaw config get agents\.defaults\.timeoutSeconds/);
   assert.match(runner, /openclaw config set agents\.defaults\.timeoutSeconds "\$_seconds" --strict-json/);
-  assert.match(runner, /openclaw_output_has_timeout/);
+  assert.match(runner, /agent_output_has_timeout/);
   assert.match(runner, /Request timed out before a response was generated/);
   assert.match(runner, /codex app-server turn idle timed out/);
   assert.match(runner, /return 124/);

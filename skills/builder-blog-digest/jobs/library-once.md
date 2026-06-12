@@ -1,28 +1,16 @@
-Objective: fetch this user's FollowBrief private source library once, complete
-the returned fetch tasks, and sync only fully completed posts.
+Objective: run this user's FollowBrief private source library fetch once through
+the same local runner path used by the scheduled fetch job.
 
 You are the local agent executing this job. Treat this file as the execution
 contract, not as user-facing documentation.
 
 Execution contract:
 - Run the numbered command steps exactly.
-- If a command outside the explicit `fetchTasks` work fails, stop and report the
-  command, exit code, and stderr to the user.
-- Run the fetch command exactly as written. When the FollowBrief runner
-  launched this job, the `${BUILDER_BLOG_FETCH_*}` variables already carry this
-  account's recurring-job settings, so a one-time run fetches exactly like the
-  scheduled job; when they are unset (this prompt was pasted directly), the
-  baked-in values for this copy apply. Either way the command already carries
-  the right lookback window and re-fetch flag (a `--force` is present only when
-  this run was configured to override already-fetched posts).
-  Do not add or remove `--force` yourself.
-- Do not browse for extra context unless a `fetchTasks` payload requires you to
-  extract content from a URL the task supplies.
-- Do not change paths, flags, cadence, titles, output files, JSON schema, or
-  success criteria.
-- Stay in command-runner mode until the CLI returns `fetchTasks` or says a
-  personal source needs local cookies, credentials, transcription, or custom
-  tooling.
+- If a command fails, stop and report the command, exit code, and stderr to the user.
+- Do not browse for extra context.
+- Do not change paths, flags, output files, JSON schema, or success criteria.
+- The runner owns source discovery, fetch-task sharding, validation, syncing,
+  and fetch-log updates. Do not run lower-level FollowBrief CLI steps yourself.
 
 1. Install or refresh the skill:
 
@@ -30,33 +18,15 @@ Execution contract:
 /bin/sh -c "$(curl -fsSL ${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}/api/skill/bootstrap)"
 ```
 
-2. Fetch normal personal source items and save the full result:
+2. Run one source fetch through the FollowBrief runner:
 
 ```bash
-AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
-ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
-TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-once}"
-mkdir -p "$TMP_DIR"
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" fetch-personal --days ${BUILDER_BLOG_FETCH_DAYS-{{FETCH_DAYS}}} --limit ${BUILDER_BLOG_FETCH_LIMIT-3} ${BUILDER_BLOG_FETCH_FORCE-{{FETCH_FLAG}}} \
-  > "$TMP_DIR/library-fetch-result.json"
+BUILDER_BLOG_FETCH_DAYS="${BUILDER_BLOG_FETCH_DAYS-{{FETCH_DAYS}}}" \
+BUILDER_BLOG_FETCH_LIMIT="${BUILDER_BLOG_FETCH_LIMIT-3}" \
+BUILDER_BLOG_FETCH_FORCE="${BUILDER_BLOG_FETCH_FORCE-{{FETCH_FLAG}}}" \
+BUILDER_BLOG_PARALLEL_WORKERS="${BUILDER_BLOG_PARALLEL_WORKERS-{{PARALLEL_WORKERS}}}" \
+"${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-agent-runner.sh" library-once
 ```
 
-3. Print the fetch result:
-
-```bash
-AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
-ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
-TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-once}"
-cat "$TMP_DIR/library-fetch-result.json"
-```
-
-4. Complete and sync the fetch tasks exactly as specified below.
-
-{{INCLUDE:fetch-task-discovery TMP_JOB="library-once"}}
-
-{{INCLUDE:fetch-task-core REPORT_TARGET="to the user"}}
-
-{{INCLUDE:fetch-task-syncing REPORT_TARGET="to the user" TMP_JOB="library-once"}}
-
-5. Report the fetch JSON plus any `validate-agent-sync` and `sync-builders` JSON.
+3. Report the runner output.

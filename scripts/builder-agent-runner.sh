@@ -346,10 +346,26 @@ read_pin() {
   fi
 }
 
+INCOMING_FETCH_FORCE_SET=0
+INCOMING_FETCH_FORCE="${BUILDER_BLOG_FETCH_FORCE:-}"
+if [ "${BUILDER_BLOG_FETCH_FORCE+x}" = "x" ]; then
+  INCOMING_FETCH_FORCE_SET=1
+fi
+INCOMING_FETCH_DAYS_SET=0
+INCOMING_FETCH_DAYS="${BUILDER_BLOG_FETCH_DAYS:-}"
+if [ "${BUILDER_BLOG_FETCH_DAYS+x}" = "x" ]; then
+  INCOMING_FETCH_DAYS_SET=1
+fi
+INCOMING_PARALLEL_WORKERS_SET=0
+INCOMING_PARALLEL_WORKERS="${BUILDER_BLOG_PARALLEL_WORKERS:-}"
+if [ "${BUILDER_BLOG_PARALLEL_WORKERS+x}" = "x" ]; then
+  INCOMING_PARALLEL_WORKERS_SET=1
+fi
+
 # The pinned runtime is a single word: claude | codex | gemini | openclaw.
-# We honor it for *-cron jobs so unattended runs use the matching allowlist /
-# auto-approve flags. Interactive jobs (library-once, digest-once) keep the
-# discovery chain — the user is at a TTY and sees any permission prompts.
+# We honor it for cron jobs and one-time runs that inherit cron pins, so a
+# "run once" prompt uses the same local agent choice as the schedule unless
+# no runtime has been pinned yet.
 PINNED_RUNTIME="$(read_pin runtime)"
 
 # Surface the resolved runtime to the CLI so the fetch-run record (and the web
@@ -366,14 +382,20 @@ export BUILDER_BLOG_RUNTIME="$PINNED_RUNTIME"
 # --force (re-pull posts already in the library, ignoring the fetchedAt cutoff
 # + externalId dedup); anything else → no flag.
 BUILDER_BLOG_FETCH_FORCE=""
-if [ "$(read_pin fetch-force)" = "1" ]; then
+if [ "$INCOMING_FETCH_FORCE_SET" = "1" ]; then
+  BUILDER_BLOG_FETCH_FORCE="$INCOMING_FETCH_FORCE"
+elif [ "$(read_pin fetch-force)" = "1" ]; then
   BUILDER_BLOG_FETCH_FORCE="--force"
 fi
 export BUILDER_BLOG_FETCH_FORCE
 
 # Fetch lookback window: cron-setup writes a bounded 1-90 day value. Default to
 # 30 for older schedules that have no pin yet.
-BUILDER_BLOG_FETCH_DAYS="$(read_pin fetch-days)"
+if [ "$INCOMING_FETCH_DAYS_SET" = "1" ]; then
+  BUILDER_BLOG_FETCH_DAYS="$INCOMING_FETCH_DAYS"
+else
+  BUILDER_BLOG_FETCH_DAYS="$(read_pin fetch-days)"
+fi
 case "$BUILDER_BLOG_FETCH_DAYS" in
   ''|*[!0-9]*)
     BUILDER_BLOG_FETCH_DAYS="30"
@@ -403,7 +425,11 @@ export BUILDER_BLOG_DIGEST_REGENERATE
 # runtime workers each complete one shard of fetchTasks. The pin is per-account
 # and per-job with the usual once→cron fallback, so a one-time run parallelizes
 # exactly like the recurring job. Absent/0/1 → single-agent path (default).
-MAX_PARALLEL_WORKERS="$(read_pin parallel)"
+if [ "$INCOMING_PARALLEL_WORKERS_SET" = "1" ]; then
+  MAX_PARALLEL_WORKERS="$INCOMING_PARALLEL_WORKERS"
+else
+  MAX_PARALLEL_WORKERS="$(read_pin parallel)"
+fi
 case "$MAX_PARALLEL_WORKERS" in
   ''|*[!0-9]*) MAX_PARALLEL_WORKERS="1" ;;
 esac
@@ -846,10 +872,13 @@ run_sharded_library() {
   for _shard_file in "$_shards_dir"/shard-*.json; do
     [ -e "$_shard_file" ] || continue
     _shard_name="$(basename "$_shard_file" .json)"
+    _shard_checkpoint_dir="$_results_dir/$_shard_name-checkpoints"
+    mkdir -p "$_shard_checkpoint_dir"
     (
       BUILDER_BLOG_SHARD_FILE="$_shard_file"
       BUILDER_BLOG_SHARD_RESULT="$_results_dir/$_shard_name-result.json"
-      export BUILDER_BLOG_SHARD_FILE BUILDER_BLOG_SHARD_RESULT
+      BUILDER_BLOG_SHARD_CHECKPOINT_DIR="$_shard_checkpoint_dir"
+      export BUILDER_BLOG_SHARD_FILE BUILDER_BLOG_SHARD_RESULT BUILDER_BLOG_SHARD_CHECKPOINT_DIR
       if [ "$PINNED_RUNTIME" = "openclaw" ]; then
         OPENCLAW_SESSION_ID="$(printf 'followbrief-%s-%s-%s-%s' "$ACCOUNT_SLUG" "$JOB_NAME" "$$" "$_shard_name" | tr -c 'a-zA-Z0-9_.@+-' '_')"
         export OPENCLAW_SESSION_ID
@@ -999,9 +1028,60 @@ EOF
     fi
   done
 
-  node "$AGENT_DIR/builder-digest.mjs" sync-builders \
+  _sync_slices_dir="$JOB_TMP_DIR/sync-slices"
+  node "$AGENT_DIR/builder-digest.mjs" split-sync-slices \
+    --tasks "$_result_file" \
     --file "$JOB_TMP_DIR/library-agent-sync.json" \
-    --tasks "$_result_file"
+    --out-dir "$_sync_slices_dir"
+
+  _sync_failures=0
+  for _slice_payload in "$_sync_slices_dir"/slice-*-payload.json; do
+    [ -e "$_slice_payload" ] || continue
+    _slice_tasks="${_slice_payload%-payload.json}-tasks.json"
+    _slice_name="$(basename "$_slice_payload" .json)"
+    _slice_stdout="$JOB_TMP_DIR/${_slice_name}-sync.out"
+    _slice_stderr="$JOB_TMP_DIR/${_slice_name}-sync.err"
+    echo "Syncing library result slice $_slice_name."
+    set +e
+    node "$AGENT_DIR/builder-digest.mjs" sync-builders \
+      --file "$_slice_payload" \
+      --tasks "$_slice_tasks" > "$_slice_stdout" 2> "$_slice_stderr"
+    _slice_code="$?"
+    set -e
+    [ ! -s "$_slice_stdout" ] || cat "$_slice_stdout"
+    [ ! -s "$_slice_stderr" ] || cat "$_slice_stderr" >&2
+    if [ "$_slice_code" -eq 0 ]; then
+      continue
+    fi
+
+    _sync_failures=$(( _sync_failures + 1 ))
+    echo "sync-builders failed for $_slice_name (exit $_slice_code); marking only this slice failed." >&2
+    _failed_payload="$JOB_TMP_DIR/${_slice_name}-failed-payload.json"
+    node "$AGENT_DIR/builder-digest.mjs" fail-sync-slice \
+      --tasks "$_slice_tasks" \
+      --out "$_failed_payload" \
+      --reason "slice_sync_failed" \
+      --message "sync-builders failed for $_slice_name with exit $_slice_code"
+
+    _failed_stdout="$JOB_TMP_DIR/${_slice_name}-failed-sync.out"
+    _failed_stderr="$JOB_TMP_DIR/${_slice_name}-failed-sync.err"
+    set +e
+    node "$AGENT_DIR/builder-digest.mjs" sync-builders \
+      --file "$_failed_payload" \
+      --tasks "$_slice_tasks" > "$_failed_stdout" 2> "$_failed_stderr"
+    _failed_code="$?"
+    set -e
+    [ ! -s "$_failed_stdout" ] || cat "$_failed_stdout"
+    [ ! -s "$_failed_stderr" ] || cat "$_failed_stderr" >&2
+    if [ "$_failed_code" -ne 0 ]; then
+      echo "Failed to patch failed outcomes for $_slice_name (exit $_failed_code)." >&2
+    fi
+  done
+
+  if [ "$_sync_failures" -gt 0 ]; then
+    echo "$_sync_failures library result slice(s) failed to sync." >&2
+    return 65
+  fi
 }
 
 if [ "$IS_CRON_JOB" = 1 ] && [ "${BUILDER_BLOG_SMOKE_CHECK:-0}" = "1" ]; then

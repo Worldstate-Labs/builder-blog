@@ -57,12 +57,17 @@ type CronConfig = {
   parallelWorkers: number;
 };
 type SchedulePromptSelection =
-  | { target: "once"; overrideFetched: boolean; fetchDays: number }
+  | { target: "once"; overrideFetched: boolean; fetchDays: number; parallelWorkers: number }
   | { target: "cron"; cron: CronConfig };
 // What a copy carries beyond the exchange code. `cron` is set for the cron
 // flow (its own override lives inside it); `force` is the once flow's override
 // (no runtime/cadence to pick). Either source flips ?force=1.
-type CopyExtras = { cron: CronConfig | null; force: boolean; fetchDays: number };
+type CopyExtras = {
+  cron: CronConfig | null;
+  force: boolean;
+  fetchDays: number;
+  parallelWorkers: number;
+};
 type ManualCopyPrompt = { target: CopyTarget; text: string };
 const missingAccessMessage = "Add an access key in Settings first";
 
@@ -379,15 +384,13 @@ export function SkillPromptActions({
     if (extras.cron) {
       params.set("runtime", extras.cron.runtime);
       params.set("freq", extras.cron.freq);
-      if (context === "library") {
-        params.set("parallel", String(extras.cron.parallelWorkers));
-      }
     }
     if (extras.cron?.overrideFetched || extras.force) {
       params.set("force", "1");
     }
     if (context === "library" && (target === "once" || target === "cron")) {
       params.set("days", String(extras.fetchDays));
+      params.set("parallel", String(extras.cron?.parallelWorkers ?? extras.parallelWorkers));
     }
     const promptUrl = `${origin}/api/skill/jobs/${job}/skill.md?${params.toString()}`;
     return `Read ${promptUrl} and follow the instructions.`;
@@ -451,7 +454,12 @@ export function SkillPromptActions({
   // runtime is held in a closure-captured ref so it survives the
   // dialog round trip.
   async function continueCronCopy(cron: CronConfig) {
-    const extras: CopyExtras = { cron, force: false, fetchDays: cron.fetchDays };
+    const extras: CopyExtras = {
+      cron,
+      force: false,
+      fetchDays: cron.fetchDays,
+      parallelWorkers: cron.parallelWorkers,
+    };
     if (activeTokens.length === 0) {
       setStatus({ kind: "info", text: missingAccessMessage });
       return false;
@@ -468,8 +476,12 @@ export function SkillPromptActions({
 
   // Once flow: after the override (+ language) choice, continue to the token picker
   // (or copy directly when there's a single token).
-  async function continueOnceCopy(overrideFetched: boolean, fetchDays: number) {
-    const extras: CopyExtras = { cron: null, force: overrideFetched, fetchDays };
+  async function continueOnceCopy(
+    overrideFetched: boolean,
+    fetchDays: number,
+    parallelWorkers: number,
+  ) {
+    const extras: CopyExtras = { cron: null, force: overrideFetched, fetchDays, parallelWorkers };
     if (activeTokens.length === 0) {
       setStatus({ kind: "info", text: missingAccessMessage });
       return false;
@@ -484,7 +496,11 @@ export function SkillPromptActions({
 
   async function continueScheduleCopy(selection: SchedulePromptSelection) {
     if (selection.target === "once") {
-      return await continueOnceCopy(selection.overrideFetched, selection.fetchDays);
+      return await continueOnceCopy(
+        selection.overrideFetched,
+        selection.fetchDays,
+        selection.parallelWorkers,
+      );
     }
     return await continueCronCopy(selection.cron);
   }
@@ -509,6 +525,7 @@ export function SkillPromptActions({
         cron: null,
         force: false,
         fetchDays: DEFAULT_PROMPT_WINDOW_DAYS,
+        parallelWorkers: DEFAULT_PARALLEL_WORKERS,
       });
       return;
     }
@@ -529,6 +546,7 @@ export function SkillPromptActions({
         cron: null,
         force: false,
         fetchDays: DEFAULT_PROMPT_WINDOW_DAYS,
+        parallelWorkers: DEFAULT_PARALLEL_WORKERS,
       });
       return;
     }
@@ -623,6 +641,7 @@ export function SkillPromptActions({
             cron: null,
             force: false,
             fetchDays: DEFAULT_PROMPT_WINDOW_DAYS,
+            parallelWorkers: DEFAULT_PARALLEL_WORKERS,
           };
           setPickerTarget(null);
           pendingExtrasRef.current = null;
@@ -960,7 +979,7 @@ function CronConfigDialog({
         return;
       }
       const parallelWorkers =
-        context === "library" && pickedFreq !== "once"
+        context === "library"
           ? parseParallelWorkers(pickedParallelWorkers)
           : DEFAULT_PARALLEL_WORKERS;
       if (parallelWorkers === null) {
@@ -969,7 +988,7 @@ function CronConfigDialog({
         return;
       }
       if (pickedFreq === "once") {
-        await onConfirm({ target: "once", overrideFetched, fetchDays });
+        await onConfirm({ target: "once", overrideFetched, fetchDays, parallelWorkers });
       } else {
         await onConfirm({
           target: "cron",
@@ -1052,35 +1071,36 @@ function CronConfigDialog({
                 </select>
               </div>
               <p className="cron-field-hint">{runtimeHint}</p>
-              {context === "library" ? (
-                <>
-                  <div className="cron-field">
-                    <label htmlFor="cron-parallel-workers" className="cron-field-label">
-                      Parallel workers
-                    </label>
-                    <select
-                      id="cron-parallel-workers"
-                      className="cron-field-select"
-                      value={pickedParallelWorkers}
-                      onChange={(e) => setPickedParallelWorkers(e.target.value)}
-                    >
-                      {Array.from({ length: MAX_PARALLEL_WORKERS }, (_, index) => index + 1).map(
-                        (count) => (
-                          <option key={count} value={count}>
-                            {count === 1 ? "1 worker" : `${count} workers`}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  </div>
-                  <p className="cron-field-hint">
-                    Runs source tasks in parallel after candidates are found. Use 1 for the safest
-                    setup.
-                  </p>
-                </>
-              ) : null}
             </>
           )}
+
+          {context === "library" ? (
+            <>
+              <div className="cron-field">
+                <label htmlFor="cron-parallel-workers" className="cron-field-label">
+                  Parallel workers
+                </label>
+                <select
+                  id="cron-parallel-workers"
+                  className="cron-field-select"
+                  value={pickedParallelWorkers}
+                  onChange={(e) => setPickedParallelWorkers(e.target.value)}
+                >
+                  {Array.from({ length: MAX_PARALLEL_WORKERS }, (_, index) => index + 1).map(
+                    (count) => (
+                      <option key={count} value={count}>
+                        {count === 1 ? "1 worker" : `${count} workers`}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </div>
+              <p className="cron-field-hint">
+                Runs source tasks in parallel after candidates are found. Use 1 for the safest
+                setup.
+              </p>
+            </>
+          ) : null}
 
           <SummaryLanguageField
             id="cron-lang"

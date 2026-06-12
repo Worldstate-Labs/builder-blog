@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -2158,6 +2158,109 @@ test("x token action tasks are logged and sharded as user actions", async () => 
   assert.deepEqual(shards.flatMap((shard: { tasks: { id: string }[] }) => shard.tasks.map((task) => task.id)), ["work"]);
 });
 
+test("split-sync-slices isolates synced items and outcomes by source", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      { id: "a1", agentWorkType: "fetch_post", builderSync: { builderId: "source-a" } },
+      { id: "b1", agentWorkType: "fetch_post", builderSync: { builderId: "source-b" } },
+      { id: "x1", agentWorkType: "x_token_missing", builderSync: { builderId: "source-x" } },
+    ],
+  };
+  const payload = {
+    fetchTool: "test fetcher",
+    force: true,
+    builders: [
+      {
+        builderId: "source-a",
+        name: "Source A",
+        items: [{ externalId: "post-a", rawJson: { fetchTaskId: "a1" } }],
+      },
+      {
+        builderId: "source-b",
+        name: "Source B",
+        items: [],
+      },
+    ],
+    taskOutcomes: [{ fetchTaskId: "b1", status: "failed", reason: "worker_missing_result" }],
+  };
+
+  const slices = cli.splitSyncPayloadBySource(fetchResult, payload);
+  const byKey = new Map(slices.map((slice: { key: string }) => [slice.key, slice]));
+
+  const sourceA = byKey.get("source-a") as {
+    tasks: { fetchTasks: { id: string }[] };
+    payload: { fetchTool: string; force: boolean; builders: { items: { externalId: string }[] }[]; taskOutcomes: unknown[] };
+  };
+  assert.deepEqual(sourceA.tasks.fetchTasks.map((task) => task.id), ["a1"]);
+  assert.deepEqual(sourceA.payload.builders[0].items.map((item) => item.externalId), ["post-a"]);
+  assert.equal(sourceA.payload.fetchTool, "test fetcher");
+  assert.equal(sourceA.payload.force, true);
+  assert.equal(sourceA.payload.taskOutcomes.length, 0);
+
+  const sourceB = byKey.get("source-b") as {
+    tasks: { fetchTasks: { id: string }[] };
+    payload: { builders: unknown[]; taskOutcomes: { fetchTaskId: string }[] };
+  };
+  assert.deepEqual(sourceB.tasks.fetchTasks.map((task) => task.id), ["b1"]);
+  assert.equal(sourceB.payload.builders.length, 0);
+  assert.deepEqual(sourceB.payload.taskOutcomes.map((outcome) => outcome.fetchTaskId), ["b1"]);
+
+  const sourceX = byKey.get("source-x") as {
+    tasks: { fetchTasks: { id: string }[] };
+    payload: { builders: unknown[]; taskOutcomes: unknown[] };
+  };
+  assert.deepEqual(sourceX.tasks.fetchTasks.map((task) => task.id), ["x1"]);
+  assert.equal(sourceX.payload.builders.length, 0);
+  assert.equal(sourceX.payload.taskOutcomes.length, 0);
+});
+
+test("fail-sync-slice marks only non-user-action tasks failed", async () => {
+  const tmp = await mkdtemp(join(tmpdir(), "followbrief-fail-sync-slice-"));
+  const tasksFile = join(tmp, "slice-tasks.json");
+  const outFile = join(tmp, "failed-payload.json");
+  await writeFile(
+    tasksFile,
+    `${JSON.stringify({
+      status: "ok",
+      fetchTasks: [
+        { id: "work", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+        { id: "token", agentWorkType: "x_token_missing", builderSync: { builderId: "b2" } },
+      ],
+    })}\n`,
+    "utf8",
+  );
+
+  await execFileAsync(
+    process.execPath,
+    [
+      "scripts/builder-digest.mjs",
+      "fail-sync-slice",
+      "--tasks",
+      tasksFile,
+      "--out",
+      outFile,
+      "--reason",
+      "slice_sync_failed",
+      "--message",
+      "slice upload failed",
+    ],
+    { cwd: process.cwd() },
+  );
+  const payload = JSON.parse(await readFile(outFile, "utf8"));
+
+  assert.deepEqual(payload.builders, []);
+  assert.deepEqual(
+    payload.taskOutcomes.map((outcome: { fetchTaskId: string; reason: string; evidence: { message: string } }) => [
+      outcome.fetchTaskId,
+      outcome.reason,
+      outcome.evidence.message,
+    ]),
+    [["work", "slice_sync_failed", "slice upload failed"]],
+  );
+});
+
 test("x fetch returns action-needed task when the bearer token is rejected", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const previousToken = process.env.X_BEARER_TOKEN;
@@ -2308,4 +2411,85 @@ test("merge-task-results merges shard payloads and backfills missing tasks as fa
     withDuplicate.payload.builders.flatMap((b: { items: unknown[] }) => b.items).length,
     1,
   );
+});
+
+test("merge-task-results preserves task checkpoints when a shard result is missing", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      { id: "done", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+      { id: "lost", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+    ],
+  };
+
+  const merged = cli.mergeShardSyncPayloads(fetchResult, [
+    { name: "shard-0-result.json", error: "no result file" },
+    {
+      name: "shard-0-checkpoints/done.json",
+      payload: {
+        builders: [
+          { builderId: "b1", items: [{ externalId: "done-item", rawJson: { fetchTaskId: "done" } }] },
+        ],
+        taskOutcomes: [],
+      },
+    },
+  ], {
+    shardPlans: [
+      {
+        shard: "shard-0",
+        resultFile: "shard-0-result.json",
+        workerLogFile: "shard-0-worker.log",
+        tasks: fetchResult.fetchTasks,
+      },
+    ],
+  });
+
+  assert.deepEqual(
+    merged.payload.builders.flatMap((b: { items: { externalId: string }[] }) =>
+      b.items.map((item) => item.externalId),
+    ),
+    ["done-item"],
+  );
+  const outcomes = merged.payload.taskOutcomes as { fetchTaskId: string; reason: string }[];
+  assert.deepEqual(outcomes.map((outcome) => [outcome.fetchTaskId, outcome.reason]), [
+    ["lost", "worker_missing_result"],
+  ]);
+});
+
+test("merge-task-results prefers final shard results over stale task checkpoints", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const fetchResult = {
+    status: "ok",
+    fetchTasks: [
+      { id: "task", agentWorkType: "fetch_post", builderSync: { builderId: "b1" } },
+    ],
+  };
+
+  const merged = cli.mergeShardSyncPayloads(fetchResult, [
+    {
+      name: "shard-0-result.json",
+      payload: {
+        builders: [
+          { builderId: "b1", items: [{ externalId: "fresh", rawJson: { fetchTaskId: "task" } }] },
+        ],
+        taskOutcomes: [],
+      },
+    },
+    {
+      name: "shard-0-checkpoints/task.json",
+      payload: {
+        builders: [],
+        taskOutcomes: [{ fetchTaskId: "task", status: "failed", reason: "stale_checkpoint" }],
+      },
+    },
+  ]);
+
+  assert.deepEqual(
+    merged.payload.builders.flatMap((b: { items: { externalId: string }[] }) =>
+      b.items.map((item) => item.externalId),
+    ),
+    ["fresh"],
+  );
+  assert.equal(merged.payload.taskOutcomes.length, 0);
 });

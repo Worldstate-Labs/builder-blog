@@ -240,6 +240,8 @@ function usage() {
   expand-discovery --tasks fetch-result.json --file discovery-result.json [--out expanded-fetch-result.json]
   shard-tasks --tasks fetch-result.json --out-dir shards/ [--max-workers 3]
   merge-task-results --tasks fetch-result.json --results-dir shards/results/ --out library-agent-sync.json
+  split-sync-slices --tasks fetch-result.json --file library-agent-sync.json --out-dir sync-slices/
+  fail-sync-slice --tasks slice-tasks.json --out failed-payload.json [--reason slice_sync_failed] [--message "..."]
   prepare [--regenerate]
   validate-agent-sync --tasks fetch-result.json --file personal-builders.json
   sync-builders --file personal-builders.json [--tasks fetch-result.json] [--agent-model gpt-5.5]
@@ -4518,6 +4520,43 @@ async function readShardPlans(resultsDir) {
   return plans;
 }
 
+async function readShardCheckpointResults(resultsDir) {
+  let entries;
+  try {
+    entries = await readdir(resultsDir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const checkpointDirs = entries
+    .filter((entry) => entry.isDirectory() && /^shard-.*-checkpoints$/.test(entry.name))
+    .map((entry) => entry.name)
+    .sort();
+  const results = [];
+  for (const dirName of checkpointDirs) {
+    const dir = join(resultsDir, dirName);
+    let files;
+    try {
+      files = await readdir(dir);
+    } catch {
+      continue;
+    }
+    for (const fileName of files.filter((name) => name.endsWith(".json")).sort()) {
+      const name = `${dirName}/${fileName}`;
+      try {
+        const payload = JSON.parse(await readFile(join(dir, fileName), "utf8"));
+        results.push({ name, payload, checkpoint: true });
+      } catch (error) {
+        results.push({
+          name,
+          error: error instanceof Error ? error.message : String(error),
+          checkpoint: true,
+        });
+      }
+    }
+  }
+  return results;
+}
+
 async function mergeTaskResults(args) {
   const tasksFile = argValue(args, "--tasks");
   const resultsDir = argValue(args, "--results-dir");
@@ -4543,6 +4582,11 @@ async function mergeTaskResults(args) {
       });
     }
   }
+  // Full shard results are preferred. Task-level checkpoints are merged after
+  // them so they can rescue completed tasks when a worker later crashes or
+  // fails to write its final shard result, without overriding a valid final
+  // shard payload.
+  shardResults.push(...(await readShardCheckpointResults(resultsDir)));
 
   const merged = mergeShardSyncPayloads(fetchResult, shardResults, {
     shardPlans: await readShardPlans(resultsDir),
@@ -4562,6 +4606,199 @@ async function mergeTaskResults(args) {
         taskOutcomes: merged.payload.taskOutcomes.length,
         backfilledOutcomes: merged.backfilledOutcomes,
         shards: merged.shards,
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+function taskIdForSync(task) {
+  return String(task?.id || fetchTaskId(task));
+}
+
+function copyPayloadMetadata(payload) {
+  const out = {};
+  if (payload?.fetchTool !== undefined) out.fetchTool = payload.fetchTool;
+  if (payload?.force !== undefined) out.force = payload.force;
+  return out;
+}
+
+function ensureSyncSlice(slices, key) {
+  const normalizedKey = String(key || "ungrouped");
+  let slice = slices.get(normalizedKey);
+  if (!slice) {
+    slice = {
+      key: normalizedKey,
+      fetchTasks: [],
+      plannedTaskOutcomes: [],
+      discoveryExpansions: [],
+      builders: [],
+      builderIndex: new Map(),
+      taskOutcomes: [],
+    };
+    slices.set(normalizedKey, slice);
+  }
+  return slice;
+}
+
+function builderKeyForSync(builder) {
+  return String(builder?.builderId || builder?.sourceUrl || builder?.handle || builder?.name || "unknown");
+}
+
+function builderLikeTask(builder, item = {}) {
+  return {
+    builderId: builder?.builderId,
+    builder: builder?.name,
+    builderSync: builder,
+    item,
+  };
+}
+
+function addBuilderItemToSlice(slice, builder, item) {
+  const key = builderKeyForSync(builder);
+  let target = slice.builderIndex.get(key);
+  if (!target) {
+    target = { ...builder, items: [] };
+    slice.builderIndex.set(key, target);
+    slice.builders.push(target);
+  }
+  target.items.push(item);
+}
+
+export function splitSyncPayloadBySource(fetchResult, payload = {}) {
+  const slices = new Map();
+  const taskKeyById = new Map();
+  const fetchTasks = extractFetchTasks(fetchResult);
+
+  for (const task of fetchTasks) {
+    const key = shardGroupKey(task);
+    const id = taskIdForSync(task);
+    taskKeyById.set(id, key);
+    ensureSyncSlice(slices, key).fetchTasks.push(task);
+  }
+
+  for (const outcome of fetchResult?.taskOutcomes ?? []) {
+    if (!outcome?.fetchTaskId) continue;
+    const key = taskKeyById.get(String(outcome.fetchTaskId)) || `outcome:${outcome.fetchTaskId}`;
+    ensureSyncSlice(slices, key).plannedTaskOutcomes.push(outcome);
+  }
+
+  for (const expansion of fetchResult?.discoveryExpansions ?? []) {
+    if (!expansion?.fetchTaskId) continue;
+    const key = taskKeyById.get(String(expansion.fetchTaskId)) || `discovery:${expansion.fetchTaskId}`;
+    ensureSyncSlice(slices, key).discoveryExpansions.push(expansion);
+  }
+
+  for (const builder of payload?.builders ?? []) {
+    for (const item of builder?.items ?? []) {
+      const taskId = item?.rawJson?.fetchTaskId ? String(item.rawJson.fetchTaskId) : null;
+      const key =
+        (taskId && taskKeyById.get(taskId)) ||
+        shardGroupKey(builderLikeTask(builder, item));
+      const slice = ensureSyncSlice(slices, key);
+      addBuilderItemToSlice(slice, builder, item);
+    }
+  }
+
+  for (const outcome of payload?.taskOutcomes ?? []) {
+    if (!outcome?.fetchTaskId) continue;
+    const key = taskKeyById.get(String(outcome.fetchTaskId)) || `outcome:${outcome.fetchTaskId}`;
+    ensureSyncSlice(slices, key).taskOutcomes.push(outcome);
+  }
+
+  const metadata = copyPayloadMetadata(payload);
+  return [...slices.values()].map((slice) => ({
+    key: slice.key,
+    tasks: {
+      status: "ok",
+      localErrors: [],
+      fetchTasks: slice.fetchTasks,
+      taskOutcomes: slice.plannedTaskOutcomes,
+      discoveryExpansions: slice.discoveryExpansions,
+    },
+    payload: {
+      ...metadata,
+      builders: slice.builders,
+      taskOutcomes: slice.taskOutcomes,
+    },
+  }));
+}
+
+function failedSyncPayloadForTasks(fetchResult, { reason, message } = {}) {
+  const taskOutcomes = [];
+  for (const task of extractFetchTasks(fetchResult)) {
+    if (isUserActionAgentWorkType(task?.agentWorkType)) continue;
+    const id = taskIdForSync(task);
+    taskOutcomes.push({
+      fetchTaskId: id,
+      status: "failed",
+      reason: reason || "slice_sync_failed",
+      evidence: {
+        failureKind: "slice_sync_failed",
+        failedBy: "sync-builders-slice",
+        ...(message ? { message } : {}),
+      },
+    });
+  }
+  return { builders: [], taskOutcomes };
+}
+
+async function splitSyncSlices(args) {
+  const tasksFile = argValue(args, "--tasks");
+  const payloadFile = argValue(args, "--file");
+  const outDir = argValue(args, "--out-dir");
+  if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
+  if (!payloadFile) throw new Error("Missing --file library-agent-sync.json");
+  if (!outDir) throw new Error("Missing --out-dir sync-slices/");
+
+  const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
+  const payload = JSON.parse(await readFile(payloadFile, "utf8"));
+  const slices = splitSyncPayloadBySource(fetchResult, payload);
+  await rm(outDir, { recursive: true, force: true });
+  await mkdir(outDir, { recursive: true });
+
+  const written = [];
+  for (const [index, slice] of slices.entries()) {
+    const prefix = `slice-${String(index).padStart(3, "0")}`;
+    const tasksOut = join(outDir, `${prefix}-tasks.json`);
+    const payloadOut = join(outDir, `${prefix}-payload.json`);
+    await writeFile(tasksOut, `${JSON.stringify(slice.tasks, null, 2)}\n`, "utf8");
+    await writeFile(payloadOut, `${JSON.stringify(slice.payload, null, 2)}\n`, "utf8");
+    written.push({
+      key: slice.key,
+      tasks: slice.tasks.fetchTasks.length,
+      builders: slice.payload.builders.length,
+      items: slice.payload.builders.reduce(
+        (count, builder) => count + (builder.items?.length ?? 0),
+        0,
+      ),
+      taskOutcomes: slice.payload.taskOutcomes.length,
+      tasksFile: tasksOut,
+      payloadFile: payloadOut,
+    });
+  }
+
+  console.log(JSON.stringify({ status: "ok", slices: written }, null, 2));
+}
+
+async function failSyncSlice(args) {
+  const tasksFile = argValue(args, "--tasks");
+  const outFile = argValue(args, "--out");
+  const reason = argValue(args, "--reason", "slice_sync_failed");
+  const message = argValue(args, "--message", "");
+  if (!tasksFile) throw new Error("Missing --tasks slice-tasks.json");
+  if (!outFile) throw new Error("Missing --out failed-payload.json");
+
+  const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
+  const payload = failedSyncPayloadForTasks(fetchResult, { reason, message });
+  await writeFile(outFile, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  console.log(
+    JSON.stringify(
+      {
+        status: "ok",
+        out: outFile,
+        taskOutcomes: payload.taskOutcomes.length,
       },
       null,
       2,
@@ -5666,6 +5903,8 @@ async function main() {
   else if (command === "expand-discovery") await expandDiscovery(args);
   else if (command === "shard-tasks") await shardTasks(args);
   else if (command === "merge-task-results") await mergeTaskResults(args);
+  else if (command === "split-sync-slices") await splitSyncSlices(args);
+  else if (command === "fail-sync-slice") await failSyncSlice(args);
   else if (command === "prepare") await prepare(args);
   else if (command === "validate-agent-sync") await validateAgentSync(args);
   else if (command === "sync-builders") await syncBuilders(args);
