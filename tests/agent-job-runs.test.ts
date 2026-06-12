@@ -91,9 +91,13 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /digest-cron\)[\s\S]*45 \* 60/);
   assert.match(runner, /20 \* 60/);
   assert.match(runner, /agent_output_has_timeout/);
-  assert.match(runner, /codex-agent-output/);
-  assert.match(runner, /claude-agent-output/);
-  assert.match(runner, /gemini-agent-output/);
+  assert.match(runner, /agent_output_file\(\)/);
+  assert.match(runner, /mktemp "\$JOB_TMP_DIR\/\$_runtime-agent-output\.XXXXXX\.log"/);
+  assert.match(runner, /_codex_output="\$\(agent_output_file codex\)"/);
+  assert.match(runner, /_claude_output="\$\(agent_output_file claude\)"/);
+  assert.match(runner, /_openclaw_output="\$\(agent_output_file openclaw\)"/);
+  assert.match(runner, /_gemini_output="\$\(agent_output_file gemini\)"/);
+  assert.doesNotMatch(runner, /agent-output-\$\$\.log/);
   assert.match(runner, /Request timed out before a response was generated/);
   assert.match(runner, /codex app-server turn idle timed out/);
   assert.match(runner, /DEADLINE_EXCEEDED/);

@@ -2275,6 +2275,7 @@ test("merge-task-results merges shard payloads and backfills missing tasks as fa
   assert.equal(outcomesById.get("t3")?.status, "failed");
   assert.equal(outcomesById.get("t3")?.reason, "worker_missing_result");
   const t3Evidence = outcomesById.get("t3")?.evidence as {
+    runShardSummary?: string[];
     missingShard?: {
       shard?: string;
       resultFile?: string;
@@ -2286,6 +2287,7 @@ test("merge-task-results merges shard payloads and backfills missing tasks as fa
   assert.equal(t3Evidence.missingShard?.shard, "shard-1");
   assert.equal(t3Evidence.missingShard?.resultFile, "shard-1-result.json");
   assert.deepEqual(t3Evidence.missingShard?.taskIds, ["t3"]);
+  assert.deepEqual(t3Evidence.runShardSummary, ["shard-0-result.json:ok", "shard-1-result.json:missing"]);
   assert.match(t3Evidence.missingShard?.workerLogTail ?? "", /exceeded 1440s/);
   assert.equal(t3Evidence.shardTimeoutSeconds, 1440);
   assert.equal(merged.backfilledOutcomes, 1);

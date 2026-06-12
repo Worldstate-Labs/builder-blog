@@ -4321,7 +4321,7 @@ function missingShardEvidence(task, shardPlan, shardSummaries, options = {}) {
   const evidence = {
     mergedBy: "merge-task-results",
     failureKind: "missing_worker_result_file",
-    shards: shardSummaries.map((s) => `${s.shard}:${s.status}`),
+    runShardSummary: shardSummaries.map((s) => `${s.shard}:${s.status}`),
   };
   if (shardPlan) {
     evidence.missingShard = {

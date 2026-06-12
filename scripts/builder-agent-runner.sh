@@ -133,6 +133,12 @@ run_with_gemini() {
   gemini -p "$(cat "$PROMPT_FILE")"
 }
 
+agent_output_file() {
+  _runtime="$1"
+  mkdir -p "$JOB_TMP_DIR"
+  mktemp "$JOB_TMP_DIR/$_runtime-agent-output.XXXXXX.log"
+}
+
 # Unattended (cron / launchd) — each runtime gets the permission
 # allowlist or auto-approve mode appropriate for it. Mirror these in
 # the user-facing cron setup prompt (library-cron-setup.md) so users
@@ -143,7 +149,7 @@ run_with_codex_unattended() {
   # library fetch (FollowBrief API + content sources) and surfaces as a
   # generic "fetch failed". Re-enable network for the workspace sandbox so the
   # job can reach the network while keeping the filesystem sandbox intact.
-  _codex_output="$JOB_TMP_DIR/codex-agent-output-$$.log"
+  _codex_output="$(agent_output_file codex)"
   set +e
   codex exec --skip-git-repo-check --full-auto \
     -c sandbox_workspace_write.network_access=true \
@@ -161,7 +167,7 @@ run_with_claude_unattended() {
   # acceptEdits auto-approves edits; allowedTools whitelists the tool
   # surface the library-once skill actually uses (Bash for node CLI +
   # curl, WebFetch for content extraction, file IO under tmp/).
-  _claude_output="$JOB_TMP_DIR/claude-agent-output-$$.log"
+  _claude_output="$(agent_output_file claude)"
   set +e
   claude -p "$(cat "$PROMPT_FILE")" \
     --add-dir "$AGENT_DIR" \
@@ -190,7 +196,7 @@ run_with_openclaw_unattended() {
   # regular path otherwise uses the configured main agent.
   _openclaw_timeout="${BUILDER_BLOG_AGENT_TIMEOUT_SECONDS:-${_timeout:-$(timeout_seconds_for_job "${INTERVAL_MINUTES:-60}" "$JOB_NAME")}}"
   sync_openclaw_timeout_config "$_openclaw_timeout"
-  _openclaw_output="$JOB_TMP_DIR/openclaw-agent-output-$$.log"
+  _openclaw_output="$(agent_output_file openclaw)"
   set +e
   if [ -n "${OPENCLAW_SESSION_ID:-}" ]; then
     openclaw agent --local --session-id "$OPENCLAW_SESSION_ID" --timeout "$_openclaw_timeout" --message "$(cat "$PROMPT_FILE")" > "$_openclaw_output" 2>&1
@@ -232,7 +238,7 @@ agent_output_has_timeout() {
 }
 
 run_with_gemini_unattended() {
-  _gemini_output="$JOB_TMP_DIR/gemini-agent-output-$$.log"
+  _gemini_output="$(agent_output_file gemini)"
   set +e
   gemini --yolo -p "$(cat "$PROMPT_FILE")" > "$_gemini_output" 2>&1
   _gemini_code="$?"
