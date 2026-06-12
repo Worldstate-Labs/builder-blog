@@ -86,23 +86,12 @@ out the old job, then bootstraps the new one) only after validation has passed �
 so a failed validation never tears down a working schedule and leaves the account
 with none.
 
-4. Pin the scheduled runtime and digest mode for this account's job. These pin
-files are per-account and per-job (suffixed with the cron job name and account
-slug), so multiple FollowBrief accounts and job types can use different
-runtimes on the same machine. The runner reads them at fire time; if you skip
-the runtime pin the scheduled job falls back to the discovery chain (which
-prompts for permissions every run). `regenerate-digest-cron-$ACCOUNT_SLUG` is
-`1` when the schedule was configured to re-generate today's digest and `0`
-otherwise; the runner turns `1` into the `--regenerate` flag so each recurring
-run replaces the account's existing same-day digest instead of stacking a
-duplicate.
-
-```bash
-ACCT="${BUILDER_BLOG_ACCOUNT}"
-ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
-printf '{{AGENT_RUNTIME}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-digest-cron-$ACCOUNT_SLUG"
-printf '{{DIGEST_REGENERATE}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/regenerate-digest-cron-$ACCOUNT_SLUG"
-```
+4. Keep the selected runtime and digest mode scoped to this setup validation
+until the validation run passes. Do not write cron pin files yet: on an override
+setup, the old schedule is still loaded, and writing new pins early could make
+that old schedule run with the new runtime before this setup has been validated.
+The smoke check and validation commands below pass the selected settings as env
+vars; step 8 writes the pins immediately before installing the new schedule.
 
 5. Verify the runtime CLI is on PATH for the scheduler. Schedulers (launchd and
 cron) run with a minimal PATH; the runner injects
@@ -148,6 +137,8 @@ step 8 is the only run that should sync web state:
 
 ```bash
 BUILDER_BLOG_SMOKE_CHECK=1 \
+BUILDER_BLOG_AGENT_RUNTIME="{{AGENT_RUNTIME}}" \
+BUILDER_BLOG_DIGEST_REGENERATE="{{DIGEST_REGENERATE_FLAG}}" \
 INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 $HOME/.builder-blog/builder-agent-runner.sh digest-cron
@@ -174,6 +165,8 @@ output as a hang before the command exits or the runner timeout fires.
 ```bash
 BUILDER_BLOG_WORKER_MODE=1 \
 BUILDER_BLOG_DISABLE_WEB_SYNC=1 \
+BUILDER_BLOG_AGENT_RUNTIME="{{AGENT_RUNTIME}}" \
+BUILDER_BLOG_DIGEST_REGENERATE="{{DIGEST_REGENERATE_FLAG}}" \
 INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 $HOME/.builder-blog/builder-agent-runner.sh digest-cron
@@ -184,11 +177,24 @@ final sync step prints `webSyncDisabled: true`; that means this validation run
 did not write web state. If it errors or times out, report the command, exit
 code, and stderr, and stop — do not install the schedule in step 8.
 
-8. Only after the smoke check and validation run have both succeeded, install the
-schedule to run {{CRON_FREQUENCY_LABEL}}. Installing it last means the schedule
+8. Only after the smoke check and validation run have both succeeded, pin the
+scheduled runtime/digest mode and install the schedule to run
+{{CRON_FREQUENCY_LABEL}}. Installing it last means the schedule
 is never armed while the unmanaged validation run above is using the shared
 `digest-cron` temp directory, and a pipeline that failed validation never gets
 scheduled. Pick the path for this machine's OS — run `uname` if unsure.
+
+Write the per-account, per-job pins immediately before installing the schedule:
+`runtime-digest-cron-$ACCOUNT_SLUG` makes the runner use the picked agent's
+unattended mode, and `regenerate-digest-cron-$ACCOUNT_SLUG` controls whether
+the recurring job replaces the existing same-day digest.
+
+```bash
+ACCT="${BUILDER_BLOG_ACCOUNT}"
+ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+printf '{{AGENT_RUNTIME}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-digest-cron-$ACCOUNT_SLUG"
+printf '{{DIGEST_REGENERATE}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/regenerate-digest-cron-$ACCOUNT_SLUG"
+```
 
 ### macOS (`uname` is Darwin) → launchd LaunchAgent
 

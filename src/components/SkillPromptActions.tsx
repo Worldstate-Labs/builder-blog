@@ -57,13 +57,21 @@ type CronConfig = {
   parallelWorkers: number;
 };
 type SchedulePromptSelection =
-  | { target: "once"; overrideFetched: boolean; fetchDays: number; parallelWorkers: number }
+  | {
+      target: "once";
+      runtime: AgentRuntime;
+      overrideFetched: boolean;
+      fetchDays: number;
+      parallelWorkers: number;
+    }
   | { target: "cron"; cron: CronConfig };
 // What a copy carries beyond the exchange code. `cron` is set for the cron
 // flow (its own override lives inside it); `force` is the once flow's override
-// (no runtime/cadence to pick). Either source flips ?force=1.
+// (no cadence to pick). Both flows carry a runtime; cron pins it, one-time
+// passes it as a per-run env override.
 type CopyExtras = {
   cron: CronConfig | null;
+  runtime: AgentRuntime;
   force: boolean;
   fetchDays: number;
   parallelWorkers: number;
@@ -346,8 +354,8 @@ export function SkillPromptActions({
   const [manualCopyPrompt, setManualCopyPrompt] = useState<ManualCopyPrompt | null>(null);
   const [pickerTarget, setPickerTarget] = useState<CopyTarget | null>(null);
   // Job dialog: pick one-time or recurring cadence before the token picker.
-  // Recurring copies also include runtime + cadence URL params so the
-  // server-rendered markdown bakes in the unattended invocation and schedule.
+  // Both flows include runtime URL params. Recurring setup pins the runtime;
+  // one-time prompts pass it as a per-run env override without touching pins.
   const [cronConfigOpen, setCronConfigOpen] = useState(false);
   // The picked config survives between a config dialog and the token picker.
   // A ref (not state) so the picker's onConfirm can read it without an extra
@@ -381,8 +389,10 @@ export function SkillPromptActions({
           : stopJob;
     if (!job) return "";
     const params = new URLSearchParams({ ec: exchangeCode });
+    if (target === "once" || target === "cron") {
+      params.set("runtime", extras.cron?.runtime ?? extras.runtime);
+    }
     if (extras.cron) {
-      params.set("runtime", extras.cron.runtime);
       params.set("freq", extras.cron.freq);
     }
     if (extras.cron?.overrideFetched || extras.force) {
@@ -456,6 +466,7 @@ export function SkillPromptActions({
   async function continueCronCopy(cron: CronConfig) {
     const extras: CopyExtras = {
       cron,
+      runtime: cron.runtime,
       force: false,
       fetchDays: cron.fetchDays,
       parallelWorkers: cron.parallelWorkers,
@@ -477,11 +488,18 @@ export function SkillPromptActions({
   // Once flow: after the override (+ language) choice, continue to the token picker
   // (or copy directly when there's a single token).
   async function continueOnceCopy(
+    runtime: AgentRuntime,
     overrideFetched: boolean,
     fetchDays: number,
     parallelWorkers: number,
   ) {
-    const extras: CopyExtras = { cron: null, force: overrideFetched, fetchDays, parallelWorkers };
+    const extras: CopyExtras = {
+      cron: null,
+      runtime,
+      force: overrideFetched,
+      fetchDays,
+      parallelWorkers,
+    };
     if (activeTokens.length === 0) {
       setStatus({ kind: "info", text: missingAccessMessage });
       return false;
@@ -497,6 +515,7 @@ export function SkillPromptActions({
   async function continueScheduleCopy(selection: SchedulePromptSelection) {
     if (selection.target === "once") {
       return await continueOnceCopy(
+        selection.runtime,
         selection.overrideFetched,
         selection.fetchDays,
         selection.parallelWorkers,
@@ -513,9 +532,8 @@ export function SkillPromptActions({
       return;
     }
 
-    // Schedule dialog handles both one-time and recurring runs. Recurring
-    // selections bake runtime/cadence into the prompt URL; one-time selections
-    // reuse the once prompt with the same output settings.
+    // Schedule dialog handles both one-time and recurring runs. Both selections
+    // bake runtime into the prompt URL; recurring selections also bake cadence.
     if (target === "cron") {
       setCronConfigOpen(true);
       return;
@@ -523,6 +541,7 @@ export function SkillPromptActions({
     if (activeTokens.length === 1) {
       await copyForToken(target, activeTokens[0].id, {
         cron: null,
+        runtime: RUNTIME_OPTIONS[0].id,
         force: false,
         fetchDays: DEFAULT_PROMPT_WINDOW_DAYS,
         parallelWorkers: DEFAULT_PARALLEL_WORKERS,
@@ -544,6 +563,7 @@ export function SkillPromptActions({
     if (activeTokens.length === 1) {
       await copyForToken("stop", activeTokens[0].id, {
         cron: null,
+        runtime: RUNTIME_OPTIONS[0].id,
         force: false,
         fetchDays: DEFAULT_PROMPT_WINDOW_DAYS,
         parallelWorkers: DEFAULT_PARALLEL_WORKERS,
@@ -639,6 +659,7 @@ export function SkillPromptActions({
           const target = pickerTarget;
           const extras = pendingExtrasRef.current ?? {
             cron: null,
+            runtime: RUNTIME_OPTIONS[0].id,
             force: false,
             fetchDays: DEFAULT_PROMPT_WINDOW_DAYS,
             parallelWorkers: DEFAULT_PARALLEL_WORKERS,
@@ -915,8 +936,7 @@ function CronConfigDialog({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dialogConfig = PROMPT_CONFIG[context];
-  const runtimeHint =
-    isOneTime ? "" : RUNTIME_OPTIONS.find((o) => o.id === pickedRuntime)?.hint ?? "";
+  const runtimeHint = RUNTIME_OPTIONS.find((o) => o.id === pickedRuntime)?.hint ?? "";
 
   useEffect(() => {
     const d = dialogRef.current;
@@ -988,7 +1008,13 @@ function CronConfigDialog({
         return;
       }
       if (pickedFreq === "once") {
-        await onConfirm({ target: "once", overrideFetched, fetchDays, parallelWorkers });
+        await onConfirm({
+          target: "once",
+          runtime: pickedRuntime,
+          overrideFetched,
+          fetchDays,
+          parallelWorkers,
+        });
       } else {
         await onConfirm({
           target: "cron",
@@ -1051,28 +1077,24 @@ function CronConfigDialog({
               ))}
             </select>
           </div>
-          {isOneTime ? null : (
-            <>
-              <div className="cron-field">
-                <label htmlFor="cron-runtime" className="cron-field-label">
-                  Local Agent
-                </label>
-                <select
-                  id="cron-runtime"
-                  className="cron-field-select"
-                  value={pickedRuntime}
-                  onChange={(e) => setPickedRuntime(e.target.value as AgentRuntime)}
-                >
-                  {RUNTIME_OPTIONS.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <p className="cron-field-hint">{runtimeHint}</p>
-            </>
-          )}
+          <div className="cron-field">
+            <label htmlFor="cron-runtime" className="cron-field-label">
+              Local Agent
+            </label>
+            <select
+              id="cron-runtime"
+              className="cron-field-select"
+              value={pickedRuntime}
+              onChange={(e) => setPickedRuntime(e.target.value as AgentRuntime)}
+            >
+              {RUNTIME_OPTIONS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="cron-field-hint">{runtimeHint}</p>
 
           {context === "library" ? (
             <>

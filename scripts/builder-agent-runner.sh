@@ -318,11 +318,12 @@ EOF
 # per-job/global files so crons installed before the split keep working after
 # the runner self-updates.
 #
-# One-time jobs additionally fall back to their recurring job's pins: the user
-# expectation for library-once / digest-once is "run the scheduled job right
-# now", so when the once job has no pin of its own it inherits the cron job's
-# runtime, fetch-force, fetch-days, and parallel settings. Cron jobs never
-# fall back the other way.
+# One-time jobs additionally fall back to their recurring job's non-runtime
+# pins: the user expectation for library-once / digest-once is "run the same
+# fetch window/mode right now". Runtime is intentionally independent: copied
+# one-time prompts pass BUILDER_BLOG_AGENT_RUNTIME for that run, and old copied
+# prompts should use the once/global runtime pins or the discovery chain rather
+# than silently inheriting a cron job's runtime.
 case "$JOB_NAME" in
   library-once) PIN_FALLBACK_JOB="library-cron" ;;
   digest-once) PIN_FALLBACK_JOB="digest-cron" ;;
@@ -346,6 +347,35 @@ read_pin() {
   fi
 }
 
+read_runtime_pin() {
+  # Runtime pins do not use the once→cron fallback. A one-time run's Local Agent
+  # must come from this run's env, a one-time/global pin, or normal discovery.
+  if [ -r "$AGENT_DIR/runtime-$JOB_NAME-$ACCOUNT_SLUG" ]; then
+    tr -d ' \t\r\n' < "$AGENT_DIR/runtime-$JOB_NAME-$ACCOUNT_SLUG"
+    return 0
+  fi
+  if [ -r "$AGENT_DIR/runtime-$JOB_NAME" ]; then
+    tr -d ' \t\r\n' < "$AGENT_DIR/runtime-$JOB_NAME"
+    return 0
+  fi
+  if [ -r "$AGENT_DIR/runtime" ]; then
+    tr -d ' \t\r\n' < "$AGENT_DIR/runtime"
+  fi
+}
+
+normalize_runtime() {
+  case "${1:-}" in
+    claude|codex|gemini|openclaw) printf '%s\n' "$1" ;;
+    *) printf '%s\n' "" ;;
+  esac
+}
+
+INCOMING_RUNTIME_SET=0
+INCOMING_RUNTIME="${BUILDER_BLOG_AGENT_RUNTIME:-}"
+if [ "${BUILDER_BLOG_AGENT_RUNTIME+x}" = "x" ]; then
+  INCOMING_RUNTIME_SET=1
+fi
+
 INCOMING_FETCH_FORCE_SET=0
 INCOMING_FETCH_FORCE="${BUILDER_BLOG_FETCH_FORCE:-}"
 if [ "${BUILDER_BLOG_FETCH_FORCE+x}" = "x" ]; then
@@ -361,12 +391,21 @@ INCOMING_PARALLEL_WORKERS="${BUILDER_BLOG_PARALLEL_WORKERS:-}"
 if [ "${BUILDER_BLOG_PARALLEL_WORKERS+x}" = "x" ]; then
   INCOMING_PARALLEL_WORKERS_SET=1
 fi
+INCOMING_DIGEST_REGENERATE_SET=0
+INCOMING_DIGEST_REGENERATE="${BUILDER_BLOG_DIGEST_REGENERATE:-}"
+if [ "${BUILDER_BLOG_DIGEST_REGENERATE+x}" = "x" ]; then
+  INCOMING_DIGEST_REGENERATE_SET=1
+fi
 
-# The pinned runtime is a single word: claude | codex | gemini | openclaw.
-# We honor it for cron jobs and one-time runs that inherit cron pins, so a
-# "run once" prompt uses the same local agent choice as the schedule unless
-# no runtime has been pinned yet.
-PINNED_RUNTIME="$(read_pin runtime)"
+# The resolved runtime is a single word: claude | codex | gemini | openclaw.
+# One-time prompts pass BUILDER_BLOG_AGENT_RUNTIME as a per-run override.
+# Otherwise read a runtime pin for this exact job (or the legacy global pin).
+# Do not fall back from one-time jobs to cron runtime pins.
+if [ "$INCOMING_RUNTIME_SET" = "1" ]; then
+  PINNED_RUNTIME="$(normalize_runtime "$INCOMING_RUNTIME")"
+else
+  PINNED_RUNTIME="$(normalize_runtime "$(read_runtime_pin)")"
+fi
 
 # Surface the resolved runtime to the CLI so the fetch-run record (and the web
 # fetch log) can label which agent ran it. The CLI also auto-detects
@@ -414,7 +453,9 @@ export BUILDER_BLOG_FETCH_DAYS
 # "1" → re-cover the full window and replace the existing same-day digest;
 # anything else → no flag (normal incremental digest).
 BUILDER_BLOG_DIGEST_REGENERATE=""
-if [ "$(read_pin regenerate)" = "1" ]; then
+if [ "$INCOMING_DIGEST_REGENERATE_SET" = "1" ]; then
+  BUILDER_BLOG_DIGEST_REGENERATE="$INCOMING_DIGEST_REGENERATE"
+elif [ "$(read_pin regenerate)" = "1" ]; then
   BUILDER_BLOG_DIGEST_REGENERATE="--regenerate"
 fi
 export BUILDER_BLOG_DIGEST_REGENERATE
@@ -740,10 +781,7 @@ run_selected_runtime() {
   if [ -n "${BUILDER_BLOG_AGENT_COMMAND:-}" ]; then
     run_with_override
   elif [ "$IS_CRON_JOB" = 0 ] && [ -n "$PINNED_RUNTIME" ]; then
-    # One-time run with a pinned runtime (its own pin, or inherited from the
-    # recurring job via the read_pin fallback): use the SAME agent the cron
-    # job runs with, so a manual "run it now" produces the same results as the
-    # schedule — instead of whatever the discovery chain finds first on PATH.
+    # One-time run with an explicit per-run or one-time/global pinned runtime.
     # Interactive permission gates are kept (the user is at a TTY). A missing
     # binary falls back to the discovery chain rather than failing the run.
     case "$PINNED_RUNTIME" in

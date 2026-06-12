@@ -91,30 +91,12 @@ out the old job, then bootstraps the new one) only after validation has passed �
 so a failed validation never tears down a working schedule and leaves the account
 with none.
 
-4. Pin the scheduled runtime and fetch mode for this account's job. These pin
-files are per-account and per-job (suffixed with the cron job name and account
-slug), so multiple FollowBrief accounts and job types can use different
-runtimes on the same machine. The runner reads them at cron-fire time.
-`runtime-library-cron-$ACCOUNT_SLUG` makes the runner use the picked agent's
-unattended mode instead of discovering whatever's first on PATH (skip it and the
-cron job falls back to the discovery chain, which prompts for permissions every
-run). `fetch-force-library-cron-$ACCOUNT_SLUG` is `1` when the schedule was
-configured to override already-fetched posts and `0` otherwise; the runner
-turns `1` into the `--force` flag so the recurring fetch re-pulls posts already
-in the library. `fetch-days-library-cron-$ACCOUNT_SLUG` pins the selected
-lookback window for this recurring fetch. `parallel-library-cron-$ACCOUNT_SLUG`
-pins the selected worker count; `1` keeps the normal single-agent path, while
-`2`-`8` lets the runner shard source tasks across parallel workers after
-candidates are found.
-
-```bash
-ACCT="${BUILDER_BLOG_ACCOUNT}"
-ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
-printf '{{AGENT_RUNTIME}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-library-cron-$ACCOUNT_SLUG"
-printf '{{FETCH_FORCE}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-force-library-cron-$ACCOUNT_SLUG"
-printf '{{FETCH_DAYS}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-days-library-cron-$ACCOUNT_SLUG"
-printf '{{PARALLEL_WORKERS}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/parallel-library-cron-$ACCOUNT_SLUG"
-```
+4. Keep the selected runtime and fetch mode scoped to this setup validation
+until the validation run passes. Do not write cron pin files yet: on an override
+setup, the old schedule is still loaded, and writing new pins early could make
+that old schedule run with the new runtime before this setup has been validated.
+The smoke check and validation commands below pass the selected settings as env
+vars; step 8 writes the pins immediately before installing the new schedule.
 
 5. Verify the runtime CLI is on PATH for the scheduler. Schedulers (launchd and
 cron) run with a minimal PATH; the runner injects
@@ -160,7 +142,10 @@ installed in step 8 is allowed to sync results to the web app:
 
 ```bash
 BUILDER_BLOG_SMOKE_CHECK=1 \
+BUILDER_BLOG_AGENT_RUNTIME="{{AGENT_RUNTIME}}" \
+BUILDER_BLOG_FETCH_FORCE="{{FETCH_FLAG}}" \
 BUILDER_BLOG_FETCH_DAYS="{{FETCH_DAYS}}" \
+BUILDER_BLOG_PARALLEL_WORKERS="{{PARALLEL_WORKERS}}" \
 INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 $HOME/.builder-blog/builder-agent-runner.sh library-cron
@@ -186,8 +171,11 @@ hang before the command exits or the runner timeout fires.
 ```bash
 BUILDER_BLOG_WORKER_MODE=1 \
 BUILDER_BLOG_DISABLE_WEB_SYNC=1 \
+BUILDER_BLOG_AGENT_RUNTIME="{{AGENT_RUNTIME}}" \
+BUILDER_BLOG_FETCH_FORCE="{{FETCH_FLAG}}" \
 BUILDER_BLOG_FETCH_DAYS="{{FETCH_DAYS}}" \
 BUILDER_BLOG_FETCH_LIMIT=1 \
+BUILDER_BLOG_PARALLEL_WORKERS="{{PARALLEL_WORKERS}}" \
 INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 $HOME/.builder-blog/builder-agent-runner.sh library-cron
@@ -208,11 +196,27 @@ credential-prep step earlier. Report it as an "Action needed" notice and
 continue — do NOT re-ask. That source stays in "Action needed" until its token
 is added to `~/.builder-blog/secrets.json` later.
 
-8. Only after the smoke check and validation run have both succeeded, install the
-schedule to run {{CRON_FREQUENCY_LABEL}}. Installing it last means the schedule
+8. Only after the smoke check and validation run have both succeeded, pin the
+scheduled runtime/fetch settings and install the schedule to run
+{{CRON_FREQUENCY_LABEL}}. Installing it last means the schedule
 is never armed while the unmanaged validation run above is using the shared
 `library-cron` temp directory, and a pipeline that failed validation never gets
 scheduled. Pick the path for this machine's OS — run `uname` if unsure.
+
+Write the per-account, per-job pins immediately before installing the schedule:
+`runtime-library-cron-$ACCOUNT_SLUG` makes the runner use the picked agent's
+unattended mode; `fetch-force-library-cron-$ACCOUNT_SLUG` controls re-fetching
+already-fetched posts; `fetch-days-library-cron-$ACCOUNT_SLUG` pins the lookback
+window; and `parallel-library-cron-$ACCOUNT_SLUG` pins the worker count.
+
+```bash
+ACCT="${BUILDER_BLOG_ACCOUNT}"
+ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
+printf '{{AGENT_RUNTIME}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/runtime-library-cron-$ACCOUNT_SLUG"
+printf '{{FETCH_FORCE}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-force-library-cron-$ACCOUNT_SLUG"
+printf '{{FETCH_DAYS}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-days-library-cron-$ACCOUNT_SLUG"
+printf '{{PARALLEL_WORKERS}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/parallel-library-cron-$ACCOUNT_SLUG"
+```
 
 ### macOS (`uname` is Darwin) → launchd LaunchAgent
 
