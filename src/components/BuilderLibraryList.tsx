@@ -217,9 +217,10 @@ export function BuilderLibraryList({
     <div className="builder-library-list">
       {visibleSections.map((section) => {
         const expanded = expandedSourceTypes.has(section.sourceType);
-        const sectionFollowedCount = section.builders.filter(
-          (builder) => builder.subscribed,
-        ).length;
+        const sectionPostCount = section.builders.reduce(
+          (total, builder) => total + builder.feedItemCount,
+          0,
+        );
         const sectionBodyId = sourceTypeSectionBodyId(listId, section.sourceType);
         return (
           <section
@@ -248,7 +249,8 @@ export function BuilderLibraryList({
                   </span>
                   <span aria-hidden="true">·</span>
                   <span>
-                    {formatCount(sectionFollowedCount)} in Following
+                    {formatCount(sectionPostCount)}{" "}
+                    {sectionPostCount === 1 ? "post" : "posts"}
                   </span>
                 </span>
               </button>

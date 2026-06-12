@@ -3353,7 +3353,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderLibraryList, /aria-expanded=\{expanded\}/);
   assert.match(builderLibraryList, /builder-library-source-section-toggle/);
   assert.match(builderLibraryList, /builder-library-source-count/);
-  assert.match(builderLibraryList, /formatCount\(sectionFollowedCount\)\} in Following/);
+  assert.match(builderLibraryList, /const sectionPostCount = section\.builders\.reduce/);
+  assert.match(builderLibraryList, /formatCount\(sectionPostCount\)/);
   assert.doesNotMatch(builderLibraryList, /followed"\s+\{sectionFollowedCount === 1 \? "source" : "sources"\}/);
   assert.match(builderLibraryList, /className="builder-library-info"/);
   assert.match(builderLibraryList, /className="builder-library-info-head"/);
@@ -3362,7 +3363,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderLibraryList, /flex flex-wrap items-center gap-2|truncate hover:underline/);
   assert.match(builderLibraryList, /formatCount\(section\.builders\.length\)/);
   assert.match(builderLibraryList, /\? "source" : "sources"/);
-  assert.match(builderLibraryList, /formatCount\(sectionFollowedCount\)\} in Following/);
+  assert.match(builderLibraryList, /sectionPostCount === 1 \? "post" : "posts"/);
+  assert.doesNotMatch(builderLibraryList, /sectionFollowedCount/);
+  assert.doesNotMatch(builderLibraryList, /in Following/);
   assert.doesNotMatch(builderLibraryList, /sectionFollowedCount === 1 \? "source" : "sources"/);
   assert.doesNotMatch(builderLibraryList, /formatCount\(sectionFollowedCount\)\} followed<\/span>/);
   assert.match(builderLibraryList, /const sourceType = sourceTypeForBuilder\(builder\)/);
@@ -3634,8 +3637,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.builder-library-source-section-toggle\[aria-expanded="true"\] \.builder-library-source-section-chevron\s*{[\s\S]*rotate\(90deg\)/);
   assert.match(globals, /\.builder-library-source-section-chevron\s*{[\s\S]*flex:\s*0 0 auto/);
   assert.match(globals, /\.builder-library-source-count\s*{[\s\S]*font-weight:\s*750/);
-  assert.match(builderLibraryList, /sectionFollowedCount/);
-  assert.match(builderLibraryList, /in Following/);
+  assert.match(builderLibraryList, /sectionPostCount/);
+  assert.match(builderLibraryList, /\? "post" : "posts"/);
   assert.doesNotMatch(builderLibraryList, /followed/);
   assert.match(globals, /\.builder-library-source-count\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.builder-library-source-section-body\s*{[\s\S]*margin-left:\s*1\.35rem/);
@@ -4828,7 +4831,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(exchangeRoute, /prisma\.agentToken\.update/);
   assert.match(exchangeRoute, /lastUsedAt:\s*new Date\(\)/);
   assert.match(exchangeRoute, /x-machine-hostname/);
-  assert.match(builderDigestCli, /headers:\s*\{[\s\S]*\.\.\.MACHINE_HEADERS[\s\S]*authorization: `Bearer \$\{token\}`/);
+  assert.match(builderDigestCli, /function requestJsonOnce\(url, options\)/);
+  assert.match(builderDigestCli, /headers:\s*\{[\s\S]*\.\.\.MACHINE_HEADERS[\s\S]*authorization: `Bearer \$\{options\.token\}`/);
   assert.match(tokenRoute, /export async function DELETE/);
   // Revoke is a SOFT delete: stamp revokedAt (keeps the row + audit trail +
   // "Revoked [date]" UI), never a hard row delete.
