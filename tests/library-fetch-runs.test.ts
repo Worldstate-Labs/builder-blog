@@ -135,7 +135,8 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.doesNotMatch(cli, /Synced \$\{itemsFetched\} post/);
   assert.match(cli, /JOB_RUN_UPDATE_TIMEOUT_MS/);
   assert.match(cli, /\/api\/skill\/job-runs[\s\S]*timeoutMs: JOB_RUN_UPDATE_TIMEOUT_MS/);
-  assert.match(cli, /HTTP POST timed out after/);
+  assert.match(cli, /HTTP \$\{details\.method\} \$\{details\.url\} \$\{message\}/);
+  assert.match(cli, /timed out after \$\{Math\.round\(options\.timeoutMs \/ 1000\)\}s/);
   // Product Hunt direct-fetch 403s are recoverable: they should be shown as a
   // fallback note while agent discovery continues, not counted as a source error.
   assert.match(cli, /isRecoverableCandidateDiscoveryFallback/);

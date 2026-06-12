@@ -43,6 +43,39 @@ const JOB_RUN_UPDATE_TIMEOUT_MS = (() => {
   const value = Number(process.env.BUILDER_BLOG_JOB_RUN_UPDATE_TIMEOUT_MS || 10_000);
   return Number.isFinite(value) && value > 0 ? value : 10_000;
 })();
+const DEFAULT_HTTP_SYNC_TIMEOUT_MS = 30_000;
+const DEFAULT_LARGE_HTTP_SYNC_TIMEOUT_MS = 120_000;
+const HTTP_SYNC_TIMEOUT_MS = envClampedMs(
+  "BUILDER_BLOG_HTTP_SYNC_TIMEOUT_MS",
+  DEFAULT_HTTP_SYNC_TIMEOUT_MS,
+  { min: 1_000, max: 5 * 60 * 1000 },
+);
+const HTTP_SYNC_LARGE_TIMEOUT_MS = envClampedMs(
+  "BUILDER_BLOG_HTTP_SYNC_LARGE_TIMEOUT_MS",
+  DEFAULT_LARGE_HTTP_SYNC_TIMEOUT_MS,
+  { min: 5_000, max: 5 * 60 * 1000 },
+);
+const HTTP_SYNC_RETRY_DELAYS_MS = envRetryDelaysMs(
+  "BUILDER_BLOG_HTTP_SYNC_RETRY_DELAYS_MS",
+  [500, 1500],
+);
+
+function envClampedMs(name, fallback, { min, max }) {
+  const value = Number(process.env[name] || fallback);
+  if (!Number.isFinite(value) || value <= 0) return fallback;
+  return Math.min(max, Math.max(min, Math.floor(value)));
+}
+
+function envRetryDelaysMs(name, fallback) {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+  const delays = raw
+    .split(",")
+    .map((part) => Number(part.trim()))
+    .filter((value) => Number.isFinite(value) && value >= 0)
+    .map((value) => Math.min(30_000, Math.floor(value)));
+  return delays.length > 0 ? delays.slice(0, 5) : fallback;
+}
 
 const CONFIG_DIR = join(homedir(), ".builder-blog");
 const ACCOUNTS_DIR = join(CONFIG_DIR, "accounts");
@@ -418,63 +451,155 @@ function numberOrNull(value) {
 }
 
 async function postJson(url, body, token, options = {}) {
-  const timeoutMs = Number(options.timeoutMs || 0);
-  const controller = timeoutMs > 0 ? new AbortController() : null;
-  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
-  let response;
+  return requestJson(url, {
+    method: "POST",
+    body,
+    token,
+    ...options,
+  });
+}
+
+async function patchJson(url, body, token, options = {}) {
+  return requestJson(url, {
+    method: "PATCH",
+    body,
+    token,
+    retries: HTTP_SYNC_RETRY_DELAYS_MS.length,
+    ...options,
+  });
+}
+
+async function getJson(url, token, options = {}) {
+  return requestJson(url, {
+    method: "GET",
+    token,
+    retries: HTTP_SYNC_RETRY_DELAYS_MS.length,
+    allowPendingStatus: true,
+    ...options,
+  });
+}
+
+async function requestJson(url, options = {}) {
+  const method = String(options.method || "GET").toUpperCase();
+  const timeoutMs = Number(options.timeoutMs || HTTP_SYNC_TIMEOUT_MS);
+  const retryDelays = Array.isArray(options.retryDelaysMs)
+    ? options.retryDelaysMs
+    : HTTP_SYNC_RETRY_DELAYS_MS;
+  const retries = Math.max(0, Math.min(Number(options.retries ?? 0), retryDelays.length));
+  const label = options.label || "HTTP sync";
+  const logUrl = httpUrlForLog(url);
+  let lastError;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await requestJsonOnce(url, {
+        method,
+        body: options.body,
+        token: options.token,
+        timeoutMs,
+        allowPendingStatus: Boolean(options.allowPendingStatus),
+        logUrl,
+      });
+    } catch (error) {
+      lastError = error;
+      if (attempt >= retries || !isRetryableHttpSyncError(error)) break;
+      const delayMs = retryDelays[attempt] ?? 0;
+      console.error(
+        `[FollowBrief sync] ${label} ${method} ${logUrl} failed ` +
+          `(${httpSyncErrorSummary(error)}); retrying in ${delayMs}ms ` +
+          `(attempt ${attempt + 2}/${retries + 1}).`,
+      );
+      if (delayMs > 0) await sleep(delayMs);
+    }
+  }
+
+  throw lastError;
+}
+
+async function requestJsonOnce(url, options) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), options.timeoutMs);
   try {
-    response = await fetch(url, {
-      method: "POST",
+    const response = await fetch(url, {
+      method: options.method,
       headers: {
         "content-type": "application/json",
         ...MACHINE_HEADERS,
-        ...(token ? { authorization: `Bearer ${token}` } : {}),
+        ...(options.token ? { authorization: `Bearer ${options.token}` } : {}),
       },
-      body: JSON.stringify(body),
-      ...(controller ? { signal: controller.signal } : {}),
+      ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
+      signal: controller.signal,
     });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok && !(options.allowPendingStatus && data.status === "pending")) {
+      throw httpSyncError(
+        data.error || data.status || `HTTP ${response.status}`,
+        {
+          method: options.method,
+          url: options.logUrl,
+          status: response.status,
+          code: "http_status",
+        },
+      );
+    }
+    return data;
   } catch (error) {
     if (error?.name === "AbortError") {
-      throw new Error(`HTTP POST timed out after ${Math.round(timeoutMs / 1000)}s`);
+      throw httpSyncError(
+        `timed out after ${Math.round(options.timeoutMs / 1000)}s`,
+        {
+          method: options.method,
+          url: options.logUrl,
+          code: "timeout",
+          cause: error,
+        },
+      );
     }
-    throw error;
+    if (error?.isHttpSyncError) throw error;
+    throw httpSyncError(error instanceof Error ? error.message : String(error), {
+      method: options.method,
+      url: options.logUrl,
+      code: "network",
+      cause: error,
+    });
   } finally {
-    if (timer) clearTimeout(timer);
+    clearTimeout(timer);
   }
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.error || `HTTP ${response.status}`);
-  }
-  return data;
 }
 
-async function patchJson(url, body, token) {
-  const response = await fetch(url, {
-    method: "PATCH",
-    headers: {
-      "content-type": "application/json",
-      ...(token ? { authorization: `Bearer ${token}`, ...MACHINE_HEADERS } : {}),
-    },
-    body: JSON.stringify(body),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.error || `HTTP ${response.status}`);
-  }
-  return data;
+function httpSyncError(message, details) {
+  const error = new Error(`HTTP ${details.method} ${details.url} ${message}`);
+  error.isHttpSyncError = true;
+  error.httpStatus = details.status ?? null;
+  error.httpSyncCode = details.code ?? "unknown";
+  if (details.cause) error.cause = details.cause;
+  return error;
 }
 
-async function getJson(url, token) {
-  const response = await fetch(url, {
-    headers: token
-      ? { authorization: `Bearer ${token}`, ...MACHINE_HEADERS }
-      : {},
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok && data.status !== "pending") {
-    throw new Error(data.error || data.status || `HTTP ${response.status}`);
+function httpUrlForLog(url) {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return String(url);
   }
-  return data;
+}
+
+function isRetryableHttpSyncError(error) {
+  if (!error?.isHttpSyncError) return false;
+  if (error.httpSyncCode === "timeout" || error.httpSyncCode === "network") return true;
+  return [408, 429, 500, 502, 503, 504].includes(Number(error.httpStatus || 0));
+}
+
+function httpSyncErrorSummary(error) {
+  if (!error?.isHttpSyncError) return error instanceof Error ? error.message : String(error);
+  if (error.httpSyncCode === "timeout") return "timeout";
+  if (error.httpStatus) return `HTTP ${error.httpStatus}`;
+  return error.httpSyncCode || "network";
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function emitAgentJobRunRecord(config, record) {
@@ -507,7 +632,9 @@ async function emitAgentJobRunRecord(config, record) {
   };
   if (!body.instanceId) return null;
   return postJson(`${config.appUrl}/api/skill/job-runs`, body, config.token, {
+    label: "job run update",
     timeoutMs: JOB_RUN_UPDATE_TIMEOUT_MS,
+    retries: HTTP_SYNC_RETRY_DELAYS_MS.length,
   });
 }
 
@@ -572,7 +699,10 @@ async function exchange(args) {
     throw new Error("Missing --ec <code>. Run the Copy-prompt from the FollowBrief web app.");
   }
   const appUrl = argValue(args, "--app-url", process.env.BUILDER_BLOG_URL || DEFAULT_APP_URL).replace(/\/$/, "");
-  const data = await postJson(`${appUrl}/api/skill/exchange`, { code: ec });
+  const data = await postJson(`${appUrl}/api/skill/exchange`, { code: ec }, null, {
+    label: "exchange code",
+    retries: 0,
+  });
   if (!data.token || !data.email) {
     throw new Error("Exchange response missing token or email.");
   }
@@ -596,7 +726,9 @@ async function prepare(args = []) {
     (regenerate ? "&regenerate=1" : "") +
     (webSyncDisabled() ? "&dryRun=1" : `&source=${encodeURIComponent(runSource)}`) +
     (envJobRunId() ? `&jobRunId=${encodeURIComponent(envJobRunId())}` : "");
-  const context = await getJson(contextUrl, config.token);
+  const context = await getJson(contextUrl, config.token, {
+    label: "digest context",
+  });
   console.log(JSON.stringify(context, null, 2));
 }
 
@@ -638,6 +770,7 @@ async function fetchPersonal(args) {
     const context = await getJson(
       `${config.appUrl}/api/skill/context?intent=library&days=${encodeURIComponent(String(days))}`,
       config.token,
+      { label: "library context" },
     );
     const sources = context.sources ?? {};
     const commonFetchRules = context.commonFetchRules ?? context.digest?.commonFetchRules ?? DEFAULT_FETCH_GUIDANCE;
@@ -1010,7 +1143,10 @@ async function emitFetchRunRecord(config, record) {
     },
   };
   try {
-    const result = await postJson(`${config.appUrl}/api/skill/fetch-runs`, body, config.token);
+    const result = await postJson(`${config.appUrl}/api/skill/fetch-runs`, body, config.token, {
+      label: "fetch log upload",
+      retries: 0,
+    });
     if (result?.id) {
       // Hand the run id to the later sync-builders step so it can attach
       // per-post outcomes. Best-effort: if persisting fails, the run is still
@@ -4641,6 +4777,11 @@ async function sync(args) {
       ...(jobRunId ? { jobRunId } : {}),
     },
     config.token,
+    {
+      label: "digest sync",
+      timeoutMs: HTTP_SYNC_LARGE_TIMEOUT_MS,
+      retries: 0,
+    },
   );
   console.log(JSON.stringify(result, null, 2));
 }
@@ -4688,7 +4829,11 @@ async function syncBuilders(args) {
     ));
     return;
   }
-  const result = await postJson(`${config.appUrl}/api/skill/builders`, payload, config.token);
+  const result = await postJson(`${config.appUrl}/api/skill/builders`, payload, config.token, {
+    label: "builder sync",
+    timeoutMs: HTTP_SYNC_LARGE_TIMEOUT_MS,
+    retries: 1,
+  });
   console.log(JSON.stringify(result, null, 2));
 
   // Reconcile the fetch log against the FULL planned task list so a task the
@@ -4852,6 +4997,7 @@ async function patchFetchRunOutcomes(
       `${config.appUrl}/api/skill/fetch-runs/${encodeURIComponent(runId)}`,
       { taskOutcomes },
       config.token,
+      { label: "fetch log task patch" },
     );
   } catch (patchError) {
     const message = patchError instanceof Error ? patchError.message : String(patchError);
@@ -4923,6 +5069,10 @@ async function cronStatus(args) {
       startedAt,
     },
     config.token,
+    {
+      label: "cron status sync",
+      retries: HTTP_SYNC_RETRY_DELAYS_MS.length,
+    },
   );
   console.log(JSON.stringify(result, null, 2));
 }
