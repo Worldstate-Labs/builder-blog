@@ -160,6 +160,7 @@ installed in step 8 is allowed to sync results to the web app:
 
 ```bash
 BUILDER_BLOG_SMOKE_CHECK=1 \
+BUILDER_BLOG_FETCH_DAYS="{{FETCH_DAYS}}" \
 INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 $HOME/.builder-blog/builder-agent-runner.sh library-cron
@@ -185,6 +186,7 @@ hang before the command exits or the runner timeout fires.
 ```bash
 BUILDER_BLOG_WORKER_MODE=1 \
 BUILDER_BLOG_DISABLE_WEB_SYNC=1 \
+BUILDER_BLOG_FETCH_DAYS="{{FETCH_DAYS}}" \
 BUILDER_BLOG_FETCH_LIMIT=1 \
 INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \

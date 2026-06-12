@@ -814,6 +814,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_WORKER_MODE=1/);
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_DISABLE_WEB_SYNC=1/);
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_FETCH_LIMIT=1/);
+  assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_FETCH_DAYS="\{\{FETCH_DAYS\}\}"/);
+  assert.match(
+    libraryCronSetupPrompt,
+    /BUILDER_BLOG_WORKER_MODE=1 \\\s+BUILDER_BLOG_DISABLE_WEB_SYNC=1 \\\s+BUILDER_BLOG_FETCH_DAYS="\{\{FETCH_DAYS\}\}" \\\s+BUILDER_BLOG_FETCH_LIMIT=1/,
+  );
   assert.match(libraryCronSetupPrompt, /INTERVAL_MINUTES="\{\{CRON_INTERVAL_MINUTES\}\}"/);
   assert.match(libraryCronSetupPrompt, /webSyncDisabled: true/);
   assert.match(libraryCronStopPrompt, /cron-status/);
@@ -894,6 +899,7 @@ test("web app serves the agent skill and setup command", () => {
     "4. Pin the scheduled runtime",
     "6. Run one immediate runtime smoke check",
     "BUILDER_BLOG_SMOKE_CHECK=1",
+    "BUILDER_BLOG_FETCH_DAYS=\"{{FETCH_DAYS}}\"",
     "INTERVAL_MINUTES=\"{{CRON_INTERVAL_MINUTES}}\"",
     "report its output",
     "7. After the runtime smoke check succeeds",
