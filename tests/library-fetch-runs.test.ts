@@ -157,6 +157,10 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.doesNotMatch(runner, /WORKER_PID="\$!"/);
   assert.match(runner, /verify_followbrief_pid/);
   assert.match(runner, /terminate_process_tree/);
+  assert.match(runner, /process_tree_pids/);
+  assert.match(runner, /worker_shard_timeout/);
+  assert.match(runner, /still_alive_after_kill/);
+  assert.match(runner, /skipped-wait-pids/);
   assert.match(runner, /job_run_update_for_instance/);
   assert.match(runner, /OLD_STARTED="\$\(json_get_string startedAt "\$CURRENT_FILE"\)"/);
   assert.match(runner, /OLD_EXPECTED="\$\(json_get_string expectedAt "\$CURRENT_FILE"\)"/);
@@ -216,6 +220,9 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /slot\.status === "waiting" \|\| slot\.status === "running"/);
   assert.match(panel, /latestIsStalled/);
   assert.match(panel, /Recent outcomes by scheduled window\./);
+  assert.match(panel, /No Local Agent job reported for the latest scheduled window/);
+  assert.match(panel, /timeoutSeconds/);
+  assert.match(panel, /cleanup failed/);
   assert.doesNotMatch(panel, /Green OK|amber waiting|red issue/);
   assert.match(panel, /label="Missed"/);
   assert.match(panel, /label="Failed"/);

@@ -544,6 +544,12 @@ async function jobRunCommand(args, defaultStatus = "running") {
     details: {
       reason: argValue(args, "--reason", null),
       cliVersion: CLI_VERSION,
+      timeoutSeconds: numberOrNull(argValue(args, "--timeout-seconds", null)),
+      timeoutStage: argValue(args, "--timeout-stage", null),
+      timedOutWorker: argValue(args, "--timed-out-worker", null),
+      timedOutWorkerPid: numberOrNull(argValue(args, "--timed-out-worker-pid", null)),
+      termination: argValue(args, "--termination", null),
+      skippedWaitPids: argValue(args, "--skipped-wait-pids", null),
     },
   });
   console.log(JSON.stringify(result ?? { status: "skipped" }, null, 2));

@@ -128,6 +128,17 @@ type DetailsShape = {
   agentModel?: string | null;
 };
 
+type JobRunDetailsShape = {
+  reason?: string | null;
+  cliVersion?: string | null;
+  timeoutSeconds?: number | null;
+  timeoutStage?: string | null;
+  timedOutWorker?: string | null;
+  timedOutWorkerPid?: number | null;
+  termination?: string | null;
+  skippedWaitPids?: string | null;
+};
+
 const STATUS_LABEL: Record<string, string> = {
   ok: "OK",
   partial: "Partial",
@@ -232,6 +243,11 @@ function statusStyle(status: string): {
 function readDetails(value: unknown): DetailsShape {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return value as DetailsShape;
+}
+
+function readJobRunDetails(value: unknown): JobRunDetailsShape {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value as JobRunDetailsShape;
 }
 
 // A run is "in flight" between the two writes: fetch-personal POSTed the row
@@ -957,8 +973,8 @@ function FetchStatusPanel({
   const problemDetail =
     latestIsStalled
       ? "The latest scheduled fetch run stopped sending heartbeats. Open the log to see where it stopped."
-      : latestResolved === "missed"
-      ? "No run was recorded for the latest scheduled window. The Local Agent may not have started."
+    : latestResolved === "missed"
+      ? missedWindowDetail(slots)
       : "The latest scheduled fetch run reported a failure. Open the log for task-level details.";
   const statusTone = hasProblem
     ? statusStyle("failed")
@@ -1099,7 +1115,37 @@ function cronSlotRunNote(slot: CronSlot): string {
   }
   if (runSummary) return runSummary;
   if (slot.jobRun) return `${jobRunStatusLabel(slot.jobRun)} · ${slot.jobRun.runtime || "Local Agent"}`;
-  return "No run recorded";
+  return "No job reported";
+}
+
+function slotFailureContext(slot: CronSlot): string | null {
+  if (!slot.jobRun) return null;
+  const details = readJobRunDetails(slot.jobRun.details);
+  const parts = [
+    details.timeoutSeconds ? `timeout ${formatDuration(details.timeoutSeconds * 1000)}` : null,
+    details.timedOutWorker ? `worker ${details.timedOutWorker}` : null,
+    details.timedOutWorkerPid ? `pid ${details.timedOutWorkerPid}` : null,
+    details.termination === "still_alive_after_kill" ? "cleanup failed" : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : details.reason ?? null;
+}
+
+function latestRecordedSlot(slots: CronSlot[]): CronSlot | null {
+  return slots.slice().reverse().find((slot) => slot.jobRun || slot.run) ?? null;
+}
+
+function missedWindowDetail(slots: CronSlot[]): string {
+  const previous = latestRecordedSlot(slots.slice(0, -1));
+  const previousStatus = previous?.jobRun ? jobRunStatusLabel(previous.jobRun).toLowerCase() : previous?.run?.status;
+  if (previous?.jobRun && previous.jobRun.status !== "succeeded") {
+    const context = slotFailureContext(previous);
+    return [
+      "No Local Agent job reported for the latest scheduled window.",
+      `The previous reported job ${previousStatus}${context ? ` (${context})` : ""}.`,
+      "The local schedule may not have launched, or an older process may still be occupying it.",
+    ].join(" ");
+  }
+  return "No Local Agent job reported for the latest scheduled window. The local schedule may not have launched.";
 }
 
 function CronSlotBar({ onSelect, slot }: { onSelect: () => void; slot: CronSlot }) {
@@ -1138,6 +1184,7 @@ function CronSlotRow({
 }) {
   const style = cronSlotStyle(slot.status);
   const label = cronSlotLabel(slot.status);
+  const failureContext = slotFailureContext(slot);
   return (
     <div
       className="sync-panel-slot-row"
@@ -1160,6 +1207,9 @@ function CronSlotRow({
       </div>
       <div className="sync-panel-slot-row-side">
         <span className="mono sync-panel-slot-row-note">{cronSlotRunNote(slot)}</span>
+        {failureContext ? (
+          <span className="mono sync-panel-slot-row-note">{failureContext}</span>
+        ) : null}
         {slot.run ? (
           <button
             className="fb-btn light compact"
@@ -1295,10 +1345,24 @@ function interruptedFetchRunStatus(jobRun?: AgentJobRunListItem | null): {
   return { label: jobRunStatusLabel(jobRun), style: statusStyle("failed") };
 }
 
+function jobRunDiagnostic(jobRun: AgentJobRunListItem): string | null {
+  const details = readJobRunDetails(jobRun.details);
+  const parts = [
+    details.timeoutSeconds ? `timeout ${formatDuration(details.timeoutSeconds * 1000)}` : null,
+    details.timeoutStage ? details.timeoutStage.replace(/_/g, " ") : null,
+    details.timedOutWorker ? `worker ${details.timedOutWorker}` : null,
+    details.timedOutWorkerPid ? `pid ${details.timedOutWorkerPid}` : null,
+    details.termination === "still_alive_after_kill" ? "cleanup failed" : details.termination,
+    details.reason && details.reason !== "timeout_seconds_for_job" ? details.reason.replace(/_/g, " ") : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
+}
+
 function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
   const hydrated = useHydrated();
   const style = jobRunStatusStyle(jobRun);
   const startedAtLabel = hydrated ? formatRelative(jobRun.startedAt) : formatAbsolute(jobRun.startedAt);
+  const diagnostic = jobRunDiagnostic(jobRun);
   const fallbackSummary = isActiveJobRun(jobRun)
     ? "The Local Agent has started; no fetch log has been received yet."
     : "The Local Agent ended before FollowBrief received a fetch log.";
@@ -1336,6 +1400,11 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
       <div className="mono sync-panel-run-card-stage">
         {jobRun.stage || "runtime"} · {jobRun.finishedAt ? "finished" : "active"}
       </div>
+      {diagnostic ? (
+        <div className="mono sync-panel-run-card-stage">
+          {diagnostic}
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -1366,6 +1435,7 @@ function RunCard({
   const agentLabel =
     details.agentRuntime || (run.cliVersion ? "Local Agent" : "");
   const startedAtLabel = hydrated ? formatRelative(run.startedAt) : formatAbsolute(run.startedAt);
+  const diagnostic = jobRun ? jobRunDiagnostic(jobRun) : null;
 
   return (
     <article
@@ -1427,6 +1497,11 @@ function RunCard({
         <CountMeta label={run.userActionsCount === 1 ? "action needed" : "actions needed"} value={run.userActionsCount} /> ·{" "}
         {formatDuration(run.durationMs)}
       </div>
+      {diagnostic ? (
+        <div className="mono sync-panel-run-card-stage">
+          {diagnostic}
+        </div>
+      ) : null}
 
       <details className="sync-panel-run-card-details">
         <summary className="sync-panel-run-card-details-summary">

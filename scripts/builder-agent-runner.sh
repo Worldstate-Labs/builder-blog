@@ -416,6 +416,7 @@ job_run_update() {
   _status="$1"
   _summary="${2:-}"
   _reason="${3:-}"
+  shift 3 2>/dev/null || true
   _finished=""
   case "$_status" in
     succeeded|failed|timed_out|killed|replaced|stale) _finished="$(iso_now)" ;;
@@ -434,7 +435,8 @@ job_run_update() {
     --worker-pid "${BUILDER_BLOG_WORKER_PID:-$$}" \
     --finished-at "$_finished" \
     --summary "$_summary" \
-    --reason "$_reason" >/dev/null 2>&1 || true
+    --reason "$_reason" \
+    "$@" >/dev/null 2>&1 || true
 }
 
 verify_followbrief_pid() {
@@ -445,21 +447,53 @@ verify_followbrief_pid() {
   printf '%s' "$_args" | grep -q "BUILDER_BLOG_WORKER_MODE=1\|builder-agent-runner.sh\|codex exec\|claude -p\|gemini\|openclaw" || return 1
 }
 
-terminate_process_tree() {
-  _pid="${1:-}"
-  _signal="${2:-TERM}"
-  _wait_seconds="${3:-30}"
-  [ -n "$_pid" ] || return 0
-  _children="$(pgrep -P "$_pid" 2>/dev/null || true)"
-  for _child in $_children; do
-    terminate_process_tree "$_child" "$_signal" "$_wait_seconds"
+process_tree_pids() {
+  ptp_root="${1:-}"
+  [ -n "$ptp_root" ] || return 0
+  ptp_queue="$ptp_root"
+  ptp_seen=""
+  while [ -n "$ptp_queue" ]; do
+    ptp_next=""
+    for ptp_pid in $ptp_queue; do
+      case " $ptp_seen " in
+        *" $ptp_pid "*) continue ;;
+      esac
+      ptp_seen="$ptp_seen $ptp_pid"
+      printf '%s\n' "$ptp_pid"
+      ptp_children="$(pgrep -P "$ptp_pid" 2>/dev/null || true)"
+      [ -z "$ptp_children" ] || ptp_next="$ptp_next $ptp_children"
+    done
+    ptp_queue="$ptp_next"
   done
-  kill "-$_signal" "$_pid" 2>/dev/null || kill -s "$_signal" "$_pid" 2>/dev/null || true
-  _left="$_wait_seconds"
-  while [ "$_left" -gt 0 ]; do
-    kill -0 "$_pid" 2>/dev/null || return 0
+}
+
+terminate_process_tree() {
+  tpt_root="${1:-}"
+  tpt_signal="${2:-TERM}"
+  tpt_wait_seconds="${3:-30}"
+  [ -n "$tpt_root" ] || return 0
+  kill -0 "$tpt_root" 2>/dev/null || return 0
+
+  # Shell variables are global in /bin/sh. Avoid recursive state here: a
+  # recursive terminator can clobber the parent pid and leave the wrapper shell
+  # alive, which keeps launchd from starting the next scheduled run.
+  tpt_targets="$(process_tree_pids "$tpt_root" | awk 'NF { lines[++n]=$1 } END { for (i=n; i>=1; i--) print lines[i] }')"
+  for tpt_pid in $tpt_targets; do
+    kill -s "$tpt_signal" "$tpt_pid" 2>/dev/null || true
+  done
+
+  tpt_left="$tpt_wait_seconds"
+  while [ "$tpt_left" -gt 0 ]; do
+    tpt_alive=0
+    for tpt_pid in $tpt_targets; do
+      if kill -0 "$tpt_pid" 2>/dev/null; then
+        tpt_alive=1
+        break
+      fi
+    done
+    [ "$tpt_alive" -eq 0 ] && return 0
     sleep 1
-    _left=$(( _left - 1 ))
+    tpt_left=$(( tpt_left - 1 ))
   done
   return 1
 }
@@ -601,10 +635,23 @@ run_with_job_tracking() {
   while kill -0 "$RUNTIME_PID" 2>/dev/null; do
     if [ "$_elapsed" -ge "$_timeout" ]; then
       _status="timed_out"
-      job_run_update timed_out "Runtime exceeded timeout and will be terminated." "timeout_seconds_for_job"
-      terminate_process_tree "$RUNTIME_PID" TERM 30 || terminate_process_tree "$RUNTIME_PID" KILL 3 || true
-      wait "$RUNTIME_PID" 2>/dev/null || true
-      job_run_update timed_out "Runtime timed out." "timeout_seconds_for_job"
+      job_run_update timed_out "Runtime exceeded timeout and will be terminated." "timeout_seconds_for_job" \
+        --timeout-seconds "$_timeout" \
+        --timeout-stage "runtime" \
+        --timed-out-worker-pid "$RUNTIME_PID" \
+        --termination "terminating"
+      if terminate_process_tree "$RUNTIME_PID" TERM 30 || terminate_process_tree "$RUNTIME_PID" KILL 3; then
+        _termination="terminated"
+        wait "$RUNTIME_PID" 2>/dev/null || true
+      else
+        _termination="still_alive_after_kill"
+        echo "Runtime pid $RUNTIME_PID was still alive after forced termination; continuing without waiting." >&2
+      fi
+      job_run_update timed_out "Runtime timed out." "timeout_seconds_for_job" \
+        --timeout-seconds "$_timeout" \
+        --timeout-stage "runtime" \
+        --timed-out-worker-pid "$RUNTIME_PID" \
+        --termination "$_termination"
       return 124
     fi
     if [ $(( _elapsed % HEARTBEAT_INTERVAL_SECONDS )) -eq 0 ]; then
@@ -760,6 +807,8 @@ run_sharded_library() {
   # merge and sync — partial success instead of losing the whole run.
   _shard_timeout=$(( $(timeout_seconds_for_job "${INTERVAL_MINUTES:-60}" "$JOB_NAME") / 2 ))
   _worker_entries=""
+  _skip_wait_pids=""
+  _timed_out_worker_pids=""
   for _shard_file in "$_shards_dir"/shard-*.json; do
     [ -e "$_shard_file" ] || continue
     _shard_name="$(basename "$_shard_file" .json)"
@@ -791,9 +840,36 @@ run_sharded_library() {
       _started="${_rest%%:*}"
       _name="${_rest#*:}"
       if kill -0 "$_pid" 2>/dev/null; then
+        case " $_timed_out_worker_pids " in
+          *" $_pid "*) continue ;;
+        esac
         if [ $(( _now - _started )) -ge "$_shard_timeout" ]; then
           echo "Worker $_name exceeded ${_shard_timeout}s; terminating it (its tasks will be reported as failed)." >&2
-          terminate_process_tree "$_pid" TERM 10 || terminate_process_tree "$_pid" KILL 3 || true
+          job_run_update running "Worker $_name exceeded timeout and will be terminated." "worker_shard_timeout" \
+            --timeout-seconds "$_shard_timeout" \
+            --timeout-stage "worker_shard" \
+            --timed-out-worker "$_name" \
+            --timed-out-worker-pid "$_pid" \
+            --termination "terminating"
+          if terminate_process_tree "$_pid" TERM 10 || terminate_process_tree "$_pid" KILL 3; then
+            job_run_update running "Worker $_name timed out and was terminated." "worker_shard_timeout" \
+              --timeout-seconds "$_shard_timeout" \
+              --timeout-stage "worker_shard" \
+              --timed-out-worker "$_name" \
+              --timed-out-worker-pid "$_pid" \
+              --termination "terminated"
+          else
+            echo "Worker $_name pid $_pid was still alive after forced termination; continuing without waiting." >&2
+            _skip_wait_pids="$_skip_wait_pids $_pid"
+            job_run_update running "Worker $_name timed out and did not exit after forced termination." "worker_shard_timeout" \
+              --timeout-seconds "$_shard_timeout" \
+              --timeout-stage "worker_shard" \
+              --timed-out-worker "$_name" \
+              --timed-out-worker-pid "$_pid" \
+              --termination "still_alive_after_kill" \
+              --skipped-wait-pids "$_skip_wait_pids"
+          fi
+          _timed_out_worker_pids="$_timed_out_worker_pids $_pid"
         else
           _alive=$(( _alive + 1 ))
         fi
@@ -803,7 +879,11 @@ run_sharded_library() {
     sleep 5
   done
   for _entry in $_worker_entries; do
-    wait "${_entry%%:*}" 2>/dev/null || true
+    _pid="${_entry%%:*}"
+    case " $_skip_wait_pids " in
+      *" $_pid "*) continue ;;
+    esac
+    wait "$_pid" 2>/dev/null || true
   done
 
   for _worker_log in "$_results_dir"/*-worker.log; do

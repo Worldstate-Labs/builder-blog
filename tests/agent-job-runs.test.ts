@@ -76,6 +76,9 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /set \+e[\s\S]*run_cron_worker[\s\S]*_code="\$\?"/);
   assert.match(runner, /verify_followbrief_pid/);
   assert.match(runner, /terminate_process_tree/);
+  assert.match(runner, /process_tree_pids/);
+  assert.match(runner, /still_alive_after_kill/);
+  assert.match(runner, /skipped-wait-pids/);
   assert.match(runner, /job_run_update_for_instance/);
   assert.match(runner, /OLD_STARTED="\$\(json_get_string startedAt "\$CURRENT_FILE"\)"/);
   assert.match(runner, /OLD_EXPECTED="\$\(json_get_string expectedAt "\$CURRENT_FILE"\)"/);
