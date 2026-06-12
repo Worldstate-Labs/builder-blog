@@ -19,7 +19,7 @@ function timeoutSecondsForJob(intervalMinutes: string, job: string) {
 // Source-type-aware credential prep for the library cron setup prompt. The web
 // copy-prompt flow resolves the account from the exchange code, so we can tell
 // the agent up front which sources need a local API token in secrets.json —
-// instead of only finding out when the validation run surfaces an
+// instead of only finding out when the initial setup run surfaces an
 // *_token_missing notice. Read-only; returns "" when no credentialed sources.
 const SOURCE_CREDENTIAL_SPECS: {
   kinds: string[];
@@ -90,7 +90,7 @@ async function buildSourceCredentialPrep(userId: string): Promise<string> {
     .join("\n\n");
 
   return [
-    "**Prepare source API credentials (before the validation run).** This account",
+    "**Prepare source API credentials (before the initial run).** This account",
     "has sources that fetch through an authenticated API, so the bare cron",
     "environment needs their tokens in the local secrets file. For each one below,",
     "check first and only ask the user when the token is actually missing — never",
@@ -159,22 +159,6 @@ export async function GET(request: Request, { params }: Params) {
     "3h": "180",
     "6h": "360",
   };
-  // macOS uses a launchd LaunchAgent (runs in the user's login session, so
-  // the agent CLI can reach the login keychain — plain cron cannot). One
-  // XML fragment per cadence, dropped into the plist via {{LAUNCHD_SCHEDULE}}.
-  const launchdSchedules: Record<string, string> = {
-    "30m":
-      "  <key>StartCalendarInterval</key>\n  <array>\n    <dict><key>Minute</key><integer>0</integer></dict>\n    <dict><key>Minute</key><integer>30</integer></dict>\n  </array>",
-    "1h": "  <key>StartCalendarInterval</key>\n  <dict><key>Minute</key><integer>0</integer></dict>",
-    "12h":
-      "  <key>StartCalendarInterval</key>\n  <array>\n    <dict><key>Hour</key><integer>0</integer><key>Minute</key><integer>0</integer></dict>\n    <dict><key>Hour</key><integer>12</integer><key>Minute</key><integer>0</integer></dict>\n  </array>",
-    daily: "  <key>StartCalendarInterval</key>\n  <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>",
-    weekly:
-      "  <key>StartCalendarInterval</key>\n  <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>",
-    "3h": "  <key>StartInterval</key>\n  <integer>10800</integer>",
-    "6h": "  <key>StartInterval</key>\n  <integer>21600</integer>",
-  };
-
   // Default cadence matches each job's prior hard-coded schedule, so old
   // copied prompts (no freq param) are unchanged: digest = daily, the
   // fetch/library job = every 6 hours.
@@ -182,7 +166,14 @@ export async function GET(request: Request, { params }: Params) {
   const freqRaw = url.searchParams.get("freq");
   const freq = freqRaw && cronSchedules[freqRaw] ? freqRaw : defaultFreq;
   const cronInterval = cronIntervalMinutes[freq] ?? "360";
+  const cronIntervalSeconds = String(Number(cronInterval) * 60);
   const cronTimeoutSeconds = timeoutSecondsForJob(cronInterval, job);
+  // macOS uses a launchd LaunchAgent (runs in the user's login session, so
+  // the agent CLI can reach the login keychain — plain cron cannot). Use a
+  // relative interval instead of wall-clock calendar matching so, after the
+  // setup prompt finishes one real initial run, the first scheduled run fires
+  // one full interval later.
+  const launchdSchedule = `  <key>StartInterval</key>\n  <integer>${cronIntervalSeconds}</integer>`;
 
   // Forced re-fetch toggle. "1" → re-fetch posts already in the library
   // (ignore the fetchedAt cutoff + externalId dedup). Default off. Closed
@@ -230,8 +221,9 @@ export async function GET(request: Request, { params }: Params) {
     .replaceAll("{{CRON_SCHEDULE}}", cronSchedules[freq].schedule)
     .replaceAll("{{CRON_FREQUENCY_LABEL}}", cronSchedules[freq].label)
     .replaceAll("{{CRON_INTERVAL_MINUTES}}", cronInterval)
+    .replaceAll("{{CRON_INTERVAL_SECONDS}}", cronIntervalSeconds)
     .replaceAll("{{CRON_TIMEOUT_SECONDS}}", cronTimeoutSeconds)
-    .replaceAll("{{LAUNCHD_SCHEDULE}}", launchdSchedules[freq] ?? launchdSchedules["6h"])
+    .replaceAll("{{LAUNCHD_SCHEDULE}}", launchdSchedule)
     .replaceAll("{{FETCH_FORCE}}", fetchForce ? "1" : "0")
     .replaceAll("{{FETCH_FLAG}}", fetchForce ? "--force" : "")
     .replaceAll("{{FETCH_DAYS}}", fetchDays)
@@ -265,17 +257,17 @@ export async function GET(request: Request, { params }: Params) {
     const email = record.agentToken.user.email ?? "";
 
     // Tell the agent up front which sources need an API token, based on this
-    // account's actual source types — so prep happens before the validation run
+    // account's actual source types — so prep happens before the initial setup run
     // instead of only when it surfaces an *_token_missing notice.
     if (content.includes("{{SOURCE_CREDENTIAL_PREP}}")) {
       credentialPrep = await buildSourceCredentialPrep(record.agentToken.user.id);
     }
 
     // Bake the resolved account into every `${BUILDER_BLOG_ACCOUNT}` in the
-    // prompt. The cron-setup smoke check (step 7) and the launchd/crontab
+    // prompt. The cron-setup initial run and the launchd/crontab
     // account derive from this var, but only `node …builder-digest.mjs` lines
-    // get an injected account below — the `builder-agent-runner.sh` smoke
-    // check and the plist do not. codex/gemini run each command in a fresh
+    // get an injected account below — the `builder-agent-runner.sh` initial
+    // run and the plist do not. codex/gemini run each command in a fresh
     // shell, so an un-exported `${BUILDER_BLOG_ACCOUNT}` is empty there and the
     // run dies with "No agent token". Since the exchange code already
     // identifies the account, substitute it so setup never relies on shell env.

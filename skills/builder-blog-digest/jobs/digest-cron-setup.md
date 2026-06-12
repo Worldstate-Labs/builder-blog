@@ -13,15 +13,13 @@ this prompt is the whole task.
 Agent discretion boundary: this is a scheduler setup task; the scheduled runner
 is the only component that should produce structured digest summary JSON. Do not
 change paths, flags, cadence, titles, output files, JSON schema, or success
-criteria. You run one short runtime smoke check, then one real local validation
-run while the user is present, and only install the cron schedule after both
-succeed. Installing the schedule last is deliberate: it never arms a recurring job
-whose pipeline has not been proven, and on a fresh setup it keeps the schedule
-from firing into the same `digest-cron` temp directory while the unmanaged
-validation run is still writing it. On an override re-setup an existing schedule
-stays loaded through validation (so a failed validation never leaves the account
-with no schedule) and is replaced atomically in step 8 only after validation
-passes.
+criteria. You run one real initial digest job while the user is present, and
+only install the cron schedule after that job succeeds. Installing the schedule
+last is deliberate: it never arms a recurring job whose pipeline has not been
+proven, and the direct initial run uses an isolated setup temp directory while
+it is still writing. On an override re-setup an existing schedule stays loaded through the
+initial run (so a failed initial run never leaves the account with no schedule)
+and is replaced atomically in step 7 only after the initial run passes.
 
 Scheduled runtime: **{{AGENT_RUNTIME_LABEL}}** ({{AGENT_RUNTIME}}). Every step
 below uses this pinned runtime; do not fall back to a different one.
@@ -81,17 +79,17 @@ override. Only continue past this step after the user explicitly confirms. If
 they decline, stop and change nothing.
 
 On an override, do not unload the existing schedule here. Leave it loaded through
-the validation run and let step 8 replace it atomically (its install block boots
-out the old job, then bootstraps the new one) only after validation has passed —
-so a failed validation never tears down a working schedule and leaves the account
+the initial run and let step 7 replace it atomically (its install block boots
+out the old job, then bootstraps the new one) only after the initial run has passed —
+so a failed initial run never tears down a working schedule and leaves the account
 with none.
 
-4. Keep the selected runtime and digest mode scoped to this setup validation
-until the validation run passes. Do not write cron pin files yet: on an override
+4. Keep the selected runtime and digest mode scoped to this setup run until the
+initial run passes. Do not write cron pin files yet: on an override
 setup, the old schedule is still loaded, and writing new pins early could make
-that old schedule run with the new runtime before this setup has been validated.
-The smoke check and validation commands below pass the selected settings as env
-vars; step 8 writes the pins immediately before installing the new schedule.
+that old schedule run with the new runtime before this setup has been proven.
+The initial run command below passes the selected settings as env vars; step 7
+writes the pins immediately before installing the new schedule.
 
 5. Verify the runtime CLI is on PATH for the scheduler. Schedulers (launchd and
 cron) run with a minimal PATH; the runner injects
@@ -129,42 +127,17 @@ if [ "{{AGENT_RUNTIME}}" = "openclaw" ]; then
 fi
 ```
 
-6. Run one immediate runtime smoke check. This runs in your current session
-(which has keychain access), so it validates that the pinned local runtime can
-execute unattended and return. It does not build a digest, write a DigestRun,
-digest, or digested-item markers to FollowBrief. The recurring job installed in
-step 8 is the only run that should sync web state:
-
-```bash
-BUILDER_BLOG_SMOKE_CHECK=1 \
-BUILDER_BLOG_AGENT_RUNTIME="{{AGENT_RUNTIME}}" \
-BUILDER_BLOG_DIGEST_REGENERATE="{{DIGEST_REGENERATE_FLAG}}" \
-INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
-BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
-$HOME/.builder-blog/builder-agent-runner.sh digest-cron
-```
-
-Just report its output: it succeeds when the command exits 0 and the output
-contains `followbriefSmokeCheck` with value `ok`. It uses the same timeout
-calculation as the scheduled cron job. If it errors or times out, report the
-command, exit code, and stderr, and stop. If the pinned runtime CLI is not
-installed, do not claim the digest cron is installed successfully — record that
-the user must install {{AGENT_RUNTIME_LABEL}} (or set
-`BUILDER_BLOG_AGENT_COMMAND`) first.
-
-7. After the runtime smoke check succeeds, run one real local validation run
-while the user is still present. This validates the actual `digest-cron`
-pipeline end to end, including candidate preparation, agent JSON output,
-rendering, and final sync command shape. Web sync is disabled, so no DigestRun,
-digest, or digested-item markers are uploaded. On a fresh setup no schedule is
-armed yet, so nothing competes for this run's temp directory; on an override
-re-setup the prior schedule is still loaded and is replaced only in step 8 after
-this passes. This can take until the normal job timeout; do not treat a lack of
-output as a hang before the command exits or the runner timeout fires.
+6. Run one real initial digest job now. This runs in your current session
+(which has keychain access), uses the selected runtime and digest mode, and
+performs the same candidate preparation, agent JSON output, rendering, and
+web-sync work as the recurring `digest-cron` job. It is recorded as a one-time
+setup run, not a scheduled window. This can take until the normal job timeout;
+do not treat a lack of output as a hang before the command exits or the runner
+timeout fires.
 
 ```bash
 BUILDER_BLOG_WORKER_MODE=1 \
-BUILDER_BLOG_DISABLE_WEB_SYNC=1 \
+BUILDER_BLOG_JOB_TRIGGER=one_time \
 BUILDER_BLOG_AGENT_RUNTIME="{{AGENT_RUNTIME}}" \
 BUILDER_BLOG_DIGEST_REGENERATE="{{DIGEST_REGENERATE_FLAG}}" \
 INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
@@ -172,17 +145,21 @@ BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 $HOME/.builder-blog/builder-agent-runner.sh digest-cron
 ```
 
-Report its output. It succeeds when the digest is generated locally and the
-final sync step prints `webSyncDisabled: true`; that means this validation run
-did not write web state. If it errors or times out, report the command, exit
-code, and stderr, and stop — do not install the schedule in step 8.
+Report its output. It succeeds when the command exits 0 and the digest is
+generated and synced to FollowBrief. This is a real run: it writes a DigestRun,
+digest, and digested-item markers. If it errors or times out, report the
+command, exit code, and stderr, and stop — do not install the schedule in step
+7. If the pinned runtime CLI is not installed, do not claim the digest cron is
+installed successfully — record that the user must install
+{{AGENT_RUNTIME_LABEL}} (or set `BUILDER_BLOG_AGENT_COMMAND`) first.
 
-8. Only after the smoke check and validation run have both succeeded, pin the
+7. Only after the initial run has succeeded, pin the
 scheduled runtime/digest mode and install the schedule to run
-{{CRON_FREQUENCY_LABEL}}. Installing it last means the schedule
-is never armed while the unmanaged validation run above is using the shared
-`digest-cron` temp directory, and a pipeline that failed validation never gets
-scheduled. Pick the path for this machine's OS — run `uname` if unsure.
+{{CRON_FREQUENCY_LABEL}}. Installing it last means the schedule is never armed
+while the unmanaged initial run above is still executing, and a pipeline that
+failed the initial run never gets scheduled. On
+macOS, the first scheduled run starts one full interval after this schedule is
+installed. Pick the path for this machine's OS — run `uname` if unsure.
 
 Write the per-account, per-job pins immediately before installing the schedule:
 `runtime-digest-cron-$ACCOUNT_SLUG` makes the runner use the picked agent's
@@ -245,9 +222,9 @@ ACCT="${BUILDER_BLOG_ACCOUNT}"; LABEL="com.followbrief.digest.$(printf '%s' "$AC
 crontab -l | grep 'builder-agent-runner.sh digest-cron'
 ```
 
-9. After the schedule is installed, report the active scheduled job to
-FollowBrief. Do not run this before the smoke check, validation run, and schedule
-install have all finished successfully.
+8. After the schedule is installed, report the active scheduled job to
+FollowBrief. Do not run this before the initial run and schedule install have
+both finished successfully.
 
 ```bash
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \

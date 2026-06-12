@@ -491,9 +491,13 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /\{\{CRON_TIMEOUT_SECONDS\}\}/);
   assert.match(skillJobRoute, /timeoutSecondsForJob/);
   assert.match(skillJobRoute, /job\.startsWith\("library"\) \? 75 \* 60 : 45 \* 60/);
-  // macOS scheduling uses a launchd LaunchAgent (keychain access); the route
-  // provides a launchd schedule fragment per cadence.
-  assert.match(skillJobRoute, /launchdSchedules/);
+  // macOS scheduling uses a launchd LaunchAgent (keychain access). It uses a
+  // relative StartInterval so the first scheduled run starts one interval after
+  // the setup prompt's real initial run succeeds and the schedule is installed.
+  assert.match(skillJobRoute, /cronIntervalSeconds/);
+  assert.match(skillJobRoute, /<key>StartInterval<\/key>/);
+  assert.doesNotMatch(skillJobRoute, /StartCalendarInterval/);
+  assert.match(skillJobRoute, /\{\{CRON_INTERVAL_SECONDS\}\}/);
   assert.match(skillJobRoute, /\{\{LAUNCHD_SCHEDULE\}\}/);
   // Forced re-fetch toggle: ?force=1 → {{FETCH_FORCE}} substituted to 1.
   assert.match(skillJobRoute, /searchParams\.get\("force"\)/);
@@ -815,19 +819,20 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestOncePrompt, /--summary-file "\$TMP_DIR\/builder-blog-digest-headlines\.txt"/);
   assert.match(digestOncePrompt, /--context "\$TMP_DIR\/builder-blog-context\.json"/);
   assert.match(libraryCronSetupPrompt, /builder-agent-runner\.sh library-cron/);
-  assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_SMOKE_CHECK=1/);
   assert.doesNotMatch(libraryCronSetupPrompt, /BUILDER_BLOG_AGENT_TIMEOUT_SECONDS=300/);
-  assert.match(libraryCronSetupPrompt, /followbriefSmokeCheck/);
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_WORKER_MODE=1/);
-  assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_DISABLE_WEB_SYNC=1/);
-  assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_FETCH_LIMIT=1/);
+  assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_JOB_TRIGGER=one_time/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /BUILDER_BLOG_SMOKE_CHECK=1/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /followbriefSmokeCheck/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /BUILDER_BLOG_DISABLE_WEB_SYNC=1/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /BUILDER_BLOG_FETCH_LIMIT=1/);
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_FETCH_DAYS="\{\{FETCH_DAYS\}\}"/);
   assert.match(
     libraryCronSetupPrompt,
-    /BUILDER_BLOG_WORKER_MODE=1 \\\s+BUILDER_BLOG_DISABLE_WEB_SYNC=1 \\\s+BUILDER_BLOG_AGENT_RUNTIME="\{\{AGENT_RUNTIME\}\}" \\\s+BUILDER_BLOG_FETCH_FORCE="\{\{FETCH_FLAG\}\}" \\\s+BUILDER_BLOG_FETCH_DAYS="\{\{FETCH_DAYS\}\}" \\\s+BUILDER_BLOG_FETCH_LIMIT=1/,
+    /BUILDER_BLOG_WORKER_MODE=1 \\\s+BUILDER_BLOG_JOB_TRIGGER=one_time \\\s+BUILDER_BLOG_AGENT_RUNTIME="\{\{AGENT_RUNTIME\}\}" \\\s+BUILDER_BLOG_FETCH_FORCE="\{\{FETCH_FLAG\}\}" \\\s+BUILDER_BLOG_FETCH_DAYS="\{\{FETCH_DAYS\}\}"/,
   );
   assert.match(libraryCronSetupPrompt, /INTERVAL_MINUTES="\{\{CRON_INTERVAL_MINUTES\}\}"/);
-  assert.match(libraryCronSetupPrompt, /webSyncDisabled: true/);
+  assert.doesNotMatch(libraryCronSetupPrompt, /webSyncDisabled: true/);
   assert.match(libraryCronStopPrompt, /cron-status/);
   assert.match(libraryCronStopPrompt, /--status stopped/);
   assert.match(libraryCronStopPrompt, /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"/);
@@ -837,13 +842,14 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronStopPrompt, /parallel-library-cron-\$ACCOUNT_SLUG/);
   assert.match(libraryCronStopPrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron\/current\.json/);
   assert.doesNotMatch(libraryCronStopPrompt, /Do not\s+exchange a token or make any network call/);
-  assert.match(digestCronSetupPrompt, /BUILDER_BLOG_SMOKE_CHECK=1/);
   assert.doesNotMatch(digestCronSetupPrompt, /BUILDER_BLOG_AGENT_TIMEOUT_SECONDS=300/);
-  assert.match(digestCronSetupPrompt, /followbriefSmokeCheck/);
   assert.match(digestCronSetupPrompt, /BUILDER_BLOG_WORKER_MODE=1/);
-  assert.match(digestCronSetupPrompt, /BUILDER_BLOG_DISABLE_WEB_SYNC=1/);
+  assert.match(digestCronSetupPrompt, /BUILDER_BLOG_JOB_TRIGGER=one_time/);
+  assert.doesNotMatch(digestCronSetupPrompt, /BUILDER_BLOG_SMOKE_CHECK=1/);
+  assert.doesNotMatch(digestCronSetupPrompt, /followbriefSmokeCheck/);
+  assert.doesNotMatch(digestCronSetupPrompt, /BUILDER_BLOG_DISABLE_WEB_SYNC=1/);
   assert.match(digestCronSetupPrompt, /INTERVAL_MINUTES="\{\{CRON_INTERVAL_MINUTES\}\}"/);
-  assert.match(digestCronSetupPrompt, /webSyncDisabled: true/);
+  assert.doesNotMatch(digestCronSetupPrompt, /webSyncDisabled: true/);
   assert.match(digestCronSetupPrompt, /--job digest-cron/);
   assert.match(digestCronSetupPrompt, /--regenerate "\{\{DIGEST_REGENERATE\}\}"/);
   assert.match(digestCronStopPrompt, /cron-status/);
@@ -875,7 +881,7 @@ test("web app serves the agent skill and setup command", () => {
   // job types can use different runtimes on one machine.
   assert.match(libraryCronSetupPrompt, /ACCOUNT_SLUG/);
   assert.match(libraryCronSetupPrompt, /runtime-library-cron-\$ACCOUNT_SLUG/);
-  assert.match(libraryCronSetupPrompt, /8\. Only after the smoke check and validation run have both succeeded, pin the/);
+  assert.match(libraryCronSetupPrompt, /7\. Only after the initial run has succeeded, pin the/);
   assert.match(libraryCronSetupPrompt, /crontab/);
   assert.match(libraryCronSetupPrompt, /Do not use `--force`/);
   assert.match(libraryCronSetupPrompt, /\{\{CRON_INTERVAL_MINUTES\}\}/);
@@ -888,11 +894,12 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /grep -x "\$LABEL"/);
   assert.match(libraryCronSetupPrompt, /the user whether to\s+override/);
   assert.match(libraryCronSetupPrompt, /\(none found\)/);
-  // The setup does a quick runtime check, then a real local validation run;
-  // cron-setup must NOT restate the fetch-task execution steps.
+  // The setup does one real initial run; cron-setup must NOT restate the
+  // fetch-task execution steps.
   assert.match(libraryCronSetupPrompt, /single source of truth/);
-  assert.match(libraryCronSetupPrompt, /one real local validation run/);
-  assert.match(libraryCronSetupPrompt, /do not treat a lack of output as a\s+hang/);
+  assert.match(libraryCronSetupPrompt, /one real initial fetch job/);
+  assert.match(libraryCronSetupPrompt, /writes fetch-log rows, builders, and feed items/);
+  assert.match(libraryCronSetupPrompt, /do not treat a lack of\s+output as a hang/);
   assert.doesNotMatch(libraryCronSetupPrompt, /How to execute each `fetchTask`/);
   assert.doesNotMatch(libraryCronSetupPrompt, /Read `task\.contentStatus`/);
   assert.doesNotMatch(libraryCronSetupPrompt, /Copy `task\.builderSync`/);
@@ -904,21 +911,19 @@ test("web app serves the agent skill and setup command", () => {
   assertOrderedText(libraryCronSetupPrompt, [
     "account's library fetch cron",
     "4. Keep the selected runtime and fetch mode scoped",
-    "6. Run one immediate runtime smoke check",
-    "BUILDER_BLOG_SMOKE_CHECK=1",
+    "6. Run one real initial fetch job now",
+    "BUILDER_BLOG_WORKER_MODE=1",
+    "BUILDER_BLOG_JOB_TRIGGER=one_time",
     "BUILDER_BLOG_AGENT_RUNTIME=\"{{AGENT_RUNTIME}}\"",
     "BUILDER_BLOG_FETCH_DAYS=\"{{FETCH_DAYS}}\"",
     "BUILDER_BLOG_PARALLEL_WORKERS=\"{{PARALLEL_WORKERS}}\"",
     "INTERVAL_MINUTES=\"{{CRON_INTERVAL_MINUTES}}\"",
-    "report its output",
-    "7. After the runtime smoke check succeeds",
-    "BUILDER_BLOG_WORKER_MODE=1",
-    "BUILDER_BLOG_FETCH_LIMIT=1",
-    "webSyncDisabled: true",
-    "8. Only after the smoke check and validation run have both succeeded",
+    "Report its output",
+    "writes fetch-log rows, builders, and feed items",
+    "7. Only after the initial run has succeeded",
     "runtime-library-cron-$ACCOUNT_SLUG",
     "launchctl bootstrap",
-    "9. After the schedule is installed",
+    "8. After the schedule is installed",
     "cron-status",
   ]);
   // Override-already-fetched toggle: cron-setup pins fetch-force (0/1) next to
@@ -953,7 +958,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(digestCronSetupPrompt, /exec-policy preset yolo/);
   assert.match(digestCronSetupPrompt, /ACCOUNT_SLUG/);
   assert.match(digestCronSetupPrompt, /runtime-digest-cron-\$ACCOUNT_SLUG/);
-  assert.match(digestCronSetupPrompt, /8\. Only after the smoke check and validation run have both succeeded, pin the/);
+  assert.match(digestCronSetupPrompt, /7\. Only after the initial run has succeeded, pin the/);
   assert.match(digestCronSetupPrompt, /crontab/);
   assert.match(digestCronSetupPrompt, /\{\{CRON_INTERVAL_MINUTES\}\}/);
   // Same pre-install detection + override gate as library.
@@ -968,18 +973,17 @@ test("web app serves the agent skill and setup command", () => {
   assertOrderedText(digestCronSetupPrompt, [
     "account's digest cron",
     "4. Keep the selected runtime and digest mode scoped",
-    "6. Run one immediate runtime smoke check",
-    "BUILDER_BLOG_SMOKE_CHECK=1",
+    "6. Run one real initial digest job now",
+    "BUILDER_BLOG_WORKER_MODE=1",
+    "BUILDER_BLOG_JOB_TRIGGER=one_time",
     "BUILDER_BLOG_AGENT_RUNTIME=\"{{AGENT_RUNTIME}}\"",
     "INTERVAL_MINUTES=\"{{CRON_INTERVAL_MINUTES}}\"",
-    "report its output",
-    "7. After the runtime smoke check succeeds",
-    "BUILDER_BLOG_WORKER_MODE=1",
-    "webSyncDisabled: true",
-    "8. Only after the smoke check and validation run have both succeeded",
+    "Report its output",
+    "This is a real run",
+    "7. Only after the initial run has succeeded",
     "runtime-digest-cron-$ACCOUNT_SLUG",
     "launchctl bootstrap",
-    "9. After the schedule is installed",
+    "8. After the schedule is installed",
     "cron-status",
   ]);
   assert.doesNotMatch(skillPromptActions, /fetch-personal[^\n`]*--force/);
@@ -1003,6 +1007,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /INCOMING_FETCH_DAYS_SET/);
   assert.match(runner, /INCOMING_PARALLEL_WORKERS_SET/);
   assert.match(runner, /MAX_PARALLEL_WORKERS="\$INCOMING_PARALLEL_WORKERS"/);
+  assert.match(runner, /JOB_TMP_DIR="\$JOB_TMP_DIR-direct"/);
+  assert.match(runner, /run_cron_worker\(\) \{[\s\S]*run_with_job_tracking "\$\{BUILDER_BLOG_JOB_TRIGGER:-scheduled\}"/);
   assert.match(runner, /BUILDER_BLOG_PROMPT_URL/);
   assert.match(runner, /BUILDER_BLOG_SMOKE_CHECK/);
   assert.match(runner, /followbriefSmokeCheck/);
