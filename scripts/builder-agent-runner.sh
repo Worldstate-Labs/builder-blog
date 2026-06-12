@@ -829,10 +829,11 @@ run_sharded_library() {
     --out-dir "$_shards_dir" \
     --max-workers "$MAX_PARALLEL_WORKERS"
 
-  # Per-shard timeout: half the whole-job timeout. A hung shard is terminated
-  # and its tasks surface as failed outcomes, while the other shards still
-  # merge and sync — partial success instead of losing the whole run.
-  _shard_timeout=$(( $(timeout_seconds_for_job "${INTERVAL_MINUTES:-60}" "$JOB_NAME") / 2 ))
+  # Per-shard timeout: 3/4 of the whole-job timeout. A hung shard is
+  # terminated early enough for merge, failure reporting, and final sync to
+  # finish before the outer runner timeout kills the whole run.
+  _whole_timeout="$(timeout_seconds_for_job "${INTERVAL_MINUTES:-60}" "$JOB_NAME")"
+  _shard_timeout=$(( _whole_timeout * 3 / 4 ))
   _worker_entries=""
   _skip_wait_pids=""
   _timed_out_worker_pids=""
