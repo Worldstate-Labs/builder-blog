@@ -1665,14 +1665,17 @@ function sourceStatKey({
   return `source:${sourceType ?? "unknown"}:${name ?? "Unknown source"}`;
 }
 
-function isPostFetchTask(task: FetchTaskLog): boolean {
-  if (isCandidateDiscoveryTask(task) || isBlocked(task)) return false;
+function isPlannedPostTask(task: FetchTaskLog): boolean {
+  // Planned means "this run had a post-level task to handle." User-action and
+  // token-missing tasks still count here; they are execution blockers, not a
+  // reason to erase the post from the run's planned work.
+  if (isCandidateDiscoveryTask(task)) return false;
   if (typeof task.id === "string" && task.id.startsWith("fetch_post:")) return true;
   return task.contentStatus === "ready" || task.contentStatus === "requires_agent";
 }
 
 function isFetchedForStats(task: FetchTaskLog): boolean {
-  if (!isPostFetchTask(task)) return false;
+  if (!isPlannedPostTask(task) || isBlocked(task)) return false;
   if (typeof task.bodyChars === "number" && task.bodyChars > 0) return true;
   if (task.contentStatus === "ready" && task.status !== "failed" && task.status !== "skipped") {
     return true;
@@ -1681,7 +1684,7 @@ function isFetchedForStats(task: FetchTaskLog): boolean {
 }
 
 function isSummarizedForStats(task: FetchTaskLog): boolean {
-  return isPostFetchTask(task) && (isSummarized(task) || task.status === "synced");
+  return isPlannedPostTask(task) && !isBlocked(task) && (isSummarized(task) || task.status === "synced");
 }
 
 function sourceRunStats(perBuilder: PerBuilder[], fetchTasks: FetchTaskLog[]): SourceRunStats[] {
@@ -1734,7 +1737,7 @@ function sourceRunStats(perBuilder: PerBuilder[], fetchTasks: FetchTaskLog[]): S
   }
 
   for (const task of fetchTasks) {
-    if (!isPostFetchTask(task)) continue;
+    if (!isPlannedPostTask(task)) continue;
     const stat = ensureStat({
       builderId: task.builderId,
       name: task.builder,

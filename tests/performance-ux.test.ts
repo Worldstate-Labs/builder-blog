@@ -1914,6 +1914,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(fetchLogPanel, /posts read|post read/);
   assert.match(fetchLogPanel, /label="posts planned"/);
   assert.match(fetchLogPanel, /sourceRunStats\(perBuilder, fetchTasks\)/);
+  assert.match(fetchLogPanel, /function isPlannedPostTask/);
+  assert.match(fetchLogPanel, /User-action and[\s\S]*token-missing tasks still count here/);
+  assert.doesNotMatch(fetchLogPanel, /isCandidateDiscoveryTask\(task\) \|\| isBlocked\(task\)/);
   assert.match(fetchLogPanel, /function sourceIssueNote/);
   assert.match(fetchLogPanel, /function sourceDisplayError/);
   assert.match(fetchLogPanel, /Initial source scan stopped; Local Agent fallback was queued\./);
