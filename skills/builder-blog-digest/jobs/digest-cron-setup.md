@@ -129,6 +129,11 @@ do not treat a lack of output as a hang before the command exits or the runner
 timeout fires.
 
 ```bash
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
+SETUP_TMP_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/digest-cron-direct"
+mkdir -p "$SETUP_TMP_DIR"
+BUILDER_BLOG_JOB_TMP_DIR="$SETUP_TMP_DIR" \
 BUILDER_BLOG_WORKER_MODE=1 \
 BUILDER_BLOG_JOB_TRIGGER=one_time \
 BUILDER_BLOG_AGENT_RUNTIME="{{AGENT_RUNTIME}}" \
@@ -225,13 +230,17 @@ FollowBrief. Do not run this before the initial run and schedule install have
 both finished successfully.
 
 ```bash
+SCHEDULE_STATUS="{{CRON_SCHEDULE}}"
+if [ "$(uname)" = "Darwin" ]; then
+  SCHEDULE_STATUS="interval:{{CRON_INTERVAL_SECONDS}}"
+fi
 BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 node "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/builder-digest.mjs" cron-status \
   --job digest-cron \
   --status active \
   --freq "{{CRON_FREQUENCY_KEY}}" \
   --label "{{CRON_FREQUENCY_LABEL}}" \
-  --schedule "{{CRON_SCHEDULE}}" \
+  --schedule "$SCHEDULE_STATUS" \
   --runtime "{{AGENT_RUNTIME}}" \
   --regenerate "{{DIGEST_REGENERATE}}"
 ```

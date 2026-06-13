@@ -1,5 +1,6 @@
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
 import type { DigestCronJobStatus } from "@/lib/digest-runs";
+import { addScheduleInterval, floorToExpectedSchedule } from "@/lib/schedule-timing";
 
 export type ChipStyle = { background: string; color: string; border: string };
 
@@ -42,59 +43,6 @@ export function isDigestRunInflight(run: DigestCronRunStatusInput): boolean {
   const ageMs = Date.now() - Date.parse(run.preparedAt);
   if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > PREPARED_RUN_MAX_AGE_MS) return false;
   return run.status !== "synced";
-}
-
-function addScheduleInterval(date: Date, cronJob: DigestCronJobStatus, steps = 1): Date {
-  const next = new Date(date);
-  switch (cronJob.frequencyKey) {
-    case "daily":
-      next.setDate(next.getDate() + steps);
-      return next;
-    case "weekly":
-      next.setDate(next.getDate() + steps * 7);
-      return next;
-    default:
-      return new Date(date.getTime() + cronJob.intervalMinutes * 60_000 * steps);
-  }
-}
-
-function floorToExpectedSchedule(now: Date, cronJob: DigestCronJobStatus): Date {
-  const value = new Date(now);
-  value.setSeconds(0, 0);
-
-  switch (cronJob.frequencyKey) {
-    case "30m":
-      value.setMinutes(value.getMinutes() >= 30 ? 30 : 0);
-      return value;
-    case "1h":
-      value.setMinutes(0);
-      return value;
-    case "3h":
-    case "6h":
-    case "12h": {
-      const hours = cronJob.intervalMinutes / 60;
-      value.setHours(Math.floor(value.getHours() / hours) * hours, 0, 0, 0);
-      return value;
-    }
-    case "daily":
-      value.setHours(8, 0, 0, 0);
-      if (value.getTime() > now.getTime()) value.setDate(value.getDate() - 1);
-      return value;
-    case "weekly": {
-      value.setHours(8, 0, 0, 0);
-      const daysSinceMonday = (value.getDay() + 6) % 7;
-      value.setDate(value.getDate() - daysSinceMonday);
-      if (value.getTime() > now.getTime()) value.setDate(value.getDate() - 7);
-      return value;
-    }
-    default: {
-      const startedAt = Date.parse(cronJob.startedAt);
-      const intervalMs = Math.max(1, cronJob.intervalMinutes) * 60_000;
-      const elapsed = now.getTime() - startedAt;
-      const slotIndex = Number.isFinite(elapsed) && elapsed > 0 ? Math.floor(elapsed / intervalMs) : 0;
-      return new Date(startedAt + slotIndex * intervalMs);
-    }
-  }
 }
 
 function cronGraceMs(cronJob: DigestCronJobStatus): number {

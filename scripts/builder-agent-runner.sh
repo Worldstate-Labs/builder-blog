@@ -6,7 +6,7 @@ APP_URL="${BUILDER_BLOG_URL:-https://builder-blog.worldstatelabs.com}"
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
 PROMPT_FILE="$AGENT_DIR/jobs/$JOB_NAME.md"
 ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
-JOB_TMP_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/$JOB_NAME"
+DEFAULT_JOB_TMP_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/$JOB_NAME"
 # A direct worker-mode invocation (the setup initial run, or any manual
 # BUILDER_BLOG_WORKER_MODE=1 run) bypasses run_cron_supervisor and its
 # current.json single-instance lock. Only such direct calls carry WORKER_MODE=1
@@ -14,8 +14,12 @@ JOB_TMP_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/$JOB_NAME"
 # later in-process, after JOB_TMP_DIR is already fixed. Give the bypassing run
 # an isolated temp dir so it can never race a launchd-scheduled run of the same
 # job over the shared library-cron/digest-cron temp files.
-if [ "${BUILDER_BLOG_WORKER_MODE:-0}" = "1" ]; then
-  JOB_TMP_DIR="$JOB_TMP_DIR-direct"
+if [ -n "${BUILDER_BLOG_JOB_TMP_DIR:-}" ]; then
+  JOB_TMP_DIR="$BUILDER_BLOG_JOB_TMP_DIR"
+elif [ "${BUILDER_BLOG_WORKER_MODE:-0}" = "1" ]; then
+  JOB_TMP_DIR="$DEFAULT_JOB_TMP_DIR-direct"
+else
+  JOB_TMP_DIR="$DEFAULT_JOB_TMP_DIR"
 fi
 HEARTBEAT_INTERVAL_SECONDS=60
 

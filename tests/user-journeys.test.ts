@@ -957,6 +957,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /\{\{FETCH_DAYS\}\}/);
   assert.match(libraryCronSetupPrompt, /fetch-days-library-cron-\$ACCOUNT_SLUG/);
   assert.match(libraryCronSetupPrompt, /\$LABEL\.log/);
+  assert.match(libraryCronSetupPrompt, /SETUP_TMP_DIR="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct"/);
+  assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_JOB_TMP_DIR="\$SETUP_TMP_DIR"/);
+  assert.match(libraryCronSetupPrompt, /TMP_DIR="\$\{BUILDER_BLOG_JOB_TMP_DIR:-\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\}"/);
+  assert.match(libraryCronSetupPrompt, /SCHEDULE_STATUS="interval:\{\{CRON_INTERVAL_SECONDS\}\}"/);
   assert.match(libraryCronPrompt, /BUILDER_BLOG_JOB_TMP_DIR/);
   assert.match(
     libraryCronPrompt,
@@ -987,6 +991,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronSetupPrompt, /the user whether to\s+override/);
   assert.match(digestCronSetupPrompt, /\(none found\)/);
   assert.match(digestCronSetupPrompt, /\$LABEL\.log/);
+  assert.match(digestCronSetupPrompt, /SETUP_TMP_DIR="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/digest-cron-direct"/);
+  assert.match(digestCronSetupPrompt, /BUILDER_BLOG_JOB_TMP_DIR="\$SETUP_TMP_DIR"/);
+  assert.match(digestCronSetupPrompt, /SCHEDULE_STATUS="interval:\{\{CRON_INTERVAL_SECONDS\}\}"/);
   assert.match(digestCronPrompt, /BUILDER_BLOG_JOB_TMP_DIR/);
   assert.match(digestCronPrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/digest-cron/);
   assert.match(digestCronPrompt, /--context "\$TMP_DIR\/builder-blog-context\.json"/);
@@ -1027,7 +1034,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /INCOMING_FETCH_DAYS_SET/);
   assert.match(runner, /INCOMING_PARALLEL_WORKERS_SET/);
   assert.match(runner, /MAX_PARALLEL_WORKERS="\$INCOMING_PARALLEL_WORKERS"/);
-  assert.match(runner, /JOB_TMP_DIR="\$JOB_TMP_DIR-direct"/);
+  assert.match(runner, /DEFAULT_JOB_TMP_DIR="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/\$JOB_NAME"/);
+  assert.match(runner, /JOB_TMP_DIR="\$BUILDER_BLOG_JOB_TMP_DIR"/);
+  assert.match(runner, /JOB_TMP_DIR="\$DEFAULT_JOB_TMP_DIR-direct"/);
   assert.match(runner, /run_cron_worker\(\) \{[\s\S]*run_with_job_tracking "\$\{BUILDER_BLOG_JOB_TRIGGER:-scheduled\}"/);
   assert.match(runner, /BUILDER_BLOG_PROMPT_URL/);
   assert.match(runner, /BUILDER_BLOG_SMOKE_CHECK/);
@@ -1084,6 +1093,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /\$AGENT_DIR\/\$1-\$_pin_job-\$ACCOUNT_SLUG/);
   assert.match(runner, /\$AGENT_DIR\/\$1-\$_pin_job/);
   assert.match(runner, /\$AGENT_DIR\/\$1\b/);
+  assert.match(runner, /DEFAULT_JOB_TMP_DIR=/);
+  assert.match(runner, /if \[ -n "\$\{BUILDER_BLOG_JOB_TMP_DIR:-\}" \]/);
   assert.match(runner, /BUILDER_BLOG_JOB_TMP_DIR/);
   assert.match(runner, /CURRENT_FILE="\$JOB_TMP_DIR\/current\.json"/);
   assert.match(runner, /run_cron_supervisor/);

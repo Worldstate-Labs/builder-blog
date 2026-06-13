@@ -185,6 +185,9 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
 
 test("FetchLogPanel renders status pills and status/log tabs with semantic CSS variables", () => {
   const panel = source("src/components/FetchLogPanel.tsx");
+  assert.match(panel, /@\/lib\/schedule-timing/);
+  assert.doesNotMatch(panel, /function floorToExpectedSchedule/);
+  assert.doesNotMatch(panel, /function addScheduleInterval/);
   // Status pill colors must reuse existing tokens, not new colors.
   assert.match(panel, /var\(--signal\)/);
   assert.match(panel, /var\(--warm\)/);
@@ -398,7 +401,11 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   const panel = source("src/components/DigestLogPanel.tsx");
   const route = source("src/app/api/digest-runs/route.ts");
   const digestRuns = source("src/lib/digest-runs.ts");
+  const digestUpdateStatus = source("src/lib/digest-update-status.ts");
 
+  assert.match(digestUpdateStatus, /@\/lib\/schedule-timing/);
+  assert.doesNotMatch(digestUpdateStatus, /function floorToExpectedSchedule/);
+  assert.doesNotMatch(digestUpdateStatus, /function addScheduleInterval/);
   assert.match(panel, /AI Digest updates/);
   assert.match(panel, /showHeading = true/);
   assert.match(panel, /actionsPlacement = "end"/);
