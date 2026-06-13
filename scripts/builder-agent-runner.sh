@@ -194,7 +194,7 @@ run_with_openclaw_unattended() {
   # (the bare `--local --message` form errors "Pass --to/--session-id/--agent");
   # parallel workers can set OPENCLAW_SESSION_ID for isolated sessions, and the
   # regular path otherwise uses the configured main agent.
-  _openclaw_timeout="${BUILDER_BLOG_AGENT_TIMEOUT_SECONDS:-${_timeout:-$(timeout_seconds_for_job "${INTERVAL_MINUTES:-60}" "$JOB_NAME")}}"
+  _openclaw_timeout="${BUILDER_BLOG_AGENT_TIMEOUT_SECONDS:-${_timeout:-$(timeout_seconds_for_job "$RESOLVED_INTERVAL_MINUTES" "$JOB_NAME")}}"
   sync_openclaw_timeout_config "$_openclaw_timeout"
   _openclaw_output="$(agent_output_file openclaw)"
   set +e
@@ -289,7 +289,7 @@ Do not browse the web.
 EOF
   PROMPT_FILE="$SMOKE_PROMPT_FILE"
   export BUILDER_BLOG_RUN_SOURCE=smoke
-  _timeout="${BUILDER_BLOG_AGENT_TIMEOUT_SECONDS:-$(timeout_seconds_for_job "${INTERVAL_MINUTES:-60}" "$JOB_NAME")}"
+  _timeout="${BUILDER_BLOG_AGENT_TIMEOUT_SECONDS:-$(timeout_seconds_for_job "$RESOLVED_INTERVAL_MINUTES" "$JOB_NAME")}"
   echo "Running FollowBrief runtime smoke check for $JOB_NAME with ${PINNED_RUNTIME:-auto} (timeout ${_timeout}s)." >&2
   set +e
   run_selected_runtime &
@@ -396,6 +396,12 @@ INCOMING_DIGEST_REGENERATE="${BUILDER_BLOG_DIGEST_REGENERATE:-}"
 if [ "${BUILDER_BLOG_DIGEST_REGENERATE+x}" = "x" ]; then
   INCOMING_DIGEST_REGENERATE_SET=1
 fi
+INCOMING_INTERVAL_MINUTES="${BUILDER_BLOG_INTERVAL_MINUTES:-${INTERVAL_MINUTES:-}}"
+case "$INCOMING_INTERVAL_MINUTES" in
+  ''|*[!0-9]*) RESOLVED_INTERVAL_MINUTES="60" ;;
+  *) RESOLVED_INTERVAL_MINUTES="$INCOMING_INTERVAL_MINUTES" ;;
+esac
+export INTERVAL_MINUTES="$RESOLVED_INTERVAL_MINUTES"
 
 # The resolved runtime is a single word: claude | codex | gemini | openclaw.
 # One-time prompts pass BUILDER_BLOG_AGENT_RUNTIME as a per-run override.
@@ -726,7 +732,7 @@ run_with_job_tracking() {
   fi
   export BUILDER_BLOG_RUN_SOURCE
 
-  _timeout="$(timeout_seconds_for_job "${INTERVAL_MINUTES:-60}" "$JOB_NAME")"
+  _timeout="$(timeout_seconds_for_job "$RESOLVED_INTERVAL_MINUTES" "$JOB_NAME")"
   job_run_update running "Runtime agent started." "runtime_agent_started"
   run_job_payload &
   RUNTIME_PID="$!"
@@ -1013,7 +1019,7 @@ run_sharded_library() {
   # Per-shard timeout: 3/4 of the whole-job timeout. A hung shard is
   # terminated early enough for merge, failure reporting, and final sync to
   # finish before the outer runner timeout kills the whole run.
-  _whole_timeout="$(timeout_seconds_for_job "${INTERVAL_MINUTES:-60}" "$JOB_NAME")"
+  _whole_timeout="$(timeout_seconds_for_job "$RESOLVED_INTERVAL_MINUTES" "$JOB_NAME")"
   _shard_timeout=$(( _whole_timeout * 3 / 4 ))
   _worker_entries=""
   _skip_wait_pids=""

@@ -191,7 +191,10 @@ cat > "$PLIST" <<PLISTEOF
 <string>digest-cron</string>
 </array>
 <key>EnvironmentVariables</key>
-<dict><key>BUILDER_BLOG_ACCOUNT</key><string>$ACCT</string></dict>
+<dict>
+<key>BUILDER_BLOG_ACCOUNT</key><string>$ACCT</string>
+<key>INTERVAL_MINUTES</key><string>{{CRON_INTERVAL_MINUTES}}</string>
+</dict>
 {{LAUNCHD_SCHEDULE}}
 <key>StandardOutPath</key><string>$HOME/.builder-blog/logs/$LABEL.log</string>
 <key>StandardErrorPath</key><string>$HOME/.builder-blog/logs/$LABEL.log</string>
