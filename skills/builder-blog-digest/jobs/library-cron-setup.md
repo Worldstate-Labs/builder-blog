@@ -142,11 +142,68 @@ BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
 $HOME/.builder-blog/builder-agent-runner.sh library-cron
 ```
 
-Report its output. It succeeds when the command exits 0 and the sync output
-shows the planned fetch tasks are either synced or accounted for by terminal
-outcomes. This is a real run: it writes fetch-log rows, builders, and feed items
-to FollowBrief. If it errors or times out, report the command, exit code, and
-stderr, and stop — do not install the schedule in step 7.
+Report its output. This is a real run: it writes fetch-log rows, builders, and
+feed items to FollowBrief. If the command errors or times out, report the
+command, exit code, and stderr, and stop — do not install the schedule in step
+7.
+
+After the command exits 0, run this gate before deciding whether to install the
+schedule. It inspects the initial run's validation/sync artifacts and prints
+post-level failures, if any:
+
+```bash
+AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
+ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
+TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron}"
+node - "$TMP_DIR/library-fetch-result.json" "$TMP_DIR/library-agent-sync.json" <<'NODE'
+const fs = require("fs");
+const fetchFile = process.argv[2];
+const syncFile = process.argv[3];
+const readJson = (file) => {
+  try { return JSON.parse(fs.readFileSync(file, "utf8")); }
+  catch { return null; }
+};
+const fetchResult = readJson(fetchFile);
+const syncPayload = readJson(syncFile);
+const planned = new Map(
+  (Array.isArray(fetchResult?.["fetch" + "Tasks"]) ? fetchResult["fetch" + "Tasks"] : [])
+    .map((task) => [String(task.id || task.item?.externalId || task.item?.url || ""), task])
+    .filter(([id]) => id),
+);
+const sourceLabel = (task) =>
+  [task?.builder, task?.sourceType].filter(Boolean).join(" · ") || "Unknown source";
+const titleLabel = (task, outcome) =>
+  task?.title || task?.item?.title || task?.url || task?.item?.url || outcome.fetchTaskId;
+const stageFor = (reason) => {
+  const text = String(reason || "").toLowerCase();
+  if (/summary|summariz|not_summarized/.test(text)) return "summarize";
+  if (/sync|not_synced|persist/.test(text)) return "sync";
+  return "read";
+};
+const failures = (Array.isArray(syncPayload?.taskOutcomes) ? syncPayload.taskOutcomes : [])
+  .filter((outcome) => outcome?.status === "failed")
+  .map((outcome) => {
+    const task = planned.get(String(outcome.fetchTaskId)) || {};
+    return {
+      title: titleLabel(task, outcome),
+      source: sourceLabel(task),
+      stage: stageFor(outcome.reason || outcome.failureReason),
+      reason: outcome.reason || outcome.failureReason || "failed",
+    };
+  });
+console.log(JSON.stringify({ status: failures.length ? "needs_confirmation" : "ok", failures }, null, 2));
+NODE
+```
+
+If the gate prints `"status": "ok"`, tell the user the validation run completed
+without failed post tasks, then continue automatically to step 7 and install the
+original scheduled job.
+
+If the gate prints `"status": "needs_confirmation"`, list every failed post
+task for the user with its title, source, failed stage (`read`, `summarize`, or
+`sync`), and reason. Then ask whether to install the scheduled run anyway. Only
+continue to step 7 if the user explicitly agrees; otherwise stop and do not
+install or report an active schedule.
 
 If this initial run surfaces an `x_token_missing` (or any `*_token_missing`)
 notice, that is expected when the user declined or skipped that token in the
@@ -154,13 +211,14 @@ credential-prep step earlier. Report it as an "Action needed" notice and
 continue — do NOT re-ask. That source stays in "Action needed" until its token
 is added to `~/.builder-blog/secrets.json` later.
 
-7. Only after the initial run has succeeded, pin the
+7. Only after the initial run has passed the schedule gate above, pin the
 scheduled runtime/fetch settings and install the schedule to run
 {{CRON_FREQUENCY_LABEL}}. Installing it last means the schedule is never armed
 while the unmanaged initial run above is still executing, and a pipeline that
-failed the initial run never gets scheduled. On macOS, the first scheduled run
-starts one full interval after this schedule is installed. Pick the path for
-this machine's OS — run `uname` if unsure.
+failed the initial run or was not approved after post-task failures never gets
+scheduled. On macOS, the first scheduled run starts one full interval after
+this schedule is installed. Pick the path for this machine's OS — run `uname` if
+unsure.
 
 Write the per-account, per-job pins immediately before installing the schedule:
 `runtime-library-cron-$ACCOUNT_SLUG` makes the runner use the picked agent's

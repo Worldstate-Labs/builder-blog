@@ -888,7 +888,7 @@ test("web app serves the agent skill and setup command", () => {
   // job types can use different runtimes on one machine.
   assert.match(libraryCronSetupPrompt, /ACCOUNT_SLUG/);
   assert.match(libraryCronSetupPrompt, /runtime-library-cron-\$ACCOUNT_SLUG/);
-  assert.match(libraryCronSetupPrompt, /7\. Only after the initial run has succeeded, pin the/);
+  assert.match(libraryCronSetupPrompt, /7\. Only after the initial run has passed the schedule gate above, pin the/);
   assert.match(libraryCronSetupPrompt, /crontab/);
   assert.match(libraryCronSetupPrompt, /Do not use `--force`/);
   assert.match(libraryCronSetupPrompt, /\{\{CRON_INTERVAL_MINUTES\}\}/);
@@ -912,8 +912,12 @@ test("web app serves the agent skill and setup command", () => {
     /do not manually perform\s+fetch-task work outside the numbered commands/,
   );
   assert.match(libraryCronSetupPrompt, /one real initial fetch job/);
-  assert.match(libraryCronSetupPrompt, /writes fetch-log rows, builders, and feed items/);
+  assert.match(libraryCronSetupPrompt, /writes fetch-log rows,[\s\S]*builders, and[\s\S]*feed items/);
   assert.match(libraryCronSetupPrompt, /do not treat a lack of\s+output as a hang/);
+  assert.match(libraryCronSetupPrompt, /status: failures\.length \? "needs_confirmation" : "ok"/);
+  assert.match(libraryCronSetupPrompt, /without failed post tasks[\s\S]*continue automatically to step 7/);
+  assert.match(libraryCronSetupPrompt, /list every failed post\s+task[\s\S]*failed stage/);
+  assert.match(libraryCronSetupPrompt, /Only\s+continue to step 7 if the user explicitly agrees/);
   assert.doesNotMatch(libraryCronSetupPrompt, /How to execute each `fetchTask`/);
   assert.doesNotMatch(libraryCronSetupPrompt, /Read `task\.contentStatus`/);
   assert.doesNotMatch(libraryCronSetupPrompt, /Copy `task\.builderSync`/);
@@ -933,8 +937,10 @@ test("web app serves the agent skill and setup command", () => {
     "BUILDER_BLOG_PARALLEL_WORKERS=\"{{PARALLEL_WORKERS}}\"",
     "INTERVAL_MINUTES=\"{{CRON_INTERVAL_MINUTES}}\"",
     "Report its output",
-    "writes fetch-log rows, builders, and feed items",
-    "7. Only after the initial run has succeeded",
+    "writes fetch-log rows",
+    "After the command exits 0, run this gate",
+    "needs_confirmation",
+    "7. Only after the initial run has passed the schedule gate above",
     "runtime-library-cron-$ACCOUNT_SLUG",
     "launchctl bootstrap",
     "8. After the schedule is installed",
