@@ -6193,6 +6193,101 @@ details:not([open]) > :not(summary) {
   margin-top: 0.5rem;
 }
 
+.sync-panel-live-progress {
+  margin-top: 0.625rem;
+}
+
+.sync-panel-lifecycle {
+  display: grid;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sync-panel-lifecycle-item {
+  min-width: 0;
+  padding-left: 1.25rem;
+  position: relative;
+}
+
+.sync-panel-lifecycle-item:not(:last-child) {
+  padding-bottom: 0.375rem;
+}
+
+.sync-panel-lifecycle-rail {
+  background: var(--line);
+  bottom: -0.125rem;
+  left: 0.375rem;
+  position: absolute;
+  top: 1.45rem;
+  width: 1px;
+}
+
+.sync-panel-lifecycle-step {
+  --step-color: var(--muted);
+  min-width: 0;
+}
+
+.sync-panel-lifecycle-summary {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid;
+  gap: 0.375rem 0.625rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+  padding: 0.5rem 0.625rem;
+}
+
+.sync-panel-lifecycle-dot {
+  background: var(--step-color);
+  border: 2px solid var(--paper-strong);
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px var(--step-color);
+  height: 0.75rem;
+  left: 0;
+  position: absolute;
+  top: 0.625rem;
+  width: 0.75rem;
+}
+
+.sync-panel-lifecycle-copy {
+  display: grid;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.sync-panel-lifecycle-label {
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.sync-panel-lifecycle-outcome {
+  color: var(--muted-strong);
+  font-size: 0.6875rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sync-panel-lifecycle-meta {
+  color: var(--muted);
+  font-size: 0.6875rem;
+  justify-self: end;
+  min-width: 0;
+}
+
+.sync-panel-lifecycle-detail {
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+  margin-top: -1px;
+  min-width: 0;
+  padding: 0.5rem 0.625rem;
+}
+
 .sync-panel-run-card-details {
   background: var(--paper);
   border: 1px solid var(--line);
@@ -6585,6 +6680,29 @@ details:not([open]) > :not(summary) {
 }
 
 @media (max-width: 640px) {
+  .sync-panel-lifecycle-item {
+    padding-left: 1rem;
+  }
+
+  .sync-panel-lifecycle-summary {
+    align-items: start;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sync-panel-lifecycle-meta {
+    justify-self: start;
+  }
+
+  .sync-panel-lifecycle-dot {
+    height: 0.625rem;
+    top: 0.7rem;
+    width: 0.625rem;
+  }
+
+  .sync-panel-lifecycle-rail {
+    left: 0.3125rem;
+  }
+
   .sync-panel-task-summary {
     align-items: flex-start;
     flex-wrap: wrap;

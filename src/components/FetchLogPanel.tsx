@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   useTransition,
+  type CSSProperties,
   type KeyboardEvent,
   type ReactNode,
 } from "react";
@@ -134,11 +135,34 @@ type SourceRunStats = {
   name: string;
   sourceType: string;
   planned: number;
-  fetched: number;
+  read: number;
   summarized: number;
+  synced: number;
   plannedFromTasks: number;
   fallback?: PerBuilder["fallback"];
   error?: string;
+};
+
+type FetchRunStats = {
+  sourcesScanned: number;
+  sourcesTotal: number;
+  planned: number;
+  read: number;
+  summarized: number;
+  synced: number;
+  skipped: number;
+  failed: number;
+  actionNeeded: number;
+};
+
+type LifecycleStep = {
+  key: string;
+  label: string;
+  outcome: string;
+  tone: Tone;
+  meta?: string;
+  open?: boolean;
+  children?: ReactNode;
 };
 
 type JobRunDetailsShape = {
@@ -338,6 +362,69 @@ function fetchTaskProgressMap(progress: FetchJobProgress | null): Map<string, Fe
     if (id) map.set(id, task);
   }
   return map;
+}
+
+function liveTaskWasRead(task: FetchTaskProgress): boolean {
+  const status = String(task.status ?? "").toLowerCase();
+  const phase = String(task.phase ?? "").toLowerCase();
+  return (
+    typeof task.bodyChars === "number" && task.bodyChars > 0
+  ) || phase === "summarize" || status === "summarizing" || status === "summarized" || status === "synced";
+}
+
+function liveTaskWasSummarized(task: FetchTaskProgress): boolean {
+  const status = String(task.status ?? "").toLowerCase();
+  return (typeof task.summaryChars === "number" && task.summaryChars > 0) || status === "summarized" || status === "synced";
+}
+
+function fetchRunStats({
+  details,
+  liveProgress,
+  run,
+}: {
+  details: DetailsShape;
+  liveProgress: FetchJobProgress | null;
+  run?: LibraryFetchRunListItem;
+}): FetchRunStats {
+  const fetchTasks = Array.isArray(details.fetchTasks) ? details.fetchTasks : [];
+  const perBuilder = Array.isArray(details.perBuilder) ? details.perBuilder : [];
+  const counters = liveProgress?.counters ?? {};
+  const liveTasks = liveProgress?.tasks ?? [];
+  const plannedTasks = fetchTasks.filter(isPlannedPostTask);
+  const planned =
+    counters.tasksPlanned ??
+    (plannedTasks.length > 0 ? plannedTasks.length : run?.tasksGenerated ?? 0);
+  const read = Math.max(
+    plannedTasks.filter(isReadForStats).length,
+    liveTasks.filter(liveTaskWasRead).length,
+    run?.itemsFetched ?? 0,
+  );
+  const summarized = Math.max(
+    plannedTasks.filter(isSummarizedForStats).length,
+    liveTasks.filter(liveTaskWasSummarized).length,
+  );
+  const synced = counters.synced ?? plannedTasks.filter((task) => task.status === "synced").length;
+  const skipped = counters.skipped ?? plannedTasks.filter((task) => task.status === "skipped").length;
+  const failed = counters.failed ?? plannedTasks.filter((task) => task.status === "failed").length;
+  const actionNeeded =
+    counters.actionNeeded ??
+    plannedTasks.filter((task) => task.status === "action_needed" || isBlocked(task)).length;
+
+  return {
+    sourcesScanned:
+      counters.sourcesChecked ??
+      (perBuilder.length > 0 ? perBuilder.length : run?.buildersAttempted ?? 0),
+    sourcesTotal:
+      counters.sourcesTotal ??
+      (run?.buildersAttempted ?? perBuilder.length),
+    planned,
+    read,
+    summarized,
+    synced,
+    skipped,
+    failed,
+    actionNeeded,
+  };
 }
 
 function hasActiveFetchProgress(jobRuns: AgentJobRunListItem[]): boolean {
@@ -1207,7 +1294,7 @@ function cronSlotLabel(status: CronSlotStatus): string {
 
 function cronSlotRunNote(slot: CronSlot): string {
   const runSummary = slot.run
-    ? `${slot.run.itemsFetched} fetched · ${formatDuration(slot.run.durationMs)}`
+    ? `${slot.run.itemsFetched} read · ${formatDuration(slot.run.durationMs)}`
     : null;
   if (slot.run && slot.jobRun && slot.jobRun.status !== "succeeded") {
     return `${jobRunStatusLabel(slot.jobRun)} · ${runSummary}`;
@@ -1457,65 +1544,150 @@ function jobRunDiagnostic(jobRun: AgentJobRunListItem): string | null {
   return parts.length ? parts.join(" · ") : null;
 }
 
-function LiveProgressSummary({ progress }: { progress: FetchJobProgress | null }) {
-  if (!progress) return null;
-  const counters = progress.counters ?? {};
-  const recentEvent = Array.isArray(progress.recentEvents)
-    ? progress.recentEvents.at(-1)
+function ratioText(done: number, total: number, unit: string): string {
+  if (total <= 0) return `${formatCount(done)} ${unit}${done === 1 ? "" : "s"}`;
+  return `${formatCount(done)} / ${formatCount(total)} ${unit}${total === 1 ? "" : "s"}`;
+}
+
+function lifecycleTone(done: number, total: number, {
+  failed = 0,
+  warnWhenPartial = true,
+}: {
+  failed?: number;
+  warnWhenPartial?: boolean;
+} = {}): Tone {
+  if (failed > 0) return "fail";
+  if (total <= 0) return "idle";
+  if (done >= total) return "ok";
+  return warnWhenPartial && done > 0 ? "warn" : "idle";
+}
+
+function LifecyclePipeline({
+  ariaLabel,
+  steps,
+}: {
+  ariaLabel: string;
+  steps: LifecycleStep[];
+}) {
+  return (
+    <ol aria-label={ariaLabel} className="sync-panel-lifecycle">
+      {steps.map((step, index) => (
+        <li key={step.key} className="sync-panel-lifecycle-item">
+          <details
+            className="sync-panel-lifecycle-step"
+            open={step.open}
+            style={{ "--step-color": toneStyle(step.tone).color } as CSSProperties}
+          >
+            <summary className="sync-panel-lifecycle-summary">
+              <span aria-hidden="true" className="sync-panel-lifecycle-dot" />
+              <span className="sync-panel-lifecycle-copy">
+                <span className="sync-panel-lifecycle-label">{step.label}</span>
+                <span className="mono sync-panel-lifecycle-outcome">{step.outcome}</span>
+              </span>
+              {step.meta ? (
+                <span className="mono sync-panel-lifecycle-meta">{step.meta}</span>
+              ) : null}
+            </summary>
+            {step.children ? (
+              <div className="sync-panel-lifecycle-detail">{step.children}</div>
+            ) : null}
+          </details>
+          {index < steps.length - 1 ? <span aria-hidden="true" className="sync-panel-lifecycle-rail" /> : null}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function JobLifecycle({
+  details,
+  progress,
+  run,
+}: {
+  details: DetailsShape;
+  progress: FetchJobProgress | null;
+  run?: LibraryFetchRunListItem;
+}) {
+  const stats = fetchRunStats({ details, liveProgress: progress, run });
+  const current = progress?.current ?? {};
+  const recentEvent = Array.isArray(progress?.recentEvents)
+    ? progress?.recentEvents.at(-1)
     : null;
-  const current = progress.current ?? {};
-  const stage = progress.stage ? progress.stage.replace(/_/g, " ") : "running";
-  const hasSourceProgress = typeof counters.sourcesTotal === "number" && counters.sourcesTotal > 0;
-  const hasTaskProgress = typeof counters.tasksPlanned === "number" && counters.tasksPlanned > 0;
+  const stage = progress?.stage ? progress.stage.replace(/_/g, " ") : null;
+  const doneOrAccounted = stats.synced + stats.skipped + stats.failed + stats.actionNeeded;
+  const steps: LifecycleStep[] = [
+    {
+      key: "sources",
+      label: "Sources scanned",
+      outcome: ratioText(stats.sourcesScanned, stats.sourcesTotal, "source"),
+      tone: lifecycleTone(stats.sourcesScanned, stats.sourcesTotal),
+      open: Boolean(current.source),
+      children: (
+        <dl className="sync-panel-task-fact-list">
+          <FactRow label="Current source" value={<span>{current.source ?? "None"}</span>} />
+          {stage ? <FactRow label="Stage" value={<span>{stage}</span>} /> : null}
+        </dl>
+      ),
+    },
+    {
+      key: "planned",
+      label: "Posts planned",
+      outcome: ratioText(stats.planned, stats.planned, "post"),
+      tone: stats.planned > 0 ? "ok" : "idle",
+      children: (
+        <dl className="sync-panel-task-fact-list">
+          <FactRow label="Planned posts" value={<span>{formatCount(stats.planned)}</span>} />
+          {stats.actionNeeded > 0 ? <FactRow label="Action needed" value={<span>{formatCount(stats.actionNeeded)}</span>} /> : null}
+        </dl>
+      ),
+    },
+    {
+      key: "read",
+      label: "Read",
+      outcome: ratioText(stats.read, stats.planned, "post"),
+      tone: lifecycleTone(stats.read, stats.planned, { failed: stats.failed }),
+      open: progress?.stage === "reading",
+      children: (
+        <dl className="sync-panel-task-fact-list">
+          <FactRow label="Posts with body" value={<span>{formatCount(stats.read)}</span>} />
+          {current.task ? <FactRow label="Current task" value={<span>{current.task}</span>} /> : null}
+        </dl>
+      ),
+    },
+    {
+      key: "summarize",
+      label: "Summarize",
+      outcome: ratioText(stats.summarized, stats.planned, "post"),
+      tone: lifecycleTone(stats.summarized, stats.planned, { failed: stats.failed }),
+      open: progress?.stage === "summarizing",
+      children: (
+        <dl className="sync-panel-task-fact-list">
+          <FactRow label="Summarized posts" value={<span>{formatCount(stats.summarized)}</span>} />
+          {stats.failed > 0 ? <FactRow label="Failed" value={<span className="sync-panel-task-danger">{formatCount(stats.failed)}</span>} /> : null}
+        </dl>
+      ),
+    },
+    {
+      key: "sync",
+      label: "Sync",
+      outcome: ratioText(stats.synced, stats.planned, "post"),
+      tone: lifecycleTone(doneOrAccounted, stats.planned, { failed: stats.failed }),
+      open: Boolean(recentEvent?.message || stats.failed || stats.skipped || stats.actionNeeded),
+      children: (
+        <dl className="sync-panel-task-fact-list">
+          <FactRow label="Synced" value={<span>{formatCount(stats.synced)}</span>} />
+          {stats.skipped > 0 ? <FactRow label="Skipped" value={<span>{formatCount(stats.skipped)}</span>} /> : null}
+          {stats.failed > 0 ? <FactRow label="Failed" value={<span className="sync-panel-task-danger">{formatCount(stats.failed)}</span>} /> : null}
+          {stats.actionNeeded > 0 ? <FactRow label="Action needed" value={<span>{formatCount(stats.actionNeeded)}</span>} /> : null}
+          {recentEvent?.message ? <FactRow label="Latest event" value={<span>{recentEvent.message}</span>} /> : null}
+        </dl>
+      ),
+    },
+  ];
 
   return (
     <div className="sync-panel-live-progress">
-      <div className="mono sync-panel-run-card-meta">
-        <span>{stage}</span>
-        {hasSourceProgress ? (
-          <>
-            {" · "}
-            <CountMeta label="sources checked" value={counters.sourcesChecked ?? 0} />
-            <span> / {counters.sourcesTotal}</span>
-          </>
-        ) : null}
-        {hasTaskProgress ? (
-          <>
-            {" · "}
-            <CountMeta label="tasks done" value={counters.tasksDone ?? 0} />
-            <span> / {counters.tasksPlanned}</span>
-          </>
-        ) : null}
-        {typeof counters.synced === "number" && counters.synced > 0 ? (
-          <>
-            {" · "}
-            <CountMeta label="synced" value={counters.synced} />
-          </>
-        ) : null}
-        {typeof counters.failed === "number" && counters.failed > 0 ? (
-          <>
-            {" · "}
-            <CountMeta label="failed" value={counters.failed} />
-          </>
-        ) : null}
-        {typeof counters.skipped === "number" && counters.skipped > 0 ? (
-          <>
-            {" · "}
-            <CountMeta label="skipped" value={counters.skipped} />
-          </>
-        ) : null}
-        {typeof counters.actionNeeded === "number" && counters.actionNeeded > 0 ? (
-          <>
-            {" · "}
-            <CountMeta label="action needed" value={counters.actionNeeded} />
-          </>
-        ) : null}
-      </div>
-      {current.source || current.task || recentEvent?.message ? (
-        <div className="mono sync-panel-run-card-stage">
-          {current.source ? `Now: ${current.source}` : current.task ? `Now: ${current.task}` : recentEvent?.message}
-        </div>
-      ) : null}
+      <LifecyclePipeline ariaLabel="Fetch sources job lifecycle" steps={steps} />
     </div>
   );
 }
@@ -1560,7 +1732,7 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
       <p className="sync-panel-run-card-summary">
         {jobRun.summary || fallbackSummary}
       </p>
-      <LiveProgressSummary progress={liveProgress} />
+      <JobLifecycle details={{}} progress={liveProgress} />
       <div className="mono sync-panel-run-card-stage">
         {jobRun.stage || "runtime"} · {jobRun.finishedAt ? "finished" : "active"}
       </div>
@@ -1655,14 +1827,14 @@ function RunCard({
 
       <div className="mono sync-panel-run-card-meta">
         <CountMeta
-          label={run.itemsFetched === 1 ? "post fetched" : "posts fetched"}
+          label={run.itemsFetched === 1 ? "post read" : "posts read"}
           value={run.itemsFetched}
         /> ·{" "}
         <CountMeta label="posts planned" value={run.tasksGenerated} /> ·{" "}
         <CountMeta label={run.userActionsCount === 1 ? "action needed" : "actions needed"} value={run.userActionsCount} /> ·{" "}
         {formatDuration(run.durationMs)}
       </div>
-      <LiveProgressSummary progress={liveProgress} />
+      <JobLifecycle details={details} progress={liveProgress} run={run} />
       {diagnostic ? (
         <div className="mono sync-panel-run-card-stage">
           {diagnostic}
@@ -1703,7 +1875,7 @@ function isPlannedPostTask(task: FetchTaskLog): boolean {
   return task.contentStatus === "ready" || task.contentStatus === "requires_agent";
 }
 
-function isFetchedForStats(task: FetchTaskLog): boolean {
+function isReadForStats(task: FetchTaskLog): boolean {
   if (!isPlannedPostTask(task) || isBlocked(task)) return false;
   if (typeof task.bodyChars === "number" && task.bodyChars > 0) return true;
   if (task.contentStatus === "ready" && task.status !== "failed" && task.status !== "skipped") {
@@ -1745,8 +1917,9 @@ function sourceRunStats(perBuilder: PerBuilder[], fetchTasks: FetchTaskLog[]): S
       name: name || "Unknown source",
       sourceType: sourceType || "Unknown source type",
       planned: 0,
-      fetched: 0,
+      read: 0,
       summarized: 0,
+      synced: 0,
       plannedFromTasks: 0,
       fallback,
       error,
@@ -1774,8 +1947,9 @@ function sourceRunStats(perBuilder: PerBuilder[], fetchTasks: FetchTaskLog[]): S
     });
     stat.planned += 1;
     stat.plannedFromTasks += 1;
-    if (isFetchedForStats(task)) stat.fetched += 1;
+    if (isReadForStats(task)) stat.read += 1;
     if (isSummarizedForStats(task)) stat.summarized += 1;
+    if (task.status === "synced") stat.synced += 1;
   }
 
   for (const entry of perBuilder) {
@@ -1790,8 +1964,8 @@ function sourceRunStats(perBuilder: PerBuilder[], fetchTasks: FetchTaskLog[]): S
     if (stat.plannedFromTasks === 0 && !isDiscoveryFallback) {
       stat.planned = entry.tasksGenerated ?? 0;
     }
-    if (stat.fetched === 0 && typeof entry.itemsFetched === "number") {
-      stat.fetched = entry.itemsFetched;
+    if (stat.read === 0 && typeof entry.itemsFetched === "number") {
+      stat.read = entry.itemsFetched;
     }
   }
 
@@ -1857,7 +2031,7 @@ function DetailsBody({
                 >
                   <span className="sync-panel-fetch-source-name">{entry.name}</span>
                   <span
-                    aria-label={`${entry.sourceType}: ${entry.planned} planned, ${entry.fetched} fetched, ${entry.summarized} summarized`}
+                    aria-label={`${entry.sourceType}: ${entry.planned} planned, ${entry.read} read, ${entry.summarized} summarized, ${entry.synced} synced`}
                     className="mono sync-panel-fetch-source-meta"
                   >
                     <span className="sync-panel-fetch-source-type">{entry.sourceType}</span>
@@ -1865,10 +2039,13 @@ function DetailsBody({
                       <strong>{formatCount(entry.planned)}</strong> planned
                     </span>
                     <span className="sync-panel-fetch-source-stat">
-                      <strong>{formatCount(entry.fetched)}</strong> fetched
+                      <strong>{formatCount(entry.read)}</strong> read
                     </span>
                     <span className="sync-panel-fetch-source-stat">
                       <strong>{formatCount(entry.summarized)}</strong> summarized
+                    </span>
+                    <span className="sync-panel-fetch-source-stat">
+                      <strong>{formatCount(entry.synced)}</strong> synced
                     </span>
                   </span>
                   {error ? (
@@ -1892,7 +2069,7 @@ function DetailsBody({
       {fetchTasks.length > 0 ? (
         <div>
           <h3 className="sync-panel-run-card-detail-heading">
-            Fetch tasks ({fetchTasks.length})
+            Post tasks ({fetchTasks.length})
           </h3>
           <ul className="sync-panel-run-card-candidate-list">
             {fetchTasks.map((task, index) => (
@@ -1947,7 +2124,7 @@ function DetailsBody({
                       className="sync-panel-detail-kicker-row"
                       style={{ color: "var(--muted)" }}
                     >
-                      <span>Fetch instructions</span>
+                      <span>Read instructions</span>
                       {bundle.fetchIsDefault ? (
                         <span
                           className="sync-panel-detail-default-pill"
@@ -2169,16 +2346,16 @@ function fetchOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
     return { label: "Not completed", tone: "fail" };
   }
   if (typeof task.bodyChars === "number" && task.bodyChars > 0)
-    return { label: "Fetched", tone: "ok" };
-  if (task.contentStatus === "ready") return { label: "Fetched", tone: "ok" };
+    return { label: "Read", tone: "ok" };
+  if (task.contentStatus === "ready") return { label: "Read", tone: "ok" };
   return { label: "Needs Local Agent", tone: "idle" };
 }
 
 // Human-readable labels for the server/CLI failure reasons.
 const FAILURE_REASON_LABEL: Record<string, string> = {
   summary_missing: "No summary was produced",
-  not_summarized: "Fetched but no summary was created",
-  not_synced: "Not saved",
+  not_summarized: "Read but no summary was created",
+  not_synced: "Not synced",
   content_missing: "No readable content was found",
   content_too_short: "The readable content was too short",
   // Parallel-run outcomes backfilled by merge-task-results when a shard
@@ -2253,11 +2430,11 @@ function statusBanner(task: FetchTaskLog): { label: string; tone: Tone } {
   if (task.status === "skipped") return { label: "Skipped: no content", tone: "idle" };
   // Success is defined by a persisted summary — NOT by contentStatus="ready"
   // (that only means the body was fetched; the summarize step can still fail).
-  if (isSummarized(task)) return { label: "Fetched & summarized", tone: "ok" };
+  if (isSummarized(task)) return { label: "Read & summarized", tone: "ok" };
   if (task.status === "failed") return { label: "Failed", tone: "fail" };
   if (task.status === "action_needed") return { label: "Action needed", tone: "fail" };
   if (isBlocked(task)) return { label: "Action needed", tone: "fail" };
-  return { label: "Awaiting summary", tone: "warn" };
+  return { label: "Waiting to summarize", tone: "warn" };
 }
 
 function liveTaskTone(liveTask: FetchTaskProgress | null | undefined): Tone {
@@ -2288,7 +2465,7 @@ function liveFetchOutcome(
     status === "summarized" ||
     status === "synced"
   ) {
-    return { label: "Fetched", tone: "ok" };
+    return { label: "Read", tone: "ok" };
   }
   return fetchOutcome(task);
 }
@@ -2370,35 +2547,6 @@ function FactRow({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-function StageBlock({
-  title,
-  tone,
-  outcome,
-  children,
-}: {
-  title: string;
-  tone: Tone;
-  outcome: string;
-  children: ReactNode;
-}) {
-  return (
-    <div>
-      <div className="sync-panel-task-stage-head">
-        <h4 className="sync-panel-task-stage-title">
-          {title}
-        </h4>
-        <span
-          className="sync-panel-task-stage-outcome"
-          style={{ ...toneStyle(tone), fontFamily: "var(--font-geist-mono)" }}
-        >
-          {outcome}
-        </span>
-      </div>
-      <dl className="sync-panel-task-fact-list">{children}</dl>
-    </div>
-  );
-}
-
 function TaskRow({
   liveTask,
   task,
@@ -2432,7 +2580,182 @@ function TaskRow({
   const missingShard = missingShardText(task);
   const workerLog = workerLogText(task);
   const discoveryExpansion = discoveryExpansionText(task.evidence);
-  const secondStageTitle = isCandidateDiscoveryTask(task) ? "② Expand" : "② Summarize";
+  const syncOutcome = (() => {
+    const liveStatus = String(liveTask?.status ?? "").toLowerCase();
+    if (task.status === "synced" || liveStatus === "synced") return { label: "Synced", tone: "ok" as Tone };
+    if (task.status === "failed" || liveStatus === "failed") return { label: "Failed", tone: "fail" as Tone };
+    if (task.status === "skipped" || liveStatus === "skipped") return { label: "Skipped", tone: "idle" as Tone };
+    if (task.status === "action_needed" || liveStatus === "action_needed" || isBlocked(task)) {
+      return { label: "Action needed", tone: "fail" as Tone };
+    }
+    if (isSummarized(task) || liveStatus === "summarized") return { label: "Ready to sync", tone: "warn" as Tone };
+    return { label: "Pending", tone: "idle" as Tone };
+  })();
+  const hasReadDetail =
+    bodySize ||
+    liveBodySize ||
+    isContentFailure(task) ||
+    task.status === "skipped" ||
+    task.url;
+  const hasSummaryDetail =
+    agentLabel ||
+    discoveryExpansion ||
+    summarySize ||
+    liveSummarySize ||
+    compression ||
+    failureReasonText(task) ||
+    missingShard ||
+    workerLog;
+  const isDiscovery = isCandidateDiscoveryTask(task);
+  const lifecycleSteps: LifecycleStep[] = [
+    {
+      key: "planned",
+      label: "Planned",
+      outcome: isDiscovery ? "Discovery task" : "Post task",
+      tone: "ok",
+      children: (
+        <dl className="sync-panel-task-fact-list">
+          <FactRow label="Source type" value={<span>{task.sourceType ?? "Unknown source type"}</span>} />
+          {task.builder ? <FactRow label="Source" value={<span>{task.builder}</span>} /> : null}
+          {task.contentStatus ? <FactRow label="Content status" value={<span>{task.contentStatus.replace(/_/g, " ")}</span>} /> : null}
+        </dl>
+      ),
+    },
+    {
+      key: "read",
+      label: isDiscovery ? "Discover" : "Read",
+      outcome: fetchRes.label,
+      tone: fetchRes.tone,
+      open: fetchRes.tone === "fail" || (!isSummarized(task) && !isDiscovery && fetchRes.tone === "idle"),
+      children: (
+        <dl className="sync-panel-task-fact-list">
+          <FactRow label="Method" value={<span>{work.label}</span>} />
+          {bodySize ? <FactRow label="Content size" value={bodySize} /> : null}
+          {!bodySize && liveBodySize ? <FactRow label="Live content size" value={liveBodySize} /> : null}
+          {isContentFailure(task) && failureReasonText(task) ? (
+            <FactRow
+              label="Reason"
+              value={
+                <span className="sync-panel-task-danger">{failureReasonText(task)}</span>
+              }
+            />
+          ) : null}
+          {task.status === "skipped" && failureReasonText(task) ? (
+            <FactRow
+              label="Skipped"
+              value={
+                <span className="sync-panel-task-muted">{failureReasonText(task)}</span>
+              }
+            />
+          ) : null}
+          {task.status === "skipped" && formatEvidence(task.evidence) ? (
+            <FactRow
+              label="Evidence"
+              value={<span className="mono">{formatEvidence(task.evidence)}</span>}
+            />
+          ) : null}
+          {task.url ? (
+            <FactRow
+              label="Source"
+              value={
+                <a
+                  className="sync-panel-task-link is-breakable"
+                  href={task.url}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  {task.url}
+                </a>
+              }
+            />
+          ) : null}
+          {!hasReadDetail ? <FactRow label="Status" value={<span>{fetchRes.label}</span>} /> : null}
+        </dl>
+      ),
+    },
+    {
+      key: "summarize",
+      label: isDiscovery ? "Expand" : "Summarize",
+      outcome: sumRes.label,
+      tone: sumRes.tone,
+      open: sumRes.tone === "fail" || (!isSummarized(task) && sumRes.tone === "warn"),
+      children: (
+        <dl className="sync-panel-task-fact-list">
+          {agentLabel ? (
+            <FactRow label="Local Agent" value={<span>{agentLabel}</span>} />
+          ) : null}
+          {discoveryExpansion ? (
+            <FactRow label="Expanded into" value={<span>{discoveryExpansion}</span>} />
+          ) : null}
+          {summarySize ? <FactRow label="Summary size" value={summarySize} /> : null}
+          {!summarySize && liveSummarySize ? <FactRow label="Live summary size" value={liveSummarySize} /> : null}
+          {compression ? <FactRow label="Compression" value={compression} /> : null}
+          {!isSummarized(task) && !isContentFailure(task) && failureReasonText(task) ? (
+            <FactRow
+              label="Reason"
+              value={
+                <span className="sync-panel-task-danger">{failureReasonText(task)}</span>
+              }
+            />
+          ) : null}
+          {missingShard ? (
+            <FactRow
+              label="Missing result"
+              value={<span className="mono">{missingShard}</span>}
+            />
+          ) : null}
+          {workerLog ? (
+            <FactRow
+              label="Worker log"
+              value={<span className="mono">{workerLog}</span>}
+            />
+          ) : null}
+          {!hasSummaryDetail ? (
+            <FactRow
+              label="Status"
+              value={
+                <span className="sync-panel-task-muted">
+                  {isDiscovery
+                    ? "The Local Agent hasn't expanded this discovery task yet."
+                    : sumRes.label === "Not reached"
+                      ? "Read was blocked, so no summary was produced."
+                      : sumRes.label === "Failed"
+                        ? "This post failed to summarize, so it was not synced."
+                        : "The Local Agent hasn't summarized this post yet."}
+                </span>
+              }
+            />
+          ) : null}
+        </dl>
+      ),
+    },
+    {
+      key: "sync",
+      label: "Sync",
+      outcome: syncOutcome.label,
+      tone: syncOutcome.tone,
+      open: syncOutcome.tone === "fail" || syncOutcome.label === "Action needed",
+      children: (
+        <dl className="sync-panel-task-fact-list">
+          <FactRow label="Status" value={<span>{task.status?.replace(/_/g, " ") ?? liveTask?.status?.replace(/_/g, " ") ?? "Pending"}</span>} />
+          {failureReasonText(task) ? (
+            <FactRow
+              label="Reason"
+              value={<span className={syncOutcome.tone === "fail" ? "sync-panel-task-danger" : "sync-panel-task-muted"}>{failureReasonText(task)}</span>}
+            />
+          ) : null}
+          {liveTask?.message ? <FactRow label="Latest event" value={<span>{liveTask.message}</span>} /> : null}
+          {liveTask?.workerId ? <FactRow label="Worker" value={<span>{liveTask.workerId}</span>} /> : null}
+          {liveTask?.updatedAt ? (
+            <FactRow
+              label="Updated"
+              value={<span>{hydrated ? formatRelative(liveTask.updatedAt) : formatAbsolute(liveTask.updatedAt)}</span>}
+            />
+          ) : null}
+        </dl>
+      ),
+    },
+  ];
 
   return (
     <li>
@@ -2514,91 +2837,10 @@ function TaskRow({
             </div>
           ) : null}
 
-          <StageBlock title="① Read" tone={fetchRes.tone} outcome={fetchRes.label}>
-            <FactRow label="Method" value={<span>{work.label}</span>} />
-            {bodySize ? <FactRow label="Content size" value={bodySize} /> : null}
-            {!bodySize && liveBodySize ? <FactRow label="Live content size" value={liveBodySize} /> : null}
-            {isContentFailure(task) && failureReasonText(task) ? (
-              <FactRow
-                label="Reason"
-                value={
-                  <span className="sync-panel-task-danger">{failureReasonText(task)}</span>
-                }
-              />
-            ) : null}
-            {task.status === "skipped" && failureReasonText(task) ? (
-              <FactRow
-                label="Skipped"
-                value={
-                  <span className="sync-panel-task-muted">{failureReasonText(task)}</span>
-                }
-              />
-            ) : null}
-            {task.status === "skipped" && formatEvidence(task.evidence) ? (
-              <FactRow
-                label="Evidence"
-                value={<span className="mono">{formatEvidence(task.evidence)}</span>}
-              />
-            ) : null}
-            {task.url ? (
-              <FactRow
-                label="Source"
-                value={
-                  <a
-                    className="sync-panel-task-link is-breakable"
-                    href={task.url}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    {task.url}
-                  </a>
-                }
-              />
-            ) : null}
-          </StageBlock>
-
-          <StageBlock title={secondStageTitle} tone={sumRes.tone} outcome={sumRes.label}>
-            {agentLabel ? (
-              <FactRow label="Local Agent" value={<span>{agentLabel}</span>} />
-            ) : null}
-            {discoveryExpansion ? (
-              <FactRow label="Expanded into" value={<span>{discoveryExpansion}</span>} />
-            ) : null}
-            {summarySize ? <FactRow label="Summary size" value={summarySize} /> : null}
-            {!summarySize && liveSummarySize ? <FactRow label="Live summary size" value={liveSummarySize} /> : null}
-            {compression ? <FactRow label="Compression" value={compression} /> : null}
-            {!isSummarized(task) && !isContentFailure(task) && failureReasonText(task) ? (
-              <FactRow
-                label="Reason"
-                value={
-                  <span className="sync-panel-task-danger">{failureReasonText(task)}</span>
-                }
-              />
-            ) : null}
-            {missingShard ? (
-              <FactRow
-                label="Missing result"
-                value={<span className="mono">{missingShard}</span>}
-              />
-            ) : null}
-            {workerLog ? (
-              <FactRow
-                label="Worker log"
-                value={<span className="mono">{workerLog}</span>}
-              />
-            ) : null}
-            {!agentLabel && !summarySize && !failureReasonText(task) && !discoveryExpansion ? (
-              <p className="sync-panel-task-note">
-                {isCandidateDiscoveryTask(task)
-                  ? "The Local Agent hasn't expanded this discovery task yet."
-                  : sumRes.label === "Not reached"
-                  ? "Fetch was blocked, so no summary was produced."
-                  : sumRes.label === "Failed"
-                    ? "This post failed to summarize, so it was not saved."
-                    : "The Local Agent hasn't summarized this post yet."}
-              </p>
-            ) : null}
-          </StageBlock>
+          <LifecyclePipeline
+            ariaLabel={isDiscovery ? "Discovery task lifecycle" : "Post task lifecycle"}
+            steps={lifecycleSteps}
+          />
 
           <details className="sync-panel-task-technical">
             <summary className="sync-panel-task-technical-summary">

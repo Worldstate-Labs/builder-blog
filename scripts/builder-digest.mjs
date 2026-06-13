@@ -1430,7 +1430,7 @@ function sourceFallbackNotice(task, reason) {
   const status = task?.discovery?.failureEvidence?.status;
   return {
     kind: "candidate_discovery_fallback",
-    message: `Direct fetch was blocked${status ? ` (HTTP ${status})` : ""}; using Local Agent discovery.`,
+    message: `Direct discovery was blocked${status ? ` (HTTP ${status})` : ""}; using Local Agent discovery.`,
     reason,
   };
 }
@@ -1444,13 +1444,13 @@ function buildFetchRunSummary({
   const parts = [];
   if (itemsFetched > 0) {
     parts.push(
-      `Fetched ${itemsFetched} post${itemsFetched === 1 ? "" : "s"} from ${buildersAttempted} source${buildersAttempted === 1 ? "" : "s"}`,
+      `Read ${itemsFetched} post${itemsFetched === 1 ? "" : "s"} from ${buildersAttempted} source${buildersAttempted === 1 ? "" : "s"}`,
     );
   } else {
-    parts.push(`Fetched 0 new posts from ${buildersAttempted} source${buildersAttempted === 1 ? "" : "s"}`);
+    parts.push(`Read 0 new posts from ${buildersAttempted} source${buildersAttempted === 1 ? "" : "s"}`);
   }
   if (agentTaskCount > 0) {
-    parts.push(`${agentTaskCount} source${agentTaskCount === 1 ? "" : "s"} require agent extraction`);
+    parts.push(`${agentTaskCount} post task${agentTaskCount === 1 ? "" : "s"} need Local Agent extraction`);
   }
   if (userActions.length > 0) {
     parts.push(`${userActions.length} action${userActions.length === 1 ? "" : "s"} need attention`);

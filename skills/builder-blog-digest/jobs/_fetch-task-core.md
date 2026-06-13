@@ -19,6 +19,15 @@ the task IDs returned by the CLI. Do not add new sources, URLs, or feed items
 that were not returned by the CLI, the task payload, or a CLI-expanded
 candidate discovery result. Every produced item must include `summary`.
 
+Lifecycle vocabulary for this contract:
+- Planned = each CLI-returned post task that must end in one terminal outcome.
+- Read = obtain the final primary body for the post. For `contentStatus="ready"`,
+  the CLI already did this and `task.item.body` is the body.
+- Summarize = generate exactly one single-post summary from
+  `task.summaryInstructions.prompt`.
+- Sync = validate and upload the item or a `taskOutcomes` terminal outcome to
+  FollowBrief. Use "sync" for this step; do not call it "save".
+
 How to execute each `fetchTask`:
 - Read `task.id`; the finished item must set `rawJson.fetchTaskId` to exactly
   this value so validation can bind the output item to this task.

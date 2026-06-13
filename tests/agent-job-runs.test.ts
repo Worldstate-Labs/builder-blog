@@ -98,7 +98,8 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(panel, /type FetchTaskProgress/);
   assert.match(panel, /function readFetchJobProgress/);
   assert.match(panel, /function fetchTaskProgressMap/);
-  assert.match(panel, /function LiveProgressSummary/);
+  assert.match(panel, /function JobLifecycle/);
+  assert.match(panel, /function LifecyclePipeline/);
   assert.match(panel, /liveTask=\{task\.id \? liveTasks\.get\(task\.id\) \?\? null : null\}/);
   assert.match(panel, /function liveFetchOutcome/);
   assert.match(panel, /function liveSummarizeOutcome/);

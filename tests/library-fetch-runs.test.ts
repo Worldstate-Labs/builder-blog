@@ -133,7 +133,8 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /summarizeFetchTasksForLog/);
   assert.match(cli, /fetchTasks: slimFetchTasks/);
   assert.match(cli, /prompts: promptsBySourceType/);
-  assert.match(cli, /Fetched \$\{itemsFetched\} post/);
+  assert.match(cli, /Read \$\{itemsFetched\} post/);
+  assert.doesNotMatch(cli, /Fetched \$\{itemsFetched\} post/);
   assert.doesNotMatch(cli, /Synced \$\{itemsFetched\} post/);
   assert.match(cli, /JOB_RUN_UPDATE_TIMEOUT_MS/);
   assert.match(cli, /\/api\/skill\/job-runs[\s\S]*timeoutMs: JOB_RUN_UPDATE_TIMEOUT_MS/);
@@ -252,7 +253,8 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /isCandidateDiscoveryTask/);
   assert.match(panel, /return "expanded"/);
   assert.match(panel, /Candidates discovered/);
-  assert.match(panel, /② Expand/);
+  assert.match(panel, /label: isDiscovery \? "Expand" : "Summarize"/);
+  assert.match(panel, /Discovery task lifecycle/);
   assert.match(panel, /Expanded into/);
   assert.doesNotMatch(panel, /\{ready \? "ready" : "Local Agent"\}/);
   assert.match(panel, /<FactRow label="Local Agent"/);
@@ -312,7 +314,8 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /className="sync-panel-task-builder"/);
   assert.match(panel, /className="sync-panel-task-body"/);
   assert.match(panel, /className="sync-panel-task-banner"/);
-  assert.match(panel, /className="sync-panel-task-stage-head"/);
+  assert.match(panel, /className="sync-panel-lifecycle"/);
+  assert.match(panel, /className="sync-panel-lifecycle-step"/);
   assert.match(panel, /className="sync-panel-task-fact-row"/);
   assert.match(panel, /className="sync-panel-task-technical"/);
   assert.match(panel, /className="mono sync-panel-task-technical-code"/);
