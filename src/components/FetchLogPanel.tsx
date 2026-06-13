@@ -128,6 +128,19 @@ type DetailsShape = {
   agentModel?: string | null;
 };
 
+type SourceRunStats = {
+  key: string;
+  builderId?: string;
+  name: string;
+  sourceType: string;
+  planned: number;
+  fetched: number;
+  summarized: number;
+  plannedFromTasks: number;
+  fallback?: PerBuilder["fallback"];
+  error?: string;
+};
+
 type JobRunDetailsShape = {
   reason?: string | null;
   cliVersion?: string | null;
@@ -1616,7 +1629,7 @@ function RunCard({
           label={run.itemsFetched === 1 ? "post fetched" : "posts fetched"}
           value={run.itemsFetched}
         /> ·{" "}
-        <CountMeta label="posts checked" value={run.tasksGenerated} /> ·{" "}
+        <CountMeta label="posts planned" value={run.tasksGenerated} /> ·{" "}
         <CountMeta label={run.userActionsCount === 1 ? "action needed" : "actions needed"} value={run.userActionsCount} /> ·{" "}
         {formatDuration(run.durationMs)}
       </div>
@@ -1639,11 +1652,126 @@ function RunCard({
   );
 }
 
+function sourceStatKey({
+  builderId,
+  name,
+  sourceType,
+}: {
+  builderId?: string | null;
+  name?: string | null;
+  sourceType?: string | null;
+}) {
+  if (builderId) return `builder:${builderId}`;
+  return `source:${sourceType ?? "unknown"}:${name ?? "Unknown source"}`;
+}
+
+function isPostFetchTask(task: FetchTaskLog): boolean {
+  if (isCandidateDiscoveryTask(task) || isBlocked(task)) return false;
+  if (typeof task.id === "string" && task.id.startsWith("fetch_post:")) return true;
+  return task.contentStatus === "ready" || task.contentStatus === "requires_agent";
+}
+
+function isFetchedForStats(task: FetchTaskLog): boolean {
+  if (!isPostFetchTask(task)) return false;
+  if (typeof task.bodyChars === "number" && task.bodyChars > 0) return true;
+  if (task.contentStatus === "ready" && task.status !== "failed" && task.status !== "skipped") {
+    return true;
+  }
+  return task.status === "synced";
+}
+
+function isSummarizedForStats(task: FetchTaskLog): boolean {
+  return isPostFetchTask(task) && (isSummarized(task) || task.status === "synced");
+}
+
+function sourceRunStats(perBuilder: PerBuilder[], fetchTasks: FetchTaskLog[]): SourceRunStats[] {
+  const stats = new Map<string, SourceRunStats>();
+
+  const ensureStat = ({
+    builderId,
+    name,
+    sourceType,
+    fallback,
+    error,
+  }: {
+    builderId?: string | null;
+    name?: string | null;
+    sourceType?: string | null;
+    fallback?: PerBuilder["fallback"];
+    error?: string;
+  }) => {
+    const key = sourceStatKey({ builderId, name, sourceType });
+    const existing = stats.get(key);
+    if (existing) {
+      if (fallback) existing.fallback = fallback;
+      if (error) existing.error = error;
+      return existing;
+    }
+    const stat: SourceRunStats = {
+      key,
+      builderId: builderId ?? undefined,
+      name: name || "Unknown source",
+      sourceType: sourceType || "Unknown source type",
+      planned: 0,
+      fetched: 0,
+      summarized: 0,
+      plannedFromTasks: 0,
+      fallback,
+      error,
+    };
+    stats.set(key, stat);
+    return stat;
+  };
+
+  for (const entry of perBuilder) {
+    ensureStat({
+      builderId: entry.builderId,
+      name: entry.name,
+      sourceType: entry.sourceType,
+      fallback: entry.fallback,
+      error: entry.error,
+    });
+  }
+
+  for (const task of fetchTasks) {
+    if (!isPostFetchTask(task)) continue;
+    const stat = ensureStat({
+      builderId: task.builderId,
+      name: task.builder,
+      sourceType: task.sourceType,
+    });
+    stat.planned += 1;
+    stat.plannedFromTasks += 1;
+    if (isFetchedForStats(task)) stat.fetched += 1;
+    if (isSummarizedForStats(task)) stat.summarized += 1;
+  }
+
+  for (const entry of perBuilder) {
+    const stat = ensureStat({
+      builderId: entry.builderId,
+      name: entry.name,
+      sourceType: entry.sourceType,
+      fallback: entry.fallback,
+      error: entry.error,
+    });
+    const isDiscoveryFallback = entry.fallback?.kind === "candidate_discovery_fallback";
+    if (stat.plannedFromTasks === 0 && !isDiscoveryFallback) {
+      stat.planned = entry.tasksGenerated ?? 0;
+    }
+    if (stat.fetched === 0 && typeof entry.itemsFetched === "number") {
+      stat.fetched = entry.itemsFetched;
+    }
+  }
+
+  return [...stats.values()];
+}
+
 function DetailsBody({ details }: { details: DetailsShape }) {
   const perBuilder = Array.isArray(details.perBuilder) ? details.perBuilder : [];
   const userActions = Array.isArray(details.userActions) ? details.userActions : [];
   const localErrors = Array.isArray(details.localErrors) ? details.localErrors : [];
   const fetchTasks = Array.isArray(details.fetchTasks) ? details.fetchTasks : [];
+  const sourceStats = sourceRunStats(perBuilder, fetchTasks);
   const prompts =
     details.prompts && typeof details.prompts === "object" && !Array.isArray(details.prompts)
       ? details.prompts
@@ -1652,23 +1780,32 @@ function DetailsBody({ details }: { details: DetailsShape }) {
 
   return (
     <div className="sync-panel-run-card-details-stack">
-      {perBuilder.length > 0 ? (
+      {sourceStats.length > 0 ? (
         <div>
           <h3 className="sync-panel-run-card-detail-heading">
             Sources
           </h3>
           <ul className="sync-panel-run-card-source-list">
-            {perBuilder.map((entry, index) => (
+            {sourceStats.map((entry) => (
               <li
-                key={entry.builderId ?? `${entry.name ?? "builder"}-${index}`}
+                key={entry.key}
                 className="sync-panel-fetch-source-row"
               >
-                <span className="sync-panel-fetch-source-name">{entry.name ?? "Unknown source"}</span>
-                <span className="mono sync-panel-fetch-source-meta">
-                  {entry.sourceType ?? "Unknown source type"} ·{" "}
-                  {formatCount(entry.itemsFetched ?? 0)}{" "}
-                  {(entry.itemsFetched ?? 0) === 1 ? "post" : "posts"} ·{" "}
-                  {formatCount(entry.tasksGenerated ?? 0)} posts checked
+                <span className="sync-panel-fetch-source-name">{entry.name}</span>
+                <span
+                  aria-label={`${entry.sourceType}: ${entry.planned} planned, ${entry.fetched} fetched, ${entry.summarized} summarized`}
+                  className="mono sync-panel-fetch-source-meta"
+                >
+                  <span className="sync-panel-fetch-source-type">{entry.sourceType}</span>
+                  <span className="sync-panel-fetch-source-stat">
+                    <strong>{formatCount(entry.planned)}</strong> planned
+                  </span>
+                  <span className="sync-panel-fetch-source-stat">
+                    <strong>{formatCount(entry.fetched)}</strong> fetched
+                  </span>
+                  <span className="sync-panel-fetch-source-stat">
+                    <strong>{formatCount(entry.summarized)}</strong> summarized
+                  </span>
                 </span>
                 {entry.error ? (
                   <span className="sync-panel-fetch-source-error">{entry.error}</span>
@@ -1690,7 +1827,7 @@ function DetailsBody({ details }: { details: DetailsShape }) {
       {fetchTasks.length > 0 ? (
         <div>
           <h3 className="sync-panel-run-card-detail-heading">
-            Posts checked ({fetchTasks.length})
+            Fetch tasks ({fetchTasks.length})
           </h3>
           <ul className="sync-panel-run-card-candidate-list">
             {fetchTasks.map((task, index) => (
