@@ -20,6 +20,7 @@ const TaskOutcomeSchema = z.object({
   summaryWords: z.number().int().min(0).max(100_000_000).nullable().optional(),
   agentRuntime: z.string().max(120).nullable().optional(),
   agentModel: z.string().max(120).nullable().optional(),
+  workerId: z.string().max(120).nullable().optional(),
   status: z
     .enum(["fetched", "pending", "synced", "skipped", "failed", "action_needed"])
     .nullable()

@@ -97,6 +97,7 @@ type FetchTaskLog = {
   summaryWords?: number | null;
   agentRuntime?: string | null;
   agentModel?: string | null;
+  workerId?: string | null;
   status?: string | null;
   // Why a task failed (e.g. "summary_missing", "not_summarized"). Present only
   // when status is "failed".
@@ -145,6 +146,13 @@ type FetchTaskSourceGroup = {
   key: string;
   name: string;
   sourceType: string;
+  tasks: FetchTaskLog[];
+};
+
+type FetchTaskWorkerGroup = {
+  key: string;
+  name: string;
+  sourceGroups: FetchTaskSourceGroup[];
   tasks: FetchTaskLog[];
 };
 
@@ -1439,7 +1447,7 @@ function FetchRunList({
   const visibleEntries = expanded ? entries : entries.slice(0, VISIBLE_RUN_LIMIT);
 
   return (
-    <div className="sync-panel-run-list">
+    <div className="sync-panel-run-list-shell">
       {entries.length === 0 ? (
         <EmptyState
           className="sync-panel-empty is-dashed"
@@ -1448,11 +1456,16 @@ function FetchRunList({
         />
       ) : (
         <>
-          {visibleEntries.map((entry) => (
-            entry.kind === "fetch"
-              ? <RunCard key={entry.id} cronJob={cronJob} jobRun={entry.jobRun} run={entry.run} />
-              : <JobRunCard key={entry.id} jobRun={entry.jobRun} />
-          ))}
+          <div
+            aria-label="Fetch sources run history list"
+            className="sync-panel-run-list sync-panel-run-list-scroll"
+          >
+            {visibleEntries.map((entry) => (
+              entry.kind === "fetch"
+                ? <RunCard key={entry.id} cronJob={cronJob} jobRun={entry.jobRun} run={entry.run} />
+                : <JobRunCard key={entry.id} jobRun={entry.jobRun} />
+            ))}
+          </div>
           {entries.length > VISIBLE_RUN_LIMIT ? (
             <button
               aria-expanded={expanded}
@@ -1905,8 +1918,65 @@ function taskSourceGroups(fetchTasks: FetchTaskLog[]): FetchTaskSourceGroup[] {
   return [...groups.values()];
 }
 
+function missingShardRecord(task: FetchTaskLog): Record<string, unknown> | null {
+  const missingShard = task.evidence?.missingShard;
+  return missingShard && typeof missingShard === "object"
+    ? missingShard as Record<string, unknown>
+    : null;
+}
+
+function fallbackWorkerId(task: FetchTaskLog): string | null {
+  const missingShard = missingShardRecord(task);
+  const shard = missingShard?.shard;
+  if (typeof shard === "string" && shard.trim()) return shard.trim();
+  const resultFile = missingShard?.resultFile;
+  if (typeof resultFile === "string" && resultFile.trim()) {
+    return resultFile.trim().replace(/-result\.json$/i, "");
+  }
+  return null;
+}
+
+function taskWorkerId(
+  task: FetchTaskLog,
+  liveTask?: FetchTaskProgress | null,
+): string | null {
+  const liveWorker = liveTask?.workerId;
+  if (typeof liveWorker === "string" && liveWorker.trim()) return liveWorker.trim();
+  if (typeof task.workerId === "string" && task.workerId.trim()) return task.workerId.trim();
+  return fallbackWorkerId(task);
+}
+
+function taskWorkerGroups(
+  fetchTasks: FetchTaskLog[],
+  liveTasks: Map<string, FetchTaskProgress>,
+): FetchTaskWorkerGroup[] {
+  const groups = new Map<string, FetchTaskWorkerGroup>();
+  for (const task of fetchTasks) {
+    const liveTask = task.id ? liveTasks.get(task.id) ?? null : null;
+    const workerId = taskWorkerId(task, liveTask);
+    const key = workerId ? `worker:${workerId}` : "worker:main";
+    let group = groups.get(key);
+    if (!group) {
+      group = {
+        key,
+        name: workerId ?? "Main worker",
+        sourceGroups: [],
+        tasks: [],
+      };
+      groups.set(key, group);
+    }
+    group.tasks.push(task);
+  }
+
+  for (const group of groups.values()) {
+    group.sourceGroups = taskSourceGroups(group.tasks);
+  }
+  return [...groups.values()];
+}
+
 function groupedTaskStats(tasks: FetchTaskLog[]) {
   return {
+    discovery: tasks.filter(isCandidateDiscoveryTask).length,
     planned: tasks.filter(isPlannedPostTask).length,
     read: tasks.filter(isReadForStats).length,
     summarized: tasks.filter(isSummarizedForStats).length,
@@ -1924,8 +1994,8 @@ function DetailsBody({
   const userActions = Array.isArray(details.userActions) ? details.userActions : [];
   const localErrors = Array.isArray(details.localErrors) ? details.localErrors : [];
   const fetchTasks = Array.isArray(details.fetchTasks) ? details.fetchTasks : [];
-  const taskGroups = taskSourceGroups(fetchTasks);
   const liveTasks = fetchTaskProgressMap(liveProgress);
+  const taskGroups = taskWorkerGroups(fetchTasks, liveTasks);
   const prompts =
     details.prompts && typeof details.prompts === "object" && !Array.isArray(details.prompts)
       ? details.prompts
@@ -1939,44 +2009,82 @@ function DetailsBody({
           <h3 className="sync-panel-run-card-detail-heading">
             Post tasks ({fetchTasks.length})
           </h3>
-          <ul className="sync-panel-task-source-group-list">
-            {taskGroups.map((group) => {
-              const stats = groupedTaskStats(group.tasks);
+          <ul className="sync-panel-task-worker-group-list">
+            {taskGroups.map((workerGroup) => {
+              const workerStats = groupedTaskStats(workerGroup.tasks);
               return (
-                <li className="sync-panel-task-source-group" key={group.key}>
-                  <details className="sync-panel-task-source-details" open>
-                    <summary className="sync-panel-task-source-summary">
-                      <span className="sync-panel-task-source-name">{group.name}</span>
+                <li className="sync-panel-task-worker-group" key={workerGroup.key}>
+                  <details className="sync-panel-task-worker-details" open>
+                    <summary className="sync-panel-task-worker-summary">
+                      <span className="sync-panel-task-worker-name">{workerGroup.name}</span>
                       <span
-                        aria-label={`${group.sourceType}: ${group.tasks.length} tasks, ${stats.planned} planned, ${stats.read} read, ${stats.summarized} summarized, ${stats.synced} synced`}
-                        className="mono sync-panel-task-source-meta"
+                        aria-label={`${workerGroup.name}: ${workerGroup.tasks.length} tasks, ${workerStats.planned} planned, ${workerStats.read} read, ${workerStats.summarized} summarized, ${workerStats.synced} synced`}
+                        className="mono sync-panel-task-worker-meta"
                       >
-                        <span className="sync-panel-task-source-type">{group.sourceType}</span>
                         <span className="sync-panel-task-source-stat">
-                          <strong>{formatCount(group.tasks.length)}</strong> tasks
+                          <strong>{formatCount(workerGroup.tasks.length)}</strong> tasks
                         </span>
                         <span className="sync-panel-task-source-stat">
-                          <strong>{formatCount(stats.planned)}</strong> planned
+                          <strong>{formatCount(workerStats.planned)}</strong> planned
                         </span>
                         <span className="sync-panel-task-source-stat">
-                          <strong>{formatCount(stats.read)}</strong> read
+                          <strong>{formatCount(workerStats.read)}</strong> read
                         </span>
                         <span className="sync-panel-task-source-stat">
-                          <strong>{formatCount(stats.summarized)}</strong> summarized
+                          <strong>{formatCount(workerStats.summarized)}</strong> summarized
                         </span>
                         <span className="sync-panel-task-source-stat">
-                          <strong>{formatCount(stats.synced)}</strong> synced
+                          <strong>{formatCount(workerStats.synced)}</strong> synced
                         </span>
                       </span>
                     </summary>
-                    <ul className="sync-panel-run-card-candidate-list">
-                      {group.tasks.map((task, index) => (
-                        <TaskRow
-                          key={task.id ?? `${task.builderId ?? "task"}-${index}`}
-                          liveTask={task.id ? liveTasks.get(task.id) ?? null : null}
-                          task={task}
-                        />
-                      ))}
+                    <ul className="sync-panel-task-source-group-list">
+                      {workerGroup.sourceGroups.map((group) => {
+                        const stats = groupedTaskStats(group.tasks);
+                        return (
+                          <li className="sync-panel-task-source-group" key={group.key}>
+                            <details className="sync-panel-task-source-details" open>
+                              <summary className="sync-panel-task-source-summary">
+                                <span className="sync-panel-task-source-name">{group.name}</span>
+                                <span
+                                  aria-label={`${group.sourceType}: ${stats.discovery} discovery tasks, ${stats.planned} post tasks, ${stats.read} read, ${stats.summarized} summarized, ${stats.synced} synced`}
+                                  className="mono sync-panel-task-source-meta"
+                                >
+                                  <span className="sync-panel-task-source-type">{group.sourceType}</span>
+                                  {stats.discovery > 0 ? (
+                                    <span className="sync-panel-task-source-stat">
+                                      <strong>{formatCount(stats.discovery)}</strong> discovery
+                                    </span>
+                                  ) : null}
+                                  <span className="sync-panel-task-source-stat">
+                                    <strong>{formatCount(stats.planned)}</strong> posts
+                                  </span>
+                                  <span className="sync-panel-task-source-stat">
+                                    <strong>{formatCount(stats.read)}</strong> read
+                                  </span>
+                                  <span className="sync-panel-task-source-stat">
+                                    <strong>{formatCount(stats.summarized)}</strong> summarized
+                                  </span>
+                                  <span className="sync-panel-task-source-stat">
+                                    <strong>{formatCount(stats.synced)}</strong> synced
+                                  </span>
+                                </span>
+                              </summary>
+                              <ul className="sync-panel-run-card-candidate-list">
+                                {group.tasks.map((task, index) => (
+                                  <TaskRow
+                                    key={task.id ?? `${task.builderId ?? "task"}-${index}`}
+                                    groupTasks={group.tasks}
+                                    liveTask={task.id ? liveTasks.get(task.id) ?? null : null}
+                                    liveTasks={liveTasks}
+                                    task={task}
+                                  />
+                                ))}
+                              </ul>
+                            </details>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </details>
                 </li>
@@ -2335,12 +2443,12 @@ function taskStatusPill(
   const liveStatus = String(liveTask?.status ?? "").toLowerCase();
   const livePhase = String(liveTask?.phase ?? "").toLowerCase();
   if (isCandidateDiscoveryTask(task)) {
-    if (task.status === "synced" || liveStatus === "synced") return { label: "expanded", tone: "ok" };
+    if (task.status === "synced" || liveStatus === "synced") return { label: "synced", tone: "ok" };
     if (task.status === "failed" || liveStatus === "failed") return { label: "failed", tone: "fail" };
     if (task.status === "action_needed" || liveStatus === "action_needed" || isBlocked(task)) {
       return { label: "action", tone: "fail" };
     }
-    return { label: "discover", tone: "warn" };
+    return { label: "discovering", tone: "warn" };
   }
   if (task.status === "synced" || liveStatus === "synced") return { label: "synced", tone: "ok" };
   if (task.status === "failed" || liveStatus === "failed") return { label: "failed", tone: "fail" };
@@ -2348,13 +2456,13 @@ function taskStatusPill(
   if (task.status === "action_needed" || liveStatus === "action_needed" || isBlocked(task)) {
     return { label: "action", tone: "fail" };
   }
-  if (liveStatus === "reading" || livePhase === "read") return { label: "read", tone: "warn" };
-  if (!hasReadSignal(task, liveTask)) return { label: "read", tone: "idle" };
+  if (liveStatus === "reading" || livePhase === "read") return { label: "reading", tone: "warn" };
+  if (!hasReadSignal(task, liveTask)) return { label: "reading", tone: "idle" };
   if (liveStatus === "summarizing" || livePhase === "summarize") {
-    return { label: "summarize", tone: "warn" };
+    return { label: "summarizing", tone: "warn" };
   }
-  if (isSummarized(task) || liveStatus === "summarized") return { label: "sync", tone: "warn" };
-  return { label: "summarize", tone: "warn" };
+  if (isSummarized(task) || liveStatus === "summarized") return { label: "syncing", tone: "warn" };
+  return { label: "summarizing", tone: "warn" };
 }
 
 function statusBanner(
@@ -2466,6 +2574,67 @@ function discoveryExpansionText(evidence: Record<string, unknown> | null | undef
   return parts.join(" · ");
 }
 
+function taskLiveProgress(
+  task: FetchTaskLog,
+  liveTasks: Map<string, FetchTaskProgress>,
+): FetchTaskProgress | null {
+  return task.id ? liveTasks.get(task.id) ?? null : null;
+}
+
+function taskSyncedForDisplay(
+  task: FetchTaskLog,
+  liveTask?: FetchTaskProgress | null,
+): boolean {
+  const liveStatus = String(liveTask?.status ?? "").toLowerCase();
+  return task.status === "synced" || liveStatus === "synced";
+}
+
+function discoveryTaskState({
+  groupTasks,
+  liveTask,
+  liveTasks,
+  task,
+}: {
+  groupTasks: FetchTaskLog[];
+  liveTask?: FetchTaskProgress | null;
+  liveTasks: Map<string, FetchTaskProgress>;
+  task: FetchTaskLog;
+}): {
+  expanded: boolean;
+  expansionText: string | null;
+  postTaskCount: number;
+  synced: boolean;
+  syncedPostTaskCount: number;
+} {
+  const siblingPostTasks = groupTasks.filter((candidate) => candidate !== task && !isCandidateDiscoveryTask(candidate));
+  const evidenceText = discoveryExpansionText(task.evidence);
+  const expandedByEvidence =
+    task.status === "synced" ||
+    String(liveTask?.status ?? "").toLowerCase() === "synced" ||
+    task.evidence?.discoveryExpanded === true;
+  const expandedByPosts = siblingPostTasks.length > 0;
+  const syncedPostTaskCount = siblingPostTasks.filter((postTask) =>
+    taskSyncedForDisplay(postTask, taskLiveProgress(postTask, liveTasks)),
+  ).length;
+  const allPostTasksSynced = expandedByPosts && syncedPostTaskCount === siblingPostTasks.length;
+  const postTaskCount =
+    typeof task.evidence?.fetchTasks === "number"
+      ? task.evidence.fetchTasks
+      : siblingPostTasks.length;
+
+  return {
+    expanded: expandedByEvidence || expandedByPosts,
+    expansionText:
+      evidenceText ??
+      (expandedByPosts
+        ? `${formatCount(siblingPostTasks.length)} fetch task${siblingPostTasks.length === 1 ? "" : "s"}`
+        : null),
+    postTaskCount,
+    synced: taskSyncedForDisplay(task, liveTask) || allPostTasksSynced,
+    syncedPostTaskCount,
+  };
+}
+
 function sizeText(chars: number | null | undefined, words: number | null | undefined): string | null {
   if (typeof chars !== "number") return null;
   const wordPart = typeof words === "number" ? ` · ~${words.toLocaleString()} words` : "";
@@ -2499,22 +2668,40 @@ function FactRow({ label, value }: { label: string; value: ReactNode }) {
 }
 
 function TaskRow({
+  groupTasks,
   liveTask,
+  liveTasks,
   task,
 }: {
+  groupTasks: FetchTaskLog[];
   liveTask?: FetchTaskProgress | null;
+  liveTasks: Map<string, FetchTaskProgress>;
   task: FetchTaskLog;
 }) {
   const hydrated = useHydrated();
   const work = describeWork(task);
-  const fetchRes = liveFetchOutcome(task, liveTask);
-  const sumRes = liveSummarizeOutcome(task, liveTask);
-  const banner = statusBanner(task, liveTask);
+  const isDiscovery = isCandidateDiscoveryTask(task);
+  const discoveryState = isDiscovery
+    ? discoveryTaskState({ groupTasks, liveTask, liveTasks, task })
+    : null;
+  const fetchRes = discoveryState?.expanded
+    ? { label: "Discovered", tone: "ok" as Tone }
+    : liveFetchOutcome(task, liveTask);
+  const sumRes = discoveryState?.expanded
+    ? { label: "Expanded", tone: "ok" as Tone }
+    : liveSummarizeOutcome(task, liveTask);
+  const banner = discoveryState?.expanded
+    ? { label: "Candidates discovered", tone: "ok" as Tone }
+    : statusBanner(task, liveTask);
   const readDone = hasReadSignal(task, liveTask);
   const bannerStyle = toneStyle(banner.tone);
   const liveLabel = liveTaskLabel(liveTask);
   const liveTone = liveTaskTone(liveTask);
-  const pill = taskStatusPill(task, liveTask);
+  const pill = discoveryState?.expanded
+    ? discoveryState.synced
+      ? { label: "synced", tone: "ok" as Tone }
+      : { label: "syncing", tone: "warn" as Tone }
+    : taskStatusPill(task, liveTask);
 
   const agentLabel = [task.agentRuntime, task.agentModel].filter(Boolean).join(" · ");
   const bodySize = sizeText(task.bodyChars, task.bodyWords);
@@ -2528,9 +2715,11 @@ function TaskRow({
       : work.blurb;
   const missingShard = missingShardText(task);
   const workerLog = workerLogText(task);
-  const discoveryExpansion = discoveryExpansionText(task.evidence);
+  const discoveryExpansion = discoveryState?.expansionText ?? discoveryExpansionText(task.evidence);
   const syncOutcome = (() => {
     const liveStatus = String(liveTask?.status ?? "").toLowerCase();
+    if (discoveryState?.synced) return { label: "Synced", tone: "ok" as Tone };
+    if (discoveryState?.expanded) return { label: "Waiting on posts", tone: "warn" as Tone };
     if (task.status === "synced" || liveStatus === "synced") return { label: "Synced", tone: "ok" as Tone };
     if (task.status === "failed" || liveStatus === "failed") return { label: "Failed", tone: "fail" as Tone };
     if (task.status === "skipped" || liveStatus === "skipped") return { label: "Skipped", tone: "idle" as Tone };
@@ -2555,7 +2744,17 @@ function TaskRow({
     failureReasonText(task) ||
     missingShard ||
     workerLog;
-  const isDiscovery = isCandidateDiscoveryTask(task);
+  const syncStatusText = (() => {
+    if (discoveryState?.synced) {
+      return discoveryState.postTaskCount > 0
+        ? `${formatCount(discoveryState.syncedPostTaskCount)} post task${discoveryState.syncedPostTaskCount === 1 ? "" : "s"} synced`
+        : "synced";
+    }
+    if (discoveryState?.expanded) {
+      return `${formatCount(discoveryState.syncedPostTaskCount)} of ${formatCount(discoveryState.postTaskCount)} post tasks synced`;
+    }
+    return task.status?.replace(/_/g, " ") ?? liveTask?.status?.replace(/_/g, " ") ?? "Pending";
+  })();
   const lifecycleSteps: LifecycleStep[] = [
     {
       key: "planned",
@@ -2688,7 +2887,7 @@ function TaskRow({
       open: syncOutcome.tone === "fail" || syncOutcome.label === "Action needed",
       children: (
         <dl className="sync-panel-task-fact-list">
-          <FactRow label="Status" value={<span>{task.status?.replace(/_/g, " ") ?? liveTask?.status?.replace(/_/g, " ") ?? "Pending"}</span>} />
+          <FactRow label="Status" value={<span>{syncStatusText}</span>} />
           {failureReasonText(task) ? (
             <FactRow
               label="Reason"
