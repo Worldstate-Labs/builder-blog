@@ -434,10 +434,9 @@ function hasActiveFetchProgress(jobRuns: AgentJobRunListItem[]): boolean {
 // A run is "in flight" between the two writes: fetch-personal POSTed the row
 // (tasks fetched/pending) but sync-builders hasn't PATCHed the per-post
 // outcomes yet (which flip them to synced/skipped/failed). If the linked
-// runtime job has already reached a terminal state (for example Stop cron
-// killed it), the run is no longer live even if planned tasks remain pending.
-// We still bound unlinked/older runs by age so a crash mid-work stops being
-// chased after a while instead of polling forever.
+// runtime job is still active, trust that over the run row's age. The age bound
+// is only for unlinked/older rows so a crash mid-work stops being chased after
+// a while instead of polling forever.
 const INFLIGHT_MAX_AGE_MS = 30 * 60_000;
 function isRunInflight(
   run: LibraryFetchRunListItem,
@@ -446,8 +445,10 @@ function isRunInflight(
 ): boolean {
   if (run.source === "cron" && cronJob && cronJob.status !== "active") return false;
   if (jobRun && !isActiveJobRun(jobRun)) return false;
-  const ageMs = Date.now() - Date.parse(run.startedAt);
-  if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > INFLIGHT_MAX_AGE_MS) return false;
+  if (!jobRun) {
+    const ageMs = Date.now() - Date.parse(run.startedAt);
+    if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > INFLIGHT_MAX_AGE_MS) return false;
+  }
   const tasks = readDetails(run.details).fetchTasks;
   if (!Array.isArray(tasks) || tasks.length === 0) return false;
   return tasks.some((task) => task?.status === "pending" || task?.status === "fetched");
