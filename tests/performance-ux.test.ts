@@ -1914,6 +1914,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(fetchLogPanel, /posts read|post read/);
   assert.match(fetchLogPanel, /label="posts planned"/);
   assert.match(fetchLogPanel, /sourceRunStats\(perBuilder, fetchTasks\)/);
+  assert.match(fetchLogPanel, /function sourceIssueNote/);
+  assert.match(fetchLogPanel, /function sourceDisplayError/);
+  assert.match(fetchLogPanel, /Initial source scan stopped; Local Agent fallback was queued\./);
   assert.match(fetchLogPanel, /planned[\s\S]*fetched[\s\S]*summarized/);
   assert.match(fetchLogPanel, /Fetch tasks/);
   assert.doesNotMatch(fetchLogPanel, /posts checked|Posts checked/);
@@ -2129,7 +2132,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sync-panel-run-card-details-stack\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.sync-panel-detail-action-chip\s*{[\s\S]*margin-right:\s*0\.5rem/);
   assert.match(globals, /\.sync-panel-source-row\s*{[\s\S]*justify-content:\s*space-between/);
-  assert.match(globals, /\.sync-panel-fetch-source-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /\.sync-panel-fetch-source-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) minmax\(0,\s*auto\)/);
   assert.match(globals, /\.sync-panel-fetch-source-error\s*{[\s\S]*grid-column:\s*1 \/ -1/);
   assert.match(globals, /\.sync-panel-fetch-source-note\s*{[\s\S]*color:\s*var\(--muted-strong\)/);
   assert.match(globals, /\.sync-panel-task-card\s*{[\s\S]*background:\s*var\(--paper-strong\)/);

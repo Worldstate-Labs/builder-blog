@@ -141,8 +141,10 @@ test("CLI emits a fetch-run record on both success and failure paths", () => {
   assert.match(cli, /timed out after \$\{Math\.round\(options\.timeoutMs \/ 1000\)\}s/);
   // Product Hunt direct-fetch 403s are recoverable: they should be shown as a
   // fallback note while agent discovery continues, not counted as a source error.
-  assert.match(cli, /isRecoverableCandidateDiscoveryFallback/);
+  assert.match(cli, /isRecoverableFetchFallback/);
   assert.match(cli, /builderStat\.fallback = sourceFallbackNotice\(task, message\)/);
+  assert.match(cli, /agentWorkType === "fetch_builder_fallback"/);
+  assert.match(cli, /Initial source scan stopped; Local Agent fallback was queued\./);
   assert.match(cli, /else \{[\s\S]*builderStat\.error = message;[\s\S]*errorCount \+= 1;/);
   // Expanded candidate discovery is reconciled back onto the original
   // discovery task, otherwise the initial fetch-log row stays pending forever.

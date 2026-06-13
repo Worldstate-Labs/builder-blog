@@ -1127,7 +1127,7 @@ async function fetchPersonal(args) {
           commonFetchRules,
           commonSummaryRules,
         });
-        if (isRecoverableCandidateDiscoveryFallback(task)) {
+        if (isRecoverableFetchFallback(task)) {
           builderStat.fallback = sourceFallbackNotice(task, message);
         } else {
           builderStat.error = message;
@@ -1140,7 +1140,7 @@ async function fetchPersonal(args) {
         const sourceStatus = builderStat.error
           ? "failed"
           : builderStat.fallback
-            ? "action_needed"
+            ? "fallback"
             : "checked";
         await emitFetchJobProgress(config, fetchProgress, {
           counters: {
@@ -1355,11 +1355,22 @@ export function summarizeFetchTasksForLog(
   return { slimFetchTasks, promptsBySourceType };
 }
 
-function isRecoverableCandidateDiscoveryFallback(task) {
-  return task?.type === "candidate_discovery" && task?.agentWorkType === "candidate_discovery_fallback";
+function isRecoverableFetchFallback(task) {
+  return (
+    task?.contentStatus === "requires_agent" &&
+    (task?.agentWorkType === "candidate_discovery_fallback" ||
+      task?.agentWorkType === "fetch_builder_fallback")
+  );
 }
 
 function sourceFallbackNotice(task, reason) {
+  if (task?.agentWorkType === "fetch_builder_fallback") {
+    return {
+      kind: "fetch_builder_fallback",
+      message: "Initial source scan stopped; Local Agent fallback was queued.",
+      reason,
+    };
+  }
   const status = task?.discovery?.failureEvidence?.status;
   return {
     kind: "candidate_discovery_fallback",

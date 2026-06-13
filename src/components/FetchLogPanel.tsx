@@ -1766,6 +1766,28 @@ function sourceRunStats(perBuilder: PerBuilder[], fetchTasks: FetchTaskLog[]): S
   return [...stats.values()];
 }
 
+function sourceIssueNote(entry: SourceRunStats): { text: string; title?: string } | null {
+  if (entry.fallback?.message) {
+    return {
+      text: entry.fallback.message,
+      title: entry.fallback.reason,
+    };
+  }
+  if (entry.error && entry.plannedFromTasks > 0) {
+    return {
+      text: "Initial source scan stopped; Local Agent fallback was queued.",
+      title: `Original error: ${entry.error}`,
+    };
+  }
+  return null;
+}
+
+function sourceDisplayError(entry: SourceRunStats): string | null {
+  if (!entry.error) return null;
+  if (sourceIssueNote(entry)) return null;
+  return entry.error;
+}
+
 function DetailsBody({ details }: { details: DetailsShape }) {
   const perBuilder = Array.isArray(details.perBuilder) ? details.perBuilder : [];
   const userActions = Array.isArray(details.userActions) ? details.userActions : [];
@@ -1786,40 +1808,44 @@ function DetailsBody({ details }: { details: DetailsShape }) {
             Sources
           </h3>
           <ul className="sync-panel-run-card-source-list">
-            {sourceStats.map((entry) => (
-              <li
-                key={entry.key}
-                className="sync-panel-fetch-source-row"
-              >
-                <span className="sync-panel-fetch-source-name">{entry.name}</span>
-                <span
-                  aria-label={`${entry.sourceType}: ${entry.planned} planned, ${entry.fetched} fetched, ${entry.summarized} summarized`}
-                  className="mono sync-panel-fetch-source-meta"
+            {sourceStats.map((entry) => {
+              const note = sourceIssueNote(entry);
+              const error = sourceDisplayError(entry);
+              return (
+                <li
+                  key={entry.key}
+                  className="sync-panel-fetch-source-row"
                 >
-                  <span className="sync-panel-fetch-source-type">{entry.sourceType}</span>
-                  <span className="sync-panel-fetch-source-stat">
-                    <strong>{formatCount(entry.planned)}</strong> planned
-                  </span>
-                  <span className="sync-panel-fetch-source-stat">
-                    <strong>{formatCount(entry.fetched)}</strong> fetched
-                  </span>
-                  <span className="sync-panel-fetch-source-stat">
-                    <strong>{formatCount(entry.summarized)}</strong> summarized
-                  </span>
-                </span>
-                {entry.error ? (
-                  <span className="sync-panel-fetch-source-error">{entry.error}</span>
-                ) : null}
-                {entry.fallback?.message ? (
+                  <span className="sync-panel-fetch-source-name">{entry.name}</span>
                   <span
-                    className="sync-panel-fetch-source-note"
-                    title={entry.fallback.reason}
+                    aria-label={`${entry.sourceType}: ${entry.planned} planned, ${entry.fetched} fetched, ${entry.summarized} summarized`}
+                    className="mono sync-panel-fetch-source-meta"
                   >
-                    {entry.fallback.message}
+                    <span className="sync-panel-fetch-source-type">{entry.sourceType}</span>
+                    <span className="sync-panel-fetch-source-stat">
+                      <strong>{formatCount(entry.planned)}</strong> planned
+                    </span>
+                    <span className="sync-panel-fetch-source-stat">
+                      <strong>{formatCount(entry.fetched)}</strong> fetched
+                    </span>
+                    <span className="sync-panel-fetch-source-stat">
+                      <strong>{formatCount(entry.summarized)}</strong> summarized
+                    </span>
                   </span>
-                ) : null}
-              </li>
-            ))}
+                  {error ? (
+                    <span className="sync-panel-fetch-source-error">{error}</span>
+                  ) : null}
+                  {note ? (
+                    <span
+                      className="sync-panel-fetch-source-note"
+                      title={note.title}
+                    >
+                      {note.text}
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}
