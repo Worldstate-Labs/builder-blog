@@ -76,6 +76,10 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(cli, /async function emitCheckpointProgress/);
   assert.match(cli, /async function readShardProgressFiles/);
   assert.match(cli, /function applyFetchProgressTaskOutcomes/);
+  assert.match(cli, /const alreadyCompleted = completed\.has\(id\)/);
+  assert.match(cli, /if \(!alreadyCompleted\) \{/);
+  assert.match(cli, /workerId: outcome\.workerId/);
+  assert.match(cli, /summaryChars: outcome\.summaryChars/);
   assert.match(cli, /upsertFetchProgressTask/);
   assert.match(cli, /--completed-only/);
   assert.match(cli, /filterFetchResultToTaskIds/);

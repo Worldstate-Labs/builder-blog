@@ -899,25 +899,33 @@ function applyFetchProgressTaskOutcomes(progress, taskOutcomes, taskIds = []) {
   const delta = { tasksDone: 0, synced: 0, skipped: 0, failed: 0, actionNeeded: 0 };
   for (const outcome of taskOutcomes) {
     const id = String(outcome?.fetchTaskId ?? "");
-    if (!id || completed.has(id)) continue;
-    completed.add(id);
-    delta.tasksDone += 1;
-    if (outcome.status === "synced") delta.synced += 1;
-    else if (outcome.status === "skipped") delta.skipped += 1;
-    else if (outcome.status === "action_needed") delta.actionNeeded += 1;
-    else if (outcome.status === "failed") delta.failed += 1;
-    appendFetchProgressEvent(progress, {
-      type: "task_completed",
-      taskId: id,
-      status: outcome.status,
-      reason: outcome.failureReason ?? null,
-      message: `${id}: ${String(outcome.status ?? "done").replace(/_/g, " ")}.`,
-    });
+    if (!id) continue;
+    const alreadyCompleted = completed.has(id);
+    if (!alreadyCompleted) {
+      completed.add(id);
+      delta.tasksDone += 1;
+      if (outcome.status === "synced") delta.synced += 1;
+      else if (outcome.status === "skipped") delta.skipped += 1;
+      else if (outcome.status === "action_needed") delta.actionNeeded += 1;
+      else if (outcome.status === "failed") delta.failed += 1;
+      appendFetchProgressEvent(progress, {
+        type: "task_completed",
+        taskId: id,
+        status: outcome.status,
+        reason: outcome.failureReason ?? null,
+        message: `${id}: ${String(outcome.status ?? "done").replace(/_/g, " ")}.`,
+      });
+    }
     upsertFetchProgressTask(progress, {
       id,
       status: outcome.status,
       phase: "synced",
       message: `${String(outcome.status ?? "done").replace(/_/g, " ")}.`,
+      workerId: outcome.workerId,
+      bodyChars: outcome.bodyChars,
+      bodyWords: outcome.bodyWords,
+      summaryChars: outcome.summaryChars,
+      summaryWords: outcome.summaryWords,
     });
   }
   const counters = progress.counters ?? {};
