@@ -77,6 +77,10 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(cli, /async function readShardProgressFiles/);
   assert.match(cli, /function applyFetchProgressTaskOutcomes/);
   assert.match(cli, /upsertFetchProgressTask/);
+  assert.match(cli, /--completed-only/);
+  assert.match(cli, /filterFetchResultToTaskIds/);
+  assert.match(cli, /filterSyncPayloadToTaskIds/);
+  assert.match(cli, /backfillMissing: !completedOnly/);
   assert.match(cli, /completedTaskIds/);
   assert.match(cli, /includeInternal/);
   assert.match(cli, /progress: fetchProgressSnapshotValue/);
@@ -153,6 +157,10 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.doesNotMatch(runner, /WORKER_PID="\$!"/);
   assert.match(runner, /merge-task-results[\s\S]*tee "\$_merge_result_file"/);
   assert.match(runner, /checkpoint-progress[\s\S]*--results-dir "\$_results_dir"/);
+  assert.match(runner, /sync_completed_checkpoints/);
+  assert.match(runner, /completed-checkpoint-synced-task-ids\.txt/);
+  assert.match(runner, /merge-task-results[\s\S]*--completed-only/);
+  assert.match(runner, /Best-effort syncing \$_scc_count completed library task/);
   assert.match(runner, /backfilledOutcomes/);
   assert.match(runner, /worker\/result issue\(s\)/);
 

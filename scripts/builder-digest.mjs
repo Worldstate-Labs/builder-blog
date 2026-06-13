@@ -4773,15 +4773,17 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
     });
   }
   const knownShardResults = new Set(shardSummaries.map((summary) => summary.shard));
-  for (const plan of shardPlans) {
-    if (knownShardResults.has(plan.resultFile)) continue;
-    shardSummaries.push({
-      shard: plan.resultFile,
-      status: "missing",
-      error: "no result file",
-      sourceShard: plan.shard,
-      taskCount: plan.taskCount,
-    });
+  if (options.backfillMissing !== false) {
+    for (const plan of shardPlans) {
+      if (knownShardResults.has(plan.resultFile)) continue;
+      shardSummaries.push({
+        shard: plan.resultFile,
+        status: "missing",
+        error: "no result file",
+        sourceShard: plan.shard,
+        taskCount: plan.taskCount,
+      });
+    }
   }
 
   // Terminal-state backstop: every planned task a worker never reported
@@ -4789,32 +4791,35 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
   // becomes a failed outcome so validate-agent-sync still passes coverage and
   // the fetch log records the loss instead of silently dropping the task.
   let backfilled = 0;
-  for (const task of planned) {
-    if (isUserActionAgentWorkType(task?.agentWorkType)) continue;
-    const id = String(task?.id || fetchTaskId(task));
-    if (accounted.has(id)) continue;
-    accounted.add(id);
-    taskOutcomes.push({
-      fetchTaskId: id,
-      status: "failed",
-      reason:
-        task?.agentWorkType === "candidate_discovery_fallback"
-          ? "discovery_not_expanded"
-          : "worker_missing_result",
-      evidence: missingShardEvidence(
-        task,
-        shardPlanByTaskId.get(id),
-        shardSummaries,
-        options,
-      ),
-    });
-    backfilled += 1;
+  if (options.backfillMissing !== false) {
+    for (const task of planned) {
+      if (isUserActionAgentWorkType(task?.agentWorkType)) continue;
+      const id = String(task?.id || fetchTaskId(task));
+      if (accounted.has(id)) continue;
+      accounted.add(id);
+      taskOutcomes.push({
+        fetchTaskId: id,
+        status: "failed",
+        reason:
+          task?.agentWorkType === "candidate_discovery_fallback"
+            ? "discovery_not_expanded"
+            : "worker_missing_result",
+        evidence: missingShardEvidence(
+          task,
+          shardPlanByTaskId.get(id),
+          shardSummaries,
+          options,
+        ),
+      });
+      backfilled += 1;
+    }
   }
 
   return {
     payload: { builders, taskOutcomes },
     shards: shardSummaries,
     backfilledOutcomes: backfilled,
+    accountedTaskIds: [...accounted],
   };
 }
 
@@ -5102,6 +5107,10 @@ async function mergeTaskResults(args) {
   const tasksFile = argValue(args, "--tasks");
   const resultsDir = argValue(args, "--results-dir");
   const outFile = argValue(args, "--out");
+  const tasksOutFile = argValue(args, "--tasks-out", null);
+  const idsOutFile = argValue(args, "--ids-out", null);
+  const completedOnly = args.includes("--completed-only");
+  const excludeTaskIdsFile = argValue(args, "--exclude-task-ids-file", null);
   const shardTimeoutSeconds = Number(argValue(args, "--shard-timeout-seconds", ""));
   if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
   if (!resultsDir) throw new Error("Missing --results-dir");
@@ -5132,19 +5141,45 @@ async function mergeTaskResults(args) {
   const merged = mergeShardSyncPayloads(fetchResult, shardResults, {
     shardPlans: await readShardPlans(resultsDir),
     shardTimeoutSeconds: Number.isFinite(shardTimeoutSeconds) ? shardTimeoutSeconds : null,
+    backfillMissing: !completedOnly,
   });
-  await writeFile(outFile, `${JSON.stringify(merged.payload, null, 2)}\n`, "utf8");
+  const excluded = await readIdSetFile(excludeTaskIdsFile);
+  const availableIds = syncPayloadTaskIds(merged.payload);
+  const selectedIds = new Set(
+    [...availableIds].filter((id) => !excluded.has(id)),
+  );
+  const payloadOut = completedOnly
+    ? filterSyncPayloadToTaskIds(merged.payload, selectedIds)
+    : merged.payload;
+  const tasksOut = completedOnly
+    ? filterFetchResultToTaskIds(fetchResult, selectedIds)
+    : null;
+  await writeFile(outFile, `${JSON.stringify(payloadOut, null, 2)}\n`, "utf8");
+  if (tasksOutFile) {
+    await writeFile(
+      tasksOutFile,
+      `${JSON.stringify(tasksOut ?? fetchResult, null, 2)}\n`,
+      "utf8",
+    );
+  }
+  if (idsOutFile) {
+    await writeFile(idsOutFile, `${[...selectedIds].sort().join("\n")}${selectedIds.size ? "\n" : ""}`, "utf8");
+  }
   console.log(
     JSON.stringify(
       {
         status: "ok",
         out: outFile,
-        builders: merged.payload.builders.length,
-        items: merged.payload.builders.reduce(
+        ...(tasksOutFile ? { tasksOut: tasksOutFile } : {}),
+        ...(idsOutFile ? { idsOut: idsOutFile } : {}),
+        completedOnly,
+        taskIds: [...selectedIds].sort(),
+        builders: payloadOut.builders.length,
+        items: payloadOut.builders.reduce(
           (count, builder) => count + (builder.items?.length ?? 0),
           0,
         ),
-        taskOutcomes: merged.payload.taskOutcomes.length,
+        taskOutcomes: payloadOut.taskOutcomes.length,
         backfilledOutcomes: merged.backfilledOutcomes,
         shards: merged.shards,
       },
@@ -5156,6 +5191,69 @@ async function mergeTaskResults(args) {
 
 function taskIdForSync(task) {
   return String(task?.id || fetchTaskId(task));
+}
+
+async function readIdSetFile(file) {
+  if (!file) return new Set();
+  try {
+    return new Set(
+      (await readFile(file, "utf8"))
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean),
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function syncPayloadTaskIds(payload) {
+  const ids = new Set();
+  for (const { item } of extractSyncItems(payload)) {
+    const id = item?.rawJson?.fetchTaskId;
+    if (id) ids.add(String(id));
+  }
+  for (const outcome of payload?.taskOutcomes ?? []) {
+    if (outcome?.fetchTaskId) ids.add(String(outcome.fetchTaskId));
+  }
+  return ids;
+}
+
+function filterFetchResultToTaskIds(fetchResult, taskIds) {
+  const wanted = new Set([...taskIds].map(String));
+  return {
+    ...copyPayloadMetadata(fetchResult),
+    status: fetchResult?.status ?? "ok",
+    fetchTasks: extractFetchTasks(fetchResult).filter((task) =>
+      wanted.has(taskIdForSync(task)),
+    ),
+    taskOutcomes: Array.isArray(fetchResult?.taskOutcomes)
+      ? fetchResult.taskOutcomes.filter((outcome) =>
+          outcome?.fetchTaskId && wanted.has(String(outcome.fetchTaskId)),
+        )
+      : [],
+    discoveryExpansions: Array.isArray(fetchResult?.discoveryExpansions)
+      ? fetchResult.discoveryExpansions.filter((expansion) =>
+          expansion?.fetchTaskId && wanted.has(String(expansion.fetchTaskId)),
+        )
+      : [],
+  };
+}
+
+function filterSyncPayloadToTaskIds(payload, taskIds) {
+  const wanted = new Set([...taskIds].map(String));
+  const builders = [];
+  for (const builder of payload?.builders ?? []) {
+    const items = (builder?.items ?? []).filter((item) => {
+      const id = item?.rawJson?.fetchTaskId;
+      return id && wanted.has(String(id));
+    });
+    if (items.length > 0) builders.push({ ...builder, items });
+  }
+  const taskOutcomes = (payload?.taskOutcomes ?? []).filter((outcome) =>
+    outcome?.fetchTaskId && wanted.has(String(outcome.fetchTaskId)),
+  );
+  return { builders, taskOutcomes };
 }
 
 function copyPayloadMetadata(payload) {

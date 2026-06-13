@@ -866,6 +866,117 @@ run_job_payload() {
 # payload and backfills a failed taskOutcome for any task a worker never
 # reported (crash/timeout), so the "every task ends in a terminal state"
 # validation contract holds even with partial worker failure.
+sync_payload_slices() {
+  _sps_tasks_file="$1"
+  _sps_payload_file="$2"
+  _sps_slices_dir="$3"
+  _sps_label="${4:-library result}"
+
+  node "$AGENT_DIR/builder-digest.mjs" split-sync-slices \
+    --tasks "$_sps_tasks_file" \
+    --file "$_sps_payload_file" \
+    --out-dir "$_sps_slices_dir"
+
+  _sps_failures=0
+  for _slice_payload in "$_sps_slices_dir"/slice-*-payload.json; do
+    [ -e "$_slice_payload" ] || continue
+    _slice_tasks="${_slice_payload%-payload.json}-tasks.json"
+    _slice_name="$(basename "$_slice_payload" .json)"
+    _slice_stdout="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-sync.out"
+    _slice_stderr="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-sync.err"
+    echo "Syncing $_sps_label slice $_slice_name."
+    set +e
+    node "$AGENT_DIR/builder-digest.mjs" sync-builders \
+      --file "$_slice_payload" \
+      --tasks "$_slice_tasks" > "$_slice_stdout" 2> "$_slice_stderr"
+    _slice_code="$?"
+    set -e
+    [ ! -s "$_slice_stdout" ] || cat "$_slice_stdout"
+    [ ! -s "$_slice_stderr" ] || cat "$_slice_stderr" >&2
+    if [ "$_slice_code" -eq 0 ]; then
+      continue
+    fi
+
+    _sps_failures=$(( _sps_failures + 1 ))
+    echo "sync-builders failed for $_sps_label $_slice_name (exit $_slice_code); marking only this slice failed." >&2
+    _failed_payload="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-failed-payload.json"
+    node "$AGENT_DIR/builder-digest.mjs" fail-sync-slice \
+      --tasks "$_slice_tasks" \
+      --out "$_failed_payload" \
+      --reason "slice_sync_failed" \
+      --message "sync-builders failed for $_sps_label $_slice_name with exit $_slice_code"
+
+    _failed_stdout="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-failed-sync.out"
+    _failed_stderr="$JOB_TMP_DIR/${_sps_label}-${_slice_name}-failed-sync.err"
+    set +e
+    node "$AGENT_DIR/builder-digest.mjs" sync-builders \
+      --file "$_failed_payload" \
+      --tasks "$_slice_tasks" > "$_failed_stdout" 2> "$_failed_stderr"
+    _failed_code="$?"
+    set -e
+    [ ! -s "$_failed_stdout" ] || cat "$_failed_stdout"
+    [ ! -s "$_failed_stderr" ] || cat "$_failed_stderr" >&2
+    if [ "$_failed_code" -ne 0 ]; then
+      echo "Failed to patch failed outcomes for $_sps_label $_slice_name (exit $_failed_code)." >&2
+    fi
+  done
+
+  [ "$_sps_failures" -eq 0 ]
+}
+
+sync_completed_checkpoints() {
+  _scc_result_file="$1"
+  _scc_results_dir="$2"
+  _scc_synced_ids_file="$3"
+  _scc_work_dir="$JOB_TMP_DIR/completed-checkpoint-sync"
+  rm -rf "$_scc_work_dir"
+  mkdir -p "$_scc_work_dir"
+
+  _scc_payload="$_scc_work_dir/library-agent-sync.json"
+  _scc_tasks="$_scc_work_dir/library-fetch-result.json"
+  _scc_ids="$_scc_work_dir/task-ids.txt"
+  _scc_merge="$_scc_work_dir/merge-task-results.json"
+  node "$AGENT_DIR/builder-digest.mjs" merge-task-results \
+    --completed-only \
+    --tasks "$_scc_result_file" \
+    --results-dir "$_scc_results_dir" \
+    --exclude-task-ids-file "$_scc_synced_ids_file" \
+    --tasks-out "$_scc_tasks" \
+    --ids-out "$_scc_ids" \
+    --out "$_scc_payload" > "$_scc_merge"
+
+  _scc_count="$(wc -l < "$_scc_ids" | tr -d ' ')"
+  if [ "${_scc_count:-0}" -eq 0 ]; then
+    return 0
+  fi
+
+  echo "Best-effort syncing $_scc_count completed library task(s) before the full run finishes."
+  cat "$_scc_merge"
+
+  _scc_validate="$_scc_work_dir/validate-agent-sync-result.json"
+  set +e
+  node "$AGENT_DIR/builder-digest.mjs" validate-agent-sync \
+    --tasks "$_scc_tasks" \
+    --file "$_scc_payload" > "$_scc_validate" 2>&1
+  _scc_validate_code="$?"
+  set -e
+  cat "$_scc_validate"
+  if [ "$_scc_validate_code" -ne 0 ] || ! grep -q '"status": "ok"' "$_scc_validate"; then
+    echo "Completed checkpoint partial payload did not validate; leaving it for final merge." >&2
+    return 0
+  fi
+
+  if sync_payload_slices "$_scc_tasks" "$_scc_payload" "$_scc_work_dir/sync-slices" "completed-checkpoint"; then
+    cat "$_scc_ids" >> "$_scc_synced_ids_file"
+    sort -u "$_scc_synced_ids_file" > "$_scc_synced_ids_file.tmp"
+    mv "$_scc_synced_ids_file.tmp" "$_scc_synced_ids_file"
+    return 0
+  fi
+
+  echo "Completed checkpoint partial sync failed; leaving it for final merge." >&2
+  return 0
+}
+
 run_sharded_library() {
   _shards_dir="$JOB_TMP_DIR/shards"
   _results_dir="$_shards_dir/results"
@@ -907,6 +1018,8 @@ run_sharded_library() {
   _worker_entries=""
   _skip_wait_pids=""
   _timed_out_worker_pids=""
+  _checkpoint_synced_ids_file="$JOB_TMP_DIR/completed-checkpoint-synced-task-ids.txt"
+  : > "$_checkpoint_synced_ids_file"
   for _shard_file in "$_shards_dir"/shard-*.json; do
     [ -e "$_shard_file" ] || continue
     _shard_name="$(basename "$_shard_file" .json)"
@@ -981,8 +1094,10 @@ run_sharded_library() {
       --tasks "$_result_file" \
       --results-dir "$_results_dir" \
       --stage "workers_running" >/dev/null 2>&1 || true
+    sync_completed_checkpoints "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" || true
     sleep 5
   done
+  sync_completed_checkpoints "$_result_file" "$_results_dir" "$_checkpoint_synced_ids_file" || true
   for _entry in $_worker_entries; do
     _pid="${_entry%%:*}"
     case " $_skip_wait_pids " in
