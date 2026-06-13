@@ -2367,14 +2367,18 @@ test("merge-task-results merges shard payloads and backfills missing tasks as fa
   // t1 synced, t2 outcome preserved, t3 backfilled, t4 (user action) untouched.
   assert.equal(merged.payload.builders.length, 1);
   assert.equal(merged.payload.builders[0].items.length, 1);
+  assert.equal(merged.payload.builders[0].items[0].rawJson.workerId, "shard-0");
   const outcomes = merged.payload.taskOutcomes as {
     fetchTaskId: string;
     status: string;
     reason: string;
+    workerId?: string;
     evidence?: Record<string, unknown>;
   }[];
   const outcomesById = new Map(outcomes.map((o) => [o.fetchTaskId, o]));
   assert.deepEqual([...outcomesById.keys()].sort(), ["t2", "t3"]);
+  assert.equal(outcomesById.get("t2")?.workerId, "shard-0");
+  assert.equal(outcomesById.get("t3")?.workerId, "shard-1");
   assert.equal(outcomesById.get("t3")?.status, "failed");
   assert.equal(outcomesById.get("t3")?.reason, "worker_missing_result");
   const t3Evidence = outcomesById.get("t3")?.evidence as {

@@ -4694,6 +4694,40 @@ function missingShardEvidence(task, shardPlan, shardSummaries, options = {}) {
   return evidence;
 }
 
+function workerIdFromShardResultName(name) {
+  const text = String(name || "");
+  const checkpointMatch = text.match(/^(shard-[^/]+)-checkpoints(?:\/|$)/);
+  if (checkpointMatch) return checkpointMatch[1];
+  const resultMatch = text.match(/^(shard-.+?)-result\.json$/);
+  if (resultMatch) return resultMatch[1];
+  return null;
+}
+
+function stampItemWorkerId(item, workerId) {
+  if (!workerId || !item || typeof item !== "object" || Array.isArray(item)) return item;
+  const rawJson =
+    item.rawJson && typeof item.rawJson === "object" && !Array.isArray(item.rawJson)
+      ? item.rawJson
+      : {};
+  return {
+    ...item,
+    rawJson: {
+      ...rawJson,
+      workerId: rawJson.workerId ?? workerId,
+    },
+  };
+}
+
+function stampOutcomeWorkerId(outcome, workerId) {
+  if (!workerId || !outcome || typeof outcome !== "object" || Array.isArray(outcome)) {
+    return outcome;
+  }
+  return {
+    ...outcome,
+    workerId: outcome.workerId ?? workerId,
+  };
+}
+
 export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) {
   const planned = extractFetchTasks(fetchResult);
   const taskTypeById = new Map(
@@ -4722,6 +4756,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
     String(builder?.builderId || builder?.sourceUrl || builder?.handle || builder?.name || "unknown");
 
   for (const shard of shardResults) {
+    const workerId = shard.workerId ?? workerIdFromShardResultName(shard.name);
     if (!shard.payload) {
       shardSummaries.push({
         shard: shard.name,
@@ -4740,11 +4775,12 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
         builders.push(target);
       }
       for (const item of builder?.items ?? []) {
-        const taskId = item?.rawJson?.fetchTaskId ? String(item.rawJson.fetchTaskId) : null;
+        const stampedItem = stampItemWorkerId(item, workerId);
+        const taskId = stampedItem?.rawJson?.fetchTaskId ? String(stampedItem.rawJson.fetchTaskId) : null;
         if (taskId && taskTypeById.get(taskId) === "fetch_builder_fallback") {
           // Builder-fallback tasks legitimately produce multiple items per
           // task id; dedupe those by item identity instead.
-          const itemKey = `${taskId}\u0000${item?.externalId || item?.url || ""}`;
+          const itemKey = `${taskId}\u0000${stampedItem?.externalId || stampedItem?.url || ""}`;
           if (seenFallbackItems.has(itemKey)) continue;
           seenFallbackItems.add(itemKey);
         } else if (taskId) {
@@ -4752,7 +4788,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
           syncedTaskIds.add(taskId);
         }
         if (taskId) accounted.add(taskId);
-        target.items.push(item);
+        target.items.push(stampedItem);
         itemCount += 1;
       }
     }
@@ -4762,7 +4798,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
       const id = String(outcome.fetchTaskId);
       if (accounted.has(id)) continue;
       accounted.add(id);
-      taskOutcomes.push(outcome);
+      taskOutcomes.push(stampOutcomeWorkerId(outcome, workerId));
       outcomeCount += 1;
     }
     shardSummaries.push({
@@ -4810,6 +4846,7 @@ export function mergeShardSyncPayloads(fetchResult, shardResults, options = {}) 
           shardSummaries,
           options,
         ),
+        ...(shardPlanByTaskId.get(id)?.shard ? { workerId: shardPlanByTaskId.get(id).shard } : {}),
       });
       backfilled += 1;
     }
@@ -6344,6 +6381,7 @@ async function patchFetchRunOutcomes(
       summaryWords: summary.words,
       agentRuntime: item?.rawJson?.agentRuntime ?? null,
       agentModel: item?.rawJson?.agentModel ?? null,
+      workerId: item?.rawJson?.workerId ?? null,
     });
   }
 
@@ -6428,6 +6466,7 @@ async function patchFetchRunOutcomes(
     let status;
     let failureReason;
     let evidence;
+    const workerId = sizes.workerId ?? agentOutcome?.workerId ?? null;
     if (server) {
       status = server.status === "synced" ? "synced" : "failed";
       if (status === "failed") failureReason = server.reason || "not_synced";
@@ -6459,6 +6498,7 @@ async function patchFetchRunOutcomes(
       ...(plannedTaskPatch ? { plannedTask: plannedTaskPatch } : {}),
       ...sizes,
       status,
+      ...(workerId ? { workerId } : {}),
       ...(failureReason ? { failureReason } : {}),
       ...(evidence ? { evidence } : {}),
     });
@@ -6519,6 +6559,7 @@ function fetchTaskLogPatch(task, id) {
     summaryWords: null,
     agentRuntime: null,
     agentModel: null,
+    workerId: task?.workerId ?? null,
   };
 }
 
