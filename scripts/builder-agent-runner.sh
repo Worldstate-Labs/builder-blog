@@ -75,6 +75,7 @@ refresh_skill_files() {
   download_skill_file "$APP_URL/api/skill/files/builder-blog-digest-cron.md" "$AGENT_DIR/jobs/digest-cron.md"
   download_skill_file "$APP_URL/api/skill/files/builder-blog-library-worker.md" "$AGENT_DIR/jobs/library-worker.md"
   download_skill_file "$APP_URL/api/skill/files/builder-blog-library-discovery.md" "$AGENT_DIR/jobs/library-discovery.md"
+  download_skill_file "$APP_URL/api/skill/files/local-agent-timeouts.json" "$AGENT_DIR/local-agent-timeouts.json"
   chmod +x "$AGENT_DIR/builder-digest.mjs"
 }
 
@@ -505,6 +506,32 @@ timeout_seconds_for_job() {
   case "$_interval" in
     ''|*[!0-9]*|0) _interval="60" ;;
   esac
+  _policy_file="$AGENT_DIR/local-agent-timeouts.json"
+  if [ -r "$_policy_file" ] && command -v node >/dev/null 2>&1; then
+    _computed="$(
+      node - "$_policy_file" "$_interval" "$_job" <<'NODE' 2>/dev/null
+const fs = require("fs");
+const [policyPath, intervalArg, job] = process.argv.slice(2);
+const policy = JSON.parse(fs.readFileSync(policyPath, "utf8"));
+const interval = Number(intervalArg);
+const safeInterval = Number.isFinite(interval) && interval > 0
+  ? interval
+  : Number(policy.defaultIntervalMinutes || 60);
+const multiplier = Number(policy.baseMultiplierSecondsPerMinute || 48);
+const min = Number(policy.minSeconds || 1200);
+const defaultMax = Number(policy.defaultMaxSeconds || 2700);
+const jobMax = policy.jobMaxSeconds && Number(policy.jobMaxSeconds[job]);
+const max = Number.isFinite(jobMax) && jobMax > 0 ? jobMax : defaultMax;
+console.log(String(Math.min(max, Math.max(min, safeInterval * multiplier))));
+NODE
+    )"
+    case "$_computed" in
+      ''|*[!0-9]*) ;;
+      *) printf '%s\n' "$_computed"; return 0 ;;
+    esac
+  fi
+  # Compatibility fallback for older installs if the downloaded policy file is
+  # missing or unreadable. Normal runs use local-agent-timeouts.json above.
   _base=$(( _interval * 48 ))
   _min=$(( 20 * 60 ))
   case "$_job" in
@@ -530,6 +557,25 @@ shard_timeout_seconds() {
   case "$_whole" in
     ''|*[!0-9]*|0) _whole="$(job_timeout_seconds)" ;;
   esac
+  _policy_file="$AGENT_DIR/local-agent-timeouts.json"
+  if [ -r "$_policy_file" ] && command -v node >/dev/null 2>&1; then
+    _computed="$(
+      node - "$_policy_file" "$_whole" <<'NODE' 2>/dev/null
+const fs = require("fs");
+const [policyPath, wholeArg] = process.argv.slice(2);
+const policy = JSON.parse(fs.readFileSync(policyPath, "utf8"));
+const whole = Number(wholeArg);
+const fraction = policy.shardFraction || {};
+const numerator = Number(fraction.numerator || 3);
+const denominator = Number(fraction.denominator || 4);
+console.log(String(Math.floor((whole * numerator) / denominator)));
+NODE
+    )"
+    case "$_computed" in
+      ''|*[!0-9]*) ;;
+      *) printf '%s\n' "$_computed"; return 0 ;;
+    esac
+  fi
   printf '%s\n' "$(( _whole * 3 / 4 ))"
 }
 

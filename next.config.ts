@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
     "/api/skill/files/[file]": [
       "./scripts/builder-digest.mjs",
       "./scripts/builder-agent-runner.sh",
+      "./config/local-agent-timeouts.json",
       "./skills/builder-blog-digest/SKILL.md",
       "./skills/builder-blog-digest/jobs/library-once.md",
       "./skills/builder-blog-digest/jobs/digest-once.md",
@@ -48,6 +49,7 @@ const nextConfig: NextConfig = {
       // file from the bundle and the route 500s (ENOENT) in production.
       "./skills/builder-blog-digest/jobs/library-cron-stop.md",
       "./skills/builder-blog-digest/jobs/digest-cron-stop.md",
+      "./config/local-agent-timeouts.json",
     ],
   },
 };

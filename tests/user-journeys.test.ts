@@ -489,8 +489,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /\{\{CRON_SCHEDULE\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_FREQUENCY_LABEL\}\}/);
   assert.match(skillJobRoute, /\{\{CRON_TIMEOUT_SECONDS\}\}/);
-  assert.match(skillJobRoute, /timeoutSecondsForJob/);
-  assert.match(skillJobRoute, /job\.startsWith\("library"\) \? 75 \* 60 : 45 \* 60/);
+  assert.match(skillJobRoute, /localAgentTimeoutSeconds/);
+  assert.doesNotMatch(skillJobRoute, /job\.startsWith\("library"\) \? 75 \* 60 : 45 \* 60/);
   // macOS scheduling uses a launchd LaunchAgent (keychain access). It uses a
   // relative StartInterval so the first scheduled run starts one interval after
   // the setup prompt's real initial run succeeds and the schedule is installed.
@@ -772,6 +772,7 @@ test("web app serves the agent skill and setup command", () => {
     "_fetch-task-discovery.md",
     "_fetch-task-core.md",
     "_fetch-task-syncing.md",
+    "local-agent-timeouts.json",
   ]) {
     assert.ok(
       tracingForFilesRoute.includes(fragment),
@@ -1029,6 +1030,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /RESOLVED_INTERVAL_MINUTES/);
   assert.match(runner, /job_timeout_seconds\(\)/);
   assert.match(runner, /shard_timeout_seconds\(\)/);
+  assert.match(runner, /local-agent-timeouts\.json/);
+  assert.match(runner, /JSON\.parse\(fs\.readFileSync\(policyPath, "utf8"\)\)/);
+  assert.match(runner, /Compatibility fallback/);
   assert.match(runner, /run_runtime_smoke_check\(\)[\s\S]*_timeout="\$\(job_timeout_seconds\)"/);
   assert.match(skillJobRoute, /\{\{CRON_INTERVAL_MINUTES\}\}/);
   assert.match(runner, /library-once\|digest-once\|library-cron-setup\|digest-cron-setup\|library-cron\|digest-cron/);
@@ -1116,6 +1120,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /download_skill_file\(\)/);
   assert.match(runner, /mv "\$_tmp" "\$_dest"/);
   assert.match(runner, /api\/skill\/files\/builder-digest\.mjs/);
+  assert.match(runner, /api\/skill\/files\/local-agent-timeouts\.json/);
   assert.doesNotMatch(
     runner,
     /curl -fsSL "\$APP_URL\/api\/skill\/files\/builder-digest\.mjs" -o "\$AGENT_DIR\/builder-digest\.mjs"/,
@@ -1131,6 +1136,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillFileRoute, /builder-blog-digest-cron\.md/);
   assert.match(skillFileRoute, /builder-agent-runner\.sh/);
   assert.match(skillFileRoute, /builder-digest\.mjs/);
+  assert.match(skillFileRoute, /local-agent-timeouts\.json/);
   assert.match(skillJobFiles, /library-once/);
   assert.match(skillJobFiles, /digest-once/);
   assert.match(skillJobRoute, /jobSkillFiles/);
@@ -1140,6 +1146,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-blog-digest\.md/);
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-digest\.mjs/);
   assert.match(bootstrapRoute, /api\/skill\/files\/builder-agent-runner\.sh/);
+  assert.match(bootstrapRoute, /api\/skill\/files\/local-agent-timeouts\.json/);
   assert.match(bootstrapRoute, /command -v node/);
   assert.match(bootstrapRoute, /FollowBrief requires Node\.js 20 or newer/);
   assert.match(bootstrapRoute, /command -v curl/);

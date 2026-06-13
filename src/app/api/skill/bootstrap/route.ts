@@ -50,6 +50,7 @@ download_skill_file "$APP_URL/api/skill/files/builder-blog-library-discovery.md"
 # of truth the CLI reads. Downloaded here so the once-flow (bootstrap → direct
 # CLI, no runner) always has it; the CLI no longer carries an embedded fallback.
 download_skill_file "$APP_URL/api/skill/files/sources.json" "$AGENT_DIR/sources.json"
+download_skill_file "$APP_URL/api/skill/files/local-agent-timeouts.json" "$AGENT_DIR/local-agent-timeouts.json"
 chmod +x "$AGENT_DIR/builder-digest.mjs"
 chmod +x "$AGENT_DIR/builder-agent-runner.sh"
 

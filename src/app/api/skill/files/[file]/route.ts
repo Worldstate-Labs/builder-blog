@@ -54,6 +54,10 @@ const skillFiles = {
     path: "config/sources.json",
     contentType: "application/json; charset=utf-8",
   },
+  "local-agent-timeouts.json": {
+    path: "config/local-agent-timeouts.json",
+    contentType: "application/json; charset=utf-8",
+  },
 } as const;
 
 export async function GET(_request: Request, { params }: Params) {

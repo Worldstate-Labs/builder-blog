@@ -3,18 +3,10 @@ import { join } from "node:path";
 import { NextResponse } from "next/server";
 import { jobSkillFiles } from "@/lib/skill-job-files";
 import { expandSkillIncludes } from "@/lib/skill-includes";
+import { localAgentTimeoutSeconds } from "@/lib/local-agent-timeouts";
 import { prisma } from "@/lib/prisma";
 
 type Params = { params: Promise<{ job: string }> };
-
-function timeoutSecondsForJob(intervalMinutes: string, job: string) {
-  const interval = Number(intervalMinutes);
-  const safeInterval = Number.isFinite(interval) && interval > 0 ? interval : 60;
-  const base = safeInterval * 48;
-  const min = 20 * 60;
-  const max = job.startsWith("library") ? 75 * 60 : 45 * 60;
-  return String(Math.min(max, Math.max(min, base)));
-}
 
 // Source-type-aware credential prep for the library cron setup prompt. The web
 // copy-prompt flow resolves the account from the exchange code, so we can tell
@@ -167,7 +159,7 @@ export async function GET(request: Request, { params }: Params) {
   const freq = freqRaw && cronSchedules[freqRaw] ? freqRaw : defaultFreq;
   const cronInterval = cronIntervalMinutes[freq] ?? "360";
   const cronIntervalSeconds = String(Number(cronInterval) * 60);
-  const cronTimeoutSeconds = timeoutSecondsForJob(cronInterval, job);
+  const cronTimeoutSeconds = localAgentTimeoutSeconds(cronInterval, job);
   // macOS uses a launchd LaunchAgent (runs in the user's login session, so
   // the agent CLI can reach the login keychain — plain cron cannot). Use a
   // relative interval instead of wall-clock calendar matching so, after the

@@ -1,0 +1,14 @@
+{
+  "defaultIntervalMinutes": 60,
+  "baseMultiplierSecondsPerMinute": 48,
+  "minSeconds": 1200,
+  "defaultMaxSeconds": 2700,
+  "jobMaxSeconds": {
+    "library-cron": 4500,
+    "digest-cron": 2700
+  },
+  "shardFraction": {
+    "numerator": 3,
+    "denominator": 4
+  }
+}
