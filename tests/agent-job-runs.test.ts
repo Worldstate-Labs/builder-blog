@@ -70,12 +70,18 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.match(cli, /FETCH_PROGRESS_VERSION = 1/);
   assert.match(cli, /FETCH_PROGRESS_RECENT_EVENT_LIMIT = 60/);
   assert.match(cli, /FETCH_PROGRESS_SOURCE_LIMIT = 120/);
+  assert.match(cli, /FETCH_PROGRESS_TASK_LIMIT = 120/);
   assert.match(cli, /function createFetchProgressState/);
   assert.match(cli, /async function emitFetchJobProgress/);
+  assert.match(cli, /async function emitCheckpointProgress/);
+  assert.match(cli, /async function readShardProgressFiles/);
   assert.match(cli, /function applyFetchProgressTaskOutcomes/);
+  assert.match(cli, /upsertFetchProgressTask/);
   assert.match(cli, /completedTaskIds/);
   assert.match(cli, /includeInternal/);
   assert.match(cli, /progress: fetchProgressSnapshotValue/);
+  assert.match(cli, /tasks: Array\.isArray\(progress\.tasks\)/);
+  assert.match(cli, /checkpoint-progress/);
   assert.match(cli, /stage: "scanning_sources"/);
   assert.match(cli, /stage: "tasks_planned"/);
   assert.match(cli, /stage: "syncing"/);
@@ -85,8 +91,13 @@ test("library fetch job runs carry bounded live progress without schema churn", 
   assert.doesNotMatch(cli, /model LibraryFetchProgress/);
 
   assert.match(panel, /type FetchJobProgress/);
+  assert.match(panel, /type FetchTaskProgress/);
   assert.match(panel, /function readFetchJobProgress/);
+  assert.match(panel, /function fetchTaskProgressMap/);
   assert.match(panel, /function LiveProgressSummary/);
+  assert.match(panel, /liveTask=\{task\.id \? liveTasks\.get\(task\.id\) \?\? null : null\}/);
+  assert.match(panel, /function liveFetchOutcome/);
+  assert.match(panel, /function liveSummarizeOutcome/);
   assert.match(panel, /jobRun\.details[\s\S]*progress/);
   assert.match(panel, /tasksDone/);
   assert.match(panel, /recentEvents/);
@@ -98,6 +109,7 @@ test("library fetch job runs carry bounded live progress without schema churn", 
 
 test("runner supervises cron workers instead of skipping active old instances", () => {
   const runner = source("scripts/builder-agent-runner.sh");
+  const workerPrompt = source("skills/builder-blog-digest/jobs/library-worker.md");
 
   assert.match(runner, /run_cron_supervisor/);
   assert.match(runner, /run_cron_worker/);
@@ -140,8 +152,13 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.doesNotMatch(runner, /\)\s*>> "\$LOG_FILE" 2>&1 &/);
   assert.doesNotMatch(runner, /WORKER_PID="\$!"/);
   assert.match(runner, /merge-task-results[\s\S]*tee "\$_merge_result_file"/);
+  assert.match(runner, /checkpoint-progress[\s\S]*--results-dir "\$_results_dir"/);
   assert.match(runner, /backfilledOutcomes/);
   assert.match(runner, /worker\/result issue\(s\)/);
+
+  assert.match(workerPrompt, /Live progress checkpoints/);
+  assert.match(workerPrompt, /\$BUILDER_BLOG_SHARD_CHECKPOINT_DIR\/progress\/<hash>\.json/);
+  assert.match(workerPrompt, /under the `progress\/`[\s\S]*subdirectory/);
 });
 
 test("web status uses scheduled job instances while history can show one-time runs", () => {

@@ -977,6 +977,10 @@ run_sharded_library() {
       fi
     done
     [ "$_alive" -eq 0 ] && break
+    node "$AGENT_DIR/builder-digest.mjs" checkpoint-progress \
+      --tasks "$_result_file" \
+      --results-dir "$_results_dir" \
+      --stage "workers_running" >/dev/null 2>&1 || true
     sleep 5
   done
   for _entry in $_worker_entries; do

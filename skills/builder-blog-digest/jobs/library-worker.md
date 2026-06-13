@@ -71,6 +71,33 @@ Then write it as `$BUILDER_BLOG_SHARD_CHECKPOINT_DIR/<hash>.json`. The runner
 uses these task-level checkpoints as the source of truth for completed work if
 the worker later crashes, times out, or fails to write the final shard result.
 
+Live progress checkpoints (for the UI only):
+- Before starting each task, create
+  `$BUILDER_BLOG_SHARD_CHECKPOINT_DIR/progress/<hash>.json` with status
+  `reading` and phase `read`.
+- After primary content is available and before summarizing, rewrite the same
+  file with status `summarizing` and phase `summarize`.
+- After the task checkpoint is written, rewrite the same progress file with
+  status `summarized`, `skipped`, `failed`, or `action_needed`.
+- These progress files are best-effort telemetry. They do not replace the
+  completed task checkpoint above, and they must live under the `progress/`
+  subdirectory so the final merge never treats them as sync payloads.
+
+Progress checkpoint shape:
+
+```text
+{ "fetchTaskId": "...",
+  "status": "reading|summarizing|summarized|skipped|failed|action_needed",
+  "phase": "read|summarize|completed",
+  "message": "short plain-language status",
+  "updatedAt": "ISO-8601 timestamp",
+  "title": "optional task title",
+  "builder": "optional builder name",
+  "sourceType": "optional source type",
+  "bodyChars": 123,
+  "summaryChars": 123 }
+```
+
 {{INCLUDE:fetch-task-core REPORT_TARGET="to this worker's stdout"}}
 
 3. Maintain the shard result at the exact path in `$BUILDER_BLOG_SHARD_RESULT`

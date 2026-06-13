@@ -183,6 +183,7 @@ type FetchJobProgress = {
     error?: string | null;
     updatedAt?: string | null;
   }>;
+  tasks?: FetchTaskProgress[];
   recentEvents?: Array<{
     at?: string | null;
     type?: string | null;
@@ -192,6 +193,25 @@ type FetchJobProgress = {
     status?: string | null;
     reason?: string | null;
   }>;
+};
+
+type FetchTaskProgress = {
+  id?: string | null;
+  taskId?: string | null;
+  status?: string | null;
+  phase?: string | null;
+  message?: string | null;
+  builder?: string | null;
+  builderId?: string | null;
+  sourceType?: string | null;
+  title?: string | null;
+  url?: string | null;
+  workerId?: string | null;
+  bodyChars?: number | null;
+  bodyWords?: number | null;
+  summaryChars?: number | null;
+  summaryWords?: number | null;
+  updatedAt?: string | null;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -309,6 +329,15 @@ function readFetchJobProgress(value: unknown): FetchJobProgress | null {
   const progress = readJobRunDetails(value).progress;
   if (!progress || typeof progress !== "object" || Array.isArray(progress)) return null;
   return progress;
+}
+
+function fetchTaskProgressMap(progress: FetchJobProgress | null): Map<string, FetchTaskProgress> {
+  const map = new Map<string, FetchTaskProgress>();
+  for (const task of progress?.tasks ?? []) {
+    const id = String(task.id ?? task.taskId ?? "");
+    if (id) map.set(id, task);
+  }
+  return map;
 }
 
 function hasActiveFetchProgress(jobRuns: AgentJobRunListItem[]): boolean {
@@ -1645,7 +1674,7 @@ function RunCard({
           Show details
         </summary>
         <div className="sync-panel-run-card-details-body">
-          <DetailsBody details={details} />
+          <DetailsBody details={details} liveProgress={liveProgress} />
         </div>
       </details>
     </article>
@@ -1791,12 +1820,19 @@ function sourceDisplayError(entry: SourceRunStats): string | null {
   return entry.error;
 }
 
-function DetailsBody({ details }: { details: DetailsShape }) {
+function DetailsBody({
+  details,
+  liveProgress,
+}: {
+  details: DetailsShape;
+  liveProgress: FetchJobProgress | null;
+}) {
   const perBuilder = Array.isArray(details.perBuilder) ? details.perBuilder : [];
   const userActions = Array.isArray(details.userActions) ? details.userActions : [];
   const localErrors = Array.isArray(details.localErrors) ? details.localErrors : [];
   const fetchTasks = Array.isArray(details.fetchTasks) ? details.fetchTasks : [];
   const sourceStats = sourceRunStats(perBuilder, fetchTasks);
+  const liveTasks = fetchTaskProgressMap(liveProgress);
   const prompts =
     details.prompts && typeof details.prompts === "object" && !Array.isArray(details.prompts)
       ? details.prompts
@@ -1862,6 +1898,7 @@ function DetailsBody({ details }: { details: DetailsShape }) {
             {fetchTasks.map((task, index) => (
               <TaskRow
                 key={task.id ?? `${task.builderId ?? "task"}-${index}`}
+                liveTask={task.id ? liveTasks.get(task.id) ?? null : null}
                 task={task}
               />
             ))}
@@ -2223,6 +2260,53 @@ function statusBanner(task: FetchTaskLog): { label: string; tone: Tone } {
   return { label: "Awaiting summary", tone: "warn" };
 }
 
+function liveTaskTone(liveTask: FetchTaskProgress | null | undefined): Tone {
+  const status = String(liveTask?.status ?? "").toLowerCase();
+  if (!status) return "idle";
+  if (status === "failed") return "fail";
+  if (status === "skipped" || status === "action_needed") return "warn";
+  if (status === "summarized" || status === "synced") return "ok";
+  return "warn";
+}
+
+function liveTaskLabel(liveTask: FetchTaskProgress | null | undefined): string | null {
+  const status = String(liveTask?.status ?? liveTask?.phase ?? "").replace(/_/g, " ");
+  if (!status) return null;
+  return `Worker ${status}`;
+}
+
+function liveFetchOutcome(
+  task: FetchTaskLog,
+  liveTask: FetchTaskProgress | null | undefined,
+): { label: string; tone: Tone } {
+  const phase = String(liveTask?.phase ?? "").toLowerCase();
+  const status = String(liveTask?.status ?? "").toLowerCase();
+  if (phase === "read" || status === "reading") return { label: "Reading", tone: "warn" };
+  if (
+    phase === "summarize" ||
+    status === "summarizing" ||
+    status === "summarized" ||
+    status === "synced"
+  ) {
+    return { label: "Fetched", tone: "ok" };
+  }
+  return fetchOutcome(task);
+}
+
+function liveSummarizeOutcome(
+  task: FetchTaskLog,
+  liveTask: FetchTaskProgress | null | undefined,
+): { label: string; tone: Tone } {
+  const phase = String(liveTask?.phase ?? "").toLowerCase();
+  const status = String(liveTask?.status ?? "").toLowerCase();
+  if (status === "summarizing" || phase === "summarize") return { label: "Summarizing", tone: "warn" };
+  if (status === "summarized") return { label: "Ready to sync", tone: "ok" };
+  if (status === "failed") return { label: "Failed", tone: "fail" };
+  if (status === "skipped") return { label: "Skipped", tone: "idle" };
+  if (status === "action_needed") return { label: "Action needed", tone: "fail" };
+  return summarizeOutcome(task);
+}
+
 function missingShardText(task: FetchTaskLog): string | null {
   const missingShard = task.evidence?.missingShard;
   if (!missingShard || typeof missingShard !== "object") return null;
@@ -2315,12 +2399,21 @@ function StageBlock({
   );
 }
 
-function TaskRow({ task }: { task: FetchTaskLog }) {
+function TaskRow({
+  liveTask,
+  task,
+}: {
+  liveTask?: FetchTaskProgress | null;
+  task: FetchTaskLog;
+}) {
+  const hydrated = useHydrated();
   const work = describeWork(task);
-  const fetchRes = fetchOutcome(task);
-  const sumRes = summarizeOutcome(task);
+  const fetchRes = liveFetchOutcome(task, liveTask);
+  const sumRes = liveSummarizeOutcome(task, liveTask);
   const banner = statusBanner(task);
   const bannerStyle = toneStyle(banner.tone);
+  const liveLabel = liveTaskLabel(liveTask);
+  const liveTone = liveTaskTone(liveTask);
   const pillLabel = taskSummaryPillLabel(task);
   // Colour the type pill by the real outcome, not by "ready" (a ready fetch can
   // still fail to summarize).
@@ -2329,6 +2422,8 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
   const agentLabel = [task.agentRuntime, task.agentModel].filter(Boolean).join(" · ");
   const bodySize = sizeText(task.bodyChars, task.bodyWords);
   const summarySize = sizeText(task.summaryChars, task.summaryWords);
+  const liveBodySize = sizeText(liveTask?.bodyChars, liveTask?.bodyWords);
+  const liveSummarySize = sizeText(liveTask?.summaryChars, liveTask?.summaryWords);
   const compression = compressionText(task.bodyChars, task.summaryChars);
   const bannerBlurb =
     banner.tone === "fail"
@@ -2377,6 +2472,27 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
             ) : null}
           </div>
 
+          {liveLabel ? (
+            <div
+              className="sync-panel-task-banner"
+              style={toneStyle(liveTone)}
+            >
+              {liveLabel}
+              {liveTask?.message ? (
+                <span className="sync-panel-task-banner-blurb">: {liveTask.message}</span>
+              ) : null}
+              {liveTask?.workerId ? (
+                <span className="sync-panel-task-banner-blurb"> · {liveTask.workerId}</span>
+              ) : null}
+              {liveTask?.updatedAt ? (
+                <span className="sync-panel-task-banner-blurb">
+                  {" · "}
+                  {hydrated ? formatRelative(liveTask.updatedAt) : formatAbsolute(liveTask.updatedAt)}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+
           {work.fix ? (
             <div className="sync-panel-task-fix">
               <span className="sync-panel-task-fix-label">How to fix: </span>
@@ -2401,6 +2517,7 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
           <StageBlock title="① Read" tone={fetchRes.tone} outcome={fetchRes.label}>
             <FactRow label="Method" value={<span>{work.label}</span>} />
             {bodySize ? <FactRow label="Content size" value={bodySize} /> : null}
+            {!bodySize && liveBodySize ? <FactRow label="Live content size" value={liveBodySize} /> : null}
             {isContentFailure(task) && failureReasonText(task) ? (
               <FactRow
                 label="Reason"
@@ -2448,6 +2565,7 @@ function TaskRow({ task }: { task: FetchTaskLog }) {
               <FactRow label="Expanded into" value={<span>{discoveryExpansion}</span>} />
             ) : null}
             {summarySize ? <FactRow label="Summary size" value={summarySize} /> : null}
+            {!summarySize && liveSummarySize ? <FactRow label="Live summary size" value={liveSummarySize} /> : null}
             {compression ? <FactRow label="Compression" value={compression} /> : null}
             {!isSummarized(task) && !isContentFailure(task) && failureReasonText(task) ? (
               <FactRow

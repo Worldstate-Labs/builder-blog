@@ -692,6 +692,7 @@ async function jobRunCommand(args, defaultStatus = "running") {
 const FETCH_PROGRESS_VERSION = 1;
 const FETCH_PROGRESS_RECENT_EVENT_LIMIT = 60;
 const FETCH_PROGRESS_SOURCE_LIMIT = 120;
+const FETCH_PROGRESS_TASK_LIMIT = 120;
 
 function createFetchProgressState(initial = {}) {
   return {
@@ -712,6 +713,7 @@ function createFetchProgressState(initial = {}) {
     },
     current: initial.current ?? {},
     sources: Array.isArray(initial.sources) ? initial.sources : [],
+    tasks: Array.isArray(initial.tasks) ? initial.tasks : [],
     recentEvents: Array.isArray(initial.recentEvents)
       ? initial.recentEvents.slice(-FETCH_PROGRESS_RECENT_EVENT_LIMIT)
       : [],
@@ -730,6 +732,9 @@ function fetchProgressSnapshot(progress, options = {}) {
     current: { ...(progress.current ?? {}) },
     sources: Array.isArray(progress.sources)
       ? progress.sources.slice(options.includeInternal ? undefined : -FETCH_PROGRESS_SOURCE_LIMIT)
+      : [],
+    tasks: Array.isArray(progress.tasks)
+      ? progress.tasks.slice(options.includeInternal ? undefined : -FETCH_PROGRESS_TASK_LIMIT)
       : [],
     recentEvents: Array.isArray(progress.recentEvents)
       ? progress.recentEvents.slice(-FETCH_PROGRESS_RECENT_EVENT_LIMIT)
@@ -768,6 +773,51 @@ function upsertFetchProgressSource(progress, source) {
   if (index >= 0) sources[index] = value;
   else sources.push(value);
   progress.sources = sources;
+}
+
+function compactProgressText(value, max = 260) {
+  if (value === null || value === undefined) return null;
+  const text = String(value).replace(/\s+/g, " ").trim();
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+function upsertFetchProgressTask(progress, task) {
+  const id = compactProgressText(task?.id ?? task?.taskId, 500);
+  if (!id) return false;
+  const tasks = Array.isArray(progress.tasks) ? progress.tasks : [];
+  const index = tasks.findIndex((item) => String(item.id ?? item.taskId ?? "") === id);
+  const previous = index >= 0 ? tasks[index] : {};
+  const value = {
+    ...previous,
+    id,
+    status: compactProgressText(task.status, 80),
+    phase: compactProgressText(task.phase, 80),
+    message: compactProgressText(task.message, 260),
+    builder: compactProgressText(task.builder, 160),
+    builderId: compactProgressText(task.builderId, 120),
+    sourceType: compactProgressText(task.sourceType, 80),
+    title: compactProgressText(task.title, 220),
+    url: compactProgressText(task.url, 500),
+    workerId: compactProgressText(task.workerId, 80),
+    bodyChars: Number.isFinite(Number(task.bodyChars)) ? Number(task.bodyChars) : previous.bodyChars ?? null,
+    bodyWords: Number.isFinite(Number(task.bodyWords)) ? Number(task.bodyWords) : previous.bodyWords ?? null,
+    summaryChars: Number.isFinite(Number(task.summaryChars)) ? Number(task.summaryChars) : previous.summaryChars ?? null,
+    summaryWords: Number.isFinite(Number(task.summaryWords)) ? Number(task.summaryWords) : previous.summaryWords ?? null,
+    updatedAt: compactProgressText(task.updatedAt, 80) ?? new Date().toISOString(),
+  };
+  const changed =
+    !previous ||
+    previous.status !== value.status ||
+    previous.phase !== value.phase ||
+    previous.message !== value.message ||
+    previous.bodyChars !== value.bodyChars ||
+    previous.summaryChars !== value.summaryChars;
+  if (index >= 0) tasks[index] = value;
+  else tasks.push(value);
+  progress.tasks = tasks
+    .sort((a, b) => String(a.updatedAt ?? "").localeCompare(String(b.updatedAt ?? "")))
+    .slice(-FETCH_PROGRESS_TASK_LIMIT);
+  return changed;
 }
 
 async function writeFetchProgressState(progress) {
@@ -863,6 +913,12 @@ function applyFetchProgressTaskOutcomes(progress, taskOutcomes, taskIds = []) {
       reason: outcome.failureReason ?? null,
       message: `${id}: ${String(outcome.status ?? "done").replace(/_/g, " ")}.`,
     });
+    upsertFetchProgressTask(progress, {
+      id,
+      status: outcome.status,
+      phase: "synced",
+      message: `${String(outcome.status ?? "done").replace(/_/g, " ")}.`,
+    });
   }
   const counters = progress.counters ?? {};
   const tasksPlanned = Math.max(
@@ -874,7 +930,7 @@ function applyFetchProgressTaskOutcomes(progress, taskOutcomes, taskIds = []) {
   progress.counters = {
     ...counters,
     tasksPlanned,
-    tasksDone: Math.min(tasksPlanned, (counters.tasksDone ?? 0) + delta.tasksDone),
+    tasksDone: Math.min(tasksPlanned, Math.max(counters.tasksDone ?? 0, completed.size)),
     synced: (counters.synced ?? 0) + delta.synced,
     skipped: (counters.skipped ?? 0) + delta.skipped,
     failed: (counters.failed ?? 0) + delta.failed,
@@ -4847,6 +4903,201 @@ async function readShardCheckpointResults(resultsDir) {
   return results;
 }
 
+async function readShardProgressFiles(resultsDir) {
+  let entries;
+  try {
+    entries = await readdir(resultsDir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const checkpointDirs = entries
+    .filter((entry) => entry.isDirectory() && /^shard-.*-checkpoints$/.test(entry.name))
+    .map((entry) => entry.name)
+    .sort();
+  const results = [];
+  for (const dirName of checkpointDirs) {
+    const progressDir = join(resultsDir, dirName, "progress");
+    let files;
+    try {
+      files = await readdir(progressDir);
+    } catch {
+      continue;
+    }
+    for (const fileName of files.filter((name) => name.endsWith(".json")).sort()) {
+      const name = `${dirName}/progress/${fileName}`;
+      try {
+        const payload = JSON.parse(await readFile(join(progressDir, fileName), "utf8"));
+        results.push({ name, payload, workerId: dirName.replace(/-checkpoints$/, "") });
+      } catch (error) {
+        results.push({
+          name,
+          error: error instanceof Error ? error.message : String(error),
+          workerId: dirName.replace(/-checkpoints$/, ""),
+        });
+      }
+    }
+  }
+  return results;
+}
+
+function plannedTaskSummary(task) {
+  return {
+    id: String(task?.id || fetchTaskId(task)),
+    builder: task?.builder ?? null,
+    builderId: task?.builderId ?? null,
+    sourceType: task?.sourceType ?? null,
+    title: task?.title ?? task?.item?.title ?? null,
+    url: task?.url ?? task?.item?.url ?? null,
+  };
+}
+
+function progressFromWorkerProgressEntry(entry, plannedById) {
+  const payload = entry?.payload;
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const id = String(payload.fetchTaskId ?? payload.id ?? "");
+  if (!id) return null;
+  const planned = plannedById.get(id) ?? {};
+  return {
+    ...planned,
+    id,
+    status: payload.status ?? "running",
+    phase: payload.phase ?? payload.status ?? "running",
+    message: payload.message ?? null,
+    builder: payload.builder ?? planned.builder ?? null,
+    builderId: payload.builderId ?? planned.builderId ?? null,
+    sourceType: payload.sourceType ?? planned.sourceType ?? null,
+    title: payload.title ?? planned.title ?? null,
+    url: payload.url ?? planned.url ?? null,
+    workerId: payload.workerId ?? entry.workerId ?? null,
+    bodyChars: payload.bodyChars ?? null,
+    bodyWords: payload.bodyWords ?? null,
+    summaryChars: payload.summaryChars ?? null,
+    summaryWords: payload.summaryWords ?? null,
+    updatedAt: payload.updatedAt ?? null,
+  };
+}
+
+function progressFromCheckpointItem(item, builder, entry, plannedById) {
+  const id = item?.rawJson?.fetchTaskId ? String(item.rawJson.fetchTaskId) : "";
+  if (!id) return null;
+  const planned = plannedById.get(id) ?? {};
+  const bodyStats = textStats(item?.body);
+  const summaryStats = textStats(item?.summary);
+  return {
+    ...planned,
+    id,
+    status: "summarized",
+    phase: "summarize",
+    message: "Summary ready; waiting for server sync.",
+    workerId: entry.name?.split("/")?.[0]?.replace(/-checkpoints$/, "") ?? null,
+    builder: planned.builder ?? builder?.name ?? null,
+    builderId: planned.builderId ?? builder?.builderId ?? null,
+    sourceType: planned.sourceType ?? item?.sourceType ?? null,
+    title: planned.title ?? item?.title ?? null,
+    url: planned.url ?? item?.url ?? null,
+    bodyChars: bodyStats.chars,
+    bodyWords: bodyStats.words,
+    summaryChars: summaryStats.chars,
+    summaryWords: summaryStats.words,
+  };
+}
+
+function progressFromCheckpointOutcome(outcome, entry, plannedById) {
+  const id = String(outcome?.fetchTaskId ?? "");
+  if (!id) return null;
+  const planned = plannedById.get(id) ?? {};
+  const status = outcome.status ?? "done";
+  return {
+    ...planned,
+    id,
+    status,
+    phase: "completed",
+    message: outcome.failureReason
+      ? `${String(status).replace(/_/g, " ")}: ${outcome.failureReason}`
+      : `${String(status).replace(/_/g, " ")}.`,
+    workerId: entry.name?.split("/")?.[0]?.replace(/-checkpoints$/, "") ?? null,
+  };
+}
+
+function latestProgressTask(tasks) {
+  return tasks
+    .filter((task) => task?.id)
+    .sort((a, b) => String(a.updatedAt ?? "").localeCompare(String(b.updatedAt ?? "")))
+    .at(-1) ?? null;
+}
+
+async function emitCheckpointProgress(args) {
+  const tasksFile = argValue(args, "--tasks");
+  const resultsDir = argValue(args, "--results-dir");
+  if (!tasksFile) throw new Error("Missing --tasks fetch-result.json");
+  if (!resultsDir) throw new Error("Missing --results-dir");
+
+  const progress = await readFetchProgressState();
+  if (!progress) return;
+  const config = await loadConfig();
+  const fetchResult = JSON.parse(await readFile(tasksFile, "utf8"));
+  const planned = extractFetchTasks(fetchResult).map(plannedTaskSummary);
+  const plannedById = new Map(planned.map((task) => [task.id, task]));
+  const updates = [];
+
+  for (const entry of await readShardProgressFiles(resultsDir)) {
+    const update = progressFromWorkerProgressEntry(entry, plannedById);
+    if (update) updates.push(update);
+  }
+
+  const checkpointCompletedIds = new Set();
+  for (const entry of await readShardCheckpointResults(resultsDir)) {
+    if (!entry.payload) continue;
+    for (const builder of entry.payload?.builders ?? []) {
+      for (const item of builder?.items ?? []) {
+        const update = progressFromCheckpointItem(item, builder, entry, plannedById);
+        if (!update) continue;
+        checkpointCompletedIds.add(update.id);
+        updates.push(update);
+      }
+    }
+    for (const outcome of entry.payload?.taskOutcomes ?? []) {
+      const update = progressFromCheckpointOutcome(outcome, entry, plannedById);
+      if (!update) continue;
+      checkpointCompletedIds.add(update.id);
+      updates.push(update);
+    }
+  }
+
+  let changed = false;
+  for (const update of updates) {
+    changed = upsertFetchProgressTask(progress, update) || changed;
+  }
+  const counters = progress.counters ?? {};
+  const tasksPlanned = Math.max(counters.tasksPlanned ?? 0, planned.length);
+  const tasksDone = Math.min(tasksPlanned, Math.max(counters.tasksDone ?? 0, checkpointCompletedIds.size));
+  if (tasksPlanned !== counters.tasksPlanned || tasksDone !== counters.tasksDone) {
+    progress.counters = { ...counters, tasksPlanned, tasksDone };
+    changed = true;
+  }
+  const latest = latestProgressTask(updates);
+  if (latest) {
+    progress.current = {
+      ...(progress.current ?? {}),
+      task: latest.title ?? latest.url ?? latest.id,
+      workerId: latest.workerId ?? null,
+    };
+  }
+  if (!changed) return;
+  if (latest) {
+    appendFetchProgressEvent(progress, {
+      type: "task_progress",
+      taskId: latest.id,
+      status: latest.status,
+      message: `${latest.title ?? latest.id}: ${latest.message ?? latest.phase ?? latest.status ?? "updated"}`,
+    });
+  }
+  await emitFetchJobProgress(config, progress, {
+    stage: argValue(args, "--stage", "workers_running"),
+    summary: progressSummary(fetchProgressSnapshot(progress)),
+  });
+}
+
 async function mergeTaskResults(args) {
   const tasksFile = argValue(args, "--tasks");
   const resultsDir = argValue(args, "--results-dir");
@@ -6239,6 +6490,7 @@ async function main() {
   else if (command === "fetch-personal") await fetchPersonal(args);
   else if (command === "expand-discovery") await expandDiscovery(args);
   else if (command === "shard-tasks") await shardTasks(args);
+  else if (command === "checkpoint-progress") await emitCheckpointProgress(args);
   else if (command === "merge-task-results") await mergeTaskResults(args);
   else if (command === "split-sync-slices") await splitSyncSlices(args);
   else if (command === "fail-sync-slice") await failSyncSlice(args);
