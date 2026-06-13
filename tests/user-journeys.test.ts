@@ -516,6 +516,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /\{\{CRON_FREQUENCY_KEY\}\}/);
   assert.match(libraryCronSetupPrompt, /\{\{CRON_FREQUENCY_LABEL\}\}/);
   assert.match(libraryCronSetupPrompt, /\{\{LAUNCHD_SCHEDULE\}\}/);
+  assert.match(libraryCronSetupPrompt, /<key>BUILDER_BLOG_INTERVAL_MINUTES<\/key><string>\{\{CRON_INTERVAL_MINUTES\}\}<\/string>/);
   assert.match(libraryCronSetupPrompt, /<key>INTERVAL_MINUTES<\/key><string>\{\{CRON_INTERVAL_MINUTES\}\}<\/string>/);
   assert.match(libraryCronSetupPrompt, /launchctl bootstrap/);
   assert.match(libraryCronSetupPrompt, /LaunchAgents/);
@@ -533,6 +534,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(libraryCronSetupPrompt, /0 \*\/6 \* \* \*/);
   assert.match(digestCronSetupPrompt, /\{\{CRON_SCHEDULE\}\}/);
   assert.match(digestCronSetupPrompt, /\{\{LAUNCHD_SCHEDULE\}\}/);
+  assert.match(digestCronSetupPrompt, /<key>BUILDER_BLOG_INTERVAL_MINUTES<\/key><string>\{\{CRON_INTERVAL_MINUTES\}\}<\/string>/);
   assert.match(digestCronSetupPrompt, /<key>INTERVAL_MINUTES<\/key><string>\{\{CRON_INTERVAL_MINUTES\}\}<\/string>/);
   assert.match(digestCronSetupPrompt, /launchctl bootstrap/);
   assert.match(digestCronSetupPrompt, /verify this account's local credential/);
@@ -829,6 +831,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(libraryCronSetupPrompt, /BUILDER_BLOG_DISABLE_WEB_SYNC=1/);
   assert.doesNotMatch(libraryCronSetupPrompt, /BUILDER_BLOG_FETCH_LIMIT=1/);
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_FETCH_DAYS="\{\{FETCH_DAYS\}\}"/);
+  assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_INTERVAL_MINUTES="\{\{CRON_INTERVAL_MINUTES\}\}"/);
   assert.match(
     libraryCronSetupPrompt,
     /BUILDER_BLOG_WORKER_MODE=1 \\\s+BUILDER_BLOG_JOB_TRIGGER=one_time \\\s+BUILDER_BLOG_AGENT_RUNTIME="\{\{AGENT_RUNTIME\}\}" \\\s+BUILDER_BLOG_FETCH_FORCE="\{\{FETCH_FLAG\}\}" \\\s+BUILDER_BLOG_FETCH_DAYS="\{\{FETCH_DAYS\}\}"/,
@@ -851,6 +854,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(digestCronSetupPrompt, /followbriefSmokeCheck/);
   assert.doesNotMatch(digestCronSetupPrompt, /BUILDER_BLOG_DISABLE_WEB_SYNC=1/);
   assert.match(digestCronSetupPrompt, /INTERVAL_MINUTES="\{\{CRON_INTERVAL_MINUTES\}\}"/);
+  assert.match(digestCronSetupPrompt, /BUILDER_BLOG_INTERVAL_MINUTES="\{\{CRON_INTERVAL_MINUTES\}\}"/);
   assert.doesNotMatch(digestCronSetupPrompt, /webSyncDisabled: true/);
   assert.match(digestCronSetupPrompt, /--job digest-cron/);
   assert.match(digestCronSetupPrompt, /--regenerate "\{\{DIGEST_REGENERATE\}\}"/);
@@ -1023,7 +1027,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /followbriefSmokeCheck/);
   assert.match(runner, /Do not run FollowBrief fetch, digest, sync, cron-status, or setup commands/);
   assert.match(runner, /RESOLVED_INTERVAL_MINUTES/);
-  assert.match(runner, /run_runtime_smoke_check\(\)[\s\S]*timeout_seconds_for_job "\$RESOLVED_INTERVAL_MINUTES" "\$JOB_NAME"/);
+  assert.match(runner, /job_timeout_seconds\(\)/);
+  assert.match(runner, /shard_timeout_seconds\(\)/);
+  assert.match(runner, /run_runtime_smoke_check\(\)[\s\S]*_timeout="\$\(job_timeout_seconds\)"/);
   assert.match(skillJobRoute, /\{\{CRON_INTERVAL_MINUTES\}\}/);
   assert.match(runner, /library-once\|digest-once\|library-cron-setup\|digest-cron-setup\|library-cron\|digest-cron/);
   assert.match(runner, /codex exec --skip-git-repo-check/);
@@ -1041,7 +1047,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /return 124/);
   assert.match(runner, /Runtime reported a timeout/);
   assert.match(runner, /BUILDER_BLOG_AGENT_TIMEOUT_SECONDS/);
-  assert.match(runner, /timeout_seconds_for_job "\$RESOLVED_INTERVAL_MINUTES" "\$JOB_NAME"/);
+  assert.match(runner, /_timeout="\$\(job_timeout_seconds\)"/);
+  assert.match(runner, /_whole_timeout="\$\(job_timeout_seconds\)"/);
+  assert.doesNotMatch(runner, /timeout_seconds_for_job "\$\{INTERVAL_MINUTES:-60\}" "\$JOB_NAME"/);
   assert.match(runner, /gemini -p/);
   // Pinned-runtime dispatch for *-cron jobs: each runtime has an
   // _unattended variant with the matching allowlist / auto-approve

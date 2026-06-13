@@ -194,7 +194,7 @@ run_with_openclaw_unattended() {
   # (the bare `--local --message` form errors "Pass --to/--session-id/--agent");
   # parallel workers can set OPENCLAW_SESSION_ID for isolated sessions, and the
   # regular path otherwise uses the configured main agent.
-  _openclaw_timeout="${BUILDER_BLOG_AGENT_TIMEOUT_SECONDS:-${_timeout:-$(timeout_seconds_for_job "$RESOLVED_INTERVAL_MINUTES" "$JOB_NAME")}}"
+  _openclaw_timeout="${_timeout:-$(job_timeout_seconds)}"
   sync_openclaw_timeout_config "$_openclaw_timeout"
   _openclaw_output="$(agent_output_file openclaw)"
   set +e
@@ -289,7 +289,7 @@ Do not browse the web.
 EOF
   PROMPT_FILE="$SMOKE_PROMPT_FILE"
   export BUILDER_BLOG_RUN_SOURCE=smoke
-  _timeout="${BUILDER_BLOG_AGENT_TIMEOUT_SECONDS:-$(timeout_seconds_for_job "$RESOLVED_INTERVAL_MINUTES" "$JOB_NAME")}"
+  _timeout="$(job_timeout_seconds)"
   echo "Running FollowBrief runtime smoke check for $JOB_NAME with ${PINNED_RUNTIME:-auto} (timeout ${_timeout}s)." >&2
   set +e
   run_selected_runtime &
@@ -399,6 +399,7 @@ fi
 INCOMING_INTERVAL_MINUTES="${BUILDER_BLOG_INTERVAL_MINUTES:-${INTERVAL_MINUTES:-}}"
 case "$INCOMING_INTERVAL_MINUTES" in
   ''|*[!0-9]*) RESOLVED_INTERVAL_MINUTES="60" ;;
+  0) RESOLVED_INTERVAL_MINUTES="60" ;;
   *) RESOLVED_INTERVAL_MINUTES="$INCOMING_INTERVAL_MINUTES" ;;
 esac
 export INTERVAL_MINUTES="$RESOLVED_INTERVAL_MINUTES"
@@ -501,6 +502,9 @@ schedule_job_for_name() {
 timeout_seconds_for_job() {
   _interval="${1:-60}"
   _job="${2:-$JOB_NAME}"
+  case "$_interval" in
+    ''|*[!0-9]*|0) _interval="60" ;;
+  esac
   _base=$(( _interval * 48 ))
   _min=$(( 20 * 60 ))
   case "$_job" in
@@ -511,6 +515,22 @@ timeout_seconds_for_job() {
   if [ "$_base" -lt "$_min" ]; then _base="$(( 20 * 60 ))"; fi
   if [ "$_base" -gt "$_max" ]; then _base="$_max"; fi
   printf '%s\n' "$_base"
+}
+
+job_timeout_seconds() {
+  _override="${BUILDER_BLOG_AGENT_TIMEOUT_SECONDS:-}"
+  case "$_override" in
+    ''|*[!0-9]*|0) timeout_seconds_for_job "$RESOLVED_INTERVAL_MINUTES" "$JOB_NAME" ;;
+    *) printf '%s\n' "$_override" ;;
+  esac
+}
+
+shard_timeout_seconds() {
+  _whole="${1:-$(job_timeout_seconds)}"
+  case "$_whole" in
+    ''|*[!0-9]*|0) _whole="$(job_timeout_seconds)" ;;
+  esac
+  printf '%s\n' "$(( _whole * 3 / 4 ))"
 }
 
 iso_now() {
@@ -732,7 +752,7 @@ run_with_job_tracking() {
   fi
   export BUILDER_BLOG_RUN_SOURCE
 
-  _timeout="$(timeout_seconds_for_job "$RESOLVED_INTERVAL_MINUTES" "$JOB_NAME")"
+  _timeout="$(job_timeout_seconds)"
   job_run_update running "Runtime agent started." "runtime_agent_started"
   run_job_payload &
   RUNTIME_PID="$!"
@@ -1019,8 +1039,8 @@ run_sharded_library() {
   # Per-shard timeout: 3/4 of the whole-job timeout. A hung shard is
   # terminated early enough for merge, failure reporting, and final sync to
   # finish before the outer runner timeout kills the whole run.
-  _whole_timeout="$(timeout_seconds_for_job "$RESOLVED_INTERVAL_MINUTES" "$JOB_NAME")"
-  _shard_timeout=$(( _whole_timeout * 3 / 4 ))
+  _whole_timeout="$(job_timeout_seconds)"
+  _shard_timeout="$(shard_timeout_seconds "$_whole_timeout")"
   _worker_entries=""
   _skip_wait_pids=""
   _timed_out_worker_pids=""

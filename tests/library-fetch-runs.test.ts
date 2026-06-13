@@ -170,7 +170,8 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /terminate_process_tree/);
   assert.match(runner, /process_tree_pids/);
   assert.match(runner, /worker_shard_timeout/);
-  assert.match(runner, /_shard_timeout=\$\(\( _whole_timeout \* 3 \/ 4 \)\)/);
+  assert.match(runner, /shard_timeout_seconds\(\)/);
+  assert.match(runner, /_shard_timeout="\$\(shard_timeout_seconds "\$_whole_timeout"\)"/);
   assert.match(runner, /still_alive_after_kill/);
   assert.match(runner, /skipped-wait-pids/);
   assert.match(runner, /job_run_update_for_instance/);
