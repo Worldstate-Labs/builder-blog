@@ -1,0 +1,18 @@
+{
+  "_comment": "Admin (jie@worldstatelabs.com) sources recovered from ~/.builder-blog/tmp/library-fetch-result.json before the Prisma→Neon migration. Used by scripts/seed-admin-sources.mts to recreate the library on the new DB. sourceValue is what the Add Source flow takes.",
+  "adminEmail": "jie@worldstatelabs.com",
+  "sources": [
+    { "sourceType": "x", "sourceValue": "https://x.com/joshwoodward" },
+    { "sourceType": "x", "sourceValue": "https://x.com/garrytan" },
+    { "sourceType": "x", "sourceValue": "https://x.com/googlelabs" },
+    { "sourceType": "x", "sourceValue": "https://x.com/steipete" },
+    { "sourceType": "x", "sourceValue": "https://x.com/karpathy" },
+    { "sourceType": "youtube", "sourceValue": "https://www.youtube.com/@LatentSpacePod" },
+    { "sourceType": "youtube", "sourceValue": "https://www.youtube.com/@DataDrivenNYC" },
+    { "sourceType": "youtube", "sourceValue": "https://www.youtube.com/@RedpointAI" },
+    { "sourceType": "youtube", "sourceValue": "https://www.youtube.com/@jiexu-q1r" },
+    { "sourceType": "blog", "sourceValue": "https://claude.com/blog" },
+    { "sourceType": "blog", "sourceValue": "https://www.anthropic.com/engineering" },
+    { "sourceType": "podcast", "sourceValue": "https://podcasts.apple.com/us/podcast/%E7%A1%85%E8%B0%B7101/id1498541229" }
+  ]
+}

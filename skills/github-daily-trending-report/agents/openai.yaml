@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Daily Trending"
+  short_description: "Report top daily GitHub star gainers"
+  default_prompt: "Use $github-daily-trending-report to produce today's top 5 GitHub star-gainer report."
