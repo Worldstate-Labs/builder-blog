@@ -129,20 +129,6 @@ type DetailsShape = {
   agentModel?: string | null;
 };
 
-type SourceRunStats = {
-  key: string;
-  builderId?: string;
-  name: string;
-  sourceType: string;
-  planned: number;
-  read: number;
-  summarized: number;
-  synced: number;
-  plannedFromTasks: number;
-  fallback?: PerBuilder["fallback"];
-  error?: string;
-};
-
 type FetchRunStats = {
   sourcesScanned: number;
   sourcesTotal: number;
@@ -153,6 +139,13 @@ type FetchRunStats = {
   skipped: number;
   failed: number;
   actionNeeded: number;
+};
+
+type FetchTaskSourceGroup = {
+  key: string;
+  name: string;
+  sourceType: string;
+  tasks: FetchTaskLog[];
 };
 
 type LifecycleStep = {
@@ -1575,7 +1568,7 @@ function LifecyclePipeline({
       {steps.map((step, index) => (
         <li key={step.key} className="sync-panel-lifecycle-item">
           <details
-            className="sync-panel-lifecycle-step"
+            className={`sync-panel-lifecycle-step is-${step.tone}`}
             open={step.open}
             style={{ "--step-color": toneStyle(step.tone).color } as CSSProperties}
           >
@@ -1854,7 +1847,7 @@ function RunCard({
   );
 }
 
-function sourceStatKey({
+function taskSourceKey({
   builderId,
   name,
   sourceType,
@@ -1889,110 +1882,36 @@ function isSummarizedForStats(task: FetchTaskLog): boolean {
   return isPlannedPostTask(task) && !isBlocked(task) && (isSummarized(task) || task.status === "synced");
 }
 
-function sourceRunStats(perBuilder: PerBuilder[], fetchTasks: FetchTaskLog[]): SourceRunStats[] {
-  const stats = new Map<string, SourceRunStats>();
-
-  const ensureStat = ({
-    builderId,
-    name,
-    sourceType,
-    fallback,
-    error,
-  }: {
-    builderId?: string | null;
-    name?: string | null;
-    sourceType?: string | null;
-    fallback?: PerBuilder["fallback"];
-    error?: string;
-  }) => {
-    const key = sourceStatKey({ builderId, name, sourceType });
-    const existing = stats.get(key);
-    if (existing) {
-      if (fallback) existing.fallback = fallback;
-      if (error) existing.error = error;
-      return existing;
-    }
-    const stat: SourceRunStats = {
-      key,
-      builderId: builderId ?? undefined,
-      name: name || "Unknown source",
-      sourceType: sourceType || "Unknown source type",
-      planned: 0,
-      read: 0,
-      summarized: 0,
-      synced: 0,
-      plannedFromTasks: 0,
-      fallback,
-      error,
-    };
-    stats.set(key, stat);
-    return stat;
-  };
-
-  for (const entry of perBuilder) {
-    ensureStat({
-      builderId: entry.builderId,
-      name: entry.name,
-      sourceType: entry.sourceType,
-      fallback: entry.fallback,
-      error: entry.error,
-    });
-  }
-
+function taskSourceGroups(fetchTasks: FetchTaskLog[]): FetchTaskSourceGroup[] {
+  const groups = new Map<string, FetchTaskSourceGroup>();
   for (const task of fetchTasks) {
-    if (!isPlannedPostTask(task)) continue;
-    const stat = ensureStat({
+    const key = taskSourceKey({
       builderId: task.builderId,
       name: task.builder,
       sourceType: task.sourceType,
     });
-    stat.planned += 1;
-    stat.plannedFromTasks += 1;
-    if (isReadForStats(task)) stat.read += 1;
-    if (isSummarizedForStats(task)) stat.summarized += 1;
-    if (task.status === "synced") stat.synced += 1;
-  }
-
-  for (const entry of perBuilder) {
-    const stat = ensureStat({
-      builderId: entry.builderId,
-      name: entry.name,
-      sourceType: entry.sourceType,
-      fallback: entry.fallback,
-      error: entry.error,
+    const existing = groups.get(key);
+    if (existing) {
+      existing.tasks.push(task);
+      continue;
+    }
+    groups.set(key, {
+      key,
+      name: task.builder || "Unknown source",
+      sourceType: task.sourceType || "Unknown source type",
+      tasks: [task],
     });
-    const isDiscoveryFallback = entry.fallback?.kind === "candidate_discovery_fallback";
-    if (stat.plannedFromTasks === 0 && !isDiscoveryFallback) {
-      stat.planned = entry.tasksGenerated ?? 0;
-    }
-    if (stat.read === 0 && typeof entry.itemsFetched === "number") {
-      stat.read = entry.itemsFetched;
-    }
   }
-
-  return [...stats.values()];
+  return [...groups.values()];
 }
 
-function sourceIssueNote(entry: SourceRunStats): { text: string; title?: string } | null {
-  if (entry.fallback?.message) {
-    return {
-      text: entry.fallback.message,
-      title: entry.fallback.reason,
-    };
-  }
-  if (entry.error && entry.plannedFromTasks > 0) {
-    return {
-      text: "Initial source scan stopped; Local Agent fallback was queued.",
-      title: `Original error: ${entry.error}`,
-    };
-  }
-  return null;
-}
-
-function sourceDisplayError(entry: SourceRunStats): string | null {
-  if (!entry.error) return null;
-  if (sourceIssueNote(entry)) return null;
-  return entry.error;
+function groupedTaskStats(tasks: FetchTaskLog[]) {
+  return {
+    planned: tasks.filter(isPlannedPostTask).length,
+    read: tasks.filter(isReadForStats).length,
+    summarized: tasks.filter(isSummarizedForStats).length,
+    synced: tasks.filter((task) => task.status === "synced").length,
+  };
 }
 
 function DetailsBody({
@@ -2002,11 +1921,10 @@ function DetailsBody({
   details: DetailsShape;
   liveProgress: FetchJobProgress | null;
 }) {
-  const perBuilder = Array.isArray(details.perBuilder) ? details.perBuilder : [];
   const userActions = Array.isArray(details.userActions) ? details.userActions : [];
   const localErrors = Array.isArray(details.localErrors) ? details.localErrors : [];
   const fetchTasks = Array.isArray(details.fetchTasks) ? details.fetchTasks : [];
-  const sourceStats = sourceRunStats(perBuilder, fetchTasks);
+  const taskGroups = taskSourceGroups(fetchTasks);
   const liveTasks = fetchTaskProgressMap(liveProgress);
   const prompts =
     details.prompts && typeof details.prompts === "object" && !Array.isArray(details.prompts)
@@ -2016,70 +1934,54 @@ function DetailsBody({
 
   return (
     <div className="sync-panel-run-card-details-stack">
-      {sourceStats.length > 0 ? (
-        <div>
-          <h3 className="sync-panel-run-card-detail-heading">
-            Sources
-          </h3>
-          <ul className="sync-panel-run-card-source-list">
-            {sourceStats.map((entry) => {
-              const note = sourceIssueNote(entry);
-              const error = sourceDisplayError(entry);
-              return (
-                <li
-                  key={entry.key}
-                  className="sync-panel-fetch-source-row"
-                >
-                  <span className="sync-panel-fetch-source-name">{entry.name}</span>
-                  <span
-                    aria-label={`${entry.sourceType}: ${entry.planned} planned, ${entry.read} read, ${entry.summarized} summarized, ${entry.synced} synced`}
-                    className="mono sync-panel-fetch-source-meta"
-                  >
-                    <span className="sync-panel-fetch-source-type">{entry.sourceType}</span>
-                    <span className="sync-panel-fetch-source-stat">
-                      <strong>{formatCount(entry.planned)}</strong> planned
-                    </span>
-                    <span className="sync-panel-fetch-source-stat">
-                      <strong>{formatCount(entry.read)}</strong> read
-                    </span>
-                    <span className="sync-panel-fetch-source-stat">
-                      <strong>{formatCount(entry.summarized)}</strong> summarized
-                    </span>
-                    <span className="sync-panel-fetch-source-stat">
-                      <strong>{formatCount(entry.synced)}</strong> synced
-                    </span>
-                  </span>
-                  {error ? (
-                    <span className="sync-panel-fetch-source-error">{error}</span>
-                  ) : null}
-                  {note ? (
-                    <span
-                      className="sync-panel-fetch-source-note"
-                      title={note.title}
-                    >
-                      {note.text}
-                    </span>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ) : null}
-
-      {fetchTasks.length > 0 ? (
+      {taskGroups.length > 0 ? (
         <div>
           <h3 className="sync-panel-run-card-detail-heading">
             Post tasks ({fetchTasks.length})
           </h3>
-          <ul className="sync-panel-run-card-candidate-list">
-            {fetchTasks.map((task, index) => (
-              <TaskRow
-                key={task.id ?? `${task.builderId ?? "task"}-${index}`}
-                liveTask={task.id ? liveTasks.get(task.id) ?? null : null}
-                task={task}
-              />
-            ))}
+          <ul className="sync-panel-task-source-group-list">
+            {taskGroups.map((group) => {
+              const stats = groupedTaskStats(group.tasks);
+              return (
+                <li className="sync-panel-task-source-group" key={group.key}>
+                  <details className="sync-panel-task-source-details" open>
+                    <summary className="sync-panel-task-source-summary">
+                      <span className="sync-panel-task-source-name">{group.name}</span>
+                      <span
+                        aria-label={`${group.sourceType}: ${group.tasks.length} tasks, ${stats.planned} planned, ${stats.read} read, ${stats.summarized} summarized, ${stats.synced} synced`}
+                        className="mono sync-panel-task-source-meta"
+                      >
+                        <span className="sync-panel-task-source-type">{group.sourceType}</span>
+                        <span className="sync-panel-task-source-stat">
+                          <strong>{formatCount(group.tasks.length)}</strong> tasks
+                        </span>
+                        <span className="sync-panel-task-source-stat">
+                          <strong>{formatCount(stats.planned)}</strong> planned
+                        </span>
+                        <span className="sync-panel-task-source-stat">
+                          <strong>{formatCount(stats.read)}</strong> read
+                        </span>
+                        <span className="sync-panel-task-source-stat">
+                          <strong>{formatCount(stats.summarized)}</strong> summarized
+                        </span>
+                        <span className="sync-panel-task-source-stat">
+                          <strong>{formatCount(stats.synced)}</strong> synced
+                        </span>
+                      </span>
+                    </summary>
+                    <ul className="sync-panel-run-card-candidate-list">
+                      {group.tasks.map((task, index) => (
+                        <TaskRow
+                          key={task.id ?? `${task.builderId ?? "task"}-${index}`}
+                          liveTask={task.id ? liveTasks.get(task.id) ?? null : null}
+                          task={task}
+                        />
+                      ))}
+                    </ul>
+                  </details>
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}
@@ -2231,8 +2133,7 @@ function DetailsBody({
         </details>
       ) : null}
 
-      {perBuilder.length === 0 &&
-      userActions.length === 0 &&
+      {userActions.length === 0 &&
       localErrors.length === 0 &&
       fetchTasks.length === 0 &&
       promptEntries.length === 0 &&
@@ -2384,7 +2285,31 @@ function isSummarized(task: FetchTaskLog): boolean {
   return typeof task.summaryChars === "number" && task.summaryChars > 0;
 }
 
-function summarizeOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
+function liveTaskHasBody(liveTask: FetchTaskProgress | null | undefined): boolean {
+  return typeof liveTask?.bodyChars === "number" && liveTask.bodyChars > 0;
+}
+
+function hasReadSignal(
+  task: FetchTaskLog,
+  liveTask?: FetchTaskProgress | null,
+): boolean {
+  const phase = String(liveTask?.phase ?? "").toLowerCase();
+  const status = String(liveTask?.status ?? "").toLowerCase();
+  return (
+    isReadForStats(task) ||
+    isSummarized(task) ||
+    liveTaskHasBody(liveTask) ||
+    phase === "summarize" ||
+    status === "summarizing" ||
+    status === "summarized" ||
+    status === "synced"
+  );
+}
+
+function summarizeOutcome(
+  task: FetchTaskLog,
+  liveTask?: FetchTaskProgress | null,
+): { label: string; tone: Tone } {
   if (isCandidateDiscoveryTask(task)) {
     if (task.status === "synced") return { label: "Expanded", tone: "ok" };
     if (task.status === "failed") return { label: "Failed", tone: "fail" };
@@ -2399,25 +2324,43 @@ function summarizeOutcome(task: FetchTaskLog): { label: string; tone: Tone } {
   // a failure, not a benign "pending".
   if (task.status === "failed") return { label: "Failed", tone: "fail" };
   if (isBlocked(task)) return { label: "Not reached", tone: "idle" };
+  if (!hasReadSignal(task, liveTask)) return { label: "Not reached", tone: "idle" };
   return { label: "Pending", tone: "warn" };
 }
 
-function taskSummaryPillLabel(task: FetchTaskLog): string {
+function taskStatusPill(
+  task: FetchTaskLog,
+  liveTask?: FetchTaskProgress | null,
+): { label: string; tone: Tone } {
+  const liveStatus = String(liveTask?.status ?? "").toLowerCase();
+  const livePhase = String(liveTask?.phase ?? "").toLowerCase();
   if (isCandidateDiscoveryTask(task)) {
-    if (task.status === "synced") return "expanded";
-    if (task.status === "failed") return "failed";
-    if (task.status === "action_needed" || isBlocked(task)) return "action";
-    return "discovery";
+    if (task.status === "synced" || liveStatus === "synced") return { label: "expanded", tone: "ok" };
+    if (task.status === "failed" || liveStatus === "failed") return { label: "failed", tone: "fail" };
+    if (task.status === "action_needed" || liveStatus === "action_needed" || isBlocked(task)) {
+      return { label: "action", tone: "fail" };
+    }
+    return { label: "discover", tone: "warn" };
   }
-  if (isSummarized(task)) return "summarized";
-  if (task.status === "failed") return "failed";
-  if (task.status === "skipped") return "skipped";
-  if (task.status === "action_needed" || isBlocked(task)) return "action";
-  if (task.contentStatus === "ready") return "ready";
-  return "Local Agent";
+  if (task.status === "synced" || liveStatus === "synced") return { label: "synced", tone: "ok" };
+  if (task.status === "failed" || liveStatus === "failed") return { label: "failed", tone: "fail" };
+  if (task.status === "skipped" || liveStatus === "skipped") return { label: "skipped", tone: "idle" };
+  if (task.status === "action_needed" || liveStatus === "action_needed" || isBlocked(task)) {
+    return { label: "action", tone: "fail" };
+  }
+  if (liveStatus === "reading" || livePhase === "read") return { label: "read", tone: "warn" };
+  if (!hasReadSignal(task, liveTask)) return { label: "read", tone: "idle" };
+  if (liveStatus === "summarizing" || livePhase === "summarize") {
+    return { label: "summarize", tone: "warn" };
+  }
+  if (isSummarized(task) || liveStatus === "summarized") return { label: "sync", tone: "warn" };
+  return { label: "summarize", tone: "warn" };
 }
 
-function statusBanner(task: FetchTaskLog): { label: string; tone: Tone } {
+function statusBanner(
+  task: FetchTaskLog,
+  liveTask?: FetchTaskProgress | null,
+): { label: string; tone: Tone } {
   if (isCandidateDiscoveryTask(task)) {
     if (task.status === "synced") return { label: "Candidates discovered", tone: "ok" };
     if (task.status === "failed") return { label: "Discovery failed", tone: "fail" };
@@ -2435,6 +2378,12 @@ function statusBanner(task: FetchTaskLog): { label: string; tone: Tone } {
   if (task.status === "failed") return { label: "Failed", tone: "fail" };
   if (task.status === "action_needed") return { label: "Action needed", tone: "fail" };
   if (isBlocked(task)) return { label: "Action needed", tone: "fail" };
+  if (!hasReadSignal(task, liveTask)) {
+    const status = String(liveTask?.status ?? "").toLowerCase();
+    const phase = String(liveTask?.phase ?? "").toLowerCase();
+    if (status === "reading" || phase === "read") return { label: "Reading", tone: "warn" };
+    return { label: "Waiting for Local Agent", tone: "idle" };
+  }
   return { label: "Waiting to summarize", tone: "warn" };
 }
 
@@ -2459,6 +2408,7 @@ function liveFetchOutcome(
 ): { label: string; tone: Tone } {
   const phase = String(liveTask?.phase ?? "").toLowerCase();
   const status = String(liveTask?.status ?? "").toLowerCase();
+  if (hasReadSignal(task, liveTask)) return { label: "Read", tone: "ok" };
   if (phase === "read" || status === "reading") return { label: "Reading", tone: "warn" };
   if (
     phase === "summarize" ||
@@ -2482,7 +2432,7 @@ function liveSummarizeOutcome(
   if (status === "failed") return { label: "Failed", tone: "fail" };
   if (status === "skipped") return { label: "Skipped", tone: "idle" };
   if (status === "action_needed") return { label: "Action needed", tone: "fail" };
-  return summarizeOutcome(task);
+  return summarizeOutcome(task, liveTask);
 }
 
 function missingShardText(task: FetchTaskLog): string | null {
@@ -2559,14 +2509,12 @@ function TaskRow({
   const work = describeWork(task);
   const fetchRes = liveFetchOutcome(task, liveTask);
   const sumRes = liveSummarizeOutcome(task, liveTask);
-  const banner = statusBanner(task);
+  const banner = statusBanner(task, liveTask);
+  const readDone = hasReadSignal(task, liveTask);
   const bannerStyle = toneStyle(banner.tone);
   const liveLabel = liveTaskLabel(liveTask);
   const liveTone = liveTaskTone(liveTask);
-  const pillLabel = taskSummaryPillLabel(task);
-  // Colour the type pill by the real outcome, not by "ready" (a ready fetch can
-  // still fail to summarize).
-  const pillTone: Tone = banner.tone;
+  const pill = taskStatusPill(task, liveTask);
 
   const agentLabel = [task.agentRuntime, task.agentModel].filter(Boolean).join(" · ");
   const bodySize = sizeText(task.bodyChars, task.bodyWords);
@@ -2719,7 +2667,9 @@ function TaskRow({
                   {isDiscovery
                     ? "The Local Agent hasn't expanded this discovery task yet."
                     : sumRes.label === "Not reached"
-                      ? "Read was blocked, so no summary was produced."
+                      ? readDone
+                        ? "Summary has not started yet."
+                        : "Read has not completed yet, so summary has not started."
                       : sumRes.label === "Failed"
                         ? "This post failed to summarize, so it was not synced."
                         : "The Local Agent hasn't summarized this post yet."}
@@ -2773,9 +2723,9 @@ function TaskRow({
           ) : null}
           <span
             className="sync-panel-task-status-pill"
-            style={{ ...toneStyle(pillTone), fontFamily: "var(--font-geist-mono)" }}
+            style={{ ...toneStyle(pill.tone), fontFamily: "var(--font-geist-mono)" }}
           >
-            {pillLabel}
+            {pill.label}
           </span>
           <span className="sync-panel-task-title">
             {task.title ?? task.url ?? "Untitled task"}

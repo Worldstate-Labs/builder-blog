@@ -212,7 +212,10 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /Fetch log/);
   assert.match(panel, /Fetch sources run history/);
   assert.match(panel, /fallback\?:/);
-  assert.match(panel, /sync-panel-fetch-source-note/);
+  assert.match(panel, /taskSourceGroups\(fetchTasks\)/);
+  assert.match(panel, /className="sync-panel-task-source-group-list"/);
+  assert.match(panel, /className="sync-panel-task-source-details" open/);
+  assert.doesNotMatch(panel, /sourceRunStats/);
   // A fetch run linked to a stopped/killed runtime job is no longer live even
   // if its planned task outcomes were never patched.
   assert.match(panel, /jobRunByInstanceId/);
@@ -247,13 +250,18 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.doesNotMatch(panel, /Use Update sources to copy a Local Agent prompt/);
   assert.doesNotMatch(panel, /Schedule stopped[\s\S]{0,120}Local Agent prompt/);
   assert.match(panel, /Needs Local Agent/);
-  assert.match(panel, /taskSummaryPillLabel/);
-  assert.match(panel, /return "summarized"/);
-  assert.match(panel, /return "failed"/);
+  assert.match(panel, /taskStatusPill/);
+  assert.match(panel, /return \{ label: "summarize", tone: "warn" \}/);
+  assert.match(panel, /return \{ label: "failed", tone: "fail" \}/);
+  assert.doesNotMatch(panel, /task\.contentStatus === "ready"\) return "ready"/);
   assert.match(panel, /isCandidateDiscoveryTask/);
-  assert.match(panel, /return "expanded"/);
+  assert.match(panel, /return \{ label: "expanded", tone: "ok" \}/);
   assert.match(panel, /Candidates discovered/);
   assert.match(panel, /label: isDiscovery \? "Expand" : "Summarize"/);
+  assert.match(panel, /function hasReadSignal/);
+  assert.match(panel, /statusBanner\(task, liveTask\)/);
+  assert.match(panel, /Waiting for Local Agent/);
+  assert.match(panel, /Read has not completed yet, so summary has not started\./);
   assert.match(panel, /Discovery task lifecycle/);
   assert.match(panel, /Expanded into/);
   assert.doesNotMatch(panel, /\{ready \? "ready" : "Local Agent"\}/);
@@ -286,8 +294,8 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /className="sync-panel-run-card-details-summary"/);
   assert.match(panel, /className="sync-panel-run-card-details-body"/);
   assert.match(panel, /className="sync-panel-run-card-details-stack"/);
-  assert.match(panel, /className="sync-panel-fetch-source-row"/);
-  assert.match(panel, /className="mono sync-panel-fetch-source-meta"/);
+  assert.match(panel, /className="sync-panel-task-source-group"/);
+  assert.match(panel, /className="mono sync-panel-task-source-meta"/);
   assert.match(panel, /className="sync-panel-status-note"/);
   assert.match(panel, /className=\{`sync-panel-slot-bar \$\{heightClass\}`\}/);
   assert.match(panel, /className="sync-panel-slot-row"/);
@@ -315,7 +323,7 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /className="sync-panel-task-body"/);
   assert.match(panel, /className="sync-panel-task-banner"/);
   assert.match(panel, /className="sync-panel-lifecycle"/);
-  assert.match(panel, /className="sync-panel-lifecycle-step"/);
+  assert.match(panel, /className=\{`sync-panel-lifecycle-step is-\$\{step\.tone\}`\}/);
   assert.match(panel, /className="sync-panel-task-fact-row"/);
   assert.match(panel, /className="sync-panel-task-technical"/);
   assert.match(panel, /className="mono sync-panel-task-technical-code"/);

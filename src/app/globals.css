@@ -6253,6 +6253,11 @@ details:not([open]) > :not(summary) {
   width: 0.75rem;
 }
 
+.sync-panel-lifecycle-step.is-idle .sync-panel-lifecycle-dot {
+  background: var(--paper-strong);
+  border-color: color-mix(in oklch, var(--paper-strong) 100%, transparent);
+}
+
 .sync-panel-lifecycle-copy {
   display: grid;
   gap: 0.125rem;
@@ -6371,21 +6376,44 @@ details:not([open]) > :not(summary) {
   font-size: 0.6875rem;
 }
 
-.sync-panel-fetch-source-row {
-  align-items: start;
+.sync-panel-task-source-group-list {
   display: grid;
-  font-size: 0.75rem;
-  gap: 0.35rem 0.75rem;
-  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
 }
 
-.sync-panel-fetch-source-name {
+.sync-panel-task-source-group {
+  min-width: 0;
+}
+
+.sync-panel-task-source-details {
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sync-panel-task-source-summary {
+  align-items: center;
+  cursor: pointer;
+  display: grid;
+  gap: 0.35rem 0.75rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0.5rem 0.625rem;
+}
+
+.sync-panel-task-source-name {
   color: var(--ink);
+  font-weight: 700;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-.sync-panel-fetch-source-meta {
+.sync-panel-task-source-meta {
   align-items: baseline;
   color: var(--muted-strong);
   display: flex;
@@ -6397,44 +6425,40 @@ details:not([open]) > :not(summary) {
   min-width: 0;
 }
 
-.sync-panel-fetch-source-type {
+.sync-panel-task-source-type {
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-.sync-panel-fetch-source-stat {
+.sync-panel-task-source-stat {
   align-items: baseline;
   display: inline-flex;
   gap: 0.18rem;
   white-space: nowrap;
 }
 
-.sync-panel-fetch-source-stat strong {
+.sync-panel-task-source-stat strong {
   color: var(--ink);
   font-weight: 700;
 }
 
-.sync-panel-fetch-source-error {
-  color: var(--danger);
-  grid-column: 1 / -1;
-}
-
-.sync-panel-fetch-source-note {
-  color: var(--muted-strong);
-  grid-column: 1 / -1;
+.sync-panel-task-source-details > .sync-panel-run-card-candidate-list {
+  border-top: 1px solid var(--line);
+  padding: 0.5rem;
 }
 
 @media (max-width: 640px) {
-  .sync-panel-fetch-source-row {
+  .sync-panel-task-source-summary {
+    align-items: start;
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .sync-panel-fetch-source-meta {
+  .sync-panel-task-source-meta {
     justify-self: start;
     width: 100%;
   }
 
-  .sync-panel-fetch-source-type {
+  .sync-panel-task-source-type {
     flex: 1 1 100%;
   }
 }
