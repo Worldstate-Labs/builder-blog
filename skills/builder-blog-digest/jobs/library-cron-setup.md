@@ -10,18 +10,9 @@ code, and stderr. Do not use `--force`. Do not browse for extra context. Do not
 invoke any other skill, plugin, or subagent — run the numbered steps yourself
 exactly as written; this prompt is the whole task.
 
-Agent discretion boundary: this is a scheduler setup task. Do not change paths,
-flags, cadence, titles, output files, JSON schema, or success criteria. You run
-one real initial fetch job while the user is present, and only install the cron
-schedule after that job succeeds. Installing the schedule last is deliberate: it
-never arms a recurring job whose pipeline has not been proven, and the direct
-initial run uses an isolated setup temp directory while it is still writing. On an override
-re-setup an existing schedule stays loaded through the initial run (so a failed
-initial run never leaves the account with no schedule) and is replaced
-atomically in step 7 only after the initial run passes. The initial run feeds
-the agent the `library-cron` prompt (the single source of truth for how fetch
-tasks are fetched, summarized, validated, and synced) and syncs real web state.
-This setup file does not restate any fetch-task work.
+This setup prompt only orchestrates scheduler setup. The real fetch/summarize
+work happens only through the runner command in step 6; do not manually perform
+fetch-task work outside the numbered commands.
 
 Scheduled runtime: **{{AGENT_RUNTIME_LABEL}}** ({{AGENT_RUNTIME}}). Every step
 below uses this pinned runtime; do not fall back to a different one.
@@ -166,9 +157,9 @@ is added to `~/.builder-blog/secrets.json` later.
 scheduled runtime/fetch settings and install the schedule to run
 {{CRON_FREQUENCY_LABEL}}. Installing it last means the schedule is never armed
 while the unmanaged initial run above is still executing, and a pipeline that
-failed the initial run never gets scheduled. On
-macOS, the first scheduled run starts one full interval after this schedule is
-installed. Pick the path for this machine's OS — run `uname` if unsure.
+failed the initial run never gets scheduled. On macOS, the first scheduled run
+starts one full interval after this schedule is installed. Pick the path for
+this machine's OS — run `uname` if unsure.
 
 Write the per-account, per-job pins immediately before installing the schedule:
 `runtime-library-cron-$ACCOUNT_SLUG` makes the runner use the picked agent's

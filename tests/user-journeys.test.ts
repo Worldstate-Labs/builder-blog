@@ -896,7 +896,14 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /\(none found\)/);
   // The setup does one real initial run; cron-setup must NOT restate the
   // fetch-task execution steps.
-  assert.match(libraryCronSetupPrompt, /single source of truth/);
+  assert.match(
+    libraryCronSetupPrompt,
+    /This setup prompt only orchestrates scheduler setup/,
+  );
+  assert.match(
+    libraryCronSetupPrompt,
+    /do not manually perform\s+fetch-task work outside the numbered commands/,
+  );
   assert.match(libraryCronSetupPrompt, /one real initial fetch job/);
   assert.match(libraryCronSetupPrompt, /writes fetch-log rows, builders, and feed items/);
   assert.match(libraryCronSetupPrompt, /do not treat a lack of\s+output as a hang/);
