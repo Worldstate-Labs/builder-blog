@@ -851,6 +851,26 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronStopPrompt, /fetch-days-library-cron-\$ACCOUNT_SLUG/);
   assert.match(libraryCronStopPrompt, /parallel-library-cron-\$ACCOUNT_SLUG/);
   assert.match(libraryCronStopPrompt, /tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron\/current\.json/);
+  assert.ok(
+    skillJobRoute.includes("([ \\t]*)"),
+    "skill job account injection must preserve indentation for nested job-run-update commands",
+  );
+  {
+    const accountEnv = 'BUILDER_BLOG_ACCOUNT="jie@worldstatelabs.com"';
+    const sampleStopBlock = [
+      '    node "$AGENT_DIR/builder-digest.mjs" job-run-update \\',
+      "      --job-type library-fetch",
+    ].join("\n");
+    const rendered = sampleStopBlock.replace(
+      /(^|\n)([ \t]*)(?:BUILDER_BLOG_ACCOUNT="[^"]*"\s*\\\n[ \t]*)?(node\s+[^\n]*builder-digest\.mjs[^\n]*)/gm,
+      (_m: string, lineStart: string, indent: string, nodeCmd: string) =>
+        `${lineStart}${indent}${accountEnv} \\\n${indent}${nodeCmd}`,
+    );
+    assert.match(
+      rendered,
+      /    BUILDER_BLOG_ACCOUNT="jie@worldstatelabs\.com" \\\n    node "\$AGENT_DIR\/builder-digest\.mjs" job-run-update/,
+    );
+  }
   assert.doesNotMatch(libraryCronStopPrompt, /Do not\s+exchange a token or make any network call/);
   assert.doesNotMatch(digestCronSetupPrompt, /BUILDER_BLOG_AGENT_TIMEOUT_SECONDS=300/);
   assert.match(digestCronSetupPrompt, /BUILDER_BLOG_WORKER_MODE=1/);
