@@ -1968,8 +1968,9 @@ function DetailsBody({
   const userActions = Array.isArray(details.userActions) ? details.userActions : [];
   const localErrors = Array.isArray(details.localErrors) ? details.localErrors : [];
   const fetchTasks = Array.isArray(details.fetchTasks) ? details.fetchTasks : [];
+  const postTasks = fetchTasks.filter(isPlannedPostTask);
   const liveTasks = fetchTaskProgressMap(liveProgress);
-  const taskGroups = taskWorkerGroups(fetchTasks, liveTasks);
+  const taskGroups = taskWorkerGroups(postTasks, liveTasks);
   const prompts =
     details.prompts && typeof details.prompts === "object" && !Array.isArray(details.prompts)
       ? details.prompts
@@ -1978,10 +1979,10 @@ function DetailsBody({
 
   return (
     <div className="sync-panel-run-card-details-stack">
-      {taskGroups.length > 0 ? (
+      {postTasks.length > 0 ? (
         <div>
           <h3 className="sync-panel-run-card-detail-heading">
-            Post tasks ({fetchTasks.length})
+            Post tasks ({postTasks.length})
           </h3>
           <ul className="sync-panel-task-worker-group-list">
             {taskGroups.map((workerGroup) => {

@@ -249,7 +249,9 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /aria-label="Fetch sources run history list"/);
   assert.match(panel, /className="sync-panel-run-list sync-panel-run-list-scroll"/);
   assert.match(panel, /fallback\?:/);
-  assert.match(panel, /taskWorkerGroups\(fetchTasks, liveTasks\)/);
+  assert.match(panel, /const postTasks = fetchTasks\.filter\(isPlannedPostTask\)/);
+  assert.match(panel, /taskWorkerGroups\(postTasks, liveTasks\)/);
+  assert.match(panel, /Post tasks \(\{postTasks\.length\}\)/);
   assert.match(panel, /className="sync-panel-task-worker-group-list"/);
   assert.match(panel, /className="sync-panel-task-worker-details" open/);
   assert.match(panel, /className="sync-panel-task-worker-summary"/);
