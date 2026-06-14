@@ -252,6 +252,7 @@ function usage() {
   sync --file digest.md [--summary-file digest-headlines.txt] [--title "AI Builder Digest"] [--regenerate] [--context builder-blog-context.json]
   cron-status --job library-cron|digest-cron --status active|stopped [--freq 6h] [--schedule "0 */6 * * *"]
   fetch-status-audit
+  digest-status-audit
   job-run-start --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id>
   job-run-update --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id> --status running|succeeded|failed|timed_out|killed|replaced|stale
   status
@@ -6821,6 +6822,104 @@ async function fetchStatusAudit() {
   }, null, 2));
 }
 
+async function digestStatusAudit() {
+  const config = await readConfig();
+  requireLoggedIn(config);
+  const data = await getJson(`${config.appUrl}/api/digest-runs`, config.token, {
+    label: "digest status audit",
+    timeoutMs: HTTP_SYNC_TIMEOUT_MS,
+  });
+  const cronJob = data.cronJob ?? null;
+  const scheduledJobRuns = Array.isArray(data.scheduledJobRuns) ? data.scheduledJobRuns : [];
+  const latestScheduled = scheduledJobRuns[0] ?? null;
+  const cronRuns = Array.isArray(data.cronRuns) ? data.cronRuns : [];
+  const latestCronRun = cronRuns[0] ?? null;
+  const localAnchorPath = join(agentDir(), `schedule-anchor-digest-cron-${accountSlug()}`);
+  const localTmpDir = join(agentDir(), "tmp", "accounts", accountSlug(), "digest-cron");
+  const localLastFiredPath = join(localTmpDir, "last-fired-expected-at");
+  const localCurrentPath = join(localTmpDir, "current.json");
+  const localAnchor = normalizeIso(readLocalText(localAnchorPath));
+  const localLastFired = normalizeIso(readLocalText(localLastFiredPath));
+  const localCurrent = parseLocalJson(localCurrentPath);
+  const currentPidAlive = localCurrent ? pidIsAlive(localCurrent.workerPid) : false;
+  const window = relativeWindow(cronJob);
+  const latestExpected = normalizeIso(latestScheduled?.expectedAt);
+  const terminalStatuses = new Set(["succeeded", "failed", "timed_out", "killed", "replaced", "stale"]);
+  const latestDigestMatchesScheduled =
+    !latestScheduled ||
+    latestScheduled.status !== "succeeded" ||
+    (
+      latestCronRun?.status === "synced" &&
+      (!latestCronRun?.jobRunId || latestCronRun.jobRunId === latestScheduled.instanceId)
+    );
+  const checks = [
+    {
+      name: "production_cron_active",
+      ok: cronJob?.status === "active",
+      detail: cronJob?.status ?? "missing",
+    },
+    {
+      name: "local_anchor_matches_production",
+      ok: !cronJob || !localAnchor || localAnchor === normalizeIso(cronJob.startedAt),
+      detail: { localAnchor, productionStartedAt: normalizeIso(cronJob?.startedAt) },
+    },
+    {
+      name: "latest_scheduled_run_terminal",
+      ok: !latestScheduled || terminalStatuses.has(String(latestScheduled.status)),
+      detail: latestScheduled
+        ? { status: latestScheduled.status, expectedAt: latestExpected, stage: latestScheduled.stage }
+        : "none",
+    },
+    {
+      name: "last_fired_matches_latest_scheduled_run",
+      ok: !localLastFired || !latestExpected || localLastFired === latestExpected,
+      detail: { localLastFired, latestExpected },
+    },
+    {
+      name: "current_file_not_dead",
+      ok: !localCurrent || currentPidAlive,
+      detail: localCurrent
+        ? { instanceId: localCurrent.instanceId, workerPid: localCurrent.workerPid, currentPidAlive }
+        : "missing",
+    },
+    {
+      name: "latest_digest_run_synced_for_scheduled_job",
+      ok: latestDigestMatchesScheduled,
+      detail: latestScheduled
+        ? {
+            scheduledStatus: latestScheduled.status,
+            scheduledInstanceId: latestScheduled.instanceId,
+            digestRunStatus: latestCronRun?.status ?? null,
+            digestRunJobRunId: latestCronRun?.jobRunId ?? null,
+          }
+        : "none",
+    },
+  ];
+  const ok = checks.every((check) => check.ok);
+  console.log(JSON.stringify({
+    status: ok ? "ok" : "needs_attention",
+    appUrl: config.appUrl,
+    account: process.env.BUILDER_BLOG_ACCOUNT ?? null,
+    now: new Date().toISOString().replace(".000Z", "Z"),
+    production: {
+      cronJob,
+      latestScheduled,
+      latestDigestRun: latestCronRun,
+      scheduledWindow: window,
+    },
+    local: {
+      anchorPath: localAnchorPath,
+      anchor: localAnchor,
+      lastFiredPath: localLastFiredPath,
+      lastFired: localLastFired,
+      currentPath: localCurrentPath,
+      current: localCurrent,
+      currentPidAlive,
+    },
+    checks,
+  }, null, 2));
+}
+
 async function main() {
   const [command, ...args] = process.argv.slice(2);
   if (command === "exchange") await exchange(args);
@@ -6846,6 +6945,7 @@ async function main() {
   else if (command === "sync") await sync(args);
   else if (command === "cron-status") await cronStatus(args);
   else if (command === "fetch-status-audit") await fetchStatusAudit();
+  else if (command === "digest-status-audit") await digestStatusAudit();
   else if (command === "job-run-start") await jobRunCommand(args, "starting");
   else if (command === "job-run-update") await jobRunCommand(args, "running");
   else if (command === "status") await status();

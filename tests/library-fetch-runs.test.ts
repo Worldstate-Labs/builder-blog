@@ -196,7 +196,7 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /\*\-cron\)/);
 });
 
-test("CLI can audit production fetch status against local scheduler state", () => {
+test("CLI can audit production cron status against local scheduler state", () => {
   const cli = source("scripts/builder-digest.mjs");
 
   assert.match(cli, /fetch-status-audit/);
@@ -210,6 +210,11 @@ test("CLI can audit production fetch status against local scheduler state", () =
   assert.match(cli, /latest_scheduled_run_terminal/);
   assert.match(cli, /last_fired_matches_latest_scheduled_run/);
   assert.match(cli, /current_file_not_dead/);
+  assert.match(cli, /digest-status-audit/);
+  assert.match(cli, /async function digestStatusAudit\(\)/);
+  assert.match(cli, /\/api\/digest-runs/);
+  assert.match(cli, /schedule-anchor-digest-cron-\$\{accountSlug\(\)\}/);
+  assert.match(cli, /latest_digest_run_synced_for_scheduled_job/);
 });
 
 test("FetchLogPanel renders status pills and status/log tabs with semantic CSS variables", () => {
@@ -434,6 +439,12 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   const digestRuns = source("src/lib/digest-runs.ts");
   const digestUpdateStatus = source("src/lib/digest-update-status.ts");
 
+  assert.match(route, /getCurrentSession\(\)/);
+  assert.match(route, /getUserFromBearer\(request\)/);
+  assert.match(route, /export async function GET\(request: Request\)/);
+  assert.match(route, /const userId = session\?\.user\?\.id \?\? bearerUser\?\.id \?\? null/);
+  assert.match(route, /getDigestRuns\(userId\)/);
+  assert.match(route, /getScheduledAgentJobRuns\(userId, "digest-cron", 25\)/);
   assert.match(digestUpdateStatus, /@\/lib\/schedule-timing/);
   assert.doesNotMatch(digestUpdateStatus, /function floorToExpectedSchedule/);
   assert.doesNotMatch(digestUpdateStatus, /function addScheduleInterval/);
