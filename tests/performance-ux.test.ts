@@ -1960,7 +1960,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-error"/);
   assert.match(digestLogPanel, /Could not refresh\. Try again\./);
   assert.doesNotMatch(`${fetchLogPanel}\n${digestLogPanel}`, /Refresh failed/);
-  assert.match(fetchLogPanel, /className="sync-panel-run-card"/);
+  assert.match(fetchLogPanel, /className="sync-panel-run-card sync-panel-mobile-flat"/);
+  assert.match(globals, /@media \(max-width:\s*640px\)[\s\S]*\.sync-panel-run-card\.sync-panel-mobile-flat\s*{[\s\S]*background:\s*transparent/);
+  assert.match(globals, /@media \(max-width:\s*640px\)[\s\S]*\.sync-panel-run-card\.sync-panel-mobile-flat \.sync-panel-run-card-details\s*{[\s\S]*border-inline:\s*0/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card-head"/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card-summary"/);
   assert.match(fetchLogPanel, /className="mono sync-panel-run-card-meta"/);

@@ -198,15 +198,18 @@ test("web status uses scheduled job instances while history can show one-time ru
   const digestPanel = source("src/components/DigestLogPanel.tsx");
   const fetchRoute = source("src/app/api/skill/fetch-runs/route.ts");
   const digestRoute = source("src/app/api/digest-runs/route.ts");
+  const scheduledWindowUi = source("src/lib/scheduled-window-ui.ts");
 
   for (const panel of [fetchPanel, digestPanel]) {
     assert.match(panel, /AgentJobRunListItem/);
-    assert.match(panel, /trigger === "scheduled"/);
-    assert.match(panel, /Scheduled/);
-    assert.match(panel, /One-time/);
-    assert.match(panel, /Stalled/);
-    assert.match(panel, /timed_out|timed out/);
+    assert.match(panel, /scheduledRunTriggerLabel/);
   }
+  assert.match(scheduledWindowUi, /trigger === "scheduled"/);
+  assert.match(scheduledWindowUi, /Scheduled/);
+  assert.match(scheduledWindowUi, /Setup validation/);
+  assert.match(scheduledWindowUi, /One-time/);
+  assert.match(scheduledWindowUi, /Stalled/);
+  assert.match(scheduledWindowUi, /timed_out|Timed out/);
   assert.match(fetchPanel, /Fetch sources run history/);
   assert.match(digestPanel, /Build log/);
   assert.match(digestPanel, /AI Digest build history/);

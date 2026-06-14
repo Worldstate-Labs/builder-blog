@@ -21,6 +21,13 @@ import { latestResolvedSlotStatus } from "@/lib/digest-update-status";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
 import { displayLanguagePreference } from "@/lib/language-preference";
 import { addScheduleInterval, firstExpectedSchedule, floorToExpectedSchedule } from "@/lib/schedule-timing";
+import {
+  scheduledJobRunStatusLabel,
+  scheduledRunTriggerLabel,
+  scheduledWindowRunNote,
+  scheduledWindowStatusLabel,
+  scheduledWindowStyleStatus,
+} from "@/lib/scheduled-window-ui";
 
 export type LibraryFetchRunListItem = {
   id: string;
@@ -1228,31 +1235,18 @@ function FetchStatusPanel({
 }
 
 function cronSlotStyle(status: CronSlotStatus): { background: string; border: string; color: string } {
-  if (status === "ok") return statusStyle("ok");
-  if (status === "failed" || status === "missed") return statusStyle("failed");
-  if (status === "stalled") return statusStyle("failed");
-  return statusStyle("partial");
-}
-
-function cronSlotLabel(status: CronSlotStatus): string {
-  if (status === "ok") return "Succeeded";
-  if (status === "failed") return "Failed";
-  if (status === "missed") return "Missed";
-  if (status === "running") return "Running";
-  if (status === "stalled") return "Stalled";
-  return "Waiting";
+  return statusStyle(scheduledWindowStyleStatus(status));
 }
 
 function cronSlotRunNote(slot: CronSlot): string {
   const runSummary = slot.run
     ? `${slot.run.itemsFetched} read · ${formatDuration(slot.run.durationMs)}`
     : null;
-  if (slot.run && slot.jobRun && slot.jobRun.status !== "succeeded") {
-    return `${jobRunStatusLabel(slot.jobRun)} · ${runSummary}`;
-  }
-  if (runSummary) return runSummary;
-  if (slot.jobRun) return `${jobRunStatusLabel(slot.jobRun)} · ${slot.jobRun.runtime || "Local Agent"}`;
-  return "No job reported";
+  return scheduledWindowRunNote({
+    jobRunStatus: slot.jobRun ? jobRunStatusLabel(slot.jobRun) : null,
+    runSummary,
+    runtime: slot.jobRun?.runtime,
+  });
 }
 
 function slotFailureContext(slot: CronSlot): string | null {
@@ -1293,7 +1287,7 @@ function CronSlotBar({ onSelect, slot }: { onSelect: () => void; slot: CronSlot 
       : slot.status === "waiting" || slot.status === "running"
         ? "is-short"
         : "is-medium";
-  const label = cronSlotLabel(slot.status);
+  const label = scheduledWindowStatusLabel(slot.status);
   return (
     <button
       aria-label={`${label} scheduled fetch run at ${formatAbsolute(slot.expectedAt)}`}
@@ -1320,7 +1314,7 @@ function CronSlotRow({
   slot: CronSlot;
 }) {
   const style = cronSlotStyle(slot.status);
-  const label = cronSlotLabel(slot.status);
+  const label = scheduledWindowStatusLabel(slot.status);
   const failureContext = slotFailureContext(slot);
   return (
     <div
@@ -1439,9 +1433,7 @@ function FetchRunList({
 }
 
 function jobRunLabel(jobRun: AgentJobRunListItem): string {
-  if (jobRun.trigger === "scheduled") return "Scheduled";
-  if (jobRun.trigger === "one_time") return "One-time";
-  return "Manual";
+  return scheduledRunTriggerLabel(jobRun, "library-cron");
 }
 
 function jobRunStatusStyle(jobRun: AgentJobRunListItem): ReturnType<typeof statusStyle> {
@@ -1451,26 +1443,7 @@ function jobRunStatusStyle(jobRun: AgentJobRunListItem): ReturnType<typeof statu
 }
 
 function jobRunStatusLabel(jobRun: AgentJobRunListItem): string {
-  switch (jobRun.status) {
-    case "succeeded":
-      return "Succeeded";
-    case "starting":
-      return "Starting";
-    case "running":
-      return "Running";
-    case "timed_out":
-      return "Timed out";
-    case "killed":
-      return "Killed";
-    case "stale":
-      return "Stopped";
-    case "replaced":
-      return "Replaced";
-    case "failed":
-      return "Failed";
-    default:
-      return jobRun.status.replace(/_/g, " ");
-  }
+  return scheduledJobRunStatusLabel(jobRun.status);
 }
 
 function interruptedFetchRunStatus(jobRun?: AgentJobRunListItem | null): {
@@ -1681,7 +1654,7 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
     ? "The Local Agent has started; no fetch log has been received yet."
     : "The Local Agent ended before FollowBrief received a fetch log.";
   return (
-    <article className="sync-panel-run-card">
+    <article className="sync-panel-run-card sync-panel-mobile-flat">
       <header className="sync-panel-run-card-head">
         <span
           className="fb-chip"
@@ -1757,7 +1730,7 @@ function RunCard({
 
   return (
     <article
-      className="sync-panel-run-card"
+      className="sync-panel-run-card sync-panel-mobile-flat"
       id={runDomId(run.id)}
     >
       <header className="sync-panel-run-card-head">
@@ -1794,7 +1767,7 @@ function RunCard({
         >
           {startedAtLabel}
         </time>
-        <span className="fb-chip">{run.source === "cron" ? "Scheduled" : "One-time"}</span>
+        <span className="fb-chip">{scheduledRunTriggerLabel(jobRun ?? null, "library-cron", run.source)}</span>
         {agentLabel ? (
           <span className="sync-panel-run-card-runtime">
             {agentLabel}

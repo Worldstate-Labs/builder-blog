@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   useTransition,
+  type CSSProperties,
   type KeyboardEvent,
   type ReactNode,
   type SetStateAction,
@@ -37,6 +38,13 @@ import type {
   DigestRunSource,
 } from "@/lib/digest-runs";
 import { displayLanguagePreference } from "@/lib/language-preference";
+import {
+  scheduledJobRunStatusLabel,
+  scheduledRunTriggerLabel,
+  scheduledWindowRunNote,
+  scheduledWindowStatusLabel,
+  scheduledWindowStyleStatus,
+} from "@/lib/scheduled-window-ui";
 
 const RELATIVE_FORMATTER =
   typeof Intl !== "undefined" && "RelativeTimeFormat" in Intl
@@ -654,19 +662,7 @@ function DigestStatusPanel({
 }
 
 function cronSlotStyle(status: CronSlotStatus): ChipStyle {
-  if (status === "ok") return statusStyle("ok");
-  if (status === "failed" || status === "missed") return statusStyle("failed");
-  if (status === "stalled") return statusStyle("failed");
-  return statusStyle("partial");
-}
-
-function cronSlotLabel(status: CronSlotStatus): string {
-  if (status === "ok") return "Succeeded";
-  if (status === "failed") return "Failed";
-  if (status === "missed") return "Missed";
-  if (status === "running") return "Running";
-  if (status === "stalled") return "Stalled";
-  return "Waiting";
+  return statusStyle(scheduledWindowStyleStatus(status));
 }
 
 function CronSlotBar({ onSelect, slot }: { onSelect: () => void; slot: DigestCronSlot }) {
@@ -677,7 +673,7 @@ function CronSlotBar({ onSelect, slot }: { onSelect: () => void; slot: DigestCro
       : slot.status === "waiting" || slot.status === "running"
         ? "is-short"
         : "is-medium";
-  const label = cronSlotLabel(slot.status);
+  const label = scheduledWindowStatusLabel(slot.status);
   return (
     <button
       aria-label={`${label} scheduled AI Digest run at ${formatAbsolute(slot.expectedAt)}`}
@@ -704,7 +700,13 @@ function CronSlotRow({
   slot: DigestCronSlot;
 }) {
   const style = cronSlotStyle(slot.status);
-  const label = cronSlotLabel(slot.status);
+  const label = scheduledWindowStatusLabel(slot.status);
+  const runSummary = slot.run ? `${slot.run.includedCount ?? 0}/${slot.run.candidateCount} used` : null;
+  const runNote = scheduledWindowRunNote({
+    jobRunStatus: slot.jobRun ? jobRunStatusLabel(slot.jobRun) : null,
+    runSummary,
+    runtime: slot.jobRun?.runtime,
+  });
   return (
     <div
       className="sync-panel-slot-row"
@@ -726,13 +728,7 @@ function CronSlotRow({
         </time>
       </div>
       <div className="sync-panel-slot-row-side">
-        <span className="mono sync-panel-slot-row-note">
-          {slot.jobRun && !slot.run
-            ? `${jobRunStatusLabel(slot.jobRun)} · ${slot.jobRun.runtime || "Local Agent"}`
-            : slot.run
-            ? `${slot.run.includedCount ?? 0}/${slot.run.candidateCount} used`
-            : "No run recorded"}
-        </span>
+        <span className="mono sync-panel-slot-row-note">{runNote}</span>
         {slot.run ? (
           <button
             className="fb-btn light compact"
@@ -759,8 +755,15 @@ function DigestRunList({
   setExpanded: (value: (previous: boolean) => boolean) => void;
 }) {
   const runJobIds = new Set(runs.map((run) => run.jobRunId).filter((id): id is string => Boolean(id)));
+  const jobsByInstanceId = jobRunByInstanceId(jobRuns);
   const entries = [
-    ...runs.map((run) => ({ kind: "digest" as const, id: run.id, startedAt: run.preparedAt, run })),
+    ...runs.map((run) => ({
+      kind: "digest" as const,
+      id: run.id,
+      startedAt: run.preparedAt,
+      run,
+      jobRun: run.jobRunId ? jobsByInstanceId.get(run.jobRunId) : undefined,
+    })),
     ...jobRuns
       .filter((jobRun) => !runJobIds.has(jobRun.instanceId))
       .map((jobRun) => ({
@@ -784,7 +787,7 @@ function DigestRunList({
         <>
           {visibleEntries.map((entry) => (
             entry.kind === "digest"
-              ? <RunCard key={entry.id} run={entry.run} />
+              ? <RunCard key={entry.id} jobRun={entry.jobRun} run={entry.run} />
               : <JobRunCard key={entry.id} jobRun={entry.jobRun} />
           ))}
           {entries.length > VISIBLE_RUN_LIMIT ? (
@@ -810,10 +813,14 @@ function DigestRunList({
   );
 }
 
+function jobRunByInstanceId(jobRuns: AgentJobRunListItem[]): Map<string, AgentJobRunListItem> {
+  const map = new Map<string, AgentJobRunListItem>();
+  for (const jobRun of jobRuns) map.set(jobRun.instanceId, jobRun);
+  return map;
+}
+
 function jobRunLabel(jobRun: AgentJobRunListItem): string {
-  if (jobRun.trigger === "scheduled") return "Scheduled";
-  if (jobRun.trigger === "one_time") return "One-time";
-  return "Manual";
+  return scheduledRunTriggerLabel(jobRun, "digest-cron");
 }
 
 function jobRunStatusStyle(jobRun: AgentJobRunListItem): ChipStyle {
@@ -823,26 +830,7 @@ function jobRunStatusStyle(jobRun: AgentJobRunListItem): ChipStyle {
 }
 
 function jobRunStatusLabel(jobRun: AgentJobRunListItem): string {
-  switch (jobRun.status) {
-    case "succeeded":
-      return "Succeeded";
-    case "starting":
-      return "Starting";
-    case "running":
-      return "Running";
-    case "timed_out":
-      return "Timed out";
-    case "killed":
-      return "Killed";
-    case "stale":
-      return "Stale";
-    case "replaced":
-      return "Replaced";
-    case "failed":
-      return "Failed";
-    default:
-      return jobRun.status.replace(/_/g, " ");
-  }
+  return scheduledJobRunStatusLabel(jobRun.status);
 }
 
 function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
@@ -850,7 +838,7 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
   const style = jobRunStatusStyle(jobRun);
   const startedAtLabel = hydrated ? formatRelative(jobRun.startedAt) : formatAbsolute(jobRun.startedAt);
   return (
-    <article className="sync-panel-run-card">
+    <article className="sync-panel-run-card sync-panel-mobile-flat">
       <header className="sync-panel-run-card-head">
         <span
           className="fb-chip"
@@ -876,10 +864,104 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
       <p className="sync-panel-run-card-summary">
         {jobRun.summary || "Runtime job did not create an AI Digest build record."}
       </p>
+      <DigestLifecycle jobRun={jobRun} />
       <div className="mono sync-panel-run-card-stage">
         {jobRun.stage || "runtime"} · {jobRun.finishedAt ? "finished" : "active"}
       </div>
     </article>
+  );
+}
+
+type DigestLifecycleTone = "ok" | "warn" | "fail" | "idle";
+
+type DigestLifecycleStep = {
+  key: string;
+  label: string;
+  outcome: string;
+  tone: DigestLifecycleTone;
+  meta?: string;
+};
+
+function digestLifecycleToneStyle(tone: DigestLifecycleTone): { color: string } {
+  if (tone === "ok") return { color: "color-mix(in oklch, var(--signal) 72%, var(--ink))" };
+  if (tone === "warn") return { color: "color-mix(in oklch, var(--warm) 72%, var(--ink))" };
+  if (tone === "fail") return { color: "var(--danger)" };
+  return { color: "var(--muted)" };
+}
+
+function DigestLifecycle({
+  jobRun,
+  run,
+}: {
+  jobRun?: AgentJobRunListItem | null;
+  run?: DigestRunListItem;
+}) {
+  const hasRun = Boolean(run);
+  const synced = run?.status === "synced";
+  const failedJob = Boolean(jobRun && !["starting", "running", "succeeded"].includes(jobRun.status));
+  const digestSaved = synced && Boolean(run?.digestTitle);
+  const steps: DigestLifecycleStep[] = [
+    {
+      key: "prepare",
+      label: "Prepare candidates",
+      outcome: run
+        ? `${formatCount(run.candidateCount)} found from ${formatCount(run.contributingSourceCount)} sources`
+        : jobRun
+          ? jobRunStatusLabel(jobRun)
+          : "Waiting for worker",
+      tone: hasRun ? "ok" : failedJob ? "fail" : jobRun ? "warn" : "idle",
+    },
+    {
+      key: "generate",
+      label: "Generate AI Digest",
+      outcome: run
+        ? run.candidateCount === 0
+          ? "No new posts"
+          : `${formatCount(run.includedCount ?? 0)} selected`
+        : "Pending",
+      tone: synced || (run && run.candidateCount === 0) ? "ok" : failedJob ? "fail" : "idle",
+    },
+    {
+      key: "render",
+      label: "Render digest",
+      outcome: digestSaved ? run!.digestTitle! : run ? "No saved title" : "Pending",
+      tone: digestSaved ? "ok" : synced ? "warn" : failedJob ? "fail" : "idle",
+    },
+    {
+      key: "sync",
+      label: "Sync to web",
+      outcome: run?.syncedAt ? "Saved to FollowBrief" : run ? "Not saved yet" : "Pending",
+      tone: run?.syncedAt ? "ok" : failedJob ? "fail" : "idle",
+    },
+    {
+      key: "mark",
+      label: "Mark posts digested",
+      outcome: synced ? `${formatCount(run.includedCount ?? 0)} posts marked` : "Pending",
+      tone: synced ? "ok" : failedJob ? "fail" : "idle",
+    },
+  ];
+
+  return (
+    <ol aria-label="AI Digest job lifecycle" className="sync-panel-lifecycle">
+      {steps.map((step, index) => (
+        <li key={step.key} className="sync-panel-lifecycle-item">
+          <div
+            className={`sync-panel-lifecycle-step is-${step.tone}`}
+            style={{ "--step-color": digestLifecycleToneStyle(step.tone).color } as CSSProperties}
+          >
+            <div className="sync-panel-lifecycle-summary">
+              <span aria-hidden="true" className="sync-panel-lifecycle-dot" />
+              <span className="sync-panel-lifecycle-copy">
+                <span className="sync-panel-lifecycle-label">{step.label}</span>
+                <span className="mono sync-panel-lifecycle-outcome">{step.outcome}</span>
+              </span>
+              {step.meta ? <span className="mono sync-panel-lifecycle-meta">{step.meta}</span> : null}
+            </div>
+          </div>
+          {index < steps.length - 1 ? <span aria-hidden="true" className="sync-panel-lifecycle-rail" /> : null}
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -914,7 +996,7 @@ function statusChip(run: DigestRunListItem): { label: string; style: ChipStyle }
   };
 }
 
-function RunCard({ run }: { run: DigestRunListItem }) {
+function RunCard({ jobRun, run }: { jobRun?: AgentJobRunListItem; run: DigestRunListItem }) {
   const hydrated = useHydrated();
   const stampIso = run.syncedAt ?? run.preparedAt;
   const timeLabel = hydrated ? formatRelative(stampIso) : formatAbsolute(stampIso);
@@ -932,7 +1014,7 @@ function RunCard({ run }: { run: DigestRunListItem }) {
   const detailCount = run.candidates.length + contributing.length + Math.max(0, silentCount);
 
   return (
-    <article className="sync-panel-run-card" id={runDomId(run.id)}>
+    <article className="sync-panel-run-card sync-panel-mobile-flat" id={runDomId(run.id)}>
       <header className="sync-panel-run-card-head">
         <span
           className="fb-chip"
@@ -947,7 +1029,7 @@ function RunCard({ run }: { run: DigestRunListItem }) {
         >
           {timeLabel}
         </time>
-        <span className="fb-chip">{run.source === "cron" ? "Scheduled" : "One-time"}</span>
+        <span className="fb-chip">{scheduledRunTriggerLabel(jobRun ?? null, "digest-cron", run.source)}</span>
         {run.language ? <span className="fb-chip">{displayLanguagePreference(run.language)}</span> : null}
         {run.regenerate ? (
           <span className="sync-panel-run-card-note">rebuilt</span>
@@ -955,6 +1037,7 @@ function RunCard({ run }: { run: DigestRunListItem }) {
       </header>
 
       <p className="sync-panel-run-card-title">{title}</p>
+      <DigestLifecycle jobRun={jobRun} run={run} />
 
       <div className="sync-panel-run-card-funnel">
         <FunnelStat value={run.candidateCount} label="found" />

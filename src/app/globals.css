@@ -6790,6 +6790,31 @@ details:not([open]) > :not(summary) {
 }
 
 @media (max-width: 640px) {
+  .sync-panel-run-card.sync-panel-mobile-flat {
+    background: transparent;
+    border-color: transparent;
+    border-radius: 0;
+    padding: 0.75rem 0;
+  }
+
+  .sync-panel-run-card.sync-panel-mobile-flat + .sync-panel-run-card.sync-panel-mobile-flat {
+    border-top-color: var(--line);
+  }
+
+  .sync-panel-run-card.sync-panel-mobile-flat .sync-panel-run-card-details {
+    background: transparent;
+    border-inline: 0;
+    border-radius: 0;
+  }
+
+  .sync-panel-run-card.sync-panel-mobile-flat .sync-panel-run-card-details-summary {
+    padding-inline: 0;
+  }
+
+  .sync-panel-run-card.sync-panel-mobile-flat .sync-panel-run-card-details-body {
+    padding-inline: 0;
+  }
+
   .sync-panel-lifecycle-item {
     padding-left: 1rem;
   }
