@@ -251,6 +251,7 @@ function usage() {
   render-digest --context builder-blog-context.json --agent-output digest-agent-output.json --out digest.md --summary-out digest-headlines.txt
   sync --file digest.md [--summary-file digest-headlines.txt] [--title "AI Builder Digest"] [--regenerate] [--context builder-blog-context.json]
   cron-status --job library-cron|digest-cron --status active|stopped [--freq 6h] [--schedule "0 */6 * * *"]
+  fetch-status-audit
   job-run-start --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id>
   job-run-update --job-type library-fetch|digest-build --trigger scheduled|one_time|manual_cli --instance-id <id> --status running|succeeded|failed|timed_out|killed|replaced|stale
   status
@@ -6691,6 +6692,135 @@ async function cronStatus(args) {
   console.log(JSON.stringify(result, null, 2));
 }
 
+function readLocalText(path) {
+  try {
+    return existsSync(path) ? readFileSync(path, "utf8").trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseLocalJson(path) {
+  try {
+    return existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeIso(value) {
+  const ms = Date.parse(String(value || ""));
+  return Number.isFinite(ms) ? new Date(ms).toISOString().replace(".000Z", "Z") : null;
+}
+
+function pidIsAlive(pid) {
+  const numeric = Number(pid || 0);
+  if (!Number.isInteger(numeric) || numeric <= 0) return false;
+  try {
+    process.kill(numeric, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function relativeWindow(cronJob, now = new Date()) {
+  const startedMs = Date.parse(cronJob?.startedAt || "");
+  const intervalMs = Number(cronJob?.intervalMinutes || 0) * 60 * 1000;
+  if (!Number.isFinite(startedMs) || !Number.isFinite(intervalMs) || intervalMs <= 0) {
+    return { latestExpectedAt: null, nextExpectedAt: null };
+  }
+  const elapsed = now.getTime() - startedMs;
+  if (elapsed < intervalMs) {
+    return {
+      latestExpectedAt: null,
+      nextExpectedAt: new Date(startedMs + intervalMs).toISOString().replace(".000Z", "Z"),
+    };
+  }
+  const slot = Math.floor(elapsed / intervalMs);
+  return {
+    latestExpectedAt: new Date(startedMs + slot * intervalMs).toISOString().replace(".000Z", "Z"),
+    nextExpectedAt: new Date(startedMs + (slot + 1) * intervalMs).toISOString().replace(".000Z", "Z"),
+  };
+}
+
+async function fetchStatusAudit() {
+  const config = await readConfig();
+  requireLoggedIn(config);
+  const data = await getJson(`${config.appUrl}/api/skill/fetch-runs`, config.token, {
+    label: "fetch status audit",
+    timeoutMs: HTTP_SYNC_TIMEOUT_MS,
+  });
+  const cronJob = data.cronJob ?? null;
+  const scheduledJobRuns = Array.isArray(data.scheduledJobRuns) ? data.scheduledJobRuns : [];
+  const latestScheduled = scheduledJobRuns[0] ?? null;
+  const localAnchorPath = join(agentDir(), `schedule-anchor-library-cron-${accountSlug()}`);
+  const localTmpDir = join(agentDir(), "tmp", "accounts", accountSlug(), "library-cron");
+  const localLastFiredPath = join(localTmpDir, "last-fired-expected-at");
+  const localCurrentPath = join(localTmpDir, "current.json");
+  const localAnchor = normalizeIso(readLocalText(localAnchorPath));
+  const localLastFired = normalizeIso(readLocalText(localLastFiredPath));
+  const localCurrent = parseLocalJson(localCurrentPath);
+  const currentPidAlive = localCurrent ? pidIsAlive(localCurrent.workerPid) : false;
+  const window = relativeWindow(cronJob);
+  const latestExpected = normalizeIso(latestScheduled?.expectedAt);
+  const terminalStatuses = new Set(["succeeded", "failed", "timed_out", "killed", "replaced", "stale"]);
+  const checks = [
+    {
+      name: "production_cron_active",
+      ok: cronJob?.status === "active",
+      detail: cronJob?.status ?? "missing",
+    },
+    {
+      name: "local_anchor_matches_production",
+      ok: !cronJob || !localAnchor || localAnchor === normalizeIso(cronJob.startedAt),
+      detail: { localAnchor, productionStartedAt: normalizeIso(cronJob?.startedAt) },
+    },
+    {
+      name: "latest_scheduled_run_terminal",
+      ok: !latestScheduled || terminalStatuses.has(String(latestScheduled.status)),
+      detail: latestScheduled
+        ? { status: latestScheduled.status, expectedAt: latestExpected, stage: latestScheduled.stage }
+        : "none",
+    },
+    {
+      name: "last_fired_matches_latest_scheduled_run",
+      ok: !localLastFired || !latestExpected || localLastFired === latestExpected,
+      detail: { localLastFired, latestExpected },
+    },
+    {
+      name: "current_file_not_dead",
+      ok: !localCurrent || currentPidAlive,
+      detail: localCurrent
+        ? { instanceId: localCurrent.instanceId, workerPid: localCurrent.workerPid, currentPidAlive }
+        : "missing",
+    },
+  ];
+  const ok = checks.every((check) => check.ok);
+  console.log(JSON.stringify({
+    status: ok ? "ok" : "needs_attention",
+    appUrl: config.appUrl,
+    account: process.env.BUILDER_BLOG_ACCOUNT ?? null,
+    now: new Date().toISOString().replace(".000Z", "Z"),
+    production: {
+      cronJob,
+      latestScheduled,
+      latestFetchRun: Array.isArray(data.runs) ? data.runs[0] ?? null : null,
+      scheduledWindow: window,
+    },
+    local: {
+      anchorPath: localAnchorPath,
+      anchor: localAnchor,
+      lastFiredPath: localLastFiredPath,
+      lastFired: localLastFired,
+      currentPath: localCurrentPath,
+      current: localCurrent,
+      currentPidAlive,
+    },
+    checks,
+  }, null, 2));
+}
+
 async function main() {
   const [command, ...args] = process.argv.slice(2);
   if (command === "exchange") await exchange(args);
@@ -6715,6 +6845,7 @@ async function main() {
   else if (command === "render-digest") await renderDigest(args);
   else if (command === "sync") await sync(args);
   else if (command === "cron-status") await cronStatus(args);
+  else if (command === "fetch-status-audit") await fetchStatusAudit();
   else if (command === "job-run-start") await jobRunCommand(args, "starting");
   else if (command === "job-run-update") await jobRunCommand(args, "running");
   else if (command === "status") await status();

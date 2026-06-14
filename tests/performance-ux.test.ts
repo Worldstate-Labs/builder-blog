@@ -1913,6 +1913,12 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /posts read|post read/);
   assert.doesNotMatch(fetchLogPanel, /posts fetched/);
   assert.match(fetchLogPanel, /label="posts planned"/);
+  assert.match(fetchLogPanel, /function fetchRunDisplaySummary/);
+  assert.match(fetchLogPanel, /const stats = fetchRunStats\(\{ details, liveProgress, run \}\)/);
+  assert.match(fetchLogPanel, /const displaySummary = fetchRunDisplaySummary\(run, stats, liveProgress\)/);
+  assert.match(fetchLogPanel, /value=\{stats\.read\}/);
+  assert.match(fetchLogPanel, /value=\{stats\.planned\}/);
+  assert.match(fetchLogPanel, /value=\{stats\.actionNeeded\}/);
   assert.match(fetchLogPanel, /taskWorkerGroups\(fetchTasks, liveTasks\)/);
   assert.match(fetchLogPanel, /function groupedTaskStats/);
   assert.match(fetchLogPanel, /function isPlannedPostTask/);

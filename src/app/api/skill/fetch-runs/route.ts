@@ -196,29 +196,31 @@ function serializeRun(row: {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getCurrentSession();
-  if (!session?.user?.id) {
+  const bearerUser = session?.user?.id ? null : await getUserFromBearer(request);
+  const userId = session?.user?.id ?? bearerUser?.id ?? null;
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const [rows, cronRows, cronJob, jobRuns, scheduledJobRuns] = await Promise.all([
     prisma.libraryFetchRun.findMany({
-      where: { userId: session.user.id },
+      where: { userId },
       orderBy: { startedAt: "desc" },
       take: RUN_HISTORY_LIMIT,
     }),
     prisma.libraryFetchRun.findMany({
-      where: { userId: session.user.id, source: "cron" },
+      where: { userId, source: "cron" },
       orderBy: { startedAt: "desc" },
       take: RUN_HISTORY_LIMIT,
     }),
     prisma.libraryCronJob.findUnique({
-      where: { userId: session.user.id },
+      where: { userId },
     }),
     // getAgentJobRuns wraps prisma.agentJobRun.findMany for all fetch runtime instances.
-    getAgentJobRuns(session.user.id, "library-fetch", RUN_HISTORY_LIMIT),
-    getScheduledAgentJobRuns(session.user.id, "library-cron", RUN_HISTORY_LIMIT),
+    getAgentJobRuns(userId, "library-fetch", RUN_HISTORY_LIMIT),
+    getScheduledAgentJobRuns(userId, "library-cron", RUN_HISTORY_LIMIT),
   ]);
 
   const runs = rows.map(serializeRun);

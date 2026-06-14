@@ -67,13 +67,16 @@ test("migration creates LibraryFetchRun with the expected columns and index", ()
   assert.match(digestCronMigration, /REFERENCES "User"\("id"\)[\s\S]*ON DELETE CASCADE/);
 });
 
-test("skill fetch-runs route validates payload size and gates auth on user session", () => {
+test("skill fetch-runs route validates payload size and gates auth on user or bearer", () => {
   const route = source("src/app/api/skill/fetch-runs/route.ts");
   const patchRoute = source("src/app/api/skill/fetch-runs/[id]/route.ts");
   const cronRoute = source("src/app/api/skill/cron-jobs/route.ts");
-  // POST is bearer-token (CLI), GET is web session (browser).
+  // POST is bearer-token (CLI); GET is browser session or bearer read-only
+  // so local production audits can read the same status model as the UI.
   assert.match(route, /getUserFromBearer\(request\)/);
   assert.match(route, /getCurrentSession\(\)/);
+  assert.match(route, /export async function GET\(request: Request\)/);
+  assert.match(route, /const userId = session\?\.user\?\.id \?\? bearerUser\?\.id \?\? null/);
   // Schema enforces the documented status / source enums.
   assert.match(route, /z\.enum\(\["ok", "partial", "failed"\]\)/);
   assert.match(route, /z\.enum\(\["manual", "cron"\]\)/);
@@ -83,7 +86,7 @@ test("skill fetch-runs route validates payload size and gates auth on user sessi
   assert.match(route, /MAX_DETAILS_BYTES = 50_000/);
   assert.match(route, /details payload too large; cap at 50 KB/);
   // Server filters the GET by the caller's user id.
-  assert.match(route, /where: \{ userId: session\.user\.id \}/);
+  assert.match(route, /where: \{ userId \}/);
   assert.match(route, /source: "cron"/);
   assert.match(route, /cronRuns/);
   assert.match(route, /libraryCronJob\.findUnique/);
@@ -191,6 +194,22 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /status replaced/);
   assert.match(runner, /status killed/);
   assert.match(runner, /\*\-cron\)/);
+});
+
+test("CLI can audit production fetch status against local scheduler state", () => {
+  const cli = source("scripts/builder-digest.mjs");
+
+  assert.match(cli, /fetch-status-audit/);
+  assert.match(cli, /async function fetchStatusAudit\(\)/);
+  assert.match(cli, /\/api\/skill\/fetch-runs/);
+  assert.match(cli, /schedule-anchor-library-cron-\$\{accountSlug\(\)\}/);
+  assert.match(cli, /last-fired-expected-at/);
+  assert.match(cli, /current\.json/);
+  assert.match(cli, /production_cron_active/);
+  assert.match(cli, /local_anchor_matches_production/);
+  assert.match(cli, /latest_scheduled_run_terminal/);
+  assert.match(cli, /last_fired_matches_latest_scheduled_run/);
+  assert.match(cli, /current_file_not_dead/);
 });
 
 test("FetchLogPanel renders status pills and status/log tabs with semantic CSS variables", () => {

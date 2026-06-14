@@ -1505,6 +1505,29 @@ function ratioText(done: number, total: number, unit: string): string {
   return `${formatCount(done)} / ${formatCount(total)} ${unit}${total === 1 ? "" : "s"}`;
 }
 
+function countNoun(count: number, singular: string, plural = `${singular}s`): string {
+  return `${formatCount(count)} ${count === 1 ? singular : plural}`;
+}
+
+function fetchRunDisplaySummary(run: LibraryFetchRunListItem, stats: FetchRunStats, liveProgress: FetchJobProgress | null): string {
+  if (!liveProgress) return run.summary;
+  const sourceCount = Math.max(stats.sourcesTotal, stats.sourcesScanned, run.buildersAttempted);
+  const readPart = stats.read > 0
+    ? `Read ${countNoun(stats.read, "post")} from ${countNoun(sourceCount, "source")}`
+    : `Checked ${countNoun(sourceCount, "source")}`;
+  const parts = [readPart];
+  if (stats.planned > 0 && stats.planned !== stats.read) {
+    parts.push(`${countNoun(stats.planned, "post")} planned`);
+  }
+  if (stats.actionNeeded > 0) {
+    parts.push(`${countNoun(stats.actionNeeded, "action")} needed`);
+  }
+  if (stats.failed > 0) {
+    parts.push(`${countNoun(stats.failed, "post")} failed`);
+  }
+  return parts.join(" · ");
+}
+
 function lifecycleTone(done: number, total: number, {
   failed = 0,
   warnWhenPartial = true,
@@ -1729,6 +1752,8 @@ function RunCard({
   const startedAtLabel = hydrated ? formatRelative(run.startedAt) : formatAbsolute(run.startedAt);
   const diagnostic = jobRun ? jobRunDiagnostic(jobRun) : null;
   const liveProgress = jobRun ? readFetchJobProgress(jobRun.details) : null;
+  const stats = fetchRunStats({ details, liveProgress, run });
+  const displaySummary = fetchRunDisplaySummary(run, stats, liveProgress);
 
   return (
     <article
@@ -1778,16 +1803,16 @@ function RunCard({
       </header>
 
       <p className="sync-panel-run-card-summary">
-        {run.summary}
+        {displaySummary}
       </p>
 
       <div className="mono sync-panel-run-card-meta">
         <CountMeta
-          label={run.itemsFetched === 1 ? "post read" : "posts read"}
-          value={run.itemsFetched}
+          label={stats.read === 1 ? "post read" : "posts read"}
+          value={stats.read}
         /> ·{" "}
-        <CountMeta label="posts planned" value={run.tasksGenerated} /> ·{" "}
-        <CountMeta label={run.userActionsCount === 1 ? "action needed" : "actions needed"} value={run.userActionsCount} /> ·{" "}
+        <CountMeta label="posts planned" value={stats.planned} /> ·{" "}
+        <CountMeta label={stats.actionNeeded === 1 ? "action needed" : "actions needed"} value={stats.actionNeeded} /> ·{" "}
         {formatDuration(run.durationMs)}
       </div>
       <JobLifecycle details={details} progress={liveProgress} run={run} />
