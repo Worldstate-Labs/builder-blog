@@ -64,7 +64,7 @@ self_update_and_reexec() {
     rm -f "$_next" 2>/dev/null || true
   fi
 }
-if [ "${BUILDER_BLOG_SCHEDULER_TICK:-0}" != "1" ] || [ "${BUILDER_BLOG_WORKER_MODE:-0}" = "1" ]; then
+if [ "${BUILDER_BLOG_SKIP_BOOTSTRAP_REFRESH:-0}" != "1" ] && { [ "${BUILDER_BLOG_SCHEDULER_TICK:-0}" != "1" ] || [ "${BUILDER_BLOG_WORKER_MODE:-0}" = "1" ]; }; then
   self_update_and_reexec "$@"
 fi
 
@@ -100,7 +100,7 @@ download_skill_file() {
 # Always pull latest CLI to avoid version drift between cached prompt/CLI and the server.
 # A macOS scheduler tick runs every minute and may not be due; keep that path
 # short. The worker it launches refreshes files before doing real work.
-if [ "${BUILDER_BLOG_SCHEDULER_TICK:-0}" != "1" ] || [ "${BUILDER_BLOG_WORKER_MODE:-0}" = "1" ]; then
+if [ "${BUILDER_BLOG_SKIP_BOOTSTRAP_REFRESH:-0}" != "1" ] && { [ "${BUILDER_BLOG_SCHEDULER_TICK:-0}" != "1" ] || [ "${BUILDER_BLOG_WORKER_MODE:-0}" = "1" ]; }; then
   refresh_skill_files
 fi
 
@@ -875,11 +875,24 @@ run_cron_scheduler_tick() {
           killed "Previous run was force-killed before the new schedule." "status killed next_schedule_arrived"
       fi
     elif [ -n "$OLD_INSTANCE" ]; then
+      job_run_update_for_instance "$OLD_INSTANCE" "$OLD_STARTED" "$OLD_EXPECTED" \
+        stale "Previous scheduled worker exited before reporting a terminal state." "stale_pid_next_schedule_arrived"
       clear_current_file "$CURRENT_FILE" "$OLD_INSTANCE"
     fi
   fi
 
+  self_update_and_reexec "$JOB_NAME"
   job_run_update starting "Scheduled window accepted by local scheduler tick." "scheduler_tick_due"
+  if ! ( set -e; refresh_skill_files ); then
+    printf '%s\n' "$EXPECTED_AT" > "$LAST_FIRED_FILE"
+    job_run_update failed "Scheduled worker bootstrap failed before fetch started." "worker_bootstrap_failed"
+    return 1
+  fi
+  if [ ! -f "$PROMPT_FILE" ]; then
+    printf '%s\n' "$EXPECTED_AT" > "$LAST_FIRED_FILE"
+    job_run_update failed "Scheduled worker prompt was missing after bootstrap refresh." "worker_prompt_missing"
+    return 66
+  fi
 
   WORKER_PID="$$"
   write_current_file "$CURRENT_FILE" "$INSTANCE_ID" "$WORKER_PID" "$STARTED_AT" "$EXPECTED_AT"
@@ -895,10 +908,13 @@ run_cron_scheduler_tick() {
   BUILDER_BLOG_EXPECTED_AT="$EXPECTED_AT"
   BUILDER_BLOG_JOB_STARTED_AT="$STARTED_AT"
   BUILDER_BLOG_CURRENT_FILE="$CURRENT_FILE"
+  BUILDER_BLOG_SKIP_BOOTSTRAP_REFRESH=1
+  BUILDER_BLOG_RUNNER_UPDATED=1
   unset BUILDER_BLOG_RUNNER_PID
   export BUILDER_BLOG_SCHEDULER_TICK BUILDER_BLOG_WORKER_MODE BUILDER_BLOG_JOB_TRIGGER
   export BUILDER_BLOG_SCHEDULE_JOB BUILDER_BLOG_JOB_RUN_ID BUILDER_BLOG_EXPECTED_AT
   export BUILDER_BLOG_JOB_STARTED_AT BUILDER_BLOG_CURRENT_FILE
+  export BUILDER_BLOG_SKIP_BOOTSTRAP_REFRESH BUILDER_BLOG_RUNNER_UPDATED
   exec "$0" "$JOB_NAME"
 }
 

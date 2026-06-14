@@ -169,6 +169,9 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /write_current_file "\$CURRENT_FILE" "\$INSTANCE_ID" "\$BUILDER_BLOG_WORKER_PID"/);
   assert.match(runner, /write_current_file "\$CURRENT_FILE" "\$INSTANCE_ID" "\$WORKER_PID"/);
   assert.match(runner, /WORKER_PID="\$\$"/);
+  assert.match(runner, /BUILDER_BLOG_SKIP_BOOTSTRAP_REFRESH/);
+  assert.match(runner, /worker_bootstrap_failed/);
+  assert.match(runner, /worker_prompt_missing/);
   assert.match(runner, /Scheduled worker running in launchd foreground/);
   assert.match(runner, /Running scheduled window \$EXPECTED_AT as pid \$WORKER_PID/);
   assert.match(runner, /exec "\$0" "\$JOB_NAME"/);
@@ -182,6 +185,7 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /still_alive_after_kill/);
   assert.match(runner, /skipped-wait-pids/);
   assert.match(runner, /job_run_update_for_instance/);
+  assert.match(runner, /stale_pid_next_schedule_arrived/);
   assert.match(runner, /OLD_STARTED="\$\(json_get_string startedAt "\$CURRENT_FILE"\)"/);
   assert.match(runner, /OLD_EXPECTED="\$\(json_get_string expectedAt "\$CURRENT_FILE"\)"/);
   assert.match(runner, /status replaced/);

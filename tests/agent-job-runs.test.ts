@@ -134,6 +134,10 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /write_current_file "\$CURRENT_FILE" "\$INSTANCE_ID" "\$BUILDER_BLOG_WORKER_PID"/);
   assert.match(runner, /write_current_file "\$CURRENT_FILE" "\$INSTANCE_ID" "\$WORKER_PID"/);
   assert.match(runner, /WORKER_PID="\$\$"/);
+  assert.match(runner, /BUILDER_BLOG_SKIP_BOOTSTRAP_REFRESH/);
+  assert.match(runner, /worker_bootstrap_failed/);
+  assert.match(runner, /worker_prompt_missing/);
+  assert.match(runner, /refresh_skill_files[\s\S]*worker_bootstrap_failed[\s\S]*write_current_file "\$CURRENT_FILE" "\$INSTANCE_ID" "\$WORKER_PID"/);
   assert.match(runner, /Scheduled worker running in launchd foreground/);
   assert.match(runner, /Running scheduled window \$EXPECTED_AT as pid \$WORKER_PID/);
   assert.match(runner, /exec "\$0" "\$JOB_NAME"/);
@@ -146,7 +150,9 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /job_run_update_for_instance/);
   assert.match(runner, /reconcile_current_file/);
   assert.match(runner, /stale_pid_after_scheduler_tick/);
+  assert.match(runner, /stale_pid_next_schedule_arrived/);
   assert.match(runner, /Recorded worker exited before reporting a terminal state/);
+  assert.match(runner, /Previous scheduled worker exited before reporting a terminal state/);
   assert.match(runner, /\[ "\$\(cat "\$LAST_FIRED_FILE" 2>\/dev\/null \|\| true\)" = "\$EXPECTED_AT" \][\s\S]*reconcile_current_file "\$CURRENT_FILE"[\s\S]*return 0/);
   assert.match(runner, /OLD_STARTED="\$\(json_get_string startedAt "\$CURRENT_FILE"\)"/);
   assert.match(runner, /OLD_EXPECTED="\$\(json_get_string expectedAt "\$CURRENT_FILE"\)"/);
