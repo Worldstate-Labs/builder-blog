@@ -187,44 +187,59 @@ Rules:
 - Preserve the repository URL and any important supporting URLs from the body.`,
   fetchProductHuntTopProduct: `# Product Hunt Top Product Fetch Prompt
 
-You are fetching exactly one Product Hunt top-products task for FollowBrief.
-The task item was created from https://www.producthunt.com/, and
-\`task.item.url\` is the Product Hunt product page to investigate.
+You are extracting exactly one Product Hunt top-products task for FollowBrief.
+Use agent judgment to handle Product Hunt's changing page structure, but keep
+the scope bounded: this is structured extraction, not open-ended product
+research.
 
 ## Required workflow
 
-1. Open the Product Hunt product page. Extract the product name, tagline,
-   launch date/rank badge, maker notes, website link, tags, vote/comment counts
-   when visible, and substantive user comments.
-2. Use the product's official website and web search when Product Hunt comments
-   are thin or login-gated. Search the product name plus terms like launch,
-   review, demo, pricing, documentation, blog, X/Twitter, Hacker News, Reddit,
-   and Product Hunt.
-3. Explain what the product concretely does. Do not stop at the Product Hunt
-   tagline; identify the user workflow, target user, and outcome.
-4. Explain why the product appears strong today using evidence: comment
-   sentiment, maker explanations, launch traction, differentiated workflow,
-   credible external coverage, or specific product capabilities.
-5. Distinguish evidence from inference. If no useful comments or external
-   sources are available, say the assessment is based on the Product Hunt page
-   and product website rather than confirmed community discussion.
+1. Open \`task.item.url\`, the Product Hunt product page. Extract only visible
+   Product Hunt facts: product name, tagline, launch/rank badge, maker notes,
+   website link, tags, vote/comment counts, comments, and launch date when
+   visible.
+2. If Product Hunt exposes an official website link, open that website and at
+   most one directly linked product page such as docs, pricing, about, or
+   homepage content that explains the workflow. Do not browse beyond this
+   official-site path.
+3. Do not use general web search. Do not search or open Reddit, Hacker News,
+   X/Twitter, blogs, review sites, news, or other third-party pages unless
+   Product Hunt itself links directly to them as the product's official site.
+4. Explain what the product concretely does from Product Hunt plus the official
+   site only. Identify target user, workflow, and outcome when visible.
+5. Explain why it is noteworthy using only visible evidence: Product Hunt rank,
+   tagline, maker notes, visible comments/counts, official-site capabilities,
+   and the known top-products context from task metadata. Mark any reasonable
+   inference explicitly as inference.
+6. If a field is hidden, login-gated, blocked, or not visible, write "not
+   visible" instead of searching elsewhere.
 
 ## Body to return
 
-Return a substantial body, not a summary-only stub. It must include:
+Return a structured body, not a summary-only stub, using these fields:
 
-- Product name and Product Hunt URL.
-- Today's date from task.item.rawJson.date when present.
-- Rank from task.item.rawJson.rank when present.
-- Product Hunt tagline/description when available.
-- What the product concretely does, based on Product Hunt plus the website or docs.
-- Why it appears excellent or noteworthy today, with source URLs and clear labels
-  for confirmed evidence vs inference.
-- Product website URL when available.
+Product name:
+Rank/date:
+Product Hunt URL:
+Official website URL:
+Product Hunt tagline:
+Visible Product Hunt evidence:
+Official-site evidence:
+What the product does:
+Target user:
+Workflow:
+Why it is noteworthy:
+Not visible:
+Sources:
 
-Do not invent comment sentiment, numbers, quotes, customers, benchmarks, or
-affiliations. Include source URLs for every material claim so the later summary
-can cite Product Hunt and supporting pages.`,
+Rules:
+
+- Preserve source URLs for every material claim.
+- Use "not visible" for hidden Product Hunt comments, counts, makers, pricing,
+  docs, or website details.
+- Do not invent comment sentiment, numbers, quotes, customers, benchmarks,
+  affiliations, pricing, or launch traction.
+- Do not include claims from general web search or third-party pages.`,
   summarizeProductHuntTopProduct: `# Product Hunt Top Product Summary Prompt
 
 You are summarizing one Product Hunt top-product investigation for a busy
