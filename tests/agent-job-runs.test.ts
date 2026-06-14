@@ -133,8 +133,10 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /clear_current_file/);
   assert.match(runner, /write_current_file "\$CURRENT_FILE" "\$INSTANCE_ID" "\$BUILDER_BLOG_WORKER_PID"/);
   assert.match(runner, /write_current_file "\$CURRENT_FILE" "\$INSTANCE_ID" "\$WORKER_PID"/);
+  assert.match(runner, /WORKER_PID="\$\$"/);
   assert.match(runner, /Scheduled worker running in launchd foreground/);
-  assert.match(runner, /Scheduled worker launched by local scheduler tick/);
+  assert.match(runner, /Running scheduled window \$EXPECTED_AT as pid \$WORKER_PID/);
+  assert.match(runner, /exec "\$0" "\$JOB_NAME"/);
   assert.match(runner, /set \+e[\s\S]*run_cron_worker[\s\S]*_code="\$\?"/);
   assert.match(runner, /verify_followbrief_pid/);
   assert.match(runner, /terminate_process_tree/);
@@ -142,6 +144,10 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /still_alive_after_kill/);
   assert.match(runner, /skipped-wait-pids/);
   assert.match(runner, /job_run_update_for_instance/);
+  assert.match(runner, /reconcile_current_file/);
+  assert.match(runner, /stale_pid_after_scheduler_tick/);
+  assert.match(runner, /Recorded worker exited before reporting a terminal state/);
+  assert.match(runner, /\[ "\$\(cat "\$LAST_FIRED_FILE" 2>\/dev\/null \|\| true\)" = "\$EXPECTED_AT" \][\s\S]*reconcile_current_file "\$CURRENT_FILE"[\s\S]*return 0/);
   assert.match(runner, /OLD_STARTED="\$\(json_get_string startedAt "\$CURRENT_FILE"\)"/);
   assert.match(runner, /OLD_EXPECTED="\$\(json_get_string expectedAt "\$CURRENT_FILE"\)"/);
   assert.match(runner, /next_schedule_arrived/);
@@ -166,7 +172,6 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /DEADLINE_EXCEEDED/);
   assert.doesNotMatch(runner, /skipping duplicate cron launch/);
   assert.doesNotMatch(runner, /\)\s*>> "\$LOG_FILE" 2>&1 &/);
-  assert.match(runner, /WORKER_PID="\$!"/);
   assert.match(runner, /merge-task-results[\s\S]*tee "\$_merge_result_file"/);
   assert.match(runner, /checkpoint-progress[\s\S]*--results-dir "\$_results_dir"/);
   assert.match(runner, /sync_completed_checkpoints/);
@@ -175,6 +180,7 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /Best-effort syncing \$_scc_count completed library task/);
   assert.match(runner, /backfilledOutcomes/);
   assert.match(runner, /worker\/result issue\(s\)/);
+  assert.doesNotMatch(runner, /WORKER_PID="\$!"/);
 
   assert.match(workerPrompt, /Live progress checkpoints/);
   assert.match(workerPrompt, /\$BUILDER_BLOG_SHARD_CHECKPOINT_DIR\/progress\/<hash>\.json/);

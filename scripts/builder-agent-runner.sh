@@ -722,6 +722,23 @@ clear_current_file() {
   fi
 }
 
+reconcile_current_file() {
+  _file="$1"
+  [ -r "$_file" ] || return 0
+  _old_pid="$(json_get_number workerPid "$_file")"
+  _old_instance="$(json_get_string instanceId "$_file")"
+  _old_started="$(json_get_string startedAt "$_file")"
+  _old_expected="$(json_get_string expectedAt "$_file")"
+  if [ -n "$_old_pid" ] && verify_followbrief_pid "$_old_pid"; then
+    return 0
+  fi
+  if [ -n "$_old_instance" ]; then
+    job_run_update_for_instance "$_old_instance" "$_old_started" "$_old_expected" \
+      stale "Recorded worker exited before reporting a terminal state." "stale_pid_after_scheduler_tick"
+    clear_current_file "$_file" "$_old_instance"
+  fi
+}
+
 due_expected_at() {
   _anchor_file="$(schedule_anchor_file)"
   _interval_seconds=$(( RESOLVED_INTERVAL_MINUTES * 60 ))
@@ -830,6 +847,7 @@ run_cron_scheduler_tick() {
 
   LAST_FIRED_FILE="$(scheduler_last_fired_file)"
   if [ -r "$LAST_FIRED_FILE" ] && [ "$(cat "$LAST_FIRED_FILE" 2>/dev/null || true)" = "$EXPECTED_AT" ]; then
+    reconcile_current_file "$CURRENT_FILE"
     return 0
   fi
 
@@ -863,26 +881,25 @@ run_cron_scheduler_tick() {
 
   job_run_update starting "Scheduled window accepted by local scheduler tick." "scheduler_tick_due"
 
-  (
-    BUILDER_BLOG_SCHEDULER_TICK=0
-    BUILDER_BLOG_WORKER_MODE=1
-    BUILDER_BLOG_JOB_TRIGGER=scheduled
-    BUILDER_BLOG_SCHEDULE_JOB="$JOB_NAME"
-    BUILDER_BLOG_JOB_RUN_ID="$INSTANCE_ID"
-    BUILDER_BLOG_EXPECTED_AT="$EXPECTED_AT"
-    BUILDER_BLOG_JOB_STARTED_AT="$STARTED_AT"
-    BUILDER_BLOG_CURRENT_FILE="$CURRENT_FILE"
-    unset BUILDER_BLOG_RUNNER_PID
-    export BUILDER_BLOG_SCHEDULER_TICK BUILDER_BLOG_WORKER_MODE BUILDER_BLOG_JOB_TRIGGER
-    export BUILDER_BLOG_SCHEDULE_JOB BUILDER_BLOG_JOB_RUN_ID BUILDER_BLOG_EXPECTED_AT
-    export BUILDER_BLOG_JOB_STARTED_AT BUILDER_BLOG_CURRENT_FILE
-    exec "$0" "$JOB_NAME"
-  ) &
-  WORKER_PID="$!"
+  WORKER_PID="$$"
   write_current_file "$CURRENT_FILE" "$INSTANCE_ID" "$WORKER_PID" "$STARTED_AT" "$EXPECTED_AT"
   printf '%s\n' "$EXPECTED_AT" > "$LAST_FIRED_FILE"
-  job_run_update running "Scheduled worker launched by local scheduler tick." "worker_started"
-  echo "Launched scheduled window $EXPECTED_AT as pid $WORKER_PID."
+  job_run_update running "Scheduled worker running in launchd foreground." "worker_started"
+  echo "Running scheduled window $EXPECTED_AT as pid $WORKER_PID."
+
+  BUILDER_BLOG_SCHEDULER_TICK=0
+  BUILDER_BLOG_WORKER_MODE=1
+  BUILDER_BLOG_JOB_TRIGGER=scheduled
+  BUILDER_BLOG_SCHEDULE_JOB="$JOB_NAME"
+  BUILDER_BLOG_JOB_RUN_ID="$INSTANCE_ID"
+  BUILDER_BLOG_EXPECTED_AT="$EXPECTED_AT"
+  BUILDER_BLOG_JOB_STARTED_AT="$STARTED_AT"
+  BUILDER_BLOG_CURRENT_FILE="$CURRENT_FILE"
+  unset BUILDER_BLOG_RUNNER_PID
+  export BUILDER_BLOG_SCHEDULER_TICK BUILDER_BLOG_WORKER_MODE BUILDER_BLOG_JOB_TRIGGER
+  export BUILDER_BLOG_SCHEDULE_JOB BUILDER_BLOG_JOB_RUN_ID BUILDER_BLOG_EXPECTED_AT
+  export BUILDER_BLOG_JOB_STARTED_AT BUILDER_BLOG_CURRENT_FILE
+  exec "$0" "$JOB_NAME"
 }
 
 run_cron_worker() {

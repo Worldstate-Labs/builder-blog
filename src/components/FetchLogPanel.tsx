@@ -20,7 +20,7 @@ import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
 import { latestResolvedSlotStatus } from "@/lib/digest-update-status";
 import { contentSyncStateChanged } from "@/lib/content-sync-events";
 import { displayLanguagePreference } from "@/lib/language-preference";
-import { addScheduleInterval, floorToExpectedSchedule } from "@/lib/schedule-timing";
+import { addScheduleInterval, firstExpectedSchedule, floorToExpectedSchedule } from "@/lib/schedule-timing";
 
 export type LibraryFetchRunListItem = {
   id: string;
@@ -529,7 +529,8 @@ function buildCronStatus(
   }
 
   const now = new Date(nowMs);
-  const startedAt = Date.parse(cronJob.startedAt);
+  const firstExpectedAt = firstExpectedSchedule(cronJob);
+  const firstExpectedMs = firstExpectedAt?.getTime() ?? Number.NaN;
   const graceMs = cronGraceMs(cronJob);
   const cronRuns = runs
     .filter((run) => run.source === "cron")
@@ -541,7 +542,7 @@ function buildCronStatus(
   const nextExpected = addScheduleInterval(cursor, cronJob);
   const expected: Date[] = [];
   for (let index = 0; index < CRON_SLOT_LIMIT * 3 && expected.length < CRON_SLOT_LIMIT; index += 1) {
-    if (cursor.getTime() >= startedAt) {
+    if (Number.isFinite(firstExpectedMs) && cursor.getTime() >= firstExpectedMs) {
       expected.unshift(new Date(cursor));
     }
     cursor = addScheduleInterval(cursor, cronJob, -1);

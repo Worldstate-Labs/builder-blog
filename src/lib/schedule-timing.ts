@@ -29,6 +29,13 @@ export function addScheduleInterval(date: Date, cronJob: ScheduleTimingJob, step
   }
 }
 
+export function firstExpectedSchedule(cronJob: ScheduleTimingJob): Date | null {
+  const startedAt = Date.parse(cronJob.startedAt);
+  if (!Number.isFinite(startedAt)) return null;
+  const started = new Date(startedAt);
+  return usesRelativeIntervalSchedule(cronJob) ? addScheduleInterval(started, cronJob) : started;
+}
+
 export function floorToExpectedSchedule(now: Date, cronJob: ScheduleTimingJob): Date {
   if (usesRelativeIntervalSchedule(cronJob)) {
     const startedAt = Date.parse(cronJob.startedAt);
