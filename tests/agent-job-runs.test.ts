@@ -121,13 +121,20 @@ test("runner supervises cron workers instead of skipping active old instances", 
   const workerPrompt = source("skills/builder-blog-digest/jobs/library-worker.md");
 
   assert.match(runner, /run_cron_supervisor/);
+  assert.match(runner, /run_cron_scheduler_tick/);
   assert.match(runner, /run_cron_worker/);
   assert.match(runner, /BUILDER_BLOG_WORKER_MODE=1/);
+  assert.match(runner, /BUILDER_BLOG_SCHEDULER_TICK/);
+  assert.match(runner, /due_expected_at/);
+  assert.match(runner, /scheduler_last_fired_file/);
+  assert.match(runner, /schedule-anchor-\$JOB_NAME-\$ACCOUNT_SLUG/);
   assert.match(runner, /INSTANCE_ID=/);
   assert.match(runner, /CURRENT_FILE=/);
   assert.match(runner, /clear_current_file/);
   assert.match(runner, /write_current_file "\$CURRENT_FILE" "\$INSTANCE_ID" "\$BUILDER_BLOG_WORKER_PID"/);
+  assert.match(runner, /write_current_file "\$CURRENT_FILE" "\$INSTANCE_ID" "\$WORKER_PID"/);
   assert.match(runner, /Scheduled worker running in launchd foreground/);
+  assert.match(runner, /Scheduled worker launched by local scheduler tick/);
   assert.match(runner, /set \+e[\s\S]*run_cron_worker[\s\S]*_code="\$\?"/);
   assert.match(runner, /verify_followbrief_pid/);
   assert.match(runner, /terminate_process_tree/);
@@ -159,7 +166,7 @@ test("runner supervises cron workers instead of skipping active old instances", 
   assert.match(runner, /DEADLINE_EXCEEDED/);
   assert.doesNotMatch(runner, /skipping duplicate cron launch/);
   assert.doesNotMatch(runner, /\)\s*>> "\$LOG_FILE" 2>&1 &/);
-  assert.doesNotMatch(runner, /WORKER_PID="\$!"/);
+  assert.match(runner, /WORKER_PID="\$!"/);
   assert.match(runner, /merge-task-results[\s\S]*tee "\$_merge_result_file"/);
   assert.match(runner, /checkpoint-progress[\s\S]*--results-dir "\$_results_dir"/);
   assert.match(runner, /sync_completed_checkpoints/);

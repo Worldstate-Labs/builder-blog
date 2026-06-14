@@ -221,8 +221,10 @@ scheduled runtime/fetch settings and install the schedule to run
 {{CRON_FREQUENCY_LABEL}}. Installing it last means the schedule is never armed
 while the unmanaged initial run above is still executing, and a pipeline that
 failed the initial run or was not approved after post-task failures never gets
-scheduled. On macOS, the first scheduled run starts one full interval after
-this schedule is installed. Pick the path for this machine's OS — run `uname` if
+scheduled. On macOS, the LaunchAgent runs a short scheduler tick every minute;
+the real fetch windows are anchored to this install time plus
+N × {{CRON_INTERVAL_MINUTES}} minutes, so a long previous run cannot drift the
+next scheduled window. Pick the path for this machine's OS — run `uname` if
 unsure.
 
 Write the per-account, per-job pins immediately before installing the schedule:
@@ -238,6 +240,7 @@ printf '{{AGENT_RUNTIME}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/r
 printf '{{FETCH_FORCE}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-force-library-cron-$ACCOUNT_SLUG"
 printf '{{FETCH_DAYS}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/fetch-days-library-cron-$ACCOUNT_SLUG"
 printf '{{PARALLEL_WORKERS}}\n' > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/parallel-library-cron-$ACCOUNT_SLUG"
+date -u +"%Y-%m-%dT%H:%M:%SZ" > "${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}/schedule-anchor-library-cron-$ACCOUNT_SLUG"
 ```
 
 ### macOS (`uname` is Darwin) → launchd LaunchAgent
@@ -267,6 +270,7 @@ cat > "$PLIST" <<PLISTEOF
 <key>EnvironmentVariables</key>
 <dict>
 <key>BUILDER_BLOG_ACCOUNT</key><string>$ACCT</string>
+<key>BUILDER_BLOG_SCHEDULER_TICK</key><string>1</string>
 <key>BUILDER_BLOG_INTERVAL_MINUTES</key><string>{{CRON_INTERVAL_MINUTES}}</string>
 <key>INTERVAL_MINUTES</key><string>{{CRON_INTERVAL_MINUTES}}</string>
 </dict>

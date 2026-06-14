@@ -160,13 +160,17 @@ test("agent runner tags cron-driven CLI runs as source=cron", () => {
   assert.match(runner, /BUILDER_BLOG_RUN_SOURCE=cron/);
   assert.match(runner, /export[^\n]*BUILDER_BLOG_RUN_SOURCE/);
   assert.match(runner, /run_cron_supervisor/);
+  assert.match(runner, /run_cron_scheduler_tick/);
   assert.match(runner, /run_cron_worker/);
+  assert.match(runner, /BUILDER_BLOG_SCHEDULER_TICK/);
   assert.match(runner, /ACCOUNT_SLUG/);
   assert.match(runner, /CURRENT_FILE="\$JOB_TMP_DIR\/current\.json"/);
   assert.match(runner, /BUILDER_BLOG_JOB_TMP_DIR/);
   assert.match(runner, /write_current_file "\$CURRENT_FILE" "\$INSTANCE_ID" "\$BUILDER_BLOG_WORKER_PID"/);
+  assert.match(runner, /write_current_file "\$CURRENT_FILE" "\$INSTANCE_ID" "\$WORKER_PID"/);
   assert.match(runner, /Scheduled worker running in launchd foreground/);
-  assert.doesNotMatch(runner, /WORKER_PID="\$!"/);
+  assert.match(runner, /Scheduled worker launched by local scheduler tick/);
+  assert.match(runner, /WORKER_PID="\$!"/);
   assert.match(runner, /verify_followbrief_pid/);
   assert.match(runner, /terminate_process_tree/);
   assert.match(runner, /process_tree_pids/);

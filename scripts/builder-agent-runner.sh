@@ -64,7 +64,9 @@ self_update_and_reexec() {
     rm -f "$_next" 2>/dev/null || true
   fi
 }
-self_update_and_reexec "$@"
+if [ "${BUILDER_BLOG_SCHEDULER_TICK:-0}" != "1" ] || [ "${BUILDER_BLOG_WORKER_MODE:-0}" = "1" ]; then
+  self_update_and_reexec "$@"
+fi
 
 refresh_skill_files() {
   mkdir -p "$AGENT_DIR" "$AGENT_DIR/jobs" "$AGENT_DIR/logs" "$AGENT_DIR/tmp"
@@ -96,14 +98,18 @@ download_skill_file() {
 }
 
 # Always pull latest CLI to avoid version drift between cached prompt/CLI and the server.
-refresh_skill_files
+# A macOS scheduler tick runs every minute and may not be due; keep that path
+# short. The worker it launches refreshes files before doing real work.
+if [ "${BUILDER_BLOG_SCHEDULER_TICK:-0}" != "1" ] || [ "${BUILDER_BLOG_WORKER_MODE:-0}" = "1" ]; then
+  refresh_skill_files
+fi
 
 if [ -n "${BUILDER_BLOG_PROMPT_URL:-}" ]; then
   mkdir -p "$AGENT_DIR/jobs"
   download_skill_file "$BUILDER_BLOG_PROMPT_URL" "$PROMPT_FILE"
 fi
 
-if [ ! -f "$PROMPT_FILE" ]; then
+if [ ! -f "$PROMPT_FILE" ] && { [ "${BUILDER_BLOG_SCHEDULER_TICK:-0}" != "1" ] || [ "${BUILDER_BLOG_WORKER_MODE:-0}" = "1" ]; }; then
   echo "Missing FollowBrief job prompt: $PROMPT_FILE" >&2
   echo "Run: /bin/sh -c \"\$(curl -fsSL $APP_URL/api/skill/bootstrap)\"" >&2
   exit 66
@@ -504,6 +510,14 @@ schedule_job_for_name() {
   esac
 }
 
+schedule_anchor_file() {
+  printf '%s\n' "$AGENT_DIR/schedule-anchor-$JOB_NAME-$ACCOUNT_SLUG"
+}
+
+scheduler_last_fired_file() {
+  printf '%s\n' "$JOB_TMP_DIR/last-fired-expected-at"
+}
+
 timeout_seconds_for_job() {
   _interval="${1:-60}"
   _job="${2:-$JOB_NAME}"
@@ -708,6 +722,31 @@ clear_current_file() {
   fi
 }
 
+due_expected_at() {
+  _anchor_file="$(schedule_anchor_file)"
+  _interval_seconds=$(( RESOLVED_INTERVAL_MINUTES * 60 ))
+  if [ "$_interval_seconds" -le 0 ]; then _interval_seconds=3600; fi
+
+  if [ ! -s "$_anchor_file" ]; then
+    iso_now > "$_anchor_file"
+    return 1
+  fi
+
+  node - "$_anchor_file" "$_interval_seconds" <<'NODE'
+const fs = require("fs");
+const [anchorFile, intervalArg] = process.argv.slice(2);
+const intervalSeconds = Number(intervalArg);
+const anchorText = fs.readFileSync(anchorFile, "utf8").trim();
+const anchorMs = Date.parse(anchorText);
+const nowMs = Date.now();
+if (!Number.isFinite(anchorMs) || !Number.isFinite(intervalSeconds) || intervalSeconds <= 0) process.exit(1);
+const elapsed = nowMs - anchorMs;
+if (elapsed < intervalSeconds * 1000) process.exit(1);
+const slotIndex = Math.floor(elapsed / (intervalSeconds * 1000));
+console.log(new Date(anchorMs + slotIndex * intervalSeconds * 1000).toISOString().replace(/\.\d{3}Z$/, "Z"));
+NODE
+}
+
 job_run_update_for_instance() {
   _target_instance="$1"
   _target_started="$2"
@@ -780,6 +819,70 @@ run_cron_supervisor() {
   set -e
   clear_current_file "$CURRENT_FILE" "$INSTANCE_ID"
   exit "$_code"
+}
+
+run_cron_scheduler_tick() {
+  CURRENT_FILE="$JOB_TMP_DIR/current.json"
+  EXPECTED_AT="$(due_expected_at || true)"
+  if [ -z "$EXPECTED_AT" ]; then
+    return 0
+  fi
+
+  LAST_FIRED_FILE="$(scheduler_last_fired_file)"
+  if [ -r "$LAST_FIRED_FILE" ] && [ "$(cat "$LAST_FIRED_FILE" 2>/dev/null || true)" = "$EXPECTED_AT" ]; then
+    return 0
+  fi
+
+  INSTANCE_STAMP="$(printf '%s' "$EXPECTED_AT" | tr -d ':-' | sed 's/Z$//')"
+  INSTANCE_ID="${INSTANCE_STAMP}-$$"
+  STARTED_AT="$(iso_now)"
+  export BUILDER_BLOG_JOB_RUN_ID="$INSTANCE_ID"
+  export BUILDER_BLOG_JOB_TRIGGER="scheduled"
+  export BUILDER_BLOG_SCHEDULE_JOB="$JOB_NAME"
+  export BUILDER_BLOG_EXPECTED_AT="$EXPECTED_AT"
+  export BUILDER_BLOG_JOB_STARTED_AT="$STARTED_AT"
+  export BUILDER_BLOG_RUNNER_PID="$$"
+
+  if [ -r "$CURRENT_FILE" ]; then
+    OLD_PID="$(json_get_number workerPid "$CURRENT_FILE")"
+    OLD_INSTANCE="$(json_get_string instanceId "$CURRENT_FILE")"
+    OLD_STARTED="$(json_get_string startedAt "$CURRENT_FILE")"
+    OLD_EXPECTED="$(json_get_string expectedAt "$CURRENT_FILE")"
+    if [ -n "$OLD_PID" ] && verify_followbrief_pid "$OLD_PID"; then
+      job_run_update_for_instance "$OLD_INSTANCE" "$OLD_STARTED" "$OLD_EXPECTED" \
+        replaced "Replaced by a newer scheduled run." "status replaced next_schedule_arrived"
+      if ! terminate_process_tree "$OLD_PID" TERM 30; then
+        terminate_process_tree "$OLD_PID" KILL 3 || true
+        job_run_update_for_instance "$OLD_INSTANCE" "$OLD_STARTED" "$OLD_EXPECTED" \
+          killed "Previous run was force-killed before the new schedule." "status killed next_schedule_arrived"
+      fi
+    elif [ -n "$OLD_INSTANCE" ]; then
+      clear_current_file "$CURRENT_FILE" "$OLD_INSTANCE"
+    fi
+  fi
+
+  job_run_update starting "Scheduled window accepted by local scheduler tick." "scheduler_tick_due"
+
+  (
+    BUILDER_BLOG_SCHEDULER_TICK=0
+    BUILDER_BLOG_WORKER_MODE=1
+    BUILDER_BLOG_JOB_TRIGGER=scheduled
+    BUILDER_BLOG_SCHEDULE_JOB="$JOB_NAME"
+    BUILDER_BLOG_JOB_RUN_ID="$INSTANCE_ID"
+    BUILDER_BLOG_EXPECTED_AT="$EXPECTED_AT"
+    BUILDER_BLOG_JOB_STARTED_AT="$STARTED_AT"
+    BUILDER_BLOG_CURRENT_FILE="$CURRENT_FILE"
+    unset BUILDER_BLOG_RUNNER_PID
+    export BUILDER_BLOG_SCHEDULER_TICK BUILDER_BLOG_WORKER_MODE BUILDER_BLOG_JOB_TRIGGER
+    export BUILDER_BLOG_SCHEDULE_JOB BUILDER_BLOG_JOB_RUN_ID BUILDER_BLOG_EXPECTED_AT
+    export BUILDER_BLOG_JOB_STARTED_AT BUILDER_BLOG_CURRENT_FILE
+    exec "$0" "$JOB_NAME"
+  ) &
+  WORKER_PID="$!"
+  write_current_file "$CURRENT_FILE" "$INSTANCE_ID" "$WORKER_PID" "$STARTED_AT" "$EXPECTED_AT"
+  printf '%s\n' "$EXPECTED_AT" > "$LAST_FIRED_FILE"
+  job_run_update running "Scheduled worker launched by local scheduler tick." "worker_started"
+  echo "Launched scheduled window $EXPECTED_AT as pid $WORKER_PID."
 }
 
 run_cron_worker() {
@@ -1341,12 +1444,24 @@ if [ "$IS_CRON_JOB" = 1 ] && [ "${BUILDER_BLOG_SMOKE_CHECK:-0}" = "1" ]; then
   exit "$?"
 fi
 
+if [ "$IS_CRON_JOB" = 1 ] && [ "${BUILDER_BLOG_SCHEDULER_TICK:-0}" = "1" ] && [ "${BUILDER_BLOG_WORKER_MODE:-0}" != "1" ]; then
+  run_cron_scheduler_tick
+  exit "$?"
+fi
+
 if [ "$IS_CRON_JOB" = 1 ] && [ "${BUILDER_BLOG_WORKER_MODE:-0}" != "1" ] && [ "${BUILDER_BLOG_DISABLE_WEB_SYNC:-0}" != "1" ]; then
   run_cron_supervisor
 fi
 
 if [ "$IS_CRON_JOB" = 1 ] && [ "${BUILDER_BLOG_WORKER_MODE:-0}" = "1" ]; then
+  set +e
   run_cron_worker
+  _code="$?"
+  set -e
+  if [ -n "${BUILDER_BLOG_CURRENT_FILE:-}" ]; then
+    clear_current_file "$BUILDER_BLOG_CURRENT_FILE" "${BUILDER_BLOG_JOB_RUN_ID:-}"
+  fi
+  exit "$_code"
 elif [ "$JOB_NAME" = "library-once" ] || [ "$JOB_NAME" = "digest-once" ]; then
   run_with_job_tracking one_time
 else

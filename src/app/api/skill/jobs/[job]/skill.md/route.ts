@@ -161,11 +161,10 @@ export async function GET(request: Request, { params }: Params) {
   const cronIntervalSeconds = String(Number(cronInterval) * 60);
   const cronTimeoutSeconds = localAgentTimeoutSeconds(cronInterval, job);
   // macOS uses a launchd LaunchAgent (runs in the user's login session, so
-  // the agent CLI can reach the login keychain — plain cron cannot). Use a
-  // relative interval instead of wall-clock calendar matching so, after the
-  // setup prompt finishes one real initial run, the first scheduled run fires
-  // one full interval later.
-  const launchdSchedule = `  <key>StartInterval</key>\n  <integer>${cronIntervalSeconds}</integer>`;
+  // the agent CLI can reach the login keychain — plain cron cannot). Run a
+  // short scheduler tick every minute; the runner anchors real jobs to
+  // schedule-anchor-* + N * interval so long workers cannot drift the cadence.
+  const launchdSchedule = `  <key>StartInterval</key>\n  <integer>60</integer>`;
 
   // Forced re-fetch toggle. "1" → re-fetch posts already in the library
   // (ignore the fetchedAt cutoff + externalId dedup). Default off. Closed

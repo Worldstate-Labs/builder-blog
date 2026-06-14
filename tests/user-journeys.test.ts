@@ -491,11 +491,13 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillJobRoute, /\{\{CRON_TIMEOUT_SECONDS\}\}/);
   assert.match(skillJobRoute, /localAgentTimeoutSeconds/);
   assert.doesNotMatch(skillJobRoute, /job\.startsWith\("library"\) \? 75 \* 60 : 45 \* 60/);
-  // macOS scheduling uses a launchd LaunchAgent (keychain access). It uses a
-  // relative StartInterval so the first scheduled run starts one interval after
-  // the setup prompt's real initial run succeeds and the schedule is installed.
+  // macOS scheduling uses a launchd LaunchAgent (keychain access). It runs a
+  // short tick every minute while the runner anchors real jobs to install time
+  // plus N * interval, so long workers cannot drift the cadence.
   assert.match(skillJobRoute, /cronIntervalSeconds/);
   assert.match(skillJobRoute, /<key>StartInterval<\/key>/);
+  assert.match(skillJobRoute, /<integer>60<\/integer>/);
+  assert.match(skillJobRoute, /schedule-anchor-\*/);
   assert.doesNotMatch(skillJobRoute, /StartCalendarInterval/);
   assert.match(skillJobRoute, /\{\{CRON_INTERVAL_SECONDS\}\}/);
   assert.match(skillJobRoute, /\{\{LAUNCHD_SCHEDULE\}\}/);
@@ -518,6 +520,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /\{\{LAUNCHD_SCHEDULE\}\}/);
   assert.match(libraryCronSetupPrompt, /<key>BUILDER_BLOG_INTERVAL_MINUTES<\/key><string>\{\{CRON_INTERVAL_MINUTES\}\}<\/string>/);
   assert.match(libraryCronSetupPrompt, /<key>INTERVAL_MINUTES<\/key><string>\{\{CRON_INTERVAL_MINUTES\}\}<\/string>/);
+  assert.match(libraryCronSetupPrompt, /<key>BUILDER_BLOG_SCHEDULER_TICK<\/key><string>1<\/string>/);
+  assert.match(libraryCronSetupPrompt, /schedule-anchor-library-cron-\$ACCOUNT_SLUG/);
   assert.match(libraryCronSetupPrompt, /launchctl bootstrap/);
   assert.match(libraryCronSetupPrompt, /LaunchAgents/);
   assert.match(libraryCronSetupPrompt, /verify this account's local credential/);
@@ -942,6 +946,7 @@ test("web app serves the agent skill and setup command", () => {
     "needs_confirmation",
     "7. Only after the initial run has passed the schedule gate above",
     "runtime-library-cron-$ACCOUNT_SLUG",
+    "schedule-anchor-library-cron-$ACCOUNT_SLUG",
     "launchctl bootstrap",
     "8. After the schedule is installed",
     "cron-status",
@@ -982,6 +987,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(digestCronSetupPrompt, /exec-policy preset yolo/);
   assert.match(digestCronSetupPrompt, /ACCOUNT_SLUG/);
   assert.match(digestCronSetupPrompt, /runtime-digest-cron-\$ACCOUNT_SLUG/);
+  assert.match(digestCronSetupPrompt, /schedule-anchor-digest-cron-\$ACCOUNT_SLUG/);
   assert.match(digestCronSetupPrompt, /7\. Only after the initial run has succeeded, pin the/);
   assert.match(digestCronSetupPrompt, /crontab/);
   assert.match(digestCronSetupPrompt, /\{\{CRON_INTERVAL_MINUTES\}\}/);
@@ -991,6 +997,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronSetupPrompt, /the user whether to\s+override/);
   assert.match(digestCronSetupPrompt, /\(none found\)/);
   assert.match(digestCronSetupPrompt, /\$LABEL\.log/);
+  assert.match(digestCronSetupPrompt, /<key>BUILDER_BLOG_SCHEDULER_TICK<\/key><string>1<\/string>/);
   assert.match(digestCronSetupPrompt, /SETUP_TMP_DIR="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/digest-cron-direct"/);
   assert.match(digestCronSetupPrompt, /BUILDER_BLOG_JOB_TMP_DIR="\$SETUP_TMP_DIR"/);
   assert.match(digestCronSetupPrompt, /SCHEDULE_STATUS="interval:\{\{CRON_INTERVAL_SECONDS\}\}"/);
@@ -1009,6 +1016,7 @@ test("web app serves the agent skill and setup command", () => {
     "This is a real run",
     "7. Only after the initial run has succeeded",
     "runtime-digest-cron-$ACCOUNT_SLUG",
+    "schedule-anchor-digest-cron-$ACCOUNT_SLUG",
     "launchctl bootstrap",
     "8. After the schedule is installed",
     "cron-status",
@@ -1038,6 +1046,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /JOB_TMP_DIR="\$BUILDER_BLOG_JOB_TMP_DIR"/);
   assert.match(runner, /JOB_TMP_DIR="\$DEFAULT_JOB_TMP_DIR-direct"/);
   assert.match(runner, /run_cron_worker\(\) \{[\s\S]*run_with_job_tracking "\$\{BUILDER_BLOG_JOB_TRIGGER:-scheduled\}"/);
+  assert.match(runner, /run_cron_scheduler_tick\(\)/);
+  assert.match(runner, /BUILDER_BLOG_SCHEDULER_TICK/);
+  assert.match(runner, /schedule-anchor-\$JOB_NAME-\$ACCOUNT_SLUG/);
+  assert.match(runner, /last-fired-expected-at/);
   assert.match(runner, /BUILDER_BLOG_PROMPT_URL/);
   assert.match(runner, /BUILDER_BLOG_SMOKE_CHECK/);
   assert.match(runner, /followbriefSmokeCheck/);
