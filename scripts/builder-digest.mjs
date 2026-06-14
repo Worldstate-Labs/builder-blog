@@ -2427,10 +2427,10 @@ function isNearDuplicate(text, reference) {
 
 async function fetchPersonalBlogBuilder(
   builder,
-  { cutoff, limit, agentModel, fetchedItemKeys = new Set(), fetcher = timedSourceFetch },
+  { cutoff, limit, agentModel, fetchedItemKeys = new Set(), fetcher = timedSourceFetch, sources = {} },
 ) {
   const indexUrl = builder.fetchUrl || builder.sourceUrl;
-  if (!indexUrl) return [];
+  if (!indexUrl) return { items: [], agentTasks: [] };
 
   const indexResponse = await fetcher(indexUrl, {
     headers: { "User-Agent": "FollowBriefSkill/1.0 (personal agent fetcher)" },
@@ -2445,39 +2445,100 @@ async function fetchPersonalBlogBuilder(
     .filter((article) => !fetchedItemKeys.has(personalItemKey(builder.id, "BLOG_POST", article.url)))
     .slice(0, limit);
   const items = [];
+  const agentTasks = [];
+  const qualityStandards = genericMinimumContentQuality(sources, "blog");
 
   for (const article of candidates) {
     const articleResponse = await fetcher(article.url, {
       headers: { "User-Agent": "FollowBriefSkill/1.0 (personal agent fetcher)" },
     });
-    if (!articleResponse.ok) continue;
+    if (!articleResponse.ok) {
+      agentTasks.push(blogAgentTaskForArticle(builder, article, { sources, agentModel, reason: `HTTP ${articleResponse.status}` }));
+      continue;
+    }
 
     const html = await articleResponse.text();
-    const extracted = extractBlogArticle(html, article.url);
+    const extracted = extractBlogArticle(html, articleResponse.url || article.url);
     const body = extracted.body || article.description;
-    if (!body.trim()) continue;
+    const title = extracted.title || article.title || "Untitled";
+    const publishedAt = extracted.publishedAt || article.publishedAt;
+    const quality = genericContentQuality(body, {
+      title,
+      description: article.description,
+      standards: qualityStandards,
+    });
+    if (!body.trim() || !quality.ok) {
+      agentTasks.push(
+        blogAgentTaskForArticle(builder, article, {
+          sources,
+          agentModel,
+          extracted,
+          reason: quality.reason,
+          metrics: quality.metrics,
+        }),
+      );
+      continue;
+    }
 
     items.push({
       kind: "BLOG_POST",
       externalId: article.url,
-      title: extracted.title || article.title || "Untitled",
+      title,
       body,
       url: article.url,
-      publishedAt: extracted.publishedAt || article.publishedAt,
+      publishedAt,
       sourceName: builder.name,
       fetchTool: skillFetchTool("RSS/HTML article extractor", agentModel),
       rawJson: {
         source: "personal-blog",
         builderId: builder.id,
         builderName: builder.name,
-        title: extracted.title || article.title || "Untitled",
+        title,
         url: article.url,
-        publishedAt: extracted.publishedAt || article.publishedAt,
+        publishedAt,
       },
     });
   }
 
-  return items;
+  return { items, agentTasks };
+}
+
+export function fetchPersonalBlogBuilderForTest(builder, options) {
+  return fetchPersonalBlogBuilder(builder, options);
+}
+
+function blogAgentTaskForArticle(
+  builder,
+  article,
+  { sources = {}, agentModel, extracted = {}, reason = "deterministic_extract_incomplete", metrics } = {},
+) {
+  const item = {
+    kind: "BLOG_POST",
+    externalId: article.url,
+    title: extracted.title || article.title || "Untitled",
+    url: article.url,
+    publishedAt: extracted.publishedAt || article.publishedAt || null,
+    sourceName: builder.name,
+    description: article.description || "",
+    rawJson: {
+      source: "personal-blog-agent-fallback",
+      builderId: builder.id,
+      builderName: builder.name,
+      url: article.url,
+      fetchTool: skillFetchTool("blog article fallback planner", agentModel),
+      fallbackReason: reason,
+      ...(metrics ? { deterministicExtractMetrics: metrics } : {}),
+    },
+  };
+  const task = {
+    type: "blog_article_fetch",
+    builder: builder.name,
+    builderId: builder.id,
+    sourceType: "blog",
+    item,
+    minimumContentQuality: genericMinimumContentQuality(sources, "blog"),
+  };
+  return { ...task, id: agentTaskId(task) };
 }
 
 async function fetchPersonalPodcastBuilder(
@@ -3499,15 +3560,22 @@ function extractGenericBlogArticle(html) {
     html.match(/<article\b[\s\S]*?<\/article>/i) ||
     html.match(/<main\b[\s\S]*?<\/main>/i);
   const source = articleMatch?.[0] || html;
-  const paragraphs = [...source.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)]
-    .map((match) => stripHtml(match[1]))
-    .filter((text) => text.length > 40);
+  const paragraphs = extractParagraphLikeText(source);
 
   return {
     title: stripHtml(title),
     publishedAt,
     body: paragraphs.slice(0, 30).join("\n\n"),
   };
+}
+
+function extractParagraphLikeText(html) {
+  return [
+    ...String(html || "").matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi),
+    ...String(html || "").matchAll(/<span\b[^>]*\bdata-as=["']p["'][^>]*>([\s\S]*?)<\/span>/gi),
+  ]
+    .map((match) => stripHtml(match[1]))
+    .filter((text) => text.length > 40);
 }
 
 function extractAnthropicArticle(html) {

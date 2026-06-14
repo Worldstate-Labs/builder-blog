@@ -74,6 +74,77 @@ test("personal blog fetcher extracts article text", async () => {
   assert.match(article.body, /long enough/);
 });
 
+test("personal blog fetcher extracts Mintlify-style docs paragraphs", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const article = cli.extractBlogArticle(`
+    <html>
+      <head>
+        <meta property="og:title" content="Best practices for Claude Code - Claude Code Docs">
+      </head>
+      <body>
+        <main>
+          <div id="content">
+            <span data-as="p">Claude Code is an agentic coding environment that can read files, run commands, make changes, and autonomously work through problems.</span>
+            <span data-as="p">Most best practices are based on one constraint: Claude's context window fills up fast, and performance degrades as it fills.</span>
+          </div>
+        </main>
+      </body>
+    </html>
+  `);
+
+  assert.equal(article.title, "Best practices for Claude Code - Claude Code Docs");
+  assert.match(article.body, /agentic coding environment/);
+  assert.match(article.body, /context window fills up fast/);
+});
+
+test("personal blog fetcher sends short description-only reads to the agent", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const builder = {
+    id: "builder_anthropic",
+    name: "anthropic.com",
+    kind: "BLOG",
+    sourceUrl: "https://www.anthropic.com/engineering",
+    fetchUrl: "https://www.anthropic.com/engineering",
+  };
+  const result = await cli.fetchPersonalBlogBuilderForTest(builder, {
+    cutoff: new Date("2026-05-01T00:00:00.000Z"),
+    limit: 1,
+    agentModel: "test-model",
+    fetchedItemKeys: new Set(),
+    sources: {
+      blog: {
+        contentQuality: { minChars: 200, minContentUnits: 35 },
+      },
+    },
+    fetcher: async (url: string) => {
+      if (url === "https://www.anthropic.com/engineering") {
+        return new Response(`
+          <rss><channel>
+            <item>
+              <title>Best practices for Claude Code - Claude Code Docs</title>
+              <link>https://www.anthropic.com/engineering/claude-code-best-practices</link>
+              <pubDate>Sun, 31 May 2026 14:05:09 GMT</pubDate>
+              <description>Tips and patterns for getting the most out of Claude Code, from configuring your environment to scaling across parallel sessions.</description>
+            </item>
+          </channel></rss>
+        `);
+      }
+      return new Response(`
+        <html>
+          <head><meta property="og:title" content="Best practices for Claude Code - Claude Code Docs"></head>
+          <body><main><p>Tips and patterns for getting the most out of Claude Code, from configuring your environment to scaling across parallel sessions.</p></main></body>
+        </html>
+      `);
+    },
+  });
+
+  assert.equal(result.items.length, 0);
+  assert.equal(result.agentTasks.length, 1);
+  assert.equal(result.agentTasks[0].type, "blog_article_fetch");
+  assert.equal(result.agentTasks[0].item.url, "https://www.anthropic.com/engineering/claude-code-best-practices");
+  assert.equal(result.agentTasks[0].item.rawJson.fallbackReason, "content_too_short");
+});
+
 test("GitHub Trending parser extracts daily repo candidates sorted by stars", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const candidates = cli.parseGithubTrendingCandidates(
