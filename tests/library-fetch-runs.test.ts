@@ -453,6 +453,8 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(route, /getDigestRuns\(userId\)/);
   assert.match(route, /getScheduledAgentJobRuns\(userId, "digest-cron", 25\)/);
   assert.match(digestUpdateStatus, /@\/lib\/schedule-timing/);
+  assert.match(digestUpdateStatus, /no scheduled window has completed yet/);
+  assert.doesNotMatch(digestUpdateStatus, /first expected run has not finished yet/);
   assert.doesNotMatch(digestUpdateStatus, /function floorToExpectedSchedule/);
   assert.doesNotMatch(digestUpdateStatus, /function addScheduleInterval/);
   assert.match(panel, /AI Digest updates/);

@@ -8992,13 +8992,14 @@ a.fb-hub-source-name:focus-visible {
   line-height: 1.35;
 }
 
-.fb-hub-digest-headline {
+.fb-hub-digest-preview .digest-headline-summary {
+  background: transparent;
+  border: 0;
   margin-top: 0.7rem;
-  max-width: none;
-  width: 100%;
+  padding: 0;
 }
 
-.fb-hub-digest-headline-kicker {
+.fb-hub-digest-preview .digest-headline-kicker {
   color: var(--accent);
   font-size: 0.6875rem;
   font-weight: 760;
@@ -9007,21 +9008,22 @@ a.fb-hub-source-name:focus-visible {
   text-transform: uppercase;
 }
 
-.fb-hub-digest-headline p {
-  color: var(--ink);
-  font-size: 0.875rem;
-  font-weight: 570;
-  line-height: 1.58;
-  margin: 0.3rem 0 0;
+.fb-hub-digest-preview .digest-headline-list-wrap.is-expandable:not(.is-expanded)::after {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--paper) 0%, transparent) 0%,
+    color-mix(in oklch, var(--paper) 78%, transparent) 46%,
+    color-mix(in oklch, var(--paper) 98%, transparent) 100%
+  );
 }
 
 .fb-hub-digest-meta {
-  border-top: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
+  border-bottom: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
   display: grid;
   gap: 0.8rem 1.25rem;
   grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
-  margin-top: 1rem;
-  padding-top: 0.9rem;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.9rem;
 }
 
 .fb-hub-digest-meta-item {

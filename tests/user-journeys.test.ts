@@ -1562,9 +1562,14 @@ test("digest feed user path selects not-yet-digested posts within the configured
   // own work: digest prepare records a DigestRun + computes candidates; library
   // fetch does neither.
   assert.match(cli, /api\/skill\/context\?intent=digest/);
+  assert.match(cli, /source=\$\{encodeURIComponent\(runSource\)\}/);
+  assert.match(cli, /jobRunId=\$\{encodeURIComponent\(envJobRunId\(\)\)\}/);
+  assert.match(cli, /typeof ctx\.jobRunId === "string"/);
   assert.doesNotMatch(cli, /includePrompts=1/);
   assert.match(cli, /api\/skill\/context\?intent=library&days=/);
   assert.match(cli, /digestedItems/);
+  assert.match(cli, /\.\.\.\(runId \? \{ runId \} : \{\}\)/);
+  assert.match(cli, /\.\.\.\(jobRunId \? \{ jobRunId \} : \{\}\)/);
   assert.match(cli, /builder-blog-context\.json/);
   assert.doesNotMatch(cli, /postSummaryTasksForBuilders\(builders,\s*context\.prompts\)/);
   assert.doesNotMatch(cli, /withSummaryInstructions\(task,\s*context\.prompts\)/);

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { CheckCircle2, Download, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { CountMeta, CountRange, formatCount } from "@/components/Count";
+import { DigestHeadlineSummary } from "@/components/DigestHeadlineSummary";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
 import { EmptyState } from "@/components/EmptyState";
 import type { DigestPipelineRuntimeMetadata } from "@/lib/digest-pipeline-metadata";
@@ -474,10 +475,11 @@ export function DigestPipelinePreviewCard({
   cronStatusControl?: ReactNode;
   pipeline: DigestPipelinePreviewData;
 }) {
-  const headline = cleanDigestHeadlinePreview(pipeline.latestDigestHeadline);
+  const headline = pipeline.latestDigestHeadline?.trim();
 
   return (
     <div className="fb-hub-digest-preview">
+      <DigestPipelineMetaGrid cronStatusControl={cronStatusControl} pipeline={pipeline} />
       <div className="fb-hub-digest-preview-row">
         <div>
           <div className="fb-hub-digest-preview-title">
@@ -485,27 +487,11 @@ export function DigestPipelinePreviewCard({
               ? `Latest AI Digest ${formatDate(pipeline.latestDigestAt)}`
               : "No AI Digest archive entries yet"}
           </div>
-          {headline ? (
-            <section
-              aria-label="Latest AI Digest headline"
-              className="fb-hub-digest-headline"
-            >
-              <div className="fb-hub-digest-headline-kicker">Headlines</div>
-              <p>{headline}</p>
-            </section>
-          ) : null}
+          {headline ? <DigestHeadlineSummary text={headline} /> : null}
         </div>
       </div>
-      <DigestPipelineMetaGrid cronStatusControl={cronStatusControl} pipeline={pipeline} />
     </div>
   );
-}
-
-function cleanDigestHeadlinePreview(value: string | null | undefined) {
-  return (value ?? "")
-    .trim()
-    .replace(/^(?:[-*•]|\d+[.)])\s+/gm, "")
-    .trim();
 }
 
 function DigestPipelineMetaGrid({

@@ -199,7 +199,7 @@ export function getDigestUpdateStatus(
   return {
     key: "waiting",
     label: "Waiting",
-    summary: "The schedule is active; the first expected run has not finished yet.",
+    summary: "The schedule is active; no scheduled window has completed yet.",
     style: statusStyle("partial"),
   };
 }
