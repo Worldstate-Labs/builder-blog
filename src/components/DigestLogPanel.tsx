@@ -834,10 +834,103 @@ function jobRunStatusLabel(jobRun: AgentJobRunListItem): string {
   return scheduledJobRunStatusLabel(jobRun.status);
 }
 
+type RunVerdictTone = "ok" | "warn" | "fail";
+
+type RunVerdict = {
+  text: string;
+  tone: RunVerdictTone;
+};
+
+function jobRunDetailsRecord(jobRun: AgentJobRunListItem): Record<string, unknown> {
+  return jobRun.details && typeof jobRun.details === "object" && !Array.isArray(jobRun.details)
+    ? jobRun.details as Record<string, unknown>
+    : {};
+}
+
+function jobRunDetailString(jobRun: AgentJobRunListItem, key: string): string | null {
+  const value = jobRunDetailsRecord(jobRun)[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function jobRunDetailNumber(jobRun: AgentJobRunListItem, key: string): number | null {
+  const value = jobRunDetailsRecord(jobRun)[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function jobRunFailureReason(jobRun: AgentJobRunListItem): string {
+  const reason = jobRunDetailString(jobRun, "reason");
+  const timeoutSeconds = jobRunDetailNumber(jobRun, "timeoutSeconds");
+  const timeoutStage = jobRunDetailString(jobRun, "timeoutStage");
+  if (jobRun.status === "timed_out") {
+    return timeoutSeconds
+      ? `Timed out after ${formatCount(timeoutSeconds)} seconds${timeoutStage ? ` during ${timeoutStage}` : ""}.`
+      : "Timed out before the worker could finish.";
+  }
+  if (jobRun.status === "killed") return "Stopped by the local scheduler before finishing.";
+  if (jobRun.status === "replaced") return "Replaced by a newer scheduled run.";
+  if (jobRun.status === "stale") return "The web app stopped receiving heartbeats from this worker.";
+  if (jobRun.signal) return `Stopped after receiving ${jobRun.signal}.`;
+  if (jobRun.exitCode !== null) return `Exited with code ${jobRun.exitCode}.`;
+  return reason ? readableReason(reason) : "Stopped before reporting a completed AI Digest build.";
+}
+
+function jobRunVerdict(jobRun: AgentJobRunListItem): RunVerdict {
+  if (jobRun.status === "starting" || jobRun.status === "running") {
+    return {
+      tone: "warn",
+      text: "The local worker is running. Waiting for it to prepare candidates and save the AI Digest.",
+    };
+  }
+  if (jobRun.status === "succeeded") {
+    return {
+      tone: "warn",
+      text: "The local worker finished, but it did not create an AI Digest build record.",
+    };
+  }
+  return {
+    tone: "fail",
+    text: jobRunFailureReason(jobRun),
+  };
+}
+
+function digestRunVerdict(run: DigestRunListItem, jobRun?: AgentJobRunListItem): RunVerdict {
+  if (run.status === "synced" && run.candidateCount === 0) {
+    return {
+      tone: "ok",
+      text: "Completed successfully. No new eligible posts were found in this window.",
+    };
+  }
+  if (run.status === "synced") {
+    return {
+      tone: "ok",
+      text: `Saved ${formatCount(run.includedCount ?? 0)} of ${formatCount(run.candidateCount)} eligible posts to FollowBrief.`,
+    };
+  }
+  if (jobRun && !["starting", "running", "succeeded"].includes(jobRun.status)) {
+    return {
+      tone: "fail",
+      text: `Prepared ${formatCount(run.candidateCount)} candidates, but the worker stopped before saving the AI Digest. ${jobRunFailureReason(jobRun)}`,
+    };
+  }
+  return {
+    tone: "warn",
+    text: `Prepared ${formatCount(run.candidateCount)} candidates. Waiting for the worker to save the AI Digest.`,
+  };
+}
+
+function readableReason(value: string): string {
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
   const hydrated = useHydrated();
   const style = jobRunStatusStyle(jobRun);
   const startedAtLabel = hydrated ? formatRelative(jobRun.startedAt) : formatAbsolute(jobRun.startedAt);
+  const verdict = jobRunVerdict(jobRun);
+  const reason = jobRunDetailString(jobRun, "reason");
   return (
     <article className="sync-panel-run-card sync-panel-mobile-flat">
       <header className="sync-panel-run-card-head">
@@ -865,7 +958,38 @@ function JobRunCard({ jobRun }: { jobRun: AgentJobRunListItem }) {
       <p className="sync-panel-run-card-summary">
         {jobRun.summary || "Runtime job did not create an AI Digest build record."}
       </p>
+      <p className={`sync-panel-run-card-verdict is-${verdict.tone}`}>
+        {verdict.text}
+      </p>
       <DigestLifecycle jobRun={jobRun} />
+      {reason || jobRun.exitCode !== null || jobRun.signal || jobRun.stage ? (
+        <dl className="sync-panel-run-card-reason">
+          {jobRun.stage ? (
+            <div>
+              <dt>Last event</dt>
+              <dd className="mono">{readableReason(jobRun.stage)}</dd>
+            </div>
+          ) : null}
+          {reason ? (
+            <div>
+              <dt>Reason</dt>
+              <dd>{readableReason(reason)}</dd>
+            </div>
+          ) : null}
+          {jobRun.exitCode !== null ? (
+            <div>
+              <dt>Exit code</dt>
+              <dd className="mono">{jobRun.exitCode}</dd>
+            </div>
+          ) : null}
+          {jobRun.signal ? (
+            <div>
+              <dt>Signal</dt>
+              <dd className="mono">{jobRun.signal}</dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : null}
       <div className="mono sync-panel-run-card-stage">
         {jobRun.stage || "runtime"} · {jobRun.finishedAt ? "finished" : "active"}
       </div>
@@ -1013,6 +1137,7 @@ function RunCard({ jobRun, run }: { jobRun?: AgentJobRunListItem; run: DigestRun
   const contributing = run.sources.filter((s) => s.eligible > 0);
   const silentCount = run.subscriptionCount - contributing.length;
   const detailCount = run.candidates.length + contributing.length + Math.max(0, silentCount);
+  const verdict = digestRunVerdict(run, jobRun);
 
   return (
     <article className="sync-panel-run-card sync-panel-mobile-flat" id={runDomId(run.id)}>
@@ -1038,6 +1163,9 @@ function RunCard({ jobRun, run }: { jobRun?: AgentJobRunListItem; run: DigestRun
       </header>
 
       <p className="sync-panel-run-card-title">{title}</p>
+      <p className={`sync-panel-run-card-verdict is-${verdict.tone}`}>
+        {verdict.text}
+      </p>
       <DigestLifecycle jobRun={jobRun} run={run} />
 
       <div className="sync-panel-run-card-funnel">
@@ -1072,13 +1200,14 @@ function RunCard({ jobRun, run }: { jobRun?: AgentJobRunListItem; run: DigestRun
       {detailCount > 0 ? (
         <details className="sync-panel-run-card-details">
           <summary className="sync-panel-run-card-details-summary">
-            Show run details
+            Show sources and posts considered
+            <CountBadge value={detailCount} />
           </summary>
           <div className="sync-panel-run-card-details-body">
             {contributing.length > 0 || silentCount > 0 ? (
               <section aria-label="Source coverage">
                 <div className="sync-panel-run-card-detail-heading">
-                  Sources
+                  Source coverage
                 </div>
                 <ul className="sync-panel-run-card-source-list">
                   {contributing.slice(0, VISIBLE_SOURCE_LIMIT).map((src) => (
@@ -1100,7 +1229,7 @@ function RunCard({ jobRun, run }: { jobRun?: AgentJobRunListItem; run: DigestRun
             {run.candidates.length > 0 ? (
               <section aria-label="Found posts">
                 <div className="sync-panel-run-card-detail-heading">
-                  Found posts
+                  Posts considered
                 </div>
                 <ul className="sync-panel-run-card-candidate-list">
                   {run.candidates.map((item, index) => (
@@ -1168,7 +1297,7 @@ function CandidateRow({ item, synced }: { item: DigestRunCandidate; synced: bool
   // Three outcomes: presented (in), eligible-but-passed-over (drop), and when
   // the run never synced — simply pending (no editorial decision was ever made,
   // so don't imply it was rejected).
-  const outcome = !synced ? "new" : item.included ? "used" : "skip";
+  const outcome = !synced ? "pending" : item.included ? "used" : "not used";
   const outcomeColor = !synced
     ? "var(--muted)"
     : item.included

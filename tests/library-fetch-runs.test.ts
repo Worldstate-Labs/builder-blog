@@ -515,6 +515,12 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /Render digest/);
   assert.match(panel, /Sync to web/);
   assert.match(panel, /Mark posts digested/);
+  assert.match(panel, /jobRunVerdict/);
+  assert.match(panel, /digestRunVerdict/);
+  assert.match(panel, /jobRunFailureReason/);
+  assert.match(panel, /readableReason/);
+  assert.match(panel, /Timed out after \$\{formatCount\(timeoutSeconds\)\} seconds/);
+  assert.match(panel, /Saved \$\{formatCount\(run\.includedCount \?\? 0\)\} of \$\{formatCount\(run\.candidateCount\)\} eligible posts to FollowBrief/);
   assert.match(panel, /DigestLifecycle/);
   assert.match(panel, /sync-panel-mobile-flat/);
   assert.match(panel, /className="sync-panel-run-card sync-panel-mobile-flat"/);
@@ -526,6 +532,11 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /className="sync-panel-run-card-head"/);
   assert.match(panel, /className="sync-panel-run-card-summary"/);
   assert.match(panel, /className="sync-panel-run-card-title"/);
+  assert.match(panel, /className=\{`sync-panel-run-card-verdict is-\$\{verdict\.tone\}`\}/);
+  assert.match(panel, /className="sync-panel-run-card-reason"/);
+  assert.match(source("src/app/globals.css"), /\.sync-panel-run-card-verdict\s*{/);
+  assert.match(source("src/app/globals.css"), /\.sync-panel-run-card-verdict\.is-fail\s*{/);
+  assert.match(source("src/app/globals.css"), /\.sync-panel-run-card-reason\s*{/);
   assert.match(panel, /className="sync-panel-run-card-funnel"/);
   assert.match(panel, /className="sync-panel-run-card-details"/);
   assert.match(panel, /className="sync-panel-schedule-summary"/);
@@ -548,6 +559,11 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /className="sync-panel-source-row"/);
   assert.match(panel, /className="sync-panel-candidate-row"/);
   assert.match(panel, /className="mono sync-panel-candidate-outcome"/);
+  assert.match(panel, /not used/);
+  assert.match(panel, /pending/);
+  assert.match(panel, /Show sources and posts considered/);
+  assert.match(panel, /Source coverage/);
+  assert.match(panel, /Posts considered/);
   assert.match(panel, /sync-panel-candidate-title/);
   assert.doesNotMatch(panel, /className="rounded-\[10px\] border bg-\[var\(--paper-strong\)\] px-3\.5 py-3"[\s\S]*Runtime job did not create an AI Digest build record/);
   assert.doesNotMatch(panel, /className="rounded-\[10px\] border bg-\[var\(--paper-strong\)\] px-3\.5 py-3"[\s\S]*Previous AI Digest/);

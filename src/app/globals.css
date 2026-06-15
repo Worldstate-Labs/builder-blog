@@ -6163,6 +6163,33 @@ details:not([open]) > :not(summary) {
   margin-top: 0.5rem;
 }
 
+.sync-panel-run-card-verdict {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 0.78125rem;
+  line-height: 1.45;
+  margin-top: 0.5rem;
+  padding: 0.45rem 0.6rem;
+}
+
+.sync-panel-run-card-verdict.is-ok {
+  background: var(--signal-soft);
+  border-color: color-mix(in oklch, var(--signal) 24%, var(--line));
+  color: color-mix(in oklch, var(--signal) 70%, var(--ink));
+}
+
+.sync-panel-run-card-verdict.is-warn {
+  background: color-mix(in oklch, var(--warm) 12%, var(--paper-strong));
+  border-color: color-mix(in oklch, var(--warm) 24%, var(--line));
+  color: color-mix(in oklch, var(--warm) 70%, var(--ink));
+}
+
+.sync-panel-run-card-verdict.is-fail {
+  background: color-mix(in oklch, var(--danger) 9%, var(--paper-strong));
+  border-color: color-mix(in oklch, var(--danger) 24%, var(--line));
+  color: var(--danger);
+}
+
 .sync-panel-run-card-funnel {
   align-items: baseline;
   display: flex;
@@ -6213,6 +6240,36 @@ details:not([open]) > :not(summary) {
   color: var(--muted-strong);
   font-size: 0.75rem;
   margin-top: 0.375rem;
+}
+
+.sync-panel-run-card-reason {
+  border: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
+  border-radius: 8px;
+  display: grid;
+  gap: 0.375rem;
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.625rem;
+}
+
+.sync-panel-run-card-reason div {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 7rem minmax(0, 1fr);
+}
+
+.sync-panel-run-card-reason dt {
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.sync-panel-run-card-reason dd {
+  color: var(--ink);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .sync-panel-run-card-stage {
@@ -6329,10 +6386,13 @@ details:not([open]) > :not(summary) {
 }
 
 .sync-panel-run-card-details-summary {
+  align-items: center;
   color: var(--ink);
   cursor: pointer;
+  display: flex;
   font-size: 0.78125rem;
   font-weight: 700;
+  gap: 0.5rem;
   padding: 0.5rem 0.75rem;
 }
 
@@ -6574,7 +6634,7 @@ details:not([open]) > :not(summary) {
   letter-spacing: 0.03em;
   margin-top: 1px;
   text-transform: uppercase;
-  width: 2.6em;
+  width: 4.7em;
 }
 
 .sync-panel-candidate-kind {
@@ -6823,6 +6883,11 @@ details:not([open]) > :not(summary) {
 
   .sync-panel-run-card.sync-panel-mobile-flat .sync-panel-run-card-details-body {
     padding-inline: 0;
+  }
+
+  .sync-panel-run-card-reason div {
+    gap: 0.125rem;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .sync-panel-lifecycle-item {
