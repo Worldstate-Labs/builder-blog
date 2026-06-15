@@ -3267,10 +3267,10 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(digestPipelineForm, /className="library-hub-toolbar-copy"/);
   assert.match(digestPipelineForm, /className="hub-list-stack fb-hub-list"/);
   assert.match(digestPipelineForm, /className="fb-hub-card-head"/);
-  assert.match(digestPipelineForm, /className="fb-hub-card-kicker"/);
-  assert.match(digestPipelineForm, /digestPipelineKindBadge\(pipeline\)/);
-  assert.match(digestPipelineForm, /function digestPipelineKindBadge/);
-  assert.match(digestPipelineForm, /pipeline\.ownerLabel === "FollowBrief" \? "community" : "shared"/);
+  assert.match(digestPipelineForm, /className="fb-hub-card-byline"/);
+  assert.match(digestPipelineForm, /by \{digestPipelineOwnerTopic\(pipeline\.ownerLabel\)\}/);
+  assert.doesNotMatch(digestPipelineForm, /digestPipelineKindBadge\(pipeline\)/);
+  assert.doesNotMatch(digestPipelineForm, /function digestPipelineKindBadge/);
   assert.match(digestPipelineForm, /function digestPipelineOwnerTopic\(ownerLabel: string\)/);
   assert.match(digestPipelineForm, /digestPipelineOwnerTopic\(pipeline\.ownerLabel\)/);
   assert.match(digestPipelineForm, /className="fb-hub-digest-preview"/);
@@ -4476,7 +4476,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /Shared AI Digest archives/);
   assert.match(digestPipelineForm, /function digestPipelineCardDescription/);
   assert.match(digestPipelineForm, /pipeline\.description\?\.trim\(\)/);
-  assert.match(digestPipelineForm, /Shared by \$\{pipeline\.ownerLabel\}\./);
+  assert.match(digestPipelineForm, /return null/);
+  assert.match(digestPipelineForm, /by \{digestPipelineOwnerTopic\(pipeline\.ownerLabel\)\}/);
+  assert.doesNotMatch(digestPipelineForm, /Shared by \$\{pipeline\.ownerLabel\}\./);
   assert.doesNotMatch(digestPipelineForm, /Shared by Shared by/);
   assert.doesNotMatch(digestPipelineForm, /\{pipeline\.description \|\| pipeline\.ownerLabel\}/);
   assert.match(source("src/lib/library-hub.ts"), /adminCommunityDigestTitle = "Community AI Digest"/);
