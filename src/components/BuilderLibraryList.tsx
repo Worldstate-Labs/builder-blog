@@ -297,6 +297,35 @@ function BuilderCard({
   removeError?: string;
 }) {
   const canEdit = Boolean(editableSourceOptions && builder.allowRemove);
+  const actions = (
+    <div className="builder-library-actions">
+      {canEdit && editableSourceOptions ? (
+        <div
+          aria-label={`Source tools for ${builder.name}`}
+          className="builder-library-row-tools"
+          role="group"
+        >
+          <BuilderEditDialog
+            builder={builder}
+            onRemoveStateChange={onRemoveStateChange}
+            sourceOptions={editableSourceOptions}
+          />
+        </div>
+      ) : (
+        <span
+          aria-hidden="true"
+          className="builder-library-row-tools-placeholder"
+        />
+      )}
+      <BuilderLibraryActions
+        builderId={builder.id}
+        builderName={builder.name}
+        initialSubscribed={builder.subscribed}
+        key={`${builder.id}:${builder.subscribed}`}
+        onSubscriptionStateChange={onSubscriptionStateChange}
+      />
+    </div>
+  );
   return (
     <article
       id={builder.id}
@@ -314,43 +343,22 @@ function BuilderCard({
       <div className="builder-library-card-controls">
         {builder.feedItemCount > 0 ? (
           <BuilderFeedItems
+            actions={actions}
             builder={builder}
             builderId={builder.id}
             latestPostCreatedAt={builder.latestPostCreatedAt}
             totalCount={builder.feedItemCount}
           />
         ) : (
-          <div className="builder-library-posts-placeholder">
-            No summarized posts yet
+          <div className="builder-posts builder-posts--empty">
+            <div className="builder-posts-toolbar">
+              <div className="builder-library-posts-placeholder">
+                No summarized posts yet
+              </div>
+              {actions}
+            </div>
           </div>
         )}
-        <div className="builder-library-actions">
-          {canEdit && editableSourceOptions ? (
-            <div
-              aria-label={`Source tools for ${builder.name}`}
-              className="builder-library-row-tools"
-              role="group"
-            >
-              <BuilderEditDialog
-                builder={builder}
-                onRemoveStateChange={onRemoveStateChange}
-                sourceOptions={editableSourceOptions}
-              />
-            </div>
-          ) : (
-            <span
-              aria-hidden="true"
-              className="builder-library-row-tools-placeholder"
-            />
-          )}
-          <BuilderLibraryActions
-            builderId={builder.id}
-            builderName={builder.name}
-            initialSubscribed={builder.subscribed}
-            key={`${builder.id}:${builder.subscribed}`}
-            onSubscriptionStateChange={onSubscriptionStateChange}
-          />
-        </div>
       </div>
     </article>
   );

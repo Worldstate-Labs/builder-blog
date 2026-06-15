@@ -3523,8 +3523,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   );
   assert.match(
     builderFeedItems,
-    /<summary aria-label=\{postsSummaryLabel\}>[\s\S]*className="builder-posts-count"[\s\S]*\{postCountLabel\}[\s\S]*className="builder-posts-dot"[\s\S]*<time[\s\S]*className="builder-posts-latest"[\s\S]*latest at \{latestDateLabel\}/,
+    /<button[\s\S]*aria-expanded=\{isOpen\}[\s\S]*aria-label=\{postsSummaryLabel\}[\s\S]*className="builder-posts-summary"[\s\S]*className="builder-posts-count"[\s\S]*\{postCountLabel\}[\s\S]*className="builder-posts-dot"[\s\S]*<time[\s\S]*className="builder-posts-latest"[\s\S]*latest at \{latestDateLabel\}/,
   );
+  assert.match(builderFeedItems, /actions\?: ReactNode/);
+  assert.match(builderFeedItems, /className="builder-post-list" hidden=\{!isOpen\}/);
   assert.doesNotMatch(builderFeedItems, /CountMeta|builder-posts-label|builder-posts-meta|summarized"\}/);
   assert.doesNotMatch(builderFeedItems, /Latest \{|formatCompactDate|hour:\s*"numeric"|minute:\s*"2-digit"/);
   assert.match(builderFeedItems, /function formatPostDate/);
@@ -3749,7 +3751,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-source-count\s*{[\s\S]*white-space:\s*normal/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*grid-template-areas:\s*"avatar info"/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*grid-template-columns:\s*2\.25rem minmax\(0,\s*1fr\)/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-controls\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-posts-toolbar\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.doesNotMatch(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-controls\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card \.builder-library-actions,[\s\S]*\.builder-library-card \.row-actions\s*{[\s\S]*justify-content:\s*flex-end/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta \.import-remove-control\s*{[\s\S]*grid-column:\s*1 \/ -1/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.sources-sync-section \.digest-updates-main\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
@@ -4980,7 +4983,9 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.builder-library-card \+ \.builder-library-card\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(css, /\.builder-library-card-main\s*{[\s\S]*display:\s*grid/);
   assert.match(css, /\.builder-library-card-main\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\)/);
-  assert.match(css, /\.builder-library-card-controls\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(css, /\.builder-library-card-controls\s*{[\s\S]*display:\s*block/);
+  assert.doesNotMatch(cssRule(css, ".builder-library-card-controls"), /grid-template-columns/);
+  assert.match(css, /\.builder-posts-toolbar\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(css, /\.builder-library-info\s*{[\s\S]*min-width:\s*0/);
   assert.match(css, /\.builder-library-info-head\s*{[\s\S]*display:\s*flex/);
   assert.match(css, /\.builder-library-name\s*{[\s\S]*text-overflow:\s*ellipsis/);
@@ -4993,20 +4998,21 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.doesNotMatch(css, /\.builder-library-stats\s*{/);
   assert.doesNotMatch(css, /\.(?:action|empty)-panel\s*{/);
   assert.doesNotMatch(css, /\.(?:stats-panel|stat-card|metric-card|search-stats-panel)\b/);
-  const builderPostsSummaryRule = cssRule(css, ".builder-posts > summary");
+  const builderPostsSummaryRule = cssRule(css, ".builder-posts-summary");
   const builderPostsLatestRule = cssRule(css, ".builder-posts-latest");
   assert.match(builderPostsLatestRule, /white-space:\s*nowrap/);
   assert.doesNotMatch(builderPostsLatestRule, /margin-left:\s*auto/);
   assert.doesNotMatch(builderPostsLatestRule, /order:\s*2/);
   assert.doesNotMatch(css, /\.builder-posts-latest::before\s*{[\s\S]*content:\s*"·"/);
-  assert.doesNotMatch(css, /\.builder-posts > summary::after/);
+  assert.doesNotMatch(css, /\.builder-posts > summary/);
+  assert.doesNotMatch(css, /\.builder-posts-summary::after/);
   assert.doesNotMatch(css, /\.builder-posts-label\s*{/);
   assert.doesNotMatch(css, /\.builder-posts-meta\s*{/);
   assert.match(css, /\.builder-posts-count\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(css, /\.builder-posts-count\s*{[\s\S]*gap:\s*0\.4rem/);
-  assert.match(css, /\.builder-posts > summary:hover \.builder-posts-count\s*{[\s\S]*color:\s*var\(--accent-strong\)/);
+  assert.match(css, /\.builder-posts-summary:hover \.builder-posts-count\s*{[\s\S]*color:\s*var\(--accent-strong\)/);
   assert.match(css, /\.builder-posts-summary\s*{[\s\S]*display:\s*inline-flex/);
-  assert.match(builderPostsSummaryRule, /display:\s*flex/);
+  assert.match(builderPostsSummaryRule, /display:\s*inline-flex/);
   assert.match(builderPostsSummaryRule, /justify-content:\s*flex-start/);
   assert.doesNotMatch(css, /\.builder-library-open-source\s*{/);
   assert.match(css, /\.builder-library-row-tools\s*{[\s\S]*opacity:\s*0/);

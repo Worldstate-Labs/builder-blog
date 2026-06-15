@@ -2931,43 +2931,42 @@ details:not([open]) > :not(summary) {
   min-width: 0;
 }
 
-.builder-posts > summary {
+.builder-posts-toolbar {
   align-items: center;
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+}
+
+.builder-posts-summary {
+  align-items: center;
+  background: transparent;
+  border: 0;
   color: var(--muted-strong);
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   font-size: 0.75rem;
   font-weight: 700;
   gap: 0.45rem 0.75rem;
   justify-content: flex-start;
-  list-style: none;
   min-height: 2.375rem;
+  min-width: 0;
   padding: 0;
+  text-align: left;
 }
 
-.builder-posts > summary:hover .builder-posts-count {
+.builder-posts-summary:hover .builder-posts-count {
   background: color-mix(in oklch, var(--accent) 12%, var(--paper-strong));
   border-color: color-mix(in oklch, var(--accent) 34%, var(--line));
   color: var(--accent-strong);
 }
 
-.builder-posts > summary:focus-visible {
+.builder-posts-summary:focus-visible {
   border-radius: 999px;
   outline: 2px solid color-mix(in oklch, var(--accent) 44%, transparent);
   outline-offset: 2px;
-}
-
-.builder-posts > summary::-webkit-details-marker {
-  display: none;
-}
-
-.builder-posts-summary {
-  align-items: center;
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 0.4rem 0.55rem;
-  min-width: 0;
 }
 
 .builder-posts-count {
@@ -2977,11 +2976,17 @@ details:not([open]) > :not(summary) {
   border-radius: 999px;
   color: var(--ink);
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
   font-weight: 760;
   line-height: 1;
+  max-width: 100%;
   padding: 0.18rem 0.5rem;
   transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.builder-posts-count > span:first-child {
+  white-space: nowrap;
 }
 
 .builder-posts-dot,
@@ -7298,10 +7303,10 @@ details:not([open]) > :not(summary) {
 
 .builder-library-card-controls {
   align-items: start;
-  display: grid;
+  display: block;
   gap: 0.65rem;
-  grid-template-columns: minmax(0, 1fr) auto;
   margin-top: 0.55rem;
+  min-width: 0;
 }
 
 .builder-library-list {
@@ -12465,9 +12470,7 @@ body {
   }
 
   .builder-library-card-controls {
-    align-items: start;
     gap: 0.5rem;
-    grid-template-columns: minmax(0, 1fr) auto;
     margin-top: 0.65rem;
   }
 
@@ -12486,6 +12489,20 @@ body {
 
   .builder-posts {
     margin-left: 0;
+  }
+
+  .builder-posts-toolbar {
+    gap: 0.45rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .builder-posts-count {
+    gap: 0.35rem;
+    padding-inline: 0.45rem;
+  }
+
+  .builder-post-row {
+    padding-inline: 0;
   }
 
   .fb-skill {

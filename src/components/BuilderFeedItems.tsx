@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useState } from "react";
 import { EmptyState } from "@/components/EmptyState";
 import { PostCard } from "@/components/PostCard";
 import { postDetailHref } from "@/lib/navigation";
@@ -30,6 +30,7 @@ type BuilderFeedItem = {
 };
 
 type BuilderFeedItemsProps = {
+  actions?: ReactNode;
   builder: BuilderSummary;
   builderId: string;
   latestPostCreatedAt?: string | null;
@@ -37,12 +38,14 @@ type BuilderFeedItemsProps = {
 };
 
 export function BuilderFeedItems({
+  actions,
   builder,
   builderId,
   latestPostCreatedAt,
   totalCount,
 }: BuilderFeedItemsProps) {
-  const detailsRef = useRef<HTMLDetailsElement | null>(null);
+  const listId = useId();
+  const [isOpen, setIsOpen] = useState(false);
   const [itemState, setItemState] = useState<{
     builderId: string;
     totalCount: number;
@@ -66,11 +69,11 @@ export function BuilderFeedItems({
   const returnLabel = builder.entityId ? builder.name : "Sources";
 
   useEffect(() => {
-    if (!detailsRef.current?.open) return;
+    if (!isOpen) return;
     void loadItems(true, { force: true });
     // loadItems intentionally stays local; this effect only reacts to server props changing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [builderId, totalCount]);
+  }, [builderId, totalCount, isOpen]);
 
   async function loadItems(open: boolean, options: { force?: boolean } = {}) {
     if (!open || (items && !options.force) || isLoading) return;
@@ -90,14 +93,23 @@ export function BuilderFeedItems({
     }
   }
 
+  function toggleOpen() {
+    const nextOpen = !isOpen;
+    setIsOpen(nextOpen);
+    void loadItems(nextOpen);
+  }
+
   return (
-    <details
-      className="builder-posts"
-      onToggle={(event) => loadItems(event.currentTarget.open)}
-      ref={detailsRef}
-    >
-      <summary aria-label={postsSummaryLabel}>
-        <span className="builder-posts-summary">
+    <div className="builder-posts">
+      <div className="builder-posts-toolbar">
+        <button
+          aria-controls={listId}
+          aria-expanded={isOpen}
+          aria-label={postsSummaryLabel}
+          className="builder-posts-summary"
+          onClick={toggleOpen}
+          type="button"
+        >
           <span className="builder-posts-count">
             <span>{postCountLabel}</span>
             {latestDateLabel ? (
@@ -113,9 +125,10 @@ export function BuilderFeedItems({
               </>
             ) : null}
           </span>
-        </span>
-      </summary>
-      <div className="builder-post-list">
+        </button>
+        {actions}
+      </div>
+      <div className="builder-post-list" hidden={!isOpen} id={listId}>
         {isLoading ? (
           <div className="builder-post-loading" role="status">
             <div className="builder-post-loading-line" />
@@ -148,7 +161,7 @@ export function BuilderFeedItems({
           />
         ) : null}
       </div>
-    </details>
+    </div>
   );
 }
 
