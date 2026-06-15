@@ -1690,7 +1690,11 @@ test("digest generation user path exposes source-specific prompt instructions", 
     DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct,
     /user-selected output language/,
   );
-  assert.match(DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct, /Product name:/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct, /mobile-friendly digest card/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct, /two short paragraphs/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct, /Do not output field labels/);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct, /\nProduct name:\n/);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct, /\nWhat the product does:\n/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.summarizeProductHuntTopProduct, /Chinese|项目名称/);
   assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /Legacy Digest Intro Prompt/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /headlineSummary/);
@@ -3001,6 +3005,21 @@ test("digest headline default migration covers length and combined sources", () 
   assert.match(migration, /Source A and Source B: one sentence summary/);
   assert.match(migration, /WHERE "headlinePrompt" = '# Digest Headline Prompt/);
   assert.doesNotMatch(migration, /WHERE "headlinePrompt" LIKE/);
+});
+
+test("Product Hunt summary prompt migration removes label-value card output", () => {
+  const migration = readFileSync(
+    "prisma/migrations/000066_product_hunt_mobile_summary_prompt/migration.sql",
+    "utf8",
+  );
+
+  assert.match(migration, /UPDATE "SourceTypeConfig"[\s\S]*"sourceId" = 'product_hunt_top_products'/);
+  assert.match(migration, /UPDATE "UserSourceTypeConfig"[\s\S]*"sourceId" = 'product_hunt_top_products'/);
+  assert.match(migration, /mobile-friendly digest card summary/);
+  assert.match(migration, /Do not output field labels/);
+  assert.match(migration, /WHERE "sourceId" = 'product_hunt_top_products'\s+AND "summaryPromptBody" = \$\$# Product Hunt Top Product Summary Prompt/);
+  assert.match(migration, /Product name:/);
+  assert.match(migration, /What the product does:/);
 });
 
 test("source registry supports future source types without new BuilderKind enum values", () => {
