@@ -12308,12 +12308,21 @@ body {
   .library-section-meta {
     display: grid;
     gap: 0.55rem;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     justify-content: stretch;
     width: 100%;
   }
 
   .library-section-meta > .fb-kind-pill {
+    justify-self: start;
+  }
+
+  .library-section-meta .count-meta {
+    justify-self: end;
+  }
+
+  .library-section-meta .import-remove-control {
+    grid-column: 1 / -1;
     justify-self: start;
   }
 
@@ -12389,13 +12398,12 @@ body {
   }
 
   .builder-library-card-main {
-    align-items: start;
-    column-gap: 0.65rem;
+    align-items: center;
+    column-gap: 0.7rem;
     grid-template-areas:
-      "avatar info"
-      "avatar actions";
-    grid-template-columns: 2rem minmax(0, 1fr);
-    row-gap: 0.45rem;
+      "avatar info actions";
+    grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+    row-gap: 0;
   }
 
   .builder-library-avatar {
@@ -12431,10 +12439,11 @@ body {
 
   .builder-library-card .builder-library-actions,
   .builder-library-card .row-actions {
+    align-items: center;
     display: inline-flex;
     grid-area: actions;
     gap: 0.45rem;
-    justify-content: flex-start;
+    justify-content: flex-end;
     min-width: 0;
     width: auto;
   }
@@ -12453,7 +12462,7 @@ body {
   }
 
   .builder-posts {
-    margin-left: 0;
+    margin-left: calc(2.25rem + 0.7rem);
   }
 
   .fb-skill {
