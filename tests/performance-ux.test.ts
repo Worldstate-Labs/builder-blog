@@ -2416,9 +2416,9 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(digestUpdatesCard, /<div id=\{detailsRootId\} \/>/);
   assert.match(digestUpdatesCard, /showHeading=\{false\}/);
   assert.match(digestUpdatesCard, /showStatusToggle=\{false\}/);
-  assert.match(digestPipelineForm, /beforePreview\?: ReactNode;[\s\S]*\{beforePreview\}\s*<DigestPipelinePreviewCard[\s\S]*cronStatusControl=\{cronStatusControl\}/);
+  assert.match(digestPipelineForm, /beforePreview\?: ReactNode;[\s\S]*\{beforePreview\}\s*\{children\}\s*<DigestPipelinePreviewCard[\s\S]*cronStatusControl=\{cronStatusControl\}/);
   assert.match(digestPipelineForm, /<DigestPipelinePreviewCard pipeline=\{pipeline\} \/>/);
-  assert.match(digestPipelineForm, /<DigestPipelinePreviewCard[\s\S]*\/>\s*\{children\}\s*<div className="fb-hub-card-stats">/);
+  assert.match(digestPipelineForm, /\{children\}\s*<DigestPipelinePreviewCard[\s\S]*\/>\s*<div className="fb-hub-card-stats">/);
   assert.equal((digestPipelineForm.match(/className="fb-hub-digest-preview"/g) ?? []).length, 1);
   assert.match(digestPipelineForm, /latestDigestHeadline/);
   assert.match(digestPipelineForm, /@\/components\/DigestHeadlineSummary/);

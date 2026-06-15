@@ -347,12 +347,12 @@ export function OwnDigestPipelineCard({
 
       {beforePreview}
 
+      {children}
+
       <DigestPipelinePreviewCard
         cronStatusControl={cronStatusControl}
         pipeline={pipeline}
       />
-
-      {children}
 
       <div className="fb-hub-card-stats">
         <CountMeta
