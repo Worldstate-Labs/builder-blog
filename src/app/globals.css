@@ -8976,13 +8976,6 @@ a.builder-library-name:hover {
   min-width: 0;
 }
 
-.fb-hub-source-type-meta {
-  color: var(--muted);
-  font-size: 0.71875rem;
-  font-weight: 650;
-  line-height: 1.4;
-}
-
 .fb-hub-source-list {
   display: grid;
   gap: 0.35rem;

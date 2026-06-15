@@ -28,8 +28,6 @@ type SourceGroup = {
     builderId: string;
     builder: HubLibraryBuilder;
   }>;
-  postCount: number;
-  latestFetchedAt: string | null;
 };
 
 export type HubLibrary = {
@@ -541,12 +539,6 @@ function HubCard({
               <section className="fb-hub-source-type-group" key={group.sourceType}>
                 <div className="fb-hub-source-type-heading">
                   <SourceBadge sourceType={group.sourceType} />
-                  <div className="fb-hub-source-type-meta">
-                    <CountMeta label={group.items.length === 1 ? "source" : "sources"} value={group.items.length} />
-                    <span> · </span>
-                    <CountMeta label={group.postCount === 1 ? "post" : "posts"} value={group.postCount} />
-                    <span> · {formatFetchStatusLabel(group.latestFetchedAt)}</span>
-                  </div>
                 </div>
                 <ul className="fb-hub-source-list">
                   {group.items.map((item) => {
@@ -722,15 +714,11 @@ function groupedSources(libraryItems: HubLibrary["items"]): SourceGroup[] {
     const existing = groups.get(sourceType);
     if (existing) {
       existing.items.push(item);
-      existing.postCount += item.builder._count.feedItems;
-      existing.latestFetchedAt = maxIso(existing.latestFetchedAt, item.builder.lastFetchedAt);
     } else {
       groups.set(sourceType, {
         sourceType,
         label: sourceLabelForType(sourceType),
         items: [item],
-        postCount: item.builder._count.feedItems,
-        latestFetchedAt: item.builder.lastFetchedAt,
       });
     }
   }

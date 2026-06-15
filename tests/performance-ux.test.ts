@@ -3198,6 +3198,9 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   );
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceBadge/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceAvatar/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-type-meta/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /group\.postCount|group\.latestFetchedAt/);
+  assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-source-type-meta/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /sourceSummaryItems = selectSourceSummaryItems\(library\.items, sourceGroups, 4\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /function selectSourceSummaryItems/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /for \(const group of sourceGroups\)/);
@@ -3213,7 +3216,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /aria-label=\{`View \$\{item\.builder\.name\} source site`\}/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /title="View source site"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /See more/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /label=\{group\.postCount === 1 \? "post" : "posts"\}/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /label=\{group\.postCount === 1 \? "post" : "posts"\}/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /label=\{fetchedPostCount === 1 \? "post" : "posts"\}/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /"fetched post"|"fetched posts"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /formatFetchStatusLabel/);
