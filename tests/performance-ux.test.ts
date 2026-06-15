@@ -3167,9 +3167,12 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-titleblock\s*{[\s\S]*width:\s*100%/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /function libraryCardDescription/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /library\.description\?\.trim\(\)/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Community source library curated by FollowBrief\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /if \(description === "Community source library curated by FollowBrief\."\) return ""/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /A source library you manage\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /return "yours"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /return "Managed by you"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /if \(library\.isCommunity\) return ""/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Your private source library\.|return "private"|return "Personal"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /return library\.ownerLabel/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /return sourceLibraryOwnerTopic\(library\.ownerLabel\)/);
@@ -3179,7 +3182,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Shared by a FollowBrief user/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /return "Shared by user"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Curated by user/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /\{libraryCardDescription\(library\)\}/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /const cardDescription = libraryCardDescription\(library\)/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /\{cardDescription \? \(/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-sources-summary"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /groupedSources/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-type-groups/);
@@ -3193,7 +3197,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /function selectSourceSummaryItems/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /for \(const group of sourceGroups\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /for \(const item of libraryItems\)/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /index >= 1 \? "is-mobile-hidden" : ""/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /index >= 2 \? "is-mobile-hidden" : ""/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /index >= 1 \? "is-mobile-hidden" : ""/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /sourceSummaryItems = library\.items\.slice\(0, 4\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-summary-strip/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-source-summary-name/);
@@ -3220,7 +3225,11 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /ChevronDown/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /aria-label=\{`\$\{sourceToggleLabel\} in \$\{library\.name\}`\}/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), />\s*Show\s*</);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-stats"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-stats fb-hub-card-stats--source-library"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-stat-row"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-fetch-date"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /formatFetchStatusLabel\(latestFetchedAt\)/);
+  assert.match(source("src/app/globals.css"), /\.fb-hub-card-stats--source-library\s*{[\s\S]*display:\s*grid/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.hub-metric/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /EmptyState/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /title=\{emptyTitle\}/);

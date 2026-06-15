@@ -426,6 +426,7 @@ function HubCard({
     library.items.map((item) => item.builder.lastFetchedAt),
   );
   const sourceToggleLabel = formatSourceToggleLabel(library.itemCount);
+  const cardDescription = libraryCardDescription(library);
 
   const action = library.owned ? (
     <span className="fb-chip">
@@ -471,7 +472,9 @@ function HubCard({
           <div className="fb-hub-card-titleblock">
             <div className="fb-hub-card-kicker">
               <span className="fb-kind-pill">{kindBadge(library)}</span>
-              <span className="fb-hub-card-topic">· {topicLabel(library)}</span>
+              {topicLabel(library) ? (
+                <span className="fb-hub-card-topic">· {topicLabel(library)}</span>
+              ) : null}
             </div>
             <h3 className="fb-hub-title">
               {library.name}
@@ -486,9 +489,11 @@ function HubCard({
           </div>
         </div>
 
-        <p className="fb-hub-card-desc">
-          {libraryCardDescription(library)}
-        </p>
+        {cardDescription ? (
+          <p className="fb-hub-card-desc">
+            {cardDescription}
+          </p>
+        ) : null}
       </div>
 
       {sourceGroups.length > 0 ? (
@@ -501,7 +506,7 @@ function HubCard({
                   <span
                     className={[
                       "fb-hub-source-summary-item",
-                      index >= 1 ? "is-mobile-hidden" : "",
+                      index >= 2 ? "is-mobile-hidden" : "",
                       index >= 2 ? "is-desktop-only" : "",
                     ].filter(Boolean).join(" ")}
                     key={item.builderId}
@@ -589,12 +594,16 @@ function HubCard({
         </details>
       ) : null}
 
-      <div className="fb-hub-card-stats">
-        <CountMeta label={library.itemCount === 1 ? "source" : "sources"} value={library.itemCount} />
-        <CountMeta label={fetchedPostCount === 1 ? "post" : "posts"} value={fetchedPostCount} />
-        <span>{formatFetchStatusLabel(latestFetchedAt)}</span>
-        <CountMeta label={library.importCount === 1 ? "import" : "imports"} value={library.importCount} />
-        <CountMeta label={library.viewCount === 1 ? "view" : "views"} value={library.viewCount} />
+      <div className="fb-hub-card-stats fb-hub-card-stats--source-library">
+        <div className="fb-hub-card-stat-row">
+          <CountMeta label={library.itemCount === 1 ? "source" : "sources"} value={library.itemCount} />
+          <CountMeta label={fetchedPostCount === 1 ? "post" : "posts"} value={fetchedPostCount} />
+          <CountMeta label={library.importCount === 1 ? "import" : "imports"} value={library.importCount} />
+          <CountMeta label={library.viewCount === 1 ? "view" : "views"} value={library.viewCount} />
+        </div>
+        <div className="fb-hub-card-fetch-date">
+          {formatFetchStatusLabel(latestFetchedAt)}
+        </div>
       </div>
     </article>
   );
@@ -639,13 +648,14 @@ function sourceLibraryListCopy(filter: FilterKey) {
 
 function libraryCardDescription(library: HubLibrary) {
   const description = library.description?.trim();
+  if (description === "Community source library curated by FollowBrief.") return "";
   if (description) return description;
   if (library.owned) return "A source library you manage.";
   return library.ownerLabel;
 }
 
 function topicLabel(library: HubLibrary) {
-  if (library.isCommunity) return "Curated";
+  if (library.isCommunity) return "";
   if (library.owned) return "Managed by you";
   return sourceLibraryOwnerTopic(library.ownerLabel);
 }
