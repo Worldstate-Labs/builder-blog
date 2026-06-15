@@ -2315,6 +2315,7 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(globals, /\.digest-loading-chip\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.digest-load-error\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(digestDetails, /digestPreviewFromContent/);
+  assert.match(digestDetails, /originalSummariesByPostKey/);
   assert.match(digestDetails, /originalSummariesByUrl/);
   assert.match(digestDetails, /cleanOriginalSummaries/);
   assert.doesNotMatch(digestDetails, /isLatest/);
@@ -2325,7 +2326,9 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(source("src/app/globals.css"), /item-headline-preview/);
   assert.match(digestRoute, /headlineSummary/);
   assert.match(digestRoute, /parseDigest/);
+  assert.match(digestRoute, /originalSummariesByPostKey/);
   assert.match(digestRoute, /originalSummariesByUrl/);
+  assert.match(digestRoute, /matchDigestPostsToFeedItems/);
   assert.match(digestRoute, /digestedItem\.findMany/);
   assert.match(digestRoute, /digestId/);
   assert.match(digestRoute, /feedItemId:\s*\{ not: null \}/);
@@ -3811,6 +3814,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postFavoriteControl, /className="post-favorite-status" role="status"/);
   assert.match(postFavoriteControl, /className="post-favorite-control"/);
   assert.match(digestDetails, /favoriteErrorByUrl: Record<string, string>/);
+  assert.match(digestDetails, /favoriteStateByPostKey/);
   assert.match(digestDetails, /pendingFavoriteUrls: Set<string>/);
   assert.match(digestDetails, /pendingFavoriteUrls: new Set<string>\(\)/);
   assert.match(digestDetails, /if \(pendingFavoriteUrls\.has\(url\)\) return/);
@@ -3826,6 +3830,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(digestDetails, /reload restores truth|Best-effort optimistic UI/);
   assert.match(digestContent, /const EMPTY_PENDING_FAVORITE_URLS = new Set<string>\(\)/);
   assert.match(digestContent, /favoriteErrorByUrl\?: Record<string, string>/);
+  assert.match(digestContent, /favoriteStateByPostKey/);
+  assert.match(digestContent, /digestPostKey/);
   assert.match(digestContent, /pendingFavoriteUrls\?: Set<string>/);
   assert.match(digestContent, /disabled=\{pendingFavoriteUrls\.has\(url\)\}/);
   assert.match(digestContent, /postFavoriteActionLabel\([\s\S]*Boolean\(favoriteState\.favoritedAt\),[\s\S]*digestFavoriteTargetLabel\(postCard\)/);
@@ -3988,6 +3994,7 @@ test("digest posts use source detail headings and unified original links", () =>
   const globals = source("src/app/globals.css");
 
   assert.match(digestContent, /DigestSourceLink/);
+  assert.match(digestContent, /digestPostKey/);
   assert.match(digestContent, /SourceAvatar/);
   assert.match(digestContent, /SourceBadge/);
   assert.match(digestContent, /digest-group-source-link/);
@@ -3995,6 +4002,7 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(digestContent, /sourceLinkForSource/);
   assert.match(digestContent, /PostCard/);
   assert.match(digestContent, /originalSummariesByUrl/);
+  assert.match(digestContent, /originalSummariesByPostKey/);
   assert.match(digestContent, /originalSummary/);
   assert.match(digestContent, /showBuilderRow=\{false\}/);
   assert.match(digestContent, /showDebugActions=\{false\}/);

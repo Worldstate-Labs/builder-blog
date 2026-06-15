@@ -9,6 +9,7 @@ import { SourceAvatar } from "@/components/SourceAvatar";
 import { postDetailHref } from "@/lib/navigation";
 import { normalizeSourceType } from "@/lib/source-display";
 import {
+  digestPostKey,
   parseDigest,
   type DigestDoc,
   type DigestGroup,
@@ -45,7 +46,9 @@ const EMPTY_PENDING_FAVORITE_URLS = new Set<string>();
 export function DigestContent({
   content,
   favoriteErrorByUrl = {},
+  favoriteStateByPostKey = {},
   favoriteStateByUrl = {},
+  originalSummariesByPostKey = {},
   originalSummariesByUrl = {},
   onFavoriteToggle,
   pendingFavoriteUrls = EMPTY_PENDING_FAVORITE_URLS,
@@ -54,7 +57,9 @@ export function DigestContent({
 }: {
   content: string;
   favoriteErrorByUrl?: Record<string, string>;
+  favoriteStateByPostKey?: DigestFavoriteStateByUrl;
   favoriteStateByUrl?: DigestFavoriteStateByUrl;
+  originalSummariesByPostKey?: Record<string, string>;
   originalSummariesByUrl?: Record<string, string>;
   onFavoriteToggle?: (url: string, feedItemId: string, nextFavorite: boolean) => void;
   pendingFavoriteUrls?: Set<string>;
@@ -100,8 +105,10 @@ export function DigestContent({
           key={section.id}
           section={section}
           favoriteErrorByUrl={favoriteErrorByUrl}
+          favoriteStateByPostKey={favoriteStateByPostKey}
           favoriteStateByUrl={favoriteStateByUrl}
           onFavoriteToggle={onFavoriteToggle}
+          originalSummariesByPostKey={originalSummariesByPostKey}
           originalSummariesByUrl={originalSummariesByUrl}
           pendingFavoriteUrls={pendingFavoriteUrls}
           sourceType={sectionSourceTypes.get(section.id) ?? "website"}
@@ -119,8 +126,10 @@ function wrapClass(tone: "paper" | "dark"): string {
 function SectionBlock({
   section,
   favoriteErrorByUrl,
+  favoriteStateByPostKey,
   favoriteStateByUrl,
   onFavoriteToggle,
+  originalSummariesByPostKey,
   originalSummariesByUrl,
   pendingFavoriteUrls,
   sourceType,
@@ -128,8 +137,10 @@ function SectionBlock({
 }: {
   section: DigestSection;
   favoriteErrorByUrl: Record<string, string>;
+  favoriteStateByPostKey: DigestFavoriteStateByUrl;
   favoriteStateByUrl: DigestFavoriteStateByUrl;
   onFavoriteToggle?: (url: string, feedItemId: string, nextFavorite: boolean) => void;
+  originalSummariesByPostKey: Record<string, string>;
   originalSummariesByUrl: Record<string, string>;
   pendingFavoriteUrls: Set<string>;
   sourceType: string;
@@ -161,8 +172,10 @@ function SectionBlock({
               sectionSourceType={sectionSourceType}
               sourceLink={group.source ? sourceLinkForSource(group.source, sourceLookup) : undefined}
               favoriteErrorByUrl={favoriteErrorByUrl}
+              favoriteStateByPostKey={favoriteStateByPostKey}
               favoriteStateByUrl={favoriteStateByUrl}
               onFavoriteToggle={onFavoriteToggle}
+              originalSummariesByPostKey={originalSummariesByPostKey}
               originalSummariesByUrl={originalSummariesByUrl}
               pendingFavoriteUrls={pendingFavoriteUrls}
             />
@@ -186,8 +199,10 @@ function PostBlock({
   sectionSourceType,
   sourceLink,
   favoriteErrorByUrl,
+  favoriteStateByPostKey,
   favoriteStateByUrl,
   onFavoriteToggle,
+  originalSummariesByPostKey,
   originalSummariesByUrl,
   pendingFavoriteUrls,
 }: {
@@ -197,8 +212,10 @@ function PostBlock({
   sectionSourceType: string;
   sourceLink?: DigestSourceLink;
   favoriteErrorByUrl: Record<string, string>;
+  favoriteStateByPostKey: DigestFavoriteStateByUrl;
   favoriteStateByUrl: DigestFavoriteStateByUrl;
   onFavoriteToggle?: (url: string, feedItemId: string, nextFavorite: boolean) => void;
+  originalSummariesByPostKey: Record<string, string>;
   originalSummariesByUrl: Record<string, string>;
   pendingFavoriteUrls: Set<string>;
 }) {
@@ -209,8 +226,9 @@ function PostBlock({
     .trim();
   const sourceType = normalizeSourceType(sourceLink?.sourceType) || sectionSourceType;
   const url = post.media[0]?.url ?? sourceLink?.sourceUrl ?? sourceLink?.fetchUrl ?? "#";
-  const originalSummary = originalSummariesByUrl[url] ?? null;
-  const favoriteState = favoriteStateByUrl[url];
+  const postKey = digestPostKey(section, group, post);
+  const originalSummary = originalSummariesByPostKey[postKey] ?? originalSummariesByUrl[url] ?? null;
+  const favoriteState = favoriteStateByUrl[url] ?? favoriteStateByPostKey[postKey];
   const favoriteError = favoriteErrorByUrl[url] ?? "";
   const postCard: PostCardPost = {
     id: `digest-${section.id}-${post.id}`,

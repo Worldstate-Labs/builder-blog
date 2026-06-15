@@ -6,6 +6,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DigestContent } from "../src/components/DigestContent";
 import { PostCard } from "../src/components/PostCard";
+import { digestPostKey, parseDigest } from "../src/lib/digest-markdown";
 
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
@@ -165,11 +166,17 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(digestRoute, /activePoolBuilderIds/);
   assert.match(digestRoute, /digestId/);
   assert.match(digestRoute, /feedItemId:\s*\{ not: null \}/);
+  assert.match(digestRoute, /digestPostEntries\(digest\.content\)/);
+  assert.match(digestRoute, /favoriteStateByPostKey/);
+  assert.match(digestRoute, /matchDigestPostsToFeedItems/);
+  assert.match(digestRoute, /digestPostKey\(section, group, post\)/);
+  assert.match(digestRoute, /uniqueFeedItem/);
   assert.match(digestRoute, /feedFavorite\.findMany/);
   assert.match(feedFavorites, /feedItemAppearsInAccessibleDigest/);
   assert.match(feedFavorites, /digestPipelineImport\.findMany/);
   assert.match(feedFavorites, /Post is not in your sources or imported AI Digest archives/);
   assert.match(digestDetails, /favoriteStateByUrl/);
+  assert.match(digestDetails, /favoriteStateByPostKey/);
   assert.match(digestDetails, /cleanFavoriteStateByUrl/);
   assert.match(digestDetails, /favoriteErrorByUrl: Record<string, string>/);
   assert.match(digestDetails, /pendingFavoriteUrls: Set<string>/);
@@ -187,6 +194,8 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.doesNotMatch(digestDetails, /reload restores truth|Best-effort optimistic UI/);
   assert.match(digestContent, /PostFavoriteButton/);
   assert.match(digestContent, /onFavoriteToggle/);
+  assert.match(digestContent, /digestPostKey/);
+  assert.match(digestContent, /favoriteStateByPostKey/);
   assert.match(digestContent, /const EMPTY_PENDING_FAVORITE_URLS = new Set<string>\(\)/);
   assert.match(digestContent, /favoriteErrorByUrl\?: Record<string, string>/);
   assert.match(digestContent, /pendingFavoriteUrls\?: Set<string>/);
@@ -207,9 +216,7 @@ test("favorites saves posts into a focused reading tab", () => {
 });
 
 test("digest posts can render a save control for their source feed item", () => {
-  const html = renderToStaticMarkup(
-    createElement(DigestContent, {
-      content: `AI Digest - 6/5/2026
+  const content = `AI Digest - 6/5/2026
 
 ## Blog
 
@@ -219,9 +226,17 @@ test("digest posts can render a save control for their source feed item", () => 
 
 Anthropic explains containment.
 
-Source: https://anthropic.com/engineering/how-we-contain-claude`,
-      favoriteStateByUrl: {
-        "https://anthropic.com/engineering/how-we-contain-claude": {
+Source: https://anthropic.com/engineering/how-we-contain-claude`;
+  const doc = parseDigest(content);
+  const section = doc.sections[0];
+  const group = section.groups[0];
+  const post = group.posts[0];
+  const postKey = digestPostKey(section, group, post);
+  const html = renderToStaticMarkup(
+    createElement(DigestContent, {
+      content,
+      favoriteStateByPostKey: {
+        [postKey]: {
           feedItemId: "feed_123",
           favoritedAt: null,
         },

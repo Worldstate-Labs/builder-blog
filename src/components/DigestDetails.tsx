@@ -38,9 +38,11 @@ export type DigestSummary = {
 type DigestLoadState = {
   content: string | null;
   favoriteErrorByUrl: Record<string, string>;
+  favoriteStateByPostKey: DigestFavoriteStateByUrl;
   favoriteStateByUrl: DigestFavoriteStateByUrl;
   isOpen: boolean;
   key: string;
+  originalSummariesByPostKey: Record<string, string>;
   originalSummariesByUrl: Record<string, string>;
   pendingFavoriteUrls: Set<string>;
   status: "idle" | "loading" | "loaded" | "error";
@@ -67,9 +69,11 @@ export function DigestDetails({
     () => ({
       content: null,
       favoriteErrorByUrl: {},
+      favoriteStateByPostKey: {},
       favoriteStateByUrl: {},
       isOpen: defaultOpen,
       key: stateKey,
+      originalSummariesByPostKey: {},
       originalSummariesByUrl: {},
       pendingFavoriteUrls: new Set<string>(),
       status: initialStatus,
@@ -79,7 +83,9 @@ export function DigestDetails({
   const [digestState, setDigestState] = useState<DigestLoadState>(initialState);
   const currentState = digestState.key === stateKey ? digestState : initialState;
   const { content, favoriteErrorByUrl, isOpen, pendingFavoriteUrls, status } = currentState;
+  const favoriteStateByPostKey = currentState.favoriteStateByPostKey;
   const favoriteStateByUrl = currentState.favoriteStateByUrl;
+  const originalSummariesByPostKey = currentState.originalSummariesByPostKey;
   const originalSummariesByUrl = currentState.originalSummariesByUrl;
   const headerHeadline = resolveHeadlineSummary(digest.headlineSummary, content, status);
 
@@ -102,7 +108,9 @@ export function DigestDetails({
       updateDigestState((current) => ({
         ...current,
         content: String(body.content ?? ""),
+        favoriteStateByPostKey: cleanFavoriteStateByUrl(body.favoriteStateByPostKey),
         favoriteStateByUrl: cleanFavoriteStateByUrl(body.favoriteStateByUrl),
+        originalSummariesByPostKey: cleanOriginalSummaries(body.originalSummariesByPostKey),
         originalSummariesByUrl: cleanOriginalSummaries(body.originalSummariesByUrl),
         status: "loaded",
       }));
@@ -206,8 +214,10 @@ export function DigestDetails({
           <DigestBody
             content={content}
             favoriteErrorByUrl={favoriteErrorByUrl}
+            favoriteStateByPostKey={favoriteStateByPostKey}
             favoriteStateByUrl={favoriteStateByUrl}
             onFavoriteToggle={toggleFavorite}
+            originalSummariesByPostKey={originalSummariesByPostKey}
             originalSummariesByUrl={originalSummariesByUrl}
             pendingFavoriteUrls={pendingFavoriteUrls}
             sourceLinks={sourceLinks}
@@ -250,8 +260,10 @@ export function DigestDetails({
         <DigestBody
           content={content}
           favoriteErrorByUrl={favoriteErrorByUrl}
+          favoriteStateByPostKey={favoriteStateByPostKey}
           favoriteStateByUrl={favoriteStateByUrl}
           onFavoriteToggle={toggleFavorite}
+          originalSummariesByPostKey={originalSummariesByPostKey}
           originalSummariesByUrl={originalSummariesByUrl}
           pendingFavoriteUrls={pendingFavoriteUrls}
           sourceLinks={sourceLinks}
@@ -265,8 +277,10 @@ export function DigestDetails({
 function DigestBody({
   content,
   favoriteErrorByUrl,
+  favoriteStateByPostKey,
   favoriteStateByUrl,
   onFavoriteToggle,
+  originalSummariesByPostKey,
   originalSummariesByUrl,
   pendingFavoriteUrls,
   sourceLinks,
@@ -275,8 +289,10 @@ function DigestBody({
 }: {
   content: string | null;
   favoriteErrorByUrl: Record<string, string>;
+  favoriteStateByPostKey: DigestFavoriteStateByUrl;
   favoriteStateByUrl: DigestFavoriteStateByUrl;
   onFavoriteToggle: (url: string, feedItemId: string, nextFavorite: boolean) => void;
+  originalSummariesByPostKey: Record<string, string>;
   originalSummariesByUrl: Record<string, string>;
   pendingFavoriteUrls: Set<string>;
   sourceLinks: DigestSourceLink[];
@@ -335,8 +351,10 @@ function DigestBody({
       <DigestContent
         content={content ?? ""}
         favoriteErrorByUrl={favoriteErrorByUrl}
+        favoriteStateByPostKey={favoriteStateByPostKey}
         favoriteStateByUrl={favoriteStateByUrl}
         onFavoriteToggle={onFavoriteToggle}
+        originalSummariesByPostKey={originalSummariesByPostKey}
         originalSummariesByUrl={originalSummariesByUrl}
         pendingFavoriteUrls={pendingFavoriteUrls}
         showContents={false}
@@ -351,8 +369,10 @@ function DigestBody({
       <DigestContent
         content={content ?? ""}
         favoriteErrorByUrl={favoriteErrorByUrl}
+        favoriteStateByPostKey={favoriteStateByPostKey}
         favoriteStateByUrl={favoriteStateByUrl}
         onFavoriteToggle={onFavoriteToggle}
+        originalSummariesByPostKey={originalSummariesByPostKey}
         originalSummariesByUrl={originalSummariesByUrl}
         pendingFavoriteUrls={pendingFavoriteUrls}
         sourceLinks={sourceLinks}

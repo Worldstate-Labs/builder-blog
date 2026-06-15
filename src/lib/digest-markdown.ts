@@ -291,3 +291,18 @@ export function parseDigest(markdown: string): DigestDoc {
     hasStructure: postCount > 0,
   };
 }
+
+export function digestPostKey(section: DigestSection, group: DigestGroup, post: DigestPost) {
+  return [
+    "digest-post",
+    section.id,
+    group.source ?? "",
+    post.id,
+    post.title ?? "",
+    post.media[0]?.url ?? "",
+  ].map(digestKeyPart).join(":");
+}
+
+function digestKeyPart(value: string) {
+  return encodeURIComponent(value.normalize("NFKC").trim());
+}

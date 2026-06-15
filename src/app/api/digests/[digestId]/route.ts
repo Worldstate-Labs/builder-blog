@@ -2,10 +2,23 @@ import { NextResponse } from "next/server";
 import type { FeedItemKind } from "@prisma/client";
 import { getCurrentSession } from "@/lib/auth";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
-import { parseDigest } from "@/lib/digest-markdown";
+import { digestPostKey, parseDigest } from "@/lib/digest-markdown";
 import { prisma } from "@/lib/prisma";
 
 type Params = { params: Promise<{ digestId: string }> };
+type DigestFavoriteState = { feedItemId: string; favoritedAt: string | null };
+type DigestPostEntry = { key: string; source: string | null; title: string | null; url: string };
+type DigestFeedItem = {
+  id: string;
+  title: string | null;
+  url: string;
+  summary: string | null;
+  kind: FeedItemKind;
+  externalId: string;
+  sourceName: string | null;
+  builder: { entityId: string | null; name: string } | null;
+  createdAt: Date;
+};
 
 export async function GET(_request: Request, { params }: Params) {
   const session = await getCurrentSession();
@@ -45,47 +58,48 @@ export async function GET(_request: Request, { params }: Params) {
     }
   }
 
+  const digestPosts = digestPostEntries(digest.content);
+  const feedItems = await feedItemsForDigestPosts({
+    digestId: digest.id,
+    posts: digestPosts,
+    userId: session.user.id,
+  });
+  const matchedFeedItems = matchDigestPostsToFeedItems(digestPosts, feedItems);
+  const favoriteState = await favoriteStateForDigestPosts({
+    matches: matchedFeedItems,
+    posts: digestPosts,
+    userId: session.user.id,
+  });
+  const originalSummaries = originalSummariesForDigestPosts({
+    matches: matchedFeedItems,
+    posts: digestPosts,
+  });
+
   return NextResponse.json({
     id: digest.id,
     content: digest.content,
     headlineSummary: digest.headlineSummary,
-    favoriteStateByUrl: await favoriteStateByUrlForDigest({
-      content: digest.content,
-      digestId: digest.id,
-      userId: session.user.id,
-    }),
-    originalSummariesByUrl: await originalSummariesByUrlForDigest({
-      content: digest.content,
-      digestId: digest.id,
-      userId: digest.userId,
-    }),
+    favoriteStateByPostKey: favoriteState.byPostKey,
+    favoriteStateByUrl: favoriteState.byUrl,
+    originalSummariesByPostKey: originalSummaries.byPostKey,
+    originalSummariesByUrl: originalSummaries.byUrl,
   });
 }
 
-async function favoriteStateByUrlForDigest({
-  content,
+async function feedItemsForDigestPosts({
   digestId,
+  posts,
   userId,
 }: {
-  content: string;
   digestId: string;
+  posts: DigestPostEntry[];
   userId: string;
 }) {
-  const urls = digestPostUrls(content);
-  if (urls.length === 0) return {};
+  const urls = [...new Set(posts.map((post) => post.url))];
+  if (urls.length === 0) return [];
 
   const poolBuilderIds = await activePoolBuilderIds(userId);
-  const feedItems = new Map<
-    string,
-    {
-      id: string;
-      url: string;
-      kind: FeedItemKind;
-      externalId: string;
-      builder: { entityId: string | null } | null;
-      createdAt: Date;
-    }
-  >();
+  const feedItems = new Map<string, DigestFeedItem>();
 
   const digestedItems = await prisma.digestedItem.findMany({
     where: {
@@ -101,10 +115,13 @@ async function favoriteStateByUrlForDigest({
       feedItem: {
         select: {
           id: true,
+          title: true,
           url: true,
+          summary: true,
           kind: true,
           externalId: true,
-          builder: { select: { entityId: true } },
+          sourceName: true,
+          builder: { select: { entityId: true, name: true } },
           createdAt: true,
         },
       },
@@ -124,10 +141,13 @@ async function favoriteStateByUrlForDigest({
       },
       select: {
         id: true,
+        title: true,
         url: true,
+        summary: true,
         kind: true,
         externalId: true,
-        builder: { select: { entityId: true } },
+        sourceName: true,
+        builder: { select: { entityId: true, name: true } },
         createdAt: true,
       },
       orderBy: { createdAt: "desc" },
@@ -136,8 +156,21 @@ async function favoriteStateByUrlForDigest({
       feedItems.set(item.id, item);
     }
   }
-  const feedItemRows = [...feedItems.values()];
-  if (feedItemRows.length === 0) return {};
+
+  return [...feedItems.values()];
+}
+
+async function favoriteStateForDigestPosts({
+  matches,
+  posts,
+  userId,
+}: {
+  matches: Map<string, DigestFeedItem>;
+  posts: DigestPostEntry[];
+  userId: string;
+}) {
+  if (posts.length === 0 || matches.size === 0) return { byPostKey: {}, byUrl: {} };
+  const feedItemRows = [...matches.values()];
 
   const identities = new Map<string, { entityId: string; kind: FeedItemKind; externalId: string }>();
   for (const item of feedItemRows) {
@@ -172,99 +205,142 @@ async function favoriteStateByUrlForDigest({
     ]),
   );
 
-  const byUrl = new Map<string, { feedItemId: string; favoritedAt: string | null }>();
-  for (const item of feedItemRows) {
+  const byPostKey = new Map<string, DigestFavoriteState>();
+  const byUrl = new Map<string, DigestFavoriteState>();
+  for (const post of posts) {
+    const item = matches.get(post.key);
+    if (!item) continue;
     const entityId = item.builder?.entityId;
     if (!entityId) continue;
     const favoritedAt = favoriteByKey.get(favoriteKey(entityId, item.kind, item.externalId)) ?? null;
-    const existing = byUrl.get(item.url);
-    if (!existing || (!existing.favoritedAt && favoritedAt)) {
-      byUrl.set(item.url, {
-        feedItemId: item.id,
-        favoritedAt,
-      });
-    }
+    const state = { feedItemId: item.id, favoritedAt };
+    byPostKey.set(post.key, state);
+    setPreferredState(byUrl, post.url, state);
+    setPreferredState(byUrl, item.url, state);
   }
 
-  return Object.fromEntries(byUrl);
+  return {
+    byPostKey: Object.fromEntries(byPostKey),
+    byUrl: Object.fromEntries(byUrl),
+  };
 }
 
-async function originalSummariesByUrlForDigest({
-  content,
-  digestId,
-  userId,
+function originalSummariesForDigestPosts({
+  matches,
+  posts,
 }: {
-  content: string;
-  digestId: string;
-  userId: string;
+  matches: Map<string, DigestFeedItem>;
+  posts: DigestPostEntry[];
 }) {
-  const urls = digestPostUrls(content);
-  if (urls.length === 0) return {};
-
+  const byPostKey = new Map<string, string>();
   const byUrl = new Map<string, string>();
-  const digestedItems = await prisma.digestedItem.findMany({
-    where: {
-      digestId,
-      userId,
-      feedItem: {
-        is: {
-          url: { in: urls },
-          summary: { not: null },
-        },
-      },
-    },
-    select: {
-      feedItem: {
-        select: {
-          summary: true,
-          url: true,
-        },
-      },
-    },
-  });
-
-  for (const item of digestedItems) {
-    const summary = item.feedItem?.summary?.trim();
-    const url = item.feedItem?.url;
-    if (url && summary && !byUrl.has(url)) byUrl.set(url, summary);
+  for (const post of posts) {
+    const item = matches.get(post.key);
+    const summary = item?.summary?.trim();
+    if (!item || !summary) continue;
+    byPostKey.set(post.key, summary);
+    if (!byUrl.has(post.url)) byUrl.set(post.url, summary);
+    if (!byUrl.has(item.url)) byUrl.set(item.url, summary);
   }
 
-  const missingUrls = urls.filter((url) => !byUrl.has(url));
-  if (missingUrls.length > 0) {
-    const fallbackItems = await prisma.feedItem.findMany({
-      where: {
-        url: { in: missingUrls },
-        summary: { not: null },
-        builder: { is: { ownerUserId: userId } },
-      },
-      select: {
-        summary: true,
-        url: true,
-      },
-    });
+  return {
+    byPostKey: Object.fromEntries(byPostKey),
+    byUrl: Object.fromEntries(byUrl),
+  };
+}
 
-    for (const item of fallbackItems) {
-      const summary = item.summary?.trim();
-      if (summary && !byUrl.has(item.url)) byUrl.set(item.url, summary);
+function matchDigestPostsToFeedItems(posts: DigestPostEntry[], feedItems: DigestFeedItem[]) {
+  const byUrl = new Map<string, DigestFeedItem>();
+  const byTitle = new Map<string, DigestFeedItem[]>();
+  const byTitleAndSource = new Map<string, DigestFeedItem[]>();
+
+  for (const item of feedItems) {
+    if (!byUrl.has(item.url)) byUrl.set(item.url, item);
+
+    const title = digestMatchKey(item.title);
+    if (!title) continue;
+    appendMatch(byTitle, title, item);
+    for (const source of digestFeedItemSources(item)) {
+      appendMatch(byTitleAndSource, `${title}:${source}`, item);
     }
   }
 
-  return Object.fromEntries(byUrl);
+  const matches = new Map<string, DigestFeedItem>();
+  for (const post of posts) {
+    const urlMatch = byUrl.get(post.url);
+    if (urlMatch) {
+      matches.set(post.key, urlMatch);
+      continue;
+    }
+
+    const title = digestMatchKey(post.title);
+    if (!title) continue;
+
+    const source = digestMatchKey(post.source);
+    const sourceMatches = source ? byTitleAndSource.get(`${title}:${source}`) ?? [] : [];
+    const sourceMatch = uniqueFeedItem(sourceMatches);
+    if (sourceMatch) {
+      matches.set(post.key, sourceMatch);
+      continue;
+    }
+
+    const titleMatch = uniqueFeedItem(byTitle.get(title) ?? []);
+    if (titleMatch) matches.set(post.key, titleMatch);
+  }
+
+  return matches;
 }
 
-function digestPostUrls(content: string) {
-  const urls = new Set<string>();
+function digestPostEntries(content: string) {
+  const posts: DigestPostEntry[] = [];
   const doc = parseDigest(content);
   for (const section of doc.sections) {
     for (const group of section.groups) {
       for (const post of group.posts) {
-        for (const media of post.media) {
-          if (media.url) urls.add(media.url);
-        }
+        const url = post.media[0]?.url;
+        if (!url) continue;
+        posts.push({
+          key: digestPostKey(section, group, post),
+          source: group.source,
+          title: post.title,
+          url,
+        });
       }
     }
   }
-  return [...urls];
+  return posts;
+}
+
+function digestFeedItemSources(item: DigestFeedItem) {
+  return [item.sourceName, item.builder?.name]
+    .map(digestMatchKey)
+    .filter((value): value is string => Boolean(value));
+}
+
+function digestMatchKey(value: string | null | undefined) {
+  return (value ?? "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function appendMatch(matches: Map<string, DigestFeedItem[]>, key: string, item: DigestFeedItem) {
+  matches.set(key, [...(matches.get(key) ?? []), item]);
+}
+
+function uniqueFeedItem(items: DigestFeedItem[]) {
+  const unique = new Map(items.map((item) => [item.id, item]));
+  return unique.size === 1 ? [...unique.values()][0] : null;
+}
+
+function setPreferredState(
+  states: Map<string, DigestFavoriteState>,
+  key: string,
+  state: DigestFavoriteState,
+) {
+  const existing = states.get(key);
+  if (!existing || (!existing.favoritedAt && state.favoritedAt)) states.set(key, state);
 }
 
 function favoriteKey(entityId: string, kind: string, externalId: string) {
