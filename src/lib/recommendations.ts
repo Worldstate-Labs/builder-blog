@@ -125,7 +125,10 @@ export async function getRecommendationTimeline({
 }) {
   const { prisma } = await import("@/lib/prisma");
   const snapshots = await prisma.recommendationSnapshot.findMany({
-    where: snapshotWhere(userId),
+    where: {
+      ...snapshotWhere(userId),
+      items: { some: {} },
+    },
     include: snapshotInclude(userId),
     orderBy: { createdAt: "desc" },
     take: Math.max(1, Math.floor(snapshotLimit)),

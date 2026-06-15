@@ -510,5 +510,6 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.doesNotMatch(recommendations, /type RecommendationScope/);
   assert.match(recommendations, /const subscriptionBuilderIds = subscriptions\.map/);
   assert.match(recommendations, /reason: \{ startsWith: "subscription:" \}/);
+  assert.match(recommendations, /items:\s*\{\s*some:\s*\{\}\s*\}/);
   assert.match(recommendations, /const seen = new Set<string>\(\)/);
 });
