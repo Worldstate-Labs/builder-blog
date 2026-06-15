@@ -2927,7 +2927,8 @@ details:not([open]) > :not(summary) {
 }
 
 .builder-posts {
-  margin: 0.35rem 0 0 2.875rem;
+  margin: 0;
+  min-width: 0;
 }
 
 .builder-posts > summary {
@@ -2941,7 +2942,8 @@ details:not([open]) > :not(summary) {
   gap: 0.45rem 0.75rem;
   justify-content: flex-start;
   list-style: none;
-  padding: 0.55rem 0 0;
+  min-height: 2.375rem;
+  padding: 0;
 }
 
 .builder-posts > summary:hover .builder-posts-count {
@@ -7291,7 +7293,15 @@ details:not([open]) > :not(summary) {
   align-items: center;
   display: grid;
   gap: 0.875rem;
-  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  grid-template-columns: 2rem minmax(0, 1fr);
+}
+
+.builder-library-card-controls {
+  align-items: start;
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-top: 0.55rem;
 }
 
 .builder-library-list {
@@ -7478,12 +7488,10 @@ a.builder-library-name:hover {
 
 .builder-library-actions {
   align-items: center;
-  display: grid;
+  display: inline-flex;
   gap: 0.55rem;
-  grid-template-columns: 2rem minmax(7.25rem, auto);
   justify-self: end;
-  justify-items: end;
-  min-width: 10rem;
+  min-width: 0;
 }
 
 .builder-library-row-tools,
@@ -7527,6 +7535,15 @@ a.builder-library-name:hover {
   color: var(--danger);
   font-size: 0.6875rem;
   line-height: 1.35;
+}
+
+.builder-library-posts-placeholder {
+  align-items: center;
+  color: var(--muted-strong);
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 700;
+  min-height: 2.375rem;
 }
 
 .builder-library-edit-button {
@@ -12401,8 +12418,8 @@ body {
     align-items: center;
     column-gap: 0.7rem;
     grid-template-areas:
-      "avatar info actions";
-    grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+      "avatar info";
+    grid-template-columns: 2.25rem minmax(0, 1fr);
     row-gap: 0;
   }
 
@@ -12441,11 +12458,17 @@ body {
   .builder-library-card .row-actions {
     align-items: center;
     display: inline-flex;
-    grid-area: actions;
     gap: 0.45rem;
     justify-content: flex-end;
     min-width: 0;
     width: auto;
+  }
+
+  .builder-library-card-controls {
+    align-items: start;
+    gap: 0.5rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    margin-top: 0.65rem;
   }
 
   .builder-library-row-tools-placeholder {
@@ -12462,7 +12485,7 @@ body {
   }
 
   .builder-posts {
-    margin-left: calc(2.25rem + 0.7rem);
+    margin-left: 0;
   }
 
   .fb-skill {

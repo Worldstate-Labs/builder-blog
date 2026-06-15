@@ -153,10 +153,12 @@ export function PostCard({
     isDetail && detailSummary && detailSummary !== detailRawContent,
   );
   const canReadRawContent = !isDetail && showRawContent && Boolean(rawContent);
+  const showOriginalAction = Boolean(post.url);
+  const showMetaSourceBadge = showSourceBadge && !showOriginalAction;
   const showReadIndicator = Boolean(dataRead && !isDetail);
   const showMetaRow = Boolean(
     (showBuilderRow && authorName) ||
-      showSourceBadge ||
+      showMetaSourceBadge ||
       hasAlternateChannels ||
       showReadIndicator ||
       extraMeta,
@@ -198,13 +200,13 @@ export function PostCard({
                     <span className="post-meta-author-link">{authorName}</span>
                   )}
                 </span>
-                {(showSourceBadge || hasAlternateChannels || showReadIndicator || extraMeta) ? (
+                {(showMetaSourceBadge || hasAlternateChannels || showReadIndicator || extraMeta) ? (
                   <span className="post-meta-dot" aria-hidden="true">·</span>
                 ) : null}
               </>
             ) : null}
 
-            {showSourceBadge ? (
+            {showMetaSourceBadge ? (
               <SourceBadge
                 builder={builder}
                 suppressLabelWhen={authorName}
@@ -214,7 +216,7 @@ export function PostCard({
 
             {hasAlternateChannels ? (
               <>
-                {showSourceBadge ? <span className="post-meta-dot" aria-hidden="true">·</span> : null}
+                {showMetaSourceBadge ? <span className="post-meta-dot" aria-hidden="true">·</span> : null}
                 <span title="Same post available via other source libraries">
                   <CountMeta
                     label={post.alternateChannelCount === 1 ? "additional source library" : "additional source libraries"}
@@ -226,7 +228,7 @@ export function PostCard({
 
             {showReadIndicator ? (
               <>
-                {(showSourceBadge || hasAlternateChannels) ? <span className="post-meta-dot" aria-hidden="true">·</span> : null}
+                {(showMetaSourceBadge || hasAlternateChannels) ? <span className="post-meta-dot" aria-hidden="true">·</span> : null}
                 <span className="read-indicator" aria-label="Read">
                   ✓ Read
                 </span>
@@ -338,23 +340,25 @@ export function PostCard({
             role="group"
           >
             {/* External platform action: keep the platform icon, but use one stable label. */}
-            <a
-              aria-label={actionLabel("View original", actionContext)}
-              className="post-source-original"
-              href={post.url}
-              onClick={noteInteraction}
-              rel="noreferrer"
-              target="_blank"
-              title="View original"
-            >
-              <SourceBadge
-                builder={builder}
-                decorative
-                sourceType={builder?.sourceType ?? post.sourceType ?? null}
-                showLabel={false}
-              />
-              <span>View original</span>
-            </a>
+            {showOriginalAction ? (
+              <a
+                aria-label={actionLabel("View original", actionContext)}
+                className="post-source-original"
+                href={post.url}
+                onClick={noteInteraction}
+                rel="noreferrer"
+                target="_blank"
+                title="View original"
+              >
+                <SourceBadge
+                  builder={builder}
+                  decorative
+                  sourceType={builder?.sourceType ?? post.sourceType ?? null}
+                  showLabel={false}
+                />
+                <span>View original</span>
+              </a>
+            ) : null}
 
             {canReadRawContent && post.detailUrl ? (
               <Link

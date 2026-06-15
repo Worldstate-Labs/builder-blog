@@ -305,6 +305,25 @@ function BuilderCard({
       <div className="builder-library-card-main">
         <SourceAvatar className="builder-library-avatar" source={builder} />
         <BuilderInfo builder={builder} />
+      </div>
+      {removeError ? (
+        <div className="builder-library-error" role="status">
+          {removeError}
+        </div>
+      ) : null}
+      <div className="builder-library-card-controls">
+        {builder.feedItemCount > 0 ? (
+          <BuilderFeedItems
+            builder={builder}
+            builderId={builder.id}
+            latestPostCreatedAt={builder.latestPostCreatedAt}
+            totalCount={builder.feedItemCount}
+          />
+        ) : (
+          <div className="builder-library-posts-placeholder">
+            No summarized posts yet
+          </div>
+        )}
         <div className="builder-library-actions">
           {canEdit && editableSourceOptions ? (
             <div
@@ -333,19 +352,6 @@ function BuilderCard({
           />
         </div>
       </div>
-      {removeError ? (
-        <div className="builder-library-error" role="status">
-          {removeError}
-        </div>
-      ) : null}
-      {builder.feedItemCount > 0 ? (
-        <BuilderFeedItems
-          builder={builder}
-          builderId={builder.id}
-          latestPostCreatedAt={builder.latestPostCreatedAt}
-          totalCount={builder.feedItemCount}
-        />
-      ) : null}
     </article>
   );
 }
@@ -448,7 +454,7 @@ function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
           <div className="builder-library-name">{builder.name}</div>
         )}
       </div>
-      {sourceLabel || builder.feedItemCount === 0 ? (
+      {sourceLabel ? (
         <div className="builder-library-meta">
           {sourceHref && sourceLabel ? (
             <a
@@ -460,12 +466,6 @@ function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
             >
               {sourceLabel}
             </a>
-          ) : null}
-          {sourceLabel && builder.feedItemCount === 0 ? (
-            <span aria-hidden="true">·</span>
-          ) : null}
-          {builder.feedItemCount === 0 ? (
-            <span>No summarized posts yet</span>
           ) : null}
         </div>
       ) : null}

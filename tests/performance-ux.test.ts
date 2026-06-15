@@ -3740,15 +3740,16 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderLibraryList, /followed/);
   assert.match(globals, /\.builder-library-source-count\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.builder-library-source-section-body\s*{[\s\S]*margin-left:\s*1\.35rem/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-posts\s*{[\s\S]*margin-left:\s*calc\(2\.25rem \+ 0\.7rem\)/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-posts\s*{[\s\S]*margin-left:\s*0/);
   assert.match(globals, /\.builder-library-source-section-title \.source-badge\s*{[\s\S]*min-height:\s*1\.85rem/);
   assert.match(globals, /\.builder-library-source-section \+ \.builder-library-source-section\s*{[\s\S]*border-top:\s*1px solid/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-source-section-toggle\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-source-section-title\s*{[\s\S]*grid-template-columns:\s*1rem minmax\(0,\s*auto\)/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-source-section-title \.source-badge > span:last-child\s*{[\s\S]*text-overflow:\s*ellipsis/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-source-count\s*{[\s\S]*white-space:\s*normal/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*grid-template-areas:\s*"avatar info actions"/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*grid-template-columns:\s*2\.25rem minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*grid-template-areas:\s*"avatar info"/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*grid-template-columns:\s*2\.25rem minmax\(0,\s*1fr\)/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-controls\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card \.builder-library-actions,[\s\S]*\.builder-library-card \.row-actions\s*{[\s\S]*justify-content:\s*flex-end/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta \.import-remove-control\s*{[\s\S]*grid-column:\s*1 \/ -1/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.sources-sync-section \.digest-updates-main\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
@@ -4085,6 +4086,8 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(globals, /\.source-badge\[data-source="blog"\] \.source-badge-mark,[\s\S]*color:\s*var\(--on-accent\)/);
   assert.match(globals, /\.source-badge\[data-source="product_hunt_top_products"\] \.source-badge-mark\s*{[\s\S]*color:\s*var\(--on-warm\)/);
   assert.match(globals, /\.source-badge\[data-source="website"\] \.source-badge-mark\s*{[\s\S]*color:\s*var\(--on-muted-strong\)/);
+  assert.match(postCard, /const showOriginalAction = Boolean\(post\.url\)/);
+  assert.match(postCard, /const showMetaSourceBadge = showSourceBadge && !showOriginalAction/);
   assert.match(postCard, /decorative[\s\S]*showLabel=\{false\}/);
   assert.doesNotMatch(postCard, /ScrollText/);
   assert.match(postCard, /actionContext = compactActionContext\(title\)/);
@@ -4191,7 +4194,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(builderLibraryList, /aria-label="Source tools"/);
   assert.match(globals, /\.builder-library-row-tools\s*{\s*gap:\s*0\.2rem;\s*}/);
   assert.doesNotMatch(globals, /builder-library-card:hover \.builder-library-row-tools/);
-  assert.match(globals, /\.builder-library-actions\s*{[\s\S]*grid-template-columns:/);
+  assert.match(globals, /\.builder-library-actions\s*{[\s\S]*display:\s*inline-flex/);
   assert.doesNotMatch(buildersPage, /togglePersonalLibraryHubAvailabilityAction/);
   assert.doesNotMatch(buildersPage, /subscribeAllLibraryBuildersAction/);
   assert.doesNotMatch(buildersPage, /unsubscribeBuilderAction/);
@@ -4976,7 +4979,8 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.builder-library-card\s*{[\s\S]*padding:\s*0\.875rem 1rem/);
   assert.match(css, /\.builder-library-card \+ \.builder-library-card\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(css, /\.builder-library-card-main\s*{[\s\S]*display:\s*grid/);
-  assert.match(css, /\.builder-library-card-main\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);
+  assert.match(css, /\.builder-library-card-main\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\)/);
+  assert.match(css, /\.builder-library-card-controls\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(css, /\.builder-library-info\s*{[\s\S]*min-width:\s*0/);
   assert.match(css, /\.builder-library-info-head\s*{[\s\S]*display:\s*flex/);
   assert.match(css, /\.builder-library-name\s*{[\s\S]*text-overflow:\s*ellipsis/);
@@ -5009,7 +5013,7 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.library-section-meta \.count-meta\s*{[\s\S]*font-size:\s*0\.8125rem/);
   assert.doesNotMatch(css, /\.library-section-summary::after[\s\S]*content:\s*"\+"/);
   assert.doesNotMatch(css, /\.library-section-meta > \.fb-btn\s*{/);
-  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*grid-template-areas:[\s\S]*"avatar info actions"/);
+  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*grid-template-areas:[\s\S]*"avatar info"/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card \.builder-library-actions,[\s\S]*\.builder-library-card \.row-actions\s*{[\s\S]*justify-content:\s*flex-end/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-info\s*{[\s\S]*grid-area:\s*info/);
   assert.doesNotMatch(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main > \.min-w-0/);

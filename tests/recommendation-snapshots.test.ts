@@ -274,6 +274,7 @@ Source: https://anthropic.com/engineering/how-we-contain-claude`;
 test("source logos are shared across recommendation and library surfaces", () => {
   assert.match(source("src/components/SourceBadge.tsx"), /data-source/);
   assert.match(source("src/components/SourceBadge.tsx"), /className="source-badge-icon"/);
+  assert.match(source("src/components/SourceBadge.tsx"), /sourceIcons/);
   assert.doesNotMatch(source("src/components/SourceBadge.tsx"), /h-3\.5 w-3\.5|h-4 w-4/);
   assert.match(source("src/components/SourceBadge.tsx"), /suppressLabelWhen/);
   assert.match(source("src/components/SourceBadge.tsx"), /labelSuppressedByDuplicate/);
@@ -329,16 +330,37 @@ test("post card suppresses duplicate source labels across meta and footer action
   );
 
   const visibleText = html.replace(/<[^>]*>/g, "");
+  const metaHtml = html.match(/<div class="post-meta">([\s\S]*?)<\/div>/)?.[1] ?? "";
   assert.equal((visibleText.match(/Product Hunt Top Products/g) ?? []).length, 1);
-  assert.match(html, /aria-hidden="true"/);
-  assert.match(html, /title="Product Hunt Top Products"/);
+  assert.doesNotMatch(metaHtml, /class="source-badge"/);
   assert.match(html, /class="post-source-original"/);
-  assert.match(
-    html,
-    /class="post-source-original"[\s\S]*<span aria-hidden="true" class="source-badge" data-source="product_hunt_top_products" title="Product Hunt Top Products">/,
-  );
+  assert.match(html, /class="post-source-original"[\s\S]*class="source-badge"/);
   assert.doesNotMatch(html, /class="post-source-original"[\s\S]*aria-label="Product Hunt Top Products"/);
   assert.match(html, />View original</);
+});
+
+test("post card keeps the source type badge when there is no original action", () => {
+  const html = renderToStaticMarkup(
+    createElement(PostCard, {
+      post: {
+        id: "feed_no_original",
+        title: "No original URL",
+        body: "Summary only.",
+        url: "",
+        publishedAt: "2026-06-05T00:00:00.000Z",
+        createdAt: "2026-06-06T00:00:00.000Z",
+        sourceName: "Example Blog",
+        sourceType: "blog",
+        fetchTool: null,
+      },
+      showDebugActions: false,
+    }),
+  );
+
+  const metaHtml = html.match(/<div class="post-meta">([\s\S]*?)<\/div>/)?.[1] ?? "";
+  assert.match(metaHtml, /class="source-badge" data-source="blog" title="Blog"/);
+  assert.doesNotMatch(html, /class="post-source-original"/);
+  assert.doesNotMatch(html, />View original</);
 });
 
 test("post card action controls include the post title in accessible names", () => {
@@ -468,9 +490,10 @@ Source: https://www.producthunt.com/products/lightfield`,
     }),
   );
 
-  assert.match(html, /data-source="github_trending"/);
-  assert.match(html, /data-source="product_hunt_top_products"/);
-  assert.doesNotMatch(html, /data-source="website"/);
+  assert.match(html, /href="\/builder\/entity_github"[\s\S]*GitHub Trending/);
+  assert.match(html, /href="\/builder\/entity_ph"[\s\S]*Product Hunt Top Products/);
+  assert.match(html, /favicons\?domain=github\.com/);
+  assert.match(html, /favicons\?domain=www\.producthunt\.com/);
 });
 
 test("recommendation snapshots request six posts at a time", () => {
