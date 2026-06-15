@@ -131,7 +131,8 @@ output as a hang before the command exits or the runner timeout fires.
 
 ```bash
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
-ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
+ACCT="${BUILDER_BLOG_ACCOUNT}"
+ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
 SETUP_TMP_DIR="$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-direct"
 mkdir -p "$SETUP_TMP_DIR"
 BUILDER_BLOG_JOB_TMP_DIR="$SETUP_TMP_DIR" \
@@ -143,7 +144,7 @@ BUILDER_BLOG_FETCH_DAYS="{{FETCH_DAYS}}" \
 BUILDER_BLOG_PARALLEL_WORKERS="{{PARALLEL_WORKERS}}" \
 BUILDER_BLOG_INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
 INTERVAL_MINUTES="{{CRON_INTERVAL_MINUTES}}" \
-BUILDER_BLOG_ACCOUNT="${BUILDER_BLOG_ACCOUNT}" \
+BUILDER_BLOG_ACCOUNT="$ACCT" \
 $HOME/.builder-blog/builder-agent-runner.sh library-cron
 ```
 
@@ -158,7 +159,8 @@ post-level failures, if any:
 
 ```bash
 AGENT_DIR="${BUILDER_BLOG_AGENT_DIR:-$HOME/.builder-blog}"
-ACCOUNT_SLUG="$(printf '%s' "${BUILDER_BLOG_ACCOUNT:-default}" | tr -c 'a-zA-Z0-9' '_')"
+ACCT="${BUILDER_BLOG_ACCOUNT}"
+ACCOUNT_SLUG="$(printf '%s' "$ACCT" | tr -c 'a-zA-Z0-9' '_')"
 TMP_DIR="${BUILDER_BLOG_JOB_TMP_DIR:-$AGENT_DIR/tmp/accounts/$ACCOUNT_SLUG/library-cron-direct}"
 node - "$TMP_DIR/library-fetch-result.json" "$TMP_DIR/library-agent-sync.json" <<'NODE'
 const fs = require("fs");

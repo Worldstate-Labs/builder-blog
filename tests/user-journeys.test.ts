@@ -982,9 +982,15 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(libraryCronSetupPrompt, /\{\{FETCH_DAYS\}\}/);
   assert.match(libraryCronSetupPrompt, /fetch-days-library-cron-\$ACCOUNT_SLUG/);
   assert.match(libraryCronSetupPrompt, /\$LABEL\.log/);
-  assert.match(libraryCronSetupPrompt, /SETUP_TMP_DIR="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct"/);
+  assert.match(
+    libraryCronSetupPrompt,
+    /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"[\s\S]*ACCOUNT_SLUG="\$\(printf '%s' "\$ACCT" \| tr -c 'a-zA-Z0-9' '_'\)"[\s\S]*SETUP_TMP_DIR="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct"/,
+  );
   assert.match(libraryCronSetupPrompt, /BUILDER_BLOG_JOB_TMP_DIR="\$SETUP_TMP_DIR"/);
-  assert.match(libraryCronSetupPrompt, /TMP_DIR="\$\{BUILDER_BLOG_JOB_TMP_DIR:-\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\}"/);
+  assert.match(
+    libraryCronSetupPrompt,
+    /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"[\s\S]*TMP_DIR="\$\{BUILDER_BLOG_JOB_TMP_DIR:-\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/library-cron-direct\}"/,
+  );
   assert.match(libraryCronSetupPrompt, /SCHEDULE_STATUS="interval:\{\{CRON_INTERVAL_SECONDS\}\}"/);
   assert.match(libraryCronPrompt, /BUILDER_BLOG_JOB_TMP_DIR/);
   assert.match(
@@ -1018,7 +1024,10 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(digestCronSetupPrompt, /\(none found\)/);
   assert.match(digestCronSetupPrompt, /\$LABEL\.log/);
   assert.match(digestCronSetupPrompt, /<key>BUILDER_BLOG_SCHEDULER_TICK<\/key><string>1<\/string>/);
-  assert.match(digestCronSetupPrompt, /SETUP_TMP_DIR="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/digest-cron-direct"/);
+  assert.match(
+    digestCronSetupPrompt,
+    /ACCT="\$\{BUILDER_BLOG_ACCOUNT\}"[\s\S]*ACCOUNT_SLUG="\$\(printf '%s' "\$ACCT" \| tr -c 'a-zA-Z0-9' '_'\)"[\s\S]*SETUP_TMP_DIR="\$AGENT_DIR\/tmp\/accounts\/\$ACCOUNT_SLUG\/digest-cron-direct"/,
+  );
   assert.match(digestCronSetupPrompt, /BUILDER_BLOG_JOB_TMP_DIR="\$SETUP_TMP_DIR"/);
   assert.match(digestCronSetupPrompt, /SCHEDULE_STATUS="interval:\{\{CRON_INTERVAL_SECONDS\}\}"/);
   assert.match(digestCronPrompt, /BUILDER_BLOG_JOB_TMP_DIR/);
@@ -1077,6 +1086,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(runner, /RESOLVED_INTERVAL_MINUTES/);
   assert.match(runner, /job_timeout_seconds\(\)/);
   assert.match(runner, /shard_timeout_seconds\(\)/);
+  assert.match(runner, /digest_output_completed\(\)/);
+  assert.match(runner, /Digest job did not produce required artifact/);
+  assert.match(runner, /runtime output did not include a successful web sync/);
+  assert.match(runner, /"SYNCED"/);
+  assert.match(runner, /if \[ "\$_codex_code" -eq 0 \] && ! digest_output_completed "\$_codex_output"/);
   assert.match(runner, /local-agent-timeouts\.json/);
   assert.match(runner, /JSON\.parse\(fs\.readFileSync\(policyPath, "utf8"\)\)/);
   assert.match(runner, /Compatibility fallback/);

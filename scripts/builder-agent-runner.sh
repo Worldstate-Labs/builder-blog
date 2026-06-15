@@ -171,6 +171,9 @@ run_with_codex_unattended() {
   if agent_output_has_timeout "$_codex_output"; then
     return 124
   fi
+  if [ "$_codex_code" -eq 0 ] && ! digest_output_completed "$_codex_output"; then
+    return 1
+  fi
   return "$_codex_code"
 }
 
@@ -189,6 +192,9 @@ run_with_claude_unattended() {
   cat "$_claude_output"
   if agent_output_has_timeout "$_claude_output"; then
     return 124
+  fi
+  if [ "$_claude_code" -eq 0 ] && ! digest_output_completed "$_claude_output"; then
+    return 1
   fi
   return "$_claude_code"
 }
@@ -220,6 +226,9 @@ run_with_openclaw_unattended() {
   if agent_output_has_timeout "$_openclaw_output"; then
     return 124
   fi
+  if [ "$_openclaw_code" -eq 0 ] && ! digest_output_completed "$_openclaw_output"; then
+    return 1
+  fi
   return "$_openclaw_code"
 }
 
@@ -248,6 +257,43 @@ agent_output_has_timeout() {
     "$_file"
 }
 
+digest_output_completed() {
+  case "$JOB_NAME" in
+    digest-once|digest-cron) ;;
+    *) return 0 ;;
+  esac
+
+  _output_file="${1:-}"
+  _missing=""
+  for _artifact in \
+    "$JOB_TMP_DIR/builder-blog-context.json" \
+    "$JOB_TMP_DIR/builder-blog-digest-agent-output.json" \
+    "$JOB_TMP_DIR/builder-blog-digest.md" \
+    "$JOB_TMP_DIR/builder-blog-digest-headlines.txt"
+  do
+    if [ ! -s "$_artifact" ]; then
+      _missing="${_missing}${_missing:+, }$_artifact"
+    fi
+  done
+
+  if [ -n "$_missing" ]; then
+    echo "Digest job did not produce required artifact(s): $_missing" >&2
+    return 1
+  fi
+
+  if [ -n "$_output_file" ] && [ -r "$_output_file" ]; then
+    if grep -q '"status"[[:space:]]*:[[:space:]]*"ok"' "$_output_file" && \
+       grep -q '"status"[[:space:]]*:[[:space:]]*"SYNCED"' "$_output_file"; then
+      return 0
+    fi
+    echo "Digest job produced local artifacts, but the runtime output did not include a successful web sync." >&2
+    return 1
+  fi
+
+  echo "Digest job produced local artifacts, but no runtime output file was available to confirm web sync." >&2
+  return 1
+}
+
 run_with_gemini_unattended() {
   _gemini_output="$(agent_output_file gemini)"
   set +e
@@ -257,6 +303,9 @@ run_with_gemini_unattended() {
   cat "$_gemini_output"
   if agent_output_has_timeout "$_gemini_output"; then
     return 124
+  fi
+  if [ "$_gemini_code" -eq 0 ] && ! digest_output_completed "$_gemini_output"; then
+    return 1
   fi
   return "$_gemini_code"
 }
