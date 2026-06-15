@@ -2326,6 +2326,8 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(digestRoute, /parseDigest/);
   assert.match(digestRoute, /originalSummariesByUrl/);
   assert.match(digestRoute, /digestedItem\.findMany/);
+  assert.match(digestRoute, /digestId/);
+  assert.match(digestRoute, /feedItemId:\s*\{ not: null \}/);
   assert.match(digestRoute, /feedItem:\s*{[\s\S]*is:\s*{/);
   assert.match(dashboardPage, /DigestPipelineSelector/);
   assert.match(digestPipelineSelector, /pipelineOwnerLine\(selectedPipeline\)/);
@@ -3791,7 +3793,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(searchPage, /<PostFavoriteControl[\s\S]*feedItemId=\{result\.id\}[\s\S]*initialIsFavorite=\{Boolean\(result\.favoritedAt\)\}[\s\S]*targetLabel=\{favoriteTargetLabel\(result\.title, sourceName\)\}/);
   assert.match(postDetailPage, /@\/components\/PostFavoriteControl/);
   assert.match(postDetailPage, /prisma\.feedFavorite\.findUnique/);
-  assert.match(postDetailPage, /const canFavorite = poolBuilderIds\.includes\(item\.builderId\)/);
+  assert.match(postDetailPage, /canFavoritePost\(session\.user\.id, item\.id\)/);
   assert.match(postDetailPage, /extraActions=\{/);
   assert.match(postDetailPage, /<PostFavoriteControl[\s\S]*feedItemId=\{item\.id\}[\s\S]*initialIsFavorite=\{Boolean\(favorite\)\}[\s\S]*targetLabel=\{item\.title\?\.trim\(\) \|\| item\.sourceName\?\.trim\(\) \|\| sourceLabel\}/);
   assert.match(postFavoriteControl, /"use client"/);

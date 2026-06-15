@@ -51,6 +51,7 @@ export async function GET(_request: Request, { params }: Params) {
     headlineSummary: digest.headlineSummary,
     favoriteStateByUrl: await favoriteStateByUrlForDigest({
       content: digest.content,
+      digestId: digest.id,
       userId: session.user.id,
     }),
     originalSummariesByUrl: await originalSummariesByUrlForDigest({
@@ -63,37 +64,83 @@ export async function GET(_request: Request, { params }: Params) {
 
 async function favoriteStateByUrlForDigest({
   content,
+  digestId,
   userId,
 }: {
   content: string;
+  digestId: string;
   userId: string;
 }) {
   const urls = digestPostUrls(content);
   if (urls.length === 0) return {};
 
   const poolBuilderIds = await activePoolBuilderIds(userId);
-  if (poolBuilderIds.length === 0) return {};
+  const feedItems = new Map<
+    string,
+    {
+      id: string;
+      url: string;
+      kind: FeedItemKind;
+      externalId: string;
+      builder: { entityId: string | null } | null;
+      createdAt: Date;
+    }
+  >();
 
-  const feedItems = await prisma.feedItem.findMany({
+  const digestedItems = await prisma.digestedItem.findMany({
     where: {
-      url: { in: urls },
-      builderId: { in: poolBuilderIds },
-      builder: { is: { entityId: { not: "" } } },
+      digestId,
+      feedItemId: { not: null },
+      feedItem: {
+        is: {
+          builder: { is: { entityId: { not: "" } } },
+        },
+      },
     },
     select: {
-      id: true,
-      url: true,
-      kind: true,
-      externalId: true,
-      builder: { select: { entityId: true } },
-      createdAt: true,
+      feedItem: {
+        select: {
+          id: true,
+          url: true,
+          kind: true,
+          externalId: true,
+          builder: { select: { entityId: true } },
+          createdAt: true,
+        },
+      },
     },
-    orderBy: { createdAt: "desc" },
   });
-  if (feedItems.length === 0) return {};
+  for (const item of digestedItems) {
+    const feedItem = item.feedItem;
+    if (feedItem) feedItems.set(feedItem.id, feedItem);
+  }
+
+  if (poolBuilderIds.length > 0) {
+    const poolItems = await prisma.feedItem.findMany({
+      where: {
+        url: { in: urls },
+        builderId: { in: poolBuilderIds },
+        builder: { is: { entityId: { not: "" } } },
+      },
+      select: {
+        id: true,
+        url: true,
+        kind: true,
+        externalId: true,
+        builder: { select: { entityId: true } },
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    for (const item of poolItems) {
+      feedItems.set(item.id, item);
+    }
+  }
+  const feedItemRows = [...feedItems.values()];
+  if (feedItemRows.length === 0) return {};
 
   const identities = new Map<string, { entityId: string; kind: FeedItemKind; externalId: string }>();
-  for (const item of feedItems) {
+  for (const item of feedItemRows) {
     const entityId = item.builder?.entityId;
     if (!entityId) continue;
     const key = favoriteKey(entityId, item.kind, item.externalId);
@@ -126,7 +173,7 @@ async function favoriteStateByUrlForDigest({
   );
 
   const byUrl = new Map<string, { feedItemId: string; favoritedAt: string | null }>();
-  for (const item of feedItems) {
+  for (const item of feedItemRows) {
     const entityId = item.builder?.entityId;
     if (!entityId) continue;
     const favoritedAt = favoriteByKey.get(favoriteKey(entityId, item.kind, item.externalId)) ?? null;

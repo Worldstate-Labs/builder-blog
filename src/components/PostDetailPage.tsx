@@ -6,6 +6,7 @@ import { PostFavoriteControl } from "@/components/PostFavoriteControl";
 import { SourceBadge } from "@/components/SourceBadge";
 import { getCurrentSession } from "@/lib/auth";
 import { activePoolBuilderIds } from "@/lib/builder-pool";
+import { canFavoritePost } from "@/lib/feed-favorites";
 import { normalizeLegacyReturnTo } from "@/lib/navigation";
 import { prisma } from "@/lib/prisma";
 
@@ -38,9 +39,9 @@ export async function PostDetailPage({
     poolBuilderIds.includes(item.builderId) ||
     hubItems.some((hubItem) => hubItem.builderId === item.builderId);
   if (!canRead) notFound();
-  const canFavorite = poolBuilderIds.includes(item.builderId);
 
   if (!item.builder?.entityId) notFound();
+  const canFavorite = await canFavoritePost(session.user.id, item.id);
   const entityId = item.builder.entityId;
   const sourceLabel = item.builder?.name ?? item.sourceName ?? "Post";
   const sourceHref = `/builder/${entityId}`;

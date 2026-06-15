@@ -78,6 +78,7 @@ test("favorites saves posts into a focused reading tab", () => {
   const favoriteButton = source("src/components/PostFavoriteButton.tsx");
   const postDetailPage = source("src/components/PostDetailPage.tsx");
   const postFavoriteControl = source("src/components/PostFavoriteControl.tsx");
+  const feedFavorites = source("src/lib/feed-favorites.ts");
   const searchPage = source("src/app/(workspace)/search/page.tsx");
   const digestRoute = source("src/app/api/digests/[digestId]/route.ts");
   const digestDetails = source("src/components/DigestDetails.tsx");
@@ -148,7 +149,7 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.doesNotMatch(feed, /Best-effort optimistic UI/);
   assert.match(postDetailPage, /PostFavoriteControl/);
   assert.match(postDetailPage, /prisma\.feedFavorite\.findUnique/);
-  assert.match(postDetailPage, /const canFavorite = poolBuilderIds\.includes\(item\.builderId\)/);
+  assert.match(postDetailPage, /canFavoritePost\(session\.user\.id, item\.id\)/);
   assert.match(postDetailPage, /initialIsFavorite=\{Boolean\(favorite\)\}/);
   assert.match(searchPage, /PostFavoriteControl/);
   assert.match(searchPage, /initialIsFavorite=\{Boolean\(result\.favoritedAt\)\}/);
@@ -162,7 +163,12 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(postFavoriteControl, /className="post-favorite-control"/);
   assert.match(digestRoute, /favoriteStateByUrl/);
   assert.match(digestRoute, /activePoolBuilderIds/);
+  assert.match(digestRoute, /digestId/);
+  assert.match(digestRoute, /feedItemId:\s*\{ not: null \}/);
   assert.match(digestRoute, /feedFavorite\.findMany/);
+  assert.match(feedFavorites, /feedItemAppearsInAccessibleDigest/);
+  assert.match(feedFavorites, /digestPipelineImport\.findMany/);
+  assert.match(feedFavorites, /Post is not in your sources or imported AI Digest archives/);
   assert.match(digestDetails, /favoriteStateByUrl/);
   assert.match(digestDetails, /cleanFavoriteStateByUrl/);
   assert.match(digestDetails, /favoriteErrorByUrl: Record<string, string>/);

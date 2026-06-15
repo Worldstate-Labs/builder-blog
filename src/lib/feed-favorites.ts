@@ -25,9 +25,9 @@ export async function assertFavoritePostAccess(userId: string, feedItemId: strin
     return { error: "Post is not linked to a source" as const, status: 409 as const };
   }
 
-  const poolIds = await activePoolBuilderIds(userId);
-  if (!poolIds.includes(item.builderId)) {
-    return { error: "Post is not in your sources" as const, status: 403 as const };
+  const canFavorite = await canFavoriteFeedItem(userId, item.id, item.builderId);
+  if (!canFavorite) {
+    return { error: "Post is not in your sources or imported AI Digest archives" as const, status: 403 as const };
   }
 
   return {
@@ -38,6 +38,66 @@ export async function assertFavoritePostAccess(userId: string, feedItemId: strin
       kind: item.kind,
     },
   };
+}
+
+export async function canFavoritePost(userId: string, feedItemId: string) {
+  const item = await prisma.feedItem.findUnique({
+    where: { id: feedItemId },
+    select: {
+      id: true,
+      builderId: true,
+      builder: { select: { entityId: true } },
+    },
+  });
+  if (!item?.builderId || !item.builder?.entityId) return false;
+  return canFavoriteFeedItem(userId, item.id, item.builderId);
+}
+
+async function canFavoriteFeedItem(userId: string, feedItemId: string, builderId: string) {
+  const poolIds = await activePoolBuilderIds(userId);
+  if (poolIds.includes(builderId)) return true;
+
+  return feedItemAppearsInAccessibleDigest(userId, feedItemId);
+}
+
+async function feedItemAppearsInAccessibleDigest(userId: string, feedItemId: string) {
+  const digestedItems = await prisma.digestedItem.findMany({
+    where: {
+      feedItemId,
+      digestId: { not: null },
+    },
+    select: {
+      digestId: true,
+      userId: true,
+    },
+  });
+  const digestIds = digestedItems.flatMap((item) => (item.digestId ? [item.digestId] : []));
+  if (digestIds.length === 0) return false;
+
+  const digests = await prisma.digest.findMany({
+    where: { id: { in: digestIds } },
+    select: { id: true, userId: true },
+  });
+  const digestOwnersById = new Map(digests.map((digest) => [digest.id, digest.userId]));
+  if ([...digestOwnersById.values()].some((ownerUserId) => ownerUserId === userId)) return true;
+
+  const ownerUserIds = [...new Set([...digestOwnersById.values()].filter((owner) => owner !== userId))];
+  if (ownerUserIds.length === 0) return false;
+
+  const imports = await prisma.digestPipelineImport.findMany({
+    where: {
+      userId,
+      pipeline: {
+        isPublic: true,
+        ownerUserId: { in: ownerUserIds },
+      },
+    },
+    select: {
+      pipeline: { select: { ownerUserId: true } },
+    },
+  });
+  const importedOwners = new Set(imports.map((row) => row.pipeline.ownerUserId));
+  return [...digestOwnersById.values()].some((ownerUserId) => importedOwners.has(ownerUserId));
 }
 
 export async function favoritePost(userId: string, identity: FavoritePostIdentity) {
