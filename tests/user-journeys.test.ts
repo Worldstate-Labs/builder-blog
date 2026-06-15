@@ -813,6 +813,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(digestOnceExpanded, /\{\{INCLUDE|\{\{TMP_JOB\}\}/);
   assert.match(digestOnceExpanded, /builder-blog-digest-agent-output\.json/);
   assert.match(digestOnceExpanded, /context\.digest\.headlinePrompt/);
+  assert.match(digestOnceExpanded, /1200 characters or fewer/);
+  assert.match(digestOnceExpanded, /Source A and Source B/);
+  assert.match(digestOnceExpanded, /reopen[\s\S]*builder-blog-digest-agent-output\.json[\s\S]*self-check/);
   assert.doesNotMatch(digestOnceExpanded, /300 characters or fewer/);
   assert.doesNotMatch(digestOnceExpanded, /200,000-character sync limit/);
   assert.match(digestOnceExpanded, /context\.digest\.perSourceSummaryPrompt/);
@@ -1296,6 +1299,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(digestCronExpanded, /\{\{INCLUDE|\{\{TMP_JOB\}\}/);
   assert.match(digestCronExpanded, /builder-blog-digest-agent-output\.json/);
   assert.match(digestCronExpanded, /context\.digest\.headlinePrompt/);
+  assert.match(digestCronExpanded, /1200 characters or fewer/);
+  assert.match(digestCronExpanded, /Source A and Source B/);
+  assert.match(digestCronExpanded, /reopen[\s\S]*builder-blog-digest-agent-output\.json[\s\S]*self-check/);
   assert.match(digestCronExpanded, /context\.digest\.perSourceSummaryPrompt/);
   assert.match(digestCronExpanded, /context\.digest\.translate/);
   assert.doesNotMatch(digestCronExpanded, /context\.digest\.digestIntro/);
@@ -1684,10 +1690,13 @@ test("digest generation user path exposes source-specific prompt instructions", 
   assert.match(DEFAULT_DIGEST_PROMPTS.digestIntro, /Legacy Digest Intro Prompt/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /headlineSummary/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /context\.language/);
-  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /one line per source/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /Prefer one line per/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /Source name: one sentence summary/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /Source A and Source B: one sentence summary/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /same source order/);
   assert.match(DEFAULT_DIGEST_PROMPTS.headline, /50 characters or fewer/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /1200 characters or fewer/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.headline, /shorten or merge lines until it fits/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.headline, /Chinese characters|Mandarin|simplified Chinese/i);
   assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /exactly one source/);
   assert.match(DEFAULT_DIGEST_PROMPTS.perSourceSummary, /output an empty string/);
@@ -2973,6 +2982,20 @@ test("GitHub Trending brand backfill covers historical digest text", () => {
   assert.match(migration, /"headlineSummary"[\s\S]*replace\("headlineSummary", 'Github Trending', 'GitHub Trending'\)/);
   assert.match(migration, /UPDATE "DigestRun"[\s\S]*"candidates" = replace\("candidates"::text, 'Github Trending', 'GitHub Trending'\)::jsonb/);
   assert.match(migration, /"subscriptions" = replace\("subscriptions"::text, 'Github Trending', 'GitHub Trending'\)::jsonb/);
+});
+
+test("digest headline default migration covers length and combined sources", () => {
+  const migration = readFileSync(
+    "prisma/migrations/000065_digest_headline_length_and_merge/migration.sql",
+    "utf8",
+  );
+
+  assert.match(migration, /UPDATE "DigestConfig"[\s\S]*"headlinePrompt"/);
+  assert.match(migration, /UPDATE "UserDigestConfig"[\s\S]*"headlinePrompt"/);
+  assert.match(migration, /1200 characters or fewer/);
+  assert.match(migration, /Source A and Source B: one sentence summary/);
+  assert.match(migration, /WHERE "headlinePrompt" = '# Digest Headline Prompt/);
+  assert.doesNotMatch(migration, /WHERE "headlinePrompt" LIKE/);
 });
 
 test("source registry supports future source types without new BuilderKind enum values", () => {

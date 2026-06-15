@@ -409,17 +409,7 @@ function DigestHeadlineSummary({
           <ul className="digest-headline-list">
             {visibleHeadlineItems.map((item) => (
               <li className="digest-headline-item" key={item.key}>
-                <SourceAvatar
-                  className="digest-headline-avatar"
-                  imageSize={28}
-                  source={{
-                    avatarUrl: item.sourceLink?.avatarUrl ?? null,
-                    fetchUrl: item.sourceLink?.fetchUrl ?? null,
-                    name: item.sourceName,
-                    sourceType: item.sourceLink?.sourceType ?? "website",
-                    sourceUrl: item.sourceLink?.sourceUrl ?? null,
-                  }}
-                />
+                <DigestHeadlineAvatar item={item} />
                 <div className="digest-headline-item-body">
                   <p className="digest-headline-source-name" title={item.sourceName}>
                     {item.sourceName}
@@ -451,9 +441,47 @@ function DigestHeadlineSummary({
 type DigestHeadlineSourceItem = {
   key: string;
   sourceLink?: DigestSourceLink;
+  sourceLinks: DigestSourceLink[];
   sourceName: string;
   summary: string;
 };
+
+function DigestHeadlineAvatar({ item }: { item: DigestHeadlineSourceItem }) {
+  if (item.sourceLinks.length > 1) {
+    const label = combinedHeadlineAvatarLabel(item.sourceLinks);
+    return (
+      <span
+        aria-hidden="true"
+        className="fb-src-icon digest-headline-avatar digest-headline-avatar-combo"
+        title={item.sourceName}
+      >
+        {label}
+      </span>
+    );
+  }
+
+  return (
+    <SourceAvatar
+      className="digest-headline-avatar"
+      imageSize={28}
+      source={{
+        avatarUrl: item.sourceLink?.avatarUrl ?? null,
+        fetchUrl: item.sourceLink?.fetchUrl ?? null,
+        name: item.sourceName,
+        sourceType: item.sourceLink?.sourceType ?? "website",
+        sourceUrl: item.sourceLink?.sourceUrl ?? null,
+      }}
+    />
+  );
+}
+
+function combinedHeadlineAvatarLabel(sourceLinks: DigestSourceLink[]) {
+  const initials = sourceLinks
+    .map((link) => link.name.replace(/^@+/, "").trim().charAt(0).toUpperCase())
+    .filter(Boolean);
+  if (initials.length <= 2) return initials.join("+") || "?";
+  return `${initials.slice(0, 2).join("+")}+${initials.length - 2}`;
+}
 
 function parseHeadlineSourceSummaries(
   text: string | undefined,
@@ -477,12 +505,16 @@ function parseHeadlineSourceSummaries(
     const summary = line.slice(separatorIndex + 1).trim();
     if (!rawSourceName || !summary) continue;
 
-    const sourceLink = lookup.get(headlineSourceKey(rawSourceName));
+    const sourceLinks = headlineSourceLinksForLabel(rawSourceName, lookup);
+    const sourceLink = sourceLinks[0];
     if (!listMarkerMatch && !sourceLink) continue;
     items.push({
       key: `${headlineSourceKey(rawSourceName)}:${items.length}`,
       sourceLink,
-      sourceName: sourceLink?.name ?? rawSourceName,
+      sourceLinks,
+      sourceName: sourceLinks.length > 1
+        ? sourceLinks.map((link) => link.name).join(" and ")
+        : sourceLink?.name ?? rawSourceName,
       summary,
     });
   }
@@ -529,7 +561,7 @@ function headlineOrderForItem(
 function headlineSourceItemKeys(item: DigestHeadlineSourceItem) {
   const keys = [
     item.sourceName,
-    ...(item.sourceLink ? headlineSourceLinkKeys(item.sourceLink) : []),
+    ...item.sourceLinks.flatMap(headlineSourceLinkKeys),
   ].filter(Boolean);
   return [...keys, ...keys.map((key) => key.replace(/^@/, ""))]
     .map(headlineSourceKey)
@@ -602,6 +634,32 @@ function headlineSourceLinkForSource(
     if (match) return match;
   }
   return undefined;
+}
+
+function headlineSourceLinksForLabel(
+  source: string,
+  lookup: Map<string, DigestSourceLink>,
+) {
+  const direct = headlineSourceLinkForSource(source, lookup);
+  if (direct) return [direct];
+
+  const matches: DigestSourceLink[] = [];
+  const seen = new Set<string>();
+  for (const part of splitCombinedHeadlineSourceLabel(source)) {
+    const match = headlineSourceLinkForSource(part, lookup);
+    if (!match || seen.has(match.entityId)) continue;
+    seen.add(match.entityId);
+    matches.push(match);
+  }
+  return matches;
+}
+
+function splitCombinedHeadlineSourceLabel(value: string) {
+  return value
+    .normalize("NFKC")
+    .split(/\s+(?:and|&|\+)\s+|[、，,]\s*/i)
+    .map((part) => part.trim())
+    .filter(Boolean);
 }
 
 function headlineSourceTypeRank(sourceType: string | null | undefined) {

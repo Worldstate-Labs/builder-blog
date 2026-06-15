@@ -2060,8 +2060,7 @@ test("render-digest applies default source order to digest sections and headline
   const rendered = cli.renderDigestMarkdown(context, {
     headlineSummary: [
       "- Website Source: website headline",
-      "- Product Hunt Top Products: product headline",
-      "- GitHub Trending: github headline",
+      "- Product Hunt Top Products and GitHub Trending: market headline",
       "- X Source: x headline",
       "- Blog Source: blog headline",
       "- Video Source: youtube headline",
@@ -2091,8 +2090,7 @@ test("render-digest applies default source order to digest sections and headline
     "- Video Source: youtube headline",
     "- Blog Source: blog headline",
     "- X Source: x headline",
-    "- GitHub Trending: github headline",
-    "- Product Hunt Top Products: product headline",
+    "- Product Hunt Top Products and GitHub Trending: market headline",
     "- Website Source: website headline",
   ]);
 });

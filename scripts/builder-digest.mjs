@@ -6034,6 +6034,15 @@ function headlineSourceKey(value) {
     .trim();
 }
 
+function splitCombinedHeadlineSourceLabel(value) {
+  const normalized = String(value || "").normalize("NFKC").trim();
+  if (!normalized) return [];
+  return normalized
+    .split(/\s+(?:and|&|\+)\s+|[、，,]\s*/i)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
 function headlineSourceKeysForGroup(group) {
   const keys = [
     group.source,
@@ -6086,7 +6095,11 @@ function orderHeadlineSummaryByDigestSources(headlineSummary, items, context) {
     const line = rawLine.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim();
     const separatorIndex = headlineLineSeparatorIndex(line);
     const sourceName = separatorIndex > 0 ? line.slice(0, separatorIndex).trim().replace(/^["“]|["”]$/g, "") : "";
-    const orderIndex = sourceOrder.get(headlineSourceKey(sourceName));
+    const orderIndexes = [
+      sourceOrder.get(headlineSourceKey(sourceName)),
+      ...splitCombinedHeadlineSourceLabel(sourceName).map((part) => sourceOrder.get(headlineSourceKey(part))),
+    ].filter((value) => value !== undefined);
+    const orderIndex = orderIndexes.length > 0 ? Math.min(...orderIndexes) : undefined;
     return { rawLine, index, orderIndex };
   });
 

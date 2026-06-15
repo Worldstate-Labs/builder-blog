@@ -19,6 +19,7 @@ import {
 import { LibraryImportRemoveButton } from "@/components/LibraryImportRemoveButton";
 import { LibraryVisibilityToggle } from "@/components/LibraryVisibilityToggle";
 import { OwnDigestPipelineUpdatesCard } from "@/components/OwnDigestPipelineUpdatesCard";
+import { PageHeader } from "@/components/PageHeader";
 import { PrivateLibraryPanel } from "@/components/PrivateLibraryPanel";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import { WorkspaceTopTabs, type WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
@@ -107,7 +108,10 @@ export default async function BuildersPage({
 
   return (
     <div className="page-pad">
-      <h1 className="sr-only">Sources</h1>
+      <PageHeader
+        title="Sources"
+        description="Follow the sources your Local Agent fetches, and control how those updates become summaries and AI Digest inputs."
+      />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <section className="sources-tab-surface">
           <WorkspaceTopTabs

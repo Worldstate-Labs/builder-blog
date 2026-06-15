@@ -5,6 +5,7 @@ import {
   type HubDigestPipeline,
 } from "@/components/DigestPipelineImportForm";
 import { LibraryHubImportForm, type HubLibrary } from "@/components/LibraryHubImportForm";
+import { PageHeader } from "@/components/PageHeader";
 import { WorkspaceTopTabs, type WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
@@ -65,7 +66,10 @@ export default async function LibraryHubPage({
 
   return (
     <div className="page-pad">
-      <h1 className="sr-only">Hub</h1>
+      <PageHeader
+        title="Hub"
+        description="Browse shared source libraries and AI Digest archives, then import the ones that match your technical reading workflow."
+      />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <WorkspaceTopTabs
           ariaLabel="Hub tabs"

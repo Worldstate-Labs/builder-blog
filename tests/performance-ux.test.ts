@@ -184,20 +184,19 @@ test("every app route has an explicit centered layout role", () => {
   }
 
   const workspaceRoutes = [
-    ["src/app/(workspace)/builders/page.tsx", /className="page-pad"[\s\S]*<h1 className="sr-only">Sources<\/h1>[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/],
-    ["src/app/(workspace)/library-hub/page.tsx", /className="page-pad"[\s\S]*<h1 className="sr-only">Hub<\/h1>[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/],
+    ["src/app/(workspace)/builders/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title="Sources"[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/],
+    ["src/app/(workspace)/library-hub/page.tsx", /className="page-pad"[\s\S]*<PageHeader[\s\S]*title="Hub"[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first"[\s\S]*<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/],
   ] as const;
   for (const [path, pattern] of workspaceRoutes) {
     const text = source(path);
-    assert.match(text, pattern, `${path} should use the broad centered workspace rail`);
-    assert.doesNotMatch(text, /@\/components\/PageHeader/);
-    assert.doesNotMatch(text, /<PageHeader/);
+    assert.match(text, pattern, `${path} should use visible page context before workspace tabs`);
+    assert.match(text, /@\/components\/PageHeader/);
     assert.doesNotMatch(text, /page-pad--reading|page-pad--settings/);
   }
 
   const readingRoutes = [
     ["src/app/(workspace)/builder/[entityId]/page.tsx", /className="page-pad page-pad--reading builder-detail-page"/],
-    ["src/app/(workspace)/dashboard/page.tsx", /className="page-pad page-pad--reading home-page"[\s\S]*<h1 className="sr-only">Home<\/h1>[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first home-workspace"/],
+    ["src/app/(workspace)/dashboard/page.tsx", /className="page-pad page-pad--reading home-page"[\s\S]*<PageHeader[\s\S]*title="Today"[\s\S]*className="workspace-content-stack workspace-content-stack--tabs-first home-workspace"/],
     ["src/components/PostDetailPage.tsx", /className="page-pad page-pad--reading reading-page"/],
     ["src/app/(workspace)/search/page.tsx", /className="page-pad page-pad--reading search-page"[\s\S]*<PageHeader[\s\S]*title="Search"/],
   ] as const;
@@ -939,6 +938,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /Headline prompt cannot be empty\./);
   assert.match(adminDigestConfig, /Post summary prompt cannot be empty\./);
   assert.match(adminDigestConfig, /draft\.perSourceSummaryPrompt\.trim\(\)\.length === 0 \? "" : draft\.perSourceSummaryPrompt/);
+  assert.match(adminDigestConfig, /Source A and Source B: one sentence summary/);
+  assert.match(adminDigestConfig, /1200 characters/);
   assert.match(adminDigestConfig, /50 Chinese\/Japanese\/Korean characters or 50 words for word-delimited languages/);
   assert.doesNotMatch(adminDigestConfig, /50 characters or 50 words/);
   assert.match(adminDigestConfig, /function clearSavedStatus\(\)/);
@@ -1147,11 +1148,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(pageHeader, /description \? <p className="fb-desc">\{description\}<\/p> : null/);
   assert.match(pageHeader, /actions \? <div className="fb-page-head-actions">\{actions\}<\/div> : null/);
   assert.match(dashboardPage, /className="page-pad page-pad--reading home-page"/);
-  assert.match(dashboardPage, /<h1 className="sr-only">Home<\/h1>/);
-  assert.doesNotMatch(dashboardPage, /@\/components\/PageHeader/);
-  assert.doesNotMatch(dashboardPage, /<PageHeader title="Home" \/>/);
-  assert.doesNotMatch(dashboardPage, /Read your AI Digest, saved posts, and followed-source updates/);
-  assert.doesNotMatch(dashboardPage, /<header className="fb-page-head"/);
+  assert.match(dashboardPage, /@\/components\/PageHeader/);
+  assert.match(dashboardPage, /<PageHeader[\s\S]*title="Today"[\s\S]*Read the latest technical signal from your followed sources/);
+  assert.doesNotMatch(dashboardPage, /<h1 className="sr-only">Home<\/h1>/);
   assert.match(dashboardPage, /className="workspace-content-stack workspace-content-stack--tabs-first home-workspace"/);
   assert.match(dashboardPage, /className="ai-digest-stack"/);
   assert.doesNotMatch(dashboardPage, /className="ai-digest-titleblock"/);
@@ -2295,6 +2294,9 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(digestDetails, /headlineIsLoading = status === "loading" && !content/);
   assert.match(digestDetails, /headlineIsLoading \? \(/);
   assert.match(digestDetails, /<SourceAvatar/);
+  assert.match(digestDetails, /DigestHeadlineAvatar/);
+  assert.match(digestDetails, /sourceLinks\.length > 1/);
+  assert.match(digestDetails, /splitCombinedHeadlineSourceLabel/);
   assert.match(digestDetails, /digest-headline-source-name/);
   assert.match(digestDetails, /title=\{item\.sourceName\}/);
   assert.match(digestDetails, /\{item\.sourceName\}/);
@@ -2303,6 +2305,7 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(globals, /\.digest-headline-list\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.digest-headline-item\s*{[\s\S]*grid-template-columns:\s*1\.75rem minmax\(0, 1fr\)/);
   assert.match(globals, /\.digest-headline-avatar\.fb-src-icon\s*{/);
+  assert.match(globals, /\.digest-headline-avatar-combo\.fb-src-icon\s*{[\s\S]*letter-spacing:\s*0/);
   assert.match(globals, /\.digest-headline-source-name\s*{[\s\S]*text-overflow:\s*ellipsis/);
   assert.match(globals, /\.digest-headline-list-wrap\.is-expandable:not\(\.is-expanded\)::after\s*{/);
   assert.match(globals, /\.digest-headline-toggle\s*{/);
@@ -2973,7 +2976,9 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(buildersPage, /function DigestSourcesFallback/);
   assert.match(buildersPage, /<span className="sr-only">Loading AI Digest controls<\/span>/);
   assert.doesNotMatch(buildersPage, /Loading AI Digest settings/);
-  assert.match(buildersPage, /<h1 className="sr-only">Sources<\/h1>/);
+  assert.match(buildersPage, /@\/components\/PageHeader/);
+  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*Follow the sources your Local Agent fetches/);
+  assert.doesNotMatch(buildersPage, /<h1 className="sr-only">Sources<\/h1>/);
   assert.match(buildersPage, /className="sources-section-stack"/);
   assert.match(buildersPage, /className="your-library-panel fb-panel"/);
   assert.match(buildersPage, /Your source library/);
@@ -2983,7 +2988,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(buildersPage, /mt-6 grid gap-5/);
   assert.doesNotMatch(buildersPage, /className="grid gap-5"/);
   assert.match(libraryHubPage, /<Suspense fallback=\{<LibraryHubImportFallback \/>/);
-  assert.match(libraryHubPage, /<h1 className="sr-only">Hub<\/h1>/);
+  assert.doesNotMatch(libraryHubPage, /<h1 className="sr-only">Hub<\/h1>/);
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
   assert.match(libraryHubPage, /function DigestPipelineImportFallback/);
   assert.match(libraryHubPage, /className="fb-hub-card-stats library-hub-skeleton-stats"/);
@@ -3009,8 +3014,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(libraryHubPage, /Community source libraries, your shared source libraries/);
   assert.doesNotMatch(libraryHubPage, /Available source libraries/);
   assert.match(libraryHubPage, /className="workspace-content-stack workspace-content-stack--tabs-first"/);
-  assert.doesNotMatch(libraryHubPage, /@\/components\/PageHeader/);
-  assert.doesNotMatch(libraryHubPage, /<PageHeader/);
+  assert.match(libraryHubPage, /@\/components\/PageHeader/);
+  assert.match(libraryHubPage, /<PageHeader[\s\S]*title="Hub"[\s\S]*Browse shared source libraries and AI Digest archives/);
   assert.match(libraryHubPage, /<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/);
   assert.match(libraryHubPage, /ariaLabel="Hub tabs"/);
   assert.doesNotMatch(libraryHubPage, /ariaLabel="Hub sections"/);
@@ -3343,9 +3348,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   const sourceInputs = source("src/lib/source-inputs.ts");
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
-  assert.doesNotMatch(buildersPage, /@\/components\/PageHeader/);
-  assert.doesNotMatch(buildersPage, /<PageHeader/);
-  assert.match(buildersPage, /<h1 className="sr-only">Sources<\/h1>/);
+  assert.match(buildersPage, /@\/components\/PageHeader/);
+  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*Follow the sources your Local Agent fetches/);
+  assert.doesNotMatch(buildersPage, /<h1 className="sr-only">Sources<\/h1>/);
   assert.match(buildersPage, /<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/);
   assert.doesNotMatch(buildersPage, /Manage followed, private, and imported sources/);
   assert.doesNotMatch(buildersPage, /BuilderStatsFallback|BuilderStatsSlot|BuilderLibraryStats/);
@@ -3753,9 +3758,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /actionLabel\(\s*summaryExpanded \? "Show less summary" : "Show more summary"/);
   assert.match(postCard, /aria-controls=\{rawRegionId\}/);
   assert.match(postCard, /id=\{rawRegionId\}/);
-  assert.match(postCard, /\{rawExpanded \? `Hide \$\{rawContentLabel\.toLowerCase\(\)\}` : `Show \$\{rawContentLabel\.toLowerCase\(\)\}`\}/);
+  assert.match(postCard, /<span className="sr-only">[\s\S]*\{rawExpanded \? `Hide \$\{rawContentLabel\.toLowerCase\(\)\}` : `Show \$\{rawContentLabel\.toLowerCase\(\)\}`\}[\s\S]*<\/span>/);
   assert.match(postCard, /ChevronDown/);
-  assert.match(postCard, /\{summaryExpanded \? "Show less" : "See more"\}/);
+  assert.match(postCard, /<span className="sr-only">\{summaryExpanded \? "Show less" : "Show more"\}<\/span>/);
+  assert.doesNotMatch(postCard, /See more/);
   assert.match(postCard, /Crawled content/);
   assert.match(postCard, /showRawContent = true/);
   assert.match(postCard, /const showReadIndicator = Boolean\(dataRead && !isDetail\)/);
@@ -3767,7 +3773,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /post-raw-content-action/);
   assert.match(postCard, /aria-label=\{actionLabel\("Read", actionContext\)\}/);
   assert.match(postCard, /className="post-raw-content-action post-read-action"/);
-  assert.match(postCard, />\s*Read\s*<\/span>/);
+  assert.match(postCard, /<span className="sr-only">Read<\/span>/);
   assert.match(postCard, /aria-label=\{actionLabel\("Post actions", actionContext\)\}/);
   assert.match(postCard, /className="post-actions"[\s\S]*role="group"/);
   assert.match(recommendationFeed, /detailUrl:\s*postDetailHref/);
@@ -3851,19 +3857,19 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.post-favorite-btn\.post-action-btn--active \.post-action-icon\s*{[\s\S]*fill:\s*currentColor/);
   assert.match(globals, /\.post-favorite-status\s*{[\s\S]*color:\s*var\(--danger\)/);
   assert.match(globals, /\.post-raw-content-action\s*{[\s\S]*color:\s*var\(--accent\)/);
-  assert.match(globals, /\.post-raw-content-action\s*{[\s\S]*min-width:\s*0/);
-  assert.match(globals, /\.post-raw-content-action\s*{[\s\S]*padding:\s*0\.26rem 0\.72rem/);
-  assert.match(globals, /\.post-read-action\s*{[\s\S]*padding:\s*0\.26rem 0\.72rem/);
+  assert.match(globals, /\.post-raw-content-action\s*{[\s\S]*min-width:\s*2rem/);
+  assert.match(globals, /\.post-raw-content-action\s*{[\s\S]*padding:\s*0\.26rem/);
+  assert.match(globals, /\.post-read-action\s*{[\s\S]*padding:\s*0\.26rem/);
   assert.match(globals, /\.fetched-post-summary-text\s*{[\s\S]*white-space:\s*pre-wrap/);
   assert.match(globals, /--post-summary-collapsed-height:\s*calc\(var\(--post-summary-lines\) \* var\(--post-summary-line-height\)\)/);
   assert.match(globals, /\.post-summary:not\(\.post-summary--expanded\) \.fetched-post-summary-text\s*{/);
   assert.match(globals, /\.post-summary:not\(\.post-summary--expanded\) \.fetched-post-summary-text\s*{[\s\S]*height:\s*var\(--post-summary-collapsed-height\)/);
   assert.doesNotMatch(globals, /\.post-summary:not\(\.post-summary--expanded\) \.fetched-post-summary-text\s*{[^}]*-webkit-line-clamp/);
   assert.doesNotMatch(postCard, /summaryNeedsExpansion|hasLikelyLongSummary|Array\.from\(text\)\.length/);
-  assert.match(globals, /\.post-summary-toggle\s*{[\s\S]*height:\s*1\.45rem/);
-  assert.match(globals, /\.post-summary-toggle\s*{[\s\S]*gap:\s*0\.18rem/);
-  assert.match(globals, /\.post-summary-toggle\s*{[\s\S]*width:\s*auto/);
-  assert.match(globals, /\.post-summary-toggle\s*{[\s\S]*padding:\s*0 0\.55rem 0 0\.42rem/);
+  assert.match(globals, /\.post-summary-toggle\s*{[\s\S]*height:\s*1\.65rem/);
+  assert.match(globals, /\.post-summary-toggle\s*{[\s\S]*gap:\s*0/);
+  assert.match(globals, /\.post-summary-toggle\s*{[\s\S]*width:\s*1\.65rem/);
+  assert.match(globals, /\.post-summary-toggle\s*{[\s\S]*padding:\s*0/);
   assert.match(globals, /@media \(max-width:\s*767px\)\s*{[\s\S]*--post-summary-lines:\s*6/);
   assert.match(globals, /\.fetched-post-raw\s*{[\s\S]*border:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.digest-rich \.fetched-post-summary-text\s*{[\s\S]*line-height:\s*1\.72/);
@@ -4907,7 +4913,7 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.source-summary-line/);
   assert.match(css, /\.sources-tab-surface\s*{[\s\S]*display:\s*grid/);
   assert.doesNotMatch(cssRule(css, ".sources-tab-body"), /border-top/);
-  assert.match(css, /\.workspace-top-tabs-row\s*{[\s\S]*justify-content:\s*center/);
+  assert.match(css, /\.workspace-top-tabs-row\s*{[\s\S]*justify-content:\s*flex-start/);
   assert.match(css, /\.digest-source-management\s*{[\s\S]*display:\s*grid/);
   assert.doesNotMatch(css, /mobile-sources-stack|data-active-tab|data-tab="imported"/);
   assert.match(css, /\.sources-sync-section \.digest-updates-panel/);

@@ -11,6 +11,7 @@ import {
 } from "@/components/FollowingRecommendationSection";
 import { DashboardHomeTabs } from "@/components/DashboardHomeTabs";
 import { DigestPipelineSelector } from "@/components/DigestPipelineSelector";
+import { PageHeader } from "@/components/PageHeader";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
 import { isAdminEmail } from "@/lib/admin";
@@ -88,7 +89,10 @@ export default async function DashboardPage({
 
   return (
     <div className="page-pad page-pad--reading home-page">
-      <h1 className="sr-only">Home</h1>
+      <PageHeader
+        title="Today"
+        description="Read the latest technical signal from your followed sources, then save or open the original when a detail matters."
+      />
 
       <section className="workspace-content-stack workspace-content-stack--tabs-first home-workspace">
         <DashboardHomeTabs

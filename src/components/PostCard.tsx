@@ -308,7 +308,7 @@ export function PostCard({
                 type="button"
               >
                 <ChevronDown aria-hidden="true" className="post-summary-toggle-icon" />
-                <span>{summaryExpanded ? "Show less" : "See more"}</span>
+                <span className="sr-only">{summaryExpanded ? "Show less" : "Show more"}</span>
               </button>
             ) : null}
           </div>
@@ -365,7 +365,7 @@ export function PostCard({
                 title="Read"
               >
                 <BookOpen aria-hidden="true" className="post-raw-content-action-icon" />
-                <span>Read</span>
+                <span className="sr-only">Read</span>
               </Link>
             ) : canReadRawContent ? (
               <button
@@ -381,7 +381,9 @@ export function PostCard({
                 type="button"
               >
                 <BookOpen aria-hidden="true" className="post-raw-content-action-icon" />
-                <span>{rawExpanded ? `Hide ${rawContentLabel.toLowerCase()}` : `Show ${rawContentLabel.toLowerCase()}`}</span>
+                <span className="sr-only">
+                  {rawExpanded ? `Hide ${rawContentLabel.toLowerCase()}` : `Show ${rawContentLabel.toLowerCase()}`}
+                </span>
               </button>
             ) : null}
 

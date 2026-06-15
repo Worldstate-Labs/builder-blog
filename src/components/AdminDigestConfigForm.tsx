@@ -22,8 +22,9 @@ type Status = SaveStatusState;
 
 const HEADLINE_PROMPT_PLACEHOLDER = [
   "Example:",
-  "Write headlineSummary in context.language as one line per source.",
-  "Use '- Source name: one sentence summary' and keep each source summary to 50 Chinese/Japanese/Korean characters or 50 words for word-delimited languages.",
+  "Write headlineSummary in context.language as compact source lines.",
+  "Prefer '- Source name: one sentence summary', but combine sources as '- Source A and Source B: one sentence summary' if needed to stay under 1200 characters.",
+  "Keep each source summary to 50 Chinese/Japanese/Korean characters or 50 words for word-delimited languages.",
   "Use only facts from the candidate post summaries. Do not include raw URLs.",
 ].join("\n");
 
