@@ -2,6 +2,7 @@ import type { BuilderKind, FeedItemKind, Prisma, PrismaClient } from "@prisma/cl
 
 const candidateWindow = 1000;
 const defaultRecommendationLimit = 6;
+const defaultTimelineSnapshotLimit = 3;
 
 type RecommendationBuilder = {
   id: string;
@@ -115,9 +116,11 @@ async function attachHubItems(
 
 export async function getRecommendationTimeline({
   userId,
+  snapshotLimit = defaultTimelineSnapshotLimit,
   itemLimit = defaultRecommendationLimit,
 }: {
   userId: string;
+  snapshotLimit?: number;
   itemLimit?: number;
 }) {
   const created = await createRecommendationSnapshot({
@@ -125,9 +128,27 @@ export async function getRecommendationTimeline({
     limit: itemLimit,
     reason: "initial",
   });
+  const { prisma } = await import("@/lib/prisma");
+  const normalizedSnapshotLimit = Math.max(1, Math.floor(snapshotLimit));
+  const existingLimit = Math.max(
+    0,
+    normalizedSnapshotLimit - (created.snapshot ? 1 : 0),
+  );
+  const existing = existingLimit > 0
+    ? await loadRecommendationSnapshots({
+        excludeSnapshotId: created.snapshot?.id ?? null,
+        prisma,
+        snapshotLimit: existingLimit,
+        userId,
+      })
+    : [];
+  const snapshots = [
+    ...(created.snapshot ? [created.snapshot] : []),
+    ...existing,
+  ];
 
   return {
-    snapshots: created.snapshot ? [created.snapshot] : [],
+    snapshots,
     unreadRemaining: created.unreadRemaining,
     strategy: "snapshot-subscription-v1" as const,
   };
@@ -498,6 +519,31 @@ async function buildAndSaveSnapshot({
     unreadRemaining,
     candidateCount: newCandidateCount,
   };
+}
+
+async function loadRecommendationSnapshots({
+  excludeSnapshotId,
+  prisma,
+  snapshotLimit,
+  userId,
+}: {
+  excludeSnapshotId: string | null;
+  prisma: PrismaClient;
+  snapshotLimit: number;
+  userId: string;
+}) {
+  const snapshots = await prisma.recommendationSnapshot.findMany({
+    where: {
+      ...snapshotWhere(userId),
+      ...(excludeSnapshotId ? { id: { not: excludeSnapshotId } } : {}),
+      items: { some: {} },
+    },
+    include: snapshotInclude(userId),
+    orderBy: { createdAt: "desc" },
+    take: snapshotLimit,
+  });
+
+  return snapshots.map((snapshot) => formatSnapshot(snapshot));
 }
 
 function snapshotWhere(userId: string): Prisma.RecommendationSnapshotWhereInput {
