@@ -460,6 +460,8 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /actionsPlacement = "end"/);
   assert.match(panel, /actionsPlacement === "start"/);
   assert.match(panel, /showHeading \|\| showStatusToggle/);
+  assert.match(panel, /const showSummary = showHeading \|\| showStatusToggle/);
+  assert.match(panel, /const summaryNode = showSummary \? \(/);
   assert.match(panel, /Schedule status/);
   assert.match(panel, /Build log/);
   assert.match(panel, /AI Digest build history/);

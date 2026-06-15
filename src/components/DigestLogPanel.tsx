@@ -390,7 +390,8 @@ export function DigestLogPanel({
       {actions}
     </div>
   ) : null;
-  const summaryNode = (
+  const showSummary = showHeading || showStatusToggle;
+  const summaryNode = showSummary ? (
     <div className="sync-panel-column">
       {showHeading || showStatusToggle ? (
         <div className="sync-panel-title-row">
@@ -413,7 +414,7 @@ export function DigestLogPanel({
         status={updateStatus}
       />
     </div>
-  );
+  ) : null;
 
   return (
     <section className="fb-panel digest-updates-panel">
