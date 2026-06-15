@@ -881,8 +881,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(globals, /\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) max-content/);
   assert.match(globals, /\.access-key-card\s*{[\s\S]*min-height:\s*5\.25rem/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-width:\s*0/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\)/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*5\.25rem/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*grid-template-columns:\s*1\.75rem minmax\(0,\s*1fr\)/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*4\.5rem/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*grid-column:\s*2/);
   assert.match(globals, /\.access-key-device-title\s*{[\s\S]*font-size:\s*1\.125rem/);
   assert.match(globals, /\.access-key-device-status\s*{[\s\S]*font-size:\s*1rem/);
@@ -4760,7 +4760,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.settings-skeleton-line--device-title\s*{[\s\S]*width:\s*min\(14rem,\s*100%\)/);
   assert.match(globals, /\.settings-skeleton-line--device-status\s*{[\s\S]*width:\s*min\(8\.5rem,\s*82%\)/);
   assert.match(globals, /\.access-key-skeleton-pill\s*{[\s\S]*min-width:\s*9rem/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card--skeleton\s*{[\s\S]*min-height:\s*5\.25rem/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card--skeleton\s*{[\s\S]*min-height:\s*4\.5rem/);
   assert.match(globals, /\.token-picker-empty\s*{\s*margin:\s*0\.5rem;\s*}/);
   assert.doesNotMatch(globals, /border-left:\s*[2-9]/);
   assert.doesNotMatch(settingsPage, /createPersonalTokenAction/);
@@ -4910,11 +4910,11 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*2\.35rem/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-width:\s*0/);
   assert.match(globals, /\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*text-align:\s*center/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\)/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*5\.25rem/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*grid-template-columns:\s*1\.75rem minmax\(0,\s*1fr\)/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-card\s*{[\s\S]*min-height:\s*4\.5rem/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*grid-column:\s*2/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*2\.35rem/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-width:\s*8rem/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-height:\s*2\.05rem/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.access-key-revoke-button,[\s\S]*\.access-key-revoked-pill\s*{[\s\S]*min-width:\s*7rem/);
   const mobileAccessKeyActionBlock =
     globals.match(/@media \(max-width:\s*767px\)[\s\S]*?\.access-key-revoke-button,\s*\.access-key-revoked-pill\s*{([^}]+)}/)?.[1] ?? "";
   assert.doesNotMatch(mobileAccessKeyActionBlock, /grid-column:\s*1 \/ -1/);
