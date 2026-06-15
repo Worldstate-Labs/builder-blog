@@ -11,7 +11,6 @@ export async function GET() {
 
   const timeline = await getRecommendationTimeline({
     userId: session.user.id,
-    snapshotLimit: 1,
     itemLimit: 6,
   });
 

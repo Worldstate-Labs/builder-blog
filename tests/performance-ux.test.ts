@@ -1839,6 +1839,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /ariaLive="polite"/);
   assert.match(timelineRoute, /export async function GET/);
   assert.match(timelineRoute, /getRecommendationTimeline/);
+  assert.doesNotMatch(timelineRoute, /snapshotLimit/);
   assert.match(timelineRoute, /serializeRecommendationTimeline/);
   assert.match(timelineRoute, /NextResponse\.json/);
   assert.match(serializer, /serializeRecommendationTimeline/);

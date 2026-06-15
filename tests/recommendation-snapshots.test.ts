@@ -514,8 +514,10 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.match(followingSection, /context="library"/);
   assert.doesNotMatch(followingSection, /scope=\$\{scope\}/);
   assert.doesNotMatch(recommendations, /type RecommendationScope/);
+  assert.match(recommendations, /export async function getRecommendationTimeline/);
+  assert.match(recommendations, /const created = await createRecommendationSnapshot\({[\s\S]*reason: "initial"/);
+  assert.doesNotMatch(recommendations, /snapshotLimit/);
   assert.match(recommendations, /const subscriptionBuilderIds = subscriptions\.map/);
   assert.match(recommendations, /reason: \{ startsWith: "subscription:" \}/);
-  assert.match(recommendations, /items:\s*\{\s*some:\s*\{\}\s*\}/);
-  assert.match(recommendations, /const seen = new Set<string>\(\)/);
+  assert.match(recommendations, /const dedupGroups = new Map<string, typeof rawCandidates>\(\)/);
 });

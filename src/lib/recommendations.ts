@@ -2,7 +2,6 @@ import type { BuilderKind, FeedItemKind, Prisma, PrismaClient } from "@prisma/cl
 
 const candidateWindow = 1000;
 const defaultRecommendationLimit = 6;
-const defaultTimelineSnapshotLimit = 3;
 
 type RecommendationBuilder = {
   id: string;
@@ -116,33 +115,11 @@ async function attachHubItems(
 
 export async function getRecommendationTimeline({
   userId,
-  snapshotLimit = defaultTimelineSnapshotLimit,
   itemLimit = defaultRecommendationLimit,
 }: {
   userId: string;
-  snapshotLimit?: number;
   itemLimit?: number;
 }) {
-  const { prisma } = await import("@/lib/prisma");
-  const snapshots = await prisma.recommendationSnapshot.findMany({
-    where: {
-      ...snapshotWhere(userId),
-      items: { some: {} },
-    },
-    include: snapshotInclude(userId),
-    orderBy: { createdAt: "desc" },
-    take: Math.max(1, Math.floor(snapshotLimit)),
-  });
-
-  if (snapshots.length > 0) {
-    const unreadRemaining = await unreadCandidateCount(userId);
-    return {
-      snapshots: snapshots.map((snapshot) => formatSnapshot(snapshot)),
-      unreadRemaining,
-      strategy: "snapshot-subscription-v1" as const,
-    };
-  }
-
   const created = await createRecommendationSnapshot({
     userId,
     limit: itemLimit,
@@ -521,49 +498,6 @@ async function buildAndSaveSnapshot({
     unreadRemaining,
     candidateCount: newCandidateCount,
   };
-}
-
-async function unreadCandidateCount(userId: string) {
-  const { prisma } = await import("@/lib/prisma");
-  const cutoff = new Date(Date.now() - 90 * 86400000);
-
-  const subscriptions = await prisma.subscription.findMany({
-    where: { userId },
-    select: { builderId: true },
-  });
-  const builderIds = subscriptions.map((s) => s.builderId);
-  if (builderIds.length === 0) return 0;
-  const candidates = await prisma.feedItem.findMany({
-    where: {
-      builderId: { in: builderIds },
-      createdAt: { gte: cutoff },
-    },
-    select: {
-      kind: true,
-      externalId: true,
-      builder: { select: { entityId: true } },
-    },
-    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-    take: candidateWindow,
-  });
-  const readEntityKeys = new Set(
-    (
-      await prisma.feedRead.findMany({
-        where: { userId },
-        select: { entityId: true, kind: true, externalId: true },
-      })
-    ).map((r) => `${r.entityId}:${r.kind}:${r.externalId}`),
-  );
-
-  const seen = new Set<string>();
-  for (const item of candidates) {
-    const entityId = item.builder?.entityId;
-    if (!entityId) continue;
-    const key = `${entityId}:${item.kind}:${item.externalId}`;
-    if (readEntityKeys.has(key) || seen.has(key)) continue;
-    seen.add(key);
-  }
-  return seen.size;
 }
 
 function snapshotWhere(userId: string): Prisma.RecommendationSnapshotWhereInput {
