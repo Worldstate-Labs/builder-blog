@@ -2313,7 +2313,8 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(globals, /\.digest-headline-list-wrap\.is-expandable:not\(\.is-expanded\)::after\s*{/);
   assert.match(globals, /\.digest-headline-list-wrap\.is-line-clamped:not\(\.is-expanded\)\s*{[\s\S]*--digest-headline-collapsed-lines/);
   assert.match(globals, /\.digest-headline-toggle\s*{/);
-  assert.match(globals, /\.digest-headline-toggle-label\s*{/);
+  assert.doesNotMatch(digestHeadlineSummary, />See (?:more|less)</);
+  assert.doesNotMatch(globals, /\.digest-headline-toggle-label\s*{/);
   assert.match(globals, /\.digest-headline-loading span:first-child\s*{[\s\S]*max-width:\s*var\(--skeleton-title-max\)/);
   assert.match(globals, /\.digest-headline-loading span:last-child\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);
   assert.match(globals, /\.digest-loading-chip\s*{[\s\S]*display:\s*inline-flex/);

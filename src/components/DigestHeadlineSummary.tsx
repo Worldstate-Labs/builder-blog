@@ -131,9 +131,6 @@ export function DigestHeadlineSummary({
               onClick={() => setExpanded((current) => !current)}
               type="button"
             >
-              <span className="digest-headline-toggle-label">
-                {expanded ? "See less" : "See more"}
-              </span>
               <ChevronDown aria-hidden="true" className="digest-headline-toggle-icon" />
             </button>
           ) : null}

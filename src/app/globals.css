@@ -2354,45 +2354,26 @@ details:not([open]) > :not(summary) {
 
 .digest-headline-toggle {
   align-items: center;
-  background: transparent;
-  border: 0;
-  bottom: 0;
+  background: color-mix(in oklch, var(--digest-headline-toggle-bg) 88%, transparent);
+  border: 1px solid color-mix(in oklch, var(--line) 88%, transparent);
+  border-radius: 999px;
+  bottom: 0.25rem;
+  box-shadow: 0 1px 2px color-mix(in oklch, var(--shadow) 42%, transparent);
   color: color-mix(in oklch, var(--muted) 78%, var(--accent));
   cursor: pointer;
   display: inline-flex;
-  font-size: 0.71875rem;
-  font-weight: 720;
-  gap: 0.2rem;
-  height: 1.7rem;
+  height: 1.75rem;
   justify-content: center;
-  left: 0;
   padding: 0;
   position: absolute;
-  right: 0;
-  width: 100%;
-  z-index: 1;
-}
-
-.digest-headline-toggle::before {
-  border-top: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
-  content: "";
-  left: 0;
-  position: absolute;
-  right: 0;
-  top: 50%;
-}
-
-.digest-headline-toggle-label {
-  background: var(--digest-headline-toggle-bg);
-  border: 1px solid color-mix(in oklch, var(--line) 86%, transparent);
-  border-radius: 999px;
-  line-height: 1;
-  padding: 0.25rem 0.55rem;
-  position: relative;
+  right: 0.25rem;
+  width: 1.75rem;
   z-index: 1;
 }
 
 .digest-headline-toggle:hover {
+  background: color-mix(in oklch, var(--accent) 8%, var(--digest-headline-toggle-bg));
+  border-color: color-mix(in oklch, var(--accent) 28%, var(--line));
   color: var(--accent);
 }
 
@@ -2403,15 +2384,14 @@ details:not([open]) > :not(summary) {
 
 .digest-headline-toggle-icon {
   height: 1rem;
-  position: relative;
   transform: translateY(0.5px);
   transition: transform 140ms ease;
   width: 1rem;
-  z-index: 1;
 }
 
 .digest-headline-list-wrap.is-expanded .digest-headline-toggle {
   margin-top: 0.3rem;
+  margin-left: auto;
   position: static;
 }
 
