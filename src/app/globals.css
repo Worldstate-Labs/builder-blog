@@ -8815,22 +8815,6 @@ a.builder-library-name:hover {
   color: color-mix(in oklch, var(--signal) 78%, var(--ink));
 }
 
-.hub-card-imported-status {
-  background: var(--signal-soft);
-  border-color: color-mix(in oklch, var(--signal) 38%, var(--line));
-  color: color-mix(in oklch, var(--signal) 72%, var(--ink));
-}
-
-.hub-card-remove-button {
-  color: var(--muted);
-}
-
-.hub-card-remove-button:hover {
-  background: var(--danger-soft);
-  border-color: color-mix(in oklch, var(--danger) 32%, var(--line));
-  color: var(--danger);
-}
-
 .fb-hub-title {
   color: var(--ink);
   font-size: 1.0625rem;
@@ -12097,14 +12081,19 @@ body {
   .settings-rules-summary {
     align-items: start;
     gap: 0.5rem 0.65rem;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     padding-block: 0.8rem;
   }
 
   .settings-rules-summary-meta {
-    align-self: start;
-    grid-column: auto;
+    grid-column: 1 / -1;
+    justify-self: start;
     white-space: nowrap;
+  }
+
+  .settings-rules-toggle-icon {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .settings-rules-summary-copy .fb-section-heading {
@@ -12361,11 +12350,12 @@ body {
   }
 
   .builder-library-card-main {
-    align-items: center;
+    align-items: start;
     column-gap: 0.65rem;
     grid-template-areas:
-      "avatar info actions";
-    grid-template-columns: 2rem minmax(0, 1fr) auto;
+      "avatar info"
+      "avatar actions";
+    grid-template-columns: 2rem minmax(0, 1fr);
     row-gap: 0.45rem;
   }
 
@@ -12405,7 +12395,7 @@ body {
     display: inline-flex;
     grid-area: actions;
     gap: 0.45rem;
-    justify-content: flex-end;
+    justify-content: flex-start;
     min-width: 0;
     width: auto;
   }

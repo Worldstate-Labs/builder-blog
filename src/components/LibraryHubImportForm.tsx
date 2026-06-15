@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { CheckCircle2, ChevronDown, Download, Sliders, Trash2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, Download, Sliders } from "lucide-react";
 import { CountBadge, CountMeta, CountRange, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { SourceAvatar } from "@/components/SourceAvatar";
@@ -431,24 +431,18 @@ function HubCard({
       <Sliders aria-hidden="true" />
       Your source library
     </span>
-  ) : imported ? (
-    <>
-      <span className="fb-chip hub-card-imported-status">
-        <CheckCircle2 aria-hidden="true" />
-        Imported
-      </span>
-      <button
-        aria-busy={pending === "remove" && isPending}
-        aria-label={`Remove ${library.name} source library import`}
-        className="fb-btn light compact hub-card-remove-button"
-        disabled={isPending || pending !== null}
-        onClick={() => onRemove(library.id)}
-        type="button"
-      >
-        <Trash2 aria-hidden="true" />
-        Remove import
-      </button>
-    </>
+  ) : imported && pending !== "import" ? (
+    <button
+      aria-busy={pending === "remove" && isPending}
+      aria-label={`Remove ${library.name} source library import`}
+      className="fb-btn light compact hub-card-action-button is-imported"
+      disabled={isPending || pending !== null}
+      onClick={() => onRemove(library.id)}
+      type="button"
+    >
+      <CheckCircle2 aria-hidden="true" />
+      {pending === "remove" ? "Removing" : "Imported"}
+    </button>
   ) : (
     <button
       aria-busy={pending === "import" && isPending}
