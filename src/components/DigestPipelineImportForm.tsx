@@ -57,6 +57,8 @@ type DigestPipelineImportFormProps = {
   pipelines: HubDigestPipeline[];
 };
 
+const HUB_DIGEST_HEADLINE_LINES = 6;
+
 export function DigestPipelineImportForm({
   mode = "hub",
   pipelines,
@@ -357,7 +359,7 @@ export function OwnDigestPipelineCard({
 
       <div className="fb-hub-card-stats">
         <CountMeta
-          label={pipeline.digestCount === 1 ? "archive entry" : "archive entries"}
+          label={pipeline.digestCount === 1 ? "digest" : "digests"}
           value={pipeline.digestCount}
         />
         <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
@@ -445,7 +447,7 @@ function DigestPipelineCard({
 
       <div className="fb-hub-card-stats">
         <CountMeta
-          label={pipeline.digestCount === 1 ? "archive entry" : "archive entries"}
+          label={pipeline.digestCount === 1 ? "digest" : "digests"}
           value={pipeline.digestCount}
         />
         <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
@@ -486,17 +488,15 @@ export function DigestPipelinePreviewCard({
       {detailsSlot}
       <div className="fb-hub-digest-preview-row">
         <div>
-          <div className="fb-hub-digest-preview-title">
-            {pipeline.latestDigestAt
-              ? `Latest AI Digest ${formatDate(pipeline.latestDigestAt)}`
-              : "No AI Digest archive entries yet"}
-          </div>
           {headline ? (
             <DigestHeadlineSummary
+              collapsedLineCount={HUB_DIGEST_HEADLINE_LINES}
               sourceLinks={pipeline.latestDigestSourceLinks}
               text={headline}
             />
-          ) : null}
+          ) : (
+            <div className="fb-hub-digest-preview-title">No AI Digest archive entries yet</div>
+          )}
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import type { DigestSourceLink } from "@/lib/digest-source-links";
@@ -18,12 +18,14 @@ const DEFAULT_HEADLINE_SOURCE_TYPE_ORDER = [
 ];
 
 export function DigestHeadlineSummary({
+  collapsedLineCount,
   content,
   headerAction,
   loading = false,
   sourceLinks = [],
   text,
 }: {
+  collapsedLineCount?: number;
   content?: string | null;
   headerAction?: ReactNode;
   loading?: boolean;
@@ -31,14 +33,59 @@ export function DigestHeadlineSummary({
   text?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [lineClampOverflow, setLineClampOverflow] = useState(false);
+  const listWrapRef = useRef<HTMLDivElement>(null);
   const headlineItems = useMemo(
     () => parseHeadlineSourceSummaries(text, sourceLinks, content),
     [content, sourceLinks, text],
   );
-  const canExpand = headlineItems.length > MAX_HEADLINE_SOURCE_ITEMS;
-  const visibleHeadlineItems = expanded
+  const lineClampEnabled = Boolean(collapsedLineCount && collapsedLineCount > 0);
+  const itemLimitExceeded = !lineClampEnabled && headlineItems.length > MAX_HEADLINE_SOURCE_ITEMS;
+  const canExpand = lineClampEnabled ? lineClampOverflow : itemLimitExceeded;
+  const visibleHeadlineItems = expanded || lineClampEnabled
     ? headlineItems
     : headlineItems.slice(0, MAX_HEADLINE_SOURCE_ITEMS);
+  const listWrapStyle = lineClampEnabled
+    ? ({
+        "--digest-headline-collapsed-lines": collapsedLineCount,
+      } as CSSProperties)
+    : undefined;
+  const listWrapClassName = [
+    "digest-headline-list-wrap",
+    lineClampEnabled ? "is-line-clamped" : "",
+    canExpand ? "is-expandable" : "",
+    expanded ? "is-expanded" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  useEffect(() => {
+    if (!lineClampEnabled || loading || headlineItems.length === 0) {
+      return;
+    }
+
+    const element = listWrapRef.current;
+    if (!element) return;
+
+    let frameId = 0;
+    const scheduleOverflowUpdate = () => {
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(() => {
+        const fontSize = Number.parseFloat(window.getComputedStyle(element).fontSize) || 16;
+        const collapsedHeight =
+          (collapsedLineCount ?? 6) * 1.48 * fontSize + 1.95 * fontSize;
+        setLineClampOverflow(element.scrollHeight > collapsedHeight + 1);
+      });
+    };
+
+    scheduleOverflowUpdate();
+    const resizeObserver = new ResizeObserver(scheduleOverflowUpdate);
+    resizeObserver.observe(element);
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      resizeObserver.disconnect();
+    };
+  }, [collapsedLineCount, expanded, headlineItems.length, lineClampEnabled, loading]);
 
   return (
     <section
@@ -59,7 +106,9 @@ export function DigestHeadlineSummary({
         </div>
       ) : headlineItems.length > 0 ? (
         <div
-          className={`digest-headline-list-wrap${canExpand ? " is-expandable" : ""}${expanded ? " is-expanded" : ""}`}
+          className={listWrapClassName}
+          ref={listWrapRef}
+          style={listWrapStyle}
         >
           <ul className="digest-headline-list">
             {visibleHeadlineItems.map((item) => (
@@ -82,6 +131,9 @@ export function DigestHeadlineSummary({
               onClick={() => setExpanded((current) => !current)}
               type="button"
             >
+              <span className="digest-headline-toggle-label">
+                {expanded ? "See less" : "See more"}
+              </span>
               <ChevronDown aria-hidden="true" className="digest-headline-toggle-icon" />
             </button>
           ) : null}

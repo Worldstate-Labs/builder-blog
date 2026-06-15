@@ -2311,7 +2311,9 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(globals, /\.digest-headline-avatar-combo\.fb-src-icon\s*{[\s\S]*letter-spacing:\s*0/);
   assert.match(globals, /\.digest-headline-source-name\s*{[\s\S]*text-overflow:\s*ellipsis/);
   assert.match(globals, /\.digest-headline-list-wrap\.is-expandable:not\(\.is-expanded\)::after\s*{/);
+  assert.match(globals, /\.digest-headline-list-wrap\.is-line-clamped:not\(\.is-expanded\)\s*{[\s\S]*--digest-headline-collapsed-lines/);
   assert.match(globals, /\.digest-headline-toggle\s*{/);
+  assert.match(globals, /\.digest-headline-toggle-label\s*{/);
   assert.match(globals, /\.digest-headline-loading span:first-child\s*{[\s\S]*max-width:\s*var\(--skeleton-title-max\)/);
   assert.match(globals, /\.digest-headline-loading span:last-child\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);
   assert.match(globals, /\.digest-loading-chip\s*{[\s\S]*display:\s*inline-flex/);
@@ -2423,12 +2425,15 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(digestPipelineForm, /latestDigestHeadline/);
   assert.match(digestPipelineForm, /latestDigestSourceLinks/);
   assert.match(digestPipelineForm, /@\/components\/DigestHeadlineSummary/);
+  assert.match(digestPipelineForm, /HUB_DIGEST_HEADLINE_LINES = 6/);
+  assert.match(digestPipelineForm, /collapsedLineCount=\{HUB_DIGEST_HEADLINE_LINES\}/);
   assert.match(digestPipelineForm, /sourceLinks=\{pipeline\.latestDigestSourceLinks\}/);
   assert.match(digestHeadlineSummary, /aria-label="AI Digest headlines"/);
   assert.equal((digestPipelineForm.match(/value=\{pipeline\.digestCount\}/g) ?? []).length, 2);
-  assert.match(digestPipelineForm, /archive entry/);
+  assert.match(digestPipelineForm, /pipeline\.digestCount === 1 \? "digest" : "digests"/);
   assert.doesNotMatch(digestPipelineForm, /pipeline\.digestCount === 1 \? "AI Digest archive" : "AI Digest archives"/);
   assert.match(digestPipelineForm, /AI Digest archive/);
+  assert.doesNotMatch(digestPipelineForm, /pipeline\.digestCount === 1 \? "archive entry" : "archive entries"/);
   assert.doesNotMatch(digestPipelineForm, /archived AI Digest/);
   assert.doesNotMatch(digestPipelineForm, /saved AI Digest|saved digest/);
   assert.doesNotMatch(digestPipelineForm, /fb-hub-digest-count/);
@@ -3271,6 +3276,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(digestPipelineForm, /Build frequency/);
   assert.match(digestPipelineForm, /Language/);
   assert.match(digestPipelineForm, /Latest AI Digest/);
+  assert.doesNotMatch(digestPipelineForm, /\?\s*`Latest AI Digest \$\{formatDate\(pipeline\.latestDigestAt\)\}`/);
   assert.match(digestPipelineForm, /new Intl\.DateTimeFormat\("en-US", \{[\s\S]*timeZone:\s*"UTC"/);
   assert.doesNotMatch(digestPipelineForm, /new Intl\.DateTimeFormat\(undefined/);
   assert.match(digestPipelineForm, /Schedule status/);
