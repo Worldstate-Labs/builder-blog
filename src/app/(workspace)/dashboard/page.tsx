@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { DigestArchivePicker, type DigestArchivePickerOption } from "@/components/DigestArchivePicker";
 import { DigestDetails, type DigestSummary } from "@/components/DigestDetails";
-import type { DigestSourceLink } from "@/components/DigestContent";
 import { FeedEmptyState } from "@/components/FeedState";
 import { FavoritePostsSection } from "@/components/FavoritePostsSection";
 import {
@@ -23,6 +22,7 @@ import {
   displayDigestPipelineTitleForOwner,
   ensureDefaultCommunityDigestImport,
 } from "@/lib/library-hub";
+import { digestSourceLinksForUser, type DigestSourceLink } from "@/lib/digest-source-links";
 import { prisma } from "@/lib/prisma";
 
 const digestPickerSize = 100;
@@ -412,44 +412,6 @@ function DigestControlBar({
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
-}
-
-async function digestSourceLinksForUser(userId: string): Promise<DigestSourceLink[]> {
-  const subscriptions = await prisma.subscription.findMany({
-    where: { userId },
-    include: {
-      builder: {
-        include: {
-          entity: {
-            select: {
-              handle: true,
-              id: true,
-              name: true,
-            },
-          },
-        },
-      },
-    },
-    orderBy: { createdAt: "asc" },
-  });
-
-  const byEntityId = new Map<string, DigestSourceLink>();
-  for (const subscription of subscriptions) {
-    const builder = subscription.builder;
-    if (!builder?.entity || byEntityId.has(builder.entity.id)) continue;
-    byEntityId.set(builder.entity.id, {
-      aliases: [builder.name],
-      avatarUrl: builder.avatarUrl,
-      entityId: builder.entity.id,
-      fetchUrl: builder.fetchUrl,
-      handle: builder.entity.handle ?? builder.handle,
-      href: `/builder/${builder.entity.id}`,
-      name: builder.entity.name || builder.name,
-      sourceUrl: builder.sourceUrl,
-      sourceType: builder.sourceType,
-    });
-  }
-  return [...byEntityId.values()];
 }
 
 function parseTab(value: string | undefined) {

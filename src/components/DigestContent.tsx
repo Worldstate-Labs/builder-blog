@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react";
 import { PostCard, type PostCardPost } from "@/components/PostCard";
 import { PostFavoriteButton, postFavoriteActionLabel } from "@/components/PostFavoriteButton";
 import { SourceAvatar } from "@/components/SourceAvatar";
+import type { DigestSourceLink } from "@/lib/digest-source-links";
 import { postDetailHref } from "@/lib/navigation";
 import { normalizeSourceType } from "@/lib/source-display";
 import {
@@ -17,18 +18,6 @@ import {
   type DigestPost,
   type DigestSection,
 } from "@/lib/digest-markdown";
-
-export type DigestSourceLink = {
-  aliases?: string[];
-  avatarUrl?: string | null;
-  entityId: string;
-  href: string;
-  name: string;
-  handle?: string | null;
-  sourceUrl?: string | null;
-  sourceType?: string | null;
-  fetchUrl?: string | null;
-};
 
 export type DigestFavoriteStateByUrl = Record<
   string,

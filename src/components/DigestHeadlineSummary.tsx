@@ -2,8 +2,8 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
-import type { DigestSourceLink } from "@/components/DigestContent";
 import { SourceAvatar } from "@/components/SourceAvatar";
+import type { DigestSourceLink } from "@/lib/digest-source-links";
 import { parseDigest } from "@/lib/digest-markdown";
 
 const MAX_HEADLINE_SOURCE_ITEMS = 5;

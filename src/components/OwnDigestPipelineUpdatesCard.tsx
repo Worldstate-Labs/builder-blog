@@ -60,7 +60,7 @@ export function OwnDigestPipelineUpdatesCard({
         digestUpdateStatus: updateStatus,
       }}
     >
-      <div id={detailsRootId} />
+      <div className="fb-hub-digest-details-slot" id={detailsRootId} />
     </OwnDigestPipelineCard>
   );
 }

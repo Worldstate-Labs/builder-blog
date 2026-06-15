@@ -7,11 +7,11 @@ import { CountMeta } from "@/components/Count";
 import {
   DigestContent,
   type DigestFavoriteStateByUrl,
-  type DigestSourceLink,
 } from "@/components/DigestContent";
 import { DigestHeadlineSummary } from "@/components/DigestHeadlineSummary";
 import { useHydrated } from "@/components/ThemeToggle";
 import { digestPreviewFromContent } from "@/lib/digest-headline";
+import type { DigestSourceLink } from "@/lib/digest-source-links";
 import { displayLanguagePreference } from "@/lib/language-preference";
 
 export type DigestSummary = {

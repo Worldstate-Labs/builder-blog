@@ -34,6 +34,7 @@ export type OwnDigestPipeline = Pick<
   | "latestDigestAt"
   | "latestDigestHeadline"
   | "latestDigestLanguage"
+  | "latestDigestSourceLinks"
   | "summaryLanguage"
   | "title"
   | "viewCount"
@@ -47,6 +48,7 @@ type DigestPipelinePreviewData = Pick<
   | "latestDigestAt"
   | "latestDigestHeadline"
   | "latestDigestLanguage"
+  | "latestDigestSourceLinks"
   | "summaryLanguage"
 >;
 
@@ -347,10 +349,9 @@ export function OwnDigestPipelineCard({
 
       {beforePreview}
 
-      {children}
-
       <DigestPipelinePreviewCard
         cronStatusControl={cronStatusControl}
+        detailsSlot={children}
         pipeline={pipeline}
       />
 
@@ -470,9 +471,11 @@ function digestPipelineOwnerTopic(ownerLabel: string) {
 
 export function DigestPipelinePreviewCard({
   cronStatusControl,
+  detailsSlot,
   pipeline,
 }: {
   cronStatusControl?: ReactNode;
+  detailsSlot?: ReactNode;
   pipeline: DigestPipelinePreviewData;
 }) {
   const headline = pipeline.latestDigestHeadline?.trim();
@@ -480,6 +483,7 @@ export function DigestPipelinePreviewCard({
   return (
     <div className="fb-hub-digest-preview">
       <DigestPipelineMetaGrid cronStatusControl={cronStatusControl} pipeline={pipeline} />
+      {detailsSlot}
       <div className="fb-hub-digest-preview-row">
         <div>
           <div className="fb-hub-digest-preview-title">
@@ -487,7 +491,12 @@ export function DigestPipelinePreviewCard({
               ? `Latest AI Digest ${formatDate(pipeline.latestDigestAt)}`
               : "No AI Digest archive entries yet"}
           </div>
-          {headline ? <DigestHeadlineSummary text={headline} /> : null}
+          {headline ? (
+            <DigestHeadlineSummary
+              sourceLinks={pipeline.latestDigestSourceLinks}
+              text={headline}
+            />
+          ) : null}
         </div>
       </div>
     </div>

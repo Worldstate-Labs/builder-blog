@@ -6,6 +6,7 @@ import {
   type DigestUpdateStatus,
 } from "@/lib/digest-update-status";
 import { resolveDigestHeadlineSummary } from "@/lib/digest-headline";
+import { digestSourceLinksForUser, type DigestSourceLink } from "@/lib/digest-source-links";
 import { prisma } from "@/lib/prisma";
 import { serializeDigestCronJob } from "@/lib/digest-runs";
 
@@ -14,6 +15,7 @@ export type DigestPipelineRuntimeMetadata = {
   latestDigestAt: string | null;
   latestDigestHeadline: string | null;
   latestDigestLanguage: string | null;
+  latestDigestSourceLinks: DigestSourceLink[];
   summaryLanguage: string | null;
   frequencyLabel: string | null;
   digestUpdateStatus: Pick<DigestUpdateStatus, "key" | "label" | "summary">;
@@ -24,6 +26,7 @@ const EMPTY_METADATA: DigestPipelineRuntimeMetadata = {
   latestDigestAt: null,
   latestDigestHeadline: null,
   latestDigestLanguage: null,
+  latestDigestSourceLinks: [],
   summaryLanguage: null,
   frequencyLabel: null,
   digestUpdateStatus: {
@@ -40,6 +43,7 @@ export async function getDigestPipelineMetadataByOwnerIds(ownerUserIds: string[]
       const [
         digestCount,
         latestDigest,
+        sourceLinks,
         feedPreference,
         rawCronJob,
         rawRuns,
@@ -56,6 +60,7 @@ export async function getDigestPipelineMetadataByOwnerIds(ownerUserIds: string[]
             language: true,
           },
         }),
+        digestSourceLinksForUser(ownerUserId),
         prisma.userFeedPreference.findUnique({
           where: { userId: ownerUserId },
           select: { summaryLanguage: true },
@@ -104,6 +109,7 @@ export async function getDigestPipelineMetadataByOwnerIds(ownerUserIds: string[]
             })
           : null,
         latestDigestLanguage: latestDigest?.language ?? null,
+        latestDigestSourceLinks: sourceLinks,
         summaryLanguage: feedPreference?.summaryLanguage ?? null,
         frequencyLabel: cronJob?.frequencyLabel ?? null,
         digestUpdateStatus: {

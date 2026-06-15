@@ -2195,7 +2195,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sync-panel-detail-code\s*{[\s\S]*white-space:\s*pre-wrap/);
   assert.match(globals, /\.sync-panel-detail-json\s*{[\s\S]*padding:\s*0\.5rem 0\.75rem 0\.75rem/);
   assert.match(globals, /\.sync-panel-candidate-row\s*{[\s\S]*line-height:\s*1\.35/);
-  assert.match(globals, /\.sync-panel-candidate-outcome\s*{[\s\S]*width:\s*2\.6em/);
+  assert.match(globals, /\.sync-panel-candidate-outcome\s*{[\s\S]*width:\s*4\.7em/);
   assert.match(globals, /\.sync-panel-candidate-title\.is-muted,[\s\S]*\.sync-panel-candidate-source\s*{[\s\S]*color:\s*var\(--muted-strong\)/);
   assert.match(globals, /\.sync-panel-layout\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*0\.85fr\) minmax\(0,\s*1\.15fr\)/);
   assert.match(fetchLogPanel, /className="fb-segmented-tabs sync-panel-tabs"/);
@@ -2413,15 +2413,17 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(digestUpdatesCard, /beforePreview=\{[\s\S]*<section className="sources-sync-section">[\s\S]*<DigestLogPanel/);
   assert.match(digestUpdatesCard, /detailsRootId=\{detailsRootId\}/);
   assert.match(digestUpdatesCard, /actionsPlacement="start"/);
-  assert.match(digestUpdatesCard, /<div id=\{detailsRootId\} \/>/);
+  assert.match(digestUpdatesCard, /<div className="fb-hub-digest-details-slot" id=\{detailsRootId\} \/>/);
   assert.match(digestUpdatesCard, /showHeading=\{false\}/);
   assert.match(digestUpdatesCard, /showStatusToggle=\{false\}/);
-  assert.match(digestPipelineForm, /beforePreview\?: ReactNode;[\s\S]*\{beforePreview\}\s*\{children\}\s*<DigestPipelinePreviewCard[\s\S]*cronStatusControl=\{cronStatusControl\}/);
+  assert.match(digestPipelineForm, /beforePreview\?: ReactNode;[\s\S]*\{beforePreview\}\s*<DigestPipelinePreviewCard[\s\S]*detailsSlot=\{children\}[\s\S]*cronStatusControl=\{cronStatusControl\}/);
   assert.match(digestPipelineForm, /<DigestPipelinePreviewCard pipeline=\{pipeline\} \/>/);
-  assert.match(digestPipelineForm, /\{children\}\s*<DigestPipelinePreviewCard[\s\S]*\/>\s*<div className="fb-hub-card-stats">/);
+  assert.match(digestPipelineForm, /detailsSlot\?: ReactNode;[\s\S]*<DigestPipelineMetaGrid[\s\S]*\{detailsSlot\}[\s\S]*<div className="fb-hub-digest-preview-row">/);
   assert.equal((digestPipelineForm.match(/className="fb-hub-digest-preview"/g) ?? []).length, 1);
   assert.match(digestPipelineForm, /latestDigestHeadline/);
+  assert.match(digestPipelineForm, /latestDigestSourceLinks/);
   assert.match(digestPipelineForm, /@\/components\/DigestHeadlineSummary/);
+  assert.match(digestPipelineForm, /sourceLinks=\{pipeline\.latestDigestSourceLinks\}/);
   assert.match(digestHeadlineSummary, /aria-label="AI Digest headlines"/);
   assert.equal((digestPipelineForm.match(/value=\{pipeline\.digestCount\}/g) ?? []).length, 2);
   assert.match(digestPipelineForm, /archive entry/);
@@ -2432,6 +2434,11 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.doesNotMatch(digestPipelineForm, /fb-hub-digest-count/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /headlineSummary:\s*true/);
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /resolveDigestHeadlineSummary/);
+  assert.match(source("src/lib/digest-pipeline-metadata.ts"), /latestDigestSourceLinks:\s*sourceLinks/);
+  assert.match(source("src/lib/digest-pipeline-metadata.ts"), /digestSourceLinksForUser\(ownerUserId\)/);
+  assert.match(source("src/lib/digest-source-links.ts"), /async function digestSourceLinksForUser/);
+  assert.match(source("src/lib/digest-source-links.ts"), /avatarUrl:\s*builder\.avatarUrl/);
+  assert.match(source("src/lib/digest-source-links.ts"), /sourceType:\s*builder\.sourceType/);
   assert.doesNotMatch(
     globals,
     /\.your-digest-section \.sources-sync-section\s*{[\s\S]*order:/,
@@ -3230,7 +3237,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(digestPipelineForm, /export function DigestPipelinePreviewCard/);
   assert.match(digestPipelineForm, /@\/components\/DigestHeadlineSummary/);
   assert.match(digestPipelineForm, /pipeline\.latestDigestHeadline\?\.trim\(\)/);
-  assert.match(digestPipelineForm, /<DigestHeadlineSummary text=\{headline\} \/>/);
+  assert.match(digestPipelineForm, /<DigestHeadlineSummary[\s\S]*sourceLinks=\{pipeline\.latestDigestSourceLinks\}[\s\S]*text=\{headline\}/);
   assert.doesNotMatch(digestPipelineForm, /cleanDigestHeadlinePreview/);
   assert.doesNotMatch(digestPipelineForm, /\.\s*replace\(\/\^\(\?:\[-\*•\]\|\\d\+\[\.\)\]\)\\s\+\/gm, ""\)/);
   assert.doesNotMatch(digestPipelineForm, /Radio|fb-hub-digest-preview-icon/);
@@ -3250,7 +3257,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(digestPipelineForm, /digestPipelineOwnerTopic\(pipeline\.ownerLabel\)/);
   assert.match(digestPipelineForm, /className="fb-hub-digest-preview"/);
   assert.match(digestPipelineForm, /function DigestPipelineMetaGrid/);
-  assert.match(digestPipelineForm, /<div className="fb-hub-digest-preview">\s*<DigestPipelineMetaGrid[\s\S]*<div className="fb-hub-digest-preview-row">/);
+  assert.match(digestPipelineForm, /<div className="fb-hub-digest-preview">\s*<DigestPipelineMetaGrid[\s\S]*\{detailsSlot\}[\s\S]*<div className="fb-hub-digest-preview-row">/);
   assert.match(digestPipelineForm, /aria-label="AI Digest details"/);
   assert.match(digestPipelineForm, /Build frequency/);
   assert.match(digestPipelineForm, /Language/);
@@ -3995,6 +4002,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
 test("digest posts use source detail headings and unified original links", () => {
   const digestContent = source("src/components/DigestContent.tsx");
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
+  const digestSourceLinks = source("src/lib/digest-source-links.ts");
   const postCard = source("src/components/PostCard.tsx");
   const fetchMethodPopover = source("src/components/FetchMethodPopover.tsx");
   const recommendationReasonsPopover = source("src/components/RecommendationReasonsPopover.tsx");
@@ -4018,8 +4026,9 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(digestContent, /digest-source-summary/);
   assert.doesNotMatch(digestContent, /Watch on YouTube/);
   assert.match(dashboardPage, /digestSourceLinksForUser/);
-  assert.match(dashboardPage, /avatarUrl:\s*builder\.avatarUrl/);
-  assert.match(dashboardPage, /sourceType:\s*builder\.sourceType/);
+  assert.match(dashboardPage, /@\/lib\/digest-source-links/);
+  assert.match(digestSourceLinks, /avatarUrl:\s*builder\.avatarUrl/);
+  assert.match(digestSourceLinks, /sourceType:\s*builder\.sourceType/);
   assert.match(dashboardPage, /sourceLinks=\{sourceLinks\}/);
   assert.match(postCard, /showSourceBadge = true/);
   assert.match(fetchMethodPopover, /useId/);

@@ -9064,6 +9064,10 @@ a.fb-hub-source-name:focus-visible {
   padding: 0;
 }
 
+.fb-hub-digest-details-slot:has(#digest-update-details) {
+  margin-bottom: 0.9rem;
+}
+
 .fb-hub-digest-preview .digest-headline-kicker {
   color: var(--accent);
   font-size: 0.6875rem;
