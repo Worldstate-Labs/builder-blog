@@ -2,7 +2,7 @@ import { Globe } from "lucide-react";
 import { normalizeSourceType, sourceDisplayForType } from "@/lib/source-display";
 import { sourceIcons } from "@/lib/source-icons";
 
-type SourceBadgeBuilder = {
+export type SourceBadgeBuilder = {
   kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";
   sourceType?: string | null;
   sourceUrl?: string | null;

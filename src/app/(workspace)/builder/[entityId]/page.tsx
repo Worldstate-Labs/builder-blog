@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
-import { ChevronLeft, ExternalLink } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { isAdminEmail } from "@/lib/admin";
 import { getCurrentSession } from "@/lib/auth";
 import { fetchDedupedFeedForEntities, getReadEntityKeys } from "@/lib/builder-channel-resolver";
@@ -10,6 +10,7 @@ import { BuilderDetailActions } from "@/components/BuilderDetailActions";
 import { ChannelPreferenceToggle } from "@/components/ChannelPreferenceToggle";
 import { CountMeta } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
+import { OriginalSourceAction } from "@/components/OriginalSourceAction";
 import { PageHeader } from "@/components/PageHeader";
 import { RecentPostsList } from "@/components/RecentPostsList";
 import { SourceBadge } from "@/components/SourceBadge";
@@ -122,16 +123,6 @@ export default async function BuilderDetailPage({ params }: Params) {
   // channel's itemCount here would either over- or under-count
   // depending on which channel won.
   const headerItemCount = dedupedItemCount;
-  const headerHostLabel = (() => {
-    if (entity.handle) return `@${entity.handle}`;
-    if (primaryChannel?.handle) return `@${primaryChannel.handle}`;
-    if (!headerSourceUrl) return null;
-    try {
-      return new URL(headerSourceUrl).hostname.replace(/^www\./, "");
-    } catch {
-      return null;
-    }
-  })();
   const lastFetchedMax = channels.reduce<Date | null>((max, c) => {
     if (!c.lastFetchedAt) return max;
     if (!max || c.lastFetchedAt > max) return c.lastFetchedAt;
@@ -164,23 +155,9 @@ export default async function BuilderDetailPage({ params }: Params) {
             <div className="builder-detail-title-stack">
               <div className="builder-detail-title-row">
                 <h1 className="fb-title">{entity.name}</h1>
-                {headerSourceType ? (
-                  <SourceBadge
-                    sourceType={headerSourceType}
-                    suppressLabelWhen={entity.name}
-                  />
-                ) : null}
               </div>
               <div className="fb-src-meta builder-detail-meta-row">
                 <span className="builder-detail-meta-group">
-                  {headerHostLabel ? (
-                    <>
-                      <span className="builder-detail-host source-host-meta mono">
-                        {headerHostLabel}
-                      </span>
-                      <span className="source-count-dot source-meta-dot">·</span>
-                    </>
-                  ) : null}
                   <span
                     className={
                       headerItemCount > 0
@@ -210,17 +187,11 @@ export default async function BuilderDetailPage({ params }: Params) {
                   />
                 </Suspense>
                 {headerSourceUrl ? (
-                  <a
-                    aria-label={`View ${entity.name} source site`}
-                    className="builder-detail-source-link"
+                  <OriginalSourceAction
+                    ariaLabel={`Original: ${entity.name}`}
                     href={headerSourceUrl}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                    title="View source site"
-                  >
-                    <ExternalLink aria-hidden="true" />
-                    <span>View source site</span>
-                  </a>
+                    sourceType={headerSourceType}
+                  />
                 ) : null}
               </div>
               {entity.bio ? (
@@ -360,17 +331,11 @@ async function ChannelsListSlot({
                 <SourceBadge sourceType={channel.sourceType} />
               </div>
               {channelSourceHref ? (
-                <a
-                  aria-label={`View ${sourceName} source site`}
-                  className="builder-detail-channel-link"
+                <OriginalSourceAction
+                  ariaLabel={`Original: ${sourceName}`}
                   href={channelSourceHref}
-                  rel="noreferrer"
-                  target="_blank"
-                  title="View source site"
-                >
-                  <ExternalLink aria-hidden="true" />
-                  View source site
-                </a>
+                  sourceType={channel.sourceType}
+                />
               ) : null}
             </div>
             <div className="builder-detail-channel-date mono">

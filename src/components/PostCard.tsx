@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { BookOpen, ChevronDown } from "lucide-react";
 import { CountMeta } from "@/components/Count";
+import { OriginalSourceAction } from "@/components/OriginalSourceAction";
 import { SourceBadge } from "@/components/SourceBadge";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { FetchMethodPopover } from "@/components/FetchMethodPopover";
@@ -343,23 +344,13 @@ export function PostCard({
           >
             {/* External platform action: keep the platform icon, but use one stable label. */}
             {showOriginalAction ? (
-              <a
-                aria-label={actionLabel("Original", actionContext)}
-                className="post-source-original"
+              <OriginalSourceAction
+                ariaLabel={actionLabel("Original", actionContext)}
+                builder={builder}
                 href={post.url}
                 onClick={noteInteraction}
-                rel="noreferrer"
-                target="_blank"
-                title="Original"
-              >
-                <SourceBadge
-                  builder={builder}
-                  decorative
-                  sourceType={builder?.sourceType ?? post.sourceType ?? null}
-                  showLabel={false}
-                />
-                <span>Original</span>
-              </a>
+                sourceType={builder?.sourceType ?? post.sourceType ?? null}
+              />
             ) : null}
 
             {canReadRawContent && post.detailUrl ? (

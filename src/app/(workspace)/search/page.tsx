@@ -15,13 +15,13 @@ import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { PostCard } from "@/components/PostCard";
 import { PostFavoriteControl } from "@/components/PostFavoriteControl";
+import { OriginalSourceAction } from "@/components/OriginalSourceAction";
 import { SearchForm, type SearchTypeFilter } from "@/components/SearchForm";
 import {
   SearchTypeTabs as SearchTypeTabsControl,
   type SearchTypeTabItem,
 } from "@/components/SearchTypeTabs";
 import { SourceAvatar } from "@/components/SourceAvatar";
-import { SourceBadge } from "@/components/SourceBadge";
 import { getCurrentSession } from "@/lib/auth";
 import { withPostReturnTarget } from "@/lib/navigation";
 import { searchUserLibrary } from "@/lib/user-search";
@@ -712,7 +712,6 @@ function ResultCard({
   const displayUrl = formatDisplayUrl(originalUrl ?? result.url);
   const sourceSite = searchSiteFromUrl(originalUrl ?? result.url);
   const sourceName = result.sourceName ?? resultTypeItemLabels[result.type];
-  const originalActionLabel = searchOriginalActionLabel(result.type);
   const refinements = (
     <SearchResultRefinements
       mode={mode}
@@ -777,26 +776,16 @@ function ResultCard({
         <span>{resultTypeItemLabels[result.type]}</span>
         {result.date ? <span>{formatDistanceToNow(result.date, { addSuffix: true })}</span> : null}
         {originalUrl ? (
-          <a
-            aria-label={`${originalActionLabel}: ${result.title}`}
-            className="post-source-original"
+          <OriginalSourceAction
+            ariaLabel={`Original: ${result.title}`}
             href={originalUrl}
-            rel="noreferrer"
-            target="_blank"
-            title={originalActionLabel}
-          >
-            <SourceBadge decorative showLabel={false} sourceType={result.sourceType ?? result.type} />
-            <span>{originalActionLabel}</span>
-          </a>
+            sourceType={result.sourceType ?? result.type}
+          />
         ) : null}
       </div>
       {refinements}
     </article>
   );
-}
-
-function searchOriginalActionLabel(type: SearchDocumentType) {
-  return type === "builder" ? "View source site" : "Original";
 }
 
 function SearchPostResultCard({
