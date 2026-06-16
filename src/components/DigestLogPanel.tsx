@@ -315,7 +315,7 @@ export function DigestLogPanel({
   const detailsPanel = detailsOpen ? (
     <div id="digest-update-details">
       <div
-        aria-label="AI Digest update views"
+        aria-label="AI Digest build views"
         className="fb-segmented-tabs sync-panel-tabs"
         onKeyDown={handleTabKeyDown}
         role="tablist"
@@ -331,7 +331,7 @@ export function DigestLogPanel({
           type="button"
         >
           <Activity aria-hidden="true" />
-          Schedule status
+          Build status
         </button>
         <button
           aria-controls="digest-update-panel-log"
@@ -531,8 +531,11 @@ function DigestStatusPanel({
   if (cronJob.status !== "active") {
   return (
     <div className="sync-panel-card">
-      <div className="sync-panel-chip-row">
-        <span className="fb-chip">Stopped</span>
+      <div className="sync-panel-status-brief">
+        <div className="sync-panel-chip-row">
+          <span className="fb-chip">Stopped</span>
+        </div>
+        <p>The recurring AI Digest build schedule is off. Manual builds can still appear in the log.</p>
           {cronJob.stoppedAt ? (
             <time
               className="sync-panel-run-card-time"
@@ -563,25 +566,35 @@ function DigestStatusPanel({
     : latestResolved === "ok"
       ? statusStyle("ok")
       : statusStyle("partial");
+  const statusLabel = hasProblem ? "Needs attention" : latestResolved === "ok" ? "Healthy" : "Waiting";
+  const statusDetail =
+    hasProblem
+      ? problemDetail
+      : latestResolved === "ok"
+        ? "The latest scheduled build saved an AI Digest and marked the included posts."
+        : "The schedule is active. FollowBrief is waiting for the next build window or the first completed build.";
 
   return (
     <div className="sync-panel-card">
+      <div className="sync-panel-status-brief">
+        <div className="sync-panel-chip-row">
+          <span
+            className="fb-chip"
+            style={{
+              background: statusTone.background,
+              borderColor: statusTone.border,
+              color: statusTone.color,
+            }}
+          >
+            {statusLabel}
+          </span>
+          <span className="fb-chip">{cronJob.frequencyLabel}</span>
+          {cronJob.regenerateDigest ? <span className="fb-chip">rebuilds past posts</span> : null}
+        </div>
+        <p style={hasProblem ? { color: statusTone.color } : undefined}>{statusDetail}</p>
+      </div>
       <div className="sync-panel-layout">
         <div className="sync-panel-column">
-          <div className="sync-panel-chip-row">
-            <span
-              className="fb-chip"
-              style={{
-                background: statusTone.background,
-                borderColor: statusTone.border,
-                color: statusTone.color,
-              }}
-            >
-              {hasProblem ? "Needs attention" : latestResolved === "ok" ? "Healthy" : "Waiting"}
-            </span>
-            <span className="fb-chip">{cronJob.frequencyLabel}</span>
-            {cronJob.regenerateDigest ? <span className="fb-chip">rebuilds past posts</span> : null}
-          </div>
           <dl className="sync-panel-meta">
             <div className="sync-panel-meta-row">
               <dt>Schedule enabled</dt>
@@ -610,11 +623,6 @@ function DigestStatusPanel({
             <CountMetric label="Issue" tone="issue" value={problemCount} />
             <CountMetric label="Waiting" tone="waiting" value={waitingCount} />
           </div>
-          {hasProblem ? (
-            <p className="sync-panel-status-note" style={{ color: statusTone.color }}>
-              {problemDetail}
-            </p>
-          ) : null}
         </div>
 
         {slots.length > 0 ? (
@@ -623,9 +631,9 @@ function DigestStatusPanel({
               <span className="sync-panel-timeline-title">
                 Last {slots.length} scheduled {slots.length === 1 ? "window" : "windows"}
               </span>
-              <span>Green saved · amber waiting · red issue.</span>
+              <span>Recent outcomes by scheduled window.</span>
             </div>
-            <div className="sync-panel-status-graph" aria-label="AI Digest schedule status graph">
+            <div className="sync-panel-status-graph" aria-label="AI Digest build status graph">
               {slots.map((slot) => (
                 <CronSlotBar
                   key={slot.expectedAt}
@@ -777,7 +785,7 @@ function DigestRunList({
   const visibleEntries = expanded ? entries : entries.slice(0, VISIBLE_RUN_LIMIT);
 
   return (
-    <div className="sync-panel-run-list">
+    <div className="sync-panel-run-list-shell">
       {entries.length === 0 ? (
         <EmptyState
           className="sync-panel-empty is-dashed"
@@ -786,11 +794,16 @@ function DigestRunList({
         />
       ) : (
         <>
-          {visibleEntries.map((entry) => (
-            entry.kind === "digest"
-              ? <RunCard key={entry.id} jobRun={entry.jobRun} run={entry.run} />
-              : <JobRunCard key={entry.id} jobRun={entry.jobRun} />
-          ))}
+          <div
+            aria-label="AI Digest build history list"
+            className="sync-panel-run-list sync-panel-run-list-scroll"
+          >
+            {visibleEntries.map((entry) => (
+              entry.kind === "digest"
+                ? <RunCard key={entry.id} jobRun={entry.jobRun} run={entry.run} />
+                : <JobRunCard key={entry.id} jobRun={entry.jobRun} />
+            ))}
+          </div>
           {entries.length > VISIBLE_RUN_LIMIT ? (
             <button
               aria-expanded={expanded}

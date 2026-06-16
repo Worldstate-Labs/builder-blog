@@ -1087,8 +1087,11 @@ function FetchStatusPanel({
   if (cronJob.status !== "active") {
     return (
       <div className="sync-panel-card">
-        <div className="sync-panel-chip-row">
-          <span className="fb-chip">Stopped</span>
+        <div className="sync-panel-status-brief">
+          <div className="sync-panel-chip-row">
+            <span className="fb-chip">Stopped</span>
+          </div>
+          <p>The recurring Fetch sources schedule is off. Manual fetches can still appear in the log.</p>
           {cronJob.stoppedAt ? (
             <time
               className="sync-panel-stopped-time"
@@ -1134,25 +1137,36 @@ function FetchStatusPanel({
       : latestResolved === "ok"
         ? "Healthy"
         : "Waiting";
+  const statusDetail =
+    hasProblem
+      ? problemDetail
+      : latestSlot?.status === "running"
+        ? "A scheduled fetch is active. The log should move from sources scanned to sync as the Local Agent reports progress."
+        : latestResolved === "ok"
+          ? "The latest scheduled window completed. The next run stays anchored to the configured cadence."
+          : "The schedule is active. FollowBrief is waiting for the next scheduled window or the first completed run.";
 
   return (
     <div className="sync-panel-card">
+      <div className="sync-panel-status-brief">
+        <div className="sync-panel-chip-row">
+          <span
+            className="fb-chip"
+            style={{
+              background: statusTone.background,
+              borderColor: statusTone.border,
+              color: statusTone.color,
+            }}
+          >
+            {statusLabel}
+          </span>
+          <span className="fb-chip">{cronJob.frequencyLabel}</span>
+          {cronJob.overrideFetched ? <span className="fb-chip">refreshes library posts</span> : null}
+        </div>
+        <p style={hasProblem ? { color: statusTone.color } : undefined}>{statusDetail}</p>
+      </div>
       <div className="sync-panel-layout">
         <div className="sync-panel-column">
-          <div className="sync-panel-chip-row">
-            <span
-              className="fb-chip"
-              style={{
-                background: statusTone.background,
-                borderColor: statusTone.border,
-                color: statusTone.color,
-              }}
-            >
-              {statusLabel}
-            </span>
-            <span className="fb-chip">{cronJob.frequencyLabel}</span>
-            {cronJob.overrideFetched ? <span className="fb-chip">refreshes library posts</span> : null}
-          </div>
           <dl className="sync-panel-meta">
             <div className="sync-panel-meta-row">
               <dt>Schedule enabled</dt>
@@ -1182,11 +1196,6 @@ function FetchStatusPanel({
             <CountMetric label="Failed" tone="issue" value={failedOrStalledCount} />
             <CountMetric label="Active" tone="waiting" value={activeCount} />
           </div>
-          {hasProblem ? (
-            <p className="sync-panel-status-note" style={{ color: statusTone.color }}>
-              {problemDetail}
-            </p>
-          ) : null}
         </div>
 
         {slots.length > 0 ? (
@@ -1501,6 +1510,52 @@ function fetchRunDisplaySummary(run: LibraryFetchRunListItem, stats: FetchRunSta
   return parts.join(" · ");
 }
 
+function fetchRunVerdict({
+  displayStatus,
+  inflight,
+  stats,
+}: {
+  displayStatus: { label: string };
+  inflight: boolean;
+  stats: FetchRunStats;
+}): { tone: "ok" | "warn" | "fail"; text: string } {
+  const accounted = stats.synced + stats.skipped + stats.failed + stats.actionNeeded;
+  if (inflight) {
+    return {
+      tone: "warn",
+      text: "Fetch is still running. Stage progress below updates as the Local Agent reports work.",
+    };
+  }
+  if (stats.failed > 0 || ["Failed", "Stalled", "Timed out"].includes(displayStatus.label)) {
+    return {
+      tone: "fail",
+      text: `${formatCount(stats.failed || 1)} planned post ${stats.failed === 1 ? "failed" : "failed"} before the run fully synced.`,
+    };
+  }
+  if (stats.actionNeeded > 0) {
+    return {
+      tone: "warn",
+      text: `${formatCount(stats.actionNeeded)} post ${stats.actionNeeded === 1 ? "needs" : "need"} Local Agent follow-up before it can be summarized.`,
+    };
+  }
+  if (stats.planned > 0 && accounted >= stats.planned) {
+    return {
+      tone: "ok",
+      text: "Completed. Planned posts were read, summarized, and synced or explicitly accounted for.",
+    };
+  }
+  if (stats.planned > 0) {
+    return {
+      tone: "warn",
+      text: "Run recorded planned posts, but not every post has a final sync outcome yet.",
+    };
+  }
+  return {
+    tone: "ok",
+    text: "Completed. Sources were checked and no post work needed to continue.",
+  };
+}
+
 function lifecycleTone(done: number, total: number, {
   failed = 0,
   warnWhenPartial = true,
@@ -1727,6 +1782,8 @@ function RunCard({
   const liveProgress = jobRun ? readFetchJobProgress(jobRun.details) : null;
   const stats = fetchRunStats({ details, liveProgress, run });
   const displaySummary = fetchRunDisplaySummary(run, stats, liveProgress);
+  const verdict = fetchRunVerdict({ displayStatus, inflight, stats });
+  const sourceTotal = Math.max(stats.sourcesTotal, stats.sourcesScanned, run.buildersAttempted);
 
   return (
     <article
@@ -1778,6 +1835,37 @@ function RunCard({
       <p className="sync-panel-run-card-summary">
         {displaySummary}
       </p>
+
+      <p className={`sync-panel-run-card-verdict is-${verdict.tone}`}>
+        {verdict.text}
+      </p>
+
+      <div className="sync-panel-run-card-funnel">
+        <span className="sync-panel-funnel-stat">
+          <span className="mono sync-panel-funnel-stat-value">{formatCount(stats.sourcesScanned)}</span>
+          <span className="sync-panel-funnel-stat-label">/{formatCount(sourceTotal)} sources</span>
+        </span>
+        <span aria-hidden="true" className="sync-panel-funnel-arrow">→</span>
+        <span className="sync-panel-funnel-stat">
+          <span className="mono sync-panel-funnel-stat-value">{formatCount(stats.planned)}</span>
+          <span className="sync-panel-funnel-stat-label">planned</span>
+        </span>
+        <span aria-hidden="true" className="sync-panel-funnel-arrow">→</span>
+        <span className="sync-panel-funnel-stat">
+          <span className="mono sync-panel-funnel-stat-value">{formatCount(stats.read)}</span>
+          <span className="sync-panel-funnel-stat-label">read</span>
+        </span>
+        <span aria-hidden="true" className="sync-panel-funnel-arrow">→</span>
+        <span className="sync-panel-funnel-stat">
+          <span className="mono sync-panel-funnel-stat-value">{formatCount(stats.summarized)}</span>
+          <span className="sync-panel-funnel-stat-label">summarized</span>
+        </span>
+        <span aria-hidden="true" className="sync-panel-funnel-arrow">→</span>
+        <span className="sync-panel-funnel-stat">
+          <span className="mono sync-panel-funnel-stat-value">{formatCount(stats.synced)}</span>
+          <span className="sync-panel-funnel-stat-label">synced</span>
+        </span>
+      </div>
 
       <div className="mono sync-panel-run-card-meta">
         <CountMeta

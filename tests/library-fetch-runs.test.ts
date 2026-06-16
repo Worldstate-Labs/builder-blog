@@ -362,7 +362,9 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /className="mono sync-panel-task-worker-meta"/);
   assert.match(panel, /className="sync-panel-task-source-group"/);
   assert.match(panel, /className="mono sync-panel-task-source-meta"/);
-  assert.match(panel, /className="sync-panel-status-note"/);
+  assert.match(panel, /className="sync-panel-status-brief"/);
+  assert.match(panel, /className=\{`sync-panel-run-card-verdict is-\$\{verdict\.tone\}`\}/);
+  assert.match(panel, /className="sync-panel-run-card-funnel"/);
   assert.match(panel, /className=\{`sync-panel-slot-bar \$\{heightClass\}`\}/);
   assert.match(panel, /className="sync-panel-slot-row"/);
   assert.match(panel, /className="sync-panel-slot-row-main"/);
@@ -464,7 +466,7 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /showHeading \|\| showStatusToggle/);
   assert.match(panel, /const showSummary = showHeading \|\| showStatusToggle/);
   assert.match(panel, /const summaryNode = showSummary \? \(/);
-  assert.match(panel, /Schedule status/);
+  assert.match(panel, /Build status/);
   assert.match(panel, /Build log/);
   assert.match(panel, /AI Digest build history/);
   assert.match(panel, /role="tablist"/);
@@ -482,7 +484,7 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /aria-labelledby="digest-update-tab-log"/);
   assert.match(panel, /id="digest-update-panel-log"/);
   assert.match(panel, /role="tabpanel"/);
-  assert.match(panel, /AI Digest schedule status graph/);
+  assert.match(panel, /AI Digest build status graph/);
   assert.doesNotMatch(panel, />Digest updates<|aria-label="Digest schedule status graph"/);
   assert.match(panel, /buildDigestCronStatus/);
   assert.match(panel, /scheduledRunTriggerLabel\(jobRun \?\? null, "digest-cron", run\.source\)/);
@@ -495,7 +497,7 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /setActiveTab\("log"\)/);
   assert.match(panel, /document\.getElementById\(runDomId\(runId\)\)/);
   assert.match(panel, /Last \{slots\.length\} scheduled/);
-  assert.match(panel, /Green saved · amber waiting · red issue/);
+  assert.match(panel, /Recent outcomes by scheduled window\./);
   assert.match(source("src/lib/scheduled-window-ui.ts"), /No job reported/);
   assert.match(panel, /No AI Digest schedule has reported yet/);
   assert.match(panel, /No AI Digest builds yet/);
@@ -542,7 +544,7 @@ test("DigestLogPanel renders digest status and digest log tabs from cron data", 
   assert.match(panel, /className="sync-panel-schedule-summary"/);
   assert.match(panel, /className="sync-panel-column"/);
   assert.match(panel, /className="sync-panel-truncate"/);
-  assert.match(panel, /className="sync-panel-status-note"/);
+  assert.match(panel, /className="sync-panel-status-brief"/);
   assert.match(panel, /className=\{`sync-panel-slot-bar \$\{heightClass\}`\}/);
   assert.match(panel, /className="sync-panel-slot-row"/);
   assert.match(panel, /className="sync-panel-slot-row-main"/);

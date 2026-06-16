@@ -1886,7 +1886,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /SourceFetchMetaItem/);
   assert.match(digestLogPanel, /className="sync-panel-candidate-link-icon"/);
   assert.doesNotMatch(digestLogPanel, /h-3\.5 w-3\.5/);
-  assert.match(fetchLogPanel, /className="sync-panel-status-note"/);
+  assert.match(fetchLogPanel, /className="sync-panel-status-brief"/);
+  assert.match(fetchLogPanel, /className=\{`sync-panel-run-card-verdict is-\$\{verdict\.tone\}`\}/);
+  assert.match(fetchLogPanel, /className="sync-panel-run-card-funnel"/);
   assert.match(fetchLogPanel, /Recent outcomes by scheduled window\./);
   assert.doesNotMatch(fetchLogPanel, /Green OK|amber waiting|red issue/);
   assert.match(fetchLogPanel, /const displayStatus = !inflight && interruptedStatus/);
@@ -2028,7 +2030,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /className="sync-panel-column"/);
   assert.match(digestLogPanel, /className="sync-panel-error"/);
   assert.match(digestLogPanel, /AI Digest updates/);
-  assert.match(digestLogPanel, /aria-label="AI Digest update views"/);
+  assert.match(digestLogPanel, /aria-label="AI Digest build views"/);
   assert.match(fetchLogPanel, /id="fetch-sync-tab-status"/);
   assert.match(fetchLogPanel, /aria-controls="fetch-sync-panel-status"/);
   assert.match(fetchLogPanel, /aria-labelledby="fetch-sync-tab-status"/);
@@ -2049,7 +2051,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /role="tabpanel"/);
   assert.match(digestLogPanel, /Show AI Digest update details/);
   assert.match(digestLogPanel, /Hide AI Digest update details/);
-  assert.match(digestLogPanel, /aria-label="AI Digest schedule status graph"/);
+  assert.match(digestLogPanel, /aria-label="AI Digest build status graph"/);
   assert.match(digestLogPanel, /scheduled AI Digest run/);
   assert.match(digestLogPanel, /includes posts already used in AI Digest archives/);
   assert.doesNotMatch(digestLogPanel, /includes posts already used in AI Digests/);
@@ -2066,7 +2068,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(digestLogPanel, /Use Build digest to copy a Local Agent prompt\./);
   assert.match(digestLogPanel, /className="sync-panel-column"/);
   assert.match(digestLogPanel, /className="sync-panel-truncate"/);
-  assert.match(digestLogPanel, /className="sync-panel-status-note"/);
+  assert.match(digestLogPanel, /className="sync-panel-status-brief"/);
   assert.match(digestLogPanel, /className=\{`sync-panel-slot-bar \$\{heightClass\}`\}/);
   assert.match(digestLogPanel, /className="sync-panel-slot-row"/);
   assert.match(digestLogPanel, /className="sync-panel-slot-row-main"/);
