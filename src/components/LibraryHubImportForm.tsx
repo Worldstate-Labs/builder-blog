@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { CheckCircle2, ChevronDown, Download, Sliders } from "lucide-react";
+import { CheckCircle2, ChevronDown, Download } from "lucide-react";
 import { CountBadge, CountMeta, CountRange, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { SourceAvatar } from "@/components/SourceAvatar";
@@ -416,22 +416,13 @@ function HubCard({
 }) {
   const sourceGroups = groupedSources(library.items);
   const sourceSummaryItems = selectSourceSummaryItems(library.items, sourceGroups, 4);
-  const fetchedPostCount = library.items.reduce(
-    (sum, item) => sum + item.builder._count.feedItems,
-    0,
-  );
   const latestFetchedAt = latestIso(
     library.items.map((item) => item.builder.lastFetchedAt),
   );
   const sourceToggleLabel = formatSourceToggleLabel(library.itemCount);
-  const cardDescription = libraryCardDescription(library);
+  const cardByline = sourceLibraryByline(library);
 
-  const action = library.owned ? (
-    <span className="fb-chip">
-      <Sliders aria-hidden="true" />
-      Your source library
-    </span>
-  ) : imported && pending !== "import" ? (
+  const action = library.owned ? null : imported && pending !== "import" ? (
     <button
       aria-busy={pending === "remove" && isPending}
       aria-label={`Remove ${library.name} source library import`}
@@ -462,30 +453,23 @@ function HubCard({
       <div>
         <div className="fb-hub-card-head">
           <div className="fb-hub-card-titleblock">
-            <div className="fb-hub-card-kicker">
-              <span className="fb-kind-pill">{kindBadge(library)}</span>
-              {topicLabel(library) ? (
-                <span className="fb-hub-card-topic">· {topicLabel(library)}</span>
-              ) : null}
-            </div>
             <h3 className="fb-hub-title">
               {library.name}
             </h3>
+            <p className="fb-hub-card-byline">
+              {cardByline}
+            </p>
           </div>
-          <div
-            aria-label={`Source library actions for ${library.name}`}
-            className="fb-hub-card-actions"
-            role="group"
-          >
-            {action}
-          </div>
+          {action ? (
+            <div
+              aria-label={`Source library actions for ${library.name}`}
+              className="fb-hub-card-actions"
+              role="group"
+            >
+              {action}
+            </div>
+          ) : null}
         </div>
-
-        {cardDescription ? (
-          <p className="fb-hub-card-desc">
-            {cardDescription}
-          </p>
-        ) : null}
       </div>
 
       {sourceGroups.length > 0 ? (
@@ -581,24 +565,14 @@ function HubCard({
       ) : null}
 
       <div className="fb-hub-card-stats fb-hub-card-stats--source-library">
-        <div className="fb-hub-card-stat-row">
-          <CountMeta label={library.itemCount === 1 ? "source" : "sources"} value={library.itemCount} />
-          <CountMeta label={fetchedPostCount === 1 ? "post" : "posts"} value={fetchedPostCount} />
-          <CountMeta label={library.importCount === 1 ? "import" : "imports"} value={library.importCount} />
-          <CountMeta label={library.viewCount === 1 ? "view" : "views"} value={library.viewCount} />
-        </div>
+        <CountMeta label={library.importCount === 1 ? "import" : "imports"} value={library.importCount} />
+        <CountMeta label={library.viewCount === 1 ? "view" : "views"} value={library.viewCount} />
         <div className="fb-hub-card-fetch-date">
           {formatFetchStatusLabel(latestFetchedAt)}
         </div>
       </div>
     </article>
   );
-}
-
-function kindBadge(library: HubLibrary) {
-  if (library.isCommunity) return "community";
-  if (library.owned) return "yours";
-  return "shared";
 }
 
 function sourceLibraryListCopy(filter: FilterKey) {
@@ -632,21 +606,13 @@ function sourceLibraryListCopy(filter: FilterKey) {
   }
 }
 
-function libraryCardDescription(library: HubLibrary) {
-  const description = library.description?.trim();
-  if (description === "Community source library curated by FollowBrief.") return "";
-  if (description) return description;
-  if (library.owned) return "A source library you manage.";
-  return library.ownerLabel;
+function sourceLibraryByline(library: HubLibrary) {
+  if (library.owned) return "Your Library";
+  if (library.isCommunity) return "By Community";
+  return `By ${sourceLibraryOwnerName(library.ownerLabel)}`;
 }
 
-function topicLabel(library: HubLibrary) {
-  if (library.isCommunity) return "";
-  if (library.owned) return "Managed by you";
-  return sourceLibraryOwnerTopic(library.ownerLabel);
-}
-
-function sourceLibraryOwnerTopic(ownerLabel: string) {
+function sourceLibraryOwnerName(ownerLabel: string) {
   const label = ownerLabel
     .trim()
     .replace(/^Shared by\s+/i, "")
