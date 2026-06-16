@@ -3490,6 +3490,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /import private sources/);
   assert.match(buildersPage, /emptyTitle="No active sources"/);
   assert.match(buildersPage, /emptyBody="This imported library has no active sources available right now\."/);
+  assert.doesNotMatch(buildersPage, /badge="imported"/);
   assert.doesNotMatch(buildersPage, /No active sources from this imported library\./);
   assert.match(buildersPage, /title="No imported source libraries"/);
   assert.match(buildersPage, /body="Import source libraries built and shared by other users from Hub\."/);
@@ -3714,6 +3715,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.imported-libraries-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(globals, /@media \(max-width:\s*1023\.99px\)[\s\S]*\.imported-libraries-head\s*{[\s\S]*grid-template-columns:\s*1fr/);
   assert.match(globals, /\.library-section-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
+  assert.match(globals, /\.library-section-meta--no-badge\s*{[\s\S]*gap:\s*0\.65rem/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta--no-badge\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta--no-badge \.count-meta\s*{[\s\S]*justify-self:\s*start/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta--no-badge \.import-remove-control\s*{[\s\S]*grid-column:\s*2/);
   assert.match(globals, /\.source-summary-line \.count-meta\s*{[\s\S]*font-size:\s*0\.8125rem/);
   assert.match(globals, /\.source-summary-line \.count-meta \+ \.count-meta::before\s*{[\s\S]*content:\s*"·"/);
   assert.doesNotMatch(globals, /\.source-summary-toolbar|\.source-stat-skeleton/);
@@ -5032,6 +5037,7 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.doesNotMatch(css, /builder-library-card-main/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta\s*{[\s\S]*display:\s*grid/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta \.import-remove-control\s*{[\s\S]*justify-self:\s*start/);
+  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta--no-badge \.import-remove-control\s*{[\s\S]*justify-self:\s*end/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.page-pad--reading > h2\s*{[\s\S]*font-size:\s*1\.25rem/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.fb-panel\s*{[\s\S]*padding:\s*0\.95rem/);
   assert.doesNotMatch(css, /\.builder-row form,\s*\n\s*\.builder-row button\s*{\s*\n\s*width:\s*100%/);

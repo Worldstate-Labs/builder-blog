@@ -761,7 +761,6 @@ async function FetchSourcesSection({
             key={library.id}
             title={library.name}
             detail={library.description || `Imported from ${library.ownerName}`}
-            badge="imported"
             count={library.builders.length}
             defaultOpen
             indented
@@ -878,7 +877,7 @@ function LibrarySection({
 }: {
   title: string;
   detail: string;
-  badge: string;
+  badge?: string;
   count: number;
   defaultOpen?: boolean;
   indented?: boolean;
@@ -895,8 +894,8 @@ function LibrarySection({
           <h3 className="fb-section-heading">{title}</h3>
           <p className="library-section-copy">{detail}</p>
         </div>
-        <div className="library-section-meta">
-          <span className="fb-kind-pill">{badge}</span>
+        <div className={`library-section-meta${badge ? "" : " library-section-meta--no-badge"}`}>
+          {badge ? <span className="fb-kind-pill">{badge}</span> : null}
           <CountMeta label={count === 1 ? "source" : "sources"} value={count} />
           {action}
         </div>

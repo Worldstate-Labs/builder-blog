@@ -2572,6 +2572,10 @@ details:not([open]) > :not(summary) {
   font-size: 0.8125rem;
 }
 
+.library-section-meta--no-badge {
+  gap: 0.65rem;
+}
+
 .library-section-body {
   border-top: 1px solid var(--line);
   display: grid;
@@ -12255,6 +12259,19 @@ body {
   .library-section-meta .import-remove-control {
     grid-column: 1 / -1;
     justify-self: start;
+  }
+
+  .library-section-meta--no-badge {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .library-section-meta--no-badge .count-meta {
+    justify-self: start;
+  }
+
+  .library-section-meta--no-badge .import-remove-control {
+    grid-column: 2;
+    justify-self: end;
   }
 
   .library-section-meta .library-visibility-toggle {
