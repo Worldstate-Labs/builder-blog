@@ -3699,11 +3699,14 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(cssRule(globals, ".library-source-list-tools"), /border-bottom:/);
   assert.match(cssRule(globals, ".library-source-list-tools"), /background:\s*transparent/);
   assert.match(cssRule(globals, ".library-source-list-tools"), /padding:\s*1rem/);
-  assert.match(globals, /\.your-library-panel > \.library-section-body\s*{[\s\S]*padding:\s*0 0 1rem/);
+  assert.match(cssRule(globals, ".your-library-panel > .library-section-body"), /gap:\s*0/);
+  assert.match(cssRule(globals, ".your-library-panel > .library-section-body"), /padding:\s*0 1rem 1rem/);
+  assert.match(cssRule(globals, ".your-library-panel .sources-sync-section"), /margin:\s*0 -1rem/);
+  assert.match(cssRule(globals, ".your-library-panel .library-source-list-tools"), /padding:\s*1rem 0/);
   assert.match(globals, /\.library-add-source-toggle\s*{[\s\S]*border-radius:\s*999px/);
-  assert.match(cssRule(globals, ".your-library-panel .add-source-panel"), /margin:\s*0 1rem 1rem/);
+  assert.match(cssRule(globals, ".your-library-panel .add-source-panel"), /margin:\s*0 0 1rem/);
   assert.match(cssRule(globals, ".your-library-panel .builder-library-list"), /gap:\s*0/);
-  assert.match(cssRule(globals, ".your-library-panel .builder-library-source-list"), /padding:\s*0 1rem/);
+  assert.match(cssRule(globals, ".your-library-panel .builder-library-source-list"), /padding:\s*0/);
   assert.match(globals, /\.source-pick svg\s*{[\s\S]*height:\s*0\.875rem/);
   assert.match(globals, /\.add-source-name-input\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.add-source-submit\s*{[\s\S]*justify-content:\s*center/);

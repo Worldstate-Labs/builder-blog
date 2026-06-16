@@ -2629,7 +2629,7 @@ details:not([open]) > :not(summary) {
 }
 
 .your-library-panel .add-source-panel {
-  margin: 0 1rem 1rem;
+  margin: 0 0 1rem;
 }
 
 .your-library-panel .builder-library-list {
@@ -2637,7 +2637,7 @@ details:not([open]) > :not(summary) {
 }
 
 .your-library-panel .builder-library-source-list {
-  padding: 0 1rem;
+  padding: 0;
 }
 
 .add-source-form {
@@ -5781,12 +5781,17 @@ details:not([open]) > :not(summary) {
 }
 
 .your-library-panel > .library-section-body {
-  gap: 1rem;
-  padding: 0 0 1rem;
+  gap: 0;
+  padding: 0 1rem 1rem;
 }
 
 .your-library-panel .sources-sync-section {
+  margin: 0 -1rem;
   padding: 0;
+}
+
+.your-library-panel .library-source-list-tools {
+  padding: 1rem 0;
 }
 
 .own-digest-card {
