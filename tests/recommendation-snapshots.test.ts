@@ -293,7 +293,9 @@ test("source logos are shared across recommendation and library surfaces", () =>
   assert.doesNotMatch(source("src/components/RecentPostsList.tsx"), /showBuilderRow=\{false\}/);
   assert.match(source("src/components/PostCard.tsx"), /showDebugActions = false/);
   assert.match(source("src/components/BuilderFeedItems.tsx"), /PostCard/);
-  assert.match(source("src/components/BuilderLibraryList.tsx"), /SourceBadge/);
+  assert.doesNotMatch(source("src/components/BuilderLibraryList.tsx"), /SourceBadge/);
+  assert.match(source("src/components/BuilderLibraryList.tsx"), /builder-library-source-list/);
+  assert.match(source("src/components/BuilderLibraryList.tsx"), /builder-library-see-more/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /SourceBadge/);
   assert.match(source("src/components/FeedCard.tsx"), /PostCard/);
   assert.match(source("src/components/FetchMethodPopover.tsx"), /className="post-action-popover-icon"/);

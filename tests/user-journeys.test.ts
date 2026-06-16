@@ -2858,7 +2858,8 @@ test("web display boundaries keep raw fetched content in the builders tab", () =
   assert.equal(buildersPage.includes("BuilderLibraryList"), true);
   assert.equal(builderLibraryList.includes("BuilderFeedItems"), true);
   assert.equal(buildersPage.includes("Technical details"), false);
-  assert.equal(builderLibraryList.includes("SourceBadge"), true);
+  assert.equal(builderLibraryList.includes("builder-library-source-section"), false);
+  assert.equal(builderLibraryList.includes("builder-library-source-list"), true);
   // UI copy stays away from "fetched" inside the library row; the canonical
   // display component is PostCard, while fetched-post-* classes still use
   // "fetched" because the storage layer is still the FeedItem fetch path.
