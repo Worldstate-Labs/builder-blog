@@ -3673,11 +3673,11 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(privateLibraryPanel, /className="add-source-panel fb-panel"/);
   assert.match(privateLibraryPanel, /className="add-source-panel fb-panel" id=\{addPanelId\}/);
   assert.doesNotMatch(privateLibraryPanel, /className="library-source-list-shell"/);
-  assert.match(privateLibraryPanel, /className="library-source-list-tools"/);
+  assert.match(privateLibraryPanel, /SourceLibraryItemsArea/);
   assert.match(privateLibraryPanel, /className="library-add-source-toggle"/);
   assert.match(privateLibraryPanel, /Close add source form/);
   assert.doesNotMatch(privateLibraryPanel, /Close add source"/);
-  assert.match(privateLibraryPanel, /\{beforeBody\}[\s\S]*className="library-source-list-tools"[\s\S]*\{children\}/);
+  assert.match(privateLibraryPanel, /\{beforeBody\}[\s\S]*<SourceLibraryItemsArea[\s\S]*\{children\}[\s\S]*<\/SourceLibraryItemsArea>/);
   assert.match(privateLibraryPanel, /library-section-summary--static/);
   assert.match(privateLibraryPanel, /\{beforeBody\}/);
   assert.ok(
@@ -3687,26 +3687,31 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   );
   assert.ok(
     privateLibraryPanel.indexOf("{children}") >
-      privateLibraryPanel.indexOf('className="library-source-list-tools"'),
+      privateLibraryPanel.indexOf("<SourceLibraryItemsArea"),
     "The source list should remain directly after the Add source controls.",
   );
+  assert.match(buildersPage, /import \{ SourceLibraryItemsArea \}/);
+  assert.match(buildersPage, /<SourceLibraryItemsArea>\{children\}<\/SourceLibraryItemsArea>/);
+  const sourceLibraryItemsArea = source("src/components/SourceLibraryItemsArea.tsx");
+  assert.match(sourceLibraryItemsArea, /className="source-library-items-area"/);
+  assert.match(sourceLibraryItemsArea, /className="source-library-items-toolbar"/);
   assert.doesNotMatch(privateLibraryPanel, /className="fb-btn dark compact"/);
   assert.doesNotMatch(privateLibraryPanel, /CountMeta/);
   assert.doesNotMatch(privateLibraryPanel, /CountChip/);
   assert.doesNotMatch(privateLibraryPanel, /className="fb-panel mb-3"/);
   assert.match(globals, /\.add-source-form/);
   assert.doesNotMatch(globals, /\.library-source-list-shell/);
-  assert.match(cssRule(globals, ".library-source-list-tools"), /border-bottom:/);
-  assert.match(cssRule(globals, ".library-source-list-tools"), /background:\s*transparent/);
-  assert.match(cssRule(globals, ".library-source-list-tools"), /padding:\s*1rem/);
-  assert.match(cssRule(globals, ".your-library-panel > .library-section-body"), /gap:\s*0/);
-  assert.match(cssRule(globals, ".your-library-panel > .library-section-body"), /padding:\s*0 1rem 1rem/);
-  assert.match(cssRule(globals, ".your-library-panel .sources-sync-section"), /margin:\s*0 -1rem/);
-  assert.match(cssRule(globals, ".your-library-panel .library-source-list-tools"), /padding:\s*1rem 0/);
+  assert.doesNotMatch(globals, /\.library-source-list-tools/);
+  assert.match(cssRule(globals, ".source-library-items-area"), /padding:\s*0 1rem 1rem/);
+  assert.match(cssRule(globals, ".source-library-items-toolbar"), /border-bottom:/);
+  assert.match(cssRule(globals, ".source-library-items-toolbar"), /background:\s*transparent/);
+  assert.match(cssRule(globals, ".source-library-items-toolbar"), /padding:\s*1rem 0/);
+  assert.match(cssRule(globals, ".your-library-panel .sources-sync-section"), /padding:\s*0/);
+  assert.doesNotMatch(globals, /\.your-library-panel > \.library-section-body/);
   assert.match(globals, /\.library-add-source-toggle\s*{[\s\S]*border-radius:\s*999px/);
-  assert.match(cssRule(globals, ".your-library-panel .add-source-panel"), /margin:\s*0 0 1rem/);
-  assert.match(cssRule(globals, ".your-library-panel .builder-library-list"), /gap:\s*0/);
-  assert.match(cssRule(globals, ".your-library-panel .builder-library-source-list"), /padding:\s*0/);
+  assert.match(cssRule(globals, ".source-library-items-area > .add-source-panel"), /margin:\s*0 0 1rem/);
+  assert.match(cssRule(globals, ".source-library-items-area .builder-library-list"), /gap:\s*0/);
+  assert.match(cssRule(globals, ".source-library-items-area .builder-library-source-list"), /padding:\s*0/);
   assert.match(globals, /\.source-pick svg\s*{[\s\S]*height:\s*0\.875rem/);
   assert.match(globals, /\.add-source-name-input\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.add-source-submit\s*{[\s\S]*justify-content:\s*center/);

@@ -22,6 +22,7 @@ import { OwnDigestPipelineUpdatesCard } from "@/components/OwnDigestPipelineUpda
 import { PageHeader } from "@/components/PageHeader";
 import { PrivateLibraryPanel } from "@/components/PrivateLibraryPanel";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
+import { SourceLibraryItemsArea } from "@/components/SourceLibraryItemsArea";
 import { WorkspaceTopTabs, type WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
 import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
 import { isAdminEmail } from "@/lib/admin";
@@ -900,7 +901,9 @@ function LibrarySection({
           {action}
         </div>
       </summary>
-      <div className="library-section-body">{children}</div>
+      <div className="library-section-body">
+        <SourceLibraryItemsArea>{children}</SourceLibraryItemsArea>
+      </div>
     </details>
   );
 }
