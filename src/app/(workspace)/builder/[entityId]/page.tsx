@@ -141,16 +141,6 @@ export default async function BuilderDetailPage({ params }: Params) {
   return (
     <div className="page-pad page-pad--reading builder-detail-page">
       <PageHeader
-        actions={
-          <Suspense fallback={<BuilderActionsSkeleton />}>
-            <BuilderDetailActionsSlot
-              entityId={entityId}
-              sourceName={entity.name}
-              userId={userId}
-              channelIds={channelIds}
-            />
-          </Suspense>
-        }
         className="builder-detail-page-head"
         title={entity.name}
       >
@@ -181,32 +171,44 @@ export default async function BuilderDetailPage({ params }: Params) {
                   />
                 ) : null}
               </div>
-              <div className="fb-src-meta">
-                {headerHostLabel ? (
-                  <span className="builder-detail-host source-host-meta mono">
-                    {headerHostLabel}
+              <div className="fb-src-meta builder-detail-meta-row">
+                <span className="builder-detail-meta-group">
+                  {headerHostLabel ? (
+                    <>
+                      <span className="builder-detail-host source-host-meta mono">
+                        {headerHostLabel}
+                      </span>
+                      <span className="source-count-dot source-meta-dot">·</span>
+                    </>
+                  ) : null}
+                  <span
+                    className={
+                      headerItemCount > 0
+                        ? "source-count-meta"
+                        : "source-count-meta source-count-meta-empty"
+                    }
+                  >
+                    <CountMeta label={headerItemCount === 1 ? "post" : "posts"} value={headerItemCount} />
                   </span>
-                ) : null}
-                {headerHostLabel ? (
-                  <span className="source-count-dot source-meta-dot">·</span>
-                ) : null}
-                <span
-                  className={
-                    headerItemCount > 0
-                      ? "source-count-meta"
-                      : "source-count-meta source-count-meta-empty"
-                  }
-                >
-                  <CountMeta label={headerItemCount === 1 ? "post" : "posts"} value={headerItemCount} />
+                  {lastFetchedMax ? (
+                    <>
+                      <span className="source-latest-dot source-meta-dot">·</span>
+                      <span className="source-latest-meta">
+                        {formatFetchedAt(lastFetchedMax)}
+                      </span>
+                    </>
+                  ) : null}
                 </span>
-                {lastFetchedMax ? (
-                  <>
-                    <span className="source-latest-dot source-meta-dot">·</span>
-                    <span className="source-latest-meta">
-                      {formatFetchedAt(lastFetchedMax)}
-                    </span>
-                  </>
-                ) : null}
+              </div>
+              <div className="builder-detail-control-row">
+                <Suspense fallback={<BuilderActionsSkeleton />}>
+                  <BuilderDetailActionsSlot
+                    entityId={entityId}
+                    sourceName={entity.name}
+                    userId={userId}
+                    channelIds={channelIds}
+                  />
+                </Suspense>
                 {headerSourceUrl ? (
                   <a
                     aria-label={`View ${entity.name} source site`}

@@ -149,6 +149,7 @@ export function BuilderFeedItems({
               builder,
               detailUrl: postDetailHref(item.id, returnHref, returnLabel),
             }}
+            showBuilderRow={false}
             showSourceBadge={false}
             variant="row"
           />

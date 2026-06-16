@@ -9,12 +9,6 @@ export function BuilderDetailLoading() {
       className="page-pad page-pad--reading builder-detail-page builder-detail-loading"
     >
       <PageHeader
-        actions={
-          <div className="builder-detail-actions-skeleton">
-            <span className="sr-only">Loading source follow action</span>
-            <div className="builder-detail-action-skeleton-button" />
-          </div>
-        }
         className="builder-detail-page-head"
         title="Loading source"
       >
@@ -30,12 +24,21 @@ export function BuilderDetailLoading() {
                 <span className="builder-detail-loading-title" />
                 <span className="builder-detail-loading-badge" />
               </div>
-              <div className="fb-src-meta">
-                <span className="builder-detail-loading-meta" />
-                <span className="source-count-dot source-meta-dot">·</span>
-                <span className="builder-detail-loading-meta builder-detail-loading-meta--short" />
-                <span className="source-latest-dot source-meta-dot">·</span>
-                <span className="builder-detail-loading-meta builder-detail-loading-meta--wide" />
+              <div className="fb-src-meta builder-detail-meta-row">
+                <span className="builder-detail-meta-group">
+                  <span className="builder-detail-loading-meta" />
+                  <span className="source-count-dot source-meta-dot">·</span>
+                  <span className="builder-detail-loading-meta builder-detail-loading-meta--short" />
+                  <span className="source-latest-dot source-meta-dot">·</span>
+                  <span className="builder-detail-loading-meta builder-detail-loading-meta--wide" />
+                </span>
+              </div>
+              <div className="builder-detail-control-row">
+                <div className="builder-detail-actions-skeleton">
+                  <span className="sr-only">Loading source follow action</span>
+                  <div className="builder-detail-action-skeleton-button" />
+                </div>
+                <span className="builder-detail-loading-chip" />
               </div>
               <span className="builder-detail-loading-bio" />
             </div>

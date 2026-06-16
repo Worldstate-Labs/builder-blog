@@ -3769,6 +3769,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   // through PostCard.
   assert.match(builderFeedItems, /className="builder-posts-count"/);
   assert.match(builderFeedItems, /PostCard/);
+  assert.match(builderFeedItems, /showBuilderRow=\{false\}/);
   assert.match(builderFeedItems, /showSourceBadge=\{false\}/);
   assert.match(postCard, /Summary/);
   assert.match(postCard, /export function PostCard/);
@@ -3925,12 +3926,12 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(postDetailPage, /title="Post"/);
   assert.match(postDetailPage, /className="reading-page-toolbar"/);
   assert.match(postDetailPage, /className="reading-source-label"/);
-  assert.match(postDetailPage, /@\/components\/SourceBadge/);
   assert.match(globals, /\.reading-source-label\s*{[\s\S]*border:\s*1px solid/);
   assert.match(globals, /\.reading-source-label\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.reading-source-label\s*{[\s\S]*min-height:\s*2rem/);
   assert.match(globals, /\.reading-source-label \.source-badge-mark\s*{[\s\S]*height:\s*1\.15rem/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.reading-source-label\s*{[\s\S]*justify-self:\s*start/);
+  assert.match(postDetailPage, /@\/components\/SourceBadge/);
   assert.match(postDetailPage, /const sourceBuilder = item\.builder/);
   assert.match(postDetailPage, /<SourceBadge builder=\{sourceBuilder\} \/>/);
   assert.doesNotMatch(postDetailPage, /<SourceBadge builder=\{sourceBuilder\} decorative showLabel=\{false\} \/>/);
