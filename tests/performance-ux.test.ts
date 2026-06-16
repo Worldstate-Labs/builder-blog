@@ -2961,7 +2961,7 @@ test("user library search can fetch operator-only candidate sets", () => {
   assert.match(searchPage, /aria-label=\{`\$\{originalActionLabel\}: \$\{result\.title\}`\}/);
   assert.match(searchPage, /title=\{originalActionLabel\}/);
   assert.match(searchPage, /function searchOriginalActionLabel/);
-  assert.match(searchPage, /type === "builder" \? "View source site" : "View original"/);
+  assert.match(searchPage, /type === "builder" \? "View source site" : "Original"/);
   assert.doesNotMatch(searchPage, /Open source site/);
   assert.doesNotMatch(searchPage, /aria-label=\{`View original: \$\{result\.title\}`\}/);
   assert.match(searchPage, /<SourceBadge decorative showLabel=\{false\} sourceType=\{result\.sourceType \?\? result\.type\} \/>/);
@@ -4080,7 +4080,7 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(postCard, /actionContext = compactActionContext\(title\)/);
   assert.doesNotMatch(postCard, /originalSummaryRegionId|View original summary/);
   assert.match(postCard, /aria-label=\{actionLabel\(rawContentLabel, actionContext\)\}/);
-  assert.match(postCard, /aria-label=\{actionLabel\("View original", actionContext\)\}/);
+  assert.match(postCard, /aria-label=\{actionLabel\("Original", actionContext\)\}/);
   assert.match(postCard, /accessibleLabel=\{actionLabel\("Summary method", actionContext\)\}/);
   assert.match(postCard, /aria-controls=\{rawRegionId\}/);
   assert.match(postCard, /aria-expanded=\{rawExpanded\}/);

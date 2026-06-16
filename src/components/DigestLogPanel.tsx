@@ -1328,12 +1328,12 @@ function CandidateRow({ item, synced }: { item: DigestRunCandidate; synced: bool
       </span>
       {item.url ? (
         <a
-          aria-label="View the original on its source site"
+          aria-label="Original"
           className="sync-panel-candidate-link"
           href={item.url}
           rel="noreferrer"
           target="_blank"
-          title="View original"
+          title="Original"
         >
           <ExternalLink aria-hidden="true" className="sync-panel-candidate-link-icon" />
         </a>

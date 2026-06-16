@@ -338,7 +338,7 @@ test("post card suppresses duplicate source labels across meta and footer action
   assert.match(html, /class="post-source-original"/);
   assert.match(html, /class="post-source-original"[\s\S]*class="source-badge"/);
   assert.doesNotMatch(html, /class="post-source-original"[\s\S]*aria-label="Product Hunt Top Products"/);
-  assert.match(html, />View original</);
+  assert.match(html, />Original</);
 });
 
 test("post card keeps the source type badge when there is no original action", () => {
@@ -362,7 +362,7 @@ test("post card keeps the source type badge when there is no original action", (
   const metaHtml = html.match(/<div class="post-meta">([\s\S]*?)<\/div>/)?.[1] ?? "";
   assert.match(metaHtml, /class="source-badge" data-source="blog" title="Blog"/);
   assert.doesNotMatch(html, /class="post-source-original"/);
-  assert.doesNotMatch(html, />View original</);
+  assert.doesNotMatch(html, />Original</);
 });
 
 test("post card action controls include the post title in accessible names", () => {
@@ -385,7 +385,7 @@ test("post card action controls include the post title in accessible names", () 
     }),
   );
 
-  assert.match(html, /aria-label="View original: Contextual Button Labels"/);
+  assert.match(html, /aria-label="Original: Contextual Button Labels"/);
   assert.match(html, /aria-label="Crawled content: Contextual Button Labels"/);
   assert.doesNotMatch(html, />Read</);
   assert.doesNotMatch(html, /aria-label="Summary method: Contextual Button Labels"/);
@@ -443,7 +443,7 @@ test("post card keeps source URLs as actions instead of repeated summary text", 
 
   assert.match(html, /A useful summary should stay readable without repeating the original URL\./);
   assert.match(html, /href="https:\/\/example\.com\/source-url-action"/);
-  assert.match(html, />View original</);
+  assert.match(html, />Original</);
   assert.doesNotMatch(visibleText, /https:\/\/example\.com\/source-url-action/);
 });
 

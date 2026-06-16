@@ -318,17 +318,19 @@ export function PostCard({
 
         {context}
 
-        {/* Footer row: Published date (left) · Action icons (right) */}
+        {/* Footer row: timestamp (left) · action icons (right) */}
         <div
           className="post-footer"
           data-stack-actions={stackActionsOnMobile ? "true" : undefined}
         >
           {showPublishedDate ? (
-            <span className="post-footer-published">
-              {post.publishedAt
-                ? `Published ${formatDate(post.publishedAt, hydrated)}`
-                : "Published date unknown"}
-            </span>
+            post.publishedAt ? (
+              <time className="post-footer-published" dateTime={post.publishedAt}>
+                {formatDate(post.publishedAt, hydrated)}
+              </time>
+            ) : (
+              <span className="post-footer-published">Date unknown</span>
+            )
           ) : (
             <span />
           )}
@@ -342,13 +344,13 @@ export function PostCard({
             {/* External platform action: keep the platform icon, but use one stable label. */}
             {showOriginalAction ? (
               <a
-                aria-label={actionLabel("View original", actionContext)}
+                aria-label={actionLabel("Original", actionContext)}
                 className="post-source-original"
                 href={post.url}
                 onClick={noteInteraction}
                 rel="noreferrer"
                 target="_blank"
-                title="View original"
+                title="Original"
               >
                 <SourceBadge
                   builder={builder}
@@ -356,7 +358,7 @@ export function PostCard({
                   sourceType={builder?.sourceType ?? post.sourceType ?? null}
                   showLabel={false}
                 />
-                <span>View original</span>
+                <span>Original</span>
               </a>
             ) : null}
 
