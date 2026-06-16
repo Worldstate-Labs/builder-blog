@@ -135,7 +135,7 @@ test("source avatar renders builder.avatarUrl ahead of favicon/monogram", () => 
   const list = readFileSync("src/components/BuilderLibraryList.tsx", "utf8");
   const avatar = readFileSync("src/components/SourceAvatar.tsx", "utf8");
   const detailPage = readFileSync("src/app/(workspace)/builder/[entityId]/page.tsx", "utf8");
-  assert.match(list, /<SourceAvatar className="builder-library-avatar" source=\{builder\} \/>/);
+  assert.match(list, /<SourceAvatar className="builder-library-avatar" imageSize=\{40\} source=\{builder\} \/>/);
   assert.match(detailPage, /<SourceAvatar/);
   assert.match(avatar, /source\.avatarUrl/);
   // The real-avatar branch must come before the favicon branch in

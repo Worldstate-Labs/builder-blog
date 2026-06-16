@@ -285,7 +285,7 @@ function BuilderCard({
       id={builder.id}
       className="builder-library-card"
     >
-      <SourceAvatar className="builder-library-avatar" source={builder} />
+      <SourceAvatar className="builder-library-avatar" imageSize={40} source={builder} />
       <div className="builder-library-card-body">
         <BuilderInfo builder={builder} />
         {removeError ? (

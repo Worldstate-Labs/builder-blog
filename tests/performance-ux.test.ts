@@ -1672,7 +1672,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*margin-top:\s*clamp/);
   assert.match(globals, /\.builder-detail-workspace\s*{[\s\S]*max-width:\s*var\(--reading-max\)/);
   assert.match(globals, /\.builder-detail-page-head\s*{[\s\S]*--page-head-copy-max:\s*var\(--reading-max\)/);
-  assert.match(globals, /\.builder-detail-avatar\.fb-src-icon\s*{[\s\S]*height:\s*3\.5rem/);
+  assert.match(globals, /\.builder-detail-identity\s*{[\s\S]*--source-identity-avatar-size:\s*4rem/);
+  assert.match(globals, /\.builder-detail-avatar\.fb-src-icon\s*{[\s\S]*height:\s*var\(--source-identity-avatar-size\)/);
+  assert.match(globals, /\.builder-detail-loading-avatar\s*{[\s\S]*height:\s*var\(--source-identity-avatar-size\)/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-detail-identity\s*{[\s\S]*--source-identity-avatar-size:\s*3\.625rem/);
   assert.match(globals, /\.builder-detail-channel-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto auto/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-detail-channel-row\s*{[\s\S]*grid-template-columns:\s*1fr/);
   assert.match(source("src/components/RecentPostsList.tsx"), /className="recent-post-list"/);
@@ -3744,7 +3747,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.builder-library-see-more\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-posts\s*{[\s\S]*margin-left:\s*0/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-posts-count\s*{[\s\S]*flex-wrap:\s*nowrap/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card\s*{[\s\S]*grid-template-columns:\s*2\.25rem minmax\(0,\s*1fr\)/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card\s*{[\s\S]*--source-list-avatar-size:\s*2\.5rem/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-body\s*{[\s\S]*gap:\s*0\.58rem/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-posts-toolbar\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.doesNotMatch(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-controls\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
@@ -4981,7 +4984,9 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.doesNotMatch(css, /mobile-sources-stack|data-active-tab|data-tab="imported"/);
   assert.match(css, /\.sources-sync-section \.digest-updates-panel/);
   assert.match(css, /\.builder-library-card\s*{[\s\S]*display:\s*grid/);
-  assert.match(css, /\.builder-library-card\s*{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\)/);
+  assert.match(css, /\.builder-library-card\s*{[\s\S]*--source-list-avatar-size:\s*2\.375rem/);
+  assert.match(css, /\.builder-library-card\s*{[\s\S]*grid-template-columns:\s*var\(--source-list-avatar-size\) minmax\(0,\s*1fr\)/);
+  assert.match(css, /\.builder-library-avatar\.fb-src-icon\s*{[\s\S]*height:\s*var\(--source-list-avatar-size\)/);
   assert.match(css, /\.builder-library-card\s*{[\s\S]*padding:\s*0\.95rem 0/);
   assert.match(css, /\.builder-library-card \+ \.builder-library-card\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(css, /\.builder-library-card-body\s*{[\s\S]*display:\s*grid/);
@@ -5024,7 +5029,7 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.library-section-meta \.count-meta\s*{[\s\S]*font-size:\s*0\.8125rem/);
   assert.doesNotMatch(css, /\.library-section-summary::after[\s\S]*content:\s*"\+"/);
   assert.doesNotMatch(css, /\.library-section-meta > \.fb-btn\s*{/);
-  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card\s*{[\s\S]*grid-template-columns:\s*2\.25rem minmax\(0,\s*1fr\)/);
+  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card\s*{[\s\S]*--source-list-avatar-size:\s*2\.5rem/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card \.builder-library-actions,[\s\S]*\.builder-library-card \.row-actions\s*{[\s\S]*justify-content:\s*flex-end/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-body\s*{[\s\S]*gap:\s*0\.58rem/);
   assert.doesNotMatch(css, /builder-library-card-main/);

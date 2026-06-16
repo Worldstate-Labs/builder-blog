@@ -152,7 +152,7 @@ export default async function BuilderDetailPage({ params }: Params) {
           <div className="builder-detail-identity">
             <SourceAvatar
               className="builder-detail-avatar"
-              imageSize={56}
+              imageSize={64}
               source={{
                 avatarUrl: headerAvatarUrl,
                 fetchUrl: primaryChannel?.fetchUrl ?? null,
