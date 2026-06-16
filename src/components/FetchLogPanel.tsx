@@ -2797,13 +2797,11 @@ function TaskRow({
       label: "Planned",
       outcome: isDiscovery ? "Discovery task" : "Post task",
       tone: "ok",
-      children: (
+      children: task.contentStatus ? (
         <dl className="sync-panel-task-fact-list">
-          <FactRow label="Source type" value={<span>{task.sourceType ?? "Unknown source type"}</span>} />
-          {task.builder ? <FactRow label="Source" value={<span>{task.builder}</span>} /> : null}
-          {task.contentStatus ? <FactRow label="Content status" value={<span>{task.contentStatus.replace(/_/g, " ")}</span>} /> : null}
+          <FactRow label="Content status" value={<span>{task.contentStatus.replace(/_/g, " ")}</span>} />
         </dl>
-      ),
+      ) : undefined,
     },
     {
       key: "read",
@@ -2951,11 +2949,6 @@ function TaskRow({
             aria-hidden="true"
             className="sync-panel-task-chev fb-task-chev"
           />
-          {task.sourceType ? (
-            <span className="mono sync-panel-task-source-type">
-              {task.sourceType}
-            </span>
-          ) : null}
           <span
             className="sync-panel-task-status-pill"
             style={{ ...toneStyle(pill.tone), fontFamily: "var(--font-geist-mono)" }}
@@ -2965,9 +2958,6 @@ function TaskRow({
           <span className="sync-panel-task-title">
             {task.title ?? task.url ?? "Untitled task"}
           </span>
-          {task.builder ? (
-            <span className="sync-panel-task-builder">· {task.builder}</span>
-          ) : null}
         </summary>
 
         <div className="sync-panel-task-body">

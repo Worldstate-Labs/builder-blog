@@ -1995,10 +1995,11 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-task-card fb-task"/);
   assert.match(fetchLogPanel, /className="sync-panel-task-summary fb-task-summary"/);
   assert.match(fetchLogPanel, /className="sync-panel-task-chev fb-task-chev"/);
-  assert.match(fetchLogPanel, /className="mono sync-panel-task-source-type"/);
+  assert.match(fetchLogPanel, /className="sync-panel-task-source-type"/);
+  assert.doesNotMatch(fetchLogPanel, /className="mono sync-panel-task-source-type"/);
   assert.match(fetchLogPanel, /className="sync-panel-task-status-pill"/);
   assert.match(fetchLogPanel, /className="sync-panel-task-title"/);
-  assert.match(fetchLogPanel, /className="sync-panel-task-builder"/);
+  assert.doesNotMatch(fetchLogPanel, /className="sync-panel-task-builder"/);
   assert.match(fetchLogPanel, /className="sync-panel-task-body"/);
   assert.match(fetchLogPanel, /className="sync-panel-task-banner"/);
   assert.match(fetchLogPanel, /className="sync-panel-lifecycle"/);

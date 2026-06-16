@@ -6769,14 +6769,6 @@ details:not([open]) > :not(summary) {
   white-space: nowrap;
 }
 
-.sync-panel-task-builder {
-  color: var(--muted-strong);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .sync-panel-task-body {
   border-top: 1px solid var(--line);
   display: grid;
@@ -6995,11 +6987,6 @@ details:not([open]) > :not(summary) {
     flex-basis: 100%;
     white-space: normal;
     overflow-wrap: anywhere;
-  }
-
-  .sync-panel-task-builder {
-    flex-basis: 100%;
-    white-space: normal;
   }
 
   .sync-panel-task-fact-row {

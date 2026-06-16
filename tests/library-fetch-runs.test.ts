@@ -384,10 +384,11 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /className="sync-panel-task-card fb-task"/);
   assert.match(panel, /className="sync-panel-task-summary fb-task-summary"/);
   assert.match(panel, /className="sync-panel-task-chev fb-task-chev"/);
-  assert.match(panel, /className="mono sync-panel-task-source-type"/);
+  assert.match(panel, /className="sync-panel-task-source-type"/);
+  assert.doesNotMatch(panel, /className="mono sync-panel-task-source-type"/);
   assert.match(panel, /className="sync-panel-task-status-pill"/);
   assert.match(panel, /className="sync-panel-task-title"/);
-  assert.match(panel, /className="sync-panel-task-builder"/);
+  assert.doesNotMatch(panel, /className="sync-panel-task-builder"/);
   assert.match(panel, /className="sync-panel-task-body"/);
   assert.match(panel, /className="sync-panel-task-banner"/);
   assert.match(panel, /className="sync-panel-lifecycle"/);
