@@ -8993,17 +8993,17 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .fb-hub-digest-preview {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   color: var(--muted-strong);
   font-size: 0.875rem;
-  padding: 0.85rem;
+  padding: 0;
 }
 
 .digest-source-management .fb-hub-digest-preview {
-  background: color-mix(in oklch, var(--paper) 86%, var(--rail));
-  padding: 1rem;
+  background: transparent;
+  padding: 0;
 }
 
 .fb-hub-digest-preview-row {
@@ -11986,11 +11986,6 @@ body {
   .own-digest-card {
     gap: 0.7rem;
     padding: 0.95rem;
-  }
-
-  .own-digest-card .fb-hub-digest-preview {
-    background: color-mix(in oklch, var(--paper-strong) 78%, var(--rail));
-    padding: 0.75rem;
   }
 
   .own-digest-card .fb-hub-digest-meta {

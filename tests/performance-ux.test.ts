@@ -3351,6 +3351,19 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-source-type-preview\s*{/);
   assert.doesNotMatch(source("src/app/globals.css"), /\.fb-hub-source-avatar\[data-avatar-tone="0"\]/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview\s*{/);
+  assert.match(
+    source("src/app/globals.css"),
+    /(?:^|\n)\.fb-hub-digest-preview\s*{\s*background:\s*transparent;\s*border:\s*0;\s*border-radius:\s*0;[\s\S]*?padding:\s*0;/,
+  );
+  const ownDigestPreviewRules = Array.from(
+    source("src/app/globals.css").matchAll(/(?:^|\n)\s*\.own-digest-card \.fb-hub-digest-preview\s*{[^}]*}/g),
+    (match) => match[0],
+  );
+  assert.ok(ownDigestPreviewRules.length > 0);
+  for (const rule of ownDigestPreviewRules) {
+    assert.doesNotMatch(rule, /background:/);
+    assert.doesNotMatch(rule, /padding:/);
+  }
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview \.digest-headline-summary\s*{/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview \.digest-headline-summary\s*{[\s\S]*background:\s*transparent/);
   assert.match(source("src/app/globals.css"), /\.fb-hub-digest-preview \.digest-headline-kicker\s*{/);
