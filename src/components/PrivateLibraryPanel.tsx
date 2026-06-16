@@ -74,27 +74,25 @@ export function PrivateLibraryPanel({
       ) : null}
       <div className="library-section-body">
         {beforeBody}
-        <div className="library-source-list-shell">
-          <div className="library-source-list-tools">
-            <button
-              aria-controls={addPanelId}
-              aria-expanded={addOpen}
-              aria-label={addOpen ? "Close add source form" : "Add source"}
-              className="library-add-source-toggle"
-              onClick={toggleAdd}
-              type="button"
-            >
-              {addOpen ? <X aria-hidden="true" /> : <Plus aria-hidden="true" />}
-              <span>{addOpen ? "Close add source form" : "Add source"}</span>
-            </button>
-          </div>
-          {addOpen ? (
-            <div className="add-source-panel fb-panel" id={addPanelId}>
-              <AddBuilderForm sourceOptions={sourceOptions} />
-            </div>
-          ) : null}
-          {children}
+        <div className="library-source-list-tools">
+          <button
+            aria-controls={addPanelId}
+            aria-expanded={addOpen}
+            aria-label={addOpen ? "Close add source form" : "Add source"}
+            className="library-add-source-toggle"
+            onClick={toggleAdd}
+            type="button"
+          >
+            {addOpen ? <X aria-hidden="true" /> : <Plus aria-hidden="true" />}
+            <span>{addOpen ? "Close add source form" : "Add source"}</span>
+          </button>
         </div>
+        {addOpen ? (
+          <div className="add-source-panel fb-panel" id={addPanelId}>
+            <AddBuilderForm sourceOptions={sourceOptions} />
+          </div>
+        ) : null}
+        {children}
       </div>
     </section>
   );

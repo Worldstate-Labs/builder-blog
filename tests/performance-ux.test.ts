@@ -3672,36 +3672,38 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(privateLibraryPanel, /aria-expanded=\{addOpen\}/);
   assert.match(privateLibraryPanel, /className="add-source-panel fb-panel"/);
   assert.match(privateLibraryPanel, /className="add-source-panel fb-panel" id=\{addPanelId\}/);
-  assert.match(privateLibraryPanel, /className="library-source-list-shell"/);
+  assert.doesNotMatch(privateLibraryPanel, /className="library-source-list-shell"/);
   assert.match(privateLibraryPanel, /className="library-source-list-tools"/);
   assert.match(privateLibraryPanel, /className="library-add-source-toggle"/);
   assert.match(privateLibraryPanel, /Close add source form/);
   assert.doesNotMatch(privateLibraryPanel, /Close add source"/);
-  assert.match(privateLibraryPanel, /\{beforeBody\}[\s\S]*className="library-source-list-shell"[\s\S]*\{children\}/);
+  assert.match(privateLibraryPanel, /\{beforeBody\}[\s\S]*className="library-source-list-tools"[\s\S]*\{children\}/);
   assert.match(privateLibraryPanel, /library-section-summary--static/);
   assert.match(privateLibraryPanel, /\{beforeBody\}/);
   assert.ok(
     privateLibraryPanel.indexOf('className="library-add-source-toggle"') >
-      privateLibraryPanel.indexOf('className="library-source-list-shell"'),
-    "Add source should live inside the source list shell, not the panel header.",
+      privateLibraryPanel.indexOf("{beforeBody}"),
+    "Add source should live in the panel body after the schedule summary, not the panel header.",
+  );
+  assert.ok(
+    privateLibraryPanel.indexOf("{children}") >
+      privateLibraryPanel.indexOf('className="library-source-list-tools"'),
+    "The source list should remain directly after the Add source controls.",
   );
   assert.doesNotMatch(privateLibraryPanel, /className="fb-btn dark compact"/);
   assert.doesNotMatch(privateLibraryPanel, /CountMeta/);
   assert.doesNotMatch(privateLibraryPanel, /CountChip/);
   assert.doesNotMatch(privateLibraryPanel, /className="fb-panel mb-3"/);
   assert.match(globals, /\.add-source-form/);
-  assert.match(globals, /\.library-source-list-shell\s*{[\s\S]*display:\s*grid/);
-  assert.match(globals, /\.library-source-list-shell\s*{[\s\S]*border:\s*1px solid/);
-  assert.match(globals, /\.library-source-list-shell\s*{[\s\S]*border-radius:\s*8px/);
-  assert.match(globals, /\.library-source-list-shell\s*{[\s\S]*overflow:\s*hidden/);
-  assert.match(globals, /\.library-source-list-tools\s*{[\s\S]*border-bottom:/);
-  assert.match(globals, /\.library-source-list-tools\s*{[\s\S]*background:/);
-  assert.match(globals, /\.library-source-list-tools\s*{[\s\S]*padding:\s*0\.75rem/);
+  assert.doesNotMatch(globals, /\.library-source-list-shell/);
+  assert.match(cssRule(globals, ".library-source-list-tools"), /border-bottom:/);
+  assert.match(cssRule(globals, ".library-source-list-tools"), /background:\s*transparent/);
+  assert.match(cssRule(globals, ".library-source-list-tools"), /padding:\s*1rem/);
   assert.match(globals, /\.your-library-panel > \.library-section-body\s*{[\s\S]*padding:\s*0 0 1rem/);
   assert.match(globals, /\.library-add-source-toggle\s*{[\s\S]*border-radius:\s*999px/);
-  assert.match(globals, /\.library-source-list-shell \.add-source-panel\s*{[\s\S]*margin:\s*0/);
-  assert.match(globals, /\.library-source-list-shell \.builder-library-list\s*{[\s\S]*gap:\s*0/);
-  assert.match(globals, /\.library-source-list-shell \.builder-library-source-list\s*{[\s\S]*padding:\s*0\.35rem 1rem 0\.85rem/);
+  assert.match(cssRule(globals, ".your-library-panel .add-source-panel"), /margin:\s*0 1rem 1rem/);
+  assert.match(cssRule(globals, ".your-library-panel .builder-library-list"), /gap:\s*0/);
+  assert.match(cssRule(globals, ".your-library-panel .builder-library-source-list"), /padding:\s*0 1rem/);
   assert.match(globals, /\.source-pick svg\s*{[\s\S]*height:\s*0\.875rem/);
   assert.match(globals, /\.add-source-name-input\s*{[\s\S]*width:\s*100%/);
   assert.match(globals, /\.add-source-submit\s*{[\s\S]*justify-content:\s*center/);
