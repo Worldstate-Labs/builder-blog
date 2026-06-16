@@ -18,7 +18,7 @@ test("sources AI Digest loading state names the same sections as the loaded tab"
 
   assert.match(buildersLoading, /Your source library/);
   assert.match(buildersLoading, /Imported source libraries/);
-  assert.match(buildersLoading, /className="your-library-panel fb-panel"/);
+  assert.match(buildersLoading, /className="your-library-panel library-section-panel"/);
   assert.match(buildersLoading, /className="source-section-skeleton-row"/);
   assert.match(buildersLoading, /className="source-section-skeleton-card"/);
   assert.doesNotMatch(buildersLoading, /<div className="source-sync-skeleton-panel" \/>\s*<div className="source-sync-skeleton-panel" \/>/);

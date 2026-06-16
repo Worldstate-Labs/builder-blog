@@ -599,7 +599,7 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   // Mounted with the user's own library controls so Fetch setup stays together.
   assert.match(buildersPage, /<Suspense fallback=\{<FetchSourcesFallback \/>/);
   assert.match(buildersPage, /function FetchSourcesFallback/);
-  assert.match(buildersPage, /className="your-library-panel fb-panel"/);
+  assert.match(buildersPage, /className="your-library-panel library-section-panel"/);
   assert.match(buildersPage, /actions=\{/);
   assert.match(buildersPage, /compactOnly/);
   assert.match(buildersPage, /showStop=\{showStopLibraryCron\}/);

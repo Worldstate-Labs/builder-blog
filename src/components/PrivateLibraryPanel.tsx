@@ -74,7 +74,9 @@ export function PrivateLibraryPanel({
         </div>
       ) : null}
       <div className="library-section-body">
-        {beforeBody}
+        {beforeBody ? (
+          <div className="source-library-control-area">{beforeBody}</div>
+        ) : null}
         <SourceLibraryItemsArea
           controls={
             <button

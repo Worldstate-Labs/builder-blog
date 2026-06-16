@@ -718,7 +718,7 @@ async function FetchSourcesSection({
 
       <PrivateLibraryPanel
         beforeBody={fetchSyncSection}
-        className="your-library-panel fb-panel"
+        className="your-library-panel library-section-panel"
         hideHeader
         sourceOptions={data.sourceLabelOptions}
         title="Your source library"
@@ -813,7 +813,7 @@ function FetchSourcesFallback() {
   return (
     <section className="sources-section-stack" aria-live="polite" aria-busy="true">
       <span className="sr-only">Loading Sources</span>
-      <section className="your-library-panel fb-panel">
+      <section className="your-library-panel library-section-panel">
         <div className="source-sync-skeleton-line" />
         <div className="source-sync-skeleton-panel" />
         <div className="library-section-panel">

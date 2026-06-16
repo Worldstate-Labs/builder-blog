@@ -365,7 +365,7 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(buildersLoading, /className="sources-section-stack"/);
   assert.match(buildersLoading, /Your source library/);
   assert.match(buildersLoading, /Imported source libraries/);
-  assert.match(buildersLoading, /className="your-library-panel fb-panel"/);
+  assert.match(buildersLoading, /className="your-library-panel library-section-panel"/);
   assert.match(buildersLoading, /className="library-section-summary-copy source-section-skeleton-copy"/);
   assert.match(buildersLoading, /className="source-section-skeleton-row"/);
   assert.match(buildersLoading, /className="source-section-skeleton-card"/);
@@ -3010,7 +3010,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*Follow the sources your Local Agent fetches/);
   assert.doesNotMatch(buildersPage, /<h1 className="sr-only">Sources<\/h1>/);
   assert.match(buildersPage, /className="sources-section-stack"/);
-  assert.match(buildersPage, /className="your-library-panel fb-panel"/);
+  assert.match(buildersPage, /className="your-library-panel library-section-panel"/);
   assert.match(buildersPage, /Your source library/);
   assert.match(buildersPage, /personalSourceLibraryName/);
   assert.match(buildersPage, /className="workspace-content-stack workspace-content-stack--tabs-first"/);
@@ -3686,13 +3686,16 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(privateLibraryPanel, /className="add-source-panel fb-panel"/);
   assert.match(privateLibraryPanel, /className="add-source-panel fb-panel" id=\{addPanelId\}/);
   assert.doesNotMatch(privateLibraryPanel, /className="library-source-list-shell"/);
+  assert.match(privateLibraryPanel, /className="source-library-control-area"/);
   assert.match(privateLibraryPanel, /SourceLibraryItemsArea/);
   assert.match(privateLibraryPanel, /className="library-add-source-toggle"/);
   assert.match(privateLibraryPanel, /Close add source form/);
   assert.doesNotMatch(privateLibraryPanel, /Close add source"/);
-  assert.match(privateLibraryPanel, /\{beforeBody\}[\s\S]*<SourceLibraryItemsArea[\s\S]*\{children\}[\s\S]*<\/SourceLibraryItemsArea>/);
+  assert.match(privateLibraryPanel, /\{beforeBody \?[\s\S]*className="source-library-control-area"[\s\S]*<SourceLibraryItemsArea[\s\S]*\{children\}[\s\S]*<\/SourceLibraryItemsArea>/);
   assert.match(privateLibraryPanel, /library-section-summary--static/);
   assert.match(privateLibraryPanel, /\{beforeBody\}/);
+  assert.match(buildersPage, /className="your-library-panel library-section-panel"/);
+  assert.doesNotMatch(buildersPage, /className="your-library-panel fb-panel"/);
   assert.ok(
     privateLibraryPanel.indexOf('className="library-add-source-toggle"') >
       privateLibraryPanel.indexOf("{beforeBody}"),
@@ -3715,6 +3718,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.add-source-form/);
   assert.doesNotMatch(globals, /\.library-source-list-shell/);
   assert.doesNotMatch(globals, /\.library-source-list-tools/);
+  assert.match(cssRule(globals, ".source-library-control-area"), /padding:\s*1rem/);
+  assert.match(cssRule(globals, ".source-library-control-area"), /border-bottom:\s*1px solid var\(--line\)/);
   assert.match(cssRule(globals, ".source-library-items-area"), /padding:\s*0 1rem 1rem/);
   assert.match(cssRule(globals, ".source-library-items-toolbar"), /border-bottom:/);
   assert.match(cssRule(globals, ".source-library-items-toolbar"), /background:\s*transparent/);

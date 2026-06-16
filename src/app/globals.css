@@ -2583,6 +2583,12 @@ details:not([open]) > :not(summary) {
   padding: 0;
 }
 
+.source-library-control-area {
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+  padding: 1rem;
+}
+
 .source-library-items-area {
   display: grid;
   gap: 0;

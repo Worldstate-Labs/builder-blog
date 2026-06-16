@@ -42,7 +42,7 @@ export default function BuildersLoading() {
                   </div>
                   <div className="source-section-skeleton-chip" />
                 </div>
-                <section className="your-library-panel fb-panel">
+                <section className="your-library-panel library-section-panel">
                   <div className="source-sync-skeleton-panel" />
                   <div className="library-section-panel">
                     <div className="library-section-summary">
