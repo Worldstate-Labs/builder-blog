@@ -117,6 +117,7 @@ type DigestTimelineEntry = {
   status: CronSlotStatus;
   label: string;
   note: string;
+  syncSummary: string | null;
   run: DigestRunListItem | null;
   jobRun: AgentJobRunListItem | null;
   slot: DigestCronSlot | null;
@@ -167,6 +168,14 @@ function digestRunSummary(run: DigestRunListItem): string {
   return `${formatCount(run.candidateCount)} prepared`;
 }
 
+function digestRunSyncSummary(run: DigestRunListItem | null): string | null {
+  if (!run) return null;
+  const saved = Math.max(0, run.status === "synced" ? run.includedCount ?? 0 : 0);
+  const eligible = Math.max(0, run.candidateCount, saved);
+  if (eligible <= 0 && saved <= 0) return null;
+  return `${formatCount(saved)}/${formatCount(eligible)} saved`;
+}
+
 function buildDigestTimeline({
   jobRuns,
   runs,
@@ -196,6 +205,7 @@ function buildDigestTimeline({
         runSummary,
         runtime: slot.jobRun?.runtime,
       }),
+      syncSummary: digestRunSyncSummary(slot.run),
       run: slot.run,
       jobRun: slot.jobRun,
       slot,
@@ -217,6 +227,7 @@ function buildDigestTimeline({
       status: digestRunSlotStatus(run, jobRun, nowMs),
       label: scheduledRunTriggerLabel(jobRun ?? null, "digest-cron", run.source),
       note: digestRunSummary(run),
+      syncSummary: digestRunSyncSummary(run),
       run,
       jobRun,
       slot: null,
@@ -235,6 +246,7 @@ function buildDigestTimeline({
         jobRunStatus: jobRunStatusLabel(jobRun),
         runtime: jobRun.runtime,
       }),
+      syncSummary: null,
       run: null,
       jobRun,
       slot: null,
@@ -671,7 +683,7 @@ function DigestStatusPanel({
           >
             {statusLabel}
           </span>
-          <span className="fb-chip">{cronJob?.frequencyLabel ?? "one-time only"}</span>
+          {cronJob?.frequencyLabel ? <span className="fb-chip">{cronJob.frequencyLabel}</span> : null}
           {cronJob?.regenerateDigest ? <span className="fb-chip">rebuilds past posts</span> : null}
         </div>
         <p style={hasProblem ? { color: statusTone.color } : undefined}>{statusDetail}</p>
@@ -733,7 +745,7 @@ function DigestStatusPanel({
               ))}
             </div>
             <div className="sync-panel-slot-rows">
-              {entries.slice().reverse().slice(0, 6).map((entry) => (
+              {entries.slice().reverse().map((entry) => (
                 <DigestTimelineRow
                   key={entry.key}
                   entry={entry}
@@ -808,26 +820,32 @@ function DigestTimelineRow({
       id={id}
     >
       <div className="sync-panel-slot-row-main">
-        <span
-          className="sync-panel-slot-row-status"
-          style={{ color: style.color }}
-        >
+        <div className="sync-panel-slot-row-primary">
           <span
-            aria-hidden="true"
-            className="sync-panel-slot-row-dot"
-            style={{ background: style.color }}
-          />
-          {label}
-        </span>
-        <span className="sync-panel-slot-row-kind">{entry.label}</span>
-        <time
-          className="sync-panel-slot-row-time"
-          dateTime={entry.time}
-          title={formatAbsolute(entry.time)}
-        >
-          {hydrated ? formatRelative(entry.time) : formatAbsolute(entry.time)}
-        </time>
-        <span className="mono sync-panel-slot-row-note">{entry.note}</span>
+            className="sync-panel-slot-row-status"
+            style={{ color: style.color }}
+          >
+            <span
+              aria-hidden="true"
+              className="sync-panel-slot-row-dot"
+              style={{ background: style.color }}
+            />
+            {label}
+          </span>
+          <span className="sync-panel-slot-row-kind">{entry.label}</span>
+        </div>
+        <div className="sync-panel-slot-row-secondary">
+          <time
+            className="sync-panel-slot-row-time"
+            dateTime={entry.time}
+            title={formatAbsolute(entry.time)}
+          >
+            {hydrated ? formatRelative(entry.time) : formatAbsolute(entry.time)}
+          </time>
+          {entry.syncSummary ? (
+            <span className="mono sync-panel-slot-row-note">{entry.syncSummary}</span>
+          ) : null}
+        </div>
       </div>
       <div className="sync-panel-slot-row-side">
         {entry.logRef ? (

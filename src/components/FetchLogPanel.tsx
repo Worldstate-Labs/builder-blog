@@ -484,6 +484,7 @@ type FetchTimelineEntry = {
   status: CronSlotStatus;
   label: string;
   note: string;
+  syncSummary: string | null;
   run: LibraryFetchRunListItem | null;
   jobRun: AgentJobRunListItem | null;
   slot: CronSlot | null;
@@ -639,6 +640,29 @@ function timelineSlotRunNote(slot: CronSlot, run: LibraryFetchRunListItem | null
   });
 }
 
+function formatRunSyncSummary(done: number | undefined, total: number | undefined): string | null {
+  const synced = Math.max(0, done ?? 0);
+  const planned = Math.max(0, total ?? 0, synced);
+  if (planned <= 0 && synced <= 0) return null;
+  return `${formatCount(synced)}/${formatCount(planned)} synced`;
+}
+
+function fetchRunSyncSummary(
+  run: LibraryFetchRunListItem | null,
+  jobRun: AgentJobRunListItem | null,
+): string | null {
+  const liveProgress = jobRun ? readFetchJobProgress(jobRun.details) : null;
+  if (run) {
+    const stats = fetchRunStats({
+      details: readDetails(run.details),
+      liveProgress,
+      run,
+    });
+    return formatRunSyncSummary(stats.synced, stats.planned);
+  }
+  return formatRunSyncSummary(liveProgress?.counters?.synced, liveProgress?.counters?.tasksPlanned);
+}
+
 function buildFetchTimeline({
   jobRuns,
   runs,
@@ -665,6 +689,7 @@ function buildFetchTimeline({
       status: slot.status,
       label: triggerLabel,
       note: timelineSlotRunNote(slot, run),
+      syncSummary: fetchRunSyncSummary(run, slot.jobRun),
       run,
       jobRun: slot.jobRun,
       slot,
@@ -683,6 +708,7 @@ function buildFetchTimeline({
       status: fetchRunSlotStatus(run, jobRun, nowMs),
       label: triggerLabel,
       note: `${run.itemsFetched} read · ${formatDuration(run.durationMs)}`,
+      syncSummary: fetchRunSyncSummary(run, jobRun),
       run,
       jobRun,
       slot: null,
@@ -701,6 +727,7 @@ function buildFetchTimeline({
         jobRunStatus: jobRunStatusLabel(jobRun),
         runtime: jobRun.runtime,
       }),
+      syncSummary: fetchRunSyncSummary(null, jobRun),
       run: null,
       jobRun,
       slot: null,
@@ -1254,7 +1281,7 @@ function FetchStatusPanel({
           >
             {statusLabel}
           </span>
-          <span className="fb-chip">{cronJob?.frequencyLabel ?? "one-time only"}</span>
+          {cronJob?.frequencyLabel ? <span className="fb-chip">{cronJob.frequencyLabel}</span> : null}
           {cronJob?.overrideFetched ? <span className="fb-chip">refreshes library posts</span> : null}
         </div>
         <p style={hasProblem ? { color: statusTone.color } : undefined}>{statusDetail}</p>
@@ -1320,7 +1347,7 @@ function FetchStatusPanel({
               ))}
             </div>
             <div className="sync-panel-slot-rows">
-              {entries.slice().reverse().slice(0, 6).map((entry) => (
+              {entries.slice().reverse().map((entry) => (
                 <FetchTimelineRow
                   entry={entry}
                   hydrated={hydrated}
@@ -1412,7 +1439,6 @@ function FetchTimelineRow({
 }) {
   const style = cronSlotStyle(entry.status);
   const statusLabel = scheduledWindowStatusLabel(entry.status);
-  const failureContext = entry.slot ? slotFailureContext(entry.slot) : entry.jobRun ? jobRunDiagnostic(entry.jobRun) : null;
   const id = entry.slot ? slotDomId(entry.slot) : entry.run ? runDomId(entry.run.id) : entry.jobRun ? jobRunDomId(entry.jobRun.instanceId) : undefined;
   return (
     <div
@@ -1420,29 +1446,32 @@ function FetchTimelineRow({
       id={id}
     >
       <div className="sync-panel-slot-row-main">
-        <span
-          className="sync-panel-slot-row-status"
-          style={{ color: style.color }}
-        >
+        <div className="sync-panel-slot-row-primary">
           <span
-            aria-hidden="true"
-            className="sync-panel-slot-row-dot"
-            style={{ background: style.color }}
-          />
-          {statusLabel}
-        </span>
-        <span className="sync-panel-slot-row-kind">{entry.label}</span>
-        <time
-          className="sync-panel-slot-row-time"
-          dateTime={entry.time}
-          title={formatAbsolute(entry.time)}
-        >
-          {hydrated ? formatRelative(entry.time) : formatAbsolute(entry.time)}
-        </time>
-        <span className="mono sync-panel-slot-row-note">{entry.note}</span>
-        {failureContext ? (
-          <span className="mono sync-panel-slot-row-note">{failureContext}</span>
-        ) : null}
+            className="sync-panel-slot-row-status"
+            style={{ color: style.color }}
+          >
+            <span
+              aria-hidden="true"
+              className="sync-panel-slot-row-dot"
+              style={{ background: style.color }}
+            />
+            {statusLabel}
+          </span>
+          <span className="sync-panel-slot-row-kind">{entry.label}</span>
+        </div>
+        <div className="sync-panel-slot-row-secondary">
+          <time
+            className="sync-panel-slot-row-time"
+            dateTime={entry.time}
+            title={formatAbsolute(entry.time)}
+          >
+            {hydrated ? formatRelative(entry.time) : formatAbsolute(entry.time)}
+          </time>
+          {entry.syncSummary ? (
+            <span className="mono sync-panel-slot-row-note">{entry.syncSummary}</span>
+          ) : null}
+        </div>
       </div>
       <div className="sync-panel-slot-row-side">
         {entry.logRef ? (

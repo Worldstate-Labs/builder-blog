@@ -6103,11 +6103,30 @@ details:not([open]) > :not(summary) {
 }
 
 .sync-panel-slot-row-main {
-  flex-wrap: wrap;
+  align-items: stretch;
+  display: grid;
+  gap: 0.25rem;
 }
 
 .sync-panel-slot-row-side {
   justify-content: flex-end;
+}
+
+.sync-panel-slot-row-primary,
+.sync-panel-slot-row-secondary {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.sync-panel-slot-row-primary {
+  flex-wrap: wrap;
+}
+
+.sync-panel-slot-row-secondary {
+  color: var(--muted-strong);
+  flex-wrap: nowrap;
 }
 
 .sync-panel-slot-row-status,
@@ -7030,6 +7049,14 @@ details:not([open]) > :not(summary) {
 
   .sync-panel-slot-row-main,
   .sync-panel-slot-row-side {
+    flex-wrap: wrap;
+  }
+
+  .sync-panel-slot-row-main {
+    min-width: 0;
+  }
+
+  .sync-panel-slot-row-secondary {
     flex-wrap: wrap;
   }
 
