@@ -827,7 +827,7 @@ details:not([open]) > :not(summary) {
 }
 
 .home-tab-panel {
-  padding-top: 1.25rem;
+  padding-top: 1rem;
 }
 
 .home-loading-tabs {
@@ -4995,19 +4995,20 @@ details:not([open]) > :not(summary) {
   background: transparent;
   border: 0;
   border-radius: 0;
-  gap: 0.35rem;
+  gap: 0.18rem;
   padding: 0;
 }
 
 .workspace-top-tabs.fb-segmented-tabs .fb-btn {
   background: transparent;
   border-color: transparent;
-  border-radius: 0;
+  border-radius: 8px 8px 0 0;
   color: var(--muted-strong);
-  font-size: 0.8125rem;
-  font-weight: 760;
-  min-height: 2.5rem;
-  padding-inline: 0.65rem;
+  font-size: 0.875rem;
+  font-weight: 720;
+  min-height: 2.75rem;
+  padding-inline: 0.85rem;
+  position: relative;
 }
 
 .workspace-top-tabs.fb-segmented-tabs .fb-btn:hover {
@@ -5018,16 +5019,16 @@ details:not([open]) > :not(summary) {
 
 .workspace-top-tabs.fb-segmented-tabs .fb-btn[aria-selected="true"],
 .workspace-top-tabs.fb-segmented-tabs .fb-btn[data-active="true"] {
-  background: transparent;
+  background: color-mix(in oklch, var(--accent) 8%, var(--paper-strong));
   border-color: transparent;
-  box-shadow: inset 0 -2px 0 var(--accent);
+  box-shadow: inset 0 -3px 0 var(--accent);
   color: var(--accent-strong);
-  position: relative;
+  font-weight: 820;
 }
 
 .workspace-top-tabs.fb-segmented-tabs .fb-btn[aria-selected="true"]:hover,
 .workspace-top-tabs.fb-segmented-tabs .fb-btn[data-active="true"]:hover {
-  background: transparent;
+  background: color-mix(in oklch, var(--accent) 10%, var(--paper-strong));
   border-color: transparent;
   color: var(--accent-strong);
 }
@@ -12057,10 +12058,13 @@ body {
     margin-top: 0.6rem;
   }
 
-  .workspace-top-tabs .fb-btn {
+  .workspace-top-tabs.fb-segmented-tabs .fb-btn {
     flex: 1;
+    font-size: 0.9375rem;
     justify-content: center;
+    min-height: 2.875rem;
     min-width: 0;
+    padding-inline: 0.5rem;
     text-align: center;
   }
 
@@ -12077,10 +12081,10 @@ body {
     content: "";
     height: 2px;
     left: 50%;
-    max-width: calc(100% - 1rem);
+    max-width: calc(100% - 0.75rem);
     position: absolute;
     transform: translateX(-50%);
-    width: 4.25rem;
+    width: 100%;
   }
 
   .fb-panel {

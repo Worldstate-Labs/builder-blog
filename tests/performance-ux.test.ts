@@ -1308,9 +1308,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.fb-segmented-tabs\s*{[^}]*padding:\s*0\.25rem/);
   assert.match(globals, /\.fb-segmented-tabs \.fb-btn\[aria-selected="true"\]/);
   assert.match(globals, /\.workspace-top-tabs\s*{/);
-  assert.match(globals, /\.workspace-top-tabs-row\s*{[\s\S]*justify-content:\s*center/);
+  assert.match(globals, /\.workspace-top-tabs-row\s*{[\s\S]*justify-content:\s*flex-start/);
   assert.match(globals, /\.workspace-top-tabs-row\s*{[\s\S]*border-bottom:\s*1px solid/);
-  assert.match(globals, /\.home-tab-panel\s*{[\s\S]*padding-top:\s*1\.25rem/);
+  assert.match(globals, /\.home-tab-panel\s*{[\s\S]*padding-top:\s*1rem/);
   assert.match(globals, /\.home-loading-tabs\s*{[\s\S]*pointer-events:\s*none/);
   assert.doesNotMatch(globals, /\.home-loading-tab\.is-active/);
   assert.match(globals, /\.sources-loading-tabs\s*{[\s\S]*pointer-events:\s*none/);
@@ -1326,6 +1326,11 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /\.home-loading-post-list\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.library-hub-skeleton-line,[\s\S]*\.library-hub-skeleton-card\s*{[\s\S]*animation:\s*pulse/);
   assert.match(globals, /\.workspace-top-tabs\.fb-segmented-tabs\s*{[\s\S]*background:\s*transparent/);
+  assert.match(globals, /\.workspace-top-tabs\.fb-segmented-tabs \.fb-btn\s*{[\s\S]*font-size:\s*0\.875rem/);
+  assert.match(globals, /\.workspace-top-tabs\.fb-segmented-tabs \.fb-btn\s*{[\s\S]*font-weight:\s*720/);
+  assert.match(globals, /\.workspace-top-tabs\.fb-segmented-tabs \.fb-btn\[aria-selected="true"\],[\s\S]*\.workspace-top-tabs\.fb-segmented-tabs \.fb-btn\[data-active="true"\]\s*{[\s\S]*background:\s*color-mix/);
+  assert.match(globals, /\.workspace-top-tabs\.fb-segmented-tabs \.fb-btn\[aria-selected="true"\],[\s\S]*\.workspace-top-tabs\.fb-segmented-tabs \.fb-btn\[data-active="true"\]\s*{[\s\S]*font-weight:\s*820/);
+  assert.match(globals, /@media \(max-width: 767px\)\s*{[\s\S]*\.workspace-top-tabs\.fb-segmented-tabs \.fb-btn\s*{[\s\S]*font-size:\s*0\.9375rem/);
   assert.doesNotMatch(globals, /\.home-feed-tabs|\.sources-subtabs/);
   assert.doesNotMatch(globals, /\.workspace-top-tabs\s*{[^}]*background:|\.filter-tabs\s*{[^}]*background:|\.mobile-filter-tabs\s*{[^}]*background:|\.sync-panel-tabs\s*{[^}]*background:/);
   assert.match(globals, /\.digest-source-pill\[aria-current="page"\]\s*{[\s\S]*background:\s*var\(--accent-soft\)/);
