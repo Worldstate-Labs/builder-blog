@@ -640,25 +640,44 @@ function timelineSlotRunNote(slot: CronSlot, run: LibraryFetchRunListItem | null
   });
 }
 
-function formatRunSyncSummary(done: number | undefined, total: number | undefined): string | null {
+function formatRunSyncSummary(done: number | undefined, total: number | undefined): string {
   const synced = Math.max(0, done ?? 0);
   const planned = Math.max(0, total ?? 0, synced);
-  if (planned <= 0 && synced <= 0) return null;
-  return `${formatCount(synced)}/${formatCount(planned)} synced`;
+  return `${formatCount(synced)}/${formatCount(planned)} saved`;
+}
+
+function hasFinalFetchTaskOutcomes(details: DetailsShape): boolean {
+  const fetchTasks = Array.isArray(details.fetchTasks) ? details.fetchTasks : [];
+  return fetchTasks.filter(isPlannedPostTask).some((task) =>
+    task.status === "synced" ||
+    task.status === "skipped" ||
+    task.status === "failed" ||
+    task.status === "action_needed",
+  );
 }
 
 function fetchRunSyncSummary(
   run: LibraryFetchRunListItem | null,
   jobRun: AgentJobRunListItem | null,
-): string | null {
+): string {
   const liveProgress = jobRun ? readFetchJobProgress(jobRun.details) : null;
   if (run) {
+    const details = readDetails(run.details);
     const stats = fetchRunStats({
-      details: readDetails(run.details),
+      details,
       liveProgress,
       run,
     });
-    return formatRunSyncSummary(stats.synced, stats.planned);
+    const planned = Math.max(stats.planned, run.tasksGenerated, run.itemsFetched, stats.synced);
+    const hasLiveSyncedCounter = typeof liveProgress?.counters?.synced === "number";
+    const synced =
+      stats.synced > 0 ||
+      hasLiveSyncedCounter ||
+      hasFinalFetchTaskOutcomes(details) ||
+      run.status !== "ok"
+        ? stats.synced
+        : planned;
+    return formatRunSyncSummary(synced, planned);
   }
   return formatRunSyncSummary(liveProgress?.counters?.synced, liveProgress?.counters?.tasksPlanned);
 }

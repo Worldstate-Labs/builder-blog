@@ -306,6 +306,10 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /const run = timelineSlotRun\(slot\)/);
   assert.match(panel, /const logRef = timelineSlotLogRef\(slot, run\)/);
   assert.match(panel, /if \(run\) matchedRunIds\.add\(run\.id\)/);
+  assert.match(panel, /function formatRunSyncSummary\(done: number \| undefined, total: number \| undefined\): string/);
+  assert.match(panel, /return `\$\{formatCount\(synced\)\}\/\$\{formatCount\(planned\)\} saved`/);
+  assert.match(panel, /const planned = Math\.max\(stats\.planned, run\.tasksGenerated, run\.itemsFetched, stats\.synced\)/);
+  assert.doesNotMatch(panel, /if \(planned <= 0 && synced <= 0\) return null/);
   assert.doesNotMatch(panel, /cronSlotRunNote/);
   assert.doesNotMatch(panel, /if \(slot\.run\) matchedRunIds\.add\(slot\.run\.id\)/);
   assert.match(panel, /@\/lib\/scheduled-window-ui/);
