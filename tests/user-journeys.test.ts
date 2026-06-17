@@ -3187,8 +3187,9 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(srcManager, /canEditQualityGates/);
   assert.match(srcManager, /patch\.contentQuality = contentQuality/);
   assert.match(digestForm, /\/api\/settings\/digest-config/);
-  assert.match(digestForm, /AI Digest prompts/);
-  assert.match(digestForm, /Prompts used to generate AI Digest\./);
+  assert.doesNotMatch(digestForm, /Section/);
+  assert.doesNotMatch(digestForm, /AI Digest prompts/);
+  assert.doesNotMatch(digestForm, /Prompts used to generate AI Digest\./);
   assert.doesNotMatch(digestForm, /Prompts used after posts already have per-post summaries\./);
   assert.match(digestForm, /selected AI Digest language/);
   assert.match(digestForm, /Post summary prompt/);
@@ -3198,7 +3199,7 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(digestForm, /500 words or fewer/);
   assert.match(digestForm, /key points, viewpoints, insights/);
   assert.match(digestForm, /draft\.perSourceSummaryPrompt\.trim\(\)\.length === 0 \? "" : draft\.perSourceSummaryPrompt/);
-  assert.match(digestForm, /Could not save AI Digest prompts\./);
+  assert.match(digestForm, /Could not save AI Digest rules\./);
   assert.doesNotMatch(digestForm, /title="Digest prompts"|selected digest language|label="Translate prompt"|ariaLabel="Translate prompt"/);
   assert.doesNotMatch(digestForm, /Save failed/);
   assert.doesNotMatch(digestForm, /OrderedChoiceField/);

@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import {
   FieldBlock,
   FooterBar,
-  Section,
   type SaveStatusState,
 } from "@/components/settings/SettingsFields";
 import { MarkdownEditor } from "@/components/settings/MarkdownEditor";
@@ -125,7 +124,7 @@ export function AdminDigestConfigForm({
       } catch (error) {
         setStatus({
           kind: "error",
-          message: error instanceof Error ? error.message : "Could not save AI Digest prompts.",
+          message: error instanceof Error ? error.message : "Could not save AI Digest rules.",
         });
       }
     });
@@ -133,52 +132,47 @@ export function AdminDigestConfigForm({
 
   return (
     <div className="settings-config-form digest-composition-form">
-      <Section
-        title="AI Digest prompts"
-        description="Prompts used to generate AI Digest."
+      {canEditDigestAssemblyPrompts ? (
+        <>
+          <FieldBlock
+            label="Headline prompt"
+            description="Writes the short headline summary in the selected AI Digest language."
+          >
+            <MarkdownEditor
+              ariaLabel="Headline prompt"
+              height={220}
+              placeholder={HEADLINE_PROMPT_PLACEHOLDER}
+              value={draft.headlinePrompt}
+              onChange={(value) => update("headlinePrompt", value)}
+            />
+          </FieldBlock>
+          <FieldBlock
+            label="Per-source summary prompt"
+            description="Optionally writes one source-level note above that source's posts."
+            optional
+          >
+            <MarkdownEditor
+              ariaLabel="Per-source summary prompt"
+              height={260}
+              placeholder={PER_SOURCE_SUMMARY_PROMPT_PLACEHOLDER}
+              value={draft.perSourceSummaryPrompt}
+              onChange={(value) => update("perSourceSummaryPrompt", value)}
+            />
+          </FieldBlock>
+        </>
+      ) : null}
+      <FieldBlock
+        label="Post summary prompt"
+        description="Rewrites or translates existing per-post summaries into the selected AI Digest language without dropping key points, viewpoints, or insights."
       >
-        {canEditDigestAssemblyPrompts ? (
-          <>
-            <FieldBlock
-              label="Headline prompt"
-              description="Writes the short headline summary in the selected AI Digest language."
-            >
-              <MarkdownEditor
-                ariaLabel="Headline prompt"
-                height={220}
-                placeholder={HEADLINE_PROMPT_PLACEHOLDER}
-                value={draft.headlinePrompt}
-                onChange={(value) => update("headlinePrompt", value)}
-              />
-            </FieldBlock>
-            <FieldBlock
-              label="Per-source summary prompt"
-              description="Optionally writes one source-level note above that source's posts."
-              optional
-            >
-              <MarkdownEditor
-                ariaLabel="Per-source summary prompt"
-                height={260}
-                placeholder={PER_SOURCE_SUMMARY_PROMPT_PLACEHOLDER}
-                value={draft.perSourceSummaryPrompt}
-                onChange={(value) => update("perSourceSummaryPrompt", value)}
-              />
-            </FieldBlock>
-          </>
-        ) : null}
-        <FieldBlock
-          label="Post summary prompt"
-          description="Rewrites or translates existing per-post summaries into the selected AI Digest language without dropping key points, viewpoints, or insights."
-        >
-          <MarkdownEditor
-            ariaLabel="Post summary prompt"
-            height={340}
-            placeholder={TRANSLATE_PROMPT_PLACEHOLDER}
-            value={draft.translate}
-            onChange={(value) => update("translate", value)}
-          />
-        </FieldBlock>
-      </Section>
+        <MarkdownEditor
+          ariaLabel="Post summary prompt"
+          height={340}
+          placeholder={TRANSLATE_PROMPT_PLACEHOLDER}
+          value={draft.translate}
+          onChange={(value) => update("translate", value)}
+        />
+      </FieldBlock>
 
       <FooterBar
         dirty={dirty}

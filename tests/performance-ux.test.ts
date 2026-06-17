@@ -932,11 +932,12 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /@\/components\/settings\/SettingsFields/);
   assert.match(adminDigestConfig, /HEADLINE_PROMPT_PLACEHOLDER/);
   assert.match(adminDigestConfig, /PER_SOURCE_SUMMARY_PROMPT_PLACEHOLDER/);
-  assert.match(adminDigestConfig, /AI Digest prompts/);
-  assert.match(adminDigestConfig, /Prompts used to generate AI Digest\./);
+  assert.doesNotMatch(adminDigestConfig, /Section/);
+  assert.doesNotMatch(adminDigestConfig, /AI Digest prompts/);
+  assert.doesNotMatch(adminDigestConfig, /Prompts used to generate AI Digest\./);
   assert.doesNotMatch(adminDigestConfig, /Prompts used after posts already have per-post summaries\./);
   assert.match(adminDigestConfig, /selected AI Digest language/);
-  assert.match(adminDigestConfig, /Could not save AI Digest prompts\./);
+  assert.match(adminDigestConfig, /Could not save AI Digest rules\./);
   assert.match(adminDigestConfig, /Headline prompt cannot be empty\./);
   assert.match(adminDigestConfig, /Post summary prompt cannot be empty\./);
   assert.match(adminDigestConfig, /canEditDigestAssemblyPrompts/);
@@ -4754,7 +4755,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /USER_DIGEST_PROMPT_COUNT/);
   assert.match(settingsPage, /const digestPromptCount = isAdmin \? ADMIN_DIGEST_PROMPT_COUNT : USER_DIGEST_PROMPT_COUNT/);
   assert.match(settingsPage, /canEditDigestAssemblyPrompts=\{isAdmin\}/);
-  assert.match(settingsPage, /Runs after per-post summaries: write the digest headline, source notes,\s*and post summaries in the selected AI Digest language\./);
+  assert.match(settingsPage, /AI Digest rules/);
+  assert.match(settingsPage, /Prompts used to generate AI Digest\./);
+  assert.doesNotMatch(settingsPage, /Runs after per-post summaries: write the digest headline, source notes,\s*and post summaries in the selected AI Digest language\./);
   assert.doesNotMatch(settingsPage, /Write AI Digest headlines, source notes, and translated post summaries\./);
   assert.doesNotMatch(settingsPage, /localized post summaries/);
   assert.doesNotMatch(settingsPage, /Fetch, filter, and write per-post summaries\./);
