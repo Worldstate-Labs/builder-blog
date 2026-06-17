@@ -320,15 +320,13 @@ summary instead of translating it to a fixed language.
   context.language. If context.language is source, use the supplied summary's
   own language. It must read as if originally written in that language, not
   translated.
-- Keep the output to no more than 300 Chinese characters when context.language
-  is Chinese. For word-delimited languages, keep it to 300 words or fewer.
-  Preserve the original per-post summary's important points, concrete facts,
+- Keep the output to 500 words or fewer. Preserve the original per-post
+  summary's key points, viewpoints, insights, important claims, concrete facts,
   names, numbers, URLs, and source attribution.
 - Compress wording, not meaning. Do not drop a key claim just to make the copy
   shorter unless it is repetitive or low-signal.
 - Do not write headlineSummary.
 - Do not write source-level summaries.
-- Do not change digest structure or add section headings.
 - Keep technical terms in English where professionals in that language typically
   use them: AI, LLM, GPU, API, fine-tuning, RAG, token, prompt, agent,
   transformer, etc.

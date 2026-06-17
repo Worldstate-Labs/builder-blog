@@ -21,7 +21,8 @@ import {
   getUserSourceConfigs,
 } from "@/lib/source-config-store";
 
-const DIGEST_PROMPT_COUNT: number = 3;
+const ADMIN_DIGEST_PROMPT_COUNT: number = 3;
+const USER_DIGEST_PROMPT_COUNT: number = 1;
 
 export default async function SettingsPage() {
   const session = await getCurrentSession();
@@ -68,6 +69,7 @@ async function SourceTypeConfigSection({
     ...config,
     contentQuality: defaultSourceConfigById.get(config.sourceId)?.contentQuality ?? config.contentQuality,
   }));
+  const digestPromptCount = isAdmin ? ADMIN_DIGEST_PROMPT_COUNT : USER_DIGEST_PROMPT_COUNT;
   return (
     <section className="settings-rules">
       <details className="settings-rules-panel fb-panel" open>
@@ -75,8 +77,7 @@ async function SourceTypeConfigSection({
           <div className="settings-rules-summary-copy">
             <h3 className="fb-section-heading">Source fetching rules</h3>
             <p className="settings-rules-summary-desc">
-              Used when Fetch sources discovers posts, filters candidates, and
-              writes per-post summaries.
+              Used when summarizing source content.
             </p>
           </div>
           <span className="settings-rules-summary-meta source-summary-line">
@@ -130,8 +131,8 @@ async function SourceTypeConfigSection({
           </div>
           <span className="settings-rules-summary-meta source-summary-line">
             <CountMeta
-              label={DIGEST_PROMPT_COUNT === 1 ? "prompt" : "prompts"}
-              value={DIGEST_PROMPT_COUNT}
+              label={digestPromptCount === 1 ? "prompt" : "prompts"}
+              value={digestPromptCount}
             />
           </span>
           <span className="settings-rules-toggle-icon" aria-hidden="true">
@@ -148,6 +149,7 @@ async function SourceTypeConfigSection({
               updatedAt: digestConfig.updatedAt.toISOString(),
               updatedBy: digestConfig.updatedBy,
             }}
+            canEditDigestAssemblyPrompts={isAdmin}
           />
         </div>
       </details>

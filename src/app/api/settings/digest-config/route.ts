@@ -60,9 +60,18 @@ export async function PATCH(request: Request) {
   const writesAdminOnlyRules =
     parsed.data.patch.commonFetchRules !== undefined ||
     parsed.data.patch.commonSummaryRules !== undefined;
+  const writesAdminOnlyDigestPrompts =
+    parsed.data.patch.headlinePrompt !== undefined ||
+    parsed.data.patch.perSourceSummaryPrompt !== undefined;
   if (!isAdmin && writesAdminOnlyRules) {
     return NextResponse.json(
       { error: "Common fetch and post-summary rules can only be changed by an admin." },
+      { status: 403 },
+    );
+  }
+  if (!isAdmin && writesAdminOnlyDigestPrompts) {
+    return NextResponse.json(
+      { error: "Headline and per-source digest prompts can only be changed by an admin." },
       { status: 403 },
     );
   }

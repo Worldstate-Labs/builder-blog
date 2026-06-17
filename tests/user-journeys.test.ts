@@ -1714,8 +1714,13 @@ test("digest generation user path exposes source-specific prompt instructions", 
   // summaries; headline/source summaries use their own prompts.
   assert.match(DEFAULT_DIGEST_PROMPTS.translate, /target language given by context\.language/);
   assert.match(DEFAULT_DIGEST_PROMPTS.translate, /per-post summary/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.translate, /500 words or fewer/);
+  assert.match(DEFAULT_DIGEST_PROMPTS.translate, /key points, viewpoints, insights/);
   assert.match(DEFAULT_DIGEST_PROMPTS.translate, /Do not write headlineSummary/);
   assert.match(DEFAULT_DIGEST_PROMPTS.translate, /Do not write source-level summaries/);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.translate, /Maintain the same structure and formatting as the source digest/);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.translate, /Do not change digest structure or add section headings/);
+  assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.translate, /300 Chinese characters|300 words or fewer/);
   assert.doesNotMatch(DEFAULT_DIGEST_PROMPTS.translate, /simplified Chinese|Mandarin/i);
   assert.match(DEFAULT_DIGEST_PROMPTS.fetchPodcastAudio, /Podcast Fetch Prompt/);
 });
@@ -3120,9 +3125,20 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(srcRoute, /updateUserSourceConfigAndDefault/);
   assert.match(digestRoute, /isAdminEmail\(session\.user\.email\)/);
   assert.match(digestRoute, /Common fetch and post-summary rules can only be changed by an admin/);
+  assert.match(digestRoute, /Headline and per-source digest prompts can only be changed by an admin/);
   assert.match(digestRoute, /commonFetchRules: defaultConfig\.commonFetchRules/);
   assert.match(digestRoute, /commonSummaryRules: defaultConfig\.commonSummaryRules/);
   assert.match(digestRoute, /updateUserDigestConfigAndDefault/);
+  const digestPromptMigration = readFileSync(
+    "prisma/migrations/000067_digest_post_summary_prompt_limits/migration.sql",
+    "utf8",
+  );
+  assert.match(digestPromptMigration, /UPDATE "DigestConfig"/);
+  assert.match(digestPromptMigration, /UPDATE "UserDigestConfig"/);
+  assert.match(digestPromptMigration, /admin_emails/);
+  assert.match(digestPromptMigration, /500 words or fewer/);
+  assert.match(digestPromptMigration, /key points, viewpoints, insights/);
+  assert.doesNotMatch(digestPromptMigration, /Maintain the same structure and formatting as the source digest/);
   assert.match(store, /client\(\)\.\$transaction\(/);
   assert.equal(DEFAULT_SOURCE_CONFIGS.github_trending.defaultFetchLimit, 3);
   assert.equal(DEFAULT_SOURCE_CONFIGS.product_hunt_top_products.defaultFetchLimit, 3);
@@ -3145,6 +3161,8 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(settingsPage, /CommonSummaryRulesForm/);
   assert.match(settingsPage, /isAdminEmail\(session\.user\.email\)/);
   assert.match(settingsPage, /isAdmin \?/);
+  assert.match(settingsPage, /USER_DIGEST_PROMPT_COUNT/);
+  assert.match(settingsPage, /canEditDigestAssemblyPrompts=\{isAdmin\}/);
 
   // Runtime reads resolve source and digest assembly rules to the requesting
   // user's config, but common fetching and post-summary rules always come from
@@ -3170,10 +3188,15 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(srcManager, /patch\.contentQuality = contentQuality/);
   assert.match(digestForm, /\/api\/settings\/digest-config/);
   assert.match(digestForm, /AI Digest prompts/);
+  assert.match(digestForm, /Prompts used to generate AI Digest\./);
+  assert.doesNotMatch(digestForm, /Prompts used after posts already have per-post summaries\./);
   assert.match(digestForm, /selected AI Digest language/);
   assert.match(digestForm, /Post summary prompt/);
   assert.match(digestForm, /Headline prompt cannot be empty\./);
   assert.match(digestForm, /Post summary prompt cannot be empty\./);
+  assert.match(digestForm, /canEditDigestAssemblyPrompts/);
+  assert.match(digestForm, /500 words or fewer/);
+  assert.match(digestForm, /key points, viewpoints, insights/);
   assert.match(digestForm, /draft\.perSourceSummaryPrompt\.trim\(\)\.length === 0 \? "" : draft\.perSourceSummaryPrompt/);
   assert.match(digestForm, /Could not save AI Digest prompts\./);
   assert.doesNotMatch(digestForm, /title="Digest prompts"|selected digest language|label="Translate prompt"|ariaLabel="Translate prompt"/);

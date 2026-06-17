@@ -38,15 +38,17 @@ const PER_SOURCE_SUMMARY_PROMPT_PLACEHOLDER = [
 const TRANSLATE_PROMPT_PLACEHOLDER = [
   "Example:",
   "Rewrite or translate the supplied per-post summary into context.language.",
-  "Keep Chinese output under 300 Chinese characters. For word-delimited languages, keep it under 300 words. Preserve the original summary's key claims, names, numbers, URLs, and source attribution.",
+  "Keep the output to 500 words or fewer. Preserve key points, viewpoints, insights, claims, names, numbers, URLs, and source attribution.",
   "",
   "Do not write headlineSummary or source-level summaries. Keep product names, people, companies, URLs, and common AI terms in English when professionals normally use them that way.",
 ].join("\n");
 
 export function AdminDigestConfigForm({
   initialConfig,
+  canEditDigestAssemblyPrompts = true,
 }: {
   initialConfig: AdminDigestConfig;
+  canEditDigestAssemblyPrompts?: boolean;
 }) {
   const [config, setConfig] = useState(initialConfig);
   const [draft, setDraft] = useState({
@@ -57,8 +59,9 @@ export function AdminDigestConfigForm({
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [isPending, startTransition] = useTransition();
   const dirty =
-    draft.headlinePrompt !== config.headlinePrompt ||
-    draft.perSourceSummaryPrompt !== config.perSourceSummaryPrompt ||
+    (canEditDigestAssemblyPrompts &&
+      (draft.headlinePrompt !== config.headlinePrompt ||
+        draft.perSourceSummaryPrompt !== config.perSourceSummaryPrompt)) ||
     draft.translate !== config.translate;
 
   function update<K extends keyof typeof draft>(key: K, value: (typeof draft)[K]) {
@@ -80,7 +83,7 @@ export function AdminDigestConfigForm({
   }
 
   function save() {
-    if (draft.headlinePrompt.trim().length === 0) {
+    if (canEditDigestAssemblyPrompts && draft.headlinePrompt.trim().length === 0) {
       setStatus({ kind: "error", message: "Headline prompt cannot be empty." });
       return;
     }
@@ -88,12 +91,18 @@ export function AdminDigestConfigForm({
       setStatus({ kind: "error", message: "Post summary prompt cannot be empty." });
       return;
     }
-    const patch = {
-      headlinePrompt: draft.headlinePrompt,
-      perSourceSummaryPrompt:
-        draft.perSourceSummaryPrompt.trim().length === 0 ? "" : draft.perSourceSummaryPrompt,
+    const patch: {
+      headlinePrompt?: string;
+      perSourceSummaryPrompt?: string;
+      translate: string;
+    } = {
       translate: draft.translate,
     };
+    if (canEditDigestAssemblyPrompts) {
+      patch.headlinePrompt = draft.headlinePrompt;
+      patch.perSourceSummaryPrompt =
+        draft.perSourceSummaryPrompt.trim().length === 0 ? "" : draft.perSourceSummaryPrompt;
+    }
     setStatus({ kind: "saving" });
     startTransition(async () => {
       try {
@@ -126,36 +135,40 @@ export function AdminDigestConfigForm({
     <div className="settings-config-form digest-composition-form">
       <Section
         title="AI Digest prompts"
-        description="Prompts used after posts already have per-post summaries."
+        description="Prompts used to generate AI Digest."
       >
-        <FieldBlock
-          label="Headline prompt"
-          description="Writes the short headline summary in the selected AI Digest language."
-        >
-          <MarkdownEditor
-            ariaLabel="Headline prompt"
-            height={220}
-            placeholder={HEADLINE_PROMPT_PLACEHOLDER}
-            value={draft.headlinePrompt}
-            onChange={(value) => update("headlinePrompt", value)}
-          />
-        </FieldBlock>
-        <FieldBlock
-          label="Per-source summary prompt"
-          description="Optionally writes one source-level note above that source's posts."
-          optional
-        >
-          <MarkdownEditor
-            ariaLabel="Per-source summary prompt"
-            height={260}
-            placeholder={PER_SOURCE_SUMMARY_PROMPT_PLACEHOLDER}
-            value={draft.perSourceSummaryPrompt}
-            onChange={(value) => update("perSourceSummaryPrompt", value)}
-          />
-        </FieldBlock>
+        {canEditDigestAssemblyPrompts ? (
+          <>
+            <FieldBlock
+              label="Headline prompt"
+              description="Writes the short headline summary in the selected AI Digest language."
+            >
+              <MarkdownEditor
+                ariaLabel="Headline prompt"
+                height={220}
+                placeholder={HEADLINE_PROMPT_PLACEHOLDER}
+                value={draft.headlinePrompt}
+                onChange={(value) => update("headlinePrompt", value)}
+              />
+            </FieldBlock>
+            <FieldBlock
+              label="Per-source summary prompt"
+              description="Optionally writes one source-level note above that source's posts."
+              optional
+            >
+              <MarkdownEditor
+                ariaLabel="Per-source summary prompt"
+                height={260}
+                placeholder={PER_SOURCE_SUMMARY_PROMPT_PLACEHOLDER}
+                value={draft.perSourceSummaryPrompt}
+                onChange={(value) => update("perSourceSummaryPrompt", value)}
+              />
+            </FieldBlock>
+          </>
+        ) : null}
         <FieldBlock
           label="Post summary prompt"
-          description="Rewrites or translates existing per-post summaries into the selected AI Digest language without dropping key points."
+          description="Rewrites or translates existing per-post summaries into the selected AI Digest language without dropping key points, viewpoints, or insights."
         >
           <MarkdownEditor
             ariaLabel="Post summary prompt"
