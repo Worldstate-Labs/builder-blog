@@ -614,6 +614,33 @@ function fetchRunSlotStatus(run: LibraryFetchRunListItem, jobRun?: AgentJobRunLi
   return "failed";
 }
 
+function runMatchesJobRun(run: LibraryFetchRunListItem | null, jobRun: AgentJobRunListItem | null): boolean {
+  return Boolean(run?.jobRunId && jobRun?.instanceId && run.jobRunId === jobRun.instanceId);
+}
+
+function timelineSlotRun(slot: CronSlot): LibraryFetchRunListItem | null {
+  if (!slot.run) return null;
+  if (!slot.jobRun) return slot.run;
+  return runMatchesJobRun(slot.run, slot.jobRun) ? slot.run : null;
+}
+
+function timelineSlotLogRef(slot: CronSlot, run: LibraryFetchRunListItem | null): FetchLogRef | null {
+  if (run) return { kind: "run", runId: run.id };
+  if (slot.jobRun) return { kind: "job", instanceId: slot.jobRun.instanceId };
+  return null;
+}
+
+function timelineSlotRunNote(slot: CronSlot, run: LibraryFetchRunListItem | null): string {
+  const runSummary = run
+    ? `${run.itemsFetched} read · ${formatDuration(run.durationMs)}`
+    : null;
+  return scheduledWindowRunNote({
+    jobRunStatus: slot.jobRun ? jobRunStatusLabel(slot.jobRun) : null,
+    runSummary,
+    runtime: slot.jobRun?.runtime,
+  });
+}
+
 function buildFetchTimeline({
   jobRuns,
   runs,
@@ -629,23 +656,21 @@ function buildFetchTimeline({
   const matchedRunIds = new Set<string>();
   const matchedJobInstances = new Set<string>();
   const entries: FetchTimelineEntry[] = slots.map((slot) => {
-    if (slot.run) matchedRunIds.add(slot.run.id);
+    const run = timelineSlotRun(slot);
+    const logRef = timelineSlotLogRef(slot, run);
+    if (run) matchedRunIds.add(run.id);
     if (slot.jobRun) matchedJobInstances.add(slot.jobRun.instanceId);
-    const triggerLabel = scheduledRunTriggerLabel(slot.jobRun ?? null, "library-cron", slot.run?.source ?? "cron");
+    const triggerLabel = scheduledRunTriggerLabel(slot.jobRun ?? null, "library-cron", run?.source ?? "cron");
     return {
       key: `slot:${slot.expectedAt}`,
       time: slot.expectedAt,
       status: slot.status,
       label: triggerLabel,
-      note: cronSlotRunNote(slot),
-      run: slot.run,
+      note: timelineSlotRunNote(slot, run),
+      run,
       jobRun: slot.jobRun,
       slot,
-      logRef: slot.run
-        ? { kind: "run", runId: slot.run.id }
-        : slot.jobRun
-          ? { kind: "job", instanceId: slot.jobRun.instanceId }
-          : null,
+      logRef,
     };
   });
 
@@ -1406,17 +1431,6 @@ function FetchStatusPanel({
 
 function cronSlotStyle(status: CronSlotStatus): { background: string; border: string; color: string } {
   return statusStyle(scheduledWindowStyleStatus(status));
-}
-
-function cronSlotRunNote(slot: CronSlot): string {
-  const runSummary = slot.run
-    ? `${slot.run.itemsFetched} read · ${formatDuration(slot.run.durationMs)}`
-    : null;
-  return scheduledWindowRunNote({
-    jobRunStatus: slot.jobRun ? jobRunStatusLabel(slot.jobRun) : null,
-    runSummary,
-    runtime: slot.jobRun?.runtime,
-  });
 }
 
 function slotFailureContext(slot: CronSlot): string | null {

@@ -303,7 +303,15 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.doesNotMatch(panel, /Green OK|amber waiting|red issue/);
   assert.doesNotMatch(panel, /className="sync-panel-metrics"/);
   assert.doesNotMatch(panel, /CountMetric/);
-  assert.match(panel, /cronSlotRunNote/);
+  assert.match(panel, /function runMatchesJobRun/);
+  assert.match(panel, /function timelineSlotRun/);
+  assert.match(panel, /function timelineSlotLogRef/);
+  assert.match(panel, /function timelineSlotRunNote/);
+  assert.match(panel, /const run = timelineSlotRun\(slot\)/);
+  assert.match(panel, /const logRef = timelineSlotLogRef\(slot, run\)/);
+  assert.match(panel, /if \(run\) matchedRunIds\.add\(run\.id\)/);
+  assert.doesNotMatch(panel, /cronSlotRunNote/);
+  assert.doesNotMatch(panel, /if \(slot\.run\) matchedRunIds\.add\(slot\.run\.id\)/);
   assert.match(panel, /@\/lib\/scheduled-window-ui/);
   assert.match(panel, /scheduledWindowStatusLabel/);
   assert.match(panel, /scheduledWindowStyleStatus/);
