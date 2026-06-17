@@ -9,11 +9,10 @@ import {
   useState,
   useTransition,
   type CSSProperties,
-  type KeyboardEvent,
   type ReactNode,
 } from "react";
-import { Activity, ChevronDown, ChevronRight, ChevronUp, Clock3, X } from "lucide-react";
-import { CountBadge, formatCount } from "@/components/Count";
+import { ChevronDown, ChevronRight, ChevronUp, X } from "lucide-react";
+import { formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { useHydrated } from "@/components/ThemeToggle";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
@@ -463,7 +462,6 @@ function isRunInflight(
   return tasks.some((task) => task?.status === "pending" || task?.status === "fetched");
 }
 
-const VISIBLE_RUN_LIMIT = 2;
 const CRON_SLOT_LIMIT = 12;
 
 type CronSlotStatus = "ok" | "failed" | "missed" | "waiting" | "running" | "stalled";
@@ -741,9 +739,7 @@ export function FetchLogPanel({
   const [cronJob, setCronJob] = useState(initialCronJob);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
-  const [expanded, setExpanded] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"status" | "log">("status");
   const [selectedLog, setSelectedLog] = useState<FetchLogRef | null>(null);
   const hydrated = useHydrated();
   const cronStatus = useMemo(
@@ -763,31 +759,6 @@ export function FetchLogPanel({
       {actions}
     </div>
   ) : null;
-  function handleTabKeyDown(event: KeyboardEvent<HTMLElement>) {
-    const tabs = ["status", "log"] as const;
-    const navigableKeys = new Set(["ArrowLeft", "ArrowRight", "Home", "End"]);
-    if (!navigableKeys.has(event.key)) return;
-
-    const tabElements = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]'));
-    if (tabElements.length === 0) return;
-
-    event.preventDefault();
-    const selectedIndex = Math.max(0, tabs.findIndex((tab) => tab === activeTab));
-    const focusedIndex = tabElements.findIndex((tab) => tab === document.activeElement);
-    const currentIndex = focusedIndex >= 0 ? focusedIndex : selectedIndex;
-    const nextIndex =
-      event.key === "Home"
-        ? 0
-        : event.key === "End"
-          ? tabElements.length - 1
-          : event.key === "ArrowRight"
-            ? (currentIndex + 1) % tabElements.length
-            : (currentIndex - 1 + tabElements.length) % tabElements.length;
-
-    tabElements[nextIndex]?.focus();
-    setActiveTab(tabs[nextIndex]!);
-  }
-
   // Latest runs, readable inside the poll loop without re-arming the interval
   // on every refresh. Synced in an effect (not during render) so the poll loop
   // sees fresh data while keeping the [refresh]-only effect stable.
@@ -934,74 +905,13 @@ export function FetchLogPanel({
 
       {detailsOpen ? (
         <div id="fetch-sync-details">
-          <div
-            aria-label="Fetch sources views"
-            className="fb-segmented-tabs sync-panel-tabs"
-            onKeyDown={handleTabKeyDown}
-            role="tablist"
-          >
-            <button
-              aria-controls="fetch-sync-panel-status"
-              aria-selected={activeTab === "status"}
-              className={`fb-btn compact ${activeTab === "status" ? "" : "light"}`}
-              id="fetch-sync-tab-status"
-              onClick={() => setActiveTab("status")}
-              role="tab"
-              tabIndex={activeTab === "status" ? 0 : -1}
-              type="button"
-            >
-              <Activity aria-hidden="true" />
-              Fetch status
-            </button>
-            <button
-              aria-controls="fetch-sync-panel-log"
-              aria-selected={activeTab === "log"}
-              className={`fb-btn compact ${activeTab === "log" ? "" : "light"}`}
-              id="fetch-sync-tab-log"
-              onClick={() => setActiveTab("log")}
-              role="tab"
-              tabIndex={activeTab === "log" ? 0 : -1}
-              type="button"
-            >
-              <Clock3 aria-hidden="true" />
-              Fetch log
-              <span className="sr-only">Fetch sources run history</span>
-            </button>
-          </div>
-
-          <section
-            aria-labelledby="fetch-sync-tab-status"
-            hidden={activeTab !== "status"}
-            id="fetch-sync-panel-status"
-            role="tabpanel"
-          >
-            {activeTab === "status" ? (
-              <FetchStatusPanel
-                cronJob={cronJob}
-                entries={timelineEntries}
-                nextExpectedAt={cronStatus.nextExpectedAt}
-                onOpenLog={openLog}
-                slots={cronStatus.slots}
-              />
-            ) : null}
-          </section>
-          <section
-            aria-labelledby="fetch-sync-tab-log"
-            hidden={activeTab !== "log"}
-            id="fetch-sync-panel-log"
-            role="tabpanel"
-          >
-            {activeTab === "log" ? (
-              <FetchRunList
-                cronJob={cronJob}
-                expanded={expanded}
-                jobRuns={jobRuns}
-                onOpenLog={openLog}
-                runs={runs}
-                setExpanded={setExpanded}
-              />
-            ) : null}
-          </section>
+          <FetchStatusPanel
+            cronJob={cronJob}
+            entries={timelineEntries}
+            nextExpectedAt={cronStatus.nextExpectedAt}
+            onOpenLog={openLog}
+            slots={cronStatus.slots}
+          />
         </div>
       ) : null}
       {selectedLog ? (
@@ -1541,99 +1451,6 @@ function FetchTimelineRow({
   );
 }
 
-function FetchRunList({
-  cronJob,
-  expanded,
-  jobRuns,
-  onOpenLog,
-  runs,
-  setExpanded,
-}: {
-  cronJob: LibraryCronJobStatus | null;
-  expanded: boolean;
-  jobRuns: AgentJobRunListItem[];
-  onOpenLog: (logRef: FetchLogRef) => void;
-  runs: LibraryFetchRunListItem[];
-  setExpanded: (value: (previous: boolean) => boolean) => void;
-}) {
-  const runJobIds = new Set(runs.map((run) => run.jobRunId).filter((id): id is string => Boolean(id)));
-  const jobsByInstanceId = jobRunByInstanceId(jobRuns);
-  const entries = [
-    ...runs.map((run) => ({
-      kind: "fetch" as const,
-      id: run.id,
-      startedAt: run.startedAt,
-      run,
-      jobRun: run.jobRunId ? jobsByInstanceId.get(run.jobRunId) : undefined,
-    })),
-    ...jobRuns
-      .filter((jobRun) => !runJobIds.has(jobRun.instanceId))
-      .map((jobRun) => ({
-        kind: "job" as const,
-        id: jobRun.id,
-        startedAt: jobRun.startedAt,
-        jobRun,
-      })),
-  ].sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
-  const visibleEntries = expanded ? entries : entries.slice(0, VISIBLE_RUN_LIMIT);
-
-  return (
-    <div className="sync-panel-run-list-shell">
-      {entries.length === 0 ? (
-        <EmptyState
-          className="sync-panel-empty is-dashed"
-          title="No Fetch sources runs"
-          body="No Fetch sources runs yet. Runs appear after your Local Agent fetches sources."
-        />
-      ) : (
-        <>
-          <div
-            aria-label="Fetch sources run history list"
-            className="sync-panel-run-list sync-panel-run-list-scroll"
-          >
-            {visibleEntries.map((entry) => (
-              entry.kind === "fetch"
-                ? (
-                    <RunCard
-                      cronJob={cronJob}
-                      jobRun={entry.jobRun}
-                      key={entry.id}
-                      onOpenLog={() => onOpenLog({ kind: "run", runId: entry.run.id })}
-                      run={entry.run}
-                    />
-                  )
-                : (
-                    <JobRunCard
-                      jobRun={entry.jobRun}
-                      key={entry.id}
-                      onOpenLog={() => onOpenLog({ kind: "job", instanceId: entry.jobRun.instanceId })}
-                    />
-                  )
-            ))}
-          </div>
-          {entries.length > VISIBLE_RUN_LIMIT ? (
-            <button
-              aria-expanded={expanded}
-              className="fb-btn light compact justify-center"
-              onClick={() => setExpanded((value) => !value)}
-              type="button"
-            >
-              {expanded ? (
-                "See less"
-              ) : (
-                <span className="sync-panel-see-more-label">
-                  See more
-                  <CountBadge value={entries.length - VISIBLE_RUN_LIMIT} />
-                </span>
-              )}
-            </button>
-          ) : null}
-        </>
-      )}
-    </div>
-  );
-}
-
 function jobRunLabel(jobRun: AgentJobRunListItem): string {
   return scheduledRunTriggerLabel(jobRun, "library-cron");
 }
@@ -1663,6 +1480,7 @@ function interruptedFetchRunStatus(jobRun?: AgentJobRunListItem | null): {
 }
 
 function jobRunDiagnostic(jobRun: AgentJobRunListItem): string | null {
+  if (jobRun.status === "succeeded") return null;
   const details = readJobRunDetails(jobRun.details);
   const parts = [
     details.timeoutSeconds ? `timeout ${formatDuration(details.timeoutSeconds * 1000)}` : null,
@@ -1906,6 +1724,7 @@ function JobRunCard({
   const startedAtLabel = hydrated ? formatRelative(jobRun.startedAt) : formatAbsolute(jobRun.startedAt);
   const diagnostic = jobRunDiagnostic(jobRun);
   const liveProgress = readFetchJobProgress(jobRun.details);
+  const showRuntimeState = isActiveJobRun(jobRun) || jobRun.status !== "succeeded";
   const fallbackSummary = isActiveJobRun(jobRun)
     ? "The Local Agent has started; no fetch log has been received yet."
     : "The Local Agent ended before FollowBrief received a fetch log.";
@@ -1941,9 +1760,11 @@ function JobRunCard({
         {jobRun.summary || fallbackSummary}
       </p>
       <JobLifecycle details={{}} progress={liveProgress} />
-      <div className="mono sync-panel-run-card-stage">
-        {jobRun.stage || "runtime"} · {jobRun.finishedAt ? "finished" : "active"}
-      </div>
+      {showRuntimeState ? (
+        <div className="mono sync-panel-run-card-stage">
+          {jobRun.stage || "runtime"} · {jobRun.finishedAt ? "finished" : "active"}
+        </div>
+      ) : null}
       {diagnostic ? (
         <div className="mono sync-panel-run-card-stage">
           {diagnostic}
@@ -2108,10 +1929,7 @@ function FetchLogDialog({
         role="dialog"
       >
         <header className="sync-panel-log-dialog-head">
-          <div>
-            <p className="sync-panel-detail-kicker">Fetch log</p>
-            <h3>{run ? scheduledRunTriggerLabel(jobRun ?? null, "library-cron", run.source) : jobRun ? jobRunLabel(jobRun) : "Run unavailable"}</h3>
-          </div>
+          <h3>Fetch log</h3>
           <button className="post-action-btn" onClick={onClose} title="Close" type="button">
             <X aria-hidden="true" className="post-action-icon" />
             <span className="sr-only">Close</span>

@@ -6210,13 +6210,14 @@ details:not([open]) > :not(summary) {
   display: flex;
   gap: 1rem;
   justify-content: space-between;
-  padding: 0.875rem 1rem;
+  min-height: 3rem;
+  padding: 0.625rem 0.875rem;
 }
 
 .sync-panel-log-dialog-head h3 {
   font-size: 1rem;
   line-height: 1.25;
-  margin: 0.1rem 0 0;
+  margin: 0;
 }
 
 .sync-panel-log-dialog-body {

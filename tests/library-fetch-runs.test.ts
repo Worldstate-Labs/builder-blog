@@ -217,7 +217,7 @@ test("CLI can audit production cron status against local scheduler state", () =>
   assert.match(cli, /latest_digest_run_synced_for_scheduled_job/);
 });
 
-test("FetchLogPanel renders status pills and status/log tabs with semantic CSS variables", () => {
+test("FetchLogPanel renders status pills and modal-only logs with semantic CSS variables", () => {
   const panel = source("src/components/FetchLogPanel.tsx");
   assert.match(panel, /@\/lib\/schedule-timing/);
   assert.doesNotMatch(panel, /function floorToExpectedSchedule/);
@@ -231,28 +231,22 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /fetch\("\/api\/skill\/fetch-runs"/);
   assert.doesNotMatch(panel, /RefreshCw/);
   assert.doesNotMatch(panel, />Refresh</);
-  assert.match(panel, /VISIBLE_RUN_LIMIT = 2/);
-  assert.match(panel, /role="tablist"/);
-  assert.match(panel, /onKeyDown=\{handleTabKeyDown\}/);
-  assert.match(panel, /"ArrowLeft", "ArrowRight", "Home", "End"/);
-  assert.match(panel, /tabIndex=\{activeTab === "status" \? 0 : -1\}/);
-  assert.match(panel, /tabIndex=\{activeTab === "log" \? 0 : -1\}/);
-  assert.match(panel, /fb-segmented-tabs/);
-  assert.match(panel, /id="fetch-sync-tab-status"/);
-  assert.match(panel, /aria-controls="fetch-sync-panel-status"/);
-  assert.match(panel, /aria-labelledby="fetch-sync-tab-status"/);
-  assert.match(panel, /id="fetch-sync-panel-status"/);
-  assert.match(panel, /id="fetch-sync-tab-log"/);
-  assert.match(panel, /aria-controls="fetch-sync-panel-log"/);
-  assert.match(panel, /aria-labelledby="fetch-sync-tab-log"/);
-  assert.match(panel, /id="fetch-sync-panel-log"/);
-  assert.match(panel, /role="tabpanel"/);
-  assert.match(panel, /Fetch status/);
+  assert.doesNotMatch(panel, /VISIBLE_RUN_LIMIT = 2/);
+  assert.doesNotMatch(panel, /role="tablist"/);
+  assert.doesNotMatch(panel, /onKeyDown=\{handleTabKeyDown\}/);
+  assert.doesNotMatch(panel, /tabIndex=\{activeTab ===/);
+  assert.doesNotMatch(panel, /fb-segmented-tabs/);
+  assert.doesNotMatch(panel, /id="fetch-sync-tab-status"/);
+  assert.doesNotMatch(panel, /id="fetch-sync-tab-log"/);
+  assert.doesNotMatch(panel, /id="fetch-sync-panel-log"/);
+  assert.doesNotMatch(panel, /role="tabpanel"/);
+  assert.doesNotMatch(panel, /Fetch status/);
   assert.match(panel, /Fetch log/);
-  assert.match(panel, /Fetch sources run history/);
-  assert.match(panel, /className="sync-panel-run-list-shell"/);
-  assert.match(panel, /aria-label="Fetch sources run history list"/);
-  assert.match(panel, /className="sync-panel-run-list sync-panel-run-list-scroll"/);
+  assert.doesNotMatch(panel, /Fetch sources run history/);
+  assert.doesNotMatch(panel, /function FetchRunList/);
+  assert.doesNotMatch(panel, /className="sync-panel-run-list-shell"/);
+  assert.doesNotMatch(panel, /aria-label="Fetch sources run history list"/);
+  assert.doesNotMatch(panel, /className="sync-panel-run-list sync-panel-run-list-scroll"/);
   assert.match(panel, /fallback\?:/);
   assert.match(panel, /const postTasks = fetchTasks\.filter\(isPlannedPostTask\)/);
   assert.match(panel, /taskWorkerGroups\(postTasks, liveTasks\)/);
@@ -285,7 +279,7 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /run\.source === "cron" && cronJob && cronJob\.status !== "active"/);
   assert.match(panel, /isRunInflight\(run, run\.jobRunId \? jobsByInstanceId\.get\(run\.jobRunId\) : null, cronJob\)/);
   assert.match(panel, /if \(cronJob\.status !== "active"\) \{[\s\S]*key: "stopped"/);
-  assert.match(panel, /<RunCard[\s\S]*cronJob=\{cronJob\}[\s\S]*jobRun=\{entry\.jobRun\}[\s\S]*onOpenLog=\{\(\) => onOpenLog\(\{ kind: "run", runId: entry\.run\.id \}\)\}[\s\S]*run=\{entry\.run\}/);
+  assert.match(panel, /<RunCard cronJob=\{cronJob\} domId=\{null\} jobRun=\{jobRun \?\? undefined\} run=\{run\} \/>/);
   assert.match(panel, /interruptedFetchRunStatus/);
   assert.match(panel, /label: "Stopped"/);
   assert.match(panel, /const displayStatus = !inflight && interruptedStatus/);
@@ -387,7 +381,7 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /className="sync-panel-slot-row-time"/);
   assert.match(panel, /className="mono sync-panel-slot-row-note"/);
   assert.match(panel, /className="sync-panel-stopped-time"/);
-  assert.match(panel, /className="sync-panel-see-more-label"/);
+  assert.doesNotMatch(panel, /className="sync-panel-see-more-label"/);
   assert.match(panel, /className="fb-chip sync-panel-live-chip"/);
   assert.match(panel, /className="sync-panel-run-card-live-dot"/);
   assert.doesNotMatch(panel, /className="mt-2 text-\[12\.5px\] leading-relaxed"/);
@@ -447,6 +441,8 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /FetchLogDialog/);
   assert.match(panel, /role="dialog"/);
   assert.match(panel, /aria-modal="true"/);
+  assert.match(panel, /<h3>Fetch log<\/h3>/);
+  assert.doesNotMatch(panel, /sync-panel-detail-kicker[\s\S]{0,80}Fetch log/);
   assert.match(panel, /onOpenLog/);
   assert.match(panel, /FetchTimelineBar/);
   assert.match(panel, /FetchTimelineRow/);
@@ -458,6 +454,8 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /const openLog = useCallback\(\(logRef: FetchLogRef\) => \{[\s\S]*setDetailsOpen\(true\);[\s\S]*setSelectedLog\(logRef\);[\s\S]*\}, \[\]\);/);
   assert.match(panel, /Open log/);
   assert.match(panel, /entries\.slice\(\)\.reverse\(\)\.slice\(0, 6\)/);
+  assert.match(panel, /if \(jobRun\.status === "succeeded"\) return null;/);
+  assert.match(panel, /const showRuntimeState = isActiveJobRun\(jobRun\) \|\| jobRun\.status !== "succeeded";/);
   assert.doesNotMatch(panel, /slots\.slice\(-4\)/);
   // Editorial design tokens — panel chrome and chips are reused.
   assert.match(panel, /fb-panel/);
