@@ -1940,7 +1940,6 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /function discoveryTaskState/);
   assert.match(fetchLogPanel, /expandedByPosts/);
   assert.match(fetchLogPanel, /post tasks synced/);
-  assert.match(fetchLogPanel, /discovery tasks/);
   assert.match(fetchLogPanel, /post tasks/);
   assert.match(fetchLogPanel, /User-action and[\s\S]*token-missing tasks still count here/);
   assert.doesNotMatch(fetchLogPanel, /isCandidateDiscoveryTask\(task\) \|\| isBlocked\(task\)/);
@@ -1986,7 +1985,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-task-worker-group-list"/);
   assert.match(fetchLogPanel, /className="sync-panel-task-worker-details" open/);
   assert.match(fetchLogPanel, /className="sync-panel-task-worker-summary"/);
-  assert.match(fetchLogPanel, /className="mono sync-panel-task-worker-meta"/);
+  assert.doesNotMatch(fetchLogPanel, /className="mono sync-panel-task-worker-meta"/);
   assert.match(fetchLogPanel, /className="sync-panel-task-source-group-list"/);
   assert.match(fetchLogPanel, /className="sync-panel-task-source-details" open/);
   assert.match(fetchLogPanel, /className="sync-panel-task-source-summary"/);

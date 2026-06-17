@@ -1487,10 +1487,6 @@ function ratioText(done: number, total: number, unit: string): string {
   return `${formatCount(done)} / ${formatCount(total)} ${unit}${total === 1 ? "" : "s"}`;
 }
 
-function ratioCount(done: number, total: number): string {
-  return `${formatCount(done)} / ${formatCount(total)}`;
-}
-
 function countNoun(count: number, singular: string, plural = `${singular}s`): string {
   return `${formatCount(count)} ${count === 1 ? singular : plural}`;
 }
@@ -2014,29 +2010,11 @@ function DetailsBody({
           </h3>
           <ul className="sync-panel-task-worker-group-list">
             {taskGroups.map((workerGroup) => {
-              const workerStats = groupedTaskStats(workerGroup.tasks);
               return (
                 <li className="sync-panel-task-worker-group" key={workerGroup.key}>
                   <details className="sync-panel-task-worker-details" open>
                     <summary className="sync-panel-task-worker-summary">
                       <span className="sync-panel-task-worker-name">{workerGroup.name}</span>
-                      <span
-                        aria-label={`${workerGroup.name}: ${workerStats.planned} of ${workerStats.planned} planned, ${workerStats.read} of ${workerStats.planned} read, ${workerStats.summarized} of ${workerStats.planned} summarized, ${workerStats.synced} of ${workerStats.planned} synced`}
-                        className="mono sync-panel-task-worker-meta"
-                      >
-                        <span className="sync-panel-task-source-stat">
-                          <strong>{ratioCount(workerStats.planned, workerStats.planned)}</strong> planned
-                        </span>
-                        <span className="sync-panel-task-source-stat">
-                          <strong>{ratioCount(workerStats.read, workerStats.planned)}</strong> read
-                        </span>
-                        <span className="sync-panel-task-source-stat">
-                          <strong>{ratioCount(workerStats.summarized, workerStats.planned)}</strong> summarized
-                        </span>
-                        <span className="sync-panel-task-source-stat">
-                          <strong>{ratioCount(workerStats.synced, workerStats.planned)}</strong> synced
-                        </span>
-                      </span>
                     </summary>
                     <ul className="sync-panel-task-source-group-list">
                       {workerGroup.sourceGroups.map((group) => {
@@ -2047,26 +2025,21 @@ function DetailsBody({
                               <summary className="sync-panel-task-source-summary">
                                 <span className="sync-panel-task-source-name">{group.name}</span>
                                 <span
-                                  aria-label={`${group.sourceType}: ${stats.discovery} of ${stats.discovery} discovery tasks, ${stats.planned} of ${stats.planned} planned, ${stats.read} of ${stats.planned} read, ${stats.summarized} of ${stats.planned} summarized, ${stats.synced} of ${stats.planned} synced`}
+                                  aria-label={`${group.sourceType}: ${stats.planned} planned, ${stats.read} read, ${stats.summarized} summarized, ${stats.synced} synced`}
                                   className="mono sync-panel-task-source-meta"
                                 >
                                   <span className="sync-panel-task-source-type">{group.sourceType}</span>
-                                  {stats.discovery > 0 ? (
-                                    <span className="sync-panel-task-source-stat">
-                                      <strong>{ratioCount(stats.discovery, stats.discovery)}</strong> discovery
-                                    </span>
-                                  ) : null}
                                   <span className="sync-panel-task-source-stat">
-                                    <strong>{ratioCount(stats.planned, stats.planned)}</strong> planned
+                                    <strong>{formatCount(stats.planned)}</strong> planned
                                   </span>
                                   <span className="sync-panel-task-source-stat">
-                                    <strong>{ratioCount(stats.read, stats.planned)}</strong> read
+                                    <strong>{formatCount(stats.read)}</strong> read
                                   </span>
                                   <span className="sync-panel-task-source-stat">
-                                    <strong>{ratioCount(stats.summarized, stats.planned)}</strong> summarized
+                                    <strong>{formatCount(stats.summarized)}</strong> summarized
                                   </span>
                                   <span className="sync-panel-task-source-stat">
-                                    <strong>{ratioCount(stats.synced, stats.planned)}</strong> synced
+                                    <strong>{formatCount(stats.synced)}</strong> synced
                                   </span>
                                 </span>
                               </summary>

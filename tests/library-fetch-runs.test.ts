@@ -263,18 +263,19 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /className="sync-panel-task-source-group-list"/);
   assert.match(panel, /className="sync-panel-task-source-details" open/);
   assert.match(panel, /taskSourceGroups\(group\.tasks\)/);
-  assert.match(panel, /function ratioCount\(done: number, total: number\)/);
-  assert.match(panel, /\{ratioCount\(workerStats\.planned, workerStats\.planned\)\}/);
-  assert.match(panel, /\{ratioCount\(workerStats\.read, workerStats\.planned\)\}/);
-  assert.match(panel, /\{ratioCount\(stats\.planned, stats\.planned\)\}/);
-  assert.match(panel, /\{ratioCount\(stats\.read, stats\.planned\)\}/);
+  assert.doesNotMatch(panel, /function ratioCount\(done: number, total: number\)/);
+  assert.doesNotMatch(panel, /workerStats = groupedTaskStats\(workerGroup\.tasks\)/);
+  assert.doesNotMatch(panel, /className="mono sync-panel-task-worker-meta"/);
+  assert.match(panel, /\{formatCount\(stats\.planned\)\}<\/strong> planned/);
+  assert.match(panel, /\{formatCount\(stats\.read\)\}<\/strong> read/);
+  assert.match(panel, /\{formatCount\(stats\.summarized\)\}<\/strong> summarized/);
+  assert.match(panel, /\{formatCount\(stats\.synced\)\}<\/strong> synced/);
   assert.doesNotMatch(panel, /\{formatCount\(workerGroup\.tasks\.length\)\}<\/strong> tasks/);
   assert.doesNotMatch(panel, /\{formatCount\(stats\.planned\)\}<\/strong> posts/);
   assert.match(panel, /function discoveryTaskState/);
   assert.match(panel, /expandedByPosts/);
   assert.match(panel, /Waiting on posts/);
   assert.match(panel, /post tasks synced/);
-  assert.match(panel, /discovery tasks/);
   assert.match(panel, /post tasks/);
   assert.doesNotMatch(panel, /sourceRunStats/);
   // A fetch run linked to a stopped/killed runtime job is no longer live even
@@ -366,7 +367,7 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /className="sync-panel-run-card-details-body"/);
   assert.match(panel, /className="sync-panel-run-card-details-stack"/);
   assert.match(panel, /className="sync-panel-task-worker-group"/);
-  assert.match(panel, /className="mono sync-panel-task-worker-meta"/);
+  assert.doesNotMatch(panel, /className="mono sync-panel-task-worker-meta"/);
   assert.match(panel, /className="sync-panel-task-source-group"/);
   assert.match(panel, /className="mono sync-panel-task-source-meta"/);
   assert.match(panel, /className="sync-panel-status-brief"/);

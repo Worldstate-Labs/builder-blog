@@ -6543,9 +6543,8 @@ details:not([open]) > :not(summary) {
 .sync-panel-task-worker-summary {
   align-items: center;
   cursor: pointer;
-  display: grid;
+  display: flex;
   gap: 0.35rem 0.75rem;
-  grid-template-columns: minmax(0, 1fr) auto;
   padding: 0.625rem 0.75rem;
 }
 
@@ -6554,18 +6553,6 @@ details:not([open]) > :not(summary) {
   font-weight: 750;
   min-width: 0;
   overflow-wrap: anywhere;
-}
-
-.sync-panel-task-worker-meta {
-  align-items: baseline;
-  color: var(--muted-strong);
-  display: flex;
-  flex-wrap: wrap;
-  font-size: 0.6875rem;
-  gap: 0.125rem 0.45rem;
-  justify-self: end;
-  max-width: 100%;
-  min-width: 0;
 }
 
 .sync-panel-task-worker-details > .sync-panel-task-source-group-list {
@@ -6638,12 +6625,6 @@ details:not([open]) > :not(summary) {
 @media (max-width: 640px) {
   .sync-panel-task-worker-summary {
     align-items: start;
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .sync-panel-task-worker-meta {
-    justify-self: start;
-    width: 100%;
   }
 
   .sync-panel-task-source-summary {
