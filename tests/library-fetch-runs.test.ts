@@ -263,6 +263,13 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /className="sync-panel-task-source-group-list"/);
   assert.match(panel, /className="sync-panel-task-source-details" open/);
   assert.match(panel, /taskSourceGroups\(group\.tasks\)/);
+  assert.match(panel, /function ratioCount\(done: number, total: number\)/);
+  assert.match(panel, /\{ratioCount\(workerStats\.planned, workerStats\.planned\)\}/);
+  assert.match(panel, /\{ratioCount\(workerStats\.read, workerStats\.planned\)\}/);
+  assert.match(panel, /\{ratioCount\(stats\.planned, stats\.planned\)\}/);
+  assert.match(panel, /\{ratioCount\(stats\.read, stats\.planned\)\}/);
+  assert.doesNotMatch(panel, /\{formatCount\(workerGroup\.tasks\.length\)\}<\/strong> tasks/);
+  assert.doesNotMatch(panel, /\{formatCount\(stats\.planned\)\}<\/strong> posts/);
   assert.match(panel, /function discoveryTaskState/);
   assert.match(panel, /expandedByPosts/);
   assert.match(panel, /Waiting on posts/);
