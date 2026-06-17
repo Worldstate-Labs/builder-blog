@@ -1889,7 +1889,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-status-brief"/);
   assert.match(fetchLogPanel, /className=\{`sync-panel-run-card-verdict is-\$\{verdict\.tone\}`\}/);
   assert.doesNotMatch(fetchLogPanel, /className="sync-panel-run-card-funnel"/);
-  assert.match(fetchLogPanel, /Recent outcomes by scheduled window\./);
+  assert.match(fetchLogPanel, /Scheduled and one-time runs by time\./);
   assert.doesNotMatch(fetchLogPanel, /Green OK|amber waiting|red issue/);
   assert.match(fetchLogPanel, /const displayStatus = !inflight && interruptedStatus/);
   assert.match(fetchLogPanel, /displayStatus\.label/);
@@ -1911,8 +1911,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /Language/);
   assert.match(fetchLogPanel, /Latest fetch/);
   assert.match(fetchLogPanel, /Schedule status/);
-  assert.match(fetchLogPanel, /No Fetch sources schedule has reported yet/);
-  assert.match(fetchLogPanel, /title="No Fetch sources schedule"/);
+  assert.match(fetchLogPanel, /No Fetch sources run has reported yet/);
+  assert.match(fetchLogPanel, /title="No Fetch sources runs"/);
   assert.match(fetchLogPanel, /No Fetch sources runs yet\. Runs appear after your Local Agent fetches sources\./);
   assert.match(fetchLogPanel, /title="No Fetch sources runs"/);
   assert.match(fetchLogPanel, /Could not refresh\. Try again\./);
@@ -2220,8 +2220,10 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-card"/);
   assert.match(fetchLogPanel, /<EmptyState[\s\S]*className="sync-panel-empty is-dashed"/);
   assert.match(fetchLogPanel, /<EmptyState[\s\S]*className="sync-panel-slot-empty"/);
-  assert.match(fetchLogPanel, /title="No elapsed schedule runs"/);
-  assert.match(fetchLogPanel, /body="The first scheduled run has not reached its expected time yet\."/);
+  assert.match(fetchLogPanel, /title="No Fetch sources runs"/);
+  assert.match(fetchLogPanel, /body="One-time and scheduled Fetch sources runs appear here after a Local Agent reports them\."/);
+  assert.match(fetchLogPanel, /title="No Fetch sources runs yet"/);
+  assert.match(fetchLogPanel, /body="Scheduled and one-time Fetch sources runs will appear here after the Local Agent reports them\."/);
   assert.match(digestLogPanel, /className="fb-segmented-tabs sync-panel-tabs"/);
   assert.match(digestLogPanel, /onKeyDown=\{handleTabKeyDown\}/);
   assert.match(digestLogPanel, /"ArrowLeft", "ArrowRight", "Home", "End"/);

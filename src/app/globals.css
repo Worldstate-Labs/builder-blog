@@ -6174,6 +6174,57 @@ details:not([open]) > :not(summary) {
   gap: 0.5rem;
 }
 
+.sync-panel-run-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
+}
+
+.sync-panel-log-dialog-backdrop {
+  align-items: center;
+  background: color-mix(in oklch, var(--ink) 22%, transparent);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: clamp(1rem, 3vw, 2rem);
+  position: fixed;
+  z-index: 80;
+}
+
+.sync-panel-log-dialog {
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 18px 60px color-mix(in oklch, var(--shadow) 65%, transparent);
+  display: grid;
+  gap: 0;
+  max-height: min(84vh, 58rem);
+  max-width: min(54rem, calc(100vw - 2rem));
+  min-width: min(38rem, calc(100vw - 2rem));
+  overflow: hidden;
+}
+
+.sync-panel-log-dialog-head {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+}
+
+.sync-panel-log-dialog-head h3 {
+  font-size: 1rem;
+  line-height: 1.25;
+  margin: 0.1rem 0 0;
+}
+
+.sync-panel-log-dialog-body {
+  max-height: calc(min(84vh, 58rem) - 4.25rem);
+  overflow-y: auto;
+  padding: 0.875rem;
+}
+
 @keyframes sync-panel-live-dot-pulse {
   0%,
   100% {
@@ -6927,6 +6978,23 @@ details:not([open]) > :not(summary) {
 
   .sync-panel-slot-row-note {
     white-space: normal;
+  }
+
+  .sync-panel-log-dialog-backdrop {
+    align-items: stretch;
+    padding: 0.75rem;
+  }
+
+  .sync-panel-log-dialog {
+    border-radius: 10px;
+    max-height: calc(100vh - 1.5rem);
+    min-width: 0;
+    width: 100%;
+  }
+
+  .sync-panel-log-dialog-body {
+    max-height: calc(100vh - 6rem);
+    padding: 0.75rem;
   }
 
   .sync-panel-run-card-reason div {
