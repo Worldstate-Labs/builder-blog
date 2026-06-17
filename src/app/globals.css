@@ -5022,6 +5022,7 @@ details:not([open]) > :not(summary) {
   border-color: transparent;
   box-shadow: inset 0 -2px 0 var(--accent);
   color: var(--accent-strong);
+  position: relative;
 }
 
 .workspace-top-tabs.fb-segmented-tabs .fb-btn[aria-selected="true"]:hover,
@@ -11980,6 +11981,25 @@ body {
     flex: 1;
   }
 
+  .workspace-top-tabs.fb-segmented-tabs .fb-btn[aria-selected="true"],
+  .workspace-top-tabs.fb-segmented-tabs .fb-btn[data-active="true"] {
+    box-shadow: none;
+  }
+
+  .workspace-top-tabs.fb-segmented-tabs .fb-btn[aria-selected="true"]::after,
+  .workspace-top-tabs.fb-segmented-tabs .fb-btn[data-active="true"]::after {
+    background: var(--accent);
+    border-radius: 999px;
+    bottom: -1px;
+    content: "";
+    height: 2px;
+    left: 50%;
+    max-width: calc(100% - 1rem);
+    position: absolute;
+    transform: translateX(-50%);
+    width: 4.25rem;
+  }
+
   .fb-panel {
     border-radius: 8px;
     padding: 0.95rem;
@@ -12027,8 +12047,20 @@ body {
 
   .your-digest-section .library-hub-toolbar,
   .your-library-section .library-hub-toolbar {
-    align-items: center;
+    align-items: start;
     grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .your-digest-section .library-hub-toolbar-copy .fb-section-heading,
+  .your-library-section .library-hub-toolbar-copy .fb-section-heading {
+    font-size: 1.25rem;
+    letter-spacing: -0.006em;
+    line-height: 1.08;
+  }
+
+  .your-digest-section .hub-share-control,
+  .your-library-section .hub-share-control {
+    padding-top: 0.1rem;
   }
 
   .sources-sync-section .digest-updates-panel {
@@ -12069,25 +12101,35 @@ body {
   }
 
   .own-digest-card {
-    gap: 0.7rem;
+    gap: 0.8rem;
     padding: 0.95rem;
   }
 
   .own-digest-card .fb-hub-digest-meta {
-    gap: 0.7rem 0.85rem;
+    gap: 0.78rem 0.95rem;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-bottom: 0.75rem;
     padding-bottom: 0.75rem;
   }
 
   .own-digest-card .fb-hub-digest-meta-item dt {
-    font-size: 0.58rem;
-    letter-spacing: 0.065em;
+    color: var(--muted-strong);
+    font-size: 0.625rem;
+    letter-spacing: 0.062em;
   }
 
   .own-digest-card .fb-hub-digest-meta-item dd {
-    font-size: 0.75rem;
-    line-height: 1.32;
+    font-size: 0.8125rem;
+    line-height: 1.28;
+  }
+
+  .own-digest-card .digest-status-toggle {
+    font-size: 0.6875rem;
+    height: 1.625rem;
+  }
+
+  .own-digest-card .digest-status-toggle-hint {
+    font-size: 0.65625rem;
   }
 
   .own-digest-card .digest-headline-source-name {
