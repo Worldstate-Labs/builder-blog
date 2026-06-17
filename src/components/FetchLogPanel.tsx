@@ -1294,9 +1294,12 @@ function FetchStatusPanel({
               <span className="sync-panel-timeline-title">
                 Last {entries.length} Fetch {entries.length === 1 ? "run" : "runs"}
               </span>
-              <span>Scheduled and one-time runs by time.</span>
             </div>
-            <div className="sync-panel-status-graph" aria-label="Fetch schedule status graph">
+            <div className="sync-panel-timeline-axis" aria-hidden="true">
+              <span>Oldest</span>
+              <span>Newest</span>
+            </div>
+            <div className="sync-panel-status-graph" aria-label="Fetch schedule status graph, oldest to newest">
               {entries.map((entry) => (
                 <FetchTimelineBar
                   entry={entry}
@@ -1418,12 +1421,17 @@ function FetchTimelineRow({
     >
       <div className="sync-panel-slot-row-main">
         <span
-          className="fb-chip"
-          style={{ background: style.background, borderColor: style.border, color: style.color }}
+          className="sync-panel-slot-row-status"
+          style={{ color: style.color }}
         >
+          <span
+            aria-hidden="true"
+            className="sync-panel-slot-row-dot"
+            style={{ background: style.color }}
+          />
           {statusLabel}
         </span>
-        <span className="fb-chip">{entry.label}</span>
+        <span className="sync-panel-slot-row-kind">{entry.label}</span>
         <time
           className="sync-panel-slot-row-time"
           dateTime={entry.time}
@@ -1431,12 +1439,12 @@ function FetchTimelineRow({
         >
           {hydrated ? formatRelative(entry.time) : formatAbsolute(entry.time)}
         </time>
-      </div>
-      <div className="sync-panel-slot-row-side">
         <span className="mono sync-panel-slot-row-note">{entry.note}</span>
         {failureContext ? (
           <span className="mono sync-panel-slot-row-note">{failureContext}</span>
         ) : null}
+      </div>
+      <div className="sync-panel-slot-row-side">
         {entry.logRef ? (
           <button
             className="fb-btn light compact"

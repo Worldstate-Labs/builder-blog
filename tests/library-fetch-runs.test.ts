@@ -290,7 +290,9 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /The current scheduled Fetch sources run is still in progress/);
   assert.match(panel, /entry\.status === "waiting" \|\| entry\.status === "running"/);
   assert.match(panel, /latestIsStalled/);
-  assert.match(panel, /Scheduled and one-time runs by time\./);
+  assert.match(panel, /className="sync-panel-timeline-axis"/);
+  assert.match(panel, />Oldest</);
+  assert.match(panel, />Newest</);
   assert.match(panel, /No Local Agent job reported for the latest scheduled window/);
   assert.match(panel, /timeoutSeconds/);
   assert.match(panel, /cleanup failed/);
@@ -378,6 +380,9 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /className="sync-panel-slot-row"/);
   assert.match(panel, /className="sync-panel-slot-row-main"/);
   assert.match(panel, /className="sync-panel-slot-row-side"/);
+  assert.match(panel, /className="sync-panel-slot-row-status"/);
+  assert.match(panel, /className="sync-panel-slot-row-dot"/);
+  assert.match(panel, /className="sync-panel-slot-row-kind"/);
   assert.match(panel, /className="sync-panel-slot-row-time"/);
   assert.match(panel, /className="mono sync-panel-slot-row-note"/);
   assert.match(panel, /className="sync-panel-stopped-time"/);
@@ -525,7 +530,9 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /matchedRunIds/);
   assert.match(panel, /matchedJobInstances/);
   assert.match(panel, /Last \{entries\.length\} AI Digest/);
-  assert.match(panel, /Scheduled and one-time outcomes in time order\./);
+  assert.match(panel, /className="sync-panel-timeline-axis"/);
+  assert.match(panel, />Oldest</);
+  assert.match(panel, />Newest</);
   assert.match(source("src/lib/scheduled-window-ui.ts"), /No job reported/);
   assert.doesNotMatch(panel, /No AI Digest schedule has reported yet/);
   assert.match(panel, /No AI Digest builds yet/);
@@ -564,6 +571,7 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /className="sync-panel-run-card-head"/);
   assert.match(panel, /className="sync-panel-run-card-summary"/);
   assert.match(panel, /className="sync-panel-run-card-title"/);
+  assert.match(panel, /<p className="sync-panel-run-card-title">\{title\}<\/p>[\s\S]*<header className="sync-panel-run-card-head">/);
   assert.match(panel, /className=\{`sync-panel-run-card-verdict is-\$\{verdict\.tone\}`\}/);
   assert.match(panel, /className="sync-panel-run-card-reason"/);
   assert.match(source("src/app/globals.css"), /\.sync-panel-run-card-verdict\s*{/);
@@ -579,6 +587,9 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /className="sync-panel-slot-row"/);
   assert.match(panel, /className="sync-panel-slot-row-main"/);
   assert.match(panel, /className="sync-panel-slot-row-side"/);
+  assert.match(panel, /className="sync-panel-slot-row-status"/);
+  assert.match(panel, /className="sync-panel-slot-row-dot"/);
+  assert.match(panel, /className="sync-panel-slot-row-kind"/);
   assert.match(panel, /className="sync-panel-slot-row-time"/);
   assert.match(panel, /className="mono sync-panel-slot-row-note"/);
   assert.match(panel, /className="sync-panel-funnel-arrow"/);

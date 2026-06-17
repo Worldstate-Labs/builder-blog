@@ -1889,7 +1889,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-status-brief"/);
   assert.match(fetchLogPanel, /className=\{`sync-panel-run-card-verdict is-\$\{verdict\.tone\}`\}/);
   assert.doesNotMatch(fetchLogPanel, /className="sync-panel-run-card-funnel"/);
-  assert.match(fetchLogPanel, /Scheduled and one-time runs by time\./);
+  assert.match(fetchLogPanel, /className="sync-panel-timeline-axis"/);
+  assert.match(fetchLogPanel, />Oldest</);
+  assert.match(fetchLogPanel, />Newest</);
   assert.doesNotMatch(fetchLogPanel, /Green OK|amber waiting|red issue/);
   assert.match(fetchLogPanel, /const displayStatus = !inflight && interruptedStatus/);
   assert.match(fetchLogPanel, /displayStatus\.label/);
@@ -1897,6 +1899,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-slot-row"/);
   assert.match(fetchLogPanel, /className="sync-panel-slot-row-main"/);
   assert.match(fetchLogPanel, /className="sync-panel-slot-row-side"/);
+  assert.match(fetchLogPanel, /className="sync-panel-slot-row-status"/);
+  assert.match(fetchLogPanel, /className="sync-panel-slot-row-dot"/);
+  assert.match(fetchLogPanel, /className="sync-panel-slot-row-kind"/);
   assert.match(fetchLogPanel, /className="sync-panel-slot-row-time"/);
   assert.match(fetchLogPanel, /className="mono sync-panel-slot-row-note"/);
   assert.match(fetchLogPanel, /className="sync-panel-stopped-time"/);
@@ -1904,7 +1909,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="fb-chip sync-panel-live-chip"/);
   assert.doesNotMatch(digestLogPanel, /className="sync-panel-see-more-label"/);
   assert.match(digestLogPanel, /DigestLogDialog/);
-  assert.match(digestLogPanel, /Scheduled and one-time outcomes in time order\./);
+  assert.match(digestLogPanel, /className="sync-panel-timeline-axis"/);
+  assert.match(digestLogPanel, />Oldest</);
+  assert.match(digestLogPanel, />Newest</);
   assert.match(digestLogPanel, /className=\{`sync-panel-slot-bar \$\{heightClass\}`\}/);
   assert.doesNotMatch(fetchLogPanel, /aria-label="Fetch sources views"/);
   assert.match(fetchLogPanel, /aria-label="Fetch sources details"/);
@@ -2053,7 +2060,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(digestLogPanel, /role="tabpanel"/);
   assert.match(digestLogPanel, /Show AI Digest update details/);
   assert.match(digestLogPanel, /Hide AI Digest update details/);
-  assert.match(digestLogPanel, /aria-label="AI Digest build status graph"/);
+  assert.match(digestLogPanel, /aria-label="AI Digest build status graph, oldest to newest"/);
   assert.match(digestLogPanel, /AI Digest build at/);
   assert.match(digestLogPanel, /includes posts already used in AI Digest archives/);
   assert.doesNotMatch(digestLogPanel, /includes posts already used in AI Digests/);
@@ -2075,6 +2082,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /className="sync-panel-slot-row"/);
   assert.match(digestLogPanel, /className="sync-panel-slot-row-main"/);
   assert.match(digestLogPanel, /className="sync-panel-slot-row-side"/);
+  assert.match(digestLogPanel, /className="sync-panel-slot-row-status"/);
+  assert.match(digestLogPanel, /className="sync-panel-slot-row-dot"/);
+  assert.match(digestLogPanel, /className="sync-panel-slot-row-kind"/);
   assert.match(digestLogPanel, /className="sync-panel-slot-row-time"/);
   assert.match(digestLogPanel, /className="mono sync-panel-slot-row-note"/);
   assert.match(digestLogPanel, /className="sync-panel-funnel-arrow"/);
@@ -2137,7 +2147,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sync-panel-schedule-summary\s*{[\s\S]*line-height:\s*1\.55/);
   assert.match(globals, /\.sync-panel-column\s*{[\s\S]*min-width:\s*0/);
   assert.match(globals, /\.sync-panel-slot-bar\.is-tall\s*{[\s\S]*height:\s*3rem/);
-  assert.match(globals, /\.sync-panel-slot-row\s*{[\s\S]*justify-content:\s*space-between/);
+  assert.match(globals, /\.sync-panel-timeline-axis\s*{[\s\S]*justify-content:\s*space-between/);
+  assert.match(globals, /\.sync-panel-slot-row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /\.sync-panel-slot-row-status,[\s\S]*\.sync-panel-slot-row-kind\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.sync-panel-slot-row:target\s*{[\s\S]*background:\s*var\(--accent-soft\)/);
   assert.match(globals, /\.sync-panel-stopped-time\s*{[\s\S]*font-size:\s*0\.78125rem/);
   assert.match(globals, /\.sync-panel-live-chip\s*{[\s\S]*gap:\s*0\.375rem/);
@@ -2180,6 +2192,10 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sync-panel-run-list-scroll\s*{[\s\S]*max-height:\s*min\(70vh,\s*48rem\)[\s\S]*overflow-y:\s*auto[\s\S]*overscroll-behavior:\s*contain/);
   assert.match(globals, /\.sync-panel-run-card-head\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /\.sync-panel-run-card-title\s*{[\s\S]*font-weight:\s*650/);
+  assert.match(globals, /\.sync-panel-log-dialog-head\s*{[\s\S]*min-height:\s*2\.75rem/);
+  assert.match(globals, /\.sync-panel-log-dialog-body > \.sync-panel-run-card\s*{[\s\S]*background:\s*transparent[\s\S]*border:\s*0[\s\S]*padding:\s*0/);
+  assert.match(globals, /\.sync-panel-log-dialog-body > \.sync-panel-run-card \.sync-panel-run-card-title\s*{[\s\S]*margin:\s*0 0 0\.55rem/);
+  assert.match(globals, /@media \(max-width: 640px\)[\s\S]*\.sync-panel-log-dialog-backdrop\s*{[\s\S]*align-items:\s*flex-start/);
   assert.match(globals, /\.sync-panel-run-card-live-dot\s*{[\s\S]*animation:\s*sync-panel-live-dot-pulse/);
   assert.match(globals, /@keyframes sync-panel-live-dot-pulse/);
   assert.match(globals, /\.sync-panel-run-card-summary\s*{[\s\S]*line-height:\s*1\.55/);
