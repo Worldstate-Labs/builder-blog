@@ -777,7 +777,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(digestDetails, /BookOpen className="h-3\.5 w-3\.5"/);
   assert.match(globals, /\.item-summary-copy\s*{[\s\S]*min-width:\s*0/);
   assert.match(globals, /\.item-summary-action-icon\s*{[\s\S]*height:\s*0\.875rem/);
-  assert.match(globals, /\.sync-panel-candidate-link-icon\s*{[\s\S]*height:\s*0\.875rem/);
+  assert.match(globals, /\.sync-panel-candidate-title\[href\]\s*{[\s\S]*color:\s*var\(--accent\)/);
+  assert.match(globals, /\.sync-panel-candidate-title\[href\]:hover\s*{[\s\S]*text-decoration:\s*underline/);
+  assert.doesNotMatch(globals, /\.sync-panel-candidate-link-icon\s*{/);
   assert.match(skillPromptActions, /!\s*open \? null/);
   assert.match(skillPromptActions, /className=\{compactOnly \? "skill-prompt-compact" : "fb-skill"\}/);
   assert.match(skillPromptActions, /className="fb-section-label skill-prompt-label"/);
@@ -1897,7 +1899,10 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /const hydrated = useHydrated\(\)/);
   assert.match(fetchLogPanel, /hydrated=\{hydrated\}/);
   assert.match(fetchLogPanel, /SourceFetchMetaItem/);
-  assert.match(digestLogPanel, /className="sync-panel-candidate-link-icon"/);
+  assert.match(digestLogPanel, /postDetailHref\(item\.feedItemId, "\/dashboard\?tab=ai-digest", "AI Digest"\)/);
+  assert.match(digestLogPanel, /const sourceType = item\.sourceType\?\.trim\(\) \|\| sourceTag\(item\.kind\)/);
+  assert.doesNotMatch(digestLogPanel, /className="sync-panel-candidate-link-icon"/);
+  assert.doesNotMatch(digestLogPanel, /aria-label="Original"/);
   assert.doesNotMatch(digestLogPanel, /h-3\.5 w-3\.5/);
   assert.match(fetchLogPanel, /className="sync-panel-status-brief"/);
   assert.match(fetchLogPanel, /className=\{`sync-panel-run-card-verdict is-\$\{verdict\.tone\}`\}/);
@@ -2261,7 +2266,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sync-panel-detail-json\s*{[\s\S]*padding:\s*0\.5rem 0\.75rem 0\.75rem/);
   assert.match(globals, /\.sync-panel-candidate-row\s*{[\s\S]*line-height:\s*1\.35/);
   assert.match(globals, /\.sync-panel-candidate-outcome\s*{[\s\S]*width:\s*4\.7em/);
-  assert.match(globals, /\.sync-panel-candidate-title\.is-muted,[\s\S]*\.sync-panel-candidate-source\s*{[\s\S]*color:\s*var\(--muted-strong\)/);
+  assert.match(globals, /\.sync-panel-candidate-title\.is-muted\s*{[\s\S]*color:\s*var\(--muted-strong\)/);
+  assert.doesNotMatch(globals, /\.sync-panel-candidate-source/);
   assert.match(globals, /\.sync-panel-layout\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*0\.85fr\) minmax\(0,\s*1\.15fr\)/);
   assert.doesNotMatch(fetchLogPanel, /className="fb-segmented-tabs sync-panel-tabs"/);
   assert.doesNotMatch(fetchLogPanel, /onKeyDown=\{handleTabKeyDown\}/);

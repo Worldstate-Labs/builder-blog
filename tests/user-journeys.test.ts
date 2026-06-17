@@ -3171,6 +3171,7 @@ test("content config is per-user, seeded from a system default", () => {
   assert.match(contextRoute, /getUserSourceConfigs\(user\.id\)/);
   assert.match(contextRoute, /getAllSourceConfigs\(\)/);
   assert.match(contextRoute, /contentQuality: defaultSourceConfigById\.get\(def\.id\)\?\.contentQuality/);
+  assert.match(contextRoute, /sourceType: it\.builder\?\.sourceType \?\? null/);
   assert.match(contextRoute, /getUserDigestConfig\(user\.id\)/);
   assert.match(contextRoute, /getDigestConfig\(\)/);
   assert.match(contextRoute, /commonFetchRules: defaultDigestConfig\.commonFetchRules/);

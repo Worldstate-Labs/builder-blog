@@ -4,8 +4,10 @@ import { prisma } from "@/lib/prisma";
 // editorial step actually presented it (`included`) or passed it over
 // (`included: false` = "eligible but dropped").
 export type DigestRunCandidate = {
+  feedItemId: string | null;
   entityId: string;
   kind: string;
+  sourceType: string | null;
   title: string | null;
   url: string | null;
   source: string | null;
@@ -77,6 +79,7 @@ type CandidateSnapshot = {
   kind?: string;
   externalId?: string;
   feedItemId?: string | null;
+  sourceType?: string | null;
   title?: string | null;
   url?: string | null;
   source?: string | null;
@@ -136,8 +139,10 @@ export async function getDigestRuns(
         nameByEntity.set(entityId, cand.source);
       }
       shapedCandidates.push({
+        feedItemId: cand.feedItemId ?? null,
         entityId,
         kind,
+        sourceType: cand.sourceType ?? null,
         title: cand.title ?? null,
         url: cand.url ?? null,
         source: cand.source ?? nameByEntity.get(entityId) ?? null,

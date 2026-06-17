@@ -531,7 +531,9 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /buildDigestCronStatus/);
   assert.match(panel, /scheduledRunTriggerLabel\(jobRun \?\? null, "digest-cron", run\.source\)/);
   assert.match(panel, /run\.status === "synced"/);
-  assert.match(panel, /className="sync-panel-candidate-link-icon"/);
+  assert.match(panel, /postDetailHref\(item\.feedItemId, "\/dashboard\?tab=ai-digest", "AI Digest"\)/);
+  assert.doesNotMatch(panel, /sync-panel-candidate-link-icon/);
+  assert.doesNotMatch(panel, /aria-label="Original"/);
   assert.doesNotMatch(panel, /h-3\.5 w-3\.5/);
   assert.doesNotMatch(panel, /VISIBLE_RUN_LIMIT = 2/);
   assert.match(panel, /slotDomId/);
@@ -623,12 +625,14 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /className="sync-panel-source-row"/);
   assert.match(panel, /className="sync-panel-candidate-row"/);
   assert.match(panel, /className="mono sync-panel-candidate-outcome"/);
+  assert.match(panel, /className="mono sync-panel-candidate-kind"/);
   assert.match(panel, /not used/);
   assert.match(panel, /pending/);
   assert.match(panel, /Show sources and posts considered/);
   assert.match(panel, /Source coverage/);
   assert.match(panel, /Posts considered/);
   assert.match(panel, /sync-panel-candidate-title/);
+  assert.doesNotMatch(panel, /sync-panel-candidate-source/);
   assert.doesNotMatch(panel, /className="rounded-\[10px\] border bg-\[var\(--paper-strong\)\] px-3\.5 py-3"[\s\S]*Runtime job did not create an AI Digest build record/);
   assert.doesNotMatch(panel, /className="rounded-\[10px\] border bg-\[var\(--paper-strong\)\] px-3\.5 py-3"[\s\S]*Previous AI Digest/);
   assert.doesNotMatch(panel, /className="flex items-baseline justify-between gap-2 text-\[12px\]"/);

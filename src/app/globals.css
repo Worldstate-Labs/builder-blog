@@ -6808,19 +6808,17 @@ details:not([open]) > :not(summary) {
   color: var(--ink);
 }
 
-.sync-panel-candidate-title.is-muted,
-.sync-panel-candidate-source {
+.sync-panel-candidate-title.is-muted {
   color: var(--muted-strong);
 }
 
-.sync-panel-candidate-link {
+.sync-panel-candidate-title[href] {
   color: var(--accent);
-  flex-shrink: 0;
+  text-decoration: none;
 }
 
-.sync-panel-candidate-link-icon {
-  height: 0.875rem;
-  width: 0.875rem;
+.sync-panel-candidate-title[href]:hover {
+  text-decoration: underline;
 }
 
 .sync-panel-task-card {

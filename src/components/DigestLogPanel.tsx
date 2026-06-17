@@ -12,7 +12,7 @@ import {
   type SetStateAction,
 } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, ChevronUp, ExternalLink, X } from "lucide-react";
+import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { CountBadge, CountMeta, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { useHydrated } from "@/components/ThemeToggle";
@@ -37,6 +37,7 @@ import type {
   DigestRunSource,
 } from "@/lib/digest-runs";
 import { displayLanguagePreference } from "@/lib/language-preference";
+import { postDetailHref } from "@/lib/navigation";
 import {
   scheduledJobRunStatusLabel,
   scheduledRunTriggerLabel,
@@ -1446,6 +1447,11 @@ function CandidateRow({ item, synced }: { item: DigestRunCandidate; synced: bool
     : item.included
       ? "Used in the AI Digest"
       : "Found but skipped";
+  const title = item.title?.trim() || "Untitled candidate";
+  const sourceType = item.sourceType?.trim() || sourceTag(item.kind);
+  const detailHref = item.feedItemId
+    ? postDetailHref(item.feedItemId, "/dashboard?tab=ai-digest", "AI Digest")
+    : null;
   return (
     <li className="sync-panel-candidate-row">
       <span
@@ -1456,26 +1462,22 @@ function CandidateRow({ item, synced }: { item: DigestRunCandidate; synced: bool
         {outcome}
       </span>
       <span className="mono sync-panel-candidate-kind">
-        {sourceTag(item.kind)}
+        {sourceType}
       </span>
       <span className="sync-panel-candidate-copy">
-        <span className={item.included ? "sync-panel-candidate-title" : "sync-panel-candidate-title is-muted"}>
-          {item.title ?? item.url ?? "Untitled candidate"}
-        </span>
-        {item.source ? <span className="sync-panel-candidate-source"> · {item.source}</span> : null}
+        {detailHref ? (
+          <a
+            className={item.included ? "sync-panel-candidate-title" : "sync-panel-candidate-title is-muted"}
+            href={detailHref}
+          >
+            {title}
+          </a>
+        ) : (
+          <span className={item.included ? "sync-panel-candidate-title" : "sync-panel-candidate-title is-muted"}>
+            {title}
+          </span>
+        )}
       </span>
-      {item.url ? (
-        <a
-          aria-label="Original"
-          className="sync-panel-candidate-link"
-          href={item.url}
-          rel="noreferrer"
-          target="_blank"
-          title="Original"
-        >
-          <ExternalLink aria-hidden="true" className="sync-panel-candidate-link-icon" />
-        </a>
-      ) : null}
     </li>
   );
 }

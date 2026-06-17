@@ -281,6 +281,7 @@ export async function GET(request: Request) {
     kind: it.kind,
     externalId: it.externalId,
     feedItemId: it.id ?? null,
+    sourceType: it.builder?.sourceType ?? null,
     title: it.title ?? null,
     url: it.url ?? null,
     source: it.sourceName ?? entityNameById.get(it.entityId) ?? null,
