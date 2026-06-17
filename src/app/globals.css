@@ -12061,6 +12061,9 @@ body {
 
   .workspace-top-tabs .fb-btn {
     flex: 1;
+    justify-content: center;
+    min-width: 0;
+    text-align: center;
   }
 
   .workspace-top-tabs.fb-segmented-tabs .fb-btn[aria-selected="true"],
