@@ -1888,7 +1888,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(digestLogPanel, /h-3\.5 w-3\.5/);
   assert.match(fetchLogPanel, /className="sync-panel-status-brief"/);
   assert.match(fetchLogPanel, /className=\{`sync-panel-run-card-verdict is-\$\{verdict\.tone\}`\}/);
-  assert.match(fetchLogPanel, /className="sync-panel-run-card-funnel"/);
+  assert.doesNotMatch(fetchLogPanel, /className="sync-panel-run-card-funnel"/);
   assert.match(fetchLogPanel, /Recent outcomes by scheduled window\./);
   assert.doesNotMatch(fetchLogPanel, /Green OK|amber waiting|red issue/);
   assert.match(fetchLogPanel, /const displayStatus = !inflight && interruptedStatus/);
@@ -1923,15 +1923,15 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(fetchLogPanel, />\s*open settings\s*</);
   assert.doesNotMatch(fetchLogPanel, /\{" "\}\s*<a className="sync-panel-task-link" href=\{work\.fixHref\}>/);
   assert.doesNotMatch(fetchLogPanel, /No source update schedule has reported yet|No source updates yet|update sources again|source update details/);
-  assert.match(fetchLogPanel, /posts read|post read/);
+  assert.doesNotMatch(fetchLogPanel, /posts read|post read/);
   assert.doesNotMatch(fetchLogPanel, /posts fetched/);
-  assert.match(fetchLogPanel, /label="posts planned"/);
+  assert.doesNotMatch(fetchLogPanel, /label="posts planned"/);
   assert.match(fetchLogPanel, /function fetchRunDisplaySummary/);
   assert.match(fetchLogPanel, /const stats = fetchRunStats\(\{ details, liveProgress, run \}\)/);
   assert.match(fetchLogPanel, /const displaySummary = fetchRunDisplaySummary\(run, stats, liveProgress\)/);
-  assert.match(fetchLogPanel, /value=\{stats\.read\}/);
-  assert.match(fetchLogPanel, /value=\{stats\.planned\}/);
-  assert.match(fetchLogPanel, /value=\{stats\.actionNeeded\}/);
+  assert.match(fetchLogPanel, /outcome: ratioText\(stats\.read, stats\.planned, "post"\)/);
+  assert.match(fetchLogPanel, /outcome: ratioText\(stats\.planned, stats\.planned, "post"\)/);
+  assert.match(fetchLogPanel, /Action needed/);
   assert.match(fetchLogPanel, /const postTasks = fetchTasks\.filter\(isPlannedPostTask\)/);
   assert.match(fetchLogPanel, /taskWorkerGroups\(postTasks, liveTasks\)/);
   assert.match(fetchLogPanel, /Post tasks \(\{postTasks\.length\}\)/);
@@ -1978,7 +1978,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /@media \(max-width:\s*640px\)[\s\S]*\.sync-panel-run-card\.sync-panel-mobile-flat \.sync-panel-run-card-details\s*{[\s\S]*border-inline:\s*0/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card-head"/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card-summary"/);
-  assert.match(fetchLogPanel, /className="mono sync-panel-run-card-meta"/);
+  assert.doesNotMatch(fetchLogPanel, /className="mono sync-panel-run-card-meta"/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card-details"/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card-details-summary"/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card-details-body"/);
@@ -2179,7 +2179,6 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sync-panel-run-card-title\s*{[\s\S]*font-weight:\s*650/);
   assert.match(globals, /\.sync-panel-run-card-live-dot\s*{[\s\S]*animation:\s*sync-panel-live-dot-pulse/);
   assert.match(globals, /@keyframes sync-panel-live-dot-pulse/);
-  assert.match(globals, /\.sync-panel-run-card-funnel\s*{[\s\S]*flex-wrap:\s*wrap/);
   assert.match(globals, /\.sync-panel-run-card-summary\s*{[\s\S]*line-height:\s*1\.55/);
   assert.match(globals, /\.sync-panel-run-card-details\s*{[\s\S]*background:\s*var\(--paper\)/);
   assert.match(globals, /\.sync-panel-run-card-details-body\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
@@ -2197,7 +2196,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sync-panel-task-summary\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /\.sync-panel-task-body\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.sync-panel-lifecycle\s*{[\s\S]*display:\s*grid/);
-  assert.match(globals, /\.sync-panel-lifecycle-summary\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /\.sync-panel-lifecycle-summary\s*{[\s\S]*display:\s*flex/);
+  assert.match(globals, /\.sync-panel-lifecycle-copy\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.sync-panel-lifecycle-step\.is-idle \.sync-panel-lifecycle-dot\s*{[\s\S]*background:\s*var\(--paper-strong\)/);
   assert.match(globals, /\.sync-panel-lifecycle-detail\s*{[\s\S]*border-top:\s*0/);
   assert.match(globals, /\.sync-panel-task-fact-row\s*{[\s\S]*line-height:\s*1\.55/);

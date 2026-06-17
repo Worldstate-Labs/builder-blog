@@ -360,7 +360,7 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /className="sync-panel-run-card sync-panel-mobile-flat"/);
   assert.match(panel, /className="sync-panel-run-card-head"/);
   assert.match(panel, /className="sync-panel-run-card-summary"/);
-  assert.match(panel, /className="mono sync-panel-run-card-meta"/);
+  assert.doesNotMatch(panel, /className="mono sync-panel-run-card-meta"/);
   assert.match(panel, /className="sync-panel-run-card-details"/);
   assert.match(panel, /className="sync-panel-run-card-details-summary"/);
   assert.match(panel, /className="sync-panel-run-card-details-body"/);
@@ -371,7 +371,7 @@ test("FetchLogPanel renders status pills and status/log tabs with semantic CSS v
   assert.match(panel, /className="mono sync-panel-task-source-meta"/);
   assert.match(panel, /className="sync-panel-status-brief"/);
   assert.match(panel, /className=\{`sync-panel-run-card-verdict is-\$\{verdict\.tone\}`\}/);
-  assert.match(panel, /className="sync-panel-run-card-funnel"/);
+  assert.doesNotMatch(panel, /className="sync-panel-run-card-funnel"/);
   assert.match(panel, /className=\{`sync-panel-slot-bar \$\{heightClass\}`\}/);
   assert.match(panel, /className="sync-panel-slot-row"/);
   assert.match(panel, /className="sync-panel-slot-row-main"/);

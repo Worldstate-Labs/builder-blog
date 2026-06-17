@@ -13,7 +13,7 @@ import {
   type ReactNode,
 } from "react";
 import { Activity, ChevronDown, ChevronRight, ChevronUp, Clock3 } from "lucide-react";
-import { CountBadge, CountMeta, CountMetric, formatCount } from "@/components/Count";
+import { CountBadge, CountMetric, formatCount } from "@/components/Count";
 import { EmptyState } from "@/components/EmptyState";
 import { useHydrated } from "@/components/ThemeToggle";
 import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
@@ -1787,7 +1787,6 @@ function RunCard({
   const stats = fetchRunStats({ details, liveProgress, run });
   const displaySummary = fetchRunDisplaySummary(run, stats, liveProgress);
   const verdict = fetchRunVerdict({ displayStatus, inflight, stats });
-  const sourceTotal = Math.max(stats.sourcesTotal, stats.sourcesScanned, run.buildersAttempted);
 
   return (
     <article
@@ -1844,42 +1843,6 @@ function RunCard({
         {verdict.text}
       </p>
 
-      <div className="sync-panel-run-card-funnel">
-        <span className="sync-panel-funnel-stat">
-          <span className="mono sync-panel-funnel-stat-value">{formatCount(stats.sourcesScanned)}</span>
-          <span className="sync-panel-funnel-stat-label">/{formatCount(sourceTotal)} sources</span>
-        </span>
-        <span aria-hidden="true" className="sync-panel-funnel-arrow">→</span>
-        <span className="sync-panel-funnel-stat">
-          <span className="mono sync-panel-funnel-stat-value">{formatCount(stats.planned)}</span>
-          <span className="sync-panel-funnel-stat-label">planned</span>
-        </span>
-        <span aria-hidden="true" className="sync-panel-funnel-arrow">→</span>
-        <span className="sync-panel-funnel-stat">
-          <span className="mono sync-panel-funnel-stat-value">{formatCount(stats.read)}</span>
-          <span className="sync-panel-funnel-stat-label">read</span>
-        </span>
-        <span aria-hidden="true" className="sync-panel-funnel-arrow">→</span>
-        <span className="sync-panel-funnel-stat">
-          <span className="mono sync-panel-funnel-stat-value">{formatCount(stats.summarized)}</span>
-          <span className="sync-panel-funnel-stat-label">summarized</span>
-        </span>
-        <span aria-hidden="true" className="sync-panel-funnel-arrow">→</span>
-        <span className="sync-panel-funnel-stat">
-          <span className="mono sync-panel-funnel-stat-value">{formatCount(stats.synced)}</span>
-          <span className="sync-panel-funnel-stat-label">synced</span>
-        </span>
-      </div>
-
-      <div className="mono sync-panel-run-card-meta">
-        <CountMeta
-          label={stats.read === 1 ? "post read" : "posts read"}
-          value={stats.read}
-        /> ·{" "}
-        <CountMeta label="posts planned" value={stats.planned} /> ·{" "}
-        <CountMeta label={stats.actionNeeded === 1 ? "action needed" : "actions needed"} value={stats.actionNeeded} /> ·{" "}
-        {formatDuration(run.durationMs)}
-      </div>
       <JobLifecycle details={details} progress={liveProgress} run={run} />
       {diagnostic ? (
         <div className="mono sync-panel-run-card-stage">

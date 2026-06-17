@@ -6363,9 +6363,9 @@ details:not([open]) > :not(summary) {
   border: 1px solid var(--line);
   border-radius: 8px;
   cursor: pointer;
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.375rem 0.625rem;
-  grid-template-columns: minmax(0, 1fr) auto;
   min-width: 0;
   padding: 0.5rem 0.625rem;
 }
@@ -6388,8 +6388,10 @@ details:not([open]) > :not(summary) {
 }
 
 .sync-panel-lifecycle-copy {
-  display: grid;
-  gap: 0.125rem;
+  align-items: baseline;
+  display: inline-flex;
+  flex: 1 1 auto;
+  gap: 0.45rem;
   min-width: 0;
 }
 
@@ -6408,8 +6410,8 @@ details:not([open]) > :not(summary) {
 
 .sync-panel-lifecycle-meta {
   color: var(--muted);
+  margin-left: auto;
   font-size: 0.6875rem;
-  justify-self: end;
   min-width: 0;
 }
 
@@ -6955,13 +6957,8 @@ details:not([open]) > :not(summary) {
     padding-left: 1rem;
   }
 
-  .sync-panel-lifecycle-summary {
-    align-items: start;
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .sync-panel-lifecycle-meta {
-    justify-self: start;
+    margin-left: 0;
   }
 
   .sync-panel-lifecycle-dot {
