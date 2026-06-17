@@ -213,7 +213,8 @@ test("web status uses scheduled job instances while history can show one-time ru
   assert.doesNotMatch(fetchPanel, /Fetch sources run history/);
   assert.match(fetchPanel, /FetchLogDialog/);
   assert.match(digestPanel, /Build log/);
-  assert.match(digestPanel, /AI Digest build history/);
+  assert.match(digestPanel, /DigestLogDialog/);
+  assert.doesNotMatch(digestPanel, /AI Digest build history/);
   assert.doesNotMatch(digestPanel, /Build history/);
 
   assert.match(fetchRoute, /jobRuns/);
