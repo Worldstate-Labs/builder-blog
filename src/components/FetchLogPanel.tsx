@@ -533,6 +533,14 @@ function jobRunByInstanceId(jobRuns: AgentJobRunListItem[]): Map<string, AgentJo
   return new Map(jobRuns.map((jobRun) => [jobRun.instanceId, jobRun]));
 }
 
+function mergeFetchRunLists(...runLists: LibraryFetchRunListItem[][]): LibraryFetchRunListItem[] {
+  const byId = new Map<string, LibraryFetchRunListItem>();
+  for (const run of runLists.flat()) {
+    if (!byId.has(run.id)) byId.set(run.id, run);
+  }
+  return Array.from(byId.values()).sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
+}
+
 function isStalledJobRun(jobRun: AgentJobRunListItem, nowMs = Date.now()): boolean {
   if (!isActiveJobRun(jobRun)) return false;
   const heartbeatMs = Date.parse(jobRun.heartbeatAt ?? jobRun.startedAt);
@@ -809,6 +817,7 @@ export function FetchLogPanel({
     () => buildFetchTimeline({ jobRuns, runs, slots: cronStatus.slots }),
     [cronStatus.slots, jobRuns, runs],
   );
+  const dialogRuns = useMemo(() => mergeFetchRunLists(runs, cronRuns), [runs, cronRuns]);
   const updateStatus = useMemo(
     () => getFetchUpdateStatus(cronJob, cronStatus.slots, runs, jobRuns),
     [cronJob, cronStatus.slots, runs, jobRuns],
@@ -978,7 +987,7 @@ export function FetchLogPanel({
           jobRuns={jobRuns}
           logRef={selectedLog}
           onClose={() => setSelectedLog(null)}
-          runs={runs}
+          runs={dialogRuns}
         />
       ) : null}
     </section>
@@ -1825,6 +1834,9 @@ function RunCard({
   const stats = fetchRunStats({ details, liveProgress, run });
   const displaySummary = fetchRunDisplaySummary(run, stats, liveProgress);
   const verdict = fetchRunVerdict({ displayStatus, inflight, stats });
+  const postTaskCount = Array.isArray(details.fetchTasks)
+    ? details.fetchTasks.filter(isPlannedPostTask).length
+    : 0;
 
   return (
     <article
@@ -1897,7 +1909,12 @@ function RunCard({
 
       <details className="sync-panel-run-card-details">
         <summary className="sync-panel-run-card-details-summary">
-          Show details
+          <span>Post task details</span>
+          {postTaskCount > 0 ? (
+            <span className="sync-panel-run-card-details-count">
+              {formatCount(postTaskCount)}
+            </span>
+          ) : null}
         </summary>
         <div className="sync-panel-run-card-details-body">
           <DetailsBody details={details} liveProgress={liveProgress} />
@@ -1921,12 +1938,13 @@ function FetchLogDialog({
   runs: LibraryFetchRunListItem[];
 }) {
   const jobsByInstanceId = jobRunByInstanceId(jobRuns);
-  const run = logRef.kind === "run" ? runs.find((candidate) => candidate.id === logRef.runId) ?? null : null;
   const jobRun = logRef.kind === "job"
     ? jobsByInstanceId.get(logRef.instanceId) ?? null
-    : run?.jobRunId
-      ? jobsByInstanceId.get(run.jobRunId) ?? null
-      : null;
+    : null;
+  const run = logRef.kind === "run"
+    ? runs.find((candidate) => candidate.id === logRef.runId) ?? null
+    : runs.find((candidate) => candidate.jobRunId === logRef.instanceId) ?? null;
+  const resolvedJobRun = jobRun ?? (run?.jobRunId ? jobsByInstanceId.get(run.jobRunId) ?? null : null);
 
   return (
     <div className="sync-panel-log-dialog-backdrop" role="presentation" onMouseDown={onClose}>
@@ -1946,9 +1964,9 @@ function FetchLogDialog({
         </header>
         <div className="sync-panel-log-dialog-body">
           {run ? (
-            <RunCard cronJob={cronJob} domId={null} jobRun={jobRun ?? undefined} run={run} />
-          ) : jobRun ? (
-            <JobRunCard domId={null} jobRun={jobRun} />
+            <RunCard cronJob={cronJob} domId={null} jobRun={resolvedJobRun ?? undefined} run={run} />
+          ) : resolvedJobRun ? (
+            <JobRunCard domId={null} jobRun={resolvedJobRun} />
           ) : (
             <EmptyState
               className="sync-panel-empty is-dashed"
@@ -2109,9 +2127,6 @@ function DetailsBody({
     <div className="sync-panel-run-card-details-stack">
       {postTasks.length > 0 ? (
         <div>
-          <h3 className="sync-panel-run-card-detail-heading">
-            Post tasks ({postTasks.length})
-          </h3>
           <ul className="sync-panel-task-worker-group-list">
             {taskGroups.map((workerGroup) => {
               return (

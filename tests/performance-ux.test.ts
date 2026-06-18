@@ -2000,9 +2000,15 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /outcome: ratioText\(stats\.read, stats\.planned, "post"\)/);
   assert.match(fetchLogPanel, /outcome: ratioText\(stats\.planned, stats\.planned, "post"\)/);
   assert.match(fetchLogPanel, /Action needed/);
+  assert.match(fetchLogPanel, /function mergeFetchRunLists/);
+  assert.match(fetchLogPanel, /const dialogRuns = useMemo\(\(\) => mergeFetchRunLists\(runs, cronRuns\), \[runs, cronRuns\]\)/);
+  assert.match(fetchLogPanel, /runs=\{dialogRuns\}/);
+  assert.match(fetchLogPanel, /candidate\.jobRunId === logRef\.instanceId/);
   assert.match(fetchLogPanel, /const postTasks = fetchTasks\.filter\(isPlannedPostTask\)/);
   assert.match(fetchLogPanel, /taskWorkerGroups\(postTasks, liveTasks\)/);
-  assert.match(fetchLogPanel, /Post tasks \(\{postTasks\.length\}\)/);
+  assert.match(fetchLogPanel, /Post task details/);
+  assert.match(fetchLogPanel, /className="sync-panel-run-card-details-count"/);
+  assert.doesNotMatch(fetchLogPanel, /Post tasks \(\{postTasks\.length\}\)/);
   assert.match(fetchLogPanel, /function groupedTaskStats/);
   assert.match(fetchLogPanel, /function isPlannedPostTask/);
   assert.match(fetchLogPanel, /function discoveryTaskState/);
@@ -2024,7 +2030,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /Waiting for Local Agent/);
   assert.match(fetchLogPanel, /Read has not completed yet, so summary has not started\./);
   assert.match(fetchLogPanel, /planned[\s\S]*read[\s\S]*summarized[\s\S]*synced/);
-  assert.match(fetchLogPanel, /Post tasks/);
+  assert.doesNotMatch(fetchLogPanel, /Post tasks/);
   assert.match(fetchLogPanel, /Fetch sources job lifecycle/);
   assert.match(fetchLogPanel, /Post task lifecycle/);
   assert.match(fetchLogPanel, /Discovery task lifecycle/);
@@ -2275,6 +2281,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /@keyframes sync-panel-live-dot-pulse/);
   assert.match(globals, /\.sync-panel-run-card-summary\s*{[\s\S]*line-height:\s*1\.55/);
   assert.match(globals, /\.sync-panel-run-card-details\s*{[\s\S]*background:\s*var\(--paper\)/);
+  assert.match(globals, /\.sync-panel-run-card-details-summary::before\s*{[\s\S]*transform:\s*rotate\(-45deg\)/);
+  assert.match(globals, /\.sync-panel-run-card-details-count\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.sync-panel-run-card-details-body\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.sync-panel-run-card-detail-heading\s*{[\s\S]*text-transform:\s*uppercase/);
   assert.match(globals, /\.sync-panel-run-card-details-stack\s*{[\s\S]*display:\s*grid/);

@@ -248,9 +248,15 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.doesNotMatch(panel, /aria-label="Fetch sources run history list"/);
   assert.doesNotMatch(panel, /className="sync-panel-run-list sync-panel-run-list-scroll"/);
   assert.match(panel, /fallback\?:/);
+  assert.match(panel, /function mergeFetchRunLists/);
+  assert.match(panel, /const dialogRuns = useMemo\(\(\) => mergeFetchRunLists\(runs, cronRuns\), \[runs, cronRuns\]\)/);
+  assert.match(panel, /runs=\{dialogRuns\}/);
+  assert.match(panel, /candidate\.jobRunId === logRef\.instanceId/);
   assert.match(panel, /const postTasks = fetchTasks\.filter\(isPlannedPostTask\)/);
   assert.match(panel, /taskWorkerGroups\(postTasks, liveTasks\)/);
-  assert.match(panel, /Post tasks \(\{postTasks\.length\}\)/);
+  assert.match(panel, /Post task details/);
+  assert.match(panel, /className="sync-panel-run-card-details-count"/);
+  assert.doesNotMatch(panel, /Post tasks \(\{postTasks\.length\}\)/);
   assert.match(panel, /className="sync-panel-task-worker-group-list"/);
   assert.match(panel, /className="sync-panel-task-worker-details" open/);
   assert.match(panel, /className="sync-panel-task-worker-summary"/);
@@ -279,7 +285,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /run\.source === "cron" && cronJob && cronJob\.status !== "active"/);
   assert.match(panel, /isRunInflight\(run, run\.jobRunId \? jobsByInstanceId\.get\(run\.jobRunId\) : null, cronJob\)/);
   assert.match(panel, /if \(cronJob\.status !== "active"\) \{[\s\S]*key: "stopped"/);
-  assert.match(panel, /<RunCard cronJob=\{cronJob\} domId=\{null\} jobRun=\{jobRun \?\? undefined\} run=\{run\} \/>/);
+  assert.match(panel, /<RunCard cronJob=\{cronJob\} domId=\{null\} jobRun=\{resolvedJobRun \?\? undefined\} run=\{run\} \/>/);
   assert.match(panel, /interruptedFetchRunStatus/);
   assert.match(panel, /label: "Stopped"/);
   assert.match(panel, /const displayStatus = !inflight && interruptedStatus/);

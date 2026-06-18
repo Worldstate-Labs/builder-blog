@@ -6601,7 +6601,54 @@ details:not([open]) > :not(summary) {
   font-size: 0.78125rem;
   font-weight: 700;
   gap: 0.5rem;
+  justify-content: flex-start;
   padding: 0.5rem 0.75rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sync-panel-run-card-details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.sync-panel-run-card-details-summary::before {
+  border-bottom: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  content: "";
+  flex: 0 0 auto;
+  height: 0.42rem;
+  opacity: 0.7;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  width: 0.42rem;
+}
+
+.sync-panel-run-card-details[open] > .sync-panel-run-card-details-summary::before {
+  transform: rotate(45deg);
+}
+
+.sync-panel-run-card-details-summary:hover,
+.sync-panel-run-card-details-summary:focus-visible {
+  background: color-mix(in oklch, var(--accent-soft) 44%, transparent);
+  color: var(--accent);
+}
+
+.sync-panel-run-card-details-summary:hover::before,
+.sync-panel-run-card-details-summary:focus-visible::before {
+  opacity: 1;
+}
+
+.sync-panel-run-card-details-count {
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted-strong);
+  font-size: 0.6875rem;
+  font-weight: 750;
+  line-height: 1;
+  margin-left: auto;
+  min-width: 1.35rem;
+  padding: 0.2rem 0.42rem;
+  text-align: center;
 }
 
 .sync-panel-run-card-details-body {
