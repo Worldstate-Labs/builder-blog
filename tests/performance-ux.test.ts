@@ -322,8 +322,8 @@ test("every app route has an explicit centered layout role", () => {
   const dashboardLoading = source("src/app/(workspace)/dashboard/loading.tsx");
   assert.doesNotMatch(dashboardLoading, /RouteLoading/);
   assert.match(dashboardLoading, /className="page-pad page-pad--reading home-page home-loading"/);
-  assert.match(dashboardLoading, /<h1 className="sr-only">Loading Home<\/h1>/);
-  assert.match(dashboardLoading, /aria-label="Home feed tabs"/);
+  assert.match(dashboardLoading, /<h1 className="sr-only">Loading Today<\/h1>/);
+  assert.match(dashboardLoading, /aria-label="Today feed tabs"/);
   assert.doesNotMatch(dashboardLoading, /home-loading-tab is-active/);
   assert.match(dashboardLoading, /label:\s*"AI Digest",\s*selected:\s*true/);
   assert.match(dashboardLoading, /label:\s*"Following",\s*selected:\s*false/);
@@ -333,7 +333,8 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(dashboardLoading, /home-loading-tab[\s\S]*AI Digest/);
   assert.match(dashboardLoading, /home-loading-tab[\s\S]*Following/);
   assert.match(dashboardLoading, /home-loading-tab[\s\S]*Favorites/);
-  assert.match(dashboardLoading, /className="home-tab-panel" aria-label="Loading Home content"/);
+  assert.match(dashboardLoading, /className="home-tab-panel" aria-label="Loading Today content"/);
+  assert.doesNotMatch(dashboardLoading, /Loading Home|Home feed tabs|Loading Home content/);
   assert.match(dashboardLoading, /className="ai-digest-stack home-loading-ai-digest"/);
   assert.match(dashboardLoading, /className="digest-control-bar home-loading-control"/);
   assert.match(dashboardLoading, /\["AI Digest collection", "AI Digest issue"\]\.map/);
@@ -1325,8 +1326,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /className="fb-panel dashed"/);
   assert.match(dashboardPage, /DashboardHomeTabs/);
   assert.match(dashboardTabs, /WorkspaceTopTabs/);
-  assert.match(dashboardTabs, /ariaLabel="Home feed tabs"/);
-  assert.doesNotMatch(dashboardTabs, /ariaLabel="Home sections"|ariaLabel="Home feed"/);
+  assert.match(dashboardTabs, /ariaLabel="Today feed tabs"/);
+  assert.doesNotMatch(dashboardTabs, /ariaLabel="Home feed tabs"|ariaLabel="Home sections"|ariaLabel="Home feed"/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /role="tablist"/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /onKeyDown=\{handleTabKeyDown\}/);
   assert.match(source("src/components/WorkspaceTopTabs.tsx"), /"ArrowLeft", "ArrowRight", "Home", "End"/);

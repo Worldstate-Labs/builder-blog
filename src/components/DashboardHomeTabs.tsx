@@ -41,7 +41,7 @@ export function DashboardHomeTabs({
   return (
     <>
       <WorkspaceTopTabs
-        ariaLabel="Home feed tabs"
+        ariaLabel="Today feed tabs"
         items={HOME_TABS}
         selectedValue={initialTab}
       />

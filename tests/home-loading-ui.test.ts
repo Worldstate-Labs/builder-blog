@@ -12,7 +12,8 @@ function source(path: string) {
 test("home loading tabs mirror the default AI Digest tab without becoming interactive", () => {
   const loading = source("src/app/(workspace)/dashboard/loading.tsx");
 
-  assert.match(loading, /aria-label="Home feed tabs"[\s\S]*role="tablist"/);
+  assert.match(loading, /aria-label="Today feed tabs"[\s\S]*role="tablist"/);
+  assert.doesNotMatch(loading, /Loading Home|Home feed tabs|Loading Home content/);
   assert.match(loading, /label:\s*"AI Digest",\s*selected:\s*true/);
   assert.match(loading, /label:\s*"Following",\s*selected:\s*false/);
   assert.match(loading, /label:\s*"Favorites",\s*selected:\s*false/);
