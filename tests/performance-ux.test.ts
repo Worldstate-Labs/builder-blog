@@ -1176,7 +1176,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(appShell, /label: "Digest"/);
   assert.doesNotMatch(appShell, /label: "For You"/);
   assert.doesNotMatch(appShell, /label: "History"/);
-  assert.match(builderDetailActions, /Could not update following for \$\{sourceName\}\./);
+  assert.match(builderDetailActions, /Could not update Following for \$\{sourceName\}\./);
+  assert.doesNotMatch(builderDetailActions, /Could not update following/);
   assert.match(channelPreferenceToggle, /Could not update primary source library\./);
   assert.doesNotMatch(builderDetailActions, /Couldn't update/);
   assert.doesNotMatch(channelPreferenceToggle, /Couldn't update|Could not update preference\.|Could not update preferred source library\./);
@@ -1536,7 +1537,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailActions, /className="builder-detail-action-row"/);
   assert.match(builderDetailActions, /sourceName: string/);
   assert.match(builderDetailActions, /aria-label=\{`\$\{subscribed \? "Unfollow" : "Follow"\} \$\{sourceName\}`\}/);
-  assert.match(builderDetailActions, /Could not update following for \$\{sourceName\}\./);
+  assert.match(builderDetailActions, /Could not update Following for \$\{sourceName\}\./);
+  assert.doesNotMatch(builderDetailActions, /Could not update following/);
   assert.doesNotMatch(builderDetailActions, /Could not update follow state\./);
   assert.match(builderDetailPage, /sourceName=\{entity\.name\}/);
   assert.match(builderDetailActions, /className="builder-detail-action-error"/);
@@ -4617,7 +4619,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(builderActions, /onSubscriptionStateChange\?\.\(builderId, nextSubscribed, previousSubscribed\)/);
   assert.doesNotMatch(builderActions, /fetch\("\/api\/builders\/subscriptions"|builder-library-bulk-action|Follow all/);
   assert.match(builderActions, /className="builder-library-action-error"/);
-  assert.match(builderActions, /Could not update following for \$\{builderName\}\./);
+  assert.match(builderActions, /Could not update Following for \$\{builderName\}\./);
+  assert.doesNotMatch(builderActions, /Could not update following/);
   assert.doesNotMatch(builderActions, /Could not update follow state\./);
   assert.doesNotMatch(builderActions, /Could not update subscription\./);
   assert.doesNotMatch(builderActions, /builder-library-remove-button|builder-library-remove-icon|builder-library-remove-confirm/);

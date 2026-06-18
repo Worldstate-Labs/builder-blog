@@ -38,7 +38,7 @@ export function BuilderLibraryActions({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ subscribed: nextSubscribed }),
         });
-        if (!response.ok) throw new Error("Could not update following.");
+        if (!response.ok) throw new Error("Could not update Following.");
         const payload = (await response.json()) as { subscribed?: boolean };
         const confirmedSubscribed = Boolean(payload.subscribed);
         setSubscribed(confirmedSubscribed);
@@ -48,7 +48,7 @@ export function BuilderLibraryActions({
       } catch {
         setSubscribed(previousSubscribed);
         onSubscriptionStateChange?.(builderId, previousSubscribed, nextSubscribed);
-        setError(`Could not update following for ${builderName}.`);
+        setError(`Could not update Following for ${builderName}.`);
       }
     });
   }
