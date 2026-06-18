@@ -938,6 +938,8 @@ function normalizeTypeOperatorValue(value: string): SearchDocumentType | null {
   if (singular === "feed" || singular === "post" || singular === "item") return "feed";
   if (
     singular === "digest" ||
+    singular === "digest-issue" ||
+    singular === "issue" ||
     singular === "digest-archive" ||
     singular === "archive" ||
     singular === "brief"

@@ -121,7 +121,7 @@ function titlePrefixCompletions(query: string, title: string) {
 function resultTypeDetail(type: string) {
   if (type === "builder") return "Source";
   if (type === "feed") return "Post";
-  if (type === "digest") return "AI Digest archive";
+  if (type === "digest") return "AI Digest issue";
   return "Result";
 }
 

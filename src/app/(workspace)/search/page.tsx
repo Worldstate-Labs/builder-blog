@@ -92,8 +92,8 @@ const advancedSearchExamples = [
   "allinurl:release model",
   "model pricing type:post",
   "model pricing type:source",
-  "model pricing type:ai-digest-archive",
-  "model pricing -type:ai-digest-archive",
+  "model pricing type:ai-digest-issue",
+  "model pricing -type:ai-digest-issue",
   "model pricing after:2026-01-01",
   "model pricing before:2026-12-31",
 ];
@@ -101,13 +101,13 @@ const advancedSearchExamples = [
 const resultTypeFilterLabels: Record<SearchDocumentType, string> = {
   builder: "Sources",
   feed: "Posts",
-  digest: "AI Digest archives",
+  digest: "AI Digest issues",
 };
 
 const resultTypeItemLabels: Record<SearchDocumentType, string> = {
   builder: "Source",
   feed: "Post",
-  digest: "AI Digest archive",
+  digest: "AI Digest issue",
 };
 
 const searchModeLabels: Record<SearchMode, string> = {
@@ -169,7 +169,7 @@ export default async function SearchPage({
     <div className="page-pad page-pad--reading search-page">
       <PageHeader
         title="Search"
-        description="Find sources, posts, and AI Digest archives in one place."
+        description="Find sources, posts, and AI Digest issues in one place."
       />
 
       <div className="workspace-content-stack search-results-workspace">
@@ -678,7 +678,7 @@ function searchResultCountLabel(typeFilter: SearchTypeFilter, count: number) {
   if (typeFilter === "builder") return count === 1 ? "source" : "sources";
   if (typeFilter === "feed") return count === 1 ? "post" : "posts";
   if (typeFilter === "digest") {
-    return count === 1 ? "AI Digest archive" : "AI Digest archives";
+    return count === 1 ? "AI Digest issue" : "AI Digest issues";
   }
   return count === 1 ? "result" : "results";
 }
@@ -1285,6 +1285,8 @@ function normalizeTypeFilter(value: string): SearchTypeFilter {
     normalized === "digest" ||
     normalized === "digests" ||
     normalized === "ai-digest" ||
+    normalized === "ai-digest-issue" ||
+    normalized === "ai-digest-issues" ||
     normalized === "ai-digest-archive" ||
     normalized === "ai-digest-archives"
   ) {

@@ -20,7 +20,7 @@ test("hub page exposes Source libraries and AI Digest collections as subtabs", (
   assert.match(topTabs, /role="tablist"/);
   assert.match(hubPage, /label:\s*"Source libraries"/);
   assert.match(hubPage, /label:\s*"AI Digest collections"/);
-  assert.doesNotMatch(hubPage, /label:\s*"AI Digest archives"/);
+  assert.doesNotMatch(hubPage, /label:\s*"AI Digest issues"/);
   assert.doesNotMatch(hubPage, /label:\s*"AI Digests"/);
   assert.doesNotMatch(hubPage, /label:\s*"Digests"/);
   assert.match(hubPage, /label:\s*"Source libraries"[\s\S]*href:\s*"\/library-hub\?tab=source-library"/);

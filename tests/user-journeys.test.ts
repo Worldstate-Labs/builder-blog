@@ -400,14 +400,14 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /Frequency/);
   // The override toggle adds ?force=1; its copy is context-specific (library
   // re-fetches posts already in the source library, digest re-includes posts already used in
-  // AI Digest archives additively — the digest job never fetches and never deletes past
-  // AI Digest archives).
+  // AI Digest issues additively — the digest job never fetches and never deletes past
+  // AI Digest issues).
   // Both cron + once dialogs expose it for both contexts, defaulting off.
   assert.match(skillPromptActions, /OVERRIDE_COPY/);
   assert.match(skillPromptActions, /Refresh posts already in library/);
   assert.doesNotMatch(skillPromptActions, /Refresh posts already saved/);
-  assert.match(skillPromptActions, /Include posts already used in AI Digest archives/);
-  assert.doesNotMatch(skillPromptActions, /Include posts already used in AI Digests/);
+  assert.match(skillPromptActions, /Include posts already used in AI Digest issues/);
+  assert.doesNotMatch(skillPromptActions, /Include posts already used in AI Digest archives|Include posts already used in AI Digests/);
   assert.doesNotMatch(skillPromptActions, /Include already digested posts/);
   assert.match(skillPromptActions, /overrideFetched/);
   assert.match(skillPromptActions, /params\.set\("force", "1"\)/);
@@ -425,8 +425,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /build your digest\./);
   assert.doesNotMatch(skillPromptActions, /build new digests|update every source/);
   assert.match(skillPromptActions, /Local Agent/);
-  assert.match(skillPromptActions, /Posts already used in AI Digest archives can be included again this time\./);
-  assert.doesNotMatch(skillPromptActions, /Already digested posts can be included again this time\./);
+  assert.match(skillPromptActions, /Posts already used in AI Digest issues can be included again this time\./);
+  assert.doesNotMatch(skillPromptActions, /Posts already used in AI Digest archives can be included again this time\.|Already digested posts can be included again this time\./);
   assert.match(skillPromptActions, /id="cron-fetch-days"[\s\S]*label="Lookback window \(days\)"/);
   assert.doesNotMatch(skillPromptActions, /Max post age \(days\)|Fetch post age \(days\)/);
   assert.match(skillPromptActions, /Default: 30 days\. Range: 1-90 days\./);
@@ -1531,7 +1531,7 @@ test("digest feed user path selects not-yet-digested posts within the configured
   assert.equal(digestCandidateLimitForLastRun(now, "2026-05-10T12:00:00.000Z"), 100);
 
   // Candidate selection is gated by the per-user DigestedItem marker, not a
-  // time window. Override (regenerate) re-includes posts already used in AI Digest archives.
+  // time window. Override (regenerate) re-includes posts already used in AI Digest issues.
   const contextRoute = readFileSync("src/app/api/skill/context/route.ts", "utf8");
   assert.match(contextRoute, /publishedAfter: lookbackCutoff/);
   assert.match(contextRoute, /digestCandidateLimitForLastRun\(now, lastDigest\?\.createdAt\)/);
@@ -1820,7 +1820,7 @@ test("search user path semantic mode finds related language without a literal ph
         id: "feed_1",
         type: "feed",
         title: "Archive retrieval",
-        body: "Vector recall over fetched posts and the AI Digest archive.",
+        body: "Vector recall over fetched posts and the AI Digest issue.",
       },
       {
         id: "builder_1",
@@ -2067,6 +2067,8 @@ test("search type operators accept the same source and post words shown in the U
   assert.equal(parseSearchQuery("agent memory type:source").type, "builder");
   assert.equal(parseSearchQuery("agent memory type:posts").type, "feed");
   assert.equal(parseSearchQuery("agent memory filetype:ai-digest").type, "digest");
+  assert.equal(parseSearchQuery("agent memory type:ai-digest-issue").type, "digest");
+  assert.equal(parseSearchQuery("agent memory -type:ai-digest-issues").excludedTypes[0], "digest");
   assert.equal(parseSearchQuery("agent memory type:ai-digest-archive").type, "digest");
   assert.equal(parseSearchQuery("agent memory -type:ai-digest-archives").excludedTypes[0], "digest");
   assert.deepEqual(parseSearchQuery("agent memory -type:sources").excludedTypes, ["builder"]);

@@ -21,8 +21,10 @@ test("search suggestions stay query-like instead of repeating result type labels
 
   assert.match(defaultSuggestionBlock, /"agent memory"/);
   assert.match(apiDefaultSuggestionBlock, /"research notes"/);
-  assert.doesNotMatch(defaultSuggestionBlock, /"AI Digest archives"/);
-  assert.doesNotMatch(apiDefaultSuggestionBlock, /"AI Digest archives"/);
-  assert.match(searchPage, /digest:\s*"AI Digest archives"/);
-  assert.match(suggestRoute, /return "AI Digest archive"/);
+  assert.doesNotMatch(defaultSuggestionBlock, /"AI Digest issues"/);
+  assert.doesNotMatch(apiDefaultSuggestionBlock, /"AI Digest issues"/);
+  assert.match(searchPage, /digest:\s*"AI Digest issues"/);
+  assert.match(suggestRoute, /return "AI Digest issue"/);
+  assert.doesNotMatch(searchPage, /digest:\s*"AI Digest archives"/);
+  assert.doesNotMatch(suggestRoute, /return "AI Digest archive"/);
 });

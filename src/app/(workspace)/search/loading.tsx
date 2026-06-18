@@ -9,7 +9,7 @@ export default function SearchLoading() {
     >
       <PageHeader
         title="Search"
-        description="Find sources, posts, and AI Digest archives in one place."
+        description="Find sources, posts, and AI Digest issues in one place."
       />
 
       <div className="workspace-content-stack search-results-workspace">
@@ -40,7 +40,7 @@ export default function SearchLoading() {
               { label: "All", selected: true },
               { label: "Sources", selected: false },
               { label: "Posts", selected: false },
-              { label: "AI Digest archives", selected: false },
+              { label: "AI Digest issues", selected: false },
             ].map(({ label, selected }) => (
               <span
                 aria-disabled="true"
