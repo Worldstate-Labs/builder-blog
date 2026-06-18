@@ -22,8 +22,9 @@ type Status = SaveStatusState;
 const HEADLINE_PROMPT_PLACEHOLDER = [
   "Example:",
   "Write headlineSummary in context.language as compact source lines.",
-  "Prefer '- Source name: one sentence summary', but combine sources as '- Source A and Source B: one sentence summary' if needed to stay under 1200 characters.",
-  "Keep each source summary to 50 Chinese/Japanese/Korean characters or 50 words for word-delimited languages.",
+  "Prefer '- Source name: one sentence summary'.",
+  "Combine sources as '- Source A and Source B: one sentence summary' only when needed to stay under 1200 characters.",
+  "Keep each source summary to 50 CJK characters or 50 words.",
   "Use only facts from the candidate post summaries. Do not include raw URLs.",
 ].join("\n");
 
@@ -37,9 +38,11 @@ const PER_SOURCE_SUMMARY_PROMPT_PLACEHOLDER = [
 const TRANSLATE_PROMPT_PLACEHOLDER = [
   "Example:",
   "Rewrite or translate the supplied per-post summary into context.language.",
-  "Keep the output to 500 words or fewer. Preserve key points, viewpoints, insights, claims, names, numbers, URLs, and source attribution.",
+  "Keep the output to 500 words or fewer.",
+  "Preserve key points, viewpoints, insights, claims, names, numbers, URLs, and source attribution.",
   "",
-  "Do not write headlineSummary or source-level summaries. Keep product names, people, companies, URLs, and common AI terms in English when professionals normally use them that way.",
+  "Do not write headlineSummary or source-level summaries.",
+  "Keep product names, people, companies, URLs, and common AI terms in English when professionals normally use them that way.",
 ].join("\n");
 
 export function AdminDigestConfigForm({
@@ -163,7 +166,7 @@ export function AdminDigestConfigForm({
       ) : null}
       <FieldBlock
         label="Post summary prompt"
-        description="Rewrites or translates post summaries into the selected AI Digest language without dropping key points."
+        description="Writes post summaries in the selected AI Digest language without dropping key points."
       >
         <MarkdownEditor
           ariaLabel="Post summary prompt"

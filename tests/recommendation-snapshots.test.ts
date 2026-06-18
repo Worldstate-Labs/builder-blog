@@ -115,8 +115,8 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(favoriteList, /className="favorites-empty is-actionable"/);
   assert.match(favoriteList, /favorites-empty-actions/);
   assert.match(favoriteList, /Reading queue is empty/);
-  assert.match(favoriteList, /Star posts from AI Digest, Following, Search, or post pages to build this queue\./);
-  assert.doesNotMatch(favoriteList, /Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
+  assert.match(favoriteList, /Star posts from AI Digest, Following, Search, or post pages\./);
+  assert.doesNotMatch(favoriteList, /to build this queue|Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
   assert.doesNotMatch(favoriteList, /Posts you marked for deeper reading/);
   assert.doesNotMatch(favoriteList, /Saved for deeper reading/);
   assert.doesNotMatch(favoriteList, /Save posts from AI Digest or Following/);
@@ -546,9 +546,8 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.match(followingSection, /No summarized posts yet/);
   assert.match(followingSection, /No unread posts yet/);
   assert.match(followingSection, /Use Fetch sources to summarize followed posts/);
-  assert.match(followingSection, /Following shows the latest unread posts/);
-  assert.match(followingSection, /Following updates when Fetch sources finds new unread posts/);
-  assert.doesNotMatch(followingSection, /Following will update after new unread posts/);
+  assert.match(followingSection, /Fetch sources to check for new unread posts/);
+  assert.doesNotMatch(followingSection, /Following shows the latest unread posts|Following updates when Fetch sources finds new unread posts|Following will update after new unread posts/);
   assert.doesNotMatch(followingSection, /No fetched posts yet|Following can show their latest posts/);
   assert.match(followingSection, /title="Could not load Following posts"/);
   assert.match(followingSection, /Check your connection, then try again\./);

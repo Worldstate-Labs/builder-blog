@@ -128,7 +128,7 @@ test("resolvePodcast surfaces the Apple-zero-results case as a hard ResolutionFa
   // so we don't double-call iTunes. results.length === 0 → ok: false.
   assert.match(RESOLVER_SOURCE, /results\.length\s*===\s*0/);
   assert.match(RESOLVER_SOURCE, /Apple Podcasts has no record of this show\. Paste the actual RSS feed URL instead\./);
-  assert.match(RESOLVER_SOURCE, /Paste an Apple Podcasts URL or the show's RSS feed URL\./);
+  assert.match(RESOLVER_SOURCE, /Paste an Apple Podcasts or RSS feed URL\./);
   assert.doesNotMatch(RESOLVER_SOURCE, /show — paste|id…|podcasts\.apple\.com\/\.\.\.|id\.\.\./);
 });
 

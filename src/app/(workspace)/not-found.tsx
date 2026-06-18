@@ -16,7 +16,7 @@ export default function WorkspaceNotFound() {
             <div className="workspace-not-found-actions">
               <Link className="fb-btn dark" href="/dashboard">
                 <Home aria-hidden="true" />
-                Return Home
+                Home
               </Link>
               <Link className="fb-btn light" href="/search">
                 <Search aria-hidden="true" />
@@ -26,7 +26,7 @@ export default function WorkspaceNotFound() {
           }
           className="workspace-not-found-empty"
           title="Nothing to open here"
-          body="Return Home, or search across sources, posts, and AI Digest archives."
+          body="Search sources, posts, and AI Digest archives."
         />
       </div>
     </div>

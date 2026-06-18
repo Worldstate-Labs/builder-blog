@@ -152,7 +152,7 @@ async function resolvePodcast(displayName: string, value: string): Promise<Resol
   if (!sourceUrl) {
     return {
       ok: false,
-      reason: "Paste an Apple Podcasts URL or the show's RSS feed URL.",
+      reason: "Paste an Apple Podcasts or RSS feed URL.",
     };
   }
 

@@ -43,13 +43,13 @@ export function CommonFetchRulesForm({
   return (
     <CommonRulesForm
       ariaLabel="Common fetching rules"
-      description="Used before source-specific fetch prompts when the Local Agent extracts source content."
+      description="Used before source-specific Local Agent fetch prompts."
       emptyMessage="Common fetching rules cannot be empty."
       fieldName="commonFetchRules"
       initialValue={initialValue}
       placeholder={[
         "Example:",
-        "Use task.item.url, task.sourceType, and task.agentWorkType to choose the best available extraction method.",
+        "Choose an extraction method from task.item.url, task.sourceType, and task.agentWorkType.",
         "",
         "Keep trying available methods until real primary content is obtained, or no method remains.",
       ].join("\n")}

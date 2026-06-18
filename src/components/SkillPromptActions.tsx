@@ -1139,7 +1139,7 @@ function CronConfigDialog({
                 onChange={setPickedMaxAge}
               />
               <p className="cron-field-hint">
-                Skips older posts. Default: 30 days. Range: 1-90 days.
+                Looks back this many days for posts. Default: 30 days. Range: 1-90 days.
               </p>
             </>
           ) : (
@@ -1151,7 +1151,7 @@ function CronConfigDialog({
                 onChange={setPickedFetchDays}
               />
               <p className="cron-field-hint">
-                Fetches posts this many days back. Default: 30 days. Range: 1-90 days.
+                Looks back this many days for posts. Default: 30 days. Range: 1-90 days.
               </p>
             </>
           )}
