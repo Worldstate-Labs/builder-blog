@@ -404,8 +404,9 @@ test("web app serves the agent skill and setup command", () => {
   // AI Digest issues).
   // Both cron + once dialogs expose it for both contexts, defaulting off.
   assert.match(skillPromptActions, /OVERRIDE_COPY/);
-  assert.match(skillPromptActions, /Refresh posts already in library/);
-  assert.doesNotMatch(skillPromptActions, /Refresh posts already saved/);
+  assert.match(skillPromptActions, /Refresh existing source library posts/);
+  assert.match(skillPromptActions, /Refreshes posts already in your source library/);
+  assert.doesNotMatch(skillPromptActions, /Refresh posts already in library|Refresh posts already saved|Refreshes posts already in your library/);
   assert.match(skillPromptActions, /Include posts already used in AI Digest issues/);
   assert.doesNotMatch(skillPromptActions, /Include posts already used in AI Digest archives|Include posts already used in AI Digests/);
   assert.doesNotMatch(skillPromptActions, /Include already digested posts/);

@@ -96,7 +96,7 @@ export default async function Home() {
           <div className="fb-product-preview-list">
             {[
               {
-                title: "One cited brief.",
+                title: "One cited AI Digest.",
                 detail: "New posts, videos, launches, and projects stay readable together.",
               },
               {

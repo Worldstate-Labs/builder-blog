@@ -565,7 +565,8 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(landingPage, /build a cited AI Digest from the summaries/);
   assert.doesNotMatch(landingPage, /sources your Local Agent can fetch|agent-fetchable sources|Local Agent sources/);
   assert.match(landingPage, /Daily AI Digest flow/);
-  assert.match(landingPage, /One cited brief/);
+  assert.match(landingPage, /One cited AI Digest/);
+  assert.doesNotMatch(landingPage, /One cited brief/);
   assert.match(landingPage, /New posts, videos, launches, and projects stay readable together/);
   assert.doesNotMatch(landingPage, /Daily updates become one AI Digest|New posts, videos, launches, and projects become a readable AI Digest/);
   assert.doesNotMatch(landingPage, /readable AI Digest/);

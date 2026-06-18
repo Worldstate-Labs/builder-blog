@@ -149,7 +149,7 @@ const MAX_PARALLEL_WORKERS = 8;
 
 // The override toggle reuses one URL channel (?force=1) but means different
 // things per context, so its copy is context-specific. Library: re-fetch posts
-// already in the library. Digest: re-include posts already used in AI Digest issues
+// already in the source library. Digest: re-include posts already used in AI Digest issues
 // (additive — adds a new AI Digest that re-covers those posts, never deletes or
 // replaces past ones).
 const OVERRIDE_COPY: Record<
@@ -157,11 +157,11 @@ const OVERRIDE_COPY: Record<
   { name: string; cronHint: string; onceHint: string }
 > = {
   library: {
-    name: "Refresh posts already in library",
+    name: "Refresh existing source library posts",
     cronHint:
-      "Refreshes posts already in your library on every run. Leave off for normal updates.",
+      "Refreshes posts already in your source library on every run. Leave off for normal updates.",
     onceHint:
-      "Refreshes posts already in your library this time only.",
+      "Refreshes posts already in your source library this time only.",
   },
   digest: {
     name: "Include posts already used in AI Digest issues",
