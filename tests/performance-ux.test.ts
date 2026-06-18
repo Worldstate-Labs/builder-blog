@@ -3412,12 +3412,12 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /activeFilter === "imported" \? \(/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /onClick=\{\(\) => setActiveFilter\("all"\)\}/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), />\s*Browse source libraries\s*<\/button>/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Shared source libraries appear here when people share them to Hub\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries shared to Hub appear here\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Your source libraries appear here\./);
-  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Source libraries appear here after users share them to Hub\.|Libraries you share to Hub appear here\.|Shared source libraries appear here after people share them\.|Your source libraries appear here after you share them\./);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Source libraries appear here after users share them to Hub\.|Libraries you share to Hub appear here\.|Shared source libraries appear here after they are shared to Hub\.|Shared source libraries appear here after people share them\.|Shared source libraries appear here when people share them to Hub\.|Your source libraries appear here after you share them\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Shared source libraries will appear here\.|Your source libraries will appear here once you share them\./);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Libraries shared by other users\./);
-  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Source libraries shared to Hub will appear here\.|Source libraries shared by other users\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Shared by other users\./);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Source libraries shared to Hub will appear here\.|Source libraries shared by other users\.|Libraries shared by other users\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Community source libraries, your shared source libraries|Community libraries|your shared libraries/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /No shared source libraries match this filter\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Import source libraries to see them here\./);
@@ -4913,8 +4913,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /Browse AI Digest collections/);
   assert.doesNotMatch(digestPipelineForm, /Browse Hub/);
   assert.match(digestPipelineForm, /No shared AI Digest collections/);
-  assert.match(digestPipelineForm, /Shared AI Digest collections appear here when people share them to Hub\./);
-  assert.doesNotMatch(digestPipelineForm, /AI Digest collections appear here after users share them to Hub\.|Shared collections appear here after users share them to Hub\.|Shared AI Digest archives appear here when users share them to Hub\.|Archives appear here after users share them to Hub\./);
+  assert.match(digestPipelineForm, /AI Digest collections shared to Hub appear here\./);
+  assert.doesNotMatch(digestPipelineForm, /AI Digest collections appear here after users share them to Hub\.|Shared collections appear here after users share them to Hub\.|Shared AI Digest archives appear here when users share them to Hub\.|Archives appear here after users share them to Hub\.|Shared AI Digest collections appear here after they are shared to Hub\.|Shared AI Digest collections appear here when people share them to Hub\./);
   assert.match(digestPipelineForm, /No AI Digest issues yet/);
   assert.doesNotMatch(digestPipelineForm, /No AI Digest archives yet/);
   assert.doesNotMatch(digestPipelineForm, /No AI Digests yet/);

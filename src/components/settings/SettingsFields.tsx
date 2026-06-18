@@ -502,7 +502,7 @@ export function SaveStatus({
 // are fed into prompts; `source` is interpreted by the job context/CLI as
 // "match the raw content or existing summary language".
 export const SUMMARY_LANGUAGE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-  { value: ORIGINAL_CONTENT_LANGUAGE_VALUE, label: `Use ${ORIGINAL_CONTENT_LANGUAGE_LABEL.toLowerCase()}` },
+  { value: ORIGINAL_CONTENT_LANGUAGE_VALUE, label: ORIGINAL_CONTENT_LANGUAGE_LABEL },
   { value: "zh", label: "中文 (Chinese)" },
   { value: "English", label: "English" },
   { value: "日本語", label: "日本語 (Japanese)" },

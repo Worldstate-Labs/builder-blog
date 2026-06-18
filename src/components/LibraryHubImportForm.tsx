@@ -153,7 +153,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         : "No matching source libraries";
   const emptyBody =
     activeFilter === "all"
-      ? "Shared source libraries appear here when people share them to Hub."
+      ? "Source libraries shared to Hub appear here."
       : listCopy.emptyBody;
   const removeTarget = removeTargetId
     ? libraries.find((library) => library.id === removeTargetId) ?? null
@@ -608,7 +608,7 @@ function sourceLibraryListCopy(filter: FilterKey) {
       };
     case "shared":
       return {
-        description: "Libraries shared by other users.",
+        description: "Shared by other users.",
         emptyBody: "No shared source libraries match this filter.",
       };
     case "all":
