@@ -2304,9 +2304,11 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sync-panel-source-row\s*{[\s\S]*justify-content:\s*space-between/);
   assert.match(globals, /\.sync-panel-task-worker-group-list\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.sync-panel-task-worker-summary\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /\.sync-panel-task-worker-summary::after,[\s\S]*\.sync-panel-task-source-summary::after,[\s\S]*\.sync-panel-detail-card-summary::before,[\s\S]*\.sync-panel-task-technical-summary::before\s*{[\s\S]*transform:\s*rotate\(45deg\)/);
+  assert.match(globals, /\.sync-panel-task-worker-details\[open\] > \.sync-panel-task-worker-summary::after,[\s\S]*\.sync-panel-task-source-details\[open\] > \.sync-panel-task-source-summary::after,[\s\S]*\.sync-panel-detail-card\[open\] > \.sync-panel-detail-card-summary::before,[\s\S]*\.sync-panel-task-technical\[open\] > \.sync-panel-task-technical-summary::before\s*{[\s\S]*transform:\s*rotate\(225deg\)/);
   assert.match(globals, /\.sync-panel-task-worker-details > \.sync-panel-task-source-group-list\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.sync-panel-task-source-group-list\s*{[\s\S]*display:\s*grid/);
-  assert.match(globals, /\.sync-panel-task-source-summary\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /\.sync-panel-task-source-summary\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto auto/);
   assert.match(globals, /\.sync-panel-task-source-details > \.sync-panel-run-card-candidate-list\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.sync-panel-task-card\s*{[\s\S]*background:\s*var\(--paper-strong\)/);
   assert.match(globals, /\.sync-panel-task-summary\s*{[\s\S]*display:\s*flex/);
@@ -3595,6 +3597,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /const kindCmp = a\.kind\.localeCompare\(b\.kind\)/);
   assert.match(builderLibraryList, /className="builder-library-source-list"/);
   assert.match(builderLibraryList, /className="builder-library-see-more"/);
+  assert.match(builderLibraryList, /import \{ ChevronDown \} from "lucide-react"/);
+  assert.match(builderLibraryList, /className="builder-library-see-more-icon"/);
   assert.match(builderLibraryList, /See \$\{formatCount\(Math\.max\(hiddenSourceCount, 0\)\)\} more/);
   assert.match(builderLibraryList, /aria-expanded=\{showAllSources\}/);
   assert.match(builderLibraryList, /Show fewer sources/);
@@ -3901,6 +3905,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(builderLibraryList, /followed/);
   assert.match(globals, /\.builder-library-source-list\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.builder-library-see-more\s*{[\s\S]*border-radius:\s*999px/);
+  assert.match(globals, /\.builder-library-see-more-icon\s*{[\s\S]*transition:\s*transform 140ms ease/);
+  assert.match(globals, /\.builder-library-see-more\[aria-expanded="true"\] \.builder-library-see-more-icon\s*{[\s\S]*transform:\s*rotate\(180deg\)/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-posts\s*{[\s\S]*margin-left:\s*0/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-posts-count\s*{[\s\S]*flex-wrap:\s*nowrap/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card\s*{[\s\S]*--source-list-avatar-size:\s*2\.5rem/);
@@ -5200,6 +5206,8 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.doesNotMatch(css, /\.builder-library-open-source\s*{/);
   assert.match(css, /\.builder-library-row-tools\s*{[\s\S]*opacity:\s*0/);
   assert.match(css, /\.library-section-meta \.count-meta\s*{[\s\S]*font-size:\s*0\.8125rem/);
+  assert.match(css, /summary\.library-section-summary::after\s*{[\s\S]*transform:\s*rotate\(45deg\)/);
+  assert.match(css, /\.library-section-panel\[open\] > summary\.library-section-summary::after\s*{[\s\S]*transform:\s*rotate\(225deg\)/);
   assert.doesNotMatch(css, /\.library-section-summary::after[\s\S]*content:\s*"\+"/);
   assert.doesNotMatch(css, /\.library-section-meta > \.fb-btn\s*{/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card\s*{[\s\S]*--source-list-avatar-size:\s*2\.5rem/);

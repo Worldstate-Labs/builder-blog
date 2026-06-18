@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { ChevronDown } from "lucide-react";
 import { BuilderEditDialog } from "@/components/BuilderEditDialog";
 import { BuilderFeedItems } from "@/components/BuilderFeedItems";
 import { BuilderLibraryActions } from "@/components/BuilderLibraryActions";
@@ -227,6 +228,7 @@ export function BuilderLibraryList({
           type="button"
         >
           {toggleLabel}
+          <ChevronDown aria-hidden="true" className="builder-library-see-more-icon" />
         </button>
       ) : null}
     </div>
