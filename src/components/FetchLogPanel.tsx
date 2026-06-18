@@ -400,9 +400,11 @@ function fetchRunStats({
   const counters = liveProgress?.counters ?? {};
   const liveTasks = liveProgress?.tasks ?? [];
   const plannedTasks = fetchTasks.filter(isPlannedPostTask);
-  const planned =
-    counters.tasksPlanned ??
-    (plannedTasks.length > 0 ? plannedTasks.length : run?.tasksGenerated ?? 0);
+  const planned = Math.max(
+    counters.tasksPlanned ?? 0,
+    plannedTasks.length,
+    run?.tasksGenerated ?? 0,
+  );
   const read = Math.max(
     plannedTasks.filter(isReadForStats).length,
     liveTasks.filter(liveTaskWasRead).length,
