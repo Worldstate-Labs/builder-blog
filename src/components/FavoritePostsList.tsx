@@ -72,7 +72,7 @@ export function FavoritePostsList({
         }
         className="favorites-empty is-actionable"
         title="No Favorites yet"
-        body="Star posts from AI Digest, Following, Search, or post pages."
+        body="Save posts from AI Digest, Following, Search, or post pages."
       />
     );
   }
@@ -83,7 +83,7 @@ export function FavoritePostsList({
         <div>
           <h2 className="favorites-feed-title">Favorites</h2>
           <p className="favorites-feed-desc">
-            Starred posts, newest first.
+            Saved posts, newest first.
           </p>
         </div>
         <span className="favorites-feed-count">

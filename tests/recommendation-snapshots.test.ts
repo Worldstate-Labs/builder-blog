@@ -99,8 +99,8 @@ test("favorites saves posts into the Favorites tab", () => {
   assert.match(favoriteSection, /feedRead\.findMany/);
   assert.match(favoriteList, /aria-label="Favorite posts"/);
   assert.match(favoriteList, /<h2 className="favorites-feed-title">Favorites<\/h2>/);
-  assert.match(favoriteList, /Starred posts, newest first\./);
-  assert.doesNotMatch(favoriteList, /Reading queue|Focused reading queue|Posts you starred for focused reading/);
+  assert.match(favoriteList, /Saved posts, newest first\./);
+  assert.doesNotMatch(favoriteList, /Starred posts|Reading queue|Focused reading queue|Posts you starred for focused reading/);
   assert.match(favoriteList, /@\/components\/Count/);
   assert.match(favoriteList, /formatCount\(items\.length\)/);
   assert.match(favoriteList, /Open AI Digest/);
@@ -114,11 +114,11 @@ test("favorites saves posts into the Favorites tab", () => {
   assert.match(favoriteList, /className="favorites-empty is-actionable"/);
   assert.match(favoriteList, /favorites-empty-actions/);
   assert.match(favoriteList, /No Favorites yet/);
-  assert.match(favoriteList, /Star posts from AI Digest, Following, Search, or post pages\./);
+  assert.match(favoriteList, /Save posts from AI Digest, Following, Search, or post pages\./);
   assert.doesNotMatch(favoriteList, /to build this queue|Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
   assert.doesNotMatch(favoriteList, /Posts you marked for deeper reading/);
   assert.doesNotMatch(favoriteList, /Saved for deeper reading/);
-  assert.doesNotMatch(favoriteList, /Save posts from AI Digest or Following/);
+  assert.doesNotMatch(favoriteList, /Star posts from AI Digest|Save posts from AI Digest or Following/);
   assert.match(favoriteList, /postDetailHref\(item\.feedItemId, "\/dashboard\?tab=favorites", "Favorites"\)/);
   assert.match(favoriteList, /PostFavoriteButton/);
   assert.match(favoriteList, /const response = await fetch\("\/api\/favorites"/);

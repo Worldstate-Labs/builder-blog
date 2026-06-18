@@ -1768,8 +1768,9 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(favoriteList, /aria-label="Favorite posts"/);
   assert.match(favoriteList, /<h2 className="favorites-feed-title">Favorites<\/h2>/);
   assert.match(favoriteList, /No Favorites yet/);
-  assert.match(favoriteList, /Starred posts, newest first\./);
-  assert.match(favoriteList, /Star posts from AI Digest, Following, Search, or post pages\./);
+  assert.match(favoriteList, /Saved posts, newest first\./);
+  assert.match(favoriteList, /Save posts from AI Digest, Following, Search, or post pages\./);
+  assert.doesNotMatch(favoriteList, /Starred posts|Star posts from AI Digest/);
   assert.doesNotMatch(favoriteList, /to build this queue|Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
   assert.doesNotMatch(favoriteList, /Reading queue|Posts you starred for focused reading/);
   assert.match(favoriteList, /Search posts/);
