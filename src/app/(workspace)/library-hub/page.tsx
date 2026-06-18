@@ -68,7 +68,7 @@ export default async function LibraryHubPage({
     <div className="page-pad">
       <PageHeader
         title="Hub"
-        description="Browse shared source libraries and AI Digest collections, then import the ones you want."
+        description="Browse shared source libraries and AI Digest collections, then import the ones you need."
       />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <WorkspaceTopTabs
@@ -277,7 +277,7 @@ function LibraryHubImportFallback() {
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Source libraries</h2>
           <p className="hub-section-copy">
-            Import shared source libraries into the Sources tab. They feed AI Digest issues and Following posts.
+            Import shared source libraries into the Sources tab. Imported sources feed AI Digest issues and Following posts.
           </p>
           <div className="library-hub-skeleton-line is-wide" />
         </div>
