@@ -779,6 +779,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(globals, /\.item-summary-action-icon\s*{[\s\S]*height:\s*0\.875rem/);
   assert.match(globals, /\.sync-panel-candidate-title\[href\]\s*{[\s\S]*color:\s*var\(--accent\)/);
   assert.match(globals, /\.sync-panel-candidate-title\[href\]:hover\s*{[\s\S]*text-decoration:\s*underline/);
+  assert.match(globals, /\.sync-panel-candidate-copy\s*{[\s\S]*overflow:\s*hidden/);
+  assert.match(globals, /\.sync-panel-candidate-title\s*{[\s\S]*text-overflow:\s*ellipsis/);
+  assert.match(globals, /\.sync-panel-candidate-title\s*{[\s\S]*white-space:\s*nowrap/);
   assert.doesNotMatch(globals, /\.sync-panel-candidate-link-icon\s*{/);
   assert.match(skillPromptActions, /!\s*open \? null/);
   assert.match(skillPromptActions, /className=\{compactOnly \? "skill-prompt-compact" : "fb-skill"\}/);
@@ -2270,7 +2273,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sync-panel-detail-code\s*{[\s\S]*white-space:\s*pre-wrap/);
   assert.match(globals, /\.sync-panel-detail-json\s*{[\s\S]*padding:\s*0\.5rem 0\.75rem 0\.75rem/);
   assert.match(globals, /\.sync-panel-candidate-row\s*{[\s\S]*line-height:\s*1\.35/);
+  assert.match(globals, /\.sync-panel-candidate-row\s*{[\s\S]*min-width:\s*0/);
   assert.match(globals, /\.sync-panel-candidate-outcome\s*{[\s\S]*width:\s*4\.7em/);
+  assert.match(globals, /\.sync-panel-candidate-copy\s*{[\s\S]*min-width:\s*0/);
   assert.match(globals, /\.sync-panel-candidate-title\.is-muted\s*{[\s\S]*color:\s*var\(--muted-strong\)/);
   assert.doesNotMatch(globals, /\.sync-panel-candidate-source/);
   assert.match(globals, /\.sync-panel-layout\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*0\.85fr\) minmax\(0,\s*1\.15fr\)/);

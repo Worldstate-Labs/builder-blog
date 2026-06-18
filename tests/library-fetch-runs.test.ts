@@ -633,6 +633,12 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /Posts considered/);
   assert.match(panel, /sync-panel-candidate-title/);
   assert.doesNotMatch(panel, /sync-panel-candidate-source/);
+  assert.match(digestRuns, /prisma\.feedItem\.findMany/);
+  assert.match(digestRuns, /select: \{ id: true, title: true, body: true \}/);
+  assert.match(digestRuns, /function candidateTitle/);
+  assert.match(digestRuns, /const snapshotTitle = snapshot\.title\?\.trim\(\)/);
+  assert.match(digestRuns, /const feedItemTitle = feedItem\?\.title\?\.trim\(\)/);
+  assert.match(digestRuns, /firstBodyLine\(feedItem\.body\)/);
   assert.doesNotMatch(panel, /className="rounded-\[10px\] border bg-\[var\(--paper-strong\)\] px-3\.5 py-3"[\s\S]*Runtime job did not create an AI Digest build record/);
   assert.doesNotMatch(panel, /className="rounded-\[10px\] border bg-\[var\(--paper-strong\)\] px-3\.5 py-3"[\s\S]*Previous AI Digest/);
   assert.doesNotMatch(panel, /className="flex items-baseline justify-between gap-2 text-\[12px\]"/);

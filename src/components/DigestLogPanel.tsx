@@ -1469,11 +1469,15 @@ function CandidateRow({ item, synced }: { item: DigestRunCandidate; synced: bool
           <a
             className={item.included ? "sync-panel-candidate-title" : "sync-panel-candidate-title is-muted"}
             href={detailHref}
+            title={title}
           >
             {title}
           </a>
         ) : (
-          <span className={item.included ? "sync-panel-candidate-title" : "sync-panel-candidate-title is-muted"}>
+          <span
+            className={item.included ? "sync-panel-candidate-title" : "sync-panel-candidate-title is-muted"}
+            title={title}
+          >
             {title}
           </span>
         )}

@@ -86,6 +86,12 @@ type CandidateSnapshot = {
   publishedAt?: string | null;
 };
 
+type CandidateFeedItemFallback = {
+  id: string;
+  title: string | null;
+  body: string;
+};
+
 type SubscriptionSnapshot = {
   entityId?: string;
   name?: string;
@@ -99,6 +105,21 @@ function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
+function firstBodyLine(body: string) {
+  return body.split(/\r?\n/).map((line) => line.trim()).find(Boolean)?.slice(0, 160) ?? null;
+}
+
+function candidateTitle(
+  snapshot: CandidateSnapshot,
+  feedItem?: CandidateFeedItemFallback,
+): string | null {
+  const snapshotTitle = snapshot.title?.trim();
+  if (snapshotTitle) return snapshotTitle;
+  const feedItemTitle = feedItem?.title?.trim();
+  if (feedItemTitle) return feedItemTitle;
+  return feedItem ? firstBodyLine(feedItem.body) : null;
+}
+
 export async function getDigestRuns(
   userId: string,
   limit = DIGEST_RUN_LIMIT,
@@ -110,8 +131,25 @@ export async function getDigestRuns(
     take: limit,
   });
 
-  return runs.map((run) => {
-    const candidates = asArray<CandidateSnapshot>(run.candidates);
+  const candidateSnapshotsByRun = runs.map((run) => asArray<CandidateSnapshot>(run.candidates));
+  const feedItemIds = [
+    ...new Set(
+      candidateSnapshotsByRun
+        .flatMap((candidates) =>
+          candidates.map((cand) => cand.feedItemId).filter((id): id is string => Boolean(id)),
+        ),
+    ),
+  ];
+  const feedItems = feedItemIds.length
+    ? await prisma.feedItem.findMany({
+        where: { id: { in: feedItemIds } },
+        select: { id: true, title: true, body: true },
+      })
+    : [];
+  const feedItemById = new Map(feedItems.map((item) => [item.id, item]));
+
+  return runs.map((run, index) => {
+    const candidates = candidateSnapshotsByRun[index] ?? [];
     const subscriptions = asArray<SubscriptionSnapshot>(run.subscriptions);
     const includedKeys = new Set(asArray<string>(run.includedKeys));
     const synced = run.status === "synced";
@@ -138,12 +176,13 @@ export async function getDigestRuns(
       if (cand.source && entityId && !nameByEntity.has(entityId)) {
         nameByEntity.set(entityId, cand.source);
       }
+      const feedItem = cand.feedItemId ? feedItemById.get(cand.feedItemId) : undefined;
       shapedCandidates.push({
         feedItemId: cand.feedItemId ?? null,
         entityId,
         kind,
         sourceType: cand.sourceType ?? null,
-        title: cand.title ?? null,
+        title: candidateTitle(cand, feedItem),
         url: cand.url ?? null,
         source: cand.source ?? nameByEntity.get(entityId) ?? null,
         publishedAt: cand.publishedAt ?? null,

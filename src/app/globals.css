@@ -6781,6 +6781,7 @@ details:not([open]) > :not(summary) {
   font-size: 0.78125rem;
   gap: 0.5rem;
   line-height: 1.35;
+  min-width: 0;
 }
 
 .sync-panel-candidate-outcome {
@@ -6803,10 +6804,16 @@ details:not([open]) > :not(summary) {
 .sync-panel-candidate-copy {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .sync-panel-candidate-title {
   color: var(--ink);
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sync-panel-candidate-title.is-muted {
