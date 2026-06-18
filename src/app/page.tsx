@@ -27,13 +27,13 @@ export default async function Home() {
       <section className="fb-public-section fb-public-hero">
         <div>
           <h1 className="fb-public-title">
-            Keep up with sources worth following.{" "}
-            <span className="fb-public-title-break">Read their updates as one AI Digest issue.</span>
+            Follow sources worth reading.{" "}
+            <span className="fb-public-title-break">Read their updates as one cited AI Digest.</span>
           </h1>
           <p className="fb-public-copy">
             Follow blogs, channels, feeds, GitHub Trending, and Product Hunt.
-            Your Local Agent fetches updates, summarizes posts, and builds a
-            cited AI Digest issue.
+            Your Local Agent fetches updates, summarizes source material, and
+            builds a cited AI Digest you can search later.
           </p>
           <div className="fb-public-actions">
             <Link className="fb-btn dark" href="/login">
@@ -59,13 +59,13 @@ export default async function Home() {
               <div>
                 <div className="fb-product-preview-title">AI Digest workflow</div>
                 <div className="fb-product-preview-kicker">
-                  Preview
+                  Sources, citations, recall
                 </div>
               </div>
             </div>
             <span className="fb-chip success" aria-label="Preview data">
               <Terminal aria-hidden="true" />
-              Local Agent loop
+              Local Agent
             </span>
           </div>
           <div className="fb-product-demo" aria-hidden="true">
@@ -96,17 +96,16 @@ export default async function Home() {
           <div className="fb-product-preview-list">
             {[
               {
-                title: "One cited AI Digest issue",
+                title: "One cited AI Digest",
                 detail: "Posts, videos, launches, and projects stay readable together.",
               },
               {
-                title: "Sources stay connected",
-                detail: "Start from shared source libraries, then add your own.",
+                title: "Sources stay visible",
+                detail: "Each summary keeps a path back to the original post.",
               },
               {
-                title: "Search when needed",
-                detail:
-                  "Find sources, posts, and AI Digest issues when you need details.",
+                title: "Search later",
+                detail: "Find sources, posts, and AI Digest issues when details matter.",
               },
             ].map((item) => (
               <article className="fb-signal" key={item.title}>
@@ -130,7 +129,7 @@ export default async function Home() {
         <div className="fb-public-section-kicker-row">
           <span className="fb-section-label">Workflow</span>
           <span className="fb-public-section-note">
-            Follow sources, build AI Digest, and search later.
+            Follow sources, build a cited AI Digest, search later.
           </span>
         </div>
         <ol className="fb-public-step-list">
@@ -138,20 +137,20 @@ export default async function Home() {
             {
               i: "01",
               icon: Rss,
-              title: "Choose sources",
+              title: "Follow sources",
               copy: "Start from shared source libraries, then add blogs, channels, feeds, GitHub Trending, and Product Hunt.",
             },
             {
               i: "02",
               icon: Terminal,
-              title: "Build AI Digest",
-              copy: "Let your Local Agent fetch, summarize, and build a cited AI Digest issue.",
+              title: "Build the AI Digest",
+              copy: "The Local Agent fetches updates, summarizes source material, and assembles a cited AI Digest.",
             },
             {
               i: "03",
               icon: Search,
               title: "Search and revisit",
-              copy: "Open originals and search sources, posts, and AI Digest issues.",
+              copy: "Open originals and search sources, posts, and AI Digest issues later.",
             },
           ].map(({ i, icon: Icon, title, copy }) => (
             <li key={title} className="fb-public-step-row">
@@ -174,19 +173,19 @@ export default async function Home() {
         <div>
           <span className="fb-section-label">Workspace</span>
           <h2 className="fb-public-section-title fb-public-section-title-spaced">
-            Calm enough for daily use. Dense enough for real recall.
+            Quiet enough for daily reading. Structured enough for recall.
           </h2>
         </div>
         <div className="fb-public-feature-grid">
           <Feature
             icon={Newspaper}
             title="Today reading lanes"
-            copy="AI Digest, Following, and Favorites stay separate, so catch-up stays focused."
+            copy="AI Digest, Following, and Favorites stay separate so catch-up stays focused."
           />
           <Feature
             icon={Radio}
             title="Following posts"
-            copy="Unread posts stay separate from AI Digest issues."
+            copy="Unread posts stay separate from generated AI Digest issues."
           />
           <Feature
             icon={Search}
