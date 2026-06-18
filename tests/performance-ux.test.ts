@@ -2224,6 +2224,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.source-fetch-overview \.digest-updates-actions\s*{[\s\S]*justify-content:\s*flex-start/);
   assert.match(globals, /\.sources-sync-section \.source-fetch-overview \.digest-updates-actions\s*{[\s\S]*align-self:\s*center/);
   assert.match(globals, /\.source-fetch-meta\s*{[\s\S]*margin-top:\s*0/);
+  assert.match(globals, /\.source-fetch-meta\s*{[\s\S]*border-bottom:\s*0/);
+  assert.match(globals, /\.source-fetch-meta\s*{[\s\S]*padding-bottom:\s*0/);
   assert.match(globals, /\.source-fetch-status-item dd\s*{[\s\S]*overflow:\s*visible/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.sources-sync-section \.source-fetch-overview\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(globals, /\.sync-panel-title-row\s*{[\s\S]*flex-wrap:\s*wrap/);
