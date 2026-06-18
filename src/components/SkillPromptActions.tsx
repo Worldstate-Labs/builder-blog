@@ -78,6 +78,10 @@ type CopyExtras = {
 };
 type ManualCopyPrompt = { target: CopyTarget; text: string };
 const missingAccessMessage = "Add an access key in Settings first";
+const promptPurposeCopy = (context: SkillPromptContext) =>
+  context === "digest"
+    ? "Copy a Local Agent prompt for AI Digest."
+    : "Copy a Local Agent prompt for Fetch sources.";
 
 async function copyTextToClipboard(text: string) {
   try {
@@ -578,9 +582,7 @@ export function SkillPromptActions({
       {!compactOnly ? (
         <div className="fb-skill-text">
           <span className="fb-section-label skill-prompt-label">{config.title}</span>
-          {context === "digest"
-            ? "Copy a Local Agent prompt to build your AI Digest."
-            : "Copy a Local Agent prompt to fetch, summarize, and sync sources."}
+          {promptPurposeCopy(context)}
         </div>
       ) : null}
       <button
@@ -1053,9 +1055,7 @@ function CronConfigDialog({
             {dialogConfig.title}
           </h2>
           <p className="token-picker-sub">
-            {context === "digest"
-              ? "Copy a Local Agent prompt to build your AI Digest."
-              : "Copy a Local Agent prompt to fetch, summarize, and sync sources."}
+            {promptPurposeCopy(context)}
           </p>
         </header>
 

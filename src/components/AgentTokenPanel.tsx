@@ -383,7 +383,7 @@ export function AgentTokenPanel({
               New access key
             </h3>
             <p className="settings-dialog-copy">
-              Give this access key a name so you can recognize it later
+              Name this access key so you can recognize it later
               (e.g. <em>My Mac · Claude Code</em>).
             </p>
             <input
