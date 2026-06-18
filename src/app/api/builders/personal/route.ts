@@ -93,8 +93,7 @@ export async function POST(request: Request) {
     return {
       ok: true,
       enrichment: {},
-      warning:
-        "We could not verify the source right now; it was added and your Local Agent can retry later.",
+      warning: "Source added without verification. Your Local Agent can retry later.",
     };
   });
   if (!probe.ok) {

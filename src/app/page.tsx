@@ -97,13 +97,11 @@ export default async function Home() {
             {[
               {
                 title: "Daily updates become one AI Digest.",
-                detail:
-                  "New posts, videos, launches, and trending projects are grouped into a readable AI Digest.",
+                detail: "New posts, videos, launches, and projects become a readable AI Digest.",
               },
               {
                 title: "Your sources stay connected.",
-                detail:
-                  "Start from shared source libraries, then add sources that matter to your own workflow.",
+                detail: "Start from shared source libraries, then add your own sources.",
               },
               {
                 title: "Search after the read.",
@@ -147,13 +145,13 @@ export default async function Home() {
               i: "02",
               icon: Terminal,
               title: "Build AI Digest",
-              copy: "Let your Local Agent fetch updates, summarize posts, and build a cited AI Digest from the summaries.",
+              copy: "Let your Local Agent fetch, summarize, and build a cited AI Digest.",
             },
             {
               i: "03",
               icon: Search,
               title: "Search and revisit",
-              copy: "Open the original posts behind each summary and search sources, posts, and AI Digest archives later.",
+              copy: "Open original posts and search sources, posts, and AI Digest archives later.",
             },
           ].map(({ i, icon: Icon, title, copy }) => (
             <li key={title} className="fb-public-step-row">
@@ -183,7 +181,7 @@ export default async function Home() {
           <Feature
             icon={Newspaper}
             title="Home reading lanes"
-            copy="AI Digest, Following, and Favorites stay separate, so catch-up and deeper reading do not compete."
+            copy="AI Digest, Following, and Favorites stay separate, so catch-up stays focused."
           />
           <Feature
             icon={Radio}

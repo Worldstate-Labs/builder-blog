@@ -97,7 +97,7 @@ export async function probeAndEnrichSource(input: ProbeInput): Promise<ProbeOutc
     // hard reject — we don't want a bug in this module to break adds.
     return {
       ok: true,
-      warning: "We could not verify the source right now; it was added but the agent will retry.",
+      warning: "Source added without verification. Your Local Agent can retry later.",
       enrichment: {},
     };
   }
@@ -196,15 +196,14 @@ async function probeX(input: ProbeInput): Promise<ProbeOutcome> {
   if (response.status === 401 || response.status === 403) {
     return {
       ok: true,
-      warning:
-        "X API rejected the lookup; the source was added but we could not verify the handle.",
+      warning: "X API rejected the lookup. Handle not verified.",
       enrichment: {},
     };
   }
   if (response.status === 429 || response.status >= 500) {
     return {
       ok: true,
-      warning: `Got HTTP ${response.status} from the X API; the agent will verify at sync time.`,
+      warning: `Got HTTP ${response.status} from the X API. Your Local Agent will verify at sync time.`,
       enrichment: {},
     };
   }
@@ -279,7 +278,7 @@ async function probeYouTube(input: ProbeInput): Promise<ProbeOutcome> {
   if (response.status === 403 || response.status === 429 || response.status >= 500) {
     return {
       ok: true,
-      warning: `Got HTTP ${response.status} from the YouTube channel page; the agent will retry at sync time.`,
+      warning: `Got HTTP ${response.status} from the YouTube channel page. Your Local Agent will retry at sync time.`,
       enrichment: {},
     };
   }
@@ -294,7 +293,7 @@ async function probeYouTube(input: ProbeInput): Promise<ProbeOutcome> {
   if (!html) {
     return {
       ok: true,
-      warning: "YouTube returned an empty page; the agent will retry at sync time.",
+      warning: "YouTube returned an empty page. Your Local Agent will retry at sync time.",
       enrichment: {},
     };
   }
@@ -312,7 +311,7 @@ async function probeYouTube(input: ProbeInput): Promise<ProbeOutcome> {
     return {
       ok: true,
       warning:
-        "YouTube returned a page without OpenGraph metadata; the agent will retry at sync time.",
+        "YouTube returned a page without OpenGraph metadata. Your Local Agent will retry at sync time.",
       enrichment,
     };
   }
@@ -353,7 +352,7 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
   if (response.status === 403 || response.status === 429 || response.status >= 500) {
     return {
       ok: true,
-      warning: `Could not reach the page right now (HTTP ${response.status}); the source was added but the agent will retry.`,
+      warning: `Could not reach the page right now (HTTP ${response.status}). Your Local Agent will retry at sync time.`,
       enrichment: {},
     };
   }
@@ -368,7 +367,7 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
   if (!html) {
     return {
       ok: true,
-      warning: "The page returned an empty body; the agent will retry at sync time.",
+      warning: "The page returned an empty body. Your Local Agent will retry at sync time.",
       enrichment: {},
     };
   }
@@ -399,7 +398,7 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
   let requiresConfirmation = false;
   if (!name && !avatarUrl) {
     warnings.push(
-      "The page is reachable but has no OpenGraph metadata or <title>; the agent will retry at sync time.",
+      "The page is reachable but has no OpenGraph metadata or <title>. Your Local Agent will retry at sync time.",
     );
   }
   // Blog-with-no-RSS is a "still fetchable, just slower" outcome —
@@ -459,7 +458,7 @@ async function probePodcast(input: ProbeInput): Promise<ProbeOutcome> {
   if (response.status === 403 || response.status === 429 || response.status >= 500) {
     return {
       ok: true,
-      warning: `Could not reach the podcast RSS feed right now (HTTP ${response.status}); the agent will retry at sync time.`,
+      warning: `Could not reach the podcast RSS feed right now (HTTP ${response.status}). Your Local Agent will retry at sync time.`,
       enrichment: {},
     };
   }
@@ -537,7 +536,7 @@ function networkErrorMessage(error: unknown, subject: string): string {
   const name = error instanceof Error ? error.name : "";
   const message = error instanceof Error ? error.message : "";
   if (name === "AbortError") {
-    return `${capitalize(subject)} took longer than 4 seconds to respond; the agent will retry at sync time.`;
+    return `${capitalize(subject)} took longer than 4 seconds to respond. Your Local Agent will retry at sync time.`;
   }
   if (/ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(message)) {
     return `${capitalize(subject)} hostname could not be resolved (DNS).`;
@@ -548,7 +547,7 @@ function networkErrorMessage(error: unknown, subject: string): string {
   if (/SSL|TLS|CERT_|certificate/i.test(message)) {
     return `${capitalize(subject)} returned an SSL/TLS error.`;
   }
-  return `Could not reach ${subject}; the agent will retry at sync time.`;
+  return `Could not reach ${subject}. Your Local Agent will retry at sync time.`;
 }
 
 function capitalize(value: string): string {

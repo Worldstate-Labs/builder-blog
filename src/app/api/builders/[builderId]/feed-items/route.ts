@@ -65,7 +65,7 @@ export async function GET(_request: Request, { params }: Params) {
       error: error instanceof Error ? error.message : String(error),
     });
     return NextResponse.json(
-      { error: "Failed to load summarized posts", code: "fetch_failed" },
+      { error: "Could not load summarized posts.", code: "fetch_failed" },
       { status: 500 },
     );
   }

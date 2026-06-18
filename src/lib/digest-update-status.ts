@@ -162,7 +162,7 @@ export function getDigestUpdateStatus(
     return {
       key: "not-connected",
       label: "Not connected",
-      summary: "No local helper schedule has reported yet.",
+      summary: "No Local Agent schedule has reported yet.",
       style: statusStyle("partial"),
     };
   }

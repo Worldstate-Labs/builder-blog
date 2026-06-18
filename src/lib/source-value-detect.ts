@@ -95,7 +95,7 @@ export function crossTypeWarning(
 export function podcastHostnameRejection(value: string): string | null {
   const v = value.toLowerCase();
   if (/(^|\/\/)open\.spotify\.com\/show\//.test(v)) {
-    return "Spotify does not expose podcast RSS publicly. Paste the Apple Podcasts URL (podcasts.apple.com/.../id...) or the show's RSS feed URL instead.";
+    return "Spotify does not expose podcast RSS. Paste an Apple Podcasts URL or the show's RSS feed URL instead.";
   }
   if (/(^|\/\/)(www\.)?xiaoyuzhoufm\.com\//.test(v)) {
     return "小宇宙 does not expose RSS feeds. Paste the Apple Podcasts URL or the show's RSS feed URL instead.";

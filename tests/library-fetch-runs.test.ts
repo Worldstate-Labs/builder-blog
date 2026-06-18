@@ -533,6 +533,8 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(route, /getScheduledAgentJobRuns\(userId, "digest-cron", 25\)/);
   assert.match(digestUpdateStatus, /@\/lib\/schedule-timing/);
   assert.match(digestUpdateStatus, /no scheduled window has completed yet/);
+  assert.match(digestUpdateStatus, /No Local Agent schedule has reported yet/);
+  assert.doesNotMatch(digestUpdateStatus, /No local helper schedule has reported yet/);
   assert.doesNotMatch(digestUpdateStatus, /first expected run has not finished yet/);
   assert.doesNotMatch(digestUpdateStatus, /function floorToExpectedSchedule/);
   assert.doesNotMatch(digestUpdateStatus, /function addScheduleInterval/);

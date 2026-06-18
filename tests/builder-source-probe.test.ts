@@ -128,7 +128,8 @@ test("resolvePodcast surfaces the Apple-zero-results case as a hard ResolutionFa
   // so we don't double-call iTunes. results.length === 0 → ok: false.
   assert.match(RESOLVER_SOURCE, /results\.length\s*===\s*0/);
   assert.match(RESOLVER_SOURCE, /Apple Podcasts has no record of this show\. Paste the actual RSS feed URL instead\./);
-  assert.doesNotMatch(RESOLVER_SOURCE, /show — paste|id…/);
+  assert.match(RESOLVER_SOURCE, /Paste an Apple Podcasts URL or the show's RSS feed URL\./);
+  assert.doesNotMatch(RESOLVER_SOURCE, /show — paste|id…|podcasts\.apple\.com\/\.\.\.|id\.\.\./);
 });
 
 test("probe maps thrown errors into friendly sentences (no raw exception leakage)", () => {
@@ -139,6 +140,8 @@ test("probe maps thrown errors into friendly sentences (no raw exception leakage
   assert.match(PROBE_SOURCE, /ECONNREFUSED/);
   assert.match(PROBE_SOURCE, /SSL|TLS/);
   assert.match(PROBE_SOURCE, /4 seconds/);
+  assert.match(PROBE_SOURCE, /Your Local Agent will retry at sync time/);
+  assert.doesNotMatch(PROBE_SOURCE, /the agent will (retry|verify)/);
 });
 
 test("probe auto-discovers an RSS/Atom feed link in HTML and surfaces it as discoveredFetchUrl", () => {

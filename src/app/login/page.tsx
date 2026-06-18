@@ -90,13 +90,13 @@ function describeAuthError(code: string | undefined): string | null {
   if (!code) return null;
   const messages: Record<string, string> = {
     OAuthAccountNotLinked:
-      "This email is already linked to a different sign-in method. Use the original method, or contact support to merge accounts.",
+      "This email is linked to another sign-in method. Use that method, or contact support to merge accounts.",
     OAuthSignin: "Could not start the sign-in flow. Try again.",
     OAuthCallback: "The sign-in service could not finish. Try again.",
     OAuthCreateAccount: "Could not create your account. Try again.",
     Callback: "Sign-in could not finish. Try again.",
     AccessDenied: "Sign-in was denied.",
-    SessionRequired: "Please sign in to continue.",
+    SessionRequired: "Sign in to continue.",
   };
   return messages[code] ?? "Sign-in failed. Try again.";
 }

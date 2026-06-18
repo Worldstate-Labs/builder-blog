@@ -530,7 +530,7 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(landingPage, /Find sources, posts, saved posts, and AI Digest archives/);
   assert.doesNotMatch(landingPage, /Find sources, saved posts, and AI Digest archives/);
   assert.doesNotMatch(landingPage, /posts you've saved/);
-  assert.match(landingPage, /Open the original posts behind each summary/);
+  assert.match(landingPage, /Open original posts and search sources, posts, and AI Digest archives later/);
   assert.match(landingPage, /search sources, posts, and AI Digest archives later/);
   assert.match(landingPage, /Workspace search/);
   assert.match(landingPage, /Sources, posts, and AI Digest archives share one search surface\./);
@@ -559,7 +559,8 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /Product Hunt/);
   assert.match(landingPage, /Your Local Agent fetches updates, summarizes/);
   assert.match(landingPage, /add blogs, channels, feeds, GitHub Trending, and Product Hunt/);
-  assert.match(landingPage, /build a cited AI Digest from the summaries/);
+  assert.match(landingPage, /build a cited AI Digest/);
+  assert.doesNotMatch(landingPage, /build a cited AI Digest from the summaries/);
   assert.doesNotMatch(landingPage, /sources your Local Agent can fetch|agent-fetchable sources|Local Agent sources/);
   assert.match(landingPage, /Daily AI Digest flow/);
   assert.match(landingPage, /Daily updates become one AI Digest/);
@@ -592,6 +593,8 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(loginPage, /fb-login-brand-name/);
   assert.match(loginPage, /fb-login-panel-head/);
   assert.match(loginPage, /Sign in/);
+  assert.match(loginPage, /SessionRequired: "Sign in to continue\."/);
+  assert.doesNotMatch(loginPage, /Please sign in to continue/);
   assert.match(loginPage, /FollowBrief workspace/);
   assert.doesNotMatch(loginPage, /AI Digest workspace/);
   assert.match(loginPage, /Sign in to your\{" "\}/);
@@ -3659,12 +3662,12 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /emptyBody="Add sources, then run Fetch sources\. AI Digest and Following use this library\."/);
   assert.doesNotMatch(buildersPage, /emptyBody="Add a source, then run Fetch sources\."/);
   assert.doesNotMatch(buildersPage, /both draw from this library/);
-  assert.match(personalBuilderRoute, /We could not verify the source right now/);
-  assert.match(personalBuilderRoute, /your Local Agent can retry later/);
+  assert.match(personalBuilderRoute, /Source added without verification\. Your Local Agent can retry later\./);
+  assert.doesNotMatch(personalBuilderRoute, /We could not verify the source right now/);
   assert.doesNotMatch(personalBuilderRoute, /We couldn't verify/);
   assert.doesNotMatch(personalBuilderRoute, /local helper can retry later/);
-  assert.match(personalBuilderUpdateRoute, /We could not verify the source right now/);
-  assert.match(personalBuilderUpdateRoute, /your Local Agent can retry later/);
+  assert.match(personalBuilderUpdateRoute, /Source updated without verification\. Your Local Agent can retry later\./);
+  assert.doesNotMatch(personalBuilderUpdateRoute, /We could not verify the source right now/);
   assert.doesNotMatch(personalBuilderUpdateRoute, /We couldn't verify/);
   assert.doesNotMatch(personalBuilderUpdateRoute, /local helper can retry later/);
   assert.doesNotMatch(buildersPage, /import private sources/);
@@ -3816,6 +3819,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(sourceInputs, /github_trending/);
   assert.match(sourceInputs, /product_hunt_top_products/);
   assert.match(sourceInputs, /export function placeholderForSourceId/);
+  assert.match(sourceInputs, /Apple Podcasts URL or RSS feed URL/);
+  assert.doesNotMatch(sourceInputs, /podcasts\.apple\.com\/\.\.\.|id\.\.\./);
   assert.doesNotMatch(addBuilderForm, /const FIXED_SOURCE_VALUE_BY_ID/);
   assert.doesNotMatch(addBuilderForm, /function placeholderForSourceId/);
   assert.match(addBuilderForm, /focusSourceType\(nextSource\.id\)/);
@@ -3838,9 +3843,11 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(addBuilderForm, /Switch source type/);
   assert.match(addBuilderForm, /Could not add source\./);
   assert.doesNotMatch(addBuilderForm, /"Could not add source"/);
-  assert.match(source("src/lib/source-value-detect.ts"), /Switch source type\?/);
-  assert.match(source("src/lib/source-value-detect.ts"), /content cannot be imported via RSS/);
-  assert.doesNotMatch(source("src/lib/source-value-detect.ts"), /can't be imported|doesn't expose| URL — switch/);
+  const sourceValueDetect = source("src/lib/source-value-detect.ts");
+  assert.match(sourceValueDetect, /Switch source type\?/);
+  assert.match(sourceValueDetect, /content cannot be imported via RSS/);
+  assert.match(sourceValueDetect, /Spotify does not expose podcast RSS/);
+  assert.doesNotMatch(sourceValueDetect, /can't be imported|doesn't expose| URL — switch|podcasts\.apple\.com\/\.\.\.|id\.\.\./);
   assert.doesNotMatch(addBuilderForm, />\s*Switch\s*<\/button>/);
   assert.doesNotMatch(addBuilderForm, /style=\{\{/);
   assert.doesNotMatch(addBuilderForm, /fb-input flex-1/);
@@ -4214,6 +4221,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(feedItemsRoute, /fetchDedupedFeedForEntities/);
   assert.match(feedItemsRoute, /activePoolBuilderIds/);
   assert.match(feedItemsRoute, /NextResponse\.json/);
+  assert.match(feedItemsRoute, /Could not load summarized posts\./);
+  assert.doesNotMatch(feedItemsRoute, /Failed to load summarized posts/);
   assert.match(source("src/lib/builder-channel-resolver.ts"), /kind:\s*true/);
   assert.match(builderDetailPage, /kind:\s*item\.builder\.kind/);
   assert.doesNotMatch(builderDetailPage, /kind:\s*item\.builder\.sourceType as/);

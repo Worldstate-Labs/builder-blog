@@ -14,7 +14,7 @@ const PLACEHOLDER_BY_SOURCE_ID: Record<string, string> = {
   github_trending: GITHUB_TRENDING_URL,
   product_hunt_top_products: PRODUCT_HUNT_TOP_PRODUCTS_URL,
   youtube: "https://youtube.com/@deepmind",
-  podcast: "https://podcasts.apple.com/.../id123 or https://feeds.example.com/show.rss",
+  podcast: "Apple Podcasts URL or RSS feed URL",
   website: "https://example.com",
 };
 
