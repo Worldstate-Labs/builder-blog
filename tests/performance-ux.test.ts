@@ -223,11 +223,11 @@ test("every app route has an explicit centered layout role", () => {
 
   assert.match(
     source("src/app/(workspace)/settings/page.tsx"),
-    /className="page-pad page-pad--settings"[\s\S]*<PageHeader[\s\S]*title="Settings"[\s\S]*Manage access keys, source fetching, and AI Digest rules\./,
+    /className="page-pad page-pad--settings"[\s\S]*<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys, source fetching, and AI Digest rules\./,
   );
   assert.doesNotMatch(
     source("src/app/(workspace)/settings/page.tsx"),
-    /Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./,
+    /Manage access keys, source fetching, and AI Digest rules\.|Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./,
   );
 
   const redirectOnlyRoutes = [
@@ -302,8 +302,8 @@ test("every app route has an explicit centered layout role", () => {
   assert.doesNotMatch(settingsLoading, /RouteLoading/);
   assert.match(settingsLoading, /@\/components\/PageHeader/);
   assert.match(settingsLoading, /className="page-pad page-pad--settings settings-loading"/);
-  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage access keys, source fetching, and AI Digest rules\./);
-  assert.doesNotMatch(settingsLoading, /Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
+  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys, source fetching, and AI Digest rules\./);
+  assert.doesNotMatch(settingsLoading, /Manage access keys, source fetching, and AI Digest rules\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
   assert.match(settingsLoading, /className="workspace-content-stack settings-workspace"/);
   assert.match(settingsLoading, /className="settings-access-grid"/);
   assert.match(settingsLoading, /@\/components\/AgentTokenPanelSkeleton/);
@@ -849,12 +849,12 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(skillPromptActions, /await navigator\.clipboard\.writeText\(command\)/);
   assert.match(skillPromptActions, /className="token-picker-form"/);
   assert.match(skillPromptActions, />\s*Choose access key\s*<\/h2>/);
-  assert.match(skillPromptActions, /Creates a setup code that expires in 10 minutes/);
-  assert.doesNotMatch(skillPromptActions, /Creates a 10-minute setup code for this key|We&rsquo;ll create a 10-minute setup code for this key/);
+  assert.match(skillPromptActions, /Setup code expires in 10 minutes/);
+  assert.doesNotMatch(skillPromptActions, /Creates a setup code that expires in 10 minutes|Creates a 10-minute setup code for this key|We&rsquo;ll create a 10-minute setup code for this key/);
   assert.match(skillPromptActions, /const completed = await continueScheduleCopy\(selection\);/);
   assert.match(skillPromptActions, /if \(completed\) setCronConfigOpen\(false\);/);
-  assert.match(skillPromptActions, /const missingAccessMessage = "Add an access key in Settings to copy Local Agent prompts\."/);
-  assert.doesNotMatch(skillPromptActions, /const missingAccessMessage = "Add an access key in Settings first"/);
+  assert.match(skillPromptActions, /const missingAccessMessage = "Add an access key to copy Local Agent prompts\."/);
+  assert.doesNotMatch(skillPromptActions, /const missingAccessMessage = "Add an access key in Settings to copy Local Agent prompts\.|const missingAccessMessage = "Add an access key in Settings first"/);
   assert.doesNotMatch(skillPromptActions, /Connect a Local Agent in Settings first/);
   assert.match(skillPromptActions, /setStatus\(\{ kind: "info", text: missingAccessMessage \}\);\s*return false;/);
   assert.match(skillPromptActions, /if \(activeTokens\.length === 0\) \{[\s\S]*missingAccessMessage[\s\S]*return;\s*\}[\s\S]*if \(target === "cron"\)/);
@@ -875,12 +875,12 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(skillPromptActions, /const statusLabel = token\.lastUsedAt[\s\S]*Never connected/);
   assert.doesNotMatch(skillPromptActions, /Last used|Never used|Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}|describeMachine\(token\)|formatRelative\(token\.lastUsedAt\)|token-picker-row-name">\{token\.name\}/);
   assert.match(skillPromptActions, /className="skill-prompt-access-required"/);
-  assert.match(skillPromptActions, /Add an access key in Settings to copy Local Agent prompts\./);
+  assert.match(skillPromptActions, /Add an access key to copy Local Agent prompts\./);
   assert.match(skillPromptActions, /<Link className="fb-btn dark compact" href="\/settings">[\s\S]*Open Settings/);
   assert.match(skillPromptActions, /Access key required/);
   assert.match(skillPromptActions, /No access keys yet/);
   assert.doesNotMatch(skillPromptActions, /Local Agent access required|No Local Agent access yet/);
-  assert.doesNotMatch(skillPromptActions, /Add one in Settings before copying Local Agent prompts\.|Add an access key in Settings before copying Local Agent prompts\./);
+  assert.doesNotMatch(skillPromptActions, /Add an access key in Settings to copy Local Agent prompts\.|Add one in Settings before copying Local Agent prompts\.|Add an access key in Settings before copying Local Agent prompts\./);
   assert.match(skillPromptActions, /<Link className="fb-btn light compact" href="\/settings">[\s\S]*Add access key/);
   assert.match(skillPromptActions, /Add access key/);
   assert.match(skillPromptActions, /\{submitting \? "Copying" : "Copy prompt"\}/);
@@ -891,8 +891,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /\`\$\{count\} tasks\`/);
   assert.match(skillPromptActions, /Parallel tasks must be a whole number from 1 to/);
   assert.match(skillPromptActions, /Use 1 for reliability/);
-  assert.match(skillPromptActions, /Looks back this many days\. Default: 30\. Range: 1-90\./);
-  assert.doesNotMatch(skillPromptActions, /Parallel workers|1 worker|workers`|Use 1 for safest runs|Use 1 for the safest setup|Fetches posts this many days back/);
+  assert.match(skillPromptActions, /Default: 30 days\. Range: 1-90\./);
+  assert.doesNotMatch(skillPromptActions, /Runs source tasks after discovery|Looks back this many days|Parallel workers|1 worker|workers`|Use 1 for safest runs|Use 1 for the safest setup|Fetches posts this many days back/);
   assert.doesNotMatch(skillPromptActions, /<a[^>]+href="\/settings"|Add one in Settings<\/a>|Choose a Local Agent/);
   assert.doesNotMatch(skillPromptActions, /No connected helpers|Connected helpers/);
   assert.doesNotMatch(skillPromptActions, /flex flex-wrap items-center justify-end gap-2|className="ml-2"|mr-2|text-\[11px\] text-\[var\(--danger\)\]|text-\[11px\] text-\[var\(--muted-strong\)\]/);
@@ -1112,15 +1112,15 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /closeMenu\(\);[\s\S]*signOut\(\{ callbackUrl: "\/login" \}\)[\s\S]*Sign out/);
   assert.match(settingsPage, /@\/components\/PageHeader/);
   assert.match(settingsPage, /className="page-pad page-pad--settings"/);
-  assert.match(settingsPage, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage access keys, source fetching, and AI Digest rules\./);
-  assert.doesNotMatch(settingsPage, /Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
+  assert.match(settingsPage, /<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys, source fetching, and AI Digest rules\./);
+  assert.doesNotMatch(settingsPage, /Manage access keys, source fetching, and AI Digest rules\.|Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
   assert.doesNotMatch(settingsPage, /<section className="fb-page-head"/);
   assert.equal(existsSync(join(root, "src/app/(workspace)/settings/loading.tsx")), true);
   const settingsLoading = source("src/app/(workspace)/settings/loading.tsx");
   assert.doesNotMatch(settingsLoading, /RouteLoading/);
   assert.match(settingsLoading, /className="page-pad page-pad--settings settings-loading"/);
-  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage access keys, source fetching, and AI Digest rules\./);
-  assert.doesNotMatch(settingsLoading, /Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
+  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys, source fetching, and AI Digest rules\./);
+  assert.doesNotMatch(settingsLoading, /Manage access keys, source fetching, and AI Digest rules\.|Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
   assert.match(settingsLoading, /className="workspace-content-stack settings-workspace"/);
   assert.match(settingsLoading, /@\/components\/AgentTokenPanelSkeleton/);
   assert.match(settingsLoading, /<AgentTokenPanelSkeleton \/>/);
@@ -3796,14 +3796,14 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /emptyBody="Add a source, then run Fetch sources\."/);
   assert.doesNotMatch(buildersPage, /Add sources, then run Fetch sources\. They feed AI Digest|AI Digest and Following use this library|They feed AI Digest and Following/);
   assert.doesNotMatch(buildersPage, /both draw from this library/);
-  assert.match(personalBuilderRoute, /Source added without verification\. Your Local Agent can retry later\./);
+  assert.match(personalBuilderRoute, /Source added without verification\. Local Agent can retry later\./);
   assert.doesNotMatch(personalBuilderRoute, /We could not verify the source right now/);
   assert.doesNotMatch(personalBuilderRoute, /We couldn't verify/);
-  assert.doesNotMatch(personalBuilderRoute, /local helper can retry later/);
-  assert.match(personalBuilderUpdateRoute, /Source updated without verification\. Your Local Agent can retry later\./);
+  assert.doesNotMatch(personalBuilderRoute, /Your Local Agent can retry later|local helper can retry later/);
+  assert.match(personalBuilderUpdateRoute, /Source updated without verification\. Local Agent can retry later\./);
   assert.doesNotMatch(personalBuilderUpdateRoute, /We could not verify the source right now/);
   assert.doesNotMatch(personalBuilderUpdateRoute, /We couldn't verify/);
-  assert.doesNotMatch(personalBuilderUpdateRoute, /local helper can retry later/);
+  assert.doesNotMatch(personalBuilderUpdateRoute, /Your Local Agent can retry later|local helper can retry later/);
   assert.doesNotMatch(buildersPage, /import private sources/);
   assert.match(buildersPage, /emptyTitle="No active sources"/);
   assert.match(buildersPage, /emptyBody="This imported source library has no active sources\."/);
@@ -5066,16 +5066,16 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /<details className="settings-rules-panel fb-panel" open>[\s\S]*Source fetching rules/);
   assert.equal((settingsPage.match(/<details className="settings-rules-panel fb-panel" open>/g) ?? []).length, 1);
   assert.doesNotMatch(settingsPage, /Fetch sources rules|Source fetch rules/);
-  assert.match(settingsPage, /Rules for fetching and summarizing source posts\./);
-  assert.doesNotMatch(settingsPage, /Runs before AI Digest: discover source posts/);
+  assert.match(settingsPage, /Fetch and summarize source posts\./);
+  assert.doesNotMatch(settingsPage, /Rules for fetching and summarizing source posts\.|Runs before AI Digest: discover source posts/);
   assert.match(settingsPage, /AI Digest rules/);
   assert.match(settingsPage, /ADMIN_DIGEST_PROMPT_COUNT/);
   assert.match(settingsPage, /USER_DIGEST_PROMPT_COUNT/);
   assert.match(settingsPage, /const digestPromptCount = isAdmin \? ADMIN_DIGEST_PROMPT_COUNT : USER_DIGEST_PROMPT_COUNT/);
   assert.match(settingsPage, /canEditDigestAssemblyPrompts=\{isAdmin\}/);
   assert.match(settingsPage, /AI Digest rules/);
-  assert.match(settingsPage, /Rules for AI Digest builds\./);
-  assert.doesNotMatch(settingsPage, /Rules for building AI Digest issues\./);
+  assert.match(settingsPage, /Build AI Digest issues\./);
+  assert.doesNotMatch(settingsPage, /Rules for AI Digest builds\.|Rules for building AI Digest issues\./);
   assert.doesNotMatch(settingsPage, /Runs after per-post summaries: write the digest headline, source notes,\s*and post summaries in the selected AI Digest language\./);
   assert.doesNotMatch(settingsPage, /Write AI Digest headlines, source notes, and translated post summaries\.|Used when building AI Digest issues\.|Used when Fetch sources reads and summarizes posts\./);
   assert.doesNotMatch(settingsPage, /localized post summaries/);

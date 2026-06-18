@@ -21,7 +21,7 @@ export type PersonalBuilderInput = {
 /**
  * Discriminated-union result. Success carries an optional non-blocking
  * warning (e.g. "Could not reach Apple Podcasts to find the RSS feed.
- * Local Agent will retry at sync time."). Failure carries a user-facing reason and an
+ * Local Agent retries at sync time."). Failure carries a user-facing reason and an
  * optional suggestId so the UI can offer "switch to <type> and retry".
  */
 export type ResolutionSuccess = {
@@ -207,7 +207,7 @@ async function resolvePodcast(displayName: string, value: string): Promise<Resol
           if (result.collectionName) resolvedName = result.collectionName;
         } else {
           warning =
-            "Apple Podcasts did not return an RSS feed. Local Agent will retry at sync time.";
+            "Apple Podcasts did not return an RSS feed. Local Agent retries at sync time.";
         }
         const artwork =
           toSafeAvatarUrl(result?.artworkUrl600) ??
@@ -219,10 +219,10 @@ async function resolvePodcast(displayName: string, value: string): Promise<Resol
           };
         }
       } else {
-        warning = "Could not verify this show with Apple Podcasts. Local Agent will retry at sync time.";
+        warning = "Could not verify this show with Apple Podcasts. Local Agent retries at sync time.";
       }
     } catch {
-      warning = "Could not reach Apple Podcasts to find the RSS feed. Local Agent will retry at sync time.";
+      warning = "Could not reach Apple Podcasts to find the RSS feed. Local Agent retries at sync time.";
     }
   }
 

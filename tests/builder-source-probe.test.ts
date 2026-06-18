@@ -160,8 +160,9 @@ test("probe maps thrown errors into friendly sentences (no raw exception leakage
   assert.match(PROBE_SOURCE, /ECONNREFUSED/);
   assert.match(PROBE_SOURCE, /SSL|TLS/);
   assert.match(PROBE_SOURCE, /4 seconds/);
-  assert.match(PROBE_SOURCE, /Local Agent will retry at sync time/);
-  assert.doesNotMatch(PROBE_SOURCE, /the agent will (retry|verify)/);
+  assert.match(PROBE_SOURCE, /Local Agent retries at sync time/);
+  assert.match(PROBE_SOURCE, /Local Agent verifies at sync time/);
+  assert.doesNotMatch(PROBE_SOURCE, /Local Agent will (retry|verify) at sync time|the agent will (retry|verify)/);
 });
 
 test("probe auto-discovers an RSS/Atom feed link in HTML and surfaces it as discoveredFetchUrl", () => {

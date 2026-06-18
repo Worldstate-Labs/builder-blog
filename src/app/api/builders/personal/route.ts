@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     return {
       ok: true,
       enrichment: {},
-      warning: "Source added without verification. Your Local Agent can retry later.",
+      warning: "Source added without verification. Local Agent can retry later.",
     };
   });
   if (!probe.ok) {

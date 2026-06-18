@@ -97,7 +97,7 @@ export async function probeAndEnrichSource(input: ProbeInput): Promise<ProbeOutc
     // hard reject — we don't want a bug in this module to break adds.
     return {
       ok: true,
-      warning: "Source added without verification. Your Local Agent can retry later.",
+      warning: "Source added without verification. Local Agent can retry later.",
       enrichment: {},
     };
   }
@@ -203,7 +203,7 @@ async function probeX(input: ProbeInput): Promise<ProbeOutcome> {
   if (response.status === 429 || response.status >= 500) {
     return {
       ok: true,
-      warning: "X API could not verify this handle. Your Local Agent will verify at sync time.",
+      warning: "X API could not verify this handle. Local Agent verifies at sync time.",
       enrichment: {},
     };
   }
@@ -278,14 +278,14 @@ async function probeYouTube(input: ProbeInput): Promise<ProbeOutcome> {
   if (response.status === 403 || response.status === 429 || response.status >= 500) {
     return {
       ok: true,
-      warning: "Could not reach the YouTube channel page. Local Agent will retry at sync time.",
+      warning: "Could not reach the YouTube channel page. Local Agent retries at sync time.",
       enrichment: {},
     };
   }
   if (!response.ok) {
     return {
       ok: true,
-      warning: "Could not verify the YouTube channel page. Local Agent will retry at sync time.",
+      warning: "Could not verify the YouTube channel page. Local Agent retries at sync time.",
       enrichment: {},
     };
   }
@@ -293,7 +293,7 @@ async function probeYouTube(input: ProbeInput): Promise<ProbeOutcome> {
   if (!html) {
     return {
       ok: true,
-      warning: "YouTube returned an empty page. Local Agent will retry at sync time.",
+      warning: "YouTube returned an empty page. Local Agent retries at sync time.",
       enrichment: {},
     };
   }
@@ -311,7 +311,7 @@ async function probeYouTube(input: ProbeInput): Promise<ProbeOutcome> {
     return {
       ok: true,
       warning:
-        "YouTube returned a page without OpenGraph metadata. Local Agent will retry at sync time.",
+        "YouTube returned a page without OpenGraph metadata. Local Agent retries at sync time.",
       enrichment,
     };
   }
@@ -352,14 +352,14 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
   if (response.status === 403 || response.status === 429 || response.status >= 500) {
     return {
       ok: true,
-      warning: "Could not reach the page. Local Agent will retry at sync time.",
+      warning: "Could not reach the page. Local Agent retries at sync time.",
       enrichment: {},
     };
   }
   if (!response.ok) {
     return {
       ok: true,
-      warning: "Could not verify the page. Local Agent will retry at sync time.",
+      warning: "Could not verify the page. Local Agent retries at sync time.",
       enrichment: {},
     };
   }
@@ -367,7 +367,7 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
   if (!html) {
     return {
       ok: true,
-      warning: "The page returned an empty body. Local Agent will retry at sync time.",
+      warning: "The page returned an empty body. Local Agent retries at sync time.",
       enrichment: {},
     };
   }
@@ -398,7 +398,7 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
   let requiresConfirmation = false;
   if (!name && !avatarUrl) {
     warnings.push(
-      "The page is reachable but has no OpenGraph metadata or <title>. Local Agent will retry at sync time.",
+      "The page is reachable but has no OpenGraph metadata or <title>. Local Agent retries at sync time.",
     );
   }
   // Blog-with-no-RSS is a "still fetchable, just slower" outcome —
@@ -458,14 +458,14 @@ async function probePodcast(input: ProbeInput): Promise<ProbeOutcome> {
   if (response.status === 403 || response.status === 429 || response.status >= 500) {
     return {
       ok: true,
-      warning: "Could not reach the podcast RSS feed. Local Agent will retry at sync time.",
+      warning: "Could not reach the podcast RSS feed. Local Agent retries at sync time.",
       enrichment: {},
     };
   }
   if (!response.ok) {
     return {
       ok: true,
-      warning: "Could not verify the podcast RSS feed. Local Agent will retry at sync time.",
+      warning: "Could not verify the podcast RSS feed. Local Agent retries at sync time.",
       enrichment: {},
     };
   }
@@ -536,7 +536,7 @@ function networkErrorMessage(error: unknown, subject: string): string {
   const name = error instanceof Error ? error.name : "";
   const message = error instanceof Error ? error.message : "";
   if (name === "AbortError") {
-    return `${capitalize(subject)} took longer than 4 seconds to respond. Local Agent will retry at sync time.`;
+    return `${capitalize(subject)} took longer than 4 seconds to respond. Local Agent retries at sync time.`;
   }
   if (/ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(message)) {
     return `${capitalize(subject)} hostname could not be resolved (DNS).`;
@@ -547,7 +547,7 @@ function networkErrorMessage(error: unknown, subject: string): string {
   if (/SSL|TLS|CERT_|certificate/i.test(message)) {
     return `${capitalize(subject)} returned an SSL/TLS error.`;
   }
-  return `Could not reach ${subject}. Local Agent will retry at sync time.`;
+  return `Could not reach ${subject}. Local Agent retries at sync time.`;
 }
 
 function capitalize(value: string): string {

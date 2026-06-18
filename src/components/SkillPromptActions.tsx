@@ -23,22 +23,22 @@ const RUNTIME_OPTIONS: { id: AgentRuntime; label: string; hint: string }[] = [
   {
     id: "claude",
     label: "Claude Code",
-    hint: "Claude Code runs this prompt.",
+    hint: "Runs with Claude Code.",
   },
   {
     id: "codex",
     label: "Codex",
-    hint: "Codex runs this prompt.",
+    hint: "Runs with Codex.",
   },
   {
     id: "gemini",
     label: "Gemini CLI",
-    hint: "Gemini CLI runs this prompt.",
+    hint: "Runs with Gemini CLI.",
   },
   {
     id: "openclaw",
     label: "OpenClaw",
-    hint: "OpenClaw runs this prompt.",
+    hint: "Runs with OpenClaw.",
   },
 ];
 
@@ -77,7 +77,7 @@ type CopyExtras = {
   parallelWorkers: number;
 };
 type ManualCopyPrompt = { target: CopyTarget; text: string };
-const missingAccessMessage = "Add an access key in Settings to copy Local Agent prompts.";
+const missingAccessMessage = "Add an access key to copy Local Agent prompts.";
 const promptPurposeCopy = () => "Copy a Local Agent prompt.";
 
 async function copyTextToClipboard(text: string) {
@@ -156,16 +156,16 @@ const OVERRIDE_COPY: Record<
   library: {
     name: "Re-fetch existing posts",
     cronHint:
-      "Re-fetches existing source posts on every run. Leave off for normal updates.",
+      "Re-fetch existing source posts each run. Leave off for normal updates.",
     onceHint:
-      "Re-fetches existing source posts this time.",
+      "Re-fetch existing source posts once.",
   },
   digest: {
     name: "Reuse past AI Digest posts",
     cronHint:
-      "Reuses posts already used in AI Digest on every run.",
+      "Reuse past AI Digest posts each run.",
     onceHint:
-      "Reuses posts already used in AI Digest this time.",
+      "Reuse past AI Digest posts once.",
   },
 };
 
@@ -411,7 +411,7 @@ export function SkillPromptActions({
     setManualCopyPrompt(null);
     setCopiedTarget(target);
     window.setTimeout(() => setCopiedTarget(null), 1800);
-    setStatus({ kind: "info", text: "Copied · valid for 10 minutes" });
+    setStatus({ kind: "info", text: "Copied. Valid for 10 minutes." });
     window.setTimeout(() => setStatus(null), 8000);
   }
 
@@ -615,7 +615,7 @@ export function SkillPromptActions({
           <span className="skill-prompt-access-copy">
             <span className="skill-prompt-access-title">Access key required</span>
             <span className="skill-prompt-access-body">
-              Add an access key in Settings to copy Local Agent prompts.
+              Add an access key to copy Local Agent prompts.
             </span>
           </span>
           <Link className="fb-btn dark compact" href="/settings">
@@ -770,7 +770,7 @@ function TokenPickerDialog({
             Choose access key
           </h2>
           <p className="token-picker-sub">
-            Creates a setup code that expires in 10 minutes.
+            Setup code expires in 10 minutes.
           </p>
         </header>
 
@@ -785,7 +785,7 @@ function TokenPickerDialog({
               }
               body={
                 <>
-                  Add an access key in Settings to copy Local Agent prompts.
+                  Add an access key to copy Local Agent prompts.
                 </>
               }
               className="token-picker-empty"
@@ -1115,7 +1115,7 @@ function CronConfigDialog({
                 </select>
               </div>
               <p className="cron-field-hint">
-                Runs source tasks after discovery. Use 1 for reliability.
+                Use 1 for reliability.
               </p>
             </>
           ) : null}
@@ -1136,7 +1136,7 @@ function CronConfigDialog({
                 onChange={setPickedMaxAge}
               />
               <p className="cron-field-hint">
-                Looks back this many days. Default: 30. Range: 1-90.
+                Default: 30 days. Range: 1-90.
               </p>
             </>
           ) : (
@@ -1148,7 +1148,7 @@ function CronConfigDialog({
                 onChange={setPickedFetchDays}
               />
               <p className="cron-field-hint">
-                Looks back this many days. Default: 30. Range: 1-90.
+                Default: 30 days. Range: 1-90.
               </p>
             </>
           )}
