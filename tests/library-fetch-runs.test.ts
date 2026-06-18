@@ -452,10 +452,10 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.doesNotMatch(panel, /className="sync-panel-task-builder"/);
   assert.match(panel, /className="sync-panel-task-body"/);
   assert.match(panel, /className="sync-panel-task-banner"/);
-  assert.match(panel, /Fetch is running\. Stages update as the Local Agent reports work\./);
+  assert.match(panel, /Fetch is running\. Stages update as Local Agent reports work\./);
   assert.match(panel, /Completed\. Planned posts were read, summarized, and synced or accounted for\./);
-  assert.match(panel, /Planned posts were recorded, but some still lack a final sync outcome\./);
-  assert.doesNotMatch(panel, /Fetch is still running|Stage progress below|explicitly accounted for|Run recorded planned posts, but not every post has a final sync outcome yet/);
+  assert.match(panel, /Planned posts recorded; some still lack final sync outcomes\./);
+  assert.doesNotMatch(panel, /Fetch is still running|Stage progress below|explicitly accounted for|Planned posts were recorded, but some still lack a final sync outcome|Run recorded planned posts, but not every post has a final sync outcome yet/);
   assert.match(panel, /className="sync-panel-lifecycle"/);
   assert.match(panel, /className=\{`sync-panel-lifecycle-step is-\$\{step\.tone\}`\}/);
   assert.match(panel, /className="sync-panel-task-fact-row"/);
@@ -613,8 +613,8 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /Copy a Build AI Digest prompt to start a Local Agent run/);
   assert.doesNotMatch(panel, /Use Build AI Digest to copy a Local Agent prompt/);
   assert.match(panel, /No AI Digest build history yet/);
-  assert.match(panel, /Started one-time and scheduled builds appear here/);
-  assert.doesNotMatch(panel, /No AI Digest builds yet|One-time and scheduled builds appear here after they start|One-time and scheduled AI Digest builds appear here|Scheduled and one-time AI Digest builds will appear here|after a Local Agent reports them/);
+  assert.match(panel, /One-time and scheduled builds appear here/);
+  assert.doesNotMatch(panel, /No AI Digest builds yet|Started one-time and scheduled builds appear here|One-time and scheduled builds appear here after they start|One-time and scheduled AI Digest builds appear here|Scheduled and one-time AI Digest builds will appear here|after a Local Agent reports them/);
   assert.match(panel, /No AI Digest was saved for this run/);
   assert.match(panel, /@\/lib\/scheduled-window-ui/);
   assert.match(panel, /scheduledWindowStatusLabel/);

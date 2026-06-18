@@ -629,7 +629,7 @@ function DigestStatusPanel({
       <EmptyState
         className="sync-panel-empty is-dashed"
         title="No AI Digest build history yet"
-        body="Started one-time and scheduled builds appear here."
+        body="One-time and scheduled builds appear here."
       />
     );
   }
@@ -749,7 +749,7 @@ function DigestStatusPanel({
           <EmptyState
             className="sync-panel-slot-empty"
             title="No AI Digest build history yet"
-            body="Started one-time and scheduled builds appear here."
+            body="One-time and scheduled builds appear here."
           />
         )}
       </div>
@@ -948,7 +948,7 @@ function digestRunVerdict(run: DigestRunListItem, jobRun?: AgentJobRunListItem):
   if (run.status === "synced" && run.candidateCount === 0) {
     return {
       tone: "ok",
-      text: "Completed successfully. No new eligible posts were found in this window.",
+      text: "Completed. No new eligible posts in this window.",
     };
   }
   if (run.status === "synced") {
@@ -1269,7 +1269,7 @@ function RunCard({
 
       {run.candidateCount === 0 ? (
         <p className="sync-panel-run-card-help">
-          No new posts were found in this window.
+          No new posts in this window.
         </p>
       ) : null}
 

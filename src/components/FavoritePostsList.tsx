@@ -44,7 +44,7 @@ export function FavoritePostsList({
           ? current
           : sortFavoriteItems([...current, removedItem]),
       );
-      setError("Could not remove post from Favorites. It remains here.");
+      setError("Could not remove from Favorites. It remains here.");
     } finally {
       setPendingIds((current) => {
         const next = new Set(current);
@@ -72,7 +72,7 @@ export function FavoritePostsList({
         }
         className="favorites-empty is-actionable"
         title="No Favorites yet"
-        body="Save posts from AI Digest, Following, Search, or post pages."
+        body="Save posts from AI Digest, Following, Search, or post details."
       />
     );
   }

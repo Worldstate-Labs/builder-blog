@@ -1254,7 +1254,7 @@ function FetchStatusPanel({
       <EmptyState
         className="sync-panel-empty is-dashed"
         title="No Fetch sources history yet"
-        body="Started one-time and scheduled runs appear here."
+        body="One-time and scheduled runs appear here."
       />
     );
   }
@@ -1378,7 +1378,7 @@ function FetchStatusPanel({
           <EmptyState
             className="sync-panel-slot-empty"
             title="No Fetch sources history yet"
-            body="Started one-time and scheduled runs appear here."
+            body="One-time and scheduled runs appear here."
           />
         )}
       </div>
@@ -1578,7 +1578,7 @@ function fetchRunVerdict({
   if (inflight) {
     return {
       tone: "warn",
-      text: "Fetch is running. Stages update as the Local Agent reports work.",
+      text: "Fetch is running. Stages update as Local Agent reports work.",
     };
   }
   if (stats.failed > 0 || ["Failed", "Stalled", "Timed out"].includes(displayStatus.label)) {
@@ -1602,7 +1602,7 @@ function fetchRunVerdict({
   if (stats.planned > 0) {
     return {
       tone: "warn",
-      text: "Planned posts were recorded, but some still lack a final sync outcome.",
+      text: "Planned posts recorded; some still lack final sync outcomes.",
     };
   }
   return {

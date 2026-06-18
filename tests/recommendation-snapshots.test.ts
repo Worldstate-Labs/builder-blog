@@ -114,8 +114,8 @@ test("favorites saves posts into the Favorites tab", () => {
   assert.match(favoriteList, /className="favorites-empty is-actionable"/);
   assert.match(favoriteList, /favorites-empty-actions/);
   assert.match(favoriteList, /No Favorites yet/);
-  assert.match(favoriteList, /Save posts from AI Digest, Following, Search, or post pages\./);
-  assert.doesNotMatch(favoriteList, /AI Digest issues, Following posts|to build this queue|Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
+  assert.match(favoriteList, /Save posts from AI Digest, Following, Search, or post details\./);
+  assert.doesNotMatch(favoriteList, /post pages|AI Digest issues, Following posts|to build this queue|Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
   assert.doesNotMatch(favoriteList, /Posts you marked for deeper reading/);
   assert.doesNotMatch(favoriteList, /Saved for deeper reading/);
   assert.doesNotMatch(favoriteList, /Star posts from AI Digest|Save posts from AI Digest or Following/);
@@ -126,7 +126,7 @@ test("favorites saves posts into the Favorites tab", () => {
   assert.match(favoriteList, /const \[pendingIds, setPendingIds\] = useState<Set<string>>\(\(\) => new Set\(\)\)/);
   assert.match(favoriteList, /disabled=\{pendingIds\.has\(item\.feedItemId\)\}/);
   assert.match(favoriteList, /sortFavoriteItems\(\[\.\.\.current, removedItem\]\)/);
-  assert.match(favoriteList, /Could not remove post from Favorites\. It remains here\./);
+  assert.match(favoriteList, /Could not remove from Favorites\. It remains here\./);
   assert.match(favoriteList, /className="favorites-feed-error" role="status"/);
   assert.doesNotMatch(favoriteList, /setItems\(previousItems\)/);
   assert.match(favoriteButton, /const label = postFavoriteActionLabel\(isFavorite\)/);
