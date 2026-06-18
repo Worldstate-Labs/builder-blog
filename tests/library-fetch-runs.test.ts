@@ -600,8 +600,11 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.doesNotMatch(panel, />Newest</);
   assert.match(source("src/lib/scheduled-window-ui.ts"), /No job reported/);
   assert.doesNotMatch(panel, /No AI Digest schedule has reported yet/);
+  assert.match(panel, /Copy a Build AI Digest prompt to start a Local Agent run/);
+  assert.doesNotMatch(panel, /Use Build AI Digest to copy a Local Agent prompt/);
   assert.match(panel, /No AI Digest builds yet/);
   assert.match(panel, /One-time and scheduled AI Digest builds appear here/);
+  assert.doesNotMatch(panel, /Scheduled and one-time AI Digest builds will appear here/);
   assert.match(panel, /Runtime job did not create an AI Digest build record/);
   assert.match(panel, /@\/lib\/scheduled-window-ui/);
   assert.match(panel, /scheduledWindowStatusLabel/);

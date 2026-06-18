@@ -561,7 +561,7 @@ function DigestScheduleSummary({
   if (!cronJob) {
     return (
       <p className="sync-panel-schedule-summary">
-        {status.summary} Use Build AI Digest to copy a Local Agent prompt.
+        {status.summary} Copy a Build AI Digest prompt to start a Local Agent run.
       </p>
     );
   }
@@ -625,7 +625,7 @@ function DigestStatusPanel({
     return (
       <EmptyState
         className="sync-panel-empty is-dashed"
-        title="No AI Digest builds"
+        title="No AI Digest builds yet"
         body="One-time and scheduled AI Digest builds appear here after a Local Agent reports them."
       />
     );
@@ -746,7 +746,7 @@ function DigestStatusPanel({
           <EmptyState
             className="sync-panel-slot-empty"
             title="No AI Digest builds yet"
-            body="Scheduled and one-time AI Digest builds will appear here after the Local Agent reports them."
+            body="One-time and scheduled AI Digest builds appear here after a Local Agent reports them."
           />
         )}
       </div>

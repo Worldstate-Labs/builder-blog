@@ -456,7 +456,8 @@ test("workspace not-found uses the FollowBrief shell instead of the default Next
   assert.match(rootNotFoundPage, /fb-landing-grid min-h-screen/);
   assert.match(rootNotFoundPage, /fb-public-nav/);
   assert.match(rootNotFoundPage, /FollowBrief/);
-  assert.match(rootNotFoundPage, /Nothing to open here\./);
+  assert.match(rootNotFoundPage, /Nothing to open here/);
+  assert.doesNotMatch(rootNotFoundPage, /Nothing to open here\./);
   assert.match(rootNotFoundPage, /signed-in FollowBrief workspace/);
   assert.match(rootNotFoundPage, /href="\/"/);
   assert.match(rootNotFoundPage, /href="\/login"/);
@@ -1286,7 +1287,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /href="\/builders\?tab=fetch"[\s\S]*Go to Sources/);
   assert.match(dashboardPage, /No AI Digest yet/);
   assert.match(dashboardPage, /No AI Digest archives yet/);
-  assert.match(dashboardPage, /\`\$\{ownerLabel\} has not shared any AI Digest archives yet\.\`/);
+  assert.match(dashboardPage, /has not shared any archives yet/);
+  assert.doesNotMatch(dashboardPage, /has not shared any AI Digest archives yet/);
   assert.doesNotMatch(dashboardPage, /The owner has not shared any AI Digest archives yet/);
   assert.match(dashboardPage, /No AI Digest archives/);
   assert.doesNotMatch(dashboardPage, /saved briefs/);
@@ -2170,8 +2172,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(digestLogPanel, /rebuilds past posts/);
   assert.match(digestLogPanel, /all new posts/);
   assert.match(digestLogPanel, /className="sync-panel-schedule-summary"/);
-  assert.match(digestLogPanel, /Use Build AI Digest to copy a Local Agent prompt\./);
-  assert.doesNotMatch(digestLogPanel, /Use Build digest to copy a Local Agent prompt\./);
+  assert.match(digestLogPanel, /Copy a Build AI Digest prompt to start a Local Agent run\./);
+  assert.doesNotMatch(digestLogPanel, /Use Build AI Digest to copy a Local Agent prompt\.|Use Build digest to copy a Local Agent prompt\./);
   assert.match(digestLogPanel, /className="sync-panel-column"/);
   assert.match(digestLogPanel, /className="sync-panel-truncate"/);
   assert.match(digestLogPanel, /className="sync-panel-status-brief"/);
@@ -2389,10 +2391,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /className="sync-panel-card"/);
   assert.match(digestLogPanel, /<EmptyState[\s\S]*className="sync-panel-empty is-dashed"/);
   assert.match(digestLogPanel, /<EmptyState[\s\S]*className="sync-panel-slot-empty"/);
-  assert.match(digestLogPanel, /title="No AI Digest builds"/);
   assert.match(digestLogPanel, /title="No AI Digest builds yet"/);
   assert.match(digestLogPanel, /body="One-time and scheduled AI Digest builds appear here after a Local Agent reports them\."/);
-  assert.match(digestLogPanel, /body="Scheduled and one-time AI Digest builds will appear here after the Local Agent reports them\."/);
+  assert.doesNotMatch(digestLogPanel, /title="No AI Digest builds"[\s\S]*body="One-time and scheduled AI Digest builds appear here after a Local Agent reports them\."|body="Scheduled and one-time AI Digest builds will appear here after the Local Agent reports them\."/);
   assert.doesNotMatch(`${fetchLogPanel}\n${digestLogPanel}`, /body="No scheduled run has elapsed yet\."/);
   assert.match(globals, /\.sync-panel-slot-empty\s*{\s*border-radius:\s*8px;\s*padding:\s*0\.75rem;\s*}/);
   assert.doesNotMatch(fetchLogPanel, /fb-segmented-tabs mt-4 inline-flex/);

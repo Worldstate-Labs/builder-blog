@@ -23,7 +23,7 @@ export default function NotFound() {
         <div>
           <span className="fb-section-label">404</span>
           <h1 className="fb-public-section-title fb-public-section-title-spaced">
-            Nothing to open here.
+            Nothing to open here
           </h1>
           <p className="fb-public-copy">
             This public link may have moved, expired, or belongs inside a

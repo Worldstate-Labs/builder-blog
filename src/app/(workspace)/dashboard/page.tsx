@@ -295,7 +295,7 @@ function DigestEmptyState({
       <FeedEmptyState
         className="ai-digest-empty"
         title="No AI Digest archives yet"
-        body={`${ownerLabel} has not shared any AI Digest archives yet.`}
+        body={`${ownerLabel} has not shared any archives yet.`}
       />
     );
   }
