@@ -5846,7 +5846,7 @@ details:not([open]) > :not(summary) {
   align-self: center;
 }
 
-.source-fetch-meta {
+.fb-hub-digest-meta.source-fetch-meta {
   border-bottom: 0;
   margin-bottom: 0;
   margin-top: 0;
