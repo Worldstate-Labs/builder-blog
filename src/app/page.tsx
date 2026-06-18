@@ -28,7 +28,7 @@ export default async function Home() {
         <div>
           <h1 className="fb-public-title">
             Keep up with sources worth following.{" "}
-            <span className="fb-public-title-break">Read them as one AI Digest issue.</span>
+            <span className="fb-public-title-break">Read their updates as one AI Digest issue.</span>
           </h1>
           <p className="fb-public-copy">
             Follow blogs, channels, feeds, GitHub Trending, and Product Hunt.
@@ -57,7 +57,7 @@ export default async function Home() {
             <div className="fb-product-preview-title-row">
               <BrandMark />
               <div>
-                <div className="fb-product-preview-title">Daily AI Digest flow</div>
+                <div className="fb-product-preview-title">AI Digest workflow</div>
                 <div className="fb-product-preview-kicker">
                   Preview
                 </div>
@@ -104,7 +104,7 @@ export default async function Home() {
                 detail: "Start from shared source libraries, then add your own.",
               },
               {
-                title: "Search after reading",
+                title: "Search when needed",
                 detail:
                   "Find sources, posts, and AI Digest issues when you need details.",
               },
@@ -130,7 +130,7 @@ export default async function Home() {
         <div className="fb-public-section-kicker-row">
           <span className="fb-section-label">Workflow</span>
           <span className="fb-public-section-note">
-            Follow sources, read AI Digest, and return to source details.
+            Follow sources, build AI Digest, and search later.
           </span>
         </div>
         <ol className="fb-public-step-list">

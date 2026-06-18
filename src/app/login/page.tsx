@@ -54,7 +54,7 @@ export default async function LoginPage({
                 Sign in
               </h2>
               <p className="fb-login-panel-copy">
-                Use the same account for the app and Local Agent.
+                Use one account for the app and Local Agent.
               </p>
             </div>
           </div>
