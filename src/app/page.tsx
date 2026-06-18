@@ -96,8 +96,8 @@ export default async function Home() {
           <div className="fb-product-preview-list">
             {[
               {
-                title: "Daily updates become one AI Digest.",
-                detail: "New posts, videos, launches, and projects become a readable AI Digest.",
+                title: "One cited brief.",
+                detail: "New posts, videos, launches, and projects stay readable together.",
               },
               {
                 title: "Your sources stay connected.",

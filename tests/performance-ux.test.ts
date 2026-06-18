@@ -564,8 +564,10 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(landingPage, /build a cited AI Digest from the summaries/);
   assert.doesNotMatch(landingPage, /sources your Local Agent can fetch|agent-fetchable sources|Local Agent sources/);
   assert.match(landingPage, /Daily AI Digest flow/);
-  assert.match(landingPage, /Daily updates become one AI Digest/);
-  assert.match(landingPage, /readable AI Digest/);
+  assert.match(landingPage, /One cited brief/);
+  assert.match(landingPage, /New posts, videos, launches, and projects stay readable together/);
+  assert.doesNotMatch(landingPage, /Daily updates become one AI Digest|New posts, videos, launches, and projects become a readable AI Digest/);
+  assert.doesNotMatch(landingPage, /readable AI Digest/);
   assert.doesNotMatch(landingPage, /Build AI Digests/);
   assert.match(landingPage, /Home reading lanes/);
   assert.match(landingPage, /AI Digest, Following, and Favorites stay separate/);
@@ -3326,7 +3328,9 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /activeFilter === "imported" \? \(/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /onClick=\{\(\) => setActiveFilter\("all"\)\}/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), />\s*Browse source libraries\s*<\/button>/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Shared source libraries will appear here\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Shared source libraries appear here after people share them\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Your source libraries appear here after you share them\./);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Shared source libraries will appear here\.|Your source libraries will appear here once you share them\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Libraries shared by other users\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Source libraries shared to Hub will appear here\.|Source libraries shared by other users\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Community source libraries, your shared source libraries|Community libraries|your shared libraries/);
@@ -3450,7 +3454,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(digestPipelineForm, /<article className="own-digest-card">/);
   assert.doesNotMatch(digestPipelineForm, /className="fb-hub-card own-digest-card"/);
   assert.doesNotMatch(digestPipelineForm, /DigestPipelineVisibilityToggle/);
-  assert.doesNotMatch(digestPipelineForm, /Shared archive/);
+  assert.doesNotMatch(digestPipelineForm, />\s*Shared archive\s*</);
   assert.match(digestPipelineForm, /className="library-hub-toolbar-copy"/);
   assert.match(digestPipelineForm, /className="hub-list-stack fb-hub-list"/);
   assert.match(digestPipelineForm, /className="fb-hub-card-head"/);
@@ -4738,7 +4742,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(digestPipelineForm, /Share my digest/);
   assert.doesNotMatch(digestPipelineForm, /Remove my digest/);
   assert.doesNotMatch(digestPipelineForm, /ownPipelineShared/);
-  assert.doesNotMatch(digestPipelineForm, /Shared archive/);
+  assert.doesNotMatch(digestPipelineForm, />\s*Shared archive\s*</);
   assert.match(digestPipelineForm, /filter\(\(pipeline\) => !pipeline\.owned\)/);
   assert.doesNotMatch(digestPipelineForm, /Your digest/);
   assert.doesNotMatch(digestPipelineForm, /pipeline\.owned \? \(/);
@@ -4775,8 +4779,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /Browse AI Digest archives/);
   assert.doesNotMatch(digestPipelineForm, /Browse Hub/);
   assert.match(digestPipelineForm, /No shared AI Digest archives/);
-  assert.match(digestPipelineForm, /Archives appear here after users share them to Hub\./);
-  assert.doesNotMatch(digestPipelineForm, /Shared AI Digest archives appear here when users share them to Hub\.|Shared archives appear here/);
+  assert.match(digestPipelineForm, /Shared archives appear here after users share them to Hub\./);
+  assert.doesNotMatch(digestPipelineForm, /Shared AI Digest archives appear here when users share them to Hub\.|Archives appear here after users share them to Hub\./);
   assert.match(digestPipelineForm, /No AI Digest archives yet/);
   assert.doesNotMatch(digestPipelineForm, /No AI Digests yet/);
   assert.doesNotMatch(digestPipelineForm, /No digests yet/);
