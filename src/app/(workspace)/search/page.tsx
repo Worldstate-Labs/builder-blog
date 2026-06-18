@@ -101,7 +101,7 @@ const advancedSearchExamples = [
 const resultTypeFilterLabels: Record<SearchDocumentType, string> = {
   builder: "Sources",
   feed: "Posts",
-  digest: "AI Digest issues",
+  digest: "AI Digest",
 };
 
 const resultTypeItemLabels: Record<SearchDocumentType, string> = {
@@ -350,7 +350,6 @@ async function SearchResultsSection({
               actions={recoveryActions}
               mode={mode}
               query={activeQuery}
-              resultCount={filteredResults.length}
               sort={sort}
               time={time}
               typeFilter={typeFilter}
@@ -519,7 +518,6 @@ function SearchQueryInsights({
   actions,
   mode,
   query,
-  resultCount,
   sort,
   time,
   typeFilter,
@@ -527,7 +525,6 @@ function SearchQueryInsights({
   actions: SearchRecoveryAction[];
   mode: SearchMode;
   query: string;
-  resultCount: number;
   sort: SearchSort;
   time: SearchTimeRange;
   typeFilter: SearchTypeFilter;
@@ -536,9 +533,6 @@ function SearchQueryInsights({
 
   return (
     <section className="search-insights" aria-label="Search details">
-      <p className="search-insight-summary">
-        Found {resultCount} {searchResultCountLabel(typeFilter, resultCount)}.
-      </p>
       <dl className="search-insight-grid">
         {items.map((item) => (
           <div className="search-insight-item" key={`${item.label}:${item.value}`}>
@@ -1140,7 +1134,7 @@ function searchNoMatchesCopy({
   typeFilter: SearchTypeFilter;
 }) {
   if (typeFilter !== "all") {
-    return "Try broader terms or all results.";
+    return "Try broader terms or show all results.";
   }
   if (time !== "any" || activeFilterCount > 0) {
     return "Try broader terms or clear filters.";

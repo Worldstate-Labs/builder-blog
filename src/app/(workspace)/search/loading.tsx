@@ -40,7 +40,7 @@ export default function SearchLoading() {
               { label: "All", selected: true },
               { label: "Sources", selected: false },
               { label: "Posts", selected: false },
-              { label: "AI Digest issues", selected: false },
+              { label: "AI Digest", selected: false },
             ].map(({ label, selected }) => (
               <span
                 aria-disabled="true"

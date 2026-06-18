@@ -8,6 +8,8 @@ import { SourceAvatar } from "@/components/SourceAvatar";
 import { SourceBadge } from "@/components/SourceBadge";
 import { normalizeSourceType, sourceLabelForType } from "@/lib/source-display";
 
+const sourceLibraryImportDescription = "Import shared libraries into Sources.";
+
 type HubLibraryBuilder = {
   id: string;
   kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";
@@ -259,7 +261,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Source libraries</h2>
           <p className="hub-section-copy">
-            Import shared libraries into Sources for AI Digest and Following.
+            {sourceLibraryImportDescription}
           </p>
         </div>
       </div>
@@ -374,11 +376,11 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
             </h3>
             <div className="settings-dialog-copy">
               <p>
-                After removing <strong>{removeTarget.name}</strong>, its sources
-                no longer appear in Sources or feed AI Digest and Following.
+                After removing <strong>{removeTarget.name}</strong>, its sources are
+                removed from Sources and stop feeding AI Digest and Following.
               </p>
               <p className="settings-dialog-warning">
-                Import this library from Hub again.
+                You can import it from Hub again.
               </p>
             </div>
             <div className="settings-dialog-actions">
@@ -613,7 +615,7 @@ function sourceLibraryListCopy(filter: FilterKey) {
     case "all":
     default:
       return {
-        description: "Import shared libraries into Sources for AI Digest and Following.",
+        description: sourceLibraryImportDescription,
         emptyBody: "Try another source library filter.",
       };
   }
