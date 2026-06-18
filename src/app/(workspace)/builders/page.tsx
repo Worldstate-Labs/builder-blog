@@ -112,7 +112,7 @@ export default async function BuildersPage({
     <div className="page-pad">
       <PageHeader
         title="Sources"
-        description="Follow sources, fetch updates, and choose what feeds AI Digest issues and Following posts."
+        description="Follow sources, fetch updates, and choose what feeds AI Digest and Following."
       />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <section className="sources-tab-surface">
@@ -735,7 +735,7 @@ async function FetchSourcesSection({
             }),
           )}
           editableSourceOptions={data.sourceLabelOptions}
-          emptyBody="Add sources, then run Fetch sources to feed AI Digest issues and Following posts."
+          emptyBody="Add sources, then run Fetch sources for AI Digest and Following."
           emptyTitle="No sources in your source library yet"
         />
       </PrivateLibraryPanel>
@@ -748,7 +748,7 @@ async function FetchSourcesSection({
         <div className="imported-libraries-copy">
           <h2 className="fb-section-heading">Imported source libraries</h2>
           <p className="library-section-copy">
-            Source libraries imported from Hub.
+            Imported from Hub.
           </p>
         </div>
         {data.importedLibrarySections.length > 0 ? (

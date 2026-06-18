@@ -114,11 +114,11 @@ test("favorites saves posts into the Favorites tab", () => {
   assert.match(favoriteList, /className="favorites-empty is-actionable"/);
   assert.match(favoriteList, /favorites-empty-actions/);
   assert.match(favoriteList, /No Favorites yet/);
-  assert.match(favoriteList, /Save posts from AI Digest issues, Following posts, Search, or post pages\./);
-  assert.doesNotMatch(favoriteList, /to build this queue|Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
+  assert.match(favoriteList, /Save posts from AI Digest, Following, Search, or post pages\./);
+  assert.doesNotMatch(favoriteList, /AI Digest issues, Following posts|to build this queue|Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
   assert.doesNotMatch(favoriteList, /Posts you marked for deeper reading/);
   assert.doesNotMatch(favoriteList, /Saved for deeper reading/);
-  assert.doesNotMatch(favoriteList, /Star posts from AI Digest|Save posts from AI Digest or Following|Save posts from AI Digest, Following/);
+  assert.doesNotMatch(favoriteList, /Star posts from AI Digest|Save posts from AI Digest or Following/);
   assert.match(favoriteList, /postDetailHref\(item\.feedItemId, "\/dashboard\?tab=favorites", "Favorites"\)/);
   assert.match(favoriteList, /PostFavoriteButton/);
   assert.match(favoriteList, /const response = await fetch\("\/api\/favorites"/);
@@ -542,8 +542,8 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.match(followingSection, /No followed sources yet/);
   assert.match(followingSection, /href="\/builders\?tab=fetch"[\s\S]*Choose sources/);
   assert.doesNotMatch(followingSection, /href="\/builders\?tab=fetch"[\s\S]*Go to Sources/);
-  assert.match(followingSection, /Add sources in the Sources tab to feed AI Digest issues and Following posts\./);
-  assert.doesNotMatch(followingSection, /Add sources in Sources\. They feed AI Digest|They feed AI Digest/);
+  assert.match(followingSection, /Add sources to feed AI Digest and Following\./);
+  assert.doesNotMatch(followingSection, /Add sources in the Sources tab|AI Digest issues and Following posts|Add sources in Sources\. They feed AI Digest|They feed AI Digest/);
   assert.match(followingSection, /No summarized posts yet/);
   assert.match(followingSection, /No unread posts yet/);
   assert.match(followingSection, /Run Fetch sources to summarize followed posts/);

@@ -102,8 +102,8 @@ export function DigestPipelineImportForm({
     mode === "imported" ? "Imported AI Digest collections" : "Shared AI Digest collections";
   const description =
     mode === "imported"
-      ? "In your AI Digest tab."
-      : "Import shared AI Digest collections into the AI Digest tab.";
+      ? "Available in AI Digest."
+      : "Import shared AI Digest collections into AI Digest.";
   const emptyTitle =
     mode === "imported"
       ? "No imported AI Digest collections"
@@ -298,7 +298,7 @@ export function DigestPipelineImportForm({
             <div className="settings-dialog-copy">
               <p>
                 After removing <strong>{removeTarget.title}</strong>, this collection
-                no longer appears in the AI Digest tab.
+                no longer appears in AI Digest.
               </p>
               <p className="settings-dialog-warning">
                 Import it again from Hub.

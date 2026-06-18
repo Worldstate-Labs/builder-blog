@@ -72,7 +72,7 @@ export function FavoritePostsList({
         }
         className="favorites-empty is-actionable"
         title="No Favorites yet"
-        body="Save posts from AI Digest issues, Following posts, Search, or post pages."
+        body="Save posts from AI Digest, Following, Search, or post pages."
       />
     );
   }
