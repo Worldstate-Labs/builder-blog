@@ -24,8 +24,9 @@ test("sources AI Digest loading state names the same sections as the loaded tab"
   assert.doesNotMatch(buildersLoading, /<div className="source-sync-skeleton-panel" \/>\s*<div className="source-sync-skeleton-panel" \/>/);
 
   assert.match(fallbackBlock, /Your AI Digest collection/);
-  assert.match(fallbackBlock, /Imported AI Digest archives/);
+  assert.match(fallbackBlock, /Imported AI Digest collections/);
+  assert.doesNotMatch(fallbackBlock, /Imported AI Digest archives/);
   assert.match(fallbackBlock, /aria-label="Loading your AI Digest collection"/);
-  assert.match(fallbackBlock, /aria-label="Loading imported AI Digest archives"/);
+  assert.match(fallbackBlock, /aria-label="Loading imported AI Digest collections"/);
   assert.doesNotMatch(fallbackBlock, /<div className="source-sync-skeleton-panel" \/>\s*<div className="source-sync-skeleton-panel" \/>/);
 });

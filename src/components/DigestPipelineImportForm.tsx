@@ -99,19 +99,19 @@ export function DigestPipelineImportForm({
   );
   const visiblePipelines = mode === "imported" ? importedPipelines : sharedPipelines;
   const title =
-    mode === "imported" ? "Imported AI Digest archives" : "Shared AI Digest archives";
+    mode === "imported" ? "Imported AI Digest collections" : "Shared AI Digest collections";
   const description =
     mode === "imported"
-      ? "Archives already in the AI Digest tab."
-      : "Import shared archives into the AI Digest tab.";
+      ? "Collections already in the AI Digest tab."
+      : "Import shared collections into the AI Digest tab.";
   const emptyTitle =
     mode === "imported"
-      ? "No imported AI Digest archives"
-      : "No shared AI Digest archives";
+      ? "No imported AI Digest collections"
+      : "No shared AI Digest collections";
   const emptyMessage =
     mode === "imported"
-      ? "Import archives to see them in the AI Digest tab."
-      : "Shared archives appear here after users share them to Hub.";
+      ? "Import collections to see them in the AI Digest tab."
+      : "Shared collections appear here after users share them to Hub.";
 
   function setImportedIds(updater: (current: Set<string>) => Set<string>) {
     setImportedState((current) => {
@@ -160,14 +160,14 @@ export function DigestPipelineImportForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pipelineId }),
         });
-        if (!response.ok) throw new Error("Could not import AI Digest archive.");
+        if (!response.ok) throw new Error("Could not import AI Digest collection.");
       } catch {
         setImportedIds((current) => {
           const next = new Set(current);
           next.delete(pipelineId);
           return next;
         });
-        setError("Could not import AI Digest archive.");
+        setError("Could not import AI Digest collection.");
       } finally {
         setPendingAction(null);
       }
@@ -199,10 +199,10 @@ export function DigestPipelineImportForm({
         const response = await fetch(`/api/digest-pipelines/imports/${pipelineId}`, {
           method: "DELETE",
         });
-        if (!response.ok) throw new Error("Could not remove AI Digest archive import.");
+        if (!response.ok) throw new Error("Could not remove AI Digest collection import.");
       } catch {
         setImportedIds((current) => new Set([...current, pipelineId]));
-        setError("Could not remove AI Digest archive import.");
+        setError("Could not remove AI Digest collection import.");
       } finally {
         setPendingAction(null);
       }
@@ -248,8 +248,8 @@ export function DigestPipelineImportForm({
         <CountRange>
           {formatCount(visiblePipelines.length)}{" "}
           {visiblePipelines.length === 1
-            ? "AI Digest archive"
-            : "AI Digest archives"}
+            ? "AI Digest collection"
+            : "AI Digest collections"}
         </CountRange>
       </div>
 
@@ -270,7 +270,7 @@ export function DigestPipelineImportForm({
             actions={
               mode === "imported" ? (
                 <Link className="fb-btn light compact" href="/library-hub?tab=ai-digests">
-                  Browse AI Digest archives
+                  Browse AI Digest collections
                 </Link>
               ) : null
             }
@@ -293,12 +293,12 @@ export function DigestPipelineImportForm({
         {removeTarget ? (
           <div className="fb-dialog-inner settings-dialog-stack">
             <h3 className="fb-section-heading" id="hub-remove-ai-digest-title">
-              Remove AI Digest archive import?
+              Remove AI Digest collection import?
             </h3>
             <div className="settings-dialog-copy">
               <p>
                 After removing <strong>{removeTarget.title}</strong>, you will
-                no longer see this archive in the AI Digest tab.
+                no longer see this collection in the AI Digest tab.
               </p>
               <p className="settings-dialog-warning">
                 You can import it again from Hub later.
@@ -387,7 +387,7 @@ function DigestPipelineCard({
   const action = imported && pending !== "import" ? (
     <button
       aria-busy={pending === "remove" && isPending}
-      aria-label={`Remove ${pipeline.title} AI Digest archive import`}
+      aria-label={`Remove ${pipeline.title} AI Digest collection import`}
       className="fb-btn light compact hub-card-action-button is-imported"
       disabled={isPending || pending !== null}
       onClick={() => onRemove(pipeline.id)}
@@ -399,14 +399,14 @@ function DigestPipelineCard({
   ) : (
     <button
       aria-busy={pending === "import" && isPending}
-      aria-label={`Import AI Digest archive ${pipeline.title}`}
+      aria-label={`Import AI Digest collection ${pipeline.title}`}
       className="fb-btn dark compact hub-card-action-button"
       disabled={isPending || pending !== null}
       onClick={() => onImport(pipeline.id)}
       type="button"
     >
       <Download aria-hidden="true" />
-      {pending === "import" ? "Importing archive" : "Import archive"}
+      {pending === "import" ? "Importing collection" : "Import collection"}
     </button>
   );
   const description = digestPipelineCardDescription(pipeline);
@@ -424,7 +424,7 @@ function DigestPipelineCard({
             </p>
           </div>
           <div
-            aria-label={`AI Digest archive actions for ${pipeline.title}`}
+            aria-label={`AI Digest collection actions for ${pipeline.title}`}
             className="fb-hub-card-actions"
             role="group"
           >

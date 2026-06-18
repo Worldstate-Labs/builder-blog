@@ -212,11 +212,11 @@ function DigestSourcesFallback() {
         </div>
         <div className="source-sync-skeleton-panel" />
       </section>
-      <section className="digest-source-management" aria-label="Loading imported AI Digest archives">
+      <section className="digest-source-management" aria-label="Loading imported AI Digest collections">
         <div className="library-hub-toolbar">
           <div className="library-hub-toolbar-copy">
             <h2 className="fb-section-heading">
-              Imported AI Digest archives
+              Imported AI Digest collections
             </h2>
             <div className="source-sync-skeleton-line" />
           </div>

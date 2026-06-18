@@ -44,7 +44,7 @@ const LIBRARY_HUB_TABS: Array<WorkspaceTopTabItem<LibraryHubTab>> = [
   },
   {
     value: "ai-digests",
-    label: "AI Digest archives",
+    label: "AI Digest collections",
     href: "/library-hub?tab=ai-digests",
     panelId: "hub-panel-ai-digests",
     tabId: "hub-tab-ai-digests",
@@ -68,7 +68,7 @@ export default async function LibraryHubPage({
     <div className="page-pad">
       <PageHeader
         title="Hub"
-        description="Browse shared source libraries and AI Digest archives, then import the ones you want."
+        description="Browse shared source libraries and AI Digest collections, then import the ones you want."
       />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <WorkspaceTopTabs
@@ -313,12 +313,12 @@ function LibraryHubImportFallback() {
 function DigestPipelineImportFallback() {
   return (
     <section aria-live="polite" aria-busy="true">
-      <span className="sr-only">Loading shared AI Digest archives</span>
+      <span className="sr-only">Loading shared AI Digest collections</span>
       <div className="library-hub-toolbar">
         <div className="library-hub-toolbar-copy">
-          <h2 className="fb-section-heading">Shared AI Digest archives</h2>
+          <h2 className="fb-section-heading">Shared AI Digest collections</h2>
           <p className="hub-section-copy">
-            Import shared archives into the AI Digest tab.
+            Import shared collections into the AI Digest tab.
           </p>
           <div className="library-hub-skeleton-line is-wide" />
         </div>

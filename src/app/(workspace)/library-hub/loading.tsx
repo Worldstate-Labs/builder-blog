@@ -15,7 +15,7 @@ export default function LibraryHubLoading() {
           >
             {[
               { label: "Source libraries", selected: true },
-              { label: "AI Digest archives", selected: false },
+              { label: "AI Digest collections", selected: false },
             ].map(({ label, selected }) => (
               <span
                 aria-disabled="true"

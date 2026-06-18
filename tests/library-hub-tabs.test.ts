@@ -9,7 +9,7 @@ function source(path: string) {
   return readFileSync(join(root, path), "utf8");
 }
 
-test("hub page exposes Source libraries and AI Digest archives as subtabs", () => {
+test("hub page exposes Source libraries and AI Digest collections as subtabs", () => {
   const hubPage = source("src/app/(workspace)/library-hub/page.tsx");
   const topTabs = source("src/components/WorkspaceTopTabs.tsx");
 
@@ -19,11 +19,12 @@ test("hub page exposes Source libraries and AI Digest archives as subtabs", () =
   assert.doesNotMatch(hubPage, /ariaLabel="Hub sections"/);
   assert.match(topTabs, /role="tablist"/);
   assert.match(hubPage, /label:\s*"Source libraries"/);
-  assert.match(hubPage, /label:\s*"AI Digest archives"/);
+  assert.match(hubPage, /label:\s*"AI Digest collections"/);
+  assert.doesNotMatch(hubPage, /label:\s*"AI Digest archives"/);
   assert.doesNotMatch(hubPage, /label:\s*"AI Digests"/);
   assert.doesNotMatch(hubPage, /label:\s*"Digests"/);
   assert.match(hubPage, /label:\s*"Source libraries"[\s\S]*href:\s*"\/library-hub\?tab=source-library"/);
-  assert.match(hubPage, /label:\s*"AI Digest archives"[\s\S]*href:\s*"\/library-hub\?tab=ai-digests"/);
+  assert.match(hubPage, /label:\s*"AI Digest collections"[\s\S]*href:\s*"\/library-hub\?tab=ai-digests"/);
   assert.match(hubPage, /panelId:\s*"hub-panel-source-library"/);
   assert.match(hubPage, /tabId:\s*"hub-tab-source-library"/);
   assert.match(hubPage, /panelId:\s*"hub-panel-ai-digests"/);

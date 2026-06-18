@@ -28,18 +28,18 @@ export function DigestPipelineVisibilityToggle({
           body: nextShared ? JSON.stringify({}) : undefined,
         });
 
-        if (!response.ok) throw new Error("Could not update AI Digest archive sharing.");
+        if (!response.ok) throw new Error("Could not update AI Digest collection sharing.");
       } catch {
         setShared(!nextShared);
-        setError("Could not update AI Digest archive sharing.");
+        setError("Could not update AI Digest collection sharing.");
       }
     });
   }
 
   const label = shared ? "Remove from Hub" : "Share to Hub";
   const actionLabel = shared
-    ? "Remove AI Digest archive from Hub"
-    : "Share AI Digest archive to Hub";
+    ? "Remove AI Digest collection from Hub"
+    : "Share AI Digest collection to Hub";
 
   return (
     <div className="hub-share-control">
