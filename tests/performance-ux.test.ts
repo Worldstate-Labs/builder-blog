@@ -4936,7 +4936,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.doesNotMatch(digestPipelineForm, /className="digest-remove-popover"/);
   assert.match(digestPipelineForm, /Remove AI Digest collection import\?/);
-  assert.match(digestPipelineForm, /no longer see this collection in the AI Digest tab\./);
+  assert.match(digestPipelineForm, /this collection\s+no longer appears in the AI Digest tab\./);
   assert.doesNotMatch(digestPipelineForm, /no longer see this AI Digest archive in AI Digest\./);
   assert.doesNotMatch(digestPipelineForm, /no longer see this AI Digest archive on Home\./);
   assert.match(digestPipelineForm, /Import it again from Hub\./);
@@ -4950,7 +4950,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, />\s*Remove import\s*<\/button>/);
   assert.match(digestPipelineForm, /Could not import AI Digest collection/);
   assert.match(digestPipelineForm, /Could not remove AI Digest collection import/);
-  assert.doesNotMatch(digestPipelineForm, /Remove \$\{pipeline\.title\} from Home|Remove \$\{pipeline\.title\} from imported AI Digests|Remove imported digest\?|Remove imported AI Digest\?|Remove digest|>\s*Remove AI Digest\s*<\/button>|Could not import digest|Could not remove imported digest|no longer see this digest on the Home page|no longer see this AI Digest archive on the Home page/);
+  assert.doesNotMatch(digestPipelineForm, /Remove \$\{pipeline\.title\} from Home|Remove \$\{pipeline\.title\} from imported AI Digests|Remove imported digest\?|Remove imported AI Digest\?|Remove digest|>\s*Remove AI Digest\s*<\/button>|Could not import digest|Could not remove imported digest|no longer see this digest on the Home page|no longer see this AI Digest archive on the Home page|you will\s+no longer see this collection/);
   assert.doesNotMatch(digestPipelineForm, /Trash2/);
   assert.match(digestPipelineShareRoute, /shareDigestPipelineToHub/);
   assert.match(digestPipelineShareRoute, /updateDigestPipelineTitle/);

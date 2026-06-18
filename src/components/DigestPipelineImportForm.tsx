@@ -297,8 +297,8 @@ export function DigestPipelineImportForm({
             </h3>
             <div className="settings-dialog-copy">
               <p>
-                After removing <strong>{removeTarget.title}</strong>, you will
-                no longer see this collection in the AI Digest tab.
+                After removing <strong>{removeTarget.title}</strong>, this collection
+                no longer appears in the AI Digest tab.
               </p>
               <p className="settings-dialog-warning">
                 Import it again from Hub.
