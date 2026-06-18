@@ -3298,7 +3298,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(libraryHubPage, /Available source libraries/);
   assert.match(libraryHubPage, /className="workspace-content-stack workspace-content-stack--tabs-first"/);
   assert.match(libraryHubPage, /@\/components\/PageHeader/);
-  assert.match(libraryHubPage, /<PageHeader[\s\S]*title="Hub"[\s\S]*Browse shared source libraries and AI Digest collections, then import the ones you need\./);
+  assert.match(libraryHubPage, /<PageHeader[\s\S]*title="Hub"[\s\S]*Browse and import shared source libraries and AI Digest collections\./);
+  assert.doesNotMatch(libraryHubPage, /Browse shared source libraries and AI Digest collections, then import the ones you need\./);
   assert.match(libraryHubPage, /<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/);
   assert.match(libraryHubPage, /ariaLabel="Hub tabs"/);
   assert.doesNotMatch(libraryHubPage, /ariaLabel="Hub sections"/);
@@ -5294,10 +5295,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(tokenPanel, /Could not create access\.|Could not revoke access\./);
   assert.match(tokenPanel, /This access key has been used by/);
   assert.match(tokenPanel, /This access key has never been used/);
-  assert.match(tokenPanel, /That device or Local Agent will need a new access key to\s+update FollowBrief/);
-  assert.match(tokenPanel, /No device or Local Agent\s+will lose access/);
+  assert.match(tokenPanel, /That device or Local Agent needs a new access key to update\s+FollowBrief/);
+  assert.match(tokenPanel, /No device or Local Agent\s+loses access/);
   assert.doesNotMatch(tokenPanel, /This access has been used by|This access has never been used/);
-  assert.doesNotMatch(tokenPanel, /After revoking it, that device or Local Agent will need|Revoking it now is safe|that Local Agent will lose access|No machine will lose access/);
+  assert.doesNotMatch(tokenPanel, /After revoking it, that device or Local Agent will need|will need a new access key|Revoking it now is safe|that Local Agent will lose access|will lose access|No machine will lose access/);
   assert.doesNotMatch(tokenPanel, /role="listitem"/);
   assert.match(tokenPanel, /Revoke access/);
   assert.doesNotMatch(tokenPanel, /className="mt-/);

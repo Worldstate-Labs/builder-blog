@@ -68,7 +68,7 @@ export default async function LibraryHubPage({
     <div className="page-pad">
       <PageHeader
         title="Hub"
-        description="Browse shared source libraries and AI Digest collections, then import the ones you need."
+        description="Browse and import shared source libraries and AI Digest collections."
       />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <WorkspaceTopTabs

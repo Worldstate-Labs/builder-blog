@@ -471,14 +471,14 @@ export function AgentTokenPanel({
                     .
                   </p>
                   <p className="settings-dialog-warning">
-                    That device or Local Agent will need a new access key to
-                    update FollowBrief.
+                    That device or Local Agent needs a new access key to update
+                    FollowBrief.
                   </p>
                 </>
               ) : (
                 <p>
                   This access key has never been used. No device or Local Agent
-                  will lose access.
+                  loses access.
                 </p>
               )}
             </div>
