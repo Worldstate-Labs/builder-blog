@@ -1141,7 +1141,7 @@ function FetchStatusToggle({
         borderColor: status.style.border,
         color: status.style.color,
       }}
-      title={detailsOpen ? "Hide Fetch sources details" : "Show Fetch sources details"}
+      title={detailsOpen ? "Hide Fetch sources status log" : "Show Fetch sources status log"}
       type="button"
     >
       {status.label}
@@ -2357,7 +2357,7 @@ function DetailsBody({
       !details.cliFlags &&
       !details.error ? (
         <p className="sync-panel-detail-empty">
-          No Fetch sources details were recorded for this run.
+          No post task details were recorded for this run.
         </p>
       ) : null}
     </div>

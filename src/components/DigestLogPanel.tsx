@@ -540,7 +540,7 @@ export function DigestStatusToggle({
         borderColor: status.style.border,
         color: status.style.color,
       }}
-      title={detailsOpen ? "Hide AI Digest update details" : "Show AI Digest update details"}
+      title={detailsOpen ? "Hide AI Digest status log" : "Show AI Digest status log"}
       type="button"
     >
       {status.label}
@@ -1276,7 +1276,7 @@ function RunCard({
       {detailCount > 0 ? (
         <details className="sync-panel-run-card-details">
           <summary className="sync-panel-run-card-details-summary">
-            Show sources and posts considered
+            Sources and posts considered
             <CountBadge value={detailCount} />
           </summary>
           <div className="sync-panel-run-card-details-body">

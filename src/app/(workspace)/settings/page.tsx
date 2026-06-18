@@ -34,7 +34,7 @@ export default async function SettingsPage() {
     <div className="page-pad page-pad--settings">
       <PageHeader
         title="Settings"
-        description="Access keys, source fetching, and AI Digest rules."
+        description="Access keys and rules for Fetch sources and AI Digest."
       />
 
       <div className="workspace-content-stack settings-workspace">

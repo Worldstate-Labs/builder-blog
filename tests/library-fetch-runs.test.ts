@@ -701,7 +701,7 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /className="mono sync-panel-candidate-kind"/);
   assert.match(panel, /not used/);
   assert.match(panel, /pending/);
-  assert.match(panel, /Show sources and posts considered/);
+  assert.match(panel, /Sources and posts considered/);
   assert.match(panel, /Source coverage/);
   assert.match(panel, /Posts considered/);
   assert.match(panel, /sync-panel-candidate-title/);

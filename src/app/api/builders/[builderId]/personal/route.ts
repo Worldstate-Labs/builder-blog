@@ -57,7 +57,7 @@ export async function PATCH(request: Request, { params }: Params) {
     },
   });
   if (!existing || existing.ownerUserId !== session.user.id) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ error: "Source not found." }, { status: 404 });
   }
 
   const parsed = PatchSchema.safeParse(await request.json().catch(() => null));

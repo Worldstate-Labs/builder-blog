@@ -180,7 +180,7 @@ export default async function Home() {
         <div className="fb-public-feature-grid">
           <Feature
             icon={Newspaper}
-            title="Home reading lanes"
+            title="Today reading lanes"
             copy="AI Digest, Following, and Favorites stay separate, so catch-up stays focused."
           />
           <Feature

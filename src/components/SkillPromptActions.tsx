@@ -78,7 +78,7 @@ type CopyExtras = {
 };
 type ManualCopyPrompt = { target: CopyTarget; text: string };
 const missingAccessMessage = "Add an access key to set up Local Agent runs.";
-const promptDialogDescription = () => "Choose frequency, Local Agent, language, and lookback.";
+const promptDialogDescription = () => "Choose frequency, runtime, language, and lookback.";
 
 async function copyTextToClipboard(text: string) {
   try {
@@ -1076,7 +1076,7 @@ function CronConfigDialog({
           </div>
           <div className="cron-field">
             <label htmlFor="cron-runtime" className="cron-field-label">
-              Local Agent
+              Runtime
             </label>
             <select
               id="cron-runtime"

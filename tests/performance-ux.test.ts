@@ -223,11 +223,11 @@ test("every app route has an explicit centered layout role", () => {
 
   assert.match(
     source("src/app/(workspace)/settings/page.tsx"),
-    /className="page-pad page-pad--settings"[\s\S]*<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys, source fetching, and AI Digest rules\./,
+    /className="page-pad page-pad--settings"[\s\S]*<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys and rules for Fetch sources and AI Digest\./,
   );
   assert.doesNotMatch(
     source("src/app/(workspace)/settings/page.tsx"),
-    /Manage access keys, source fetching, and AI Digest rules\.|Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./,
+    /Access keys, source fetching, and AI Digest rules\.|Manage access keys, source fetching, and AI Digest rules\.|Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./,
   );
 
   const redirectOnlyRoutes = [
@@ -302,8 +302,8 @@ test("every app route has an explicit centered layout role", () => {
   assert.doesNotMatch(settingsLoading, /RouteLoading/);
   assert.match(settingsLoading, /@\/components\/PageHeader/);
   assert.match(settingsLoading, /className="page-pad page-pad--settings settings-loading"/);
-  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys, source fetching, and AI Digest rules\./);
-  assert.doesNotMatch(settingsLoading, /Manage access keys, source fetching, and AI Digest rules\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
+  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys and rules for Fetch sources and AI Digest\./);
+  assert.doesNotMatch(settingsLoading, /Access keys, source fetching, and AI Digest rules\.|Manage access keys, source fetching, and AI Digest rules\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
   assert.match(settingsLoading, /className="workspace-content-stack settings-workspace"/);
   assert.match(settingsLoading, /className="settings-access-grid"/);
   assert.match(settingsLoading, /@\/components\/AgentTokenPanelSkeleton/);
@@ -583,7 +583,8 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(landingPage, /Your sources stay connected\./);
   assert.doesNotMatch(landingPage, /readable AI Digest/);
   assert.doesNotMatch(landingPage, /Build AI Digests/);
-  assert.match(landingPage, /Home reading lanes/);
+  assert.match(landingPage, /Today reading lanes/);
+  assert.doesNotMatch(landingPage, /Home reading lanes/);
   assert.match(landingPage, /AI Digest, Following, and Favorites stay separate/);
   assert.doesNotMatch(landingPage, /Home stays focused on readable AI Digests/);
   assert.match(landingPage, /Following posts/);
@@ -902,8 +903,10 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /Parallel tasks must be a whole number from 1 to/);
   assert.match(skillPromptActions, /Use 1 for reliability/);
   assert.match(skillPromptActions, /Default: 30 days\. Range: 1-90\./);
-  assert.match(skillPromptActions, /const promptDialogDescription = \(\) => "Choose frequency, Local Agent, language, and lookback\."/);
+  assert.match(skillPromptActions, /const promptDialogDescription = \(\) => "Choose frequency, runtime, language, and lookback\."/);
+  assert.match(skillPromptActions, />\s*Runtime\s*<\/label>/);
   assert.doesNotMatch(skillPromptActions, /Copy a Local Agent prompt\./);
+  assert.doesNotMatch(skillPromptActions, />\s*Local Agent\s*<\/label>|Choose frequency, Local Agent, language, and lookback\./);
   assert.doesNotMatch(skillPromptActions, /Runs source tasks after discovery|Looks back this many days|Parallel workers|1 worker|workers`|Use 1 for safest runs|Use 1 for the safest setup|Fetches posts this many days back/);
   assert.doesNotMatch(skillPromptActions, /<a[^>]+href="\/settings"|Add one in Settings<\/a>|Choose a Local Agent/);
   assert.doesNotMatch(skillPromptActions, /No connected helpers|Connected helpers/);
@@ -911,7 +914,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(skillPromptActions, /className="grid"/);
   assert.match(agentTokenPanel, /<h2 className="fb-section-heading">Access keys<\/h2>/);
   assert.doesNotMatch(agentTokenPanel, /<h2 className="fb-section-heading">Local Agent access<\/h2>/);
-  assert.match(agentTokenPanel, /Access keys let Local Agent update this account from your devices\./);
+  assert.match(agentTokenPanel, /Access keys authorize Local Agent runs from your devices\./);
   assert.doesNotMatch(agentTokenPanel, /Devices and Local Agents with access keys can update this account\.|Authorized devices and Local Agents can update this FollowBrief account\./);
   assert.match(agentTokenPanel, /<ul className="access-keys-list" aria-label="Access keys">/);
   assert.doesNotMatch(agentTokenPanel, /aria-label="Access keys for Local Agents"/);
@@ -1124,15 +1127,15 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /closeMenu\(\);[\s\S]*signOut\(\{ callbackUrl: "\/login" \}\)[\s\S]*Sign out/);
   assert.match(settingsPage, /@\/components\/PageHeader/);
   assert.match(settingsPage, /className="page-pad page-pad--settings"/);
-  assert.match(settingsPage, /<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys, source fetching, and AI Digest rules\./);
-  assert.doesNotMatch(settingsPage, /Manage access keys, source fetching, and AI Digest rules\.|Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
+  assert.match(settingsPage, /<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys and rules for Fetch sources and AI Digest\./);
+  assert.doesNotMatch(settingsPage, /Access keys, source fetching, and AI Digest rules\.|Manage access keys, source fetching, and AI Digest rules\.|Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
   assert.doesNotMatch(settingsPage, /<section className="fb-page-head"/);
   assert.equal(existsSync(join(root, "src/app/(workspace)/settings/loading.tsx")), true);
   const settingsLoading = source("src/app/(workspace)/settings/loading.tsx");
   assert.doesNotMatch(settingsLoading, /RouteLoading/);
   assert.match(settingsLoading, /className="page-pad page-pad--settings settings-loading"/);
-  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys, source fetching, and AI Digest rules\./);
-  assert.doesNotMatch(settingsLoading, /Manage access keys, source fetching, and AI Digest rules\.|Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
+  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys and rules for Fetch sources and AI Digest\./);
+  assert.doesNotMatch(settingsLoading, /Access keys, source fetching, and AI Digest rules\.|Manage access keys, source fetching, and AI Digest rules\.|Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
   assert.match(settingsLoading, /className="workspace-content-stack settings-workspace"/);
   assert.match(settingsLoading, /@\/components\/AgentTokenPanelSkeleton/);
   assert.match(settingsLoading, /<AgentTokenPanelSkeleton \/>/);
@@ -1256,7 +1259,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(pageHeader, /actions \? <div className="fb-page-head-actions">\{actions\}<\/div> : null/);
   assert.match(dashboardPage, /className="page-pad page-pad--reading home-page"/);
   assert.match(dashboardPage, /@\/components\/PageHeader/);
-  assert.match(dashboardPage, /<PageHeader[\s\S]*title="Today"[\s\S]*Read AI Digest and Following updates, then save or open originals\./);
+  assert.match(dashboardPage, /<PageHeader[\s\S]*title="Today"[\s\S]*Read AI Digest issues and Following posts, then save or open originals\./);
+  assert.doesNotMatch(dashboardPage, /Read AI Digest and Following updates, then save or open originals\./);
   assert.doesNotMatch(dashboardPage, /<h1 className="sr-only">Home<\/h1>/);
   assert.match(dashboardPage, /className="workspace-content-stack workspace-content-stack--tabs-first home-workspace"/);
   assert.match(dashboardPage, /className="ai-digest-stack"/);
@@ -1364,7 +1368,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, />\s*No AI Digest archives\s*<\/span>/);
   assert.doesNotMatch(dashboardPage, /saved briefs/);
   assert.match(dashboardPage, /Add sources for AI Digest and Following\./);
-  assert.doesNotMatch(dashboardPage, /Add sources to feed AI Digest and Following\.|Add sources in the Sources tab|AI Digest issues and Following posts|Add sources in Sources\. They feed AI Digest|They feed AI Digest and Following\./);
+  assert.doesNotMatch(dashboardPage, /Add sources to feed AI Digest and Following\.|Add sources in the Sources tab|Add sources in Sources\. They feed AI Digest|They feed AI Digest and Following\./);
   assert.doesNotMatch(dashboardPage, /start building AI Digests/);
   assert.match(dashboardPage, /No summarized posts yet/);
   assert.doesNotMatch(dashboardPage, /No fetched posts yet/);
@@ -2090,6 +2094,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /Language/);
   assert.match(fetchLogPanel, /Latest fetch/);
   assert.match(fetchLogPanel, /Status \/ log/);
+  assert.match(fetchLogPanel, /Show Fetch sources status log/);
+  assert.match(fetchLogPanel, /Hide Fetch sources status log/);
   assert.doesNotMatch(fetchLogPanel, /Schedule status/);
   assert.match(fetchLogPanel, /No Fetch sources run yet/);
   assert.match(fetchLogPanel, /No Fetch sources run started in the latest scheduled window/);
@@ -2108,7 +2114,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /<Link className="sync-panel-task-link" href=\{work\.fixHref\}>[\s\S]*Open Settings[\s\S]*<\/Link>/);
   assert.doesNotMatch(fetchLogPanel, />\s*open settings\s*</);
   assert.doesNotMatch(fetchLogPanel, /\{" "\}\s*<a className="sync-panel-task-link" href=\{work\.fixHref\}>/);
-  assert.doesNotMatch(fetchLogPanel, /No source update schedule has reported yet|No source updates yet|update sources again|source update details/);
+  assert.doesNotMatch(fetchLogPanel, /No source update schedule has reported yet|No source updates yet|update sources again|source update details|Show Fetch sources details|Hide Fetch sources details/);
   assert.doesNotMatch(fetchLogPanel, /posts read|post read/);
   assert.doesNotMatch(fetchLogPanel, /posts fetched/);
   assert.doesNotMatch(fetchLogPanel, /label="posts planned"/);
@@ -2228,7 +2234,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="mono sync-panel-detail-error-row"/);
   assert.match(fetchLogPanel, /className="mono sync-panel-detail-json"/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-empty"/);
-  assert.match(fetchLogPanel, /No Fetch sources details were recorded for this run\./);
+  assert.match(fetchLogPanel, /No post task details were recorded for this run\./);
   assert.doesNotMatch(fetchLogPanel, /No structured details\./);
   assert.match(digestLogPanel, /className="sync-panel-title-row"/);
   assert.match(digestLogPanel, /className="sync-panel-column"/);
@@ -2252,8 +2258,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(digestLogPanel, /aria-labelledby="digest-update-tab-log"/);
   assert.doesNotMatch(digestLogPanel, /id="digest-update-panel-log"/);
   assert.doesNotMatch(digestLogPanel, /role="tabpanel"/);
-  assert.match(digestLogPanel, /Show AI Digest update details/);
-  assert.match(digestLogPanel, /Hide AI Digest update details/);
+  assert.match(digestLogPanel, /Show AI Digest status log/);
+  assert.match(digestLogPanel, /Hide AI Digest status log/);
   assert.match(digestLogPanel, /aria-label="AI Digest build status graph, oldest to newest"/);
   assert.match(digestLogPanel, /AI Digest build at/);
   assert.match(digestLogPanel, /includes posts already used in AI Digest/);
@@ -3735,9 +3741,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(safeUrl, /URL is invalid/);
   assert.doesNotMatch(safeUrl, /URL is malformed/);
   assert.match(personalBuilderUpdateRoute, /Handle or URL is required\./);
+  assert.match(personalBuilderUpdateRoute, /Source not found\./);
   assert.match(personalBuilderUpdateRoute, /Source URL is not allowed: \$\{check\.reason\}\./);
   assert.match(personalBuilderUpdateRoute, /Could not save source\./);
-  assert.doesNotMatch(personalBuilderUpdateRoute, /sourceValue is required to resolve the source|Source URL rejected|Update failed/);
+  assert.doesNotMatch(personalBuilderUpdateRoute, /sourceValue is required to resolve the source|Source URL rejected|Update failed|error: "Not found"/);
   assert.match(personalBuilderUpdateRoute, /This source already exists in a source library\./);
   assert.doesNotMatch(personalBuilderUpdateRoute, /This source already exists in a library/);
   assert.match(buildersPage, /name:\s*data\.sessionUserName/);
@@ -4157,8 +4164,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /className="post-detail-raw-head"/);
   assert.match(postCard, /className="post-detail-raw-copy"/);
   assert.match(postCard, /className="post-detail-section-desc"/);
-  assert.match(postCard, /Full content from Fetch sources\./);
-  assert.doesNotMatch(postCard, /Full content from Fetch sources, collapsed until needed\./);
+  assert.match(postCard, /Saved by Fetch sources\./);
+  assert.doesNotMatch(postCard, /Full content from Fetch sources\.|Full content from Fetch sources, collapsed until needed\./);
   assert.doesNotMatch(postCard, /It stays collapsed until[\s\S]*you need the original text\./);
   assert.match(postCard, /className="post-detail-raw-toggle"/);
   assert.match(postCard, /\{rawExpanded \? "Hide original content" : "Show original content"\}/);
@@ -5220,10 +5227,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /fetch\(`\/api\/settings\/tokens\/\$\{tokenId\}`/);
   assert.match(tokenPanel, /<h2 className="fb-section-heading">Access keys<\/h2>/);
   assert.doesNotMatch(tokenPanel, /<h2 className="fb-section-heading">Local Agent access<\/h2>/);
-  assert.match(tokenPanel, /Access keys let Local Agent update this account from your devices\./);
+  assert.match(tokenPanel, /Access keys authorize Local Agent runs from your devices\./);
   assert.doesNotMatch(tokenPanel, /Authorized devices and Local Agents can update this FollowBrief account\./);
   assert.doesNotMatch(tokenPanel, />\s*Local Agents that can sync sources and AI Digests to this account\.|Devices and Local Agents that can sync sources and AI Digests to this account\./);
-  assert.doesNotMatch(tokenPanel, /Access keys let devices and Local Agents update this account\.|Access keys let trusted devices and Local Agents sync sources and AI Digests to this account\./);
+  assert.doesNotMatch(tokenPanel, /Access keys let Local Agent update this account from your devices\.|Access keys let devices and Local Agents update this account\.|Access keys let trusted devices and Local Agents sync sources and AI Digests to this account\./);
   assert.doesNotMatch(tokenPanel, /sync sources and digests to this account/);
   assert.match(tokenPanel, />\s*New access key\s*<\/h3>/);
   assert.match(tokenPanel, /\{isPending \? "Creating" : "Create access key"\}/);
@@ -5267,9 +5274,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(tokenPanel, /@\/components\/Count/);
   assert.match(tokenPanel, /<EmptyState[\s\S]*className="access-keys-empty"/);
   assert.match(tokenPanel, /No access keys yet/);
-  assert.match(tokenPanel, /Create one for a device or Local Agent\./);
+  assert.match(tokenPanel, /Create one to run Local Agent from a device\./);
   assert.doesNotMatch(tokenPanel, /No Local Agent access yet/);
-  assert.doesNotMatch(tokenPanel, /Add one when you connect a Local Agent\.|Add an access key when connecting a device or Local Agent\.|Add an access key when you connect a device or Local Agent\./);
+  assert.doesNotMatch(tokenPanel, /Create one for a device or Local Agent\.|Add one when you connect a Local Agent\.|Add an access key when connecting a device or Local Agent\.|Add an access key when you connect a device or Local Agent\./);
   assert.doesNotMatch(tokenPanel, /access-keys-empty-actions/);
   assert.doesNotMatch(tokenPanel, /actions=\{[\s\S]*className="access-keys-empty-actions"/);
   assert.match(tokenPanel, /className="fb-btn dark compact"[\s\S]*onClick=\{openCreateDialog\}[\s\S]*Add access key/);
