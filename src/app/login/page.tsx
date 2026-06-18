@@ -38,8 +38,8 @@ export default async function LoginPage({
             <span className="fb-login-title-break">FollowBrief workspace.</span>
           </h1>
           <p className="fb-login-copy">
-            Follow sources, read the cited AI Digest, and keep sources,
-            posts, and AI Digest issues searchable.
+            Follow sources, read cited AI Digest issues, and search them
+            alongside sources and posts later.
           </p>
           <div className="fb-login-proof-rail" aria-label="Workspace capabilities">
             <LoginProof icon={Rss} label="Follow sources" />

@@ -28,12 +28,12 @@ export default async function Home() {
         <div>
           <h1 className="fb-public-title">
             Keep up with sources worth following.{" "}
-            <span className="fb-public-title-break">Read them as one AI Digest.</span>
+            <span className="fb-public-title-break">Read them as one AI Digest issue.</span>
           </h1>
           <p className="fb-public-copy">
             Follow blogs, channels, feeds, GitHub Trending, and Product Hunt.
             Your Local Agent fetches updates, summarizes posts, and builds a
-            cited AI Digest.
+            cited AI Digest issue.
           </p>
           <div className="fb-public-actions">
             <Link className="fb-btn dark" href="/login">
@@ -96,7 +96,7 @@ export default async function Home() {
           <div className="fb-product-preview-list">
             {[
               {
-                title: "One cited AI Digest.",
+                title: "One cited AI Digest issue.",
                 detail: "New posts, videos, launches, and projects stay readable together.",
               },
               {
@@ -130,7 +130,7 @@ export default async function Home() {
         <div className="fb-public-section-kicker-row">
           <span className="fb-section-label">Workflow</span>
           <span className="fb-public-section-note">
-            Built around the loop of following sources, reading the AI Digest, and returning to sources later.
+            Built around the loop of following sources, reading an AI Digest issue, and returning to sources later.
           </span>
         </div>
         <ol className="fb-public-step-list">
@@ -145,7 +145,7 @@ export default async function Home() {
               i: "02",
               icon: Terminal,
               title: "Build AI Digest",
-              copy: "Let your Local Agent fetch, summarize, and build a cited AI Digest.",
+              copy: "Let your Local Agent fetch, summarize, and build a cited AI Digest issue.",
             },
             {
               i: "03",
@@ -186,7 +186,7 @@ export default async function Home() {
           <Feature
             icon={Radio}
             title="Following posts"
-            copy="Unread posts from followed sources stay separate from the AI Digest."
+            copy="Unread posts from followed sources stay separate from AI Digest issues."
           />
           <Feature
             icon={Search}
