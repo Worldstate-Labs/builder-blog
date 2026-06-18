@@ -799,7 +799,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /\{copying \? "Copying" : "Copy"\}/);
   assert.doesNotMatch(skillPromptActions, /\{submitting \? "…" : "Copy"\}/);
   assert.match(skillPromptActions, /Could not save the summary language\. Try again\./);
-  assert.match(skillPromptActions, /Could not save max post age\. Try again\./);
+  assert.match(skillPromptActions, /Could not save the lookback window\. Try again\./);
+  assert.doesNotMatch(skillPromptActions, /Could not save max post age\. Try again\./);
   assert.doesNotMatch(skillPromptActions, /Couldn't save/);
   assert.doesNotMatch(skillPromptActions, /summary language — try again/);
   assert.match(commonRulesForm, /Common summary rules cannot be empty\./);

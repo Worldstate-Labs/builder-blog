@@ -982,13 +982,13 @@ function CronConfigDialog({
       if (context === "digest") {
         const maxAge = parseWindowDays(pickedMaxAge);
         if (maxAge === null) {
-          setError("Max post age must be a whole number from 1 to 90 days.");
+          setError("Lookback window must be a whole number from 1 to 90 days.");
           setSubmitting(false);
           return;
         }
         const savedAge = await persistDigestMaxAge(maxAge, initialMaxAge);
         if (!savedAge) {
-          setError("Could not save max post age. Try again.");
+          setError("Could not save the lookback window. Try again.");
           setSubmitting(false);
           return;
         }
@@ -996,7 +996,7 @@ function CronConfigDialog({
       const fetchDays =
         context === "library" ? parseWindowDays(pickedFetchDays) : DEFAULT_PROMPT_WINDOW_DAYS;
       if (fetchDays === null) {
-        setError("Fetch days must be a whole number from 1 to 90 days.");
+        setError("Lookback window must be a whole number from 1 to 90 days.");
         setSubmitting(false);
         return;
       }
@@ -1134,7 +1134,7 @@ function CronConfigDialog({
             <>
               <MaxAgeField
                 id="cron-max-age"
-                label="Max post age (days)"
+                label="Lookback window (days)"
                 value={pickedMaxAge}
                 onChange={setPickedMaxAge}
               />
@@ -1146,7 +1146,7 @@ function CronConfigDialog({
             <>
               <MaxAgeField
                 id="cron-fetch-days"
-                label="Max post age (days)"
+                label="Lookback window (days)"
                 value={pickedFetchDays}
                 onChange={setPickedFetchDays}
               />
