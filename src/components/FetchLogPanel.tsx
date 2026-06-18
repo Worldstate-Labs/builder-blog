@@ -1254,7 +1254,7 @@ function FetchStatusPanel({
       <EmptyState
         className="sync-panel-empty is-dashed"
         title="No Fetch sources history yet"
-        body="One-time and scheduled runs appear here after they start."
+        body="Started one-time and scheduled runs appear here."
       />
     );
   }
@@ -1378,7 +1378,7 @@ function FetchStatusPanel({
           <EmptyState
             className="sync-panel-slot-empty"
             title="No Fetch sources history yet"
-            body="One-time and scheduled runs appear here after they start."
+            body="Started one-time and scheduled runs appear here."
           />
         )}
       </div>

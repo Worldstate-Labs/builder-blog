@@ -605,8 +605,8 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /Copy a Build AI Digest prompt to start a Local Agent run/);
   assert.doesNotMatch(panel, /Use Build AI Digest to copy a Local Agent prompt/);
   assert.match(panel, /No AI Digest build history yet/);
-  assert.match(panel, /One-time and scheduled builds appear here after they start/);
-  assert.doesNotMatch(panel, /No AI Digest builds yet|One-time and scheduled AI Digest builds appear here|Scheduled and one-time AI Digest builds will appear here|after a Local Agent reports them/);
+  assert.match(panel, /Started one-time and scheduled builds appear here/);
+  assert.doesNotMatch(panel, /No AI Digest builds yet|One-time and scheduled builds appear here after they start|One-time and scheduled AI Digest builds appear here|Scheduled and one-time AI Digest builds will appear here|after a Local Agent reports them/);
   assert.match(panel, /No AI Digest was saved for this run/);
   assert.match(panel, /@\/lib\/scheduled-window-ui/);
   assert.match(panel, /scheduledWindowStatusLabel/);

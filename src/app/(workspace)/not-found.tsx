@@ -8,7 +8,7 @@ export default function WorkspaceNotFound() {
     <div className="page-pad page-pad--reading workspace-not-found">
       <PageHeader
         title="Page not found"
-        description="This page may have moved, been removed, or be outside your Sources or imported AI Digest collections."
+        description="This page may be unavailable or outside your Sources and imported AI Digest collections."
       />
       <div className="workspace-content-stack">
         <EmptyState

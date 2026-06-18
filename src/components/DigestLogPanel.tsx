@@ -629,7 +629,7 @@ function DigestStatusPanel({
       <EmptyState
         className="sync-panel-empty is-dashed"
         title="No AI Digest build history yet"
-        body="One-time and scheduled builds appear here after they start."
+        body="Started one-time and scheduled builds appear here."
       />
     );
   }
@@ -749,7 +749,7 @@ function DigestStatusPanel({
           <EmptyState
             className="sync-panel-slot-empty"
             title="No AI Digest build history yet"
-            body="One-time and scheduled builds appear here after they start."
+            body="Started one-time and scheduled builds appear here."
           />
         )}
       </div>

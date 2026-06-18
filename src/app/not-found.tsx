@@ -26,8 +26,7 @@ export default function NotFound() {
             Nothing to open here
           </h1>
           <p className="fb-public-copy">
-            This public link may have moved, expired, or belongs inside a
-            signed-in FollowBrief workspace.
+            This public link may have moved, expired, or require sign-in.
           </p>
         </div>
         <div className="fb-public-actions">

@@ -442,7 +442,8 @@ test("workspace not-found uses the FollowBrief shell instead of the default Next
   assert.match(notFoundPage, /@\/components\/EmptyState/);
   assert.match(notFoundPage, /className="page-pad page-pad--reading workspace-not-found"/);
   assert.match(notFoundPage, /title="Page not found"/);
-  assert.match(notFoundPage, /be outside your Sources or imported AI Digest collections/);
+  assert.match(notFoundPage, /This page may be unavailable or outside your Sources and imported AI Digest collections\./);
+  assert.doesNotMatch(notFoundPage, /This page may have moved, been removed, or be outside your Sources or imported AI Digest collections\./);
   assert.doesNotMatch(notFoundPage, /current library/);
   assert.doesNotMatch(notFoundPage, /item outside your current library/);
   assert.match(notFoundPage, /href="\/dashboard"/);
@@ -461,7 +462,8 @@ test("workspace not-found uses the FollowBrief shell instead of the default Next
   assert.match(rootNotFoundPage, /FollowBrief/);
   assert.match(rootNotFoundPage, /Nothing to open here/);
   assert.doesNotMatch(rootNotFoundPage, /Nothing to open here\./);
-  assert.match(rootNotFoundPage, /signed-in FollowBrief workspace/);
+  assert.match(rootNotFoundPage, /This public link may have moved, expired, or require sign-in\./);
+  assert.doesNotMatch(rootNotFoundPage, /belongs inside a\s+signed-in FollowBrief workspace/);
   assert.match(rootNotFoundPage, /href="\/"/);
   assert.match(rootNotFoundPage, /href="\/login"/);
   assert.match(rootNotFoundPage, /LogIn/);
@@ -2075,7 +2077,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /No Fetch sources run yet/);
   assert.match(fetchLogPanel, /No Fetch sources run started in the latest scheduled window/);
   assert.match(fetchLogPanel, /title="No Fetch sources history yet"/);
-  assert.match(fetchLogPanel, /One-time and scheduled runs appear here after they start\./);
+  assert.match(fetchLogPanel, /Started one-time and scheduled runs appear here\./);
   assert.match(fetchLogPanel, /This run is no longer in the current fetch history\./);
   assert.doesNotMatch(fetchLogPanel, /No Fetch sources run has reported yet|did not report back|title="No Fetch sources runs yet"|One-time and scheduled Fetch sources runs appear here|Scheduled and one-time Fetch sources runs will appear here|after a Local Agent reports them/);
   assert.doesNotMatch(fetchLogPanel, /current fetch history response/);
@@ -2451,8 +2453,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /<EmptyState[\s\S]*className="sync-panel-empty is-dashed"/);
   assert.match(fetchLogPanel, /<EmptyState[\s\S]*className="sync-panel-slot-empty"/);
   assert.match(fetchLogPanel, /title="No Fetch sources history yet"/);
-  assert.match(fetchLogPanel, /body="One-time and scheduled runs appear here after they start\."/);
-  assert.doesNotMatch(fetchLogPanel, /title="No Fetch sources runs yet"|body="One-time and scheduled Fetch sources runs appear here after a Local Agent reports them\."|body="Scheduled and one-time Fetch sources runs will appear here after the Local Agent reports them\."/);
+  assert.match(fetchLogPanel, /body="Started one-time and scheduled runs appear here\."/);
+  assert.doesNotMatch(fetchLogPanel, /title="No Fetch sources runs yet"|body="One-time and scheduled runs appear here after they start\."|body="One-time and scheduled Fetch sources runs appear here after a Local Agent reports them\."|body="Scheduled and one-time Fetch sources runs will appear here after the Local Agent reports them\."/);
   assert.doesNotMatch(digestLogPanel, /className="fb-segmented-tabs sync-panel-tabs"/);
   assert.doesNotMatch(digestLogPanel, /onKeyDown=\{handleTabKeyDown\}/);
   assert.doesNotMatch(digestLogPanel, /"ArrowLeft", "ArrowRight", "Home", "End"/);
@@ -2462,8 +2464,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /<EmptyState[\s\S]*className="sync-panel-empty is-dashed"/);
   assert.match(digestLogPanel, /<EmptyState[\s\S]*className="sync-panel-slot-empty"/);
   assert.match(digestLogPanel, /title="No AI Digest build history yet"/);
-  assert.match(digestLogPanel, /body="One-time and scheduled builds appear here after they start\."/);
-  assert.doesNotMatch(digestLogPanel, /title="No AI Digest builds yet"|body="One-time and scheduled AI Digest builds appear here after a Local Agent reports them\."|body="Scheduled and one-time AI Digest builds will appear here after the Local Agent reports them\."/);
+  assert.match(digestLogPanel, /body="Started one-time and scheduled builds appear here\."/);
+  assert.doesNotMatch(digestLogPanel, /title="No AI Digest builds yet"|body="One-time and scheduled builds appear here after they start\."|body="One-time and scheduled AI Digest builds appear here after a Local Agent reports them\."|body="Scheduled and one-time AI Digest builds will appear here after the Local Agent reports them\."/);
   assert.doesNotMatch(`${fetchLogPanel}\n${digestLogPanel}`, /body="No scheduled run has elapsed yet\."/);
   assert.match(globals, /\.sync-panel-slot-empty\s*{\s*border-radius:\s*8px;\s*padding:\s*0\.75rem;\s*}/);
   assert.doesNotMatch(fetchLogPanel, /fb-segmented-tabs mt-4 inline-flex/);
