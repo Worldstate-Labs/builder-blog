@@ -223,11 +223,11 @@ test("every app route has an explicit centered layout role", () => {
 
   assert.match(
     source("src/app/(workspace)/settings/page.tsx"),
-    /className="page-pad page-pad--settings"[\s\S]*<PageHeader[\s\S]*title="Settings"[\s\S]*Manage access keys and rules for Fetch sources and AI Digest issues\./,
+    /className="page-pad page-pad--settings"[\s\S]*<PageHeader[\s\S]*title="Settings"[\s\S]*Manage access keys, source fetching, and AI Digest rules\./,
   );
   assert.doesNotMatch(
     source("src/app/(workspace)/settings/page.tsx"),
-    /Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\./,
+    /Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./,
   );
 
   const redirectOnlyRoutes = [
@@ -302,8 +302,8 @@ test("every app route has an explicit centered layout role", () => {
   assert.doesNotMatch(settingsLoading, /RouteLoading/);
   assert.match(settingsLoading, /@\/components\/PageHeader/);
   assert.match(settingsLoading, /className="page-pad page-pad--settings settings-loading"/);
-  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage access keys and rules for Fetch sources and AI Digest issues\./);
-  assert.doesNotMatch(settingsLoading, /Manage access keys and the rules used by Fetch sources and AI Digest\./);
+  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage access keys, source fetching, and AI Digest rules\./);
+  assert.doesNotMatch(settingsLoading, /Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
   assert.match(settingsLoading, /className="workspace-content-stack settings-workspace"/);
   assert.match(settingsLoading, /className="settings-access-grid"/);
   assert.match(settingsLoading, /@\/components\/AgentTokenPanelSkeleton/);
@@ -982,10 +982,10 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(adminDigestConfig, /AI Digest prompts/);
   assert.doesNotMatch(adminDigestConfig, /Prompts used to generate AI Digest\./);
   assert.doesNotMatch(adminDigestConfig, /Prompts used after posts already have per-post summaries\./);
-  assert.match(adminDigestConfig, /selected AI Digest language/);
-  assert.match(adminDigestConfig, /Creates the headline summary in the selected AI Digest language/);
-  assert.match(adminDigestConfig, /Adds an optional source-level note above that source's posts/);
-  assert.match(adminDigestConfig, /Creates post summaries in the selected AI Digest language without dropping key points/);
+  assert.match(adminDigestConfig, /Writes the headline summary in the selected language/);
+  assert.match(adminDigestConfig, /Adds an optional note above a source's posts/);
+  assert.match(adminDigestConfig, /Writes post summaries in the selected language/);
+  assert.doesNotMatch(adminDigestConfig, /Creates the headline summary in the selected AI Digest language|Adds an optional source-level note above that source's posts|Creates post summaries in the selected AI Digest language without dropping key points/);
   assert.match(adminDigestConfig, /Could not save AI Digest rules\./);
   assert.doesNotMatch(adminDigestConfig, /HTTP \$\{response\.status\}/);
   assert.doesNotMatch(adminDigestConfig, /error instanceof Error \? error\.message/);
@@ -1006,13 +1006,12 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(adminDigestConfig, /Save failed/);
   assert.match(commonRulesForm, /const saveError = `Could not save \$\{title\.toLowerCase\(\)\}\.`/);
   assert.doesNotMatch(commonRulesForm, /HTTP \$\{response\.status\}|error instanceof Error \? error\.message|throw new Error\(body\?\.error/);
-  assert.doesNotMatch(adminDigestConfig, /title="Digest prompts"|selected digest language|Writes the short headline summary|Optionally writes one source-level note|Writes post summaries/);
+  assert.doesNotMatch(adminDigestConfig, /title="Digest prompts"|selected digest language|Writes the short headline summary|Optionally writes one source-level note/);
   assert.match(adminDigestConfig, /headlinePrompt/);
   assert.match(adminDigestConfig, /perSourceSummaryPrompt/);
   assert.match(adminDigestConfig, /label="Per-source summary prompt"[\s\S]*optional/);
   assert.match(adminDigestConfig, /label="Post summary prompt"/);
   assert.match(adminDigestConfig, /ariaLabel="Post summary prompt"/);
-  assert.match(adminDigestConfig, /without dropping key points/);
   assert.doesNotMatch(adminDigestConfig, /without dropping key points, viewpoints, or insights/);
   assert.doesNotMatch(adminDigestConfig, /label="Localized post summary prompt"|ariaLabel="Localized post summary prompt"|label="Translate prompt"|ariaLabel="Translate prompt"/);
   assert.match(adminDigestConfig, /500 words or fewer/);
@@ -1040,19 +1039,18 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /@\/components\/settings\/SettingsFields/);
   assert.match(adminSourceTypeManager, /FETCH_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /SUMMARY_PROMPT_PLACEHOLDER/);
-  assert.match(adminSourceTypeManager, /Defines each post summary/);
-  assert.match(adminSourceTypeManager, /Language comes from the run prompt/);
-  assert.doesNotMatch(adminSourceTypeManager, /How each post becomes a summary|How each post from this source is written as a per-post summary|one-time or scheduled run prompt|Output language comes from the run prompt/);
-  assert.match(adminSourceTypeManager, /Adds source-specific instructions for Local Agent extraction\./);
-  assert.doesNotMatch(adminSourceTypeManager, /needs agent extraction|Extra instructions for this source type when Fetch sources needs Local Agent extraction/);
-  assert.match(adminSourceTypeManager, /Checks extracted content before it reaches Following posts or AI Digest issues/);
-  assert.match(adminSourceTypeManager, /Drop posts with bodies shorter than this/);
-  assert.match(adminSourceTypeManager, /Drop posts with too little real text/);
+  assert.match(adminSourceTypeManager, /Defines each post summary; the run prompt sets language/);
+  assert.doesNotMatch(adminSourceTypeManager, /How each post becomes a summary|How each post from this source is written as a per-post summary|one-time or scheduled run prompt|Output language comes from the run prompt|Language comes from the run prompt/);
+  assert.match(adminSourceTypeManager, /Adds source-specific extraction instructions\./);
+  assert.doesNotMatch(adminSourceTypeManager, /needs agent extraction|Extra instructions for this source type when Fetch sources needs Local Agent extraction|Adds source-specific instructions for Local Agent extraction/);
+  assert.match(adminSourceTypeManager, /Filters extracted content before Following or AI Digest/);
+  assert.match(adminSourceTypeManager, /Drop posts shorter than this/);
+  assert.match(adminSourceTypeManager, /Drop posts with too little text/);
   assert.match(adminSourceTypeManager, /Latin words and CJK characters count as units/);
-  assert.match(adminSourceTypeManager, /Minimum unique-unit ratio in each 100-unit window \(0 to 1\)/);
+  assert.match(adminSourceTypeManager, /Minimum unique-unit ratio per 100-unit window \(0 to 1\)/);
   assert.match(adminSourceTypeManager, /Maximum timestamp-to-content ratio \(0 to 1\)/);
-  assert.match(adminSourceTypeManager, /Higher allows more timestamp noise/);
-  assert.doesNotMatch(adminSourceTypeManager, /Failed posts are not used in Following or AI Digest|Posts that fail are not saved or used in Following or AI Digest|Checks extracted content before it reaches Following or AI Digest|Drop posts below this body length|Drop posts whose body has fewer characters than this|Latin words count as units; CJK text counts by character|Timestamp-to-content ratio \(0-1\)\. Higher flags timestamp noise/);
+  assert.doesNotMatch(adminSourceTypeManager, /Higher allows more timestamp noise/);
+  assert.doesNotMatch(adminSourceTypeManager, /Failed posts are not used in Following or AI Digest|Posts that fail are not saved or used in Following or AI Digest|Checks extracted content before it reaches Following or AI Digest|Checks extracted content before it reaches Following posts or AI Digest issues|Drop posts below this body length|Drop posts whose body has fewer characters than this|Drop posts with bodies shorter than this|Drop posts with too little real text|Latin words count as units; CJK text counts by character|Timestamp-to-content ratio \(0-1\)\. Higher flags timestamp noise/);
   assert.match(adminSourceTypeManager, /Could not save source type settings\./);
   assert.doesNotMatch(adminSourceTypeManager, /HTTP \$\{response\.status\}/);
   assert.doesNotMatch(adminSourceTypeManager, /error instanceof Error \? error\.message/);
@@ -1074,19 +1072,18 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /className="source-type-config-dirty-dot"/);
   assert.match(adminSourceTypeManager, /<OptionalMarkdownField/);
   assert.match(adminSourceTypeManager, /buttonLabel="Add fetch prompt"/);
-  assert.match(adminSourceTypeManager, /No fetch prompt is set for this source type\./);
-  assert.doesNotMatch(adminSourceTypeManager, /Add source-type fetch prompt|No extra fetch prompt for this source\.|No source-specific fetch prompt for this source\.|No source-type fetch prompt is set\./);
+  assert.match(adminSourceTypeManager, /No fetch prompt set\./);
+  assert.doesNotMatch(adminSourceTypeManager, /Add source-type fetch prompt|No extra fetch prompt for this source\.|No source-specific fetch prompt for this source\.|No source-type fetch prompt is set\.|No fetch prompt is set for this source type\./);
   assert.match(adminSourceTypeManager, /canEditQualityGates \? \(/);
   assert.doesNotMatch(adminSourceTypeManager, /style=\{\{/);
   assert.doesNotMatch(adminSourceTypeManager, /cursor-pointer select-none|ml-auto inline-flex|text-base font-medium/);
   assert.match(settingsPage, /canEditQualityGates=\{isAdmin\}/);
-  assert.match(commonRulesForm, /Following posts and AI Digest issues/);
+  assert.match(commonRulesForm, /Applies to Following and AI Digest summaries/);
   assert.match(commonRulesForm, /Runs before source-specific Local Agent fetch prompts/);
   assert.match(commonRulesForm, /Choose an extraction method from task\.item\.url/);
   assert.match(commonRulesForm, /function clearSavedStatus\(\)/);
   assert.match(commonRulesForm, /onStatusAutoDismiss=\{clearSavedStatus\}/);
-  assert.match(commonRulesForm, /Applies to summaries in Following posts and AI Digest issues/);
-  assert.doesNotMatch(commonRulesForm, /feeds or digests|Following or AI Digest|Following or AI Digests|Used before source-specific fetch prompts when the Local Agent extracts source content|Used when fetched posts are summarized|Applies when fetched posts are summarized|best available extraction method/);
+  assert.doesNotMatch(commonRulesForm, /feeds or digests|Following or AI Digests|Used before source-specific fetch prompts when the Local Agent extracts source content|Used when fetched posts are summarized|Applies when fetched posts are summarized|Applies to summaries in Following posts and AI Digest issues|best available extraction method/);
   assert.match(commonRulesForm, /placeholder=\{\[/);
   assert.match(markdownEditor, /placeholder\?: string/);
   assert.match(markdownEditor, /placeholder=\{placeholder\}/);
@@ -1110,15 +1107,15 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /closeMenu\(\);[\s\S]*signOut\(\{ callbackUrl: "\/login" \}\)[\s\S]*Sign out/);
   assert.match(settingsPage, /@\/components\/PageHeader/);
   assert.match(settingsPage, /className="page-pad page-pad--settings"/);
-  assert.match(settingsPage, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage access keys and rules for Fetch sources and AI Digest issues\./);
-  assert.doesNotMatch(settingsPage, /Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\./);
+  assert.match(settingsPage, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage access keys, source fetching, and AI Digest rules\./);
+  assert.doesNotMatch(settingsPage, /Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
   assert.doesNotMatch(settingsPage, /<section className="fb-page-head"/);
   assert.equal(existsSync(join(root, "src/app/(workspace)/settings/loading.tsx")), true);
   const settingsLoading = source("src/app/(workspace)/settings/loading.tsx");
   assert.doesNotMatch(settingsLoading, /RouteLoading/);
   assert.match(settingsLoading, /className="page-pad page-pad--settings settings-loading"/);
-  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage access keys and rules for Fetch sources and AI Digest issues\./);
-  assert.doesNotMatch(settingsLoading, /Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\./);
+  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage access keys, source fetching, and AI Digest rules\./);
+  assert.doesNotMatch(settingsLoading, /Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
   assert.match(settingsLoading, /className="workspace-content-stack settings-workspace"/);
   assert.match(settingsLoading, /@\/components\/AgentTokenPanelSkeleton/);
   assert.match(settingsLoading, /<AgentTokenPanelSkeleton \/>/);
@@ -5049,7 +5046,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /<details className="settings-rules-panel fb-panel" open>[\s\S]*Source fetching rules/);
   assert.equal((settingsPage.match(/<details className="settings-rules-panel fb-panel" open>/g) ?? []).length, 1);
   assert.doesNotMatch(settingsPage, /Fetch sources rules|Source fetch rules/);
-  assert.match(settingsPage, /Used when Fetch sources reads and summarizes posts\./);
+  assert.match(settingsPage, /Rules for fetching and summarizing source posts\./);
   assert.doesNotMatch(settingsPage, /Runs before AI Digest: discover source posts/);
   assert.match(settingsPage, /AI Digest rules/);
   assert.match(settingsPage, /ADMIN_DIGEST_PROMPT_COUNT/);
@@ -5057,9 +5054,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /const digestPromptCount = isAdmin \? ADMIN_DIGEST_PROMPT_COUNT : USER_DIGEST_PROMPT_COUNT/);
   assert.match(settingsPage, /canEditDigestAssemblyPrompts=\{isAdmin\}/);
   assert.match(settingsPage, /AI Digest rules/);
-  assert.match(settingsPage, /Used when building AI Digest issues\./);
+  assert.match(settingsPage, /Rules for building AI Digest issues\./);
   assert.doesNotMatch(settingsPage, /Runs after per-post summaries: write the digest headline, source notes,\s*and post summaries in the selected AI Digest language\./);
-  assert.doesNotMatch(settingsPage, /Write AI Digest headlines, source notes, and translated post summaries\./);
+  assert.doesNotMatch(settingsPage, /Write AI Digest headlines, source notes, and translated post summaries\.|Used when building AI Digest issues\.|Used when Fetch sources reads and summarizes posts\./);
   assert.doesNotMatch(settingsPage, /localized post summaries/);
   assert.doesNotMatch(settingsPage, /Fetch, filter, and write per-post summaries\./);
   assert.doesNotMatch(settingsPage, /Write AI Digest headlines, source notes, and localized post summaries\./);

@@ -143,7 +143,7 @@ export function AdminDigestConfigForm({
         <>
           <FieldBlock
             label="Headline prompt"
-            description="Creates the headline summary in the selected AI Digest language."
+            description="Writes the headline summary in the selected language."
           >
             <MarkdownEditor
               ariaLabel="Headline prompt"
@@ -155,7 +155,7 @@ export function AdminDigestConfigForm({
           </FieldBlock>
           <FieldBlock
             label="Per-source summary prompt"
-            description="Adds an optional source-level note above that source's posts."
+            description="Adds an optional note above a source's posts."
             optional
           >
             <MarkdownEditor
@@ -170,7 +170,7 @@ export function AdminDigestConfigForm({
       ) : null}
       <FieldBlock
         label="Post summary prompt"
-        description="Creates post summaries in the selected AI Digest language without dropping key points."
+        description="Writes post summaries in the selected language."
       >
         <MarkdownEditor
           ariaLabel="Post summary prompt"

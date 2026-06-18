@@ -607,7 +607,7 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /No AI Digest build history yet/);
   assert.match(panel, /One-time and scheduled builds appear here after they start/);
   assert.doesNotMatch(panel, /No AI Digest builds yet|One-time and scheduled AI Digest builds appear here|Scheduled and one-time AI Digest builds will appear here|after a Local Agent reports them/);
-  assert.match(panel, /Runtime job did not create an AI Digest build record/);
+  assert.match(panel, /No AI Digest was saved for this run/);
   assert.match(panel, /@\/lib\/scheduled-window-ui/);
   assert.match(panel, /scheduledWindowStatusLabel/);
   assert.match(panel, /scheduledWindowStyleStatus/);
@@ -619,7 +619,7 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /AI Digest job lifecycle/);
   assert.match(panel, /Prepare candidates/);
   assert.match(panel, /Generate AI Digest/);
-  assert.match(panel, /Render digest/);
+  assert.match(panel, /Render AI Digest/);
   assert.match(panel, /Sync to web/);
   assert.match(panel, /Mark posts digested/);
   assert.match(panel, /jobRunVerdict/);
@@ -629,11 +629,15 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /jobRunFailureReason/);
   assert.match(panel, /readableReason/);
   assert.match(panel, /Timed out after \$\{formatCount\(timeoutSeconds\)\} seconds/);
+  assert.match(panel, /Local Agent is preparing candidates and saving the AI Digest/);
+  assert.match(panel, /Local Agent finished without saving an AI Digest/);
+  assert.match(panel, /Prepared \$\{formatCount\(run\.candidateCount\)\} candidates\. Local Agent stopped before saving/);
+  assert.match(panel, /Waiting for Local Agent to save the AI Digest/);
   assert.match(panel, /Saved \$\{formatCount\(run\.includedCount \?\? 0\)\} of \$\{formatCount\(run\.candidateCount\)\} eligible posts to FollowBrief/);
   assert.match(panel, /DigestLifecycle/);
   assert.match(panel, /sync-panel-mobile-flat/);
   assert.match(panel, /className="sync-panel-run-card sync-panel-mobile-flat"/);
-  assert.doesNotMatch(panel, /No digest schedule has reported yet|No digest builds yet|prepares a digest|digest build record/);
+  assert.doesNotMatch(panel, /No digest schedule has reported yet|No digest builds yet|prepares a digest|digest build record|The Local Agent is running|Waiting for the Local Agent to save AI Digest|Runtime job did not create/);
   assert.match(panel, /Open log/);
   assert.match(panel, /className="sync-panel-title-row"/);
   assert.match(panel, /className="sync-panel-error"/);

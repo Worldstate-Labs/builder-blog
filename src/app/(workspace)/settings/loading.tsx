@@ -11,7 +11,7 @@ export default function SettingsLoading() {
     >
       <PageHeader
         title="Settings"
-        description="Manage access keys and rules for Fetch sources and AI Digest issues."
+        description="Manage access keys, source fetching, and AI Digest rules."
       />
 
       <div className="workspace-content-stack settings-workspace">

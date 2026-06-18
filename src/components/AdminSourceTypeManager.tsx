@@ -257,12 +257,12 @@ function SourceTypeCard({
           step="01"
           title="Fetching"
           optional
-          description="Adds source-specific instructions for Local Agent extraction."
+          description="Adds source-specific extraction instructions."
         >
           <OptionalMarkdownField
             ariaLabel={`${config.label} fetch prompt`}
             buttonLabel="Add fetch prompt"
-            emptyText="No fetch prompt is set for this source type."
+            emptyText="No fetch prompt set."
             expanded={fetchPromptExpanded}
             height={340}
             onExpand={() => setFetchPromptExpanded(true)}
@@ -275,7 +275,7 @@ function SourceTypeCard({
         <Section
           step="02"
           title="Summarization"
-          description="Defines each post summary. Language comes from the run prompt."
+          description="Defines each post summary; the run prompt sets language."
         >
           <MarkdownEditor
             ariaLabel={`${config.label} summary prompt`}
@@ -290,14 +290,14 @@ function SourceTypeCard({
           <Section
             step="03"
             title="Quality gates"
-            description="Checks extracted content before it reaches Following posts or AI Digest issues."
+            description="Filters extracted content before Following or AI Digest."
           >
             <div className="source-type-quality-grid">
               <FieldNumber
                 label="Min chars"
                 min={0}
                 placeholder="Example: 200"
-                description="Drop posts with bodies shorter than this."
+                description="Drop posts shorter than this."
                 value={String(draft.contentQuality.minChars)}
                 onChange={(v) => updateQuality("minChars", Math.max(0, Number(v) || 0))}
               />
@@ -305,7 +305,7 @@ function SourceTypeCard({
                 label="Min content units"
                 min={0}
                 placeholder="Example: 35"
-                description="Drop posts with too little real text. Latin words and CJK characters count as units."
+                description="Drop posts with too little text. Latin words and CJK characters count as units."
                 value={String(draft.contentQuality.minContentUnits)}
                 onChange={(v) =>
                   updateQuality("minContentUnits", Math.max(0, Number(v) || 0))
@@ -318,7 +318,7 @@ function SourceTypeCard({
                 max={1}
                 placeholder="Example: 0.35"
                 step={0.01}
-                description="Minimum unique-unit ratio in each 100-unit window (0 to 1)."
+                description="Minimum unique-unit ratio per 100-unit window (0 to 1)."
                 value={
                   draft.contentQuality.minLocalDiversity === null
                     ? ""
@@ -338,7 +338,7 @@ function SourceTypeCard({
                 max={1}
                 placeholder="Example: 0.08"
                 step={0.01}
-                description="Maximum timestamp-to-content ratio (0 to 1). Higher allows more timestamp noise."
+                description="Maximum timestamp-to-content ratio (0 to 1)."
                 value={
                   draft.contentQuality.maxTimestampDensity === null
                     ? ""

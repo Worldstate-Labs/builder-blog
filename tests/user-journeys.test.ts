@@ -3200,7 +3200,9 @@ test("content config is per-user, seeded from a system default", () => {
   assert.doesNotMatch(digestForm, /AI Digest prompts/);
   assert.doesNotMatch(digestForm, /Prompts used to generate AI Digest\./);
   assert.doesNotMatch(digestForm, /Prompts used after posts already have per-post summaries\./);
-  assert.match(digestForm, /selected AI Digest language/);
+  assert.match(digestForm, /Writes the headline summary in the selected language/);
+  assert.match(digestForm, /Writes post summaries in the selected language/);
+  assert.doesNotMatch(digestForm, /selected AI Digest language/);
   assert.match(digestForm, /Post summary prompt/);
   assert.match(digestForm, /Headline prompt cannot be empty\./);
   assert.match(digestForm, /Post summary prompt cannot be empty\./);

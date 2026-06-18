@@ -910,7 +910,7 @@ function jobRunFailureReason(jobRun: AgentJobRunListItem): string {
   if (jobRun.status === "stale") return "FollowBrief lost contact with the Local Agent.";
   if (jobRun.signal) return `Stopped after receiving ${jobRun.signal}.`;
   if (jobRun.exitCode !== null) return `Exited with code ${jobRun.exitCode}.`;
-  return reason ? readableReason(reason) : "Stopped before reporting a completed AI Digest build.";
+  return reason ? readableReason(reason) : "Stopped before completing the AI Digest build.";
 }
 
 function jobRunDiagnostic(jobRun: AgentJobRunListItem): string | null {
@@ -929,13 +929,13 @@ function jobRunVerdict(jobRun: AgentJobRunListItem): RunVerdict {
   if (jobRun.status === "starting" || jobRun.status === "running") {
     return {
       tone: "warn",
-      text: "The Local Agent is running. Waiting for it to prepare candidates and save the AI Digest.",
+      text: "Local Agent is preparing candidates and saving the AI Digest.",
     };
   }
   if (jobRun.status === "succeeded") {
     return {
       tone: "warn",
-      text: "The Local Agent finished, but it did not create an AI Digest build record.",
+      text: "Local Agent finished without saving an AI Digest.",
     };
   }
   return {
@@ -960,12 +960,12 @@ function digestRunVerdict(run: DigestRunListItem, jobRun?: AgentJobRunListItem):
   if (jobRun && !["starting", "running", "succeeded"].includes(jobRun.status)) {
     return {
       tone: "fail",
-      text: `Prepared ${formatCount(run.candidateCount)} candidates, but the Local Agent stopped before saving. ${jobRunFailureReason(jobRun)}`,
+      text: `Prepared ${formatCount(run.candidateCount)} candidates. Local Agent stopped before saving. ${jobRunFailureReason(jobRun)}`,
     };
   }
   return {
     tone: "warn",
-    text: `Prepared ${formatCount(run.candidateCount)} candidates. Waiting for the Local Agent to save AI Digest.`,
+    text: `Prepared ${formatCount(run.candidateCount)} candidates. Waiting for Local Agent to save the AI Digest.`,
   };
 }
 
@@ -1017,7 +1017,7 @@ function JobRunCard({
         ) : null}
       </header>
       <p className="sync-panel-run-card-summary">
-        {jobRun.summary || "Runtime job did not create an AI Digest build record."}
+        {jobRun.summary || "No AI Digest was saved for this run."}
       </p>
       <p className={`sync-panel-run-card-verdict is-${verdict.tone}`}>
         {verdict.text}
@@ -1116,7 +1116,7 @@ function DigestLifecycle({
     },
     {
       key: "render",
-      label: "Render digest",
+      label: "Render AI Digest",
       outcome: digestSaved ? run!.digestTitle! : run ? "No saved title" : "Pending",
       tone: digestSaved ? "ok" : synced ? "warn" : failedJob ? "fail" : "idle",
     },
