@@ -70,9 +70,6 @@ export default async function LoginPage({
           <div className="fb-login-auth">
             <AuthButtons callbackUrl={safeCallbackUrl(params.callbackUrl)} />
           </div>
-          <p className="fb-login-note">
-            Add Local Agent access keys in Settings after signing in.
-          </p>
         </section>
       </div>
     </main>

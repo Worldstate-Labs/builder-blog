@@ -635,8 +635,7 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(loginPage, /label="Search workspace"/);
   assert.match(loginPage, /Use the same account for the app and Local Agent\./);
   assert.doesNotMatch(loginPage, /Use one account for your AI Digests and Local Agent\.|Use one account for FollowBrief and your Local Agent\.|Use the same FollowBrief account for the app and Local Agent\./);
-  assert.match(loginPage, /Add Local Agent access keys in Settings after signing in\./);
-  assert.doesNotMatch(loginPage, /After sign-in|Access keys are set up after sign-in from Settings\.|After signing in, add access keys in Settings\./);
+  assert.doesNotMatch(loginPage, /Add Local Agent access keys|After sign-in|Access keys are set up after sign-in from Settings\.|After signing in, add access keys in Settings\./);
   assert.doesNotMatch(loginPage, /label="Local Agent"/);
   assert.doesNotMatch(loginPage, /KeyRound/);
   assert.match(rootLayout, /Follow sources, build cited AI Digest issues, and search your workspace\./);
@@ -698,6 +697,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /\.fb-auth-btn\s*{[\s\S]*box-sizing:\s*border-box/);
   assert.match(globals, /\.fb-auth-btn\.outline\s*{[\s\S]*color:\s*var\(--ink\)/);
   assert.match(globals, /\.fb-login-panel-head\s*{[\s\S]*display:\s*grid/);
+  assert.doesNotMatch(globals, /\.fb-login-note\s*{/);
   assert.doesNotMatch(globals, /\.fb-login-panel-icon\s*{/);
   assert.match(globals, /\.fb-login-proof-rail\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /\.fb-login-proof\s*{[\s\S]*display:\s*inline-flex/);

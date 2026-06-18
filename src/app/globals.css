@@ -9652,13 +9652,6 @@ a.fb-hub-source-name:focus-visible {
   margin-top: 1.25rem;
 }
 
-.fb-login-note {
-  color: var(--muted);
-  font-size: 0.6875rem;
-  line-height: 1.55;
-  margin-top: 1rem;
-}
-
 @media (min-width: 768px) {
   .fb-login-copy {
     font-size: 1.125rem;
