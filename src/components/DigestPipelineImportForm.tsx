@@ -110,8 +110,8 @@ export function DigestPipelineImportForm({
       : "No shared AI Digest collections";
   const emptyMessage =
     mode === "imported"
-      ? "Import collections to see them in the AI Digest tab."
-      : "Shared collections appear here after users share them to Hub.";
+      ? "Import one to see it in the AI Digest tab."
+      : "AI Digest collections appear here after users share them to Hub.";
 
   function setImportedIds(updater: (current: Set<string>) => Set<string>) {
     setImportedState((current) => {
