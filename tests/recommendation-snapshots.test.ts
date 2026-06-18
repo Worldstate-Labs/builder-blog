@@ -114,11 +114,11 @@ test("favorites saves posts into the Favorites tab", () => {
   assert.match(favoriteList, /className="favorites-empty is-actionable"/);
   assert.match(favoriteList, /favorites-empty-actions/);
   assert.match(favoriteList, /No Favorites yet/);
-  assert.match(favoriteList, /Save posts from AI Digest, Following, Search, or post pages\./);
+  assert.match(favoriteList, /Save posts from AI Digest issues, Following posts, Search, or post pages\./);
   assert.doesNotMatch(favoriteList, /to build this queue|Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
   assert.doesNotMatch(favoriteList, /Posts you marked for deeper reading/);
   assert.doesNotMatch(favoriteList, /Saved for deeper reading/);
-  assert.doesNotMatch(favoriteList, /Star posts from AI Digest|Save posts from AI Digest or Following/);
+  assert.doesNotMatch(favoriteList, /Star posts from AI Digest|Save posts from AI Digest or Following|Save posts from AI Digest, Following/);
   assert.match(favoriteList, /postDetailHref\(item\.feedItemId, "\/dashboard\?tab=favorites", "Favorites"\)/);
   assert.match(favoriteList, /PostFavoriteButton/);
   assert.match(favoriteList, /const response = await fetch\("\/api\/favorites"/);

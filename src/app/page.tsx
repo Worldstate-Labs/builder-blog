@@ -37,14 +37,14 @@ export default async function Home() {
           </p>
           <div className="fb-public-actions">
             <Link className="fb-btn dark" href="/login">
-              Sign in to workspace
+              Sign in
             </Link>
             <a className="fb-btn light" href="#how-it-works">
               See workflow
             </a>
           </div>
           <div className="fb-public-flow" aria-label="FollowBrief workflow">
-            {["Follow sources", "Build AI Digest", "Search workspace"].map((step) => (
+            {["Follow sources", "Build AI Digest", "Search"].map((step) => (
               <span className="fb-public-flow-step" key={step}>
                 {step}
               </span>
@@ -90,7 +90,7 @@ export default async function Home() {
             </div>
             <div className="fb-demo-search">
               <Search aria-hidden="true" />
-              <span>Search workspace</span>
+              <span>Search</span>
             </div>
           </div>
           <div className="fb-product-preview-list">
@@ -106,7 +106,7 @@ export default async function Home() {
               {
                 title: "Search after the read.",
                 detail:
-                  "Find sources, posts, and AI Digest issues when you need the detail later.",
+                  "Find sources, posts, and AI Digest issues when you need details.",
               },
             ].map((item) => (
               <article className="fb-signal" key={item.title}>
@@ -130,7 +130,7 @@ export default async function Home() {
         <div className="fb-public-section-kicker-row">
           <span className="fb-section-label">Workflow</span>
           <span className="fb-public-section-note">
-            Built around the loop of following sources, reading an AI Digest issue, and returning to sources later.
+            Built around following sources, reading an AI Digest issue, and returning to source details.
           </span>
         </div>
         <ol className="fb-public-step-list">
@@ -151,7 +151,7 @@ export default async function Home() {
               i: "03",
               icon: Search,
               title: "Search and revisit",
-              copy: "Open original posts and search sources, posts, and AI Digest issues later.",
+              copy: "Open originals and search sources, posts, and AI Digest issues.",
             },
           ].map(({ i, icon: Icon, title, copy }) => (
             <li key={title} className="fb-public-step-row">
@@ -190,7 +190,7 @@ export default async function Home() {
           />
           <Feature
             icon={Search}
-            title="Workspace search"
+            title="Search"
             copy="Sources, posts, and AI Digest issues share one search surface."
           />
         </div>

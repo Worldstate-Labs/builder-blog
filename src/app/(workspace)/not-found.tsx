@@ -20,7 +20,7 @@ export default function WorkspaceNotFound() {
               </Link>
               <Link className="fb-btn light" href="/search">
                 <Search aria-hidden="true" />
-                Search workspace
+                Search
               </Link>
             </div>
           }

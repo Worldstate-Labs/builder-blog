@@ -404,11 +404,11 @@ test("web app serves the agent skill and setup command", () => {
   // AI Digest issues).
   // Both cron + once dialogs expose it for both contexts, defaulting off.
   assert.match(skillPromptActions, /OVERRIDE_COPY/);
-  assert.match(skillPromptActions, /Refresh existing source library posts/);
-  assert.match(skillPromptActions, /Refreshes posts already in your source library/);
-  assert.doesNotMatch(skillPromptActions, /Refresh posts already in library|Refresh posts already saved|Refreshes posts already in your library/);
-  assert.match(skillPromptActions, /Include posts already used in AI Digest issues/);
-  assert.doesNotMatch(skillPromptActions, /Include posts already used in AI Digest archives|Include posts already used in AI Digests/);
+  assert.match(skillPromptActions, /Re-fetch existing posts/);
+  assert.match(skillPromptActions, /Includes posts already in your source library/);
+  assert.doesNotMatch(skillPromptActions, /Refresh existing source library posts|Refresh posts already in library|Refresh posts already saved|Refreshes posts already in your library/);
+  assert.match(skillPromptActions, /Reuse posts from AI Digest issues/);
+  assert.doesNotMatch(skillPromptActions, /Include posts already used in AI Digest issues|Include posts already used in AI Digest archives|Include posts already used in AI Digests/);
   assert.doesNotMatch(skillPromptActions, /Include already digested posts/);
   assert.match(skillPromptActions, /overrideFetched/);
   assert.match(skillPromptActions, /params\.set\("force", "1"\)/);
@@ -420,17 +420,16 @@ test("web app serves the agent skill and setup command", () => {
   // Cron + once dialogs: compact <select> controls, plus an account-wide
   // summary language select persisted via /api/settings/summary-language —
   // now shown for digest as well as library.
-  assert.match(skillPromptActions, /Copy a Local Agent prompt for Fetch sources\./);
-  assert.match(skillPromptActions, /Copy a Local Agent prompt for AI Digest\./);
-  assert.doesNotMatch(skillPromptActions, /Copy a Local Agent prompt to fetch, summarize, and sync sources|Copy a Local Agent prompt to build your AI Digest/);
+  assert.match(skillPromptActions, /const promptPurposeCopy = \(\) => "Copy a Local Agent prompt\."/);
+  assert.doesNotMatch(skillPromptActions, /Copy a Local Agent prompt for Fetch sources\.|Copy a Local Agent prompt for AI Digest\.|Copy a Local Agent prompt to fetch, summarize, and sync sources|Copy a Local Agent prompt to build your AI Digest/);
   assert.doesNotMatch(skillPromptActions, /build your digest\./);
   assert.doesNotMatch(skillPromptActions, /build new digests|update every source/);
   assert.match(skillPromptActions, /Local Agent/);
-  assert.match(skillPromptActions, /Posts already used in AI Digest issues can be included again this time\./);
-  assert.doesNotMatch(skillPromptActions, /Posts already used in AI Digest archives can be included again this time\.|Already digested posts can be included again this time\./);
+  assert.match(skillPromptActions, /Includes posts already used in AI Digest issues this time\./);
+  assert.doesNotMatch(skillPromptActions, /Posts already used in AI Digest issues can be included again this time\.|Posts already used in AI Digest archives can be included again this time\.|Already digested posts can be included again this time\./);
   assert.match(skillPromptActions, /id="cron-fetch-days"[\s\S]*label="Lookback window \(days\)"/);
   assert.doesNotMatch(skillPromptActions, /Max post age \(days\)|Fetch post age \(days\)/);
-  assert.match(skillPromptActions, /Default: 30 days\. Range: 1-90 days\./);
+  assert.match(skillPromptActions, /Default: 30\. Range: 1-90\./);
   assert.match(skillPromptActions, /params\.set\("days", String\(extras\.fetchDays\)\)/);
   assert.match(skillPromptActions, /Number\.isInteger\(numeric\)/);
   assert.match(skillPromptActions, /numeric < 1 \|\| numeric > MAX_PROMPT_WINDOW_DAYS/);
@@ -446,7 +445,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /Choose a Local Agent/);
   assert.match(skillPromptActions, /No access keys yet/);
   assert.doesNotMatch(skillPromptActions, /No Local Agent access yet/);
-  assert.match(skillPromptActions, /Add an access key in Settings before copying Local Agent prompts\./);
+  assert.match(skillPromptActions, /Add an access key in Settings to copy Local Agent prompts\./);
   assert.doesNotMatch(skillPromptActions, /Saved for future summaries/);
   assert.doesNotMatch(skillPromptActions, /Posts published more than this many days ago are excluded/);
   assert.doesNotMatch(skillPromptActions, /token-picker-grouplabel">Schedule/);

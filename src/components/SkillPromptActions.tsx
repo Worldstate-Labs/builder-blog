@@ -23,22 +23,22 @@ const RUNTIME_OPTIONS: { id: AgentRuntime; label: string; hint: string }[] = [
   {
     id: "claude",
     label: "Claude Code",
-    hint: "Use when Claude Code runs the prompt.",
+    hint: "Claude Code runs this prompt.",
   },
   {
     id: "codex",
     label: "Codex",
-    hint: "Use when Codex runs the prompt.",
+    hint: "Codex runs this prompt.",
   },
   {
     id: "gemini",
     label: "Gemini CLI",
-    hint: "Use when Gemini CLI runs the prompt.",
+    hint: "Gemini CLI runs this prompt.",
   },
   {
     id: "openclaw",
     label: "OpenClaw",
-    hint: "Use when OpenClaw runs the prompt.",
+    hint: "OpenClaw runs this prompt.",
   },
 ];
 
@@ -77,11 +77,8 @@ type CopyExtras = {
   parallelWorkers: number;
 };
 type ManualCopyPrompt = { target: CopyTarget; text: string };
-const missingAccessMessage = "Add an access key in Settings before copying Local Agent prompts.";
-const promptPurposeCopy = (context: SkillPromptContext) =>
-  context === "digest"
-    ? "Copy a Local Agent prompt for AI Digest."
-    : "Copy a Local Agent prompt for Fetch sources.";
+const missingAccessMessage = "Add an access key in Settings to copy Local Agent prompts.";
+const promptPurposeCopy = () => "Copy a Local Agent prompt.";
 
 async function copyTextToClipboard(text: string) {
   try {
@@ -157,18 +154,18 @@ const OVERRIDE_COPY: Record<
   { name: string; cronHint: string; onceHint: string }
 > = {
   library: {
-    name: "Refresh existing source library posts",
+    name: "Re-fetch existing posts",
     cronHint:
-      "Refreshes posts already in your source library on every run. Leave off for normal updates.",
+      "Includes posts already in your source library on every run. Leave off for normal updates.",
     onceHint:
-      "Refreshes posts already in your source library this time only.",
+      "Includes posts already in your source library this time.",
   },
   digest: {
-    name: "Include posts already used in AI Digest issues",
+    name: "Reuse posts from AI Digest issues",
     cronHint:
-      "Posts already used in AI Digest issues can be included again on each run.",
+      "Includes posts already used in AI Digest issues on every run.",
     onceHint:
-      "Posts already used in AI Digest issues can be included again this time.",
+      "Includes posts already used in AI Digest issues this time.",
   },
 };
 
@@ -582,7 +579,7 @@ export function SkillPromptActions({
       {!compactOnly ? (
         <div className="fb-skill-text">
           <span className="fb-section-label skill-prompt-label">{config.title}</span>
-          {promptPurposeCopy(context)}
+          {promptPurposeCopy()}
         </div>
       ) : null}
       <button
@@ -618,7 +615,7 @@ export function SkillPromptActions({
           <span className="skill-prompt-access-copy">
             <span className="skill-prompt-access-title">Access key required</span>
             <span className="skill-prompt-access-body">
-              Add an access key in Settings before copying Local Agent prompts.
+              Add an access key in Settings to copy Local Agent prompts.
             </span>
           </span>
           <Link className="fb-btn dark compact" href="/settings">
@@ -773,7 +770,7 @@ function TokenPickerDialog({
             Choose access key
           </h2>
           <p className="token-picker-sub">
-            We&rsquo;ll create a short-lived setup code for that access key.
+            We&rsquo;ll create a 10-minute setup code for this key.
           </p>
         </header>
 
@@ -788,7 +785,7 @@ function TokenPickerDialog({
               }
               body={
                 <>
-                  Add an access key in Settings before copying Local Agent prompts.
+                  Add an access key in Settings to copy Local Agent prompts.
                 </>
               }
               className="token-picker-empty"
@@ -1055,7 +1052,7 @@ function CronConfigDialog({
             {dialogConfig.title}
           </h2>
           <p className="token-picker-sub">
-            {promptPurposeCopy(context)}
+            {promptPurposeCopy()}
           </p>
         </header>
 
@@ -1118,7 +1115,7 @@ function CronConfigDialog({
                 </select>
               </div>
               <p className="cron-field-hint">
-                Runs source tasks in parallel after discovery. Use 1 for safest runs.
+                Runs source tasks after discovery. Use 1 for safest runs.
               </p>
             </>
           ) : null}
@@ -1139,7 +1136,7 @@ function CronConfigDialog({
                 onChange={setPickedMaxAge}
               />
               <p className="cron-field-hint">
-                Looks back this many days for posts. Default: 30 days. Range: 1-90 days.
+                Looks back this many days. Default: 30. Range: 1-90.
               </p>
             </>
           ) : (
@@ -1151,7 +1148,7 @@ function CronConfigDialog({
                 onChange={setPickedFetchDays}
               />
               <p className="cron-field-hint">
-                Looks back this many days for posts. Default: 30 days. Range: 1-90 days.
+                Looks back this many days. Default: 30. Range: 1-90.
               </p>
             </>
           )}
