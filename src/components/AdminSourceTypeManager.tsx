@@ -257,7 +257,7 @@ function SourceTypeCard({
           step="01"
           title="Fetching"
           optional
-          description="Adds source-specific extraction instructions."
+          description="Source-specific extraction instructions."
         >
           <OptionalMarkdownField
             ariaLabel={`${config.label} fetch prompt`}
@@ -290,7 +290,7 @@ function SourceTypeCard({
           <Section
             step="03"
             title="Quality gates"
-            description="Filters extracted content before Following or AI Digest."
+            description="Filters content before Following or AI Digest."
           >
             <div className="source-type-quality-grid">
               <FieldNumber

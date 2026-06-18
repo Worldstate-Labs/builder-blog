@@ -358,7 +358,7 @@ export function AgentTokenPanel({
         <EmptyState
           className="access-keys-empty"
           title="No access keys yet"
-          body="Create one before connecting a device or Local Agent."
+          body="Create one to connect a device or Local Agent."
         />
       )}
 
@@ -458,7 +458,7 @@ export function AgentTokenPanel({
               {revokeTarget.lastIp || revokeTarget.lastUserAgent || revokeTarget.lastUsedAt ? (
                 <>
                   <p>
-                    This access key has been used by{" "}
+                    Used by{" "}
                     <strong>{describeAccessDevice(revokeTarget)}</strong>
                     {revokeTarget.lastIp ? (
                       <>
@@ -471,13 +471,12 @@ export function AgentTokenPanel({
                     .
                   </p>
                   <p className="settings-dialog-warning">
-                    It needs a new access key to update FollowBrief.
+                    Create a new access key for future updates.
                   </p>
                 </>
               ) : (
                 <p>
-                  This key has never been used. No device or Local Agent loses
-                  access.
+                  Unused key. No device or Local Agent loses access.
                 </p>
               )}
             </div>
