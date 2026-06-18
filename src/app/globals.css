@@ -9577,6 +9577,7 @@ a.fb-hub-source-name:focus-visible {
 
 .fb-login-shell {
   align-items: center;
+  box-sizing: border-box;
   display: grid;
   flex: 1;
   gap: 3rem;
@@ -9682,6 +9683,7 @@ a.fb-hub-source-name:focus-visible {
   background: color-mix(in oklch, var(--paper-strong) 74%, transparent);
   border: 1px solid color-mix(in oklch, var(--line) 84%, transparent);
   border-radius: 10px;
+  box-sizing: border-box;
   max-width: var(--dialog-max);
   padding: 1.625rem;
   width: 100%;
@@ -9704,6 +9706,7 @@ a.fb-hub-source-name:focus-visible {
   align-items: center;
   border: 1px solid color-mix(in oklch, var(--line) 88%, transparent);
   border-radius: 999px;
+  box-sizing: border-box;
   color: var(--muted-strong);
   display: inline-flex;
   gap: 0.45rem;
@@ -9730,6 +9733,7 @@ a.fb-hub-source-name:focus-visible {
   background: var(--paper-strong);
   border: 1px solid color-mix(in oklch, var(--line) 88%, transparent);
   border-radius: 10px;
+  box-sizing: border-box;
   color: var(--ink);
   cursor: pointer;
   display: flex;

@@ -38,8 +38,8 @@ export default async function LoginPage({
             <span className="fb-login-title-break">FollowBrief.</span>
           </h1>
           <p className="fb-login-copy">
-            Follow sources, build cited AI Digest issues, and search them with
-            sources and posts.
+            Follow sources, build cited AI Digest issues, and search sources,
+            posts, and AI Digest issues.
           </p>
           <div className="fb-login-proof-rail" aria-label="Workspace capabilities">
             <LoginProof icon={Rss} label="Follow sources" />
@@ -55,7 +55,7 @@ export default async function LoginPage({
                 Sign in
               </h2>
               <p className="fb-login-panel-copy">
-                Use the same FollowBrief account for the app and Local Agent.
+                Use the same account for the app and Local Agent.
               </p>
             </div>
           </div>

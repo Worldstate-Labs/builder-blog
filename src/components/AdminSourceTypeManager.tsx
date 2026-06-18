@@ -290,7 +290,7 @@ function SourceTypeCard({
           <Section
             step="03"
             title="Quality gates"
-            description="Checks extracted content before it reaches Following or AI Digest."
+            description="Checks extracted content before it reaches Following posts or AI Digest issues."
           >
             <div className="source-type-quality-grid">
               <FieldNumber
