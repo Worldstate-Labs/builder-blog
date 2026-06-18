@@ -22,11 +22,11 @@ export async function DELETE(_request: Request, { params }: Params) {
   });
 
   if (!poolEntry || poolEntry.removedAt) {
-    return NextResponse.json({ error: "Source is not in your library" }, { status: 404 });
+    return NextResponse.json({ error: "Source is not in your source library." }, { status: 404 });
   }
   if (poolEntry.origin === BuilderPoolOrigin.HUB_IMPORT) {
     return NextResponse.json(
-      { error: "Imported library sources cannot be removed individually" },
+      { error: "Sources from imported source libraries cannot be removed individually." },
       { status: 403 },
     );
   }

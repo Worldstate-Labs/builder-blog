@@ -1988,7 +1988,7 @@ function FetchLogDialog({
             <EmptyState
               className="sync-panel-empty is-dashed"
               title="Fetch log unavailable"
-              body="This run is no longer in the current fetch history response."
+              body="This run is no longer in the current fetch history."
             />
           )}
         </div>

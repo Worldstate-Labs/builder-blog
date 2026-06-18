@@ -2038,7 +2038,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /No Fetch sources run has reported yet/);
   assert.match(fetchLogPanel, /title="No Fetch sources history yet"/);
   assert.match(fetchLogPanel, /One-time and scheduled runs appear here after a Local Agent reports them\./);
+  assert.match(fetchLogPanel, /This run is no longer in the current fetch history\./);
   assert.doesNotMatch(fetchLogPanel, /title="No Fetch sources runs yet"|One-time and scheduled Fetch sources runs appear here|Scheduled and one-time Fetch sources runs will appear here/);
+  assert.doesNotMatch(fetchLogPanel, /current fetch history response/);
   assert.match(fetchLogPanel, /Could not refresh\. Try again\./);
   assert.match(fetchLogPanel, /Add X access in Settings, then run Fetch sources again\./);
   assert.match(fetchLogPanel, /import Link from "next\/link"/);
@@ -2102,6 +2104,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /formatLanguage/);
   assert.match(fetchLogPanel, /className="sync-panel-error"/);
   assert.match(digestLogPanel, /Could not refresh\. Try again\./);
+  assert.match(digestLogPanel, /This AI Digest build is no longer in the current history\./);
+  assert.doesNotMatch(digestLogPanel, /current history response/);
   assert.doesNotMatch(`${fetchLogPanel}\n${digestLogPanel}`, /Refresh failed/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card sync-panel-fetch-run-card sync-panel-mobile-flat"/);
   assert.match(globals, /@media \(max-width:\s*640px\)[\s\S]*\.sync-panel-run-card\.sync-panel-mobile-flat\s*{[\s\S]*background:\s*transparent/);
@@ -3645,6 +3649,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /title="Your source library"/);
   assert.match(buildersPage, /emptyTitle="No sources in your source library yet"/);
   assert.doesNotMatch(buildersPage, /No personal sources yet|No sources in your library yet/);
+  assert.match(feedItemsRoute, /Source is not in your source library\./);
+  assert.doesNotMatch(feedItemsRoute, /Source is not in your library/);
+  assert.match(personalBuilderUpdateRoute, /This source already exists in a source library\./);
+  assert.doesNotMatch(personalBuilderUpdateRoute, /This source already exists in a library/);
   assert.match(buildersPage, /name:\s*data\.sessionUserName/);
   assert.match(buildersPage, /email:\s*data\.sessionUserEmail/);
   assert.match(postCard, /useHydrated/);
@@ -4435,6 +4443,7 @@ test("library hub exposes share and multi-import flows", () => {
   const visibilityRoute = source("src/app/api/library-hub/personal-availability/route.ts");
   const builderSubscriptionRoute = source("src/app/api/builders/[builderId]/subscription/route.ts");
   const builderLibraryRoute = source("src/app/api/builders/[builderId]/library/route.ts");
+  const builderEntitySubscriptionRoute = source("src/app/api/builders/entity/[entityId]/subscription/route.ts");
   const builderSubscribeAllRoute = source("src/app/api/builders/subscriptions/route.ts");
   const hubImportForm = source("src/components/LibraryHubImportForm.tsx");
   const hubImportRoute = source("src/app/api/library-hub/imports/route.ts");
@@ -4459,6 +4468,14 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(appShell, /UserMenu/);
   assert.match(buildersPage, /LibraryVisibilityToggle/);
   assert.match(buildersPage, /adminCommunityLibraryName/);
+  assert.match(builderSubscriptionRoute, /Source is not in your source library\./);
+  assert.match(builderLibraryRoute, /Source is not in your source library\./);
+  assert.match(builderLibraryRoute, /Sources from imported source libraries cannot be removed individually\./);
+  assert.match(builderEntitySubscriptionRoute, /No accessible channels for this entity in your source library\./);
+  assert.doesNotMatch(
+    `${builderSubscriptionRoute}\n${builderLibraryRoute}\n${builderEntitySubscriptionRoute}`,
+    /Source is not in your library|Imported library sources|No accessible channels for this entity in your library/,
+  );
   assert.match(buildersPage, /ensureAdminCommunityLibrary/);
   assert.doesNotMatch(buildersPage, /adminCommunityBuilders/);
   assert.doesNotMatch(buildersPage, /ownSharedLibrary\?\.items\.map/);

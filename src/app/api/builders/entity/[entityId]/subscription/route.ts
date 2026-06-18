@@ -56,7 +56,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
   if (channels.length === 0) {
     return NextResponse.json(
-      { error: "No accessible channels for this entity in your library" },
+      { error: "No accessible channels for this entity in your source library." },
       { status: 404 },
     );
   }

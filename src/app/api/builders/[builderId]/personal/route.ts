@@ -196,7 +196,7 @@ export async function PATCH(request: Request, { params }: Params) {
       return NextResponse.json(
         {
           error:
-            "This source already exists in a library. Remove the duplicate first, or pick a different source.",
+            "This source already exists in a source library. Remove the duplicate first, or pick a different source.",
         },
         { status: 409 },
       );

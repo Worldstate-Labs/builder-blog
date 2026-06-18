@@ -1366,7 +1366,7 @@ function DigestLogDialog({
             <EmptyState
               className="sync-panel-empty is-dashed"
               title="Build log unavailable"
-              body="This AI Digest build is no longer in the current history response."
+              body="This AI Digest build is no longer in the current history."
             />
           )}
         </div>
