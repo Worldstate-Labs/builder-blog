@@ -3054,7 +3054,7 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /clearAllSearchHref/);
   assert.match(searchPage, /Remove title search terms/);
   assert.doesNotMatch(globals, /\.search-insight-card\s*{/);
-  assert.match(globals, /\.search-insight-summary\s*{/);
+  assert.doesNotMatch(globals, /\.search-insight-summary\s*{/);
   assert.match(globals, /\.search-insight-grid\s*{[\s\S]*border-top:\s*1px solid/);
   assert.match(globals, /\.search-recovery-action-icon,[\s\S]*\.search-page-link-icon\s*{[\s\S]*height:\s*1rem/);
   assert.match(globals, /\.search-meta-row\s*{[\s\S]*justify-content:\s*space-between/);
