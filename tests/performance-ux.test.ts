@@ -1913,6 +1913,10 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(digestLogPanel, /aria-label="Original"/);
   assert.doesNotMatch(digestLogPanel, /h-3\.5 w-3\.5/);
   assert.match(fetchLogPanel, /className="sync-panel-status-brief"/);
+  assert.match(fetchLogPanel, /className="sync-panel-layout is-log-only"/);
+  assert.match(fetchLogPanel, /<dt>Schedule enabled<\/dt>/);
+  assert.match(fetchLogPanel, /<dt>Next scheduled run<\/dt>/);
+  assert.match(fetchLogPanel, /<dt>Runner<\/dt>/);
   assert.match(fetchLogPanel, /className=\{`sync-panel-run-card-verdict is-\$\{verdict\.tone\}`\}/);
   assert.doesNotMatch(fetchLogPanel, /className="sync-panel-run-card-funnel"/);
   assert.match(fetchLogPanel, /className="sync-panel-timeline-axis"/);
@@ -1921,8 +1925,10 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /visibleGraphEntries\.map/);
   assert.match(fetchLogPanel, /className="sync-panel-slot-rows is-scrollable" onScroll=\{handleLogScroll\}/);
   assert.match(fetchLogPanel, /data-sync-log-row="true"/);
-  assert.match(fetchLogPanel, />Oldest</);
-  assert.match(fetchLogPanel, />Newest</);
+  assert.match(fetchLogPanel, /<span>\{graphStartLabel\}<\/span>/);
+  assert.match(fetchLogPanel, /<span>\{graphEndLabel\}<\/span>/);
+  assert.doesNotMatch(fetchLogPanel, />Oldest</);
+  assert.doesNotMatch(fetchLogPanel, />Newest</);
   assert.doesNotMatch(fetchLogPanel, /Green OK|amber waiting|red issue/);
   assert.match(fetchLogPanel, /const displayStatus = !inflight && interruptedStatus/);
   assert.match(fetchLogPanel, /displayStatus\.label/);
@@ -1940,7 +1946,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /\{entry\.syncSummary \? \(/);
   assert.match(fetchLogPanel, /\{entry\.syncSummary\}<\/span>/);
   assert.doesNotMatch(fetchLogPanel, /\{entry\.note\}<\/span>/);
-  assert.match(fetchLogPanel, /cronJob\?\.frequencyLabel \? <span className="fb-chip">\{cronJob\.frequencyLabel\}<\/span> : null/);
+  assert.doesNotMatch(fetchLogPanel, /sync-panel-chip-row/);
   assert.doesNotMatch(fetchLogPanel, /one-time only/);
   assert.doesNotMatch(fetchLogPanel, /slice\(0, 6\)/);
   assert.match(fetchLogPanel, /className="sync-panel-stopped-time"/);
@@ -1955,8 +1961,10 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /visibleGraphEntries\.map/);
   assert.match(digestLogPanel, /className="sync-panel-slot-rows is-scrollable" onScroll=\{handleLogScroll\}/);
   assert.match(digestLogPanel, /data-sync-log-row="true"/);
-  assert.match(digestLogPanel, />Oldest</);
-  assert.match(digestLogPanel, />Newest</);
+  assert.match(digestLogPanel, /<span>\{graphStartLabel\}<\/span>/);
+  assert.match(digestLogPanel, /<span>\{graphEndLabel\}<\/span>/);
+  assert.doesNotMatch(digestLogPanel, />Oldest</);
+  assert.doesNotMatch(digestLogPanel, />Newest</);
   assert.match(digestLogPanel, /className=\{`sync-panel-slot-bar \$\{heightClass\}`\}/);
   assert.doesNotMatch(fetchLogPanel, /aria-label="Fetch sources views"/);
   assert.match(fetchLogPanel, /aria-label="Fetch sources details"/);
@@ -1965,7 +1973,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(fetchLogPanel, /Update frequency/);
   assert.match(fetchLogPanel, /Language/);
   assert.match(fetchLogPanel, /Latest fetch/);
-  assert.match(fetchLogPanel, /Schedule status/);
+  assert.match(fetchLogPanel, /Status \/ log/);
+  assert.doesNotMatch(fetchLogPanel, /Schedule status/);
   assert.match(fetchLogPanel, /No Fetch sources run has reported yet/);
   assert.match(fetchLogPanel, /title="No Fetch sources runs"/);
   assert.match(fetchLogPanel, /Scheduled and one-time Fetch sources runs will appear here after the Local Agent reports them\./);
@@ -2018,7 +2027,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(fetchLogPanel, /posts checked|Posts checked/);
   assert.match(fetchLogPanel, /Unknown source/);
   assert.doesNotMatch(fetchLogPanel, /entry\.name \?\? entry\.builderId \?\? "unknown"/);
-  assert.match(fetchLogPanel, /refreshes library posts/);
+  assert.doesNotMatch(fetchLogPanel, /refreshes library posts/);
   assert.doesNotMatch(fetchLogPanel, /Cron status|library fetch cron|Items checked|refreshes saved posts|refreshes fetched posts|refreshes fetched items|label="checked"|\} checked<\/span>/);
   assert.match(fetchLogPanel, /formatMetaDate\(latestRun\.startedAt, hydrated\)/);
   assert.match(fetchLogPanel, /function formatMetaDate\(iso: string, hydrated: boolean\)/);
@@ -2109,13 +2118,12 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /AI Digest build at/);
   assert.match(digestLogPanel, /includes posts already used in AI Digest archives/);
   assert.doesNotMatch(digestLogPanel, /includes posts already used in AI Digests/);
-  assert.match(digestLogPanel, /not save an AI Digest/);
   assert.match(digestLogPanel, /Untitled AI Digest/);
   assert.match(digestLogPanel, /Prepared, no AI Digest saved/);
   assert.match(digestLogPanel, /Previous AI Digest/);
   assert.match(digestLogPanel, /Found, AI Digest not saved yet/);
   assert.match(digestLogPanel, /Used in the AI Digest/);
-  assert.match(digestLogPanel, /rebuilds past posts/);
+  assert.doesNotMatch(digestLogPanel, /rebuilds past posts/);
   assert.match(digestLogPanel, /all new posts/);
   assert.match(digestLogPanel, /className="sync-panel-schedule-summary"/);
   assert.match(digestLogPanel, /Use Build AI Digest to copy a Local Agent prompt\./);
@@ -2123,6 +2131,10 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /className="sync-panel-column"/);
   assert.match(digestLogPanel, /className="sync-panel-truncate"/);
   assert.match(digestLogPanel, /className="sync-panel-status-brief"/);
+  assert.match(digestLogPanel, /className="sync-panel-layout is-log-only"/);
+  assert.match(digestLogPanel, /<dt>Schedule enabled<\/dt>/);
+  assert.match(digestLogPanel, /<dt>Next scheduled run<\/dt>/);
+  assert.match(digestLogPanel, /<dt>Runner<\/dt>/);
   assert.match(digestLogPanel, /className=\{`sync-panel-slot-bar \$\{heightClass\}`\}/);
   assert.match(digestLogPanel, /className="sync-panel-slot-row"/);
   assert.match(digestLogPanel, /className="sync-panel-slot-row-main"/);
@@ -2137,7 +2149,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /\{entry\.syncSummary \? \(/);
   assert.match(digestLogPanel, /\{entry\.syncSummary\}<\/span>/);
   assert.doesNotMatch(digestLogPanel, /\{entry\.note\}<\/span>/);
-  assert.match(digestLogPanel, /cronJob\?\.frequencyLabel \? <span className="fb-chip">\{cronJob\.frequencyLabel\}<\/span> : null/);
+  assert.doesNotMatch(digestLogPanel, /sync-panel-chip-row/);
   assert.doesNotMatch(digestLogPanel, /one-time only/);
   assert.doesNotMatch(digestLogPanel, /slice\(0, 6\)/);
   assert.match(digestLogPanel, /className="sync-panel-funnel-arrow"/);
@@ -2242,6 +2254,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /isDigestRunInflight/);
   assert.match(globals, /\.sync-panel-tabs\s*{/);
   assert.match(globals, /\.sync-panel-card,[\s\S]*\.sync-panel-empty\s*{/);
+  assert.doesNotMatch(cssRule(globals, ".sync-panel-status-brief"), /border-bottom/);
   assert.match(globals, /\.sync-panel-empty\s*{\s*padding:\s*1\.125rem;\s*}/);
   assert.match(globals, /\.sync-panel-run-card\s*{[\s\S]*background:\s*var\(--paper-strong\)/);
   assert.doesNotMatch(digestLogPanel, /className="sync-panel-run-list-shell"/);
@@ -2292,6 +2305,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sync-panel-candidate-title\.is-muted\s*{[\s\S]*color:\s*var\(--muted-strong\)/);
   assert.doesNotMatch(globals, /\.sync-panel-candidate-source/);
   assert.match(globals, /\.sync-panel-layout\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*0\.85fr\) minmax\(0,\s*1\.15fr\)/);
+  assert.match(globals, /\.sync-panel-layout\.is-log-only\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(globals, /\.sync-panel-status-brief \.sync-panel-meta\s*{[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(12rem,\s*1fr\)\)/);
   assert.doesNotMatch(fetchLogPanel, /className="fb-segmented-tabs sync-panel-tabs"/);
   assert.doesNotMatch(fetchLogPanel, /onKeyDown=\{handleTabKeyDown\}/);
   assert.doesNotMatch(fetchLogPanel, /tabIndex=\{activeTab ===/);
@@ -3373,7 +3388,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(digestPipelineForm, /\?\s*`Latest AI Digest \$\{formatDate\(pipeline\.latestDigestAt\)\}`/);
   assert.match(digestPipelineForm, /new Intl\.DateTimeFormat\("en-US", \{[\s\S]*timeZone:\s*"UTC"/);
   assert.doesNotMatch(digestPipelineForm, /new Intl\.DateTimeFormat\(undefined/);
-  assert.match(digestPipelineForm, /Schedule status/);
+  assert.match(digestPipelineForm, /Status \/ log/);
+  assert.doesNotMatch(digestPipelineForm, /Schedule status/);
   assert.doesNotMatch(digestPipelineForm, /Update frequency/);
   assert.doesNotMatch(digestPipelineForm, /className="fb-hub-digest-headline"/);
   assert.doesNotMatch(digestPipelineForm, /fb-hub-digest-headline-kicker/);

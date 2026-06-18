@@ -459,8 +459,11 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /persistSummaryLanguage/);
   assert.match(skillPromptActions, /\/api\/settings\/summary-language/);
   const settingsFields = readFileSync("src/components/settings/SettingsFields.tsx", "utf8");
+  const languagePreference = readFileSync("src/lib/language-preference.ts", "utf8");
   assert.match(settingsFields, /ORIGINAL_CONTENT_LANGUAGE_VALUE/);
   assert.match(settingsFields, /Use \$\{ORIGINAL_CONTENT_LANGUAGE_LABEL\.toLowerCase\(\)\}/);
+  assert.match(languagePreference, /ORIGINAL_CONTENT_LANGUAGE_LABEL = "original"/);
+  assert.match(languagePreference, /LEGACY_ORIGINAL_CONTENT_LANGUAGE_LABEL = "Original content language"/);
   // Account-wide summary language is wired end to end: dedicated save route,
   // schema field, and context override.
   const summaryLanguageRoute = readFileSync(

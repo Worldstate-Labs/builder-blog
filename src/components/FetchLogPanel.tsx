@@ -969,7 +969,6 @@ export function FetchLogPanel({
             entries={timelineEntries}
             nextExpectedAt={cronStatus.nextExpectedAt}
             onOpenLog={openLog}
-            slots={cronStatus.slots}
           />
         </div>
       ) : null}
@@ -1168,7 +1167,7 @@ function SourceFetchMetaGrid({
         value={latestRun ? formatMetaDate(latestRun.startedAt, hydrated) : "None yet"}
       />
       <div className="fb-hub-digest-meta-item source-fetch-status-item">
-        <dt>Schedule status</dt>
+        <dt>Status / log</dt>
         <dd>
           <FetchStatusToggle
             detailsOpen={detailsOpen}
@@ -1201,13 +1200,11 @@ function FetchStatusPanel({
   entries,
   nextExpectedAt,
   onOpenLog,
-  slots,
 }: {
   cronJob: LibraryCronJobStatus | null;
   entries: FetchTimelineEntry[];
   nextExpectedAt: string | null;
   onOpenLog: (logRef: FetchLogRef) => void;
-  slots: CronSlot[];
 }) {
   const hydrated = useHydrated();
   const entriesKey = useMemo(() => entries.map((entry) => entry.key).join("\n"), [entries]);
@@ -1219,6 +1216,16 @@ function FetchStatusPanel({
   const visibleRowEntries = rowEntries.slice(logWindowStart, logWindowStart + LOG_WINDOW_SIZE);
   const visibleGraphEntries = visibleRowEntries.slice().reverse();
   const visibleCount = visibleGraphEntries.length;
+  const graphStartLabel = visibleGraphEntries[0]
+    ? hydrated
+      ? formatRelative(visibleGraphEntries[0].time)
+      : formatAbsolute(visibleGraphEntries[0].time)
+    : "";
+  const graphEndLabel = visibleGraphEntries.at(-1)
+    ? hydrated
+      ? formatRelative(visibleGraphEntries.at(-1)!.time)
+      : formatAbsolute(visibleGraphEntries.at(-1)!.time)
+    : "";
   const handleLogScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
     const nextStart = visibleLogWindowStart(event.currentTarget, rowEntries.length);
     setLogWindow((current) =>
@@ -1238,119 +1245,29 @@ function FetchStatusPanel({
   }
 
   if (cronJob && cronJob.status !== "active" && entries.length === 0) {
+    const runnerRuntime = cronJob.runtime || "Local Agent";
+    const runnerHost = cronJob.hostname || null;
     return (
       <div className="sync-panel-card">
         <div className="sync-panel-status-brief">
-          <div className="sync-panel-chip-row">
-            <span className="fb-chip">Stopped</span>
-          </div>
-          <p>The recurring Fetch sources schedule is off. Manual fetches can still appear in the log.</p>
-          {cronJob.stoppedAt ? (
-            <time
-              className="sync-panel-stopped-time"
-              dateTime={cronJob.stoppedAt}
-              title={formatAbsolute(cronJob.stoppedAt)}
-            >
-              stopped {hydrated ? formatRelative(cronJob.stoppedAt) : formatAbsolute(cronJob.stoppedAt)}
-            </time>
-          ) : null}
-        </div>
-      </div>
-    );
-  }
-
-  const latestEntry = entries.at(-1) ?? null;
-  const scheduleIsActive = cronJob?.status === "active";
-  const latestSlot = slots.at(-1) ?? null;
-  const latestIsPending = latestSlot?.status === "waiting" || latestSlot?.status === "running";
-  const latestIsStalled = latestSlot?.status === "stalled";
-  const latestResolved = latestResolvedSlotStatus(slots);
-  const latestStandaloneProblem = !scheduleIsActive && latestEntry
-    ? latestEntry.status === "failed" || latestEntry.status === "stalled"
-    : false;
-  const hasProblem = latestStandaloneProblem ||
-    (scheduleIsActive && (latestIsStalled || (!latestIsPending && (latestResolved === "missed" || latestResolved === "failed"))));
-  const problemDetail =
-    latestStandaloneProblem
-      ? "The latest Fetch sources run did not finish successfully. Open its log for details."
-      : latestIsStalled
-      ? "The latest scheduled fetch run stopped sending heartbeats. Open the log to see where it stopped."
-    : latestResolved === "missed"
-      ? missedWindowDetail(slots)
-      : "The latest scheduled fetch run reported a failure. Open the log for task-level details.";
-  const statusTone = hasProblem
-    ? statusStyle("failed")
-    : !scheduleIsActive && latestEntry?.status === "ok"
-      ? statusStyle("ok")
-    : scheduleIsActive && (latestSlot?.status === "running" || latestSlot?.status === "waiting")
-      ? statusStyle("partial")
-      : scheduleIsActive && latestResolved === "ok"
-      ? statusStyle("ok")
-      : statusStyle("partial");
-  const statusLabel = hasProblem
-    ? "Needs attention"
-    : !scheduleIsActive && latestEntry?.status === "ok"
-      ? "OK"
-    : cronJob && cronJob.status !== "active"
-      ? "Stopped"
-    : latestSlot?.status === "running"
-      ? "Running"
-      : latestResolved === "ok"
-        ? "Healthy"
-        : "Waiting";
-  const statusDetail = !scheduleIsActive
-    ? cronJob
-      ? "The recurring Fetch sources schedule is off. One-time runs are still tracked here."
-      : latestEntry
-        ? "No recurring schedule is connected. One-time Fetch sources runs are tracked here."
-        : "No recurring schedule is connected yet."
-    : cronJob
-    ? hasProblem
-      ? problemDetail
-      : latestSlot?.status === "running"
-        ? "A scheduled fetch is active. The log should move from sources scanned to sync as the Local Agent reports progress."
-        : latestResolved === "ok"
-          ? "The latest scheduled window completed. One-time runs are shown in the same timeline."
-          : "FollowBrief is waiting for the next scheduled window. One-time runs appear here as soon as they report."
-    : "No recurring schedule is connected. One-time Fetch sources runs are still tracked here.";
-  const runnerRuntime = cronJob?.runtime || latestEntry?.jobRun?.runtime || "Local Agent";
-  const runnerHost = cronJob?.hostname || latestEntry?.jobRun?.hostname || null;
-
-  return (
-    <div className="sync-panel-card">
-      <div className="sync-panel-status-brief">
-        <div className="sync-panel-chip-row">
-          <span
-            className="fb-chip"
-            style={{
-              background: statusTone.background,
-              borderColor: statusTone.border,
-              color: statusTone.color,
-            }}
-          >
-            {statusLabel}
-          </span>
-          {cronJob?.frequencyLabel ? <span className="fb-chip">{cronJob.frequencyLabel}</span> : null}
-          {cronJob?.overrideFetched ? <span className="fb-chip">refreshes library posts</span> : null}
-        </div>
-        <p style={hasProblem ? { color: statusTone.color } : undefined}>{statusDetail}</p>
-      </div>
-      <div className="sync-panel-layout">
-        <div className="sync-panel-column">
           <dl className="sync-panel-meta">
-            {cronJob ? (
+            <div className="sync-panel-meta-row">
+              <dt>Schedule enabled</dt>
+              <dd>
+                {hydrated ? formatRelative(cronJob.startedAt) : formatAbsolute(cronJob.startedAt)}
+              </dd>
+            </div>
+            {cronJob.stoppedAt ? (
               <div className="sync-panel-meta-row">
-                <dt>Schedule enabled</dt>
+                <dt>Schedule stopped</dt>
                 <dd>
-                  {hydrated ? formatRelative(cronJob.startedAt) : formatAbsolute(cronJob.startedAt)}
-                </dd>
-              </div>
-            ) : null}
-            {cronJob && nextExpectedAt ? (
-              <div className="sync-panel-meta-row">
-                <dt>Next scheduled run</dt>
-                <dd>
-                  {hydrated ? formatRelative(nextExpectedAt) : formatAbsolute(nextExpectedAt)}
+                  <time
+                    className="sync-panel-stopped-time"
+                    dateTime={cronJob.stoppedAt}
+                    title={formatAbsolute(cronJob.stoppedAt)}
+                  >
+                    {hydrated ? formatRelative(cronJob.stoppedAt) : formatAbsolute(cronJob.stoppedAt)}
+                  </time>
                 </dd>
               </div>
             ) : null}
@@ -1363,6 +1280,44 @@ function FetchStatusPanel({
             </div>
           </dl>
         </div>
+      </div>
+    );
+  }
+
+  const latestEntry = entries.at(-1) ?? null;
+  const runnerRuntime = cronJob?.runtime || latestEntry?.jobRun?.runtime || "Local Agent";
+  const runnerHost = cronJob?.hostname || latestEntry?.jobRun?.hostname || null;
+
+  return (
+    <div className="sync-panel-card">
+      <div className="sync-panel-status-brief">
+        <dl className="sync-panel-meta">
+          {cronJob ? (
+            <div className="sync-panel-meta-row">
+              <dt>Schedule enabled</dt>
+              <dd>
+                {hydrated ? formatRelative(cronJob.startedAt) : formatAbsolute(cronJob.startedAt)}
+              </dd>
+            </div>
+          ) : null}
+          {cronJob && nextExpectedAt ? (
+            <div className="sync-panel-meta-row">
+              <dt>Next scheduled run</dt>
+              <dd>
+                {hydrated ? formatRelative(nextExpectedAt) : formatAbsolute(nextExpectedAt)}
+              </dd>
+            </div>
+          ) : null}
+          <div className="sync-panel-meta-row">
+            <dt>Runner</dt>
+            <dd className="sync-panel-truncate">
+              {runnerRuntime}
+              {runnerHost ? ` · ${runnerHost.replace(/\.local$/, "")}` : ""}
+            </dd>
+          </div>
+        </dl>
+      </div>
+      <div className="sync-panel-layout is-log-only">
 
         {entries.length > 0 ? (
           <div className="sync-panel-column">
@@ -1372,8 +1327,8 @@ function FetchStatusPanel({
               </span>
             </div>
             <div className="sync-panel-timeline-axis" aria-hidden="true">
-              <span>Oldest</span>
-              <span>Newest</span>
+              <span>{graphStartLabel}</span>
+              <span>{graphEndLabel}</span>
             </div>
             <div className="sync-panel-status-graph" aria-label="Fetch schedule status graph, oldest to newest">
               {visibleGraphEntries.map((entry) => (
@@ -1420,36 +1375,6 @@ function FetchStatusPanel({
 
 function cronSlotStyle(status: CronSlotStatus): { background: string; border: string; color: string } {
   return statusStyle(scheduledWindowStyleStatus(status));
-}
-
-function slotFailureContext(slot: CronSlot): string | null {
-  if (!slot.jobRun) return null;
-  const details = readJobRunDetails(slot.jobRun.details);
-  const parts = [
-    details.timeoutSeconds ? `timeout ${formatDuration(details.timeoutSeconds * 1000)}` : null,
-    details.timedOutWorker ? `worker ${details.timedOutWorker}` : null,
-    details.timedOutWorkerPid ? `pid ${details.timedOutWorkerPid}` : null,
-    details.termination === "still_alive_after_kill" ? "cleanup failed" : null,
-  ].filter(Boolean);
-  return parts.length ? parts.join(" · ") : details.reason ?? null;
-}
-
-function latestRecordedSlot(slots: CronSlot[]): CronSlot | null {
-  return slots.slice().reverse().find((slot) => slot.jobRun || slot.run) ?? null;
-}
-
-function missedWindowDetail(slots: CronSlot[]): string {
-  const previous = latestRecordedSlot(slots.slice(0, -1));
-  const previousStatus = previous?.jobRun ? jobRunStatusLabel(previous.jobRun).toLowerCase() : previous?.run?.status;
-  if (previous?.jobRun && previous.jobRun.status !== "succeeded") {
-    const context = slotFailureContext(previous);
-    return [
-      "No Local Agent job reported for the latest scheduled window.",
-      `The previous reported job ${previousStatus}${context ? ` (${context})` : ""}.`,
-      "The local schedule may not have launched, or an older process may still be occupying it.",
-    ].join(" ");
-  }
-  return "No Local Agent job reported for the latest scheduled window. The local schedule may not have launched.";
 }
 
 function FetchTimelineBar({ entry, onSelect }: { entry: FetchTimelineEntry; onSelect: () => void }) {

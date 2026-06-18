@@ -5935,20 +5935,14 @@ details:not([open]) > :not(summary) {
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
 }
 
+.sync-panel-layout.is-log-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .sync-panel-status-brief {
-  border-bottom: 1px solid var(--line);
   display: grid;
   gap: 0.5rem;
   margin-bottom: 0.875rem;
-  padding-bottom: 0.875rem;
-}
-
-.sync-panel-status-brief p {
-  color: var(--muted-strong);
-  font-size: 0.84375rem;
-  line-height: 1.55;
-  margin: 0;
-  max-width: 66ch;
 }
 
 .sync-panel-column {
@@ -5959,13 +5953,6 @@ details:not([open]) > :not(summary) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.sync-panel-chip-row {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
 }
 
 .sync-panel-meta {
@@ -5986,6 +5973,22 @@ details:not([open]) > :not(summary) {
 .sync-panel-meta-row dd {
   color: var(--ink);
   text-align: right;
+}
+
+.sync-panel-status-brief .sync-panel-meta {
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  margin-top: 0;
+}
+
+.sync-panel-status-brief .sync-panel-meta-row {
+  align-items: start;
+  display: grid;
+  gap: 0.25rem;
+  justify-content: stretch;
+}
+
+.sync-panel-status-brief .sync-panel-meta-row dd {
+  text-align: left;
 }
 
 .sync-panel-metrics {

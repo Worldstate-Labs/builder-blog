@@ -22,7 +22,6 @@ import type { AgentJobRunListItem } from "@/lib/agent-job-runs";
 import {
   buildDigestCronStatus,
   getDigestUpdateStatus,
-  latestResolvedSlotStatus,
   isActiveDigestJobRun,
   isDigestRunInflight,
   statusStyle,
@@ -444,7 +443,6 @@ export function DigestLogPanel({
         entries={timelineEntries}
         nextExpectedAt={cronStatus.nextExpectedAt}
         onOpenLog={openLog}
-        slots={cronStatus.slots}
       />
     </div>
   ) : null;
@@ -586,13 +584,11 @@ function DigestStatusPanel({
   entries,
   nextExpectedAt,
   onOpenLog,
-  slots,
 }: {
   cronJob: DigestCronJobStatus | null;
   entries: DigestTimelineEntry[];
   nextExpectedAt: string | null;
   onOpenLog: (logRef: DigestLogRef) => void;
-  slots: DigestCronSlot[];
 }) {
   const hydrated = useHydrated();
   const entriesKey = useMemo(() => entries.map((entry) => entry.key).join("\n"), [entries]);
@@ -604,6 +600,16 @@ function DigestStatusPanel({
   const visibleRowEntries = rowEntries.slice(logWindowStart, logWindowStart + LOG_WINDOW_SIZE);
   const visibleGraphEntries = visibleRowEntries.slice().reverse();
   const visibleCount = visibleGraphEntries.length;
+  const graphStartLabel = visibleGraphEntries[0]
+    ? hydrated
+      ? formatRelative(visibleGraphEntries[0].time)
+      : formatAbsolute(visibleGraphEntries[0].time)
+    : "";
+  const graphEndLabel = visibleGraphEntries.at(-1)
+    ? hydrated
+      ? formatRelative(visibleGraphEntries.at(-1)!.time)
+      : formatAbsolute(visibleGraphEntries.at(-1)!.time)
+    : "";
   const handleLogScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
     const nextStart = visibleLogWindowStart(event.currentTarget, rowEntries.length);
     setLogWindow((current) =>
@@ -623,119 +629,29 @@ function DigestStatusPanel({
   }
 
   if (cronJob && cronJob.status !== "active" && entries.length === 0) {
-  return (
-    <div className="sync-panel-card">
-      <div className="sync-panel-status-brief">
-        <div className="sync-panel-chip-row">
-          <span className="fb-chip">Stopped</span>
-        </div>
-        <p>The recurring AI Digest build schedule is off. Manual builds can still appear in the log.</p>
-          {cronJob.stoppedAt ? (
-            <time
-              className="sync-panel-run-card-time"
-              dateTime={cronJob.stoppedAt}
-              title={formatAbsolute(cronJob.stoppedAt)}
-            >
-              stopped {hydrated ? formatRelative(cronJob.stoppedAt) : formatAbsolute(cronJob.stoppedAt)}
-            </time>
-          ) : null}
-        </div>
-      </div>
-    );
-  }
-
-  const latestEntry = entries.at(-1) ?? null;
-  const scheduleIsActive = cronJob?.status === "active";
-  const latestSlot = slots.at(-1) ?? null;
-  const latestIsPending = latestSlot?.status === "waiting" || latestSlot?.status === "running";
-  const latestIsStalled = latestSlot?.status === "stalled";
-  const latestResolved = latestResolvedSlotStatus(slots);
-  const latestStandaloneProblem = !scheduleIsActive && latestEntry
-    ? latestEntry.status === "failed" || latestEntry.status === "stalled"
-    : false;
-  const hasProblem = latestStandaloneProblem ||
-    (scheduleIsActive && (latestIsStalled || (!latestIsPending && (latestResolved === "missed" || latestResolved === "failed"))));
-  const problemDetail =
-    latestStandaloneProblem
-      ? "The latest AI Digest build did not finish successfully. Open its log for details."
-      : latestIsStalled
-      ? "The latest scheduled AI Digest build stopped sending heartbeats. Open the log to see where it stopped."
-      : latestResolved === "missed"
-      ? "The latest scheduled window has no recorded AI Digest build in its expected time range."
-      : "The latest scheduled run did not save an AI Digest.";
-  const statusTone = hasProblem
-    ? statusStyle("failed")
-    : !scheduleIsActive && latestEntry?.status === "ok"
-      ? statusStyle("ok")
-    : scheduleIsActive && (latestSlot?.status === "running" || latestSlot?.status === "waiting")
-      ? statusStyle("partial")
-    : scheduleIsActive && latestResolved === "ok"
-      ? statusStyle("ok")
-      : statusStyle("partial");
-  const statusLabel = hasProblem
-    ? "Needs attention"
-    : !scheduleIsActive && latestEntry?.status === "ok"
-      ? "OK"
-    : cronJob && cronJob.status !== "active"
-      ? "Stopped"
-    : latestSlot?.status === "running"
-      ? "Building"
-      : latestResolved === "ok"
-        ? "Healthy"
-        : "Waiting";
-  const statusDetail = !scheduleIsActive
-    ? cronJob
-      ? "The recurring AI Digest build schedule is off. One-time builds are still tracked here."
-      : latestEntry
-        ? "No recurring schedule is connected. One-time AI Digest builds are tracked here."
-        : "No recurring AI Digest schedule is connected yet."
-    : cronJob
-    ? hasProblem
-      ? problemDetail
-      : latestSlot?.status === "running"
-        ? "A scheduled AI Digest build is active. The log should move from candidates to sync as the Local Agent reports progress."
-        : latestResolved === "ok"
-          ? "The latest scheduled build saved an AI Digest. One-time builds are shown in the same timeline."
-          : "FollowBrief is waiting for the next scheduled build window. One-time builds appear here as soon as they report."
-    : "No recurring AI Digest schedule is connected. One-time builds are still tracked here.";
-  const runnerRuntime = cronJob?.runtime || latestEntry?.jobRun?.runtime || "Local Agent";
-  const runnerHost = cronJob?.hostname || latestEntry?.jobRun?.hostname || null;
-
-  return (
-    <div className="sync-panel-card">
-      <div className="sync-panel-status-brief">
-        <div className="sync-panel-chip-row">
-          <span
-            className="fb-chip"
-            style={{
-              background: statusTone.background,
-              borderColor: statusTone.border,
-              color: statusTone.color,
-            }}
-          >
-            {statusLabel}
-          </span>
-          {cronJob?.frequencyLabel ? <span className="fb-chip">{cronJob.frequencyLabel}</span> : null}
-          {cronJob?.regenerateDigest ? <span className="fb-chip">rebuilds past posts</span> : null}
-        </div>
-        <p style={hasProblem ? { color: statusTone.color } : undefined}>{statusDetail}</p>
-      </div>
-      <div className="sync-panel-layout">
-        <div className="sync-panel-column">
+    const runnerRuntime = cronJob.runtime || "Local Agent";
+    const runnerHost = cronJob.hostname || null;
+    return (
+      <div className="sync-panel-card">
+        <div className="sync-panel-status-brief">
           <dl className="sync-panel-meta">
-            {cronJob ? (
+            <div className="sync-panel-meta-row">
+              <dt>Schedule enabled</dt>
+              <dd>
+                {hydrated ? formatRelative(cronJob.startedAt) : formatAbsolute(cronJob.startedAt)}
+              </dd>
+            </div>
+            {cronJob.stoppedAt ? (
               <div className="sync-panel-meta-row">
-                <dt>Schedule enabled</dt>
+                <dt>Schedule stopped</dt>
                 <dd>
-                  {hydrated ? formatRelative(cronJob.startedAt) : formatAbsolute(cronJob.startedAt)}
-                </dd>
-              </div>
-            ) : null}
-            {cronJob && nextExpectedAt ? (
-              <div className="sync-panel-meta-row">
-                <dt>Next scheduled run</dt>
-                <dd>
-                  {hydrated ? formatRelative(nextExpectedAt) : formatAbsolute(nextExpectedAt)}
+                  <time
+                    className="sync-panel-run-card-time"
+                    dateTime={cronJob.stoppedAt}
+                    title={formatAbsolute(cronJob.stoppedAt)}
+                  >
+                    {hydrated ? formatRelative(cronJob.stoppedAt) : formatAbsolute(cronJob.stoppedAt)}
+                  </time>
                 </dd>
               </div>
             ) : null}
@@ -748,6 +664,44 @@ function DigestStatusPanel({
             </div>
           </dl>
         </div>
+      </div>
+    );
+  }
+
+  const latestEntry = entries.at(-1) ?? null;
+  const runnerRuntime = cronJob?.runtime || latestEntry?.jobRun?.runtime || "Local Agent";
+  const runnerHost = cronJob?.hostname || latestEntry?.jobRun?.hostname || null;
+
+  return (
+    <div className="sync-panel-card">
+      <div className="sync-panel-status-brief">
+        <dl className="sync-panel-meta">
+          {cronJob ? (
+            <div className="sync-panel-meta-row">
+              <dt>Schedule enabled</dt>
+              <dd>
+                {hydrated ? formatRelative(cronJob.startedAt) : formatAbsolute(cronJob.startedAt)}
+              </dd>
+            </div>
+          ) : null}
+          {cronJob && nextExpectedAt ? (
+            <div className="sync-panel-meta-row">
+              <dt>Next scheduled run</dt>
+              <dd>
+                {hydrated ? formatRelative(nextExpectedAt) : formatAbsolute(nextExpectedAt)}
+              </dd>
+            </div>
+          ) : null}
+          <div className="sync-panel-meta-row">
+            <dt>Runner</dt>
+            <dd className="sync-panel-truncate">
+              {runnerRuntime}
+              {runnerHost ? ` · ${runnerHost.replace(/\.local$/, "")}` : ""}
+            </dd>
+          </div>
+        </dl>
+      </div>
+      <div className="sync-panel-layout is-log-only">
 
         {entries.length > 0 ? (
           <div className="sync-panel-column">
@@ -757,8 +711,8 @@ function DigestStatusPanel({
               </span>
             </div>
             <div className="sync-panel-timeline-axis" aria-hidden="true">
-              <span>Oldest</span>
-              <span>Newest</span>
+              <span>{graphStartLabel}</span>
+              <span>{graphEndLabel}</span>
             </div>
             <div className="sync-panel-status-graph" aria-label="AI Digest build status graph, oldest to newest">
               {visibleGraphEntries.map((entry) => (
