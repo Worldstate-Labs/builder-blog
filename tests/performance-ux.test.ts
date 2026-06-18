@@ -1925,6 +1925,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /visibleGraphEntries\.map/);
   assert.match(fetchLogPanel, /className="sync-panel-slot-rows is-scrollable" onScroll=\{handleLogScroll\}/);
   assert.match(fetchLogPanel, /data-sync-log-row="true"/);
+  assert.match(fetchLogPanel, /className="sync-panel-timeline-divider" aria-hidden="true"/);
+  assert.doesNotMatch(fetchLogPanel, /Last \{visibleCount\} Fetch/);
   assert.match(fetchLogPanel, /<span>\{graphStartLabel\}<\/span>/);
   assert.match(fetchLogPanel, /<span>\{graphEndLabel\}<\/span>/);
   assert.doesNotMatch(fetchLogPanel, />Oldest</);
@@ -1961,6 +1963,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /visibleGraphEntries\.map/);
   assert.match(digestLogPanel, /className="sync-panel-slot-rows is-scrollable" onScroll=\{handleLogScroll\}/);
   assert.match(digestLogPanel, /data-sync-log-row="true"/);
+  assert.match(digestLogPanel, /className="sync-panel-timeline-divider" aria-hidden="true"/);
+  assert.doesNotMatch(digestLogPanel, /Last \{visibleCount\} AI Digest/);
   assert.match(digestLogPanel, /<span>\{graphStartLabel\}<\/span>/);
   assert.match(digestLogPanel, /<span>\{graphEndLabel\}<\/span>/);
   assert.doesNotMatch(digestLogPanel, />Oldest</);
@@ -2292,6 +2296,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sync-panel-lifecycle-detail\s*{[\s\S]*border-top:\s*0/);
   assert.match(globals, /\.sync-panel-task-fact-row\s*{[\s\S]*line-height:\s*1\.55/);
   assert.match(globals, /\.sync-panel-task-fact-label\s*{[\s\S]*width:\s*6rem/);
+  assert.match(globals, /\.fb-hub-digest-meta-item dt,\s*[\s\S]*\.sync-panel-meta-row dt,\s*[\s\S]*\.sync-panel-task-fact-label\s*{[\s\S]*text-transform:\s*uppercase/);
+  assert.match(globals, /\.fb-hub-digest-meta-item dd,\s*[\s\S]*\.sync-panel-meta-row dd,\s*[\s\S]*\.sync-panel-task-fact-value\s*{[\s\S]*font-weight:\s*700/);
   assert.match(globals, /\.sync-panel-task-technical-code\s*{[\s\S]*max-height:\s*18rem/);
   assert.match(globals, /\.sync-panel-detail-card-list\s*{[\s\S]*margin-top:\s*0\.5rem/);
   assert.match(globals, /\.sync-panel-detail-card\s*{[\s\S]*background:\s*var\(--paper-strong\)/);
@@ -2307,6 +2313,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sync-panel-layout\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*0\.85fr\) minmax\(0,\s*1\.15fr\)/);
   assert.match(globals, /\.sync-panel-layout\.is-log-only\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(globals, /\.sync-panel-status-brief \.sync-panel-meta\s*{[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(12rem,\s*1fr\)\)/);
+  assert.match(globals, /\.sync-panel-timeline-divider\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.doesNotMatch(fetchLogPanel, /className="fb-segmented-tabs sync-panel-tabs"/);
   assert.doesNotMatch(fetchLogPanel, /onKeyDown=\{handleTabKeyDown\}/);
   assert.doesNotMatch(fetchLogPanel, /tabIndex=\{activeTab ===/);

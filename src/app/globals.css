@@ -5970,8 +5970,29 @@ details:not([open]) > :not(summary) {
   justify-content: space-between;
 }
 
-.sync-panel-meta-row dd {
+.fb-hub-digest-meta-item dt,
+.sync-panel-meta-row dt,
+.sync-panel-task-fact-label {
+  color: var(--muted);
+  font-size: 0.625rem;
+  font-weight: 760;
+  letter-spacing: 0.07em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.fb-hub-digest-meta-item dd,
+.sync-panel-meta-row dd,
+.sync-panel-task-fact-value {
   color: var(--ink);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.35;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sync-panel-meta-row dd {
   text-align: right;
 }
 
@@ -6010,9 +6031,10 @@ details:not([open]) > :not(summary) {
   margin-bottom: 0.25rem;
 }
 
-.sync-panel-timeline-title {
-  color: var(--ink);
-  font-weight: 650;
+.sync-panel-timeline-divider {
+  border-top: 1px solid var(--line);
+  flex: 1;
+  min-width: 0;
 }
 
 .sync-panel-stopped-time {
@@ -6965,16 +6987,12 @@ details:not([open]) > :not(summary) {
 }
 
 .sync-panel-task-fact-label {
-  color: var(--muted);
   flex-shrink: 0;
   width: 6rem;
 }
 
 .sync-panel-task-fact-value {
-  color: var(--ink);
   flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
 }
 
 .sync-panel-task-danger {
@@ -9256,23 +9274,8 @@ a.fb-hub-source-name:focus-visible {
   min-width: 0;
 }
 
-.fb-hub-digest-meta-item dt {
-  color: var(--muted);
-  font-size: 0.625rem;
-  font-weight: 760;
-  letter-spacing: 0.07em;
-  line-height: 1.2;
-  text-transform: uppercase;
-}
-
 .fb-hub-digest-meta-item dd {
-  color: var(--ink);
-  font-size: 0.8125rem;
-  font-weight: 720;
-  line-height: 1.35;
   margin-top: 0.25rem;
-  min-width: 0;
-  overflow-wrap: anywhere;
 }
 
 .fb-hub-digest-status {
@@ -12218,7 +12221,6 @@ body {
   }
 
   .own-digest-card .fb-hub-digest-meta-item dt {
-    color: var(--muted-strong);
     font-size: 0.625rem;
     letter-spacing: 0.062em;
   }

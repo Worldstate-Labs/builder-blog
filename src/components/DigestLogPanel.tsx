@@ -599,7 +599,6 @@ function DigestStatusPanel({
     : 0;
   const visibleRowEntries = rowEntries.slice(logWindowStart, logWindowStart + LOG_WINDOW_SIZE);
   const visibleGraphEntries = visibleRowEntries.slice().reverse();
-  const visibleCount = visibleGraphEntries.length;
   const graphStartLabel = visibleGraphEntries[0]
     ? hydrated
       ? formatRelative(visibleGraphEntries[0].time)
@@ -706,9 +705,7 @@ function DigestStatusPanel({
         {entries.length > 0 ? (
           <div className="sync-panel-column">
             <div className="sync-panel-timeline-head">
-              <span className="sync-panel-timeline-title">
-                Last {visibleCount} AI Digest {visibleCount === 1 ? "build" : "builds"}
-              </span>
+              <div className="sync-panel-timeline-divider" aria-hidden="true" />
             </div>
             <div className="sync-panel-timeline-axis" aria-hidden="true">
               <span>{graphStartLabel}</span>

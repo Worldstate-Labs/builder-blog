@@ -572,7 +572,8 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /visibleGraphEntries\.map/);
   assert.match(panel, /className="sync-panel-slot-rows is-scrollable" onScroll=\{handleLogScroll\}/);
   assert.match(panel, /data-sync-log-row="true"/);
-  assert.match(panel, /Last \{visibleCount\} AI Digest/);
+  assert.match(panel, /className="sync-panel-timeline-divider" aria-hidden="true"/);
+  assert.doesNotMatch(panel, /Last \{visibleCount\} AI Digest/);
   assert.match(panel, /className="sync-panel-timeline-axis"/);
   assert.match(panel, /const graphStartLabel = visibleGraphEntries\[0\]/);
   assert.match(panel, /const graphEndLabel = visibleGraphEntries\.at\(-1\)/);
