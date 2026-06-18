@@ -34,12 +34,12 @@ export default async function LoginPage({
       <div className="fb-login-shell">
         <section className="fb-login-intro">
           <h1 className="fb-login-title">
-            Sign in to your{" "}
-            <span className="fb-login-title-break">FollowBrief workspace.</span>
+            Sign in to{" "}
+            <span className="fb-login-title-break">FollowBrief.</span>
           </h1>
           <p className="fb-login-copy">
-            Follow sources, read cited AI Digest issues, and search them
-            alongside sources and posts later.
+            Follow sources, build cited AI Digest issues, and search them with
+            sources and posts.
           </p>
           <div className="fb-login-proof-rail" aria-label="Workspace capabilities">
             <LoginProof icon={Rss} label="Follow sources" />
@@ -55,7 +55,7 @@ export default async function LoginPage({
                 Sign in
               </h2>
               <p className="fb-login-panel-copy">
-                Use one account for FollowBrief and your Local Agent.
+                Use the same FollowBrief account for the app and Local Agent.
               </p>
             </div>
           </div>
@@ -71,7 +71,7 @@ export default async function LoginPage({
             <AuthButtons callbackUrl={safeCallbackUrl(params.callbackUrl)} />
           </div>
           <p className="fb-login-note">
-            After signing in, add access keys in Settings.
+            Add Local Agent access keys in Settings after signing in.
           </p>
         </section>
       </div>

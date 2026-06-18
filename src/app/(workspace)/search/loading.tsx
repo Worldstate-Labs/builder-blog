@@ -9,7 +9,7 @@ export default function SearchLoading() {
     >
       <PageHeader
         title="Search"
-        description="Find sources, posts, and AI Digest issues in one place."
+        description="Find sources, posts, and AI Digest issues."
       />
 
       <div className="workspace-content-stack search-results-workspace">

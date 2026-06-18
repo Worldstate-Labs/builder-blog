@@ -169,7 +169,7 @@ export default async function SearchPage({
     <div className="page-pad page-pad--reading search-page">
       <PageHeader
         title="Search"
-        description="Find sources, posts, and AI Digest issues in one place."
+        description="Find sources, posts, and AI Digest issues."
       />
 
       <div className="workspace-content-stack search-results-workspace">
@@ -1190,7 +1190,7 @@ function buildSearchRecoveryActions({
     coveredFilterCount += 1;
     actions.push({
       href: searchHref({ query, type: "all", mode, sort, time }),
-      label: "Search all result types",
+      label: "All result types",
     });
   }
   if (time !== "any" || parsed.after || parsed.before) {
@@ -1200,7 +1200,7 @@ function buildSearchRecoveryActions({
       Number(Boolean(parsed.before));
     actions.push({
       href: searchHref({ query: queryWithoutDate, type: typeFilter, mode, sort, time: "any" }),
-      label: "Search any time",
+      label: "Any time",
     });
   }
   if (activeFilterCount > coveredFilterCount) {

@@ -166,7 +166,7 @@ async function AiDigestFeedSlot({
       hasContent: hasDigestContentByOwnerId.has(userId),
       id: "own",
       title: ownPipelineTitle,
-      ownerLabel: "Your AI Digest",
+      ownerLabel: "Your AI Digest collection",
       ownerUserId: userId,
       isOwnPipeline: true,
     },

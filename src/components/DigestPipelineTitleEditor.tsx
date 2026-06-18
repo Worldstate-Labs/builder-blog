@@ -44,7 +44,7 @@ export function DigestPipelineTitleEditor({
 
     const nextTitle = draft.trim();
     if (!nextTitle) {
-      setError("AI Digest collection name cannot be empty.");
+      setError("Enter an AI Digest collection name.");
       return;
     }
     if (nextTitle === title) {
@@ -62,14 +62,14 @@ export function DigestPipelineTitleEditor({
           body: JSON.stringify({ title: nextTitle }),
         });
 
-        if (!response.ok) throw new Error("Could not rename AI Digest collection.");
+        if (!response.ok) throw new Error("Could not save AI Digest collection name.");
 
         setTitle(nextTitle);
         setDraft(nextTitle);
         setEditing(false);
         router.refresh();
       } catch {
-        setError("Could not rename AI Digest collection.");
+        setError("Could not save AI Digest collection name.");
       }
     });
   }
