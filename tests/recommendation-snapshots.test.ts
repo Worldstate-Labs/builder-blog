@@ -175,8 +175,8 @@ test("favorites saves posts into the Favorites tab", () => {
   assert.match(digestRoute, /feedFavorite\.findMany/);
   assert.match(feedFavorites, /feedItemAppearsInAccessibleDigest/);
   assert.match(feedFavorites, /digestPipelineImport\.findMany/);
-  assert.match(feedFavorites, /Post is not in your sources or imported AI Digest collections/);
-  assert.doesNotMatch(feedFavorites, /Post is not in your sources or imported AI Digest issues/);
+  assert.match(feedFavorites, /Post is outside your Sources or AI Digest collections/);
+  assert.doesNotMatch(feedFavorites, /Post is not in your sources|imported AI Digest collections|imported AI Digest issues/);
   assert.match(digestDetails, /favoriteStateByUrl/);
   assert.match(digestDetails, /favoriteStateByPostKey/);
   assert.match(digestDetails, /cleanFavoriteStateByUrl/);

@@ -65,7 +65,7 @@ export async function POST(request: Request) {
   if (item.builderId) {
     const poolIds = await activePoolBuilderIds(session.user.id);
     if (!poolIds.includes(item.builderId)) {
-      return NextResponse.json({ error: "Post is not in your sources" }, { status: 403 });
+      return NextResponse.json({ error: "Post is outside your Sources" }, { status: 403 });
     }
   } else {
     return NextResponse.json({ error: "Post is not linked to a source" }, { status: 409 });
