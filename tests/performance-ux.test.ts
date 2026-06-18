@@ -1294,7 +1294,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /The owner has not shared any AI Digest archives yet/);
   assert.match(dashboardPage, /No AI Digest archives/);
   assert.doesNotMatch(dashboardPage, /saved briefs/);
-  assert.match(dashboardPage, /Add sources in Sources\. They feed AI Digest and Following\./);
+  assert.match(dashboardPage, /Add sources in the Sources tab\. They feed AI Digest and Following\./);
+  assert.doesNotMatch(dashboardPage, /Add sources in Sources\. They feed AI Digest and Following\./);
   assert.doesNotMatch(dashboardPage, /start building AI Digests/);
   assert.match(dashboardPage, /No summarized posts yet/);
   assert.doesNotMatch(dashboardPage, /No fetched posts yet/);
@@ -1780,7 +1781,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /No followed sources yet/);
   assert.match(followingSection, /href="\/builders\?tab=fetch"[\s\S]*Choose sources/);
   assert.doesNotMatch(followingSection, /href="\/builders\?tab=fetch"[\s\S]*Go to Sources/);
-  assert.match(followingSection, /Add sources in Sources\. They feed AI Digest and Following\./);
+  assert.match(followingSection, /Add sources in the Sources tab\. They feed AI Digest and Following\./);
+  assert.doesNotMatch(followingSection, /Add sources in Sources\. They feed AI Digest and Following\./);
   assert.doesNotMatch(followingSection, /start seeing Following posts/);
   assert.doesNotMatch(followingSection, /start Following/);
   assert.match(followingSection, /sourceReadiness\.summarizedPostCount === 0/);
@@ -3335,7 +3337,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Source libraries shared to Hub will appear here\.|Source libraries shared by other users\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Community source libraries, your shared source libraries|Community libraries|your shared libraries/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /No shared source libraries match this filter\./);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Import source libraries to see them in Sources\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Import source libraries to see them in the Sources tab\./);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Import source libraries to see them in Sources\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Imported source libraries will appear here\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Could not import source library\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Could not remove source library import\./);
@@ -4724,7 +4727,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /mode = "hub"/);
   assert.match(digestPipelineForm, /Imported AI Digest archives/);
   assert.match(digestPipelineForm, /Import shared archives into the AI Digest tab\./);
-  assert.match(digestPipelineForm, /Archives already available in the AI Digest tab\./);
+  assert.match(digestPipelineForm, /Archives already in the AI Digest tab\./);
+  assert.doesNotMatch(digestPipelineForm, /Archives already available in the AI Digest tab\./);
   assert.doesNotMatch(digestPipelineForm, /AI Digest archives shared to Hub\.|AI Digest archives already imported from Hub\./);
   assert.doesNotMatch(digestPipelineForm, /AI Digest archives you imported from Hub\./);
   assert.doesNotMatch(digestPipelineForm, /Digests imported from the Hub/);
@@ -4772,7 +4776,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /isPending=\{importPending \|\| pendingAction !== null\}/);
   assert.match(digestPipelineForm, /disabled=\{isPending \|\| pending !== null\}/);
   assert.match(digestPipelineForm, /No imported AI Digest archives/);
-  assert.match(digestPipelineForm, /Import archives to see them in AI Digest\./);
+  assert.match(digestPipelineForm, /Import archives to see them in the AI Digest tab\./);
+  assert.doesNotMatch(digestPipelineForm, /Import archives to see them in AI Digest\./);
   assert.doesNotMatch(digestPipelineForm, /Import an AI Digest archive from Hub to see it on Home\./);
   assert.doesNotMatch(digestPipelineForm, /to see them on Home\./);
   assert.match(digestPipelineForm, /href="\/library-hub\?tab=ai-digests"/);

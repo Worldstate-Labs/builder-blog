@@ -604,7 +604,7 @@ function sourceLibraryListCopy(filter: FilterKey) {
     case "imported":
       return {
         description: "Imported libraries available in Sources, Following, and AI Digest.",
-        emptyBody: "Import source libraries to see them in Sources.",
+        emptyBody: "Import source libraries to see them in the Sources tab.",
       };
     case "shared":
       return {
