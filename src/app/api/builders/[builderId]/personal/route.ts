@@ -76,7 +76,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
   if (!nextSourceValue) {
     return NextResponse.json(
-      { error: "sourceValue is required to resolve the source" },
+      { error: "Handle or URL is required." },
       { status: 400 },
     );
   }
@@ -102,7 +102,7 @@ export async function PATCH(request: Request, { params }: Params) {
     const check = validatePublicHttpUrl(candidate);
     if (!check.ok) {
       return NextResponse.json(
-        { error: `Source URL rejected: ${check.reason}` },
+        { error: `Source URL is not allowed: ${check.reason}.` },
         { status: 400 },
       );
     }
@@ -202,7 +202,7 @@ export async function PATCH(request: Request, { params }: Params) {
       );
     }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Update failed" },
+      { error: "Could not save source." },
       { status: 500 },
     );
   }

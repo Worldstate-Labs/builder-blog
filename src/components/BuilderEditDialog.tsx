@@ -104,7 +104,7 @@ export function BuilderEditDialog({
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) {
-          setError(body?.error ?? `HTTP ${response.status}`);
+          setError(body?.error ?? "Could not save source.");
           return;
         }
         if (body?.warning) setWarning(body.warning);
@@ -113,8 +113,8 @@ export function BuilderEditDialog({
         // every route's RSC payload so the row picks up the new
         // name, sourceType, sourceUrl, etc.
         router.refresh();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not save source.");
+      } catch {
+        setError("Could not save source.");
       }
     });
   }

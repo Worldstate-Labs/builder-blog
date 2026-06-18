@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     const check = validatePublicHttpUrl(candidate);
     if (!check.ok) {
       return NextResponse.json(
-        { error: `Source URL rejected: ${check.reason}` },
+        { error: `Source URL is not allowed: ${check.reason}.` },
         { status: 400 },
       );
     }

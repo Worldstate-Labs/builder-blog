@@ -3654,6 +3654,12 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /No personal sources yet|No sources in your library yet/);
   assert.match(feedItemsRoute, /Source is not in your source library\./);
   assert.doesNotMatch(feedItemsRoute, /Source is not in your library/);
+  assert.match(personalBuilderRoute, /Source URL is not allowed: \$\{check\.reason\}\./);
+  assert.doesNotMatch(personalBuilderRoute, /Source URL rejected/);
+  assert.match(personalBuilderUpdateRoute, /Handle or URL is required\./);
+  assert.match(personalBuilderUpdateRoute, /Source URL is not allowed: \$\{check\.reason\}\./);
+  assert.match(personalBuilderUpdateRoute, /Could not save source\./);
+  assert.doesNotMatch(personalBuilderUpdateRoute, /sourceValue is required to resolve the source|Source URL rejected|Update failed/);
   assert.match(personalBuilderUpdateRoute, /This source already exists in a source library\./);
   assert.doesNotMatch(personalBuilderUpdateRoute, /This source already exists in a library/);
   assert.match(buildersPage, /name:\s*data\.sessionUserName/);
@@ -3784,6 +3790,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /function formatPostDate/);
   assert.match(builderFeedItems, /className="builder-post-loading-line"/);
   assert.match(builderEditDialog, /Could not save source\./);
+  assert.doesNotMatch(builderEditDialog, /HTTP \$\{response\.status\}/);
+  assert.doesNotMatch(builderEditDialog, /err instanceof Error \? err\.message/);
   assert.match(builderEditDialog, /\{isPending \? "Saving" : "Save changes"\}/);
   assert.doesNotMatch(builderEditDialog, /Saving…/);
   assert.doesNotMatch(builderEditDialog, /Save failed\./);
