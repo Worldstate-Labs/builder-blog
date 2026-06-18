@@ -189,7 +189,7 @@ async function probeX(input: ProbeInput): Promise<ProbeOutcome> {
   if (response.status === 404) {
     return {
       ok: false,
-      hardError: `X account @${handle} doesn't exist.`,
+      hardError: `X account @${handle} was not found.`,
       enrichment: {},
     };
   }
@@ -203,14 +203,14 @@ async function probeX(input: ProbeInput): Promise<ProbeOutcome> {
   if (response.status === 429 || response.status >= 500) {
     return {
       ok: true,
-      warning: `Got HTTP ${response.status} from the X API. Your Local Agent will verify at sync time.`,
+      warning: "X API could not verify this handle. Your Local Agent will verify at sync time.",
       enrichment: {},
     };
   }
   if (!response.ok) {
     return {
       ok: true,
-      warning: `Got HTTP ${response.status} from the X API.`,
+      warning: "X API could not verify this handle.",
       enrichment: {},
     };
   }
@@ -223,7 +223,7 @@ async function probeX(input: ProbeInput): Promise<ProbeOutcome> {
     // to no account in X's database.
     return {
       ok: false,
-      hardError: `X account @${handle} doesn't exist.`,
+      hardError: `X account @${handle} was not found.`,
       enrichment: {},
     };
   }
@@ -271,21 +271,21 @@ async function probeYouTube(input: ProbeInput): Promise<ProbeOutcome> {
   if (response.status === 404) {
     return {
       ok: false,
-      hardError: "YouTube channel not found (HTTP 404).",
+      hardError: "YouTube channel not found.",
       enrichment: {},
     };
   }
   if (response.status === 403 || response.status === 429 || response.status >= 500) {
     return {
       ok: true,
-      warning: `Got HTTP ${response.status} from the YouTube channel page. Your Local Agent will retry at sync time.`,
+      warning: "Could not reach the YouTube channel page right now. Your Local Agent will retry at sync time.",
       enrichment: {},
     };
   }
   if (!response.ok) {
     return {
       ok: true,
-      warning: `Got HTTP ${response.status} from the YouTube channel page.`,
+      warning: "Could not verify the YouTube channel page right now. Your Local Agent will retry at sync time.",
       enrichment: {},
     };
   }
@@ -345,21 +345,21 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
   if (response.status === 404 || response.status === 410) {
     return {
       ok: false,
-      hardError: `The page returned HTTP ${response.status}.`,
+      hardError: "The page could not be found.",
       enrichment: {},
     };
   }
   if (response.status === 403 || response.status === 429 || response.status >= 500) {
     return {
       ok: true,
-      warning: `Could not reach the page right now (HTTP ${response.status}). Your Local Agent will retry at sync time.`,
+      warning: "Could not reach the page right now. Your Local Agent will retry at sync time.",
       enrichment: {},
     };
   }
   if (!response.ok) {
     return {
       ok: true,
-      warning: `Got HTTP ${response.status} from the page.`,
+      warning: "Could not verify the page right now. Your Local Agent will retry at sync time.",
       enrichment: {},
     };
   }
@@ -451,21 +451,21 @@ async function probePodcast(input: ProbeInput): Promise<ProbeOutcome> {
   if (response.status === 404 || response.status === 410) {
     return {
       ok: false,
-      hardError: `The podcast RSS feed returned HTTP ${response.status}.`,
+      hardError: "The podcast RSS feed could not be found.",
       enrichment: {},
     };
   }
   if (response.status === 403 || response.status === 429 || response.status >= 500) {
     return {
       ok: true,
-      warning: `Could not reach the podcast RSS feed right now (HTTP ${response.status}). Your Local Agent will retry at sync time.`,
+      warning: "Could not reach the podcast RSS feed right now. Your Local Agent will retry at sync time.",
       enrichment: {},
     };
   }
   if (!response.ok) {
     return {
       ok: true,
-      warning: `Got HTTP ${response.status} from the podcast RSS feed.`,
+      warning: "Could not verify the podcast RSS feed right now. Your Local Agent will retry at sync time.",
       enrichment: {},
     };
   }

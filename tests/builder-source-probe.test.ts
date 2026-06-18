@@ -29,12 +29,14 @@ test("enrichBuilderFromSource remains as a back-compat alias", () => {
 test("probe classifies X API responses by status", () => {
   // 404 → hard reject with the user's handle in the message.
   assert.match(PROBE_SOURCE, /404/);
-  assert.match(PROBE_SOURCE, /X account @\$\{handle\} doesn't exist/);
+  assert.match(PROBE_SOURCE, /X account @\$\{handle\} was not found/);
   // 401/403 → soft warning, not a reject.
   assert.match(PROBE_SOURCE, /401/);
   assert.match(PROBE_SOURCE, /403/);
+  assert.match(PROBE_SOURCE, /X API could not verify this handle/);
   // X API URL is unchanged.
   assert.match(PROBE_SOURCE, /api\.x\.com\/2\/users\/by\/username/);
+  assert.doesNotMatch(PROBE_SOURCE, /X account @\$\{handle\} doesn't exist|Got HTTP \$\{response\.status\} from the X API/);
 });
 
 test("probe classifies YouTube page responses by status", () => {
@@ -42,6 +44,8 @@ test("probe classifies YouTube page responses by status", () => {
   assert.match(PROBE_SOURCE, /YouTube channel not found/);
   // 403 / 429 / 5xx are degraded (soft) — page is reachable, just walled.
   assert.match(PROBE_SOURCE, /YouTube channel page/);
+  assert.match(PROBE_SOURCE, /Could not reach the YouTube channel page right now/);
+  assert.doesNotMatch(PROBE_SOURCE, /YouTube channel not found \(HTTP 404\)|Got HTTP \$\{response\.status\} from the YouTube channel page/);
 });
 
 test("probe classifies podcast RSS response and recognizes XML", () => {
@@ -61,6 +65,19 @@ test("probe classifies blog/website responses with 404 / 410 as hard reject", ()
   // 403 / 429 / 5xx are degraded (Could not reach the page right now).
   assert.match(PROBE_SOURCE, /Could not reach the page right now/);
   assert.doesNotMatch(PROBE_SOURCE, /Couldn't reach/);
+  assert.match(PROBE_SOURCE, /The page could not be found/);
+  assert.match(PROBE_SOURCE, /Could not verify the page right now/);
+  assert.doesNotMatch(PROBE_SOURCE, /The page returned HTTP \$\{response\.status\}|Got HTTP \$\{response\.status\} from the page|Could not reach the page right now \(HTTP \$\{response\.status\}\)/);
+});
+
+test("probe user-facing status copy avoids transport codes", () => {
+  assert.match(PROBE_SOURCE, /The podcast RSS feed could not be found/);
+  assert.match(PROBE_SOURCE, /Could not reach the podcast RSS feed right now/);
+  assert.match(PROBE_SOURCE, /Could not verify the podcast RSS feed right now/);
+  assert.doesNotMatch(
+    PROBE_SOURCE,
+    /Got HTTP \$\{response\.status\}|returned HTTP \$\{response\.status\}|\(HTTP \$\{response\.status\}\)|HTTP 404/,
+  );
 });
 
 test("probe respects the 4s timeout and the standard User-Agent", () => {

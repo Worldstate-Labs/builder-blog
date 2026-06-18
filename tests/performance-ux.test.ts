@@ -4507,6 +4507,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(builderSubscriptionRoute, /Source is not in your source library\./);
   assert.match(builderLibraryRoute, /Source is not in your source library\./);
   assert.match(builderLibraryRoute, /Sources from imported source libraries cannot be removed individually\./);
+  assert.match(skillRoute, /Source URL is not allowed \(\$\{input\.name\}\): \$\{check\.reason\}\./);
+  assert.doesNotMatch(skillRoute, /Source URL rejected/);
   assert.match(builderEntitySubscriptionRoute, /No accessible channels for this entity in your source library\./);
   assert.doesNotMatch(
     `${builderSubscriptionRoute}\n${builderLibraryRoute}\n${builderEntitySubscriptionRoute}`,
