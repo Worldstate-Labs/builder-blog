@@ -156,16 +156,16 @@ const OVERRIDE_COPY: Record<
   library: {
     name: "Re-fetch existing posts",
     cronHint:
-      "Includes posts already in your source library on every run. Leave off for normal updates.",
+      "Re-fetches existing source posts on every run. Leave off for normal updates.",
     onceHint:
-      "Includes posts already in your source library this time.",
+      "Re-fetches existing source posts this time.",
   },
   digest: {
     name: "Reuse posts from AI Digest issues",
     cronHint:
-      "Includes posts already used in AI Digest issues on every run.",
+      "Reuses posts from AI Digest issues on every run.",
     onceHint:
-      "Includes posts already used in AI Digest issues this time.",
+      "Reuses posts from AI Digest issues this time.",
   },
 };
 
@@ -770,7 +770,7 @@ function TokenPickerDialog({
             Choose access key
           </h2>
           <p className="token-picker-sub">
-            We&rsquo;ll create a 10-minute setup code for this key.
+            Creates a 10-minute setup code for this key.
           </p>
         </header>
 

@@ -845,7 +845,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(skillPromptActions, /await navigator\.clipboard\.writeText\(command\)/);
   assert.match(skillPromptActions, /className="token-picker-form"/);
   assert.match(skillPromptActions, />\s*Choose access key\s*<\/h2>/);
-  assert.match(skillPromptActions, /10-minute setup code for this key/);
+  assert.match(skillPromptActions, /Creates a 10-minute setup code for this key/);
+  assert.doesNotMatch(skillPromptActions, /We&rsquo;ll create a 10-minute setup code for this key/);
   assert.match(skillPromptActions, /const completed = await continueScheduleCopy\(selection\);/);
   assert.match(skillPromptActions, /if \(completed\) setCronConfigOpen\(false\);/);
   assert.match(skillPromptActions, /const missingAccessMessage = "Add an access key in Settings to copy Local Agent prompts\."/);

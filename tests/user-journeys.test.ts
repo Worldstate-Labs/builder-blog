@@ -405,8 +405,8 @@ test("web app serves the agent skill and setup command", () => {
   // Both cron + once dialogs expose it for both contexts, defaulting off.
   assert.match(skillPromptActions, /OVERRIDE_COPY/);
   assert.match(skillPromptActions, /Re-fetch existing posts/);
-  assert.match(skillPromptActions, /Includes posts already in your source library/);
-  assert.doesNotMatch(skillPromptActions, /Refresh existing source library posts|Refresh posts already in library|Refresh posts already saved|Refreshes posts already in your library/);
+  assert.match(skillPromptActions, /Re-fetches existing source posts on every run/);
+  assert.doesNotMatch(skillPromptActions, /Includes posts already in your source library|Refresh existing source library posts|Refresh posts already in library|Refresh posts already saved|Refreshes posts already in your library/);
   assert.match(skillPromptActions, /Reuse posts from AI Digest issues/);
   assert.doesNotMatch(skillPromptActions, /Include posts already used in AI Digest issues|Include posts already used in AI Digest archives|Include posts already used in AI Digests/);
   assert.doesNotMatch(skillPromptActions, /Include already digested posts/);
@@ -425,8 +425,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /build your digest\./);
   assert.doesNotMatch(skillPromptActions, /build new digests|update every source/);
   assert.match(skillPromptActions, /Local Agent/);
-  assert.match(skillPromptActions, /Includes posts already used in AI Digest issues this time\./);
-  assert.doesNotMatch(skillPromptActions, /Posts already used in AI Digest issues can be included again this time\.|Posts already used in AI Digest archives can be included again this time\.|Already digested posts can be included again this time\./);
+  assert.match(skillPromptActions, /Reuses posts from AI Digest issues this time\./);
+  assert.doesNotMatch(skillPromptActions, /Includes posts already used in AI Digest issues|Posts already used in AI Digest issues can be included again this time\.|Posts already used in AI Digest archives can be included again this time\.|Already digested posts can be included again this time\./);
   assert.match(skillPromptActions, /id="cron-fetch-days"[\s\S]*label="Lookback window \(days\)"/);
   assert.doesNotMatch(skillPromptActions, /Max post age \(days\)|Fetch post age \(days\)/);
   assert.match(skillPromptActions, /Default: 30\. Range: 1-90\./);
