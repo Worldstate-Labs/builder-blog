@@ -67,7 +67,7 @@ export function BuilderDetailLoading() {
             <span className="builder-detail-channels-summary-copy">
               <span>Source libraries</span>
               <span className="builder-detail-channels-summary-desc">
-                Source libraries that include this source.
+                Libraries that include this source.
               </span>
             </span>
             <span className="builder-detail-loading-chip" />

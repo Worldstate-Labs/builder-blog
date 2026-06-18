@@ -227,7 +227,7 @@ export default async function BuilderDetailPage({ params }: Params) {
             <span className="builder-detail-channels-summary-copy">
               <span>Source libraries</span>
               <span className="builder-detail-channels-summary-desc">
-                Source libraries that include this source.
+                Libraries that include this source.
               </span>
             </span>
             <CountMeta label={channels.length === 1 ? "library" : "libraries"} value={channels.length} />
@@ -392,7 +392,7 @@ async function RecentPostsSlot({
           </Link>
         }
         title="No summarized posts yet"
-        body="Run Fetch sources to summarize its posts."
+        body="Run Fetch sources to summarize posts from this source."
       />
     );
   }

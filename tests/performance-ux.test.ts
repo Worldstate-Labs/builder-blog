@@ -1567,8 +1567,10 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /Source libraries/);
   assert.match(builderDetailPage, /className="builder-detail-channels-summary-copy"/);
   assert.match(builderDetailPage, /className="builder-detail-channels-summary-desc"/);
-  assert.match(builderDetailPage, /Source libraries that include this source\./);
-  assert.match(builderDetailLoading, /Source libraries that include this source\./);
+  assert.match(builderDetailPage, /Libraries that include this source\./);
+  assert.match(builderDetailLoading, /Libraries that include this source\./);
+  assert.doesNotMatch(builderDetailPage, /Source libraries that include this source\./);
+  assert.doesNotMatch(builderDetailLoading, /Source libraries that include this source\./);
   assert.match(builderDetailPage, /channels\.length === 1 \? "library" : "libraries"/);
   assert.doesNotMatch(builderDetailPage, /channels\.length === 1 \? "source library" : "source libraries"/);
   assert.match(builderDetailPage, /className="builder-detail-channel-list"/);
@@ -1604,7 +1606,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(channelPreferenceToggle, /flex flex-col items-end|text-xs text-\[var\(--danger\)\]|fill-\[var\(--warm\)\]|transition-colors/);
   assert.match(builderDetailPage, /EmptyState/);
   assert.match(builderDetailPage, /title="No summarized posts yet"/);
-  assert.match(builderDetailPage, /Run Fetch sources to summarize its posts\./);
+  assert.match(builderDetailPage, /Run Fetch sources to summarize posts from this source\./);
+  assert.doesNotMatch(builderDetailPage, /Run Fetch sources to summarize its posts\./);
   assert.doesNotMatch(builderDetailPage, /Run Fetch sources, then posts from this source will appear here\./);
   assert.doesNotMatch(builderDetailPage, /Fetch and summarize sources from Sources|from the Sources page/);
   assert.match(builderDetailPage, /actions=\{[\s\S]*href="\/builders\?tab=fetch"[\s\S]*Open Fetch sources/);
@@ -3885,7 +3888,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /@\/components\/EmptyState/);
   assert.match(builderFeedItems, /<EmptyState[\s\S]*className="builder-post-empty"/);
   assert.match(builderFeedItems, /title="No summarized posts yet"/);
-  assert.match(builderFeedItems, /Run Fetch sources to summarize its posts\./);
+  assert.match(builderFeedItems, /Run Fetch sources to summarize posts from this source\./);
+  assert.doesNotMatch(builderFeedItems, /Run Fetch sources to summarize its posts\./);
   assert.doesNotMatch(builderFeedItems, /Run Fetch sources\. Summarized posts from this source will appear here\./);
   assert.doesNotMatch(builderFeedItems, /Run Fetch sources, then posts from this source will appear here\./);
   assert.doesNotMatch(builderFeedItems, /Fetch and summarize sources with your Local Agent/);
