@@ -863,8 +863,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(skillPromptActions, /Creates a setup code that expires in 10 minutes|Creates a 10-minute setup code for this key|We&rsquo;ll create a 10-minute setup code for this key/);
   assert.match(skillPromptActions, /const completed = await continueScheduleCopy\(selection\);/);
   assert.match(skillPromptActions, /if \(completed\) setCronConfigOpen\(false\);/);
-  assert.match(skillPromptActions, /const missingAccessMessage = "Add an access key to copy Local Agent prompts\."/);
-  assert.doesNotMatch(skillPromptActions, /const missingAccessMessage = "Add an access key in Settings to copy Local Agent prompts\.|const missingAccessMessage = "Add an access key in Settings first"/);
+  assert.match(skillPromptActions, /const missingAccessMessage = "Add an access key to set up Local Agent runs\."/);
+  assert.doesNotMatch(skillPromptActions, /const missingAccessMessage = "Add an access key to copy Local Agent prompts\.|const missingAccessMessage = "Add an access key in Settings to copy Local Agent prompts\.|const missingAccessMessage = "Add an access key in Settings first"/);
   assert.doesNotMatch(skillPromptActions, /Connect a Local Agent in Settings first/);
   assert.match(skillPromptActions, /setStatus\(\{ kind: "info", text: missingAccessMessage \}\);\s*return false;/);
   assert.match(skillPromptActions, /if \(activeTokens\.length === 0\) \{[\s\S]*missingAccessMessage[\s\S]*return;\s*\}[\s\S]*if \(target === "cron"\)/);
@@ -885,12 +885,12 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(skillPromptActions, /const statusLabel = token\.lastUsedAt[\s\S]*Never connected/);
   assert.doesNotMatch(skillPromptActions, /Last used|Never used|Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}|describeMachine\(token\)|formatRelative\(token\.lastUsedAt\)|token-picker-row-name">\{token\.name\}/);
   assert.match(skillPromptActions, /className="skill-prompt-access-required"/);
-  assert.match(skillPromptActions, /Add an access key to copy Local Agent prompts\./);
+  assert.match(skillPromptActions, /Add an access key to set up Local Agent runs\./);
   assert.match(skillPromptActions, /<Link className="fb-btn dark compact" href="\/settings">[\s\S]*Open Settings/);
   assert.match(skillPromptActions, /Access key required/);
   assert.match(skillPromptActions, /No access keys yet/);
   assert.doesNotMatch(skillPromptActions, /Local Agent access required|No Local Agent access yet/);
-  assert.doesNotMatch(skillPromptActions, /Add an access key in Settings to copy Local Agent prompts\.|Add one in Settings before copying Local Agent prompts\.|Add an access key in Settings before copying Local Agent prompts\./);
+  assert.doesNotMatch(skillPromptActions, /Add an access key to copy Local Agent prompts\.|Add an access key in Settings to copy Local Agent prompts\.|Add one in Settings before copying Local Agent prompts\.|Add an access key in Settings before copying Local Agent prompts\./);
   assert.match(skillPromptActions, /<Link className="fb-btn light compact" href="\/settings">[\s\S]*Add access key/);
   assert.match(skillPromptActions, /Add access key/);
   assert.match(skillPromptActions, /\{submitting \? "Copying" : "Copy prompt"\}/);

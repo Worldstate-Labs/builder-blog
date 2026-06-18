@@ -407,8 +407,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.match(skillPromptActions, /Re-fetch existing posts/);
   assert.match(skillPromptActions, /Re-fetch existing source posts each run/);
   assert.doesNotMatch(skillPromptActions, /Includes posts already in your source library|Refresh existing source library posts|Refresh posts already in library|Refresh posts already saved|Refreshes posts already in your library/);
-  assert.match(skillPromptActions, /Reuse past AI Digest posts/);
-  assert.doesNotMatch(skillPromptActions, /Reuse posts from AI Digest issues|Include posts already used in AI Digest issues|Include posts already used in AI Digest archives|Include posts already used in AI Digests/);
+  assert.match(skillPromptActions, /Reuse posts from past issues/);
+  assert.doesNotMatch(skillPromptActions, /Reuse past AI Digest posts|Reuse posts from AI Digest issues|Include posts already used in AI Digest issues|Include posts already used in AI Digest archives|Include posts already used in AI Digests/);
   assert.doesNotMatch(skillPromptActions, /Include already digested posts/);
   assert.match(skillPromptActions, /overrideFetched/);
   assert.match(skillPromptActions, /params\.set\("force", "1"\)/);
@@ -425,8 +425,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /build your digest\./);
   assert.doesNotMatch(skillPromptActions, /build new digests|update every source/);
   assert.match(skillPromptActions, /Local Agent/);
-  assert.match(skillPromptActions, /Reuse past AI Digest posts once\./);
-  assert.doesNotMatch(skillPromptActions, /Reuses posts already used in AI Digest this time\.|Reuses posts from AI Digest issues|Includes posts already used in AI Digest issues|Posts already used in AI Digest issues can be included again this time\.|Posts already used in AI Digest archives can be included again this time\.|Already digested posts can be included again this time\./);
+  assert.match(skillPromptActions, /Reuse posts from past issues once\./);
+  assert.doesNotMatch(skillPromptActions, /Reuse past AI Digest posts|Reuses posts already used in AI Digest this time\.|Reuses posts from AI Digest issues|Includes posts already used in AI Digest issues|Posts already used in AI Digest issues can be included again this time\.|Posts already used in AI Digest archives can be included again this time\.|Already digested posts can be included again this time\./);
   assert.match(skillPromptActions, /id="cron-fetch-days"[\s\S]*label="Lookback window \(days\)"/);
   assert.doesNotMatch(skillPromptActions, /Max post age \(days\)|Fetch post age \(days\)/);
   assert.match(skillPromptActions, /Default: 30 days\. Range: 1-90\./);
@@ -445,7 +445,8 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /Choose a Local Agent/);
   assert.match(skillPromptActions, /No access keys yet/);
   assert.doesNotMatch(skillPromptActions, /No Local Agent access yet/);
-  assert.match(skillPromptActions, /Add an access key to copy Local Agent prompts\./);
+  assert.match(skillPromptActions, /Add an access key to set up Local Agent runs\./);
+  assert.doesNotMatch(skillPromptActions, /Add an access key to copy Local Agent prompts\./);
   assert.doesNotMatch(skillPromptActions, /Saved for future summaries/);
   assert.doesNotMatch(skillPromptActions, /Posts published more than this many days ago are excluded/);
   assert.doesNotMatch(skillPromptActions, /token-picker-grouplabel">Schedule/);

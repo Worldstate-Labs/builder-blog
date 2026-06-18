@@ -77,7 +77,7 @@ type CopyExtras = {
   parallelWorkers: number;
 };
 type ManualCopyPrompt = { target: CopyTarget; text: string };
-const missingAccessMessage = "Add an access key to copy Local Agent prompts.";
+const missingAccessMessage = "Add an access key to set up Local Agent runs.";
 const promptDialogDescription = () => "Choose frequency, Local Agent, language, and lookback.";
 
 async function copyTextToClipboard(text: string) {
@@ -161,11 +161,11 @@ const OVERRIDE_COPY: Record<
       "Re-fetch existing source posts once.",
   },
   digest: {
-    name: "Reuse past AI Digest posts",
+    name: "Reuse posts from past issues",
     cronHint:
-      "Reuse past AI Digest posts each run.",
+      "Reuse posts from past issues each run.",
     onceHint:
-      "Reuse past AI Digest posts once.",
+      "Reuse posts from past issues once.",
   },
 };
 
@@ -615,7 +615,7 @@ export function SkillPromptActions({
           <span className="skill-prompt-access-copy">
             <span className="skill-prompt-access-title">Access key required</span>
             <span className="skill-prompt-access-body">
-              Add an access key to copy Local Agent prompts.
+              Add an access key to set up Local Agent runs.
             </span>
           </span>
           <Link className="fb-btn dark compact" href="/settings">
@@ -785,7 +785,7 @@ function TokenPickerDialog({
               }
               body={
                 <>
-                  Add an access key to copy Local Agent prompts.
+                  Add an access key to set up Local Agent runs.
                 </>
               }
               className="token-picker-empty"
