@@ -139,7 +139,7 @@ export async function PATCH(request: Request, { params }: Params) {
     return {
       ok: true,
       enrichment: {},
-      warning: "Source updated without verification. Local Agent can retry later.",
+      warning: "Source updated unverified. Local Agent can retry later.",
     };
   });
   if (!probe.ok) {

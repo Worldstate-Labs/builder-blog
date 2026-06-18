@@ -225,7 +225,7 @@ export function BuilderEditDialog({
                 className="fb-input"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Defaults to resolved name"
+                placeholder="Uses detected name"
               />
             </label>
 
@@ -257,7 +257,7 @@ export function BuilderEditDialog({
                 onClick={removeFromLibrary}
               >
                 <Trash2 aria-hidden="true" />
-                {confirmingRemove ? "Confirm remove" : "Remove source"}
+                {confirmingRemove ? "Confirm removal" : "Remove source"}
               </button>
             </div>
             <div className="builder-edit-dialog-footer-actions">

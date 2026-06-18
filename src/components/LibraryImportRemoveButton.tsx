@@ -62,11 +62,11 @@ export function LibraryImportRemoveButton({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ libraryId }),
         });
-        if (!response.ok) throw new Error("Could not remove source library import.");
+        if (!response.ok) throw new Error("Could not remove imported source library.");
         setRemoved(true);
         router.refresh();
       } catch {
-        setError("Could not remove source library import.");
+        setError("Could not remove imported source library.");
       }
     });
   }
@@ -84,7 +84,7 @@ export function LibraryImportRemoveButton({
         >
           <div className="fb-dialog-inner settings-dialog-stack">
             <h3 className="fb-section-heading" id="import-remove-source-library-title">
-              Remove source library import?
+              Remove imported source library?
             </h3>
             <div className="settings-dialog-copy">
               <p>
@@ -121,7 +121,7 @@ export function LibraryImportRemoveButton({
     <div className="import-remove-control">
       <button
         aria-busy={isPending}
-        aria-label={`Remove ${libraryName} source library import`}
+        aria-label={`Remove imported source library ${libraryName}`}
         className="fb-btn light compact import-remove-button"
         disabled={isPending}
         onClick={requestRemove}
