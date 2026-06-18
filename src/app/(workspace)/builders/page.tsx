@@ -735,7 +735,7 @@ async function FetchSourcesSection({
             }),
           )}
           editableSourceOptions={data.sourceLabelOptions}
-          emptyBody="Add sources, then run Fetch sources."
+          emptyBody="Add sources, then copy a Fetch sources prompt."
           emptyTitle="No sources yet"
         />
       </PrivateLibraryPanel>

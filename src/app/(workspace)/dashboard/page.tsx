@@ -292,7 +292,7 @@ function DigestEmptyState({
       <FeedEmptyState
         className="ai-digest-empty"
         title="No AI Digest issues yet"
-        body="Wait for the owner to build an issue, or choose another collection."
+        body="Wait for the owner to create an issue, or choose another collection."
       />
     );
   }
@@ -327,7 +327,7 @@ function DigestEmptyState({
         }
         className="ai-digest-empty is-actionable"
         title="No AI Digest issues yet"
-        body="Build an AI Digest issue from summarized posts."
+        body="Copy a Build AI Digest prompt to create an issue."
       />
     );
   }
@@ -346,7 +346,7 @@ function DigestEmptyState({
       }
       className="ai-digest-empty is-actionable"
       title="No summarized posts yet"
-      body="Run Fetch sources to summarize followed posts."
+      body="Copy a Fetch sources prompt to summarize followed posts."
     />
   );
 }

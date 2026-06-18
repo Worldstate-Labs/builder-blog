@@ -547,14 +547,14 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.doesNotMatch(followingSection, /Add sources to feed AI Digest and Following\.|Add sources in the Sources tab|AI Digest issues and Following posts|Add sources in Sources\. They feed AI Digest|They feed AI Digest/);
   assert.match(followingSection, /No summarized posts yet/);
   assert.match(followingSection, /No unread posts yet/);
-  assert.match(followingSection, /Run Fetch sources to summarize followed posts/);
-  assert.match(followingSection, /Run Fetch sources to check for new posts/);
+  assert.match(followingSection, /Copy a Fetch sources prompt to summarize followed posts/);
+  assert.match(followingSection, /Copy a Fetch sources prompt to check for new posts/);
   assert.doesNotMatch(followingSection, /Following shows the latest unread posts|Following updates when Fetch sources finds new unread posts|Following will update after new unread posts/);
   assert.doesNotMatch(followingSection, /No fetched posts yet|Following can show their latest posts/);
   assert.match(followingSection, /title="Could not load Following posts"/);
   assert.match(followingSection, /Check your connection, then try again\./);
   assert.doesNotMatch(followingSection, /title="Could not load Following"|Something went wrong loading Following|Couldn't load Following/);
-  assert.doesNotMatch(followingSection, /Use Fetch sources to summarize posts from followed sources|Use Fetch sources to summarize followed posts|Fetch sources to check for new unread posts|Following recommendations can appear|No unread recommendations yet|No posts have been fetched for your followed sources yet|fetching recommendations/);
+  assert.doesNotMatch(followingSection, /Run Fetch sources to summarize followed posts|Run Fetch sources to check for new posts|Use Fetch sources to summarize posts from followed sources|Use Fetch sources to summarize followed posts|Fetch sources to check for new unread posts|Following recommendations can appear|No unread recommendations yet|No posts have been fetched for your followed sources yet|fetching recommendations/);
   assert.match(followingSection, /FetchSourcesPrompt/);
   assert.match(followingSection, /context="library"/);
   assert.doesNotMatch(followingSection, /scope=\$\{scope\}/);

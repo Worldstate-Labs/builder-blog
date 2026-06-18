@@ -97,7 +97,7 @@ export async function probeAndEnrichSource(input: ProbeInput): Promise<ProbeOutc
     // hard reject — we don't want a bug in this module to break adds.
     return {
       ok: true,
-      warning: "Source could not be verified. Local Agent can retry later.",
+      warning: "Source could not be verified. Local Agent retries at sync time.",
       enrichment: {},
     };
   }
@@ -203,7 +203,7 @@ async function probeX(input: ProbeInput): Promise<ProbeOutcome> {
   if (response.status === 429 || response.status >= 500) {
     return {
       ok: true,
-      warning: "X API could not verify this handle. Local Agent verifies at sync time.",
+      warning: "X API could not verify this handle. Local Agent retries at sync time.",
       enrichment: {},
     };
   }
@@ -405,7 +405,7 @@ async function probeHtmlPage(input: ProbeInput): Promise<ProbeOutcome> {
   // surface it to the user as a confirmation prompt before persisting
   // so they understand the agent path they're opting into.
   if (input.sourceType === "blog" && !discoveredFetchUrl) {
-    warnings.push("No RSS feed found. The agent will fetch articles by scraping the page.");
+    warnings.push("No RSS feed found. Local Agent will fetch articles by scraping the page.");
     requiresConfirmation = true;
   }
   const warning = warnings.length > 0 ? warnings.join(" ") : undefined;

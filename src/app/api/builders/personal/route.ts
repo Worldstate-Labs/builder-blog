@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     return {
       ok: true,
       enrichment: {},
-      warning: "Source added unverified. Local Agent can retry later.",
+      warning: "Source added unverified. Local Agent retries at sync time.",
     };
   });
   if (!probe.ok) {
