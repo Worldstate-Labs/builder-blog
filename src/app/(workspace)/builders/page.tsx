@@ -112,7 +112,7 @@ export default async function BuildersPage({
     <div className="page-pad">
       <PageHeader
         title="Sources"
-        description="Follow sources, run Fetch sources, and choose what feeds AI Digest and Following."
+        description="Follow sources, run Fetch sources, and choose what feeds AI Digest issues and Following posts."
       />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <section className="sources-tab-surface">
@@ -735,7 +735,7 @@ async function FetchSourcesSection({
             }),
           )}
           editableSourceOptions={data.sourceLabelOptions}
-          emptyBody="Add sources, then run Fetch sources. They feed AI Digest and Following."
+          emptyBody="Add sources, then run Fetch sources. They feed AI Digest issues and Following posts."
           emptyTitle="No sources in your source library yet"
         />
       </PrivateLibraryPanel>

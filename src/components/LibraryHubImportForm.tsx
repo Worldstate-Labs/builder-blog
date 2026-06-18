@@ -259,7 +259,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Source libraries</h2>
           <p className="hub-section-copy">
-            Import shared source libraries into the Sources tab. They feed AI Digest and Following.
+            Import shared source libraries into the Sources tab. They feed AI Digest issues and Following posts.
           </p>
         </div>
       </div>
@@ -376,7 +376,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
               <p>
                 After removing <strong>{removeTarget.name}</strong>, sources
                 from this library will no longer appear in the Sources tab or
-                feed AI Digest and Following.
+                feed AI Digest issues and Following posts.
               </p>
               <p className="settings-dialog-warning">
                 You can import it again from Hub later.
@@ -614,7 +614,7 @@ function sourceLibraryListCopy(filter: FilterKey) {
     case "all":
     default:
       return {
-        description: "Import shared source libraries into the Sources tab. They feed AI Digest and Following.",
+        description: "Import shared source libraries into the Sources tab. They feed AI Digest issues and Following posts.",
         emptyBody: "Try another source library filter.",
       };
   }
