@@ -51,12 +51,14 @@ export function PostCard({
   onInteract,
   post,
   reasons,
+  summaryContent,
   showBuilderRow = true,
   showDebugActions = false,
   showPublishedDate = true,
   showRawContent = true,
   showSourceBadge = true,
   stackActionsOnMobile = false,
+  titleContent,
   variant = "card",
 }: {
   context?: ReactNode;
@@ -68,6 +70,7 @@ export function PostCard({
   post: PostCardPost;
   /** Recommendation reasons surfaced via a popover icon in the footer. */
   reasons?: string[];
+  summaryContent?: ReactNode;
   /**
    * Whether to render the source name segment in the meta line. Keep the
    * default for feed-style post lists so every post surface uses the same
@@ -80,6 +83,7 @@ export function PostCard({
   showRawContent?: boolean;
   showSourceBadge?: boolean;
   stackActionsOnMobile?: boolean;
+  titleContent?: ReactNode;
   variant?: "card" | "row" | "detail";
 }) {
   const [summaryExpanded, setSummaryExpanded] = useState(false);
@@ -174,10 +178,10 @@ export function PostCard({
         {/* Line 1: Title */}
         {isDetail ? (
           <h1 className="post-detail-title">
-            {title}
+            {titleContent ?? title}
           </h1>
         ) : (
-          <h3 className="fetched-post-title">{title}</h3>
+          <h3 className="fetched-post-title">{titleContent ?? title}</h3>
         )}
 
         {/* Line 2: Meta row */}
@@ -293,7 +297,7 @@ export function PostCard({
               id={summaryTextId}
               ref={summaryTextRef}
             >
-              {summary}
+              {summaryContent ?? summary}
             </p>
             {hasMoreSummary ? (
               <button

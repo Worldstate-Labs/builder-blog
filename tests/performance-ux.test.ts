@@ -3928,6 +3928,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /showSourceBadge=\{false\}/);
   assert.match(postCard, /Summary/);
   assert.match(postCard, /export function PostCard/);
+  assert.match(postCard, /titleContent\?: ReactNode/);
+  assert.match(postCard, /summaryContent\?: ReactNode/);
   assert.match(postCard, /post-detail-card/);
   assert.match(postCard, /post-detail-title/);
   assert.match(postCard, /post-detail-summary/);
@@ -3947,6 +3949,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postDetailPage, /summary: item\.summary/);
   assert.doesNotMatch(postDetailPage, /summary: null/);
   assert.match(postCard, /className="fetched-post-summary-text"/);
+  assert.match(postCard, /\{summaryContent \?\? summary\}/);
+  assert.match(postCard, /\{titleContent \?\? title\}/);
   assert.match(postCard, /className="post-summary-toggle"/);
   assert.match(postCard, /className="fetched-post-raw"/);
   assert.match(postCard, /useId/);
@@ -5240,7 +5244,10 @@ test("search feed results keep post detail links while preserving originals", ()
   assert.match(searchPage, /refinements: ReactNode/);
   assert.match(searchPage, /context=\{refinements\}/);
   assert.match(searchPage, /dataRead=\{Boolean\(result\.readAt\)\}/);
-  assert.match(searchPage, /summary:\s*decodeHtmlEntities\(result\.postSummary \?\? result\.snippet\)/);
+  assert.match(searchPage, /const summary = decodeHtmlEntities\(result\.postSummary \?\? result\.snippet\)/);
+  assert.match(searchPage, /summary,\s*[\s\S]*detailUrl: resultHref/);
+  assert.match(searchPage, /summaryContent=\{<HighlightText text=\{summary\} query=\{query\} \/>\}/);
+  assert.match(searchPage, /titleContent=\{<HighlightText text=\{result\.title\} query=\{query\} \/>\}/);
   assert.match(searchPage, /detailUrl: resultHref/);
   assert.match(searchPage, /url: originalUrl \?\? result\.url \?\? "#"/);
   assert.match(searchPage, /const originalUrl = result\.externalUrl \?\? \(titleIsExternal \? result\.url \?\? null : null\)/);

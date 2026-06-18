@@ -729,6 +729,7 @@ function ResultCard({
     return (
       <SearchPostResultCard
         originalUrl={originalUrl}
+        query={query}
         refinements={refinements}
         result={result}
         resultHref={resultHref}
@@ -790,12 +791,14 @@ function ResultCard({
 
 function SearchPostResultCard({
   originalUrl,
+  query,
   refinements,
   result,
   resultHref,
   sourceName,
 }: {
   originalUrl: string | null;
+  query: string;
   refinements: ReactNode;
   result: SearchResult;
   resultHref: string | null;
@@ -814,6 +817,7 @@ function SearchPostResultCard({
       }
     : null;
   const date = result.date?.toISOString() ?? new Date(0).toISOString();
+  const summary = decodeHtmlEntities(result.postSummary ?? result.snippet);
 
   return (
     <PostCard
@@ -831,7 +835,7 @@ function SearchPostResultCard({
         id: result.id,
         title: result.title,
         body: result.postBody ?? result.body,
-        summary: decodeHtmlEntities(result.postSummary ?? result.snippet),
+        summary,
         detailUrl: resultHref,
         url: originalUrl ?? result.url ?? "#",
         publishedAt: result.date?.toISOString() ?? null,
@@ -840,6 +844,8 @@ function SearchPostResultCard({
         sourceType: result.sourceType ?? null,
         fetchTool: null,
       }}
+      summaryContent={<HighlightText text={summary} query={query} />}
+      titleContent={<HighlightText text={result.title} query={query} />}
     />
   );
 }
