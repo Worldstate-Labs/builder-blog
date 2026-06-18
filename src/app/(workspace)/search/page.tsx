@@ -343,7 +343,7 @@ async function SearchResultsSection({
           ) : null}
           <details className="search-advanced-tools search-advanced-tools-compact">
             <summary>
-              Query interpretation
+              Search details
               <ChevronDown aria-hidden="true" className="search-advanced-tools-icon" />
             </summary>
             <SearchQueryInsights
@@ -535,7 +535,7 @@ function SearchQueryInsights({
   const items = buildQueryInsightItems(query, { mode, sort, time, typeFilter });
 
   return (
-    <section className="search-insights" aria-label="Query interpretation">
+    <section className="search-insights" aria-label="Search details">
       <p className="search-insight-summary">
         Found {resultCount} {searchResultCountLabel(typeFilter, resultCount)}.
       </p>
@@ -1140,12 +1140,12 @@ function searchNoMatchesCopy({
   typeFilter: SearchTypeFilter;
 }) {
   if (typeFilter !== "all") {
-    return "Try a broader phrase, fewer words, or search all result types.";
+    return "Try broader terms or all results.";
   }
   if (time !== "any" || activeFilterCount > 0) {
-    return "Try a broader phrase, fewer words, or remove active filters.";
+    return "Try broader terms or clear filters.";
   }
-  return "Try a broader phrase or fewer words.";
+  return "Try broader terms or fewer words.";
 }
 
 function countResultTypes(results: SearchResult[]) {
@@ -1183,14 +1183,14 @@ function buildSearchRecoveryActions({
     coveredFilterCount += 1;
     actions.push({
       href: searchHref({ query, type: typeFilter, mode: "hybrid", sort, time }),
-      label: "Use best match",
+      label: "Best match",
     });
   }
   if (typeFilter !== "all") {
     coveredFilterCount += 1;
     actions.push({
       href: searchHref({ query, type: "all", mode, sort, time }),
-      label: "All result types",
+      label: "All results",
     });
   }
   if (time !== "any" || parsed.after || parsed.before) {

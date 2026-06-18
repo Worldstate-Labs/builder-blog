@@ -358,7 +358,7 @@ export function AgentTokenPanel({
         <EmptyState
           className="access-keys-empty"
           title="No access keys yet"
-          body="Add an access key when you connect a device or Local Agent."
+          body="Add an access key when connecting a device or Local Agent."
         />
       )}
 
@@ -387,7 +387,7 @@ export function AgentTokenPanel({
               New access key
             </h3>
             <p className="settings-dialog-copy">
-              Name this access key so you can recognize it later
+              Name this access key to recognize it later
               (e.g. <em>My Mac · Claude Code</em>).
             </p>
             <input
@@ -471,14 +471,14 @@ export function AgentTokenPanel({
                     .
                   </p>
                   <p className="settings-dialog-warning">
-                    After revoking it, that device or Local Agent will need a
-                    new access key to update FollowBrief.
+                    That device or Local Agent will need a new access key to
+                    update FollowBrief.
                   </p>
                 </>
               ) : (
                 <p>
-                  This access key has never been used. Revoking it now is safe.
-                  No device or Local Agent will lose access.
+                  This access key has never been used. No device or Local Agent
+                  will lose access.
                 </p>
               )}
             </div>
