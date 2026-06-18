@@ -828,7 +828,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /short-lived setup code for that access key/);
   assert.match(skillPromptActions, /const completed = await continueScheduleCopy\(selection\);/);
   assert.match(skillPromptActions, /if \(completed\) setCronConfigOpen\(false\);/);
-  assert.match(skillPromptActions, /const missingAccessMessage = "Add an access key in Settings first"/);
+  assert.match(skillPromptActions, /const missingAccessMessage = "Add an access key in Settings before copying Local Agent prompts\."/);
+  assert.doesNotMatch(skillPromptActions, /const missingAccessMessage = "Add an access key in Settings first"/);
   assert.doesNotMatch(skillPromptActions, /Connect a Local Agent in Settings first/);
   assert.match(skillPromptActions, /setStatus\(\{ kind: "info", text: missingAccessMessage \}\);\s*return false;/);
   assert.match(skillPromptActions, /if \(activeTokens\.length === 0\) \{[\s\S]*missingAccessMessage[\s\S]*return;\s*\}[\s\S]*if \(target === "cron"\)/);
@@ -1299,8 +1300,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /No followed sources yet/);
   assert.match(dashboardPage, /href="\/builders\?tab=fetch"[\s\S]*Choose sources/);
   assert.doesNotMatch(dashboardPage, /href="\/builders\?tab=fetch"[\s\S]*Go to Sources/);
-  assert.match(dashboardPage, /No AI Digest yet/);
   assert.match(dashboardPage, /No AI Digest issues yet/);
+  assert.doesNotMatch(dashboardPage, /No AI Digest yet/);
   assert.match(dashboardPage, /This AI Digest collection has no issues yet\./);
   assert.doesNotMatch(dashboardPage, /No AI Digest archives yet|This AI Digest collection has no archives yet\./);
   assert.doesNotMatch(dashboardPage, /has not shared any archives yet/);
@@ -1314,8 +1315,9 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /start building AI Digests/);
   assert.match(dashboardPage, /No summarized posts yet/);
   assert.doesNotMatch(dashboardPage, /No fetched posts yet/);
-  assert.match(dashboardPage, /Build AI Digest from summarized posts/);
-  assert.match(dashboardPage, /Use Fetch sources to summarize posts before building AI Digest/);
+  assert.match(dashboardPage, /Build an AI Digest issue from summarized posts/);
+  assert.match(dashboardPage, /Use Fetch sources to summarize posts before building an AI Digest issue/);
+  assert.doesNotMatch(dashboardPage, /Build AI Digest from summarized posts|before building AI Digest/);
   assert.doesNotMatch(dashboardPage, /Ask your Local Agent to build an AI Digest from the summarized posts/);
   assert.doesNotMatch(dashboardPage, /Ask your Local Agent to fetch and summarize your followed sources/);
   assert.doesNotMatch(dashboardPage, /No digest yet|No archived AI Digests|This imported digest|This imported AI Digest has no archived AI Digest yet|build a digest from|material for a digest|start building digests|before building a digest/);

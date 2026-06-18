@@ -77,7 +77,7 @@ type CopyExtras = {
   parallelWorkers: number;
 };
 type ManualCopyPrompt = { target: CopyTarget; text: string };
-const missingAccessMessage = "Add an access key in Settings first";
+const missingAccessMessage = "Add an access key in Settings before copying Local Agent prompts.";
 const promptPurposeCopy = (context: SkillPromptContext) =>
   context === "digest"
     ? "Copy a Local Agent prompt for AI Digest."

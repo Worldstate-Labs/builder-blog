@@ -326,8 +326,8 @@ function DigestEmptyState({
           />
         }
         className="ai-digest-empty is-actionable"
-        title="No AI Digest yet"
-        body="Build AI Digest from summarized posts."
+        title="No AI Digest issues yet"
+        body="Build an AI Digest issue from summarized posts."
       />
     );
   }
@@ -346,7 +346,7 @@ function DigestEmptyState({
       }
       className="ai-digest-empty is-actionable"
       title="No summarized posts yet"
-      body="Use Fetch sources to summarize posts before building AI Digest."
+      body="Use Fetch sources to summarize posts before building an AI Digest issue."
     />
   );
 }
