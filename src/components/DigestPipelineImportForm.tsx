@@ -102,16 +102,16 @@ export function DigestPipelineImportForm({
     mode === "imported" ? "Imported AI Digest collections" : "Shared AI Digest collections";
   const description =
     mode === "imported"
-      ? "Available in AI Digest."
-      : "Import shared AI Digest collections into AI Digest.";
+      ? "Imported collections appear in AI Digest."
+      : "Import shared collections into AI Digest.";
   const emptyTitle =
     mode === "imported"
       ? "No imported AI Digest collections"
       : "No shared AI Digest collections";
   const emptyMessage =
     mode === "imported"
-      ? "Import AI Digest collections to see them here."
-      : "AI Digest collections shared to Hub appear here.";
+      ? "Imported AI Digest collections appear here."
+      : "Shared AI Digest collections appear here.";
 
   function setImportedIds(updater: (current: Set<string>) => Set<string>) {
     setImportedState((current) => {
@@ -301,7 +301,7 @@ export function DigestPipelineImportForm({
                 no longer appears in AI Digest.
               </p>
               <p className="settings-dialog-warning">
-                Import it again from Hub.
+                Import this collection from Hub again.
               </p>
             </div>
             <div className="settings-dialog-actions">
@@ -406,7 +406,7 @@ function DigestPipelineCard({
       type="button"
     >
       <Download aria-hidden="true" />
-      {pending === "import" ? "Importing collection" : "Import collection"}
+      {pending === "import" ? "Importing" : "Import"}
     </button>
   );
   const description = digestPipelineCardDescription(pipeline);

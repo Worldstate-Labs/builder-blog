@@ -101,7 +101,7 @@ export default async function Home() {
               },
               {
                 title: "Your sources stay connected.",
-                detail: "Start from shared source libraries, then add your own sources.",
+                detail: "Start from shared source libraries, then add your own.",
               },
               {
                 title: "Search after the read.",
@@ -130,7 +130,7 @@ export default async function Home() {
         <div className="fb-public-section-kicker-row">
           <span className="fb-section-label">Workflow</span>
           <span className="fb-public-section-note">
-            Built around following sources, reading an AI Digest issue, and returning to source details.
+            Follow sources, read an AI Digest issue, and return to source details.
           </span>
         </div>
         <ol className="fb-public-step-list">
@@ -186,7 +186,7 @@ export default async function Home() {
           <Feature
             icon={Radio}
             title="Following posts"
-            copy="Unread posts from followed sources stay separate from AI Digest issues."
+            copy="Unread posts stay separate from AI Digest issues."
           />
           <Feature
             icon={Search}

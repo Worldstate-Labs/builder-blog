@@ -92,7 +92,7 @@ export function LibraryImportRemoveButton({
                 appear in Sources or feed AI Digest and Following.
               </p>
               <p className="settings-dialog-warning">
-                Import it again from Hub.
+                Import this library from Hub again.
               </p>
             </div>
             <div className="settings-dialog-actions">

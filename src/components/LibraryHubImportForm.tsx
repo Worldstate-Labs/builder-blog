@@ -153,7 +153,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         : "No matching source libraries";
   const emptyBody =
     activeFilter === "all"
-      ? "Source libraries shared to Hub appear here."
+      ? "Shared source libraries appear here."
       : listCopy.emptyBody;
   const removeTarget = removeTargetId
     ? libraries.find((library) => library.id === removeTargetId) ?? null
@@ -259,7 +259,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Source libraries</h2>
           <p className="hub-section-copy">
-            Import shared source libraries into Sources for AI Digest and Following.
+            Import shared libraries into Sources for AI Digest and Following.
           </p>
         </div>
       </div>
@@ -378,7 +378,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
                 no longer appear in Sources or feed AI Digest and Following.
               </p>
               <p className="settings-dialog-warning">
-                Import it again from Hub.
+                Import this library from Hub again.
               </p>
             </div>
             <div className="settings-dialog-actions">
@@ -602,8 +602,8 @@ function sourceLibraryListCopy(filter: FilterKey) {
       };
     case "imported":
       return {
-        description: "Source libraries imported into Sources.",
-        emptyBody: "Import source libraries to see them here.",
+        description: "Imported source libraries.",
+        emptyBody: "Imported source libraries appear here.",
       };
     case "shared":
       return {
@@ -613,7 +613,7 @@ function sourceLibraryListCopy(filter: FilterKey) {
     case "all":
     default:
       return {
-        description: "Import shared source libraries into Sources for AI Digest and Following.",
+        description: "Import shared libraries into Sources for AI Digest and Following.",
         emptyBody: "Try another source library filter.",
       };
   }

@@ -277,7 +277,7 @@ function LibraryHubImportFallback() {
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Source libraries</h2>
           <p className="hub-section-copy">
-            Import shared source libraries into Sources for AI Digest and Following.
+            Import shared libraries into Sources for AI Digest and Following.
           </p>
           <div className="library-hub-skeleton-line is-wide" />
         </div>
@@ -318,7 +318,7 @@ function DigestPipelineImportFallback() {
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Shared AI Digest collections</h2>
           <p className="hub-section-copy">
-            Import shared AI Digest collections into AI Digest.
+            Import shared collections into AI Digest.
           </p>
           <div className="library-hub-skeleton-line is-wide" />
         </div>

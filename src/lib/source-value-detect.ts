@@ -118,15 +118,15 @@ export function isLikelyEpisodeOrPostUrl(declared: string, value: string): strin
   const v = value.trim();
   if (declared === "youtube") {
     if (/youtube\.com\/watch\?v=/i.test(v)) {
-      return "This is a single-video URL. Paste the channel URL (e.g. https://youtube.com/@channel) instead.";
+      return "Single-video URL. Paste the channel URL (e.g. https://youtube.com/@channel) instead.";
     }
     if (/youtu\.be\/[A-Za-z0-9_-]/i.test(v)) {
-      return "This is a single-video URL. Paste the channel URL (e.g. https://youtube.com/@channel) instead.";
+      return "Single-video URL. Paste the channel URL (e.g. https://youtube.com/@channel) instead.";
     }
   }
   if (declared === "x") {
     if (/(x|twitter)\.com\/[^/]+\/status\/\d+/i.test(v)) {
-      return "This is a single-tweet URL. Paste the profile URL (e.g. https://x.com/handle) instead.";
+      return "Single-tweet URL. Paste the profile URL (e.g. https://x.com/handle) instead.";
     }
   }
   return null;
