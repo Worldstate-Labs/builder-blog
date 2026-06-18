@@ -735,7 +735,7 @@ async function FetchSourcesSection({
             }),
           )}
           editableSourceOptions={data.sourceLabelOptions}
-          emptyBody="Add sources, then run Fetch sources for AI Digest and Following."
+          emptyBody="Add sources, then run Fetch sources."
           emptyTitle="No sources yet"
         />
       </PrivateLibraryPanel>
@@ -748,7 +748,7 @@ async function FetchSourcesSection({
         <div className="imported-libraries-copy">
           <h2 className="fb-section-heading">Imported source libraries</h2>
           <p className="library-section-copy">
-            Shared libraries added from Hub.
+            Shared libraries from Hub.
           </p>
         </div>
         {data.importedLibrarySections.length > 0 ? (
@@ -794,7 +794,7 @@ async function FetchSourcesSection({
                 Import from Hub
               </Link>
             }
-            body="Source libraries from Hub appear here."
+            body="Hub source libraries appear here."
             title="No imported source libraries"
           />
         ) : null}

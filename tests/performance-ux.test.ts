@@ -529,7 +529,8 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /fb-public-workspace/);
   assert.match(landingPage, /fb-public-feature-grid/);
   assert.match(landingPage, />\s*Search\s*<\/span>/);
-  assert.match(landingPage, /read an AI Digest issue/);
+  assert.match(landingPage, /read AI Digest/);
+  assert.doesNotMatch(landingPage, /read an AI Digest issue/);
   assert.match(landingPage, /builds a\s+cited AI Digest issue/);
   assert.doesNotMatch(landingPage, /reading the AI Digest|reading AI Digests|builds a\s+cited AI Digest\.|builds cited AI Digests/);
   assert.match(landingPage, />AI Digest<\/span>/);
@@ -571,9 +572,12 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(landingPage, /sources your Local Agent can fetch|agent-fetchable sources|Local Agent sources/);
   assert.match(landingPage, /Daily AI Digest flow/);
   assert.match(landingPage, /One cited AI Digest issue/);
+  assert.doesNotMatch(landingPage, /One cited AI Digest issue\./);
   assert.doesNotMatch(landingPage, /One cited brief|One cited AI Digest\./);
-  assert.match(landingPage, /New posts, videos, launches, and projects stay readable together/);
-  assert.doesNotMatch(landingPage, /Daily updates become one AI Digest|New posts, videos, launches, and projects become a readable AI Digest/);
+  assert.match(landingPage, /Posts, videos, launches, and projects stay readable together/);
+  assert.doesNotMatch(landingPage, /New posts, videos, launches, and projects stay readable together|Daily updates become one AI Digest|New posts, videos, launches, and projects become a readable AI Digest/);
+  assert.match(landingPage, /Sources stay connected/);
+  assert.doesNotMatch(landingPage, /Your sources stay connected\./);
   assert.doesNotMatch(landingPage, /readable AI Digest/);
   assert.doesNotMatch(landingPage, /Build AI Digests/);
   assert.match(landingPage, /Home reading lanes/);
@@ -585,6 +589,8 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(landingPage, /Digest-first home/);
   assert.doesNotMatch(landingPage, /Daily brief flow|Generate briefs|readable digest|readable briefings|following, briefing/);
   assert.match(landingPage, /Search and revisit/);
+  assert.match(landingPage, /Search after reading/);
+  assert.doesNotMatch(landingPage, /Search after the read\./);
   assert.doesNotMatch(landingPage, /Context windows became product infrastructure/);
   assert.doesNotMatch(landingPage, /Private sources belong in the brief/);
   assert.match(loginPage, /fb-login-shell/);
@@ -1351,8 +1357,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /No AI Digest issues/);
   assert.doesNotMatch(dashboardPage, />\s*No AI Digest archives\s*<\/span>/);
   assert.doesNotMatch(dashboardPage, /saved briefs/);
-  assert.match(dashboardPage, /Add sources to feed AI Digest and Following\./);
-  assert.doesNotMatch(dashboardPage, /Add sources in the Sources tab|AI Digest issues and Following posts|Add sources in Sources\. They feed AI Digest|They feed AI Digest and Following\./);
+  assert.match(dashboardPage, /Add sources for AI Digest and Following\./);
+  assert.doesNotMatch(dashboardPage, /Add sources to feed AI Digest and Following\.|Add sources in the Sources tab|AI Digest issues and Following posts|Add sources in Sources\. They feed AI Digest|They feed AI Digest and Following\./);
   assert.doesNotMatch(dashboardPage, /start building AI Digests/);
   assert.match(dashboardPage, /No summarized posts yet/);
   assert.doesNotMatch(dashboardPage, /No fetched posts yet/);
@@ -1842,8 +1848,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /No followed sources yet/);
   assert.match(followingSection, /href="\/builders\?tab=fetch"[\s\S]*Choose sources/);
   assert.doesNotMatch(followingSection, /href="\/builders\?tab=fetch"[\s\S]*Go to Sources/);
-  assert.match(followingSection, /Add sources to feed AI Digest and Following\./);
-  assert.doesNotMatch(followingSection, /Add sources in the Sources tab|AI Digest issues and Following posts|Add sources in Sources\. They feed AI Digest|They feed AI Digest/);
+  assert.match(followingSection, /Add sources for AI Digest and Following\./);
+  assert.doesNotMatch(followingSection, /Add sources to feed AI Digest and Following\.|Add sources in the Sources tab|AI Digest issues and Following posts|Add sources in Sources\. They feed AI Digest|They feed AI Digest/);
   assert.doesNotMatch(followingSection, /start seeing Following posts/);
   assert.doesNotMatch(followingSection, /start Following/);
   assert.match(followingSection, /sourceReadiness\.summarizedPostCount === 0/);
@@ -3791,9 +3797,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.equal(existsSync(join(root, "src/components/MobileSourcesSwitcher.tsx")), false);
   assert.match(builderLibraryList, /className="builder-library-error"/);
   assert.match(builderLibraryList, /<EmptyState body=\{emptyBody\} title=\{emptyTitle\} \/>/);
-  assert.match(buildersPage, /emptyBody="Add sources, then run Fetch sources for AI Digest and Following\."/);
+  assert.match(buildersPage, /emptyBody="Add sources, then run Fetch sources\."/);
   assert.doesNotMatch(buildersPage, /emptyBody="Add a source, then run Fetch sources\."/);
-  assert.doesNotMatch(buildersPage, /Add sources, then run Fetch sources\. They feed AI Digest|AI Digest and Following use this library|They feed AI Digest and Following/);
+  assert.doesNotMatch(buildersPage, /Add sources, then run Fetch sources for AI Digest and Following\.|Add sources, then run Fetch sources\. They feed AI Digest|AI Digest and Following use this library|They feed AI Digest and Following/);
   assert.doesNotMatch(buildersPage, /both draw from this library/);
   assert.match(personalBuilderRoute, /Source added without verification\. Local Agent can retry later\./);
   assert.doesNotMatch(personalBuilderRoute, /We could not verify the source right now/);
@@ -3810,7 +3816,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /badge="imported"/);
   assert.doesNotMatch(buildersPage, /No active sources from this imported library\./);
   assert.match(buildersPage, /title="No imported source libraries"/);
-  assert.match(buildersPage, /body="Source libraries from Hub appear here\."/);
+  assert.match(buildersPage, /body="Hub source libraries appear here\."/);
   assert.doesNotMatch(buildersPage, /No imported source libraries yet\.|Import source libraries from Hub\./);
   assert.match(buildersPage, /href="\/library-hub\?tab=source-library"/);
   assert.match(buildersPage, /Import from Hub/);
@@ -3874,8 +3880,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /timeZone:\s*"UTC"/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported source libraries/);
-  assert.match(buildersPage, /Shared libraries added from Hub\./);
-  assert.doesNotMatch(buildersPage, /Source libraries imported from Hub\./);
+  assert.match(buildersPage, /Shared libraries from Hub\./);
+  assert.doesNotMatch(buildersPage, /Shared libraries added from Hub\.|Source libraries imported from Hub\./);
   assert.doesNotMatch(buildersPage, /Source libraries you imported into Sources\./);
   assert.match(buildersPage, /importedLibrarySections/);
   assert.match(buildersPage, /className="imported-libraries-section"/);

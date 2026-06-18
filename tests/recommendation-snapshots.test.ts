@@ -542,8 +542,8 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.match(followingSection, /No followed sources yet/);
   assert.match(followingSection, /href="\/builders\?tab=fetch"[\s\S]*Choose sources/);
   assert.doesNotMatch(followingSection, /href="\/builders\?tab=fetch"[\s\S]*Go to Sources/);
-  assert.match(followingSection, /Add sources to feed AI Digest and Following\./);
-  assert.doesNotMatch(followingSection, /Add sources in the Sources tab|AI Digest issues and Following posts|Add sources in Sources\. They feed AI Digest|They feed AI Digest/);
+  assert.match(followingSection, /Add sources for AI Digest and Following\./);
+  assert.doesNotMatch(followingSection, /Add sources to feed AI Digest and Following\.|Add sources in the Sources tab|AI Digest issues and Following posts|Add sources in Sources\. They feed AI Digest|They feed AI Digest/);
   assert.match(followingSection, /No summarized posts yet/);
   assert.match(followingSection, /No unread posts yet/);
   assert.match(followingSection, /Run Fetch sources to summarize followed posts/);

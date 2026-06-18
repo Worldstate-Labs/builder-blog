@@ -96,15 +96,15 @@ export default async function Home() {
           <div className="fb-product-preview-list">
             {[
               {
-                title: "One cited AI Digest issue.",
-                detail: "New posts, videos, launches, and projects stay readable together.",
+                title: "One cited AI Digest issue",
+                detail: "Posts, videos, launches, and projects stay readable together.",
               },
               {
-                title: "Your sources stay connected.",
+                title: "Sources stay connected",
                 detail: "Start from shared source libraries, then add your own.",
               },
               {
-                title: "Search after the read.",
+                title: "Search after reading",
                 detail:
                   "Find sources, posts, and AI Digest issues when you need details.",
               },
@@ -130,7 +130,7 @@ export default async function Home() {
         <div className="fb-public-section-kicker-row">
           <span className="fb-section-label">Workflow</span>
           <span className="fb-public-section-note">
-            Follow sources, read an AI Digest issue, and return to source details.
+            Follow sources, read AI Digest, and return to source details.
           </span>
         </div>
         <ol className="fb-public-step-list">
