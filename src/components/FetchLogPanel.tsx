@@ -1040,7 +1040,7 @@ function getFetchUpdateStatus(
     return {
       key: "not-connected",
       label: "Not connected",
-      summary: "No Fetch sources run has reported yet.",
+      summary: "No Fetch sources run yet.",
       style: statusStyle("partial"),
     };
   }
@@ -1098,7 +1098,7 @@ function getFetchUpdateStatus(
       label: "Needs attention",
       summary:
         latestResolved === "missed"
-          ? "The latest scheduled Fetch sources run did not report back."
+          ? "No Fetch sources run started in the latest scheduled window."
           : "The latest scheduled Fetch sources run did not finish successfully.",
       style: statusStyle("failed"),
     };
@@ -1254,7 +1254,7 @@ function FetchStatusPanel({
       <EmptyState
         className="sync-panel-empty is-dashed"
         title="No Fetch sources history yet"
-        body="One-time and scheduled runs appear here after a Local Agent reports them."
+        body="One-time and scheduled runs appear here after they start."
       />
     );
   }
@@ -1378,7 +1378,7 @@ function FetchStatusPanel({
           <EmptyState
             className="sync-panel-slot-empty"
             title="No Fetch sources history yet"
-            body="One-time and scheduled runs appear here after a Local Agent reports them."
+            body="One-time and scheduled runs appear here after they start."
           />
         )}
       </div>

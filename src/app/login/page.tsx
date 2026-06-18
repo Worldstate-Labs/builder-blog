@@ -71,7 +71,7 @@ export default async function LoginPage({
             <AuthButtons callbackUrl={safeCallbackUrl(params.callbackUrl)} />
           </div>
           <p className="fb-login-note">
-            After sign-in, add access keys in Settings.
+            After signing in, add access keys in Settings.
           </p>
         </section>
       </div>
@@ -90,15 +90,15 @@ function describeAuthError(code: string | undefined): string | null {
   if (!code) return null;
   const messages: Record<string, string> = {
     OAuthAccountNotLinked:
-      "This email is linked to another sign-in method. Use that method, or contact support to merge accounts.",
-    OAuthSignin: "Could not start the sign-in flow. Try again.",
-    OAuthCallback: "The sign-in service could not finish. Try again.",
+      "This email is linked to another sign-in method. Use that method, or contact support.",
+    OAuthSignin: "Could not start sign in. Try again.",
+    OAuthCallback: "Could not finish sign in. Try again.",
     OAuthCreateAccount: "Could not create your account. Try again.",
-    Callback: "Sign-in could not finish. Try again.",
-    AccessDenied: "Sign-in was denied.",
+    Callback: "Could not finish sign in. Try again.",
+    AccessDenied: "Sign in was denied.",
     SessionRequired: "Sign in to continue.",
   };
-  return messages[code] ?? "Sign-in failed. Try again.";
+  return messages[code] ?? "Could not sign in. Try again.";
 }
 
 /**

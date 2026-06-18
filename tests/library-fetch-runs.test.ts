@@ -305,7 +305,8 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /<span>\{graphEndLabel\}<\/span>/);
   assert.doesNotMatch(panel, />Oldest</);
   assert.doesNotMatch(panel, />Newest</);
-  assert.match(panel, /The latest scheduled Fetch sources run did not report back/);
+  assert.match(panel, /No Fetch sources run started in the latest scheduled window/);
+  assert.doesNotMatch(panel, /The latest scheduled Fetch sources run did not report back/);
   assert.match(panel, /timeoutSeconds/);
   assert.match(panel, /cleanup failed/);
   assert.doesNotMatch(panel, /Green OK|amber waiting|red issue/);
@@ -533,8 +534,9 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(route, /getScheduledAgentJobRuns\(userId, "digest-cron", 25\)/);
   assert.match(digestUpdateStatus, /@\/lib\/schedule-timing/);
   assert.match(digestUpdateStatus, /no scheduled window has completed yet/);
-  assert.match(digestUpdateStatus, /No Local Agent schedule has reported yet/);
-  assert.doesNotMatch(digestUpdateStatus, /No local helper schedule has reported yet/);
+  assert.match(digestUpdateStatus, /No Local Agent schedule is connected/);
+  assert.match(digestUpdateStatus, /No run started in the latest scheduled window/);
+  assert.doesNotMatch(digestUpdateStatus, /No Local Agent schedule has reported yet|No local helper schedule has reported yet|recorded run/);
   assert.doesNotMatch(digestUpdateStatus, /first expected run has not finished yet/);
   assert.doesNotMatch(digestUpdateStatus, /function floorToExpectedSchedule/);
   assert.doesNotMatch(digestUpdateStatus, /function addScheduleInterval/);
@@ -598,13 +600,13 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /<span>\{graphEndLabel\}<\/span>/);
   assert.doesNotMatch(panel, />Oldest</);
   assert.doesNotMatch(panel, />Newest</);
-  assert.match(source("src/lib/scheduled-window-ui.ts"), /No job reported/);
+  assert.match(source("src/lib/scheduled-window-ui.ts"), /No run yet/);
   assert.doesNotMatch(panel, /No AI Digest schedule has reported yet/);
   assert.match(panel, /Copy a Build AI Digest prompt to start a Local Agent run/);
   assert.doesNotMatch(panel, /Use Build AI Digest to copy a Local Agent prompt/);
   assert.match(panel, /No AI Digest build history yet/);
-  assert.match(panel, /One-time and scheduled builds appear here/);
-  assert.doesNotMatch(panel, /No AI Digest builds yet|One-time and scheduled AI Digest builds appear here|Scheduled and one-time AI Digest builds will appear here/);
+  assert.match(panel, /One-time and scheduled builds appear here after they start/);
+  assert.doesNotMatch(panel, /No AI Digest builds yet|One-time and scheduled AI Digest builds appear here|Scheduled and one-time AI Digest builds will appear here|after a Local Agent reports them/);
   assert.match(panel, /Runtime job did not create an AI Digest build record/);
   assert.match(panel, /@\/lib\/scheduled-window-ui/);
   assert.match(panel, /scheduledWindowStatusLabel/);

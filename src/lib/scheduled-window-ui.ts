@@ -65,5 +65,5 @@ export function scheduledWindowRunNote({
   if (runSummary && jobRunStatus && jobRunStatus !== "Succeeded") return `${jobRunStatus} · ${runSummary}`;
   if (runSummary) return runSummary;
   if (jobRunStatus) return `${jobRunStatus} · ${runtime || "Local Agent"}`;
-  return "No job reported";
+  return "No run yet";
 }

@@ -162,7 +162,7 @@ export function getDigestUpdateStatus(
     return {
       key: "not-connected",
       label: "Not connected",
-      summary: "No Local Agent schedule has reported yet.",
+      summary: "No Local Agent schedule is connected.",
       style: statusStyle("partial"),
     };
   }
@@ -182,7 +182,7 @@ export function getDigestUpdateStatus(
       label: "Needs attention",
       summary:
         latestResolved === "missed"
-          ? "The latest scheduled window has no recorded run."
+          ? "No run started in the latest scheduled window."
           : "The latest scheduled run did not save an AI Digest.",
       style: statusStyle("failed"),
     };
