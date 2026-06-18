@@ -110,8 +110,8 @@ export function DigestPipelineImportForm({
       : "No shared AI Digest collections";
   const emptyMessage =
     mode === "imported"
-      ? "Imported collections appear here."
-      : "Shared collections appear here.";
+      ? "Imported AI Digest collections appear here."
+      : "Shared AI Digest collections appear here.";
 
   function setImportedIds(updater: (current: Set<string>) => Set<string>) {
     setImportedState((current) => {
@@ -297,11 +297,11 @@ export function DigestPipelineImportForm({
             </h3>
             <div className="settings-dialog-copy">
               <p>
-                After removing <strong>{removeTarget.title}</strong>, this collection
-                no longer appears in AI Digest.
+                Removing <strong>{removeTarget.title}</strong> removes this collection
+                from AI Digest.
               </p>
               <p className="settings-dialog-warning">
-                You can import it from Hub again.
+                You can import it again from Hub.
               </p>
             </div>
             <div className="settings-dialog-actions">

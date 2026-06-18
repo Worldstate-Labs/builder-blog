@@ -101,7 +101,7 @@ const advancedSearchExamples = [
 const resultTypeFilterLabels: Record<SearchDocumentType, string> = {
   builder: "Sources",
   feed: "Posts",
-  digest: "AI Digest",
+  digest: "AI Digest issues",
 };
 
 const resultTypeItemLabels: Record<SearchDocumentType, string> = {

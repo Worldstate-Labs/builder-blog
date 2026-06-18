@@ -155,7 +155,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         : "No matching source libraries";
   const emptyBody =
     activeFilter === "all"
-      ? "Shared source libraries appear here."
+      ? "Source libraries appear here."
       : listCopy.emptyBody;
   const removeTarget = removeTargetId
     ? libraries.find((library) => library.id === removeTargetId) ?? null
@@ -376,11 +376,11 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
             </h3>
             <div className="settings-dialog-copy">
               <p>
-                After removing <strong>{removeTarget.name}</strong>, its sources are
-                removed from Sources and stop feeding AI Digest and Following.
+                Removing <strong>{removeTarget.name}</strong> removes its sources
+                from Sources and stops feeding AI Digest and Following.
               </p>
               <p className="settings-dialog-warning">
-                You can import it from Hub again.
+                You can import it again from Hub.
               </p>
             </div>
             <div className="settings-dialog-actions">
@@ -609,7 +609,7 @@ function sourceLibraryListCopy(filter: FilterKey) {
       };
     case "shared":
       return {
-        description: "Shared by other users.",
+        description: "Source libraries from other users.",
         emptyBody: "No shared source libraries match this filter.",
       };
     case "all":
