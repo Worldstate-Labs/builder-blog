@@ -2255,7 +2255,7 @@ function DetailsBody({
                             color: "var(--muted-strong)",
                             letterSpacing: "0.05em",
                           }}
-                          title="No fetch prompt is configured for this source; the Local Agent used common fetching rules."
+                          title="No fetch prompt set for this source; using common fetching rules."
                         >
                           default
                         </span>

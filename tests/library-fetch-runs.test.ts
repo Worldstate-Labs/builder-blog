@@ -465,6 +465,8 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /className="sync-panel-detail-kicker"/);
   assert.match(panel, /className="sync-panel-detail-kicker-row"/);
   assert.match(panel, /className="sync-panel-detail-default-pill"/);
+  assert.match(panel, /No fetch prompt set for this source; using common fetching rules\./);
+  assert.doesNotMatch(panel, /No fetch prompt is configured for this source; the Local Agent used common fetching rules\./);
   assert.match(panel, /className="mono sync-panel-detail-code"/);
   assert.match(panel, /className="sync-panel-detail-action-list"/);
   assert.match(panel, /className="sync-panel-detail-action-row"/);

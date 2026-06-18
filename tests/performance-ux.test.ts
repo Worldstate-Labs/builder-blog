@@ -609,9 +609,10 @@ test("public entry pages use the centered product layout", () => {
   assert.match(loginPage, /OAuthSignin: "Could not start sign in\. Try again\."/);
   assert.match(loginPage, /OAuthCallback: "Could not finish sign in\. Try again\."/);
   assert.match(loginPage, /Callback: "Could not finish sign in\. Try again\."/);
+  assert.match(loginPage, /Use that sign-in method, or contact support\./);
   assert.match(loginPage, /AccessDenied: "Sign in was denied\."/);
   assert.match(loginPage, /Could not sign in\. Try again\./);
-  assert.doesNotMatch(loginPage, /sign-in flow|sign-in service|Sign-in could not finish|Sign-in was denied|Sign-in failed|merge accounts/);
+  assert.doesNotMatch(loginPage, /Use that method|Use the linked method|sign-in flow|sign-in service|Sign-in could not finish|Sign-in was denied|Sign-in failed|merge accounts/);
   assert.match(loginPage, /FollowBrief/);
   assert.doesNotMatch(loginPage, /AI Digest workspace/);
   assert.doesNotMatch(loginPage, /Sign in to your/);
@@ -2198,6 +2199,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-detail-kicker"/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-kicker-row"/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-default-pill"/);
+  assert.match(fetchLogPanel, /No fetch prompt set for this source; using common fetching rules\./);
+  assert.doesNotMatch(fetchLogPanel, /No fetch prompt is configured for this source; the Local Agent used common fetching rules\./);
   assert.match(fetchLogPanel, /className="mono sync-panel-detail-code"/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-action-list"/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-action-row"/);
@@ -3260,7 +3263,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(buildersPage, /<span className="sr-only">Loading AI Digest controls<\/span>/);
   assert.doesNotMatch(buildersPage, /Loading AI Digest settings/);
   assert.match(buildersPage, /@\/components\/PageHeader/);
-  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*Follow sources, run Fetch sources/);
+  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*Follow sources, fetch updates, and choose what feeds AI Digest issues and Following posts\./);
+  assert.doesNotMatch(buildersPage, /Follow sources, run Fetch sources, and choose what feeds AI Digest issues and Following posts\./);
   assert.doesNotMatch(buildersPage, /<h1 className="sr-only">Sources<\/h1>/);
   assert.match(buildersPage, /className="sources-section-stack"/);
   assert.match(buildersPage, /className="your-library-panel library-section-panel"/);
@@ -3293,7 +3297,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
   assert.match(libraryHubPage, /label: "Source libraries"/);
   assert.match(libraryHubPage, /label:\s*"Source libraries"[\s\S]*href:\s*"\/library-hub\?tab=source-library"/);
-  assert.match(libraryHubPage, /Import shared source libraries into the Sources tab\. Imported sources feed AI Digest issues and Following posts\./);
+  assert.match(libraryHubPage, /Import shared source libraries into Sources\. Imported sources feed AI Digest issues and Following posts\./);
+  assert.doesNotMatch(libraryHubPage, /Import shared source libraries into the Sources tab\. Imported sources feed AI Digest issues and Following posts\./);
   assert.doesNotMatch(libraryHubPage, /Import shared libraries into Sources, Following, and AI Digest\./);
   assert.doesNotMatch(libraryHubPage, /Source libraries shared to Hub\./);
   assert.doesNotMatch(libraryHubPage, /Community source libraries, your shared source libraries/);
@@ -3331,7 +3336,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(libraryHubPage, /<section className="fb-page-head"/);
   assert.match(libraryHubPage, /<span className="sr-only">Loading source libraries<\/span>/);
   assert.match(libraryHubPage, /<span className="sr-only">Loading shared AI Digest collections<\/span>/);
-  assert.match(libraryHubPage, /Import shared source libraries into the Sources tab\. Imported sources feed AI Digest issues and Following posts\./);
+  assert.match(libraryHubPage, /Import shared source libraries into Sources\. Imported sources feed AI Digest issues and Following posts\./);
   assert.doesNotMatch(libraryHubPage, /Import shared libraries into Sources, Following, and AI Digest\./);
   assert.match(libraryHubPage, /<h2 className="fb-section-heading">Shared AI Digest collections<\/h2>/);
   assert.doesNotMatch(libraryHubPage, /<h2 className="fb-section-heading">AI Digest archives<\/h2>/);
@@ -3370,7 +3375,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="library-hub-toolbar"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="library-hub-toolbar-copy"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /<h2 className="fb-section-heading">Source libraries<\/h2>/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Import shared source libraries into the Sources tab\. Imported sources feed AI Digest issues and Following posts\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Import shared source libraries into Sources\. Imported sources feed AI Digest issues and Following posts\./);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Import shared source libraries into the Sources tab\. Imported sources feed AI Digest issues and Following posts\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Import shared libraries into Sources, Following, and AI Digest\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Source libraries shared to Hub\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /sourceLibraryListCopy\(activeFilter\)/);
@@ -3687,7 +3693,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
   assert.match(buildersPage, /@\/components\/PageHeader/);
-  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*Follow sources, run Fetch sources/);
+  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*Follow sources, fetch updates, and choose what feeds AI Digest issues and Following posts\./);
   assert.doesNotMatch(buildersPage, /<h1 className="sr-only">Sources<\/h1>/);
   assert.match(buildersPage, /<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/);
   assert.doesNotMatch(buildersPage, /Manage followed, private, and imported sources/);
