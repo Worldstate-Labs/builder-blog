@@ -246,7 +246,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Source libraries</h2>
           <p className="hub-section-copy">
-            Source libraries built and shared by other users.
+            Source libraries shared to Hub.
           </p>
         </div>
       </div>
@@ -590,17 +590,17 @@ function sourceLibraryListCopy(filter: FilterKey) {
     case "imported":
       return {
         description: "Source libraries from Hub that are already available in your Sources.",
-        emptyBody: "Import source libraries built and shared by other users to see them in Sources.",
+        emptyBody: "Import shared source libraries to see them in Sources.",
       };
     case "shared":
       return {
-        description: "Source libraries built and shared by other users.",
+        description: "Source libraries shared by other users.",
         emptyBody: "No shared source libraries match this filter.",
       };
     case "all":
     default:
       return {
-        description: "Source libraries built and shared by other users.",
+        description: "Source libraries shared to Hub.",
         emptyBody: "Try another source library filter.",
       };
   }

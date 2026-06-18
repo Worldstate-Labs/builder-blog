@@ -18,7 +18,7 @@ type TimelineResponse = {
 };
 
 const NO_FOLLOWED_SOURCES_BODY =
-  "Use Sources to follow or add sources. They feed both AI Digest and Following.";
+  "Add sources in Sources. They feed AI Digest and Following.";
 
 export type FollowingSourceReadiness = {
   activeTokens: AgentTokenListItem[];
@@ -138,7 +138,7 @@ function FollowingUnavailable({
       <FeedEmptyState
         actions={<FetchSourcesPrompt sourceReadiness={sourceReadiness} />}
         ariaLive="polite"
-        body="Run Fetch sources to summarize posts from your followed sources. Following will show the latest unread posts."
+        body="Run Fetch sources to summarize followed-source posts. Following shows the latest unread posts."
         className="is-actionable"
         title="No summarized posts yet"
       />
@@ -149,7 +149,7 @@ function FollowingUnavailable({
     <FeedEmptyState
       actions={<FetchSourcesPrompt sourceReadiness={sourceReadiness} />}
       ariaLive="polite"
-      body="Following will update after new unread posts are fetched from your followed sources."
+      body="Following updates when Fetch sources finds new unread posts."
       className="is-actionable"
       title="No unread posts yet"
     />

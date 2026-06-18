@@ -34,7 +34,7 @@ export default async function SettingsPage() {
     <div className="page-pad page-pad--settings">
       <PageHeader
         title="Settings"
-        description="Manage authorized access and the rules used by Fetch sources and AI Digest."
+        description="Manage access keys and the rules used by Fetch sources and AI Digest."
       />
 
       <div className="workspace-content-stack settings-workspace">
@@ -77,7 +77,7 @@ async function SourceTypeConfigSection({
           <div className="settings-rules-summary-copy">
             <h3 className="fb-section-heading">Source fetching rules</h3>
             <p className="settings-rules-summary-desc">
-              Used when summarizing source content.
+              Used when Fetch sources reads and summarizes posts.
             </p>
           </div>
           <span className="settings-rules-summary-meta source-summary-line">
@@ -125,7 +125,7 @@ async function SourceTypeConfigSection({
           <div className="settings-rules-summary-copy">
             <h3 className="fb-section-heading">AI Digest rules</h3>
             <p className="settings-rules-summary-desc">
-              Prompts used to generate AI Digest.
+              Used when building AI Digest archives.
             </p>
           </div>
           <span className="settings-rules-summary-meta source-summary-line">

@@ -865,6 +865,10 @@ export function FetchLogPanel({
               error?: string;
             }
           | null;
+        if (response.status === 401) {
+          setError(null);
+          return;
+        }
         if (!response.ok) {
           throw new Error(body?.error ?? `HTTP ${response.status}`);
         }
@@ -1020,7 +1024,7 @@ function getFetchUpdateStatus(
         ? {
             key: "healthy",
             label: "OK",
-            summary: "The latest one-time Fetch sources run completed. No recurring schedule is connected.",
+            summary: "The latest one-time Fetch sources run completed. No schedule is connected.",
             style: statusStyle("ok"),
           }
         : {
@@ -1053,7 +1057,7 @@ function getFetchUpdateStatus(
     return {
       key: "syncing",
       label: "Syncing",
-      summary: "A Fetch sources run is still writing post outcomes.",
+      summary: "A Fetch sources run is still saving post results.",
       style: statusStyle("partial"),
     };
   }
@@ -1071,7 +1075,7 @@ function getFetchUpdateStatus(
     return {
       key: "waiting",
       label: "Waiting",
-      summary: "The next scheduled Fetch sources run has not reached its grace window yet.",
+      summary: "The next scheduled Fetch sources run has not started yet.",
       style: statusStyle("partial"),
     };
   }
@@ -1079,7 +1083,7 @@ function getFetchUpdateStatus(
     return {
       key: "needs-attention",
       label: "Needs attention",
-      summary: "The latest scheduled Fetch sources run stopped sending heartbeats.",
+      summary: "FollowBrief lost contact with the latest scheduled Fetch sources run.",
       style: statusStyle("failed"),
     };
   }
@@ -1091,8 +1095,8 @@ function getFetchUpdateStatus(
       label: "Needs attention",
       summary:
         latestResolved === "missed"
-          ? "The latest scheduled window has no recorded fetch run."
-          : "The latest scheduled fetch run did not finish successfully.",
+          ? "The latest scheduled Fetch sources run did not report back."
+          : "The latest scheduled Fetch sources run did not finish successfully.",
       style: statusStyle("failed"),
     };
   }
@@ -1100,7 +1104,7 @@ function getFetchUpdateStatus(
     return {
       key: "healthy",
       label: "Healthy",
-      summary: "Recent scheduled fetch runs are completing successfully.",
+      summary: "Recent scheduled Fetch sources runs are completing successfully.",
       style: statusStyle("ok"),
     };
   }
@@ -1577,13 +1581,13 @@ function fetchRunVerdict({
   if (stats.failed > 0 || ["Failed", "Stalled", "Timed out"].includes(displayStatus.label)) {
     return {
       tone: "fail",
-      text: `${formatCount(stats.failed || 1)} planned post ${stats.failed === 1 ? "failed" : "failed"} before the run fully synced.`,
+      text: `${formatCount(stats.failed || 1)} planned ${stats.failed === 1 ? "post" : "posts"} failed before sync finished.`,
     };
   }
   if (stats.actionNeeded > 0) {
     return {
       tone: "warn",
-      text: `${formatCount(stats.actionNeeded)} post ${stats.actionNeeded === 1 ? "needs" : "need"} Local Agent follow-up before it can be summarized.`,
+      text: `${formatCount(stats.actionNeeded)} ${stats.actionNeeded === 1 ? "post needs" : "posts need"} Local Agent follow-up before summarizing.`,
     };
   }
   if (stats.planned > 0 && accounted >= stats.planned) {
@@ -2473,7 +2477,7 @@ const FAILURE_REASON_LABEL: Record<string, string> = {
   content_too_short: "The readable content was too short",
   // Parallel-run outcomes backfilled by merge-task-results when a shard
   // worker never reported a task (crash/timeout) or discovery never expanded.
-  worker_missing_result: "A parallel worker stopped before reporting this task",
+  worker_missing_result: "A Local Agent task stopped before reporting this post",
   discovery_not_expanded: "Candidate discovery did not complete",
 };
 

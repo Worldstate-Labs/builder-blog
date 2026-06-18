@@ -537,7 +537,7 @@ function SearchQueryInsights({
   return (
     <section className="search-insights" aria-label="Query interpretation">
       <p className="search-insight-summary">
-        Query matched {resultCount} {searchResultCountLabel(typeFilter, resultCount)}.
+        Found {resultCount} {searchResultCountLabel(typeFilter, resultCount)}.
       </p>
       <dl className="search-insight-grid">
         {items.map((item) => (

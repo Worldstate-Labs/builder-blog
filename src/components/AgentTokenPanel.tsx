@@ -267,7 +267,7 @@ export function AgentTokenPanel({
         // copy-prompt picker on those pages renders a stale list.
         router.refresh();
       } catch (error) {
-        setCreateError(error instanceof Error ? error.message : "Could not create access.");
+        setCreateError(error instanceof Error ? error.message : "Could not create access key.");
         createInputRef.current?.focus();
       }
     });
@@ -313,7 +313,7 @@ export function AgentTokenPanel({
         router.refresh();
       } catch (error) {
         setTokens(previousTokens);
-        setStatus(error instanceof Error ? error.message : "Could not revoke access.");
+        setStatus(error instanceof Error ? error.message : "Could not revoke access key.");
       }
     });
   }
@@ -322,9 +322,9 @@ export function AgentTokenPanel({
     <section className="access-keys-panel">
       <div className="access-keys-head">
         <div className="access-keys-copy">
-          <h2 className="fb-section-heading">Authorized access</h2>
+          <h2 className="fb-section-heading">Access keys</h2>
           <p className="access-keys-desc">
-            Authorized devices and Local Agents can update this FollowBrief account.
+            Devices and Local Agents with access keys can update this account.
           </p>
         </div>
         <button
@@ -339,7 +339,7 @@ export function AgentTokenPanel({
       </div>
 
       {sortedTokens.length > 0 ? (
-        <ul className="access-keys-list" aria-label="Authorized devices and Local Agents">
+        <ul className="access-keys-list" aria-label="Access keys">
           {sortedTokens.map((token) => (
             <TokenRow
               key={token.id}
@@ -353,7 +353,7 @@ export function AgentTokenPanel({
       ) : (
         <EmptyState
           className="access-keys-empty"
-          title="No authorized access yet"
+          title="No access keys yet"
           body="Add an access key when you connect a device or Local Agent."
         />
       )}
@@ -454,7 +454,7 @@ export function AgentTokenPanel({
               {revokeTarget.lastIp || revokeTarget.lastUserAgent || revokeTarget.lastUsedAt ? (
                 <>
                   <p>
-                    This access has been used by{" "}
+                    This access key has been used by{" "}
                     <strong>{describeAccessDevice(revokeTarget)}</strong>
                     {revokeTarget.lastIp ? (
                       <>
@@ -467,13 +467,13 @@ export function AgentTokenPanel({
                     .
                   </p>
                   <p className="settings-dialog-warning">
-                    After revoking it, that device or Local Agent will lose
-                    access to FollowBrief and need a new access key to update again.
+                    After revoking it, that device or Local Agent will need a
+                    new access key to update FollowBrief.
                   </p>
                 </>
               ) : (
                 <p>
-                  This access has never been used. Revoking it now is safe.
+                  This access key has never been used. Revoking it now is safe.
                   No device or Local Agent will lose access.
                 </p>
               )}

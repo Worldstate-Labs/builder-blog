@@ -23,22 +23,22 @@ const RUNTIME_OPTIONS: { id: AgentRuntime; label: string; hint: string }[] = [
   {
     id: "claude",
     label: "Claude Code",
-    hint: "Use this if Claude Code is the Local Agent that will run it.",
+    hint: "Use when Claude Code runs the prompt.",
   },
   {
     id: "codex",
     label: "Codex",
-    hint: "Use this if Codex is the Local Agent that will run it.",
+    hint: "Use when Codex runs the prompt.",
   },
   {
     id: "gemini",
     label: "Gemini CLI",
-    hint: "Use this if Gemini CLI is the Local Agent that will run it.",
+    hint: "Use when Gemini CLI runs the prompt.",
   },
   {
     id: "openclaw",
     label: "OpenClaw",
-    hint: "Use this if OpenClaw is the Local Agent that will run it.",
+    hint: "Use when OpenClaw runs the prompt.",
   },
 ];
 
@@ -579,8 +579,8 @@ export function SkillPromptActions({
         <div className="fb-skill-text">
           <span className="fb-section-label skill-prompt-label">{config.title}</span>
           {context === "digest"
-            ? "Copy a prompt for your Local Agent to build your AI Digest."
-            : "Copy a prompt for your Local Agent to fetch, summarize, and sync every source."}
+            ? "Copy a Local Agent prompt to build your AI Digest."
+            : "Copy a Local Agent prompt to fetch, summarize, and sync sources."}
         </div>
       ) : null}
       <button
@@ -1054,8 +1054,8 @@ function CronConfigDialog({
           </h2>
           <p className="token-picker-sub">
             {context === "digest"
-              ? "Copy a prompt for your Local Agent to build your AI Digest."
-              : "Copy a prompt for your Local Agent to fetch, summarize, and sync every source."}
+              ? "Copy a Local Agent prompt to build your AI Digest."
+              : "Copy a Local Agent prompt to fetch, summarize, and sync sources."}
           </p>
         </header>
 
@@ -1118,8 +1118,7 @@ function CronConfigDialog({
                 </select>
               </div>
               <p className="cron-field-hint">
-                Runs source tasks in parallel after candidates are found. Use 1 for the safest
-                setup.
+                Runs source tasks in parallel after discovery. Use 1 for the safest setup.
               </p>
             </>
           ) : null}
@@ -1140,7 +1139,7 @@ function CronConfigDialog({
                 onChange={setPickedMaxAge}
               />
               <p className="cron-field-hint">
-                Excludes older posts. Defaults to 30 days. Choose 1-90 days.
+                Skips older posts. Default: 30 days. Range: 1-90 days.
               </p>
             </>
           ) : (
@@ -1152,7 +1151,7 @@ function CronConfigDialog({
                 onChange={setPickedFetchDays}
               />
               <p className="cron-field-hint">
-                Fetches posts from this many days back. Defaults to 30 days. Choose 1-90 days.
+                Looks back this many days for posts. Default: 30 days. Range: 1-90 days.
               </p>
             </>
           )}

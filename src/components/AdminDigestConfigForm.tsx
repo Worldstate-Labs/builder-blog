@@ -163,7 +163,7 @@ export function AdminDigestConfigForm({
       ) : null}
       <FieldBlock
         label="Post summary prompt"
-        description="Rewrites or translates existing per-post summaries into the selected AI Digest language without dropping key points, viewpoints, or insights."
+        description="Rewrites or translates post summaries into the selected AI Digest language without dropping key points."
       >
         <MarkdownEditor
           ariaLabel="Post summary prompt"

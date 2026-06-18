@@ -111,7 +111,7 @@ export default async function BuildersPage({
     <div className="page-pad">
       <PageHeader
         title="Sources"
-        description="Follow the sources your Local Agent fetches, and control how those updates become summaries and AI Digest inputs."
+        description="Follow sources, run Fetch sources, and choose what feeds AI Digest and Following."
       />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <section className="sources-tab-surface">
@@ -734,7 +734,7 @@ async function FetchSourcesSection({
             }),
           )}
           editableSourceOptions={data.sourceLabelOptions}
-          emptyBody="Add sources here, then run Fetch sources. AI Digest and Following both draw from this library."
+          emptyBody="Add sources, then run Fetch sources. AI Digest and Following use this library."
           emptyTitle="No sources in your source library yet"
         />
       </PrivateLibraryPanel>
@@ -747,7 +747,7 @@ async function FetchSourcesSection({
         <div className="imported-libraries-copy">
           <h2 className="fb-section-heading">Imported source libraries</h2>
           <p className="library-section-copy">
-            Source libraries built and shared by other users, now available in your Sources.
+            Shared source libraries available in your Sources.
           </p>
         </div>
         {data.importedLibrarySections.length > 0 ? (
@@ -781,7 +781,7 @@ async function FetchSourcesSection({
                   subscribed: data.subscribed.has(builder.id),
                 }),
               )}
-              emptyBody="This imported library has no active sources available right now."
+              emptyBody="This imported library has no active sources."
               emptyTitle="No active sources"
             />
           </LibrarySection>
@@ -793,7 +793,7 @@ async function FetchSourcesSection({
                 Import from Hub
               </Link>
             }
-            body="Import source libraries built and shared by other users from Hub."
+            body="Import shared source libraries from Hub."
             title="No imported source libraries"
           />
         ) : null}

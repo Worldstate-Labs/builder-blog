@@ -151,7 +151,7 @@ export function PostCard({
   const rawContent = rawContentMode === "raw_summary"
     ? originalSummary || summary
     : post.body;
-  const rawContentLabel = rawContentMode === "raw_summary" ? "Source summary" : "Crawled content";
+  const rawContentLabel = rawContentMode === "raw_summary" ? "Source summary" : "Original content";
   const detailSummary = displaySummaryText(post.summary, post.url);
   const detailRawContent = normalizedText(post.body);
   const showDetailSummary = Boolean(
@@ -255,14 +255,14 @@ export function PostCard({
             ) : null}
             <section
               className={`post-detail-raw${rawExpanded ? " post-detail-raw--expanded" : ""}`}
-              aria-label="Crawled content"
+              aria-label="Original content"
             >
               <div className="post-detail-raw-head">
                 <div className="post-detail-raw-copy">
-                  <h2 className="post-detail-section-label">Crawled content</h2>
+                  <h2 className="post-detail-section-label">Original content</h2>
                   <p className="post-detail-section-desc">
                     Full content captured by Fetch sources. It stays collapsed until
-                    you need the source text.
+                    you need the original text.
                   </p>
                 </div>
                 <button
@@ -273,12 +273,12 @@ export function PostCard({
                   type="button"
                 >
                   <BookOpen aria-hidden="true" className="post-detail-raw-toggle-icon" />
-                  {rawExpanded ? "Hide crawled content" : "Show crawled content"}
+                  {rawExpanded ? "Hide original content" : "Show original content"}
                 </button>
               </div>
               {rawExpanded ? (
                 <div
-                  aria-label="Crawled content"
+                  aria-label="Original content"
                   className="post-detail-body"
                   id={rawRegionId}
                   role="region"
@@ -404,7 +404,7 @@ export function PostCard({
           </div>
         </div>
 
-        {/* Crawled content collapsible region */}
+        {/* Original content collapsible region */}
         {!isDetail && rawExpanded && rawContent ? (
           <div
             aria-label={actionLabel(rawContentLabel, actionContext)}

@@ -359,6 +359,10 @@ export function DigestLogPanel({
               error?: string;
             }
           | null;
+        if (response.status === 401) {
+          setError(null);
+          return;
+        }
         if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`);
         setRuns(Array.isArray(body?.runs) ? body.runs : []);
         setCronRuns(Array.isArray(body?.cronRuns) ? body.cronRuns : []);
@@ -896,11 +900,11 @@ function jobRunFailureReason(jobRun: AgentJobRunListItem): string {
   if (jobRun.status === "timed_out") {
     return timeoutSeconds
       ? `Timed out after ${formatCount(timeoutSeconds)} seconds${timeoutStage ? ` during ${timeoutStage}` : ""}.`
-      : "Timed out before the worker could finish.";
+      : "Timed out before the Local Agent could finish.";
   }
   if (jobRun.status === "killed") return "Stopped by the local scheduler before finishing.";
   if (jobRun.status === "replaced") return "Replaced by a newer scheduled run.";
-  if (jobRun.status === "stale") return "The web app stopped receiving heartbeats from this worker.";
+  if (jobRun.status === "stale") return "FollowBrief lost contact with the Local Agent.";
   if (jobRun.signal) return `Stopped after receiving ${jobRun.signal}.`;
   if (jobRun.exitCode !== null) return `Exited with code ${jobRun.exitCode}.`;
   return reason ? readableReason(reason) : "Stopped before reporting a completed AI Digest build.";
@@ -922,13 +926,13 @@ function jobRunVerdict(jobRun: AgentJobRunListItem): RunVerdict {
   if (jobRun.status === "starting" || jobRun.status === "running") {
     return {
       tone: "warn",
-      text: "The local worker is running. Waiting for it to prepare candidates and save the AI Digest.",
+      text: "The Local Agent is running. Waiting for it to prepare candidates and save the AI Digest.",
     };
   }
   if (jobRun.status === "succeeded") {
     return {
       tone: "warn",
-      text: "The local worker finished, but it did not create an AI Digest build record.",
+      text: "The Local Agent finished, but it did not create an AI Digest build record.",
     };
   }
   return {
@@ -953,12 +957,12 @@ function digestRunVerdict(run: DigestRunListItem, jobRun?: AgentJobRunListItem):
   if (jobRun && !["starting", "running", "succeeded"].includes(jobRun.status)) {
     return {
       tone: "fail",
-      text: `Prepared ${formatCount(run.candidateCount)} candidates, but the worker stopped before saving the AI Digest. ${jobRunFailureReason(jobRun)}`,
+      text: `Prepared ${formatCount(run.candidateCount)} candidates, but the Local Agent stopped before saving. ${jobRunFailureReason(jobRun)}`,
     };
   }
   return {
     tone: "warn",
-    text: `Prepared ${formatCount(run.candidateCount)} candidates. Waiting for the worker to save the AI Digest.`,
+    text: `Prepared ${formatCount(run.candidateCount)} candidates. Waiting for the Local Agent to save AI Digest.`,
   };
 }
 
@@ -1094,7 +1098,7 @@ function DigestLifecycle({
         ? `${formatCount(run.candidateCount)} found from ${formatCount(run.contributingSourceCount)} sources`
         : jobRun
           ? jobRunStatusLabel(jobRun)
-          : "Waiting for worker",
+          : "Waiting for Local Agent",
       tone: hasRun ? "ok" : failedJob ? "fail" : jobRun ? "warn" : "idle",
     },
     {

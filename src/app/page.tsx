@@ -31,9 +31,9 @@ export default async function Home() {
             <span className="fb-public-title-break">Read them as one AI Digest.</span>
           </h1>
           <p className="fb-public-copy">
-            Follow blogs, newsletters, channels, feeds, GitHub Trending,
-            and Product Hunt. Your Local Agent fetches updates, summarizes
-            posts, builds a cited AI Digest, and syncs it back to FollowBrief.
+            Follow blogs, channels, feeds, GitHub Trending, and Product Hunt.
+            Your Local Agent fetches updates, summarizes posts, and builds a
+            cited AI Digest.
           </p>
           <div className="fb-public-actions">
             <Link className="fb-btn dark" href="/login">
@@ -141,7 +141,7 @@ export default async function Home() {
               i: "01",
               icon: Rss,
               title: "Choose sources",
-              copy: "Start from shared source libraries, then add blogs, channels, feeds, GitHub Trending, Product Hunt, and sources your Local Agent can fetch.",
+              copy: "Start from shared source libraries, then add blogs, channels, feeds, GitHub Trending, Product Hunt, and agent-fetchable sources.",
             },
             {
               i: "02",

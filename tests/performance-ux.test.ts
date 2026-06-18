@@ -223,7 +223,7 @@ test("every app route has an explicit centered layout role", () => {
 
   assert.match(
     source("src/app/(workspace)/settings/page.tsx"),
-    /className="page-pad page-pad--settings"[\s\S]*<PageHeader[\s\S]*title="Settings"[\s\S]*Manage authorized access and the rules used by Fetch sources and AI Digest\./,
+    /className="page-pad page-pad--settings"[\s\S]*<PageHeader[\s\S]*title="Settings"[\s\S]*Manage access keys and the rules used by Fetch sources and AI Digest\./,
   );
   assert.doesNotMatch(
     source("src/app/(workspace)/settings/page.tsx"),
@@ -302,14 +302,14 @@ test("every app route has an explicit centered layout role", () => {
   assert.doesNotMatch(settingsLoading, /RouteLoading/);
   assert.match(settingsLoading, /@\/components\/PageHeader/);
   assert.match(settingsLoading, /className="page-pad page-pad--settings settings-loading"/);
-  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage authorized access and the rules used by Fetch sources and AI Digest\./);
+  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage access keys and the rules used by Fetch sources and AI Digest\./);
   assert.match(settingsLoading, /className="workspace-content-stack settings-workspace"/);
   assert.match(settingsLoading, /className="settings-access-grid"/);
   assert.match(settingsLoading, /@\/components\/AgentTokenPanelSkeleton/);
   assert.match(settingsLoading, /<AgentTokenPanelSkeleton \/>/);
   const agentTokenPanelSkeleton = source("src/components/AgentTokenPanelSkeleton.tsx");
   assert.match(agentTokenPanelSkeleton, /aria-busy="true" aria-live="polite"/);
-  assert.match(agentTokenPanelSkeleton, /<span className="sr-only">Loading authorized access<\/span>/);
+  assert.match(agentTokenPanelSkeleton, /<span className="sr-only">Loading access keys<\/span>/);
   assert.doesNotMatch(agentTokenPanelSkeleton, /<span className="sr-only">Loading Local Agent access<\/span>/);
   assert.match(agentTokenPanelSkeleton, /className="access-key-card access-key-card--skeleton"/);
   assert.match(settingsLoading, /SettingsRulesSkeleton/);
@@ -392,7 +392,7 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(hubLoading, /<span className="sr-only">Loading Hub content<\/span>/);
   assert.doesNotMatch(hubLoading, /aria-label="Loading source libraries"/);
   assert.doesNotMatch(hubLoading, /<h2 className="fb-section-heading">Source libraries<\/h2>/);
-  assert.doesNotMatch(hubLoading, /Source libraries built and shared by other users\./);
+  assert.doesNotMatch(hubLoading, /Source libraries shared to Hub\./);
   assert.match(hubLoading, /className="library-hub-skeleton-line is-title"/);
   assert.match(hubLoading, /className="hub-list-stack fb-hub-list"/);
   assert.match(hubLoading, /className="fb-hub-card" key=\{index\}/);
@@ -439,7 +439,7 @@ test("workspace not-found uses the FollowBrief shell instead of the default Next
   assert.match(notFoundPage, /@\/components\/EmptyState/);
   assert.match(notFoundPage, /className="page-pad page-pad--reading workspace-not-found"/);
   assert.match(notFoundPage, /title="Page not found"/);
-  assert.match(notFoundPage, /belong to content outside your Sources or imported AI Digest archives/);
+  assert.match(notFoundPage, /be outside your Sources or imported AI Digest archives/);
   assert.doesNotMatch(notFoundPage, /current library/);
   assert.doesNotMatch(notFoundPage, /item outside your current library/);
   assert.match(notFoundPage, /href="\/dashboard"/);
@@ -523,7 +523,7 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /fb-public-feature-grid/);
   assert.match(landingPage, /Search workspace/);
   assert.match(landingPage, /reading the AI Digest/);
-  assert.match(landingPage, /builds a cited AI Digest/);
+  assert.match(landingPage, /builds a\s+cited AI Digest/);
   assert.doesNotMatch(landingPage, /reading AI Digests|builds cited AI Digests/);
   assert.match(landingPage, />AI Digest<\/span>/);
   assert.match(landingPage, /Find sources, posts, and AI Digest archives/);
@@ -558,9 +558,9 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /GitHub Trending/);
   assert.match(landingPage, /Product Hunt/);
   assert.match(landingPage, /Your Local Agent fetches updates, summarizes/);
-  assert.match(landingPage, /sources your Local Agent can fetch/);
+  assert.match(landingPage, /agent-fetchable sources/);
   assert.match(landingPage, /build a cited AI Digest from the summaries/);
-  assert.doesNotMatch(landingPage, /Local Agent sources/);
+  assert.doesNotMatch(landingPage, /sources your Local Agent can fetch|Local Agent sources/);
   assert.match(landingPage, /Daily AI Digest flow/);
   assert.match(landingPage, /Daily updates become one AI Digest/);
   assert.match(landingPage, /readable AI Digest/);
@@ -849,13 +849,11 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(skillPromptActions, /No connected helpers|Connected helpers/);
   assert.doesNotMatch(skillPromptActions, /flex flex-wrap items-center justify-end gap-2|className="ml-2"|mr-2|text-\[11px\] text-\[var\(--danger\)\]|text-\[11px\] text-\[var\(--muted-strong\)\]/);
   assert.doesNotMatch(skillPromptActions, /className="grid"/);
-  assert.match(agentTokenPanel, /<h2 className="fb-section-heading">Authorized access<\/h2>/);
+  assert.match(agentTokenPanel, /<h2 className="fb-section-heading">Access keys<\/h2>/);
   assert.doesNotMatch(agentTokenPanel, /<h2 className="fb-section-heading">Local Agent access<\/h2>/);
-  assert.doesNotMatch(agentTokenPanel, /<h2 className="fb-section-heading">Access keys<\/h2>/);
-  assert.match(agentTokenPanel, /Authorized devices and Local Agents can update this FollowBrief account\./);
-  assert.doesNotMatch(agentTokenPanel, /Devices and Local Agents authorized to update this FollowBrief account\./);
-  assert.match(agentTokenPanel, /aria-label="Authorized devices and Local Agents"/);
-  assert.match(agentTokenPanel, /<ul className="access-keys-list" aria-label="Authorized devices and Local Agents">/);
+  assert.match(agentTokenPanel, /Devices and Local Agents with access keys can update this account\./);
+  assert.doesNotMatch(agentTokenPanel, /Authorized devices and Local Agents can update this FollowBrief account\./);
+  assert.match(agentTokenPanel, /<ul className="access-keys-list" aria-label="Access keys">/);
   assert.doesNotMatch(agentTokenPanel, /aria-label="Access keys for Local Agents"/);
   assert.match(agentTokenPanel, /const sortedTokens = useMemo\([\s\S]*sortAccessTokensByRecentConnection\(tokens\)/);
   assert.match(agentTokenPanel, /sortedTokens\.length > 0/);
@@ -963,7 +961,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /label="Per-source summary prompt"[\s\S]*optional/);
   assert.match(adminDigestConfig, /label="Post summary prompt"/);
   assert.match(adminDigestConfig, /ariaLabel="Post summary prompt"/);
-  assert.match(adminDigestConfig, /without dropping key points, viewpoints, or insights/);
+  assert.match(adminDigestConfig, /without dropping key points/);
+  assert.doesNotMatch(adminDigestConfig, /without dropping key points, viewpoints, or insights/);
   assert.doesNotMatch(adminDigestConfig, /label="Localized post summary prompt"|ariaLabel="Localized post summary prompt"|label="Translate prompt"|ariaLabel="Translate prompt"/);
   assert.match(adminDigestConfig, /500 words or fewer/);
   assert.match(adminDigestConfig, /Preserve key points, viewpoints, insights/);
@@ -987,8 +986,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /@\/components\/settings\/SettingsFields/);
   assert.match(adminSourceTypeManager, /FETCH_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /SUMMARY_PROMPT_PLACEHOLDER/);
-  assert.match(adminSourceTypeManager, /How each post from this source is written as a per-post summary/);
-  assert.match(adminSourceTypeManager, /one-time or scheduled run prompt/);
+  assert.match(adminSourceTypeManager, /How each post becomes a summary/);
+  assert.match(adminSourceTypeManager, /Output language comes from the run prompt/);
+  assert.doesNotMatch(adminSourceTypeManager, /How each post from this source is written as a per-post summary|one-time or scheduled run prompt/);
   assert.match(adminSourceTypeManager, /Extra instructions for this source type when Fetch sources needs agent extraction\./);
   assert.match(adminSourceTypeManager, /Posts that fail are not saved or used in Following or AI Digest/);
   assert.match(adminSourceTypeManager, /Drop posts whose body has fewer characters than this/);
@@ -1038,21 +1038,21 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(userMenu, /closeMenu\(\);[\s\S]*signOut\(\{ callbackUrl: "\/login" \}\)[\s\S]*Sign out/);
   assert.match(settingsPage, /@\/components\/PageHeader/);
   assert.match(settingsPage, /className="page-pad page-pad--settings"/);
-  assert.match(settingsPage, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage authorized access and the rules used by Fetch sources and AI Digest\./);
+  assert.match(settingsPage, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage access keys and the rules used by Fetch sources and AI Digest\./);
   assert.doesNotMatch(settingsPage, /Manage Local Agent access and the rules used by Fetch sources and AI Digest\./);
   assert.doesNotMatch(settingsPage, /<section className="fb-page-head"/);
   assert.equal(existsSync(join(root, "src/app/(workspace)/settings/loading.tsx")), true);
   const settingsLoading = source("src/app/(workspace)/settings/loading.tsx");
   assert.doesNotMatch(settingsLoading, /RouteLoading/);
   assert.match(settingsLoading, /className="page-pad page-pad--settings settings-loading"/);
-  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage authorized access and the rules used by Fetch sources and AI Digest\./);
+  assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Manage access keys and the rules used by Fetch sources and AI Digest\./);
   assert.doesNotMatch(settingsLoading, /Manage Local Agent access and the rules used by Fetch sources and AI Digest\./);
   assert.match(settingsLoading, /className="workspace-content-stack settings-workspace"/);
   assert.match(settingsLoading, /@\/components\/AgentTokenPanelSkeleton/);
   assert.match(settingsLoading, /<AgentTokenPanelSkeleton \/>/);
   const agentTokenPanelSkeleton = source("src/components/AgentTokenPanelSkeleton.tsx");
   assert.match(agentTokenPanelSkeleton, /aria-busy="true" aria-live="polite"/);
-  assert.match(agentTokenPanelSkeleton, /<span className="sr-only">Loading authorized access<\/span>/);
+  assert.match(agentTokenPanelSkeleton, /<span className="sr-only">Loading access keys<\/span>/);
   assert.doesNotMatch(agentTokenPanelSkeleton, /<span className="sr-only">Loading Local Agent access<\/span>/);
   assert.match(agentTokenPanelSkeleton, /className="access-key-card access-key-card--skeleton"/);
   assert.match(settingsLoading, /SettingsRulesSkeleton/);
@@ -1167,7 +1167,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(pageHeader, /actions \? <div className="fb-page-head-actions">\{actions\}<\/div> : null/);
   assert.match(dashboardPage, /className="page-pad page-pad--reading home-page"/);
   assert.match(dashboardPage, /@\/components\/PageHeader/);
-  assert.match(dashboardPage, /<PageHeader[\s\S]*title="Today"[\s\S]*Read the latest technical signal from your followed sources/);
+  assert.match(dashboardPage, /<PageHeader[\s\S]*title="Today"[\s\S]*Read updates from followed sources, then save or open the originals that matter\./);
   assert.doesNotMatch(dashboardPage, /<h1 className="sr-only">Home<\/h1>/);
   assert.match(dashboardPage, /className="workspace-content-stack workspace-content-stack--tabs-first home-workspace"/);
   assert.match(dashboardPage, /className="ai-digest-stack"/);
@@ -1270,12 +1270,13 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /The owner has not shared any AI Digest archives yet/);
   assert.match(dashboardPage, /No AI Digest archives/);
   assert.doesNotMatch(dashboardPage, /saved briefs/);
-  assert.match(dashboardPage, /Use Sources to follow or add sources\. They feed both AI Digest and Following/);
+  assert.match(dashboardPage, /Add sources in Sources\. They feed AI Digest and Following\./);
   assert.doesNotMatch(dashboardPage, /start building AI Digests/);
   assert.match(dashboardPage, /No summarized posts yet/);
   assert.doesNotMatch(dashboardPage, /No fetched posts yet/);
-  assert.match(dashboardPage, /Ask your Local Agent to build an AI Digest from the summarized posts/);
-  assert.match(dashboardPage, /Run Fetch sources to summarize posts from your followed sources before building an AI Digest/);
+  assert.match(dashboardPage, /Build AI Digest from summarized posts/);
+  assert.match(dashboardPage, /Run Fetch sources to summarize posts before building AI Digest/);
+  assert.doesNotMatch(dashboardPage, /Ask your Local Agent to build an AI Digest from the summarized posts/);
   assert.doesNotMatch(dashboardPage, /Ask your Local Agent to fetch and summarize your followed sources/);
   assert.doesNotMatch(dashboardPage, /No digest yet|No archived AI Digests|This imported digest|This imported AI Digest has no archived AI Digest yet|build a digest from|material for a digest|start building digests|before building a digest/);
   assert.match(dashboardPage, /href="\/builders\?tab=fetch"/);
@@ -1503,7 +1504,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(channelPreferenceToggle, /flex flex-col items-end|text-xs text-\[var\(--danger\)\]|fill-\[var\(--warm\)\]|transition-colors/);
   assert.match(builderDetailPage, /EmptyState/);
   assert.match(builderDetailPage, /title="No summarized posts yet"/);
-  assert.match(builderDetailPage, /Run Fetch sources\. Summarized posts from this source will appear here\./);
+  assert.match(builderDetailPage, /Run Fetch sources to summarize this source's posts\./);
   assert.doesNotMatch(builderDetailPage, /Run Fetch sources, then posts from this source will appear here\./);
   assert.doesNotMatch(builderDetailPage, /Fetch and summarize sources from Sources|from the Sources page/);
   assert.match(builderDetailPage, /actions=\{[\s\S]*href="\/builders\?tab=fetch"[\s\S]*Run Fetch sources/);
@@ -1732,7 +1733,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(favoriteList, /Reading queue/);
   assert.match(favoriteList, /Reading queue is empty/);
   assert.match(favoriteList, /Posts you starred for focused reading, newest first\./);
-  assert.match(favoriteList, /Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
+  assert.match(favoriteList, /Star posts from AI Digest, Following, Search, or post pages to build this queue\./);
+  assert.doesNotMatch(favoriteList, /Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
   assert.match(favoriteList, /Search posts/);
   assert.match(favoriteList, /href="\/search"/);
   assert.doesNotMatch(favoriteList, /<h2 className="favorites-feed-title">Favorites<\/h2>/);
@@ -1754,15 +1756,17 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /No followed sources yet/);
   assert.match(followingSection, /href="\/builders\?tab=fetch"[\s\S]*Choose sources/);
   assert.doesNotMatch(followingSection, /href="\/builders\?tab=fetch"[\s\S]*Go to Sources/);
-  assert.match(followingSection, /Use Sources to follow or add sources\. They feed both AI Digest and Following/);
+  assert.match(followingSection, /Add sources in Sources\. They feed AI Digest and Following\./);
   assert.doesNotMatch(followingSection, /start seeing Following posts/);
   assert.doesNotMatch(followingSection, /start Following/);
   assert.match(followingSection, /sourceReadiness\.summarizedPostCount === 0/);
   assert.doesNotMatch(followingSection, /sourceReadiness\.fetchedPostCount === 0/);
   assert.match(followingSection, /No summarized posts yet/);
   assert.match(followingSection, /No unread posts yet/);
-  assert.match(followingSection, /Run Fetch sources to summarize posts from your followed sources/);
-  assert.match(followingSection, /Following will show the latest unread posts/);
+  assert.match(followingSection, /Run Fetch sources to summarize followed-source posts/);
+  assert.match(followingSection, /Following shows the latest unread posts/);
+  assert.match(followingSection, /Following updates when Fetch sources finds new unread posts/);
+  assert.doesNotMatch(followingSection, /Following will update after new unread posts/);
   assert.match(followingSection, /title="Could not load Following posts"/);
   assert.match(followingSection, /Check your connection, then try again\./);
   assert.doesNotMatch(followingSection, /title="Could not load Following"|Something went wrong loading Following|Couldn't load Following|No posts have been fetched for your followed sources yet/);
@@ -2905,7 +2909,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /search-insights/);
   assert.doesNotMatch(searchPage, /search-insight-card/);
   assert.match(searchPage, /search-insight-summary/);
-  assert.match(searchPage, /Query matched/);
+  assert.match(searchPage, /Found \{resultCount\} \{searchResultCountLabel\(typeFilter, resultCount\)\}/);
+  assert.doesNotMatch(searchPage, /Query matched/);
   assert.match(searchPage, /let coveredFilterCount = 0/);
   assert.match(searchPage, /activeFilterCount > coveredFilterCount/);
   assert.match(searchPage, /Use best match/);
@@ -3137,7 +3142,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(buildersPage, /<span className="sr-only">Loading AI Digest controls<\/span>/);
   assert.doesNotMatch(buildersPage, /Loading AI Digest settings/);
   assert.match(buildersPage, /@\/components\/PageHeader/);
-  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*Follow the sources your Local Agent fetches/);
+  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*Follow sources, run Fetch sources/);
   assert.doesNotMatch(buildersPage, /<h1 className="sr-only">Sources<\/h1>/);
   assert.match(buildersPage, /className="sources-section-stack"/);
   assert.match(buildersPage, /className="your-library-panel library-section-panel"/);
@@ -3170,7 +3175,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
   assert.match(libraryHubPage, /label: "Source libraries"/);
   assert.match(libraryHubPage, /label:\s*"Source libraries"[\s\S]*href:\s*"\/library-hub\?tab=source-library"/);
-  assert.match(libraryHubPage, /Source libraries built and shared by other users\./);
+  assert.match(libraryHubPage, /Source libraries shared to Hub\./);
   assert.doesNotMatch(libraryHubPage, /Community source libraries, your shared source libraries/);
   assert.doesNotMatch(libraryHubPage, /Available source libraries/);
   assert.match(libraryHubPage, /className="workspace-content-stack workspace-content-stack--tabs-first"/);
@@ -3203,10 +3208,10 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(libraryHubPage, /<section className="fb-page-head"/);
   assert.match(libraryHubPage, /<span className="sr-only">Loading source libraries<\/span>/);
   assert.match(libraryHubPage, /<span className="sr-only">Loading shared AI Digest archives<\/span>/);
-  assert.match(libraryHubPage, /Source libraries built and shared by other users\./);
+  assert.match(libraryHubPage, /Source libraries shared to Hub\./);
   assert.match(libraryHubPage, /<h2 className="fb-section-heading">Shared AI Digest archives<\/h2>/);
   assert.doesNotMatch(libraryHubPage, /<h2 className="fb-section-heading">AI Digest archives<\/h2>/);
-  assert.match(libraryHubPage, /AI Digest archives built and shared by other users\./);
+  assert.match(libraryHubPage, /AI Digest archives shared to Hub\./);
   assert.doesNotMatch(libraryHubPage, /className="library-hub-skeleton-line is-heading"/);
   assert.doesNotMatch(libraryHubPage, /<span>Loading source libraries<\/span>/);
   assert.doesNotMatch(libraryHubPage, /className="library-hub-counts"[\s\S]*Loading source libraries/);
@@ -3239,7 +3244,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="library-hub-toolbar"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="library-hub-toolbar-copy"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /<h2 className="fb-section-heading">Source libraries<\/h2>/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries built and shared by other users\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries shared to Hub\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /sourceLibraryListCopy\(activeFilter\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /function sourceLibraryListCopy\(filter: FilterKey\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /showFilters && activeFilter !== "all"/);
@@ -3279,10 +3284,10 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /onClick=\{\(\) => setActiveFilter\("all"\)\}/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), />\s*Browse source libraries\s*<\/button>/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries shared to Hub will appear here\./);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries built and shared by other users\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries shared by other users\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Community source libraries, your shared source libraries|Community libraries|your shared libraries/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /No shared source libraries match this filter\./);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Import source libraries built and shared by other users to see them in Sources\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Import shared source libraries to see them in Sources\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Imported source libraries will appear here\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Could not import source library\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Could not remove source library import\./);
@@ -3541,7 +3546,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
   assert.match(buildersPage, /@\/components\/PageHeader/);
-  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*Follow the sources your Local Agent fetches/);
+  assert.match(buildersPage, /<PageHeader[\s\S]*title="Sources"[\s\S]*Follow sources, run Fetch sources/);
   assert.doesNotMatch(buildersPage, /<h1 className="sr-only">Sources<\/h1>/);
   assert.match(buildersPage, /<WorkspaceTopTabs[\s\S]*selectedValue=\{selectedTab\}/);
   assert.doesNotMatch(buildersPage, /Manage followed, private, and imported sources/);
@@ -3599,7 +3604,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderLibraryList, /className="builder-library-see-more"/);
   assert.match(builderLibraryList, /import \{ ChevronDown \} from "lucide-react"/);
   assert.match(builderLibraryList, /className="builder-library-see-more-icon"/);
-  assert.match(builderLibraryList, /See \$\{formatCount\(Math\.max\(hiddenSourceCount, 0\)\)\} more/);
+  assert.match(builderLibraryList, /Show \$\{formatCount\(Math\.max\(hiddenSourceCount, 0\)\)\} more/);
   assert.match(builderLibraryList, /aria-expanded=\{showAllSources\}/);
   assert.match(builderLibraryList, /Show fewer sources/);
   assert.doesNotMatch(builderLibraryList, /className="builder-library-source-section"|className="builder-library-source-section-head"|builder-library-source-section-toggle|expandedSourceTypes|setExpandedSourceTypes|sectionPostCount|groupBuildersBySourceType|initialExpandedSourceTypes/);
@@ -3622,9 +3627,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.equal(existsSync(join(root, "src/components/MobileSourcesSwitcher.tsx")), false);
   assert.match(builderLibraryList, /className="builder-library-error"/);
   assert.match(builderLibraryList, /<EmptyState body=\{emptyBody\} title=\{emptyTitle\} \/>/);
-  assert.match(buildersPage, /emptyBody="Add sources here, then run Fetch sources\. AI Digest and Following both draw from this library\."/);
+  assert.match(buildersPage, /emptyBody="Add sources, then run Fetch sources\. AI Digest and Following use this library\."/);
   assert.doesNotMatch(buildersPage, /emptyBody="Add a source, then run Fetch sources\."/);
-  assert.doesNotMatch(buildersPage, /Sources feed both AI Digest and Following/);
+  assert.doesNotMatch(buildersPage, /both draw from this library/);
   assert.match(personalBuilderRoute, /We could not verify the source right now/);
   assert.match(personalBuilderRoute, /your Local Agent can retry later/);
   assert.doesNotMatch(personalBuilderRoute, /We couldn't verify/);
@@ -3635,11 +3640,11 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(personalBuilderUpdateRoute, /local helper can retry later/);
   assert.doesNotMatch(buildersPage, /import private sources/);
   assert.match(buildersPage, /emptyTitle="No active sources"/);
-  assert.match(buildersPage, /emptyBody="This imported library has no active sources available right now\."/);
+  assert.match(buildersPage, /emptyBody="This imported library has no active sources\."/);
   assert.doesNotMatch(buildersPage, /badge="imported"/);
   assert.doesNotMatch(buildersPage, /No active sources from this imported library\./);
   assert.match(buildersPage, /title="No imported source libraries"/);
-  assert.match(buildersPage, /body="Import source libraries built and shared by other users from Hub\."/);
+  assert.match(buildersPage, /body="Import shared source libraries from Hub\."/);
   assert.doesNotMatch(buildersPage, /No imported source libraries yet\./);
   assert.match(buildersPage, /href="\/library-hub\?tab=source-library"/);
   assert.match(buildersPage, /Import from Hub/);
@@ -3689,7 +3694,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /@\/components\/EmptyState/);
   assert.match(builderFeedItems, /<EmptyState[\s\S]*className="builder-post-empty"/);
   assert.match(builderFeedItems, /title="No summarized posts yet"/);
-  assert.match(builderFeedItems, /Run Fetch sources\. Summarized posts from this source will appear here\./);
+  assert.match(builderFeedItems, /Run Fetch sources to summarize this source's posts\./);
+  assert.doesNotMatch(builderFeedItems, /Run Fetch sources\. Summarized posts from this source will appear here\./);
   assert.doesNotMatch(builderFeedItems, /Run Fetch sources, then posts from this source will appear here\./);
   assert.doesNotMatch(builderFeedItems, /Fetch and summarize sources with your Local Agent/);
   assert.match(globals, /\.builder-post-empty\s*{\s*margin:\s*0\.75rem 0\.95rem;\s*}/);
@@ -3700,7 +3706,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /timeZone:\s*"UTC"/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported source libraries/);
-  assert.match(buildersPage, /Source libraries built and shared by other users, now available in your Sources\./);
+  assert.match(buildersPage, /Shared source libraries available in your Sources\./);
   assert.doesNotMatch(buildersPage, /Source libraries you imported into Sources\./);
   assert.match(buildersPage, /importedLibrarySections/);
   assert.match(buildersPage, /className="imported-libraries-section"/);
@@ -3792,8 +3798,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(addBuilderForm, /className="add-source-primary-row"/);
   assert.match(addBuilderForm, /className="add-source-name-row"/);
   assert.match(addBuilderForm, /className="fb-input add-source-name-input"/);
-  assert.match(addBuilderForm, /Display name \(auto-filled from URL; edit to override\)/);
-  assert.doesNotMatch(addBuilderForm, /Display name \(auto-filled from URL — edit to override\)/);
+  assert.match(addBuilderForm, /Display name \(optional\)/);
+  assert.doesNotMatch(addBuilderForm, /Display name \(auto-filled from URL/);
   assert.match(addBuilderForm, /className="fb-btn dark add-source-submit"/);
   assert.match(addBuilderForm, /\{isPending \? "Adding" : "Add source"\}/);
   assert.match(addBuilderForm, /\{isPending \? "Adding" : "Add anyway"\}/);
@@ -3822,8 +3828,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(privateLibraryPanel, /className="source-library-control-area"/);
   assert.match(privateLibraryPanel, /SourceLibraryItemsArea/);
   assert.match(privateLibraryPanel, /className="library-add-source-toggle"/);
-  assert.match(privateLibraryPanel, /Close add source form/);
-  assert.doesNotMatch(privateLibraryPanel, /Close add source"/);
+  assert.match(privateLibraryPanel, /aria-label=\{addOpen \? "Close add source form" : "Add source"\}/);
+  assert.match(privateLibraryPanel, /<span>\{addOpen \? "Close" : "Add source"\}<\/span>/);
+  assert.doesNotMatch(privateLibraryPanel, /<span>\{addOpen \? "Close add source form" : "Add source"\}<\/span>/);
   assert.match(privateLibraryPanel, /\{beforeBody \?[\s\S]*className="source-library-control-area"[\s\S]*<SourceLibraryItemsArea[\s\S]*\{children\}[\s\S]*<\/SourceLibraryItemsArea>/);
   assert.match(privateLibraryPanel, /library-section-summary--static/);
   assert.match(privateLibraryPanel, /\{beforeBody\}/);
@@ -3948,10 +3955,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /className="post-detail-raw-copy"/);
   assert.match(postCard, /className="post-detail-section-desc"/);
   assert.match(postCard, /Full content captured by Fetch sources/);
-  assert.match(postCard, /It stays collapsed until[\s\S]*you need the source text\./);
+  assert.match(postCard, /It stays collapsed until[\s\S]*you need the original text\./);
   assert.match(postCard, /className="post-detail-raw-toggle"/);
-  assert.match(postCard, /\{rawExpanded \? "Hide crawled content" : "Show crawled content"\}/);
-  assert.match(postCard, /\{rawExpanded \? \(\s*<div[\s\S]*aria-label="Crawled content"[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"/);
+  assert.match(postCard, /\{rawExpanded \? "Hide original content" : "Show original content"\}/);
+  assert.match(postCard, /\{rawExpanded \? \(\s*<div[\s\S]*aria-label="Original content"[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"/);
   assert.match(postCard, /post-detail-section-label/);
   assert.match(postCard, /post-detail-body/);
   assert.match(postCard, /const detailSummary = displaySummaryText\(post\.summary, post\.url\)/);
@@ -3975,7 +3982,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /ChevronDown/);
   assert.match(postCard, /<span className="sr-only">\{summaryExpanded \? "Show less" : "Show more"\}<\/span>/);
   assert.doesNotMatch(postCard, /See more/);
-  assert.match(postCard, /Crawled content/);
+  assert.match(postCard, /Original content/);
   assert.match(postCard, /showRawContent = true/);
   assert.match(postCard, /const showReadIndicator = Boolean\(dataRead && !isDetail\)/);
   assert.match(postCard, /\{!isDetail && rawExpanded && rawContent \? \(/);
@@ -4274,7 +4281,7 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(postCard, /aria-controls=\{rawRegionId\}/);
   assert.match(postCard, /aria-expanded=\{rawExpanded\}/);
   assert.doesNotMatch(postCard, /<button[\s\S]{0,420}<BookOpen aria-hidden="true" className="post-raw-content-action-icon" \/>[\s\S]{0,60}<\/button>/);
-  assert.match(postCard, /aria-label="Crawled content"[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"/);
+  assert.match(postCard, /aria-label="Original content"[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"/);
   assert.match(postCard, /Same post available via other source libraries/);
   assert.match(postCard, /additional source library/);
   assert.match(postCard, /additional source libraries/);
@@ -4285,7 +4292,7 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(fetchMethodPopover, /id=\{popoverId\}/);
   assert.match(postCard, /function compactActionContext/);
   assert.doesNotMatch(postCard, /aria-label="View original summary"/);
-  assert.doesNotMatch(postCard, /<button[\s\S]{0,320}aria-label="Crawled content"/);
+  assert.doesNotMatch(postCard, /<button[\s\S]{0,320}aria-label="Original content"/);
   assert.match(postCard, /rawContentModeForSourceType\(builder\?\.sourceType \?\? post\.sourceType\)/);
   assert.match(postCard, /rawContentModesBySourceType/);
   assert.match(globals, /\.digest-group-heading/);
@@ -4416,11 +4423,11 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(builderEditDialog, /Trash2/);
   assert.match(builderEditDialog, /aria-label=\{`Edit source \$\{builder\.name\}`\}/);
   assert.doesNotMatch(builderEditDialog, /aria-label=\{`Edit \$\{builder\.name\}`\}/);
-  assert.match(builderEditDialog, /Update the source type, handle or URL, and display name/);
+  assert.match(builderEditDialog, /Update source type, handle or URL, and display name/);
   assert.match(builderEditDialog, /Handle or URL is required\./);
   assert.match(builderEditDialog, />Handle or URL<\/span>/);
   assert.doesNotMatch(builderEditDialog, /URL or @handle is required|>URL or @handle<\/span>|Update the source type, URL or handle/);
-  assert.match(builderEditDialog, /Save\s+applies the changes to your source library/);
+  assert.doesNotMatch(builderEditDialog, /Save\s+applies the changes to your source library/);
   assert.match(builderEditDialog, /\{isPending \? "Saving" : "Save changes"\}/);
   assert.doesNotMatch(builderEditDialog, /Changes save\s+immediately|changes to your library\.|: "Save"\}/);
   assert.match(builderEditDialog, /className=\{`fb-btn compact builder-edit-remove-button/);
@@ -4655,8 +4662,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /mode\?: "hub" \| "imported"/);
   assert.match(digestPipelineForm, /mode = "hub"/);
   assert.match(digestPipelineForm, /Imported AI Digest archives/);
-  assert.match(digestPipelineForm, /AI Digest archives built and shared by other users\./);
-  assert.match(digestPipelineForm, /AI Digest archives from Hub that are already available in Home AI Digest\./);
+  assert.match(digestPipelineForm, /AI Digest archives shared to Hub\./);
+  assert.match(digestPipelineForm, /AI Digest archives from Hub that are already available in AI Digest\./);
   assert.doesNotMatch(digestPipelineForm, /AI Digest archives you imported from Hub\./);
   assert.doesNotMatch(digestPipelineForm, /Digests imported from the Hub/);
   assert.doesNotMatch(digestPipelineForm, /latest AI Digest and archive/);
@@ -4703,7 +4710,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /isPending=\{importPending \|\| pendingAction !== null\}/);
   assert.match(digestPipelineForm, /disabled=\{isPending \|\| pending !== null\}/);
   assert.match(digestPipelineForm, /No imported AI Digest archives/);
-  assert.match(digestPipelineForm, /Import AI Digest archives built and shared by other users to see them in Home AI Digest\./);
+  assert.match(digestPipelineForm, /Import shared AI Digest archives to see them in AI Digest\./);
   assert.doesNotMatch(digestPipelineForm, /Import an AI Digest archive from Hub to see it on Home\./);
   assert.doesNotMatch(digestPipelineForm, /to see them on Home\./);
   assert.match(digestPipelineForm, /href="\/library-hub\?tab=ai-digests"/);
@@ -4728,7 +4735,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.doesNotMatch(digestPipelineForm, /className="digest-remove-popover"/);
   assert.match(digestPipelineForm, /Remove AI Digest archive import\?/);
-  assert.match(digestPipelineForm, /you will\s+no longer see this AI Digest archive in Home AI Digest\./);
+  assert.match(digestPipelineForm, /you will\s+no longer see this AI Digest archive in AI Digest\./);
   assert.doesNotMatch(digestPipelineForm, /no longer see this AI Digest archive on Home\./);
   assert.match(digestPipelineForm, /You can import it again from Hub later/);
   assert.match(digestPipelineForm, />\s*Remove import\s*<\/button>/);
@@ -4838,7 +4845,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /<details className="settings-rules-panel fb-panel" open>[\s\S]*Source fetching rules/);
   assert.equal((settingsPage.match(/<details className="settings-rules-panel fb-panel" open>/g) ?? []).length, 1);
   assert.doesNotMatch(settingsPage, /Fetch sources rules|Source fetch rules/);
-  assert.match(settingsPage, /Used when summarizing source content\./);
+  assert.match(settingsPage, /Used when Fetch sources reads and summarizes posts\./);
   assert.doesNotMatch(settingsPage, /Runs before AI Digest: discover source posts/);
   assert.match(settingsPage, /AI Digest rules/);
   assert.match(settingsPage, /ADMIN_DIGEST_PROMPT_COUNT/);
@@ -4846,7 +4853,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /const digestPromptCount = isAdmin \? ADMIN_DIGEST_PROMPT_COUNT : USER_DIGEST_PROMPT_COUNT/);
   assert.match(settingsPage, /canEditDigestAssemblyPrompts=\{isAdmin\}/);
   assert.match(settingsPage, /AI Digest rules/);
-  assert.match(settingsPage, /Prompts used to generate AI Digest\./);
+  assert.match(settingsPage, /Used when building AI Digest archives\./);
   assert.doesNotMatch(settingsPage, /Runs after per-post summaries: write the digest headline, source notes,\s*and post summaries in the selected AI Digest language\./);
   assert.doesNotMatch(settingsPage, /Write AI Digest headlines, source notes, and translated post summaries\./);
   assert.doesNotMatch(settingsPage, /localized post summaries/);
@@ -4886,7 +4893,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(agentTokenPanelSkeleton, /settings-skeleton-line--device-title/);
   assert.match(agentTokenPanelSkeleton, /settings-skeleton-line--device-status/);
   assert.match(agentTokenPanelSkeleton, /className="settings-skeleton-pill access-key-skeleton-pill"/);
-  assert.match(agentTokenPanelSkeleton, /<span className="sr-only">Loading authorized access<\/span>/);
+  assert.match(agentTokenPanelSkeleton, /<span className="sr-only">Loading access keys<\/span>/);
   assert.doesNotMatch(agentTokenPanelSkeleton, /<span className="sr-only">Loading Local Agent access<\/span>/);
   assert.doesNotMatch(settingsPage, /animate-pulse rounded bg-\[var\(--paper-strong\)\]|className="h-/);
   assert.doesNotMatch(settingsPage, /settings-rules grid gap-4/);
@@ -4972,10 +4979,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /@\/components\/EmptyState/);
   assert.match(tokenPanel, /fetch\("\/api\/settings\/tokens"/);
   assert.match(tokenPanel, /fetch\(`\/api\/settings\/tokens\/\$\{tokenId\}`/);
-  assert.match(tokenPanel, /<h2 className="fb-section-heading">Authorized access<\/h2>/);
+  assert.match(tokenPanel, /<h2 className="fb-section-heading">Access keys<\/h2>/);
   assert.doesNotMatch(tokenPanel, /<h2 className="fb-section-heading">Local Agent access<\/h2>/);
-  assert.match(tokenPanel, /Authorized devices and Local Agents can update this FollowBrief account\./);
-  assert.doesNotMatch(tokenPanel, /Devices and Local Agents authorized to update this FollowBrief account\./);
+  assert.match(tokenPanel, /Devices and Local Agents with access keys can update this account\./);
+  assert.doesNotMatch(tokenPanel, /Authorized devices and Local Agents can update this FollowBrief account\./);
   assert.doesNotMatch(tokenPanel, />\s*Local Agents that can sync sources and AI Digests to this account\.|Devices and Local Agents that can sync sources and AI Digests to this account\./);
   assert.doesNotMatch(tokenPanel, /Access keys let trusted devices and Local Agents sync sources and AI Digests to this account\./);
   assert.doesNotMatch(tokenPanel, /sync sources and digests to this account/);
@@ -4989,8 +4996,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /aria-describedby=\{createError \? "access-key-create-error" : undefined\}/);
   assert.match(tokenPanel, /aria-invalid=\{createError \? "true" : undefined\}/);
   assert.match(tokenPanel, /className="settings-dialog-error"[\s\S]*id="access-key-create-error"[\s\S]*role="alert"/);
-  assert.match(tokenPanel, /setCreateError\(error instanceof Error \? error\.message : "Could not create access\."\)/);
-  assert.doesNotMatch(tokenPanel, /setStatus\(error instanceof Error \? error\.message : "Could not create access\."\)/);
+  assert.match(tokenPanel, /setCreateError\(error instanceof Error \? error\.message : "Could not create access key\."\)/);
+  assert.doesNotMatch(tokenPanel, /setStatus\(error instanceof Error \? error\.message : "Could not create access key\."\)/);
   assert.match(tokenPanel, /aria-labelledby="access-key-revoke-title"/);
   assert.match(tokenPanel, /id="access-key-revoke-title"/);
   assert.match(tokenPanel, /function handleRevokeDialogClose\(\)/);
@@ -5014,7 +5021,7 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(tokenPanel, /visibleTokens|hiddenActiveCount|showAllTokens|access-keys-more/);
   assert.doesNotMatch(tokenPanel, /@\/components\/Count/);
   assert.match(tokenPanel, /<EmptyState[\s\S]*className="access-keys-empty"/);
-  assert.match(tokenPanel, /No authorized access yet/);
+  assert.match(tokenPanel, /No access keys yet/);
   assert.match(tokenPanel, /Add an access key when you connect a device or Local Agent\./);
   assert.doesNotMatch(tokenPanel, /No Local Agent access yet/);
   assert.doesNotMatch(tokenPanel, /Add one when you connect a Local Agent\./);
@@ -5071,16 +5078,16 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(tokenPanel, /const statusDateTime = token\.revokedAt \?\? token\.lastUsedAt \?\? token\.createdAt/);
   assert.doesNotMatch(tokenPanel, /:\s*"Not connected yet"|Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}/);
   assert.match(tokenPanel, /if \(!hydrated\) return formatDate\(value\)/);
-  assert.match(tokenPanel, /<ul className="access-keys-list" aria-label="Authorized devices and Local Agents">/);
+  assert.match(tokenPanel, /<ul className="access-keys-list" aria-label="Access keys">/);
   assert.doesNotMatch(tokenPanel, /aria-label="Access keys for Local Agents"/);
-  assert.match(tokenPanel, /Could not create access\./);
-  assert.match(tokenPanel, /Could not revoke access\./);
-  assert.doesNotMatch(tokenPanel, /Could not create access key|Could not revoke access key/);
-  assert.match(tokenPanel, /This access has been used by/);
-  assert.match(tokenPanel, /This access has never been used/);
-  assert.match(tokenPanel, /that device or Local Agent will lose/);
+  assert.match(tokenPanel, /Could not create access key\./);
+  assert.match(tokenPanel, /Could not revoke access key\./);
+  assert.doesNotMatch(tokenPanel, /Could not create access\.|Could not revoke access\./);
+  assert.match(tokenPanel, /This access key has been used by/);
+  assert.match(tokenPanel, /This access key has never been used/);
+  assert.match(tokenPanel, /that device or Local Agent will need a\s+new access key to update FollowBrief/);
   assert.match(tokenPanel, /No device or Local Agent will lose access/);
-  assert.doesNotMatch(tokenPanel, /This access key has been used by|This access key has never been used/);
+  assert.doesNotMatch(tokenPanel, /This access has been used by|This access has never been used/);
   assert.doesNotMatch(tokenPanel, /that Local Agent will lose access|No machine will lose access/);
   assert.doesNotMatch(tokenPanel, /role="listitem"/);
   assert.match(tokenPanel, /Revoke access/);

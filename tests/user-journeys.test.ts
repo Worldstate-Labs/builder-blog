@@ -419,8 +419,8 @@ test("web app serves the agent skill and setup command", () => {
   // Cron + once dialogs: compact <select> controls, plus an account-wide
   // summary language select persisted via /api/settings/summary-language —
   // now shown for digest as well as library.
-  assert.match(skillPromptActions, /Copy a prompt for your Local Agent to fetch, summarize, and sync every source\./);
-  assert.match(skillPromptActions, /Copy a prompt for your Local Agent to build your AI Digest\./);
+  assert.match(skillPromptActions, /Copy a Local Agent prompt to fetch, summarize, and sync sources\./);
+  assert.match(skillPromptActions, /Copy a Local Agent prompt to build your AI Digest\./);
   assert.doesNotMatch(skillPromptActions, /build your digest\./);
   assert.doesNotMatch(skillPromptActions, /build new digests|update every source/);
   assert.match(skillPromptActions, /Local Agent/);
@@ -428,7 +428,7 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /Already digested posts can be included again this time\./);
   assert.match(skillPromptActions, /id="cron-fetch-days"[\s\S]*label="Max post age \(days\)"/);
   assert.doesNotMatch(skillPromptActions, /Fetch post age \(days\)/);
-  assert.match(skillPromptActions, /Defaults to 30 days\. Choose 1-90 days\./);
+  assert.match(skillPromptActions, /Default: 30 days\. Range: 1-90 days\./);
   assert.match(skillPromptActions, /params\.set\("days", String\(extras\.fetchDays\)\)/);
   assert.match(skillPromptActions, /Number\.isInteger\(numeric\)/);
   assert.match(skillPromptActions, /numeric < 1 \|\| numeric > MAX_PROMPT_WINDOW_DAYS/);
@@ -2883,7 +2883,7 @@ test("web display boundaries keep raw fetched content in the builders tab", () =
   assert.equal(builderFeedItems.includes("PostCard"), true);
   assert.equal(builderFeedItems.includes("showBuilderRow={false}"), true);
   assert.equal(builderFeedItems.includes("showSourceBadge={false}"), true);
-  assert.equal(readFileSync("src/components/PostCard.tsx", "utf8").includes("Crawled content"), true);
+  assert.equal(readFileSync("src/components/PostCard.tsx", "utf8").includes("Original content"), true);
 });
 
 test("source registry centralizes current source categories", () => {

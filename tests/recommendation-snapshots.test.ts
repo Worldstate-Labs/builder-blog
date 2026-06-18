@@ -35,7 +35,7 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   assert.match(feed, /stackActionsOnMobile=\{showAdminActions\}/);
   assert.match(postCard, /data-read/);
   assert.match(postCard, /data-stack-actions/);
-  assert.match(postCard, /Crawled content/);
+  assert.match(postCard, /Original content/);
   assert.match(postCard, /showRawContent = true/);
   assert.doesNotMatch(feed, /mode = "following"|isFavoritesTab/);
   assert.match(feed, /onInteract=\{\(\) => markRead\(entry\.item\.id\)\}/);
@@ -115,7 +115,8 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(favoriteList, /className="favorites-empty is-actionable"/);
   assert.match(favoriteList, /favorites-empty-actions/);
   assert.match(favoriteList, /Reading queue is empty/);
-  assert.match(favoriteList, /Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
+  assert.match(favoriteList, /Star posts from AI Digest, Following, Search, or post pages to build this queue\./);
+  assert.doesNotMatch(favoriteList, /Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here\./);
   assert.doesNotMatch(favoriteList, /Posts you marked for deeper reading/);
   assert.doesNotMatch(favoriteList, /Saved for deeper reading/);
   assert.doesNotMatch(favoriteList, /Save posts from AI Digest or Following/);
@@ -386,7 +387,7 @@ test("post card action controls include the post title in accessible names", () 
   );
 
   assert.match(html, /aria-label="Original: Contextual Button Labels"/);
-  assert.match(html, /aria-label="Crawled content: Contextual Button Labels"/);
+  assert.match(html, /aria-label="Original content: Contextual Button Labels"/);
   assert.doesNotMatch(html, />Read</);
   assert.doesNotMatch(html, /aria-label="Summary method: Contextual Button Labels"/);
   assert.doesNotMatch(html, /aria-label="View original summary: Contextual Button Labels"/);
@@ -540,11 +541,13 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.match(followingSection, /No followed sources yet/);
   assert.match(followingSection, /href="\/builders\?tab=fetch"[\s\S]*Choose sources/);
   assert.doesNotMatch(followingSection, /href="\/builders\?tab=fetch"[\s\S]*Go to Sources/);
-  assert.match(followingSection, /Use Sources to follow or add sources\. They feed both AI Digest and Following/);
+  assert.match(followingSection, /Add sources in Sources\. They feed AI Digest and Following\./);
   assert.match(followingSection, /No summarized posts yet/);
   assert.match(followingSection, /No unread posts yet/);
-  assert.match(followingSection, /Run Fetch sources to summarize posts from your followed sources/);
-  assert.match(followingSection, /Following will show the latest unread posts/);
+  assert.match(followingSection, /Run Fetch sources to summarize followed-source posts/);
+  assert.match(followingSection, /Following shows the latest unread posts/);
+  assert.match(followingSection, /Following updates when Fetch sources finds new unread posts/);
+  assert.doesNotMatch(followingSection, /Following will update after new unread posts/);
   assert.doesNotMatch(followingSection, /No fetched posts yet|Following can show their latest posts/);
   assert.match(followingSection, /title="Could not load Following posts"/);
   assert.match(followingSection, /Check your connection, then try again\./);

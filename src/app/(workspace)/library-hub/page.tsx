@@ -68,7 +68,7 @@ export default async function LibraryHubPage({
     <div className="page-pad">
       <PageHeader
         title="Hub"
-        description="Browse shared source libraries and AI Digest archives, then import the ones that match your technical reading workflow."
+        description="Browse shared source libraries and AI Digest archives, then import the ones you want."
       />
       <div className="workspace-content-stack workspace-content-stack--tabs-first">
         <WorkspaceTopTabs
@@ -276,7 +276,7 @@ function LibraryHubImportFallback() {
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Source libraries</h2>
           <p className="hub-section-copy">
-            Source libraries built and shared by other users.
+            Source libraries shared to Hub.
           </p>
           <div className="library-hub-skeleton-line is-wide" />
         </div>
@@ -317,7 +317,7 @@ function DigestPipelineImportFallback() {
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Shared AI Digest archives</h2>
           <p className="hub-section-copy">
-            AI Digest archives built and shared by other users.
+            AI Digest archives shared to Hub.
           </p>
           <div className="library-hub-skeleton-line is-wide" />
         </div>

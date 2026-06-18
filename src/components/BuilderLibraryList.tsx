@@ -163,7 +163,7 @@ export function BuilderLibraryList({
   const listBodyId = `${listId}-sources`;
   const toggleLabel = showAllSources
     ? "Show fewer sources"
-    : `See ${formatCount(Math.max(hiddenSourceCount, 0))} more ${
+    : `Show ${formatCount(Math.max(hiddenSourceCount, 0))} more ${
         hiddenSourceCount === 1 ? "source" : "sources"
       }`;
 

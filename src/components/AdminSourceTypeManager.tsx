@@ -271,7 +271,7 @@ function SourceTypeCard({
         <Section
           step="02"
           title="Summarization"
-          description="How each post from this source is written as a per-post summary. Output language comes from the one-time or scheduled run prompt."
+          description="How each post becomes a summary. Output language comes from the run prompt."
         >
           <MarkdownEditor
             ariaLabel={`${config.label} summary prompt`}
@@ -286,7 +286,7 @@ function SourceTypeCard({
           <Section
             step="03"
             title="Quality gates"
-            description="Length, diversity, and timestamp-density checks applied after extraction. Posts that fail are not saved or used in Following or AI Digest."
+            description="Checks applied after extraction. Posts that fail are not saved or used in Following or AI Digest."
           >
             <div className="source-type-quality-grid">
               <FieldNumber
@@ -314,7 +314,7 @@ function SourceTypeCard({
                 max={1}
                 placeholder="Example: 0.35"
                 step={0.01}
-                description="Average unique-unit ratio over 100-unit windows (0-1). Lower values allow more repetitive transcripts through."
+                description="Average unique-unit ratio over 100-unit windows (0-1). Lower allows more repetition."
                 value={
                   draft.contentQuality.minLocalDiversity === null
                     ? ""
@@ -334,7 +334,7 @@ function SourceTypeCard({
                 max={1}
                 placeholder="Example: 0.08"
                 step={0.01}
-                description="Timestamp count divided by content units (0-1). Above this the body is treated as timestamp noise and dropped."
+                description="Timestamp count divided by content units (0-1). Higher values count as timestamp noise."
                 value={
                   draft.contentQuality.maxTimestampDensity === null
                     ? ""

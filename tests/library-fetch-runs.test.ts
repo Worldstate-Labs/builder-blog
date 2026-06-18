@@ -229,6 +229,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   // Background refresh still calls the GET endpoint, but the panel no longer
   // renders its own manual Refresh button.
   assert.match(panel, /fetch\("\/api\/skill\/fetch-runs"/);
+  assert.match(panel, /if \(response\.status === 401\) \{[\s\S]*setError\(null\);[\s\S]*return;[\s\S]*\}/);
   assert.doesNotMatch(panel, /RefreshCw/);
   assert.doesNotMatch(panel, />Refresh</);
   assert.doesNotMatch(panel, /VISIBLE_RUN_LIMIT = 2/);
@@ -296,7 +297,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /The current scheduled Fetch sources run is still in progress/);
   assert.match(panel, /entry\.status === "waiting" \|\| entry\.status === "running"/);
   assert.match(panel, /latestSlot\?\.status === "stalled"/);
-  assert.match(panel, /The latest scheduled Fetch sources run stopped sending heartbeats/);
+  assert.match(panel, /FollowBrief lost contact with the latest scheduled Fetch sources run/);
   assert.match(panel, /className="sync-panel-timeline-axis"/);
   assert.match(panel, /const graphStartLabel = visibleGraphEntries\[0\]/);
   assert.match(panel, /const graphEndLabel = visibleGraphEntries\.at\(-1\)/);
@@ -304,7 +305,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /<span>\{graphEndLabel\}<\/span>/);
   assert.doesNotMatch(panel, />Oldest</);
   assert.doesNotMatch(panel, />Newest</);
-  assert.match(panel, /The latest scheduled window has no recorded fetch run/);
+  assert.match(panel, /The latest scheduled Fetch sources run did not report back/);
   assert.match(panel, /timeoutSeconds/);
   assert.match(panel, /cleanup failed/);
   assert.doesNotMatch(panel, /Green OK|amber waiting|red issue/);
@@ -629,6 +630,7 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /Open log/);
   assert.match(panel, /className="sync-panel-title-row"/);
   assert.match(panel, /className="sync-panel-error"/);
+  assert.match(source("src/components/DigestLogPanel.tsx"), /if \(response\.status === 401\) \{[\s\S]*setError\(null\);[\s\S]*return;[\s\S]*\}/);
   assert.match(panel, /className="sync-panel-run-card sync-panel-mobile-flat"/);
   assert.match(panel, /className="sync-panel-run-card-head"/);
   assert.match(panel, /className="sync-panel-run-card-summary"/);

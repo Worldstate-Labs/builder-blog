@@ -88,7 +88,7 @@ export function PrivateLibraryPanel({
               type="button"
             >
               {addOpen ? <X aria-hidden="true" /> : <Plus aria-hidden="true" />}
-              <span>{addOpen ? "Close add source form" : "Add source"}</span>
+              <span>{addOpen ? "Close" : "Add source"}</span>
             </button>
           }
           addPanel={

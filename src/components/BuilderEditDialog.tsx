@@ -180,8 +180,7 @@ export function BuilderEditDialog({
               Edit source
             </h2>
             <p className="builder-edit-dialog-sub">
-              Update the source type, handle or URL, and display name. Save
-              applies the changes to your source library.
+              Update source type, handle or URL, and display name.
             </p>
           </header>
 

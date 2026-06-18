@@ -72,7 +72,7 @@ export function FavoritePostsList({
         }
         className="favorites-empty is-actionable"
         title="Reading queue is empty"
-        body="Use the star on any post in AI Digest, Following, Search, or a post detail page to build a focused reading queue here."
+        body="Star posts from AI Digest, Following, Search, or post pages to build this queue."
       />
     );
   }

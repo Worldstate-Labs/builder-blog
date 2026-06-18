@@ -27,7 +27,7 @@ import { prisma } from "@/lib/prisma";
 
 const digestPickerSize = 100;
 const NO_FOLLOWED_SOURCES_BODY =
-  "Use Sources to follow or add sources. They feed both AI Digest and Following.";
+  "Add sources in Sources. They feed AI Digest and Following.";
 const digestSummarySelect = {
   id: true,
   title: true,
@@ -91,7 +91,7 @@ export default async function DashboardPage({
     <div className="page-pad page-pad--reading home-page">
       <PageHeader
         title="Today"
-        description="Read the latest technical signal from your followed sources, then save or open the original when a detail matters."
+        description="Read updates from followed sources, then save or open the originals that matter."
       />
 
       <section className="workspace-content-stack workspace-content-stack--tabs-first home-workspace">
@@ -330,7 +330,7 @@ function DigestEmptyState({
         }
         className="ai-digest-empty is-actionable"
         title="No AI Digest yet"
-        body="Ask your Local Agent to build an AI Digest from the summarized posts in your followed sources."
+        body="Build AI Digest from summarized posts."
       />
     );
   }
@@ -349,7 +349,7 @@ function DigestEmptyState({
       }
       className="ai-digest-empty is-actionable"
       title="No summarized posts yet"
-      body="Run Fetch sources to summarize posts from your followed sources before building an AI Digest."
+      body="Run Fetch sources to summarize posts before building AI Digest."
     />
   );
 }
