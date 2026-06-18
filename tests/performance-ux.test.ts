@@ -620,9 +620,9 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(loginPage, /your<br \/>AI Digest workspace/);
   assert.doesNotMatch(loginPage, /your<br \/>FollowBrief workspace/);
   assert.match(loginPage, /Sign in to\{" "\}/);
-  assert.match(loginPage, /Follow sources, build cited AI Digest issues/);
+  assert.match(loginPage, /Follow sources, build AI Digest, and search your\s*workspace\./);
   assert.match(loginPage, /search your\s*workspace/);
-  assert.doesNotMatch(loginPage, /Follow sources, read the cited AI Digest|Follow source libraries|Follow source libraries, read AI Digests|read cited AI Digests|search them\s*alongside sources and posts later|search sources,\s*posts, and AI Digest issues|search sources,\s*posts, and issues|search them with\s*sources and posts/);
+  assert.doesNotMatch(loginPage, /Follow sources, build cited AI Digest issues|Follow sources, read the cited AI Digest|Follow source libraries|Follow source libraries, read AI Digests|read cited AI Digests|search them\s*alongside sources and posts later|search sources,\s*posts, and AI Digest issues|search sources,\s*posts, and issues|search them with\s*sources and posts/);
   assert.doesNotMatch(loginPage, /sources,\s*posts, and AI Digest issues searchable/);
   assert.doesNotMatch(loginPage, /sources, posts, saved posts, and AI Digest issues searchable/);
   assert.doesNotMatch(loginPage, /sources, posts, saved posts, and AI Digests searchable/);
@@ -641,7 +641,8 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(loginPage, /Add Local Agent access keys|After sign-in|Access keys are set up after sign-in from Settings\.|After signing in, add access keys in Settings\./);
   assert.doesNotMatch(loginPage, /label="Local Agent"/);
   assert.doesNotMatch(loginPage, /KeyRound/);
-  assert.match(rootLayout, /Follow sources, build cited AI Digest issues, and search your workspace\./);
+  assert.match(rootLayout, /Follow sources, build AI Digest, and search your workspace\./);
+  assert.doesNotMatch(rootLayout, /build cited AI Digest issues/);
   assert.doesNotMatch(rootLayout, /Follow source libraries/);
   assert.doesNotMatch(rootLayout, /read the cited AI Digest|read cited AI Digests|search them alongside sources and posts|search sources, posts, and AI Digest issues|search sources, posts, and issues|search them with sources and posts/);
   assert.doesNotMatch(rootLayout, /AI Digests from people and sources you follow\./);
@@ -2241,8 +2242,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /Hide AI Digest update details/);
   assert.match(digestLogPanel, /aria-label="AI Digest build status graph, oldest to newest"/);
   assert.match(digestLogPanel, /AI Digest build at/);
-  assert.match(digestLogPanel, /includes posts already used in AI Digest issues/);
-  assert.doesNotMatch(digestLogPanel, /includes posts already used in AI Digests/);
+  assert.match(digestLogPanel, /includes posts already used in AI Digest/);
+  assert.doesNotMatch(digestLogPanel, /includes posts already used in AI Digest issues|includes posts already used in AI Digests/);
   assert.match(digestLogPanel, /Untitled AI Digest/);
   assert.match(digestLogPanel, /Prepared, no AI Digest saved/);
   assert.match(digestLogPanel, /Previous AI Digest/);
@@ -5068,7 +5069,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(settingsPage, /const digestPromptCount = isAdmin \? ADMIN_DIGEST_PROMPT_COUNT : USER_DIGEST_PROMPT_COUNT/);
   assert.match(settingsPage, /canEditDigestAssemblyPrompts=\{isAdmin\}/);
   assert.match(settingsPage, /AI Digest rules/);
-  assert.match(settingsPage, /Rules for building AI Digest issues\./);
+  assert.match(settingsPage, /Rules for AI Digest builds\./);
+  assert.doesNotMatch(settingsPage, /Rules for building AI Digest issues\./);
   assert.doesNotMatch(settingsPage, /Runs after per-post summaries: write the digest headline, source notes,\s*and post summaries in the selected AI Digest language\./);
   assert.doesNotMatch(settingsPage, /Write AI Digest headlines, source notes, and translated post summaries\.|Used when building AI Digest issues\.|Used when Fetch sources reads and summarizes posts\./);
   assert.doesNotMatch(settingsPage, /localized post summaries/);

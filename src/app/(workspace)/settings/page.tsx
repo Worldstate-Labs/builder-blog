@@ -125,7 +125,7 @@ async function SourceTypeConfigSection({
           <div className="settings-rules-summary-copy">
             <h3 className="fb-section-heading">AI Digest rules</h3>
             <p className="settings-rules-summary-desc">
-              Rules for building AI Digest issues.
+              Rules for AI Digest builds.
             </p>
           </div>
           <span className="settings-rules-summary-meta source-summary-line">
