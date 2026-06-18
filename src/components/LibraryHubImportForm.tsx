@@ -259,7 +259,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Source libraries</h2>
           <p className="hub-section-copy">
-            Import shared libraries into Sources, Following, and AI Digest.
+            Import shared source libraries into the Sources tab. They feed AI Digest and Following.
           </p>
         </div>
       </div>
@@ -375,8 +375,8 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
             <div className="settings-dialog-copy">
               <p>
                 After removing <strong>{removeTarget.name}</strong>, sources
-                from this library will no longer appear in Sources, AI Digest,
-                or Following.
+                from this library will no longer appear in the Sources tab or
+                feed AI Digest and Following.
               </p>
               <p className="settings-dialog-warning">
                 You can import it again from Hub later.
@@ -603,7 +603,7 @@ function sourceLibraryListCopy(filter: FilterKey) {
       };
     case "imported":
       return {
-        description: "Imported libraries available in Sources, Following, and AI Digest.",
+        description: "Imported source libraries in the Sources tab.",
         emptyBody: "Import source libraries to see them in the Sources tab.",
       };
     case "shared":
@@ -614,7 +614,7 @@ function sourceLibraryListCopy(filter: FilterKey) {
     case "all":
     default:
       return {
-        description: "Import shared libraries into Sources, Following, and AI Digest.",
+        description: "Import shared source libraries into the Sources tab. They feed AI Digest and Following.",
         emptyBody: "Try another source library filter.",
       };
   }
