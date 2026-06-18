@@ -102,16 +102,16 @@ export function DigestPipelineImportForm({
     mode === "imported" ? "Imported AI Digest archives" : "Shared AI Digest archives";
   const description =
     mode === "imported"
-      ? "AI Digest archives already imported from Hub."
-      : "AI Digest archives shared to Hub.";
+      ? "Archives already available in the AI Digest tab."
+      : "Import shared archives into the AI Digest tab.";
   const emptyTitle =
     mode === "imported"
       ? "No imported AI Digest archives"
       : "No shared AI Digest archives";
   const emptyMessage =
     mode === "imported"
-      ? "Import AI Digest archives to see them in AI Digest."
-      : "Shared AI Digest archives appear here when users share them to Hub.";
+      ? "Import archives to see them in AI Digest."
+      : "Archives appear here after users share them to Hub.";
 
   function setImportedIds(updater: (current: Set<string>) => Set<string>) {
     setImportedState((current) => {

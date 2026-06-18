@@ -1034,8 +1034,8 @@ function AdvancedSearchTips({
   time: SearchTimeRange;
 }) {
   return (
-    <section className="search-operator-tips" aria-label="Search operators">
-      <h2>Search operators</h2>
+    <section className="search-operator-tips" aria-label="Search operator examples">
+      <p className="sr-only">Search operator examples</p>
       <div className="search-operator-grid">
         {advancedSearchExamples.map((search) => (
           <Link

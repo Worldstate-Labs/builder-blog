@@ -179,9 +179,6 @@ export function BuilderEditDialog({
             >
               Edit source
             </h2>
-            <p className="builder-edit-dialog-sub">
-              Update source type, handle or URL, and display name.
-            </p>
           </header>
 
           <div className="builder-edit-dialog-body">
