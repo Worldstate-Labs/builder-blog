@@ -335,7 +335,7 @@ export function ChipListField({
         <div className="settings-token-list">
           {values.length === 0 ? (
             <span className="settings-choice-empty">
-              No entries.
+              No items yet.
             </span>
           ) : (
             values.map((v) => (
@@ -566,7 +566,7 @@ export function OrderedChoiceField({
       <div className="settings-choice-list">
         {value.length === 0 ? (
           <span className="settings-choice-empty">
-            None selected.
+            No choices selected.
           </span>
         ) : (
           <ol className="settings-choice-order">

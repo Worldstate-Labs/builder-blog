@@ -225,7 +225,7 @@ export function BuilderEditDialog({
                 className="fb-input"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Uses detected name"
+                placeholder="Use detected name if blank"
               />
             </label>
 

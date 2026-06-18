@@ -156,7 +156,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         : "No matching source libraries";
   const emptyBody =
     activeFilter === "all"
-      ? "No source libraries are available yet."
+      ? "No source libraries have been shared."
       : listCopy.emptyBody;
   const removeTarget = removeTargetId
     ? libraries.find((library) => library.id === removeTargetId) ?? null

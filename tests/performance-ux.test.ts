@@ -901,13 +901,13 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /1 task/);
   assert.match(skillPromptActions, /\`\$\{count\} tasks\`/);
   assert.match(skillPromptActions, /Parallel tasks must be a whole number from 1 to/);
-  assert.match(skillPromptActions, /Use 1 to reduce rate limits/);
+  assert.match(skillPromptActions, /Use 1 to reduce rate-limit errors/);
   assert.match(skillPromptActions, /Default: 30 days\. Range: 1-90\./);
   assert.match(skillPromptActions, /const promptDialogDescription = \(\) => "Set frequency, runtime, language, and lookback\."/);
   assert.match(skillPromptActions, />\s*Runtime\s*<\/label>/);
   assert.doesNotMatch(skillPromptActions, /Copy a Local Agent prompt\./);
   assert.doesNotMatch(skillPromptActions, />\s*Local Agent\s*<\/label>|Choose frequency, Local Agent, language, and lookback\.|Choose frequency, runtime, language, and lookback\./);
-  assert.doesNotMatch(skillPromptActions, /Runs source tasks after discovery|Looks back this many days|Parallel workers|1 worker|workers`|Use 1 for fewer rate limits|Use 1 for reliability|Use 1 for safest runs|Use 1 for the safest setup|Fetches posts this many days back/);
+  assert.doesNotMatch(skillPromptActions, /Runs source tasks after discovery|Looks back this many days|Parallel workers|1 worker|workers`|Use 1 to reduce rate limits|Use 1 for fewer rate limits|Use 1 for reliability|Use 1 for safest runs|Use 1 for the safest setup|Fetches posts this many days back/);
   assert.doesNotMatch(skillPromptActions, /<a[^>]+href="\/settings"|Add one in Settings<\/a>|Choose a Local Agent/);
   assert.doesNotMatch(skillPromptActions, /No connected helpers|Connected helpers/);
   assert.doesNotMatch(skillPromptActions, /flex flex-wrap items-center justify-end gap-2|className="ml-2"|mr-2|text-\[11px\] text-\[var\(--danger\)\]|text-\[11px\] text-\[var\(--muted-strong\)\]/);
@@ -1107,7 +1107,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(commonRulesForm, /placeholder=\{\[/);
   assert.match(markdownEditor, /placeholder\?: string/);
   assert.match(markdownEditor, /placeholder=\{placeholder\}/);
-  assert.match(markdownEditor, /Write prompt text to preview formatting\./);
+  assert.match(markdownEditor, /Write text to preview formatting\./);
   assert.doesNotMatch(markdownEditor, /No prompt preview yet/);
   assert.doesNotMatch(markdownEditor, /Nothing to preview|renderMarkdownPreview\(value,\s*placeholder\)/);
   assert.match(globals, /\.settings-optional-badge/);
@@ -2103,7 +2103,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /No Fetch sources run yet/);
   assert.match(fetchLogPanel, /No Fetch sources run started in the latest scheduled window/);
   assert.match(fetchLogPanel, /title="No Fetch sources history yet"/);
-  assert.match(fetchLogPanel, /One-time and scheduled runs appear here\./);
+  assert.match(fetchLogPanel, /Copy a Fetch sources prompt to create history\./);
   assert.match(fetchLogPanel, /This run is no longer in the current fetch history\./);
   assert.doesNotMatch(fetchLogPanel, /No Fetch sources run has reported yet|did not report back|title="No Fetch sources runs yet"|Started one-time and scheduled runs appear here|One-time and scheduled Fetch sources runs appear here|Scheduled and one-time Fetch sources runs will appear here|after a Local Agent reports them/);
   assert.doesNotMatch(fetchLogPanel, /current fetch history response/);
@@ -2218,6 +2218,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="mono sync-panel-task-technical-code"/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-note"/);
   assert.match(fetchLogPanel, /Prompts used to read and summarize each source type in this update\./);
+  assert.match(fetchLogPanel, /Prompt instructions/);
+  assert.doesNotMatch(fetchLogPanel, /Helper instructions/);
   assert.doesNotMatch(fetchLogPanel, /The instructions used to read and summarize each source type/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-card-list"/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-card"/);
@@ -2483,7 +2485,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /<EmptyState[\s\S]*className="sync-panel-empty is-dashed"/);
   assert.match(fetchLogPanel, /<EmptyState[\s\S]*className="sync-panel-slot-empty"/);
   assert.match(fetchLogPanel, /title="No Fetch sources history yet"/);
-  assert.match(fetchLogPanel, /body="One-time and scheduled runs appear here\."/);
+  assert.match(fetchLogPanel, /body="Copy a Fetch sources prompt to create history\."/);
   assert.doesNotMatch(fetchLogPanel, /title="No Fetch sources runs yet"|body="Started one-time and scheduled runs appear here\."|body="One-time and scheduled runs appear here after they start\."|body="One-time and scheduled Fetch sources runs appear here after a Local Agent reports them\."|body="Scheduled and one-time Fetch sources runs will appear here after the Local Agent reports them\."/);
   assert.doesNotMatch(digestLogPanel, /className="fb-segmented-tabs sync-panel-tabs"/);
   assert.doesNotMatch(digestLogPanel, /onKeyDown=\{handleTabKeyDown\}/);
@@ -2494,7 +2496,7 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(digestLogPanel, /<EmptyState[\s\S]*className="sync-panel-empty is-dashed"/);
   assert.match(digestLogPanel, /<EmptyState[\s\S]*className="sync-panel-slot-empty"/);
   assert.match(digestLogPanel, /title="No AI Digest build history yet"/);
-  assert.match(digestLogPanel, /body="One-time and scheduled builds appear here\."/);
+  assert.match(digestLogPanel, /body="Copy a Build AI Digest prompt to create history\."/);
   assert.doesNotMatch(digestLogPanel, /title="No AI Digest builds yet"|body="Started one-time and scheduled builds appear here\."|body="One-time and scheduled builds appear here after they start\."|body="One-time and scheduled AI Digest builds appear here after a Local Agent reports them\."|body="Scheduled and one-time AI Digest builds will appear here after the Local Agent reports them\."/);
   assert.doesNotMatch(`${fetchLogPanel}\n${digestLogPanel}`, /body="No scheduled run has elapsed yet\."/);
   assert.match(globals, /\.sync-panel-slot-empty\s*{\s*border-radius:\s*8px;\s*padding:\s*0\.75rem;\s*}/);
@@ -3449,7 +3451,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /activeFilter === "imported" \? \(/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /onClick=\{\(\) => setActiveFilter\("all"\)\}/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), />\s*Browse source libraries\s*<\/button>/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /No source libraries are available yet\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /No source libraries have been shared\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Share a source library to list it here\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /No shared libraries are available yet\.|Source libraries appear here\.|Source libraries appear here after users share them to Hub\.|Libraries you share to Hub appear here\.|Shared source libraries appear here\.|Shared source libraries appear here after they are shared to Hub\.|Shared source libraries appear here after people share them\.|Shared source libraries appear here when people share them to Hub\.|Your source libraries appear here\.|Your source libraries appear here after you share them\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Shared source libraries will appear here\.|Your source libraries will appear here once you share them\./);
@@ -3993,12 +3995,12 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(addBuilderForm, /Handle or URL/);
   assert.match(personalBuilderInput, /Handle or URL is required\./);
   assert.match(personalBuilderInput, /Enter an X handle like @deepmind or a full https:\/\/x\.com\/deepmind URL\./);
-  assert.match(personalBuilderInput, /Enter a youtube\.com or youtu\.be URL, or an @channel handle\./);
+  assert.match(personalBuilderInput, /Enter a YouTube URL or an @channel handle\./);
   assert.match(personalBuilderInput, /Enter a valid URL\./);
   assert.match(personalBuilderInput, /Apple Podcasts did not find this show\. Paste the actual RSS feed URL instead\./);
   assert.match(personalBuilderInput, /Could not verify this show with Apple Podcasts\./);
   assert.match(personalBuilderInput, /Could not reach Apple Podcasts to find the RSS feed\./);
-  assert.doesNotMatch(personalBuilderInput, /Source URL or handle is required|URL is malformed|X handle must look|YouTube source must be|Apple lookup failed|Apple returned no RSS feed|has no record|this podcast with Apple Podcasts|resolve the RSS feed/);
+  assert.doesNotMatch(personalBuilderInput, /Source URL or handle is required|URL is malformed|X handle must look|Enter a youtube\.com or youtu\.be URL|YouTube source must be|Apple lookup failed|Apple returned no RSS feed|has no record|this podcast with Apple Podcasts|resolve the RSS feed/);
   assert.match(addBuilderForm, /className="add-source-form"/);
   assert.match(addBuilderForm, /className="add-source-type-list"/);
   assert.match(addBuilderForm, /className="add-source-primary-row"/);
@@ -4662,7 +4664,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(builderEditDialog, /URL or @handle is required|>URL or @handle<\/span>|Update the source type, URL or handle/);
   assert.doesNotMatch(builderEditDialog, /Save\s+applies the changes to your source library/);
   assert.match(builderEditDialog, /\{isPending \? "Saving" : "Save changes"\}/);
-  assert.match(builderEditDialog, /Uses detected name/);
+  assert.match(builderEditDialog, /Use detected name if blank/);
   assert.doesNotMatch(builderEditDialog, /Leave blank to use the resolved name/);
   assert.doesNotMatch(builderEditDialog, /Changes save\s+immediately|changes to your library\.|: "Save"\}/);
   assert.match(builderEditDialog, /className=\{`fb-btn compact builder-edit-remove-button/);
@@ -4962,7 +4964,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /Browse AI Digest collections/);
   assert.doesNotMatch(digestPipelineForm, /Browse Hub/);
   assert.match(digestPipelineForm, /No shared AI Digest collections/);
-  assert.match(digestPipelineForm, /No shared AI Digest collections are available\./);
+  assert.match(digestPipelineForm, /No shared AI Digest collections yet\./);
   assert.doesNotMatch(digestPipelineForm, /Shared AI Digest collections appear here\.|AI Digest collections shared to Hub appear here\.|AI Digest collections appear here after users share them to Hub\.|Shared collections appear here\.|Shared collections appear here after users share them to Hub\.|Shared AI Digest archives appear here when users share them to Hub\.|Archives appear here after users share them to Hub\.|Shared AI Digest collections appear here after they are shared to Hub\.|Shared AI Digest collections appear here when people share them to Hub\./);
   assert.match(digestPipelineForm, /No AI Digest issues yet/);
   assert.doesNotMatch(digestPipelineForm, /No AI Digest archives yet/);

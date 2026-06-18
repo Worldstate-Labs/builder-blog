@@ -1115,7 +1115,7 @@ function CronConfigDialog({
                 </select>
               </div>
               <p className="cron-field-hint">
-                Use 1 to reduce rate limits.
+                Use 1 to reduce rate-limit errors.
               </p>
             </>
           ) : null}

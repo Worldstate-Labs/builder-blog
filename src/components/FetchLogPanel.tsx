@@ -1254,7 +1254,7 @@ function FetchStatusPanel({
       <EmptyState
         className="sync-panel-empty is-dashed"
         title="No Fetch sources history yet"
-        body="One-time and scheduled runs appear here."
+        body="Copy a Fetch sources prompt to create history."
       />
     );
   }
@@ -1378,7 +1378,7 @@ function FetchStatusPanel({
           <EmptyState
             className="sync-panel-slot-empty"
             title="No Fetch sources history yet"
-            body="One-time and scheduled runs appear here."
+            body="Copy a Fetch sources prompt to create history."
           />
         )}
       </div>
@@ -2207,7 +2207,7 @@ function DetailsBody({
       {promptEntries.length > 0 ? (
         <div>
           <h3 className="sync-panel-run-card-detail-heading">
-            Helper instructions
+            Prompt instructions
           </h3>
           <p className="sync-panel-detail-note">
             Prompts used to read and summarize each source type in this update.
@@ -2296,7 +2296,7 @@ function DetailsBody({
                       rel="noreferrer"
                       target="_blank"
                     >
-                      learn more
+                      Learn more
                     </a>
                   </>
                 ) : null}

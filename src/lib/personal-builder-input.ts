@@ -128,7 +128,7 @@ function resolveYouTube(displayName: string, value: string): Resolution {
   if (!sourceUrl) {
     return {
       ok: false,
-      reason: "Enter a youtube.com or youtu.be URL, or an @channel handle.",
+      reason: "Enter a YouTube URL or an @channel handle.",
     };
   }
   return {

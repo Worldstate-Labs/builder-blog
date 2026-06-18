@@ -463,6 +463,8 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /className="mono sync-panel-task-technical-code"/);
   assert.match(panel, /className="sync-panel-detail-note"/);
   assert.match(panel, /Prompts used to read and summarize each source type in this update\./);
+  assert.match(panel, /Prompt instructions/);
+  assert.doesNotMatch(panel, /Helper instructions/);
   assert.doesNotMatch(panel, /The instructions used to read and summarize each source type/);
   assert.match(panel, /className="sync-panel-detail-card-list"/);
   assert.match(panel, /className="sync-panel-detail-card"/);
@@ -613,7 +615,7 @@ test("DigestLogPanel renders digest status with modal-only build logs", () => {
   assert.match(panel, /Copy a Build AI Digest prompt to start a Local Agent run/);
   assert.doesNotMatch(panel, /Use Build AI Digest to copy a Local Agent prompt/);
   assert.match(panel, /No AI Digest build history yet/);
-  assert.match(panel, /One-time and scheduled builds appear here/);
+  assert.match(panel, /Copy a Build AI Digest prompt to create history/);
   assert.doesNotMatch(panel, /No AI Digest builds yet|Started one-time and scheduled builds appear here|One-time and scheduled builds appear here after they start|One-time and scheduled AI Digest builds appear here|Scheduled and one-time AI Digest builds will appear here|after a Local Agent reports them/);
   assert.match(panel, /No AI Digest was saved for this run/);
   assert.match(panel, /@\/lib\/scheduled-window-ui/);

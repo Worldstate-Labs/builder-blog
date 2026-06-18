@@ -138,7 +138,7 @@ function renderMarkdownPreview(markdown: string) {
   if (nodes.length) return nodes;
   return (
     <p className="settings-markdown-preview-empty">
-      Write prompt text to preview formatting.
+      Write text to preview formatting.
     </p>
   );
 }
