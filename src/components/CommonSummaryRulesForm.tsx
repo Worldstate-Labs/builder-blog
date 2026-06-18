@@ -88,6 +88,7 @@ function CommonRulesForm({
   }
 
   function save() {
+    const saveError = `Could not save ${title.toLowerCase()}.`;
     if (value.trim().length === 0) {
       setStatus({ kind: "error", message: emptyMessage });
       return;
@@ -101,16 +102,19 @@ function CommonRulesForm({
           body: JSON.stringify({ patch: { [fieldName]: value } }),
         });
         const body = await response.json().catch(() => null);
-        if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`);
+        if (!response.ok) {
+          setStatus({ kind: "error", message: body?.error ?? saveError });
+          return;
+        }
         const nextValue = body.config?.[fieldName] ?? value;
         setSavedValue(nextValue);
         setValue(nextValue);
         setSavedUpdatedAt(body.config?.updatedAt ?? savedUpdatedAt);
         setStatus({ kind: "saved", message: "Saved" });
-      } catch (error) {
+      } catch {
         setStatus({
           kind: "error",
-          message: error instanceof Error ? error.message : `Could not save ${title.toLowerCase()}.`,
+          message: saveError,
         });
       }
     });

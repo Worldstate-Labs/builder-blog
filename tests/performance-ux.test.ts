@@ -988,6 +988,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /function clearSavedStatus\(\)/);
   assert.match(adminDigestConfig, /onStatusAutoDismiss=\{clearSavedStatus\}/);
   assert.doesNotMatch(adminDigestConfig, /Save failed/);
+  assert.match(commonRulesForm, /const saveError = `Could not save \$\{title\.toLowerCase\(\)\}\.`/);
+  assert.doesNotMatch(commonRulesForm, /HTTP \$\{response\.status\}|error instanceof Error \? error\.message|throw new Error\(body\?\.error/);
   assert.doesNotMatch(adminDigestConfig, /title="Digest prompts"|selected digest language|Writes the short headline summary|Optionally writes one source-level note|Writes post summaries/);
   assert.match(adminDigestConfig, /headlinePrompt/);
   assert.match(adminDigestConfig, /perSourceSummaryPrompt/);
@@ -5150,7 +5152,11 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /aria-describedby=\{createError \? "access-key-create-error" : undefined\}/);
   assert.match(tokenPanel, /aria-invalid=\{createError \? "true" : undefined\}/);
   assert.match(tokenPanel, /className="settings-dialog-error"[\s\S]*id="access-key-create-error"[\s\S]*role="alert"/);
-  assert.match(tokenPanel, /setCreateError\(error instanceof Error \? error\.message : "Could not create access key\."\)/);
+  assert.match(tokenPanel, /setCreateError\(body\?\.error \?\? "Could not create access key\."\)/);
+  assert.match(tokenPanel, /setStatus\(body\?\.error \?\? "Could not revoke access key\."\)/);
+  assert.doesNotMatch(tokenPanel, /HTTP \$\{response\.status\}|error instanceof Error \? error\.message|throw new Error\(body\?\.error/);
+  assert.match(tokenPanel, /setCreateError\("Could not create access key\."\)/);
+  assert.match(tokenPanel, /setStatus\("Could not revoke access key\."\)/);
   assert.doesNotMatch(tokenPanel, /setStatus\(error instanceof Error \? error\.message : "Could not create access key\."\)/);
   assert.match(tokenPanel, /aria-labelledby="access-key-revoke-title"/);
   assert.match(tokenPanel, /id="access-key-revoke-title"/);

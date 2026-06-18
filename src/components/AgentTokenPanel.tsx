@@ -258,7 +258,9 @@ export function AgentTokenPanel({
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(body?.error ?? `HTTP ${response.status}`);
+          setCreateError(body?.error ?? "Could not create access key.");
+          createInputRef.current?.focus();
+          return;
         }
         setTokens((current) => [body.record, ...current]);
         closeCreateDialog();
@@ -266,8 +268,8 @@ export function AgentTokenPanel({
         // so their cached token lists pick up the new row — otherwise the
         // copy-prompt picker on those pages renders a stale list.
         router.refresh();
-      } catch (error) {
-        setCreateError(error instanceof Error ? error.message : "Could not create access key.");
+      } catch {
+        setCreateError("Could not create access key.");
         createInputRef.current?.focus();
       }
     });
@@ -308,12 +310,14 @@ export function AgentTokenPanel({
         });
         if (!response.ok) {
           const body = await response.json().catch(() => null);
-          throw new Error(body?.error ?? `HTTP ${response.status}`);
+          setTokens(previousTokens);
+          setStatus(body?.error ?? "Could not revoke access key.");
+          return;
         }
         router.refresh();
-      } catch (error) {
+      } catch {
         setTokens(previousTokens);
-        setStatus(error instanceof Error ? error.message : "Could not revoke access key.");
+        setStatus("Could not revoke access key.");
       }
     });
   }
