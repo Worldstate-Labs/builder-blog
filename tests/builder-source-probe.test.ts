@@ -144,9 +144,12 @@ test("resolvePodcast surfaces the Apple-zero-results case as a hard ResolutionFa
   // The Apple hard-fail must be owned by the resolver (not the probe)
   // so we don't double-call iTunes. results.length === 0 → ok: false.
   assert.match(RESOLVER_SOURCE, /results\.length\s*===\s*0/);
-  assert.match(RESOLVER_SOURCE, /Apple Podcasts has no record of this show\. Paste the actual RSS feed URL instead\./);
+  assert.match(RESOLVER_SOURCE, /Apple Podcasts did not find this show\. Paste the actual RSS feed URL instead\./);
   assert.match(RESOLVER_SOURCE, /Paste an Apple Podcasts or RSS feed URL\./);
-  assert.doesNotMatch(RESOLVER_SOURCE, /show — paste|id…|podcasts\.apple\.com\/\.\.\.|id\.\.\./);
+  assert.match(RESOLVER_SOURCE, /Apple Podcasts did not return an RSS feed\./);
+  assert.match(RESOLVER_SOURCE, /Could not verify this show with Apple Podcasts\./);
+  assert.match(RESOLVER_SOURCE, /Could not reach Apple Podcasts to find the RSS feed\./);
+  assert.doesNotMatch(RESOLVER_SOURCE, /has no record|this podcast with Apple Podcasts|show — paste|id…|podcasts\.apple\.com\/\.\.\.|id\.\.\.|Apple lookup failed|Apple returned no RSS feed|Could not reach Apple to resolve|resolve the RSS feed/);
 });
 
 test("probe maps thrown errors into friendly sentences (no raw exception leakage)", () => {

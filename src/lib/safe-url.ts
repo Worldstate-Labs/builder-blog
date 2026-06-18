@@ -77,7 +77,7 @@ export function validatePublicHttpUrl(
   try {
     url = new URL(raw);
   } catch {
-    return { ok: false, reason: "URL is malformed" };
+    return { ok: false, reason: "URL is invalid" };
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     return { ok: false, reason: "Only http(s) URLs are allowed" };

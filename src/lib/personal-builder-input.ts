@@ -20,8 +20,8 @@ export type PersonalBuilderInput = {
 
 /**
  * Discriminated-union result. Success carries an optional non-blocking
- * warning (e.g. "Couldn't reach Apple to pre-resolve RSS — agent will
- * Local Agent will retry at sync time"). Failure carries a user-facing reason and an
+ * warning (e.g. "Could not reach Apple Podcasts to find the RSS feed.
+ * Your Local Agent will retry at sync time."). Failure carries a user-facing reason and an
  * optional suggestId so the UI can offer "switch to <type> and retry".
  */
 export type ResolutionSuccess = {
@@ -65,7 +65,7 @@ export async function resolvePersonalBuilderInput(input: {
   const sourceType = normalizeSourceType(input.sourceType) || "x";
   const value = input.sourceValue.trim();
   if (!value) {
-    return { ok: false, reason: "Source URL or handle is required." };
+    return { ok: false, reason: "Handle or URL is required." };
   }
 
   if (sourceType === GITHUB_TRENDING_SOURCE_ID) {
@@ -107,7 +107,7 @@ function resolveX(displayName: string, value: string): Resolution {
   if (!handle) {
     return {
       ok: false,
-      reason: "X handle must look like @deepmind, or a full https://x.com/deepmind URL.",
+      reason: "Enter an X handle like @deepmind or a full https://x.com/deepmind URL.",
     };
   }
   return {
@@ -128,7 +128,7 @@ function resolveYouTube(displayName: string, value: string): Resolution {
   if (!sourceUrl) {
     return {
       ok: false,
-      reason: "YouTube source must be a youtube.com or youtu.be URL, or an @channel handle.",
+      reason: "Enter a youtube.com or youtu.be URL, or an @channel handle.",
     };
   }
   return {
@@ -198,7 +198,7 @@ async function resolvePodcast(displayName: string, value: string): Promise<Resol
           return {
             ok: false,
             reason:
-              "Apple Podcasts has no record of this show. Paste the actual RSS feed URL instead.",
+              "Apple Podcasts did not find this show. Paste the actual RSS feed URL instead.",
           };
         }
         const result = results[0];
@@ -207,7 +207,7 @@ async function resolvePodcast(displayName: string, value: string): Promise<Resol
           if (result.collectionName) resolvedName = result.collectionName;
         } else {
           warning =
-            "Apple returned no RSS feed for this podcast. Your Local Agent will retry at sync time.";
+            "Apple Podcasts did not return an RSS feed. Your Local Agent will retry at sync time.";
         }
         const artwork =
           toSafeAvatarUrl(result?.artworkUrl600) ??
@@ -219,10 +219,10 @@ async function resolvePodcast(displayName: string, value: string): Promise<Resol
           };
         }
       } else {
-        warning = "Apple lookup failed. Your Local Agent will retry at sync time.";
+        warning = "Could not verify this show with Apple Podcasts. Your Local Agent will retry at sync time.";
       }
     } catch {
-      warning = "Could not reach Apple to resolve the RSS feed. Your Local Agent will retry at sync time.";
+      warning = "Could not reach Apple Podcasts to find the RSS feed. Your Local Agent will retry at sync time.";
     }
   }
 
@@ -243,7 +243,7 @@ async function resolvePodcast(displayName: string, value: string): Promise<Resol
 
 function resolveBlog(displayName: string, value: string): Resolution {
   const sourceUrl = normalizedUrl(value);
-  if (!sourceUrl) return { ok: false, reason: "URL is malformed." };
+  if (!sourceUrl) return { ok: false, reason: "Enter a valid URL." };
 
   // Substack convenience: <sub>.substack.com → the publisher always
   // hosts an RSS feed at /feed. Store it so the CLI doesn't have to
@@ -294,7 +294,7 @@ function resolveProductHuntTopProducts(displayName: string): Resolution {
 
 function resolveWebsite(displayName: string, sourceType: string, value: string): Resolution {
   const sourceUrl = normalizedUrl(value);
-  if (!sourceUrl) return { ok: false, reason: "URL is malformed." };
+  if (!sourceUrl) return { ok: false, reason: "Enter a valid URL." };
   return {
     ok: true,
     value: {

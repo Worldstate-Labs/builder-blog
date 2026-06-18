@@ -3660,6 +3660,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   const personalBuilderUpdateRoute = source("src/app/api/builders/[builderId]/personal/route.ts");
   const feedItemsRoute = source("src/app/api/builders/[builderId]/feed-items/route.ts");
   const sourceInputs = source("src/lib/source-inputs.ts");
+  const personalBuilderInput = source("src/lib/personal-builder-input.ts");
+  const safeUrl = source("src/lib/safe-url.ts");
 
   assert.doesNotMatch(buildersPage, /feedItems:\s*{/);
   assert.match(buildersPage, /@\/components\/PageHeader/);
@@ -3681,6 +3683,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(feedItemsRoute, /Source is not in your library/);
   assert.match(personalBuilderRoute, /Source URL is not allowed: \$\{check\.reason\}\./);
   assert.doesNotMatch(personalBuilderRoute, /Source URL rejected/);
+  assert.match(safeUrl, /URL is invalid/);
+  assert.doesNotMatch(safeUrl, /URL is malformed/);
   assert.match(personalBuilderUpdateRoute, /Handle or URL is required\./);
   assert.match(personalBuilderUpdateRoute, /Source URL is not allowed: \$\{check\.reason\}\./);
   assert.match(personalBuilderUpdateRoute, /Could not save source\./);
@@ -3926,6 +3930,14 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(addBuilderForm, /document\.getElementById\(sourceTypeOptionId\(sourceId\)\)\?\.focus\(\)/);
   assert.match(addBuilderForm, /name="sourceValue"/);
   assert.match(addBuilderForm, /Handle or URL/);
+  assert.match(personalBuilderInput, /Handle or URL is required\./);
+  assert.match(personalBuilderInput, /Enter an X handle like @deepmind or a full https:\/\/x\.com\/deepmind URL\./);
+  assert.match(personalBuilderInput, /Enter a youtube\.com or youtu\.be URL, or an @channel handle\./);
+  assert.match(personalBuilderInput, /Enter a valid URL\./);
+  assert.match(personalBuilderInput, /Apple Podcasts did not find this show\. Paste the actual RSS feed URL instead\./);
+  assert.match(personalBuilderInput, /Could not verify this show with Apple Podcasts\./);
+  assert.match(personalBuilderInput, /Could not reach Apple Podcasts to find the RSS feed\./);
+  assert.doesNotMatch(personalBuilderInput, /Source URL or handle is required|URL is malformed|X handle must look|YouTube source must be|Apple lookup failed|Apple returned no RSS feed|has no record|this podcast with Apple Podcasts|resolve the RSS feed/);
   assert.match(addBuilderForm, /className="add-source-form"/);
   assert.match(addBuilderForm, /className="add-source-type-list"/);
   assert.match(addBuilderForm, /className="add-source-primary-row"/);
