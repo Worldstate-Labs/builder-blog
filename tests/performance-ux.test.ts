@@ -2911,7 +2911,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /currentPage: number/);
   assert.match(searchPage, /searchHref\(\{ query, type: typeFilter, mode, sort, time, page: currentPage \}\)/);
   assert.match(searchPage, /className="search-advanced-tools search-advanced-tools-compact"/);
-  assert.match(searchPage, /Clear all/);
+  assert.match(searchPage, /Clear filters/);
+  assert.doesNotMatch(searchPage, /Clear all(?: filters)?/);
   assert.match(searchPage, /className="search-filter-chip-row"/);
   assert.match(searchPage, /className="search-filter-chip"/);
   assert.match(searchPage, /className="search-filter-label"/);
@@ -2964,8 +2965,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchPage, /Use best match/);
   assert.match(searchPage, /Search all result types/);
   assert.match(searchPage, /Search any time/);
-  assert.match(searchPage, /Clear all filters/);
-  assert.doesNotMatch(searchPage, /label:\s*"Clear filters"/);
+  assert.match(searchPage, /label:\s*"Clear filters"/);
+  assert.doesNotMatch(searchPage, /Clear all(?: filters)?/);
   assert.doesNotMatch(searchPage, /Search all time/);
   assert.match(searchPage, /function SearchEmptyState/);
   assert.match(searchPage, /<EmptyState[\s\S]*className="search-empty"/);

@@ -592,7 +592,7 @@ function ActiveSearchFilters({
           className="search-filter-clear"
           href={clearAllHref}
         >
-          Clear all
+          Clear filters
         </Link>
       </div>
     </section>
@@ -1206,7 +1206,7 @@ function buildSearchRecoveryActions({
   if (activeFilterCount > coveredFilterCount) {
     actions.push({
       href: clearAllSearchHref(query),
-      label: "Clear all filters",
+      label: "Clear filters",
     });
   }
 
