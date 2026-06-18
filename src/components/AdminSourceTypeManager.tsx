@@ -225,7 +225,7 @@ function SourceTypeCard({
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(body?.error ?? `HTTP ${response.status}`);
+          throw new Error(body?.error ?? "Could not save source type settings.");
         }
         onSaved(body.config);
         if (draft.fetchPromptBody.trim() === "") setFetchPromptExpanded(false);

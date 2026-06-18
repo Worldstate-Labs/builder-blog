@@ -115,7 +115,7 @@ export function AdminDigestConfigForm({
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(body?.error ?? `HTTP ${response.status}`);
+          throw new Error(body?.error ?? "Could not save AI Digest rules.");
         }
         setConfig(body.config);
         setDraft({

@@ -85,9 +85,9 @@ export async function PATCH(request: Request) {
       session.user.email ?? null,
     );
     return NextResponse.json({ config });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Update failed" },
+      { error: "Could not save AI Digest rules." },
       { status: 500 },
     );
   }

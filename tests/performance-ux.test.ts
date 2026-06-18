@@ -744,6 +744,7 @@ test("settings live in the clickable user avatar menu", () => {
   const digestDetails = source("src/components/DigestDetails.tsx");
   const adminDigestConfig = source("src/components/AdminDigestConfigForm.tsx");
   const adminSourceTypeManager = source("src/components/AdminSourceTypeManager.tsx");
+  const adminSourceTypesRoute = source("src/app/api/settings/source-types/route.ts");
   const settingsFields = source("src/components/settings/SettingsFields.tsx");
   const markdownEditor = source("src/components/settings/MarkdownEditor.tsx");
   const commonRulesForm = source("src/components/CommonSummaryRulesForm.tsx");
@@ -970,6 +971,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /Adds an optional source-level note above that source's posts/);
   assert.match(adminDigestConfig, /Creates post summaries in the selected AI Digest language without dropping key points/);
   assert.match(adminDigestConfig, /Could not save AI Digest rules\./);
+  assert.doesNotMatch(adminDigestConfig, /HTTP \$\{response\.status\}/);
+  assert.doesNotMatch(adminDigestConfig, /error instanceof Error \? error\.message/);
   assert.match(adminDigestConfig, /Headline prompt cannot be empty\./);
   assert.match(adminDigestConfig, /Post summary prompt cannot be empty\./);
   assert.match(adminDigestConfig, /canEditDigestAssemblyPrompts/);
@@ -1012,6 +1015,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(digestConfigRoute, /perSourceSummaryPrompt: z\.string\(\)\.max\(20_000\)\.optional\(\)/);
   assert.match(digestConfigRoute, /writesAdminOnlyDigestPrompts/);
   assert.match(digestConfigRoute, /Headline and per-source digest prompts can only be changed by an admin/);
+  assert.match(digestConfigRoute, /Could not save AI Digest rules\./);
+  assert.doesNotMatch(digestConfigRoute, /Update failed/);
+  assert.doesNotMatch(digestConfigRoute, /error instanceof Error \? error\.message/);
   assert.match(adminSourceTypeManager, /@\/components\/settings\/SettingsFields/);
   assert.match(adminSourceTypeManager, /FETCH_PROMPT_PLACEHOLDER/);
   assert.match(adminSourceTypeManager, /SUMMARY_PROMPT_PLACEHOLDER/);
@@ -1029,6 +1035,11 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /Higher allows more timestamp noise/);
   assert.doesNotMatch(adminSourceTypeManager, /Failed posts are not used in Following or AI Digest|Posts that fail are not saved or used in Following or AI Digest|Drop posts below this body length|Drop posts whose body has fewer characters than this|Latin words count as units; CJK text counts by character|Timestamp-to-content ratio \(0-1\)\. Higher flags timestamp noise/);
   assert.match(adminSourceTypeManager, /Could not save source type settings\./);
+  assert.doesNotMatch(adminSourceTypeManager, /HTTP \$\{response\.status\}/);
+  assert.doesNotMatch(adminSourceTypeManager, /error instanceof Error \? error\.message/);
+  assert.match(adminSourceTypesRoute, /Could not save source type settings\./);
+  assert.doesNotMatch(adminSourceTypesRoute, /Update failed/);
+  assert.doesNotMatch(adminSourceTypesRoute, /error instanceof Error \? error\.message/);
   assert.match(adminSourceTypeManager, /function clearSavedStatus\(\)/);
   assert.match(adminSourceTypeManager, /onStatusAutoDismiss=\{clearSavedStatus\}/);
   assert.doesNotMatch(adminSourceTypeManager, /Save failed/);
