@@ -2013,9 +2013,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /Status \/ log/);
   assert.doesNotMatch(fetchLogPanel, /Schedule status/);
   assert.match(fetchLogPanel, /No Fetch sources run has reported yet/);
-  assert.match(fetchLogPanel, /title="No Fetch sources runs"/);
-  assert.match(fetchLogPanel, /Scheduled and one-time Fetch sources runs will appear here after the Local Agent reports them\./);
   assert.match(fetchLogPanel, /title="No Fetch sources runs yet"/);
+  assert.match(fetchLogPanel, /One-time and scheduled Fetch sources runs appear here after a Local Agent reports them\./);
+  assert.doesNotMatch(fetchLogPanel, /title="No Fetch sources runs"[\s\S]*body="One-time and scheduled Fetch sources runs appear here after a Local Agent reports them\."|Scheduled and one-time Fetch sources runs will appear here after the Local Agent reports them\./);
   assert.match(fetchLogPanel, /Could not refresh\. Try again\./);
   assert.match(fetchLogPanel, /Add X access in Settings, then run Fetch sources again\./);
   assert.match(fetchLogPanel, /import Link from "next\/link"/);
@@ -2379,10 +2379,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-card"/);
   assert.match(fetchLogPanel, /<EmptyState[\s\S]*className="sync-panel-empty is-dashed"/);
   assert.match(fetchLogPanel, /<EmptyState[\s\S]*className="sync-panel-slot-empty"/);
-  assert.match(fetchLogPanel, /title="No Fetch sources runs"/);
-  assert.match(fetchLogPanel, /body="One-time and scheduled Fetch sources runs appear here after a Local Agent reports them\."/);
   assert.match(fetchLogPanel, /title="No Fetch sources runs yet"/);
-  assert.match(fetchLogPanel, /body="Scheduled and one-time Fetch sources runs will appear here after the Local Agent reports them\."/);
+  assert.match(fetchLogPanel, /body="One-time and scheduled Fetch sources runs appear here after a Local Agent reports them\."/);
+  assert.doesNotMatch(fetchLogPanel, /title="No Fetch sources runs"[\s\S]*body="One-time and scheduled Fetch sources runs appear here after a Local Agent reports them\."|body="Scheduled and one-time Fetch sources runs will appear here after the Local Agent reports them\."/);
   assert.doesNotMatch(digestLogPanel, /className="fb-segmented-tabs sync-panel-tabs"/);
   assert.doesNotMatch(digestLogPanel, /onKeyDown=\{handleTabKeyDown\}/);
   assert.doesNotMatch(digestLogPanel, /"ArrowLeft", "ArrowRight", "Home", "End"/);
