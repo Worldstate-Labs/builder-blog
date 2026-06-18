@@ -227,7 +227,7 @@ test("every app route has an explicit centered layout role", () => {
   );
   assert.doesNotMatch(
     source("src/app/(workspace)/settings/page.tsx"),
-    /Access keys, source fetching, and AI Digest rules\.|Manage access keys, source fetching, and AI Digest rules\.|Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./,
+    /Manage access keys and rules for Fetch sources and AI Digest\.|Access keys, source fetching, and AI Digest rules\.|Manage access keys, source fetching, and AI Digest rules\.|Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./,
   );
 
   const redirectOnlyRoutes = [
@@ -303,7 +303,7 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(settingsLoading, /@\/components\/PageHeader/);
   assert.match(settingsLoading, /className="page-pad page-pad--settings settings-loading"/);
   assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys and rules for Fetch sources and AI Digest\./);
-  assert.doesNotMatch(settingsLoading, /Access keys, source fetching, and AI Digest rules\.|Manage access keys, source fetching, and AI Digest rules\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
+  assert.doesNotMatch(settingsLoading, /Manage access keys and rules for Fetch sources and AI Digest\.|Access keys, source fetching, and AI Digest rules\.|Manage access keys, source fetching, and AI Digest rules\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
   assert.match(settingsLoading, /className="workspace-content-stack settings-workspace"/);
   assert.match(settingsLoading, /className="settings-access-grid"/);
   assert.match(settingsLoading, /@\/components\/AgentTokenPanelSkeleton/);
@@ -901,20 +901,20 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(skillPromptActions, /1 task/);
   assert.match(skillPromptActions, /\`\$\{count\} tasks\`/);
   assert.match(skillPromptActions, /Parallel tasks must be a whole number from 1 to/);
-  assert.match(skillPromptActions, /Use 1 for reliability/);
+  assert.match(skillPromptActions, /Use 1 to reduce rate limits/);
   assert.match(skillPromptActions, /Default: 30 days\. Range: 1-90\./);
-  assert.match(skillPromptActions, /const promptDialogDescription = \(\) => "Choose frequency, runtime, language, and lookback\."/);
+  assert.match(skillPromptActions, /const promptDialogDescription = \(\) => "Set frequency, runtime, language, and lookback\."/);
   assert.match(skillPromptActions, />\s*Runtime\s*<\/label>/);
   assert.doesNotMatch(skillPromptActions, /Copy a Local Agent prompt\./);
-  assert.doesNotMatch(skillPromptActions, />\s*Local Agent\s*<\/label>|Choose frequency, Local Agent, language, and lookback\./);
-  assert.doesNotMatch(skillPromptActions, /Runs source tasks after discovery|Looks back this many days|Parallel workers|1 worker|workers`|Use 1 for safest runs|Use 1 for the safest setup|Fetches posts this many days back/);
+  assert.doesNotMatch(skillPromptActions, />\s*Local Agent\s*<\/label>|Choose frequency, Local Agent, language, and lookback\.|Choose frequency, runtime, language, and lookback\./);
+  assert.doesNotMatch(skillPromptActions, /Runs source tasks after discovery|Looks back this many days|Parallel workers|1 worker|workers`|Use 1 for fewer rate limits|Use 1 for reliability|Use 1 for safest runs|Use 1 for the safest setup|Fetches posts this many days back/);
   assert.doesNotMatch(skillPromptActions, /<a[^>]+href="\/settings"|Add one in Settings<\/a>|Choose a Local Agent/);
   assert.doesNotMatch(skillPromptActions, /No connected helpers|Connected helpers/);
   assert.doesNotMatch(skillPromptActions, /flex flex-wrap items-center justify-end gap-2|className="ml-2"|mr-2|text-\[11px\] text-\[var\(--danger\)\]|text-\[11px\] text-\[var\(--muted-strong\)\]/);
   assert.doesNotMatch(skillPromptActions, /className="grid"/);
   assert.match(agentTokenPanel, /<h2 className="fb-section-heading">Access keys<\/h2>/);
   assert.doesNotMatch(agentTokenPanel, /<h2 className="fb-section-heading">Local Agent access<\/h2>/);
-  assert.match(agentTokenPanel, /Access keys authorize Local Agent runs from your devices\./);
+  assert.match(agentTokenPanel, /Access keys let Local Agent run from your devices\./);
   assert.doesNotMatch(agentTokenPanel, /Devices and Local Agents with access keys can update this account\.|Authorized devices and Local Agents can update this FollowBrief account\./);
   assert.match(agentTokenPanel, /<ul className="access-keys-list" aria-label="Access keys">/);
   assert.doesNotMatch(agentTokenPanel, /aria-label="Access keys for Local Agents"/);
@@ -1128,14 +1128,14 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(settingsPage, /@\/components\/PageHeader/);
   assert.match(settingsPage, /className="page-pad page-pad--settings"/);
   assert.match(settingsPage, /<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys and rules for Fetch sources and AI Digest\./);
-  assert.doesNotMatch(settingsPage, /Access keys, source fetching, and AI Digest rules\.|Manage access keys, source fetching, and AI Digest rules\.|Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
+  assert.doesNotMatch(settingsPage, /Manage access keys and rules for Fetch sources and AI Digest\.|Access keys, source fetching, and AI Digest rules\.|Manage access keys, source fetching, and AI Digest rules\.|Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
   assert.doesNotMatch(settingsPage, /<section className="fb-page-head"/);
   assert.equal(existsSync(join(root, "src/app/(workspace)/settings/loading.tsx")), true);
   const settingsLoading = source("src/app/(workspace)/settings/loading.tsx");
   assert.doesNotMatch(settingsLoading, /RouteLoading/);
   assert.match(settingsLoading, /className="page-pad page-pad--settings settings-loading"/);
   assert.match(settingsLoading, /<PageHeader[\s\S]*title="Settings"[\s\S]*Access keys and rules for Fetch sources and AI Digest\./);
-  assert.doesNotMatch(settingsLoading, /Access keys, source fetching, and AI Digest rules\.|Manage access keys, source fetching, and AI Digest rules\.|Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
+  assert.doesNotMatch(settingsLoading, /Manage access keys and rules for Fetch sources and AI Digest\.|Access keys, source fetching, and AI Digest rules\.|Manage access keys, source fetching, and AI Digest rules\.|Manage Local Agent access and the rules used by Fetch sources and AI Digest\.|Manage access keys and the rules used by Fetch sources and AI Digest\.|Manage access keys and rules for Fetch sources and AI Digest issues\./);
   assert.match(settingsLoading, /className="workspace-content-stack settings-workspace"/);
   assert.match(settingsLoading, /@\/components\/AgentTokenPanelSkeleton/);
   assert.match(settingsLoading, /<AgentTokenPanelSkeleton \/>/);
@@ -3327,8 +3327,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
   assert.match(libraryHubPage, /label: "Source libraries"/);
   assert.match(libraryHubPage, /label:\s*"Source libraries"[\s\S]*href:\s*"\/library-hub\?tab=source-library"/);
-  assert.match(libraryHubPage, /Import shared source libraries into Sources\./);
-  assert.doesNotMatch(libraryHubPage, /Import shared source libraries into Sources for AI Digest and Following\.|Import shared source libraries into the Sources tab|Imported sources feed AI Digest issues and Following posts\./);
+  assert.match(libraryHubPage, /Import shared source libraries for AI Digest and Following\./);
+  assert.doesNotMatch(libraryHubPage, /Import libraries that feed AI Digest and Following\.|Import shared source libraries into Sources\.|Import shared source libraries into Sources for AI Digest and Following\.|Import shared source libraries into the Sources tab|Imported sources feed AI Digest issues and Following posts\./);
   assert.doesNotMatch(libraryHubPage, /Import shared libraries into Sources\.|Import shared libraries into Sources, Following, and AI Digest\./);
   assert.doesNotMatch(libraryHubPage, /Source libraries shared to Hub\./);
   assert.doesNotMatch(libraryHubPage, /Community source libraries, your shared source libraries/);
@@ -3366,12 +3366,12 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(libraryHubPage, /<section className="fb-page-head"/);
   assert.match(libraryHubPage, /<span className="sr-only">Loading source libraries<\/span>/);
   assert.match(libraryHubPage, /<span className="sr-only">Loading shared AI Digest collections<\/span>/);
-  assert.match(libraryHubPage, /Import shared source libraries into Sources\./);
-  assert.doesNotMatch(libraryHubPage, /Import shared libraries into Sources\.|Import shared libraries into Sources, Following, and AI Digest\./);
+  assert.match(libraryHubPage, /Import shared source libraries for AI Digest and Following\./);
+  assert.doesNotMatch(libraryHubPage, /Import libraries that feed AI Digest and Following\.|Import shared source libraries into Sources\.|Import shared libraries into Sources\.|Import shared libraries into Sources, Following, and AI Digest\./);
   assert.match(libraryHubPage, /<h2 className="fb-section-heading">Shared AI Digest collections<\/h2>/);
   assert.doesNotMatch(libraryHubPage, /<h2 className="fb-section-heading">AI Digest archives<\/h2>/);
-  assert.match(libraryHubPage, /Import shared AI Digest collections\./);
-  assert.doesNotMatch(libraryHubPage, /AI Digest tab|Import shared collections\.|Import shared AI Digest collections into AI Digest\./);
+  assert.match(libraryHubPage, /Import AI Digest collections shared by others\./);
+  assert.doesNotMatch(libraryHubPage, /AI Digest tab|Import shared AI Digest collections\.|Import shared collections\.|Import shared AI Digest collections into AI Digest\./);
   assert.doesNotMatch(libraryHubPage, /AI Digest archives shared to Hub\./);
   assert.doesNotMatch(libraryHubPage, /className="library-hub-skeleton-line is-heading"/);
   assert.doesNotMatch(libraryHubPage, /<span>Loading source libraries<\/span>/);
@@ -3405,8 +3405,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="library-hub-toolbar"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="library-hub-toolbar-copy"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /<h2 className="fb-section-heading">Source libraries<\/h2>/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Import shared source libraries into Sources\./);
-  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Import shared source libraries into Sources for AI Digest and Following\.|Import shared source libraries into the Sources tab|Imported sources feed AI Digest issues and Following posts\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Import shared source libraries for AI Digest and Following\./);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Import libraries that feed AI Digest and Following\.|Import shared source libraries into Sources\.|Import shared source libraries into Sources for AI Digest and Following\.|Import shared source libraries into the Sources tab|Imported sources feed AI Digest issues and Following posts\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Import shared libraries into Sources\.|Import shared libraries into Sources, Following, and AI Digest\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Source libraries shared to Hub\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /sourceLibraryListCopy\(activeFilter\)/);
@@ -3416,8 +3416,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /\{listCopy\.description\}/);
   assert.match(source("src/app/globals.css"), /\.hub-list-context\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Curated source libraries maintained by FollowBrief\./);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries you own\./);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Imported source libraries\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries you can edit and share\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries already added to Sources\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Imported libraries available in Sources, Following, and AI Digest\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Source libraries already imported from Hub\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Source libraries you imported into Sources\./);
@@ -3449,16 +3449,16 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /activeFilter === "imported" \? \(/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /onClick=\{\(\) => setActiveFilter\("all"\)\}/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), />\s*Browse source libraries\s*<\/button>/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries appear here\./);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Your source libraries appear here\./);
-  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Source libraries appear here after users share them to Hub\.|Libraries you share to Hub appear here\.|Shared source libraries appear here\.|Shared source libraries appear here after they are shared to Hub\.|Shared source libraries appear here after people share them\.|Shared source libraries appear here when people share them to Hub\.|Your source libraries appear here after you share them\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /No source libraries are available yet\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Share a source library to list it here\./);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /No shared libraries are available yet\.|Source libraries appear here\.|Source libraries appear here after users share them to Hub\.|Libraries you share to Hub appear here\.|Shared source libraries appear here\.|Shared source libraries appear here after they are shared to Hub\.|Shared source libraries appear here after people share them\.|Shared source libraries appear here when people share them to Hub\.|Your source libraries appear here\.|Your source libraries appear here after you share them\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Shared source libraries will appear here\.|Your source libraries will appear here once you share them\./);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries from other users\./);
-  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Shared by other users\.|Source libraries shared to Hub will appear here\.|Source libraries shared by other users\.|Libraries shared by other users\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Source libraries shared by other users\./);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Source libraries from other users\.|Shared by other users\.|Source libraries shared to Hub will appear here\.|Libraries shared by other users\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Community source libraries, your shared source libraries|Community libraries|your shared libraries/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /No shared source libraries match this filter\./);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Imported source libraries appear here\./);
-  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Import source libraries to see them here\.|Import source libraries to see them in the Sources tab\.|Import source libraries to see them in Sources\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Import source libraries from Hub\./);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Import shared libraries from Hub\.|Imported source libraries appear here\.|Import source libraries to see them here\.|Import source libraries to see them in the Sources tab\.|Import source libraries to see them in Sources\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Imported source libraries will appear here\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Could not import source library\./);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /Could not remove imported source library\./);
@@ -3836,8 +3836,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /badge="imported"/);
   assert.doesNotMatch(buildersPage, /No active sources from this imported library\./);
   assert.match(buildersPage, /title="No imported source libraries"/);
-  assert.match(buildersPage, /body="Imported source libraries appear here\."/);
-  assert.doesNotMatch(buildersPage, /No imported source libraries yet\.|Import source libraries from Hub\./);
+  assert.match(buildersPage, /body="Import source libraries from Hub\."/);
+  assert.doesNotMatch(buildersPage, /Import shared libraries from Hub\.|Imported source libraries appear here\.|No imported source libraries yet\./);
   assert.match(buildersPage, /href="\/library-hub\?tab=source-library"/);
   assert.match(buildersPage, /Import from Hub/);
   assert.doesNotMatch(buildersPage, /Browse source libraries/);
@@ -3901,8 +3901,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /timeZone:\s*"UTC"/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported source libraries/);
-  assert.match(buildersPage, /Shared source libraries from Hub\./);
-  assert.doesNotMatch(buildersPage, /Hub source libraries appear here\.|Shared libraries from Hub\.|Shared libraries added from Hub\.|Source libraries imported from Hub\./);
+  assert.match(buildersPage, /Shared source libraries imported from Hub\./);
+  assert.doesNotMatch(buildersPage, /Shared libraries you imported from Hub\.|Shared source libraries from Hub\.|Hub source libraries appear here\.|Shared libraries from Hub\.|Shared libraries added from Hub\.|Source libraries imported from Hub\./);
   assert.doesNotMatch(buildersPage, /Source libraries you imported into Sources\./);
   assert.match(buildersPage, /importedLibrarySections/);
   assert.match(buildersPage, /className="imported-libraries-section"/);
@@ -4902,9 +4902,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /mode\?: "hub" \| "imported"/);
   assert.match(digestPipelineForm, /mode = "hub"/);
   assert.match(digestPipelineForm, /Imported AI Digest collections/);
-  assert.match(digestPipelineForm, /Import shared AI Digest collections\./);
-  assert.match(digestPipelineForm, /Imported collections appear in AI Digest\./);
-  assert.doesNotMatch(digestPipelineForm, /AI Digest tab|Import shared collections\.|Import shared AI Digest collections into AI Digest\.|Available in AI Digest\.|Already in AI Digest\.|Collections already in AI Digest\./);
+  assert.match(digestPipelineForm, /Import AI Digest collections shared by others\./);
+  assert.match(digestPipelineForm, /Imported collections are available in AI Digest\./);
+  assert.doesNotMatch(digestPipelineForm, /AI Digest tab|Import shared AI Digest collections\.|Import shared collections\.|Import shared AI Digest collections into AI Digest\.|Available in AI Digest\.|Already in AI Digest\.|Collections already in AI Digest\./);
   assert.doesNotMatch(digestPipelineForm, /Archives already in AI Digest\.|Archives already available in AI Digest\./);
   assert.doesNotMatch(digestPipelineForm, /AI Digest archives shared to Hub\.|AI Digest archives already imported from Hub\./);
   assert.doesNotMatch(digestPipelineForm, /AI Digest archives you imported from Hub\./);
@@ -4954,16 +4954,16 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /isPending=\{importPending \|\| pendingAction !== null\}/);
   assert.match(digestPipelineForm, /disabled=\{isPending \|\| pending !== null\}/);
   assert.match(digestPipelineForm, /No imported AI Digest collections/);
-  assert.match(digestPipelineForm, /Imported AI Digest collections appear here\./);
-  assert.doesNotMatch(digestPipelineForm, /Import AI Digest collections to see them here\.|Import one to see it in AI Digest\.|Import collections to see them in AI Digest\.|Import archives to see them in AI Digest\./);
+  assert.match(digestPipelineForm, /Import a collection from Hub\./);
+  assert.doesNotMatch(digestPipelineForm, /Imported AI Digest collections appear here\.|Import AI Digest collections to see them here\.|Import one to see it in AI Digest\.|Import collections to see them in AI Digest\.|Import archives to see them in AI Digest\./);
   assert.doesNotMatch(digestPipelineForm, /Import an AI Digest archive from Hub to see it on Home\./);
   assert.doesNotMatch(digestPipelineForm, /to see them on Home\./);
   assert.match(digestPipelineForm, /href="\/library-hub\?tab=ai-digests"/);
   assert.match(digestPipelineForm, /Browse AI Digest collections/);
   assert.doesNotMatch(digestPipelineForm, /Browse Hub/);
   assert.match(digestPipelineForm, /No shared AI Digest collections/);
-  assert.match(digestPipelineForm, /Shared AI Digest collections appear here\./);
-  assert.doesNotMatch(digestPipelineForm, /AI Digest collections shared to Hub appear here\.|AI Digest collections appear here after users share them to Hub\.|Shared collections appear here\.|Shared collections appear here after users share them to Hub\.|Shared AI Digest archives appear here when users share them to Hub\.|Archives appear here after users share them to Hub\.|Shared AI Digest collections appear here after they are shared to Hub\.|Shared AI Digest collections appear here when people share them to Hub\./);
+  assert.match(digestPipelineForm, /No shared AI Digest collections are available\./);
+  assert.doesNotMatch(digestPipelineForm, /Shared AI Digest collections appear here\.|AI Digest collections shared to Hub appear here\.|AI Digest collections appear here after users share them to Hub\.|Shared collections appear here\.|Shared collections appear here after users share them to Hub\.|Shared AI Digest archives appear here when users share them to Hub\.|Archives appear here after users share them to Hub\.|Shared AI Digest collections appear here after they are shared to Hub\.|Shared AI Digest collections appear here when people share them to Hub\./);
   assert.match(digestPipelineForm, /No AI Digest issues yet/);
   assert.doesNotMatch(digestPipelineForm, /No AI Digest archives yet/);
   assert.doesNotMatch(digestPipelineForm, /No AI Digests yet/);
@@ -5231,10 +5231,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /fetch\(`\/api\/settings\/tokens\/\$\{tokenId\}`/);
   assert.match(tokenPanel, /<h2 className="fb-section-heading">Access keys<\/h2>/);
   assert.doesNotMatch(tokenPanel, /<h2 className="fb-section-heading">Local Agent access<\/h2>/);
-  assert.match(tokenPanel, /Access keys authorize Local Agent runs from your devices\./);
+  assert.match(tokenPanel, /Access keys let Local Agent run from your devices\./);
   assert.doesNotMatch(tokenPanel, /Authorized devices and Local Agents can update this FollowBrief account\./);
   assert.doesNotMatch(tokenPanel, />\s*Local Agents that can sync sources and AI Digests to this account\.|Devices and Local Agents that can sync sources and AI Digests to this account\./);
-  assert.doesNotMatch(tokenPanel, /Access keys let Local Agent update this account from your devices\.|Access keys let devices and Local Agents update this account\.|Access keys let trusted devices and Local Agents sync sources and AI Digests to this account\./);
+  assert.doesNotMatch(tokenPanel, /Access keys authorize Local Agent runs from your devices\.|Access keys let Local Agent update this account from your devices\.|Access keys let devices and Local Agents update this account\.|Access keys let trusted devices and Local Agents sync sources and AI Digests to this account\./);
   assert.doesNotMatch(tokenPanel, /sync sources and digests to this account/);
   assert.match(tokenPanel, />\s*New access key\s*<\/h3>/);
   assert.match(tokenPanel, /\{isPending \? "Creating" : "Create access key"\}/);
@@ -5278,9 +5278,9 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(tokenPanel, /@\/components\/Count/);
   assert.match(tokenPanel, /<EmptyState[\s\S]*className="access-keys-empty"/);
   assert.match(tokenPanel, /No access keys yet/);
-  assert.match(tokenPanel, /Create one to run Local Agent from a device\./);
+  assert.match(tokenPanel, /Create one for a device\./);
   assert.doesNotMatch(tokenPanel, /No Local Agent access yet/);
-  assert.doesNotMatch(tokenPanel, /Create one for a device or Local Agent\.|Add one when you connect a Local Agent\.|Add an access key when connecting a device or Local Agent\.|Add an access key when you connect a device or Local Agent\./);
+  assert.doesNotMatch(tokenPanel, /Create one to run Local Agent from a device\.|Create one to connect a device\.|Create one for a device or Local Agent\.|Add one when you connect a Local Agent\.|Add an access key when connecting a device or Local Agent\.|Add an access key when you connect a device or Local Agent\./);
   assert.doesNotMatch(tokenPanel, /access-keys-empty-actions/);
   assert.doesNotMatch(tokenPanel, /actions=\{[\s\S]*className="access-keys-empty-actions"/);
   assert.match(tokenPanel, /className="fb-btn dark compact"[\s\S]*onClick=\{openCreateDialog\}[\s\S]*Add access key/);

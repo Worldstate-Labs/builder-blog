@@ -328,7 +328,7 @@ export function AgentTokenPanel({
         <div className="access-keys-copy">
           <h2 className="fb-section-heading">Access keys</h2>
           <p className="access-keys-desc">
-            Access keys authorize Local Agent runs from your devices.
+            Access keys let Local Agent run from your devices.
           </p>
         </div>
         <button
@@ -358,7 +358,7 @@ export function AgentTokenPanel({
         <EmptyState
           className="access-keys-empty"
           title="No access keys yet"
-          body="Create one to run Local Agent from a device."
+          body="Create one for a device."
         />
       )}
 

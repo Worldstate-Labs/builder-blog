@@ -8,7 +8,8 @@ import { SourceAvatar } from "@/components/SourceAvatar";
 import { SourceBadge } from "@/components/SourceBadge";
 import { normalizeSourceType, sourceLabelForType } from "@/lib/source-display";
 
-const sourceLibraryImportDescription = "Import shared source libraries into Sources.";
+const sourceLibraryImportDescription =
+  "Import shared source libraries for AI Digest and Following.";
 
 type HubLibraryBuilder = {
   id: string;
@@ -155,7 +156,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         : "No matching source libraries";
   const emptyBody =
     activeFilter === "all"
-      ? "Source libraries appear here."
+      ? "No source libraries are available yet."
       : listCopy.emptyBody;
   const removeTarget = removeTargetId
     ? libraries.find((library) => library.id === removeTargetId) ?? null
@@ -599,17 +600,17 @@ function sourceLibraryListCopy(filter: FilterKey) {
       };
     case "my":
       return {
-        description: "Source libraries you own.",
-        emptyBody: "Your source libraries appear here.",
+        description: "Source libraries you can edit and share.",
+        emptyBody: "Share a source library to list it here.",
       };
     case "imported":
       return {
-        description: "Imported source libraries.",
-        emptyBody: "Imported source libraries appear here.",
+        description: "Source libraries already added to Sources.",
+        emptyBody: "Import source libraries from Hub.",
       };
     case "shared":
       return {
-        description: "Source libraries from other users.",
+        description: "Source libraries shared by other users.",
         emptyBody: "No shared source libraries match this filter.",
       };
     case "all":
