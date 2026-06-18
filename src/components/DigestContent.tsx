@@ -302,6 +302,7 @@ function DigestGroupHeading({
           className="digest-group-source-avatar"
           imageSize={28}
           source={{
+            avatarDataUrl: sourceLink.avatarDataUrl ?? null,
             avatarUrl: sourceLink.avatarUrl ?? null,
             fetchUrl: sourceLink.fetchUrl ?? null,
             name: sourceLink.name || source,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, RefreshCcw } from "lucide-react";
 import { CountMeta } from "@/components/Count";
 import { PostCard } from "@/components/PostCard";
@@ -29,6 +29,7 @@ export type RecommendationFeedEntry = {
       id: string;
       entityId: string | null;
       avatarUrl: string | null;
+      avatarDataUrl: string | null;
       name: string;
       sourceType: string;
       kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";
@@ -61,6 +62,17 @@ export function RecommendationFeed({
   const loadingGuard = useRef<"append" | "prepend" | null>(null);
   const [exhausted, setExhausted] = useState(initialSnapshots.length === 0);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const favoriteStateByItemId = useMemo(() => {
+    const stateByItemId = new Map<string, string | null>();
+    for (const snapshot of snapshots) {
+      for (const entry of snapshot.items) {
+        if (!stateByItemId.has(entry.item.id)) {
+          stateByItemId.set(entry.item.id, entry.favoritedAt);
+        }
+      }
+    }
+    return stateByItemId;
+  }, [snapshots]);
 
   const markRead = useCallback(async (feedItemId: string) => {
     const fallbackReadAt = new Date().toISOString();
@@ -80,7 +92,7 @@ export function RecommendationFeed({
   const toggleFavorite = useCallback(async (feedItemId: string, nextFavorite: boolean) => {
     if (pendingFavoriteIds.has(feedItemId)) return;
     const fallbackFavoritedAt = nextFavorite ? new Date().toISOString() : null;
-    const previousFavoritedAt = favoriteStateForItem(snapshots, feedItemId);
+    const previousFavoritedAt = favoriteStateByItemId.get(feedItemId) ?? null;
     setFavoriteError("");
     setPendingFavoriteIds((current) => new Set([...current, feedItemId]));
     setSnapshots((current) =>
@@ -105,7 +117,7 @@ export function RecommendationFeed({
         return next;
       });
     }
-  }, [pendingFavoriteIds, snapshots]);
+  }, [favoriteStateByItemId, pendingFavoriteIds]);
 
   const requestSnapshot = useCallback(
     async (direction: "append" | "prepend") => {
@@ -273,17 +285,6 @@ async function setPostFavorite(feedItemId: string, favorite: boolean) {
     body: JSON.stringify({ feedItemId }),
   });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
-}
-
-function favoriteStateForItem(
-  snapshots: RecommendationSnapshotEntry[],
-  feedItemId: string,
-): string | null {
-  for (const snapshot of snapshots) {
-    const entry = snapshot.items.find((candidate) => candidate.item.id === feedItemId);
-    if (entry) return entry.favoritedAt;
-  }
-  return null;
 }
 
 function restoreFavoriteState(

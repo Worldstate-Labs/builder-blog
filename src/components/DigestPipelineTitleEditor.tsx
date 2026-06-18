@@ -62,7 +62,7 @@ export function DigestPipelineTitleEditor({
           body: JSON.stringify({ title: nextTitle }),
         });
 
-        if (!response.ok) throw new Error("Unable to rename AI Digest collection");
+        if (!response.ok) throw new Error("Could not rename AI Digest collection.");
 
         setTitle(nextTitle);
         setDraft(nextTitle);

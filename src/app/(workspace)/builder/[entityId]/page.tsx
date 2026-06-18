@@ -35,6 +35,7 @@ type ChannelInfo = {
   sourceUrl: string | null;
   fetchUrl: string | null;
   avatarUrl: string | null;
+  avatarDataUrl: string | null;
   handle: string | null;
   lastFetchedAt: Date | null;
   itemCount: number;
@@ -86,6 +87,7 @@ export default async function BuilderDetailPage({ params }: Params) {
       sourceUrl: channel.sourceUrl,
       fetchUrl: channel.fetchUrl,
       avatarUrl: channel.avatarUrl,
+      avatarDataUrl: channel.avatarDataUrl,
       handle: channel.handle,
       lastFetchedAt: channel.lastFetchedAt,
       itemCount: channel.itemCount,
@@ -113,6 +115,10 @@ export default async function BuilderDetailPage({ params }: Params) {
   const headerAvatarUrl =
     primaryChannel?.avatarUrl ??
     channels.find((c) => c.avatarUrl)?.avatarUrl ??
+    null;
+  const headerAvatarDataUrl =
+    primaryChannel?.avatarDataUrl ??
+    channels.find((c) => c.avatarDataUrl)?.avatarDataUrl ??
     null;
   const headerSourceType = primaryChannel?.sourceType ?? null;
   const headerSourceUrl =
@@ -145,6 +151,7 @@ export default async function BuilderDetailPage({ params }: Params) {
               className="builder-detail-avatar"
               imageSize={64}
               source={{
+                avatarDataUrl: headerAvatarDataUrl,
                 avatarUrl: headerAvatarUrl,
                 fetchUrl: primaryChannel?.fetchUrl ?? null,
                 name: entity.name,
@@ -220,7 +227,7 @@ export default async function BuilderDetailPage({ params }: Params) {
             <span className="builder-detail-channels-summary-copy">
               <span>Source libraries</span>
               <span className="builder-detail-channels-summary-desc">
-                Where this source is available in your Sources.
+                Source libraries that include this source.
               </span>
             </span>
             <CountMeta label={channels.length === 1 ? "library" : "libraries"} value={channels.length} />

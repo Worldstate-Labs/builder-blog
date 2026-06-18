@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 export type DigestSourceLink = {
   aliases?: string[];
   avatarUrl?: string | null;
+  avatarDataUrl?: string | null;
   entityId: string;
   href: string;
   name: string;
@@ -38,6 +39,7 @@ export async function digestSourceLinksForUser(userId: string): Promise<DigestSo
     byEntityId.set(builder.entity.id, {
       aliases: [builder.name],
       avatarUrl: builder.avatarUrl,
+      avatarDataUrl: builder.avatarDataUrl,
       entityId: builder.entity.id,
       fetchUrl: builder.fetchUrl,
       handle: builder.entity.handle ?? builder.handle,

@@ -20,7 +20,7 @@ export function CommonSummaryRulesForm({
   return (
     <CommonRulesForm
       ariaLabel="Common post-summary rules"
-      description="Applied when each fetched post is summarized before it can appear in Following or AI Digest."
+      description="Used when fetched posts are summarized for Following or AI Digest."
       emptyMessage="Common summary rules cannot be empty."
       fieldName="commonSummaryRules"
       initialValue={initialValue}
@@ -43,7 +43,7 @@ export function CommonFetchRulesForm({
   return (
     <CommonRulesForm
       ariaLabel="Common fetching rules"
-      description="Applied before any source-specific fetch prompt when the agent needs to extract source content."
+      description="Used before source-specific fetch prompts when the Local Agent extracts source content."
       emptyMessage="Common fetching rules cannot be empty."
       fieldName="commonFetchRules"
       initialValue={initialValue}

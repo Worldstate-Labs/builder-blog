@@ -14,6 +14,7 @@ import {
   hostnameOrNull,
   pickFinalName,
   probeAndEnrichSource,
+  resolveAvatarDataUrl,
   type BuilderEnrichment,
   type ProbeOutcome,
 } from "@/lib/builder-enrichment";
@@ -50,6 +51,8 @@ export async function PATCH(request: Request, { params }: Params) {
       name: true,
       sourceType: true,
       sourceUrl: true,
+      fetchUrl: true,
+      avatarDataUrl: true,
       handle: true,
     },
   });
@@ -153,6 +156,17 @@ export async function PATCH(request: Request, { params }: Params) {
       parsed.data.sourceValue,
     ],
   });
+  const avatarUrl = enrichment.avatarUrl ?? null;
+  const sourceIdentityChanged =
+    input.sourceType !== existing.sourceType ||
+    (input.sourceUrl ?? null) !== (existing.sourceUrl ?? null) ||
+    (input.fetchUrl ?? null) !== (existing.fetchUrl ?? null) ||
+    (handle ?? null) !== (existing.handle ?? null);
+  const avatarDataUrl = avatarUrl
+    ? await resolveAvatarDataUrl(avatarUrl)
+    : sourceIdentityChanged
+      ? null
+      : existing.avatarDataUrl;
 
   try {
     const updated = await prisma.builder.update({
@@ -165,7 +179,8 @@ export async function PATCH(request: Request, { params }: Params) {
         // Probe-discovered RSS/Atom feed link wins over the resolver's
         // best guess when the user pasted an HTML landing page.
         fetchUrl: probe.discoveredFetchUrl ?? input.fetchUrl ?? null,
-        avatarUrl: enrichment.avatarUrl ?? null,
+        avatarUrl,
+        avatarDataUrl,
         kind,
         canonicalKey,
         libraryKey,

@@ -809,6 +809,7 @@ function SearchPostResultCard({
         id: result.builderId ?? `search:${result.id}`,
         entityId: result.builderEntityId ?? null,
         avatarUrl: result.avatarUrl ?? null,
+        avatarDataUrl: result.avatarDataUrl ?? null,
         name: sourceName,
         kind: result.builderKind ?? sourceKindForSearchResult(result.sourceType),
         sourceType: result.sourceType ?? "website",
@@ -935,6 +936,7 @@ function SearchResultSourceIcon({
       className="search-result-icon"
       imageSize={32}
       source={{
+        avatarDataUrl: result.avatarDataUrl ?? null,
         avatarUrl: result.avatarUrl ?? null,
         fetchUrl: result.fetchUrl ?? null,
         name: result.type === "builder" ? result.title : sourceName,

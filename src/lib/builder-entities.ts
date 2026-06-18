@@ -220,6 +220,7 @@ const builderEntityWithChannelsSelect = {
       sourceUrl: true,
       fetchUrl: true,
       avatarUrl: true,
+      avatarDataUrl: true,
       handle: true,
       lastFetchedAt: true,
       itemCount: true,

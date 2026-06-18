@@ -253,12 +253,12 @@ function SourceTypeCard({
           step="01"
           title="Fetching"
           optional
-          description="Extra instructions for this source type when Fetch sources needs agent extraction."
+          description="Extra instructions for this source type when Fetch sources needs Local Agent extraction."
         >
           <OptionalMarkdownField
             ariaLabel={`${config.label} fetch prompt`}
-            buttonLabel="Add source-type fetch prompt"
-            emptyText="No source-type fetch prompt is set."
+            buttonLabel="Add fetch prompt"
+            emptyText="No fetch prompt is set for this source type."
             expanded={fetchPromptExpanded}
             height={340}
             onExpand={() => setFetchPromptExpanded(true)}

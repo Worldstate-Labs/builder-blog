@@ -138,6 +138,7 @@ export async function PostDetailPage({
                 id: item.builder.id,
                 entityId: item.builder.entityId,
                 avatarUrl: item.builder.avatarUrl,
+                avatarDataUrl: item.builder.avatarDataUrl,
                 name: item.builder.name,
                 kind: item.builder.kind,
                 sourceType: item.builder.sourceType,

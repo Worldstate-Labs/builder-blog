@@ -38,7 +38,7 @@ export function BuilderLibraryActions({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ subscribed: nextSubscribed }),
         });
-        if (!response.ok) throw new Error("Unable to update subscription");
+        if (!response.ok) throw new Error("Could not update following.");
         const payload = (await response.json()) as { subscribed?: boolean };
         const confirmedSubscribed = Boolean(payload.subscribed);
         setSubscribed(confirmedSubscribed);

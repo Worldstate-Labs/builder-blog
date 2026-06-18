@@ -336,7 +336,7 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(dashboardLoading, /className="home-tab-panel" aria-label="Loading Home content"/);
   assert.match(dashboardLoading, /className="ai-digest-stack home-loading-ai-digest"/);
   assert.match(dashboardLoading, /className="digest-control-bar home-loading-control"/);
-  assert.match(dashboardLoading, /\["AI Digest source", "AI Digest issue"\]\.map/);
+  assert.match(dashboardLoading, /\["AI Digest collection", "AI Digest issue"\]\.map/);
   assert.match(dashboardLoading, /className="home-loading-control-shell"/);
   assert.match(dashboardLoading, /className="home-loading-digest-card"/);
   assert.match(dashboardLoading, /className="home-loading-post-list"/);
@@ -558,9 +558,9 @@ test("public entry pages use the centered product layout", () => {
   assert.match(landingPage, /GitHub Trending/);
   assert.match(landingPage, /Product Hunt/);
   assert.match(landingPage, /Your Local Agent fetches updates, summarizes/);
-  assert.match(landingPage, /agent-fetchable sources/);
+  assert.match(landingPage, /add blogs, channels, feeds, GitHub Trending, and Product Hunt/);
   assert.match(landingPage, /build a cited AI Digest from the summaries/);
-  assert.doesNotMatch(landingPage, /sources your Local Agent can fetch|Local Agent sources/);
+  assert.doesNotMatch(landingPage, /sources your Local Agent can fetch|agent-fetchable sources|Local Agent sources/);
   assert.match(landingPage, /Daily AI Digest flow/);
   assert.match(landingPage, /Daily updates become one AI Digest/);
   assert.match(landingPage, /readable AI Digest/);
@@ -798,6 +798,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(skillPromptActions, /summary language — try again/);
   assert.match(commonRulesForm, /Common summary rules cannot be empty\./);
   assert.match(commonRulesForm, /Common fetching rules cannot be empty\./);
+  assert.match(commonRulesForm, /Local Agent extracts source content/);
+  assert.doesNotMatch(commonRulesForm, /agent needs to extract source content/);
+  assert.doesNotMatch(commonRulesForm, /Applied before any source-specific fetch prompt/);
   assert.doesNotMatch(commonRulesForm, /can't be empty/);
   assert.match(skillPromptActions, /async function copyTextToClipboard/);
   assert.match(skillPromptActions, /import Link from "next\/link"/);
@@ -819,7 +822,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(skillPromptActions, /Connect a Local Agent in Settings first/);
   assert.match(skillPromptActions, /setStatus\(\{ kind: "info", text: missingAccessMessage \}\);\s*return false;/);
   assert.match(skillPromptActions, /if \(activeTokens\.length === 0\) \{[\s\S]*missingAccessMessage[\s\S]*return;\s*\}[\s\S]*if \(target === "cron"\)/);
-  assert.match(skillPromptActions, /Authorized devices and Local Agents/);
+  assert.match(skillPromptActions, /<legend className="sr-only">Access keys<\/legend>/);
+  assert.doesNotMatch(skillPromptActions, /Authorized devices and Local Agents/);
   assert.doesNotMatch(skillPromptActions, /Access keys for Local Agents/);
   assert.match(skillPromptActions, /AccessKeyDeviceIcon/);
   assert.match(skillPromptActions, /describeAccessDevice/);
@@ -835,17 +839,25 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(skillPromptActions, /const statusLabel = token\.lastUsedAt[\s\S]*Never connected/);
   assert.doesNotMatch(skillPromptActions, /Last used|Never used|Created \$\{formatRelativeCompact\(token\.createdAt, hydrated\)\}|describeMachine\(token\)|formatRelative\(token\.lastUsedAt\)|token-picker-row-name">\{token\.name\}/);
   assert.match(skillPromptActions, /className="skill-prompt-access-required"/);
-  assert.match(skillPromptActions, /Local Agent access required/);
-  assert.match(skillPromptActions, /Add an access key before copying Local Agent prompts\./);
+  assert.match(skillPromptActions, /Add an access key in Settings before copying Local Agent prompts\./);
   assert.match(skillPromptActions, /<Link className="fb-btn dark compact" href="\/settings">[\s\S]*Open Settings/);
-  assert.match(skillPromptActions, /No Local Agent access yet/);
-  assert.match(skillPromptActions, /Add one in Settings before copying Local Agent prompts\./);
+  assert.match(skillPromptActions, /Access key required/);
+  assert.match(skillPromptActions, /No access keys yet/);
+  assert.doesNotMatch(skillPromptActions, /Local Agent access required|No Local Agent access yet/);
+  assert.doesNotMatch(skillPromptActions, /Add one in Settings before copying Local Agent prompts\./);
   assert.match(skillPromptActions, /<Link className="fb-btn light compact" href="\/settings">[\s\S]*Add access key/);
   assert.match(skillPromptActions, /Add access key/);
   assert.match(skillPromptActions, /\{submitting \? "Copying" : "Copy prompt"\}/);
   assert.match(skillPromptActions, /\{copying \? "Copying" : "Copy"\}/);
   assert.doesNotMatch(skillPromptActions, /Copying\.\.\./);
-  assert.doesNotMatch(skillPromptActions, /<a[^>]+href="\/settings"|No access keys yet|Add one in Settings<\/a>|Choose a Local Agent/);
+  assert.match(skillPromptActions, /Parallel tasks/);
+  assert.match(skillPromptActions, /1 task/);
+  assert.match(skillPromptActions, /\`\$\{count\} tasks\`/);
+  assert.match(skillPromptActions, /Parallel tasks must be a whole number from 1 to/);
+  assert.match(skillPromptActions, /Use 1 for safest setup/);
+  assert.match(skillPromptActions, /Looks back this many days for posts/);
+  assert.doesNotMatch(skillPromptActions, /Parallel workers|1 worker|workers`|Use 1 for the safest setup|Fetches posts this many days back/);
+  assert.doesNotMatch(skillPromptActions, /<a[^>]+href="\/settings"|Add one in Settings<\/a>|Choose a Local Agent/);
   assert.doesNotMatch(skillPromptActions, /No connected helpers|Connected helpers/);
   assert.doesNotMatch(skillPromptActions, /flex flex-wrap items-center justify-end gap-2|className="ml-2"|mr-2|text-\[11px\] text-\[var\(--danger\)\]|text-\[11px\] text-\[var\(--muted-strong\)\]/);
   assert.doesNotMatch(skillPromptActions, /className="grid"/);
@@ -989,7 +1001,8 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /How each post becomes a summary/);
   assert.match(adminSourceTypeManager, /Output language comes from the run prompt/);
   assert.doesNotMatch(adminSourceTypeManager, /How each post from this source is written as a per-post summary|one-time or scheduled run prompt/);
-  assert.match(adminSourceTypeManager, /Extra instructions for this source type when Fetch sources needs agent extraction\./);
+  assert.match(adminSourceTypeManager, /Extra instructions for this source type when Fetch sources needs Local Agent extraction\./);
+  assert.doesNotMatch(adminSourceTypeManager, /needs agent extraction/);
   assert.match(adminSourceTypeManager, /Posts that fail are not saved or used in Following or AI Digest/);
   assert.match(adminSourceTypeManager, /Drop posts whose body has fewer characters than this/);
   assert.match(adminSourceTypeManager, /Drop posts with too little real text/);
@@ -1005,9 +1018,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /className="source-type-config-dirty"/);
   assert.match(adminSourceTypeManager, /className="source-type-config-dirty-dot"/);
   assert.match(adminSourceTypeManager, /<OptionalMarkdownField/);
-  assert.match(adminSourceTypeManager, /buttonLabel="Add source-type fetch prompt"/);
-  assert.match(adminSourceTypeManager, /No source-type fetch prompt is set\./);
-  assert.doesNotMatch(adminSourceTypeManager, /No extra fetch prompt for this source\.|No source-specific fetch prompt for this source\./);
+  assert.match(adminSourceTypeManager, /buttonLabel="Add fetch prompt"/);
+  assert.match(adminSourceTypeManager, /No fetch prompt is set for this source type\./);
+  assert.doesNotMatch(adminSourceTypeManager, /Add source-type fetch prompt|No extra fetch prompt for this source\.|No source-specific fetch prompt for this source\.|No source-type fetch prompt is set\./);
   assert.match(adminSourceTypeManager, /canEditQualityGates \? \(/);
   assert.doesNotMatch(adminSourceTypeManager, /style=\{\{/);
   assert.doesNotMatch(adminSourceTypeManager, /cursor-pointer select-none|ml-auto inline-flex|text-base font-medium/);
@@ -1178,7 +1191,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /className="min-w-0"/);
   assert.doesNotMatch(dashboardPage, /className="fb-section-heading mt-1"/);
   assert.match(dashboardPage, /function DigestControlBar/);
-  assert.match(dashboardPage, /aria-label="AI Digest source and issue selection"/);
+  assert.match(dashboardPage, /aria-label="AI Digest collection and issue selection"/);
   assert.match(dashboardPage, /className="digest-control-bar"/);
   assert.match(dashboardPage, /className="digest-control-field"/);
   assert.match(dashboardPage, /className="digest-control-label"/);
@@ -1189,14 +1202,14 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /rounded-\[8px\]|text-\[0\.68rem\]|\[&_\.digest-picker|md:grid-cols-2/);
   assert.match(dashboardPage, /<DigestPipelineSelector/);
   assert.match(dashboardPage, /<DigestArchivePicker/);
-  assert.match(dashboardPage, />\s*AI Digest source\s*<\/span>/);
+  assert.match(dashboardPage, />\s*AI Digest collection\s*<\/span>/);
   assert.match(dashboardPage, />\s*AI Digest issue\s*<\/span>/);
   assert.doesNotMatch(dashboardPage, /aria-label="AI Digest selection"/);
   assert.match(digestPipelineSelector, /ChevronDown/);
   assert.match(digestPipelineSelector, /className="digest-pipeline-trigger"/);
-  assert.match(digestPipelineSelector, /aria-label=\{`AI Digest source: \$\{selectedLabel\}`\}/);
-  assert.match(digestPipelineSelector, /aria-label=\{`Choose AI Digest source, current: \$\{selectedLabel\}`\}/);
-  assert.match(digestPipelineSelector, /aria-label="AI Digest sources"/);
+  assert.match(digestPipelineSelector, /aria-label=\{`AI Digest collection: \$\{selectedLabel\}`\}/);
+  assert.match(digestPipelineSelector, /aria-label=\{`Choose AI Digest collection, current: \$\{selectedLabel\}`\}/);
+  assert.match(digestPipelineSelector, /aria-label="AI Digest collections"/);
   assert.match(digestPipelineSelector, /function digestArchiveSourceLabel/);
   assert.match(globals, /\.digest-pipeline-selector\[open\] \.digest-pipeline-trigger\s*{[\s\S]*border-color:\s*color-mix\(in oklch, var\(--accent\) 30%, var\(--line\)\)/);
   assert.match(globals, /\.digest-pipeline-icon\s*{[\s\S]*transition:\s*transform 140ms ease/);
@@ -1467,8 +1480,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(builderDetailPage, /Source libraries/);
   assert.match(builderDetailPage, /className="builder-detail-channels-summary-copy"/);
   assert.match(builderDetailPage, /className="builder-detail-channels-summary-desc"/);
-  assert.match(builderDetailPage, /Where this source is available in your Sources\./);
-  assert.match(builderDetailLoading, /Where this source is available in your Sources\./);
+  assert.match(builderDetailPage, /Source libraries that include this source\./);
+  assert.match(builderDetailLoading, /Source libraries that include this source\./);
   assert.match(builderDetailPage, /channels\.length === 1 \? "library" : "libraries"/);
   assert.doesNotMatch(builderDetailPage, /channels\.length === 1 \? "source library" : "source libraries"/);
   assert.match(builderDetailPage, /className="builder-detail-channel-list"/);
@@ -1763,7 +1776,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.doesNotMatch(followingSection, /sourceReadiness\.fetchedPostCount === 0/);
   assert.match(followingSection, /No summarized posts yet/);
   assert.match(followingSection, /No unread posts yet/);
-  assert.match(followingSection, /Run Fetch sources to summarize followed-source posts/);
+  assert.match(followingSection, /Run Fetch sources to summarize posts from followed sources/);
   assert.match(followingSection, /Following shows the latest unread posts/);
   assert.match(followingSection, /Following updates when Fetch sources finds new unread posts/);
   assert.doesNotMatch(followingSection, /Following will update after new unread posts/);
@@ -1804,7 +1817,8 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(recommendationFeed, /Could not load Following posts\./);
   assert.match(recommendationFeed, /const \[favoriteError, setFavoriteError\] = useState\(""\)/);
   assert.match(recommendationFeed, /const \[pendingFavoriteIds, setPendingFavoriteIds\] = useState<Set<string>>\(\(\) => new Set\(\)\)/);
-  assert.match(recommendationFeed, /favoriteStateForItem\(snapshots, feedItemId\)/);
+  assert.match(recommendationFeed, /favoriteStateByItemId = useMemo/);
+  assert.match(recommendationFeed, /favoriteStateByItemId\.get\(feedItemId\) \?\? null/);
   assert.match(recommendationFeed, /restoreFavoriteState\(current, feedItemId, previousFavoritedAt\)/);
   assert.match(recommendationFeed, /className="feed-load-error recommendation-favorite-error" role="status"/);
   assert.match(recommendationFeed, /Could not update reading queue\. Try again\./);
@@ -2419,7 +2433,7 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(dashboardPage, /DigestDetails/);
   assert.doesNotMatch(dashboardPage, /headerAction=\{/);
   assert.match(dashboardPage, /function DigestControlBar/);
-  assert.match(dashboardPage, /aria-label="AI Digest source and issue selection"/);
+  assert.match(dashboardPage, /aria-label="AI Digest collection and issue selection"/);
   assert.match(globals, /\.digest-control-picker \.digest-picker-summary,[\s\S]*\.digest-control-picker \.digest-picker-static\s*{[\s\S]*min-height:\s*2\.5rem/);
   assert.match(globals, /\.digest-control-empty\s*{[\s\S]*border:\s*1px dashed var\(--line\)/);
   assert.match(digestDetails, /headlineSummary/);
@@ -2519,8 +2533,8 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.doesNotMatch(digestPipelineVisibilityToggle, /text-\[12px\]|text-\[10\.5px\]|disabled:cursor-wait/);
   assert.match(digestPipelineVisibilityToggle, /fetch\("\/api\/digest-pipelines\/share"/);
   assert.match(digestPipelineVisibilityToggle, /method: nextShared \? "POST" : "DELETE"/);
-  assert.match(digestPipelineVisibilityToggle, /Unable to update AI Digest sharing/);
-  assert.doesNotMatch(digestPipelineVisibilityToggle, /Unable to update digest pipeline sharing/);
+  assert.match(digestPipelineVisibilityToggle, /Could not update AI Digest archive sharing\./);
+  assert.doesNotMatch(digestPipelineVisibilityToggle, /Unable to update AI Digest sharing|Unable to update digest pipeline sharing/);
   assert.doesNotMatch(digestPipelineVisibilityToggle, /aria-pressed/);
   assert.match(dashboardPage, /displayDigestPipelineTitle\(ownPipelineShare\?\.title \?\? "AI Digest"\)/);
   assert.match(dashboardPage, /function displayDigestTitle\(title: string\)[\s\S]*return displayDigestPipelineTitle\(title\)/);
@@ -2589,6 +2603,7 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(source("src/lib/digest-pipeline-metadata.ts"), /digestSourceLinksForUser\(ownerUserId\)/);
   assert.match(source("src/lib/digest-source-links.ts"), /async function digestSourceLinksForUser/);
   assert.match(source("src/lib/digest-source-links.ts"), /avatarUrl:\s*builder\.avatarUrl/);
+  assert.match(source("src/lib/digest-source-links.ts"), /avatarDataUrl:\s*builder\.avatarDataUrl/);
   assert.match(source("src/lib/digest-source-links.ts"), /sourceType:\s*builder\.sourceType/);
   assert.doesNotMatch(
     globals,
@@ -2877,6 +2892,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchPage, /className="mt-2 flex flex-wrap gap-2"/);
   assert.doesNotMatch(searchPage, /<summary>Refine<\/summary>/);
   assert.match(globals, /\.search-result-source-copy\s*{[\s\S]*min-width:\s*0/);
+  assert.match(globals, /\.search-result\s*{[\s\S]*content-visibility:\s*auto/);
+  assert.match(globals, /\.search-result\s*{[\s\S]*contain-intrinsic-size:\s*auto 11rem/);
   assert.match(globals, /\.search-result h2\s*{[\s\S]*max-width:\s*var\(--measure\)/);
   assert.match(globals, /\.search-result-title\s*{[\s\S]*color:\s*var\(--accent\)/);
   assert.doesNotMatch(globals, /\.search-result-title\s*{[\s\S]*color:\s*oklch\(0\.43 0\.18 258\)/);
@@ -3074,11 +3091,14 @@ test("user library search can fetch operator-only candidate sets", () => {
   assert.match(userSearch, /digestSearchConditions\(terms\)/);
   assert.match(userSearch, /entityId: true/);
   assert.match(userSearch, /avatarUrl: true/);
+  assert.match(userSearch, /avatarDataUrl: true/);
   assert.match(userSearch, /sourceType: true/);
   assert.match(userSearch, /externalUrl: builder\.sourceUrl \?\? builder\.fetchUrl/);
   assert.match(userSearch, /avatarUrl: builder\.avatarUrl/);
+  assert.match(userSearch, /avatarDataUrl: builder\.avatarDataUrl/);
   assert.match(userSearch, /sourceType: builder\.sourceType/);
   assert.match(userSearch, /avatarUrl: item\.builder\?\.avatarUrl \?\? null/);
+  assert.match(userSearch, /avatarDataUrl: item\.builder\?\.avatarDataUrl \?\? null/);
   assert.match(userSearch, /sourceType: item\.builder\?\.sourceType \?\? null/);
   assert.match(userSearch, /loadFavoriteContentKeys/);
   assert.match(userSearch, /loadReadContentKeys/);
@@ -3095,6 +3115,7 @@ test("user library search can fetch operator-only candidate sets", () => {
   assert.match(userSearch, /`\/dashboard\?tab=ai-digest&digest=\$\{digest\.id\}`/);
   assert.doesNotMatch(userSearch, /dashboard\?tab=ai-digest[^`]*#\$\{digest\.id\}/);
   assert.match(searchLib, /avatarUrl\?: string \| null/);
+  assert.match(searchLib, /avatarDataUrl\?: string \| null/);
   assert.match(userSearch, /url: builder\.entityId \? `\/builder\/\$\{builder\.entityId\}` : `\/builders#\$\{builder\.id\}`/);
   assert.match(searchLib, /externalUrl\?: string \| null/);
   assert.match(searchLib, /sourceType\?: string \| null/);
@@ -3196,6 +3217,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(libraryHubPage, /role="tabpanel"/);
   assert.match(libraryHubPage, /function selectedHubTabItem/);
   assert.match(libraryHubPage, /avatarUrl:\s*true/);
+  assert.match(libraryHubPage, /avatarDataUrl:\s*true/);
   assert.match(libraryHubPage, /lastFetchedAt:\s*true/);
   assert.match(libraryHubPage, /lastFetchedAt:\s*item\.builder\.lastFetchedAt\?\.toISOString\(\) \?\? null/);
   assert.doesNotMatch(libraryHubPage, /Import shared source libraries and AI Digest archives/);
@@ -4153,6 +4175,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postDetailPage, /case "Hub"/);
   assert.match(postDetailPage, /showDebugActions=\{false\}/);
   assert.match(postDetailPage, /avatarUrl:\s*item\.builder\.avatarUrl/);
+  assert.match(postDetailPage, /avatarDataUrl:\s*item\.builder\.avatarDataUrl/);
   assert.match(postDetailPage, /return \{ href: "\/dashboard\?tab=following", label: "Following" \}/);
   assert.doesNotMatch(postDetailPage, /Back to feed/);
   assert.match(legacyRecommendationItemPage, /permanentRedirect\(`\/posts\/\$\{feedItemId\}\$\{suffix\}`\)/);
@@ -4233,6 +4256,7 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(dashboardPage, /digestSourceLinksForUser/);
   assert.match(dashboardPage, /@\/lib\/digest-source-links/);
   assert.match(digestSourceLinks, /avatarUrl:\s*builder\.avatarUrl/);
+  assert.match(digestSourceLinks, /avatarDataUrl:\s*builder\.avatarDataUrl/);
   assert.match(digestSourceLinks, /sourceType:\s*builder\.sourceType/);
   assert.match(dashboardPage, /sourceLinks=\{sourceLinks\}/);
   assert.match(postCard, /showSourceBadge = true/);
@@ -4314,6 +4338,8 @@ test("digest posts use source detail headings and unified original links", () =>
   assert.match(globals, /\.digest-source-summary\s*{[\s\S]*margin-inline:\s*1\.15rem/);
   assert.match(globals, /\.digest-source-summary\s*{[\s\S]*max-width:\s*none/);
   assert.match(globals, /\.digest-source-summary\s*{[\s\S]*padding:\s*0\.05rem 0 0\.1rem;/);
+  assert.match(globals, /\.fetched-post-card\s*{[\s\S]*content-visibility:\s*auto/);
+  assert.match(globals, /\.fetched-post-card\s*{[\s\S]*contain-intrinsic-size:\s*auto 12rem/);
   assert.match(globals, /\.digest-rich \.fetched-post-card\.feed-card\s*{[\s\S]*margin-inline:\s*1\.65rem/);
   assert.match(globals, /\.digest-rich \.fetched-post-card\.feed-card\s*{[\s\S]*width:\s*calc\(100% - 3\.3rem\)/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.digest-group-heading,[\s\S]*\.digest-source-summary\s*{[\s\S]*margin-inline:\s*0\.8rem/);
@@ -4544,6 +4570,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(hubImportForm, /serif mt-2 text-xl/);
   assert.match(globals, /\.fb-hub-list\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(globals, /\.fb-hub-card\s*{[\s\S]*border-radius:\s*8px/);
+  assert.match(globals, /\.fb-hub-card\s*{[\s\S]*content-visibility:\s*auto/);
+  assert.match(globals, /\.fb-hub-card\s*{[\s\S]*contain-intrinsic-size:\s*auto 16rem/);
   assert.match(globals, /\.fb-hub-card-stats\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.hub-card-action-button:disabled\s*{[\s\S]*cursor:\s*wait/);
   assert.match(globals, /\.hub-card-action-button\.is-imported\s*{/);
@@ -4718,7 +4746,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(digestPipelineForm, /Browse Hub/);
   assert.match(digestPipelineForm, /No shared AI Digest archives/);
   assert.match(digestPipelineForm, /Shared AI Digest archives will appear here once users share them to Hub\./);
-  assert.match(digestPipelineForm, /No AI Digest archive entries yet/);
+  assert.match(digestPipelineForm, /No AI Digest archives yet/);
   assert.doesNotMatch(digestPipelineForm, /No AI Digests yet/);
   assert.doesNotMatch(digestPipelineForm, /No digests yet/);
   assert.match(digestPipelineForm, /imported=\{importedIds\.has\(pipeline\.id\)\}/);
@@ -4735,7 +4763,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /className="fb-dialog-inner settings-dialog-stack"/);
   assert.doesNotMatch(digestPipelineForm, /className="digest-remove-popover"/);
   assert.match(digestPipelineForm, /Remove AI Digest archive import\?/);
-  assert.match(digestPipelineForm, /you will\s+no longer see this AI Digest archive in AI Digest\./);
+  assert.match(digestPipelineForm, /no longer see this archive in the AI Digest tab\./);
+  assert.doesNotMatch(digestPipelineForm, /no longer see this AI Digest archive in AI Digest\./);
   assert.doesNotMatch(digestPipelineForm, /no longer see this AI Digest archive on Home\./);
   assert.match(digestPipelineForm, /You can import it again from Hub later/);
   assert.match(digestPipelineForm, />\s*Remove import\s*<\/button>/);
@@ -4973,7 +5002,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(skillPromptActions, /@\/components\/EmptyState/);
   assert.match(skillPromptActions, /fetch\("\/api\/settings\/digest-max-age"/);
   assert.match(skillPromptActions, /<EmptyState[\s\S]*className="token-picker-empty"/);
-  assert.match(skillPromptActions, /title="No Local Agent access yet"/);
+  assert.match(skillPromptActions, /title="No access keys yet"/);
+  assert.doesNotMatch(skillPromptActions, /title="No Local Agent access yet"/);
   assert.doesNotMatch(skillPromptActions, /px-3 py-6 text-center text-sm/);
   assert.match(tokenPanel, /"use client"/);
   assert.match(tokenPanel, /@\/components\/EmptyState/);
@@ -5136,7 +5166,8 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.doesNotMatch(digestMaxAgeRoute, /redirect\(/);
   assert.match(tokensRoute, /export async function POST/);
   assert.match(tokensRoute, /createAgentToken/);
-  assert.match(tokensRoute, /parsed\.data\.name \?\? "Local Agent access"/);
+  assert.match(tokensRoute, /parsed\.data\.name \?\? "Access key"/);
+  assert.doesNotMatch(tokensRoute, /parsed\.data\.name \?\? "Local Agent access"/);
   assert.doesNotMatch(tokensRoute, /Manual web token/);
   assert.doesNotMatch(tokensRoute, /redirect\(/);
   assert.match(exchangeRoute, /prisma\.agentToken\.update/);
@@ -5170,6 +5201,8 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.doesNotMatch(css, /mobile-sources-stack|data-active-tab|data-tab="imported"/);
   assert.match(css, /\.sources-sync-section \.digest-updates-panel/);
   assert.match(css, /\.builder-library-card\s*{[\s\S]*display:\s*grid/);
+  assert.match(css, /\.builder-library-card\s*{[\s\S]*content-visibility:\s*auto/);
+  assert.match(css, /\.builder-library-card\s*{[\s\S]*contain-intrinsic-size:\s*auto 8rem/);
   assert.match(css, /\.builder-library-card\s*{[\s\S]*--source-list-avatar-size:\s*2\.375rem/);
   assert.match(css, /\.builder-library-card\s*{[\s\S]*grid-template-columns:\s*var\(--source-list-avatar-size\) minmax\(0,\s*1fr\)/);
   assert.match(css, /\.builder-library-avatar\.fb-src-icon\s*{[\s\S]*height:\s*var\(--source-list-avatar-size\)/);

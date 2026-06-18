@@ -160,7 +160,7 @@ export function DigestPipelineImportForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pipelineId }),
         });
-        if (!response.ok) throw new Error("Unable to import AI Digest archive");
+        if (!response.ok) throw new Error("Could not import AI Digest archive.");
       } catch {
         setImportedIds((current) => {
           const next = new Set(current);
@@ -199,7 +199,7 @@ export function DigestPipelineImportForm({
         const response = await fetch(`/api/digest-pipelines/imports/${pipelineId}`, {
           method: "DELETE",
         });
-        if (!response.ok) throw new Error("Unable to remove AI Digest archive import");
+        if (!response.ok) throw new Error("Could not remove AI Digest archive import.");
       } catch {
         setImportedIds((current) => new Set([...current, pipelineId]));
         setError("Could not remove AI Digest archive import.");
@@ -298,7 +298,7 @@ export function DigestPipelineImportForm({
             <div className="settings-dialog-copy">
               <p>
                 After removing <strong>{removeTarget.title}</strong>, you will
-                no longer see this AI Digest archive in AI Digest.
+                no longer see this archive in the AI Digest tab.
               </p>
               <p className="settings-dialog-warning">
                 You can import it again from Hub later.
@@ -487,7 +487,7 @@ export function DigestPipelinePreviewCard({
               text={headline}
             />
           ) : (
-            <div className="fb-hub-digest-preview-title">No AI Digest archive entries yet</div>
+            <div className="fb-hub-digest-preview-title">No AI Digest archives yet</div>
           )}
         </div>
       </div>

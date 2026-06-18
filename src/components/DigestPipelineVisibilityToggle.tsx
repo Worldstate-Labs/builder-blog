@@ -28,7 +28,7 @@ export function DigestPipelineVisibilityToggle({
           body: nextShared ? JSON.stringify({}) : undefined,
         });
 
-        if (!response.ok) throw new Error("Unable to update AI Digest sharing");
+        if (!response.ok) throw new Error("Could not update AI Digest archive sharing.");
       } catch {
         setShared(!nextShared);
         setError("Could not update AI Digest archive sharing.");

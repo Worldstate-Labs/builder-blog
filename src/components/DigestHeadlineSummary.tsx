@@ -169,6 +169,7 @@ function DigestHeadlineAvatar({ item }: { item: DigestHeadlineSourceItem }) {
       className="digest-headline-avatar"
       imageSize={28}
       source={{
+        avatarDataUrl: item.sourceLink?.avatarDataUrl ?? null,
         avatarUrl: item.sourceLink?.avatarUrl ?? null,
         fetchUrl: item.sourceLink?.fetchUrl ?? null,
         name: item.sourceName,

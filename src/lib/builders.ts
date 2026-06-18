@@ -25,6 +25,7 @@ export async function upsertBuilder(params: {
   sourceUrl?: string | null;
   fetchUrl?: string | null;
   avatarUrl?: string | null;
+  avatarDataUrl?: string | null;
   bio?: string | null;
   addedByUserId?: string | null;
 }) {
@@ -56,6 +57,7 @@ export async function upsertBuilder(params: {
       // Use `null` (not `undefined`) so an enrichment that clears the
       // avatar actually wipes the prior value on update.
       avatarUrl: params.avatarUrl === undefined ? undefined : params.avatarUrl,
+      avatarDataUrl: params.avatarDataUrl === undefined ? undefined : params.avatarDataUrl,
       bio: params.bio ?? undefined,
       entityId,
     },
@@ -68,6 +70,7 @@ export async function upsertBuilder(params: {
       sourceUrl: params.sourceUrl,
       fetchUrl: params.fetchUrl,
       avatarUrl: params.avatarUrl ?? null,
+      avatarDataUrl: params.avatarDataUrl ?? null,
       bio: params.bio,
       addedByUserId: params.addedByUserId,
       canonicalKey,

@@ -58,6 +58,7 @@ function serializeRecommendation(
             id: result.item.builder.id,
             entityId: result.item.builder.entityId,
             avatarUrl: result.item.builder.avatarUrl,
+            avatarDataUrl: result.item.builder.avatarDataUrl,
             name: result.item.builder.name,
             sourceType: result.item.builder.sourceType,
             kind: result.item.builder.kind,

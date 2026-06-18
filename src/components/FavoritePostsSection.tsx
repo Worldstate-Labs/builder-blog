@@ -80,6 +80,7 @@ export async function FavoritePostsSection({ userId }: { userId: string }) {
                 id: item.builder.id,
                 entityId: item.builder.entity?.id ?? item.builder.entityId ?? null,
                 avatarUrl: item.builder.avatarUrl,
+                avatarDataUrl: item.builder.avatarDataUrl,
                 fetchUrl: item.builder.fetchUrl,
                 kind: item.builder.kind,
                 name: item.builder.name,

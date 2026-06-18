@@ -3,6 +3,7 @@
 import { useState, type CSSProperties } from "react";
 
 export type SourceAvatarSource = {
+  avatarDataUrl?: string | null;
   avatarUrl: string | null;
   fetchUrl: string | null;
   name: string;
@@ -48,8 +49,9 @@ export function SourceAvatar({
 }: SourceAvatarProps) {
   const monogram = avatarMonogram(source);
   const realAvatarUrl = source.avatarUrl;
+  const cachedAvatarUrl = source.avatarDataUrl ?? null;
   const faviconUrl = avatarFaviconUrl(source);
-  // Priority chain: server-resolved real photo -> host favicon -> monogram.
+  // Priority chain: live server-resolved photo -> cached DB snapshot -> host favicon -> monogram.
   const [failedUrls, setFailedUrls] = useState<ReadonlySet<string>>(() => new Set());
   const baseClassName = `fb-src-icon ${className}`.trim();
   const imageStyle: CSSProperties = {
@@ -99,6 +101,10 @@ export function SourceAvatar({
 
   if (realAvatarUrl && !failedUrls.has(realAvatarUrl)) {
     return renderImageAvatar(realAvatarUrl);
+  }
+
+  if (cachedAvatarUrl && !failedUrls.has(cachedAvatarUrl)) {
+    return renderImageAvatar(cachedAvatarUrl);
   }
 
   if (faviconUrl && !failedUrls.has(faviconUrl)) {

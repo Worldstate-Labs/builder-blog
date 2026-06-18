@@ -141,7 +141,7 @@ export default async function Home() {
               i: "01",
               icon: Rss,
               title: "Choose sources",
-              copy: "Start from shared source libraries, then add blogs, channels, feeds, GitHub Trending, Product Hunt, and agent-fetchable sources.",
+              copy: "Start from shared source libraries, then add blogs, channels, feeds, GitHub Trending, and Product Hunt.",
             },
             {
               i: "02",

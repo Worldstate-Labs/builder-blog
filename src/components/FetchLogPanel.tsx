@@ -1526,7 +1526,7 @@ function jobRunDiagnostic(jobRun: AgentJobRunListItem): string | null {
   const parts = [
     details.timeoutSeconds ? `timeout ${formatDuration(details.timeoutSeconds * 1000)}` : null,
     details.timeoutStage ? details.timeoutStage.replace(/_/g, " ") : null,
-    details.timedOutWorker ? `worker ${details.timedOutWorker}` : null,
+    details.timedOutWorker ? `Local Agent ${details.timedOutWorker}` : null,
     details.timedOutWorkerPid ? `pid ${details.timedOutWorkerPid}` : null,
     details.termination === "still_alive_after_kill" ? "cleanup failed" : details.termination,
     details.reason && details.reason !== "timeout_seconds_for_job" ? details.reason.replace(/_/g, " ") : null,
@@ -2094,7 +2094,7 @@ function taskWorkerGroups(
     if (!group) {
       group = {
         key,
-        name: workerId ?? "Main worker",
+        name: workerId ?? "Main Local Agent",
         sourceGroups: [],
         tasks: [],
       };
@@ -2252,7 +2252,7 @@ function DetailsBody({
                             color: "var(--muted-strong)",
                             letterSpacing: "0.05em",
                           }}
-                          title="No source-specific fetch prompt is configured for this source; the agent used the common fetching rules."
+                          title="No fetch prompt is configured for this source; the Local Agent used common fetching rules."
                         >
                           default
                         </span>
@@ -2614,7 +2614,7 @@ function liveTaskTone(liveTask: FetchTaskProgress | null | undefined): Tone {
 function liveTaskLabel(liveTask: FetchTaskProgress | null | undefined): string | null {
   const status = String(liveTask?.status ?? liveTask?.phase ?? "").replace(/_/g, " ");
   if (!status) return null;
-  return `Worker ${status}`;
+  return `Local Agent ${status}`;
 }
 
 function liveFetchOutcome(
@@ -2959,7 +2959,7 @@ function TaskRow({
           ) : null}
           {workerLog ? (
             <FactRow
-              label="Worker log"
+              label="Local Agent log"
               value={<span className="mono">{workerLog}</span>}
             />
           ) : null}
@@ -3000,7 +3000,7 @@ function TaskRow({
             />
           ) : null}
           {liveTask?.message ? <FactRow label="Latest event" value={<span>{liveTask.message}</span>} /> : null}
-          {liveTask?.workerId ? <FactRow label="Worker" value={<span>{liveTask.workerId}</span>} /> : null}
+          {liveTask?.workerId ? <FactRow label="Local Agent" value={<span>{liveTask.workerId}</span>} /> : null}
           {liveTask?.updatedAt ? (
             <FactRow
               label="Updated"

@@ -137,7 +137,7 @@ export function BuilderEditDialog({
         const response = await fetch(`/api/builders/${builder.id}/library`, {
           method: "DELETE",
         });
-        if (!response.ok) throw new Error("Unable to remove source");
+        if (!response.ok) throw new Error("Could not remove source.");
         router.refresh();
       } catch {
         onRemoveStateChange?.(builder.id, false);

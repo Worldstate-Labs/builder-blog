@@ -38,7 +38,7 @@ export function LibraryVisibilityToggle({
         });
 
         if (!response.ok) {
-          throw new Error("Unable to update library visibility");
+          throw new Error("Could not update source library sharing.");
         }
 
         const payload = (await response.json()) as { isPublic?: boolean };

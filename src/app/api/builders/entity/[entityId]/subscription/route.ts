@@ -63,34 +63,39 @@ export async function PATCH(request: Request, { params }: Params) {
   const channelIds = channels.map((c) => c.id);
 
   if (subscribed) {
-    // Upsert one row per channel. Sequential is fine — usually 1–3 channels.
-    for (const builderId of channelIds) {
-      await prisma.subscription.upsert({
-        where: { userId_builderId: { userId: session.user.id, builderId } },
+    // Upsert every accessible channel in one I/O window. The operations are
+    // independent and idempotent under the userId_builderId unique key.
+    await Promise.all([
+      ...channelIds.map((builderId) =>
+        prisma.subscription.upsert({
+          where: { userId_builderId: { userId: session.user.id, builderId } },
+          update: {},
+          create: { userId: session.user.id, builderId },
+        }),
+      ),
+      // Seed primary channel preference if the user doesn't have one yet.
+      // Defaults to the first channel; user can re-pin from the channels
+      // accordion if they care.
+      prisma.userChannelPreference.upsert({
+        where: { userId_entityId: { userId: session.user.id, entityId } },
         update: {},
-        create: { userId: session.user.id, builderId },
-      });
-    }
-    // Seed primary channel preference if the user doesn't have one yet.
-    // Defaults to the first channel; user can re-pin from the channels
-    // accordion if they care.
-    await prisma.userChannelPreference.upsert({
-      where: { userId_entityId: { userId: session.user.id, entityId } },
-      update: {},
-      create: {
-        userId: session.user.id,
-        entityId,
-        primaryBuilderId: channelIds[0],
-        pinnedByUser: false,
-      },
-    });
+        create: {
+          userId: session.user.id,
+          entityId,
+          primaryBuilderId: channelIds[0],
+          pinnedByUser: false,
+        },
+      }),
+    ]);
   } else {
-    await prisma.subscription.deleteMany({
-      where: { userId: session.user.id, builderId: { in: channelIds } },
-    });
-    await prisma.userChannelPreference.deleteMany({
-      where: { userId: session.user.id, entityId },
-    });
+    await Promise.all([
+      prisma.subscription.deleteMany({
+        where: { userId: session.user.id, builderId: { in: channelIds } },
+      }),
+      prisma.userChannelPreference.deleteMany({
+        where: { userId: session.user.id, entityId },
+      }),
+    ]);
   }
 
   revalidateTag(`user:${session.user.id}:recs`, "default");

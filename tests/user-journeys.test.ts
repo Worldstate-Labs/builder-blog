@@ -442,8 +442,9 @@ test("web app serves the agent skill and setup command", () => {
   assert.doesNotMatch(skillPromptActions, /Copy a prompt for one run or for a recurring local schedule/);
   assert.doesNotMatch(skillPromptActions, /Local helper|connected helpers|Connected helpers/);
   assert.doesNotMatch(skillPromptActions, /Choose a Local Agent/);
-  assert.match(skillPromptActions, /No Local Agent access yet/);
-  assert.match(skillPromptActions, /Add one in Settings before copying Local Agent prompts\./);
+  assert.match(skillPromptActions, /No access keys yet/);
+  assert.doesNotMatch(skillPromptActions, /No Local Agent access yet/);
+  assert.match(skillPromptActions, /Add an access key in Settings before copying Local Agent prompts\./);
   assert.doesNotMatch(skillPromptActions, /Saved for future summaries/);
   assert.doesNotMatch(skillPromptActions, /Posts published more than this many days ago are excluded/);
   assert.doesNotMatch(skillPromptActions, /token-picker-grouplabel">Schedule/);

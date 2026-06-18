@@ -86,6 +86,14 @@ test("builder-enrichment carries the documented User-Agent on every request", ()
   assert.match(ENRICHMENT_SOURCE, /avatar resolver/);
 });
 
+test("builder-enrichment can cache a bounded avatar image snapshot", () => {
+  assert.match(ENRICHMENT_SOURCE, /export\s+async\s+function\s+resolveAvatarDataUrl/);
+  assert.match(ENRICHMENT_SOURCE, /AVATAR_CACHE_MAX_BYTES\s*=\s*192\s*\*\s*1024/);
+  assert.match(ENRICHMENT_SOURCE, /contentType\?\.startsWith\("image\/"\)/);
+  assert.match(ENRICHMENT_SOURCE, /data:\$\{contentType\};base64/);
+  assert.match(ENRICHMENT_SOURCE, /validatePublicHttpUrl\(safeUrl\)/);
+});
+
 test("builder-enrichment never throws — every per-source helper is try/catch'd", () => {
   // Best-effort contract: the add flow must always succeed even when
   // every upstream is broken. The dispatch entry has a try/catch and
@@ -97,14 +105,23 @@ test("builder-enrichment never throws — every per-source helper is try/catch'd
   assert.ok(catchCount >= 4, `expected at least 4 catch blocks; saw ${catchCount}`);
 });
 
-test("builder model exposes avatarUrl + migration adds the column", () => {
+test("builder model exposes live and cached avatar fields + migrations add the columns", () => {
   const schema = readFileSync("prisma/schema.prisma", "utf8");
   assert.match(schema, /model\s+Builder\s+\{[\s\S]*avatarUrl\s+String\?/);
-  const migration = readFileSync(
+  assert.match(schema, /model\s+Builder\s+\{[\s\S]*avatarDataUrl\s+String\?/);
+  const avatarUrlMigration = readFileSync(
     "prisma/migrations/000029_builder_avatar_url/migration.sql",
     "utf8",
   );
-  assert.match(migration, /ALTER\s+TABLE\s+"Builder"\s+ADD\s+COLUMN\s+"avatarUrl"\s+TEXT/);
+  assert.match(avatarUrlMigration, /ALTER\s+TABLE\s+"Builder"\s+ADD\s+COLUMN\s+"avatarUrl"\s+TEXT/);
+  const avatarDataUrlMigration = readFileSync(
+    "prisma/migrations/000068_builder_avatar_data_url/migration.sql",
+    "utf8",
+  );
+  assert.match(
+    avatarDataUrlMigration,
+    /ALTER\s+TABLE\s+"Builder"\s+ADD\s+COLUMN\s+"avatarDataUrl"\s+TEXT/,
+  );
 });
 
 test("personal builder POST + PATCH routes both run the probe + enrichment", () => {
@@ -119,39 +136,44 @@ test("personal builder POST + PATCH routes both run the probe + enrichment", () 
     // Probe failures must be caught defensively (a thrown probe should
     // not 500 the request).
     assert.match(source, /\.catch\(/);
-    assert.match(source, /avatarUrl:\s*enrichment\.avatarUrl\s*\?\?\s*null/);
+    assert.match(source, /const avatarUrl = enrichment\.avatarUrl \?\? null/);
+    assert.match(source, /resolveAvatarDataUrl\(avatarUrl\)/);
   }
 });
 
-test("BuilderLibraryEventItem carries avatarUrl alongside the existing fields", () => {
+test("BuilderLibraryEventItem carries live and cached avatar fields", () => {
   const events = readFileSync("src/lib/builder-library-events.ts", "utf8");
   assert.match(
     events,
     /export\s+type\s+BuilderLibraryEventItem\s*=\s*\{[\s\S]*avatarUrl:\s*string\s*\|\s*null/,
   );
+  assert.match(events, /avatarDataUrl\?:\s*string\s*\|\s*null/);
 });
 
-test("source avatar renders builder.avatarUrl ahead of favicon/monogram", () => {
+test("source avatar renders live avatar, cached DB avatar, then favicon/monogram", () => {
   const list = readFileSync("src/components/BuilderLibraryList.tsx", "utf8");
   const avatar = readFileSync("src/components/SourceAvatar.tsx", "utf8");
   const detailPage = readFileSync("src/app/(workspace)/builder/[entityId]/page.tsx", "utf8");
   assert.match(list, /<SourceAvatar className="builder-library-avatar" imageSize=\{40\} source=\{builder\} \/>/);
   assert.match(detailPage, /<SourceAvatar/);
   assert.match(avatar, /source\.avatarUrl/);
+  assert.match(avatar, /source\.avatarDataUrl/);
   assert.match(avatar, /function renderImageAvatar\(url: string\)/);
   assert.match(avatar, /className="source-avatar-fallback"/);
   assert.match(avatar, /return renderImageAvatar\(realAvatarUrl\)/);
+  assert.match(avatar, /return renderImageAvatar\(cachedAvatarUrl\)/);
   assert.match(avatar, /return renderImageAvatar\(faviconUrl\)/);
-  // The real-avatar branch must come before the favicon branch in
-  // SourceAvatar so the priority chain is preserved on both list and detail.
+  // The live-avatar branch must come before the cached DB snapshot,
+  // which must come before favicon fallback on both list and detail.
   const realIndex = avatar.search(/if \(realAvatarUrl/);
+  const cachedIndex = avatar.search(/if \(cachedAvatarUrl/);
   const faviconIndex = avatar.search(/if \(faviconUrl/);
   assert.ok(
-    realIndex >= 0 && faviconIndex >= 0,
-    "SourceAvatar should branch on realAvatarUrl and faviconUrl",
+    realIndex >= 0 && cachedIndex >= 0 && faviconIndex >= 0,
+    "SourceAvatar should branch on realAvatarUrl, cachedAvatarUrl, and faviconUrl",
   );
   assert.ok(
-    realIndex < faviconIndex,
-    "real-avatar branch must precede favicon branch in SourceAvatar",
+    realIndex < cachedIndex && cachedIndex < faviconIndex,
+    "avatar fallback order must be live URL, DB cache, favicon",
   );
 });

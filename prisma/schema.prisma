@@ -192,6 +192,7 @@ model Builder {
   sourceUrl     String?
   fetchUrl      String?
   avatarUrl     String?
+  avatarDataUrl String?
   bio           String?
   addedByUserId String?
   entityId      String

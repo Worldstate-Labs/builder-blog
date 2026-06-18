@@ -47,34 +47,44 @@ export async function PATCH(request: Request, { params }: Params) {
   const { subscribed } = parsed.data;
 
   if (subscribed) {
-    await prisma.subscription.upsert({
-      where: { userId_builderId: { userId: session.user.id, builderId } },
-      update: {},
-      create: { userId: session.user.id, builderId },
-    });
+    const writes: Array<Promise<unknown>> = [
+      prisma.subscription.upsert({
+        where: { userId_builderId: { userId: session.user.id, builderId } },
+        update: {},
+        create: { userId: session.user.id, builderId },
+      }),
+    ];
     // Establish primary channel preference if absent — defaults to the channel the user
     // followed from.
     if (entityId) {
-      await prisma.userChannelPreference.upsert({
-        where: { userId_entityId: { userId: session.user.id, entityId } },
-        update: {},
-        create: {
-          userId: session.user.id,
-          entityId,
-          primaryBuilderId: builderId,
-          pinnedByUser: false,
-        },
-      });
+      writes.push(
+        prisma.userChannelPreference.upsert({
+          where: { userId_entityId: { userId: session.user.id, entityId } },
+          update: {},
+          create: {
+            userId: session.user.id,
+            entityId,
+            primaryBuilderId: builderId,
+            pinnedByUser: false,
+          },
+        }),
+      );
     }
+    await Promise.all(writes);
   } else {
-    await prisma.subscription.deleteMany({
-      where: { userId: session.user.id, builderId },
-    });
+    const writes: Array<Promise<unknown>> = [
+      prisma.subscription.deleteMany({
+        where: { userId: session.user.id, builderId },
+      }),
+    ];
     if (entityId) {
-      await prisma.userChannelPreference.deleteMany({
-        where: { userId: session.user.id, entityId },
-      });
+      writes.push(
+        prisma.userChannelPreference.deleteMany({
+          where: { userId: session.user.id, entityId },
+        }),
+      );
     }
+    await Promise.all(writes);
   }
 
   revalidateTag(`user:${session.user.id}:recs`, "default");

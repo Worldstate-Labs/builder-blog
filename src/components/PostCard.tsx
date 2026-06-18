@@ -17,6 +17,7 @@ type FetchedPostBuilder = {
   id: string;
   entityId?: string | null;
   avatarUrl?: string | null;
+  avatarDataUrl?: string | null;
   name: string;
   kind: "X" | "BLOG" | "PODCAST" | "WEBSITE";
   sourceType: string;
@@ -139,6 +140,7 @@ export function PostCard({
   const authorName = builder?.name ?? post.sourceName ?? null;
   const authorAvatarSource = authorName
     ? {
+        avatarDataUrl: builder?.avatarDataUrl ?? null,
         avatarUrl: builder?.avatarUrl ?? null,
         fetchUrl: builder?.fetchUrl ?? null,
         name: authorName,

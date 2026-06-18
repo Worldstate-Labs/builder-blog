@@ -614,9 +614,9 @@ export function SkillPromptActions({
         <div aria-live="polite" className="skill-prompt-access-required" role="status">
           <KeyRound aria-hidden="true" className="skill-prompt-access-icon" />
           <span className="skill-prompt-access-copy">
-            <span className="skill-prompt-access-title">Local Agent access required</span>
+            <span className="skill-prompt-access-title">Access key required</span>
             <span className="skill-prompt-access-body">
-              Add an access key before copying Local Agent prompts.
+              Add an access key in Settings before copying Local Agent prompts.
             </span>
           </span>
           <Link className="fb-btn dark compact" href="/settings">
@@ -776,7 +776,7 @@ function TokenPickerDialog({
         </header>
 
         <fieldset className="token-picker-list">
-          <legend className="sr-only">Authorized devices and Local Agents</legend>
+          <legend className="sr-only">Access keys</legend>
           {!open ? null : tokens.length === 0 ? (
             <EmptyState
               actions={
@@ -786,11 +786,11 @@ function TokenPickerDialog({
               }
               body={
                 <>
-                  Add one in Settings before copying Local Agent prompts.
+                  Add an access key in Settings before copying Local Agent prompts.
                 </>
               }
               className="token-picker-empty"
-              title="No Local Agent access yet"
+              title="No access keys yet"
             />
           ) : (
             tokens.map((token) => {
@@ -1003,7 +1003,7 @@ function CronConfigDialog({
           ? parseParallelWorkers(pickedParallelWorkers)
           : DEFAULT_PARALLEL_WORKERS;
       if (parallelWorkers === null) {
-        setError(`Parallel workers must be a whole number from 1 to ${MAX_PARALLEL_WORKERS}.`);
+        setError(`Parallel tasks must be a whole number from 1 to ${MAX_PARALLEL_WORKERS}.`);
         setSubmitting(false);
         return;
       }
@@ -1100,7 +1100,7 @@ function CronConfigDialog({
             <>
               <div className="cron-field">
                 <label htmlFor="cron-parallel-workers" className="cron-field-label">
-                  Parallel workers
+                  Parallel tasks
                 </label>
                 <select
                   id="cron-parallel-workers"
@@ -1111,14 +1111,14 @@ function CronConfigDialog({
                   {Array.from({ length: MAX_PARALLEL_WORKERS }, (_, index) => index + 1).map(
                     (count) => (
                       <option key={count} value={count}>
-                        {count === 1 ? "1 worker" : `${count} workers`}
+                        {count === 1 ? "1 task" : `${count} tasks`}
                       </option>
                     ),
                   )}
                 </select>
               </div>
               <p className="cron-field-hint">
-                Runs source tasks in parallel after discovery. Use 1 for the safest setup.
+                Runs source tasks in parallel after discovery. Use 1 for safest setup.
               </p>
             </>
           ) : null}

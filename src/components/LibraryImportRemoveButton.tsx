@@ -62,7 +62,7 @@ export function LibraryImportRemoveButton({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ libraryId }),
         });
-        if (!response.ok) throw new Error("Unable to remove source library import");
+        if (!response.ok) throw new Error("Could not remove source library import.");
         setRemoved(true);
         router.refresh();
       } catch {

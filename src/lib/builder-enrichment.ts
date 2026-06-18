@@ -74,6 +74,7 @@ const USER_AGENT =
   "FollowBriefBot/1.0 (avatar resolver; +https://builder-blog.worldstatelabs.com)";
 
 const FETCH_TIMEOUT_MS = 4000;
+const AVATAR_CACHE_MAX_BYTES = 192 * 1024;
 
 // ──────────────────────────────────────────────────────────────────
 // Public dispatch.
@@ -112,6 +113,41 @@ export async function enrichBuilderFromSource(
 ): Promise<BuilderEnrichment> {
   const outcome = await probeAndEnrichSource(input);
   return outcome.enrichment;
+}
+
+export async function resolveAvatarDataUrl(
+  avatarUrl: string | null | undefined,
+): Promise<string | null> {
+  const safeUrl = toSafeAvatarUrl(avatarUrl);
+  if (!safeUrl) return null;
+  const check = validatePublicHttpUrl(safeUrl);
+  if (!check.ok) return null;
+
+  try {
+    const response = await fetchWithTimeout(safeUrl, {
+      headers: {
+        Accept: "image/avif,image/webp,image/png,image/jpeg,image/gif,image/*;q=0.8",
+        "User-Agent": USER_AGENT,
+      },
+    });
+    if (!response.ok) return null;
+
+    const contentType = (response.headers.get("content-type") ?? "")
+      .split(";")[0]
+      ?.trim()
+      .toLowerCase();
+    if (!contentType?.startsWith("image/")) return null;
+
+    const contentLength = Number(response.headers.get("content-length") ?? "0");
+    if (contentLength > AVATAR_CACHE_MAX_BYTES) return null;
+
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.byteLength === 0 || bytes.byteLength > AVATAR_CACHE_MAX_BYTES) return null;
+    return `data:${contentType};base64,${bytes.toString("base64")}`;
+  } catch (error) {
+    console.warn("[builder-enrichment] avatar cache fetch failed", { avatarUrl: safeUrl, error });
+    return null;
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────

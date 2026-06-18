@@ -16,7 +16,7 @@ test("home digest keeps pipeline and archive selection in a dedicated control ba
   const globals = source("src/app/globals.css");
 
   assert.match(dashboardPage, /function DigestControlBar/);
-  assert.match(dashboardPage, /aria-label="AI Digest source and issue selection"/);
+  assert.match(dashboardPage, /aria-label="AI Digest collection and issue selection"/);
   assert.match(dashboardPage, /className="digest-control-bar"/);
   assert.match(dashboardPage, /className="digest-control-field"/);
   assert.match(dashboardPage, /className="digest-control-label"/);
@@ -24,7 +24,7 @@ test("home digest keeps pipeline and archive selection in a dedicated control ba
   assert.match(dashboardPage, /className="digest-control-empty"/);
   assert.match(dashboardPage, /<DigestPipelineSelector/);
   assert.match(dashboardPage, /<DigestArchivePicker/);
-  assert.match(dashboardPage, />\s*AI Digest source\s*<\/span>/);
+  assert.match(dashboardPage, />\s*AI Digest collection\s*<\/span>/);
   assert.match(dashboardPage, />\s*AI Digest issue\s*<\/span>/);
   assert.doesNotMatch(dashboardPage, /aria-label="AI Digest selection"/);
   assert.doesNotMatch(dashboardPage, /Your digest/);
@@ -39,8 +39,8 @@ test("home digest keeps pipeline and archive selection in a dedicated control ba
   assert.match(digestPipelineSelector, /aria-controls=\{menuId\}/);
   assert.match(digestPipelineSelector, /aria-haspopup="listbox"/);
   assert.match(digestPipelineSelector, /role="listbox"/);
-  assert.match(digestPipelineSelector, /aria-label="AI Digest sources"/);
-  assert.doesNotMatch(digestPipelineSelector, /aria-label="AI Digest choices"|AI Digest collection choices/);
+  assert.match(digestPipelineSelector, /aria-label="AI Digest collections"/);
+  assert.doesNotMatch(digestPipelineSelector, /aria-label="AI Digest choices"|aria-label="AI Digest sources"/);
   assert.match(digestPipelineSelector, /className="digest-pipeline-option"/);
   assert.match(digestPipelineSelector, /role="option"/);
   assert.match(digestPipelineSelector, /aria-selected=\{active\}/);

@@ -1418,6 +1418,8 @@ details:not([open]) > :not(summary) {
 
 .fetched-post-card {
   align-items: start;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 12rem;
   display: grid;
   gap: 1rem;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -4047,6 +4049,8 @@ summary.library-section-summary::after {
 
 .search-result {
   border-bottom: 1px solid color-mix(in oklch, var(--line) 72%, transparent);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 11rem;
   max-width: 100%;
   min-width: 0;
   padding: 0 0 1.35rem;
@@ -7655,6 +7659,8 @@ summary.library-section-summary::after {
   --source-list-avatar-size: 2.375rem;
   align-items: start;
   background: transparent;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 8rem;
   display: grid;
   gap: 0.875rem;
   grid-template-columns: var(--source-list-avatar-size) minmax(0, 1fr);
@@ -9097,6 +9103,8 @@ a.builder-library-name:hover {
   background: color-mix(in oklch, var(--paper-strong) 64%, transparent);
   border: 1px solid color-mix(in oklch, var(--line) 84%, transparent);
   border-radius: 8px;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 16rem;
   display: flex;
   flex-direction: column;
   gap: 0.875rem;

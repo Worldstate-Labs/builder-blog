@@ -9,6 +9,7 @@ import {
   hostnameOrNull,
   pickFinalName,
   probeAndEnrichSource,
+  resolveAvatarDataUrl,
   type BuilderEnrichment,
   type ProbeOutcome,
 } from "@/lib/builder-enrichment";
@@ -124,13 +125,16 @@ export async function POST(request: Request) {
       parsed.data.sourceValue,
     ],
   });
+  const avatarUrl = enrichment.avatarUrl ?? null;
+  const avatarDataUrl = await resolveAvatarDataUrl(avatarUrl);
 
   const builder = await upsertBuilder({
     ownerUserId: session.user.id,
     addedByUserId: session.user.id,
     ...input,
     name: finalName,
-    avatarUrl: enrichment.avatarUrl ?? null,
+    avatarUrl,
+    avatarDataUrl,
     // If the probe auto-discovered an RSS/Atom feed link on the HTML
     // page the user pasted, persist that as the fetchUrl so the CLI
     // hits the real feed at sync time instead of re-scraping HTML.
@@ -173,6 +177,7 @@ export async function POST(request: Request) {
   const item: BuilderLibraryEventItem = {
     allowRemove: true,
     avatarUrl: builder.avatarUrl ?? null,
+    avatarDataUrl: builder.avatarDataUrl ?? null,
     createdAt: builder.createdAt.toISOString(),
     fetchUrl: builder.fetchUrl,
     entityId: builder.entityId,

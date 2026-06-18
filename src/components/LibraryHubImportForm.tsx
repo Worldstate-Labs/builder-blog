@@ -14,6 +14,7 @@ type HubLibraryBuilder = {
   sourceType: string;
   name: string;
   avatarUrl: string | null;
+  avatarDataUrl: string | null;
   handle: string | null;
   sourceUrl: string | null;
   fetchUrl: string | null;
@@ -72,19 +73,18 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
   const [removeTargetId, setRemoveTargetId] = useState<string | null>(null);
   const removeDialogRef = useRef<HTMLDialogElement>(null);
   const [isPending, startTransition] = useTransition();
-  const importedSignature = useMemo(
-    () =>
-      libraries
-        .filter((library) => library.imported)
-        .map((library) => library.id)
-        .sort()
-        .join("|"),
-    [libraries],
-  );
-  const propImportedIds = useMemo(
-    () => new Set(libraries.filter((library) => library.imported).map((library) => library.id)),
-    [libraries],
-  );
+  const propImported = useMemo(() => {
+    const ids = new Set<string>();
+    for (const library of libraries) {
+      if (library.imported) ids.add(library.id);
+    }
+    return {
+      ids,
+      key: [...ids].sort().join("|"),
+    };
+  }, [libraries]);
+  const importedSignature = propImported.key;
+  const propImportedIds = propImported.ids;
   const [importedState, setImportedState] = useState<{
     ids: Set<string>;
     key: string;
@@ -106,27 +106,40 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
     });
   }
 
-  const counts = useMemo(() => {
-    const all = libraries.length;
-    const community = libraries.filter((library) => library.isCommunity).length;
-    const my = libraries.filter((library) => library.owned).length;
-    const imported = libraries.filter(
-      (library) => importedIds.has(library.id) && !library.owned,
-    ).length;
-    const shared = libraries.filter(
-      (library) => !library.isCommunity && !library.owned,
-    ).length;
-    return { all, community, shared, my, imported };
-  }, [libraries, importedIds]);
+  const { counts, filteredLibraries } = useMemo(() => {
+    const nextCounts: Record<FilterKey, number> = {
+      all: libraries.length,
+      community: 0,
+      imported: 0,
+      my: 0,
+      shared: 0,
+    };
+    const nextFilteredLibraries: HubLibrary[] = [];
 
-  const filteredLibraries = libraries.filter((library) => {
-    if (activeFilter === "all") return true;
-    if (activeFilter === "community") return library.isCommunity;
-    if (activeFilter === "my") return library.owned;
-    if (activeFilter === "imported") return importedIds.has(library.id) && !library.owned;
-    if (activeFilter === "shared") return !library.isCommunity && !library.owned;
-    return true;
-  });
+    for (const library of libraries) {
+      const isImported = importedIds.has(library.id) && !library.owned;
+      const isShared = !library.isCommunity && !library.owned;
+      if (library.isCommunity) nextCounts.community += 1;
+      if (library.owned) nextCounts.my += 1;
+      if (isImported) nextCounts.imported += 1;
+      if (isShared) nextCounts.shared += 1;
+
+      if (
+        activeFilter === "all" ||
+        (activeFilter === "community" && library.isCommunity) ||
+        (activeFilter === "my" && library.owned) ||
+        (activeFilter === "imported" && isImported) ||
+        (activeFilter === "shared" && isShared)
+      ) {
+        nextFilteredLibraries.push(library);
+      }
+    }
+
+    return {
+      counts: nextCounts,
+      filteredLibraries: nextFilteredLibraries,
+    };
+  }, [activeFilter, libraries, importedIds]);
   const visibleFilters = FILTERS.filter(
     (filter) => filter.key === "all" || counts[filter.key] > 0,
   );
@@ -171,7 +184,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ libraryIds: [libraryId] }),
         });
-        if (!response.ok) throw new Error("Unable to import source library");
+        if (!response.ok) throw new Error("Could not import source library.");
       } catch {
         setImportedIds((current) => {
           const next = new Set(current);
@@ -212,7 +225,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ libraryId }),
         });
-        if (!response.ok) throw new Error("Unable to remove source library import");
+        if (!response.ok) throw new Error("Could not remove source library import.");
       } catch {
         setImportedIds((current) => new Set([...current, libraryId]));
         setError("Could not remove source library import.");
@@ -491,6 +504,7 @@ function HubCard({
                       className="fb-hub-source-summary-avatar"
                       imageSize={28}
                       source={{
+                        avatarDataUrl: item.builder.avatarDataUrl,
                         avatarUrl: item.builder.avatarUrl,
                         fetchUrl: item.builder.fetchUrl,
                         name: item.builder.name,

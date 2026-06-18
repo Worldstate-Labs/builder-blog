@@ -141,7 +141,8 @@ test("favorites saves posts into a focused reading tab", () => {
   assert.match(feed, /PostFavoriteButton/);
   assert.match(feed, /const \[favoriteError, setFavoriteError\] = useState\(""\)/);
   assert.match(feed, /const \[pendingFavoriteIds, setPendingFavoriteIds\] = useState<Set<string>>\(\(\) => new Set\(\)\)/);
-  assert.match(feed, /favoriteStateForItem\(snapshots, feedItemId\)/);
+  assert.match(feed, /favoriteStateByItemId = useMemo/);
+  assert.match(feed, /favoriteStateByItemId\.get\(feedItemId\) \?\? null/);
   assert.match(feed, /restoreFavoriteState\(current, feedItemId, previousFavoritedAt\)/);
   assert.match(feed, /Could not update reading queue\. Try again\./);
   assert.doesNotMatch(feed, /Could not update favorite\. Try again\./);
@@ -544,7 +545,7 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.match(followingSection, /Add sources in Sources\. They feed AI Digest and Following\./);
   assert.match(followingSection, /No summarized posts yet/);
   assert.match(followingSection, /No unread posts yet/);
-  assert.match(followingSection, /Run Fetch sources to summarize followed-source posts/);
+  assert.match(followingSection, /Run Fetch sources to summarize posts from followed sources/);
   assert.match(followingSection, /Following shows the latest unread posts/);
   assert.match(followingSection, /Following updates when Fetch sources finds new unread posts/);
   assert.doesNotMatch(followingSection, /Following will update after new unread posts/);

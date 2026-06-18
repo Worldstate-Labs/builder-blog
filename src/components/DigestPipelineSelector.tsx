@@ -44,7 +44,7 @@ export function DigestPipelineSelector({
   if (options.length <= 1) {
     return (
       <div
-        aria-label={`AI Digest source: ${selectedLabel}`}
+        aria-label={`AI Digest collection: ${selectedLabel}`}
         className="digest-pipeline-static"
       >
         <span className="digest-pipeline-title">{selectedPipeline.title}</span>
@@ -107,7 +107,7 @@ export function DigestPipelineSelector({
         aria-controls={menuId}
         aria-expanded={open}
         aria-haspopup="listbox"
-        aria-label={`Choose AI Digest source, current: ${selectedLabel}`}
+        aria-label={`Choose AI Digest collection, current: ${selectedLabel}`}
         className="digest-pipeline-trigger"
         onClick={(event) => {
           event.preventDefault();
@@ -124,7 +124,7 @@ export function DigestPipelineSelector({
         <ChevronDown aria-hidden="true" className="digest-pipeline-icon" />
       </summary>
       <div
-        aria-label="AI Digest sources"
+        aria-label="AI Digest collections"
         className="digest-pipeline-menu"
         id={menuId}
         role="listbox"

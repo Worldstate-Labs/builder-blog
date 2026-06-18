@@ -126,6 +126,7 @@ async function loadSourceLibraryHubPageData() {
                 sourceType: true,
                 name: true,
                 avatarUrl: true,
+                avatarDataUrl: true,
                 handle: true,
                 sourceUrl: true,
                 fetchUrl: true,

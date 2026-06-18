@@ -63,6 +63,7 @@ type BuilderWithCount = {
   sourceUrl: string | null;
   fetchUrl: string | null;
   avatarUrl: string | null;
+  avatarDataUrl: string | null;
   canonicalKey: string;
   createdAt: Date;
   _count: { feedItems: number };
@@ -858,6 +859,7 @@ function builderListItem({
     sourceUrl: builder.sourceUrl,
     fetchUrl: builder.fetchUrl,
     avatarUrl: builder.avatarUrl ?? null,
+    avatarDataUrl: builder.avatarDataUrl ?? null,
     createdAt: builder.createdAt.toISOString(),
     feedItemCount: builder._count.feedItems,
     latestPostCreatedAt: latestPostCreatedAt?.toISOString() ?? null,

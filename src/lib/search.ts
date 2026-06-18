@@ -18,6 +18,7 @@ export type SearchDocument = {
   postBody?: string | null;
   postSummary?: string | null;
   avatarUrl?: string | null;
+  avatarDataUrl?: string | null;
   builderEntityId?: string | null;
   builderId?: string | null;
   builderKind?: "X" | "BLOG" | "PODCAST" | "WEBSITE" | null;

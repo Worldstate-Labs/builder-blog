@@ -83,7 +83,7 @@ export function BuilderFeedItems({
       const response = await fetch(`/api/builders/${builderId}/feed-items`, {
         cache: "no-store",
       });
-      if (!response.ok) throw new Error("Unable to load summarized posts");
+      if (!response.ok) throw new Error("Could not load summarized posts.");
       const payload = (await response.json()) as { items?: BuilderFeedItem[] };
       setItemState({ builderId, totalCount, items: payload.items ?? [] });
     } catch {

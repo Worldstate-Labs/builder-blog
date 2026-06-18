@@ -8,6 +8,7 @@ type RecommendationBuilder = {
   id: string;
   entityId: string | null;
   avatarUrl: string | null;
+  avatarDataUrl: string | null;
   name: string;
   handle: string | null;
   kind: BuilderKind;
@@ -206,6 +207,7 @@ export async function createRecommendationSnapshot({
             id: true,
             entityId: true,
             avatarUrl: true,
+            avatarDataUrl: true,
             name: true,
             handle: true,
             kind: true,
@@ -241,6 +243,7 @@ export async function createRecommendationSnapshot({
                 id: true,
                 entityId: true,
                 avatarUrl: true,
+                avatarDataUrl: true,
                 name: true,
                 handle: true,
                 kind: true,
@@ -286,6 +289,7 @@ export async function createRecommendationSnapshot({
           id: true,
           entityId: true,
           avatarUrl: true,
+          avatarDataUrl: true,
           name: true,
           handle: true,
           kind: true,
@@ -431,6 +435,7 @@ async function buildAndSaveSnapshot({
       id: string;
       entityId: string | null;
       avatarUrl: string | null;
+      avatarDataUrl: string | null;
       name: string;
       handle: string | null;
       kind: BuilderKind;
@@ -458,6 +463,7 @@ async function buildAndSaveSnapshot({
         id: string;
         entityId: string | null;
         avatarUrl: string | null;
+        avatarDataUrl: string | null;
         name: string;
         handle: string | null;
         kind: BuilderKind;
