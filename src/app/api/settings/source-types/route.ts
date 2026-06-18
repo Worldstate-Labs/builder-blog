@@ -78,7 +78,7 @@ export async function PATCH(request: Request) {
   }
   const { sourceId, patch } = parsed.data;
   if (!SEEDED_SOURCE_IDS.includes(sourceId)) {
-    return NextResponse.json({ error: `Unknown sourceId: ${sourceId}` }, { status: 400 });
+    return NextResponse.json({ error: "Unknown source type." }, { status: 400 });
   }
   const isAdmin = isAdminEmail(session.user.email);
   if (!isAdmin && patch.contentQuality !== undefined) {

@@ -1042,7 +1042,9 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(adminSourceTypeManager, /error instanceof Error \? error\.message/);
   assert.doesNotMatch(adminSourceTypeManager, /throw new Error\(body\?\.error/);
   assert.match(adminSourceTypesRoute, /Could not save source type settings\./);
+  assert.match(adminSourceTypesRoute, /Unknown source type\./);
   assert.doesNotMatch(adminSourceTypesRoute, /Update failed/);
+  assert.doesNotMatch(adminSourceTypesRoute, /Unknown sourceId/);
   assert.doesNotMatch(adminSourceTypesRoute, /error instanceof Error \? error\.message/);
   assert.match(adminSourceTypeManager, /function clearSavedStatus\(\)/);
   assert.match(adminSourceTypeManager, /onStatusAutoDismiss=\{clearSavedStatus\}/);
