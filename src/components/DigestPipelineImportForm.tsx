@@ -301,7 +301,7 @@ export function DigestPipelineImportForm({
                 no longer see this collection in the AI Digest tab.
               </p>
               <p className="settings-dialog-warning">
-                You can import it again from Hub later.
+                Import it again from Hub.
               </p>
             </div>
             <div className="settings-dialog-actions">

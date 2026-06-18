@@ -379,7 +379,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
                 feed AI Digest issues and Following posts.
               </p>
               <p className="settings-dialog-warning">
-                You can import it again from Hub later.
+                Import it again from Hub.
               </p>
             </div>
             <div className="settings-dialog-actions">

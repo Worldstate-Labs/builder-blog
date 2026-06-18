@@ -27,7 +27,7 @@ import { prisma } from "@/lib/prisma";
 
 const digestPickerSize = 100;
 const NO_FOLLOWED_SOURCES_BODY =
-  "Add sources in the Sources tab. They feed AI Digest issues and Following posts.";
+  "Add sources in the Sources tab to feed AI Digest issues and Following posts.";
 const digestSummarySelect = {
   id: true,
   title: true,
@@ -346,7 +346,7 @@ function DigestEmptyState({
       }
       className="ai-digest-empty is-actionable"
       title="No summarized posts yet"
-      body="Use Fetch sources to summarize posts before building an AI Digest issue."
+      body="Run Fetch sources before building an AI Digest issue."
     />
   );
 }
