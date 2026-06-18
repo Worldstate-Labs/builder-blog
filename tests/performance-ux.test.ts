@@ -1615,6 +1615,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(globals, /@media \(min-width:\s*1024px\)[\s\S]*\.fb-top\s*{[\s\S]*padding-right:\s*0/);
   assert.match(globals, /\.fb-m-top\s*{[\s\S]*padding:\s*0\.5rem var\(--workspace-gutter\) 0\.625rem/);
   assert.match(mobileTopRule, /border-bottom:\s*0/);
+  assert.match(globals, /\.fb-m-top \.fb-brand\s*{[\s\S]*margin-left:\s*0/);
+  assert.match(globals, /\.fb-m-top \.fb-brand\s*{[\s\S]*width:\s*auto/);
   assert.match(globals, /--top-search-max:\s*34rem/);
   assert.match(globals, /--side-rail-content-width:\s*9rem/);
   assert.match(globals, /--side-rail-width:\s*calc\(var\(--side-rail-content-width\) \+ var\(--workspace-gutter\) \+ var\(--workspace-gutter\)\)/);
@@ -1932,7 +1934,11 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(fetchLogPanel, />Oldest</);
   assert.doesNotMatch(fetchLogPanel, />Newest</);
   assert.doesNotMatch(fetchLogPanel, /Green OK|amber waiting|red issue/);
-  assert.match(fetchLogPanel, /const displayStatus = !inflight && interruptedStatus/);
+  assert.match(fetchLogPanel, /const displayStatus = inflight/);
+  assert.match(fetchLogPanel, /label: "Syncing"/);
+  assert.match(fetchLogPanel, /ok: "Succeeded"/);
+  assert.match(fetchLogPanel, /if \(jobRun\.status === "killed" \|\| jobRun\.status === "stale"\) return "Stopped"/);
+  assert.match(fetchLogPanel, /function runHeaderMeta/);
   assert.match(fetchLogPanel, /displayStatus\.label/);
   assert.match(fetchLogPanel, /className=\{`sync-panel-slot-bar \$\{heightClass\}`\}/);
   assert.match(fetchLogPanel, /className="sync-panel-slot-row"/);
@@ -1953,7 +1959,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(fetchLogPanel, /slice\(0, 6\)/);
   assert.match(fetchLogPanel, /className="sync-panel-stopped-time"/);
   assert.doesNotMatch(fetchLogPanel, /className="sync-panel-see-more-label"/);
-  assert.match(fetchLogPanel, /className="fb-chip sync-panel-live-chip"/);
+  assert.match(fetchLogPanel, /className=\{inflight \? "fb-chip sync-panel-live-chip" : "fb-chip"\}/);
+  assert.doesNotMatch(fetchLogPanel, /Updating…/);
   assert.doesNotMatch(digestLogPanel, /className="sync-panel-see-more-label"/);
   assert.match(digestLogPanel, /DigestLogDialog/);
   assert.match(digestLogPanel, /className="sync-panel-timeline-axis"/);
@@ -2046,10 +2053,12 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-error"/);
   assert.match(digestLogPanel, /Could not refresh\. Try again\./);
   assert.doesNotMatch(`${fetchLogPanel}\n${digestLogPanel}`, /Refresh failed/);
-  assert.match(fetchLogPanel, /className="sync-panel-run-card sync-panel-mobile-flat"/);
+  assert.match(fetchLogPanel, /className="sync-panel-run-card sync-panel-fetch-run-card sync-panel-mobile-flat"/);
   assert.match(globals, /@media \(max-width:\s*640px\)[\s\S]*\.sync-panel-run-card\.sync-panel-mobile-flat\s*{[\s\S]*background:\s*transparent/);
   assert.match(globals, /@media \(max-width:\s*640px\)[\s\S]*\.sync-panel-run-card\.sync-panel-mobile-flat \.sync-panel-run-card-details\s*{[\s\S]*border-inline:\s*0/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card-head"/);
+  assert.match(fetchLogPanel, /className="sync-panel-run-card-head-main"/);
+  assert.match(fetchLogPanel, /className="sync-panel-run-card-head-meta"/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card-summary"/);
   assert.doesNotMatch(fetchLogPanel, /className="mono sync-panel-run-card-meta"/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card-details"/);
@@ -2233,6 +2242,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /\.sync-panel-slot-rows\.is-scrollable\s*{[\s\S]*overflow-y:\s*auto/);
   assert.match(globals, /\.sync-panel-stopped-time\s*{[\s\S]*font-size:\s*0\.78125rem/);
   assert.match(globals, /\.sync-panel-live-chip\s*{[\s\S]*gap:\s*0\.375rem/);
+  assert.match(globals, /\.sync-panel-fetch-run-card \.sync-panel-run-card-head\s*{[\s\S]*display:\s*grid/);
+  assert.match(globals, /\.sync-panel-run-card-head-main\s*{[\s\S]*display:\s*flex/);
+  assert.match(globals, /\.sync-panel-run-card-head-meta\s*{[\s\S]*color:\s*var\(--muted-strong\)/);
   assert.match(globals, /\.sync-panel-see-more-label\s*{[\s\S]*gap:\s*0\.5rem/);
   assert.match(globals, /\.sync-panel-funnel-stat\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(workspaceAutoRefresh, /visibilitychange/);

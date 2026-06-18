@@ -288,7 +288,7 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /<RunCard cronJob=\{cronJob\} domId=\{null\} jobRun=\{resolvedJobRun \?\? undefined\} run=\{run\} \/>/);
   assert.match(panel, /interruptedFetchRunStatus/);
   assert.match(panel, /label: "Stopped"/);
-  assert.match(panel, /const displayStatus = !inflight && interruptedStatus/);
+  assert.match(panel, /const displayStatus = inflight/);
   assert.match(panel, /displayStatus\.label/);
   assert.match(panel, /displayStatus\.style\.background/);
   assert.match(source("src/lib/scheduled-window-ui.ts"), /case "stale":[\s\S]*return "Stopped"/);
@@ -338,6 +338,10 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /scheduledRunTriggerLabel\(jobRun, "library-cron"\)/);
   assert.match(panel, /scheduledRunTriggerLabel\(jobRun, "library-cron"\)/);
   assert.match(panel, /scheduledRunTriggerLabel\(jobRun \?\? null, "library-cron", run\.source\)/);
+  assert.match(panel, /ok: "Succeeded"/);
+  assert.match(panel, /if \(jobRun\.status === "killed" \|\| jobRun\.status === "stale"\) return "Stopped"/);
+  assert.match(panel, /function runHeaderMeta/);
+  assert.match(panel, /function runHeaderHost/);
   assert.match(panel, /jobRunStatusLabel\(slot\.jobRun\)/);
   assert.match(panel, /actionsPlacement = "end"/);
   assert.match(panel, /actionsPlacement === "start"/);
@@ -385,8 +389,10 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /if \(!hydrated\) return formatAbsolute\(iso\)/);
   assert.match(panel, /aria-controls="fetch-sync-details"/);
   assert.match(panel, /className="sync-panel-error"/);
-  assert.match(panel, /className="sync-panel-run-card sync-panel-mobile-flat"/);
+  assert.match(panel, /className="sync-panel-run-card sync-panel-fetch-run-card sync-panel-mobile-flat"/);
   assert.match(panel, /className="sync-panel-run-card-head"/);
+  assert.match(panel, /className="sync-panel-run-card-head-main"/);
+  assert.match(panel, /className="sync-panel-run-card-head-meta"/);
   assert.match(panel, /className="sync-panel-run-card-summary"/);
   assert.doesNotMatch(panel, /className="mono sync-panel-run-card-meta"/);
   assert.match(panel, /className="sync-panel-run-card-details"/);
@@ -424,7 +430,9 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.doesNotMatch(panel, /slice\(0, 6\)/);
   assert.match(panel, /className="sync-panel-stopped-time"/);
   assert.doesNotMatch(panel, /className="sync-panel-see-more-label"/);
-  assert.match(panel, /className="fb-chip sync-panel-live-chip"/);
+  assert.match(panel, /className=\{inflight \? "fb-chip sync-panel-live-chip" : "fb-chip"\}/);
+  assert.match(panel, /label: "Syncing"/);
+  assert.doesNotMatch(panel, /Updating…/);
   assert.match(panel, /className="sync-panel-run-card-live-dot"/);
   assert.doesNotMatch(panel, /className="mt-2 text-\[12\.5px\] leading-relaxed"/);
   assert.doesNotMatch(panel, /className="block min-w-0 flex-1 cursor-pointer rounded-sm border/);

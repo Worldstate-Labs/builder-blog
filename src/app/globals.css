@@ -6244,6 +6244,28 @@ details:not([open]) > :not(summary) {
   font-size: 0.71875rem;
 }
 
+.sync-panel-fetch-run-card .sync-panel-run-card-head {
+  align-items: start;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.sync-panel-run-card-head-main {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.sync-panel-run-card-head-meta {
+  color: var(--muted-strong);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .sync-panel-run-card-live-dot {
   animation: sync-panel-live-dot-pulse 1.2s ease-in-out infinite;
   background: currentColor;
@@ -6334,6 +6356,10 @@ details:not([open]) > :not(summary) {
 .sync-panel-log-dialog-body > .sync-panel-run-card .sync-panel-run-card-head {
   gap: 0.375rem 0.5rem;
   margin-bottom: 0.55rem;
+}
+
+.sync-panel-log-dialog-body > .sync-panel-fetch-run-card .sync-panel-run-card-head {
+  gap: 0.25rem;
 }
 
 @keyframes sync-panel-live-dot-pulse {
@@ -11748,6 +11774,11 @@ mark.fb-mark-highlight {
   position: sticky;
   top: 0;
   z-index: 50;
+}
+
+.fb-m-top .fb-brand {
+  margin-left: 0;
+  width: auto;
 }
 
 .fb-m-spacer {

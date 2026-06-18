@@ -248,7 +248,7 @@ type FetchTaskProgress = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  ok: "OK",
+  ok: "Succeeded",
   partial: "Partial",
   failed: "Failed",
 };
@@ -1475,11 +1475,18 @@ function jobRunLabel(jobRun: AgentJobRunListItem): string {
 
 function jobRunStatusStyle(jobRun: AgentJobRunListItem): ReturnType<typeof statusStyle> {
   if (jobRun.status === "succeeded") return statusStyle("ok");
-  if (jobRun.status === "running" || jobRun.status === "starting") return statusStyle("partial");
+  if (
+    jobRun.status === "running" ||
+    jobRun.status === "starting" ||
+    jobRun.status === "killed" ||
+    jobRun.status === "stale" ||
+    jobRun.status === "replaced"
+  ) return statusStyle("partial");
   return statusStyle("failed");
 }
 
 function jobRunStatusLabel(jobRun: AgentJobRunListItem): string {
+  if (jobRun.status === "killed" || jobRun.status === "stale") return "Stopped";
   return scheduledJobRunStatusLabel(jobRun.status);
 }
 
@@ -1495,6 +1502,18 @@ function interruptedFetchRunStatus(jobRun?: AgentJobRunListItem | null): {
     return { label: "Replaced", style: statusStyle("partial") };
   }
   return { label: jobRunStatusLabel(jobRun), style: statusStyle("failed") };
+}
+
+function runHeaderHost(hostname: string | null | undefined): string | null {
+  const trimmed = String(hostname ?? "").trim();
+  return trimmed ? trimmed.replace(/\.local$/, "") : null;
+}
+
+function runHeaderMeta(...parts: Array<string | null | undefined>): string {
+  return parts
+    .map((part) => String(part ?? "").trim())
+    .filter(Boolean)
+    .join(" · ");
 }
 
 function jobRunDiagnostic(jobRun: AgentJobRunListItem): string | null {
@@ -1743,36 +1762,37 @@ function JobRunCard({
   const diagnostic = jobRunDiagnostic(jobRun);
   const liveProgress = readFetchJobProgress(jobRun.details);
   const showRuntimeState = isActiveJobRun(jobRun) || jobRun.status !== "succeeded";
+  const headerMeta = runHeaderMeta(
+    jobRunLabel(jobRun),
+    jobRun.runtime,
+    runHeaderHost(jobRun.hostname),
+  );
   const fallbackSummary = isActiveJobRun(jobRun)
     ? "The Local Agent has started; no fetch log has been received yet."
     : "The Local Agent ended before FollowBrief received a fetch log.";
   return (
-    <article className="sync-panel-run-card sync-panel-mobile-flat" id={domId ?? undefined}>
+    <article className="sync-panel-run-card sync-panel-fetch-run-card sync-panel-mobile-flat" id={domId ?? undefined}>
       <header className="sync-panel-run-card-head">
-        <span
-          className="fb-chip"
-          style={{
-            background: style.background,
-            color: style.color,
-            borderColor: style.border,
-          }}
-        >
-          {jobRunStatusLabel(jobRun)}
-        </span>
-        <time
-          className="sync-panel-run-card-time"
-          dateTime={jobRun.startedAt}
-          title={formatAbsolute(jobRun.startedAt)}
-        >
-          {startedAtLabel}
-        </time>
-        <span className="fb-chip">{jobRunLabel(jobRun)}</span>
-        {jobRun.runtime ? (
-          <span className="sync-panel-run-card-runtime">
-            {jobRun.runtime}
-            {jobRun.hostname ? ` · ${jobRun.hostname.replace(/\.local$/, "")}` : ""}
+        <div className="sync-panel-run-card-head-main">
+          <span
+            className="fb-chip"
+            style={{
+              background: style.background,
+              color: style.color,
+              borderColor: style.border,
+            }}
+          >
+            {jobRunStatusLabel(jobRun)}
           </span>
-        ) : null}
+          <time
+            className="sync-panel-run-card-time"
+            dateTime={jobRun.startedAt}
+            title={formatAbsolute(jobRun.startedAt)}
+          >
+            {startedAtLabel}
+          </time>
+        </div>
+        {headerMeta ? <div className="sync-panel-run-card-head-meta">{headerMeta}</div> : null}
       </header>
       <p className="sync-panel-run-card-summary">
         {jobRun.summary || fallbackSummary}
@@ -1816,18 +1836,22 @@ function RunCard({
   const style = statusStyle(run.status);
   const label = STATUS_LABEL[run.status] ?? run.status;
   const details = readDetails(run.details);
-  // Mid-sync: fetch-personal recorded the run but sync-builders hasn't patched
-  // the per-post outcomes yet. The run-level status already reads "ok" here, so
-  // show a live "Syncing…" badge to make the in-between state legible.
   const inflight = isRunInflight(run, jobRun, cronJob);
   const interruptedStatus = interruptedFetchRunStatus(jobRun);
-  const displayStatus = !inflight && interruptedStatus
+  const displayStatus = inflight
+    ? { label: "Syncing", style: statusStyle("partial") }
+    : interruptedStatus
     ? interruptedStatus
     : { label, style };
   // Show the Local Agent that ran this fetch. Model names are kept out of the
   // run header because they are not useful for everyday readers.
   const agentLabel =
-    details.agentRuntime || (run.cliVersion ? "Local Agent" : "");
+    details.agentRuntime || jobRun?.runtime || (run.cliVersion ? "Local Agent" : "");
+  const headerMeta = runHeaderMeta(
+    scheduledRunTriggerLabel(jobRun ?? null, "library-cron", run.source),
+    agentLabel,
+    runHeaderHost(jobRun?.hostname ?? run.hostname),
+  );
   const startedAtLabel = hydrated ? formatRelative(run.startedAt) : formatAbsolute(run.startedAt);
   const diagnostic = jobRun ? jobRunDiagnostic(jobRun) : null;
   const liveProgress = jobRun ? readFetchJobProgress(jobRun.details) : null;
@@ -1840,49 +1864,36 @@ function RunCard({
 
   return (
     <article
-      className="sync-panel-run-card sync-panel-mobile-flat"
+      className="sync-panel-run-card sync-panel-fetch-run-card sync-panel-mobile-flat"
       id={domId ?? undefined}
     >
       <header className="sync-panel-run-card-head">
-        <span
-          className="fb-chip"
-          style={{
-            background: displayStatus.style.background,
-            color: displayStatus.style.color,
-            borderColor: displayStatus.style.border,
-          }}
-        >
-          {displayStatus.label}
-        </span>
-        {inflight ? (
+        <div className="sync-panel-run-card-head-main">
           <span
-            className="fb-chip sync-panel-live-chip"
+            className={inflight ? "fb-chip sync-panel-live-chip" : "fb-chip"}
             style={{
-              background: "var(--warm-soft)",
-              color: "color-mix(in oklch, var(--warm) 68%, var(--ink))",
-              borderColor: "color-mix(in oklch, var(--warm) 30%, var(--line))",
+              background: displayStatus.style.background,
+              color: displayStatus.style.color,
+              borderColor: displayStatus.style.border,
             }}
           >
-            <span
-              aria-hidden="true"
-              className="sync-panel-run-card-live-dot"
-            />
-            Updating…
+            {inflight ? (
+              <span
+                aria-hidden="true"
+                className="sync-panel-run-card-live-dot"
+              />
+            ) : null}
+            {displayStatus.label}
           </span>
-        ) : null}
-        <time
-          className="sync-panel-run-card-time"
-          dateTime={run.startedAt}
-          title={formatAbsolute(run.startedAt)}
-        >
-          {startedAtLabel}
-        </time>
-        <span className="fb-chip">{scheduledRunTriggerLabel(jobRun ?? null, "library-cron", run.source)}</span>
-        {agentLabel ? (
-          <span className="sync-panel-run-card-runtime">
-            {agentLabel}
-          </span>
-        ) : null}
+          <time
+            className="sync-panel-run-card-time"
+            dateTime={run.startedAt}
+            title={formatAbsolute(run.startedAt)}
+          >
+            {startedAtLabel}
+          </time>
+        </div>
+        {headerMeta ? <div className="sync-panel-run-card-head-meta">{headerMeta}</div> : null}
       </header>
 
       <p className="sync-panel-run-card-summary">
