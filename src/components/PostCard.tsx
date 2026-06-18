@@ -263,7 +263,7 @@ export function PostCard({
                 <div className="post-detail-raw-copy">
                   <h2 className="post-detail-section-label">Original content</h2>
                   <p className="post-detail-section-desc">
-                    Full content from Fetch sources, collapsed until needed.
+                    Full content from Fetch sources.
                   </p>
                 </div>
                 <button

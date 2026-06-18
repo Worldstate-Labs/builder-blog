@@ -44,7 +44,7 @@ export function FavoritePostsList({
           ? current
           : sortFavoriteItems([...current, removedItem]),
       );
-      setError("Could not remove from Favorites. It remains here.");
+      setError("Could not remove from Favorites. Try again.");
     } finally {
       setPendingIds((current) => {
         const next = new Set(current);
@@ -83,7 +83,7 @@ export function FavoritePostsList({
         <div>
           <h2 className="favorites-feed-title">Favorites</h2>
           <p className="favorites-feed-desc">
-            Saved posts, newest first.
+            Newest saved posts.
           </p>
         </div>
         <span className="favorites-feed-count">

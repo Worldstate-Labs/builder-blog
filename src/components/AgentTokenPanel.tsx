@@ -358,7 +358,7 @@ export function AgentTokenPanel({
         <EmptyState
           className="access-keys-empty"
           title="No access keys yet"
-          body="Create one to connect a device or Local Agent."
+          body="Create one for a device or Local Agent."
         />
       )}
 
@@ -387,8 +387,7 @@ export function AgentTokenPanel({
               New access key
             </h3>
             <p className="settings-dialog-copy">
-              Give this key a recognizable name
-              (e.g. <em>My Mac · Claude Code</em>).
+              Name this key, e.g. <em>My Mac · Claude Code</em>.
             </p>
             <input
               aria-describedby={createError ? "access-key-create-error" : undefined}
@@ -471,12 +470,12 @@ export function AgentTokenPanel({
                     .
                   </p>
                   <p className="settings-dialog-warning">
-                    Create a new access key for future updates.
+                    Create a new key before future updates.
                   </p>
                 </>
               ) : (
                 <p>
-                  Unused key. No device or Local Agent loses access.
+                  Unused key. No connected device loses access.
                 </p>
               )}
             </div>

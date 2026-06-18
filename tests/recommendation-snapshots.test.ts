@@ -99,7 +99,7 @@ test("favorites saves posts into the Favorites tab", () => {
   assert.match(favoriteSection, /feedRead\.findMany/);
   assert.match(favoriteList, /aria-label="Favorite posts"/);
   assert.match(favoriteList, /<h2 className="favorites-feed-title">Favorites<\/h2>/);
-  assert.match(favoriteList, /Saved posts, newest first\./);
+  assert.match(favoriteList, /Newest saved posts\./);
   assert.doesNotMatch(favoriteList, /Starred posts|Reading queue|Focused reading queue|Posts you starred for focused reading/);
   assert.match(favoriteList, /@\/components\/Count/);
   assert.match(favoriteList, /formatCount\(items\.length\)/);
@@ -126,7 +126,8 @@ test("favorites saves posts into the Favorites tab", () => {
   assert.match(favoriteList, /const \[pendingIds, setPendingIds\] = useState<Set<string>>\(\(\) => new Set\(\)\)/);
   assert.match(favoriteList, /disabled=\{pendingIds\.has\(item\.feedItemId\)\}/);
   assert.match(favoriteList, /sortFavoriteItems\(\[\.\.\.current, removedItem\]\)/);
-  assert.match(favoriteList, /Could not remove from Favorites\. It remains here\./);
+  assert.match(favoriteList, /Could not remove from Favorites\. Try again\./);
+  assert.doesNotMatch(favoriteList, /Could not remove from Favorites\. It remains here\./);
   assert.match(favoriteList, /className="favorites-feed-error" role="status"/);
   assert.doesNotMatch(favoriteList, /setItems\(previousItems\)/);
   assert.match(favoriteButton, /const label = postFavoriteActionLabel\(isFavorite\)/);
