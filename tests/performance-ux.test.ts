@@ -3718,7 +3718,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(personalBuilderUpdateRoute, /local helper can retry later/);
   assert.doesNotMatch(buildersPage, /import private sources/);
   assert.match(buildersPage, /emptyTitle="No active sources"/);
-  assert.match(buildersPage, /emptyBody="This imported library has no active sources\."/);
+  assert.match(buildersPage, /emptyBody="This imported source library has no active sources\."/);
+  assert.doesNotMatch(buildersPage, /This imported library has no active sources\./);
   assert.doesNotMatch(buildersPage, /badge="imported"/);
   assert.doesNotMatch(buildersPage, /No active sources from this imported library\./);
   assert.match(buildersPage, /title="No imported source libraries"/);

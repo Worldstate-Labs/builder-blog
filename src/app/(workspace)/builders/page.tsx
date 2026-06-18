@@ -782,7 +782,7 @@ async function FetchSourcesSection({
                   subscribed: data.subscribed.has(builder.id),
                 }),
               )}
-              emptyBody="This imported library has no active sources."
+              emptyBody="This imported source library has no active sources."
               emptyTitle="No active sources"
             />
           </LibrarySection>
