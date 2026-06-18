@@ -545,14 +545,14 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.doesNotMatch(followingSection, /Add sources in Sources\. They feed AI Digest and Following\./);
   assert.match(followingSection, /No summarized posts yet/);
   assert.match(followingSection, /No unread posts yet/);
-  assert.match(followingSection, /Use Fetch sources to summarize followed posts/);
+  assert.match(followingSection, /Use Fetch sources to summarize posts from followed sources/);
   assert.match(followingSection, /Fetch sources to check for new unread posts/);
   assert.doesNotMatch(followingSection, /Following shows the latest unread posts|Following updates when Fetch sources finds new unread posts|Following will update after new unread posts/);
   assert.doesNotMatch(followingSection, /No fetched posts yet|Following can show their latest posts/);
   assert.match(followingSection, /title="Could not load Following posts"/);
   assert.match(followingSection, /Check your connection, then try again\./);
   assert.doesNotMatch(followingSection, /title="Could not load Following"|Something went wrong loading Following|Couldn't load Following/);
-  assert.doesNotMatch(followingSection, /Following recommendations can appear|No unread recommendations yet|No posts have been fetched for your followed sources yet|fetching recommendations/);
+  assert.doesNotMatch(followingSection, /Use Fetch sources to summarize followed posts|Following recommendations can appear|No unread recommendations yet|No posts have been fetched for your followed sources yet|fetching recommendations/);
   assert.match(followingSection, /FetchSourcesPrompt/);
   assert.match(followingSection, /context="library"/);
   assert.doesNotMatch(followingSection, /scope=\$\{scope\}/);

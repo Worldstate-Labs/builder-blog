@@ -1800,9 +1800,9 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.doesNotMatch(followingSection, /sourceReadiness\.fetchedPostCount === 0/);
   assert.match(followingSection, /No summarized posts yet/);
   assert.match(followingSection, /No unread posts yet/);
-  assert.match(followingSection, /Use Fetch sources to summarize followed posts/);
+  assert.match(followingSection, /Use Fetch sources to summarize posts from followed sources/);
   assert.match(followingSection, /Fetch sources to check for new unread posts/);
-  assert.doesNotMatch(followingSection, /Following shows the latest unread posts|Following updates when Fetch sources finds new unread posts|Following will update after new unread posts/);
+  assert.doesNotMatch(followingSection, /Use Fetch sources to summarize followed posts|Following shows the latest unread posts|Following updates when Fetch sources finds new unread posts|Following will update after new unread posts/);
   assert.match(followingSection, /title="Could not load Following posts"/);
   assert.match(followingSection, /Check your connection, then try again\./);
   assert.doesNotMatch(followingSection, /title="Could not load Following"|Something went wrong loading Following|Couldn't load Following|No posts have been fetched for your followed sources yet/);
