@@ -52,8 +52,19 @@ export function SourceAvatar({
   // Priority chain: server-resolved real photo -> host favicon -> monogram.
   const [failedUrls, setFailedUrls] = useState<ReadonlySet<string>>(() => new Set());
   const baseClassName = `fb-src-icon ${className}`.trim();
-  const imageStyle: CSSProperties = { height: "100%", width: "100%", objectFit: "cover" };
-  const frameStyle: CSSProperties = { ...style, overflow: "hidden", padding: 0 };
+  const imageStyle: CSSProperties = {
+    height: "100%",
+    inset: 0,
+    objectFit: "cover",
+    position: "absolute",
+    width: "100%",
+  };
+  const frameStyle: CSSProperties = {
+    ...style,
+    overflow: "hidden",
+    padding: 0,
+    position: "relative",
+  };
 
   function markFailed(url: string) {
     setFailedUrls((prev) => {
@@ -64,18 +75,21 @@ export function SourceAvatar({
     });
   }
 
-  if (realAvatarUrl && !failedUrls.has(realAvatarUrl)) {
+  function renderImageAvatar(url: string) {
     return (
       <span className={baseClassName} style={frameStyle}>
+        <span className="source-avatar-fallback" aria-hidden="true">
+          {monogram}
+        </span>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           alt=""
           aria-hidden="true"
           height={imageSize}
-          key={realAvatarUrl}
+          key={url}
           loading="lazy"
-          onError={() => markFailed(realAvatarUrl)}
-          src={realAvatarUrl}
+          onError={() => markFailed(url)}
+          src={url}
           style={imageStyle}
           width={imageSize}
         />
@@ -83,23 +97,12 @@ export function SourceAvatar({
     );
   }
 
+  if (realAvatarUrl && !failedUrls.has(realAvatarUrl)) {
+    return renderImageAvatar(realAvatarUrl);
+  }
+
   if (faviconUrl && !failedUrls.has(faviconUrl)) {
-    return (
-      <span className={baseClassName} style={frameStyle}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          alt=""
-          aria-hidden="true"
-          height={imageSize}
-          key={faviconUrl}
-          loading="lazy"
-          onError={() => markFailed(faviconUrl)}
-          src={faviconUrl}
-          style={imageStyle}
-          width={imageSize}
-        />
-      </span>
-    );
+    return renderImageAvatar(faviconUrl);
   }
 
   return (

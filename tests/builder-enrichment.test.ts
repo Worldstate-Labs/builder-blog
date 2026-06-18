@@ -138,6 +138,10 @@ test("source avatar renders builder.avatarUrl ahead of favicon/monogram", () => 
   assert.match(list, /<SourceAvatar className="builder-library-avatar" imageSize=\{40\} source=\{builder\} \/>/);
   assert.match(detailPage, /<SourceAvatar/);
   assert.match(avatar, /source\.avatarUrl/);
+  assert.match(avatar, /function renderImageAvatar\(url: string\)/);
+  assert.match(avatar, /className="source-avatar-fallback"/);
+  assert.match(avatar, /return renderImageAvatar\(realAvatarUrl\)/);
+  assert.match(avatar, /return renderImageAvatar\(faviconUrl\)/);
   // The real-avatar branch must come before the favicon branch in
   // SourceAvatar so the priority chain is preserved on both list and detail.
   const realIndex = avatar.search(/if \(realAvatarUrl/);
