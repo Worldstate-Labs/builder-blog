@@ -1177,14 +1177,14 @@ function buildSearchRecoveryActions({
     coveredFilterCount += 1;
     actions.push({
       href: searchHref({ query, type: typeFilter, mode: "hybrid", sort, time }),
-      label: "Best match",
+      label: "Use Best match",
     });
   }
   if (typeFilter !== "all") {
     coveredFilterCount += 1;
     actions.push({
       href: searchHref({ query, type: "all", mode, sort, time }),
-      label: "All results",
+      label: "Show all results",
     });
   }
   if (time !== "any" || parsed.after || parsed.before) {
@@ -1194,7 +1194,7 @@ function buildSearchRecoveryActions({
       Number(Boolean(parsed.before));
     actions.push({
       href: searchHref({ query: queryWithoutDate, type: typeFilter, mode, sort, time: "any" }),
-      label: "Any time",
+      label: "Clear time",
     });
   }
   if (activeFilterCount > coveredFilterCount) {
