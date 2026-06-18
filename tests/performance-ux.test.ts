@@ -3274,7 +3274,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(libraryHubPage, /Import shared libraries into Sources, Following, and AI Digest\./);
   assert.match(libraryHubPage, /<h2 className="fb-section-heading">Shared AI Digest collections<\/h2>/);
   assert.doesNotMatch(libraryHubPage, /<h2 className="fb-section-heading">AI Digest archives<\/h2>/);
-  assert.match(libraryHubPage, /Import shared collections into the AI Digest tab\./);
+  assert.match(libraryHubPage, /Import shared AI Digest collections into the AI Digest tab\./);
+  assert.doesNotMatch(libraryHubPage, /Import shared collections into the AI Digest tab\./);
   assert.doesNotMatch(libraryHubPage, /AI Digest archives shared to Hub\./);
   assert.doesNotMatch(libraryHubPage, /className="library-hub-skeleton-line is-heading"/);
   assert.doesNotMatch(libraryHubPage, /<span>Loading source libraries<\/span>/);
@@ -4754,8 +4755,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /mode\?: "hub" \| "imported"/);
   assert.match(digestPipelineForm, /mode = "hub"/);
   assert.match(digestPipelineForm, /Imported AI Digest collections/);
-  assert.match(digestPipelineForm, /Import shared collections into the AI Digest tab\./);
-  assert.match(digestPipelineForm, /Collections already in the AI Digest tab\./);
+  assert.match(digestPipelineForm, /Import shared AI Digest collections into the AI Digest tab\./);
+  assert.match(digestPipelineForm, /Already in the AI Digest tab\./);
+  assert.doesNotMatch(digestPipelineForm, /Import shared collections into the AI Digest tab\.|Collections already in the AI Digest tab\./);
   assert.doesNotMatch(digestPipelineForm, /Archives already in the AI Digest tab\.|Archives already available in the AI Digest tab\./);
   assert.doesNotMatch(digestPipelineForm, /AI Digest archives shared to Hub\.|AI Digest archives already imported from Hub\./);
   assert.doesNotMatch(digestPipelineForm, /AI Digest archives you imported from Hub\./);

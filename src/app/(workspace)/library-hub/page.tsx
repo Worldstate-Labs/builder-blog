@@ -318,7 +318,7 @@ function DigestPipelineImportFallback() {
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Shared AI Digest collections</h2>
           <p className="hub-section-copy">
-            Import shared collections into the AI Digest tab.
+            Import shared AI Digest collections into the AI Digest tab.
           </p>
           <div className="library-hub-skeleton-line is-wide" />
         </div>
