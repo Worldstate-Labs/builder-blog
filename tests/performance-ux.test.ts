@@ -2802,10 +2802,10 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchPage, /<SearchEmptyState title="Start with a search">\{emptySearchCopy\}<\/SearchEmptyState>/);
   assert.match(searchPage, /<SearchEmptyState actions=\{recoveryActions\} title="No matches found">/);
   assert.match(searchPage, /searchNoMatchesCopy/);
-  assert.match(searchPage, /Try broader terms or show all results\./);
+  assert.match(searchPage, /Try broader terms or clear the result type\./);
   assert.match(searchPage, /Try broader terms or clear filters\./);
   assert.match(searchPage, /Try broader terms or fewer words\./);
-  assert.doesNotMatch(searchPage, /No matches found\. Try a broader phrase|search all result types|remove active filters/);
+  assert.doesNotMatch(searchPage, /Try broader terms or show all results\.|No matches found\. Try a broader phrase|search all result types|remove active filters/);
   assert.doesNotMatch(searchPage, /switch back to All results/);
   assert.match(searchPage, /AI Digest issues/);
   assert.match(searchPage, /resultTypeFilterLabels/);
@@ -3110,7 +3110,8 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /localStorage\.setItem\(recentSearchesStorageKey, JSON\.stringify\(recentSearches\)\)/);
   assert.doesNotMatch(searchForm, /localStorage\.setItem\("builder-blog-searches"/);
   assert.match(searchForm, /normalizeRecentSearches/);
-  assert.match(searchForm, /Match style/);
+  assert.match(searchForm, />Mode<\/span>/);
+  assert.doesNotMatch(searchForm, /Match style/);
   assert.match(searchForm, /variant\?: "page" \| "header"/);
   assert.match(searchForm, /header-search-suggestion/);
   assert.match(searchForm, /className="search-input-icon"/);
@@ -3118,8 +3119,9 @@ test("search page uses a client form with pending feedback", () => {
   assert.match(searchForm, /className="search-suggestion-icon"/);
   assert.doesNotMatch(searchForm, /h-4 w-4|h-3\.5 w-3\.5|text-\[var\(--muted\)\]|search-query-label min-w-0/);
   assert.match(searchForm, /\/api\/search\/suggest/);
-  assert.match(searchForm, /Time range/);
-  assert.match(searchForm, /Sort by/);
+  assert.match(searchForm, />Time<\/span>/);
+  assert.match(searchForm, />Sort<\/span>/);
+  assert.doesNotMatch(searchForm, /Time range|Sort by/);
   assert.match(searchForm, /Custom date range/);
   assert.match(searchForm, /withDateSearchOperators/);
   assert.match(searchForm, /searchDocumentTypeParamValue/);

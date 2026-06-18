@@ -1134,7 +1134,7 @@ function searchNoMatchesCopy({
   typeFilter: SearchTypeFilter;
 }) {
   if (typeFilter !== "all") {
-    return "Try broader terms or show all results.";
+    return "Try broader terms or clear the result type.";
   }
   if (time !== "any" || activeFilterCount > 0) {
     return "Try broader terms or clear filters.";

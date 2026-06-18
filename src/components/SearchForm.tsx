@@ -332,7 +332,7 @@ export function SearchForm({
         {isHeader ? null : (
           <>
             <label className="search-mode-select">
-              <span>Match style</span>
+              <span>Mode</span>
               <select name="mode" defaultValue={mode}>
                 <option value="hybrid">Best match</option>
                 <option value="exact">Exact words</option>
@@ -340,7 +340,7 @@ export function SearchForm({
               </select>
             </label>
             <label className="search-mode-select">
-              <span>Time range</span>
+              <span>Time</span>
               <select name="time" defaultValue={time}>
                 <option value="any">Any time</option>
                 <option value="day">Past day</option>
@@ -350,7 +350,7 @@ export function SearchForm({
               </select>
             </label>
             <label className="search-mode-select">
-              <span>Sort by</span>
+              <span>Sort</span>
               <select name="sort" defaultValue={sort}>
                 <option value="relevance">Relevance</option>
                 <option value="newest">Newest</option>
