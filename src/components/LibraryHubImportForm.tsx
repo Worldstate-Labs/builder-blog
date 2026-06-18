@@ -621,8 +621,8 @@ function sourceLibraryListCopy(filter: FilterKey) {
 }
 
 function sourceLibraryByline(library: HubLibrary) {
-  if (library.owned) return "Your Library";
-  if (library.isCommunity) return "By Community";
+  if (library.owned) return "Your source library";
+  if (library.isCommunity) return "Curated by FollowBrief";
   return `By ${sourceLibraryOwnerName(library.ownerLabel)}`;
 }
 

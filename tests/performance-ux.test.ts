@@ -3336,8 +3336,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
     2,
   );
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /My source libraries/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Your Library/);
-  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Your source library/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Your source library/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Your Library/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /aria-label="Source library filter"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /role="group"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /<nav className="fb-segmented-tabs filter-tabs at-desktop" aria-label="Source library filter"/);
@@ -3388,8 +3388,9 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/app/globals.css"), /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-card-titleblock\s*{[\s\S]*width:\s*100%/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /const cardByline = sourceLibraryByline\(library\)/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="fb-hub-card-byline"/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /if \(library\.owned\) return "Your Library"/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /if \(library\.isCommunity\) return "By Community"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /if \(library\.owned\) return "Your source library"/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /if \(library\.isCommunity\) return "Curated by FollowBrief"/);
+  assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /return "Your Library"|return "By Community"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /return `By \$\{sourceLibraryOwnerName\(library\.ownerLabel\)\}`/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-card-kicker|fb-hub-card-topic|kindBadge\(library\)|topicLabel\(library\)/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Your private source library\.|return "private"|return "Personal"/);
