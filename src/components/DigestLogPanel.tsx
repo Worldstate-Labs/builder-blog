@@ -625,8 +625,8 @@ function DigestStatusPanel({
     return (
       <EmptyState
         className="sync-panel-empty is-dashed"
-        title="No AI Digest builds yet"
-        body="One-time and scheduled AI Digest builds appear here after a Local Agent reports them."
+        title="No AI Digest build history yet"
+        body="One-time and scheduled builds appear here after a Local Agent reports them."
       />
     );
   }
@@ -745,8 +745,8 @@ function DigestStatusPanel({
         ) : (
           <EmptyState
             className="sync-panel-slot-empty"
-            title="No AI Digest builds yet"
-            body="One-time and scheduled AI Digest builds appear here after a Local Agent reports them."
+            title="No AI Digest build history yet"
+            body="One-time and scheduled builds appear here after a Local Agent reports them."
           />
         )}
       </div>

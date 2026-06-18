@@ -266,7 +266,6 @@ function AiDigestFeed({
             ) : (
               <DigestEmptyState
                 isOwnPipeline={isOwnPipeline}
-                ownerLabel={selectedPipeline.ownerLabel}
                 readiness={ownDigestReadiness}
               />
             )}
@@ -283,11 +282,9 @@ function AiDigestFeed({
 
 function DigestEmptyState({
   isOwnPipeline,
-  ownerLabel,
   readiness,
 }: {
   isOwnPipeline: boolean;
-  ownerLabel: string;
   readiness: OwnDigestReadiness;
 }) {
   if (!isOwnPipeline) {
@@ -295,7 +292,7 @@ function DigestEmptyState({
       <FeedEmptyState
         className="ai-digest-empty"
         title="No AI Digest archives yet"
-        body={`${ownerLabel} has not shared any archives yet.`}
+        body="This AI Digest collection has no archives yet."
       />
     );
   }

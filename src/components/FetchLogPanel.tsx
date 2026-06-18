@@ -1252,8 +1252,8 @@ function FetchStatusPanel({
     return (
       <EmptyState
         className="sync-panel-empty is-dashed"
-        title="No Fetch sources runs yet"
-        body="One-time and scheduled Fetch sources runs appear here after a Local Agent reports them."
+        title="No Fetch sources history yet"
+        body="One-time and scheduled runs appear here after a Local Agent reports them."
       />
     );
   }
@@ -1376,8 +1376,8 @@ function FetchStatusPanel({
         ) : (
           <EmptyState
             className="sync-panel-slot-empty"
-            title="No Fetch sources runs yet"
-            body="One-time and scheduled Fetch sources runs appear here after a Local Agent reports them."
+            title="No Fetch sources history yet"
+            body="One-time and scheduled runs appear here after a Local Agent reports them."
           />
         )}
       </div>
