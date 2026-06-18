@@ -28,17 +28,25 @@ function authLogValue(value: unknown): unknown {
   };
 }
 
+function shouldUseSecureAuthCookies() {
+  const nextAuthUrl = process.env.NEXTAUTH_URL;
+  if (nextAuthUrl) return nextAuthUrl.startsWith("https://");
+  return process.env.NODE_ENV === "production";
+}
+
+const secureAuthCookies = shouldUseSecureAuthCookies();
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: { strategy: "database" },
   cookies: {
     pkceCodeVerifier: {
-      name: "__Secure-next-auth.pkce.code_verifier",
+      name: `${secureAuthCookies ? "__Secure-" : ""}next-auth.pkce.code_verifier`,
       options: {
         httpOnly: true,
-        sameSite: "none",
+        sameSite: secureAuthCookies ? "none" : "lax",
         path: "/",
-        secure: true,
+        secure: secureAuthCookies,
         maxAge: 60 * 15,
       },
     },

@@ -16,7 +16,11 @@ test("Apple sign-in is wired through NextAuth and the login UI", () => {
   assert.match(auth, /process\.env\.APPLE_SECRET/);
   assert.match(auth, /allowDangerousEmailAccountLinking:\s*true/);
   assert.match(auth, /pkceCodeVerifier/);
-  assert.match(auth, /sameSite:\s*"none"/);
+  assert.match(auth, /function shouldUseSecureAuthCookies/);
+  assert.match(auth, /nextAuthUrl\.startsWith\("https:\/\/"\)/);
+  assert.match(auth, /name:\s*`\$\{secureAuthCookies \? "__Secure-" : ""\}next-auth\.pkce\.code_verifier`/);
+  assert.match(auth, /sameSite:\s*secureAuthCookies \? "none" : "lax"/);
+  assert.match(auth, /secure:\s*secureAuthCookies/);
   assert.match(authButtons, /type Provider = "google" \| "github" \| "apple"/);
   assert.match(authButtons, /function AppleIcon/);
   assert.match(authButtons, /label: "Apple"/);
