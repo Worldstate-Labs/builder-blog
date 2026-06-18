@@ -8,7 +8,7 @@ import { SourceAvatar } from "@/components/SourceAvatar";
 import { SourceBadge } from "@/components/SourceBadge";
 import { normalizeSourceType, sourceLabelForType } from "@/lib/source-display";
 
-const sourceLibraryImportDescription = "Import shared libraries into Sources.";
+const sourceLibraryImportDescription = "Import shared source libraries into Sources.";
 
 type HubLibraryBuilder = {
   id: string;

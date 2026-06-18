@@ -103,7 +103,7 @@ export function DigestPipelineImportForm({
   const description =
     mode === "imported"
       ? "Imported collections appear in AI Digest."
-      : "Import shared collections.";
+      : "Import shared AI Digest collections.";
   const emptyTitle =
     mode === "imported"
       ? "No imported AI Digest collections"

@@ -97,7 +97,7 @@ export async function probeAndEnrichSource(input: ProbeInput): Promise<ProbeOutc
     // hard reject — we don't want a bug in this module to break adds.
     return {
       ok: true,
-      warning: "Source added unverified. Local Agent can retry later.",
+      warning: "Source could not be verified. Local Agent can retry later.",
       enrichment: {},
     };
   }
