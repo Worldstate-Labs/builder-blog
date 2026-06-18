@@ -44,7 +44,7 @@ export function FavoritePostsList({
           ? current
           : sortFavoriteItems([...current, removedItem]),
       );
-      setError("Could not remove post from reading queue. It remains here.");
+      setError("Could not remove post from Favorites. It remains here.");
     } finally {
       setPendingIds((current) => {
         const next = new Set(current);
@@ -71,19 +71,19 @@ export function FavoritePostsList({
           </div>
         }
         className="favorites-empty is-actionable"
-        title="Reading queue is empty"
+        title="No Favorites yet"
         body="Star posts from AI Digest, Following, Search, or post pages."
       />
     );
   }
 
   return (
-    <section className="feed-content-stack favorites-feed" aria-label="Reading queue posts">
+    <section className="feed-content-stack favorites-feed" aria-label="Favorite posts">
       <div className="favorites-feed-head">
         <div>
-          <h2 className="favorites-feed-title">Reading queue</h2>
+          <h2 className="favorites-feed-title">Favorites</h2>
           <p className="favorites-feed-desc">
-            Posts you starred for focused reading, newest first.
+            Starred posts, newest first.
           </p>
         </div>
         <span className="favorites-feed-count">

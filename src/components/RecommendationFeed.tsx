@@ -109,7 +109,7 @@ export function RecommendationFeed({
       await setPostFavorite(feedItemId, nextFavorite);
     } catch {
       setSnapshots((current) => restoreFavoriteState(current, feedItemId, previousFavoritedAt));
-      setFavoriteError("Could not update reading queue. Try again.");
+      setFavoriteError("Could not update Favorites. Try again.");
     } finally {
       setPendingFavoriteIds((current) => {
         const next = new Set(current);
