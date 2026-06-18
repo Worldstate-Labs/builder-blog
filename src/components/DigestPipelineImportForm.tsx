@@ -420,7 +420,7 @@ function DigestPipelineCard({
               {pipeline.title}
             </h3>
             <p className="fb-hub-card-byline">
-              by {digestPipelineOwnerTopic(pipeline.ownerLabel)}
+              {digestPipelineByline(pipeline.ownerLabel)}
             </p>
           </div>
           <div
@@ -459,8 +459,13 @@ function digestPipelineCardDescription(pipeline: HubDigestPipeline) {
   return null;
 }
 
-function digestPipelineOwnerTopic(ownerLabel: string) {
-  return ownerLabel.trim() || "a FollowBrief user";
+function digestPipelineByline(ownerLabel: string) {
+  const label = ownerLabel
+    .trim()
+    .replace(/^Shared by\s+/i, "")
+    .replace(/[.。]+$/u, "");
+  if (/^Curated by\s+/i.test(label)) return label;
+  return `By ${label || "a FollowBrief user"}`;
 }
 
 export function DigestPipelinePreviewCard({

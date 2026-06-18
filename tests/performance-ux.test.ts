@@ -3483,11 +3483,13 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(digestPipelineForm, /className="hub-list-stack fb-hub-list"/);
   assert.match(digestPipelineForm, /className="fb-hub-card-head"/);
   assert.match(digestPipelineForm, /className="fb-hub-card-byline"/);
-  assert.match(digestPipelineForm, /by \{digestPipelineOwnerTopic\(pipeline\.ownerLabel\)\}/);
+  assert.match(digestPipelineForm, /\{digestPipelineByline\(pipeline\.ownerLabel\)\}/);
   assert.doesNotMatch(digestPipelineForm, /digestPipelineKindBadge\(pipeline\)/);
   assert.doesNotMatch(digestPipelineForm, /function digestPipelineKindBadge/);
-  assert.match(digestPipelineForm, /function digestPipelineOwnerTopic\(ownerLabel: string\)/);
-  assert.match(digestPipelineForm, /digestPipelineOwnerTopic\(pipeline\.ownerLabel\)/);
+  assert.match(digestPipelineForm, /function digestPipelineByline\(ownerLabel: string\)/);
+  assert.match(digestPipelineForm, /\.replace\(\/\^Shared by\\s\+\/i, ""\)/);
+  assert.match(digestPipelineForm, /return `By \$\{label \|\| "a FollowBrief user"\}`/);
+  assert.doesNotMatch(digestPipelineForm, /by \{digestPipelineOwnerTopic|function digestPipelineOwnerTopic/);
   assert.match(digestPipelineForm, /className="fb-hub-digest-preview"/);
   assert.match(digestPipelineForm, /function DigestPipelineMetaGrid/);
   assert.match(digestPipelineForm, /<div className="fb-hub-digest-preview">\s*<DigestPipelineMetaGrid[\s\S]*\{detailsSlot\}[\s\S]*<div className="fb-hub-digest-preview-row">/);
@@ -4761,7 +4763,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /function digestPipelineCardDescription/);
   assert.match(digestPipelineForm, /pipeline\.description\?\.trim\(\)/);
   assert.match(digestPipelineForm, /return null/);
-  assert.match(digestPipelineForm, /by \{digestPipelineOwnerTopic\(pipeline\.ownerLabel\)\}/);
+  assert.match(digestPipelineForm, /\{digestPipelineByline\(pipeline\.ownerLabel\)\}/);
   assert.doesNotMatch(digestPipelineForm, /Shared by \$\{pipeline\.ownerLabel\}\./);
   assert.doesNotMatch(digestPipelineForm, /Shared by Shared by/);
   assert.doesNotMatch(digestPipelineForm, /\{pipeline\.description \|\| pipeline\.ownerLabel\}/);
