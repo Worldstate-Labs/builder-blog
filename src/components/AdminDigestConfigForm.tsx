@@ -115,7 +115,11 @@ export function AdminDigestConfigForm({
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(body?.error ?? "Could not save AI Digest rules.");
+          setStatus({
+            kind: "error",
+            message: body?.error ?? "Could not save AI Digest rules.",
+          });
+          return;
         }
         setConfig(body.config);
         setDraft({
@@ -124,10 +128,10 @@ export function AdminDigestConfigForm({
           translate: body.config.translate,
         });
         setStatus({ kind: "saved", message: "Saved" });
-      } catch (error) {
+      } catch {
         setStatus({
           kind: "error",
-          message: error instanceof Error ? error.message : "Could not save AI Digest rules.",
+          message: "Could not save AI Digest rules.",
         });
       }
     });

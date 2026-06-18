@@ -225,15 +225,19 @@ function SourceTypeCard({
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(body?.error ?? "Could not save source type settings.");
+          setStatus({
+            kind: "error",
+            message: body?.error ?? "Could not save source type settings.",
+          });
+          return;
         }
         onSaved(body.config);
         if (draft.fetchPromptBody.trim() === "") setFetchPromptExpanded(false);
         setStatus({ kind: "saved", message: "Saved" });
-      } catch (error) {
+      } catch {
         setStatus({
           kind: "error",
-          message: error instanceof Error ? error.message : "Could not save source type settings.",
+          message: "Could not save source type settings.",
         });
       }
     });

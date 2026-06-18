@@ -973,6 +973,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminDigestConfig, /Could not save AI Digest rules\./);
   assert.doesNotMatch(adminDigestConfig, /HTTP \$\{response\.status\}/);
   assert.doesNotMatch(adminDigestConfig, /error instanceof Error \? error\.message/);
+  assert.doesNotMatch(adminDigestConfig, /throw new Error\(body\?\.error/);
   assert.match(adminDigestConfig, /Headline prompt cannot be empty\./);
   assert.match(adminDigestConfig, /Post summary prompt cannot be empty\./);
   assert.match(adminDigestConfig, /canEditDigestAssemblyPrompts/);
@@ -1037,6 +1038,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /Could not save source type settings\./);
   assert.doesNotMatch(adminSourceTypeManager, /HTTP \$\{response\.status\}/);
   assert.doesNotMatch(adminSourceTypeManager, /error instanceof Error \? error\.message/);
+  assert.doesNotMatch(adminSourceTypeManager, /throw new Error\(body\?\.error/);
   assert.match(adminSourceTypesRoute, /Could not save source type settings\./);
   assert.doesNotMatch(adminSourceTypesRoute, /Update failed/);
   assert.doesNotMatch(adminSourceTypesRoute, /error instanceof Error \? error\.message/);
