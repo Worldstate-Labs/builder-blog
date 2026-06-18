@@ -92,7 +92,13 @@ export function DigestDetails({
         cache: "no-store",
       });
       const body = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`);
+      if (!response.ok) {
+        updateDigestState((current) => ({
+          ...current,
+          status: "error",
+        }));
+        return;
+      }
       updateDigestState((current) => ({
         ...current,
         content: String(body.content ?? ""),
@@ -134,7 +140,7 @@ export function DigestDetails({
         body: JSON.stringify({ feedItemId }),
       });
       const body = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`);
+      if (!response.ok) throw new Error("Could not update Favorites.");
       const favoritedAt = typeof body?.favoritedAt === "string" ? body.favoritedAt : null;
       updateDigestState((current) => ({
         ...current,

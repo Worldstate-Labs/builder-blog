@@ -363,14 +363,17 @@ export function DigestLogPanel({
           setError(null);
           return;
         }
-        if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`);
+        if (!response.ok) {
+          setError(body?.error ?? "Could not refresh. Try again.");
+          return;
+        }
         setRuns(Array.isArray(body?.runs) ? body.runs : []);
         setCronRuns(Array.isArray(body?.cronRuns) ? body.cronRuns : []);
         setJobRuns(Array.isArray(body?.jobRuns) ? body.jobRuns : []);
         setScheduledJobRuns(Array.isArray(body?.scheduledJobRuns) ? body.scheduledJobRuns : []);
         setCronJob(body?.cronJob ?? null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not refresh. Try again.");
+      } catch {
+        setError("Could not refresh. Try again.");
       }
     });
   }, []);

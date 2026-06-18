@@ -127,7 +127,7 @@ export function RecommendationFeed({
       setLoadErrorDirection(null);
       try {
         const response = await fetch(`/api/recommendations?direction=${direction}&limit=6`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) throw new Error("Could not load Following posts.");
         const data = await response.json();
         const snapshot = data.snapshot as RecommendationSnapshotEntry | null | undefined;
         if (!snapshot || snapshot.items.length === 0) {
@@ -284,7 +284,7 @@ async function setPostFavorite(feedItemId: string, favorite: boolean) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ feedItemId }),
   });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!response.ok) throw new Error("Could not update Favorites.");
 }
 
 function restoreFavoriteState(

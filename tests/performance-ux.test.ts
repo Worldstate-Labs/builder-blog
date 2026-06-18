@@ -1830,6 +1830,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.doesNotMatch(followingSection, /Use Fetch sources to summarize followed posts|Following shows the latest unread posts|Following updates when Fetch sources finds new unread posts|Following will update after new unread posts/);
   assert.match(followingSection, /title="Could not load Following posts"/);
   assert.match(followingSection, /Check your connection, then try again\./);
+  assert.doesNotMatch(followingSection, /HTTP \$\{response\.status\}/);
   assert.doesNotMatch(followingSection, /title="Could not load Following"|Something went wrong loading Following|Couldn't load Following|No posts have been fetched for your followed sources yet/);
   assert.doesNotMatch(followingSection, /Following feed|Following recommendations can appear|No unread recommendations yet|fetching recommendations/);
   assert.doesNotMatch(followingSection, /fetch and summarize them/);
@@ -1859,7 +1860,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(recommendationFeed, /className="feed-load-more"/);
   assert.match(recommendationFeed, /const \[loadErrorDirection, setLoadErrorDirection\] = useState<"append" \| "prepend" \| null>\(null\)/);
   assert.match(recommendationFeed, /setLoadErrorDirection\(null\)/);
-  assert.match(recommendationFeed, /throw new Error\(`HTTP \$\{response\.status\}`\)/);
+  assert.doesNotMatch(recommendationFeed, /HTTP \$\{response\.status\}/);
   assert.match(recommendationFeed, /setLoadErrorDirection\(direction\)/);
   assert.match(recommendationFeed, /className="feed-load-error" role="status"/);
   assert.match(recommendationFeed, /Could not load Following posts\./);
@@ -1873,7 +1874,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.doesNotMatch(recommendationFeed, /Could not update reading queue|Could not update favorite\. Try again\./);
   assert.doesNotMatch(recommendationFeed, /Could not update saved state/);
   assert.match(recommendationFeed, /disabled=\{pendingFavorite\}/);
-  assert.match(recommendationFeed, /if \(!response\.ok\) throw new Error\(`HTTP \$\{response\.status\}`\)/);
+  assert.match(recommendationFeed, /if \(!response\.ok\) throw new Error\("Could not update Favorites\."\)/);
   assert.doesNotMatch(recommendationFeed, /Best-effort optimistic UI/);
   assert.match(recommendationFeed, /onClick=\{\(\) => void requestSnapshot\(loadErrorDirection\)\}/);
   assert.match(recommendationFeed, /className="feed-end-note"/);
@@ -2060,6 +2061,9 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(fetchLogPanel, /title="No Fetch sources runs yet"|One-time and scheduled Fetch sources runs appear here|Scheduled and one-time Fetch sources runs will appear here/);
   assert.doesNotMatch(fetchLogPanel, /current fetch history response/);
   assert.match(fetchLogPanel, /Could not refresh\. Try again\./);
+  assert.match(fetchLogPanel, /setError\(body\?\.error \?\? "Could not refresh\. Try again\."\)/);
+  assert.match(fetchLogPanel, /setError\("Could not refresh\. Try again\."\)/);
+  assert.doesNotMatch(fetchLogPanel, /HTTP \$\{response\.status\}|err instanceof Error \? err\.message|throw new Error\(body\?\.error/);
   assert.match(fetchLogPanel, /Add X access in Settings, then run Fetch sources again\./);
   assert.match(fetchLogPanel, /import Link from "next\/link"/);
   assert.match(fetchLogPanel, /work\.fixHref\.startsWith\("\/"\)/);
@@ -2122,8 +2126,11 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /formatLanguage/);
   assert.match(fetchLogPanel, /className="sync-panel-error"/);
   assert.match(digestLogPanel, /Could not refresh\. Try again\./);
+  assert.match(digestLogPanel, /setError\(body\?\.error \?\? "Could not refresh\. Try again\."\)/);
+  assert.match(digestLogPanel, /setError\("Could not refresh\. Try again\."\)/);
   assert.match(digestLogPanel, /This AI Digest build is no longer in the current history\./);
   assert.doesNotMatch(digestLogPanel, /current history response/);
+  assert.doesNotMatch(digestLogPanel, /HTTP \$\{response\.status\}|err instanceof Error \? err\.message|throw new Error\(body\?\.error/);
   assert.doesNotMatch(`${fetchLogPanel}\n${digestLogPanel}`, /Refresh failed/);
   assert.match(fetchLogPanel, /className="sync-panel-run-card sync-panel-fetch-run-card sync-panel-mobile-flat"/);
   assert.match(globals, /@media \(max-width:\s*640px\)[\s\S]*\.sync-panel-run-card\.sync-panel-mobile-flat\s*{[\s\S]*background:\s*transparent/);
@@ -2709,6 +2716,7 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(digestDetails, /className="digest-loading-icon"/);
   assert.doesNotMatch(digestDetails, /h-3\.5 w-3\.5|animate-spin/);
   assert.match(digestDetails, /Could not load AI Digest\./);
+  assert.doesNotMatch(digestDetails, /HTTP \$\{response\.status\}/);
   assert.match(digestHeadlineSummary, /aria-label="AI Digest headlines"/);
   assert.match(digestDetails, /formatDateTime\(digest\.createdAt, hydrated\)/);
   assert.match(digestDetails, /month:\s*"short"/);

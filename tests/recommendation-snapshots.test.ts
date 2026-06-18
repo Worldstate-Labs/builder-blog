@@ -147,7 +147,7 @@ test("favorites saves posts into the Favorites tab", () => {
   assert.doesNotMatch(feed, /Could not update reading queue|Could not update favorite\. Try again\./);
   assert.match(feed, /className="feed-load-error recommendation-favorite-error" role="status"/);
   assert.match(feed, /disabled=\{pendingFavorite\}/);
-  assert.match(feed, /if \(!response\.ok\) throw new Error\(`HTTP \$\{response\.status\}`\)/);
+  assert.match(feed, /if \(!response\.ok\) throw new Error\("Could not update Favorites\."\)/);
   assert.doesNotMatch(feed, /Best-effort optimistic UI/);
   assert.match(postDetailPage, /PostFavoriteControl/);
   assert.match(postDetailPage, /prisma\.feedFavorite\.findUnique/);
