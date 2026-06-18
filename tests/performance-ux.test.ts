@@ -911,7 +911,7 @@ test("settings live in the clickable user avatar menu", () => {
   assert.doesNotMatch(skillPromptActions, /className="grid"/);
   assert.match(agentTokenPanel, /<h2 className="fb-section-heading">Access keys<\/h2>/);
   assert.doesNotMatch(agentTokenPanel, /<h2 className="fb-section-heading">Local Agent access<\/h2>/);
-  assert.match(agentTokenPanel, /Access keys let devices and Local Agents update this account\./);
+  assert.match(agentTokenPanel, /Access keys let Local Agent update this account from your devices\./);
   assert.doesNotMatch(agentTokenPanel, /Devices and Local Agents with access keys can update this account\.|Authorized devices and Local Agents can update this FollowBrief account\./);
   assert.match(agentTokenPanel, /<ul className="access-keys-list" aria-label="Access keys">/);
   assert.doesNotMatch(agentTokenPanel, /aria-label="Access keys for Local Agents"/);
@@ -1256,7 +1256,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(pageHeader, /actions \? <div className="fb-page-head-actions">\{actions\}<\/div> : null/);
   assert.match(dashboardPage, /className="page-pad page-pad--reading home-page"/);
   assert.match(dashboardPage, /@\/components\/PageHeader/);
-  assert.match(dashboardPage, /<PageHeader[\s\S]*title="Today"[\s\S]*Read updates from followed sources, then save or open the originals that matter\./);
+  assert.match(dashboardPage, /<PageHeader[\s\S]*title="Today"[\s\S]*Read AI Digest and Following updates, then save or open originals\./);
   assert.doesNotMatch(dashboardPage, /<h1 className="sr-only">Home<\/h1>/);
   assert.match(dashboardPage, /className="workspace-content-stack workspace-content-stack--tabs-first home-workspace"/);
   assert.match(dashboardPage, /className="ai-digest-stack"/);
@@ -1355,7 +1355,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /href="\/builders\?tab=fetch"[\s\S]*Go to Sources/);
   assert.match(dashboardPage, /No AI Digest issues yet/);
   assert.doesNotMatch(dashboardPage, /No AI Digest yet/);
-  assert.match(dashboardPage, /Wait for the owner to build one, or choose another collection\./);
+  assert.match(dashboardPage, /Wait for the owner to build an issue, or choose another collection\./);
   assert.doesNotMatch(dashboardPage, /No AI Digest archives yet|This AI Digest collection has no archives yet\./);
   assert.doesNotMatch(dashboardPage, /has not shared any archives yet/);
   assert.doesNotMatch(dashboardPage, /has not shared any AI Digest archives yet/);
@@ -1369,7 +1369,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /No summarized posts yet/);
   assert.doesNotMatch(dashboardPage, /No fetched posts yet/);
   assert.match(dashboardPage, /Build an AI Digest issue from summarized posts/);
-  assert.match(dashboardPage, /Run Fetch sources before building an AI Digest issue/);
+  assert.match(dashboardPage, /Run Fetch sources to summarize followed posts/);
   assert.doesNotMatch(dashboardPage, /Build AI Digest from summarized posts|before building AI Digest/);
   assert.doesNotMatch(dashboardPage, /Ask your Local Agent to build an AI Digest from the summarized posts/);
   assert.doesNotMatch(dashboardPage, /Ask your Local Agent to fetch and summarize your followed sources/);
@@ -3048,13 +3048,13 @@ test("search page uses a client form with pending feedback", () => {
   assert.doesNotMatch(searchPage, /Query matched/);
   assert.match(searchPage, /let coveredFilterCount = 0/);
   assert.match(searchPage, /activeFilterCount > coveredFilterCount/);
-  assert.match(searchPage, /label:\s*"Use Best match"/);
+  assert.match(searchPage, /label:\s*"Use best match"/);
   assert.match(searchPage, /label:\s*"Show all results"/);
   assert.match(searchPage, /label:\s*"Clear time"/);
   assert.match(searchPage, /label:\s*"Clear filters"/);
   assert.doesNotMatch(searchPage, /label:\s*"Best match"|label:\s*"All results"|label:\s*"Any time"/);
   assert.doesNotMatch(searchPage, /Clear all(?: filters)?/);
-  assert.doesNotMatch(searchPage, /Use best match|All result types|Search all result types|Search any time|Search all time/);
+  assert.doesNotMatch(searchPage, /All result types|Search all result types|Search any time|Search all time/);
   assert.match(searchPage, /function SearchEmptyState/);
   assert.match(searchPage, /<EmptyState[\s\S]*className="search-empty"/);
   assert.match(searchPage, /title=\{title\}/);
@@ -5220,10 +5220,10 @@ test("settings mutations stay local instead of refreshing the whole route", () =
   assert.match(tokenPanel, /fetch\(`\/api\/settings\/tokens\/\$\{tokenId\}`/);
   assert.match(tokenPanel, /<h2 className="fb-section-heading">Access keys<\/h2>/);
   assert.doesNotMatch(tokenPanel, /<h2 className="fb-section-heading">Local Agent access<\/h2>/);
-  assert.match(tokenPanel, /Access keys let devices and Local Agents update this account\./);
+  assert.match(tokenPanel, /Access keys let Local Agent update this account from your devices\./);
   assert.doesNotMatch(tokenPanel, /Authorized devices and Local Agents can update this FollowBrief account\./);
   assert.doesNotMatch(tokenPanel, />\s*Local Agents that can sync sources and AI Digests to this account\.|Devices and Local Agents that can sync sources and AI Digests to this account\./);
-  assert.doesNotMatch(tokenPanel, /Access keys let trusted devices and Local Agents sync sources and AI Digests to this account\./);
+  assert.doesNotMatch(tokenPanel, /Access keys let devices and Local Agents update this account\.|Access keys let trusted devices and Local Agents sync sources and AI Digests to this account\./);
   assert.doesNotMatch(tokenPanel, /sync sources and digests to this account/);
   assert.match(tokenPanel, />\s*New access key\s*<\/h3>/);
   assert.match(tokenPanel, /\{isPending \? "Creating" : "Create access key"\}/);

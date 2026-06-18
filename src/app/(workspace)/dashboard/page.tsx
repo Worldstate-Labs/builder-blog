@@ -91,7 +91,7 @@ export default async function DashboardPage({
     <div className="page-pad page-pad--reading home-page">
       <PageHeader
         title="Today"
-        description="Read updates from followed sources, then save or open the originals that matter."
+        description="Read AI Digest and Following updates, then save or open originals."
       />
 
       <section className="workspace-content-stack workspace-content-stack--tabs-first home-workspace">
@@ -292,7 +292,7 @@ function DigestEmptyState({
       <FeedEmptyState
         className="ai-digest-empty"
         title="No AI Digest issues yet"
-        body="Wait for the owner to build one, or choose another collection."
+        body="Wait for the owner to build an issue, or choose another collection."
       />
     );
   }
@@ -346,7 +346,7 @@ function DigestEmptyState({
       }
       className="ai-digest-empty is-actionable"
       title="No summarized posts yet"
-      body="Run Fetch sources before building an AI Digest issue."
+      body="Run Fetch sources to summarize followed posts."
     />
   );
 }

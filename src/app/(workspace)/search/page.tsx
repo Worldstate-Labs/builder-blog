@@ -1177,7 +1177,7 @@ function buildSearchRecoveryActions({
     coveredFilterCount += 1;
     actions.push({
       href: searchHref({ query, type: typeFilter, mode: "hybrid", sort, time }),
-      label: "Use Best match",
+      label: "Use best match",
     });
   }
   if (typeFilter !== "all") {
