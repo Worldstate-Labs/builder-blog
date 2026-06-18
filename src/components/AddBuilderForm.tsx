@@ -223,7 +223,7 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
         // not treat as a failure or success.
         if (response.status === 409 && payload?.needsConfirmation) {
           setPendingConfirmation({
-            warning: payload.warning ?? "This source needs your confirmation before it can be added.",
+            warning: payload.warning ?? "Review this source before adding it.",
           });
           return;
         }
@@ -426,7 +426,7 @@ export function AddBuilderForm({ sourceOptions }: { sourceOptions: SourceOption[
           className="add-source-callout"
         >
           <div className="add-source-callout-copy">
-            <span className="add-source-callout-label">Heads up</span>
+            <span className="add-source-callout-label">Note</span>
             <span className="add-source-callout-body">{warning}</span>
           </div>
         </div>

@@ -3966,6 +3966,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(addBuilderForm, /className="fb-input add-source-name-input"/);
   assert.match(addBuilderForm, /Display name \(optional\)/);
   assert.doesNotMatch(addBuilderForm, /Display name \(auto-filled from URL/);
+  assert.match(addBuilderForm, /Review this source before adding it\./);
+  assert.match(addBuilderForm, />Note<\/span>/);
+  assert.doesNotMatch(addBuilderForm, /This source needs your confirmation before it can be added|Heads up/);
   assert.match(addBuilderForm, /className="fb-btn dark add-source-submit"/);
   assert.match(addBuilderForm, /\{isPending \? "Adding" : "Add source"\}/);
   assert.match(addBuilderForm, /\{isPending \? "Adding" : "Add anyway"\}/);
@@ -4615,6 +4618,8 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(builderEditDialog, /URL or @handle is required|>URL or @handle<\/span>|Update the source type, URL or handle/);
   assert.doesNotMatch(builderEditDialog, /Save\s+applies the changes to your source library/);
   assert.match(builderEditDialog, /\{isPending \? "Saving" : "Save changes"\}/);
+  assert.match(builderEditDialog, /Defaults to resolved name/);
+  assert.doesNotMatch(builderEditDialog, /Leave blank to use the resolved name/);
   assert.doesNotMatch(builderEditDialog, /Changes save\s+immediately|changes to your library\.|: "Save"\}/);
   assert.match(builderEditDialog, /className=\{`fb-btn compact builder-edit-remove-button/);
   assert.match(builderEditDialog, /Confirm remove/);
