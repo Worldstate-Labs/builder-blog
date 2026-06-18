@@ -44,7 +44,7 @@ test("probe classifies YouTube page responses by status", () => {
   assert.match(PROBE_SOURCE, /YouTube channel not found/);
   // 403 / 429 / 5xx are degraded (soft) — page is reachable, just walled.
   assert.match(PROBE_SOURCE, /YouTube channel page/);
-  assert.match(PROBE_SOURCE, /Could not reach the YouTube channel page right now/);
+  assert.match(PROBE_SOURCE, /Could not reach the YouTube channel page/);
   assert.doesNotMatch(PROBE_SOURCE, /YouTube channel not found \(HTTP 404\)|Got HTTP \$\{response\.status\} from the YouTube channel page/);
 });
 
@@ -62,18 +62,18 @@ test("probe classifies blog/website responses with 404 / 410 as hard reject", ()
   // 404 and 410 are gone-for-good.
   assert.match(PROBE_SOURCE, /404/);
   assert.match(PROBE_SOURCE, /410/);
-  // 403 / 429 / 5xx are degraded (Could not reach the page right now).
-  assert.match(PROBE_SOURCE, /Could not reach the page right now/);
+  // 403 / 429 / 5xx are degraded (Could not reach the page).
+  assert.match(PROBE_SOURCE, /Could not reach the page/);
   assert.doesNotMatch(PROBE_SOURCE, /Couldn't reach/);
   assert.match(PROBE_SOURCE, /The page could not be found/);
-  assert.match(PROBE_SOURCE, /Could not verify the page right now/);
-  assert.doesNotMatch(PROBE_SOURCE, /The page returned HTTP \$\{response\.status\}|Got HTTP \$\{response\.status\} from the page|Could not reach the page right now \(HTTP \$\{response\.status\}\)/);
+  assert.match(PROBE_SOURCE, /Could not verify the page/);
+  assert.doesNotMatch(PROBE_SOURCE, /The page returned HTTP \$\{response\.status\}|Got HTTP \$\{response\.status\} from the page|Could not reach the page \(HTTP \$\{response\.status\}\)/);
 });
 
 test("probe user-facing status copy avoids transport codes", () => {
   assert.match(PROBE_SOURCE, /The podcast RSS feed could not be found/);
-  assert.match(PROBE_SOURCE, /Could not reach the podcast RSS feed right now/);
-  assert.match(PROBE_SOURCE, /Could not verify the podcast RSS feed right now/);
+  assert.match(PROBE_SOURCE, /Could not reach the podcast RSS feed/);
+  assert.match(PROBE_SOURCE, /Could not verify the podcast RSS feed/);
   assert.doesNotMatch(
     PROBE_SOURCE,
     /Got HTTP \$\{response\.status\}|returned HTTP \$\{response\.status\}|\(HTTP \$\{response\.status\}\)|HTTP 404/,
@@ -160,7 +160,7 @@ test("probe maps thrown errors into friendly sentences (no raw exception leakage
   assert.match(PROBE_SOURCE, /ECONNREFUSED/);
   assert.match(PROBE_SOURCE, /SSL|TLS/);
   assert.match(PROBE_SOURCE, /4 seconds/);
-  assert.match(PROBE_SOURCE, /Your Local Agent will retry at sync time/);
+  assert.match(PROBE_SOURCE, /Local Agent will retry at sync time/);
   assert.doesNotMatch(PROBE_SOURCE, /the agent will (retry|verify)/);
 });
 

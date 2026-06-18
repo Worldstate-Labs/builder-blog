@@ -328,7 +328,7 @@ export function AgentTokenPanel({
         <div className="access-keys-copy">
           <h2 className="fb-section-heading">Access keys</h2>
           <p className="access-keys-desc">
-            Devices and Local Agents with access keys can update this account.
+            Access keys let devices and Local Agents update this account.
           </p>
         </div>
         <button
@@ -358,7 +358,7 @@ export function AgentTokenPanel({
         <EmptyState
           className="access-keys-empty"
           title="No access keys yet"
-          body="Add an access key when connecting a device or Local Agent."
+          body="Create one before connecting a device or Local Agent."
         />
       )}
 
@@ -387,7 +387,7 @@ export function AgentTokenPanel({
               New access key
             </h3>
             <p className="settings-dialog-copy">
-              Name this access key to recognize it later
+              Give this key a recognizable name
               (e.g. <em>My Mac · Claude Code</em>).
             </p>
             <input
@@ -471,14 +471,13 @@ export function AgentTokenPanel({
                     .
                   </p>
                   <p className="settings-dialog-warning">
-                    That device or Local Agent needs a new access key to update
-                    FollowBrief.
+                    It needs a new access key to update FollowBrief.
                   </p>
                 </>
               ) : (
                 <p>
-                  This access key has never been used. No device or Local Agent
-                  loses access.
+                  This key has never been used. No device or Local Agent loses
+                  access.
                 </p>
               )}
             </div>

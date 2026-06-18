@@ -770,7 +770,7 @@ function TokenPickerDialog({
             Choose access key
           </h2>
           <p className="token-picker-sub">
-            Creates a 10-minute setup code for this key.
+            Creates a setup code that expires in 10 minutes.
           </p>
         </header>
 
@@ -1115,7 +1115,7 @@ function CronConfigDialog({
                 </select>
               </div>
               <p className="cron-field-hint">
-                Runs source tasks after discovery. Use 1 for safest runs.
+                Runs source tasks after discovery. Use 1 for reliability.
               </p>
             </>
           ) : null}
