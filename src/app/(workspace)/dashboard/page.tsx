@@ -292,7 +292,7 @@ function DigestEmptyState({
       <FeedEmptyState
         className="ai-digest-empty"
         title="No AI Digest issues yet"
-        body="This AI Digest collection has no issues yet."
+        body="Wait for the owner to build one, or choose another collection."
       />
     );
   }

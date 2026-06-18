@@ -149,7 +149,7 @@ function FollowingUnavailable({
     <FeedEmptyState
       actions={<FetchSourcesPrompt sourceReadiness={sourceReadiness} />}
       ariaLive="polite"
-      body="Run Fetch sources to check for unread posts."
+      body="Run Fetch sources to check for new posts."
       className="is-actionable"
       title="No unread posts yet"
     />

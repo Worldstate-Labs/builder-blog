@@ -609,10 +609,10 @@ test("public entry pages use the centered product layout", () => {
   assert.match(loginPage, /OAuthSignin: "Could not start sign in\. Try again\."/);
   assert.match(loginPage, /OAuthCallback: "Could not finish sign in\. Try again\."/);
   assert.match(loginPage, /Callback: "Could not finish sign in\. Try again\."/);
-  assert.match(loginPage, /Use that sign-in method, or contact support\./);
+  assert.match(loginPage, /This email uses another sign-in method\. Use that sign-in method, or contact support\./);
   assert.match(loginPage, /AccessDenied: "Sign in was denied\."/);
   assert.match(loginPage, /Could not sign in\. Try again\./);
-  assert.doesNotMatch(loginPage, /Use that method|Use the linked method|sign-in flow|sign-in service|Sign-in could not finish|Sign-in was denied|Sign-in failed|merge accounts/);
+  assert.doesNotMatch(loginPage, /This email is linked to another sign-in method|Use that method|Use the linked method|sign-in flow|sign-in service|Sign-in could not finish|Sign-in was denied|Sign-in failed|merge accounts/);
   assert.match(loginPage, /FollowBrief/);
   assert.doesNotMatch(loginPage, /AI Digest workspace/);
   assert.doesNotMatch(loginPage, /Sign in to your/);
@@ -1343,7 +1343,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(dashboardPage, /href="\/builders\?tab=fetch"[\s\S]*Go to Sources/);
   assert.match(dashboardPage, /No AI Digest issues yet/);
   assert.doesNotMatch(dashboardPage, /No AI Digest yet/);
-  assert.match(dashboardPage, /This AI Digest collection has no issues yet\./);
+  assert.match(dashboardPage, /Wait for the owner to build one, or choose another collection\./);
   assert.doesNotMatch(dashboardPage, /No AI Digest archives yet|This AI Digest collection has no archives yet\./);
   assert.doesNotMatch(dashboardPage, /has not shared any archives yet/);
   assert.doesNotMatch(dashboardPage, /has not shared any AI Digest archives yet/);
@@ -1588,7 +1588,7 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.doesNotMatch(channelPreferenceToggle, /flex flex-col items-end|text-xs text-\[var\(--danger\)\]|fill-\[var\(--warm\)\]|transition-colors/);
   assert.match(builderDetailPage, /EmptyState/);
   assert.match(builderDetailPage, /title="No summarized posts yet"/);
-  assert.match(builderDetailPage, /Run Fetch sources to summarize this source's posts\./);
+  assert.match(builderDetailPage, /Run Fetch sources to summarize posts from this source\./);
   assert.doesNotMatch(builderDetailPage, /Run Fetch sources, then posts from this source will appear here\./);
   assert.doesNotMatch(builderDetailPage, /Fetch and summarize sources from Sources|from the Sources page/);
   assert.match(builderDetailPage, /actions=\{[\s\S]*href="\/builders\?tab=fetch"[\s\S]*Open Fetch sources/);
@@ -1851,7 +1851,7 @@ test("dashboard defers heavy recommendation timeline work to a client island", (
   assert.match(followingSection, /No summarized posts yet/);
   assert.match(followingSection, /No unread posts yet/);
   assert.match(followingSection, /Run Fetch sources to summarize followed posts/);
-  assert.match(followingSection, /Run Fetch sources to check for unread posts/);
+  assert.match(followingSection, /Run Fetch sources to check for new posts/);
   assert.doesNotMatch(followingSection, /Use Fetch sources to summarize posts from followed sources|Use Fetch sources to summarize followed posts|Fetch sources to check for new unread posts|Following shows the latest unread posts|Following updates when Fetch sources finds new unread posts|Following will update after new unread posts/);
   assert.match(followingSection, /title="Could not load Following posts"/);
   assert.match(followingSection, /Check your connection, then try again\./);
@@ -3711,7 +3711,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /beforeBody=\{fetchSyncSection\}/);
   assert.match(buildersPage, /actionsPlacement="start"/);
   assert.match(buildersPage, /title="Your source library"/);
-  assert.match(buildersPage, /emptyTitle="No sources in your source library yet"/);
+  assert.match(buildersPage, /emptyTitle="No sources yet"/);
   assert.doesNotMatch(buildersPage, /No personal sources yet|No sources in your library yet/);
   assert.match(feedItemsRoute, /Source is not in your source library\./);
   assert.doesNotMatch(feedItemsRoute, /Source is not in your library/);
@@ -3811,8 +3811,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.doesNotMatch(buildersPage, /badge="imported"/);
   assert.doesNotMatch(buildersPage, /No active sources from this imported library\./);
   assert.match(buildersPage, /title="No imported source libraries"/);
-  assert.match(buildersPage, /body="Import source libraries from Hub\."/);
-  assert.doesNotMatch(buildersPage, /No imported source libraries yet\./);
+  assert.match(buildersPage, /body="Source libraries from Hub appear here\."/);
+  assert.doesNotMatch(buildersPage, /No imported source libraries yet\.|Import source libraries from Hub\./);
   assert.match(buildersPage, /href="\/library-hub\?tab=source-library"/);
   assert.match(buildersPage, /Import from Hub/);
   assert.doesNotMatch(buildersPage, /Browse source libraries/);
@@ -3863,7 +3863,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /@\/components\/EmptyState/);
   assert.match(builderFeedItems, /<EmptyState[\s\S]*className="builder-post-empty"/);
   assert.match(builderFeedItems, /title="No summarized posts yet"/);
-  assert.match(builderFeedItems, /Run Fetch sources to summarize this source's posts\./);
+  assert.match(builderFeedItems, /Run Fetch sources to summarize posts from this source\./);
   assert.doesNotMatch(builderFeedItems, /Run Fetch sources\. Summarized posts from this source will appear here\./);
   assert.doesNotMatch(builderFeedItems, /Run Fetch sources, then posts from this source will appear here\./);
   assert.doesNotMatch(builderFeedItems, /Fetch and summarize sources with your Local Agent/);
@@ -3875,7 +3875,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderFeedItems, /timeZone:\s*"UTC"/);
   assert.match(buildersPage, /publishedAt:\s*{\s*not:\s*null\s*}/);
   assert.match(buildersPage, /Imported source libraries/);
-  assert.match(buildersPage, /Imported from Hub\./);
+  assert.match(buildersPage, /Shared libraries added from Hub\./);
   assert.doesNotMatch(buildersPage, /Source libraries imported from Hub\./);
   assert.doesNotMatch(buildersPage, /Source libraries you imported into Sources\./);
   assert.match(buildersPage, /importedLibrarySections/);

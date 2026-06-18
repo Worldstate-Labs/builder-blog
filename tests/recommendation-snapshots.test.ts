@@ -547,7 +547,7 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.match(followingSection, /No summarized posts yet/);
   assert.match(followingSection, /No unread posts yet/);
   assert.match(followingSection, /Run Fetch sources to summarize followed posts/);
-  assert.match(followingSection, /Run Fetch sources to check for unread posts/);
+  assert.match(followingSection, /Run Fetch sources to check for new posts/);
   assert.doesNotMatch(followingSection, /Following shows the latest unread posts|Following updates when Fetch sources finds new unread posts|Following will update after new unread posts/);
   assert.doesNotMatch(followingSection, /No fetched posts yet|Following can show their latest posts/);
   assert.match(followingSection, /title="Could not load Following posts"/);

@@ -86,7 +86,7 @@ function describeAuthError(code: string | undefined): string | null {
   if (!code) return null;
   const messages: Record<string, string> = {
     OAuthAccountNotLinked:
-      "This email is linked to another sign-in method. Use that sign-in method, or contact support.",
+      "This email uses another sign-in method. Use that sign-in method, or contact support.",
     OAuthSignin: "Could not start sign in. Try again.",
     OAuthCallback: "Could not finish sign in. Try again.",
     OAuthCreateAccount: "Could not create your account. Try again.",
