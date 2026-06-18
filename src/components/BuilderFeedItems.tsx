@@ -158,7 +158,7 @@ export function BuilderFeedItems({
           <EmptyState
             className="builder-post-empty"
             title="No summarized posts yet"
-            body="Run Fetch sources to summarize this source's posts."
+            body="Use Fetch sources to summarize this source's posts."
           />
         ) : null}
       </div>

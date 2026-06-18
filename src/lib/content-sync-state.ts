@@ -5,6 +5,18 @@ export type ContentSyncState = {
   version: string;
 };
 
+const contentSyncStateTtlMs = 5_000;
+const contentSyncStateCacheLimit = 500;
+
+type CachedContentSyncState = {
+  expiresAt: number;
+  lastAccessedAt: number;
+  state: ContentSyncState;
+};
+
+const contentSyncStateCache = new Map<string, CachedContentSyncState>();
+const contentSyncStateInflight = new Map<string, Promise<ContentSyncState>>();
+
 function iso(value: Date | null | undefined) {
   return value?.toISOString() ?? "";
 }
@@ -21,6 +33,35 @@ function count(value: unknown) {
  * of making the user reload the browser.
  */
 export async function contentSyncState(userId: string): Promise<ContentSyncState> {
+  const now = Date.now();
+  const cached = contentSyncStateCache.get(userId);
+  if (cached && cached.expiresAt > now) {
+    cached.lastAccessedAt = now;
+    return cached.state;
+  }
+
+  const inflight = contentSyncStateInflight.get(userId);
+  if (inflight) return inflight;
+
+  const nextState = readContentSyncState(userId)
+    .then((state) => {
+      const cachedAt = Date.now();
+      contentSyncStateCache.set(userId, {
+        expiresAt: cachedAt + contentSyncStateTtlMs,
+        lastAccessedAt: cachedAt,
+        state,
+      });
+      pruneContentSyncStateCache(cachedAt);
+      return state;
+    })
+    .finally(() => {
+      contentSyncStateInflight.delete(userId);
+    });
+  contentSyncStateInflight.set(userId, nextState);
+  return nextState;
+}
+
+async function readContentSyncState(userId: string): Promise<ContentSyncState> {
   const poolEntries = await prisma.builderPoolEntry.findMany({
     where: { userId, removedAt: null },
     select: { builderId: true },
@@ -142,4 +183,23 @@ export async function contentSyncState(userId: string): Promise<ContentSyncState
       iso(digestPipelineImportState._max.createdAt),
     ].join("|"),
   };
+}
+
+function pruneContentSyncStateCache(now: number) {
+  if (contentSyncStateCache.size <= contentSyncStateCacheLimit) return;
+
+  for (const [userId, cached] of contentSyncStateCache) {
+    if (cached.expiresAt <= now) contentSyncStateCache.delete(userId);
+  }
+  if (contentSyncStateCache.size <= contentSyncStateCacheLimit) return;
+
+  let oldestUserId: string | null = null;
+  let oldestAccessedAt = Number.POSITIVE_INFINITY;
+  for (const [userId, cached] of contentSyncStateCache) {
+    if (cached.lastAccessedAt < oldestAccessedAt) {
+      oldestUserId = userId;
+      oldestAccessedAt = cached.lastAccessedAt;
+    }
+  }
+  if (oldestUserId) contentSyncStateCache.delete(oldestUserId);
 }

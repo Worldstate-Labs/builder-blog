@@ -1118,7 +1118,7 @@ function CronConfigDialog({
                 </select>
               </div>
               <p className="cron-field-hint">
-                Runs source tasks in parallel after discovery. Use 1 for safest setup.
+                Runs source tasks in parallel after discovery. Use 1 for safest runs.
               </p>
             </>
           ) : null}
@@ -1151,7 +1151,7 @@ function CronConfigDialog({
                 onChange={setPickedFetchDays}
               />
               <p className="cron-field-hint">
-                Looks back this many days for posts. Default: 30 days. Range: 1-90 days.
+                Fetches posts this many days back. Default: 30 days. Range: 1-90 days.
               </p>
             </>
           )}

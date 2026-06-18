@@ -603,8 +603,8 @@ function sourceLibraryListCopy(filter: FilterKey) {
       };
     case "imported":
       return {
-        description: "Source libraries from Hub that are already available in your Sources.",
-        emptyBody: "Import shared source libraries to see them in Sources.",
+        description: "Source libraries already imported from Hub.",
+        emptyBody: "Import source libraries to see them in Sources.",
       };
     case "shared":
       return {

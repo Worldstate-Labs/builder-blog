@@ -545,7 +545,7 @@ test("following recommendation feed uses subscribed builders only", () => {
   assert.match(followingSection, /Add sources in Sources\. They feed AI Digest and Following\./);
   assert.match(followingSection, /No summarized posts yet/);
   assert.match(followingSection, /No unread posts yet/);
-  assert.match(followingSection, /Run Fetch sources to summarize posts from followed sources/);
+  assert.match(followingSection, /Use Fetch sources to summarize followed posts/);
   assert.match(followingSection, /Following shows the latest unread posts/);
   assert.match(followingSection, /Following updates when Fetch sources finds new unread posts/);
   assert.doesNotMatch(followingSection, /Following will update after new unread posts/);

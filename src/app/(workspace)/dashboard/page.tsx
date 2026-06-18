@@ -349,7 +349,7 @@ function DigestEmptyState({
       }
       className="ai-digest-empty is-actionable"
       title="No summarized posts yet"
-      body="Run Fetch sources to summarize posts before building AI Digest."
+      body="Use Fetch sources to summarize posts before building AI Digest."
     />
   );
 }

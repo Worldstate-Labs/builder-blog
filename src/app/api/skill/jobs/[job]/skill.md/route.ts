@@ -50,7 +50,7 @@ async function buildSourceCredentialPrep(userId: string): Promise<string> {
     'let ok=Boolean((process.env[k]||"").trim());' +
     'if(!ok){let d={};try{d=JSON.parse(fs.readFileSync(p,"utf8"))}catch{}' +
     'ok=Boolean(d[k]&&String(d[k]).trim())}' +
-    'console.log(k+": "+(ok?"present — already configured, skip":"missing — ask the user"))';
+    'console.log(k+": "+(ok?"present, already configured. Skip.":"missing, ask the user"))';
   const writeJs =
     'const fs=require("fs");const[p,k,v]=process.argv.slice(1);let d={};' +
     'try{d=JSON.parse(fs.readFileSync(p,"utf8"))}catch{}d[k]=v;fs.writeFileSync(p,JSON.stringify(d,null,2))';
@@ -75,7 +75,7 @@ async function buildSourceCredentialPrep(userId: string): Promise<string> {
         "  ```",
         "",
         "  Asking is optional. If the user declines or has no token yet, do NOT",
-        `  block — continue the setup. The ${spec.label} source(s) will simply be`,
+        `  block. Continue the setup. The ${spec.label} source(s) will simply be`,
         '  skipped (they surface as "Action needed") until a token is added later.',
       ].join("\n"),
     )
@@ -85,7 +85,7 @@ async function buildSourceCredentialPrep(userId: string): Promise<string> {
     "**Prepare source API credentials (before the initial run).** This account",
     "has sources that fetch through an authenticated API, so the bare cron",
     "environment needs their tokens in the local secrets file. For each one below,",
-    "check first and only ask the user when the token is actually missing — never",
+    "check first and only ask the user when the token is actually missing. Never",
     "re-ask for an already-configured token. Providing a token is optional and",
     "never blocks setup: a source with no token is just skipped, not an error.",
     "",

@@ -533,7 +533,7 @@ export function OrderedChoiceField({
   value,
   options,
   onChange,
-  addLabel = "Add…",
+  addLabel = "Add",
 }: {
   label: string;
   description?: string;
