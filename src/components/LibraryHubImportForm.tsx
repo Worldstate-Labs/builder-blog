@@ -259,7 +259,7 @@ export function LibraryHubImportForm({ libraries }: LibraryHubImportFormProps) {
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Source libraries</h2>
           <p className="hub-section-copy">
-            Import shared source libraries into Sources. Imported sources feed AI Digest and Following.
+            Import shared source libraries into Sources for AI Digest and Following.
           </p>
         </div>
       </div>
@@ -613,7 +613,7 @@ function sourceLibraryListCopy(filter: FilterKey) {
     case "all":
     default:
       return {
-        description: "Import shared source libraries into Sources. Imported sources feed AI Digest and Following.",
+        description: "Import shared source libraries into Sources for AI Digest and Following.",
         emptyBody: "Try another source library filter.",
       };
   }

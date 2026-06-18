@@ -277,7 +277,7 @@ function LibraryHubImportFallback() {
         <div className="library-hub-toolbar-copy">
           <h2 className="fb-section-heading">Source libraries</h2>
           <p className="hub-section-copy">
-            Import shared source libraries into Sources. Imported sources feed AI Digest and Following.
+            Import shared source libraries into Sources for AI Digest and Following.
           </p>
           <div className="library-hub-skeleton-line is-wide" />
         </div>

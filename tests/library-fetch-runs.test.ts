@@ -452,12 +452,18 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.doesNotMatch(panel, /className="sync-panel-task-builder"/);
   assert.match(panel, /className="sync-panel-task-body"/);
   assert.match(panel, /className="sync-panel-task-banner"/);
+  assert.match(panel, /Fetch is running\. Stages update as the Local Agent reports work\./);
+  assert.match(panel, /Completed\. Planned posts were read, summarized, and synced or accounted for\./);
+  assert.match(panel, /Planned posts were recorded, but some still lack a final sync outcome\./);
+  assert.doesNotMatch(panel, /Fetch is still running|Stage progress below|explicitly accounted for|Run recorded planned posts, but not every post has a final sync outcome yet/);
   assert.match(panel, /className="sync-panel-lifecycle"/);
   assert.match(panel, /className=\{`sync-panel-lifecycle-step is-\$\{step\.tone\}`\}/);
   assert.match(panel, /className="sync-panel-task-fact-row"/);
   assert.match(panel, /className="sync-panel-task-technical"/);
   assert.match(panel, /className="mono sync-panel-task-technical-code"/);
   assert.match(panel, /className="sync-panel-detail-note"/);
+  assert.match(panel, /Prompts used to read and summarize each source type in this update\./);
+  assert.doesNotMatch(panel, /The instructions used to read and summarize each source type/);
   assert.match(panel, /className="sync-panel-detail-card-list"/);
   assert.match(panel, /className="sync-panel-detail-card"/);
   assert.match(panel, /className="sync-panel-detail-card-summary"/);

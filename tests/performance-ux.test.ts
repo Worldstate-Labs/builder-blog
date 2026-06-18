@@ -2193,6 +2193,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className="sync-panel-task-technical"/);
   assert.match(fetchLogPanel, /className="mono sync-panel-task-technical-code"/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-note"/);
+  assert.match(fetchLogPanel, /Prompts used to read and summarize each source type in this update\./);
+  assert.doesNotMatch(fetchLogPanel, /The instructions used to read and summarize each source type/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-card-list"/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-card"/);
   assert.match(fetchLogPanel, /className="sync-panel-detail-card-summary"/);
@@ -3298,7 +3300,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(libraryHubPage, /function LibraryHubImportFallback/);
   assert.match(libraryHubPage, /label: "Source libraries"/);
   assert.match(libraryHubPage, /label:\s*"Source libraries"[\s\S]*href:\s*"\/library-hub\?tab=source-library"/);
-  assert.match(libraryHubPage, /Import shared source libraries into Sources\. Imported sources feed AI Digest and Following\./);
+  assert.match(libraryHubPage, /Import shared source libraries into Sources for AI Digest and Following\./);
   assert.doesNotMatch(libraryHubPage, /Import shared source libraries into the Sources tab|Imported sources feed AI Digest issues and Following posts\./);
   assert.doesNotMatch(libraryHubPage, /Import shared libraries into Sources, Following, and AI Digest\./);
   assert.doesNotMatch(libraryHubPage, /Source libraries shared to Hub\./);
@@ -3337,7 +3339,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(libraryHubPage, /<section className="fb-page-head"/);
   assert.match(libraryHubPage, /<span className="sr-only">Loading source libraries<\/span>/);
   assert.match(libraryHubPage, /<span className="sr-only">Loading shared AI Digest collections<\/span>/);
-  assert.match(libraryHubPage, /Import shared source libraries into Sources\. Imported sources feed AI Digest and Following\./);
+  assert.match(libraryHubPage, /Import shared source libraries into Sources for AI Digest and Following\./);
   assert.doesNotMatch(libraryHubPage, /Import shared libraries into Sources, Following, and AI Digest\./);
   assert.match(libraryHubPage, /<h2 className="fb-section-heading">Shared AI Digest collections<\/h2>/);
   assert.doesNotMatch(libraryHubPage, /<h2 className="fb-section-heading">AI Digest archives<\/h2>/);
@@ -3376,7 +3378,7 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="library-hub-toolbar"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /className="library-hub-toolbar-copy"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /<h2 className="fb-section-heading">Source libraries<\/h2>/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Import shared source libraries into Sources\. Imported sources feed AI Digest and Following\./);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /Import shared source libraries into Sources for AI Digest and Following\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Import shared source libraries into the Sources tab|Imported sources feed AI Digest issues and Following posts\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Import shared libraries into Sources, Following, and AI Digest\./);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Source libraries shared to Hub\./);
@@ -4135,8 +4137,8 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /className="post-detail-raw-head"/);
   assert.match(postCard, /className="post-detail-raw-copy"/);
   assert.match(postCard, /className="post-detail-section-desc"/);
-  assert.match(postCard, /Full content captured by Fetch sources/);
-  assert.match(postCard, /It stays collapsed until[\s\S]*you need the original text\./);
+  assert.match(postCard, /Full content from Fetch sources, collapsed until needed\./);
+  assert.doesNotMatch(postCard, /It stays collapsed until[\s\S]*you need the original text\./);
   assert.match(postCard, /className="post-detail-raw-toggle"/);
   assert.match(postCard, /\{rawExpanded \? "Hide original content" : "Show original content"\}/);
   assert.match(postCard, /\{rawExpanded \? \(\s*<div[\s\S]*aria-label="Original content"[\s\S]*className="post-detail-body"[\s\S]*id=\{rawRegionId\}[\s\S]*role="region"/);

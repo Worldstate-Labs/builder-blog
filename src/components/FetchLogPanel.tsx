@@ -1578,7 +1578,7 @@ function fetchRunVerdict({
   if (inflight) {
     return {
       tone: "warn",
-      text: "Fetch is still running. Stage progress below updates as the Local Agent reports work.",
+      text: "Fetch is running. Stages update as the Local Agent reports work.",
     };
   }
   if (stats.failed > 0 || ["Failed", "Stalled", "Timed out"].includes(displayStatus.label)) {
@@ -1596,13 +1596,13 @@ function fetchRunVerdict({
   if (stats.planned > 0 && accounted >= stats.planned) {
     return {
       tone: "ok",
-      text: "Completed. Planned posts were read, summarized, and synced or explicitly accounted for.",
+      text: "Completed. Planned posts were read, summarized, and synced or accounted for.",
     };
   }
   if (stats.planned > 0) {
     return {
       tone: "warn",
-      text: "Run recorded planned posts, but not every post has a final sync outcome yet.",
+      text: "Planned posts were recorded, but some still lack a final sync outcome.",
     };
   }
   return {
@@ -2210,8 +2210,7 @@ function DetailsBody({
             Helper instructions
           </h3>
           <p className="sync-panel-detail-note">
-            The instructions used to read and summarize each source type on
-            this update.
+            Prompts used to read and summarize each source type in this update.
           </p>
           <div className="sync-panel-detail-card-list">
             {promptEntries.map(([sourceType, bundle]) => (
