@@ -6081,6 +6081,14 @@ details:not([open]) > :not(summary) {
   margin-top: 0.75rem;
 }
 
+.sync-panel-slot-rows.is-scrollable {
+  max-height: calc(6 * 3.25rem + 5 * 0.25rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.25rem;
+  scrollbar-gutter: stable;
+}
+
 .sync-panel-slot-row {
   align-items: center;
   border-radius: 7px;

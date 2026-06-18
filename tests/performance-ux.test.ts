@@ -1916,6 +1916,11 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(fetchLogPanel, /className=\{`sync-panel-run-card-verdict is-\$\{verdict\.tone\}`\}/);
   assert.doesNotMatch(fetchLogPanel, /className="sync-panel-run-card-funnel"/);
   assert.match(fetchLogPanel, /className="sync-panel-timeline-axis"/);
+  assert.match(fetchLogPanel, /const LOG_WINDOW_SIZE = 6/);
+  assert.match(fetchLogPanel, /function visibleLogWindowStart/);
+  assert.match(fetchLogPanel, /visibleGraphEntries\.map/);
+  assert.match(fetchLogPanel, /className="sync-panel-slot-rows is-scrollable" onScroll=\{handleLogScroll\}/);
+  assert.match(fetchLogPanel, /data-sync-log-row="true"/);
   assert.match(fetchLogPanel, />Oldest</);
   assert.match(fetchLogPanel, />Newest</);
   assert.doesNotMatch(fetchLogPanel, /Green OK|amber waiting|red issue/);
@@ -1944,6 +1949,12 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.doesNotMatch(digestLogPanel, /className="sync-panel-see-more-label"/);
   assert.match(digestLogPanel, /DigestLogDialog/);
   assert.match(digestLogPanel, /className="sync-panel-timeline-axis"/);
+  assert.match(digestLogPanel, /const LOG_WINDOW_SIZE = 6/);
+  assert.match(digestLogPanel, /const DIGEST_TIMELINE_LIMIT = 12/);
+  assert.match(digestLogPanel, /function visibleLogWindowStart/);
+  assert.match(digestLogPanel, /visibleGraphEntries\.map/);
+  assert.match(digestLogPanel, /className="sync-panel-slot-rows is-scrollable" onScroll=\{handleLogScroll\}/);
+  assert.match(digestLogPanel, /data-sync-log-row="true"/);
   assert.match(digestLogPanel, />Oldest</);
   assert.match(digestLogPanel, />Newest</);
   assert.match(digestLogPanel, /className=\{`sync-panel-slot-bar \$\{heightClass\}`\}/);
@@ -2196,6 +2207,8 @@ test("workspace auto-refresh covers server-side data changes without manual relo
   assert.match(globals, /@media \(max-width: 640px\)[\s\S]*\.sync-panel-slot-row-secondary\s*{[\s\S]*flex-wrap:\s*wrap/);
   assert.match(globals, /\.sync-panel-slot-row-status,[\s\S]*\.sync-panel-slot-row-kind\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(globals, /\.sync-panel-slot-row:target\s*{[\s\S]*background:\s*var\(--accent-soft\)/);
+  assert.match(globals, /\.sync-panel-slot-rows\.is-scrollable\s*{[\s\S]*max-height:\s*calc\(6 \* 3\.25rem \+ 5 \* 0\.25rem\)/);
+  assert.match(globals, /\.sync-panel-slot-rows\.is-scrollable\s*{[\s\S]*overflow-y:\s*auto/);
   assert.match(globals, /\.sync-panel-stopped-time\s*{[\s\S]*font-size:\s*0\.78125rem/);
   assert.match(globals, /\.sync-panel-live-chip\s*{[\s\S]*gap:\s*0\.375rem/);
   assert.match(globals, /\.sync-panel-see-more-label\s*{[\s\S]*gap:\s*0\.5rem/);

@@ -10,6 +10,7 @@ import {
   type CSSProperties,
   type ReactNode,
   type SetStateAction,
+  type UIEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
@@ -93,6 +94,8 @@ function formatDay(iso: string): string {
 }
 
 const VISIBLE_SOURCE_LIMIT = 4;
+const DIGEST_TIMELINE_LIMIT = 12;
+const LOG_WINDOW_SIZE = 6;
 
 type DigestCronSlot = CronSlot<DigestRunListItem>;
 
@@ -257,7 +260,18 @@ function buildDigestTimeline({
 
   return entries
     .sort((a, b) => Date.parse(a.time) - Date.parse(b.time))
-    .slice(-12);
+    .slice(-DIGEST_TIMELINE_LIMIT);
+}
+
+function clampLogWindowStart(start: number, total: number): number {
+  return Math.min(Math.max(0, start), Math.max(0, total - LOG_WINDOW_SIZE));
+}
+
+function visibleLogWindowStart(container: HTMLDivElement, total: number): number {
+  const rows = Array.from(container.querySelectorAll<HTMLElement>("[data-sync-log-row='true']"));
+  const visibleTop = container.getBoundingClientRect().top + 1;
+  const firstVisibleIndex = rows.findIndex((row) => row.getBoundingClientRect().bottom > visibleTop);
+  return clampLogWindowStart(firstVisibleIndex === -1 ? rows.length - 1 : firstVisibleIndex, total);
 }
 
 export function DigestLogPanel({
@@ -581,6 +595,23 @@ function DigestStatusPanel({
   slots: DigestCronSlot[];
 }) {
   const hydrated = useHydrated();
+  const entriesKey = useMemo(() => entries.map((entry) => entry.key).join("\n"), [entries]);
+  const [logWindow, setLogWindow] = useState({ key: "", start: 0 });
+  const rowEntries = useMemo(() => entries.slice().reverse(), [entries]);
+  const logWindowStart = logWindow.key === entriesKey
+    ? clampLogWindowStart(logWindow.start, rowEntries.length)
+    : 0;
+  const visibleRowEntries = rowEntries.slice(logWindowStart, logWindowStart + LOG_WINDOW_SIZE);
+  const visibleGraphEntries = visibleRowEntries.slice().reverse();
+  const visibleCount = visibleGraphEntries.length;
+  const handleLogScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
+    const nextStart = visibleLogWindowStart(event.currentTarget, rowEntries.length);
+    setLogWindow((current) =>
+      current.key === entriesKey && current.start === nextStart
+        ? current
+        : { key: entriesKey, start: nextStart },
+    );
+  }, [entriesKey, rowEntries.length]);
   if (!cronJob && entries.length === 0) {
     return (
       <EmptyState
@@ -722,7 +753,7 @@ function DigestStatusPanel({
           <div className="sync-panel-column">
             <div className="sync-panel-timeline-head">
               <span className="sync-panel-timeline-title">
-                Last {entries.length} AI Digest {entries.length === 1 ? "build" : "builds"}
+                Last {visibleCount} AI Digest {visibleCount === 1 ? "build" : "builds"}
               </span>
             </div>
             <div className="sync-panel-timeline-axis" aria-hidden="true">
@@ -730,7 +761,7 @@ function DigestStatusPanel({
               <span>Newest</span>
             </div>
             <div className="sync-panel-status-graph" aria-label="AI Digest build status graph, oldest to newest">
-              {entries.map((entry) => (
+              {visibleGraphEntries.map((entry) => (
                 <DigestTimelineBar
                   key={entry.key}
                   onSelect={() => {
@@ -745,8 +776,8 @@ function DigestStatusPanel({
                 />
               ))}
             </div>
-            <div className="sync-panel-slot-rows">
-              {entries.slice().reverse().map((entry) => (
+            <div className="sync-panel-slot-rows is-scrollable" onScroll={handleLogScroll}>
+              {rowEntries.map((entry) => (
                 <DigestTimelineRow
                   key={entry.key}
                   entry={entry}
@@ -818,6 +849,7 @@ function DigestTimelineRow({
   return (
     <div
       className="sync-panel-slot-row"
+      data-sync-log-row="true"
       id={id}
     >
       <div className="sync-panel-slot-row-main">

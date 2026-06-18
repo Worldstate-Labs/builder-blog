@@ -9,6 +9,7 @@ import {
   useState,
   useTransition,
   type CSSProperties,
+  type UIEvent,
   type ReactNode,
 } from "react";
 import { ChevronDown, ChevronRight, ChevronUp, X } from "lucide-react";
@@ -463,6 +464,7 @@ function isRunInflight(
 }
 
 const CRON_SLOT_LIMIT = 12;
+const LOG_WINDOW_SIZE = 6;
 
 type CronSlotStatus = "ok" | "failed" | "missed" | "waiting" | "running" | "stalled";
 
@@ -757,6 +759,17 @@ function buildFetchTimeline({
   return entries
     .sort((a, b) => Date.parse(a.time) - Date.parse(b.time))
     .slice(-CRON_SLOT_LIMIT);
+}
+
+function clampLogWindowStart(start: number, total: number): number {
+  return Math.min(Math.max(0, start), Math.max(0, total - LOG_WINDOW_SIZE));
+}
+
+function visibleLogWindowStart(container: HTMLDivElement, total: number): number {
+  const rows = Array.from(container.querySelectorAll<HTMLElement>("[data-sync-log-row='true']"));
+  const visibleTop = container.getBoundingClientRect().top + 1;
+  const firstVisibleIndex = rows.findIndex((row) => row.getBoundingClientRect().bottom > visibleTop);
+  return clampLogWindowStart(firstVisibleIndex === -1 ? rows.length - 1 : firstVisibleIndex, total);
 }
 
 export function FetchLogPanel({
@@ -1197,6 +1210,23 @@ function FetchStatusPanel({
   slots: CronSlot[];
 }) {
   const hydrated = useHydrated();
+  const entriesKey = useMemo(() => entries.map((entry) => entry.key).join("\n"), [entries]);
+  const [logWindow, setLogWindow] = useState({ key: "", start: 0 });
+  const rowEntries = useMemo(() => entries.slice().reverse(), [entries]);
+  const logWindowStart = logWindow.key === entriesKey
+    ? clampLogWindowStart(logWindow.start, rowEntries.length)
+    : 0;
+  const visibleRowEntries = rowEntries.slice(logWindowStart, logWindowStart + LOG_WINDOW_SIZE);
+  const visibleGraphEntries = visibleRowEntries.slice().reverse();
+  const visibleCount = visibleGraphEntries.length;
+  const handleLogScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
+    const nextStart = visibleLogWindowStart(event.currentTarget, rowEntries.length);
+    setLogWindow((current) =>
+      current.key === entriesKey && current.start === nextStart
+        ? current
+        : { key: entriesKey, start: nextStart },
+    );
+  }, [entriesKey, rowEntries.length]);
   if (!cronJob && entries.length === 0) {
     return (
       <EmptyState
@@ -1338,7 +1368,7 @@ function FetchStatusPanel({
           <div className="sync-panel-column">
             <div className="sync-panel-timeline-head">
               <span className="sync-panel-timeline-title">
-                Last {entries.length} Fetch {entries.length === 1 ? "run" : "runs"}
+                Last {visibleCount} Fetch {visibleCount === 1 ? "run" : "runs"}
               </span>
             </div>
             <div className="sync-panel-timeline-axis" aria-hidden="true">
@@ -1346,7 +1376,7 @@ function FetchStatusPanel({
               <span>Newest</span>
             </div>
             <div className="sync-panel-status-graph" aria-label="Fetch schedule status graph, oldest to newest">
-              {entries.map((entry) => (
+              {visibleGraphEntries.map((entry) => (
                 <FetchTimelineBar
                   entry={entry}
                   key={entry.key}
@@ -1365,8 +1395,8 @@ function FetchStatusPanel({
                 />
               ))}
             </div>
-            <div className="sync-panel-slot-rows">
-              {entries.slice().reverse().map((entry) => (
+            <div className="sync-panel-slot-rows is-scrollable" onScroll={handleLogScroll}>
+              {rowEntries.map((entry) => (
                 <FetchTimelineRow
                   entry={entry}
                   hydrated={hydrated}
@@ -1462,6 +1492,7 @@ function FetchTimelineRow({
   return (
     <div
       className="sync-panel-slot-row"
+      data-sync-log-row="true"
       id={id}
     >
       <div className="sync-panel-slot-row-main">
