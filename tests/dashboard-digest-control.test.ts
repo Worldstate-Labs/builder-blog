@@ -9,7 +9,7 @@ function source(path: string) {
   return readFileSync(join(root, path), "utf8");
 }
 
-test("home digest keeps pipeline and archive selection in a dedicated control bar", () => {
+test("home digest keeps collection and issue selection in a dedicated control bar", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const digestArchivePicker = source("src/components/DigestArchivePicker.tsx");
   const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
@@ -28,7 +28,8 @@ test("home digest keeps pipeline and archive selection in a dedicated control ba
   assert.match(dashboardPage, />\s*AI Digest issue\s*<\/span>/);
   assert.doesNotMatch(dashboardPage, /aria-label="AI Digest selection"/);
   assert.doesNotMatch(dashboardPage, /Your digest/);
-  assert.match(dashboardPage, /No AI Digest archives/);
+  assert.match(dashboardPage, /No AI Digest issues/);
+  assert.doesNotMatch(dashboardPage, />\s*No AI Digest archives\s*<\/span>/);
   assert.doesNotMatch(dashboardPage, /No archived AI Digests/);
   assert.match(globals, /\.digest-control-bar\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(digestPipelineSelector, /className="digest-pipeline-selector"/);
@@ -69,7 +70,7 @@ test("home digest keeps pipeline and archive selection in a dedicated control ba
   assert.doesNotMatch(dashboardPage, /headerAction=\{/);
 });
 
-test("home digest pipeline selector resets archive selection when changing pipelines", () => {
+test("home digest pipeline selector resets issue selection when changing collections", () => {
   const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
 
   assert.match(digestPipelineSelector, /const href = pipeline\.isOwnPipeline/);

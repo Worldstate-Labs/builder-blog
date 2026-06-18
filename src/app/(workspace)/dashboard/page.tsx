@@ -188,7 +188,7 @@ async function AiDigestFeedSlot({
     digestSummaries,
     digestSourceLinks,
   ] = await Promise.all([
-      // The digest picker lists the latest AI Digest plus AI Digest archives in one
+      // The digest picker lists the latest AI Digest plus previous issues in one
       // control. Keep this as summaries only; the body is fetched on demand.
       prisma.digest.findMany({
         where: { userId: digestOwnerUserId, itemCount: { gt: 0 } },
@@ -272,7 +272,7 @@ function AiDigestFeed({
           </section>
 
           {isOwnPipeline ? null : (
-            <p className="sr-only">Imported AI Digest view: read-only results.</p>
+            <p className="sr-only">Imported AI Digest collection, read-only.</p>
           )}
         </div>
       </section>
@@ -291,8 +291,8 @@ function DigestEmptyState({
     return (
       <FeedEmptyState
         className="ai-digest-empty"
-        title="No AI Digest archives yet"
-        body="This AI Digest collection has no archives yet."
+        title="No AI Digest issues yet"
+        body="This AI Digest collection has no issues yet."
       />
     );
   }
@@ -399,7 +399,7 @@ function DigestControlBar({
           </div>
         ) : (
           <span className="digest-control-empty">
-            No AI Digest archives
+            No AI Digest issues
           </span>
         )}
       </div>

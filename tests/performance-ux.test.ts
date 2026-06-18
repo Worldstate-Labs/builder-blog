@@ -1299,12 +1299,14 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   assert.match(dashboardPage, /href="\/builders\?tab=fetch"[\s\S]*Choose sources/);
   assert.doesNotMatch(dashboardPage, /href="\/builders\?tab=fetch"[\s\S]*Go to Sources/);
   assert.match(dashboardPage, /No AI Digest yet/);
-  assert.match(dashboardPage, /No AI Digest archives yet/);
-  assert.match(dashboardPage, /This AI Digest collection has no archives yet\./);
+  assert.match(dashboardPage, /No AI Digest issues yet/);
+  assert.match(dashboardPage, /This AI Digest collection has no issues yet\./);
+  assert.doesNotMatch(dashboardPage, /No AI Digest archives yet|This AI Digest collection has no archives yet\./);
   assert.doesNotMatch(dashboardPage, /has not shared any archives yet/);
   assert.doesNotMatch(dashboardPage, /has not shared any AI Digest archives yet/);
   assert.doesNotMatch(dashboardPage, /The owner has not shared any AI Digest archives yet/);
-  assert.match(dashboardPage, /No AI Digest archives/);
+  assert.match(dashboardPage, /No AI Digest issues/);
+  assert.doesNotMatch(dashboardPage, />\s*No AI Digest archives\s*<\/span>/);
   assert.doesNotMatch(dashboardPage, /saved briefs/);
   assert.match(dashboardPage, /Add sources in the Sources tab\. They feed AI Digest and Following\./);
   assert.doesNotMatch(dashboardPage, /Add sources in Sources\. They feed AI Digest and Following\./);
@@ -2437,7 +2439,7 @@ test("skill context caps personal fetched items to keep payloads bounded", () =>
   assert.match(contextRoute, /if \(isDigest && !dryRun\)/);
 });
 
-test("dashboard digest tab owns the AI Digest archive selector", () => {
+test("dashboard digest tab owns the AI Digest issue selector", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
   const digestArchivePicker = source("src/components/DigestArchivePicker.tsx");
   const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
@@ -2572,8 +2574,8 @@ test("dashboard digest tab owns the AI Digest archive selector", () => {
   assert.match(dashboardPage, /displayDigestPipelineTitle\(ownPipelineShare\?\.title \?\? "AI Digest"\)/);
   assert.match(dashboardPage, /function displayDigestTitle\(title: string\)[\s\S]*return displayDigestPipelineTitle\(title\)/);
   assert.match(dashboardPage, /ownerLabel: "Your AI Digest"/);
-  assert.match(dashboardPage, /Imported AI Digest view/);
-  assert.doesNotMatch(dashboardPage, /ownPipelineShare\?\.title \?\? "Digest"|Imported digest view|Own digest/);
+  assert.match(dashboardPage, /Imported AI Digest collection, read-only\./);
+  assert.doesNotMatch(dashboardPage, /ownPipelineShare\?\.title \?\? "Digest"|Imported digest view|Imported AI Digest view|Own digest/);
   assert.match(buildersPage, /@\/components\/OwnDigestPipelineUpdatesCard/);
   assert.match(buildersPage, /@\/components\/DigestPipelineImportForm/);
   const digestUpdatesCard = source("src/components/OwnDigestPipelineUpdatesCard.tsx");
