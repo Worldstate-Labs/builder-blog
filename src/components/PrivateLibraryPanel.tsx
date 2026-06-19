@@ -15,8 +15,8 @@ type SourceOption = {
 };
 
 export function PrivateLibraryPanel({
-  beforeBody,
   className,
+  description,
   headingId,
   hideHeader = false,
   title,
@@ -24,8 +24,8 @@ export function PrivateLibraryPanel({
   visibilityToggle,
   children,
 }: {
-  beforeBody?: ReactNode;
   className?: string;
+  description?: string;
   headingId?: string;
   hideHeader?: boolean;
   title: string;
@@ -65,6 +65,9 @@ export function PrivateLibraryPanel({
             <h2 id={headingId} className="fb-section-heading">
               {title}
             </h2>
+            {description ? (
+              <p className="library-section-copy">{description}</p>
+            ) : null}
           </div>
           {visibilityToggle ? (
             <div className="library-section-meta">
@@ -74,9 +77,6 @@ export function PrivateLibraryPanel({
         </div>
       ) : null}
       <div className="library-section-body">
-        {beforeBody ? (
-          <div className="source-library-control-area">{beforeBody}</div>
-        ) : null}
         <SourceLibraryItemsArea
           controls={
             <button
@@ -88,7 +88,7 @@ export function PrivateLibraryPanel({
               type="button"
             >
               {addOpen ? <X aria-hidden="true" /> : <Plus aria-hidden="true" />}
-              <span>{addOpen ? "Close" : "Add source"}</span>
+              <span>{addOpen ? "Close" : "Add a source"}</span>
             </button>
           }
           addPanel={

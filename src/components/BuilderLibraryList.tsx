@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { BuilderEditDialog } from "@/components/BuilderEditDialog";
@@ -288,33 +288,29 @@ function BuilderCard({
       className="builder-library-card"
     >
       <SourceAvatar className="builder-library-avatar" imageSize={40} source={builder} />
-      <div className="builder-library-card-body">
-        <BuilderInfo builder={builder} />
-        {removeError ? (
-          <div className="builder-library-error" role="status">
-            {removeError}
-          </div>
-        ) : null}
-        <div className="builder-library-card-controls">
+      <div className="builder-library-card-main">
+        <BuilderInfo builder={builder}>
           {builder.feedItemCount > 0 ? (
             <BuilderFeedItems
-              actions={actions}
               builder={builder}
               builderId={builder.id}
               latestPostCreatedAt={builder.latestPostCreatedAt}
               totalCount={builder.feedItemCount}
             />
           ) : (
-            <div className="builder-posts builder-posts--empty">
-              <div className="builder-posts-toolbar">
-                <div className="builder-library-posts-placeholder">
-                  No summarized posts yet
-                </div>
-                {actions}
-              </div>
-            </div>
+            <span className="builder-library-posts-placeholder">
+              No summarized posts yet
+            </span>
           )}
-        </div>
+        </BuilderInfo>
+        {removeError ? (
+          <div className="builder-library-error" role="status">
+            {removeError}
+          </div>
+        ) : null}
+      </div>
+      <div className="builder-library-card-actions">
+        {actions}
       </div>
     </article>
   );
@@ -371,7 +367,13 @@ function sourceTypeSortRank(sourceType: string) {
   return index === -1 ? order.length : index;
 }
 
-function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
+function BuilderInfo({
+  builder,
+  children,
+}: {
+  builder: BuilderLibraryListItem;
+  children?: ReactNode;
+}) {
   const sourceHref = builder.sourceUrl || builder.fetchUrl;
   const sourceLabel = sourceHref ? sourceOriginLabel(sourceHref) : null;
   return (
@@ -388,7 +390,7 @@ function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
           <div className="builder-library-name">{builder.name}</div>
         )}
       </div>
-      {sourceLabel ? (
+      {sourceLabel || children ? (
         <div className="builder-library-meta">
           {sourceHref && sourceLabel ? (
             <a
@@ -401,6 +403,7 @@ function BuilderInfo({ builder }: { builder: BuilderLibraryListItem }) {
               {sourceLabel}
             </a>
           ) : null}
+          {children}
         </div>
       ) : null}
     </div>
