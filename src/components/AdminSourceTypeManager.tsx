@@ -10,6 +10,7 @@ import {
   type SaveStatusState,
 } from "@/components/settings/SettingsFields";
 import { MarkdownEditor } from "@/components/settings/MarkdownEditor";
+import { SourceBadge } from "@/components/SourceBadge";
 
 export type AdminSourceTypeConfig = {
   sourceId: string;
@@ -426,6 +427,7 @@ function CardHeader({
   // the default prompt body) — so none of them belong in the header.
   return (
     <div className="source-type-config-header">
+      <SourceBadge decorative showLabel={false} sourceType={config.sourceId} />
       <span className="source-type-config-title">{config.label}</span>
       {dirty ? (
         <span

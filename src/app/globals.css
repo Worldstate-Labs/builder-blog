@@ -10714,6 +10714,19 @@ a.fb-hub-source-name:focus-visible {
   min-width: 0;
 }
 
+.source-type-config-header .source-badge {
+  background: transparent;
+  border: 0;
+  flex: 0 0 auto;
+  min-height: 0;
+  padding: 0;
+}
+
+.source-type-config-header .source-badge-mark {
+  height: 1.55rem;
+  width: 1.55rem;
+}
+
 .source-type-config-title {
   color: var(--ink);
   font-size: 0.9375rem;

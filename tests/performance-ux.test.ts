@@ -1113,6 +1113,10 @@ test("settings live in the clickable user avatar menu", () => {
   assert.match(adminSourceTypeManager, /placeholder="Example: 200"/);
   assert.match(adminSourceTypeManager, /placeholder="Example: 0\.35"/);
   assert.match(adminSourceTypeManager, /className="source-type-config-summary"/);
+  assert.match(adminSourceTypeManager, /import \{ SourceBadge \} from "@\/components\/SourceBadge"/);
+  assert.match(adminSourceTypeManager, /<SourceBadge decorative showLabel=\{false\} sourceType=\{config\.sourceId\} \/>/);
+  assert.match(globals, /\.source-type-config-header \.source-badge\s*{[\s\S]*background:\s*transparent/);
+  assert.match(globals, /\.source-type-config-header \.source-badge-mark\s*{[\s\S]*height:\s*1\.55rem/);
   assert.match(adminSourceTypeManager, /className="source-type-config-dirty"/);
   assert.match(adminSourceTypeManager, /className="source-type-config-dirty-dot"/);
   assert.match(adminSourceTypeManager, /<OptionalMarkdownField/);
