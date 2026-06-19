@@ -464,16 +464,14 @@ function DigestPipelineCard({
 
       <DigestPipelinePreviewCard pipeline={pipeline} />
 
-      {panel ? null : (
-        <div className="fb-hub-card-stats">
-          <CountMeta
-            label={pipeline.digestCount === 1 ? "issue" : "issues"}
-            value={pipeline.digestCount}
-          />
-          <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
-          <CountMeta label={pipeline.viewCount === 1 ? "view" : "views"} value={pipeline.viewCount} />
-        </div>
-      )}
+      <div className="fb-hub-card-stats">
+        <CountMeta
+          label={pipeline.digestCount === 1 ? "issue" : "issues"}
+          value={pipeline.digestCount}
+        />
+        <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
+        <CountMeta label={pipeline.viewCount === 1 ? "view" : "views"} value={pipeline.viewCount} />
+      </div>
     </article>
   );
 }
@@ -494,9 +492,8 @@ function digestPipelineByline(ownerLabel: string) {
 }
 
 function digestPipelinePanelMeta(pipeline: HubDigestPipeline) {
-  const issueLabel = pipeline.digestCount === 1 ? "issue" : "issues";
   const byline = digestPipelineByline(pipeline.ownerLabel).replace(/^By\s+/i, "by ");
-  return `${formatCount(pipeline.digestCount)} ${issueLabel} · ${byline}`;
+  return byline;
 }
 
 export function DigestPipelinePreviewCard({

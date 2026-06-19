@@ -44,7 +44,10 @@ test("sources AI Digest loading state names the same sections as the loaded tab"
   assert.match(digestPipelineForm, /const description = panel \? null : digestPipelineCardDescription\(pipeline\)/);
   assert.match(digestPipelineForm, /const panelMeta = panel \? digestPipelinePanelMeta\(pipeline\) : null/);
   assert.match(digestPipelineForm, /className=\{panel \? "fb-hub-card-panel-meta" : "fb-hub-card-byline"\}/);
-  assert.match(digestPipelineForm, /\{panel \? null : \(\s*<div className="fb-hub-card-stats">/);
+  assert.doesNotMatch(digestPipelineForm, /\{panel \? null : \(\s*<div className="fb-hub-card-stats">/);
+  assert.match(digestPipelineForm, /<div className="fb-hub-card-stats">/);
   assert.match(digestPipelineForm, /function digestPipelinePanelMeta\(pipeline: HubDigestPipeline\)/);
+  assert.match(digestPipelineForm, /return byline/);
+  assert.doesNotMatch(digestPipelineForm, /\$\{formatCount\(pipeline\.digestCount\)\} \$\{issueLabel\}/);
   assert.match(globals, /\.fb-hub-card-panel-meta\s*{[\s\S]*font-size:\s*0\.75rem/);
 });
