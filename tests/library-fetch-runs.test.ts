@@ -96,10 +96,15 @@ test("skill fetch-runs route validates payload size and gates auth on user or be
   assert.match(patchRoute, /workerId: z\.string\(\)\.max\(120\)\.nullable\(\)\.optional\(\)/);
   assert.match(patchRoute, /plannedBuilderIds/);
   assert.match(patchRoute, /details\.perBuilder/);
-  // Server orders by startedAt desc and limits to the spec'd 25.
+  // Server orders by startedAt desc and pages older history in 10-row batches.
   assert.match(route, /orderBy: \{ startedAt: "desc" \}/);
-  assert.match(route, /take: RUN_HISTORY_LIMIT/);
-  assert.match(route, /RUN_HISTORY_LIMIT = 25/);
+  assert.match(route, /FETCH_RUN_PAGE_SIZE = 10/);
+  assert.match(route, /FETCH_RUN_QUERY_SIZE = FETCH_RUN_PAGE_SIZE \+ 1/);
+  assert.match(route, /const beforeParam = url\.searchParams\.get\("before"\)/);
+  assert.match(route, /startedAt: \{ lt: before \}/);
+  assert.match(route, /take: FETCH_RUN_QUERY_SIZE/);
+  assert.match(route, /rows\.slice\(0, FETCH_RUN_PAGE_SIZE\)\.map\(serializeRun\)/);
+  assert.doesNotMatch(route, /RUN_HISTORY_LIMIT = 25/);
   assert.match(cronRoute, /getUserFromBearer\(request\)/);
   assert.match(cronRoute, /z\.enum\(\["library-cron", "digest-cron"\]\)/);
   assert.match(cronRoute, /z\.enum\(\["active", "stopped"\]\)/);
@@ -321,14 +326,23 @@ test("FetchLogPanel renders status pills and modal-only logs with semantic CSS v
   assert.match(panel, /const run = timelineSlotRun\(slot\)/);
   assert.match(panel, /const logRef = timelineSlotLogRef\(slot, run\)/);
   assert.match(panel, /if \(run\) matchedRunIds\.add\(run\.id\)/);
+  assert.match(panel, /const FETCH_LOG_PAGE_SIZE = 10/);
   assert.match(panel, /const LOG_WINDOW_SIZE = 6/);
   assert.match(panel, /function visibleLogWindowStart/);
+  assert.match(panel, /function oldestFetchHistoryCursor/);
+  assert.match(panel, /function shouldLoadMoreHistory/);
+  assert.match(panel, /const loadMoreHistory = useCallback/);
+  assert.match(panel, /before=\$\{encodeURIComponent\(cursor\)\}/);
+  assert.match(panel, /setRuns\(\(current\) => mergeFetchRunLists\(current, bodyRuns\)\)/);
+  assert.match(panel, /hasMoreFetchHistory/);
   assert.match(panel, /const rowEntries = useMemo\(\(\) => entries\.slice\(\)\.reverse\(\), \[entries\]\)/);
   assert.match(panel, /const visibleRowEntries = rowEntries\.slice\(logWindowStart, logWindowStart \+ LOG_WINDOW_SIZE\)/);
   assert.match(panel, /const visibleGraphEntries = visibleRowEntries\.slice\(\)\.reverse\(\)/);
   assert.match(panel, /visibleGraphEntries\.map/);
   assert.match(panel, /className="sync-panel-slot-rows is-scrollable" onScroll=\{handleLogScroll\}/);
+  assert.match(panel, /className="sync-panel-slot-loading"/);
   assert.match(panel, /data-sync-log-row="true"/);
+  assert.doesNotMatch(panel, /\.slice\(-CRON_SLOT_LIMIT\)/);
   assert.match(panel, /function formatRunSyncSummary\(done: number \| undefined, total: number \| undefined\): string/);
   assert.match(panel, /return `\$\{formatCount\(synced\)\}\/\$\{formatCount\(planned\)\} saved`/);
   assert.match(panel, /const planned = Math\.max\(stats\.planned, run\.tasksGenerated, run\.itemsFetched, stats\.synced\)/);
@@ -746,7 +760,10 @@ test("builders page mounts the fetch log inside the sync header section", () => 
   assert.match(buildersPage, /prisma\.libraryCronJob\.findUnique/);
   assert.match(buildersPage, /source: "cron"/);
   assert.match(buildersPage, /orderBy: \{ startedAt: "desc" \}/);
-  assert.match(buildersPage, /take: 25/);
+  assert.match(buildersPage, /const FETCH_RUN_PAGE_SIZE = 10/);
+  assert.match(buildersPage, /const FETCH_RUN_QUERY_SIZE = FETCH_RUN_PAGE_SIZE \+ 1/);
+  assert.match(buildersPage, /take: FETCH_RUN_QUERY_SIZE/);
+  assert.match(buildersPage, /rawFetchRuns\.slice\(0, FETCH_RUN_PAGE_SIZE\)\.map/);
   // Mounted with the user's own library controls so Fetch setup stays together.
   assert.match(buildersPage, /<Suspense fallback=\{<FetchSourcesFallback \/>/);
   assert.match(buildersPage, /function FetchSourcesFallback/);

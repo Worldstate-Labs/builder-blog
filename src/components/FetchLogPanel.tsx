@@ -465,7 +465,8 @@ function isRunInflight(
   return tasks.some((task) => task?.status === "pending" || task?.status === "fetched");
 }
 
-const CRON_SLOT_LIMIT = 12;
+const FETCH_LOG_PAGE_SIZE = 10;
+const SCHEDULED_SLOT_CONTEXT_SIZE = 12;
 const LOG_WINDOW_SIZE = 6;
 
 type CronSlotStatus = "ok" | "failed" | "missed" | "waiting" | "running" | "stalled";
@@ -543,6 +544,34 @@ function mergeFetchRunLists(...runLists: LibraryFetchRunListItem[][]): LibraryFe
   return Array.from(byId.values()).sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
 }
 
+function mergeAgentJobRunLists(...runLists: AgentJobRunListItem[][]): AgentJobRunListItem[] {
+  const byId = new Map<string, AgentJobRunListItem>();
+  for (const run of runLists.flat()) {
+    if (!byId.has(run.id)) byId.set(run.id, run);
+  }
+  return Array.from(byId.values()).sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
+}
+
+function oldestFetchHistoryCursor(
+  runs: LibraryFetchRunListItem[],
+  jobRuns: AgentJobRunListItem[],
+  scheduledJobRuns: AgentJobRunListItem[],
+): string | null {
+  const runTimes = runs
+    .map((run) => Date.parse(run.startedAt))
+    .filter(Number.isFinite);
+  const fallbackJobTimes = [...jobRuns, ...scheduledJobRuns]
+    .map((run) => Date.parse(run.expectedAt ?? run.startedAt))
+    .filter(Number.isFinite);
+  const times = runTimes.length > 0 ? runTimes : fallbackJobTimes;
+  if (times.length === 0) return null;
+  return new Date(Math.min(...times)).toISOString();
+}
+
+function shouldLoadMoreHistory(container: HTMLDivElement): boolean {
+  return container.scrollTop + container.clientHeight >= container.scrollHeight - 48;
+}
+
 function isStalledJobRun(jobRun: AgentJobRunListItem, nowMs = Date.now()): boolean {
   if (!isActiveJobRun(jobRun)) return false;
   const heartbeatMs = Date.parse(jobRun.heartbeatAt ?? jobRun.startedAt);
@@ -579,7 +608,11 @@ function buildCronStatus(
   let cursor = floorToExpectedSchedule(now, cronJob);
   const nextExpected = addScheduleInterval(cursor, cronJob);
   const expected: Date[] = [];
-  for (let index = 0; index < CRON_SLOT_LIMIT * 3 && expected.length < CRON_SLOT_LIMIT; index += 1) {
+  for (
+    let index = 0;
+    index < SCHEDULED_SLOT_CONTEXT_SIZE * 3 && expected.length < SCHEDULED_SLOT_CONTEXT_SIZE;
+    index += 1
+  ) {
     if (Number.isFinite(firstExpectedMs) && cursor.getTime() >= firstExpectedMs) {
       expected.unshift(new Date(cursor));
     }
@@ -766,9 +799,7 @@ function buildFetchTimeline({
     });
   }
 
-  return entries
-    .sort((a, b) => Date.parse(a.time) - Date.parse(b.time))
-    .slice(-CRON_SLOT_LIMIT);
+  return entries.sort((a, b) => Date.parse(a.time) - Date.parse(b.time));
 }
 
 function clampLogWindowStart(start: number, total: number): number {
@@ -788,6 +819,7 @@ export function FetchLogPanel({
   initialJobRuns = [],
   initialScheduledJobRuns = [],
   initialCronJob,
+  initialHasMoreHistory = false,
   actions,
   actionsPlacement = "end",
   summaryLanguage,
@@ -797,6 +829,7 @@ export function FetchLogPanel({
   initialJobRuns?: AgentJobRunListItem[];
   initialScheduledJobRuns?: AgentJobRunListItem[];
   initialCronJob: LibraryCronJobStatus | null;
+  initialHasMoreHistory?: boolean;
   actions?: ReactNode;
   actionsPlacement?: "start" | "end";
   summaryLanguage?: string | null;
@@ -807,6 +840,8 @@ export function FetchLogPanel({
   const [scheduledJobRuns, setScheduledJobRuns] = useState(initialScheduledJobRuns);
   const [cronJob, setCronJob] = useState(initialCronJob);
   const [error, setError] = useState<string | null>(null);
+  const [hasMoreFetchHistory, setHasMoreFetchHistory] = useState(initialHasMoreHistory);
+  const [isLoadingFetchHistory, setIsLoadingFetchHistory] = useState(false);
   const [, startTransition] = useTransition();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<FetchLogRef | null>(null);
@@ -864,6 +899,7 @@ export function FetchLogPanel({
               jobRuns?: AgentJobRunListItem[];
               scheduledJobRuns?: AgentJobRunListItem[];
               cronJob?: LibraryCronJobStatus | null;
+              hasMore?: boolean;
               error?: string;
             }
           | null;
@@ -875,16 +911,74 @@ export function FetchLogPanel({
           setError(body?.error ?? "Could not refresh. Try again.");
           return;
         }
-        setRuns(Array.isArray(body?.runs) ? body.runs : []);
-        setCronRuns(Array.isArray(body?.cronRuns) ? body.cronRuns : []);
-        setJobRuns(Array.isArray(body?.jobRuns) ? body.jobRuns : []);
-        setScheduledJobRuns(Array.isArray(body?.scheduledJobRuns) ? body.scheduledJobRuns : []);
+        const bodyRuns = Array.isArray(body?.runs) ? body.runs : [];
+        const bodyCronRuns = Array.isArray(body?.cronRuns) ? body.cronRuns : [];
+        const bodyJobRuns = Array.isArray(body?.jobRuns) ? body.jobRuns : [];
+        const bodyScheduledJobRuns = Array.isArray(body?.scheduledJobRuns) ? body.scheduledJobRuns : [];
+        setRuns((current) => mergeFetchRunLists(current, bodyRuns));
+        setCronRuns((current) => mergeFetchRunLists(current, bodyCronRuns));
+        setJobRuns((current) => mergeAgentJobRunLists(current, bodyJobRuns));
+        setScheduledJobRuns((current) => mergeAgentJobRunLists(current, bodyScheduledJobRuns));
+        setHasMoreFetchHistory(Boolean(body?.hasMore ?? bodyRuns.length === FETCH_LOG_PAGE_SIZE));
         setCronJob(body?.cronJob ?? null);
       } catch {
         setError("Could not refresh. Try again.");
       }
     });
   }, []);
+
+  const loadMoreHistory = useCallback(async () => {
+    if (isLoadingFetchHistory || !hasMoreFetchHistory) return;
+    const cursor = oldestFetchHistoryCursor(runs, jobRuns, scheduledJobRuns);
+    if (!cursor) {
+      setHasMoreFetchHistory(false);
+      return;
+    }
+    setIsLoadingFetchHistory(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/skill/fetch-runs?before=${encodeURIComponent(cursor)}`, {
+        headers: { accept: "application/json" },
+      });
+      const body = (await response.json().catch(() => null)) as
+        | {
+            runs?: LibraryFetchRunListItem[];
+            cronRuns?: LibraryFetchRunListItem[];
+            jobRuns?: AgentJobRunListItem[];
+            scheduledJobRuns?: AgentJobRunListItem[];
+            cronJob?: LibraryCronJobStatus | null;
+            hasMore?: boolean;
+            error?: string;
+          }
+        | null;
+      if (response.status === 401) {
+        setHasMoreFetchHistory(false);
+        return;
+      }
+      if (!response.ok) {
+        setError(body?.error ?? "Could not load older logs. Try again.");
+        return;
+      }
+      const bodyRuns = Array.isArray(body?.runs) ? body.runs : [];
+      const bodyCronRuns = Array.isArray(body?.cronRuns) ? body.cronRuns : [];
+      const bodyJobRuns = Array.isArray(body?.jobRuns) ? body.jobRuns : [];
+      const bodyScheduledJobRuns = Array.isArray(body?.scheduledJobRuns) ? body.scheduledJobRuns : [];
+      const loadedCount =
+        bodyRuns.length + bodyCronRuns.length + bodyJobRuns.length + bodyScheduledJobRuns.length;
+      setRuns((current) => mergeFetchRunLists(current, bodyRuns));
+      setCronRuns((current) => mergeFetchRunLists(current, bodyCronRuns));
+      setJobRuns((current) => mergeAgentJobRunLists(current, bodyJobRuns));
+      setScheduledJobRuns((current) => mergeAgentJobRunLists(current, bodyScheduledJobRuns));
+      setCronJob(body?.cronJob ?? null);
+      setHasMoreFetchHistory(
+        loadedCount > 0 && Boolean(body?.hasMore ?? bodyRuns.length === FETCH_LOG_PAGE_SIZE),
+      );
+    } catch {
+      setError("Could not load older logs. Try again.");
+    } finally {
+      setIsLoadingFetchHistory(false);
+    }
+  }, [hasMoreFetchHistory, isLoadingFetchHistory, jobRuns, runs, scheduledJobRuns]);
 
   // Keep relative timestamps approximately fresh while the panel is
   // open without re-fetching. Honor reduced-motion by skipping the
@@ -983,7 +1077,10 @@ export function FetchLogPanel({
           <FetchStatusPanel
             cronJob={cronJob}
             entries={timelineEntries}
+            hasMoreHistory={hasMoreFetchHistory}
+            isLoadingHistory={isLoadingFetchHistory}
             nextExpectedAt={cronStatus.nextExpectedAt}
+            onLoadMoreHistory={loadMoreHistory}
             onOpenLog={openLog}
           />
         </div>
@@ -1217,12 +1314,18 @@ function SourceFetchMetaItem({
 function FetchStatusPanel({
   cronJob,
   entries,
+  hasMoreHistory,
+  isLoadingHistory,
   nextExpectedAt,
+  onLoadMoreHistory,
   onOpenLog,
 }: {
   cronJob: LibraryCronJobStatus | null;
   entries: FetchTimelineEntry[];
+  hasMoreHistory: boolean;
+  isLoadingHistory: boolean;
   nextExpectedAt: string | null;
+  onLoadMoreHistory: () => void;
   onOpenLog: (logRef: FetchLogRef) => void;
 }) {
   const hydrated = useHydrated();
@@ -1251,7 +1354,10 @@ function FetchStatusPanel({
         ? current
         : { key: entriesKey, start: nextStart },
     );
-  }, [entriesKey, rowEntries.length]);
+    if (hasMoreHistory && !isLoadingHistory && shouldLoadMoreHistory(event.currentTarget)) {
+      onLoadMoreHistory();
+    }
+  }, [entriesKey, hasMoreHistory, isLoadingHistory, onLoadMoreHistory, rowEntries.length]);
   if (!cronJob && entries.length === 0) {
     return (
       <EmptyState
@@ -1375,6 +1481,12 @@ function FetchStatusPanel({
                   onOpenLog={onOpenLog}
                 />
               ))}
+              {isLoadingHistory ? (
+                <div className="sync-panel-slot-loading" role="status">
+                  <span aria-hidden="true" className="sync-panel-slot-loading-line" />
+                  <span>Loading older logs</span>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : (

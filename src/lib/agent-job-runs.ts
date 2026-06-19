@@ -72,18 +72,44 @@ export function serializeAgentJobRun(row: {
   };
 }
 
-export async function getAgentJobRuns(userId: string, jobType: string, limit = 25) {
+export async function getAgentJobRuns(
+  userId: string,
+  jobType: string,
+  limit = 25,
+  before?: Date | null,
+) {
   const rows = await prisma.agentJobRun.findMany({
-    where: { userId, jobType },
+    where: {
+      userId,
+      jobType,
+      ...(before ? { startedAt: { lt: before } } : {}),
+    },
     orderBy: { startedAt: "desc" },
     take: limit,
   });
   return rows.map(serializeAgentJobRun);
 }
 
-export async function getScheduledAgentJobRuns(userId: string, scheduleJob: string, limit = 25) {
+export async function getScheduledAgentJobRuns(
+  userId: string,
+  scheduleJob: string,
+  limit = 25,
+  before?: Date | null,
+) {
   const rows = await prisma.agentJobRun.findMany({
-    where: { userId, scheduleJob, trigger: "scheduled" },
+    where: {
+      userId,
+      scheduleJob,
+      trigger: "scheduled",
+      ...(before
+        ? {
+            OR: [
+              { expectedAt: { lt: before } },
+              { expectedAt: null, startedAt: { lt: before } },
+            ],
+          }
+        : {}),
+    },
     orderBy: [{ expectedAt: "desc" }, { startedAt: "desc" }],
     take: limit,
   });

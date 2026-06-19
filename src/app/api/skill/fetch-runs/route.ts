@@ -11,7 +11,8 @@ import { formatZodError } from "@/lib/zod-error";
 // be storing crash dumps in Postgres for free — refuse politely.
 const MAX_DETAILS_BYTES = 50_000;
 const MAX_SUMMARY_CHARS = 280;
-const RUN_HISTORY_LIMIT = 25;
+const FETCH_RUN_PAGE_SIZE = 10;
+const FETCH_RUN_QUERY_SIZE = FETCH_RUN_PAGE_SIZE + 1;
 
 const FetchRunInputSchema = z.object({
   startedAt: z.string().datetime(),
@@ -203,28 +204,43 @@ export async function GET(request: Request) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const url = new URL(request.url);
+  const beforeParam = url.searchParams.get("before");
+  const before = beforeParam ? new Date(beforeParam) : null;
+  if (beforeParam && (!before || Number.isNaN(before.getTime()))) {
+    return NextResponse.json({ error: "Invalid before cursor." }, { status: 400 });
+  }
 
   const [rows, cronRows, cronJob, jobRuns, scheduledJobRuns] = await Promise.all([
     prisma.libraryFetchRun.findMany({
-      where: { userId },
+      where: {
+        userId,
+        ...(before ? { startedAt: { lt: before } } : {}),
+      },
       orderBy: { startedAt: "desc" },
-      take: RUN_HISTORY_LIMIT,
+      take: FETCH_RUN_QUERY_SIZE,
     }),
     prisma.libraryFetchRun.findMany({
-      where: { userId, source: "cron" },
+      where: {
+        userId,
+        source: "cron",
+        ...(before ? { startedAt: { lt: before } } : {}),
+      },
       orderBy: { startedAt: "desc" },
-      take: RUN_HISTORY_LIMIT,
+      take: FETCH_RUN_QUERY_SIZE,
     }),
     prisma.libraryCronJob.findUnique({
       where: { userId },
     }),
     // getAgentJobRuns wraps prisma.agentJobRun.findMany for all fetch runtime instances.
-    getAgentJobRuns(userId, "library-fetch", RUN_HISTORY_LIMIT),
-    getScheduledAgentJobRuns(userId, "library-cron", RUN_HISTORY_LIMIT),
+    getAgentJobRuns(userId, "library-fetch", FETCH_RUN_QUERY_SIZE, before),
+    getScheduledAgentJobRuns(userId, "library-cron", FETCH_RUN_QUERY_SIZE, before),
   ]);
 
-  const runs = rows.map(serializeRun);
-  const cronRuns = cronRows.map(serializeRun);
+  const runs = rows.slice(0, FETCH_RUN_PAGE_SIZE).map(serializeRun);
+  const cronRuns = cronRows.slice(0, FETCH_RUN_PAGE_SIZE).map(serializeRun);
+  const visibleJobRuns = jobRuns.slice(0, FETCH_RUN_PAGE_SIZE);
+  const visibleScheduledJobRuns = scheduledJobRuns.slice(0, FETCH_RUN_PAGE_SIZE);
 
   const cron: LibraryCronJobStatus | null = cronJob
     ? {
@@ -244,5 +260,18 @@ export async function GET(request: Request) {
       }
     : null;
 
-  return NextResponse.json({ runs, cronRuns, cronJob: cron, jobRuns, scheduledJobRuns });
+  const hasMore =
+    rows.length > FETCH_RUN_PAGE_SIZE ||
+    cronRows.length > FETCH_RUN_PAGE_SIZE ||
+    jobRuns.length > FETCH_RUN_PAGE_SIZE ||
+    scheduledJobRuns.length > FETCH_RUN_PAGE_SIZE;
+
+  return NextResponse.json({
+    runs,
+    cronRuns,
+    cronJob: cron,
+    jobRuns: visibleJobRuns,
+    scheduledJobRuns: visibleScheduledJobRuns,
+    hasMore,
+  });
 }

@@ -94,6 +94,8 @@ const SOURCES_TABS: Array<WorkspaceTopTabItem<SourcesTab>> = [
     tabId: "sources-tab-digest",
   },
 ];
+const FETCH_RUN_PAGE_SIZE = 10;
+const FETCH_RUN_QUERY_SIZE = FETCH_RUN_PAGE_SIZE + 1;
 
 export default async function BuildersPage({
   searchParams,
@@ -459,18 +461,18 @@ async function loadBuildersPageData() {
     prisma.libraryFetchRun.findMany({
       where: { userId: session.user.id },
       orderBy: { startedAt: "desc" },
-      take: 25,
+      take: FETCH_RUN_QUERY_SIZE,
     }),
     prisma.libraryFetchRun.findMany({
       where: { userId: session.user.id, source: "cron" },
       orderBy: { startedAt: "desc" },
-      take: 25,
+      take: FETCH_RUN_QUERY_SIZE,
     }),
     prisma.libraryCronJob.findUnique({
       where: { userId: session.user.id },
     }),
-    getAgentJobRuns(session.user.id, "library-fetch", 25),
-    getScheduledAgentJobRuns(session.user.id, "library-cron", 25),
+    getAgentJobRuns(session.user.id, "library-fetch", FETCH_RUN_QUERY_SIZE),
+    getScheduledAgentJobRuns(session.user.id, "library-cron", FETCH_RUN_QUERY_SIZE),
     prisma.userFeedPreference.findUnique({
       where: { userId: session.user.id },
       select: { summaryLanguage: true, digestMaxPostAgeDays: true },
@@ -554,7 +556,7 @@ async function loadBuildersPageData() {
 
   const activeTokens = serializeAgentTokens(rawTokens);
 
-  const fetchRuns: LibraryFetchRunListItem[] = rawFetchRuns.map((run) => ({
+  const fetchRuns: LibraryFetchRunListItem[] = rawFetchRuns.slice(0, FETCH_RUN_PAGE_SIZE).map((run) => ({
     id: run.id,
     startedAt: run.startedAt.toISOString(),
     finishedAt: run.finishedAt.toISOString(),
@@ -573,7 +575,7 @@ async function loadBuildersPageData() {
     summary: run.summary,
     details: run.details,
   }));
-  const cronRuns: LibraryFetchRunListItem[] = rawCronRuns.map((run) => ({
+  const cronRuns: LibraryFetchRunListItem[] = rawCronRuns.slice(0, FETCH_RUN_PAGE_SIZE).map((run) => ({
     id: run.id,
     startedAt: run.startedAt.toISOString(),
     finishedAt: run.finishedAt.toISOString(),
@@ -592,6 +594,10 @@ async function loadBuildersPageData() {
     summary: run.summary,
     details: run.details,
   }));
+  const hasMoreFetchHistory =
+    rawFetchRuns.length > FETCH_RUN_PAGE_SIZE ||
+    jobRuns.length > FETCH_RUN_PAGE_SIZE ||
+    scheduledJobRuns.length > FETCH_RUN_PAGE_SIZE;
   const libraryCronJob: LibraryCronJobStatus | null = rawLibraryCronJob
     ? {
         id: rawLibraryCronJob.id,
@@ -615,9 +621,10 @@ async function loadBuildersPageData() {
     fetchedItems,
     cronRuns,
     fetchRuns,
-    jobRuns,
+    hasMoreFetchHistory,
+    jobRuns: jobRuns.slice(0, FETCH_RUN_PAGE_SIZE),
     libraryCronJob,
-    scheduledJobRuns,
+    scheduledJobRuns: scheduledJobRuns.slice(0, FETCH_RUN_PAGE_SIZE),
     importedLibrarySections,
     isAdmin,
     isPublicLibrary,
@@ -677,33 +684,43 @@ async function FetchSourcesSection({
         });
 
   const fetchSyncSection = (
-    <section className="sources-sync-section" aria-labelledby="source-syncing-section-title">
-      <div className="library-hub-toolbar">
-        <div className="library-hub-toolbar-copy">
+    <section
+      className="sources-sync-section sources-sync-panel library-section-panel"
+      aria-labelledby="source-syncing-section-title"
+    >
+      <div className="library-section-summary library-section-summary--static">
+        <div className="library-section-summary-copy">
           <h2 id="source-syncing-section-title" className="fb-section-heading">
             Source syncing
           </h2>
+          <p className="library-section-copy">
+            Copy a Fetch sources prompt for your Local Agent to fetch and
+            summarize source updates.
+          </p>
         </div>
       </div>
-      <FetchLogPanel
-        actionsPlacement="start"
-        actions={
-          <SkillPromptActions
-            compactOnly
-            context="library"
-            showStop={showStopLibraryCron}
-            tokens={data.activeTokens}
-            summaryLanguage={data.summaryLanguage}
-            digestMaxPostAgeDays={data.digestMaxPostAgeDays}
-          />
-        }
-        initialCronJob={data.libraryCronJob}
-        initialCronRuns={data.cronRuns}
-        initialJobRuns={data.jobRuns}
-        initialScheduledJobRuns={data.scheduledJobRuns}
-        initialRuns={data.fetchRuns}
-        summaryLanguage={data.summaryLanguage}
-      />
+      <div className="library-section-body">
+        <FetchLogPanel
+          actionsPlacement="start"
+          actions={
+            <SkillPromptActions
+              compactOnly
+              context="library"
+              showStop={showStopLibraryCron}
+              tokens={data.activeTokens}
+              summaryLanguage={data.summaryLanguage}
+              digestMaxPostAgeDays={data.digestMaxPostAgeDays}
+            />
+          }
+          initialCronJob={data.libraryCronJob}
+          initialCronRuns={data.cronRuns}
+          initialJobRuns={data.jobRuns}
+          initialHasMoreHistory={data.hasMoreFetchHistory}
+          initialScheduledJobRuns={data.scheduledJobRuns}
+          initialRuns={data.fetchRuns}
+          summaryLanguage={data.summaryLanguage}
+        />
+      </div>
     </section>
   );
 
@@ -816,6 +833,17 @@ function FetchSourcesFallback() {
   return (
     <section className="sources-section-stack" aria-live="polite" aria-busy="true">
       <span className="sr-only">Loading Sources</span>
+      <section className="sources-sync-section sources-sync-panel library-section-panel">
+        <div className="library-section-summary library-section-summary--static">
+          <div className="library-section-summary-copy source-section-skeleton-copy">
+            <h2 className="fb-section-heading">Source syncing</h2>
+            <div className="source-section-skeleton-desc" />
+          </div>
+        </div>
+        <div className="library-section-body">
+          <div className="source-sync-skeleton-panel" />
+        </div>
+      </section>
       <section className="your-library-panel library-section-panel">
         <div className="source-sync-skeleton-line" />
         <div className="source-sync-skeleton-panel" />

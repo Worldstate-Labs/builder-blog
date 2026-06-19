@@ -368,6 +368,50 @@ test("post card keeps the source type badge when there is no original action", (
   assert.doesNotMatch(html, />Original</);
 });
 
+test("post detail keeps source actions with the source row without a top source type badge", () => {
+  const html = renderToStaticMarkup(
+    createElement(PostCard, {
+      extraActions: createElement(
+        "span",
+        { className: "post-favorite-control" },
+        createElement("button", { className: "post-favorite-btn", type: "button" }, "Save"),
+      ),
+      post: {
+        id: "feed_detail_mobile_actions",
+        title: "Detail Layout",
+        body: "Fetched raw body.",
+        url: "https://example.com/detail-layout",
+        publishedAt: "2026-06-05T00:00:00.000Z",
+        createdAt: "2026-06-06T00:00:00.000Z",
+        sourceName: "Example Blog",
+        sourceType: "blog",
+        fetchTool: null,
+        builder: {
+          id: "builder_blog",
+          entityId: "entity_blog",
+          name: "Example Blog",
+          kind: "BLOG",
+          sourceType: "blog",
+          sourceUrl: "https://example.com/",
+          fetchUrl: "https://example.com/feed.xml",
+        },
+      },
+      showDebugActions: false,
+      variant: "detail",
+    }),
+  );
+  const kickerHtml = html.match(/<div class="post-detail-kicker-row"[^>]*>([\s\S]*?)<\/div>/)?.[1] ?? "";
+  const bylineHtml = html.match(/<div class="post-detail-byline">([\s\S]*?)<\/div><\/header>/)?.[1] ?? "";
+  const globals = source("src/app/globals.css");
+
+  assert.doesNotMatch(kickerHtml, /class="source-badge"/);
+  assert.match(kickerHtml, /Jun/);
+  assert.match(bylineHtml, /post-detail-author/);
+  assert.match(bylineHtml, /post-detail-actions/);
+  assert.match(bylineHtml, /post-favorite-control[\s\S]*post-source-original/);
+  assert.doesNotMatch(globals, /\.post-detail-byline\s*{[\s\S]{0,140}display:\s*grid/);
+});
+
 test("post card action controls include the post title in accessible names", () => {
   const longSummary = Array.from({ length: 205 }, (_, index) => `word${index}`).join(" ");
   const html = renderToStaticMarkup(

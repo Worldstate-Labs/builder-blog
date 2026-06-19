@@ -212,11 +212,6 @@ export function PostCardView({
         {isDetail ? (
           <header className="post-detail-head">
             <div className="post-detail-kicker-row" aria-label="Post metadata">
-              <SourceBadge
-                builder={builder}
-                sourceType={builder?.sourceType ?? post.sourceType ?? null}
-              />
-              <span className="post-detail-dot" aria-hidden="true">·</span>
               <span>{detailPublishedLabel}</span>
               <span className="post-detail-dot" aria-hidden="true">·</span>
               <span>{detailReadTime}</span>

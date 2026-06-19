@@ -16,6 +16,8 @@ test("sources AI Digest loading state names the same sections as the loaded tab"
     /function DigestSourcesFallback\(\) \{([\s\S]*?)\n\}/,
   )?.[1] ?? "";
 
+  assert.match(buildersLoading, /Source syncing/);
+  assert.match(buildersLoading, /className="sources-sync-section sources-sync-panel library-section-panel"/);
   assert.match(buildersLoading, /Your source library/);
   assert.match(buildersLoading, /Imported source libraries/);
   assert.match(buildersLoading, /className="your-library-panel library-section-panel"/);

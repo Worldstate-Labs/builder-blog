@@ -34,6 +34,18 @@ export default function BuildersLoading() {
 
           <section className="sources-tab-body" aria-label="Loading Sources content">
             <section className="sources-section-stack" aria-hidden="true">
+              <section className="sources-sync-section sources-sync-panel library-section-panel">
+                <div className="library-section-summary library-section-summary--static">
+                  <div className="library-section-summary-copy source-section-skeleton-copy">
+                    <h2 className="fb-section-heading">Source syncing</h2>
+                    <div className="source-section-skeleton-desc" />
+                  </div>
+                </div>
+                <div className="library-section-body">
+                  <div className="source-sync-skeleton-panel" />
+                </div>
+              </section>
+
               <section className="your-library-section">
                 <div className="library-hub-toolbar">
                   <div className="library-hub-toolbar-copy">

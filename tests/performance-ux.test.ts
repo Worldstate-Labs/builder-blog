@@ -371,6 +371,8 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(buildersLoading, /className="sources-tab-body" aria-label="Loading Sources content"/);
   assert.doesNotMatch(buildersLoading, /sources-tab-body--fetch/);
   assert.match(buildersLoading, /className="sources-section-stack"/);
+  assert.match(buildersLoading, /Source syncing/);
+  assert.match(buildersLoading, /className="sources-sync-section sources-sync-panel library-section-panel"/);
   assert.match(buildersLoading, /Your source library/);
   assert.match(buildersLoading, /Imported source libraries/);
   assert.match(buildersLoading, /className="your-library-panel library-section-panel"/);
@@ -3750,7 +3752,9 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /CountMeta/);
   assert.doesNotMatch(buildersPage, /CountChip/);
   assert.doesNotMatch(buildersPage, /<section className="fb-page-head"/);
-  assert.match(buildersPage, /<section className="sources-sync-section" aria-labelledby="source-syncing-section-title">/);
+  assert.match(buildersPage, /className="sources-sync-section sources-sync-panel library-section-panel"/);
+  assert.match(buildersPage, /className="library-section-summary library-section-summary--static"[\s\S]*id="source-syncing-section-title"/);
+  assert.match(buildersPage, /Copy a Fetch sources prompt for your Local Agent to fetch and[\s\S]*summarize source updates\./);
   assert.match(buildersPage, /<h2 id="source-syncing-section-title" className="fb-section-heading">/);
   assert.match(buildersPage, /Source syncing/);
   assert.doesNotMatch(buildersPage, /beforeBody=\{fetchSyncSection\}/);
