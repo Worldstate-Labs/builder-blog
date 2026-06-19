@@ -2,8 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { BookOpenCheck, Rss, Search } from "lucide-react";
 import { AuthButtons } from "@/components/AuthButtons";
-import { BrandMark } from "@/components/BrandMark";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { PublicHeader } from "@/components/PublicHeader";
 import { getCurrentSession } from "@/lib/auth";
 
 export default async function LoginPage({
@@ -17,26 +16,9 @@ export default async function LoginPage({
   const errorMessage = describeAuthError(params.error);
 
   return (
-    <main className="fb-dark-frame">
-      <nav className="fb-login-nav">
-        <Link href="/" className="fb-login-nav-brand">
-          <BrandMark />
-          <span className="fb-login-nav-name">FollowBrief</span>
-        </Link>
-        <div className="fb-login-nav-actions">
-          <ThemeToggle />
-          <Link className="fb-login-nav-link" href="/">
-            Home
-          </Link>
-          <Link className="fb-login-nav-link" href="/privacy">
-            Privacy
-          </Link>
-          <Link className="fb-login-nav-link" href="/terms">
-            Terms
-          </Link>
-        </div>
-      </nav>
-
+    <>
+      <PublicHeader current="login" />
+      <main className="fb-dark-frame">
       <div className="fb-login-shell">
         <section className="fb-login-intro">
           <h1 className="fb-login-title">
@@ -82,7 +64,8 @@ export default async function LoginPage({
           </p>
         </section>
       </div>
-    </main>
+      </main>
+    </>
   );
 }
 

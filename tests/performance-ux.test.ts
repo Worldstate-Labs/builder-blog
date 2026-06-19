@@ -177,11 +177,11 @@ test("every app route has an explicit centered layout role", () => {
   assert.match(appShell, /<SearchForm query="" variant="header" \/>/);
 
   const publicRoutes = [
-    ["src/app/page.tsx", /className="fb-landing-grid min-h-screen"[\s\S]*fb-public-nav/],
-    ["src/app/login/page.tsx", /className="fb-dark-frame"[\s\S]*fb-login-nav/],
+    ["src/app/page.tsx", /<PublicHeader current="home" \/>[\s\S]*className="fb-landing-grid min-h-screen"/],
+    ["src/app/login/page.tsx", /<PublicHeader current="login" \/>[\s\S]*className="fb-dark-frame"/],
     ["src/app/not-found.tsx", /className="fb-landing-grid min-h-screen"[\s\S]*fb-public-nav/],
-    ["src/app/privacy/page.tsx", /className="fb-landing-grid min-h-screen"[\s\S]*fb-public-nav/],
-    ["src/app/terms/page.tsx", /className="fb-landing-grid min-h-screen"[\s\S]*fb-public-nav/],
+    ["src/app/privacy/page.tsx", /<PublicHeader current="privacy" \/>[\s\S]*className="fb-landing-grid min-h-screen"/],
+    ["src/app/terms/page.tsx", /<PublicHeader current="terms" \/>[\s\S]*className="fb-landing-grid min-h-screen"/],
   ] as const;
   for (const [path, pattern] of publicRoutes) {
     assert.match(source(path), pattern, `${path} should use the centered public shell`);
@@ -482,13 +482,24 @@ test("workspace not-found uses the FollowBrief shell instead of the default Next
 test("public entry pages use the centered product layout", () => {
   const landingPage = source("src/app/page.tsx");
   const loginPage = source("src/app/login/page.tsx");
+  const publicHeader = source("src/components/PublicHeader.tsx");
   const rootLayout = source("src/app/layout.tsx");
   const authButtons = source("src/components/AuthButtons.tsx");
   const globals = source("src/app/globals.css");
 
   assert.match(authButtons, /`Opening \$\{label\}`/);
   assert.doesNotMatch(authButtons, /Opening \$\{label\}\.\.\./);
-  assert.match(landingPage, /fb-public-nav/);
+  assert.match(landingPage, /<PublicHeader current="home" \/>/);
+  assert.match(publicHeader, /className="fb-top fb-public-top"/);
+  assert.match(publicHeader, /className="fb-m-top fb-public-m-top"/);
+  assert.match(publicHeader, /className="fb-top-inner fb-public-top-inner"/);
+  assert.match(publicHeader, /className="fb-public-top-actions"/);
+  assert.match(publicHeader, /className="fb-public-mobile-actions"/);
+  assert.match(publicHeader, /ThemeToggle/);
+  assert.match(publicHeader, /href="\/privacy"/);
+  assert.match(publicHeader, /href="\/terms"/);
+  assert.match(publicHeader, /href="\/login"/);
+  assert.doesNotMatch(publicHeader, /SearchForm|MobileSearchLink|fb-public-nav|fb-login-nav(?:["\s]|-brand|-actions|-name)/);
   assert.match(landingPage, /fb-public-section fb-public-hero/);
   assert.match(landingPage, /fb-public-title/);
   assert.match(landingPage, /Follow sources worth reading\.\{" "\}/);
@@ -507,7 +518,6 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(landingPage, /Search workspace|\["Follow", "Build AI Digest", "Search"\]/);
   assert.match(landingPage, /Build AI Digest/);
   assert.doesNotMatch(landingPage, /"Brief"/);
-  assert.match(landingPage, /fb-public-nav-actions/);
   assert.match(landingPage, /fb-product-preview-head/);
   assert.match(landingPage, /fb-product-preview-title-row/);
   assert.match(landingPage, />\s*Sources, citations, recall\s*<\/div>/);
@@ -609,12 +619,8 @@ test("public entry pages use the centered product layout", () => {
   assert.match(loginPage, /fb-login-proof-rail/);
   assert.match(loginPage, /fb-login-proof/);
   assert.match(loginPage, /fb-login-panel-copy/);
-  assert.match(loginPage, /fb-login-nav/);
-  assert.match(loginPage, /fb-login-nav-brand/);
-  assert.match(loginPage, /fb-login-nav-name/);
-  assert.match(loginPage, /fb-login-nav-actions/);
-  assert.match(loginPage, /fb-login-nav-link/);
-  assert.match(loginPage, /ThemeToggle/);
+  assert.match(loginPage, /<PublicHeader current="login" \/>/);
+  assert.doesNotMatch(loginPage, /fb-login-nav|fb-login-nav-brand|fb-login-nav-name|fb-login-nav-actions/);
   assert.doesNotMatch(loginPage, /fb-login-brand-row/);
   assert.doesNotMatch(loginPage, /fb-login-brand-name/);
   assert.match(loginPage, /fb-login-panel-head/);
@@ -682,7 +688,10 @@ test("public entry pages use the centered product layout", () => {
   assert.doesNotMatch(loginPage, /className="flex items-/);
   assert.doesNotMatch(loginPage, /className="rounded-lg/);
   assert.doesNotMatch(loginPage, /className="mt-/);
-  assert.match(globals, /\.fb-public-nav,[\s\S]*\.fb-public-section\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
+  assert.match(globals, /\.fb-public-section\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
+  assert.match(globals, /\.fb-public-top-inner\s*{[\s\S]*grid-template-columns:\s*var\(--side-rail-width\) minmax\(0,\s*1fr\)/);
+  assert.match(globals, /\.fb-public-top-actions\s*{[\s\S]*grid-column:\s*2/);
+  assert.match(globals, /\.fb-public-mobile-actions\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /\.fb-public-hero\s*{[\s\S]*grid-template-columns:/);
   assert.match(globals, /\.fb-product-preview-head\s*{[\s\S]*border-bottom:\s*1px solid var\(--line\)/);
   assert.match(globals, /\.fb-product-demo\s*{[\s\S]*display:\s*grid/);
@@ -699,13 +708,8 @@ test("public entry pages use the centered product layout", () => {
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-public-flow\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-public-flow\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-public-flow-step:last-child\s*{[\s\S]*grid-column:\s*1 \/ -1/);
-  assert.match(globals, /\.fb-login-nav\s*{[\s\S]*max-width:\s*var\(--workspace-max\)/);
-  assert.match(globals, /\.fb-login-nav\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /\.fb-dark-frame\s*{[\s\S]*background:\s*var\(--paper\)/);
   assert.match(globals, /\.fb-dark-frame\s*{[\s\S]*color:\s*var\(--ink\)/);
-  assert.match(globals, /\.fb-login-nav-brand\s*{[\s\S]*display:\s*inline-flex/);
-  assert.match(globals, /\.fb-login-nav-brand\s*{[\s\S]*color:\s*var\(--ink\)/);
-  assert.match(globals, /\.fb-login-nav-actions\s*{[\s\S]*display:\s*flex/);
   assert.match(globals, /\.fb-login-nav-link\s*{[\s\S]*border-radius:\s*999px/);
   assert.match(globals, /\.fb-login-title\s*{[\s\S]*color:\s*var\(--ink\)/);
   assert.match(globals, /\.fb-login-title\s*{[\s\S]*font-size:\s*2\.55rem/);

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Newspaper, Radio, Rss, Search, Terminal } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { PublicHeader } from "@/components/PublicHeader";
 import { getCurrentSession } from "@/lib/auth";
 
 export default async function Home() {
@@ -10,26 +10,9 @@ export default async function Home() {
   if (session) redirect("/dashboard");
 
   return (
-    <main className="fb-landing-grid min-h-screen">
-      <nav className="fb-public-nav">
-        <Link href="/" className="fb-brand">
-          <BrandMark />
-          <span className="fb-brand-name">FollowBrief</span>
-        </Link>
-        <div className="fb-public-nav-actions">
-          <ThemeToggle />
-          <Link className="fb-login-nav-link" href="/privacy">
-            Privacy
-          </Link>
-          <Link className="fb-login-nav-link" href="/terms">
-            Terms
-          </Link>
-          <Link className="fb-btn dark" href="/login">
-            Sign in
-          </Link>
-        </div>
-      </nav>
-
+    <>
+      <PublicHeader current="home" />
+      <main className="fb-landing-grid min-h-screen">
       <section className="fb-public-section fb-public-hero">
         <div>
           <h1 className="fb-public-title">
@@ -210,7 +193,8 @@ export default async function Home() {
           </Link>
         </div>
       </footer>
-    </main>
+      </main>
+    </>
   );
 }
 
