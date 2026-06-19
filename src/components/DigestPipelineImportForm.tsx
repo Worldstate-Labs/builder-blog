@@ -39,7 +39,6 @@ export type OwnDigestPipeline = Pick<
   | "latestDigestSourceLinks"
   | "summaryLanguage"
   | "title"
-  | "viewCount"
 >;
 
 type DigestPipelinePreviewData = Pick<
@@ -354,33 +353,31 @@ export function OwnDigestPipelineCard({
   pipeline: OwnDigestPipeline;
 }) {
   return (
-    <article className="own-digest-card">
-      <div className="own-digest-card-head">
+    <DigestPipelineInfoCard
+      beforePreview={beforePreview}
+      className="own-digest-card"
+      cronStatusControl={cronStatusControl}
+      detailsSlot={children}
+      headerClassName="own-digest-card-head"
+      pipeline={pipeline}
+      stats={
+        <>
+          <CountMeta
+            label={pipeline.digestCount === 1 ? "issue" : "issues"}
+            value={pipeline.digestCount}
+          />
+          <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
+        </>
+      }
+      titleBlock={
         <DigestPipelineTitleEditor
           className="fb-hub-title"
           headingId="sources-digest-title"
           headingLevel={3}
           initialTitle={pipeline.title}
         />
-      </div>
-
-      {beforePreview}
-
-      <DigestPipelinePreviewCard
-        cronStatusControl={cronStatusControl}
-        detailsSlot={children}
-        pipeline={pipeline}
-      />
-
-      <div className="fb-hub-card-stats">
-        <CountMeta
-          label={pipeline.digestCount === 1 ? "issue" : "issues"}
-          value={pipeline.digestCount}
-        />
-        <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
-        <CountMeta label={pipeline.viewCount === 1 ? "view" : "views"} value={pipeline.viewCount} />
-      </div>
-    </article>
+      }
+    />
   );
 }
 
@@ -429,32 +426,92 @@ function DigestPipelineCard({
   const description = panel ? null : digestPipelineCardDescription(pipeline);
 
   return (
-    <article
+    <DigestPipelineInfoCard
+      actionGroupLabel={`AI Digest collection actions for ${pipeline.title}`}
+      actions={action}
       className={
         panel
           ? "fb-hub-card digest-pipeline-card is-sources-panel"
           : "fb-hub-card digest-pipeline-card"
       }
-    >
+      description={description}
+      headerClassName="fb-hub-card-head"
+      pipeline={pipeline}
+      statsClassName={panel ? "fb-hub-card-stats fb-hub-card-stats--with-owner" : "fb-hub-card-stats"}
+      stats={
+        <>
+          <CountMeta
+            label={pipeline.digestCount === 1 ? "issue" : "issues"}
+            value={pipeline.digestCount}
+          />
+          <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
+          {!panel ? (
+            <CountMeta label={pipeline.viewCount === 1 ? "view" : "views"} value={pipeline.viewCount} />
+          ) : null}
+          {panel ? (
+            <span className="fb-hub-card-owner">
+              by <UserName>{digestPipelineOwnerName(pipeline.ownerLabel)}</UserName>
+            </span>
+          ) : null}
+        </>
+      }
+      titleBlock={
+        <div className="fb-hub-card-titleblock">
+          <h3 className="fb-hub-title">
+            {pipeline.title}
+          </h3>
+          {panel ? null : (
+            <p className="fb-hub-card-byline">
+              <DigestPipelineByline ownerLabel={pipeline.ownerLabel} />
+            </p>
+          )}
+        </div>
+      }
+    />
+  );
+}
+
+function DigestPipelineInfoCard({
+  actionGroupLabel,
+  actions,
+  beforePreview,
+  className,
+  cronStatusControl,
+  description,
+  detailsSlot,
+  headerClassName,
+  pipeline,
+  stats,
+  statsClassName = "fb-hub-card-stats",
+  titleBlock,
+}: {
+  actionGroupLabel?: string;
+  actions?: ReactNode;
+  beforePreview?: ReactNode;
+  className: string;
+  cronStatusControl?: ReactNode;
+  description?: ReactNode;
+  detailsSlot?: ReactNode;
+  headerClassName: string;
+  pipeline: DigestPipelinePreviewData;
+  stats?: ReactNode;
+  statsClassName?: string;
+  titleBlock: ReactNode;
+}) {
+  return (
+    <article className={className}>
       <div>
-        <div className="fb-hub-card-head">
-          <div className="fb-hub-card-titleblock">
-            <h3 className="fb-hub-title">
-              {pipeline.title}
-            </h3>
-            {panel ? null : (
-              <p className="fb-hub-card-byline">
-                <DigestPipelineByline ownerLabel={pipeline.ownerLabel} />
-              </p>
-            )}
-          </div>
-          <div
-            aria-label={`AI Digest collection actions for ${pipeline.title}`}
-            className="fb-hub-card-actions"
-            role="group"
-          >
-            {action}
-          </div>
+        <div className={headerClassName}>
+          {titleBlock}
+          {actions ? (
+            <div
+              aria-label={actionGroupLabel}
+              className="fb-hub-card-actions"
+              role="group"
+            >
+              {actions}
+            </div>
+          ) : null}
         </div>
 
         {description ? (
@@ -464,23 +521,19 @@ function DigestPipelineCard({
         ) : null}
       </div>
 
-      <DigestPipelinePreviewCard pipeline={pipeline} />
+      {beforePreview}
 
-      <div className={panel ? "fb-hub-card-stats fb-hub-card-stats--with-owner" : "fb-hub-card-stats"}>
-        <CountMeta
-          label={pipeline.digestCount === 1 ? "issue" : "issues"}
-          value={pipeline.digestCount}
-        />
-        <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
-        {!panel ? (
-          <CountMeta label={pipeline.viewCount === 1 ? "view" : "views"} value={pipeline.viewCount} />
-        ) : null}
-        {panel ? (
-          <span className="fb-hub-card-owner">
-            by <UserName>{digestPipelineOwnerName(pipeline.ownerLabel)}</UserName>
-          </span>
-        ) : null}
-      </div>
+      <DigestPipelinePreviewCard
+        cronStatusControl={cronStatusControl}
+        detailsSlot={detailsSlot}
+        pipeline={pipeline}
+      />
+
+      {stats ? (
+        <div className={statsClassName}>
+          {stats}
+        </div>
+      ) : null}
     </article>
   );
 }

@@ -50,7 +50,10 @@ test("sources AI Digest loading state names the same sections as the loaded tab"
   assert.match(digestPipelineForm, /\{panel \? null : \(\s*<p className="fb-hub-card-byline">/);
   assert.match(digestPipelineForm, /<DigestPipelineByline ownerLabel=\{pipeline\.ownerLabel\}/);
   assert.doesNotMatch(digestPipelineForm, /\{panel \? null : \(\s*<div className="fb-hub-card-stats">/);
-  assert.match(digestPipelineForm, /className=\{panel \? "fb-hub-card-stats fb-hub-card-stats--with-owner" : "fb-hub-card-stats"\}/);
+  assert.match(digestPipelineForm, /function DigestPipelineInfoCard/);
+  assert.equal((digestPipelineForm.match(/<DigestPipelineInfoCard/g) ?? []).length, 2);
+  assert.doesNotMatch(digestPipelineForm, /export function OwnDigestPipelineCard[\s\S]*label=\{pipeline\.viewCount === 1 \? "view" : "views"\}[\s\S]*function DigestPipelineCard/);
+  assert.match(digestPipelineForm, /statsClassName=\{panel \? "fb-hub-card-stats fb-hub-card-stats--with-owner" : "fb-hub-card-stats"\}/);
   assert.match(digestPipelineForm, /className="fb-hub-card-owner"/);
   assert.match(digestPipelineForm, /by <UserName>\{digestPipelineOwnerName\(pipeline\.ownerLabel\)\}<\/UserName>/);
   assert.match(digestPipelineForm, /\{!panel \? \(\s*<CountMeta label=\{pipeline\.viewCount === 1 \? "view" : "views"\} value=\{pipeline\.viewCount\} \/>/);

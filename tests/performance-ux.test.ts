@@ -2713,6 +2713,8 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(buildersPage, /function selectedSourcesTabItem/);
   assert.match(buildersPage, /const showStopDigestCron = data\.digestCronJob\?\.status === "active"/);
   assert.match(buildersPage, /Your AI Digest collection/);
+  assert.match(buildersPage, /const ownDigestPipeline: OwnDigestPipeline = \{/);
+  assert.doesNotMatch(buildersPage, /const ownDigestPipeline: OwnDigestPipeline = \{[\s\S]*viewCount:\s*ownPipelineShare\?\.viewCount[\s\S]*\};/);
   assert.doesNotMatch(buildersPage, /Your AI Digest archive/);
   assert.doesNotMatch(buildersPage, />\s*Your AI Digest\s*<\/h2>/);
   assert.match(buildersPage, /className="your-digest-section your-digest-panel library-section-panel"/);
@@ -2729,8 +2731,9 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(digestUpdatesCard, /<div className="fb-hub-digest-details-slot" id=\{detailsRootId\} \/>/);
   assert.match(digestUpdatesCard, /showHeading=\{false\}/);
   assert.match(digestUpdatesCard, /showStatusToggle=\{false\}/);
-  assert.match(digestPipelineForm, /beforePreview\?: ReactNode;[\s\S]*\{beforePreview\}\s*<DigestPipelinePreviewCard[\s\S]*detailsSlot=\{children\}[\s\S]*cronStatusControl=\{cronStatusControl\}/);
-  assert.match(digestPipelineForm, /<DigestPipelinePreviewCard pipeline=\{pipeline\} \/>/);
+  assert.match(digestPipelineForm, /function DigestPipelineInfoCard/);
+  assert.match(digestPipelineForm, /beforePreview\?: ReactNode;[\s\S]*<DigestPipelineInfoCard[\s\S]*beforePreview=\{beforePreview\}[\s\S]*detailsSlot=\{children\}[\s\S]*cronStatusControl=\{cronStatusControl\}/);
+  assert.match(digestPipelineForm, /<DigestPipelinePreviewCard[\s\S]*cronStatusControl=\{cronStatusControl\}[\s\S]*detailsSlot=\{detailsSlot\}[\s\S]*pipeline=\{pipeline\}/);
   assert.match(digestPipelineForm, /detailsSlot\?: ReactNode;[\s\S]*<DigestPipelineMetaGrid[\s\S]*\{detailsSlot\}[\s\S]*<div className="fb-hub-digest-preview-row">/);
   assert.equal((digestPipelineForm.match(/className="fb-hub-digest-preview"/g) ?? []).length, 1);
   assert.match(digestPipelineForm, /latestDigestHeadline/);
@@ -3600,6 +3603,9 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(digestPipelineForm, /\(\) => pipelines\.filter\(\(pipeline\) => !pipeline\.owned\)/);
   assert.match(digestPipelineForm, /export function OwnDigestPipelineCard/);
   assert.match(digestPipelineForm, /export function DigestPipelinePreviewCard/);
+  assert.match(digestPipelineForm, /function DigestPipelineInfoCard/);
+  assert.equal((digestPipelineForm.match(/<DigestPipelineInfoCard/g) ?? []).length, 2);
+  assert.doesNotMatch(digestPipelineForm, /export function OwnDigestPipelineCard[\s\S]*label=\{pipeline\.viewCount === 1 \? "view" : "views"\}[\s\S]*function DigestPipelineCard/);
   assert.match(digestPipelineForm, /@\/components\/DigestHeadlineSummary/);
   assert.match(digestPipelineForm, /pipeline\.latestDigestHeadline\?\.trim\(\)/);
   assert.match(digestPipelineForm, /<DigestHeadlineSummary[\s\S]*sourceLinks=\{pipeline\.latestDigestSourceLinks\}[\s\S]*text=\{headline\}/);
@@ -3607,7 +3613,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.doesNotMatch(digestPipelineForm, /\.\s*replace\(\/\^\(\?:\[-\*•\]\|\\d\+\[\.\)\]\)\\s\+\/gm, ""\)/);
   assert.doesNotMatch(digestPipelineForm, /Radio|fb-hub-digest-preview-icon/);
   assert.match(digestPipelineForm, /<DigestPipelineTitleEditor/);
-  assert.match(digestPipelineForm, /<article className="own-digest-card">/);
+  assert.match(digestPipelineForm, /className="own-digest-card"/);
+  assert.match(digestPipelineForm, /<article className=\{className\}>/);
   assert.doesNotMatch(digestPipelineForm, /className="fb-hub-card own-digest-card"/);
   assert.doesNotMatch(digestPipelineForm, /DigestPipelineVisibilityToggle/);
   assert.doesNotMatch(digestPipelineForm, />\s*Shared archive\s*</);
@@ -4976,7 +4983,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /pipeline\.description\?\.trim\(\)/);
   assert.match(digestPipelineForm, /return null/);
   assert.match(digestPipelineForm, /<DigestPipelineByline ownerLabel=\{pipeline\.ownerLabel\}/);
-  assert.match(digestPipelineForm, /className=\{panel \? "fb-hub-card-stats fb-hub-card-stats--with-owner" : "fb-hub-card-stats"\}/);
+  assert.match(digestPipelineForm, /statsClassName=\{panel \? "fb-hub-card-stats fb-hub-card-stats--with-owner" : "fb-hub-card-stats"\}/);
   assert.match(digestPipelineForm, /\{!panel \? \(\s*<CountMeta label=\{pipeline\.viewCount === 1 \? "view" : "views"\} value=\{pipeline\.viewCount\} \/>/);
   assert.match(digestPipelineForm, /by <UserName>\{digestPipelineOwnerName\(pipeline\.ownerLabel\)\}<\/UserName>/);
   assert.doesNotMatch(digestPipelineForm, /Shared by \$\{pipeline\.ownerLabel\}\./);
@@ -5033,7 +5040,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.doesNotMatch(digestPipelineForm, /No AI Digests yet/);
   assert.doesNotMatch(digestPipelineForm, /No digests yet/);
   assert.match(digestPipelineForm, /imported=\{importedIds\.has\(pipeline\.id\)\}/);
-  assert.match(digestPipelineForm, /aria-label=\{`AI Digest collection actions for \$\{pipeline\.title\}`\}/);
+  assert.match(digestPipelineForm, /actionGroupLabel=\{`AI Digest collection actions for \$\{pipeline\.title\}`\}/);
   assert.match(digestPipelineForm, /className="fb-hub-card-actions"[\s\S]*role="group"/);
   assert.match(digestPipelineForm, /aria-label=\{`Import AI Digest collection \$\{pipeline\.title\}`\}/);
   assert.match(digestPipelineForm, /\?\s*"Importing"\s*:\s*"Import"/);
@@ -5519,8 +5526,11 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.doesNotMatch(css, /\.(?:stats-panel|stat-card|metric-card|search-stats-panel)\b/);
   const builderPostsSummaryRule = cssRule(css, ".builder-posts-summary");
   const builderLibraryCardPostsRule = cssRule(css, ".builder-library-card-posts");
+  const builderPostRowRule = cssRule(css, ".builder-post-row");
   assert.match(builderLibraryCardPostsRule, /grid-column:\s*2 \/ -1/);
   assert.match(builderLibraryCardPostsRule, /min-width:\s*0/);
+  assert.match(builderPostRowRule, /padding:\s*0\.9rem 0/);
+  assert.doesNotMatch(builderPostRowRule, /padding:\s*0\.9rem 0\.95rem/);
   assert.match(css, /\.builder-library-card\[data-expandable="true"\]\s*{[\s\S]*cursor:\s*pointer/);
   assert.doesNotMatch(css, /\.builder-posts-latest\s*{/);
   assert.doesNotMatch(css, /\.builder-posts-latest::before\s*{[\s\S]*content:\s*"·"/);

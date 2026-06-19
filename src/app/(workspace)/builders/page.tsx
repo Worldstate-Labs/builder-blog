@@ -339,7 +339,6 @@ async function loadDigestSourcesPageData() {
       ownPipelineShare?.title ?? digestPipelineTitle(session.user),
     ),
     importCount: ownPipelineShare?.importCount ?? 0,
-    viewCount: ownPipelineShare?.viewCount ?? 0,
     ...ownDigestMetadata,
   };
   const hubDigestPipelines: HubDigestPipeline[] = digestPipelineShares

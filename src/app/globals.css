@@ -3113,7 +3113,7 @@ summary.library-section-summary::after {
   display: grid;
   gap: 0.85rem;
   grid-template-columns: minmax(0, 1fr) auto;
-  padding: 0.9rem 0.95rem;
+  padding: 0.9rem 0;
 }
 
 .builder-post-loading {
