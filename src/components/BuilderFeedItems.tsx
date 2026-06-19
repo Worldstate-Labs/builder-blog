@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { EmptyState } from "@/components/EmptyState";
 import { PostCard } from "@/components/PostCard";
 import { postDetailHref } from "@/lib/navigation";
@@ -30,7 +30,6 @@ type BuilderFeedItem = {
 };
 
 type BuilderFeedItemsProps = {
-  actions?: ReactNode;
   builder: BuilderSummary;
   builderId: string;
   latestPostCreatedAt?: string | null;
@@ -38,7 +37,6 @@ type BuilderFeedItemsProps = {
 };
 
 export function BuilderFeedItems({
-  actions,
   builder,
   builderId,
   latestPostCreatedAt,
@@ -101,33 +99,30 @@ export function BuilderFeedItems({
 
   return (
     <div className="builder-posts">
-      <div className="builder-posts-toolbar">
-        <button
-          aria-controls={listId}
-          aria-expanded={isOpen}
-          aria-label={postsSummaryLabel}
-          className="builder-posts-summary"
-          onClick={toggleOpen}
-          type="button"
-        >
-          <span className="builder-posts-count">
-            <span>{postCountLabel}</span>
-            {latestDateLabel ? (
-              <>
-                <span aria-hidden="true" className="builder-posts-dot">·</span>
-                <time
-                  className="builder-posts-latest"
-                  dateTime={latestPostCreatedAt ?? undefined}
-                  title={`Latest post ${latestDateLabel}`}
-                >
-                  latest at {latestDateLabel}
-                </time>
-              </>
-            ) : null}
-          </span>
-        </button>
-        {actions}
-      </div>
+      <button
+        aria-controls={listId}
+        aria-expanded={isOpen}
+        aria-label={postsSummaryLabel}
+        className="builder-posts-summary"
+        onClick={toggleOpen}
+        type="button"
+      >
+        <span className="builder-posts-count">
+          <span>{postCountLabel}</span>
+          {latestDateLabel ? (
+            <>
+              <span aria-hidden="true" className="builder-posts-dot">·</span>
+              <time
+                className="builder-posts-latest"
+                dateTime={latestPostCreatedAt ?? undefined}
+                title={`Latest post ${latestDateLabel}`}
+              >
+                latest at {latestDateLabel}
+              </time>
+            </>
+          ) : null}
+        </span>
+      </button>
       <div className="builder-post-list" hidden={!isOpen} id={listId}>
         {isLoading ? (
           <div className="builder-post-loading" role="status">

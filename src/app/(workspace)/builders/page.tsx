@@ -677,7 +677,14 @@ async function FetchSourcesSection({
         });
 
   const fetchSyncSection = (
-    <section className="sources-sync-section">
+    <section className="sources-sync-section" aria-labelledby="source-syncing-section-title">
+      <div className="library-hub-toolbar">
+        <div className="library-hub-toolbar-copy">
+          <h2 id="source-syncing-section-title" className="fb-section-heading">
+            Source syncing
+          </h2>
+        </div>
+      </div>
       <FetchLogPanel
         actionsPlacement="start"
         actions={
@@ -702,27 +709,21 @@ async function FetchSourcesSection({
 
   const privateSection = (
     <section className="your-library-section" aria-labelledby="sources-library-section-title">
-      <div className="library-hub-toolbar">
-        <div className="library-hub-toolbar-copy">
-          <h2 id="sources-library-section-title" className="fb-section-heading">
-            Your source library
-          </h2>
-        </div>
-        <LibraryVisibilityToggle
-          compact
-          disabled={!data.isAdmin && data.privateBuilders.length === 0}
-          initialIsPublic={data.isPublicLibrary}
-          isAdminLibrary={data.isAdmin}
-          name={userLibraryName}
-        />
-      </div>
-
       <PrivateLibraryPanel
-        beforeBody={fetchSyncSection}
         className="your-library-panel library-section-panel"
-        hideHeader
+        description="Sources you follow. Sorted by type, newest first."
+        headingId="sources-library-section-title"
         sourceOptions={data.sourceLabelOptions}
         title="Your source library"
+        visibilityToggle={
+          <LibraryVisibilityToggle
+            compact
+            disabled={!data.isAdmin && data.privateBuilders.length === 0}
+            initialIsPublic={data.isPublicLibrary}
+            isAdminLibrary={data.isAdmin}
+            name={userLibraryName}
+          />
+        }
       >
         <BuilderLibraryList
           acceptAddedBuilders
@@ -804,6 +805,7 @@ async function FetchSourcesSection({
 
   return (
     <section className="sources-section-stack">
+      {fetchSyncSection}
       {privateSection}
       {importedSection}
     </section>

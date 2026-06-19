@@ -3744,7 +3744,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(buildersPage, /CountMeta/);
   assert.doesNotMatch(buildersPage, /CountChip/);
   assert.doesNotMatch(buildersPage, /<section className="fb-page-head"/);
-  assert.match(buildersPage, /beforeBody=\{fetchSyncSection\}/);
+  assert.match(buildersPage, /<section className="sources-sync-section" aria-labelledby="source-syncing-section-title">/);
+  assert.match(buildersPage, /<h2 id="source-syncing-section-title" className="fb-section-heading">/);
+  assert.match(buildersPage, /Source syncing/);
+  assert.doesNotMatch(buildersPage, /beforeBody=\{fetchSyncSection\}/);
   assert.match(buildersPage, /actionsPlacement="start"/);
   assert.match(buildersPage, /title="Your source library"/);
   assert.match(buildersPage, /emptyTitle="No sources yet"/);
@@ -3767,7 +3770,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(postCard, /useHydrated/);
   assert.match(postCard, /formatDate\(post\.publishedAt, hydrated\)/);
   assert.match(postCard, /timeZone:\s*"UTC"/);
-  assert.match(buildersPage, /<section className="sources-section-stack">[\s\S]*\{privateSection\}[\s\S]*\{importedSection\}/);
+  assert.match(buildersPage, /<section className="sources-section-stack">[\s\S]*\{fetchSyncSection\}[\s\S]*\{privateSection\}[\s\S]*\{importedSection\}/);
   assert.doesNotMatch(buildersPage, /MobileSourcesSwitcher|privateLabel="Your library"|importedLabel="Imported"/);
   assert.doesNotMatch(buildersPage, /title="Your library"|\bYour library\b/);
   assert.doesNotMatch(builderLibraryList, /function BuilderStats/);
@@ -3815,6 +3818,11 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(builderLibraryList, /className="builder-library-info"/);
   assert.match(builderLibraryList, /className="builder-library-info-head"/);
   assert.match(builderLibraryList, /className="builder-library-name"/);
+  assert.match(builderLibraryList, /className="builder-library-card-main"/);
+  assert.match(builderLibraryList, /<BuilderInfo builder=\{builder\}>[\s\S]*<BuilderFeedItems/);
+  assert.match(builderLibraryList, /<div className="builder-library-card-actions">[\s\S]*\{actions\}/);
+  assert.match(builderLibraryList, /<SourceAvatar[\s\S]*<div className="builder-library-card-main">[\s\S]*<BuilderInfo[\s\S]*<div className="builder-library-card-actions">/);
+  assert.doesNotMatch(builderLibraryList, /actions=\{actions\}/);
   assert.doesNotMatch(builderLibraryList, /className="min-w-0"/);
   assert.doesNotMatch(builderLibraryList, /flex flex-wrap items-center gap-2|truncate hover:underline/);
   assert.match(builderLibraryList, /hiddenSourceCount === 1 \? "source" : "sources"/);
@@ -3883,7 +3891,7 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
     builderFeedItems,
     /<button[\s\S]*aria-expanded=\{isOpen\}[\s\S]*aria-label=\{postsSummaryLabel\}[\s\S]*className="builder-posts-summary"[\s\S]*className="builder-posts-count"[\s\S]*\{postCountLabel\}[\s\S]*className="builder-posts-dot"[\s\S]*<time[\s\S]*className="builder-posts-latest"[\s\S]*latest at \{latestDateLabel\}/,
   );
-  assert.match(builderFeedItems, /actions\?: ReactNode/);
+  assert.doesNotMatch(builderFeedItems, /actions\?: ReactNode/);
   assert.match(builderFeedItems, /className="builder-post-list" hidden=\{!isOpen\}/);
   assert.doesNotMatch(builderFeedItems, /CountMeta|builder-posts-label|builder-posts-meta|summarized"\}/);
   assert.doesNotMatch(builderFeedItems, /Latest \{|formatCompactDate|hour:\s*"numeric"|minute:\s*"2-digit"/);
@@ -4051,21 +4059,25 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(privateLibraryPanel, /className="add-source-panel fb-panel"/);
   assert.match(privateLibraryPanel, /className="add-source-panel fb-panel" id=\{addPanelId\}/);
   assert.doesNotMatch(privateLibraryPanel, /className="library-source-list-shell"/);
-  assert.match(privateLibraryPanel, /className="source-library-control-area"/);
+  assert.doesNotMatch(privateLibraryPanel, /className="source-library-control-area"/);
   assert.match(privateLibraryPanel, /SourceLibraryItemsArea/);
   assert.match(privateLibraryPanel, /className="library-add-source-toggle"/);
   assert.match(privateLibraryPanel, /aria-label=\{addOpen \? "Close add source form" : "Add source"\}/);
-  assert.match(privateLibraryPanel, /<span>\{addOpen \? "Close" : "Add source"\}<\/span>/);
+  assert.match(privateLibraryPanel, /<span>\{addOpen \? "Close" : "Add a source"\}<\/span>/);
+  assert.match(privateLibraryPanel, /description\?: string/);
+  assert.match(privateLibraryPanel, /<p className="library-section-copy">\{description\}<\/p>/);
   assert.doesNotMatch(privateLibraryPanel, /<span>\{addOpen \? "Close add source form" : "Add source"\}<\/span>/);
-  assert.match(privateLibraryPanel, /\{beforeBody \?[\s\S]*className="source-library-control-area"[\s\S]*<SourceLibraryItemsArea[\s\S]*\{children\}[\s\S]*<\/SourceLibraryItemsArea>/);
+  assert.doesNotMatch(privateLibraryPanel, /beforeBody/);
+  assert.match(privateLibraryPanel, /<SourceLibraryItemsArea[\s\S]*\{children\}[\s\S]*<\/SourceLibraryItemsArea>/);
   assert.match(privateLibraryPanel, /library-section-summary--static/);
-  assert.match(privateLibraryPanel, /\{beforeBody\}/);
   assert.match(buildersPage, /className="your-library-panel library-section-panel"/);
+  assert.match(buildersPage, /description="Sources you follow\. Sorted by type, newest first\."/);
+  assert.match(buildersPage, /visibilityToggle=\{[\s\S]*<LibraryVisibilityToggle/);
   assert.doesNotMatch(buildersPage, /className="your-library-panel fb-panel"/);
   assert.ok(
     privateLibraryPanel.indexOf('className="library-add-source-toggle"') >
-      privateLibraryPanel.indexOf("{beforeBody}"),
-    "Add source should live in the panel body after the schedule summary, not the panel header.",
+      privateLibraryPanel.indexOf("<SourceLibraryItemsArea"),
+    "Add source should live in the panel body, not the panel header.",
   );
   assert.ok(
     privateLibraryPanel.indexOf("{children}") >
@@ -4084,16 +4096,17 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.add-source-form/);
   assert.doesNotMatch(globals, /\.library-source-list-shell/);
   assert.doesNotMatch(globals, /\.library-source-list-tools/);
-  assert.match(cssRule(globals, ".source-library-control-area"), /padding:\s*1rem/);
-  assert.match(cssRule(globals, ".source-library-control-area"), /border-bottom:\s*1px solid var\(--line\)/);
-  assert.match(cssRule(globals, ".source-library-items-area"), /padding:\s*0 1rem 1rem/);
-  assert.match(cssRule(globals, ".source-library-items-toolbar"), /border-bottom:/);
+  assert.doesNotMatch(globals, /\.source-library-control-area/);
+  assert.match(cssRule(globals, ".source-library-items-area"), /padding:\s*1rem 1\.125rem 1\.125rem/);
+  assert.match(cssRule(globals, ".source-library-items-toolbar"), /border:\s*1px solid/);
+  assert.match(cssRule(globals, ".source-library-items-toolbar"), /border-radius:\s*8px/);
   assert.match(cssRule(globals, ".source-library-items-toolbar"), /background:\s*transparent/);
-  assert.match(cssRule(globals, ".source-library-items-toolbar"), /padding:\s*1rem 0/);
-  assert.match(cssRule(globals, ".your-library-panel .sources-sync-section"), /padding:\s*0/);
+  assert.match(cssRule(globals, ".source-library-items-toolbar"), /padding:\s*0/);
+  assert.doesNotMatch(globals, /\.your-library-panel \.sources-sync-section/);
   assert.doesNotMatch(globals, /\.your-library-panel > \.library-section-body/);
-  assert.match(globals, /\.library-add-source-toggle\s*{[\s\S]*border-radius:\s*999px/);
-  assert.match(cssRule(globals, ".source-library-items-area > .add-source-panel"), /margin:\s*0 0 1rem/);
+  assert.match(cssRule(globals, ".library-add-source-toggle"), /border-radius:\s*8px/);
+  assert.match(cssRule(globals, ".library-add-source-toggle"), /width:\s*100%/);
+  assert.match(cssRule(globals, ".source-library-items-area > .add-source-panel"), /margin:\s*0/);
   assert.match(cssRule(globals, ".source-library-items-area .builder-library-list"), /gap:\s*0/);
   assert.match(cssRule(globals, ".source-library-items-area .builder-library-source-list"), /padding:\s*0/);
   assert.match(globals, /\.source-pick svg\s*{[\s\S]*height:\s*0\.875rem/);
@@ -4143,10 +4156,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-posts\s*{[\s\S]*margin-left:\s*0/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-posts-count\s*{[\s\S]*flex-wrap:\s*nowrap/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card\s*{[\s\S]*--source-list-avatar-size:\s*2\.5rem/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-body\s*{[\s\S]*gap:\s*0\.58rem/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-posts-toolbar\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*gap:\s*0\.58rem/);
+  assert.doesNotMatch(globals, /\.builder-posts-toolbar/);
   assert.doesNotMatch(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-controls\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
-  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card \.builder-library-actions,[\s\S]*\.builder-library-card \.row-actions\s*{[\s\S]*justify-content:\s*flex-end/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-actions\s*{[\s\S]*justify-content:\s*flex-end/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta \.import-remove-control\s*{[\s\S]*grid-column:\s*1 \/ -1/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.sources-sync-section \.digest-updates-main\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.doesNotMatch(buildersPage, /Technical details/);
@@ -5443,16 +5456,16 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.match(css, /\.builder-library-card\s*{[\s\S]*content-visibility:\s*auto/);
   assert.match(css, /\.builder-library-card\s*{[\s\S]*contain-intrinsic-size:\s*auto 8rem/);
   assert.match(css, /\.builder-library-card\s*{[\s\S]*--source-list-avatar-size:\s*2\.375rem/);
-  assert.match(css, /\.builder-library-card\s*{[\s\S]*grid-template-columns:\s*var\(--source-list-avatar-size\) minmax\(0,\s*1fr\)/);
+  assert.match(css, /\.builder-library-card\s*{[\s\S]*grid-template-columns:\s*var\(--source-list-avatar-size\) minmax\(0,\s*1fr\) auto/);
   assert.match(css, /\.builder-library-avatar\.fb-src-icon\s*{[\s\S]*height:\s*var\(--source-list-avatar-size\)/);
   assert.match(css, /\.source-avatar-fallback\s*{[\s\S]*display:\s*inline-flex/);
   assert.match(css, /\.builder-library-card\s*{[\s\S]*padding:\s*0\.95rem 0/);
   assert.match(css, /\.builder-library-card \+ \.builder-library-card\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
-  assert.match(css, /\.builder-library-card-body\s*{[\s\S]*display:\s*grid/);
-  assert.match(css, /\.builder-library-card-body\s*{[\s\S]*min-width:\s*0/);
-  assert.match(css, /\.builder-library-card-controls\s*{[\s\S]*display:\s*block/);
-  assert.doesNotMatch(cssRule(css, ".builder-library-card-controls"), /grid-template-columns/);
-  assert.match(css, /\.builder-posts-toolbar\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(css, /\.builder-library-card-main\s*{[\s\S]*display:\s*grid/);
+  assert.match(css, /\.builder-library-card-main\s*{[\s\S]*min-width:\s*0/);
+  assert.match(css, /\.builder-library-card-actions\s*{[\s\S]*justify-content:\s*flex-end/);
+  assert.doesNotMatch(css, /\.builder-library-card-controls\s*{/);
+  assert.doesNotMatch(css, /\.builder-posts-toolbar\s*{/);
   assert.match(css, /\.builder-library-info\s*{[\s\S]*min-width:\s*0/);
   assert.match(css, /\.builder-library-info-head\s*{[\s\S]*display:\s*flex/);
   assert.match(css, /\.builder-library-name\s*{[\s\S]*text-overflow:\s*ellipsis/);
@@ -5475,8 +5488,8 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.doesNotMatch(css, /\.builder-posts-summary::after/);
   assert.doesNotMatch(css, /\.builder-posts-label\s*{/);
   assert.doesNotMatch(css, /\.builder-posts-meta\s*{/);
-  assert.match(css, /\.builder-posts-count\s*{[\s\S]*border-radius:\s*999px/);
-  assert.match(css, /\.builder-posts-count\s*{[\s\S]*gap:\s*0\.4rem/);
+  assert.doesNotMatch(cssRule(css, ".builder-posts-count"), /border-radius/);
+  assert.match(css, /\.builder-posts-count\s*{[\s\S]*gap:\s*0\.35rem/);
   assert.match(css, /\.builder-posts-count\s*{[\s\S]*overflow:\s*hidden/);
   assert.match(css, /\.builder-posts-latest\s*{[\s\S]*text-overflow:\s*ellipsis/);
   assert.match(css, /\.builder-posts-summary:hover \.builder-posts-count\s*{[\s\S]*color:\s*var\(--accent-strong\)/);
@@ -5491,16 +5504,15 @@ test("list actions use compact controls instead of full-width mobile buttons", (
   assert.doesNotMatch(css, /\.library-section-summary::after[\s\S]*content:\s*"\+"/);
   assert.doesNotMatch(css, /\.library-section-meta > \.fb-btn\s*{/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card\s*{[\s\S]*--source-list-avatar-size:\s*2\.5rem/);
-  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card \.builder-library-actions,[\s\S]*\.builder-library-card \.row-actions\s*{[\s\S]*justify-content:\s*flex-end/);
-  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-body\s*{[\s\S]*gap:\s*0\.58rem/);
-  assert.doesNotMatch(css, /builder-library-card-main/);
+  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-actions,[\s\S]*\.builder-library-card \.builder-library-actions,[\s\S]*\.builder-library-card \.row-actions\s*{[\s\S]*justify-content:\s*flex-end/);
+  assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.builder-library-card-main\s*{[\s\S]*gap:\s*0\.58rem/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta\s*{[\s\S]*display:\s*grid/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta \.import-remove-control\s*{[\s\S]*justify-self:\s*start/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta--no-badge \.import-remove-control\s*{[\s\S]*justify-self:\s*end/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.page-pad--reading > h2\s*{[\s\S]*font-size:\s*1\.25rem/);
   assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.fb-panel\s*{[\s\S]*padding:\s*0\.95rem/);
   assert.doesNotMatch(css, /\.builder-row form,\s*\n\s*\.builder-row button\s*{\s*\n\s*width:\s*100%/);
-  assert.match(builderLibraryList, /builder-library-card-body/);
+  assert.match(builderLibraryList, /builder-library-card-main/);
   assert.doesNotMatch(builderLibraryList, /px-4|py-3\.5|border-\[var\(--line\)\]|grid items-center|flex flex-shrink-0|gap-3|truncate/);
   assert.doesNotMatch(builderLibraryList, /BuilderStats/);
   assert.match(builderLibraryList, /builder-library-row-tools/);
