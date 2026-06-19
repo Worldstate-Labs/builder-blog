@@ -20,9 +20,9 @@ none → 0 components). So we extracted one:
 
 1. Refresh staged scripts: re-copy the skill's `package-build.mjs` etc. into `.ds-sync/`.
 2. **Rebuild the package**: `npm --prefix design-system run build` (this is `cfg.buildCmd`). Without a fresh `dist/index.d.ts`, discovery breaks.
-3. Rebuild the reference: `npx storybook build -c .storybook -o "$(git rev-parse --show-toplevel)/.design-sync/sb-reference"`.
+3. Rebuild the reference: `npm --prefix storybook-tools run build-storybook -- -o "$(git rev-parse --show-toplevel)/.design-sync/sb-reference"`.
 4. Fetch anchor + run `resync.mjs` (or `package-build.mjs` → `package-validate.mjs` → `storybook/compare.mjs`).
-5. Deps for a fresh clone: in `.ds-sync/` `npm i esbuild ts-morph @types/react playwright && npx playwright install chromium`; in `design-system/` `npm i`.
+5. Deps for a fresh clone: in `.ds-sync/` `npm i esbuild ts-morph @types/react playwright && npx playwright install chromium`; in `design-system/` `npm i`; in `storybook-tools/` `npm i`. Storybook/Vite intentionally live outside the root package so Vercel app builds do not install them.
 
 ## Re-sync risks / watch-list
 

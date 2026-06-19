@@ -57,6 +57,8 @@ next-env.d.ts
 
 # Storybook build output
 storybook-static
+storybook-tools/node_modules/
+storybook-tools/storybook-static/
 
 # design-sync transient artifacts
 .design-sync/*.log
