@@ -472,7 +472,9 @@ function DigestPipelineCard({
           value={pipeline.digestCount}
         />
         <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
-        <CountMeta label={pipeline.viewCount === 1 ? "view" : "views"} value={pipeline.viewCount} />
+        {!panel ? (
+          <CountMeta label={pipeline.viewCount === 1 ? "view" : "views"} value={pipeline.viewCount} />
+        ) : null}
         {panel ? (
           <span className="fb-hub-card-owner">
             by <UserName>{digestPipelineOwnerName(pipeline.ownerLabel)}</UserName>

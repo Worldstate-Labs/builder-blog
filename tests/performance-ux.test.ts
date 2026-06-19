@@ -4155,10 +4155,13 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.imported-libraries-panel\s*{[\s\S]*gap:\s*0/);
   assert.match(globals, /\.imported-libraries-panel \.imported-libraries-head\s*{[\s\S]*padding:\s*1\.125rem 1\.25rem/);
   assert.match(globals, /\.imported-libraries-panel \.imported-library-stack\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);
-  assert.match(globals, /\.imported-libraries-panel \.imported-library-stack\s*{[\s\S]*padding:\s*1rem 1\.125rem 1\.125rem/);
+  assert.match(globals, /--hierarchy-inset:\s*1rem/);
+  assert.match(globals, /--hierarchy-inset-mobile:\s*0\.75rem/);
+  assert.match(globals, /\.imported-libraries-panel \.imported-library-stack\s*{[\s\S]*padding:\s*1rem 0 1\.125rem/);
+  assert.match(cssRule(globals, ".library-section-panel-indented"), /margin-inline:\s*var\(--hierarchy-inset\)/);
   assert.match(globals, /\.imported-libraries-head\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(globals, /\.imported-libraries-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
-  assert.match(globals, /@media \(max-width:\s*1023\.99px\)[\s\S]*\.imported-libraries-head\s*{[\s\S]*grid-template-columns:\s*1fr/);
+  assert.match(globals, /@media \(max-width:\s*1023\.99px\)[\s\S]*\.imported-libraries-head,\s*\.imported-digest-head\s*{[\s\S]*grid-template-columns:\s*1fr/);
   assert.match(globals, /\.library-section-copy\s*{[\s\S]*max-width:\s*var\(--copy-max\)/);
   assert.match(globals, /\.library-section-meta--no-badge\s*{[\s\S]*gap:\s*0\.65rem/);
   assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.library-section-meta--no-badge\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
@@ -4974,6 +4977,7 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /return null/);
   assert.match(digestPipelineForm, /<DigestPipelineByline ownerLabel=\{pipeline\.ownerLabel\}/);
   assert.match(digestPipelineForm, /className=\{panel \? "fb-hub-card-stats fb-hub-card-stats--with-owner" : "fb-hub-card-stats"\}/);
+  assert.match(digestPipelineForm, /\{!panel \? \(\s*<CountMeta label=\{pipeline\.viewCount === 1 \? "view" : "views"\} value=\{pipeline\.viewCount\} \/>/);
   assert.match(digestPipelineForm, /by <UserName>\{digestPipelineOwnerName\(pipeline\.ownerLabel\)\}<\/UserName>/);
   assert.doesNotMatch(digestPipelineForm, /Shared by \$\{pipeline\.ownerLabel\}\./);
   assert.doesNotMatch(digestPipelineForm, /Shared by Shared by/);

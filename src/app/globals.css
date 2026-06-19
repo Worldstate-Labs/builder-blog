@@ -79,8 +79,8 @@
   --space-4: 1rem;
   --space-6: 1.5rem;
   --space-8: 2rem;
-  --hierarchy-inset: 0.75rem;
-  --hierarchy-inset-mobile: 0.5rem;
+  --hierarchy-inset: 1rem;
+  --hierarchy-inset-mobile: 0.75rem;
 
   /* UI weight palette — editorial restraint; reserve 700+ for the display serif. */
   --fw-regular: 450;
@@ -2976,7 +2976,7 @@ summary.library-section-summary::after {
 
 .imported-libraries-panel .imported-library-stack {
   border-top: 1px solid var(--line);
-  padding: 1rem 1.125rem 1.125rem;
+  padding: 1rem 0 1.125rem;
 }
 
 .imported-libraries-head {
@@ -9393,6 +9393,10 @@ a.builder-library-name:hover {
   gap: 1rem;
 }
 
+.digest-source-management .digest-pipeline-card .fb-hub-card-head {
+  flex-wrap: nowrap;
+}
+
 .fb-hub-card-head {
   align-items: flex-start;
   display: flex;
@@ -9748,12 +9752,12 @@ a.fb-hub-source-name:focus-visible {
 }
 
 .fb-hub-digest-preview .digest-headline-kicker {
-  color: var(--accent);
-  font-size: 0.6875rem;
-  font-weight: 760;
-  letter-spacing: 0.055em;
-  line-height: 1.2;
-  text-transform: uppercase;
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 780;
+  letter-spacing: 0;
+  line-height: 1.3;
+  text-transform: none;
 }
 
 .fb-hub-digest-preview .digest-headline-list-wrap.is-expandable:not(.is-expanded)::after {
@@ -12540,9 +12544,15 @@ body {
     display: none;
   }
 
-  /* Library section summary should stack action below title on mobile */
-  .library-section-summary {
-    flex-wrap: wrap;
+  .your-digest-panel > .library-section-summary--static {
+    align-items: start;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .your-digest-panel > .library-section-summary--static > .hub-share-control,
+  .your-digest-panel > .library-section-summary--static > .source-section-skeleton-chip {
+    align-items: flex-start;
+    justify-self: start;
   }
 
   /* Imported library headers small on mobile */
@@ -12557,6 +12567,18 @@ body {
 
   .imported-libraries-head .fb-btn {
     justify-self: start;
+  }
+
+  .digest-source-management .digest-pipeline-card .fb-hub-card-head {
+    align-items: flex-start;
+    flex-direction: column;
+    flex-wrap: nowrap;
+  }
+
+  .digest-source-management .digest-pipeline-card .fb-hub-card-actions {
+    justify-content: flex-start;
+    max-width: 100%;
+    width: 100%;
   }
 }
 
