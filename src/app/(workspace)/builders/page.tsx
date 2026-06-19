@@ -23,6 +23,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { PrivateLibraryPanel } from "@/components/PrivateLibraryPanel";
 import { SkillPromptActions } from "@/components/SkillPromptActions";
 import { SourceLibraryItemsArea } from "@/components/SourceLibraryItemsArea";
+import { UserName } from "@/components/UserName";
 import { WorkspaceTopTabs, type WorkspaceTopTabItem } from "@/components/WorkspaceTopTabs";
 import type { AgentTokenListItem } from "@/components/AgentTokenPanel";
 import { isAdminEmail } from "@/lib/admin";
@@ -797,7 +798,7 @@ async function FetchSourcesSection({
           <LibrarySection
             key={library.id}
             title={library.name}
-            detail={library.description || `Imported from ${library.ownerName}`}
+            detail={importedLibraryDetail(library)}
             count={library.builders.length}
             defaultOpen
             indented
@@ -926,7 +927,7 @@ function LibrarySection({
   children,
 }: {
   title: string;
-  detail: string;
+  detail: ReactNode;
   badge?: string;
   count: number;
   defaultOpen?: boolean;
@@ -955,6 +956,11 @@ function LibrarySection({
       </div>
     </details>
   );
+}
+
+function importedLibraryDetail(library: { description: string | null; ownerName: string }) {
+  if (library.description) return library.description;
+  return <>Imported from <UserName>{library.ownerName}</UserName></>;
 }
 
 function builderSort(a: BuilderWithCount, b: BuilderWithCount) {

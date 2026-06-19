@@ -11,8 +11,8 @@ function source(path: string) {
 
 test("home digest keeps collection and issue selection in a dedicated control bar", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
-  const digestArchivePicker = source("src/components/DigestArchivePicker.tsx");
-  const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
+  const digestArchivePicker = source("src/components/DigestArchivePickerView.tsx");
+  const digestPipelineSelector = source("src/components/DigestPipelineSelectorView.tsx");
   const globals = source("src/app/globals.css");
 
   assert.match(dashboardPage, /function DigestControlBar/);
@@ -71,7 +71,7 @@ test("home digest keeps collection and issue selection in a dedicated control ba
 });
 
 test("home digest pipeline selector resets issue selection when changing collections", () => {
-  const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
+  const digestPipelineSelector = source("src/components/DigestPipelineSelectorView.tsx");
 
   assert.match(digestPipelineSelector, /const href = pipeline\.isOwnPipeline/);
   assert.match(digestPipelineSelector, /\? "\/dashboard\?tab=ai-digest"/);
@@ -80,20 +80,22 @@ test("home digest pipeline selector resets issue selection when changing collect
 });
 
 test("home digest pipeline selector labels the selected pipeline owner", () => {
-  const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
+  const digestPipelineSelector = source("src/components/DigestPipelineSelectorView.tsx");
 
+  assert.match(digestPipelineSelector, /function PipelineOwnerLine/);
   assert.match(digestPipelineSelector, /function pipelineOwnerLine/);
   assert.match(digestPipelineSelector, /pipeline\.isOwnPipeline \? "Your AI Digest collection" : `Shared by \$\{pipeline\.ownerLabel\}`/);
+  assert.match(digestPipelineSelector, /Shared by <UserName>\{pipeline\.ownerLabel\}<\/UserName>/);
   assert.doesNotMatch(digestPipelineSelector, /Your digest|Your AI Digest" :/);
   assert.doesNotMatch(digestPipelineSelector, /: pipeline\.ownerLabel/);
   assert.doesNotMatch(digestPipelineSelector, /Shared by Shared by/);
-  assert.match(digestPipelineSelector, /options\.length <= 1[\s\S]*pipelineOwnerLine\(selectedPipeline\)/);
-  assert.match(digestPipelineSelector, /<summary[\s\S]*pipelineOwnerLine\(selectedPipeline\)/);
-  assert.match(digestPipelineSelector, /pipelineOwnerLine\(pipeline\)/);
+  assert.match(digestPipelineSelector, /options\.length <= 1[\s\S]*<PipelineOwnerLine pipeline=\{selectedPipeline\}/);
+  assert.match(digestPipelineSelector, /<summary[\s\S]*<PipelineOwnerLine pipeline=\{selectedPipeline\}/);
+  assert.match(digestPipelineSelector, /<PipelineOwnerLine pipeline=\{pipeline\}/);
 });
 
 test("home digest pipeline menu closes after a selection", () => {
-  const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
+  const digestPipelineSelector = source("src/components/DigestPipelineSelectorView.tsx");
 
   assert.match(digestPipelineSelector, /"use client"/);
   assert.match(digestPipelineSelector, /const \[open, setOpen\] = useState\(false\)/);

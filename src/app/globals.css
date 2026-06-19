@@ -712,12 +712,15 @@ details:not([open]) > :not(summary) {
 }
 
 .user-menu-name {
-  color: var(--ink);
-  font-size: 0.95rem;
-  font-weight: 800;
+  font-size: 0.8125rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.fb-user-name.user-menu-name {
+  justify-self: start;
+  max-width: 100%;
 }
 
 .user-menu-email,
@@ -5542,6 +5545,10 @@ summary.library-section-summary::after {
   font-weight: 650;
 }
 
+.digest-pipeline-meta .fb-user-name {
+  max-width: min(11rem, 100%);
+}
+
 .digest-pipeline-icon {
   color: var(--muted);
   height: 0.875rem;
@@ -9449,12 +9456,42 @@ a.builder-library-name:hover {
   margin-top: 0.2rem;
 }
 
-.fb-hub-card-panel-meta {
-  color: var(--muted-strong);
-  font-size: 0.75rem;
-  font-weight: 650;
-  line-height: 1.35;
-  margin-top: 0.2rem;
+.fb-user-name {
+  align-items: center;
+  background: color-mix(in oklch, var(--accent) 7%, transparent);
+  border: 1px solid color-mix(in oklch, var(--accent) 16%, var(--line));
+  border-radius: 999px;
+  color: color-mix(in oklch, var(--accent) 54%, var(--ink));
+  display: inline-flex;
+  font-size: 0.71875rem;
+  font-weight: 780;
+  gap: 0.3rem;
+  line-height: 1.2;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0.125rem 0.45rem;
+  text-overflow: ellipsis;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+.fb-user-name::before {
+  background: color-mix(in oklch, var(--accent) 58%, var(--paper));
+  border-radius: 999px;
+  content: "";
+  flex: 0 0 auto;
+  height: 0.36rem;
+  width: 0.36rem;
+}
+
+.fb-user-name > * {
+  min-width: 0;
+}
+
+.fb-hub-card-byline .fb-user-name,
+.library-section-copy .fb-user-name {
+  margin-left: 0.25rem;
 }
 
 .fb-hub-card-desc {
@@ -9638,6 +9675,20 @@ a.fb-hub-source-name:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem 1.15rem;
+}
+
+.fb-hub-card-stats--with-owner {
+  gap: 0.5rem 1rem;
+}
+
+.fb-hub-card-owner {
+  align-items: center;
+  color: var(--muted-strong);
+  display: inline-flex;
+  gap: 0.35rem;
+  margin-left: auto;
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .fb-hub-card-fetch-date {

@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { RelativeTime } from "@/components/RelativeTime";
 import { SourceAvatar } from "@/components/SourceAvatar";
 import { SourceBadge } from "@/components/SourceBadge";
+import { UserName } from "@/components/UserName";
 import { normalizeSourceType, sourceLabelForType } from "@/lib/source-display";
 
 const sourceLibraryImportDescription =
@@ -626,7 +627,7 @@ function sourceLibraryListCopy(filter: FilterKey) {
 function sourceLibraryByline(library: HubLibrary) {
   if (library.owned) return "Your source library";
   if (library.isCommunity) return "Curated by FollowBrief";
-  return `By ${sourceLibraryOwnerName(library.ownerLabel)}`;
+  return <>By <UserName>{sourceLibraryOwnerName(library.ownerLabel)}</UserName></>;
 }
 
 function sourceLibraryOwnerName(ownerLabel: string) {

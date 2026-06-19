@@ -1209,8 +1209,8 @@ test("desktop shell uses centered top navigation and merged home feeds", () => {
   const pageHeader = source("src/components/PageHeader.tsx");
   const searchForm = source("src/components/SearchForm.tsx");
   const digestDetails = source("src/components/DigestDetails.tsx");
-  const digestArchivePicker = source("src/components/DigestArchivePicker.tsx");
-  const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
+  const digestArchivePicker = source("src/components/DigestArchivePickerView.tsx");
+  const digestPipelineSelector = source("src/components/DigestPipelineSelectorView.tsx");
   const recommendationsPage = source("src/app/(workspace)/recommendations/page.tsx");
   const globals = source("src/app/globals.css");
 
@@ -2553,8 +2553,8 @@ test("skill context caps personal fetched items to keep payloads bounded", () =>
 
 test("dashboard digest tab owns the AI Digest issue selector", () => {
   const dashboardPage = source("src/app/(workspace)/dashboard/page.tsx");
-  const digestArchivePicker = source("src/components/DigestArchivePicker.tsx");
-  const digestPipelineSelector = source("src/components/DigestPipelineSelector.tsx");
+  const digestArchivePicker = source("src/components/DigestArchivePickerView.tsx");
+  const digestPipelineSelector = source("src/components/DigestPipelineSelectorView.tsx");
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const historyPage = source("src/app/(workspace)/history/page.tsx");
   const digestDetails = source("src/components/DigestDetails.tsx");
@@ -2642,8 +2642,8 @@ test("dashboard digest tab owns the AI Digest issue selector", () => {
   assert.match(digestRoute, /feedItemId:\s*\{ not: null \}/);
   assert.match(digestRoute, /feedItem:\s*{[\s\S]*is:\s*{/);
   assert.match(dashboardPage, /DigestPipelineSelector/);
-  assert.match(digestPipelineSelector, /pipelineOwnerLine\(selectedPipeline\)/);
-  assert.match(digestPipelineSelector, /pipelineOwnerLine\(pipeline\)/);
+  assert.match(digestPipelineSelector, /<PipelineOwnerLine pipeline=\{selectedPipeline\}/);
+  assert.match(digestPipelineSelector, /<PipelineOwnerLine pipeline=\{pipeline\}/);
   assert.match(dashboardPage, /DigestArchivePicker/);
   assert.match(dashboardPage, /serializeDigestArchiveOption/);
   assert.match(digestArchivePicker, /<RelativeTime className="digest-picker-date" value=\{digest\.createdAt\}/);
@@ -3523,7 +3523,8 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /if \(library\.owned\) return "Your source library"/);
   assert.match(source("src/components/LibraryHubImportForm.tsx"), /if \(library\.isCommunity\) return "Curated by FollowBrief"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /return "Your Library"|return "By Community"/);
-  assert.match(source("src/components/LibraryHubImportForm.tsx"), /return `By \$\{sourceLibraryOwnerName\(library\.ownerLabel\)\}`/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /<>By <UserName>\{sourceLibraryOwnerName\(library\.ownerLabel\)\}<\/UserName><\/>/);
+  assert.match(source("src/components/LibraryHubImportForm.tsx"), /import \{ UserName \} from "@\/components\/UserName"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /fb-hub-card-kicker|fb-hub-card-topic|kindBadge\(library\)|topicLabel\(library\)/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /Your private source library\.|return "private"|return "Personal"/);
   assert.doesNotMatch(source("src/components/LibraryHubImportForm.tsx"), /return library\.ownerLabel/);
@@ -3614,12 +3615,14 @@ test("primary tabs keep local loading fallbacks alongside route loaders", () => 
   assert.match(digestPipelineForm, /className="hub-list-stack fb-hub-list"/);
   assert.match(digestPipelineForm, /className="fb-hub-card-head"/);
   assert.match(digestPipelineForm, /className="fb-hub-card-byline"/);
-  assert.match(digestPipelineForm, /\{digestPipelineByline\(pipeline\.ownerLabel\)\}/);
+  assert.match(digestPipelineForm, /<DigestPipelineByline ownerLabel=\{pipeline\.ownerLabel\}/);
   assert.doesNotMatch(digestPipelineForm, /digestPipelineKindBadge\(pipeline\)/);
   assert.doesNotMatch(digestPipelineForm, /function digestPipelineKindBadge/);
-  assert.match(digestPipelineForm, /function digestPipelineByline\(ownerLabel: string\)/);
+  assert.match(digestPipelineForm, /function DigestPipelineByline\(\{ ownerLabel \}: \{ ownerLabel: string \}\)/);
+  assert.match(digestPipelineForm, /function digestPipelineOwnerName\(ownerLabel: string\)/);
   assert.match(digestPipelineForm, /\.replace\(\/\^Shared by\\s\+\/i, ""\)/);
-  assert.match(digestPipelineForm, /return `By \$\{label \|\| "a FollowBrief user"\}`/);
+  assert.match(digestPipelineForm, /\.replace\(\/\^Curated by\\s\+\/i, ""\)/);
+  assert.match(digestPipelineForm, /return label \|\| "a FollowBrief user"/);
   assert.doesNotMatch(digestPipelineForm, /by \{digestPipelineOwnerTopic|function digestPipelineOwnerTopic/);
   assert.match(digestPipelineForm, /className="fb-hub-digest-preview"/);
   assert.match(digestPipelineForm, /function DigestPipelineMetaGrid/);
@@ -4969,7 +4972,9 @@ test("library hub exposes share and multi-import flows", () => {
   assert.match(digestPipelineForm, /function digestPipelineCardDescription/);
   assert.match(digestPipelineForm, /pipeline\.description\?\.trim\(\)/);
   assert.match(digestPipelineForm, /return null/);
-  assert.match(digestPipelineForm, /\{digestPipelineByline\(pipeline\.ownerLabel\)\}/);
+  assert.match(digestPipelineForm, /<DigestPipelineByline ownerLabel=\{pipeline\.ownerLabel\}/);
+  assert.match(digestPipelineForm, /className=\{panel \? "fb-hub-card-stats fb-hub-card-stats--with-owner" : "fb-hub-card-stats"\}/);
+  assert.match(digestPipelineForm, /by <UserName>\{digestPipelineOwnerName\(pipeline\.ownerLabel\)\}<\/UserName>/);
   assert.doesNotMatch(digestPipelineForm, /Shared by \$\{pipeline\.ownerLabel\}\./);
   assert.doesNotMatch(digestPipelineForm, /Shared by Shared by/);
   assert.doesNotMatch(digestPipelineForm, /\{pipeline\.description \|\| pipeline\.ownerLabel\}/);

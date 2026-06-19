@@ -8,6 +8,7 @@ import type { Session } from "next-auth";
 import { usePathname } from "next/navigation";
 import { FileText, LogOut, Moon, Scale, Settings, ShieldCheck, Sun } from "lucide-react";
 import { setTheme, useHydrated, useTheme } from "@/components/ThemeToggle";
+import { UserName } from "@/components/UserName";
 
 export function UserMenu({
   compact = false,
@@ -100,7 +101,7 @@ export function UserMenu({
         )}
         {!compact ? (
           <span className="user-menu-copy">
-            <span className="user-menu-name">{name}</span>
+            <UserName className="user-menu-name">{name}</UserName>
             <span className="user-menu-email" title={email}>
               {email}
             </span>

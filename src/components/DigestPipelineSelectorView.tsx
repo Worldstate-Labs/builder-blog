@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 import { ChevronDown } from "lucide-react";
+import { UserName } from "@/components/UserName";
 
 type PickerFocusDirection = "first" | "last" | "selected" | "next" | "previous";
 
@@ -84,7 +85,7 @@ export function DigestPipelineSelectorView({
       >
         <span className="digest-pipeline-title">{selectedPipeline.title}</span>
         <span className="digest-pipeline-meta">
-          {pipelineOwnerLine(selectedPipeline)}
+          <PipelineOwnerLine pipeline={selectedPipeline} />
         </span>
       </div>
     );
@@ -153,7 +154,7 @@ export function DigestPipelineSelectorView({
         <span className="digest-pipeline-copy">
           <span className="digest-pipeline-title">{selectedPipeline.title}</span>
           <span className="digest-pipeline-meta">
-            {pipelineOwnerLine(selectedPipeline)}
+            <PipelineOwnerLine pipeline={selectedPipeline} />
           </span>
         </span>
         <ChevronDown aria-hidden="true" className="digest-pipeline-icon" />
@@ -185,7 +186,7 @@ export function DigestPipelineSelectorView({
             >
               <span className="digest-pipeline-title">{pipeline.title}</span>
               <span className="digest-pipeline-meta">
-                {pipelineOwnerLine(pipeline)}
+                <PipelineOwnerLine pipeline={pipeline} />
               </span>
             </LinkComponent>
           );
@@ -205,6 +206,11 @@ function focusDirectionForKey(key: string): PickerFocusDirection {
   if (key === "Home") return "first";
   if (key === "End") return "last";
   return key === "ArrowDown" ? "next" : "previous";
+}
+
+function PipelineOwnerLine({ pipeline }: { pipeline: DigestPipelineSelectorOption }) {
+  if (pipeline.isOwnPipeline) return "Your AI Digest collection";
+  return <>Shared by <UserName>{pipeline.ownerLabel}</UserName></>;
 }
 
 function pipelineOwnerLine(pipeline: DigestPipelineSelectorOption) {

@@ -9,6 +9,7 @@ import { DigestHeadlineSummary } from "@/components/DigestHeadlineSummary";
 import { DigestPipelineTitleEditor } from "@/components/DigestPipelineTitleEditor";
 import { EmptyState } from "@/components/EmptyState";
 import { RelativeTime } from "@/components/RelativeTime";
+import { UserName } from "@/components/UserName";
 import type { DigestPipelineRuntimeMetadata } from "@/lib/digest-pipeline-metadata";
 import { displayLanguagePreference } from "@/lib/language-preference";
 
@@ -426,7 +427,6 @@ function DigestPipelineCard({
     </button>
   );
   const description = panel ? null : digestPipelineCardDescription(pipeline);
-  const panelMeta = panel ? digestPipelinePanelMeta(pipeline) : null;
 
   return (
     <article
@@ -442,9 +442,11 @@ function DigestPipelineCard({
             <h3 className="fb-hub-title">
               {pipeline.title}
             </h3>
-            <p className={panel ? "fb-hub-card-panel-meta" : "fb-hub-card-byline"}>
-              {panelMeta ?? digestPipelineByline(pipeline.ownerLabel)}
-            </p>
+            {panel ? null : (
+              <p className="fb-hub-card-byline">
+                <DigestPipelineByline ownerLabel={pipeline.ownerLabel} />
+              </p>
+            )}
           </div>
           <div
             aria-label={`AI Digest collection actions for ${pipeline.title}`}
@@ -464,13 +466,18 @@ function DigestPipelineCard({
 
       <DigestPipelinePreviewCard pipeline={pipeline} />
 
-      <div className="fb-hub-card-stats">
+      <div className={panel ? "fb-hub-card-stats fb-hub-card-stats--with-owner" : "fb-hub-card-stats"}>
         <CountMeta
           label={pipeline.digestCount === 1 ? "issue" : "issues"}
           value={pipeline.digestCount}
         />
         <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
         <CountMeta label={pipeline.viewCount === 1 ? "view" : "views"} value={pipeline.viewCount} />
+        {panel ? (
+          <span className="fb-hub-card-owner">
+            by <UserName>{digestPipelineOwnerName(pipeline.ownerLabel)}</UserName>
+          </span>
+        ) : null}
       </div>
     </article>
   );
@@ -482,18 +489,22 @@ function digestPipelineCardDescription(pipeline: HubDigestPipeline) {
   return null;
 }
 
-function digestPipelineByline(ownerLabel: string) {
+function DigestPipelineByline({ ownerLabel }: { ownerLabel: string }) {
+  const prefix = /^Curated by\s+/i.test(ownerLabel.trim()) ? "Curated by" : "By";
+  return (
+    <>
+      {prefix} <UserName>{digestPipelineOwnerName(ownerLabel)}</UserName>
+    </>
+  );
+}
+
+function digestPipelineOwnerName(ownerLabel: string) {
   const label = ownerLabel
     .trim()
     .replace(/^Shared by\s+/i, "")
+    .replace(/^Curated by\s+/i, "")
     .replace(/[.。]+$/u, "");
-  if (/^Curated by\s+/i.test(label)) return label;
-  return `By ${label || "a FollowBrief user"}`;
-}
-
-function digestPipelinePanelMeta(pipeline: HubDigestPipeline) {
-  const byline = digestPipelineByline(pipeline.ownerLabel).replace(/^By\s+/i, "by ");
-  return byline;
+  return label || "a FollowBrief user";
 }
 
 export function DigestPipelinePreviewCard({
