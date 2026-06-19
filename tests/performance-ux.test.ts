@@ -4126,6 +4126,10 @@ test("builders page exposes per-builder fetched posts ordered by time", () => {
   assert.match(globals, /\.source-section-skeleton-desc\s*{[\s\S]*max-width:\s*var\(--skeleton-copy-max\)/);
   assert.match(globals, /\.sources-section-stack,[\s\S]*\.imported-libraries-section\s*{[\s\S]*display:\s*grid/);
   assert.match(globals, /\.your-digest-section,[\s\S]*\.your-library-section\s*{[\s\S]*display:\s*grid/);
+  assert.match(cssRule(globals, ".sources-sync-panel > .library-section-body"), /padding:\s*1rem 1\.125rem 1\.125rem/);
+  assert.match(cssRule(globals, ".sources-sync-section .source-fetch-overview"), /grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(cssRule(globals, ".fb-hub-digest-meta.source-fetch-meta"), /grid-template-columns:\s*repeat\(4,\s*minmax\(8\.75rem,\s*1fr\)\)/);
+  assert.match(globals, /@media \(max-width:\s*767px\)[\s\S]*\.fb-hub-digest-meta\.source-fetch-meta\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(globals, /\.imported-libraries-panel\s*{[\s\S]*gap:\s*0/);
   assert.match(globals, /\.imported-libraries-panel \.imported-libraries-head\s*{[\s\S]*padding:\s*1\.125rem 1\.25rem/);
   assert.match(globals, /\.imported-libraries-panel \.imported-library-stack\s*{[\s\S]*border-top:\s*1px solid var\(--line\)/);

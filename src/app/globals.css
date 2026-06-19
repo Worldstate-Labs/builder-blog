@@ -5962,6 +5962,10 @@ summary.library-section-summary::after {
   padding: 0;
 }
 
+.sources-sync-panel > .library-section-body {
+  padding: 1rem 1.125rem 1.125rem;
+}
+
 .source-fetch-overview {
   display: grid;
   gap: 0.9rem;
@@ -5970,9 +5974,9 @@ summary.library-section-summary::after {
 }
 
 .sources-sync-section .source-fetch-overview {
-  align-items: center;
-  gap: 1rem;
-  grid-template-columns: auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0.95rem;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .source-fetch-overview .digest-updates-actions {
@@ -5980,11 +5984,13 @@ summary.library-section-summary::after {
 }
 
 .sources-sync-section .source-fetch-overview .digest-updates-actions {
-  align-self: center;
+  align-self: start;
 }
 
 .fb-hub-digest-meta.source-fetch-meta {
   border-bottom: 0;
+  gap: 0.85rem 1.25rem;
+  grid-template-columns: repeat(4, minmax(8.75rem, 1fr));
   margin-bottom: 0;
   margin-top: 0;
   padding-bottom: 0;
@@ -12553,6 +12559,10 @@ body {
     padding: 0;
   }
 
+  .sources-sync-panel > .library-section-body {
+    padding: 0.85rem;
+  }
+
   .sources-sync-section .digest-updates-head {
     align-items: flex-start;
     display: grid;
@@ -12561,6 +12571,10 @@ body {
   }
 
   .sources-sync-section .source-fetch-overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fb-hub-digest-meta.source-fetch-meta {
     grid-template-columns: minmax(0, 1fr);
   }
 
