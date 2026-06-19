@@ -2,21 +2,26 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import type { ComponentType, CSSProperties } from "react";
-import { Home, LibraryBig, Rss } from "lucide-react";
 import { postReturnToFromPath } from "@/lib/navigation";
+import {
+  AppNavView,
+  type AppNavItem,
+  type AppNavLinkProps,
+  type AppNavViewItem,
+} from "@/components/AppNavView";
 
-export type AppNavItem = {
-  href: string;
-  label: string;
-  icon: "home" | "sources" | "hub";
-};
+export type { AppNavItem } from "@/components/AppNavView";
 
-const icons: Record<AppNavItem["icon"], ComponentType<{ className?: string }>> = {
-  home: Home,
-  sources: Rss,
-  hub: LibraryBig,
-};
+// Container: reads the current route to compute each item's active state and
+// injects Next's Link. All presentation lives in AppNavView (dependency-free,
+// design-system ready). Call sites (AppShell) use AppNav unchanged.
+function NextLink({ href, children, ...rest }: AppNavLinkProps) {
+  return (
+    <Link href={href} {...rest}>
+      {children}
+    </Link>
+  );
+}
 
 export function AppNav({
   desktopLayout = "rail",
@@ -32,61 +37,18 @@ export function AppNav({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const returnTo = postReturnToFromPath(pathname, searchParams.get("returnTo"));
-  const mobileNavItems = mobileItems ?? items;
-  const desktopClassName =
-    desktopLayout === "bar"
-      ? "fb-nav-list fb-nav-list-bar"
-      : "fb-nav-list fb-nav-list-rail";
-  const desktopAriaLabel =
-    desktopLayout === "bar" ? "Primary" : "Desktop primary";
+
+  const withActive = (list: AppNavItem[]): AppNavViewItem[] =>
+    list.map((item) => ({ ...item, active: isActiveNavItem(pathname, item, returnTo) }));
 
   return (
-    <>
-      {mode !== "mobile" ? (
-        <nav className={desktopClassName} aria-label={desktopAriaLabel}>
-          {items.map((item) => {
-            const Icon = icons[item.icon];
-            const active = isActiveNavItem(pathname, item, returnTo);
-            return (
-              <Link
-                aria-current={active ? "page" : undefined}
-                className={`fb-nav${active ? " active" : ""}`}
-                data-active={active ? "true" : undefined}
-                href={item.href}
-                key={item.href}
-              >
-                <Icon aria-hidden="true" />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-      ) : null}
-      {mode !== "desktop" ? (
-        <nav
-          className="fb-m-tabbar"
-          style={{ "--tab-count": mobileNavItems.length } as CSSProperties}
-          aria-label="Mobile primary"
-        >
-          {mobileNavItems.map((item) => {
-            const Icon = icons[item.icon];
-            const active = isActiveNavItem(pathname, item, returnTo);
-            return (
-              <Link
-                aria-current={active ? "page" : undefined}
-                className={`fb-m-tab${active ? " active" : ""}`}
-                data-active={active ? "true" : undefined}
-                href={item.href}
-                key={item.href}
-              >
-                <Icon aria-hidden="true" />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-      ) : null}
-    </>
+    <AppNavView
+      desktopLayout={desktopLayout}
+      items={withActive(items)}
+      mobileItems={mobileItems ? withActive(mobileItems) : undefined}
+      mode={mode}
+      linkComponent={NextLink}
+    />
   );
 }
 
