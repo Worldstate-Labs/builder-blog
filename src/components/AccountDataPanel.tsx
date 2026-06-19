@@ -89,7 +89,10 @@ export function AccountDataPanel() {
     <section className="access-keys-panel fb-panel">
       <div className="access-keys-head">
         <div className="access-keys-copy">
-          <h2 className="fb-section-heading">Account data</h2>
+          <div className="access-keys-headline">
+            <Download className="access-keys-headline-icon" aria-hidden="true" />
+            <h2 className="fb-section-heading">Account data</h2>
+          </div>
           <p className="access-keys-desc">
             Export account data or delete your FollowBrief account, including
             reads, favorites, settings, Hub sharing records, AI Digest records,
@@ -98,7 +101,7 @@ export function AccountDataPanel() {
         </div>
       </div>
 
-      <div className="settings-dialog-actions">
+      <div className="account-data-actions">
         <button
           className="fb-btn light"
           disabled={isExporting || isDeleting}
@@ -109,7 +112,7 @@ export function AccountDataPanel() {
           Export account data
         </button>
         <button
-          className="fb-btn danger"
+          className="fb-btn light is-danger-outline"
           disabled={isExporting || isDeleting}
           onClick={() => {
             setError(null);

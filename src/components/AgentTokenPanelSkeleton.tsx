@@ -1,6 +1,6 @@
 export function AgentTokenPanelSkeleton() {
   return (
-    <section className="access-keys-panel" aria-busy="true" aria-live="polite">
+    <section className="access-keys-panel fb-panel" aria-busy="true" aria-live="polite">
       <span className="sr-only">Loading access keys</span>
       <div className="access-keys-head">
         <div className="access-keys-skeleton-copy">

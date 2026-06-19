@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Laptop, Plus, Smartphone } from "lucide-react";
+import { KeyRound, Laptop, Plus, Smartphone } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { useHydrated } from "@/components/ThemeToggle";
 
@@ -323,10 +323,13 @@ export function AgentTokenPanel({
   }
 
   return (
-    <section className="access-keys-panel">
+    <section className="access-keys-panel fb-panel">
       <div className="access-keys-head">
         <div className="access-keys-copy">
-          <h2 className="fb-section-heading">Access keys</h2>
+          <div className="access-keys-headline">
+            <KeyRound className="access-keys-headline-icon" aria-hidden="true" />
+            <h2 className="fb-section-heading">Access keys</h2>
+          </div>
           <p className="access-keys-desc">
             Access keys let Local Agent run on your devices.
           </p>
