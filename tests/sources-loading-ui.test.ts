@@ -12,6 +12,9 @@ function source(path: string) {
 test("sources AI Digest loading state names the same sections as the loaded tab", () => {
   const buildersPage = source("src/app/(workspace)/builders/page.tsx");
   const buildersLoading = source("src/app/(workspace)/builders/loading.tsx");
+  const digestHeadlineSummary = source("src/components/DigestHeadlineSummary.tsx");
+  const digestPipelineForm = source("src/components/DigestPipelineImportForm.tsx");
+  const globals = source("src/app/globals.css");
   const fallbackBlock = buildersPage.match(
     /function DigestSourcesFallback\(\) \{([\s\S]*?)\n\}/,
   )?.[1] ?? "";
@@ -33,4 +36,15 @@ test("sources AI Digest loading state names the same sections as the loaded tab"
   assert.match(fallbackBlock, /aria-label="Loading your AI Digest collection"/);
   assert.match(fallbackBlock, /aria-label="Loading imported AI Digest collections"/);
   assert.doesNotMatch(fallbackBlock, /<div className="source-sync-skeleton-panel" \/>\s*<div className="source-sync-skeleton-panel" \/>/);
+
+  assert.match(digestHeadlineSummary, /Latest headlines/);
+  assert.doesNotMatch(digestHeadlineSummary, />Headlines</);
+  assert.match(digestPipelineForm, /panel \? null : \(\s*<div className="hub-list-count-row at-desktop">/);
+  assert.match(digestPipelineForm, /panel=\{panel\}/);
+  assert.match(digestPipelineForm, /const description = panel \? null : digestPipelineCardDescription\(pipeline\)/);
+  assert.match(digestPipelineForm, /const panelMeta = panel \? digestPipelinePanelMeta\(pipeline\) : null/);
+  assert.match(digestPipelineForm, /className=\{panel \? "fb-hub-card-panel-meta" : "fb-hub-card-byline"\}/);
+  assert.match(digestPipelineForm, /\{panel \? null : \(\s*<div className="fb-hub-card-stats">/);
+  assert.match(digestPipelineForm, /function digestPipelinePanelMeta\(pipeline: HubDigestPipeline\)/);
+  assert.match(globals, /\.fb-hub-card-panel-meta\s*{[\s\S]*font-size:\s*0\.75rem/);
 });

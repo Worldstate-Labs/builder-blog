@@ -238,14 +238,16 @@ export function DigestPipelineImportForm({
         </p>
       ) : null}
 
-      <div className="hub-list-count-row at-desktop">
-        <CountRange>
-          {formatCount(visiblePipelines.length)}{" "}
-          {visiblePipelines.length === 1
-            ? "AI Digest collection"
-            : "AI Digest collections"}
-        </CountRange>
-      </div>
+      {panel ? null : (
+        <div className="hub-list-count-row at-desktop">
+          <CountRange>
+            {formatCount(visiblePipelines.length)}{" "}
+            {visiblePipelines.length === 1
+              ? "AI Digest collection"
+              : "AI Digest collections"}
+          </CountRange>
+        </div>
+      )}
 
       <div className="hub-list-stack fb-hub-list">
         {visiblePipelines.map((pipeline) => (
@@ -255,6 +257,7 @@ export function DigestPipelineImportForm({
             key={pipeline.id}
             onImport={importPipeline}
             onRemove={requestRemoveImported}
+            panel={panel}
             pending={pendingAction?.pipelineId === pipeline.id ? pendingAction.type : null}
             pipeline={pipeline}
           />
@@ -385,6 +388,7 @@ function DigestPipelineCard({
   isPending,
   onImport,
   onRemove,
+  panel,
   pending,
   pipeline,
 }: {
@@ -392,6 +396,7 @@ function DigestPipelineCard({
   isPending: boolean;
   onImport: (id: string) => void;
   onRemove: (id: string) => void;
+  panel: boolean;
   pending: "import" | "remove" | null;
   pipeline: HubDigestPipeline;
 }) {
@@ -420,18 +425,25 @@ function DigestPipelineCard({
       {pending === "import" ? "Importing" : "Import"}
     </button>
   );
-  const description = digestPipelineCardDescription(pipeline);
+  const description = panel ? null : digestPipelineCardDescription(pipeline);
+  const panelMeta = panel ? digestPipelinePanelMeta(pipeline) : null;
 
   return (
-    <article className="fb-hub-card digest-pipeline-card">
+    <article
+      className={
+        panel
+          ? "fb-hub-card digest-pipeline-card is-sources-panel"
+          : "fb-hub-card digest-pipeline-card"
+      }
+    >
       <div>
         <div className="fb-hub-card-head">
           <div className="fb-hub-card-titleblock">
             <h3 className="fb-hub-title">
               {pipeline.title}
             </h3>
-            <p className="fb-hub-card-byline">
-              {digestPipelineByline(pipeline.ownerLabel)}
+            <p className={panel ? "fb-hub-card-panel-meta" : "fb-hub-card-byline"}>
+              {panelMeta ?? digestPipelineByline(pipeline.ownerLabel)}
             </p>
           </div>
           <div
@@ -452,14 +464,16 @@ function DigestPipelineCard({
 
       <DigestPipelinePreviewCard pipeline={pipeline} />
 
-      <div className="fb-hub-card-stats">
-        <CountMeta
-          label={pipeline.digestCount === 1 ? "issue" : "issues"}
-          value={pipeline.digestCount}
-        />
-        <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
-        <CountMeta label={pipeline.viewCount === 1 ? "view" : "views"} value={pipeline.viewCount} />
-      </div>
+      {panel ? null : (
+        <div className="fb-hub-card-stats">
+          <CountMeta
+            label={pipeline.digestCount === 1 ? "issue" : "issues"}
+            value={pipeline.digestCount}
+          />
+          <CountMeta label={pipeline.importCount === 1 ? "import" : "imports"} value={pipeline.importCount} />
+          <CountMeta label={pipeline.viewCount === 1 ? "view" : "views"} value={pipeline.viewCount} />
+        </div>
+      )}
     </article>
   );
 }
@@ -477,6 +491,12 @@ function digestPipelineByline(ownerLabel: string) {
     .replace(/[.。]+$/u, "");
   if (/^Curated by\s+/i.test(label)) return label;
   return `By ${label || "a FollowBrief user"}`;
+}
+
+function digestPipelinePanelMeta(pipeline: HubDigestPipeline) {
+  const issueLabel = pipeline.digestCount === 1 ? "issue" : "issues";
+  const byline = digestPipelineByline(pipeline.ownerLabel).replace(/^By\s+/i, "by ");
+  return `${formatCount(pipeline.digestCount)} ${issueLabel} · ${byline}`;
 }
 
 export function DigestPipelinePreviewCard({

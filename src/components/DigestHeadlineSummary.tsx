@@ -95,7 +95,7 @@ export function DigestHeadlineSummary({
     >
       <div className="digest-headline-top">
         <div className="digest-headline-label-row">
-          <div className="digest-headline-kicker">Headlines</div>
+          <div className="digest-headline-kicker">Latest headlines</div>
         </div>
         {headerAction ? <div className="digest-headline-action">{headerAction}</div> : null}
       </div>
