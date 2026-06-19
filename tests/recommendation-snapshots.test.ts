@@ -15,7 +15,7 @@ test("recommendation feed persists snapshots and marks reads without removing ca
   const schema = source("prisma/schema.prisma");
   const apiRoute = source("src/app/api/recommendations/route.ts");
   const feed = source("src/components/RecommendationFeed.tsx");
-  const postCard = source("src/components/PostCard.tsx");
+  const postCard = source("src/components/PostCardView.tsx");
   const postDetailPage = source("src/components/PostDetailPage.tsx");
   const legacyDetailPage = source("src/app/(workspace)/recommendations/items/[feedItemId]/page.tsx");
   const navigation = source("src/lib/navigation.ts");
@@ -83,9 +83,9 @@ test("favorites saves posts into the Favorites tab", () => {
   const searchPage = source("src/app/(workspace)/search/page.tsx");
   const digestRoute = source("src/app/api/digests/[digestId]/route.ts");
   const digestDetails = source("src/components/DigestDetails.tsx");
-  const digestContent = source("src/components/DigestContent.tsx");
+  const digestContent = source("src/components/DigestContentView.tsx");
   const feed = source("src/components/RecommendationFeed.tsx");
-  const postCard = source("src/components/PostCard.tsx");
+  const postCard = source("src/components/PostCardView.tsx");
   const globals = source("src/app/globals.css");
 
   assert.match(schema, /model FeedFavorite/);
@@ -195,7 +195,7 @@ test("favorites saves posts into the Favorites tab", () => {
   assert.match(digestDetails, /function removeUrl/);
   assert.match(digestDetails, /fetch\("\/api\/favorites"/);
   assert.doesNotMatch(digestDetails, /reload restores truth|Best-effort optimistic UI/);
-  assert.match(digestContent, /PostFavoriteButton/);
+  assert.match(source("src/components/DigestContentView.tsx"), /PostFavoriteButton/);
   assert.match(digestContent, /onFavoriteToggle/);
   assert.match(digestContent, /digestPostKey/);
   assert.match(digestContent, /favoriteStateByPostKey/);
@@ -284,17 +284,17 @@ test("source logos are shared across recommendation and library surfaces", () =>
   assert.match(source("src/components/SourceBadge.tsx"), /decorative = false/);
   assert.match(source("src/components/SourceBadge.tsx"), /aria-label=\{!decorative && !shouldShowLabel && !labelSuppressedByDuplicate \? source\.label : undefined\}/);
   assert.match(source("src/components/SourceBadge.tsx"), /sameDisplayLabel\(source\.label, suppressLabelWhen\)/);
-  assert.match(source("src/components/PostCard.tsx"), /SourceBadge/);
-  assert.match(source("src/components/PostCard.tsx"), /SourceAvatar/);
-  assert.match(source("src/components/PostCard.tsx"), /suppressLabelWhen=\{authorName\}/);
-  assert.match(source("src/components/PostCard.tsx"), /const canReadRawContent = !isDetail && showRawContent && Boolean\(rawContent\)/);
+  assert.match(source("src/components/PostCardView.tsx"), /SourceBadge/);
+  assert.match(source("src/components/PostCardView.tsx"), /SourceAvatar/);
+  assert.match(source("src/components/PostCardView.tsx"), /suppressLabelWhen=\{authorName\}/);
+  assert.match(source("src/components/PostCardView.tsx"), /const canReadRawContent = !isDetail && showRawContent && Boolean\(rawContent\)/);
   assert.match(source("src/components/PostCard.tsx"), /export function PostCard/);
   assert.match(source("src/components/FetchedPostCard.tsx"), /PostCard as FetchedPostCard/);
   assert.match(source("src/components/RecommendationFeed.tsx"), /PostCard/);
   assert.match(source("src/components/RecentPostsList.tsx"), /PostCard/);
   assert.doesNotMatch(source("src/components/RecentPostsList.tsx"), /variant="row"/);
   assert.doesNotMatch(source("src/components/RecentPostsList.tsx"), /showBuilderRow=\{false\}/);
-  assert.match(source("src/components/PostCard.tsx"), /showDebugActions = false/);
+  assert.match(source("src/components/PostCardView.tsx"), /showDebugActions = false/);
   assert.match(source("src/components/BuilderFeedItems.tsx"), /PostCard/);
   assert.doesNotMatch(source("src/components/BuilderLibraryList.tsx"), /SourceBadge/);
   assert.match(source("src/components/BuilderLibraryList.tsx"), /builder-library-source-list/);

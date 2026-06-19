@@ -2427,12 +2427,125 @@ function isNearDuplicate(text, reference) {
   return text.length <= normalizedReference.length + 20 && normalizedReference.includes(text);
 }
 
+async function sourceFetchPolicy(url, fetcher = timedSourceFetch) {
+  const robotsUrl = robotsTxtUrl(url);
+  if (!robotsUrl) return { allowed: true, reason: "invalid_url" };
+  try {
+    const response = await fetcher(robotsUrl, {
+      headers: { "User-Agent": "FollowBriefSkill/1.0 (robots check)" },
+    });
+    if (!response.ok) return { allowed: true, reason: `robots_http_${response.status}` };
+    const body = await response.text();
+    return robotsAllowsUrl(body, url, "FollowBriefSkill")
+      ? { allowed: true, reason: "robots_allowed" }
+      : { allowed: false, reason: "robots_disallow" };
+  } catch {
+    return { allowed: true, reason: "robots_unavailable" };
+  }
+}
+
+function robotsTxtUrl(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    return `${url.origin}/robots.txt`;
+  } catch {
+    return null;
+  }
+}
+
+function robotsAllowsUrl(robotsText, rawUrl, userAgent = "FollowBriefSkill") {
+  let path = "/";
+  try {
+    const url = new URL(rawUrl);
+    path = `${url.pathname || "/"}${url.search || ""}`;
+  } catch {
+    return true;
+  }
+  const groups = parseRobotsGroups(robotsText);
+  const matching = groups.filter((group) =>
+    group.agents.some((agent) => agent === "*" || userAgent.toLowerCase().includes(agent)),
+  );
+  if (matching.length === 0) return true;
+  let best = { type: "allow", length: -1 };
+  for (const group of matching) {
+    for (const rule of group.rules) {
+      if (!path.startsWith(rule.path)) continue;
+      if (
+        rule.path.length > best.length ||
+        (rule.path.length === best.length && rule.type === "allow")
+      ) {
+        best = { type: rule.type, length: rule.path.length };
+      }
+    }
+  }
+  return best.type !== "disallow";
+}
+
+function parseRobotsGroups(robotsText) {
+  const groups = [];
+  let pendingAgents = [];
+  let current = null;
+  for (const rawLine of String(robotsText || "").split(/\r?\n/)) {
+    const line = rawLine.replace(/#.*/, "").trim();
+    if (!line) continue;
+    const sep = line.indexOf(":");
+    if (sep === -1) continue;
+    const field = line.slice(0, sep).trim().toLowerCase();
+    const value = line.slice(sep + 1).trim();
+    if (field === "user-agent") {
+      if (current && current.rules.length > 0) {
+        current = null;
+        pendingAgents = [];
+      }
+      pendingAgents.push(value.toLowerCase());
+      continue;
+    }
+    if (field === "allow" || field === "disallow") {
+      if (!current) {
+        current = { agents: pendingAgents.length > 0 ? pendingAgents : ["*"], rules: [] };
+        groups.push(current);
+      }
+      if (!value && field === "disallow") continue;
+      current.rules.push({ type: field, path: value || "/" });
+    }
+  }
+  return groups;
+}
+
+function sourceResponseDisallowsRetention(headers, html) {
+  const robotsHeader = typeof headers?.get === "function" ? headers.get("x-robots-tag") : "";
+  return robotsDirectivesDisallow(robotsHeader) || robotsDirectivesDisallow(metaRobotsContent(html));
+}
+
+function metaRobotsContent(html) {
+  const match = String(html || "").match(
+    /<meta\b[^>]*(?:name|property)=["'](?:robots|googlebot)["'][^>]*content=["']([^"']+)["'][^>]*>/i,
+  ) || String(html || "").match(
+    /<meta\b[^>]*content=["']([^"']+)["'][^>]*(?:name|property)=["'](?:robots|googlebot)["'][^>]*>/i,
+  );
+  return match?.[1] || "";
+}
+
+function robotsDirectivesDisallow(value) {
+  const text = String(value || "").toLowerCase();
+  return (
+    /\bnosnippet\b/.test(text) ||
+    /\bnoai\b/.test(text) ||
+    /\bnoimageai\b/.test(text) ||
+    /\bmax-snippet\s*:\s*0\b/.test(text)
+  );
+}
+
 async function fetchPersonalBlogBuilder(
   builder,
   { cutoff, limit, agentModel, fetchedItemKeys = new Set(), fetcher = timedSourceFetch, sources = {} },
 ) {
   const indexUrl = builder.fetchUrl || builder.sourceUrl;
   if (!indexUrl) return { items: [], agentTasks: [] };
+  const indexPolicy = await sourceFetchPolicy(indexUrl, fetcher);
+  if (!indexPolicy.allowed) {
+    return { items: [], agentTasks: [] };
+  }
 
   const indexResponse = await fetcher(indexUrl, {
     headers: { "User-Agent": "FollowBriefSkill/1.0 (personal agent fetcher)" },
@@ -2451,6 +2564,8 @@ async function fetchPersonalBlogBuilder(
   const qualityStandards = genericMinimumContentQuality(sources, "blog");
 
   for (const article of candidates) {
+    const articlePolicy = await sourceFetchPolicy(article.url, fetcher);
+    if (!articlePolicy.allowed) continue;
     const articleResponse = await fetcher(article.url, {
       headers: { "User-Agent": "FollowBriefSkill/1.0 (personal agent fetcher)" },
     });
@@ -2460,6 +2575,9 @@ async function fetchPersonalBlogBuilder(
     }
 
     const html = await articleResponse.text();
+    if (sourceResponseDisallowsRetention(articleResponse.headers, html)) {
+      continue;
+    }
     const extracted = extractBlogArticle(html, articleResponse.url || article.url);
     const body = extracted.body || article.description;
     const title = extracted.title || article.title || "Untitled";
@@ -3078,6 +3196,8 @@ async function fetchPersonalWebsiteBuilder(
 ) {
   const sourceUrl = builder.fetchUrl || builder.sourceUrl;
   if (!sourceUrl) return [];
+  const fetchPolicy = await sourceFetchPolicy(sourceUrl, fetcher);
+  if (!fetchPolicy.allowed) return [];
 
   const response = await fetcher(sourceUrl, {
     headers: { "User-Agent": "FollowBriefSkill/1.0 (personal website fetcher)" },
@@ -3087,6 +3207,7 @@ async function fetchPersonalWebsiteBuilder(
   }
 
   const html = await response.text();
+  if (sourceResponseDisallowsRetention(response.headers, html)) return [];
   const extracted = extractBlogArticle(html, sourceUrl);
   const publishedAt = extracted.publishedAt || null;
   if (!isAfterCutoff(publishedAt, cutoff)) return [];
@@ -6397,7 +6518,8 @@ async function syncBuilders(args) {
     ));
     return;
   }
-  const result = await postJson(`${config.appUrl}/api/skill/builders`, payload, config.token, {
+  const uploadPayload = prepareSyncPayloadForUpload(payload);
+  const result = await postJson(`${config.appUrl}/api/skill/builders`, uploadPayload, config.token, {
     label: "builder sync",
     timeoutMs: HTTP_SYNC_LARGE_TIMEOUT_MS,
     retries: 1,
@@ -6409,13 +6531,232 @@ async function syncBuilders(args) {
   // left pending. Read the planned tasks the CLI emitted in fetch-personal.
   await patchFetchRunOutcomes(
     config,
-    payload,
+    uploadPayload,
     result,
     plannedTasks,
     plannedTaskOutcomes,
     discoveryExpansions,
     fetchProgress,
   );
+}
+
+export function prepareSyncPayloadForUpload(payload) {
+  if (!payload || typeof payload !== "object") return payload;
+  return {
+    ...payload,
+    builders: (payload.builders ?? []).map((builder) => ({
+      ...builder,
+      items: (builder.items ?? []).map((item) =>
+        prepareSyncItemForUpload(builder.sourceType, item),
+      ),
+    })),
+  };
+}
+
+function prepareSyncItemForUpload(sourceType, item) {
+  const rawJson = objectRecord(item?.rawJson);
+  const summary = String(item?.summary ?? "").trim();
+  const body = String(item?.body ?? "");
+  const rawContentKind = inferSyncRawContentKind(sourceType, rawJson);
+  const policy = syncContentPolicyFor(sourceType, rawContentKind);
+  const durableBody = durableSyncBody({ body, summary, policy });
+  const rawRetained =
+    policy.durableRawMode === "full" ||
+    policy.durableRawMode === "excerpt" ||
+    policy.durableRawMode === "facts_only";
+  const rawTruncated =
+    rawRetained &&
+    policy.durableRawMaxChars > 0 &&
+    normalizeContentText(body).length > normalizeContentText(durableBody).length;
+  const acquisition = normalizeSyncAcquisition(sourceType, rawContentKind, rawJson);
+  return {
+    ...item,
+    body: durableBody,
+    rawJson: {
+      ...sanitizeSyncRawJson(rawJson, 0),
+      acquisition,
+      rawContentPolicy: {
+        sourceType: normalizeSourceType(sourceType) || "unknown",
+        rawContentKind,
+        processingRaw: "allowed",
+        durableRawMode: policy.durableRawMode,
+        durableRawMaxChars: policy.durableRawMaxChars,
+        rawRetained,
+        rawTruncated,
+        hubRawSharing: false,
+        temporaryRawCleanup: "required",
+      },
+    },
+  };
+}
+
+const SYNC_RAW_STRING_LIMIT = 1000;
+const SYNC_RAW_ARRAY_LIMIT = 20;
+const SYNC_RAW_OBJECT_DEPTH_LIMIT = 5;
+const SYNC_DANGEROUS_RAW_JSON_KEYS = new Set([
+  "audio",
+  "audioFile",
+  "body",
+  "captionText",
+  "comments",
+  "content",
+  "html",
+  "pageHtml",
+  "raw",
+  "rawBody",
+  "rawContent",
+  "rawHtml",
+  "rawJson",
+  "rawText",
+  "rawTranscript",
+  "text",
+  "transcript",
+  "transcriptText",
+  "tweet",
+]);
+
+function syncContentPolicyFor(sourceType, rawContentKind) {
+  const source = normalizeSourceType(sourceType);
+  if (source === "x") return { durableRawMode: "full", durableRawMaxChars: 4000 };
+  if (source === "blog") return { durableRawMode: "full", durableRawMaxChars: 50_000 };
+  if (source === "website") return { durableRawMode: "excerpt", durableRawMaxChars: 12_000 };
+  if (source === "github_trending") return { durableRawMode: "facts_only", durableRawMaxChars: 8000 };
+  if (source === "product_hunt_top_products") return { durableRawMode: "facts_only", durableRawMaxChars: 8000 };
+  if (source === "youtube") return { durableRawMode: "none", durableRawMaxChars: 0 };
+  if (source === "podcast" && rawContentKind === "transcript") {
+    return { durableRawMode: "none", durableRawMaxChars: 0 };
+  }
+  if (source === "podcast") return { durableRawMode: "excerpt", durableRawMaxChars: 30_000 };
+  return { durableRawMode: "excerpt", durableRawMaxChars: 12_000 };
+}
+
+function durableSyncBody({ body, summary, policy }) {
+  const normalizedBody = normalizeContentText(body);
+  const normalizedSummary = normalizeContentText(summary);
+  if (policy.durableRawMode === "none") {
+    return normalizedSummary || syncExcerpt(normalizedBody, 500) || "Summary unavailable.";
+  }
+  if (policy.durableRawMode === "facts_only") {
+    return normalizedSummary || syncExcerpt(normalizedBody, policy.durableRawMaxChars) || "Facts unavailable.";
+  }
+  return syncExcerpt(normalizedBody, policy.durableRawMaxChars) || normalizedSummary || "Content unavailable.";
+}
+
+function inferSyncRawContentKind(sourceType, rawJson) {
+  const source = normalizeSourceType(sourceType);
+  const transcriptSource = stringValue(rawJson.transcriptSource || rawJson.contentSource);
+  if (source === "youtube") return "transcript";
+  if (source === "podcast") {
+    if (
+      transcriptSource ||
+      /transcript|asr|speech|whisper/i.test(stringValue(rawJson.source)) ||
+      /transcription/i.test(stringValue(rawJson.agentWorkType))
+    ) {
+      return "transcript";
+    }
+    return "show_notes";
+  }
+  if (source === "x") return "tweet_text";
+  if (source === "blog") return "article";
+  if (source === "website") return "page";
+  if (source === "github_trending") return "repo_facts";
+  if (source === "product_hunt_top_products") return "product_facts";
+  return "raw_content";
+}
+
+function normalizeSyncAcquisition(sourceType, rawContentKind, rawJson) {
+  const existing = objectRecord(rawJson.acquisition);
+  return {
+    provider: stringValue(existing.provider) || providerForSyncSourceType(sourceType),
+    method:
+      stringValue(existing.method) ||
+      stringValue(rawJson.transcriptSource) ||
+      stringValue(rawJson.contentSource) ||
+      methodForSyncSourceType(sourceType, rawContentKind, rawJson),
+    processedLocally: existing.processedLocally ?? true,
+    rawPersistedRequested: existing.rawPersistedRequested ?? true,
+    rightsBasis:
+      stringValue(existing.rightsBasis) ||
+      stringValue(rawJson.rightsBasis) ||
+      rightsBasisForSyncSourceType(sourceType, rawContentKind),
+  };
+}
+
+function methodForSyncSourceType(sourceType, rawContentKind, rawJson) {
+  const source = normalizeSourceType(sourceType);
+  if (source === "x") return "x-api-v2";
+  if (source === "youtube") return stringValue(rawJson.transcriptSource) || "youtube-local-transcript";
+  if (source === "podcast") {
+    return rawContentKind === "transcript" ? "podcast-local-transcription" : "podcast-rss-show-notes";
+  }
+  if (source === "blog") return "rss-or-html-article";
+  if (source === "website") return "website-html-extract";
+  if (source === "github_trending") return "github-trending-investigation";
+  if (source === "product_hunt_top_products") return "product-hunt-structured-facts";
+  return "local-agent-fetch";
+}
+
+function providerForSyncSourceType(sourceType) {
+  const source = normalizeSourceType(sourceType);
+  if (source === "product_hunt_top_products") return "product-hunt";
+  if (source === "github_trending") return "github";
+  if (source === "podcast") return "podcast-rss";
+  return source || "unknown";
+}
+
+function rightsBasisForSyncSourceType(sourceType, rawContentKind) {
+  const source = normalizeSourceType(sourceType);
+  if (source === "x") return "platform-api-user-token";
+  if (source === "youtube") return "user-directed-local-processing";
+  if (source === "podcast" && rawContentKind === "transcript") {
+    return "user-directed-local-processing";
+  }
+  if (source === "product_hunt_top_products") return "structured-facts-only";
+  return "public-source-user-directed";
+}
+
+function sanitizeSyncRawJson(rawJson, depth) {
+  const output = {};
+  for (const [key, value] of Object.entries(rawJson)) {
+    if (SYNC_DANGEROUS_RAW_JSON_KEYS.has(key)) {
+      output[key] = "[removed raw content]";
+      continue;
+    }
+    output[key] = sanitizeSyncRawJsonValue(value, depth + 1);
+  }
+  return output;
+}
+
+function sanitizeSyncRawJsonValue(value, depth) {
+  if (value === null || typeof value === "number" || typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    return value.length > SYNC_RAW_STRING_LIMIT
+      ? `[removed long string:${value.length} chars]`
+      : value;
+  }
+  if (Array.isArray(value)) {
+    if (depth >= SYNC_RAW_OBJECT_DEPTH_LIMIT) return `[removed deep array:${value.length} items]`;
+    return value.slice(0, SYNC_RAW_ARRAY_LIMIT).map((item) => sanitizeSyncRawJsonValue(item, depth + 1));
+  }
+  if (value && typeof value === "object") {
+    if (depth >= SYNC_RAW_OBJECT_DEPTH_LIMIT) return "[removed deep object]";
+    return sanitizeSyncRawJson(value, depth);
+  }
+  return undefined;
+}
+
+function syncExcerpt(value, maxChars) {
+  if (!value || maxChars <= 0) return "";
+  if (value.length <= maxChars) return value;
+  return `${value.slice(0, Math.max(0, maxChars - 18)).trimEnd()} [truncated]`;
+}
+
+function objectRecord(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function stringValue(value) {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 async function readPlannedFetchResult(tasksFile) {

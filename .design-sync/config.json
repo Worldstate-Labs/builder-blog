@@ -1,0 +1,10 @@
+{
+  "shape": "storybook",
+  "pkg": "@builder-blog/design-system",
+  "globalName": "BuilderBlogDS",
+  "projectId": "e2c79102-4827-443c-9f80-7c1d01d1278e",
+  "entry": "./design-system/dist/index.js",
+  "buildCmd": "npm --prefix design-system run build",
+  "storybookStatic": ".design-sync/sb-reference",
+  "storybookConfigDir": ".storybook"
+}

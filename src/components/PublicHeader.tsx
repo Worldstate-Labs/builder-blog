@@ -1,12 +1,18 @@
 import Link from "next/link";
+import type { Session } from "next-auth";
 import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { UserMenu } from "@/components/UserMenu";
 
 type PublicHeaderPage = "home" | "login" | "privacy" | "terms";
 
-export function PublicHeader({ current }: { current: PublicHeaderPage }) {
-  const showSignIn = current !== "login";
-
+export function PublicHeader({
+  current,
+  session,
+}: {
+  current: PublicHeaderPage;
+  session?: Session | null;
+}) {
   return (
     <>
       <header className="fb-top fb-public-top">
@@ -16,27 +22,7 @@ export function PublicHeader({ current }: { current: PublicHeaderPage }) {
             <span className="fb-brand-name">FollowBrief</span>
           </Link>
           <div className="fb-public-top-actions">
-            <ThemeToggle />
-            {current !== "home" ? (
-              <Link className="fb-login-nav-link" href="/">
-                Home
-              </Link>
-            ) : null}
-            {current !== "privacy" ? (
-              <Link className="fb-login-nav-link" href="/privacy">
-                Privacy
-              </Link>
-            ) : null}
-            {current !== "terms" ? (
-              <Link className="fb-login-nav-link" href="/terms">
-                Terms
-              </Link>
-            ) : null}
-            {showSignIn ? (
-              <Link className="fb-btn dark fb-public-header-primary" href="/login">
-                Sign in
-              </Link>
-            ) : null}
+            <PublicHeaderActions current={current} session={session} />
           </div>
         </div>
       </header>
@@ -48,29 +34,52 @@ export function PublicHeader({ current }: { current: PublicHeaderPage }) {
         </Link>
         <span className="fb-m-spacer" />
         <div className="fb-public-mobile-actions">
-          <ThemeToggle />
-          {current !== "home" ? (
-            <Link className="fb-login-nav-link" href="/">
-              Home
-            </Link>
-          ) : null}
-          {current !== "privacy" ? (
-            <Link className="fb-login-nav-link" href="/privacy">
-              Privacy
-            </Link>
-          ) : null}
-          {current !== "terms" ? (
-            <Link className="fb-login-nav-link" href="/terms">
-              Terms
-            </Link>
-          ) : null}
-          {showSignIn ? (
-            <Link className="fb-btn dark fb-public-header-primary" href="/login">
-              Sign in
-            </Link>
-          ) : null}
+          <PublicHeaderActions current={current} session={session} />
         </div>
       </header>
+    </>
+  );
+}
+
+function PublicHeaderActions({
+  current,
+  session,
+}: {
+  current: PublicHeaderPage;
+  session?: Session | null;
+}) {
+  const isLegalPage = current === "privacy" || current === "terms";
+  const showSignIn = current !== "login" && !session;
+
+  if (isLegalPage) {
+    return session ? (
+      <UserMenu compact session={session} />
+    ) : (
+      <Link className="fb-btn dark fb-public-header-primary" href="/login">
+        Sign in
+      </Link>
+    );
+  }
+
+  return (
+    <>
+      <ThemeToggle />
+      {current !== "home" ? (
+        <Link className="fb-login-nav-link" href="/">
+          Home
+        </Link>
+      ) : null}
+      <Link className="fb-login-nav-link" href="/privacy">
+        Privacy
+      </Link>
+      <Link className="fb-login-nav-link" href="/terms">
+        Terms
+      </Link>
+      {showSignIn ? (
+        <Link className="fb-btn dark fb-public-header-primary" href="/login">
+          Sign in
+        </Link>
+      ) : null}
     </>
   );
 }

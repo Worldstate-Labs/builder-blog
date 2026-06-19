@@ -1414,7 +1414,8 @@ test("fetch task success requires a persisted summary; failures are recorded wit
     "skills/builder-blog-digest/jobs/_fetch-task-syncing.md",
     "utf8",
   );
-  assert.match(contract, /complete ONLY when its item is synced with real crawled content/);
+  assert.match(contract, /complete ONLY when its local sync item has real crawled content/);
+  assert.match(contract, /source-specific raw retention/);
   assert.match(contract, /FAILURE/);
 });
 
@@ -2877,7 +2878,7 @@ test("web display boundaries keep raw fetched content in the builders tab", () =
   assert.equal(builderFeedItems.includes("PostCard"), true);
   assert.equal(builderFeedItems.includes("showBuilderRow={false}"), true);
   assert.equal(builderFeedItems.includes("showSourceBadge={false}"), true);
-  assert.equal(readFileSync("src/components/PostCard.tsx", "utf8").includes("Original content"), true);
+  assert.equal(readFileSync("src/components/PostCardView.tsx", "utf8").includes("Original content"), true);
 });
 
 test("source registry centralizes current source categories", () => {

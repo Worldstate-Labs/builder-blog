@@ -1209,6 +1209,110 @@ test("agent sync validation accepts ready fetch task summaries", async () => {
   assert.equal("validatedFetchTaskItems" in result, false);
 });
 
+test("sync upload payload keeps YouTube transcript temporary but preserves summary", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const payload = cli.prepareSyncPayloadForUpload({
+    builders: [
+      {
+        builderId: "builder_yt",
+        kind: "PODCAST",
+        sourceType: "youtube",
+        name: "Example YouTube",
+        items: [
+          {
+            kind: "PODCAST_EPISODE",
+            externalId: "video1",
+            title: "Video",
+            body: "Transcript body. ".repeat(200),
+            summary: "YouTube summary with the important details.",
+            url: "https://www.youtube.com/watch?v=video1",
+            rawJson: {
+              fetchTaskId: "task-yt",
+              transcriptSource: "youtube-captions",
+              transcript: "Transcript body. ".repeat(200),
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  const item = payload.builders[0].items[0];
+  assert.equal(item.body, "YouTube summary with the important details.");
+  assert.equal(item.rawJson.transcript, "[removed raw content]");
+  assert.equal(item.rawJson.rawContentPolicy.durableRawMode, "none");
+  assert.equal(item.rawJson.acquisition.provider, "youtube");
+});
+
+test("sync upload payload strips raw tweet API objects", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const payload = cli.prepareSyncPayloadForUpload({
+    builders: [
+      {
+        builderId: "builder_x",
+        kind: "X",
+        sourceType: "x",
+        name: "Example X",
+        items: [
+          {
+            kind: "TWEET",
+            externalId: "tweet1",
+            title: null,
+            body: "A short tweet.",
+            summary: "Tweet summary with context.",
+            url: "https://x.com/example/status/tweet1",
+            rawJson: {
+              fetchTaskId: "task-x",
+              tweet: { id: "tweet1", text: "A short tweet." },
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  const item = payload.builders[0].items[0];
+  assert.equal(item.body, "A short tweet.");
+  assert.equal(item.rawJson.tweet, "[removed raw content]");
+  assert.equal(item.rawJson.rawContentPolicy.durableRawMode, "full");
+  assert.equal(item.rawJson.acquisition.method, "x-api-v2");
+});
+
+test("sync upload payload keeps Product Hunt durable body facts-only", async () => {
+  const cli = await import("../scripts/builder-digest.mjs");
+  const payload = cli.prepareSyncPayloadForUpload({
+    builders: [
+      {
+        builderId: "builder_ph",
+        kind: "PRODUCT",
+        sourceType: "product_hunt_top_products",
+        name: "Product Hunt",
+        items: [
+          {
+            kind: "POST",
+            externalId: "product1",
+            title: "Product",
+            body: "Raw Product Hunt page and comments. ".repeat(200),
+            summary: "Structured product facts and summary.",
+            url: "https://www.producthunt.com/posts/product1",
+            rawJson: {
+              fetchTaskId: "task-ph",
+              html: "<main>raw product page</main>",
+              comments: ["raw user comment"],
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  const item = payload.builders[0].items[0];
+  assert.equal(item.body, "Structured product facts and summary.");
+  assert.equal(item.rawJson.html, "[removed raw content]");
+  assert.equal(item.rawJson.comments, "[removed raw content]");
+  assert.equal(item.rawJson.rawContentPolicy.durableRawMode, "facts_only");
+});
+
 test("ready fetch tasks carry embedded source-specific single-post prompts", async () => {
   const cli = await import("../scripts/builder-digest.mjs");
   const sources = {

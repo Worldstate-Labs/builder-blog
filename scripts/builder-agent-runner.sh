@@ -1456,6 +1456,10 @@ Per error type:
   primary content genuinely cannot be obtained, remove that item and add one
   taskOutcomes entry with fetchTaskId, status (skipped or failed), reason, and
   per-task evidence.
+- source retention policy is applied later by sync-builders. During repair,
+  keep item.body as the real primary content needed for validation and
+  summarization, but do not place raw HTML, raw transcripts, raw API objects, or
+  copied source content inside rawJson.
 - any other error: resolve it per that task's instructions in the fetch tasks
   file; every planned task must keep exactly one terminal state.
 
