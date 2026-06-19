@@ -54,3 +54,6 @@ next-env.d.ts
 
 # oh-my-claudecode runtime state (jobs.db, mission state, replay logs).
 .omc/
+
+# Storybook build output
+storybook-static
