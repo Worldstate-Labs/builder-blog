@@ -12,7 +12,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Loading: Story = {
+export const Loading: StoryObj = {
   render: () => <FeedLoadingState label="Loading your feed" />,
 };
 

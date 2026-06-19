@@ -23,20 +23,20 @@ export const Badge: Story = {
   args: { value: 1240 },
 };
 
-export const Chip: Story = {
+export const Chip: StoryObj = {
   render: () => <CountChip label="sources" value={18} />,
 };
 
-export const Meta_: Story = {
+export const Meta_: StoryObj = {
   name: "Meta",
   render: () => <CountMeta label="posts today" value={42} />,
 };
 
-export const Range: Story = {
+export const Range: StoryObj = {
   render: () => <CountRange>1–25 of 1,240</CountRange>,
 };
 
-export const MetricTones: Story = {
+export const MetricTones: StoryObj = {
   name: "Metric (tones)",
   render: () => (
     <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>

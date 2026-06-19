@@ -13,7 +13,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
+export const Default: StoryObj = {
   render: (args) => (
     <form action={() => {}}>
       <FormSubmitButton {...args}>Save changes</FormSubmitButton>
@@ -21,7 +21,7 @@ export const Default: Story = {
   ),
 };
 
-export const Disabled: Story = {
+export const Disabled: StoryObj = {
   render: (args) => (
     <form action={() => {}}>
       <FormSubmitButton {...args} disabled>
@@ -31,7 +31,7 @@ export const Disabled: Story = {
   ),
 };
 
-export const Pending: Story = {
+export const Pending: StoryObj = {
   name: "Pending (click to submit)",
   args: { pendingLabel: "Saving" },
   render: (args) => (
